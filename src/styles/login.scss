@@ -1,0 +1,173 @@
+@use "sass:color" as color;
+
+$purple-800: #6b46c1;
+$gray-100: #f7fafc;
+$yellow-600: #d69e2e;
+
+.login-container {
+  border: 1px solid yellow;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  height: 100vh;
+  background: url("/src/assets/LoginPage_PNG.png") no-repeat center center;
+  background-size: cover; /* Đảm bảo toàn bộ ảnh hiển thị */
+  width: 100vw;
+  .navbar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1rem;
+
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 10;
+    margin-top: 1rem; /* Cách biên trên 1 khoảng */
+    .logo {
+      display: flex;
+      align-items: center;
+      padding-left: 20px;
+
+      img {
+        height: 4rem;
+        border: 3px solid gold;
+        border-radius: 50%;
+      }
+    }
+  }
+  .nav-links {
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Căn giữa các liên kết trong nửa phải */
+    width: 50%; /* Chiếm nửa phải màn hình */
+    padding: 0 2rem; /* Tạo khoảng cách từ biên phải */
+    a {
+      margin-left: 2rem; /* Khoảng cách giữa các liên kết */
+      color: $purple-800;
+      text-decoration: none;
+      font-size: 1.2rem; /* Tăng kích thước chữ */
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+    a:last-child {
+      font-weight: bold;
+    }
+  }
+  .content {
+    display: flex;
+    min-height: calc(100vh - 10rem); /* Trừ chiều cao navbar và margin */
+    height: calc(100vh - 10rem);
+    justify-content: flex-end; /* Đẩy form sang bên phải */
+    align-items: center;
+    padding: 1rem 13rem;
+    .login-form {
+      width: 100%;
+      max-width: 28rem;
+      display: flex;
+      justify-content: flex-end; /* Căn giữa form trong khu vực bên phải */
+      .login-card {
+        background-color: rgba(255, 255, 255, 0.9);
+        padding: 2.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        position: relative;
+        z-index: 10;
+        h2 {
+          font-size: 1.5rem;
+          font-weight: bold;
+          color: $purple-800;
+          text-align: center;
+          margin-bottom: 1.5rem;
+        }
+        .input-group {
+          position: relative;
+          margin-bottom: 1rem;
+          input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid $purple-800;
+            border-radius: 0.375rem;
+            background-color: $gray-100;
+            color: $purple-800;
+            font-size: 1rem;
+          }
+          .icon {
+            position: absolute;
+            top: 0.75rem;
+            left: 0.75rem;
+            color: $purple-800;
+            font-size: 1rem;
+          }
+          .eye-icon {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            color: $purple-800;
+            cursor: pointer;
+            font-size: 1rem;
+          }
+        }
+        .checkbox-group {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 1rem;
+          label {
+            display: flex;
+            align-items: center;
+            span {
+              margin-left: 0.5rem;
+              color: #4a5568;
+            }
+          }
+          a {
+            color: #4a5568;
+            text-decoration: none;
+            &:hover {
+              text-decoration: underline;
+            }
+          }
+        }
+        button {
+          width: 100%;
+          padding: 0.75rem;
+          background-color: $purple-800;
+          color: white;
+          border-radius: 0.375rem;
+          margin-bottom: 1rem;
+          &:hover {
+            background-color: color.adjust($purple-800, $lightness: -10%);
+          }
+        }
+        .signup-text {
+          text-align: center;
+          color: #4a5568;
+          a {
+            color: $purple-800;
+            text-decoration: none;
+            &:hover {
+              text-decoration: underline;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0.5rem 1rem;
+    margin-top: 0.5rem;
+  }
+  .content {
+    justify-content: center;
+    padding: 0.5rem;
+  }
+  .login-form {
+    max-width: 100%;
+    justify-content: center;
+  }
+}
