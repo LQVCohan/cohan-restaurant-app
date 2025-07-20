@@ -1,9 +1,13 @@
-import React from "react";
+// src/components/Home.jsx
+import React, { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
 import "../styles/home.scss";
 
 const Home = () => {
   const navigate = useNavigate();
+  const { user, logout } = useContext(AuthContext);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   return (
     <div className="home-container">
@@ -19,7 +23,78 @@ const Home = () => {
           <a href="/">HOME</a>
           <a href="/about">ABOUT US</a>
           <a href="/contact">CONTACT</a>
-          <button onClick={() => navigate("/login")}>LOG IN</button>
+          {user ? (
+            <div className="avatar-container" style={{ position: "relative" }}>
+              <img
+                src={user.avatar || "/default-avatar.png"}
+                alt="Avatar"
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  cursor: "pointer",
+                }}
+                onClick={() => setShowDropdown(!showDropdown)}
+              />
+              {showDropdown && (
+                <ul
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    background: "#fff",
+                    boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+                    listStyle: "none",
+                    padding: "10px",
+                    borderRadius: "4px",
+                    zIndex: 1000,
+                  }}
+                >
+                  <li
+                    onClick={() => {
+                      navigate("/profile");
+                      setShowDropdown(false);
+                    }}
+                  >
+                    Thông tin cá nhân
+                  </li>
+                  <li
+                    onClick={() => {
+                      navigate("/reserved-tables");
+                      setShowDropdown(false);
+                    }}
+                  >
+                    Bàn đã đặt
+                  </li>
+                  <li
+                    onClick={() => {
+                      navigate("/order-history");
+                      setShowDropdown(false);
+                    }}
+                  >
+                    Lịch sử đặt bàn
+                  </li>
+                  <li
+                    onClick={() => {
+                      navigate("/vouchers");
+                      setShowDropdown(false);
+                    }}
+                  >
+                    Voucher
+                  </li>
+                  <li
+                    onClick={() => {
+                      logout();
+                      setShowDropdown(false);
+                    }}
+                  >
+                    Đăng xuất
+                  </li>
+                </ul>
+              )}
+            </div>
+          ) : (
+            <button onClick={() => navigate("/login")}>LOG IN</button>
+          )}
         </div>
       </nav>
       <div className="hero-section">

@@ -1,60 +1,87 @@
+// src/components/Navbar.jsx
 import React, { useState, useContext } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSignOutAlt } from "@fortawesome/free-solid-svg-icons";
+import "../styles/navbar.scss";
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user, logout } = useContext(AuthContext);
   const [showDropdown, setShowDropdown] = useState(false);
-  const isHome = location.pathname === "/";
-  const navbarStyle = { height: isHome ? "80px" : "60px" };
 
   return (
-    <nav className="navbar" style={navbarStyle}>
+    <nav className="navbar">
       <div className="logo">
-        <img src="/src/assets/logo.png" alt="Logo" style={{ height: "40px" }} />
+        <img src="/src/assets/logo.png" alt="Logo" />
       </div>
       <div className="nav-links">
-        <a href="/">HOME</a>
-        <a href="/about">ABOUT US</a>
-        <a href="/contact">CONTACT</a>
+        <a href="/" className="nav-link">
+          HOME
+        </a>
+        <a href="/about" className="nav-link">
+          ABOUT US
+        </a>
+        <a href="/contact" className="nav-link">
+          CONTACT
+        </a>
         {user ? (
-          <div style={{ position: "relative" }}>
+          <div className="avatar-container">
             <img
-              src={user.avatar}
+              src={user.avatar || "/default-avatar.png"}
               alt="Avatar"
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "50%",
-                cursor: "pointer",
-              }}
               onClick={() => setShowDropdown(!showDropdown)}
             />
             {showDropdown && (
-              <ul
-                style={{
-                  position: "absolute",
-                  right: 0,
-                  background: "#fff",
-                  boxShadow: "0 0 10px rgba(0,0,0,0.1)",
-                  listStyle: "none",
-                  padding: "10px",
-                }}
-              >
-                <li onClick={() => navigate("/profile")}>Thông tin cá nhân</li>
-                <li onClick={() => navigate("/reserved-tables")}>Bàn đã đặt</li>
-                <li onClick={() => navigate("/order-history")}>
+              <ul className="dropdown">
+                <li
+                  onClick={() => {
+                    navigate("/profile");
+                    setShowDropdown(false);
+                  }}
+                >
+                  Thông tin cá nhân
+                </li>
+                <li
+                  onClick={() => {
+                    navigate("/reserved-tables");
+                    setShowDropdown(false);
+                  }}
+                >
+                  Bàn đã đặt
+                </li>
+                <li
+                  onClick={() => {
+                    navigate("/order-history");
+                    setShowDropdown(false);
+                  }}
+                >
                   Lịch sử đặt bàn
                 </li>
-                <li onClick={() => navigate("/vouchers")}>Voucher</li>
-                <li onClick={logout}>Đăng xuất</li>
+                <li
+                  onClick={() => {
+                    navigate("/vouchers");
+                    setShowDropdown(false);
+                  }}
+                >
+                  Voucher
+                </li>
+                <li
+                  onClick={() => {
+                    logout();
+                    setShowDropdown(false);
+                  }}
+                >
+                  <FontAwesomeIcon icon={faSignOutAlt} />
+                </li>
               </ul>
             )}
           </div>
         ) : (
-          <button onClick={() => navigate("/login")}>LOG IN</button>
+          <button className="login-btn" onClick={() => navigate("/login")}>
+            LOG IN
+          </button>
         )}
       </div>
     </nav>

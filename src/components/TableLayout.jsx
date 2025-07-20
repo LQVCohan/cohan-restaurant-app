@@ -3,6 +3,8 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 import { io } from "socket.io-client";
 import OrderModal from "../components/OrderModal";
+import { AuthContext } from "../context/AuthContext"; // Import AuthContext to check user role
+
 const TableLayout = () => {
   const { id: restaurantId } = useParams();
   const canvasRef = useRef(null);
@@ -17,6 +19,8 @@ const TableLayout = () => {
   const socket = io("http://localhost:3001");
   const token =
     localStorage.getItem("token") || sessionStorage.getItem("token");
+  const { user } = React.useContext(AuthContext); // Get user role from AuthContext
+  const isCustomer = user?.role === "customer"; // Check if current user is customer
 
   useEffect(() => {
     const fetchTables = async () => {
@@ -93,6 +97,10 @@ const TableLayout = () => {
     });
 
     if (clickedTable && token) {
+      // For customers, only allow clicks on available tables
+      if (isCustomer && clickedTable.status !== "available") {
+        return; // Skip if not available
+      }
       if (clickedTable.status === "pendingPayment") {
         if (confirm("Bàn đang chờ thanh toán. Nhắc tôi khi bàn trống?")) {
           socket.emit("remindWhenFree", { tableId: clickedTable._id });
@@ -188,6 +196,7 @@ const TableLayout = () => {
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     tables.forEach((table) => {
+      // For customers, show all tables but color non-available in red
       ctx.beginPath();
       if (table.image) {
         const img = new Image();
@@ -206,14 +215,7 @@ const TableLayout = () => {
           Math.PI * 2
         );
       }
-      ctx.fillStyle =
-        table.status === "available"
-          ? "green"
-          : table.status === "occupied"
-          ? "red"
-          : table.status === "reserved"
-          ? "yellow"
-          : "gray"; // pendingPayment
+      ctx.fillStyle = table.status === "available" ? "green" : "red"; // For customers: available green, others red
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = "white";

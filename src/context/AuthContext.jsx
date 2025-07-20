@@ -21,7 +21,12 @@ export const AuthProvider = ({ children }) => {
           {},
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        setUser({ role: response.data.role, avatar: response.data.avatar });
+        // Save info User
+        setUser({
+          role: response.data.role,
+          avatar: response.data.avatar,
+          preferredRestaurant: response.data.preferredRestaurant,
+        });
       } catch (error) {
         setToken(null);
         setUser(null);

@@ -23,18 +23,24 @@ const authMiddleware = async (req, res, next) => {
 
     req.user = decoded; // Gán thông tin user (id, role)
 
+    // Tìm user để lấy thông tin bổ sung
+    const { default: User } = await import("../models/User.js");
+    const user = await User.findById(req.user.id).select(
+      "role restaurantId preferredRestaurant"
+    );
+    if (!user) {
+      return res.status(401).json({ error: "User không tồn tại" });
+    }
+
     // Kiểm tra và giới hạn quyền theo role
     if (req.user.role === "manager") {
-      const { default: User } = await import("../models/User.js");
-      const user = await User.findById(req.user.id).select("restaurantId");
-      if (!user || !user.restaurantId) {
+      if (!user.restaurantId) {
         return res
           .status(403)
           .json({ error: "Manager chưa được gán nhà hàng" });
       }
-      console.log("user.restaurantId: ", user.restaurantId);
       req.user.restaurantId = user.restaurantId; // Gán restaurantId cho manager
-      // Kiểm tra quyền truy cập bàn
+      // Kiểm tra quyền truy cập bàn hoặc tài nguyên khác nếu cần
       if (
         req.path.includes("/api/tables") &&
         user.restaurantId.toString() !== req.params.restaurantId
@@ -44,23 +50,25 @@ const authMiddleware = async (req, res, next) => {
           .json({ error: "Chỉ được quản lý bàn của nhà hàng bạn" });
       }
     } else if (req.user.role === "customer") {
-      // Kiểm tra restaurantIds từ request
-      const restaurantIds = req.body?.restaurantIds;
-      if (
-        !restaurantIds ||
-        !Array.isArray(restaurantIds) ||
-        restaurantIds.length === 0
-      ) {
-        return res.status(400).json({
-          error: "restaurantIds là bắt buộc và phải là mảng không rỗng",
-        });
+      // Tự động cập nhật preferredRestaurant nếu chưa có (từ order gần nhất)
+      if (!user.preferredRestaurant) {
+        const { default: Order } = await import("../models/Order.js");
+        const latestOrder = await Order.findOne({ customerId: req.user.id })
+          .sort({ createdAt: -1 })
+          .select("restaurantId");
+        if (latestOrder && latestOrder.restaurantId) {
+          user.preferredRestaurant = latestOrder.restaurantId;
+          await user.save();
+        }
       }
-      req.restaurantIds = restaurantIds; // Lưu mảng restaurantIds cho customer
-    } else if (req.user.role !== "admin") {
+      req.user.preferredRestaurant = user.preferredRestaurant; // Gán preferredRestaurant cho customer (có thể null)
+    } else if (req.user.role === "admin") {
+      // Admin quản lý tất cả, không cần restaurantId
+    } else {
       return res.status(403).json({ error: "Quyền bị từ chối" });
     }
 
-    next(); // Cho phép tiếp tục nếu hợp lệ
+    next();
   } catch (error) {
     console.error("Lỗi xác thực token:", error.message);
     res.status(401).json({ error: "Token không hợp lệ: " + error.message });

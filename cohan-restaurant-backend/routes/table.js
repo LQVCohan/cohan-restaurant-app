@@ -1,5 +1,5 @@
 import express from "express";
-import Table from "../models/tableSchema.js";
+import Table from "../models/Table.js";
 import { io } from "../server.js";
 
 const router = express.Router();

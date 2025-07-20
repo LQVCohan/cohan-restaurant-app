@@ -6,23 +6,33 @@ const tableSchema = new mongoose.Schema({
     ref: "Restaurant",
     required: true,
   },
-  tableNumber: { type: Number, required: true },
-  capacity: { type: Number, required: true },
-  status: {
-    type: String,
-    enum: ["available", "occupied", "reserved"],
-    default: "available",
-  },
-  position: {
-    x: { type: Number, required: true },
-    y: { type: Number, required: true },
+  tableNumber: {
+    type: Number,
+    required: true,
   },
   shape: {
     type: String,
     enum: ["rectangle", "circle"],
     default: "rectangle",
   },
-  image: { type: String },
+  position: {
+    x: { type: Number, required: true },
+    y: { type: Number, required: true },
+  },
+  status: {
+    type: String,
+    enum: ["available", "occupied", "reserved", "pendingPayment"],
+    default: "available",
+  },
+
+  capacity: {
+    type: Number,
+    default: 4,
+  }, // Optional: Sức chứa bàn
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
 export default mongoose.model("Table", tableSchema);

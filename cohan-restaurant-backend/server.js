@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.js";
 import orderRoutes from "./routes/order.js";
 import tableRoutes from "./routes/table.js";
 import restaurantRoutes from "./routes/restaurant.js";
+import menuRoutes from "./routes/menu.js";
 import authMiddleware from "./middleware/authMiddleware.js";
 import loggerMiddleware from "./middleware/loggerMiddleware.js";
 import errorHandler from "./middleware/errorHandler.js";
@@ -28,6 +29,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/orders", authMiddleware, orderRoutes);
 app.use("/api/tables", authMiddleware, tableRoutes);
 app.use("/api/restaurants", authMiddleware, restaurantRoutes);
+app.use("/api/menus", authMiddleware, menuRoutes);
 app.use(errorHandler);
 
 mongoose

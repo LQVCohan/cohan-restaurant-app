@@ -1,0 +1,100 @@
+// src/styles/navbar.scss
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%; /* Full screen width */
+  z-index: 1000; /* Ensure it stays above other content */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa; /* Neutral light background */
+  padding: 0 20px;
+  height: 60px; /* Smaller height for non-Home pages */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Light shadow for depth */
+  transition: height 0.3s ease;
+
+  .logo img {
+    height: 40px; /* Consistent with original design */
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+
+    .nav-link {
+      text-decoration: none;
+      color: #333;
+      font-weight: 500;
+      &:hover {
+        color: #3b82f6; /* Blue hover effect */
+      }
+    }
+
+    .login-btn {
+      cursor: pointer;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background: #3b82f6;
+      color: #fff;
+      font-weight: 500;
+
+      &:hover {
+        background: #2563eb;
+      }
+    }
+
+    .avatar-container {
+      position: relative;
+
+      img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%; /* Circular shape */
+        object-fit: cover; /* Ensures the image covers the area without distortion */
+        object-position: center; /* Centers the image within the container */
+        cursor: pointer;
+        border: 2px solid #fff; /* Slight border to enhance visibility */
+      }
+
+      .dropdown {
+        position: absolute;
+        right: 0;
+        top: 100%;
+        background: #fff;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        list-style: none;
+        padding: 5px 10px; /* Reduced padding for compact layout */
+        margin: 5px 0 0;
+        border-radius: 4px;
+        z-index: 1000;
+        display: flex; /* Change to flex for inline items */
+        gap: 10px; /* Space between items */
+
+        li {
+          padding: 5px 10px; /* Smaller padding for uniform size */
+          font-size: 0.9rem; /* Smaller font size */
+          cursor: pointer;
+          white-space: nowrap; /* Prevent text wrapping */
+          display: flex;
+          align-items: center; /* Align icon and text */
+
+          &:hover {
+            background: #f0f0f0;
+          }
+
+          svg {
+            /* Target FontAwesomeIcon SVG */
+            font-size: 1rem; /* Adjust icon size */
+            margin-right: 5px; /* Space between icon and text (if text present) */
+            vertical-align: middle; /* Align icon with text */
+            color: #333; /* Icon color for visibility */
+          }
+        }
+      }
+    }
+  }
+}

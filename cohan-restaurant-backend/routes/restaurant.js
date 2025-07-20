@@ -1,72 +1,125 @@
-import process from "process";
 import express from "express";
-import Menu from "../models/Menu.js";
-import Restaurant from "../models/Restaurant.js";
-
 const router = express.Router();
-
-// API trả về menu dựa trên restaurantId từ user
-router.get("/menu", async (req, res) => {
+import Restaurant from "../models/Restaurant.js"; // Giả sử model Restaurant đã tồn tại
+import Menu from "../models/Menu.js"; // Import Menu để lấy menu khi xem nhà hàng
+import Table from "../models/Table.js";
+// GET /api/restaurants - Lấy danh sách tất cả nhà hàng (cho customer, không yêu cầu auth)
+router.get("/", async (req, res) => {
   try {
-    console.log("Fetching menu - req.user:", req.user); // Debug toàn bộ req.user
-    if (!req.user?.restaurantId) {
-      return res.status(400).json({ error: "Không có restaurantId hợp lệ" });
-    }
-    const restaurantId = req.user.restaurantId; // Lấy restaurantId từ user
-    console.log("Fetching menu for restaurantId:", restaurantId); // Debug
-    const menus = await Menu.find({ restaurantId }).populate("items");
-    if (!menus || menus.length === 0) {
-      return res
-        .status(404)
-        .json({ error: "Không tìm thấy menu cho nhà hàng này" });
-    }
-    res.json(menus);
-  } catch (err) {
-    console.error("Lỗi khi lấy menu:", err);
-    res.status(500).json({ error: "Lỗi server: " + err.message });
+    const restaurants = await Restaurant.find();
+    const restaurantsWithDetails = await Promise.all(
+      restaurants.map(async (restaurant) => {
+        const emptyTables = await Table.countDocuments({
+          restaurantId: restaurant._id,
+          status: "available",
+        });
+        return {
+          ...restaurant.toObject(),
+          emptyTables,
+        };
+      })
+    );
+    res.json(restaurantsWithDetails);
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách nhà hàng:", error.message);
+    res.status(500).json({ error: "Lỗi server khi lấy danh sách nhà hàng" });
   }
 });
 
-// API tạo menu mới (cho admin/manager)
-router.post("/menu", async (req, res) => {
-  const { restaurantId, category, items } = req.body;
-  try {
-    if (
-      !req.user?.restaurantId ||
-      req.user.restaurantId.toString() !== restaurantId
-    ) {
-      return res
-        .status(403)
-        .json({ error: "Không được phép tạo menu cho nhà hàng khác" });
-    }
-    const newMenu = new Menu({ restaurantId, category, items });
-    await newMenu.save();
-    // Cập nhật mảng menu trong Restaurant
-    const restaurant = await Restaurant.findById(restaurantId);
-    if (restaurant) {
-      restaurant.menu.push(newMenu._id);
-      await restaurant.save();
-    }
-    res.status(201).json(newMenu);
-  } catch (err) {
-    res.status(500).json({ error: "Lỗi khi tạo menu: " + err.message });
-  }
-});
-
-// API lấy thông tin nhà hàng
+// GET /api/restaurants/:id - Xem thông tin một nhà hàng cụ thể (cho customer, bao gồm menu)
 router.get("/:id", async (req, res) => {
   try {
-    const restaurant = await Restaurant.findById(req.params.id).populate(
-      "menu"
-    );
+    const restaurant = await Restaurant.findById(req.params.id);
     if (!restaurant) {
       return res.status(404).json({ error: "Nhà hàng không tồn tại" });
     }
+    const emptyTables = await Table.countDocuments({
+      restaurantId: restaurant._id,
+      status: "available",
+    });
+    const menus = await Menu.find({ restaurantId: restaurant._id });
+    const restaurantWithDetails = {
+      ...restaurant.toObject(),
+      emptyTables,
+      menus,
+    };
+    res.json(restaurantWithDetails);
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin nhà hàng:", error.message);
+    res.status(500).json({ error: "Lỗi server khi lấy thông tin nhà hàng" });
+  }
+});
+
+// POST /api/restaurants - Thêm nhà hàng mới (chỉ admin/manager)
+router.post("/", async (req, res) => {
+  if (!["admin", "manager"].includes(req.user.role)) {
+    return res.status(403).json({ error: "Quyền bị từ chối" });
+  }
+
+  try {
+    const newRestaurant = new Restaurant(req.body);
+    await newRestaurant.save();
+    res.status(201).json(newRestaurant);
+  } catch (error) {
+    console.error("Lỗi khi thêm nhà hàng:", error.message);
+    res.status(500).json({ error: "Lỗi server khi thêm nhà hàng" });
+  }
+});
+
+// PUT /api/restaurants/:id - Sửa nhà hàng (chỉ admin/manager, manager chỉ cho nhà hàng của mình)
+router.put("/:id", async (req, res) => {
+  if (!["admin", "manager"].includes(req.user.role)) {
+    return res.status(403).json({ error: "Quyền bị từ chối" });
+  }
+
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({ error: "Nhà hàng không tồn tại" });
+    }
+
+    // Nếu là manager, chỉ cho phép sửa nhà hàng của mình
+    if (
+      req.user.role === "manager" &&
+      req.user.restaurantId.toString() !== restaurant._id.toString()
+    ) {
+      return res.status(403).json({ error: "Chỉ được sửa nhà hàng của bạn" });
+    }
+
+    Object.assign(restaurant, req.body);
+    await restaurant.save();
     res.json(restaurant);
-  } catch (err) {
-    res
-      .status(500)
-      .json({ error: "Lỗi khi lấy thông tin nhà hàng: " + err.message });
+  } catch (error) {
+    console.error("Lỗi khi sửa nhà hàng:", error.message);
+    res.status(500).json({ error: "Lỗi server khi sửa nhà hàng" });
+  }
+});
+
+// DELETE /api/restaurants/:id - Xóa nhà hàng (chỉ admin/manager, manager chỉ cho nhà hàng của mình)
+router.delete("/:id", async (req, res) => {
+  if (!["admin", "manager"].includes(req.user.role)) {
+    return res.status(403).json({ error: "Quyền bị từ chối" });
+  }
+
+  try {
+    const restaurant = await Restaurant.findById(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({ error: "Nhà hàng không tồn tại" });
+    }
+
+    // Nếu là manager, chỉ cho phép xóa nhà hàng của mình
+    if (
+      req.user.role === "manager" &&
+      req.user.restaurantId.toString() !== restaurant._id.toString()
+    ) {
+      return res.status(403).json({ error: "Chỉ được xóa nhà hàng của bạn" });
+    }
+
+    await restaurant.deleteOne();
+    res.json({ message: "Nhà hàng đã được xóa" });
+  } catch (error) {
+    console.error("Lỗi khi xóa nhà hàng:", error.message);
+    res.status(500).json({ error: "Lỗi server khi xóa nhà hàng" });
   }
 });
 

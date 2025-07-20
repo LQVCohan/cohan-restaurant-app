@@ -48,7 +48,7 @@ const Login = () => {
       } else if (role === "manager" && restaurantId) {
         navigate(`/restaurants/${restaurantId}/layout`);
       } else {
-        navigate("/staff/orders");
+        navigate("/");
       }
     } catch (error) {
       const errorMessage =

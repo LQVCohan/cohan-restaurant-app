@@ -27,6 +27,7 @@ router.post("/login", async (req, res, next) => {
       token,
       role: user.role,
       restaurantId: user.restaurantId,
+      preferredRestaurant: user.preferredRestaurant,
       avatar: user.avatar,
     });
   } catch (error) {
@@ -68,8 +69,10 @@ router.post("/verify", async (req, res, next) => {
     if (!user) return res.status(401).json({ error: "User không tồn tại" });
     console.log("User found for verify:", user);
     res.json({
+      token,
       role: user.role,
       restaurantId: user.restaurantId,
+      preferredRestaurant: user.preferredRestaurant,
       avatar: user.avatar,
     });
   } catch (error) {
