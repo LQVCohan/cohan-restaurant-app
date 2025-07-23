@@ -46,9 +46,16 @@ const RestaurantsList = () => {
             <img
               src={restaurant.image || "/default-restaurant.png"}
               alt={restaurant.name}
+              onClick={() => navigate(`/restaurants/${restaurant._id}`)}
+              style={{ cursor: "pointer" }}
             />
             <div className="restaurant-details">
-              <h3>{restaurant.name}</h3>
+              <h3
+                onClick={() => navigate(`/restaurants/${restaurant._id}`)}
+                style={{ cursor: "pointer" }}
+              >
+                {restaurant.name}
+              </h3>
               <p>Giờ mở cửa: {restaurant.openingHours}</p>
               <p>Món chủ đạo: {restaurant.signatureDishes.join(", ")}</p>
               <p className="highlight">Bàn trống: {restaurant.emptyTables}</p>
