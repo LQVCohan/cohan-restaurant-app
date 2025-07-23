@@ -46,11 +46,11 @@
 
     .avatar-image {
       position: absolute;
-      bottom: -50px;
+      bottom: -75px; /* Adjust based on new size to maintain overlap */
       left: 50%;
       transform: translateX(-50%);
-      width: 100px;
-      height: 100px;
+      width: 150px; /* Increased from 100px to 150px */
+      height: 150px; /* Increased from 100px to 150px */
       border-radius: 50%;
       border: 4px solid #fff;
       object-fit: cover;
@@ -61,7 +61,7 @@
   .details-section {
     width: 90%;
     max-width: 1200px;
-    padding: 60px 20px 20px; /* Padding-top to account for avatar overlap */
+    padding: 90px 20px 20px; /* Increased padding-top to account for larger avatar overlap */
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
@@ -135,14 +135,14 @@
     .cover-section {
       height: 200px;
       .avatar-image {
-        width: 80px;
-        height: 80px;
-        bottom: -40px;
+        width: 120px; /* Reduced but still larger than original 80px */
+        height: 120px;
+        bottom: -60px; /* Adjust for new size */
       }
     }
 
     .details-section {
-      padding: 50px 10px 10px;
+      padding: 80px 10px 10px; /* Adjusted padding-top for mobile */
       width: 95%;
     }
 

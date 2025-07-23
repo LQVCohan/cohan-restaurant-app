@@ -12,10 +12,13 @@ import Login from "./components/Login";
 import TableLayout from "./components/TableLayout";
 import StaffOrder from "./components/StaffOrder";
 import Home from "./components/Home";
+import Navbar from "./components/Navbar";
+import RestaurantsList from "./components/RestaurantsList";
+import RestaurantDetail from "./components/RestaurantDetail";
+import Dashboard from "./components/admin/Dashboard";
 import axios from "axios";
 import { AuthProvider } from "./context/AuthContext";
-import RestaurantsList from "./components/RestaurantsList";
-import Navbar from "./components/Navbar";
+
 const useAuth = () => {
   const [token, setToken] = useState(
     () => localStorage.getItem("token") || sessionStorage.getItem("token")
@@ -111,6 +114,22 @@ const AppContent = () => {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route
+          path="/restaurants"
+          element={
+            <PrivateRoute allowedRoles={["customer"]}>
+              <RestaurantsList />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/restaurants/:id"
+          element={
+            <PrivateRoute allowedRoles={["customer"]}>
+              <RestaurantDetail />
+            </PrivateRoute>
+          }
+        />
+        <Route
           path="/admin/dashboard"
           element={
             <PrivateRoute allowedRoles={["admin"]}>
@@ -129,7 +148,7 @@ const AppContent = () => {
         <Route
           path="/restaurants/:id/layout"
           element={
-            <PrivateRoute allowedRoles={["manager", "admin"]}>
+            <PrivateRoute allowedRoles={["manager", "admin", "customer"]}>
               <TableLayout />
             </PrivateRoute>
           }
@@ -169,10 +188,10 @@ const AppContent = () => {
           }
         />
         <Route
-          path="/restaurants"
+          path="/admin/dashboard"
           element={
-            <PrivateRoute allowedRoles={["customer"]}>
-              <RestaurantsList />
+            <PrivateRoute allowedRoles={["admin"]}>
+              <Dashboard />
             </PrivateRoute>
           }
         />

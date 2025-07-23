@@ -1,0 +1,30 @@
+// src/styles/Dashboard.scss
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+
+  h1 {
+    text-align: center;
+  }
+
+  .metrics {
+    display: flex;
+    gap: 20px;
+    margin-top: 20px;
+
+    .metric-card {
+      flex: 1;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+  }
+}
