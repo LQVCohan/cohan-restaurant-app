@@ -23,6 +23,7 @@ export default defineConfig({
       "@fortawesome/fontawesome-svg-core",
       "@fortawesome/free-solid-svg-icons",
       "@fortawesome/react-fontawesome",
+      "chart.js/auto",
     ],
   },
 });

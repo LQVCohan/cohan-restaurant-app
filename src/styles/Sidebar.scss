@@ -1,30 +1,49 @@
 // src/styles/Sidebar.scss
-.sidebar {
-  width: 250px;
-  background: #2d3748;
-  color: #fff;
-  padding: 20px;
-  height: 100vh;
-  position: fixed;
-  top: 0;
-  left: 0;
-  overflow-y: auto;
 
-  h2 {
-    text-align: center;
-    margin-bottom: 20px;
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 256px;
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  color: #ffffff;
+  z-index: 50;
+  overflow-y: auto;
+}
+
+.sidebar-content {
+  padding: 24px;
+}
+
+.sidebar-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 32px;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-item {
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: rgba(59, 130, 246, 0.1);
   }
 
-  ul {
-    list-style: none;
-    padding: 0;
+  &.active {
+    background-color: rgba(59, 130, 246, 0.2);
+    border-right: 3px solid #3b82f6;
+  }
 
-    li {
-      padding: 10px;
-      cursor: pointer;
-      &:hover {
-        background: #4a5568;
-      }
-    }
+  .sidebar-text {
+    font-size: 16px;
   }
 }
