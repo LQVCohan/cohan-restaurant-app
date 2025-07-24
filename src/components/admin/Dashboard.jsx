@@ -1,4 +1,3 @@
-// src/components/Dashboard.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
@@ -6,7 +5,7 @@ import "../../styles/Dashboard.scss";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-
+  console.log("ok");
   return (
     <div className="dashboard-container">
       <Sidebar />
