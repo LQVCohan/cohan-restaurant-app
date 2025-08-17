@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import axios from "axios";
+import { AuthContext } from "../../context/AuthContext";
 import "../../styles/MenuManagement.scss";
 
 const MenuManagement = () => {
+  const { user, token } = useContext(AuthContext);
+  const [SelectedRestaurant, setSelectedRestaurant] = useState(null);
   const [menuItems, setMenuItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -10,127 +14,14 @@ const MenuManagement = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [viewMode, setViewMode] = useState("grid"); // grid or list
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [viewMode, setViewMode] = useState("grid");
   const [sortBy, setSortBy] = useState("name");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [restaurants, setRestaurants] = useState([]);
 
-  // Sample data
-  useEffect(() => {
-    const sampleCategories = [
-      { id: 1, name: "Khai vị", icon: "🥗", color: "#10b981", itemCount: 8 },
-      { id: 2, name: "Món chính", icon: "🍖", color: "#f59e0b", itemCount: 15 },
-      {
-        id: 3,
-        name: "Tráng miệng",
-        icon: "🍰",
-        color: "#ec4899",
-        itemCount: 6,
-      },
-      { id: 4, name: "Đồ uống", icon: "🥤", color: "#3b82f6", itemCount: 12 },
-      { id: 5, name: "Món chay", icon: "🥬", color: "#22c55e", itemCount: 7 },
-    ];
-
-    const sampleMenuItems = [
-      {
-        id: 1,
-        name: "Salad Caesar",
-        description:
-          "Salad tươi với sốt Caesar đặc biệt, phô mai Parmesan và bánh mì nướng",
-        price: 120000,
-        categoryId: 1,
-        image: "🥗",
-        status: "available",
-        preparationTime: 10,
-        ingredients: [
-          "Xà lách",
-          "Phô mai Parmesan",
-          "Bánh mì nướng",
-          "Sốt Caesar",
-        ],
-        allergens: ["Gluten", "Sữa"],
-        nutrition: { calories: 280, protein: 12, carbs: 15, fat: 20 },
-        isVegetarian: true,
-        isSpicy: false,
-        popularity: 85,
-      },
-      {
-        id: 2,
-        name: "Bò bít tết Úc",
-        description:
-          "Thịt bò Úc cao cấp nướng tại bàn, kèm khoai tây nghiền và rau củ",
-        price: 450000,
-        categoryId: 2,
-        image: "🥩",
-        status: "available",
-        preparationTime: 25,
-        ingredients: ["Thịt bò Úc", "Khoai tây", "Rau củ", "Bơ tỏi"],
-        allergens: ["Sữa"],
-        nutrition: { calories: 650, protein: 45, carbs: 30, fat: 35 },
-        isVegetarian: false,
-        isSpicy: false,
-        popularity: 92,
-      },
-      {
-        id: 3,
-        name: "Tiramisu",
-        description:
-          "Bánh Tiramisu Ý truyền thống với cà phê Espresso và mascarpone",
-        price: 85000,
-        categoryId: 3,
-        image: "🍰",
-        status: "available",
-        preparationTime: 5,
-        ingredients: [
-          "Mascarpone",
-          "Cà phê Espresso",
-          "Bánh ladyfinger",
-          "Bột cacao",
-        ],
-        allergens: ["Gluten", "Sữa", "Trứng"],
-        nutrition: { calories: 420, protein: 8, carbs: 35, fat: 28 },
-        isVegetarian: true,
-        isSpicy: false,
-        popularity: 78,
-      },
-      {
-        id: 4,
-        name: "Sinh tố bơ",
-        description: "Sinh tố bơ tươi mát với sữa đặc và đá bào",
-        price: 45000,
-        categoryId: 4,
-        image: "🥤",
-        status: "available",
-        preparationTime: 5,
-        ingredients: ["Bơ tươi", "Sữa đặc", "Đường", "Đá"],
-        allergens: ["Sữa"],
-        nutrition: { calories: 320, protein: 6, carbs: 45, fat: 15 },
-        isVegetarian: true,
-        isSpicy: false,
-        popularity: 70,
-      },
-      {
-        id: 5,
-        name: "Đậu hũ sốt nấm",
-        description: "Đậu hũ non chiên giòn với nấm đông cô và rau cải",
-        price: 95000,
-        categoryId: 5,
-        image: "🥬",
-        status: "out_of_stock",
-        preparationTime: 15,
-        ingredients: ["Đậu hũ", "Nấm đông cô", "Rau cải", "Sốt đậu nành"],
-        allergens: ["Đậu nành"],
-        nutrition: { calories: 280, protein: 18, carbs: 20, fat: 15 },
-        isVegetarian: true,
-        isSpicy: false,
-        popularity: 65,
-      },
-    ];
-
-    setCategories(sampleCategories);
-    setMenuItems(sampleMenuItems);
-  }, []);
-
-  // Form state
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -155,11 +46,68 @@ const MenuManagement = () => {
     color: "#3b82f6",
   });
 
-  // Filter and search logic
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        console.log("Fetching restaurants with token:", token); // Debug
+        const restaurantRes = await axios.get("/api/restaurants");
+        console.log("Fetching restaurants:", restaurantRes); // Debug
+        setRestaurants(restaurantRes.data);
+
+        console.log("Fetching categories with token:", token); // Debug
+        const catRes = await axios.get("/api/categories", {
+          headers: { Authorization: `Bearer ${token}` },
+          params:
+            user.role === "manager"
+              ? { restaurantId: user.restaurantId }
+              : {
+                  restaurantId: SelectedRestaurant
+                    ? SelectedRestaurant
+                    : restaurantRes.data[0]._id,
+                },
+        });
+        setCategories(catRes.data);
+
+        console.log("Fetching menus"); // Debug
+        const menuRes = await axios.get("/api/menus", {
+          headers: { Authorization: `Bearer ${token}` },
+          params:
+            user.role === "manager"
+              ? { restaurantId: user.restaurantId }
+              : { restaurantId: SelectedRestaurant },
+        });
+        setMenuItems(
+          menuRes.data.map((item) => ({
+            ...item,
+            id: item._id,
+            nutrition: item.nutrition || {
+              calories: 0,
+              protein: 0,
+              carbs: 0,
+              fat: 0,
+            },
+            popularity: item.popularity || Math.floor(Math.random() * 100),
+          }))
+        );
+        setLoading(false);
+      } catch (err) {
+        console.error("Fetch error:", err); // Debug console
+        setError(err.response?.data?.error || "Lỗi fetch data");
+        setLoading(false);
+      }
+    };
+    console.log("user in menu manager: ", user);
+    if (user && token) fetchData(); // Check user/token tồn tại
+    else {
+      console.log("No token, skipping fetch"); // Debug nếu chưa login
+      setLoading(false);
+      setError("Vui lòng login để xem menu");
+    }
+  }, [user, token, SelectedRestaurant]);
   const filteredItems = menuItems.filter((item) => {
     const matchesCategory =
-      selectedCategory === "all" ||
-      item.categoryId === parseInt(selectedCategory);
+      selectedCategory === "all" || item.categoryId === selectedCategory;
     const matchesSearch =
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -169,7 +117,6 @@ const MenuManagement = () => {
     return matchesCategory && matchesSearch && matchesStatus;
   });
 
-  // Sort logic
   const sortedItems = [...filteredItems].sort((a, b) => {
     switch (sortBy) {
       case "name":
@@ -179,99 +126,193 @@ const MenuManagement = () => {
       case "popularity":
         return b.popularity - a.popularity;
       case "category":
-        return a.categoryId - b.categoryId;
+        return a.categoryId.localeCompare(b.categoryId);
       default:
         return 0;
     }
   });
 
-  // CRUD operations
-  const handleAddItem = (e) => {
+  const handleAddItem = async (e) => {
     e.preventDefault();
-    const newItem = {
-      id: Date.now(),
-      ...formData,
-      price: parseFloat(formData.price),
-      categoryId: parseInt(formData.categoryId),
-      preparationTime: parseInt(formData.preparationTime),
-      nutrition: {
-        calories: parseInt(formData.calories) || 0,
-        protein: parseInt(formData.protein) || 0,
-        carbs: parseInt(formData.carbs) || 0,
-        fat: parseInt(formData.fat) || 0,
-      },
-      popularity: Math.floor(Math.random() * 100),
-    };
-
-    setMenuItems([...menuItems, newItem]);
-    setShowAddModal(false);
-    resetForm();
-  };
-
-  const handleEditItem = (e) => {
-    e.preventDefault();
-    const updatedItems = menuItems.map((item) =>
-      item.id === editingItem.id
-        ? {
-            ...item,
-            ...formData,
-            price: parseFloat(formData.price),
-            categoryId: parseInt(formData.categoryId),
-            preparationTime: parseInt(formData.preparationTime),
-            nutrition: {
-              calories: parseInt(formData.calories) || 0,
-              protein: parseInt(formData.protein) || 0,
-              carbs: parseInt(formData.carbs) || 0,
-              fat: parseInt(formData.fat) || 0,
-            },
-          }
-        : item
-    );
-
-    setMenuItems(updatedItems);
-    setShowEditModal(false);
-    setEditingItem(null);
-    resetForm();
-  };
-
-  const handleDeleteItem = (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa món này?")) {
-      setMenuItems(menuItems.filter((item) => item.id !== id));
+    try {
+      const newItemData = {
+        ...formData,
+        restaurantId: user.restaurantId,
+        price: parseFloat(formData.price),
+        categoryId: formData.categoryId,
+        preparationTime: parseInt(formData.preparationTime),
+        nutrition: {
+          calories: parseInt(formData.calories) || 0,
+          protein: parseInt(formData.protein) || 0,
+          carbs: parseInt(formData.carbs) || 0,
+          fat: parseInt(formData.fat) || 0,
+        },
+        popularity: Math.floor(Math.random() * 100),
+      };
+      const res = await axios.post("/api/menus", newItemData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMenuItems([...menuItems, { ...res.data, id: res.data._id }]);
+      setShowAddModal(false);
+      resetForm();
+    } catch (err) {
+      setError(err.response?.data?.error || "Lỗi thêm item");
     }
   };
 
-  const handleDuplicateItem = (item) => {
-    const duplicatedItem = {
-      ...item,
-      id: Date.now(),
-      name: `${item.name} (Copy)`,
-    };
-    setMenuItems([...menuItems, duplicatedItem]);
-  };
-
-  const handleToggleStatus = (id) => {
-    const updatedItems = menuItems.map((item) =>
-      item.id === id
-        ? {
-            ...item,
-            status: item.status === "available" ? "out_of_stock" : "available",
-          }
-        : item
-    );
-    setMenuItems(updatedItems);
-  };
-
-  // Category operations
-  const handleAddCategory = (e) => {
+  const handleEditItem = async (e) => {
     e.preventDefault();
-    const category = {
-      id: Date.now(),
-      ...newCategory,
-      itemCount: 0,
-    };
-    setCategories([...categories, category]);
-    setShowCategoryModal(false);
-    setNewCategory({ name: "", icon: "", color: "#3b82f6" });
+    try {
+      const updatedData = {
+        ...formData,
+        price: parseFloat(formData.price),
+        categoryId: formData.categoryId,
+        preparationTime: parseInt(formData.preparationTime),
+        nutrition: {
+          calories: parseInt(formData.calories) || 0,
+          protein: parseInt(formData.protein) || 0,
+          carbs: parseInt(formData.carbs) || 0,
+          fat: parseInt(formData.fat) || 0,
+        },
+      };
+      const res = await axios.put(`/api/menus/${editingItem.id}`, updatedData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMenuItems(
+        menuItems.map((item) =>
+          item.id === editingItem.id ? { ...res.data, id: res.data._id } : item
+        )
+      );
+      setShowEditModal(false);
+      setEditingItem(null);
+      resetForm();
+    } catch (err) {
+      setError(err.response?.data?.error || "Lỗi sửa item");
+    }
+  };
+
+  const handleDeleteItem = async (id) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa món này?")) {
+      try {
+        await axios.delete(`/api/menus/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setMenuItems(menuItems.filter((item) => item.id !== id));
+      } catch (err) {
+        setError(err.response?.data?.error || "Lỗi xóa item");
+      }
+    }
+  };
+
+  const handleDuplicateItem = async (item) => {
+    try {
+      const duplicatedData = {
+        ...item,
+        name: `${item.name} (Copy)`,
+        restaurantId: user.restaurantId,
+      };
+      delete duplicatedData.id;
+      const res = await axios.post("/api/menus", duplicatedData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMenuItems([...menuItems, { ...res.data, id: res.data._id }]);
+    } catch (err) {
+      setError(err.response?.data?.error || "Lỗi duplicate");
+    }
+  };
+
+  const handleToggleStatus = async (id) => {
+    const item = menuItems.find((i) => i.id === id);
+    const newStatus =
+      item.status === "available" ? "out_of_stock" : "available";
+    try {
+      const res = await axios.put(
+        `/api/menus/${id}`,
+        { status: newStatus },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setMenuItems(
+        menuItems.map((i) =>
+          i.id === id ? { ...res.data, id: res.data._id } : i
+        )
+      );
+    } catch (err) {
+      setError(err.response?.data?.error || "Lỗi toggle status");
+    }
+  };
+
+  const handleAddCategory = async (e) => {
+    e.preventDefault();
+    try {
+      console.log("restaurant id now: ", SelectedRestaurant);
+      console.log("user restaurant id now: ", user.restaurantId);
+      const categoryData = {
+        ...newCategory,
+        restaurantId: SelectedRestaurant
+          ? SelectedRestaurant
+          : user.restaurantId,
+        itemCount: 0,
+      };
+      const res = await axios.post("/api/categories", categoryData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCategories([...categories, { ...res.data, id: res.data._id }]);
+      setShowCategoryModal(false);
+      setNewCategory({ name: "", icon: "", color: "#3b82f6" });
+    } catch (err) {
+      setError(err.response?.data?.error || "Lỗi thêm category");
+    }
+  };
+
+  const handleEditCategory = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await axios.put(
+        `/api/categories/${editingCategory.id}`,
+        newCategory,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setCategories(
+        categories.map((cat) =>
+          cat.id === editingCategory.id
+            ? { ...res.data, id: res.data._id }
+            : cat
+        )
+      );
+      setShowCategoryModal(false);
+      setEditingCategory(null);
+      setNewCategory({ name: "", icon: "", color: "#3b82f6" });
+    } catch (err) {
+      setError(err.response?.data?.error || "Lỗi sửa category");
+    }
+  };
+
+  const handleDeleteCategory = async (id) => {
+    console.log("category id delete : ", id);
+    if (window.confirm("Xóa category? Các item liên kết sẽ không bị xóa.")) {
+      try {
+        await axios.delete(`/api/categories/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setCategories(categories.filter((cat) => cat.id !== id));
+      } catch (err) {
+        setError(err.response?.data?.error || "Lỗi xóa category");
+      }
+    }
+  };
+
+  const openCategoryModal = (cat = null) => {
+    setEditingCategory(cat);
+    setNewCategory(
+      cat
+        ? { name: cat.name, icon: cat.icon, color: cat.color }
+        : { name: "", icon: "", color: "#3b82f6" }
+    );
+    setShowCategoryModal(true);
   };
 
   const resetForm = () => {
@@ -300,12 +341,12 @@ const MenuManagement = () => {
       name: item.name,
       description: item.description,
       price: item.price.toString(),
-      categoryId: item.categoryId.toString(),
+      categoryId: item.categoryId,
       image: item.image,
       status: item.status,
       preparationTime: item.preparationTime.toString(),
-      ingredients: item.ingredients,
-      allergens: item.allergens,
+      ingredients: item.ingredients || [],
+      allergens: item.allergens || [],
       calories: item.nutrition.calories.toString(),
       protein: item.nutrition.protein.toString(),
       carbs: item.nutrition.carbs.toString(),
@@ -337,20 +378,37 @@ const MenuManagement = () => {
     return statusConfig[status] || statusConfig.available;
   };
 
+  const handleChangeRestaurant = (event) => {
+    setSelectedRestaurant(event.target.value);
+  };
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  console.log("restaurant is: ", SelectedRestaurant);
   return (
     <div className="menu-management">
-      {/* Header */}
       <div className="menu-header">
         <div className="header-left">
-          <h1>Quản lý Thực đơn</h1>
-          <p>Quản lý món ăn và danh mục thực đơn</p>
+          <label>
+            Cửa hàng hiện tại:
+            <select
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+              value={SelectedRestaurant}
+              onChange={handleChangeRestaurant}
+            >
+              {restaurants.map((restaurant) => (
+                <option key={restaurant._id} value={restaurant._id}>
+                  {restaurant.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
         <div className="header-actions">
           <button
             className="btn btn-outline"
-            onClick={() => setShowCategoryModal(true)}
+            onClick={() => openCategoryModal()}
           >
-            <span>📁</span> Quản lý danh mục
+            <span>📁</span> Thêm danh mục
           </button>
           <button
             className="btn btn-primary"
@@ -361,7 +419,6 @@ const MenuManagement = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="menu-stats">
         <div className="stat-card">
           <div className="stat-icon">📋</div>
@@ -400,7 +457,6 @@ const MenuManagement = () => {
         </div>
       </div>
 
-      {/* Categories */}
       <div className="categories-section">
         <h3>Danh mục</h3>
         <div className="categories-grid">
@@ -420,9 +476,9 @@ const MenuManagement = () => {
             <div
               key={category.id}
               className={`category-card ${
-                selectedCategory === category.id.toString() ? "active" : ""
+                selectedCategory === category.id ? "active" : ""
               }`}
-              onClick={() => setSelectedCategory(category.id.toString())}
+              onClick={() => setSelectedCategory(category.id)}
               style={{ borderColor: category.color }}
             >
               <div
@@ -433,20 +489,19 @@ const MenuManagement = () => {
               </div>
               <div className="category-info">
                 <h4>{category.name}</h4>
-                <span>
-                  {
-                    menuItems.filter((item) => item.categoryId === category.id)
-                      .length
-                  }{" "}
-                  món
-                </span>
+                <span>{category.itemCount} món</span>
+              </div>
+              <div className="category-actions">
+                <button onClick={() => openCategoryModal(category)}>✏️</button>
+                <button onClick={() => handleDeleteCategory(category.id)}>
+                  🗑️
+                </button>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Filters and Search */}
       <div className="menu-controls">
         <div className="controls-left">
           <div className="search-box">
@@ -496,7 +551,6 @@ const MenuManagement = () => {
         </div>
       </div>
 
-      {/* Menu Items */}
       <div className={`menu-items ${viewMode}`}>
         {sortedItems.length === 0 ? (
           <div className="empty-state">
@@ -588,7 +642,6 @@ const MenuManagement = () => {
         )}
       </div>
 
-      {/* Add/Edit Modal */}
       {(showAddModal || showEditModal) && (
         <div
           className="modal-overlay"
@@ -809,7 +862,6 @@ const MenuManagement = () => {
         </div>
       )}
 
-      {/* Category Modal */}
       {showCategoryModal && (
         <div
           className="modal-overlay"
@@ -820,16 +872,24 @@ const MenuManagement = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h3>Thêm danh mục mới</h3>
+              <h3>{editingCategory ? "Sửa danh mục" : "Thêm danh mục mới"}</h3>
               <button
                 className="close-btn"
-                onClick={() => setShowCategoryModal(false)}
+                onClick={() => {
+                  setShowCategoryModal(false);
+                  setEditingCategory(null);
+                }}
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleAddCategory} className="modal-form">
+            <form
+              onSubmit={
+                editingCategory ? handleEditCategory : handleAddCategory
+              }
+              className="modal-form"
+            >
               <div className="form-group">
                 <label>Tên danh mục *</label>
                 <input
@@ -874,7 +934,7 @@ const MenuManagement = () => {
                   Hủy
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  Thêm danh mục
+                  {editingCategory ? "Cập nhật" : "Thêm danh mục"}
                 </button>
               </div>
             </form>

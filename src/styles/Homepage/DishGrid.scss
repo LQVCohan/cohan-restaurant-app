@@ -1,0 +1,98 @@
+.dishes {
+  padding: 4rem 1rem;
+  background: white;
+
+  &__container {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  &__title {
+    font-size: 1.875rem;
+    font-weight: bold;
+    color: #0c4a6e;
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+
+    @media (min-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (min-width: 1024px) {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+}
+
+.dish-card {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  }
+
+  &__image {
+    height: 8rem;
+    background: linear-gradient(to right, #38bdf8, #0ea5e9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    span {
+      font-size: 2.5rem;
+    }
+  }
+
+  &__content {
+    padding: 1rem;
+  }
+
+  &__name {
+    font-weight: bold;
+    color: #0c4a6e;
+    margin-bottom: 0.25rem;
+  }
+
+  &__restaurant {
+    font-size: 0.875rem;
+    color: #0284c7;
+    margin-bottom: 0.5rem;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__price {
+    font-weight: bold;
+    color: #0284c7;
+  }
+
+  &__add-btn {
+    background: #0284c7;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background: #0369a1;
+    }
+  }
+}

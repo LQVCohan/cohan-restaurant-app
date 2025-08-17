@@ -5,7 +5,7 @@ $primary-color: #3b82f6;
 $success-color: #10b981;
 $warning-color: #f59e0b;
 $danger-color: #ef4444;
-$info-color: #06b6d4;
+$info: #06b6d4;
 $secondary-color: #6b7280;
 
 $sidebar-width: 320px;
@@ -247,7 +247,7 @@ $desktop-small: 1024px;
         background-color: $warning-color;
       }
       &.info::before {
-        background-color: $info-color;
+        background-color: $info;
       }
 
       .stat-header {

@@ -1,0 +1,36 @@
+@use "../../styles/variables.scss" as *;
+@use "../../styles/mixins.scss" as *;
+
+.card {
+  @include card-base;
+
+  &--hover {
+    @include card-hover;
+  }
+
+  &--padding-none {
+    padding: 0;
+  }
+
+  &--padding-sm {
+    padding: $spacing-md;
+  }
+
+  &--padding-default {
+    padding: $spacing-xl;
+  }
+
+  &--padding-lg {
+    padding: $spacing-2xl;
+  }
+
+  @include mobile {
+    &--padding-default {
+      padding: $spacing-md;
+    }
+
+    &--padding-lg {
+      padding: $spacing-lg;
+    }
+  }
+}

@@ -1,0 +1,173 @@
+.table-booking-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: 1rem;
+}
+
+.table-booking {
+  background: white;
+  border-radius: 1rem;
+  max-width: 32rem;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  &__header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__title {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #0c4a6e;
+  }
+
+  &__close {
+    background: none;
+    border: none;
+    color: #6b7280;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: color 0.2s;
+
+    &:hover {
+      color: #374151;
+    }
+  }
+
+  &__form {
+    padding: 1.5rem;
+  }
+
+  &__section {
+    margin-bottom: 2rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__section-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #0c4a6e;
+    margin-bottom: 1rem;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  &__field {
+    margin-bottom: 1rem;
+  }
+
+  &__label {
+    display: block;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+  }
+
+  &__input,
+  &__select,
+  &__textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    outline: none;
+    transition: border-color 0.2s;
+
+    &:focus {
+      border-color: #0284c7;
+      ring: 2px;
+      ring-color: rgba(2, 132, 199, 0.2);
+    }
+  }
+
+  &__time-slots {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+  }
+
+  &__time-slot {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.875rem;
+
+    &:hover {
+      border-color: #0284c7;
+      background: #f0f9ff;
+    }
+
+    &--selected {
+      background: #0284c7;
+      color: white;
+      border-color: #0284c7;
+    }
+  }
+
+  &__footer {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  &__deposit {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    background: #f0f9ff;
+    border-radius: 0.5rem;
+  }
+
+  &__deposit-label {
+    font-weight: 500;
+    color: #0369a1;
+  }
+
+  &__deposit-amount {
+    font-weight: bold;
+    color: #0284c7;
+    font-size: 1.125rem;
+  }
+
+  &__submit {
+    width: 100%;
+    background: #0284c7;
+    color: white;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background: #0369a1;
+    }
+  }
+}

@@ -1,0 +1,71 @@
+@use "../../../styles/variables" as *;
+
+.restaurant-table {
+  display: flex;
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  font-family: "Inter", sans-serif;
+  background: $gray-50;
+  color: $gray-800;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 0; // REMOVED SIDEBAR WIDTH MARGIN
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.3s ease;
+
+  &.sidebar-collapsed {
+    margin-left: 0; // REMOVED COLLAPSED MARGIN
+  }
+
+  &.sidebar-hidden {
+    margin-left: 0;
+  }
+}
+
+.content-section {
+  flex: 1;
+  overflow-y: auto;
+
+  &.active {
+    display: block;
+  }
+}
+
+// Make menu icon always visible when sidebar is hidden
+.header {
+  // Assuming .header is the class in Header component
+  .menu-icon {
+    display: block !important; // Force display regardless of media query
+    cursor: pointer;
+    // Add styles for icon visibility
+  }
+}
+
+// Responsive adjustments (keep but ensure icon logic overrides)
+@media (max-width: $breakpoint-lg) {
+  .restaurant-dashboard {
+    flex-direction: column;
+  }
+
+  .main-content {
+    margin-left: 0;
+
+    &.sidebar-collapsed {
+      margin-left: 0;
+    }
+
+    &.sidebar-hidden {
+      margin-left: 0;
+    }
+  }
+
+  .header .menu-icon {
+    display: block; // Ensure visible on small screens too
+  }
+}

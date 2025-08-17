@@ -1,0 +1,117 @@
+.hero {
+  padding: 5rem 1rem;
+  background: linear-gradient(to bottom right, #f0f9ff, #dbeafe);
+
+  &__container {
+    max-width: 1280px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  &__title {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #0c4a6e;
+    margin-bottom: 1.5rem;
+
+    @media (max-width: 768px) {
+      font-size: 2.5rem;
+    }
+  }
+
+  &__subtitle {
+    font-size: 1.25rem;
+    color: #0369a1;
+    margin-bottom: 2rem;
+    max-width: 32rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  &__search {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 3rem;
+
+    @media (min-width: 640px) {
+      flex-direction: row;
+    }
+  }
+
+  &__search-input {
+    position: relative;
+
+    input {
+      width: 20rem;
+      padding: 1rem 1rem 1rem 3rem;
+      font-size: 1.125rem;
+      border: 2px solid #7dd3fc;
+      border-radius: 9999px;
+      outline: none;
+
+      &:focus {
+        ring: 2px;
+        ring-color: #0ea5e9;
+        border-color: transparent;
+      }
+    }
+  }
+
+  &__search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 1rem;
+    color: #0ea5e9;
+    font-size: 1.25rem;
+  }
+
+  &__search-btn {
+    background: #0284c7;
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 9999px;
+    font-size: 1.125rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+    &:hover {
+      background: #0369a1;
+    }
+  }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    max-width: 64rem;
+    margin: 0 auto;
+
+    @media (min-width: 768px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  &__stat {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  }
+
+  &__stat-number {
+    font-size: 1.875rem;
+    font-weight: bold;
+    color: #0284c7;
+    margin-bottom: 0.5rem;
+  }
+
+  &__stat-label {
+    color: #0369a1;
+  }
+}

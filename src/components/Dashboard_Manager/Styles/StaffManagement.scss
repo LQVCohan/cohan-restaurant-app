@@ -1,0 +1,98 @@
+@use "../../../styles/variables.scss" as *;
+@use "../../../styles/mixins.scss" as *;
+.staff-management {
+  padding: $spacing-xl;
+  max-width: 1400px;
+  margin: 0 auto;
+
+  &__header {
+    margin-bottom: $spacing-2xl;
+
+    .page-title {
+      @include flex-center;
+      justify-content: flex-start;
+      gap: $spacing-md;
+      font-size: 2rem;
+      font-weight: 700;
+      color: $gray-900;
+      margin: 0 0 $spacing-sm 0;
+
+      i {
+        color: $primary-blue;
+      }
+    }
+
+    .page-subtitle {
+      color: $gray-600;
+      font-size: 1rem;
+      margin: 0;
+    }
+  }
+
+  &__tabs {
+    @include flex-center;
+    justify-content: flex-start;
+    gap: $spacing-xs;
+    margin-bottom: $spacing-2xl;
+    border-bottom: 2px solid $gray-100;
+    overflow-x: auto;
+    padding-bottom: 0;
+  }
+
+  &__content {
+    min-height: 600px;
+  }
+}
+
+.tab-button {
+  @include flex-center;
+  gap: $spacing-sm;
+  padding: $spacing-lg $spacing-xl;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: $gray-600;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all $transition-base;
+  white-space: nowrap;
+  position: relative;
+
+  &:hover {
+    color: $primary-blue;
+    background: rgba($primary-blue, 0.05);
+  }
+
+  &--active {
+    color: $primary-blue;
+    border-bottom-color: $primary-blue;
+    background: rgba($primary-blue, 0.05);
+  }
+
+  i {
+    font-size: 1.1rem;
+  }
+}
+
+@include mobile {
+  .staff-management {
+    padding: $spacing-lg;
+
+    &__header .page-title {
+      font-size: 1.5rem;
+    }
+
+    &__tabs {
+      gap: 0;
+
+      .tab-button {
+        padding: $spacing-md $spacing-lg;
+        font-size: 0.875rem;
+
+        span {
+          display: none;
+        }
+      }
+    }
+  }
+}

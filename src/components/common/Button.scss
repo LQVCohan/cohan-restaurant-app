@@ -1,0 +1,139 @@
+@use "../../styles/variables.scss" as *;
+@use "../../styles/mixins.scss" as *;
+
+.btn {
+  @include button-base;
+  position: relative;
+  overflow: hidden;
+
+  // Variants
+  &--primary {
+    @include button-primary;
+  }
+
+  &--secondary {
+    @include button-secondary;
+  }
+
+  &--success {
+    background: $success-green;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: darken($success-green, 10%);
+      transform: translateY(-1px);
+    }
+  }
+
+  &--warning {
+    background: $warning-yellow;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: darken($warning-yellow, 10%);
+      transform: translateY(-1px);
+    }
+  }
+
+  &--danger {
+    background: $error-red;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: darken($error-red, 10%);
+      transform: translateY(-1px);
+    }
+  }
+
+  &--outline {
+    background: transparent;
+    border: 1px solid $gray-300;
+    color: $gray-700;
+
+    &:hover:not(:disabled) {
+      background: $gray-50;
+      border-color: $gray-400;
+      transform: translateY(-1px);
+    }
+  }
+
+  &--ghost {
+    background: transparent;
+    color: $gray-700;
+
+    &:hover:not(:disabled) {
+      background: $gray-100;
+      transform: translateY(-1px);
+    }
+  }
+
+  // Sizes
+  &--sm {
+    padding: $spacing-xs $spacing-sm;
+    font-size: 0.75rem;
+  }
+
+  &--md {
+    padding: $spacing-sm $spacing-md;
+    font-size: 0.875rem;
+  }
+
+  &--lg {
+    padding: $spacing-md $spacing-lg;
+    font-size: 1rem;
+  }
+
+  &--xl {
+    padding: $spacing-lg $spacing-xl;
+    font-size: 1.125rem;
+  }
+
+  // States
+  &--loading {
+    pointer-events: none;
+  }
+
+  &--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  // Icons
+  &__icon {
+    &--left {
+      margin-right: $spacing-sm;
+    }
+
+    &--right {
+      margin-left: $spacing-sm;
+    }
+  }
+
+  &__loading-icon {
+    margin-right: $spacing-sm;
+  }
+
+  &__text {
+    display: inline-block;
+  }
+
+  // Ripple effect
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+  }
+
+  &:active::after {
+    width: 300px;
+    height: 300px;
+  }
+}

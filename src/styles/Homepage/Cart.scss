@@ -1,0 +1,169 @@
+.cart {
+  position: fixed;
+  right: 0;
+  top: 0;
+  height: 100vh;
+  width: 24rem;
+  background: white;
+  box-shadow: -10px 0 25px -5px rgba(0, 0, 0, 0.1);
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+
+  &--open {
+    transform: translateX(0);
+  }
+
+  &__header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__title {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #0c4a6e;
+  }
+
+  &__close {
+    background: none;
+    border: none;
+    color: #6b7280;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: color 0.2s;
+
+    &:hover {
+      color: #374151;
+    }
+  }
+
+  &__items {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+  }
+
+  &__empty {
+    color: #6b7280;
+    text-align: center;
+    margin-top: 2rem;
+  }
+
+  &__footer {
+    padding: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  &__total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  &__total-label {
+    font-weight: 600;
+  }
+
+  &__total-price {
+    font-weight: bold;
+    color: #0284c7;
+  }
+
+  &__checkout {
+    width: 100%;
+    background: #0284c7;
+    color: white;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background: #0369a1;
+    }
+  }
+}
+
+.cart-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f3f4f6;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &__info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  &__image {
+    font-size: 1.5rem;
+  }
+
+  &__name {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+
+  &__price {
+    font-size: 0.875rem;
+    color: #6b7280;
+  }
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__btn {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    transition: background-color 0.2s;
+
+    &--decrease {
+      background: #e5e7eb;
+      color: #374151;
+
+      &:hover {
+        background: #d1d5db;
+      }
+    }
+
+    &--increase {
+      background: #0284c7;
+      color: white;
+
+      &:hover {
+        background: #0369a1;
+      }
+    }
+  }
+
+  &__quantity {
+    width: 2rem;
+    text-align: center;
+    font-weight: 500;
+  }
+}

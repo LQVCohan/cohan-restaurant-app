@@ -13,7 +13,7 @@ import loggerMiddleware from "./middleware/loggerMiddleware.js";
 import errorHandler from "./middleware/errorHandler.js";
 import { Server } from "socket.io";
 import Order from "./models/Order.js";
-
+import categoryRoutes from "./routes/category.js";
 dotenv.config();
 const app = express();
 
@@ -28,8 +28,9 @@ app.use(loggerMiddleware);
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", authMiddleware, orderRoutes);
 app.use("/api/tables", authMiddleware, tableRoutes);
-app.use("/api/restaurants", authMiddleware, restaurantRoutes);
+app.use("/api/restaurants", restaurantRoutes);
 app.use("/api/menus", authMiddleware, menuRoutes);
+app.use("/api/categories", authMiddleware, categoryRoutes);
 app.use(errorHandler);
 
 mongoose

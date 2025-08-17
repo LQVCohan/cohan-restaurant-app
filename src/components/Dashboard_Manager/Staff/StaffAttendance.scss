@@ -1,0 +1,404 @@
+@use "../../../styles/mixins" as *;
+@use "../../../styles/variables" as *;
+
+.staff-attendance {
+  .attendance-header {
+    @include flex-between;
+    margin-bottom: $spacing-2xl;
+
+    .header-left {
+      h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: $gray-900;
+        margin: 0 0 $spacing-xs 0;
+      }
+
+      p {
+        color: $gray-600;
+        margin: 0;
+      }
+    }
+
+    .header-controls {
+      @include flex-center;
+      gap: $spacing-lg;
+
+      .date-picker {
+        padding: $spacing-md $spacing-lg;
+        border: 2px solid $gray-200;
+        border-radius: $border-radius-md;
+        font-size: 0.875rem;
+        cursor: pointer;
+
+        &:focus {
+          outline: none;
+          border-color: $primary-blue;
+        }
+      }
+
+      .view-mode-toggle {
+        @include flex-center;
+        background: $gray-100;
+        border-radius: $border-radius-md;
+        padding: $spacing-xs;
+
+        .toggle-btn {
+          padding: $spacing-sm $spacing-lg;
+          border: none;
+          background: none;
+          border-radius: $border-radius-sm;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: $gray-600;
+          transition: all $transition-fast;
+
+          &.active {
+            background: white;
+            color: $primary-blue;
+            box-shadow: $shadow-sm;
+          }
+        }
+      }
+    }
+  }
+
+  .attendance-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: $spacing-lg;
+    margin-bottom: $spacing-2xl;
+  }
+
+  .stat-card {
+    background: white;
+    border-radius: $border-radius-lg;
+    padding: $spacing-xl;
+    box-shadow: $shadow-sm;
+    @include flex-center;
+    gap: $spacing-lg;
+    transition: all $transition-base;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: $shadow-md;
+    }
+
+    .stat-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      @include flex-center;
+      font-size: 1.25rem;
+      color: white;
+    }
+
+    .stat-content {
+      h3 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0 0 $spacing-xs 0;
+        color: $gray-900;
+      }
+
+      p {
+        margin: 0;
+        color: $gray-600;
+        font-weight: 500;
+      }
+    }
+
+    &--total .stat-icon {
+      background: $primary-blue;
+    }
+    &--present .stat-icon {
+      background: $success-green;
+    }
+    &--late .stat-icon {
+      background: $warning-yellow;
+    }
+    &--absent .stat-icon {
+      background: $danger-color;
+    }
+    &--leave .stat-icon {
+      background: $info-500;
+    }
+  }
+
+  .attendance-table-container {
+    background: white;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-sm;
+    overflow: hidden;
+    margin-bottom: $spacing-2xl;
+
+    .table-header {
+      @include flex-between;
+      padding: $spacing-xl;
+      border-bottom: 1px solid $gray-200;
+      background: $gray-50;
+
+      h3 {
+        margin: 0;
+        font-weight: 600;
+        color: $gray-900;
+      }
+
+      .table-actions {
+        @include flex-center;
+        gap: $spacing-md;
+
+        .btn {
+          @include flex-center;
+          gap: $spacing-sm;
+          padding: $spacing-sm $spacing-lg;
+          border: none;
+          border-radius: $border-radius-md;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all $transition-base;
+
+          &--primary {
+            background: $primary-blue;
+            color: white;
+
+            &:hover {
+              background: darken($primary-blue, 10%);
+            }
+          }
+
+          &--secondary {
+            background: $gray-200;
+            color: $gray-700;
+
+            &:hover {
+              background: $gray-300;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .attendance-table {
+    overflow-x: auto;
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+
+      th,
+      td {
+        padding: $spacing-lg;
+        text-align: left;
+        border-bottom: 1px solid $gray-100;
+      }
+
+      th {
+        background: $gray-50;
+        font-weight: 600;
+        color: $gray-700;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      td {
+        color: $gray-900;
+      }
+
+      tr:hover {
+        background: rgba($primary-blue, 0.02);
+      }
+    }
+  }
+
+  .staff-info {
+    @include flex-center;
+    gap: $spacing-md;
+
+    .staff-avatar {
+      font-size: 1.5rem;
+    }
+
+    .staff-details {
+      @include flex-column;
+      gap: $spacing-xs;
+
+      .staff-name {
+        font-weight: 600;
+        color: $gray-900;
+      }
+
+      .staff-position {
+        font-size: 0.75rem;
+        color: $gray-500;
+      }
+    }
+  }
+
+  .time-display {
+    font-family: "Courier New", monospace;
+    font-weight: 600;
+    color: $gray-800;
+  }
+
+  .break-time,
+  .total-hours,
+  .overtime {
+    font-weight: 500;
+    color: $gray-700;
+  }
+
+  .status-badge {
+    @include flex-center;
+    gap: $spacing-xs;
+    padding: $spacing-xs $spacing-md;
+    border-radius: $border-radius-full;
+    font-size: 0.75rem;
+    font-weight: 600;
+
+    &--success {
+      background: rgba($success-green, 0.1);
+      color: $success-green;
+    }
+
+    &--warning {
+      background: rgba($warning-yellow, 0.1);
+      color: darken($warning-yellow, 20%);
+    }
+
+    &--danger {
+      background: rgba($danger-color, 0.1);
+      color: $danger-color;
+    }
+
+    &--info {
+      background: rgba($info-500, 0.1);
+      color: $info-500;
+    }
+
+    &--secondary {
+      background: rgba($gray-500, 0.1);
+      color: $gray-500;
+    }
+  }
+
+  .action-buttons {
+    @include flex-center;
+    gap: $spacing-sm;
+  }
+
+  .action-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: $border-radius-sm;
+    background: $gray-100;
+    color: $gray-600;
+    cursor: pointer;
+    @include flex-center;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: $primary-blue;
+      color: white;
+    }
+  }
+
+  .quick-actions {
+    h3 {
+      margin: 0 0 $spacing-lg 0;
+      font-weight: 600;
+      color: $gray-900;
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: $spacing-lg;
+    }
+
+    .quick-action-card {
+      @include flex-center;
+      @include flex-column;
+      gap: $spacing-md;
+      padding: $spacing-xl;
+      background: white;
+      border: 2px solid $gray-200;
+      border-radius: $border-radius-lg;
+      cursor: pointer;
+      transition: all $transition-base;
+
+      &:hover {
+        border-color: $primary-blue;
+        background: rgba($primary-blue, 0.02);
+        transform: translateY(-2px);
+      }
+
+      i {
+        font-size: 2rem;
+        color: $primary-blue;
+      }
+
+      span {
+        font-weight: 500;
+        color: $gray-700;
+        text-align: center;
+      }
+    }
+  }
+}
+
+@include mobile {
+  .staff-attendance {
+    .attendance-header {
+      flex-direction: column;
+      gap: $spacing-lg;
+      align-items: stretch;
+
+      .header-controls {
+        flex-direction: column;
+        gap: $spacing-md;
+      }
+    }
+
+    .attendance-stats {
+      grid-template-columns: repeat(2, 1fr);
+      gap: $spacing-md;
+    }
+
+    .stat-card {
+      padding: $spacing-lg;
+
+      .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+      }
+
+      .stat-content h3 {
+        font-size: 1.25rem;
+      }
+    }
+
+    .attendance-table-container .table-header {
+      flex-direction: column;
+      gap: $spacing-lg;
+      align-items: stretch;
+
+      .table-actions {
+        justify-content: stretch;
+
+        .btn {
+          flex: 1;
+        }
+      }
+    }
+
+    .quick-actions .action-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}

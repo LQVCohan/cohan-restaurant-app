@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { io } from "socket.io-client";
-import OrderModal from "../components/OrderModal";
+import OrderModal from "./OrderModal";
 import { AuthContext } from "../context/AuthContext"; // Import AuthContext to check user role
 
 const TableLayout = () => {

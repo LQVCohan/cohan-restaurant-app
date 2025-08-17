@@ -1,0 +1,348 @@
+@use "../../../styles/mixins" as *;
+@use "../../../styles/variables" as *;
+.staff-list {
+  &__header {
+    @include flex-between;
+    margin-bottom: $spacing-2xl;
+
+    .header-left {
+      h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: $gray-900;
+        margin: 0 0 $spacing-xs 0;
+      }
+
+      p {
+        color: $gray-600;
+        margin: 0;
+      }
+    }
+
+    .btn {
+      @include flex-center;
+      gap: $spacing-sm;
+      padding: $spacing-md $spacing-xl;
+      border: none;
+      border-radius: $border-radius-md;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all $transition-base;
+
+      &--primary {
+        background: $primary-blue;
+        color: white;
+
+        &:hover {
+          background: darken($primary-blue, 10%);
+          transform: translateY(-1px);
+        }
+      }
+    }
+  }
+
+  &__filters {
+    @include flex-between;
+    gap: $spacing-lg;
+    margin-bottom: $spacing-2xl;
+    padding: $spacing-xl;
+    background: white;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-sm;
+
+    .filter-group {
+      @include flex-center;
+      gap: $spacing-lg;
+    }
+
+    .search-box {
+      position: relative;
+      min-width: 300px;
+
+      i {
+        position: absolute;
+        left: $spacing-md;
+        top: 50%;
+        transform: translateY(-50%);
+        color: $gray-400;
+      }
+
+      input {
+        width: 100%;
+        padding: $spacing-md $spacing-md $spacing-md 40px;
+        border: 2px solid $gray-200;
+        border-radius: $border-radius-md;
+        font-size: 0.875rem;
+        transition: all $transition-base;
+
+        &:focus {
+          outline: none;
+          border-color: $primary-blue;
+          box-shadow: 0 0 0 3px rgba($primary-blue, 0.1);
+        }
+
+        &::placeholder {
+          color: $gray-400;
+        }
+      }
+    }
+
+    .filter-select {
+      padding: $spacing-md $spacing-lg;
+      border: 2px solid $gray-200;
+      border-radius: $border-radius-md;
+      background: white;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all $transition-base;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-blue;
+        box-shadow: 0 0 0 3px rgba($primary-blue, 0.1);
+      }
+    }
+  }
+}
+
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: $spacing-xl;
+}
+
+.staff-card {
+  background: white;
+  border-radius: $border-radius-lg;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+  transition: all $transition-base;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: $shadow-lg;
+  }
+
+  &__header {
+    padding: $spacing-xl;
+    border-bottom: 1px solid $gray-100;
+    position: relative;
+
+    .staff-avatar {
+      font-size: 3rem;
+      margin-bottom: $spacing-md;
+    }
+
+    .staff-info {
+      margin-bottom: $spacing-lg;
+
+      .staff-name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: $gray-900;
+        margin: 0 0 $spacing-xs 0;
+      }
+
+      .staff-position {
+        color: $gray-600;
+        margin: 0 0 $spacing-md 0;
+        font-weight: 500;
+      }
+    }
+
+    .staff-actions {
+      position: absolute;
+      top: $spacing-lg;
+      right: $spacing-lg;
+      @include flex-center;
+      gap: $spacing-sm;
+    }
+  }
+
+  &__body {
+    padding: $spacing-xl;
+    @include flex-column;
+    gap: $spacing-md;
+  }
+}
+
+.status-badge {
+  display: inline-block;
+  padding: $spacing-xs $spacing-md;
+  border-radius: $border-radius-full;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &--success {
+    background: rgba($success-green, 0.1);
+    color: $success-green;
+  }
+
+  &--danger {
+    background: rgba($danger-color, 0.1);
+    color: $danger-color;
+  }
+
+  &--warning {
+    background: rgba($warning-yellow, 0.1);
+    color: darken($warning-yellow, 20%);
+  }
+
+  &--secondary {
+    background: rgba($gray-500, 0.1);
+    color: $gray-500;
+  }
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: $border-radius-sm;
+  background: $gray-100;
+  color: $gray-600;
+  cursor: pointer;
+  @include flex-center;
+  transition: all $transition-fast;
+
+  &:hover {
+    background: $gray-200;
+    color: $gray-800;
+  }
+
+  &--danger {
+    &:hover {
+      background: rgba($danger-color, 0.1);
+      color: $danger-color;
+    }
+  }
+}
+
+.info-row {
+  @include flex-center;
+  justify-content: flex-start;
+  gap: $spacing-md;
+  font-size: 0.875rem;
+
+  i {
+    width: 16px;
+    color: $gray-400;
+  }
+
+  span {
+    color: $gray-700;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: $spacing-2xl;
+  color: $gray-500;
+
+  i {
+    font-size: 4rem;
+    margin-bottom: $spacing-lg;
+    color: $gray-300;
+  }
+
+  h3 {
+    margin: 0 0 $spacing-md 0;
+    color: $gray-600;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+// Modal styles
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(black, 0.5);
+  backdrop-filter: blur(4px);
+  @include flex-center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: $border-radius-xl;
+  box-shadow: $shadow-2xl;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+
+  .modal-header {
+    @include flex-between;
+    padding: $spacing-xl;
+    border-bottom: 1px solid $gray-200;
+
+    h3 {
+      margin: 0;
+      font-weight: 600;
+      color: $gray-900;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.25rem;
+      color: $gray-400;
+      cursor: pointer;
+      padding: $spacing-sm;
+      border-radius: $border-radius-sm;
+
+      &:hover {
+        background: $gray-100;
+        color: $gray-600;
+      }
+    }
+  }
+
+  .modal-body {
+    padding: $spacing-xl;
+  }
+}
+
+@include mobile {
+  .staff-list {
+    &__header {
+      flex-direction: column;
+      gap: $spacing-lg;
+      align-items: stretch;
+    }
+
+    &__filters {
+      flex-direction: column;
+      gap: $spacing-lg;
+
+      .filter-group {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .search-box {
+        min-width: auto;
+      }
+    }
+  }
+
+  .staff-grid {
+    grid-template-columns: 1fr;
+    gap: $spacing-lg;
+  }
+
+  .staff-card {
+    &__header {
+      .staff-actions {
+        position: static;
+        justify-content: center;
+        margin-top: $spacing-lg;
+      }
+    }
+  }
+}
