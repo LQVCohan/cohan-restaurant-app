@@ -1,0 +1,74 @@
+@use "../../../../styles/variables" as *;
+@use "../../../../styles/mixins" as *;
+.statsCard {
+  @include card;
+  padding: $spacing-6;
+  text-align: center;
+  @include fade-in;
+
+  @include mobile {
+    padding: $spacing-4;
+  }
+}
+
+.iconContainer {
+  width: 3rem;
+  height: 3rem;
+  border-radius: $rounded-lg;
+  @include flex-center;
+  margin: 0 auto $spacing-4;
+
+  svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  &.blue {
+    background-color: $blue-50;
+
+    svg {
+      color: $blue-600;
+    }
+  }
+
+  &.orange {
+    background-color: $orange-50;
+
+    svg {
+      color: $orange-600;
+    }
+  }
+
+  &.purple {
+    background-color: $purple-50;
+
+    svg {
+      color: $purple-600;
+    }
+  }
+
+  &.green {
+    background-color: $green-50;
+
+    svg {
+      color: $green-600;
+    }
+  }
+}
+
+.content {
+  text-align: center;
+}
+
+.value {
+  font-size: $text-2xl;
+  font-weight: 700;
+  color: $gray-900;
+  margin-bottom: $spacing-1;
+}
+
+.title {
+  font-size: $text-sm;
+  color: $gray-600;
+  margin: 0;
+}

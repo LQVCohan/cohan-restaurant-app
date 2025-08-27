@@ -1,0 +1,77 @@
+@use "../../styles/variables" as *;
+@use "../../styles/mixins" as *;
+
+.notification {
+  position: fixed;
+  top: $spacing-2xl;
+  right: $spacing-2xl;
+  background: $bg-primary;
+  border-radius: $radius-md;
+  padding: $spacing-lg $spacing-xl;
+  box-shadow: $shadow-lg;
+  z-index: 60;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  border: 1px solid $border-primary;
+  min-width: 300px;
+  max-width: 500px;
+
+  &--show {
+    transform: translateX(0);
+  }
+
+  &--success {
+    border-left: 4px solid $success-color;
+
+    .notification__icon {
+      color: $success-color;
+    }
+  }
+
+  &--error {
+    border-left: 4px solid $danger-color;
+
+    .notification__icon {
+      color: $danger-color;
+    }
+  }
+
+  &__content {
+    @include flex-start;
+    gap: $spacing-md;
+  }
+
+  &__icon {
+    flex-shrink: 0;
+  }
+
+  &__message {
+    flex: 1;
+    font-size: $text-sm;
+    color: $text-primary;
+    line-height: 1.5;
+  }
+
+  &__close {
+    background: none;
+    border: none;
+    color: $text-muted;
+    cursor: pointer;
+    padding: $spacing-xs;
+    border-radius: $radius-sm;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+
+    &:hover {
+      background: $secondary-color;
+      color: $text-secondary;
+    }
+  }
+
+  @include mobile {
+    top: $spacing-lg;
+    right: $spacing-lg;
+    left: $spacing-lg;
+    min-width: auto;
+  }
+}

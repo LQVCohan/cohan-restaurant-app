@@ -1,0 +1,254 @@
+@use "../../../../styles/variables" as *;
+@use "../../../../styles/mixins" as *;
+.orderCard {
+  @include card;
+  padding: $spacing-6;
+  transition: all 0.2s ease;
+  @include fade-in;
+
+  &.alertCritical {
+    @include alert-critical;
+  }
+
+  &.alertWarning {
+    @include alert-warning;
+  }
+
+  @include mobile {
+    padding: $spacing-4;
+  }
+}
+
+.orderHeader {
+  @include flex-between;
+  margin-bottom: $spacing-4;
+  gap: $spacing-3;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: $spacing-2;
+  }
+}
+
+.orderTitle {
+  font-size: $text-lg;
+  font-weight: 600;
+  color: $gray-900;
+  margin: 0 0 $spacing-1 0;
+}
+
+.orderTime {
+  @include flex-start;
+  gap: $spacing-2;
+  font-size: $text-sm;
+  color: $gray-600;
+  flex-wrap: wrap;
+}
+
+.timeWarning {
+  @include status-badge($red-600, white);
+  font-weight: 600;
+
+  &.warning {
+    background-color: $yellow-500;
+  }
+
+  &.danger {
+    background-color: $red-500;
+  }
+
+  &.critical {
+    background-color: $red-600;
+    @include pulse;
+  }
+}
+
+.statusBadge {
+  &.pending {
+    @include status-badge($yellow-100, $yellow-500);
+  }
+
+  &.confirmed {
+    @include status-badge($primary-100, $primary-600);
+  }
+
+  &.preparing {
+    @include status-badge($purple-100, $purple-600);
+  }
+
+  &.ready {
+    @include status-badge($green-100, $green-600);
+  }
+
+  &.completed {
+    @include status-badge($green-100, $green-600);
+  }
+
+  &.cancelled {
+    @include status-badge($red-100, $red-600);
+  }
+}
+
+.customerInfo {
+  background-color: $gray-50;
+  border-radius: $rounded-lg;
+  padding: $spacing-4;
+  margin-bottom: $spacing-4;
+}
+
+.customerName {
+  @include flex-start;
+  gap: $spacing-2;
+  color: $gray-900;
+  font-weight: 500;
+  margin-bottom: $spacing-1;
+}
+
+.tableInfo {
+  @include flex-start;
+  gap: $spacing-2;
+  font-size: $text-sm;
+  color: $gray-600;
+}
+
+.itemsSection {
+  margin-bottom: $spacing-4;
+}
+
+.sectionTitle {
+  @include flex-start;
+  gap: $spacing-2;
+  color: $gray-700;
+  font-weight: 500;
+  margin-bottom: $spacing-3;
+}
+
+.itemsList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-2;
+}
+
+.itemCard {
+  @include flex-between;
+  padding: $spacing-3;
+  background: white;
+  border: 1px solid $gray-200;
+  border-radius: $rounded-lg;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: $gray-50;
+    transform: translateY(-1px);
+  }
+}
+
+.itemInfo {
+  flex: 1;
+}
+
+.itemName {
+  @include flex-start;
+  gap: $spacing-2;
+  font-weight: 500;
+  color: $gray-900;
+  margin-bottom: $spacing-1;
+
+  svg {
+    color: $primary-600;
+  }
+}
+
+.itemStatus {
+  font-size: $text-xs;
+  color: $gray-500;
+}
+
+.itemMeta {
+  @include flex-center;
+  gap: $spacing-2;
+}
+
+.quantity {
+  @include status-badge($primary-600, white);
+  font-weight: 600;
+}
+
+.statusIcon {
+  @include flex-center;
+
+  svg {
+    &:first-child {
+      color: $yellow-500;
+    }
+
+    &:nth-child(2) {
+      color: $green-500;
+    }
+
+    &:nth-child(3) {
+      color: $purple-500;
+    }
+  }
+}
+
+.totalSection {
+  @include flex-between;
+  padding: $spacing-4;
+  background-color: $gray-50;
+  border-radius: $rounded-lg;
+  margin-bottom: $spacing-4;
+}
+
+.totalLabel {
+  font-weight: 600;
+  color: $gray-700;
+}
+
+.totalAmount {
+  font-size: $text-lg;
+  font-weight: 700;
+  color: $gray-900;
+}
+
+.actions {
+  display: flex;
+  gap: $spacing-2;
+
+  @include mobile {
+    flex-direction: column;
+  }
+}
+
+.confirmButton {
+  @include button-primary;
+  flex: 1;
+}
+
+.cancelButton {
+  @include button-danger;
+  flex: 1;
+}
+
+.prepareButton {
+  @include button-base;
+  background-color: $purple-600;
+  color: white;
+  flex: 1;
+
+  &:hover:not(:disabled) {
+    background-color: $purple-700;
+  }
+}
+
+.readyButton {
+  @include button-success;
+  flex: 1;
+}
+
+.viewButton {
+  @include button-secondary;
+  flex: 1;
+}

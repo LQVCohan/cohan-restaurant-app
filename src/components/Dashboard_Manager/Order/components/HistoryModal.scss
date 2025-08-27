@@ -1,0 +1,217 @@
+@use "../../../../styles/variables" as *;
+@use "../../../../styles/mixins" as *;
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  @include flex-center;
+  z-index: 50;
+  padding: $spacing-4;
+}
+
+.modal {
+  background: white;
+  border-radius: $rounded-lg;
+  max-width: 64rem;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  @include fade-in;
+}
+
+.modalHeader {
+  @include flex-between;
+  padding: $spacing-6;
+  border-bottom: 1px solid $gray-200;
+}
+
+.modalTitle {
+  @include flex-start;
+  gap: $spacing-2;
+  font-size: $text-xl;
+  font-weight: 600;
+  color: $gray-900;
+  margin: 0;
+
+  svg {
+    color: $primary-600;
+  }
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: $gray-400;
+  cursor: pointer;
+  padding: $spacing-1;
+  border-radius: $rounded;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: $gray-600;
+  }
+}
+
+.modalContent {
+  padding: $spacing-6;
+}
+
+.emptyState {
+  text-align: center;
+  padding: $spacing-12;
+
+  svg {
+    color: $gray-300;
+    margin: 0 auto $spacing-4;
+  }
+
+  h3 {
+    font-size: $text-lg;
+    font-weight: 500;
+    color: $gray-600;
+    margin: 0 0 $spacing-2 0;
+  }
+
+  p {
+    color: $gray-500;
+    margin: 0;
+  }
+}
+
+.summary {
+  margin-bottom: $spacing-4;
+
+  p {
+    color: $gray-600;
+    margin: 0;
+
+    strong {
+      color: $gray-900;
+    }
+  }
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.historyItem {
+  border: 1px solid $gray-200;
+  border-radius: $rounded-lg;
+  padding: $spacing-4;
+  background-color: $gray-50;
+}
+
+.itemHeader {
+  @include flex-between;
+  margin-bottom: $spacing-3;
+  gap: $spacing-3;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: $spacing-2;
+  }
+}
+
+.orderTitle {
+  font-weight: 500;
+  color: $gray-900;
+  margin: 0 0 $spacing-1 0;
+}
+
+.tableInfo {
+  @include flex-start;
+  gap: $spacing-1;
+  font-size: $text-sm;
+  color: $gray-600;
+  margin: 0;
+}
+
+.completedBadge {
+  @include status-badge($green-100, $green-600);
+}
+
+.timeInfo {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-4;
+  margin-bottom: $spacing-3;
+  font-size: $text-sm;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+    gap: $spacing-2;
+  }
+}
+
+.timeLabel {
+  color: $gray-600;
+  margin-right: $spacing-2;
+}
+
+.timeValue {
+  font-weight: 500;
+  color: $gray-900;
+}
+
+.itemsInfo {
+  margin-bottom: $spacing-3;
+}
+
+.itemsLabel {
+  font-size: $text-sm;
+  color: $gray-600;
+  margin-bottom: $spacing-2;
+}
+
+.itemsTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-2;
+}
+
+.itemTag {
+  background: white;
+  padding: $spacing-1 $spacing-2;
+  border-radius: $rounded;
+  border: 1px solid $gray-200;
+  font-size: $text-xs;
+  color: $gray-700;
+}
+
+.itemFooter {
+  @include flex-between;
+  gap: $spacing-3;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.totalAmount {
+  font-weight: 600;
+  color: $green-600;
+}
+
+.viewButton {
+  @include flex-center;
+  gap: $spacing-1;
+  padding: $spacing-1 $spacing-3;
+  background-color: $gray-600;
+  color: white;
+  border: none;
+  border-radius: $rounded;
+  font-size: $text-sm;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: $gray-700;
+  }
+}

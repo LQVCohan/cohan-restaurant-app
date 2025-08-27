@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../components/Dashboard_Manager/Sidebar";
 import Header from "../components/Dashboard_Manager/Header";
+import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
+import ManagerAnalyst from "../components/Dashboard_Manager/Analyst/ManagerAnalyst";
+import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
+import OrderManagement from "../components/Dashboard_Manager/Order/OrderManagement";
+import MenuManagement from "../components/Dashboard_Manager/Menu/MenuManagement";
+import TableManagement from "../components/Dashboard_Manager/Table/TableManagement";
+
 import "./ManagerLayout.scss";
-const ManagerLayout = ({ children }) => {
+const ManagerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState("Tổng quan");
+  const [currentPage, setCurrentPage] = useState("dashboard");
 
   // Close sidebar on window resize
   useEffect(() => {
@@ -53,6 +60,45 @@ const ManagerLayout = ({ children }) => {
   const closeSidebar = () => {
     setSidebarOpen(false);
   };
+  const renderContent = () => {
+    console.log("content: ", currentPage);
+    switch (currentPage) {
+      case "dashboard":
+        return <Dashboard />;
+      case "tables":
+        return <TableManagement />;
+      case "orders":
+        return <OrderManagement />;
+      case "menu":
+        return <MenuManagement />;
+      case "inventory":
+        return <Inventory />;
+      case "staff":
+        return <StaffManagement />;
+      case "analytics":
+        return <ManagerAnalyst />;
+      case "transactions":
+        return <Transactions />;
+      case "reports":
+        return <Reports />;
+      case "settings":
+        return <Settings />;
+      case "schedules":
+        return <Settings />;
+      case "promotions":
+        return <Settings />;
+      case "rates":
+        return <Settings />;
+      case "finance":
+        return <Settings />;
+      case "setting":
+        return <Settings />;
+      case "back-up":
+        return <Settings />;
+      default:
+        return <div>Content not found</div>;
+    }
+  };
 
   return (
     <div className={`manager-layout ${sidebarOpen ? "sidebar-open" : ""}`}>
@@ -85,7 +131,7 @@ const ManagerLayout = ({ children }) => {
         </div>
 
         {/* Content */}
-        <main className="manager-layout__content">{children}</main>
+        <main className="manager-layout__content">{renderContent()}</main>
       </div>
     </div>
   );

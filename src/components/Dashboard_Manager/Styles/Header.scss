@@ -85,7 +85,7 @@ $gray-900: #111827;
         background: $primary-blue;
 
         &:hover {
-          background: darken($primary-blue, 10%);
+          background: custom-darken($primary-blue, 10%);
         }
 
         .hamburger-line {
@@ -180,7 +180,7 @@ $gray-900: #111827;
     background: $primary-blue;
 
     &:hover {
-      background: darken($primary-blue, 10%);
+      background: custom-darken($primary-blue, 10%);
     }
 
     .hamburger-line {
@@ -385,7 +385,7 @@ $gray-900: #111827;
   font-weight: 500;
 
   &:hover {
-    color: darken($primary-blue, 10%);
+    color: custom-darken($primary-blue, 10%);
   }
 }
 
@@ -421,16 +421,16 @@ $gray-900: #111827;
   font-size: 1.2rem;
 
   &--primary {
-    background: lighten($primary-blue, 40%);
+    background: custom-lighten($primary-blue, 40%);
   }
   &--success {
-    background: lighten($success-green, 40%);
+    background: custom-lighten($success-green, 40%);
   }
   &--warning {
-    background: lighten(#f59e0b, 40%);
+    background: custom-lighten(#f59e0b, 40%);
   }
   &--info {
-    background: lighten(#06b6d4, 40%);
+    background: custom-lighten(#06b6d4, 40%);
   }
 }
 

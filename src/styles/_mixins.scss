@@ -69,18 +69,34 @@
 }
 
 // Card mixins
-@mixin card-base {
-  background: white;
-  border-radius: $border-radius-xl;
+@mixin card {
+  background: $bg-primary;
+  border-radius: $radius-lg;
   box-shadow: $shadow-sm;
-  border: 1px solid $gray-200;
+  border: 1px solid $border-color;
+  transition: all 0.2s ease;
 }
 
 @mixin card-hover {
-  transition: transform $transition-fast;
-
   &:hover {
-    transform: translateY(-2px);
+    box-shadow: $shadow-md;
+    transform: translateY(-1px);
+  }
+}
+
+// Form mixins
+@mixin form-input {
+  width: 100%;
+  padding: $spacing-md;
+  border: 1px solid $border-color;
+  border-radius: $radius-md;
+  font-size: $text-sm;
+  transition: all 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   }
 }
 
@@ -173,4 +189,14 @@
 
 @mixin gradient-avatar($from, $to) {
   background: linear-gradient(135deg, $from 0%, $to 100%);
+}
+
+@function custom-custom-darken($color, $amount) {
+  $lightness: lightness($color) - $amount;
+  @return hsl(hue($color), saturation($color), max(0, min(100%, $lightness)));
+}
+
+@function custom-custom-lighten($color, $amount) {
+  $lightness: lightness($color) + $amount;
+  @return hsl(hue($color), saturation($color), max(0, min(100%, $lightness)));
 }

@@ -164,7 +164,7 @@
             color: white;
 
             &:hover {
-              background: darken($primary-blue, 10%);
+              background: custom-darken($primary-blue, 10%);
             }
           }
 
@@ -255,7 +255,7 @@
     @include flex-center;
     gap: $spacing-xs;
     padding: $spacing-xs $spacing-md;
-    border-radius: $border-radius-full;
+    border-radius: $radius-full;
     font-size: 0.75rem;
     font-weight: 600;
 
@@ -266,7 +266,7 @@
 
     &--warning {
       background: rgba($warning-yellow, 0.1);
-      color: darken($warning-yellow, 20%);
+      color: custom-darken($warning-yellow, 20%);
     }
 
     &--danger {

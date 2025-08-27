@@ -1,0 +1,183 @@
+@use "../../../styles/variables" as *;
+@use "../../../styles/mixins" as *;
+
+.menu-management {
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background-color: $gray-50;
+  padding: $spacing-6;
+
+  @include mobile {
+    padding: $spacing-4;
+  }
+  &__header {
+    @include card;
+    padding: $spacing-xl;
+    margin-bottom: $spacing-xl;
+  }
+
+  &__header-content {
+    @include flex-between;
+    flex-wrap: wrap;
+    gap: $spacing-lg;
+  }
+
+  &__title {
+    font-size: $text-2xl;
+    font-weight: $font-bold;
+    color: $text-primary;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__subtitle {
+    color: $text-secondary;
+    font-size: $text-sm;
+  }
+
+  &__header-actions {
+    display: flex;
+    gap: $spacing-md;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  &__controls {
+    @include card;
+    padding: $spacing-xl;
+    margin-bottom: $spacing-xl;
+  }
+
+  &__controls-content {
+    @include flex-between;
+    flex-wrap: wrap;
+    gap: $spacing-lg;
+  }
+
+  &__controls-left {
+    display: flex;
+    gap: $spacing-lg;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  &__controls-right {
+    display: flex;
+    gap: $spacing-sm;
+    align-items: center;
+  }
+
+  &__search {
+    position: relative;
+    min-width: 250px;
+  }
+
+  &__search-input {
+    @include form-input;
+    padding-left: 2.5rem;
+  }
+
+  &__search-icon {
+    position: absolute;
+    left: $spacing-md;
+    top: 50%;
+    transform: translateY(-50%);
+    color: $text-muted;
+  }
+
+  &__filter {
+    @include form-input;
+    cursor: pointer;
+    min-width: 150px;
+  }
+
+  &__view-toggle {
+    display: flex;
+    background: $secondary-color;
+    border-radius: $radius-md;
+    padding: $spacing-xs;
+  }
+
+  &__view-btn {
+    padding: $spacing-sm;
+    border: none;
+    background: transparent;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    color: $text-muted;
+    transition: all 0.2s ease;
+
+    &--active {
+      background: $bg-primary;
+      color: $primary-color;
+      box-shadow: $shadow-sm;
+    }
+  }
+
+  &__menu {
+    margin-bottom: $spacing-2xl;
+
+    &--grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: $spacing-lg;
+    }
+
+    &--list {
+      display: flex;
+      flex-direction: column;
+      gap: $spacing-md;
+    }
+  }
+
+  &__empty-state {
+    @include card;
+    text-align: center;
+    padding: 4rem $spacing-2xl;
+  }
+
+  &__empty-icon {
+    font-size: 4rem;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__empty-title {
+    font-size: $text-xl;
+    font-weight: $font-semibold;
+    color: $text-secondary;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__empty-description {
+    color: $text-muted;
+    margin-bottom: $spacing-2xl;
+  }
+
+  @include mobile {
+    &__header {
+      padding: $spacing-lg;
+    }
+
+    &__header-content {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    &__controls-content {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    &__controls-left {
+      flex-direction: column;
+    }
+
+    &__search {
+      min-width: auto;
+    }
+
+    &__menu--grid {
+      grid-template-columns: 1fr;
+    }
+  }
+}

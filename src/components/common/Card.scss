@@ -2,7 +2,7 @@
 @use "../../styles/mixins.scss" as *;
 
 .card {
-  @include card-base;
+  @include card;
 
   &--hover {
     @include card-hover;

@@ -82,8 +82,8 @@ const Sidebar = ({ isOpen, onClose, onPageChange }) => {
   // Handle navigation item click
   const handleItemClick = (item) => {
     setActiveItem(item.id);
-    onPageChange(item.page);
-
+    onPageChange(item.id);
+    console.log("item.page: ", item.page);
     // Close sidebar on mobile after selection
     if (window.innerWidth <= 768) {
       onClose();

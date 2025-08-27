@@ -20,7 +20,7 @@
     color: white;
 
     &:hover:not(:disabled) {
-      background: darken($success-green, 10%);
+      background: custom-darken($success-green, 10%);
       transform: translateY(-1px);
     }
   }
@@ -30,7 +30,7 @@
     color: white;
 
     &:hover:not(:disabled) {
-      background: darken($warning-yellow, 10%);
+      background: custom-darken($warning-yellow, 10%);
       transform: translateY(-1px);
     }
   }
@@ -40,7 +40,7 @@
     color: white;
 
     &:hover:not(:disabled) {
-      background: darken($error-red, 10%);
+      background: custom-darken($error-red, 10%);
       transform: translateY(-1px);
     }
   }

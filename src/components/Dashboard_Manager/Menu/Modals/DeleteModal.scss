@@ -1,0 +1,35 @@
+@use "../../../../styles/variables" as *;
+@use "../../../../styles/mixins" as *;
+
+.delete-modal {
+  text-align: center;
+  padding: $spacing-lg 0;
+
+  &__icon {
+    color: $danger-color;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__content {
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  &__question {
+    font-size: $text-base;
+    color: $text-primary;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__item-name {
+    font-weight: $font-semibold;
+    color: $text-primary;
+    font-size: $text-lg;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__warning {
+    font-size: $text-sm;
+    color: $text-muted;
+  }
+}

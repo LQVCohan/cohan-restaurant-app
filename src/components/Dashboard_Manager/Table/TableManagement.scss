@@ -1,0 +1,1759 @@
+@use "../../../styles/variables" as *;
+@use "../../../styles/mixins" as *;
+
+.table-management {
+  min-height: 100vh;
+  @include flex-column;
+  padding: $spacing-md;
+  position: relative;
+  background: $bg-secondary;
+  color: $text-primary;
+
+  // Top Actions Bar
+  .top-actions {
+    @include flex-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
+    background: $white;
+    padding: $spacing-md;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-sm;
+
+    h1 {
+      font-size: $text-xl;
+      font-weight: $font-bold;
+      color: $text-primary;
+      @include flex-center;
+      gap: $spacing-sm;
+      margin: 0;
+    }
+
+    &-right {
+      display: flex;
+      gap: $spacing-sm;
+      align-items: center;
+    }
+  }
+
+  // Main Layout
+  .main-layout {
+    display: flex;
+    flex: 1;
+    gap: $spacing-md;
+    .table_sidebar {
+      width: $sidebar-width;
+      background: $white;
+      border-radius: $border-radius-lg;
+      box-shadow: $shadow-sm;
+      padding: $spacing-md;
+      height: fit-content;
+      position: sticky;
+      top: $spacing-md;
+
+      &-section {
+        margin-bottom: $spacing-lg;
+        .chart-container {
+          @include flex-column;
+          align-items: center;
+          margin-bottom: $spacing-lg;
+          .chart-wrapper {
+            position: relative;
+            width: 140px;
+            height: 140px;
+            margin-bottom: $spacing-sm;
+            .chart-svg {
+              width: 100%;
+              height: 100%;
+              transform: rotate(-90deg);
+            }
+
+            .chart-center {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              text-align: center;
+              .chart-total {
+                font-size: $text-2xl;
+                font-weight: $font-extrabold;
+                color: $text-primary;
+              }
+
+              .chart-label {
+                font-size: $text-xs;
+                color: $text-muted;
+                font-weight: $font-semibold;
+              }
+            }
+          }
+          .chart-legend {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: $spacing-3;
+            width: 100%;
+            .legend-item {
+              @include flex-center;
+              gap: $spacing-3;
+              font-size: $text-xs;
+              .legend-color {
+                width: 10px;
+                height: 10px;
+                border-radius: $radius-full;
+
+                &.available {
+                  background: $success-green;
+                }
+                &.occupied {
+                  background: $warning-yellow;
+                }
+                &.reserved {
+                  background: $primary-blue;
+                }
+                &.cleaning {
+                  background: $secondary-purple;
+                }
+              }
+            }
+          }
+        }
+        &:last-child {
+          margin-bottom: 0;
+        }
+        &-title {
+          font-size: $text-sm;
+          font-weight: $font-bold;
+          margin-bottom: $spacing-sm;
+          color: $text-primary;
+          @include flex-center;
+          gap: $spacing-sm;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .search-container {
+          position: relative;
+          margin-bottom: $spacing-md;
+          .search-input {
+            width: 100%;
+            padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
+            border: 2px solid $border-color;
+            border-radius: $border-radius-lg;
+            font-size: $text-sm;
+            transition: $transition-all;
+
+            &:focus {
+              outline: none;
+              border-color: $border-focus;
+              box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+          }
+
+          .search-icon {
+            position: absolute;
+            left: $spacing-sm;
+            top: 50%;
+            transform: translateY(-50%);
+            color: $text-muted;
+          }
+        }
+      }
+    }
+  }
+
+  .floor-list {
+    @include flex-column;
+    gap: $spacing-2;
+    .floor-item {
+      @include flex-between;
+      align-items: center;
+      padding: $spacing-sm;
+      background: $bg-secondary;
+      border: 1px solid $border-color;
+      border-radius: $border-radius-md;
+      cursor: pointer;
+      transition: $transition-all;
+      font-size: $text-sm;
+
+      &:hover {
+        border-color: $border-focus;
+        background: $info-light;
+      }
+
+      &.active {
+        border-color: $success-green;
+        background: $success-light;
+      }
+      .floor-info {
+        @include flex-center;
+        gap: $spacing-3;
+        .floor-name {
+          font-weight: $font-semibold;
+          font-size: $text-sm;
+        }
+
+        .floor-count {
+          background: $border-color;
+          color: $text-muted;
+          padding: 0.125rem 0.375rem;
+          border-radius: $radius-full;
+          font-size: $text-xs;
+          font-weight: $font-semibold;
+        }
+      }
+
+      .floor-actions {
+        display: flex;
+        gap: $spacing-1;
+        .floor-btn {
+          width: 24px;
+          height: 24px;
+          border: none;
+          border-radius: $radius-sm;
+          cursor: pointer;
+          @include flex-center;
+          font-size: $text-xs;
+          transition: $transition-all;
+
+          &.edit {
+            background: $warning-yellow;
+            color: $white;
+          }
+
+          &.delete {
+            background: $error-red;
+            color: $white;
+          }
+        }
+      }
+    }
+  }
+
+  // Main Content
+  .main-content {
+    flex: 1;
+    @include flex-column;
+    gap: $spacing-md;
+  }
+
+  // Tables Container
+  .tables-container {
+    background: $white;
+    border-radius: $border-radius-lg;
+    padding: $spacing-md;
+    box-shadow: $shadow-sm;
+    flex: 1;
+    .tables-header {
+      @include flex-between;
+      align-items: center;
+      margin-bottom: $spacing-md;
+
+      h2 {
+        font-size: $text-lg;
+        font-weight: $font-bold;
+        color: $text-primary;
+        margin: 0;
+      }
+
+      .header-actions {
+        display: flex;
+        gap: $spacing-sm;
+      }
+    }
+    .table-controls {
+      background: $bg-secondary;
+      border: 1px solid $border-color;
+      border-radius: $border-radius-lg;
+      padding: $spacing-md;
+      margin-bottom: $spacing-md;
+      @include flex-center;
+      .filter-section {
+        display: flex;
+        gap: $spacing-sm;
+        align-items: center;
+        flex-wrap: wrap;
+        .filter-select {
+          padding: $spacing-sm $spacing-md;
+          border: 1px solid $border-color;
+          border-radius: $border-radius-md;
+          font-size: $text-sm;
+          background: $white;
+          cursor: pointer;
+          transition: $transition-all;
+
+          &:focus {
+            outline: none;
+            border-color: $border-focus;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+          }
+
+          &:hover {
+            border-color: $border-dark;
+          }
+        }
+      }
+    }
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: $spacing-sm;
+      max-height: 75vh;
+      overflow-y: auto;
+      padding-right: $spacing-sm;
+      @include custom-scrollbar;
+      .empty-state {
+        text-align: center;
+        padding: $spacing-3xl $spacing-md;
+        color: $text-muted;
+
+        &-icon {
+          font-size: $text-5xl;
+          margin-bottom: $spacing-md;
+        }
+
+        &-text {
+          font-size: $text-lg;
+          font-weight: $font-semibold;
+          margin-bottom: $spacing-sm;
+        }
+
+        &-subtext {
+          font-size: $text-sm;
+        }
+      }
+    }
+  }
+
+  // Table Controls
+
+  // Tables Grid
+
+  // Table Card
+  .table-card {
+    background: $bg-secondary;
+    border: 2px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: $spacing-sm;
+    transition: $transition-all;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    min-height: 130px;
+    @include card;
+    @include card-hover;
+
+    &::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: $border-color;
+      transition: $transition-all;
+    }
+
+    &.available {
+      border-color: $success-green;
+      background: $success-light;
+      &::before {
+        background: $success-green;
+      }
+    }
+
+    &.occupied {
+      border-color: $warning-yellow;
+      background: $warning-light;
+      &::before {
+        background: $warning-yellow;
+      }
+    }
+
+    &.reserved {
+      border-color: $primary-blue;
+      background: $info-light;
+      &::before {
+        background: $primary-blue;
+      }
+    }
+
+    &.cleaning {
+      border-color: $secondary-purple;
+      background: $purple-light;
+      &::before {
+        background: $secondary-purple;
+      }
+    }
+
+    .table-header {
+      @include flex-between;
+      align-items: flex-start;
+      margin-bottom: $spacing-sm;
+      .table-number {
+        font-size: $text-lg;
+        font-weight: $font-extrabold;
+        color: $text-primary;
+      }
+      .table-status {
+        padding: 0.2rem 0.5rem;
+        border-radius: $radius-full;
+        font-size: $text-xs;
+        font-weight: $font-semibold;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+
+        &.status-available {
+          background: $success-200;
+          color: $success-800;
+        }
+
+        &.status-occupied {
+          background: $warning-200;
+          color: $warning-800;
+        }
+
+        &.status-reserved {
+          background: $info-200;
+          color: $info-800;
+        }
+
+        &.status-cleaning {
+          background: $purple-light;
+          color: $secondary-800;
+        }
+      }
+    }
+    .table-info {
+      @include flex-column;
+      gap: $spacing-2;
+      margin-bottom: $spacing-sm;
+      font-size: $text-sm;
+      .table-detail {
+        @include flex-center;
+        gap: $spacing-2;
+        color: $text-muted;
+      }
+    }
+    .table-actions {
+      display: flex;
+      gap: $spacing-2;
+      flex-wrap: wrap;
+    }
+  }
+
+  // Form Styles
+  .form-group {
+    margin-bottom: $spacing-lg;
+  }
+
+  .form-label {
+    display: block;
+    margin-bottom: $spacing-sm;
+    font-weight: $font-semibold;
+    color: $text-primary;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: $spacing-sm;
+    border: 2px solid $border-color;
+    border-radius: $border-radius-md;
+    font-size: $text-sm;
+    transition: $transition-all;
+
+    &:focus {
+      outline: none;
+      border-color: $border-focus;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+  }
+
+  .form-select {
+    width: 100%;
+    padding: $spacing-sm;
+    border: 2px solid $border-color;
+    border-radius: $border-radius-md;
+    font-size: $text-sm;
+    background: $white;
+    cursor: pointer;
+  }
+
+  // Modal Footer
+  .modal-footer {
+    display: flex;
+    gap: $spacing-md;
+    justify-content: flex-end;
+    padding-top: $spacing-md;
+    border-top: 1px solid $border-color;
+    margin-top: $spacing-md;
+  }
+
+  // Payment Styles
+  .payment-section {
+    margin-bottom: $spacing-lg;
+
+    &-title {
+      font-size: $text-base;
+      font-weight: $font-bold;
+      color: $text-primary;
+      margin-bottom: $spacing-sm;
+      @include flex-center;
+      gap: $spacing-sm;
+    }
+  }
+
+  .bill-summary {
+    background: $bg-secondary;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: $spacing-md;
+  }
+
+  .bill-item {
+    @include flex-between;
+    align-items: center;
+    padding: $spacing-sm 0;
+    border-bottom: 1px solid $border-color;
+    font-size: $text-sm;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &-info {
+      flex: 1;
+    }
+
+    &-name {
+      font-weight: $font-semibold;
+      color: $text-primary;
+    }
+
+    &-details {
+      font-size: $text-xs;
+      color: $text-muted;
+      margin-top: $spacing-1;
+    }
+
+    &-price {
+      font-weight: $font-bold;
+      color: $warning-yellow;
+      margin-left: $spacing-md;
+    }
+  }
+
+  .payment-methods {
+    display: grid;
+    gap: $spacing-sm;
+  }
+
+  .payment-method {
+    background: $bg-secondary;
+    border: 2px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: $spacing-md;
+    cursor: pointer;
+    transition: $transition-all;
+    @include flex-center;
+    gap: $spacing-md;
+    position: relative;
+
+    &:hover {
+      border-color: $primary-blue;
+      background: $info-light;
+    }
+
+    &.selected {
+      border-color: $success-green;
+      background: $success-light;
+    }
+
+    &-icon {
+      font-size: $text-xl;
+      width: 40px;
+      text-align: center;
+    }
+
+    &-info {
+      flex: 1;
+    }
+
+    &-name {
+      font-weight: $font-bold;
+      color: $text-primary;
+      margin-bottom: $spacing-2;
+    }
+
+    &-desc {
+      font-size: $text-xs;
+      color: $text-muted;
+    }
+
+    &-check {
+      position: absolute;
+      top: $spacing-sm;
+      right: $spacing-sm;
+      background: $success-green;
+      color: $white;
+      border-radius: $radius-full;
+      width: 20px;
+      height: 20px;
+      @include flex-center;
+      font-size: $text-xs;
+      font-weight: $font-bold;
+      opacity: 0;
+      transition: $transition-opacity;
+
+      .selected & {
+        opacity: 1;
+      }
+    }
+  }
+
+  .cash-payment {
+    background: $bg-secondary;
+    border: 1px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: $spacing-md;
+  }
+
+  .change-display {
+    background: $success-light;
+    border: 1px solid $success-200;
+    border-radius: $border-radius-md;
+    padding: $spacing-sm;
+    margin-top: $spacing-md;
+    @include flex-between;
+    align-items: center;
+  }
+
+  .change-label {
+    font-weight: $font-semibold;
+    color: $success-800;
+  }
+
+  .change-amount {
+    font-size: $text-xl;
+    font-weight: $font-bold;
+
+    &.positive {
+      color: $success-700;
+    }
+
+    &.negative {
+      color: $error-600;
+    }
+  }
+
+  .payment-total {
+    background: $bg-secondary;
+    border: 2px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: $spacing-md;
+    margin-top: $spacing-md;
+
+    &-row {
+      @include flex-between;
+      align-items: center;
+      padding: $spacing-sm 0;
+      font-size: $text-sm;
+
+      &.total {
+        border-top: 2px solid $border-color;
+        margin-top: $spacing-sm;
+        padding-top: $spacing-sm;
+        font-size: $text-lg;
+        font-weight: $font-bold;
+        color: $text-primary;
+
+        span:last-child {
+          color: $warning-yellow;
+          font-size: $text-xl;
+        }
+      }
+    }
+  }
+
+  // Orders Section
+
+  // Menu Search
+  .menu-search {
+    position: relative;
+    margin-bottom: $spacing-md;
+
+    &-input {
+      width: 100%;
+      padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
+      border: 2px solid $border-color;
+      border-radius: $border-radius-lg;
+      font-size: $text-sm;
+    }
+  }
+
+  .order-summary {
+    background: $bg-secondary;
+    border-radius: $border-radius-lg;
+    padding: $spacing-lg;
+    margin-top: $spacing-md;
+  }
+
+  .summary-items {
+    @include flex-column;
+    gap: $spacing-sm;
+  }
+
+  .summary-item {
+    @include flex-between;
+    align-items: center;
+    padding: $spacing-sm 0;
+    border-bottom: 1px solid $border-color;
+    font-size: $text-sm;
+
+    &:last-child {
+      border-bottom: none;
+      font-weight: $font-bold;
+      font-size: $text-base;
+      color: $text-primary;
+    }
+  }
+
+  .summary-total {
+    @include flex-between;
+    align-items: center;
+    padding: $spacing-sm 0;
+    border-top: 2px solid $border-color;
+    margin-top: $spacing-sm;
+    font-weight: $font-bold;
+    font-size: $text-lg;
+    color: $text-primary;
+
+    span:last-child {
+      color: $warning-yellow;
+      font-size: $text-xl;
+    }
+  }
+
+  // Cooking Method Modal
+  .cooking-methods {
+    @include flex-column;
+    gap: $spacing-sm;
+    max-height: 60vh;
+    overflow-y: auto;
+    @include custom-scrollbar;
+  }
+
+  .cooking-method {
+    background: $bg-secondary;
+    border: 2px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: $spacing-md;
+    cursor: pointer;
+    transition: $transition-all;
+    @include flex-between;
+    align-items: center;
+
+    &:hover {
+      border-color: $primary-blue;
+      background: $info-light;
+    }
+
+    .method-info {
+      flex: 1;
+    }
+
+    .method-name {
+      font-weight: $font-bold;
+      color: $text-primary;
+      margin-bottom: $spacing-2;
+    }
+
+    .method-description {
+      font-size: $text-sm;
+      color: $text-muted;
+    }
+
+    .method-price {
+      font-weight: $font-bold;
+      color: $warning-yellow;
+      font-size: $text-lg;
+      margin-left: $spacing-md;
+    }
+  }
+
+  // Diagram Modal Styles
+  .diagram-controls {
+    display: flex;
+    gap: $spacing-md;
+    margin-bottom: $spacing-lg;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .diagram-search {
+    flex: 1;
+    min-width: 200px;
+
+    &-input {
+      width: 100%;
+      padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
+      border: 2px solid $border-color;
+      border-radius: $border-radius-lg;
+      font-size: $text-sm;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>')
+        no-repeat 0.75rem center;
+      background-size: 1rem;
+
+      &:focus {
+        outline: none;
+        border-color: $border-focus;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+    }
+  }
+
+  .diagram-filters {
+    display: flex;
+    gap: $spacing-sm;
+  }
+
+  .diagram-filter-select {
+    padding: $spacing-sm;
+    border: 2px solid $border-color;
+    border-radius: $border-radius-md;
+    font-size: $text-sm;
+    background: $white;
+    cursor: pointer;
+    min-width: 150px;
+
+    &:focus {
+      outline: none;
+      border-color: $border-focus;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+  }
+
+  .diagram-container {
+    background: $bg-secondary;
+    border: 2px solid $border-color;
+    border-radius: $border-radius-lg;
+    padding: $spacing-md;
+    margin-bottom: $spacing-md;
+    overflow: auto;
+  }
+
+  .diagram-svg {
+    background: $white;
+    border-radius: $border-radius-md;
+    box-shadow: $shadow-sm;
+  }
+
+  .diagram-legend {
+    @include flex-center;
+    gap: $spacing-xl;
+    padding: $spacing-md;
+    background: $bg-secondary;
+    border-radius: $border-radius-md;
+    flex-wrap: wrap;
+
+    .legend-item {
+      @include flex-center;
+      gap: $spacing-sm;
+      font-size: $text-sm;
+      font-weight: $font-semibold;
+    }
+
+    .legend-circle {
+      width: 16px;
+      height: 16px;
+      border-radius: $radius-full;
+      border: 2px solid;
+
+      &.available {
+        background: $success-light;
+        border-color: $success-green;
+      }
+
+      &.occupied {
+        background: $warning-light;
+        border-color: $warning-yellow;
+      }
+
+      &.reserved {
+        background: $info-light;
+        border-color: $primary-blue;
+      }
+
+      &.cleaning {
+        background: $purple-light;
+        border-color: $secondary-purple;
+      }
+    }
+  }
+
+  // Animations
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  .table-card.occupied .table-number {
+    animation: pulse 2s infinite;
+  }
+
+  // Responsive Design
+  @media (max-width: $breakpoint-lg) {
+    .main-layout {
+      flex-direction: column;
+    }
+
+    .sidebar {
+      width: 100%;
+      position: static;
+    }
+
+    .tables-grid {
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+
+    .diagram-controls {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .diagram-filters {
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: $breakpoint-md) {
+    padding: $spacing-sm;
+
+    .top-actions {
+      flex-direction: column;
+      gap: $spacing-md;
+      align-items: stretch;
+
+      &-right {
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+    }
+
+    .chart-legend {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .tables-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .diagram-legend {
+      gap: $spacing-md;
+    }
+  }
+
+  @media (max-width: $breakpoint-sm) {
+    .tables-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .filter-section {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .diagram-svg {
+      height: 300px;
+    }
+  }
+}
+.table-quick-info {
+  display: flex;
+  gap: $spacing-md;
+  font-size: $text-sm;
+  opacity: 0.9;
+  margin-bottom: $spacing-md;
+  padding: $spacing-md;
+  background: $bg-secondary;
+  border-radius: $border-radius-md;
+  .quick-info-item {
+    @include flex-center;
+    gap: $spacing-2;
+  }
+}
+.orders-section {
+  margin-top: 0;
+  .orders-header {
+    @include flex-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
+    padding-bottom: $spacing-sm;
+    border-bottom: 2px solid $border-color;
+    .section-title {
+      font-size: $text-lg;
+      font-weight: $font-bold;
+      margin: 0;
+      color: $text-primary;
+      @include flex-center;
+      gap: $spacing-sm;
+    }
+
+    .orders-summary {
+      display: flex;
+      gap: $spacing-md;
+      font-size: $text-sm;
+      .orders-count {
+        color: $text-muted;
+        font-weight: $font-semibold;
+      }
+
+      .orders-total {
+        color: $warning-yellow;
+        font-weight: $font-bold;
+        font-size: $text-base;
+      }
+    }
+  }
+  .orders-list {
+    max-height: 50vh;
+    overflow-y: auto;
+    @include custom-scrollbar;
+    .order-item {
+      @include flex-between;
+      align-items: flex-start;
+      padding: $spacing-md;
+      background: $bg-secondary;
+      border-radius: $border-radius-lg;
+      margin-bottom: $spacing-sm;
+      border-left: 4px solid $success-green;
+      transition: $transition-all;
+
+      &:hover {
+        background: $bg-muted;
+        transform: translateX(4px);
+      }
+
+      &-info {
+        @include flex-column;
+        gap: $spacing-sm;
+        flex: 1;
+      }
+
+      &-name {
+        font-weight: $font-bold;
+        color: $text-primary;
+        font-size: $text-base;
+      }
+
+      &-details {
+        font-size: $text-sm;
+        color: $text-muted;
+        line-height: $leading-normal;
+      }
+
+      &-price {
+        font-weight: $font-bold;
+        color: $warning-yellow;
+        font-size: $text-lg;
+        white-space: nowrap;
+        margin-left: $spacing-md;
+      }
+    }
+  }
+}
+
+.table-quick-info {
+  display: flex;
+  gap: $spacing-md;
+  font-size: $text-sm;
+  opacity: 0.9;
+  margin-bottom: $spacing-md;
+  padding: $spacing-md;
+  background: $bg-secondary;
+  border-radius: $border-radius-md;
+}
+
+.quick-info-item {
+  @include flex-center;
+  gap: $spacing-2;
+}
+
+.orders-section {
+  margin-top: 0;
+}
+
+.orders-header {
+  @include flex-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+  padding-bottom: $spacing-sm;
+  border-bottom: 2px solid $border-color;
+}
+
+.section-title {
+  font-size: $text-lg;
+  font-weight: $font-bold;
+  margin: 0;
+  color: $text-primary;
+  @include flex-center;
+  gap: $spacing-sm;
+}
+
+.orders-summary {
+  display: flex;
+  gap: $spacing-md;
+  font-size: $text-sm;
+}
+
+.orders-count {
+  color: $text-muted;
+  font-weight: $font-semibold;
+}
+
+.orders-total {
+  color: $warning-yellow;
+  font-weight: $font-bold;
+  font-size: $text-base;
+}
+
+.orders-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  @include custom-scrollbar;
+}
+
+.order-item {
+  @include flex-between;
+  align-items: flex-start;
+  padding: $spacing-md;
+  background: $bg-secondary;
+  border-radius: $border-radius-lg;
+  margin-bottom: $spacing-sm;
+  border-left: 4px solid $success-green;
+  transition: $transition-all;
+}
+
+.order-item:hover {
+  background: $bg-muted;
+  transform: translateX(4px);
+}
+
+.order-item-info {
+  @include flex-column;
+  gap: $spacing-sm;
+  flex: 1;
+}
+
+.order-item-name {
+  font-weight: $font-bold;
+  color: $text-primary;
+  font-size: $text-base;
+}
+
+.order-item-details {
+  font-size: $text-sm;
+  color: $text-muted;
+  line-height: $leading-normal;
+}
+
+.order-item-price {
+  font-weight: $font-bold;
+  color: $warning-yellow;
+  font-size: $text-lg;
+  white-space: nowrap;
+  margin-left: $spacing-md;
+}
+
+.empty-state {
+  text-align: center;
+  padding: $spacing-3xl $spacing-md;
+  color: $text-muted;
+}
+
+.empty-state-icon {
+  font-size: $text-5xl;
+  margin-bottom: $spacing-md;
+}
+
+.empty-state-text {
+  font-size: $text-lg;
+  font-weight: $font-semibold;
+  margin-bottom: $spacing-sm;
+}
+
+.empty-state-subtext {
+  font-size: $text-sm;
+}
+
+.modal-footer {
+  display: flex;
+  gap: $spacing-md;
+  justify-content: flex-end;
+  padding-top: $spacing-md;
+  border-top: 1px solid $border-color;
+  margin-top: $spacing-md;
+}
+
+.diagram-controls {
+  display: flex;
+  gap: $spacing-md;
+  margin-bottom: $spacing-lg;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.diagram-search {
+  flex: 1;
+  min-width: 200px;
+}
+
+.diagram-search-input {
+  width: 100%;
+  padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-lg;
+  font-size: $text-sm;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>')
+    no-repeat 0.75rem center;
+  background-size: 1rem;
+}
+
+.diagram-search-input:focus {
+  outline: none;
+  border-color: $border-focus;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.diagram-filters {
+  display: flex;
+  gap: $spacing-sm;
+}
+
+.diagram-filter-select {
+  padding: $spacing-sm;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-md;
+  font-size: $text-sm;
+  background: $white;
+  cursor: pointer;
+  min-width: 150px;
+}
+
+.diagram-filter-select:focus {
+  outline: none;
+  border-color: $border-focus;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.diagram-container {
+  background: $bg-secondary;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-lg;
+  padding: $spacing-md;
+  margin-bottom: $spacing-md;
+  overflow: auto;
+}
+
+.diagram-svg {
+  background: $white;
+  border-radius: $border-radius-md;
+  box-shadow: $shadow-sm;
+}
+
+.diagram-legend {
+  @include flex-center;
+  gap: $spacing-xl;
+  padding: $spacing-md;
+  background: $bg-secondary;
+  border-radius: $border-radius-md;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  @include flex-center;
+  gap: $spacing-sm;
+  font-size: $text-sm;
+  font-weight: $font-semibold;
+}
+
+.legend-circle {
+  width: 16px;
+  height: 16px;
+  border-radius: $radius-full;
+  border: 2px solid;
+}
+
+.legend-circle.available {
+  background: $success-light;
+  border-color: $success-green;
+}
+
+.legend-circle.occupied {
+  background: $warning-light;
+  border-color: $warning-yellow;
+}
+
+.legend-circle.reserved {
+  background: $info-light;
+  border-color: $primary-blue;
+}
+
+.legend-circle.cleaning {
+  background: $purple-light;
+  border-color: $secondary-purple;
+}
+
+.form-group {
+  margin-bottom: $spacing-lg;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: $spacing-sm;
+  font-weight: $font-semibold;
+  color: $text-primary;
+}
+
+.form-input {
+  width: 100%;
+  padding: $spacing-sm;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-md;
+  font-size: $text-sm;
+  transition: $transition-all;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: $border-focus;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-select {
+  width: 100%;
+  padding: $spacing-sm;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-md;
+  font-size: $text-sm;
+  background: $white;
+  cursor: pointer;
+}
+
+.order-header {
+  margin-bottom: $spacing-md;
+}
+
+.menu-search {
+  position: relative;
+  margin-bottom: $spacing-md;
+}
+
+.menu-search-input {
+  width: 100%;
+  padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-lg;
+  font-size: $text-sm;
+}
+
+.delivery-partners {
+  margin-bottom: $spacing-md;
+}
+
+.partners-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: $spacing-sm;
+}
+
+.partner-card {
+  background: $bg-secondary;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-lg;
+  padding: $spacing-md;
+  cursor: pointer;
+  transition: $transition-all;
+  @include flex-center;
+  gap: $spacing-md;
+}
+
+.partner-card:hover {
+  border-color: $primary-blue;
+  background: $info-light;
+}
+
+.partner-card.selected {
+  border-color: $success-green;
+  background: $success-light;
+}
+
+.partner-logo {
+  font-size: $text-xl;
+  width: 40px;
+  text-align: center;
+}
+
+.partner-info {
+  flex: 1;
+}
+
+.partner-name {
+  font-weight: $font-bold;
+  color: $text-primary;
+  margin-bottom: $spacing-2;
+}
+
+.partner-commission {
+  font-size: $text-xs;
+  color: $text-muted;
+}
+
+.partner-rating {
+  font-size: $text-xs;
+  color: $text-muted;
+}
+
+.menu-sections {
+  display: flex;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.menu-section {
+  flex: 1;
+  min-width: 300px;
+}
+
+.menu-items {
+  @include flex-column;
+  gap: $spacing-sm;
+}
+
+.menu-item {
+  background: $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-lg;
+  padding: $spacing-md;
+  @include flex-between;
+  align-items: center;
+}
+
+.menu-item-info {
+  flex: 1;
+}
+
+.menu-item-name {
+  font-weight: $font-bold;
+  color: $text-primary;
+}
+
+.menu-item-description {
+  font-size: $text-sm;
+  color: $text-muted;
+  margin-top: $spacing-2;
+}
+
+.menu-item-price {
+  font-weight: $font-bold;
+  color: $warning-yellow;
+  margin-top: $spacing-2;
+}
+
+.selected-method {
+  font-size: $text-sm;
+  color: $success-green;
+  margin-top: $spacing-2;
+}
+
+.menu-item-actions {
+  margin-left: $spacing-md;
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.quantity {
+  min-width: 20px;
+  text-align: center;
+  font-weight: $font-bold;
+}
+
+.order-summary {
+  background: $bg-secondary;
+  border-radius: $border-radius-lg;
+  padding: $spacing-lg;
+  margin-top: $spacing-md;
+}
+
+.summary-items {
+  @include flex-column;
+  gap: $spacing-sm;
+}
+
+.summary-item {
+  @include flex-between;
+  align-items: center;
+  padding: $spacing-sm 0;
+  border-bottom: 1px solid $border-color;
+  font-size: $text-sm;
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+  font-weight: $font-bold;
+  font-size: $text-base;
+  color: $text-primary;
+}
+
+.summary-total {
+  @include flex-between;
+  align-items: center;
+  padding: $spacing-sm 0;
+  border-top: 2px solid $border-color;
+  margin-top: $spacing-sm;
+  font-weight: $font-bold;
+  font-size: $text-lg;
+  color: $text-primary;
+}
+
+.summary-total span:last-child {
+  color: $warning-yellow;
+  font-size: $text-xl;
+}
+
+.cooking-methods {
+  @include flex-column;
+  gap: $spacing-sm;
+  max-height: 60vh;
+  overflow-y: auto;
+  @include custom-scrollbar;
+}
+
+.cooking-method {
+  background: $bg-secondary;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-lg;
+  padding: $spacing-md;
+  cursor: pointer;
+  transition: $transition-all;
+  @include flex-between;
+  align-items: center;
+}
+
+.cooking-method:hover {
+  border-color: $primary-blue;
+  background: $info-light;
+}
+
+.method-info {
+  flex: 1;
+}
+
+.method-name {
+  font-weight: $font-bold;
+  color: $text-primary;
+  margin-bottom: $spacing-2;
+}
+
+.method-description {
+  font-size: $text-sm;
+  color: $text-muted;
+}
+
+.method-price {
+  font-weight: $font-bold;
+  color: $warning-yellow;
+  font-size: $text-lg;
+  margin-left: $spacing-md;
+}
+
+.payment-section {
+  margin-bottom: $spacing-lg;
+}
+
+.payment-section-title {
+  font-size: $text-base;
+  font-weight: $font-bold;
+  color: $text-primary;
+  margin-bottom: $spacing-sm;
+  @include flex-center;
+  gap: $spacing-sm;
+}
+
+.bill-summary {
+  background: $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-lg;
+  padding: $spacing-md;
+}
+
+.bill-item {
+  @include flex-between;
+  align-items: center;
+  padding: $spacing-sm 0;
+  border-bottom: 1px solid $border-color;
+  font-size: $text-sm;
+}
+
+.bill-item:last-child {
+  border-bottom: none;
+}
+
+.bill-item-info {
+  flex: 1;
+}
+
+.bill-item-name {
+  font-weight: $font-semibold;
+  color: $text-primary;
+}
+
+.bill-item-details {
+  font-size: $text-xs;
+  color: $text-muted;
+  margin-top: $spacing-1;
+}
+
+.bill-item-price {
+  font-weight: $font-bold;
+  color: $warning-yellow;
+  margin-left: $spacing-md;
+}
+
+.payment-methods {
+  display: grid;
+  gap: $spacing-sm;
+}
+
+.payment-method {
+  background: $bg-secondary;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-lg;
+  padding: $spacing-md;
+  cursor: pointer;
+  transition: $transition-all;
+  @include flex-center;
+  gap: $spacing-md;
+  position: relative;
+}
+
+.payment-method:hover {
+  border-color: $primary-blue;
+  background: $info-light;
+}
+
+.payment-method.selected {
+  border-color: $success-green;
+  background: $success-light;
+}
+
+.payment-method-icon {
+  font-size: $text-xl;
+  width: 40px;
+  text-align: center;
+}
+
+.payment-method-info {
+  flex: 1;
+}
+
+.payment-method-name {
+  font-weight: $font-bold;
+  color: $text-primary;
+  margin-bottom: $spacing-2;
+}
+
+.payment-method-desc {
+  font-size: $text-xs;
+  color: $text-muted;
+}
+
+.payment-method-check {
+  position: absolute;
+  top: $spacing-sm;
+  right: $spacing-sm;
+  background: $success-green;
+  color: $white;
+  border-radius: $radius-full;
+  width: 20px;
+  height: 20px;
+  @include flex-center;
+  font-size: $text-xs;
+  font-weight: $font-bold;
+  opacity: 0;
+  transition: $transition-opacity;
+}
+
+.payment-method.selected .payment-method-check {
+  opacity: 1;
+}
+
+.cash-payment {
+  background: $bg-secondary;
+  border: 1px solid $border-color;
+  border-radius: $border-radius-lg;
+  padding: $spacing-md;
+}
+
+.change-display {
+  background: $success-light;
+  border: 1px solid $success-200;
+  border-radius: $border-radius-md;
+  padding: $spacing-sm;
+  margin-top: $spacing-md;
+  @include flex-between;
+  align-items: center;
+}
+
+.change-label {
+  font-weight: $font-semibold;
+  color: $success-800;
+}
+
+.change-amount {
+  font-size: $text-xl;
+  font-weight: $font-bold;
+}
+
+.change-amount.positive {
+  color: $success-700;
+}
+
+.change-amount.negative {
+  color: $error-600;
+}
+
+.payment-total {
+  background: $bg-secondary;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-lg;
+  padding: $spacing-md;
+  margin-top: $spacing-md;
+}
+
+.payment-total-row {
+  @include flex-between;
+  align-items: center;
+  padding: $spacing-sm 0;
+  font-size: $text-sm;
+}
+
+.payment-total-row.total {
+  border-top: 2px solid $border-color;
+  margin-top: $spacing-sm;
+  padding-top: $spacing-sm;
+  font-size: $text-lg;
+  font-weight: $font-bold;
+  color: $text-primary;
+}
+
+.payment-total-row.total span:last-child {
+  color: $warning-yellow;
+  font-size: $text-xl;
+}

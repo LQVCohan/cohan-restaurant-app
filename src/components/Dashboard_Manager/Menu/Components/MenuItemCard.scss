@@ -1,0 +1,251 @@
+@use "../../../../styles/variables" as *;
+@use "../../../../styles/mixins" as *;
+
+.menu-item-card {
+  @include card;
+  @include card-hover;
+  @include fade-in;
+  overflow: hidden;
+
+  &__image {
+    width: 100%;
+    height: 120px;
+    background: linear-gradient(135deg, $bg-tertiary, $bg-secondary);
+    @include flex-center;
+    font-size: 2.5rem;
+    position: relative;
+    border-bottom: 1px solid $border-color;
+    cursor: pointer;
+  }
+
+  &__emoji {
+    font-size: 2.5rem;
+  }
+
+  &__status {
+    position: absolute;
+    top: $spacing-sm;
+    right: $spacing-sm;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: 9999px;
+    font-size: $text-xs;
+    font-weight: $font-semibold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+
+    &--available {
+      background: #dcfce7;
+      color: #15803d;
+    }
+
+    &--unavailable {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    &--limited {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    &--stock {
+      background: #fefce8;
+      color: #ca8a04;
+    }
+  }
+
+  &__content {
+    padding: $spacing-lg;
+  }
+
+  &__header {
+    @include flex-between;
+    margin-bottom: $spacing-md;
+    gap: $spacing-sm;
+    cursor: pointer;
+  }
+
+  &__name {
+    font-size: $text-base;
+    font-weight: $font-semibold;
+    color: $text-primary;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__category {
+    @include flex-center;
+    gap: $spacing-xs;
+    background: $bg-secondary;
+    color: $text-secondary;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: $radius-sm;
+    font-size: $text-xs;
+    font-weight: $font-medium;
+  }
+
+  &__price {
+    font-size: $text-base;
+    font-weight: $font-bold;
+    color: $success-color;
+  }
+
+  &__description {
+    color: $text-secondary;
+    line-height: 1.4;
+    margin-bottom: $spacing-md;
+    font-size: $text-xs;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    cursor: pointer;
+  }
+
+  &__meta {
+    @include flex-between;
+    margin-bottom: $spacing-md;
+    font-size: $text-xs;
+    color: $text-secondary;
+    cursor: pointer;
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
+    flex-wrap: wrap;
+  }
+
+  // List view styles
+  &--list {
+    .menu-item-card__content {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      gap: $spacing-xl;
+      align-items: center;
+      padding: $spacing-xl;
+    }
+
+    .menu-item-card__image {
+      width: 4rem;
+      height: 4rem;
+      border-radius: $radius-md;
+      font-size: $text-xl;
+    }
+
+    .menu-item-card__info {
+      flex: 1;
+    }
+
+    .menu-item-card__name {
+      font-size: $text-lg;
+      margin-bottom: $spacing-xs;
+    }
+
+    .menu-item-card__description {
+      font-size: $text-sm;
+      margin-bottom: $spacing-sm;
+      -webkit-line-clamp: 1;
+    }
+
+    .menu-item-card__meta {
+      display: flex;
+      gap: $spacing-lg;
+      margin-bottom: 0;
+    }
+
+    .menu-item-card__price {
+      font-size: $text-xl;
+    }
+
+    .menu-item-card__actions {
+      flex-direction: row;
+    }
+
+    @include mobile {
+      .menu-item-card__content {
+        grid-template-columns: auto 1fr;
+        gap: $spacing-lg;
+      }
+
+      .menu-item-card__price,
+      .menu-item-card__actions {
+        grid-column: 1 / -1;
+        margin-top: $spacing-lg;
+      }
+    }
+  }
+
+  @include mobile {
+    .menu-item-card__actions {
+      flex-direction: column;
+    }
+  }
+}
+
+.cooking-methods {
+  margin: $spacing-md 0;
+  padding: $spacing-md;
+  background: $bg-tertiary;
+  border-radius: $radius-md;
+  border: 1px solid $border-light;
+
+  &__title {
+    font-size: $text-xs;
+    font-weight: $font-semibold;
+    color: $text-secondary;
+    margin-bottom: $spacing-sm;
+    @include flex-start;
+    gap: $spacing-xs;
+  }
+
+  &__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+  }
+
+  &--list {
+    background: transparent;
+    border: none;
+    padding: $spacing-sm 0;
+
+    .cooking-methods__list {
+      gap: $spacing-sm;
+    }
+
+    .cooking-method-item {
+      font-size: $text-xs;
+      padding: $spacing-xs $spacing-sm;
+      min-width: 70px;
+    }
+  }
+}
+
+.cooking-method-item {
+  @include flex-between;
+  background: $bg-primary;
+  border: 1px solid $border-color;
+  border-radius: $radius-sm;
+  padding: $spacing-sm $spacing-md;
+  font-size: $text-xs;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  min-width: 80px;
+
+  &:hover {
+    border-color: $primary-color;
+    background: #eff6ff;
+  }
+
+  &__name {
+    font-weight: $font-medium;
+    color: $text-primary;
+    margin-right: $spacing-sm;
+  }
+
+  &__price {
+    font-weight: $font-semibold;
+    color: $success-color;
+    font-size: 0.7rem;
+  }
+}

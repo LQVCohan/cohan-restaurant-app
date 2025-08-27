@@ -1,0 +1,59 @@
+@use "../../../../styles/variables" as *;
+@use "../../../../styles/mixins" as *;
+
+.category-stats {
+  @include card;
+  padding: $spacing-xl;
+  margin-bottom: $spacing-xl;
+
+  &__title {
+    font-size: $text-lg;
+    font-weight: $font-semibold;
+    color: $text-primary;
+    margin-bottom: $spacing-lg;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: $spacing-lg;
+  }
+
+  &__item {
+    text-align: center;
+    padding: $spacing-lg;
+    background: $bg-tertiary;
+    border-radius: $radius-md;
+    border: 1px solid $border-light;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: $bg-secondary;
+      transform: translateY(-1px);
+    }
+  }
+
+  &__emoji {
+    font-size: 2rem;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__name {
+    font-size: $text-sm;
+    font-weight: $font-medium;
+    color: $text-secondary;
+    margin-bottom: $spacing-xs;
+  }
+
+  &__count {
+    font-size: $text-xl;
+    font-weight: $font-bold;
+    color: $primary-color;
+  }
+
+  @include mobile {
+    &__grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}

@@ -1,0 +1,65 @@
+@use "../../../../styles/variables" as *;
+@use "../../../../styles/mixins" as *;
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: $spacing-lg;
+  margin-bottom: $spacing-xl;
+
+  &__card {
+    @include card;
+    @include card-hover;
+    padding: $spacing-lg;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  &__header {
+    @include flex-between;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: $radius-md;
+    @include flex-center;
+
+    &--blue {
+      background: #eff6ff;
+      color: $primary-color;
+    }
+
+    &--green {
+      background: #f0fdf4;
+      color: $success-color;
+    }
+
+    &--purple {
+      background: #faf5ff;
+      color: #9333ea;
+    }
+
+    &--orange {
+      background: #fff7ed;
+      color: #ea580c;
+    }
+
+    &--yellow {
+      background: #fefce8;
+      color: #ca8a04;
+    }
+  }
+
+  &__value {
+    font-size: $text-2xl;
+    font-weight: $font-bold;
+    color: $text-primary;
+  }
+
+  &__label {
+    color: $text-secondary;
+    font-size: $text-xs;
+  }
+}

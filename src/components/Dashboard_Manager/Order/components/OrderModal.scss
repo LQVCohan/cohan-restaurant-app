@@ -1,0 +1,242 @@
+@use "../../../../styles/variables" as *;
+@use "../../../../styles/mixins" as *;
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  @include flex-center;
+  z-index: 50;
+  padding: $spacing-4;
+}
+
+.modal {
+  background: white;
+  border-radius: $rounded-lg;
+  max-width: 48rem;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  @include fade-in;
+}
+
+.modalHeader {
+  @include flex-between;
+  padding: $spacing-6;
+  border-bottom: 1px solid $gray-200;
+}
+
+.modalTitle {
+  font-size: $text-xl;
+  font-weight: 600;
+  color: $gray-900;
+  margin: 0;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: $gray-400;
+  cursor: pointer;
+  padding: $spacing-1;
+  border-radius: $rounded;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: $gray-600;
+  }
+}
+
+.modalContent {
+  padding: $spacing-6;
+}
+
+.section {
+  margin-bottom: $spacing-6;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.sectionTitle {
+  font-size: $text-lg;
+  font-weight: 500;
+  color: $gray-900;
+  margin: 0 0 $spacing-4 0;
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-4;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.infoItem {
+  @include flex-between;
+}
+
+.label {
+  color: $gray-600;
+}
+
+.value {
+  font-weight: 500;
+  color: $gray-900;
+}
+
+.statusBadge {
+  &.pending {
+    @include status-badge($yellow-100, $yellow-500);
+  }
+
+  &.confirmed {
+    @include status-badge($primary-100, $primary-600);
+  }
+
+  &.preparing {
+    @include status-badge($purple-100, $purple-600);
+  }
+
+  &.ready {
+    @include status-badge($green-100, $green-600);
+  }
+
+  &.completed {
+    @include status-badge($green-100, $green-600);
+  }
+
+  &.cancelled {
+    @include status-badge($red-100, $red-600);
+  }
+}
+
+.itemsList {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-3;
+}
+
+.itemCard {
+  @include flex-between;
+  padding: $spacing-4;
+  background-color: $gray-50;
+  border-radius: $rounded-lg;
+  border: 1px solid $gray-200;
+  gap: $spacing-4;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.itemInfo {
+  flex: 1;
+}
+
+.itemName {
+  font-weight: 500;
+  color: $gray-900;
+  margin-bottom: $spacing-1;
+}
+
+.itemDetails {
+  font-size: $text-sm;
+  color: $gray-600;
+}
+
+.itemMeta {
+  @include flex-center;
+  gap: $spacing-4;
+
+  @include mobile {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.itemPricing {
+  text-align: right;
+
+  @include mobile {
+    text-align: left;
+  }
+}
+
+.quantity {
+  font-weight: 600;
+  color: $gray-900;
+}
+
+.itemTotal {
+  font-size: $text-sm;
+  color: $gray-600;
+}
+
+.statusSelect {
+  padding: $spacing-1 $spacing-2;
+  border: 1px solid $gray-300;
+  border-radius: $rounded;
+  font-size: $text-sm;
+  background: white;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-500;
+  }
+}
+
+.totalSection {
+  @include flex-between;
+  padding: $spacing-4;
+  background-color: $gray-100;
+  border-radius: $rounded-lg;
+  font-size: $text-lg;
+  font-weight: 700;
+}
+
+.totalLabel {
+  color: $gray-700;
+}
+
+.totalAmount {
+  color: $green-600;
+}
+
+.notesTitle {
+  font-weight: 500;
+  color: $gray-900;
+  margin: 0 0 $spacing-2 0;
+}
+
+.notesContent {
+  padding: $spacing-3;
+  background-color: $yellow-50;
+  border-left: 4px solid $yellow-500;
+  border-radius: $rounded-lg;
+  color: $yellow-800;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  gap: $spacing-3;
+
+  @include mobile {
+    flex-direction: column;
+  }
+}
+
+.cancelButton {
+  @include button-secondary;
+  flex: 1;
+}
+
+.printButton {
+  @include button-primary;
+  flex: 1;
+}

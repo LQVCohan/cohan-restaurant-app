@@ -15,7 +15,7 @@ import RestaurantsList from "../components/RestaurantsList";
 import RestaurantDetail from "../components/RestaurantDetail";
 import Dashboard from "../components/admin/Dashboard";
 import MenuManagement from "../components/admin/MenuManagement";
-import ManagerDashboard from "../components/Dashboard_Manager/Dashboard/ManageTable";
+
 import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
 import ManagerLayout from "../layouts/ManagerLayout";
 import axios from "axios";
@@ -148,9 +148,7 @@ const AppRouter = () => {
         path="/manager/dashboard"
         element={
           <PrivateRoute allowedRoles={["manager", "admin"]}>
-            <ManagerLayout>
-              <ManagerDashboard />
-            </ManagerLayout>
+            <ManagerLayout />
           </PrivateRoute>
         }
       />

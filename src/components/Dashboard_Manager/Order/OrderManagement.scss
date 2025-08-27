@@ -1,0 +1,186 @@
+@use "../../../styles/variables" as *;
+@use "../../../styles/mixins" as *;
+.orderManagement {
+  min-height: 100vh;
+  background-color: $gray-50;
+  padding: $spacing-6;
+
+  @include mobile {
+    padding: $spacing-4;
+  }
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  @include card;
+  padding: $spacing-8;
+  margin-bottom: $spacing-6;
+
+  @include mobile {
+    padding: $spacing-6;
+  }
+}
+
+.headerContent {
+  @include flex-between;
+  gap: $spacing-4;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.title {
+  font-size: $text-3xl;
+  font-weight: 700;
+  color: $gray-900;
+  margin: 0 0 $spacing-2 0;
+
+  @include mobile {
+    font-size: $text-2xl;
+  }
+}
+
+.subtitle {
+  color: $gray-600;
+  margin: 0;
+}
+
+.historyButton {
+  @include button-secondary;
+  @include flex-center;
+  gap: $spacing-2;
+}
+
+.statsGrid {
+  @include grid(4, $spacing-4);
+  margin-bottom: $spacing-6;
+
+  @include mobile {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.controls {
+  @include card;
+  padding: $spacing-6;
+  margin-bottom: $spacing-6;
+}
+
+.controlsLeft {
+  @include flex-start;
+  gap: $spacing-4;
+  flex-wrap: wrap;
+  margin-bottom: $spacing-4;
+
+  @include desktop {
+    margin-bottom: 0;
+  }
+}
+
+.controlsRight {
+  @include flex-start;
+  gap: $spacing-2;
+
+  @include mobile {
+    width: 100%;
+    justify-content: stretch;
+
+    button {
+      flex: 1;
+    }
+  }
+}
+
+.searchBox {
+  position: relative;
+  min-width: 300px;
+
+  @include mobile {
+    min-width: 100%;
+  }
+}
+
+.searchInput {
+  width: 100%;
+  padding: $spacing-2 $spacing-4 $spacing-2 2.5rem;
+  border: 1px solid $gray-300;
+  border-radius: $rounded-lg;
+  font-size: $text-sm;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-500;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+}
+
+.searchIcon {
+  position: absolute;
+  left: $spacing-3;
+  top: 50%;
+  transform: translateY(-50%);
+  color: $gray-400;
+}
+
+.filterSelect {
+  padding: $spacing-2 $spacing-4;
+  border: 1px solid $gray-300;
+  border-radius: $rounded-lg;
+  font-size: $text-sm;
+  background: white;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-500;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+}
+
+.exportButton {
+  @include button-secondary;
+}
+
+.newOrderButton {
+  @include button-primary;
+}
+
+.emptyState {
+  @include card;
+  padding: $spacing-12;
+  text-align: center;
+
+  svg {
+    color: $gray-300;
+    margin: 0 auto $spacing-4;
+  }
+
+  h3 {
+    font-size: $text-xl;
+    font-weight: 600;
+    color: $gray-600;
+    margin: 0 0 $spacing-2 0;
+  }
+
+  p {
+    color: $gray-500;
+    margin: 0;
+  }
+}
+
+.ordersGrid {
+  @include grid(3, $spacing-6);
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+
+  @include tablet {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

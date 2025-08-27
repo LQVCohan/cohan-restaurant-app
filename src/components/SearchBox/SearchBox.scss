@@ -248,7 +248,7 @@ $gray-900: #0f172a;
 
 .search-highlight {
   background: rgba($primary-blue, 0.2);
-  color: darken($primary-blue, 10%);
+  color: custom-darken($primary-blue, 10%);
   padding: 0 2px;
   border-radius: 2px;
   font-weight: 600;

@@ -1,0 +1,247 @@
+// Import required modules
+@use "../../../../styles/variables" as *;
+@use "../../../../styles/mixins" as *;
+.item-modal {
+  .modal__content {
+    padding: 0;
+  }
+}
+
+.item-modal__form {
+  padding: 0;
+}
+
+.item-modal__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+
+.item-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  &--full {
+    grid-column: 1 / -1;
+  }
+}
+
+.item-modal__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.item-modal__input,
+.item-modal__textarea,
+.item-modal__select {
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background: var(--bg-primary);
+  transition: all var(--animation-normal) var(--animation-smooth);
+  font-family: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+  }
+
+  &--error {
+    border-color: var(--danger-color);
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+  }
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+}
+
+.item-modal__textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+
+.item-modal__select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+  appearance: none;
+}
+
+.item-modal__error {
+  font-size: 0.75rem;
+  color: var(--danger-color);
+  margin-top: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+
+  &::before {
+    content: "⚠️";
+    font-size: 0.75rem;
+  }
+}
+
+// Image Upload Styles
+.item-modal__image-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.item-modal__file-input {
+  display: none;
+}
+
+.item-modal__file-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--animation-normal) var(--animation-smooth);
+  text-align: center;
+
+  &:hover {
+    border-color: var(--primary-color);
+    background: rgba(99, 102, 241, 0.05);
+    color: var(--primary-color);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+.item-modal__image-preview {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid var(--border-light);
+  box-shadow: var(--shadow-sm);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+// Actions Section
+.item-modal__actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .item-modal__grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .item-modal__field--full {
+    grid-column: 1;
+  }
+
+  .item-modal__actions {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+
+    button {
+      width: 100%;
+    }
+  }
+
+  .item-modal__image-preview {
+    width: 100px;
+    height: 100px;
+  }
+}
+
+@media (max-width: 480px) {
+  .item-modal__grid {
+    padding: 0.75rem;
+  }
+
+  .item-modal__input,
+  .item-modal__textarea,
+  .item-modal__select {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .item-modal__label {
+    font-size: 0.8125rem;
+  }
+
+  .item-modal__file-label {
+    padding: 0.625rem 1rem;
+    font-size: 0.8125rem;
+  }
+}
+
+// Focus and Accessibility
+.item-modal__input:focus-visible,
+.item-modal__textarea:focus-visible,
+.item-modal__select:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.item-modal__file-label:focus-within {
+  border-color: var(--primary-color);
+  background: rgba(99, 102, 241, 0.05);
+  color: var(--primary-color);
+}
+
+// Animation for form validation
+.item-modal__input--error,
+.item-modal__textarea--error {
+  animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+// Loading state (if needed)
+.item-modal--loading {
+  .item-modal__input,
+  .item-modal__textarea,
+  .item-modal__select {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+}

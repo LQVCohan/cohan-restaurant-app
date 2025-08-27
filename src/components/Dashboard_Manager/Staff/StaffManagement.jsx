@@ -39,16 +39,6 @@ const StaffManagement = () => {
 
   return (
     <div className="staff-management">
-      <div className="staff-management__header">
-        <h1 className="page-title">
-          <i className="fas fa-users-cog" />
-          Quản lý nhân viên
-        </h1>
-        <p className="page-subtitle">
-          Quản lý thông tin, chấm công và lương của nhân viên
-        </p>
-      </div>
-
       <div className="staff-management__tabs">
         {tabs.map((tab) => (
           <button
