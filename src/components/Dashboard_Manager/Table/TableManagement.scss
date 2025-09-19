@@ -16,7 +16,7 @@
     margin-bottom: $spacing-md;
     background: $white;
     padding: $spacing-md;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     box-shadow: $shadow-sm;
 
     h1 {
@@ -43,7 +43,7 @@
     .table_sidebar {
       width: $sidebar-width;
       background: $white;
-      border-radius: $border-radius-lg;
+      border-radius: $radius-lg;
       box-shadow: $shadow-sm;
       padding: $spacing-md;
       height: fit-content;
@@ -136,7 +136,7 @@
             width: 100%;
             padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
             border: 2px solid $border-color;
-            border-radius: $border-radius-lg;
+            border-radius: $radius-lg;
             font-size: $text-sm;
             transition: $transition-all;
 
@@ -168,7 +168,7 @@
       padding: $spacing-sm;
       background: $bg-secondary;
       border: 1px solid $border-color;
-      border-radius: $border-radius-md;
+      border-radius: $radius-md;
       cursor: pointer;
       transition: $transition-all;
       font-size: $text-sm;
@@ -237,7 +237,7 @@
   // Tables Container
   .tables-container {
     background: $white;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     padding: $spacing-md;
     box-shadow: $shadow-sm;
     flex: 1;
@@ -261,7 +261,7 @@
     .table-controls {
       background: $bg-secondary;
       border: 1px solid $border-color;
-      border-radius: $border-radius-lg;
+      border-radius: $radius-lg;
       padding: $spacing-md;
       margin-bottom: $spacing-md;
       @include flex-center;
@@ -273,7 +273,7 @@
         .filter-select {
           padding: $spacing-sm $spacing-md;
           border: 1px solid $border-color;
-          border-radius: $border-radius-md;
+          border-radius: $radius-md;
           font-size: $text-sm;
           background: $white;
           cursor: pointer;
@@ -330,7 +330,7 @@
   .table-card {
     background: $bg-secondary;
     border: 2px solid $border-color;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     padding: $spacing-sm;
     transition: $transition-all;
     cursor: pointer;
@@ -377,7 +377,7 @@
 
     &.cleaning {
       border-color: $secondary-purple;
-      background: $purple-light;
+      background: $bg-secondary;
       &::before {
         background: $secondary-purple;
       }
@@ -416,7 +416,7 @@
         }
 
         &.status-cleaning {
-          background: $purple-light;
+          background: $bg-secondary;
           color: $secondary-800;
         }
       }
@@ -455,7 +455,7 @@
     width: 100%;
     padding: $spacing-sm;
     border: 2px solid $border-color;
-    border-radius: $border-radius-md;
+    border-radius: $radius-md;
     font-size: $text-sm;
     transition: $transition-all;
 
@@ -470,7 +470,7 @@
     width: 100%;
     padding: $spacing-sm;
     border: 2px solid $border-color;
-    border-radius: $border-radius-md;
+    border-radius: $radius-md;
     font-size: $text-sm;
     background: $white;
     cursor: pointer;
@@ -503,7 +503,7 @@
   .bill-summary {
     background: $bg-secondary;
     border: 1px solid $border-color;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     padding: $spacing-md;
   }
 
@@ -548,7 +548,7 @@
   .payment-method {
     background: $bg-secondary;
     border: 2px solid $border-color;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     padding: $spacing-md;
     cursor: pointer;
     transition: $transition-all;
@@ -611,14 +611,14 @@
   .cash-payment {
     background: $bg-secondary;
     border: 1px solid $border-color;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     padding: $spacing-md;
   }
 
   .change-display {
     background: $success-light;
     border: 1px solid $success-200;
-    border-radius: $border-radius-md;
+    border-radius: $radius-md;
     padding: $spacing-sm;
     margin-top: $spacing-md;
     @include flex-between;
@@ -646,7 +646,7 @@
   .payment-total {
     background: $bg-secondary;
     border: 2px solid $border-color;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     padding: $spacing-md;
     margin-top: $spacing-md;
 
@@ -683,14 +683,14 @@
       width: 100%;
       padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
       border: 2px solid $border-color;
-      border-radius: $border-radius-lg;
+      border-radius: $radius-lg;
       font-size: $text-sm;
     }
   }
 
   .order-summary {
     background: $bg-secondary;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     padding: $spacing-lg;
     margin-top: $spacing-md;
   }
@@ -743,7 +743,7 @@
   .cooking-method {
     background: $bg-secondary;
     border: 2px solid $border-color;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     padding: $spacing-md;
     cursor: pointer;
     transition: $transition-all;
@@ -795,7 +795,7 @@
       width: 100%;
       padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
       border: 2px solid $border-color;
-      border-radius: $border-radius-lg;
+      border-radius: $radius-lg;
       font-size: $text-sm;
       background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>')
         no-repeat 0.75rem center;
@@ -817,7 +817,7 @@
   .diagram-filter-select {
     padding: $spacing-sm;
     border: 2px solid $border-color;
-    border-radius: $border-radius-md;
+    border-radius: $radius-md;
     font-size: $text-sm;
     background: $white;
     cursor: pointer;
@@ -833,7 +833,7 @@
   .diagram-container {
     background: $bg-secondary;
     border: 2px solid $border-color;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     padding: $spacing-md;
     margin-bottom: $spacing-md;
     overflow: auto;
@@ -841,7 +841,7 @@
 
   .diagram-svg {
     background: $white;
-    border-radius: $border-radius-md;
+    border-radius: $radius-md;
     box-shadow: $shadow-sm;
   }
 
@@ -850,7 +850,7 @@
     gap: $spacing-xl;
     padding: $spacing-md;
     background: $bg-secondary;
-    border-radius: $border-radius-md;
+    border-radius: $radius-md;
     flex-wrap: wrap;
 
     .legend-item {
@@ -882,7 +882,7 @@
       }
 
       &.cleaning {
-        background: $purple-light;
+        background: $bg-secondary;
         border-color: $secondary-purple;
       }
     }
@@ -978,7 +978,7 @@
   margin-bottom: $spacing-md;
   padding: $spacing-md;
   background: $bg-secondary;
-  border-radius: $border-radius-md;
+  border-radius: $radius-md;
   .quick-info-item {
     @include flex-center;
     gap: $spacing-2;
@@ -1026,7 +1026,7 @@
       align-items: flex-start;
       padding: $spacing-md;
       background: $bg-secondary;
-      border-radius: $border-radius-lg;
+      border-radius: $radius-lg;
       margin-bottom: $spacing-sm;
       border-left: 4px solid $success-green;
       transition: $transition-all;
@@ -1073,7 +1073,7 @@
   margin-bottom: $spacing-md;
   padding: $spacing-md;
   background: $bg-secondary;
-  border-radius: $border-radius-md;
+  border-radius: $radius-md;
 }
 
 .quick-info-item {
@@ -1130,7 +1130,7 @@
   align-items: flex-start;
   padding: $spacing-md;
   background: $bg-secondary;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   margin-bottom: $spacing-sm;
   border-left: 4px solid $success-green;
   transition: $transition-all;
@@ -1214,7 +1214,7 @@
   width: 100%;
   padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
   border: 2px solid $border-color;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   font-size: $text-sm;
   background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>')
     no-repeat 0.75rem center;
@@ -1235,7 +1235,7 @@
 .diagram-filter-select {
   padding: $spacing-sm;
   border: 2px solid $border-color;
-  border-radius: $border-radius-md;
+  border-radius: $radius-md;
   font-size: $text-sm;
   background: $white;
   cursor: pointer;
@@ -1251,7 +1251,7 @@
 .diagram-container {
   background: $bg-secondary;
   border: 2px solid $border-color;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   padding: $spacing-md;
   margin-bottom: $spacing-md;
   overflow: auto;
@@ -1259,7 +1259,7 @@
 
 .diagram-svg {
   background: $white;
-  border-radius: $border-radius-md;
+  border-radius: $radius-md;
   box-shadow: $shadow-sm;
 }
 
@@ -1268,7 +1268,7 @@
   gap: $spacing-xl;
   padding: $spacing-md;
   background: $bg-secondary;
-  border-radius: $border-radius-md;
+  border-radius: $radius-md;
   flex-wrap: wrap;
 }
 
@@ -1302,7 +1302,7 @@
 }
 
 .legend-circle.cleaning {
-  background: $purple-light;
+  background: $bg-secondary;
   border-color: $secondary-purple;
 }
 
@@ -1321,7 +1321,7 @@
   width: 100%;
   padding: $spacing-sm;
   border: 2px solid $border-color;
-  border-radius: $border-radius-md;
+  border-radius: $radius-md;
   font-size: $text-sm;
   transition: $transition-all;
 }
@@ -1336,7 +1336,7 @@
   width: 100%;
   padding: $spacing-sm;
   border: 2px solid $border-color;
-  border-radius: $border-radius-md;
+  border-radius: $radius-md;
   font-size: $text-sm;
   background: $white;
   cursor: pointer;
@@ -1355,7 +1355,7 @@
   width: 100%;
   padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
   border: 2px solid $border-color;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   font-size: $text-sm;
 }
 
@@ -1372,7 +1372,7 @@
 .partner-card {
   background: $bg-secondary;
   border: 2px solid $border-color;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   padding: $spacing-md;
   cursor: pointer;
   transition: $transition-all;
@@ -1435,7 +1435,7 @@
 .menu-item {
   background: $bg-secondary;
   border: 1px solid $border-color;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   padding: $spacing-md;
   @include flex-between;
   align-items: center;
@@ -1486,7 +1486,7 @@
 
 .order-summary {
   background: $bg-secondary;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   padding: $spacing-lg;
   margin-top: $spacing-md;
 }
@@ -1538,7 +1538,7 @@
 .cooking-method {
   background: $bg-secondary;
   border: 2px solid $border-color;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   padding: $spacing-md;
   cursor: pointer;
   transition: $transition-all;
@@ -1589,7 +1589,7 @@
 .bill-summary {
   background: $bg-secondary;
   border: 1px solid $border-color;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   padding: $spacing-md;
 }
 
@@ -1634,7 +1634,7 @@
 .payment-method {
   background: $bg-secondary;
   border: 2px solid $border-color;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   padding: $spacing-md;
   cursor: pointer;
   transition: $transition-all;
@@ -1697,14 +1697,14 @@
 .cash-payment {
   background: $bg-secondary;
   border: 1px solid $border-color;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   padding: $spacing-md;
 }
 
 .change-display {
   background: $success-light;
   border: 1px solid $success-200;
-  border-radius: $border-radius-md;
+  border-radius: $radius-md;
   padding: $spacing-sm;
   margin-top: $spacing-md;
   @include flex-between;
@@ -1732,7 +1732,7 @@
 .payment-total {
   background: $bg-secondary;
   border: 2px solid $border-color;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   padding: $spacing-md;
   margin-top: $spacing-md;
 }

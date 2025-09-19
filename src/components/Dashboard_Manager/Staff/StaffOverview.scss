@@ -17,7 +17,7 @@
 
 .stat-card {
   background: white;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   padding: $spacing-xl;
   box-shadow: $shadow-sm;
   border-left: 4px solid;
@@ -40,7 +40,7 @@
     border-left-color: $warning-yellow;
   }
   &--red {
-    border-left-color: $danger-color;
+    border-left-color: $error-red;
   }
 
   &__icon {
@@ -62,7 +62,7 @@
     background: $warning-yellow;
   }
   &--red &__icon {
-    background: $danger-color;
+    background: $error-red;
   }
 
   &__content {
@@ -94,14 +94,14 @@
     }
 
     &--decrease {
-      color: $danger-color;
+      color: $error-red;
     }
   }
 }
 
 .overview-card {
   background: white;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   box-shadow: $shadow-sm;
   overflow: hidden;
 
@@ -205,7 +205,7 @@
       background: $primary-blue;
     }
     &--red {
-      background: $danger-color;
+      background: $error-red;
     }
   }
 
@@ -235,7 +235,7 @@
   gap: $spacing-lg;
   padding: $spacing-lg;
   background: $gray-50;
-  border-radius: $border-radius-md;
+  border-radius: $radius-md;
 
   .performer-rank {
     width: 30px;
@@ -297,7 +297,7 @@
   gap: $spacing-sm;
   padding: $spacing-xl;
   border: none;
-  border-radius: $border-radius-md;
+  border-radius: $radius-md;
   cursor: pointer;
   transition: all $transition-base;
   font-weight: 500;

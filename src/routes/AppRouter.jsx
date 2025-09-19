@@ -13,7 +13,7 @@ import StaffOrder from "../components/StaffOrder";
 import Home from "../components/Homepage_Client/Home";
 import RestaurantsList from "../components/RestaurantsList";
 import RestaurantDetail from "../components/RestaurantDetail";
-import Dashboard from "../components/admin/Dashboard";
+import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
 import MenuManagement from "../components/admin/MenuManagement";
 
 import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
@@ -94,7 +94,6 @@ const PrivateRoute = ({ children, allowedRoles }) => {
   );
 
   if (loading) {
-    console.log("Loading state is true - Dashboard not rendering yet");
     return null;
   }
   if (!token) {
@@ -115,6 +114,7 @@ const AppRouter = () => {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/test" element={<Dashboard />} />
       <Route
         path="/restaurants"
         element={

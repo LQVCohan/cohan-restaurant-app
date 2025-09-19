@@ -3,7 +3,7 @@ import React, { useEffect } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import AppRouter from "./routes/AppRouter";
 import { AuthProvider } from "./context/AuthContext";
-import "./styles/Globals.scss";
+import "./styles/globals.scss";
 
 function App() {
   return (

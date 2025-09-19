@@ -138,7 +138,7 @@
   &__icon {
     width: 3rem;
     height: 3rem;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     background: $gray-100;
     @include flex-center;
     font-size: 1.5rem;
@@ -148,7 +148,7 @@
     @include flex-center;
     gap: $spacing-xs;
     padding: $spacing-xs $spacing-sm;
-    border-radius: $border-radius-md;
+    border-radius: $radius-md;
     font-size: 0.75rem;
     font-weight: 500;
 
@@ -210,7 +210,7 @@
   @include flex-center;
   gap: $spacing-lg;
   padding: $spacing-lg;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   cursor: pointer;
   transition: all $transition-fast;
   border: 1px solid $gray-200;
@@ -224,7 +224,7 @@
   &__icon {
     width: 3rem;
     height: 3rem;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     background: $gray-100;
     @include flex-center;
     font-size: 1.5rem;
@@ -274,7 +274,7 @@
   @include flex-center;
   gap: $spacing-lg;
   padding: $spacing-lg;
-  border-radius: $border-radius-lg;
+  border-radius: $radius-lg;
   transition: background-color $transition-fast;
 
   &:hover {
@@ -284,7 +284,7 @@
   &__icon {
     width: 2.5rem;
     height: 2.5rem;
-    border-radius: $border-radius-md;
+    border-radius: $radius-md;
     background: $gray-100;
     @include flex-center;
     font-size: 1.125rem;

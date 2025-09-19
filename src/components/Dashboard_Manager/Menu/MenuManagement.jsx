@@ -22,8 +22,8 @@ import DeleteModal from "../../Dashboard_Manager/Menu/modals/DeleteModal";
 import Notification from "../../../components/common/Notification";
 
 // Hooks
-import { useMenuItems } from "../../hooks/useMenuItems";
-import { useNotification } from "../../hooks/useNotification";
+import { useMenuItems } from "../../../hooks/useMenuItems";
+import { useNotification } from "../../../hooks/useNotification";
 
 // Utils
 import { CATEGORIES, STATUSES, VIEW_MODES } from "../../../utils/constants";

@@ -108,7 +108,7 @@
   }
 
   &.preparing {
-    @include status-badge($purple-100, $purple-600);
+    @include status-badge($secondary-300-100, $secondary-300-600);
   }
 }
 
@@ -144,14 +144,14 @@
   margin: 0 0 $spacing-2 0;
 
   svg {
-    color: $purple-600;
+    color: $secondary-300-600;
   }
 }
 
 .recipeContent {
   padding: $spacing-4;
   background-color: $gray-50;
-  border-left: 4px solid $purple-500;
+  border-left: 4px solid $secondary-300-500;
   border-radius: $rounded-lg;
 
   p {

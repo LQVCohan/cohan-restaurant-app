@@ -1,0 +1,649 @@
+.customer-detail-modal {
+  .modal__content {
+    max-width: 64rem;
+    max-height: 90vh;
+    overflow: hidden;
+  }
+
+  &__content {
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(90vh - 3rem);
+
+    .customer-header {
+      background: linear-gradient(135deg, #eff6ff 0%, #faf5ff 100%);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+
+      .customer-avatar-section {
+        display: flex;
+        align-items: flex-start;
+        gap: 1.5rem;
+        margin-bottom: 1rem;
+
+        .customer-avatar {
+          position: relative;
+
+          .avatar-icon {
+            width: 5rem;
+            height: 5rem;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+          }
+
+          .status-indicator {
+            position: absolute;
+            bottom: -0.25rem;
+            right: -0.25rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 50%;
+            border: 2px solid white;
+
+            &.status--online {
+              background: #22c55e;
+            }
+            &.status--ordering {
+              background: #3b82f6;
+            }
+            &.status--away {
+              background: #f59e0b;
+            }
+            &.status--offline {
+              background: #9ca3af;
+            }
+          }
+        }
+
+        .customer-basic-info {
+          flex: 1;
+
+          .name-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+
+            h2 {
+              font-size: 1.5rem;
+              font-weight: 700;
+              color: #111827;
+              margin: 0;
+            }
+
+            .customer-type {
+              padding: 0.25rem 0.75rem;
+              border-radius: 9999px;
+              font-size: 0.875rem;
+              font-weight: 500;
+
+              &.type--vip {
+                background: #faf5ff;
+                color: #7c3aed;
+              }
+              &.type--frequent {
+                background: #eff6ff;
+                color: #2563eb;
+              }
+              &.type--new {
+                background: #f0fdf4;
+                color: #059669;
+              }
+            }
+          }
+
+          .contact-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+
+            .contact-row {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 1rem;
+            }
+
+            .contact-item {
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+              font-size: 0.875rem;
+
+              .contact-icon {
+                width: 1rem;
+              }
+
+              .contact-label {
+                color: #6b7280;
+                min-width: 4rem;
+              }
+
+              .contact-value {
+                font-weight: 500;
+                color: #111827;
+
+                &.activity {
+                  &.status--online {
+                    color: #059669;
+                  }
+                  &.status--ordering {
+                    color: #2563eb;
+                  }
+                  &.status--away {
+                    color: #d97706;
+                  }
+                  &.status--offline {
+                    color: #6b7280;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      .customer-stats {
+        display: flex;
+        justify-content: flex-end;
+        gap: 2rem;
+
+        .stat-item {
+          text-align: center;
+
+          .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #059669;
+          }
+
+          .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+          }
+        }
+      }
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+
+      .stats-card {
+        padding: 1rem;
+        border-radius: 0.75rem;
+        text-align: center;
+
+        &--orders {
+          background: #eff6ff;
+          .stats-value {
+            color: #2563eb;
+          }
+          .stats-label {
+            color: #1e40af;
+          }
+        }
+
+        &--average {
+          background: #f0fdf4;
+          .stats-value {
+            color: #059669;
+          }
+          .stats-label {
+            color: #047857;
+          }
+        }
+
+        &--favorites {
+          background: #faf5ff;
+          .stats-value {
+            color: #7c3aed;
+          }
+          .stats-label {
+            color: #6b21a8;
+          }
+        }
+
+        &--reservations {
+          background: #fff7ed;
+          .stats-value {
+            color: #ea580c;
+          }
+          .stats-label {
+            color: #c2410c;
+          }
+        }
+
+        .stats-value {
+          font-size: 1.5rem;
+          font-weight: 700;
+        }
+
+        .stats-label {
+          font-size: 0.875rem;
+          margin-top: 0.25rem;
+        }
+      }
+    }
+
+    .tabs-section {
+      border: 1px solid #e5e7eb;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+
+      .tabs-nav {
+        display: flex;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+
+        .tab-btn {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1rem;
+          border: none;
+          background: transparent;
+          color: #6b7280;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border-bottom: 2px solid transparent;
+
+          &:hover {
+            color: #3b82f6;
+            background: #f3f4f6;
+          }
+
+          &.active {
+            color: #3b82f6;
+            background: white;
+            border-bottom-color: #3b82f6;
+          }
+
+          .tab-icon {
+            font-size: 1rem;
+          }
+
+          .tab-label {
+            font-size: 0.875rem;
+          }
+        }
+      }
+
+      .tabs-content {
+        padding: 1.5rem;
+        background: white;
+
+        .tab-content {
+          h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #111827;
+            margin: 0 0 1rem 0;
+          }
+
+          // Orders Tab
+          .orders-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+
+            .order-item {
+              background: #f9fafb;
+              border-radius: 0.5rem;
+              padding: 1rem;
+
+              .order-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+
+                .order-info {
+                  display: flex;
+                  align-items: center;
+                  gap: 0.75rem;
+
+                  .order-type-icon {
+                    font-size: 1.125rem;
+                  }
+
+                  .order-items {
+                    font-weight: 500;
+                    color: #111827;
+                  }
+
+                  .order-date {
+                    font-size: 0.875rem;
+                    color: #6b7280;
+                  }
+                }
+
+                .order-amount {
+                  text-align: right;
+
+                  .amount {
+                    font-weight: 700;
+                    color: #059669;
+                  }
+
+                  .order-type {
+                    font-size: 0.875rem;
+                    color: #6b7280;
+                  }
+                }
+              }
+            }
+          }
+
+          // Reservations Tab
+          .reservations-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+
+            .reservation-item {
+              background: #f9fafb;
+              border-radius: 0.5rem;
+              padding: 1rem;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+
+              .reservation-info {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+
+                .reservation-icon {
+                  font-size: 1.125rem;
+                }
+
+                .reservation-datetime {
+                  font-weight: 500;
+                  color: #111827;
+                }
+
+                .reservation-guests {
+                  font-size: 0.875rem;
+                  color: #6b7280;
+                }
+              }
+
+              .reservation-status {
+                padding: 0.25rem 0.75rem;
+                border-radius: 9999px;
+                font-size: 0.875rem;
+                font-weight: 500;
+
+                &.confirmed {
+                  background: #f0fdf4;
+                  color: #15803d;
+                }
+
+                &.completed {
+                  background: #f3f4f6;
+                  color: #374151;
+                }
+              }
+            }
+          }
+
+          .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #9ca3af;
+
+            .empty-icon {
+              font-size: 2rem;
+              margin-bottom: 0.5rem;
+              display: block;
+            }
+
+            p {
+              margin: 0;
+            }
+          }
+
+          // Preferences Tab
+          .preferences-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+
+            .preference-section {
+              &.full-width {
+                grid-column: 1 / -1;
+              }
+
+              h4 {
+                font-size: 1rem;
+                font-weight: 500;
+                color: #111827;
+                margin: 0 0 0.5rem 0;
+              }
+
+              .preference-tag {
+                display: inline-block;
+                padding: 0.25rem 0.75rem;
+                border-radius: 9999px;
+                font-size: 0.875rem;
+                font-weight: 500;
+                margin-right: 0.5rem;
+                margin-bottom: 0.5rem;
+
+                &.spice {
+                  background: #fff7ed;
+                  color: #ea580c;
+                }
+
+                &.diet {
+                  background: #f0fdf4;
+                  color: #15803d;
+                }
+
+                &.allergy {
+                  background: #fef2f2;
+                  color: #dc2626;
+                }
+
+                &.favorite {
+                  background: #eff6ff;
+                  color: #2563eb;
+                }
+              }
+
+              .no-allergies {
+                color: #6b7280;
+                font-style: italic;
+              }
+
+              .allergies-list,
+              .favorite-items {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+              }
+            }
+          }
+
+          // Notes Tab
+          .existing-note {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+
+            .note-header {
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+              margin-bottom: 0.5rem;
+
+              .note-icon {
+                font-size: 1.125rem;
+              }
+
+              h4 {
+                font-size: 1rem;
+                font-weight: 500;
+                color: #92400e;
+                margin: 0;
+              }
+            }
+
+            .note-content {
+              color: #92400e;
+              margin: 0;
+            }
+          }
+
+          .add-note-section {
+            h4 {
+              font-size: 1rem;
+              font-weight: 500;
+              color: #111827;
+              margin: 0 0 0.75rem 0;
+            }
+
+            .note-textarea {
+              width: 100%;
+              padding: 0.75rem;
+              border: 1px solid #d1d5db;
+              border-radius: 0.5rem;
+              resize: vertical;
+              font-family: inherit;
+              margin-bottom: 0.75rem;
+
+              &:focus {
+                outline: none;
+                ring: 2px;
+                ring-color: #3b82f6;
+                border-color: transparent;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.75rem;
+
+      .btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        border-radius: 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: none;
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        &--primary {
+          background: #3b82f6;
+          color: white;
+
+          &:hover:not(:disabled) {
+            background: #2563eb;
+          }
+        }
+
+        &--success {
+          background: #059669;
+          color: white;
+
+          &:hover:not(:disabled) {
+            background: #047857;
+          }
+        }
+
+        &--info {
+          background: #7c3aed;
+          color: white;
+
+          &:hover:not(:disabled) {
+            background: #6d28d9;
+          }
+        }
+      }
+    }
+  }
+
+  // Responsive
+  @media (max-width: 1024px) {
+    .modal__content {
+      max-width: 95vw;
+      margin: 1rem;
+    }
+
+    &__content {
+      .customer-header {
+        .customer-avatar-section {
+          flex-direction: column;
+          text-align: center;
+
+          .contact-info .contact-row {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .customer-stats {
+          justify-content: center;
+        }
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .tabs-section .tabs-nav {
+        flex-wrap: wrap;
+
+        .tab-btn {
+          flex: 1 1 50%;
+        }
+      }
+
+      .preferences-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .action-buttons {
+        flex-direction: column;
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    &__content {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .tabs-section .tabs-nav .tab-btn {
+        flex: 1 1 100%;
+      }
+    }
+  }
+}

@@ -8,7 +8,7 @@ import HowItWorks from "./HowItWorks";
 import Cart from "./Cart";
 import TableBooking from "./TableBooking";
 import Footer from "./Footer";
-import { useCart } from "../hooks/useCart";
+import { useCart } from "../../hooks/useCart";
 import "../../styles/Homepage/Home.scss";
 
 const Home = () => {

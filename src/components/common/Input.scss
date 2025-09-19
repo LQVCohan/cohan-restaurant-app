@@ -1,0 +1,81 @@
+// FOODHUB Design Tokens
+$primary: #0284c7;
+$primary-hover: #0369a1;
+$primary-light: #f0f9ff;
+$text: #0c4a6e;
+$gray: #6b7280;
+$error: #dc2626;
+$success: #16a34a;
+$border: #e2e8f0;
+$white: #ffffff;
+
+.input {
+  width: 100%;
+  border: 2px solid $border;
+  border-radius: 0.5rem;
+  background-color: $white;
+  color: $text;
+  font-family: "Inter", -webkit-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  transition: all 0.2s ease;
+  outline: none;
+
+  &:focus {
+    border-color: $primary;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+  }
+
+  &::placeholder {
+    color: $gray;
+  }
+
+  // Variants
+  &--default {
+    border-color: $border;
+  }
+
+  &--error {
+    border-color: $error;
+
+    &:focus {
+      border-color: $error;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+    }
+  }
+
+  // Sizes
+  &--sm {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    height: 2rem;
+  }
+
+  &--md {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    height: 2.5rem;
+  }
+
+  &--lg {
+    padding: 1rem 1.25rem;
+    font-size: 1.125rem;
+    height: 3rem;
+  }
+
+  // States
+  &--disabled {
+    background-color: #f8fafc;
+    color: $gray;
+    cursor: not-allowed;
+    opacity: 0.6;
+
+    &:focus {
+      border-color: $border;
+      box-shadow: none;
+    }
+  }
+
+  &:hover:not(:disabled):not(.input--disabled) {
+    border-color: $primary-hover;
+  }
+}

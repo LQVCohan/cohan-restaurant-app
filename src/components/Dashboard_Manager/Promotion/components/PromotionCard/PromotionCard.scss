@@ -1,0 +1,217 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+.promotion-card {
+  background: $primary-light;
+  border: 2px solid $border-color;
+  border-radius: $border-radius;
+  overflow: hidden;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15),
+      0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border-color: $primary;
+  }
+
+  .card-header {
+    padding: $spacing-lg;
+    background: $white;
+    border-bottom: 2px solid $border-color;
+
+    .card-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: $spacing-sm;
+
+      .promotion-name {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: $text-primary;
+        margin-bottom: $spacing-xs;
+      }
+
+      .promotion-description {
+        color: $text-secondary;
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+
+      .promotion-type {
+        background: $primary;
+        color: $white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .card-body {
+    padding: $spacing-lg;
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+      margin-bottom: $spacing-md;
+
+      .status-dot {
+        width: 0.75rem;
+        height: 0.75rem;
+        border-radius: 50%;
+      }
+
+      .status-text {
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+
+      &.status-active .status-dot {
+        background: #10b981;
+      }
+
+      &.status-scheduled .status-dot {
+        background: #f59e0b;
+      }
+
+      &.status-expired .status-dot {
+        background: #ef4444;
+      }
+
+      &.status-draft .status-dot {
+        background: $text-secondary;
+      }
+    }
+
+    .promotion-details {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: $spacing-md;
+      margin-bottom: $spacing-lg;
+
+      .detail-item {
+        display: flex;
+        flex-direction: column;
+
+        .detail-label {
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: $text-secondary;
+          text-transform: uppercase;
+          margin-bottom: $spacing-xs;
+        }
+
+        .detail-value {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: $text-primary;
+        }
+      }
+    }
+
+    .promotion-conditions {
+      background: $white;
+      border: 2px solid $border-color;
+      border-radius: $border-radius;
+      padding: $spacing-md;
+      margin-bottom: $spacing-lg;
+
+      .conditions-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: $text-primary;
+        margin-bottom: $spacing-sm;
+      }
+
+      .conditions-list {
+        list-style: none;
+        font-size: 0.75rem;
+        color: $text-secondary;
+        margin: 0;
+        padding: 0;
+
+        li {
+          margin-bottom: $spacing-xs;
+          padding-left: $spacing-md;
+          position: relative;
+
+          &:before {
+            content: "•";
+            color: $primary;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+          }
+        }
+      }
+    }
+
+    .card-actions {
+      display: flex;
+      gap: $spacing-sm;
+      justify-content: flex-start;
+
+      .btn {
+        &.btn-small {
+          padding: $spacing-sm $spacing-md;
+          font-size: 0.75rem;
+          border-radius: $border-radius-sm;
+        }
+
+        &.btn-edit {
+          background: #f59e0b;
+          color: $white;
+          border: none;
+
+          &:hover {
+            background: #d97706;
+            transform: translateY(-1px);
+          }
+        }
+
+        &.btn-delete {
+          background: #ef4444;
+          color: $white;
+          border: none;
+
+          &:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+          }
+        }
+
+        &.btn-duplicate {
+          background: $text-secondary;
+          color: $white;
+          border: none;
+
+          &:hover {
+            background: #4b5563;
+            transform: translateY(-1px);
+          }
+        }
+      }
+    }
+  }
+}
+
+// Animation
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}

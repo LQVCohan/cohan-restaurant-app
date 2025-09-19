@@ -63,15 +63,15 @@
 
   &.total {
     background: #dbeafe;
-    color: $primary-color;
+    color: $primary;
   }
   &.active {
     background: #dcfce7;
-    color: $success-color;
+    color: $success-400;
   }
   &.inactive {
     background: #fef3c7;
-    color: $warning-color;
+    color: $warning-400;
   }
   &.new {
     background: #f3e8ff;
@@ -135,7 +135,7 @@
 
     &:focus {
       outline: none;
-      border-color: $primary-color;
+      border-color: $primary;
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
   }
@@ -162,7 +162,7 @@
 
   &:focus {
     outline: none;
-    border-color: $primary-color;
+    border-color: $primary;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 }
@@ -185,7 +185,7 @@
 
     &.active {
       background: $white;
-      color: $primary-color;
+      color: $primary;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
 
@@ -210,7 +210,7 @@
   text-decoration: none;
 
   &.btn-primary {
-    background: $primary-color;
+    background: $primary;
     color: $white;
 
     &:hover {
@@ -306,13 +306,13 @@
   border: 2px solid $white;
 
   &.active {
-    background: $success-color;
+    background: $success-400;
   }
   &.inactive {
-    background: $warning-color;
+    background: $warning-400;
   }
   &.break {
-    background: $danger-color;
+    background: $error-red;
   }
 }
 
@@ -366,7 +366,7 @@
 
   &.edit {
     background: #dbeafe;
-    color: $primary-color;
+    color: $primary;
 
     &:hover {
       background: #bfdbfe;
@@ -375,7 +375,7 @@
 
   &.delete {
     background: #fecaca;
-    color: $danger-color;
+    color: $error-red;
 
     &:hover {
       background: #fca5a5;
@@ -489,9 +489,9 @@
     }
 
     &.active {
-      background: $primary-color;
+      background: $primary;
       color: $white;
-      border-color: $primary-color;
+      border-color: $primary;
     }
 
     &:disabled {
@@ -597,7 +597,7 @@
     width: 2rem;
     height: 2rem;
     border: 2px solid #e5e7eb;
-    border-top: 2px solid $primary-color;
+    border-top: 2px solid $primary;
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }

@@ -36,7 +36,7 @@
 
     &--active {
       background: $bg-primary;
-      color: $primary-color;
+      color: $primary;
       box-shadow: $shadow-sm;
     }
   }
@@ -147,7 +147,7 @@
   }
 
   &__new-price {
-    color: $success-color;
+    color: $success-400;
     font-weight: $font-semibold;
   }
 

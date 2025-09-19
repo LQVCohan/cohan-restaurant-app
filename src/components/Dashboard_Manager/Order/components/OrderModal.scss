@@ -98,7 +98,7 @@
   }
 
   &.preparing {
-    @include status-badge($purple-100, $purple-600);
+    @include status-badge($secondary-300-100, $secondary-300-600);
   }
 
   &.ready {

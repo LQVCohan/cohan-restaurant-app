@@ -1,0 +1,41 @@
+// FOODHUB Design Tokens
+$primary: #0284c7;
+$text: #0c4a6e;
+$gray: #6b7280;
+$error: #dc2626;
+
+.label {
+  display: inline-block;
+  font-family: "Inter", -webkit-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-weight: 500;
+  color: $text;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+
+  // Sizes
+  &--sm {
+    font-size: 0.875rem;
+  }
+
+  &--md {
+    font-size: 1rem;
+  }
+
+  &--lg {
+    font-size: 1.125rem;
+  }
+
+  // States
+  &--disabled {
+    color: $gray;
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &__required {
+    color: $error;
+    margin-left: 0.25rem;
+    font-weight: 600;
+  }
+}

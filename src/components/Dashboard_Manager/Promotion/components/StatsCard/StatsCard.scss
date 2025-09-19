@@ -1,0 +1,43 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+.stats-card {
+  @include card-base;
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: $spacing-md;
+
+    @include mobile {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .stat-card {
+      background: $primary-light;
+      border: 2px solid $border-color;
+      border-radius: $border-radius;
+      padding: $spacing-md;
+      text-align: center;
+      transition: all 0.2s ease;
+
+      &:hover {
+        transform: translateY(-2px);
+        border-color: $primary;
+        box-shadow: $shadow-base;
+      }
+
+      .stat-card-number {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: $primary;
+        margin-bottom: $spacing-xs;
+      }
+
+      .stat-card-label {
+        font-size: 0.75rem;
+        color: $text-secondary;
+        font-weight: 500;
+      }
+    }
+  }
+}

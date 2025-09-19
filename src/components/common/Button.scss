@@ -1,139 +1,157 @@
-@use "../../styles/variables.scss" as *;
-@use "../../styles/mixins.scss" as *;
+// FOODHUB Design Tokens
+$primary: #0284c7;
+$primary-hover: #0369a1;
+$primary-light: #f0f9ff;
+$text-color: #0c4a6e;
+$gray-color: #6b7280;
+$border-radius: 1rem;
+$shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 
 .btn {
-  @include button-base;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-decoration: none;
+  outline: none;
   position: relative;
-  overflow: hidden;
+
+  &:focus-visible {
+    ring: 2px solid $primary;
+    ring-offset: 2px;
+  }
 
   // Variants
   &--primary {
-    @include button-primary;
+    background-color: $primary;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background-color: $primary-hover;
+      transform: translateY(-1px);
+      box-shadow: $shadow;
+    }
   }
 
   &--secondary {
-    @include button-secondary;
-  }
-
-  &--success {
-    background: $success-green;
-    color: white;
+    background-color: transparent;
+    color: $text-color;
+    border: 2px solid #e2e8f0;
 
     &:hover:not(:disabled) {
-      background: custom-darken($success-green, 10%);
+      background-color: #f8fafc;
       transform: translateY(-1px);
-    }
-  }
-
-  &--warning {
-    background: $warning-yellow;
-    color: white;
-
-    &:hover:not(:disabled) {
-      background: custom-darken($warning-yellow, 10%);
-      transform: translateY(-1px);
-    }
-  }
-
-  &--danger {
-    background: $error-red;
-    color: white;
-
-    &:hover:not(:disabled) {
-      background: custom-darken($error-red, 10%);
-      transform: translateY(-1px);
+      box-shadow: $shadow;
     }
   }
 
   &--outline {
-    background: transparent;
-    border: 1px solid $gray-300;
-    color: $gray-700;
+    background-color: transparent;
+    color: $text-color;
+    border: 2px solid #e2e8f0;
 
     &:hover:not(:disabled) {
-      background: $gray-50;
-      border-color: $gray-400;
+      background-color: #f8fafc;
+      border-color: $primary;
       transform: translateY(-1px);
+      box-shadow: $shadow;
     }
   }
 
   &--ghost {
-    background: transparent;
-    color: $gray-700;
+    background-color: transparent;
+    color: $text-color;
 
     &:hover:not(:disabled) {
-      background: $gray-100;
+      background-color: #f8fafc;
       transform: translateY(-1px);
+    }
+  }
+
+  &--destructive {
+    background-color: #dc2626;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background-color: #b91c1c;
+      transform: translateY(-1px);
+      box-shadow: $shadow;
     }
   }
 
   // Sizes
   &--sm {
-    padding: $spacing-xs $spacing-sm;
+    padding: 0.375rem 0.75rem;
     font-size: 0.75rem;
+    border-radius: 0.375rem;
   }
 
   &--md {
-    padding: $spacing-sm $spacing-md;
+    padding: 0.5rem 1rem;
     font-size: 0.875rem;
+    border-radius: 0.5rem;
   }
 
   &--lg {
-    padding: $spacing-md $spacing-lg;
+    padding: 0.75rem 1.5rem;
     font-size: 1rem;
-  }
-
-  &--xl {
-    padding: $spacing-lg $spacing-xl;
-    font-size: 1.125rem;
+    border-radius: 0.75rem;
   }
 
   // States
-  &--loading {
-    pointer-events: none;
-  }
-
-  &--disabled {
+  &--disabled,
+  &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     transform: none !important;
+    box-shadow: none !important;
   }
 
-  // Icons
+  &--loading {
+    cursor: not-allowed;
+
+    .btn__text {
+      opacity: 0.7;
+    }
+  }
+
+  // Icon styles
   &__icon {
+    font-size: 1rem;
+
     &--left {
-      margin-right: $spacing-sm;
+      margin-right: 0.25rem;
     }
 
     &--right {
-      margin-left: $spacing-sm;
+      margin-left: 0.25rem;
     }
   }
 
   &__loading-icon {
-    margin-right: $spacing-sm;
+    font-size: 1rem;
+    animation: spin 1s linear infinite;
   }
 
   &__text {
     display: inline-block;
   }
+}
 
-  // Ripple effect
-  &::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%);
-    transition: width 0.3s, height 0.3s;
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
   }
-
-  &:active::after {
-    width: 300px;
-    height: 300px;
+  to {
+    transform: rotate(360deg);
   }
 }

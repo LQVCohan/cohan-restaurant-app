@@ -1,0 +1,45 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.promotions-card {
+  @include card-base;
+
+  .promotions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: $spacing-md;
+
+    @include mobile {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: $text-secondary;
+    grid-column: 1 / -1;
+
+    .empty-icon {
+      font-size: 4rem;
+      margin-bottom: $spacing-md;
+      display: block;
+    }
+
+    .empty-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: $spacing-sm;
+      color: $text-primary;
+    }
+
+    .empty-description {
+      font-size: 0.875rem;
+      margin-bottom: $spacing-xl;
+    }
+
+    .btn {
+      @include button-primary;
+    }
+  }
+}

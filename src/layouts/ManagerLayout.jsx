@@ -4,10 +4,12 @@ import Header from "../components/Dashboard_Manager/Header";
 import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
 import ManagerAnalyst from "../components/Dashboard_Manager/Analyst/ManagerAnalyst";
 import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
+import ScheduleManagement from "../components/Dashboard_Manager/Schedule/ScheduleManagement";
 import OrderManagement from "../components/Dashboard_Manager/Order/OrderManagement";
 import MenuManagement from "../components/Dashboard_Manager/Menu/MenuManagement";
 import TableManagement from "../components/Dashboard_Manager/Table/TableManagement";
-
+import CustomerManagement from "../components/Dashboard_Manager/Customer/CustomerManagement";
+import PromotionManagement from "../components/Dashboard_Manager/Promotion/PromotionManagement";
 import "./ManagerLayout.scss";
 const ManagerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -75,6 +77,8 @@ const ManagerLayout = () => {
         return <Inventory />;
       case "staff":
         return <StaffManagement />;
+      case "customers":
+        return <CustomerManagement />;
       case "analytics":
         return <ManagerAnalyst />;
       case "transactions":
@@ -84,9 +88,9 @@ const ManagerLayout = () => {
       case "settings":
         return <Settings />;
       case "schedules":
-        return <Settings />;
+        return <ScheduleManagement />;
       case "promotions":
-        return <Settings />;
+        return <PromotionManagement />;
       case "rates":
         return <Settings />;
       case "finance":

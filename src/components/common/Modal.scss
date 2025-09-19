@@ -77,16 +77,21 @@
 
   // Size variants
   &--sm {
-    max-width: 400px;
+    max-width: 28rem;
+    width: 100%;
   }
   &--md {
-    max-width: 600px;
+    max-width: 32rem;
+    width: 100%;
   }
   &--lg {
-    max-width: 800px;
+    max-width: 48rem;
+    width: 100%;
   }
   &--xl {
-    max-width: 1000px;
+    max-width: 80rem;
+    width: 90vw;
+    height: 90vh;
   }
   &--full {
     max-width: 95vw;

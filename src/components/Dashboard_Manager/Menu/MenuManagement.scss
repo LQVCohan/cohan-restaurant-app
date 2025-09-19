@@ -93,7 +93,7 @@
 
   &__view-toggle {
     display: flex;
-    background: $secondary-color;
+    background: $bg-secondary;
     border-radius: $radius-md;
     padding: $spacing-xs;
   }
@@ -109,7 +109,7 @@
 
     &--active {
       background: $bg-primary;
-      color: $primary-color;
+      color: $primary;
       box-shadow: $shadow-sm;
     }
   }

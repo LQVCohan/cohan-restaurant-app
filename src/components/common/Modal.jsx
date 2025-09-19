@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import "./Modal.scss";
-
 const Modal = ({
   isOpen,
   onClose,
@@ -15,18 +14,17 @@ const Modal = ({
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
 
-  // Handle modal open/close with proper timing
   useEffect(() => {
     if (isOpen) {
       setShouldRender(true);
-      // Small delay to ensure DOM is ready for transition
+
       const timer = setTimeout(() => {
         setIsVisible(true);
       }, 10);
       return () => clearTimeout(timer);
     } else {
       setIsVisible(false);
-      // Wait for transition to complete before unmounting
+
       const timer = setTimeout(() => {
         setShouldRender(false);
       }, 800); // Match transition duration
@@ -34,7 +32,6 @@ const Modal = ({
     }
   }, [isOpen]);
 
-  // Handle escape key
   useEffect(() => {
     if (!closeOnEscape) return;
 
@@ -48,7 +45,6 @@ const Modal = ({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose, closeOnEscape]);
 
-  // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -56,23 +52,19 @@ const Modal = ({
       document.body.style.overflow = "auto";
     }
 
-    // Cleanup on unmount
     return () => {
       document.body.style.overflow = "auto";
     };
   }, [isOpen]);
 
-  // Handle overlay click
   const handleOverlayClick = (event) => {
     if (closeOnOverlayClick && event.target === event.currentTarget) {
       onClose();
     }
   };
 
-  // Don't render if not needed
   if (!shouldRender) return null;
 
-  // Create portal to render modal outside component tree
   return createPortal(
     <div
       className={`modal-overlay ${isVisible ? "modal-overlay--open" : ""}`}
@@ -85,7 +77,6 @@ const Modal = ({
         className={`modal modal--${size}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal Header */}
         {(title || showCloseButton) && (
           <div className="modal__header">
             {title && (
@@ -106,7 +97,6 @@ const Modal = ({
           </div>
         )}
 
-        {/* Modal Content */}
         <div className="modal__content">{children}</div>
       </div>
     </div>,
@@ -114,12 +104,10 @@ const Modal = ({
   );
 };
 
-// Modal Footer Component (optional)
 export const ModalFooter = ({ children, className = "" }) => (
   <div className={`modal__footer ${className}`}>{children}</div>
 );
 
-// Usage Example Component
 export const ModalExample = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 

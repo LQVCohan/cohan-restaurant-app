@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { searchData } from "../../data/searchData";
-import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import "./SearchBox.scss";
 
 const SearchBox = () => {

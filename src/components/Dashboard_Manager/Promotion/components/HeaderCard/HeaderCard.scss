@@ -1,0 +1,65 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.header-card {
+  @include card-base;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  @include mobile {
+    flex-direction: column;
+    gap: $spacing-md;
+    text-align: center;
+    padding: $spacing-md;
+  }
+
+  .header-left {
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: $text-primary;
+      margin-bottom: $spacing-xs;
+    }
+
+    .header-subtitle {
+      font-size: 0.875rem;
+      color: $text-secondary;
+      margin-bottom: $spacing-sm;
+    }
+
+    .restaurant-selector {
+      @include form-input;
+      background: $primary-light;
+      font-weight: 500;
+      color: $text-primary;
+      min-width: 220px;
+    }
+  }
+
+  .header-stats {
+    display: flex;
+    gap: $spacing-lg;
+
+    @include mobile {
+      justify-content: center;
+      gap: $spacing-md;
+    }
+
+    .stat-item {
+      text-align: center;
+
+      .stat-number {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: $primary;
+      }
+
+      .stat-label {
+        font-size: 0.75rem;
+        color: $text-secondary;
+        font-weight: 500;
+      }
+    }
+  }
+}

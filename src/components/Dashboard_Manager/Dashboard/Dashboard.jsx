@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Card from "../../Common/Card";
 import Button from "../../Common/Button";
-import { useRouter } from "../../hooks/useRouter";
+import { useRouter } from "../../../hooks/useRouter";
 import "./Dashboard.scss";
 
 const Dashboard = () => {

@@ -1,18 +1,18 @@
-@use "./variables.scss" as *;
+@use "./variables" as v;
 
-// Flexbox mixins
+// ===============
+// Layout helpers
+// ===============
 @mixin flex-center {
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
 @mixin flex-between {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-
 @mixin flex-start {
   display: flex;
   align-items: center;
@@ -22,109 +22,146 @@
   display: flex;
   flex-direction: column;
 }
-// Button mixins
-@mixin button-base {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: $spacing-sm $spacing-md;
-  border-radius: $border-radius-md;
-  font-weight: 500;
-  font-size: 0.875rem;
-  transition: all $transition-fast;
-  cursor: pointer;
-  border: none;
-  text-decoration: none;
 
-  &:disabled {
+// ===============
+// Card
+// ===============
+@mixin card-base {
+  background: v.$white;
+  border: 2px solid v.$border-color;
+  border-radius: 1rem;
+  padding: v.$spacing-lg;
+  margin-bottom: v.$spacing-md;
+  box-shadow: v.$shadow-base;
+  transition: v.$transition-all;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: v.$shadow-hover;
+  }
+}
+
+// FoodHub Card Style
+@mixin card {
+  background: v.$bg-primary;
+  border-radius: v.$radius-lg;
+  border: 2px solid v.$border-color;
+  padding: v.$spacing-6;
+  box-shadow: v.$shadow-lg;
+  transition: v.$transition-all;
+}
+@mixin card-hover {
+  &:hover {
+    box-shadow: v.$shadow-xl;
+    transform: translateY(-2px);
+  }
+}
+
+// ===============
+// Buttons
+// ===============
+@mixin button-base {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: v.$font-family;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  &:hover {
     opacity: 0.5;
-    cursor: not-allowed;
   }
 }
 
 @mixin button-primary {
   @include button-base;
-  background: linear-gradient(
-    135deg,
-    $primary-blue 0%,
-    $primary-blue-dark 100%
-  );
-  color: white;
+  background: v.$primary;
+  color: v.$white;
+  box-shadow: v.$shadow-base;
 
-  &:hover:not(:disabled) {
-    opacity: 0.9;
+  &:hover {
+    background: v.$primary-hover;
     transform: translateY(-1px);
+    box-shadow: v.$shadow-hover;
   }
 }
 
 @mixin button-secondary {
   @include button-base;
-  background: $gray-100;
-  color: $gray-700;
+  background: v.$white;
+  color: v.$text-primary;
+  border: 2px solid v.$border-color;
 
-  &:hover:not(:disabled) {
-    background: $gray-200;
-    transform: translateY(-1px);
-  }
-}
-
-// Card mixins
-@mixin card {
-  background: $bg-primary;
-  border-radius: $radius-lg;
-  box-shadow: $shadow-sm;
-  border: 1px solid $border-color;
-  transition: all 0.2s ease;
-}
-
-@mixin card-hover {
   &:hover {
-    box-shadow: $shadow-md;
+    background: v.$primary-light;
+    border-color: v.$primary;
     transform: translateY(-1px);
   }
 }
 
-// Form mixins
+// ===============
+// Forms
+// ===============
 @mixin form-input {
-  width: 100%;
-  padding: $spacing-md;
-  border: 1px solid $border-color;
-  border-radius: $radius-md;
-  font-size: $text-sm;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-family: v.$font-family;
   transition: all 0.2s ease;
 
   &:focus {
     outline: none;
-    border-color: $primary-color;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    border-color: v.$primary;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
   }
 }
 
-// Responsive mixins
+// ===============
+// Responsive (giữ cả alias cũ & mới)
+// ===============
 @mixin mobile {
-  @media (max-width: #{$breakpoint-md - 1px}) {
+  @media (max-width: v.$mobile) {
     @content;
   }
 }
-
 @mixin tablet {
-  @media (min-width: $breakpoint-md) and (max-width: #{$breakpoint-lg - 1px}) {
+  @media (max-width: v.$tablet) {
     @content;
   }
 }
-
 @mixin desktop {
-  @media (min-width: $breakpoint-lg) {
+  @media (min-width: v.$desktop) {
     @content;
   }
 }
 
-// Animation mixins
-@mixin fade-in {
-  animation: fadeIn $transition-base ease-in-out;
-  -webkit-animation: fadeIn $transition-base ease-in-out;
+@mixin r-mobile {
+  @media (max-width: #{v.$breakpoint-md - 1px}) {
+    @content;
+  }
+}
+@mixin r-tablet {
+  @media (min-width: v.$breakpoint-md) and (max-width: #{v.$breakpoint-lg - 1px}) {
+    @content;
+  }
+}
+@mixin r-desktop {
+  @media (min-width: v.$breakpoint-lg) {
+    @content;
+  }
 }
 
+// ===============
+// Animations & Utils
+// ===============
+@mixin fade-in {
+  animation: fadeIn v.$transition-base ease-in-out;
+  -webkit-animation: fadeIn v.$transition-base ease-in-out;
+}
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -137,9 +174,8 @@
 }
 
 @mixin pulse {
-  animation: pulse 2s infinite;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
-
 @keyframes pulse {
   0%,
   100% {
@@ -150,40 +186,34 @@
   }
 }
 
-// Scrollbar mixin
 @mixin custom-scrollbar {
   &::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
-
   &::-webkit-scrollbar-track {
-    background: $gray-100;
+    background: v.$gray-100;
     border-radius: 3px;
   }
-
   &::-webkit-scrollbar-thumb {
-    background: $gray-300;
+    background: v.$gray-300;
     border-radius: 3px;
-
     &:hover {
-      background: $gray-400;
+      background: v.$gray-400;
     }
   }
 }
 
-// Glass effect
 @mixin glass-effect {
   backdrop-filter: blur(10px);
   background: rgba(255, 255, 255, 0.9);
 }
 
-// Gradient backgrounds
 @mixin gradient-primary {
   background: linear-gradient(
     135deg,
-    $primary-blue 0%,
-    $primary-blue-dark 100%
+    v.$primary-blue 0%,
+    v.$primary-blue-dark 100%
   );
 }
 
@@ -191,12 +221,12 @@
   background: linear-gradient(135deg, $from 0%, $to 100%);
 }
 
-@function custom-custom-darken($color, $amount) {
-  $lightness: lightness($color) - $amount;
-  @return hsl(hue($color), saturation($color), max(0, min(100%, $lightness)));
+// helpers
+@function custom-darken($color, $amount) {
+  $l: lightness($color) - $amount;
+  @return hsl(hue($color), saturation($color), max(0, min(100%, $l)));
 }
-
-@function custom-custom-lighten($color, $amount) {
-  $lightness: lightness($color) + $amount;
-  @return hsl(hue($color), saturation($color), max(0, min(100%, $lightness)));
+@function custom-lighten($color, $amount) {
+  $l: lightness($color) + $amount;
+  @return hsl(hue($color), saturation($color), max(0, min(100%, $l)));
 }

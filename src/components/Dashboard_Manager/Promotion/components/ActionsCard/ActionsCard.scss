@@ -1,0 +1,54 @@
+@use "../../../../../styles/variables" as v;
+@use "../../../../../styles/mixins" as m;
+.actions-card {
+  @include m.card-base;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: v.$spacing-md;
+  flex-wrap: wrap;
+
+  @include m.mobile {
+    flex-direction: column;
+    align-items: stretch;
+    gap: v.$spacing-md;
+    padding: v.$spacing-md;
+  }
+
+  .search-section {
+    display: flex;
+    gap: v.$spacing-md;
+    flex: 1;
+    max-width: 600px;
+
+    @include m.mobile {
+      max-width: none;
+      flex-direction: column;
+    }
+
+    .search-input {
+      @include m.form-input;
+      flex: 1;
+    }
+
+    .status-filter {
+      background: v.$white;
+      min-width: 180px;
+    }
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 0.75rem;
+
+    .btn {
+      &.btn-primary {
+        @include m.button-primary;
+      }
+
+      &.btn-secondary {
+        @include m.button-secondary;
+      }
+    }
+  }
+}

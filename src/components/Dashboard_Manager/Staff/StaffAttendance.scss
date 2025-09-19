@@ -27,7 +27,7 @@
       .date-picker {
         padding: $spacing-md $spacing-lg;
         border: 2px solid $gray-200;
-        border-radius: $border-radius-md;
+        border-radius: $radius-md;
         font-size: 0.875rem;
         cursor: pointer;
 
@@ -40,7 +40,7 @@
       .view-mode-toggle {
         @include flex-center;
         background: $gray-100;
-        border-radius: $border-radius-md;
+        border-radius: $radius-md;
         padding: $spacing-xs;
 
         .toggle-btn {
@@ -73,7 +73,7 @@
 
   .stat-card {
     background: white;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     padding: $spacing-xl;
     box-shadow: $shadow-sm;
     @include flex-center;
@@ -119,7 +119,7 @@
       background: $warning-yellow;
     }
     &--absent .stat-icon {
-      background: $danger-color;
+      background: $error-red;
     }
     &--leave .stat-icon {
       background: $info-500;
@@ -128,7 +128,7 @@
 
   .attendance-table-container {
     background: white;
-    border-radius: $border-radius-lg;
+    border-radius: $radius-lg;
     box-shadow: $shadow-sm;
     overflow: hidden;
     margin-bottom: $spacing-2xl;
@@ -154,7 +154,7 @@
           gap: $spacing-sm;
           padding: $spacing-sm $spacing-lg;
           border: none;
-          border-radius: $border-radius-md;
+          border-radius: $radius-md;
           font-weight: 500;
           cursor: pointer;
           transition: all $transition-base;
@@ -270,8 +270,8 @@
     }
 
     &--danger {
-      background: rgba($danger-color, 0.1);
-      color: $danger-color;
+      background: rgba($error-red, 0.1);
+      color: $error-red;
     }
 
     &--info {
@@ -327,7 +327,7 @@
       padding: $spacing-xl;
       background: white;
       border: 2px solid $gray-200;
-      border-radius: $border-radius-lg;
+      border-radius: $radius-lg;
       cursor: pointer;
       transition: all $transition-base;
 

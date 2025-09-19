@@ -27,7 +27,7 @@ const Sidebar = ({ isOpen, onClose, onPageChange }) => {
       items: [
         { id: "staff", icon: "👥", label: "Nhân viên", page: "Nhân viên" },
         {
-          id: "schedule",
+          id: "schedules",
           icon: "📅",
           label: "Lịch làm việc",
           page: "Lịch làm việc",
@@ -50,7 +50,7 @@ const Sidebar = ({ isOpen, onClose, onPageChange }) => {
           page: "Khách hàng",
         },
         {
-          id: "loyalty",
+          id: "promotions",
           icon: "🎁",
           label: "Khuyến mãi",
           page: "Chương trình khuyến mãi",

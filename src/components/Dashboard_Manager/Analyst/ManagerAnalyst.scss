@@ -57,7 +57,7 @@
           transition: all 0.2s;
 
           &.active {
-            background-color: $primary-color;
+            background-color: $primary;
             color: white;
           }
 
@@ -91,7 +91,7 @@
 
         .search-btn {
           padding: 0.5rem 1rem;
-          background-color: $primary-color;
+          background-color: $primary;
           color: white;
           border: none;
           border-radius: $border-radius-sm;
@@ -100,7 +100,7 @@
           transition: background-color 0.2s;
 
           &:hover {
-            background-color: darken($primary-color, 10%);
+            background-color: darken($primary, 10%);
           }
 
           i {
@@ -142,23 +142,23 @@
         font-size: 1.25rem;
 
         &.revenue {
-          background-color: custom-lighten($success-color, 40%);
-          color: $success-color;
+          background-color: custom-lighten($success-400, 40%);
+          color: $success-400;
         }
 
         &.orders {
-          background-color: custom-lighten($primary-color, 40%);
-          color: $primary-color;
+          background-color: custom-lighten($primary, 40%);
+          color: $primary;
         }
 
         &.customers {
-          background-color: custom-lighten($purple, 40%);
-          color: $purple;
+          background-color: custom-lighten($secondary-300, 40%);
+          color: $secondary-300;
         }
 
         &.average {
-          background-color: custom-lighten($warning-color, 40%);
-          color: $warning-color;
+          background-color: custom-lighten($warning-400, 40%);
+          color: $warning-400;
         }
       }
 
@@ -167,11 +167,11 @@
         font-weight: 500;
 
         &.positive {
-          color: $success-color;
+          color: $success-400;
         }
 
         &.negative {
-          color: $danger-color;
+          color: $error-red;
         }
       }
     }
@@ -240,8 +240,8 @@
           transition: all 0.2s;
 
           &.active {
-            background-color: custom-lighten($primary-color, 40%);
-            color: darken($primary-color, 10%);
+            background-color: custom-lighten($primary, 40%);
+            color: darken($primary, 10%);
           }
 
           &:not(.active) {
@@ -302,13 +302,13 @@
           }
 
           &.third {
-            background-color: custom-lighten($warning-color, 40%);
-            color: $warning-color;
+            background-color: custom-lighten($warning-400, 40%);
+            color: $warning-400;
           }
 
           &.fourth {
-            background-color: custom-lighten($primary-color, 40%);
-            color: $primary-color;
+            background-color: custom-lighten($primary, 40%);
+            color: $primary;
           }
         }
 
@@ -339,11 +339,11 @@
           font-size: 0.875rem;
 
           &.positive {
-            color: $success-color;
+            color: $success-400;
           }
 
           &.negative {
-            color: $danger-color;
+            color: $error-red;
           }
         }
       }
@@ -370,15 +370,15 @@
       border-radius: $border-radius-sm;
 
       &.dine-in {
-        background-color: custom-lighten($primary-color, 40%);
+        background-color: custom-lighten($primary, 40%);
       }
 
       &.delivery {
-        background-color: custom-lighten($success-color, 40%);
+        background-color: custom-lighten($success-400, 40%);
       }
 
       &.reservation {
-        background-color: custom-lighten($purple, 40%);
+        background-color: custom-lighten($secondary-300, 40%);
       }
 
       .service-left {
@@ -391,18 +391,18 @@
           border-radius: $border-radius-sm;
 
           &.dine-in {
-            background-color: custom-lighten($primary-color, 30%);
-            color: $primary-color;
+            background-color: custom-lighten($primary, 30%);
+            color: $primary;
           }
 
           &.delivery {
-            background-color: custom-lighten($success-color, 30%);
-            color: $success-color;
+            background-color: custom-lighten($success-400, 30%);
+            color: $success-400;
           }
 
           &.reservation {
-            background-color: custom-lighten($purple, 30%);
-            color: $purple;
+            background-color: custom-lighten($secondary-300, 30%);
+            color: $secondary-300;
           }
         }
 
@@ -428,15 +428,15 @@
           font-weight: 700;
 
           &.dine-in {
-            color: $primary-color;
+            color: $primary;
           }
 
           &.delivery {
-            color: $success-color;
+            color: $success-400;
           }
 
           &.reservation {
-            color: $purple;
+            color: $secondary-300;
           }
         }
 
@@ -444,11 +444,11 @@
           font-size: 0.75rem;
 
           &.positive {
-            color: $success-color;
+            color: $success-400;
           }
 
           &.negative {
-            color: $danger-color;
+            color: $error-red;
           }
         }
       }
@@ -553,15 +553,15 @@
       border-radius: $border-radius-sm;
 
       &.credit {
-        background-color: custom-lighten($primary-color, 40%);
+        background-color: custom-lighten($primary, 40%);
       }
 
       &.cash {
-        background-color: custom-lighten($success-color, 40%);
+        background-color: custom-lighten($success-400, 40%);
       }
 
       &.ewallet {
-        background-color: custom-lighten($purple, 40%);
+        background-color: custom-lighten($secondary-300, 40%);
       }
 
       .payment-left {
@@ -571,15 +571,15 @@
 
         .payment-icon {
           &.credit {
-            color: $primary-color;
+            color: $primary;
           }
 
           &.cash {
-            color: $success-color;
+            color: $success-400;
           }
 
           &.ewallet {
-            color: $purple;
+            color: $secondary-300;
           }
         }
 
@@ -646,11 +646,11 @@
           }
 
           &.primary {
-            background-color: $primary-color;
+            background-color: $primary;
             color: white;
 
             &:hover {
-              background-color: darken($primary-color, 10%);
+              background-color: darken($primary, 10%);
             }
           }
 
@@ -684,7 +684,7 @@
 
           &.highlight {
             font-weight: 500;
-            color: $success-color;
+            color: $success-400;
           }
         }
 
@@ -701,13 +701,13 @@
         font-size: 0.75rem;
 
         &.positive {
-          background-color: custom-lighten($success-color, 40%);
-          color: darken($success-color, 20%);
+          background-color: custom-lighten($success-400, 40%);
+          color: darken($success-400, 20%);
         }
 
         &.negative {
-          background-color: custom-lighten($danger-color, 40%);
-          color: darken($danger-color, 10%);
+          background-color: custom-lighten($error-red, 40%);
+          color: darken($error-red, 10%);
         }
 
         i {

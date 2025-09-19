@@ -86,7 +86,7 @@
   &__price {
     font-size: $text-base;
     font-weight: $font-bold;
-    color: $success-color;
+    color: $success-400;
   }
 
   &__description {
@@ -233,7 +233,7 @@
   min-width: 80px;
 
   &:hover {
-    border-color: $primary-color;
+    border-color: $primary;
     background: #eff6ff;
   }
 
@@ -245,7 +245,7 @@
 
   &__price {
     font-weight: $font-semibold;
-    color: $success-color;
+    color: $success-400;
     font-size: 0.7rem;
   }
 }

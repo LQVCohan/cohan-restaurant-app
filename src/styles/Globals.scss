@@ -1,6 +1,5 @@
-@use "./variables.scss" as *;
-@use "./mixins.scss" as *;
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+@use "./variables" as *;
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
 
 * {
   margin: 0;
@@ -8,80 +7,49 @@
   box-sizing: border-box;
 }
 
-html,
 body {
   font-family: $font-family;
-  background-color: $gray-50;
-  color: $gray-900;
-  line-height: 1.5;
+  background: $white;
+  color: $text-primary;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
-  height: 100vh;
+  min-height: 100vh;
 }
 
 // Utility classes
 .fade-in {
-  @include fade-in;
+  animation: fadeIn 0.3s ease-out;
 }
 
-.pulse {
-  @include pulse;
-}
-
-.hover-lift {
-  transition: transform $transition-fast;
-
-  &:hover {
-    transform: translateY(-2px);
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-.glass-effect {
-  @include glass-effect;
+// Scrollbar styling
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-.gradient-bg {
-  @include gradient-primary;
+::-webkit-scrollbar-track {
+  background: $white;
 }
 
-.custom-scrollbar {
-  @include custom-scrollbar;
+::-webkit-scrollbar-thumb {
+  background: $border-color;
+  border-radius: 4px;
 }
 
-// Mobile utilities
-@include mobile {
-  .mobile-hidden {
-    display: none !important;
-  }
-
-  .mobile-full {
-    width: 100% !important;
-  }
-}
-
-// Focus styles
-button:focus,
-input:focus,
-select:focus {
-  outline: 2px solid $primary-blue;
-  outline-offset: 2px;
-}
-
-// Transitions
-.sidebar-transition {
-  transition: transform $transition-base, opacity $transition-base;
-}
-
-.content-transition {
-  transition: margin-left $transition-base;
-  -webkit-transition: margin-left $transition-base;
-  -moz-transition: margin-left $transition-base;
-  -ms-transition: margin-left $transition-base;
-  -o-transition: margin-left $transition-base;
-}
-
-.sidebar-overlay {
-  backdrop-filter: blur(4px);
-  background: rgba(0, 0, 0, 0.3);
+::-webkit-scrollbar-thumb:hover {
+  background: $text-secondary;
 }

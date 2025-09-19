@@ -1,36 +1,44 @@
-@use "../../styles/variables.scss" as *;
-@use "../../styles/mixins.scss" as *;
+// FOODHUB Design Tokens
+$primary: #0284c7;
+$primary-hover: #0369a1;
+$primary-light: #f0f9ff;
+$text: #0c4a6e;
+$gray: #6b7280;
+$white: #f1f5f9;
+$white: #ffffff;
+$border: #e2e8f0;
 
 .card {
-  @include card;
+  background-color: $white;
+  border: 2px solid $border;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease-in-out;
 
-  &--hover {
-    @include card-hover;
+  &--padding-sm {
+    padding: 0.75rem;
+  }
+
+  &--padding-default {
+    padding: 1.5rem;
+  }
+
+  &--padding-lg {
+    padding: 2rem;
   }
 
   &--padding-none {
     padding: 0;
   }
 
-  &--padding-sm {
-    padding: $spacing-md;
-  }
+  &--hover {
+    cursor: pointer;
 
-  &--padding-default {
-    padding: $spacing-xl;
-  }
-
-  &--padding-lg {
-    padding: $spacing-2xl;
-  }
-
-  @include mobile {
-    &--padding-default {
-      padding: $spacing-md;
-    }
-
-    &--padding-lg {
-      padding: $spacing-lg;
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+        0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
   }
 }

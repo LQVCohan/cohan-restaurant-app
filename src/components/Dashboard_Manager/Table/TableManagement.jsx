@@ -3,6 +3,7 @@ import Modal from "../../../components/common/Modal";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
 import Notification from "../../../components/common/Notification";
+import OrderModal from "./OrderModal";
 import "./TableManagement.scss";
 
 const TableManagement = () => {
@@ -1783,7 +1784,7 @@ const TableManagement = () => {
         isOpen={showOrderModal}
         onClose={() => setShowOrderModal(false)}
         title={currentTable ? `🍽️ Order cho ${currentTable.number}` : ""}
-        size="large"
+        size="lg"
       >
         {currentTable && (
           <>
