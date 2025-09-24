@@ -1,0 +1,47 @@
+@import "../../../styles/variables";
+@import "../../../styles/mixins";
+
+.loading-spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  .spinner {
+    border-radius: 50%;
+    border: 2px solid transparent;
+    @include loading-spinner;
+  }
+
+  &--small .spinner {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+  }
+
+  &--medium .spinner {
+    width: 24px;
+    height: 24px;
+    border-width: 3px;
+  }
+
+  &--large .spinner {
+    width: 32px;
+    height: 32px;
+    border-width: 4px;
+  }
+
+  &--primary .spinner {
+    border-top-color: $info-500;
+    border-right-color: $info-500;
+  }
+
+  &--white .spinner {
+    border-top-color: white;
+    border-right-color: white;
+  }
+
+  &--success .spinner {
+    border-top-color: $success-green;
+    border-right-color: $success-green;
+  }
+}

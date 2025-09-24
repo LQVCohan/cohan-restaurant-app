@@ -1,0 +1,59 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+.page-nav {
+  @include card-base;
+  padding: $spacing-lg $spacing-xl;
+  margin-bottom: $spacing-lg;
+  display: flex;
+  gap: $spacing-lg;
+  align-items: center;
+  overflow-x: auto;
+}
+
+.nav-item {
+  padding: $spacing-sm $spacing-lg;
+  border-radius: $radius-md;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  white-space: nowrap;
+  min-width: fit-content;
+
+  &:hover {
+    background: #f0f9ff;
+    border-color: $primary-blue;
+  }
+
+  &.active {
+    background: $primary-blue;
+    color: white;
+  }
+}
+
+.nav-icon {
+  font-size: 1rem;
+}
+
+.nav-label {
+  @media (max-width: $mobile) {
+    display: none;
+  }
+}
+
+@media (max-width: $mobile) {
+  .page-nav {
+    padding: $spacing-sm $spacing-lg;
+    gap: $spacing-sm;
+  }
+
+  .nav-item {
+    padding: $spacing-sm;
+    min-width: 40px;
+    justify-content: center;
+  }
+}

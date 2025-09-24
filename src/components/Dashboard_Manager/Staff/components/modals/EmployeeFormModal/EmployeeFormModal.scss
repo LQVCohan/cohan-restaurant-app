@@ -1,0 +1,329 @@
+@use "../../../../../../styles/variables" as *;
+@use "../../../../../../styles/mixins" as *;
+
+.employee-form-modal {
+  .step-indicator {
+    display: flex;
+    justify-content: center;
+    gap: $spacing-lg;
+    margin-top: $spacing-lg;
+    padding-top: $spacing-lg;
+    border-top: 2px solid $border-light;
+
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: $spacing-sm;
+      opacity: 0.5;
+      transition: all $transition-base;
+
+      &.active {
+        opacity: 1;
+      }
+
+      &.completed {
+        opacity: 1;
+
+        .step-number {
+          background: $success-green;
+          color: white;
+        }
+      }
+
+      .step-number {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: $bg-tertiary;
+        color: $text-secondary;
+        @include flex-center;
+        font-weight: 700;
+        font-size: 0.9rem;
+        transition: all $transition-base;
+      }
+
+      .step-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: $text-secondary;
+        text-align: center;
+        max-width: 80px;
+      }
+
+      &.active .step-number {
+        background: $info-500;
+        color: white;
+        transform: scale(1.1);
+      }
+    }
+
+    @include mobile {
+      gap: $spacing-md;
+
+      .step-item {
+        .step-number {
+          width: 32px;
+          height: 32px;
+          font-size: 0.8rem;
+        }
+
+        .step-label {
+          font-size: 0.7rem;
+          max-width: 60px;
+        }
+      }
+    }
+  }
+
+  .employee-form {
+    .form-step {
+      .step-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: $text-primary;
+        margin-bottom: $spacing-lg;
+        text-align: center;
+        padding-bottom: $spacing-md;
+        border-bottom: 2px solid $border-light;
+      }
+
+      .section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: $text-primary;
+        margin-bottom: $spacing-md;
+        padding-bottom: $spacing-sm;
+        border-bottom: 1px solid $border-light;
+      }
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: $spacing-lg;
+
+      @include mobile {
+        grid-template-columns: 1fr;
+        gap: $spacing-md;
+      }
+    }
+
+    .form-group {
+      margin-bottom: $spacing-lg;
+
+      .form-label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: $text-primary;
+        margin-bottom: $spacing-sm;
+      }
+
+      .form-input,
+      .form-select,
+      .form-textarea {
+        @include form-input;
+      }
+
+      .form-textarea {
+        resize: vertical;
+        min-height: 80px;
+        font-family: inherit;
+      }
+
+      .error-message {
+        color: $error-500;
+        font-size: 0.8rem;
+        margin-top: $spacing-xs;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: $spacing-xs;
+
+        &::before {
+          content: "⚠️";
+        }
+      }
+    }
+
+    // Department Selection
+    .department-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: $spacing-md;
+
+      .department-card {
+        padding: $spacing-md;
+        border: 2px solid $border-light;
+        border-radius: $radius-md;
+        cursor: pointer;
+        transition: all $transition-base;
+        background: $bg-secondary;
+
+        &:hover {
+          border-color: $info-500;
+          transform: translateY(-2px);
+          box-shadow: $shadow-md;
+        }
+
+        &.selected {
+          border-color: $info-500;
+          background: $primary-light;
+
+          .department-label {
+            color: $info-500;
+          }
+        }
+
+        .department-label {
+          font-weight: 600;
+          font-size: 0.9rem;
+          margin-bottom: $spacing-xs;
+          color: $text-primary;
+        }
+
+        .department-description {
+          font-size: 0.8rem;
+          color: $text-secondary;
+          line-height: 1.4;
+        }
+      }
+    }
+
+    // Shift Options
+    .shift-options {
+      display: grid;
+      gap: $spacing-sm;
+
+      .shift-option {
+        display: flex;
+        align-items: center;
+        gap: $spacing-sm;
+        padding: $spacing-md;
+        border: 2px solid $border-light;
+        border-radius: $radius-md;
+        cursor: pointer;
+        transition: all $transition-base;
+        background: $bg-secondary;
+
+        &:hover {
+          border-color: $info-500;
+          background: $primary-light;
+        }
+
+        input[type="radio"] {
+          margin: 0;
+          accent-color: $info-500;
+        }
+
+        .shift-label {
+          font-weight: 500;
+          color: $text-primary;
+        }
+
+        &:has(input:checked) {
+          border-color: $info-500;
+          background: $primary-light;
+
+          .shift-label {
+            color: $info-500;
+            font-weight: 600;
+          }
+        }
+      }
+    }
+
+    // Salary Input
+    .salary-input-group {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .form-input {
+        padding-right: 60px;
+      }
+
+      .salary-currency {
+        position: absolute;
+        right: $spacing-md;
+        font-weight: 600;
+        color: $text-secondary;
+        background: $bg-tertiary;
+        padding: $spacing-xs $spacing-sm;
+        border-radius: $radius-sm;
+        font-size: 0.8rem;
+      }
+    }
+
+    .salary-note {
+      margin-top: $spacing-sm;
+      font-size: 0.8rem;
+      color: $text-secondary;
+      font-style: italic;
+    }
+
+    // Emergency Contact
+    .emergency-contact {
+      background: $warning-light;
+      border: 2px solid $warning-500;
+      border-radius: $radius-md;
+      padding: $spacing-lg;
+      margin-top: $spacing-lg;
+    }
+
+    // Submit Error
+    .submit-error {
+      background: $error-100;
+      color: $error-500;
+      padding: $spacing-md;
+      border-radius: $radius-md;
+      border: 2px solid $error-500;
+      font-weight: 500;
+      text-align: center;
+    }
+  }
+
+  .modal-footer {
+    @include flex-between;
+
+    .footer-left,
+    .footer-right {
+      display: flex;
+      gap: $spacing-md;
+    }
+
+    @include mobile {
+      flex-direction: column;
+      gap: $spacing-md;
+
+      .footer-left,
+      .footer-right {
+        justify-content: center;
+      }
+    }
+  }
+
+  .btn {
+    @include button-base;
+
+    &--primary {
+      @include button-variant($info-500, $primary-hover);
+    }
+
+    &--success {
+      @include button-variant($success-green, $success-hover);
+    }
+
+    &--secondary {
+      background: $gray-100;
+      color: $text-secondary;
+      border: 2px solid $border-light;
+
+      &:hover:not(:disabled) {
+        background: $gray-200;
+        transform: translateY(-1px);
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.employee-dashboard {
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: $spacing-lg;
+    margin-bottom: $spacing-lg;
+
+    @media (max-width: $tablet) {
+      grid-template-columns: 1fr;
+    }
+  }
+}

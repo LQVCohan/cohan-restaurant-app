@@ -1,0 +1,140 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.attendance-page {
+  .attendance-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-xl;
+
+    @media (max-width: $tablet) {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+.attendance-card {
+  @include card-base;
+  padding: $spacing-2xl;
+
+  .card-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: $text-primary;
+    margin-bottom: $spacing-2xl;
+    text-align: center;
+  }
+}
+
+.time-display-staff {
+  text-align: center;
+  margin-bottom: $spacing-2xl;
+
+  .current-time {
+    font-size: 3rem;
+    font-weight: 800;
+    color: $primary-blue;
+    margin-bottom: $spacing-sm;
+    font-family: "Courier New", monospace;
+  }
+
+  .current-date {
+    font-size: 1.125rem;
+    color: $text-secondary;
+    font-weight: 600;
+  }
+}
+
+.attendance-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-lg;
+  margin-bottom: $spacing-2xl;
+}
+
+.attendance-btn {
+  padding: $spacing-xl;
+  border: none;
+  border-radius: $radius-md;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: "Inter", sans-serif;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-sm;
+
+  &.check-in {
+    background: linear-gradient(
+      135deg,
+      $success-green,
+      darken($success-green, 10%)
+    );
+    color: white;
+
+    &:hover:not(.disabled) {
+      transform: translateY(-2px);
+      box-shadow: $shadow-md;
+    }
+  }
+
+  &.check-out {
+    background: linear-gradient(135deg, $error-500, darken($error-500, 10%));
+    color: white;
+
+    &:hover:not(.disabled) {
+      transform: translateY(-2px);
+      box-shadow: $shadow-md;
+    }
+  }
+
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .attendance-icon {
+    font-size: 2rem;
+  }
+
+  .btn-subtitle {
+    font-size: 0.75rem;
+    opacity: 0.8;
+    font-weight: 500;
+  }
+}
+
+.today-info,
+.stats-info {
+  .info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-md 0;
+    border-bottom: 1px solid $border-light;
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .info-label {
+    font-size: 0.875rem;
+    color: $text-secondary;
+    font-weight: 500;
+  }
+
+  .info-value {
+    font-size: 0.875rem;
+    color: $text-primary;
+    font-weight: 600;
+  }
+}
+
+.stats-actions {
+  display: flex;
+  gap: $spacing-sm;
+  margin-top: $spacing-2xl;
+}

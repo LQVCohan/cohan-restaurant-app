@@ -1,8 +1,25 @@
+// src/pages/LoginPage.jsx
 import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { gql, useMutation } from "@apollo/client";
+
 import { AuthContext } from "../context/AuthContext";
 import "../styles/Login.scss";
+
+// ✅ GraphQL mutation
+const LOGIN_MUTATION = gql`
+  mutation Login($email: String!, $password: String!) {
+    login(email: $email, password: $password) {
+      token
+      user {
+        id
+        name
+        email
+        roleNames
+      }
+    }
+  }
+`;
 
 const LoginPage = () => {
   const [activeTab, setActiveTab] = useState("login");
@@ -31,54 +48,57 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const { login: authLogin } = useContext(AuthContext);
 
+  // 🔗 Apollo useMutation
+  const [loginMutation, { loading: loginLoading }] = useMutation(
+    LOGIN_MUTATION,
+    {
+      onError: (e) => {
+        // Lấy message thân thiện
+        const msg =
+          e?.graphQLErrors?.[0]?.message ||
+          e?.networkError?.message ||
+          "Đã xảy ra lỗi khi đăng nhập";
+        setError(msg);
+        // eslint-disable-next-line no-console
+        console.error("Login GQL error:", e);
+      },
+      onCompleted: (data) => {
+        const { token, user } = data?.login || {};
+        // Map role theo backend GraphQL: user.roleNames là mảng
+        const role = user?.roleNames?.[0] || "customer";
+        const avatar = null; // (chưa có từ API GQL)
+
+        // Gọi context login (giữ nguyên chữ ký bạn đang dùng)
+        authLogin(token, role, avatar);
+
+        // Lưu token (giữ logic remember của bạn)
+        if (loginForm.remember) {
+          localStorage.setItem("token", token);
+          sessionStorage.removeItem("token");
+        } else {
+          sessionStorage.setItem("token", token);
+          localStorage.removeItem("token");
+        }
+
+        // Điều hướng theo vai trò
+        if (role === "admin") {
+          navigate("/admin/dashboard");
+        } else if (role === "manager") {
+          navigate(`/manager`);
+        } else {
+          navigate("/");
+        }
+      },
+    }
+  );
+
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    try {
-      console.log("Sending login request:", { email: loginForm.email });
-      const response = await axios.post("/api/auth/login", {
-        email: loginForm.email,
-        password: loginForm.password,
-      });
-      console.log("Login response:", response.data);
-      const { token, role, restaurantId, avatar } = response.data;
-
-      if (!role) throw new Error("Role không được trả về từ server");
-      console.log(
-        "Navigating to:",
-        role === "admin"
-          ? "/admin/dashboard"
-          : role === "manager" && restaurantId
-          ? `/restaurants/${restaurantId}/layout`
-          : "/staff/orders"
-      );
-
-      authLogin(token, role, avatar);
-
-      if (loginForm.remember) {
-        localStorage.setItem("token", token);
-        sessionStorage.removeItem("token");
-      } else {
-        sessionStorage.setItem("token", token);
-        localStorage.removeItem("token");
-      }
-      console.log("Stored token:", token, "Role:", role);
-
-      if (role === "admin") {
-        navigate("/admin/dashboard");
-      } else if (role === "manager") {
-        navigate(`/manager`);
-      } else {
-        navigate("/");
-      }
-    } catch (error) {
-      const errorMessage =
-        error.response?.data?.error ||
-        error.message ||
-        "Đã xảy ra lỗi khi đăng nhập";
-      setError(errorMessage);
-      console.error("Lỗi đăng nhập:", error);
-    }
+    // Gọi GQL mutation
+    await loginMutation({
+      variables: { email: loginForm.email, password: loginForm.password },
+    });
   };
 
   const handleRegisterSubmit = (e) => {
@@ -181,7 +201,16 @@ const LoginPage = () => {
           {/* Login Form */}
           {activeTab === "login" && (
             <form className="auth-form" onSubmit={handleLoginSubmit}>
-              {error && <div className="error-message">{error}</div>}
+              {(error || loginLoading) && (
+                <div
+                  className={`error-message ${
+                    loginLoading ? "is-loading" : ""
+                  }`}
+                >
+                  {loginLoading ? "Đang đăng nhập..." : error}
+                </div>
+              )}
+
               <div className="form-group">
                 <label htmlFor="loginEmail" className="form-label">
                   Email
@@ -242,13 +271,17 @@ const LoginPage = () => {
                 </a>
               </div>
 
-              <button type="submit" className="submit-button">
-                Đăng nhập
+              <button
+                type="submit"
+                className="submit-button"
+                disabled={loginLoading}
+              >
+                {loginLoading ? "Đang đăng nhập..." : "Đăng nhập"}
               </button>
             </form>
           )}
 
-          {/* Register Form */}
+          {/* Register Form (giữ nguyên UI demo) */}
           {activeTab === "register" && (
             <form className="auth-form" onSubmit={handleRegisterSubmit}>
               <div className="form-group">

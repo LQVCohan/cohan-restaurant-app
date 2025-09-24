@@ -76,6 +76,16 @@
   }
 }
 
+@mixin button-variant($bg-color, $hover-color) {
+  @include button-base;
+  background: linear-gradient(135deg, $bg-color, $hover-color);
+  color: white;
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 8px 25px rgba($bg-color, 0.3);
+  }
+}
+
 @mixin button-primary {
   @include button-base;
   background: v.$primary;
@@ -204,6 +214,19 @@
   }
 }
 
+@mixin loading-spinner {
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  animation: spin 1s linear infinite;
+}
+
 @mixin glass-effect {
   backdrop-filter: blur(10px);
   background: rgba(255, 255, 255, 0.9);
@@ -221,6 +244,16 @@
   background: linear-gradient(135deg, $from 0%, $to 100%);
 }
 
+@mixin status-badge($bg-color, $text-color) {
+  background: $bg-color;
+  color: $text-color;
+  padding: v.$spacing-xs v.$spacing-sm;
+  border-radius: v.$radius-full;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
 // helpers
 @function custom-darken($color, $amount) {
   $l: lightness($color) - $amount;
@@ -229,4 +262,22 @@
 @function custom-lighten($color, $amount) {
   $l: lightness($color) + $amount;
   @return hsl(hue($color), saturation($color), max(0, min(100%, $l)));
+}
+
+@mixin responsive-grid($min-width: 200px) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax($min-width, 1fr));
+  gap: v.$spacing-lg;
+  @media (max-width: v.$mobile) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@mixin responsive-grid-custom($columns: 4, $gap: v.$spacing-xl) {
+  display: grid;
+  grid-template-columns: repeat($columns, 1fr);
+  gap: $gap;
+
+  @media (max-width: v.$mobile) {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

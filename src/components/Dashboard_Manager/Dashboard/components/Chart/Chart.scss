@@ -1,0 +1,50 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.chart-card {
+  @include card-base;
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-xl;
+
+    .chart-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: $text-primary;
+    }
+
+    .chart-filter {
+      padding: $spacing-sm $spacing-lg;
+      border: 2px solid $border-color;
+      border-radius: $border-radius;
+      background: $primary-light;
+      font-size: 0.875rem;
+      font-family: "Inter", sans-serif;
+      color: $text-primary;
+      transition: all 0.2s ease;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-blue;
+        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+      }
+    }
+  }
+
+  .chart-placeholder {
+    height: 300px;
+    background: linear-gradient(135deg, $primary-light 0%, #e0f2fe 100%);
+    border: 2px dashed $primary-blue;
+    border-radius: $border-radius;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $primary-blue;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: opacity 0.3s ease;
+  }
+}

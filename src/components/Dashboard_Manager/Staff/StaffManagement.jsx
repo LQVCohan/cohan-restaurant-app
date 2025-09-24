@@ -1,62 +1,104 @@
-import React, { useState } from "react";
-import StaffOverview from "./StaffOverview";
-import StaffList from "./StaffList";
-import StaffAttendance from "./StaffAttendance";
-import StaffPayroll from "./StaffPayroll";
-import "../Styles/StaffManagement.scss";
+import React, { useState, useEffect } from "react";
+import Header from "./components/Header";
+import StatsGrid from "./components/StatsGrid";
+import PageNavigation from "./components/PageNavigation";
+import EmployeeDashboard from "./components/EmployeeDashboard";
+import AttendancePage from "./components/Attendance";
+import LeaveManagement from "./components/LeaveManagement";
+import {
+  AddEmployeeModal,
+  EditEmployeeModal,
+  WorkHistoryModal,
+} from "./components/modals";
+
+import { useEmployees } from "../../../hooks/useEmployees";
+import { useTime } from "../../../hooks/useTime";
 
 const StaffManagement = () => {
-  const [activeTab, setActiveTab] = useState("overview");
+  const [currentPage, setCurrentPage] = useState("dashboard");
+  const [selectedRestaurant, setSelectedRestaurant] = useState("all");
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [modals, setModals] = useState({
+    addEmployee: false,
+    editEmployee: false,
+    workHistory: false,
+  });
 
-  const tabs = [
-    {
-      id: "overview",
-      label: "Tổng quan",
-      icon: "fas fa-chart-pie",
-      component: StaffOverview,
-    },
-    {
-      id: "list",
-      label: "Danh sách nhân viên",
-      icon: "fas fa-users",
-      component: StaffList,
-    },
-    {
-      id: "attendance",
-      label: "Chấm công",
-      icon: "fas fa-clock",
-      component: StaffAttendance,
-    },
-    {
-      id: "payroll",
-      label: "Bảng lương",
-      icon: "fas fa-money-bill-wave",
-      component: StaffPayroll,
-    },
-  ];
+  const { employees, stats, updateEmployee, addEmployee, deleteEmployee } =
+    useEmployees();
+  const { currentTime, currentDate } = useTime();
 
-  const ActiveComponent = tabs.find((tab) => tab.id === activeTab)?.component;
+  const openModal = (modalName) => {
+    setModals((prev) => ({ ...prev, [modalName]: true }));
+  };
+
+  const closeModal = (modalName) => {
+    setModals((prev) => ({ ...prev, [modalName]: false }));
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleRestaurantChange = (restaurant) => {
+    setSelectedRestaurant(restaurant);
+  };
+
+  const handleEmployeeSelect = (employee) => {
+    setSelectedEmployee(employee);
+  };
 
   return (
-    <div className="staff-management">
-      <div className="staff-management__tabs">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab-button ${
-              activeTab === tab.id ? "tab-button--active" : ""
-            }`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <i className={tab.icon} />
-            <span>{tab.label}</span>
-          </button>
-        ))}
-      </div>
+    <div className="app">
+      <Header
+        selectedRestaurant={selectedRestaurant}
+        onRestaurantChange={handleRestaurantChange}
+        onAddEmployee={() => openModal("addEmployee")}
+      />
 
-      <div className="staff-management__content">
-        {ActiveComponent && <ActiveComponent />}
-      </div>
+      <StatsGrid stats={stats} />
+
+      <PageNavigation
+        currentPage={currentPage}
+        onPageChange={handlePageChange}
+      />
+
+      {currentPage === "dashboard" && (
+        <EmployeeDashboard
+          employees={employees}
+          selectedEmployee={selectedEmployee}
+          onEmployeeSelect={handleEmployeeSelect}
+          onEditEmployee={() => openModal("editEmployee")}
+          onViewHistory={() => openModal("workHistory")}
+          onDeleteEmployee={deleteEmployee}
+        />
+      )}
+
+      {currentPage === "attendance" && (
+        <AttendancePage currentTime={currentTime} currentDate={currentDate} />
+      )}
+
+      {currentPage === "leave" && <LeaveManagement />}
+
+      {/* Modals */}
+      <AddEmployeeModal
+        isOpen={modals.addEmployee}
+        onClose={() => closeModal("addEmployee")}
+        onSubmit={addEmployee}
+      />
+
+      <EditEmployeeModal
+        isOpen={modals.editEmployee}
+        employee={selectedEmployee}
+        onClose={() => closeModal("editEmployee")}
+        onSubmit={updateEmployee}
+      />
+
+      <WorkHistoryModal
+        isOpen={modals.workHistory}
+        employee={selectedEmployee}
+        onClose={() => closeModal("workHistory")}
+      />
     </div>
   );
 };

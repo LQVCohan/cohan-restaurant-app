@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../components/Dashboard_Manager/Sidebar";
 import Header from "../components/Dashboard_Manager/Header";
-import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
+import Dashboard from "../components/Dashboard_Manager/Dashboard";
 import ManagerAnalyst from "../components/Dashboard_Manager/Analyst/ManagerAnalyst";
 import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
 import ScheduleManagement from "../components/Dashboard_Manager/Schedule/ScheduleManagement";

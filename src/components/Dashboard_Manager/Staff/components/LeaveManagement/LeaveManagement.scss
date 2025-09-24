@@ -1,0 +1,361 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.leave-management-page {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xl;
+}
+
+.leave-request-form {
+  @include card-base;
+  padding: $spacing-2xl;
+
+  .form-header {
+    margin-bottom: $spacing-2xl;
+    text-align: center;
+
+    .form-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: $text-primary;
+      margin-bottom: $spacing-sm;
+    }
+
+    .form-subtitle {
+      font-size: 0.875rem;
+      color: $text-secondary;
+    }
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-lg;
+    margin-bottom: $spacing-2xl;
+
+    @media (max-width: $mobile) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .form-group {
+    &.full-width {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .form-input,
+  .form-select {
+    &.error {
+      border-color: $status-inactive;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+    }
+  }
+
+  .error-message {
+    color: $status-inactive;
+    font-size: 0.75rem;
+    margin-top: $spacing-xs;
+    font-weight: 500;
+  }
+
+  .days-info {
+    background: #f0f9ff;
+    border: 2px solid #bfdbfe;
+    border-radius: $radius-md;
+    padding: $spacing-lg;
+    font-size: 0.875rem;
+    color: $primary-blue;
+    text-align: center;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: $spacing-lg;
+    justify-content: flex-end;
+
+    @media (max-width: $mobile) {
+      flex-direction: column;
+    }
+  }
+}
+
+.leave-requests-list {
+  @include card-base;
+  padding: $spacing-2xl;
+
+  .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: $spacing-xl;
+    gap: $spacing-lg;
+
+    @media (max-width: $mobile) {
+      flex-direction: column;
+    }
+  }
+
+  .header-left {
+    .list-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: $text-primary;
+      margin-bottom: $spacing-xs;
+    }
+
+    .list-subtitle {
+      font-size: 0.875rem;
+      color: $text-secondary;
+    }
+  }
+
+  .list-controls {
+    display: flex;
+    gap: $spacing-lg;
+
+    @media (max-width: $mobile) {
+      flex-direction: column;
+      width: 100%;
+    }
+  }
+
+  .filter-select,
+  .sort-select {
+    @include form-input;
+    min-width: 200px;
+    background: #f0f9ff;
+    font-weight: 500;
+
+    @media (max-width: $mobile) {
+      width: 100%;
+    }
+  }
+}
+
+.requests-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: $spacing-lg;
+  margin-bottom: $spacing-xl;
+  padding: $spacing-xl;
+  background: #f8fafc;
+  border-radius: $radius-md;
+  border: 2px solid $border-light;
+
+  @media (max-width: $mobile) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat-item {
+    text-align: center;
+
+    .stat-number {
+      font-size: 2rem;
+      font-weight: 800;
+      color: $primary-blue;
+      margin-bottom: $spacing-xs;
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: $text-secondary;
+      font-weight: 600;
+    }
+  }
+}
+
+.requests-container {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.empty-state {
+  text-align: center;
+  padding: $spacing-2xl * 2;
+  color: $text-secondary;
+
+  .empty-icon {
+    font-size: 4rem;
+    margin-bottom: $spacing-lg;
+    opacity: 0.5;
+  }
+
+  .empty-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: $spacing-sm;
+  }
+
+  .empty-subtitle {
+    font-size: 0.875rem;
+  }
+}
+
+.leave-request-item {
+  background: #f8fafc;
+  border: 2px solid $border-light;
+  border-radius: $radius-md;
+  margin-bottom: $spacing-lg;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: $primary-blue;
+    box-shadow: $shadow-sm;
+  }
+}
+
+.request-header {
+  padding: $spacing-xl;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: $spacing-lg;
+
+  @media (max-width: $mobile) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.request-main-info {
+  display: flex;
+  gap: $spacing-2xl;
+  flex: 1;
+
+  @media (max-width: $mobile) {
+    flex-direction: column;
+    gap: $spacing-lg;
+  }
+}
+
+.employee-info {
+  .employee-name {
+    font-weight: 600;
+    color: $text-primary;
+    margin-bottom: $spacing-xs;
+    font-size: 1rem;
+  }
+
+  .leave-type {
+    font-size: 0.875rem;
+    color: $text-secondary;
+  }
+}
+
+.request-dates {
+  .date-range {
+    font-size: 0.875rem;
+    color: $text-primary;
+    font-weight: 600;
+    margin-bottom: $spacing-xs;
+  }
+
+  .duration {
+    font-size: 0.75rem;
+    color: $text-secondary;
+  }
+}
+
+.request-status-section {
+  display: flex;
+  align-items: center;
+  gap: $spacing-lg;
+
+  @media (max-width: $mobile) {
+    justify-content: space-between;
+  }
+}
+
+.leave-status {
+  padding: $spacing-sm $spacing-lg;
+  border-radius: $radius-full;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+
+  &.status-pending {
+    @include status-badge($status-break-bg, $status-break);
+  }
+
+  &.status-approved {
+    @include status-badge($status-active-bg, $status-active);
+  }
+
+  &.status-rejected {
+    @include status-badge($status-inactive-bg, $status-inactive);
+  }
+}
+
+.expand-icon {
+  font-size: 0.875rem;
+  color: $text-secondary;
+}
+
+.request-details {
+  padding: 0 $spacing-xl $spacing-xl;
+  border-top: 1px solid $border-light;
+  animation: slideDown 0.3s ease-out;
+
+  .details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-lg;
+    margin-bottom: $spacing-xl;
+
+    @media (max-width: $mobile) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .detail-item {
+    &.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .detail-label {
+      display: block;
+      font-size: 0.75rem;
+      color: $text-secondary;
+      font-weight: 600;
+      margin-bottom: $spacing-xs;
+      text-transform: uppercase;
+    }
+
+    .detail-value {
+      font-size: 0.875rem;
+      color: $text-primary;
+      font-weight: 500;
+
+      &.rejection-reason {
+        background: #fee2e2;
+        padding: $spacing-sm;
+        border-radius: $radius-sm;
+        color: $status-inactive;
+      }
+    }
+  }
+
+  .request-actions {
+    display: flex;
+    gap: $spacing-lg;
+    justify-content: flex-end;
+
+    @media (max-width: $mobile) {
+      flex-direction: column;
+    }
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}

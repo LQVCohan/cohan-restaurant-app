@@ -1,0 +1,267 @@
+@use "../../../../../../styles/variables" as *;
+@use "../../../../../../styles/mixins" as *;
+
+.employee-edit-modal {
+  .modal-header {
+    position: relative;
+
+    .changes-indicator {
+      position: absolute;
+      top: $spacing-md;
+      right: 60px;
+    }
+  }
+
+  .modal-tabs {
+    display: flex;
+    background: $bg-tertiary;
+    border-bottom: 2px solid $border-light;
+    overflow-x: auto;
+
+    .tab-button {
+      flex: 1;
+      padding: $spacing-md $spacing-lg;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      transition: all $transition-base;
+      @include flex-center;
+      gap: $spacing-sm;
+      color: $text-secondary;
+      font-weight: 500;
+      border-bottom: 3px solid transparent;
+
+      &:hover {
+        background: $bg-secondary;
+        color: $text-primary;
+      }
+
+      &.active {
+        background: $bg-primary;
+        color: $info-500;
+        border-bottom-color: $info-500;
+        font-weight: 600;
+      }
+
+      .tab-icon {
+        font-size: 1.1rem;
+      }
+
+      .tab-label {
+        @include mobile {
+          display: none;
+        }
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .employee-edit-form {
+    .tab-content {
+      .employee-header {
+        display: flex;
+        align-items: center;
+        gap: $spacing-lg;
+        padding: $spacing-lg;
+        background: linear-gradient(135deg, $bg-secondary, $gray-100);
+        border-radius: $radius-md;
+        margin-bottom: $spacing-lg;
+
+        .employee-avatar {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, $info-500, $primary-hover);
+          color: white;
+          @include flex-center;
+          font-size: 2rem;
+          font-weight: 700;
+        }
+
+        .employee-info {
+          h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: $text-primary;
+            margin-bottom: $spacing-sm;
+          }
+        }
+      }
+
+      .section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: $text-primary;
+        margin-bottom: $spacing-md;
+        padding-bottom: $spacing-sm;
+        border-bottom: 2px solid $border-light;
+      }
+
+      .emergency-section {
+        background: $warning-light;
+        border: 2px solid $warning-500;
+        border-radius: $radius-md;
+        padding: $spacing-lg;
+        margin-top: $spacing-lg;
+      }
+
+      .salary-overview {
+        margin-bottom: $spacing-lg;
+
+        .salary-card {
+          background: linear-gradient(135deg, $success-light, $success-green);
+          padding: $spacing-lg;
+          border-radius: $radius-md;
+          text-align: center;
+          color: white;
+
+          .salary-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: $spacing-sm;
+          }
+
+          .salary-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+          }
+        }
+      }
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: $spacing-lg;
+
+      @include mobile {
+        grid-template-columns: 1fr;
+        gap: $spacing-md;
+      }
+    }
+
+    .form-group {
+      margin-bottom: $spacing-lg;
+
+      .form-label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: $text-primary;
+        margin-bottom: $spacing-sm;
+      }
+
+      .form-input,
+      .form-select,
+      .form-textarea {
+        @include form-input;
+      }
+
+      .form-textarea {
+        resize: vertical;
+        min-height: 100px;
+        font-family: inherit;
+      }
+
+      .error-message {
+        color: $error-500;
+        font-size: 0.8rem;
+        margin-top: $spacing-xs;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: $spacing-xs;
+
+        &::before {
+          content: "⚠️";
+        }
+      }
+    }
+
+    .salary-input-group {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .form-input {
+        padding-right: 60px;
+      }
+
+      .salary-currency {
+        position: absolute;
+        right: $spacing-md;
+        font-weight: 600;
+        color: $text-secondary;
+        background: $bg-tertiary;
+        padding: $spacing-xs $spacing-sm;
+        border-radius: $radius-sm;
+        font-size: 0.8rem;
+      }
+    }
+
+    .salary-note {
+      margin-top: $spacing-sm;
+      font-size: 0.8rem;
+      color: $text-secondary;
+      font-style: italic;
+    }
+
+    .submit-error {
+      background: $error-100;
+      color: $error-500;
+      padding: $spacing-md;
+      border-radius: $radius-md;
+      border: 2px solid $error-500;
+      font-weight: 500;
+      text-align: center;
+      margin-top: $spacing-lg;
+    }
+  }
+
+  .modal-footer {
+    @include flex-between;
+
+    .footer-left,
+    .footer-right {
+      display: flex;
+      gap: $spacing-md;
+    }
+
+    @include mobile {
+      flex-direction: column;
+      gap: $spacing-md;
+
+      .footer-left,
+      .footer-right {
+        justify-content: center;
+      }
+    }
+  }
+
+  .btn {
+    @include button-base;
+
+    &--primary {
+      @include button-variant($info-500, $primary-hover);
+    }
+
+    &--warning {
+      @include button-variant($warning-500, $warning-600);
+    }
+
+    &--secondary {
+      background: $gray-100;
+      color: $text-secondary;
+      border: 2px solid $border-light;
+
+      &:hover:not(:disabled) {
+        background: $gray-200;
+        transform: translateY(-1px);
+      }
+    }
+  }
+}

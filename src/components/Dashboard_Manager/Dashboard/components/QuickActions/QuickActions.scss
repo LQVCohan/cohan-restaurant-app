@@ -1,0 +1,37 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+.quick-actions-card {
+  @include card-base;
+  margin-bottom: $spacing-lg;
+
+  .quick-actions-header {
+    margin-bottom: $spacing-md;
+
+    .quick-actions-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: $text-primary;
+    }
+  }
+
+  .quick-actions-grid {
+    @include responsive-grid(200px);
+    gap: $spacing-md;
+
+    .btn {
+      &.btn-primary {
+        @include button-primary;
+      }
+
+      &.btn-secondary {
+        @include button-secondary;
+      }
+    }
+  }
+
+  @include mobile {
+    .quick-actions-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}

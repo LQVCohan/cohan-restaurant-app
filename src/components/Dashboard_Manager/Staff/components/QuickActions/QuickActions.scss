@@ -1,0 +1,41 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.quick-actions-card {
+  @include card-base;
+  padding: $spacing-xl;
+  margin-bottom: $spacing-xl;
+}
+
+.quick-actions-header {
+  margin-bottom: $spacing-xl;
+}
+
+.quick-actions-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $spacing-md;
+}
+
+.quick-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-xl;
+
+  .action-icon {
+    font-size: 1.5rem;
+  }
+
+  .action-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+}

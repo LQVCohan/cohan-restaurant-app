@@ -1,0 +1,71 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.header-card {
+  @include card-base;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-lg !important;
+
+  .header-left {
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: $text-primary;
+      margin-bottom: $spacing-xs;
+    }
+
+    .header-subtitle {
+      font-size: 0.875rem;
+      color: $text-gray;
+      margin-bottom: $spacing-sm;
+    }
+
+    .restaurant-selector {
+      padding: $spacing-sm $spacing-lg;
+      border: 2px solid $border-color;
+      border-radius: $border-radius;
+      background: $primary-light;
+      font-size: 0.875rem;
+      font-family: "Inter", sans-serif;
+      font-weight: 500;
+      color: $text-primary;
+      min-width: 220px;
+      transition: all 0.2s ease;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-blue;
+        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+      }
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    gap: $spacing-md;
+    align-items: center;
+
+    .btn {
+      &.btn-primary {
+        @include button-primary;
+      }
+
+      &.btn-secondary {
+        @include button-secondary;
+      }
+    }
+  }
+
+  @include mobile {
+    flex-direction: column;
+    gap: $spacing-lg;
+    text-align: center;
+    padding: $spacing-lg;
+
+    .header-actions {
+      justify-content: center;
+    }
+  }
+}

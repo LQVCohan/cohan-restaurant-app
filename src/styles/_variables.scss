@@ -26,6 +26,7 @@ $primary-600: #5b21b6;
 $primary-700: #4c1d95;
 $primary-800: #3730a3;
 $primary-900: #312e81;
+$primary-blue-light: #0ea5e9;
 
 // Info scale (blue)
 $info-50: #eff6ff;
@@ -75,6 +76,15 @@ $success-600: #16a34a;
 $success-700: #15803d;
 $success-800: #166534;
 $success-900: #14532d;
+$success-hover: #059669;
+
+// Status State Colors
+$status-active: #16a34a;
+$status-active-bg: #dcfce7;
+$status-inactive: #dc2626;
+$status-inactive-bg: #fee2e2;
+$status-break: #d97706;
+$status-break-bg: #fef3c7;
 
 $warning-50: #fffbeb;
 $warning-100: #fef3c7;

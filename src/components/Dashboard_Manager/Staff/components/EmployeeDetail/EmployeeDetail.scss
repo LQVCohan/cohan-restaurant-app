@@ -1,0 +1,102 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+.employee-detail-card {
+  @include card-base;
+  padding: $spacing-xl;
+}
+
+.no-selection {
+  text-align: center;
+  padding: $spacing-2xl * 2;
+  color: $text-secondary;
+}
+
+.no-selection-icon {
+  font-size: 4rem;
+  margin-bottom: $spacing-lg;
+  opacity: 0.5;
+}
+
+.no-selection-text {
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.detail-header {
+  text-align: center;
+  margin-bottom: $spacing-xl;
+  padding-bottom: $spacing-lg;
+  border-bottom: 2px solid $border-light;
+}
+
+.detail-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: $primary-blue;
+  color: white;
+  @include flex-center;
+  font-weight: 700;
+  font-size: 2rem;
+  margin: 0 auto $spacing-lg;
+}
+
+.detail-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: $text-primary;
+  margin-bottom: $spacing-sm;
+}
+
+.detail-role {
+  font-size: 0.875rem;
+  color: $text-secondary;
+  margin-bottom: $spacing-sm;
+}
+
+.detail-info {
+  margin-bottom: $spacing-xl;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-md 0;
+  border-bottom: 1px solid $border-light;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.info-label {
+  font-size: 0.875rem;
+  color: $text-secondary;
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 0.875rem;
+  color: $text-primary;
+  font-weight: 600;
+  text-align: right;
+}
+
+.detail-actions {
+  display: flex;
+  gap: $spacing-sm;
+  flex-direction: column;
+}
+
+@media (max-width: $mobile) {
+  .info-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: $spacing-xs;
+  }
+
+  .info-value {
+    text-align: left;
+  }
+}

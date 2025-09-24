@@ -1,0 +1,137 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+.stats-grid {
+  @include responsive-grid-custom(4, $spacing-xl);
+  margin-bottom: $spacing-xl;
+}
+
+.stat-card {
+  @include card-base;
+  padding: $spacing-2xl;
+  position: relative;
+  overflow: hidden;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: $shadow-lg;
+  }
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(
+      90deg,
+      $primary-blue,
+      $primary-blue-dark,
+      $primary-blue-light
+    );
+  }
+}
+
+.stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-xl;
+}
+
+.stat-icon {
+  font-size: 3rem;
+  opacity: 0.9;
+  background: linear-gradient(135deg, $primary-blue, $primary-blue-dark);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stat-trend {
+  font-size: 0.75rem;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-full;
+  font-weight: 600;
+
+  &.trend-up {
+    @include status-badge($status-active-bg, $status-active);
+  }
+
+  &.trend-down {
+    @include status-badge($status-inactive-bg, $status-inactive);
+  }
+
+  &.trend-stable {
+    @include status-badge($status-break-bg, $status-break);
+  }
+}
+
+.stat-main {
+  flex: 1;
+}
+
+.stat-number {
+  font-size: 3rem;
+  font-weight: 800;
+  color: $primary-blue;
+  margin-bottom: $spacing-sm;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 1rem;
+  color: $text-secondary;
+  font-weight: 600;
+  margin-bottom: $spacing-lg;
+}
+
+.stat-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: $spacing-lg;
+  border-top: 1px solid $border-light;
+}
+
+.stat-change {
+  font-size: 0.875rem;
+  font-weight: 600;
+
+  &.positive {
+    color: $status-active;
+  }
+
+  &.negative {
+    color: $status-inactive;
+  }
+
+  &.neutral {
+    color: $text-secondary;
+  }
+}
+
+.stat-period {
+  font-size: 0.75rem;
+  color: $text-muted;
+}
+
+// Animations
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}

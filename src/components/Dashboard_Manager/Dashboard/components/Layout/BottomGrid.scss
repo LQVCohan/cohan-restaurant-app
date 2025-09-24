@@ -1,0 +1,10 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.bottom-grid {
+  @include responsive-grid(300px);
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
