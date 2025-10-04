@@ -1,37 +1,43 @@
+// src/models/restaurant.js
 import mongoose from "mongoose";
-const { Schema, model, Types } = mongoose;
-
-const baseOptions = { timestamps: true };
-
-const RestaurantSchema = new Schema(
-  {
-    ownerId: { type: Types.ObjectId, ref: "User" },
-    name: { type: String, required: true },
-    code: { type: String, unique: true, sparse: true },
-    address: {
-      line1: String,
-      line2: String,
-      ward: String,
-      district: String,
-      city: String,
-      country: String,
-    },
-    geo: {
-      type: { type: String, enum: ["Point"], default: "Point" },
-      coordinates: [Number],
-    },
-    openHours: [
-      {
-        day: Number,
-        open: String,
-        close: String,
-      },
-    ],
-    manager: { type: Types.ObjectId, ref: "User" },
+const addressSchema = new mongoose.Schema({
+  line1: String,
+  line2: String,
+  ward: String,
+  district: String,
+  city: String,
+  country: String,
+});
+const restaurantSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  avatar: String,
+  coverImage: String,
+  spaceImages: [String],
+  address: addressSchema,
+  phone: String,
+  email: String,
+  featuredMenu: [String],
+  amenities: [String],
+  seatingCapacity: Number,
+  priceRange: String,
+  openingHours: String,
+  closingHours: String,
+  description: String,
+  notesOnHours: String,
+  notesOnAmenities: String,
+  cuisineType: String,
+  status: { type: String, enum: ["active", "inactive"], default: "active" },
+  managerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: false, // bắt buộc có quản lý
   },
-  baseOptions
+});
+restaurantSchema.index(
+  { managerId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { managerId: { $type: "objectId" } },
+  }
 );
-
-RestaurantSchema.index({ geo: "2dsphere" });
-
-export default mongoose.model("Restaurant", RestaurantSchema);
+export default mongoose.model("Restaurant", restaurantSchema);

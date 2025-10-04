@@ -10,12 +10,12 @@ const httpLink = new HttpLink({
   uri: import.meta.env.VITE_API_URL || "http://localhost:4000/graphql",
 });
 
-const authLink = new SetContextLink((prev, { headers }) => {
+const authLink = new SetContextLink((prevContext, _operation) => {
   const token = localStorage.getItem("auth_token");
   return {
     headers: {
-      ...headers,
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...prevContext.headers,
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
   };
 });

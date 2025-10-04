@@ -9,10 +9,18 @@ import resolvers from "../graphql/resolvers/index.js";
 import buildContext from "../graphql/context.js";
 
 export async function createServer() {
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: {
+      level: "info",
+    },
+  });
 
   await app.register(cors, {
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:4000",
+    ],
     credentials: true,
   });
 

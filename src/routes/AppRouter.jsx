@@ -144,14 +144,7 @@ const AppRouter = () => {
         element={<Navigate to="/manager/dashboard" replace />}
       />
 
-      <Route
-        path="/manager/dashboard"
-        element={
-          <PrivateRoute allowedRoles={["manager", "admin"]}>
-            <ManagerLayout />
-          </PrivateRoute>
-        }
-      />
+      <Route path="/manager/dashboard" element={<ManagerLayout />} />
       <Route
         path="/manager/staff"
         element={

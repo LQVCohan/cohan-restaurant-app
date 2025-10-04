@@ -3,7 +3,11 @@ export default /* GraphQL */ `
 
   type Query {
     me: User
-    restaurants(limit: Int = 20, cursor: ID): RestaurantConnection!
+    restaurants(
+      limit: Int = 20
+      cursor: ID
+      addressFilter: AddressFilter
+    ): RestaurantConnection!
     restaurant(id: ID!): Restaurant
     menuItems(
       restaurantId: ID!
@@ -20,6 +24,9 @@ export default /* GraphQL */ `
     placeOrder(input: PlaceOrderInput!): Order!
     updateOrderStatus(orderId: ID!, status: OrderStatus!): Order!
     createStockMovement(input: StockMovementInput!): StockMovement!
+    createRestaurant(input: CreateRestaurantInput!): Restaurant!
+    updateRestaurantManager(input: UpdateRestaurantManagerInput!): Restaurant!
+    createUser(input: CreateUserInput!): User!
   }
 
   type Subscription {
@@ -38,10 +45,26 @@ export default /* GraphQL */ `
   type Restaurant {
     id: ID!
     name: String!
+    avatar: String
+    coverImage: String
+    spaceImages: [String]
     address: Address
-    manager: User
-    tables: [Table!]!
-    categories: [Category!]!
+    phone: String
+    email: String
+    featuredMenu: [String]
+    amenities: [String]
+    seatingCapacity: Int
+    priceRange: String
+    openingHours: String
+    closingHours: String
+    description: String
+    notesOnHours: String
+    notesOnAmenities: String
+    cuisineType: String
+    status: String
+    manager: User!
+    tables: [Table]
+    categories: [Category]
   }
 
   type Address {
@@ -155,6 +178,56 @@ export default /* GraphQL */ `
   }
 
   # ---------- Inputs ----------
+  input CreateUserInput {
+  fullName: String!
+  username: String
+  email: String
+  phone: String
+  address: AddressInput
+  password: String
+  provider: String
+  status: String
+  roleIds: [ID!]          
+  refRestaurantIds: [ID!] 
+  customerType: String    # VIP | NEW | OFTEN
+
+  input CreateRestaurantInput {
+    name: String!
+    avatar: String
+    coverImage: String
+    spaceImages: [String]
+    address: AddressInput
+    phone: String
+    email: String
+    featuredMenu: [String]
+    amenities: [String]
+    seatingCapacity: Int
+    priceRange: String
+    openingHours: String
+    closingHours: String
+    description: String
+    notesOnHours: String
+    notesOnAmenities: String
+    cuisineType: String
+    status: String
+    managerId: ID!
+  }
+  input AddressInput {
+    line1: String
+    line2: String
+    ward: String
+    district: String
+    city: String
+    country: String
+  }
+  input UpdateRestaurantManagerInput {
+    restaurantId: ID!
+    managerId: ID!
+  }
+  input AddressFilter {
+    city: String
+    district: String
+  }
   input CreateReservationInput {
     restaurantId: ID!
     tableIds: [ID!]!
