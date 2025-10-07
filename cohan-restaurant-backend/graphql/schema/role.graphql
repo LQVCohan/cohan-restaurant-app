@@ -1,0 +1,30 @@
+type Role {
+  id: ID!
+  name: String!
+  slug: String!
+  description: String
+  parent: String
+  isSystem: Boolean
+  permissions: [Permission!]!
+  createdAt: String
+  updatedAt: String
+}
+
+input CreateRoleInput {
+  name: String!
+  slug: String!
+  description: String
+  parent: String
+  permissionIds: [ID!]
+}
+
+input UpdateRoleInput {
+  id: ID!
+  name: String
+  description: String
+  parent: String
+  permissionIds: [ID!]
+}
+extend type Query {
+  roles(search: String, parent: String): [Role!]!
+}
