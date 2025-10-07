@@ -1,0 +1,122 @@
+type Address {
+  line1: String
+  line2: String
+  ward: String
+  district: String
+  city: String
+  country: String
+}
+
+type Restaurant {
+  id: ID!
+  name: String!
+  avatar: String
+  coverImage: String
+  spaceImages: [String]
+  address: Address
+  phone: String
+  email: String
+  featuredMenu: [String]
+  amenities: [String]
+  seatingCapacity: Int
+  priceRange: String
+  openingHours: String
+  closingHours: String
+  description: String
+  notesOnHours: String
+  notesOnAmenities: String
+  cuisineType: String
+  status: String
+  manager: User!
+  tables: [Table]
+  categories: [Category]
+}
+
+input AddressFilter {
+  city: String
+  district: String
+}
+
+type PageInfo {
+  endCursor: ID
+  hasNextPage: Boolean!
+}
+
+type RestaurantEdge {
+  node: Restaurant!
+  cursor: ID!
+}
+
+type RestaurantConnection {
+  edges: [RestaurantEdge!]!
+  pageInfo: PageInfo!
+}
+
+extend type Query {
+  restaurants(
+    limit: Int = 20
+    cursor: ID
+    addressFilter: AddressFilter
+  ): RestaurantConnection!
+  restaurant(id: ID!): Restaurant
+}
+
+input CreateRestaurantInput {
+  name: String!
+  avatar: String
+  coverImage: String
+  spaceImages: [String]
+  address: AddressInput
+  phone: String
+  email: String
+  featuredMenu: [String]
+  amenities: [String]
+  seatingCapacity: Int
+  priceRange: String
+  openingHours: String
+  closingHours: String
+  description: String
+  notesOnHours: String
+  notesOnAmenities: String
+  cuisineType: String
+  status: String
+  managerId: ID!
+}
+
+input AddressInput {
+  line1: String
+  line2: String
+  ward: String
+  district: String
+  city: String
+  country: String
+}
+
+extend type Mutation {
+  createRestaurant(input: CreateRestaurantInput!): Restaurant!
+  updateRestaurantManager(input: UpdateRestaurantManagerInput!): Restaurant!
+}
+input UpdateRestaurantManagerInput {
+  restaurantId: ID!
+  managerId: ID!
+}
+
+type Category {
+  id: ID!
+  name: String!
+  parentId: ID
+  order: Int
+}
+
+type Table {
+  id: ID!
+  code: String!
+  capacity: Int!
+  status: TableStatus!
+}
+enum TableStatus {
+  available
+  occupied
+  reserved
+  maintenance
+}

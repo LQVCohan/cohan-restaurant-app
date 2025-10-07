@@ -6,6 +6,7 @@ type Role {
   parent: String
   isSystem: Boolean
   permissions: [Permission!]!
+  users: [User!]!
   createdAt: String
   updatedAt: String
 }
@@ -26,5 +27,13 @@ input UpdateRoleInput {
   permissionIds: [ID!]
 }
 extend type Query {
-  roles(search: String, parent: String): [Role!]!
+  role(search: String, parent: String): [Role!]!
+}
+
+extend type Mutation {
+  createRole(input: CreateRoleInput!): Role!
+  updateRole(input: UpdateRoleInput!): Role!
+  deleteRole(id: ID!): Boolean!
+  assignRolesToUser(userId: ID!, roleIds: [ID!]!): User!
+  revokeRolesFromUser(userId: ID!, roleIds: [ID!]!): User!
 }

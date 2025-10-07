@@ -1,0 +1,110 @@
+enum TimeSlot {
+  breakfast
+  lunch
+  dinner
+  late_night
+}
+
+type Menu {
+  id: ID!
+  restaurantId: ID!
+  timeSlot: TimeSlot!
+  name: String
+  description: String
+  coverImage: String
+  isActive: Boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+type PreparationMethod {
+  name: String!
+  price: Float!
+  isDefault: Boolean
+}
+
+input PreparationMethodInput {
+  name: String!
+  price: Float!
+  isDefault: Boolean
+}
+
+type MenuItem {
+  id: ID!
+  restaurantId: ID!
+  menuId: ID!
+  categoryId: ID!
+  name: String!
+  description: String
+  basePrice: Float
+  preparationMethods: [PreparationMethod!]!
+  thumbImage: String
+  mediaAssetIds: [ID!]
+  modifierGroupIds: [ID!]
+  status: String
+  avgPrepTimeMin: Int
+  recipe: String
+  notes: String
+  createdAt: Date
+  updatedAt: Date
+}
+
+input EnsureMenuInput {
+  restaurantId: ID!
+  timeSlot: TimeSlot!
+  name: String
+  description: String
+  coverImage: String
+}
+
+input CreateMenuItemInput {
+  restaurantId: ID!
+  timeSlot: TimeSlot!
+  categoryId: ID!
+  name: String!
+  description: String
+  basePrice: Float
+  preparationMethods: [PreparationMethodInput!]
+  thumbImage: String
+  mediaAssetIds: [ID!]
+  modifierGroupIds: [ID!]
+  status: String
+  avgPrepTimeMin: Int
+  recipe: String
+  notes: String
+}
+
+input UpdateMenuItemInput {
+  id: ID!
+  name: String
+  description: String
+  basePrice: Float
+  preparationMethods: [PreparationMethodInput!]
+  thumbImage: String
+  mediaAssetIds: [ID!]
+  modifierGroupIds: [ID!]
+  status: String
+  avgPrepTimeMin: Int
+  recipe: String
+  notes: String
+}
+
+extend type Query {
+  menus(restaurantId: ID!): [Menu!]!
+  menu(restaurantId: ID!, timeSlot: TimeSlot!): Menu
+  menuItems(
+    restaurantId: ID!
+    timeSlot: TimeSlot!
+    categoryId: ID
+    search: String
+    limit: Int = 50
+  ): [MenuItem!]!
+}
+
+extend type Mutation {
+  ensureMenu(input: EnsureMenuInput!): Menu!
+  createMenuItem(input: CreateMenuItemInput!): MenuItem!
+  updateMenuItem(input: UpdateMenuItemInput!): MenuItem!
+  deleteMenuItem(id: ID!): Boolean!
+  toggleMenuItemStatus(id: ID!, status: String!): MenuItem!
+}

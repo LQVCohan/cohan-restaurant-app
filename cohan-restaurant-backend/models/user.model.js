@@ -1,6 +1,7 @@
 // src/models/User.js
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import BaseSchemaModel from "./baseSchemaModel.js";
 
 const addressSchema = new mongoose.Schema(
   {
@@ -14,22 +15,19 @@ const addressSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const userSchema = new mongoose.Schema(
+const userSchema = BaseSchemaModel(
   {
-    // Hiển thị / tìm kiếm
     fullName: { type: String, trim: true },
 
-    // Định danh
     username: {
       type: String,
       trim: true,
       lowercase: true,
       index: true,
       unique: true,
-      sparse: true, // cho phép null mà vẫn unique khi có giá trị
+      sparse: true,
     },
 
-    // Liên hệ
     email: {
       type: String,
       lowercase: true,
@@ -37,19 +35,36 @@ const userSchema = new mongoose.Schema(
       index: true,
       unique: true,
       sparse: true,
+      validate: {
+        validator: function (v) {
+          if (!v) return true; // cho phép null
+          // Biểu thức chính quy kiểm tra định dạng email cơ bản
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+        },
+        message: (props) => `${props.value} không phải là email hợp lệ!`,
+      },
     },
+
     phone: {
       type: String,
       trim: true,
       index: true,
       unique: true,
       sparse: true,
+      validate: {
+        validator: function (v) {
+          if (!v) return true; // cho phép null
+          // Cho phép số có 9-11 chữ số, bắt đầu bằng 0 hoặc +84
+          return /^(0|\+?84)(\d{9,10})$/.test(v.replace(/\s+/g, ""));
+        },
+        message: (props) =>
+          `${props.value} không phải là số điện thoại hợp lệ!`,
+      },
     },
 
     address: addressSchema,
 
-    // Bảo mật
-    passwordHash: { type: String }, // không lưu mật khẩu thô
+    passwordHash: { type: String },
     provider: {
       type: String,
       enum: ["local", "google", "facebook", "apple", "other"],
@@ -63,15 +78,10 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Quyền (tham chiếu Role) — giữ nguyên kiểu bạn đang dùng
-    roles: [{ type: mongoose.Schema.Types.ObjectId, ref: "Role" }],
-
-    // Nhà hàng đã tương tác gần đây
+    role: { type: mongoose.Schema.Types.ObjectId, ref: "Role" },
     refRestaurants: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" },
     ],
-
-    // Điểm & phân hạng khách hàng
 
     loyaltyPoints: { type: Number, default: 0 },
     customerType: {
@@ -81,23 +91,37 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Thống kê
     totalOrders: { type: Number, default: 0 },
     totalSpending: { type: Number, default: 0 },
   },
   {
-    timestamps: true, // createdAt = ngày tạo tài khoản, updatedAt
+    timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
   }
 );
 
-// Virtual id
-userSchema.virtual("id").get(function () {
-  return String(this._id);
+userSchema.pre("validate", function (next) {
+  // 1️⃣ Chuẩn hoá email
+  if (this.email) {
+    this.email = this.email.toLowerCase().trim();
+  }
+
+  // 2️⃣ Chuẩn hoá phone
+  if (this.phone) {
+    let phone = this.phone.replace(/\s+/g, "").replace(/^\+84/, "0"); // đổi +84 -> 0
+    if (phone.startsWith("84")) phone = "0" + phone.slice(2); // đổi 84xxxx -> 0xxxx
+    this.phone = phone;
+  }
+
+  // 3️⃣ Chuẩn hoá username
+  if (this.username) {
+    this.username = this.username.trim().toLowerCase();
+  }
+
+  next();
 });
 
-// Helpers cho mật khẩu
 userSchema.methods.setPassword = async function (plain) {
   if (!plain) return;
   const salt = await bcrypt.genSalt(10);
@@ -109,7 +133,6 @@ userSchema.methods.checkPassword = async function (plain) {
   return bcrypt.compare(plain, this.passwordHash);
 };
 
-// Optional: index thêm phục vụ tìm kiếm
 userSchema.index({
   fullName: "text",
   "address.city": 1,

@@ -1,0 +1,93 @@
+# ====== Types ======
+type ModifierOption {
+  id: ID
+  name: String!
+  priceDelta: Float!
+  isDefault: Boolean
+}
+
+type ModifierGroup {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  selectionType: String!
+  required: Boolean
+  appliesTo: String
+  options: [ModifierOption!]!
+  isActive: Boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+# ====== Inputs ======
+input ModifierOptionInput {
+  name: String!
+  priceDelta: Float!
+  isDefault: Boolean
+}
+
+input CreateModifierGroupInput {
+  restaurantId: ID!
+  name: String!
+  selectionType: String = "multiple"
+  required: Boolean = false
+  appliesTo: String = "item"
+  options: [ModifierOptionInput!]
+  isActive: Boolean = true
+}
+
+input UpdateModifierGroupInput {
+  id: ID!
+  name: String
+  selectionType: String
+  required: Boolean
+  appliesTo: String
+  isActive: Boolean
+}
+
+# ====== Link món ↔ nhóm tuỳ chọn ======
+input SetMenuItemModifierGroupsInput {
+  menuItemId: ID!
+  groupIds: [ID!]! # thay thế toàn bộ danh sách group của món
+}
+
+input AttachMenuItemModifierGroupsInput {
+  menuItemId: ID!
+  groupIds: [ID!]!
+}
+
+input DetachMenuItemModifierGroupsInput {
+  menuItemId: ID!
+  groupIds: [ID!]!
+}
+
+# ====== Queries / Mutations ======
+extend type Query {
+  modifierGroups(restaurantId: ID!, search: String): [ModifierGroup!]!
+  modifierGroup(id: ID!): ModifierGroup
+}
+
+extend type Mutation {
+  # Group CRUD
+  createModifierGroup(input: CreateModifierGroupInput!): ModifierGroup!
+  updateModifierGroup(input: UpdateModifierGroupInput!): ModifierGroup!
+  deleteModifierGroup(id: ID!): Boolean!
+
+  # Option CRUD (trên 1 group)
+  addModifierOption(groupId: ID!, option: ModifierOptionInput!): ModifierGroup!
+  updateModifierOption(
+    groupId: ID!
+    optionId: ID!
+    option: ModifierOptionInput!
+  ): ModifierGroup!
+  removeModifierOption(groupId: ID!, optionId: ID!): ModifierGroup!
+
+  # Liên kết với món ăn
+  setMenuItemModifierGroups(input: SetMenuItemModifierGroupsInput!): Boolean!
+  attachMenuItemModifierGroups(
+    input: AttachMenuItemModifierGroupsInput!
+  ): Boolean!
+  detachMenuItemModifierGroups(
+    input: DetachMenuItemModifierGroupsInput!
+  ): Boolean!
+}

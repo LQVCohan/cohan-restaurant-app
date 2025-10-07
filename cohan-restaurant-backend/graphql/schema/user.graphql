@@ -1,0 +1,65 @@
+type User {
+  id: ID!
+  fullName: String!
+  username: String
+  email: String
+  phone: String
+  address: Address
+  role: Role
+  status: String
+  provider: String
+  refRestaurants: [Restaurant]
+  point: Int
+  loyaltyPoints: Int
+  roleName: String!
+  users: [User!]!
+  customerType: String
+  totalOrders: Int
+  totalSpending: Float
+  createdAt: String
+  updatedAt: String
+  createdBy: User
+  updatedBy: User
+}
+
+input CreateUserInput {
+  fullName: String!
+  username: String
+  email: String
+  phone: String
+  address: AddressInput
+  password: String!
+  provider: String
+  status: String
+  roleId: ID
+  refRestaurantIds: [ID!]
+  customerType: String
+}
+
+extend type Mutation {
+  createUser(input: CreateUserInput!): AuthPayload!
+  login(
+    email: String
+    username: String
+    phone: String
+    password: String!
+  ): AuthPayload!
+  assignRoleToUser(input: AssignRoleToUserInput!): User!
+}
+
+extend type Query {
+  me: User
+}
+type AuthPayload {
+  token: String!
+  user: User!
+}
+input AssignRoleToUserInput {
+  userId: ID!
+  roleId: ID!
+}
+enum CustomerType {
+  VIP
+  NEW
+  OFTEN
+}

@@ -56,7 +56,7 @@ async function main() {
       name: "System Admin",
       email,
       passwordHash,
-      roles: [adminRole._id],
+      role: [adminRole._id],
       status: "active",
       provider: "local",
     });

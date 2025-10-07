@@ -4,9 +4,11 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import mercurius from "mercurius";
 import rateLimit from "@fastify/rate-limit";
-import typeDefs from "../graphql/schema.js";
+import typeDefs from "../graphql/schema/index.js";
 import resolvers from "../graphql/resolvers/index.js";
 import buildContext from "../graphql/context.js";
+
+import { makeExecutableSchema } from "@graphql-tools/schema";
 
 export async function createServer() {
   const app = Fastify({
@@ -24,6 +26,10 @@ export async function createServer() {
     credentials: true,
   });
 
+  const schema = makeExecutableSchema({
+    typeDefs,
+    resolvers,
+  });
   await app.register(helmet, { contentSecurityPolicy: false });
 
   await app.register(rateLimit, {
@@ -32,12 +38,11 @@ export async function createServer() {
   });
 
   await app.register(mercurius, {
-    schema: typeDefs,
-    resolvers,
+    schema,
     graphiql: true,
     ide: true,
     subscription: true,
-    context: buildContext,
+    context: (request, reply) => buildContext(request, reply),
   });
 
   app.get("/health", async () => ({ ok: true }));

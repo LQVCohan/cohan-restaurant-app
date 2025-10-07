@@ -1,0 +1,43 @@
+type Permission {
+  id: ID!
+  code: String!
+  name: String!
+  description: String
+  group: String
+  action: String!
+  resource: String!
+  createdAt: String
+  updatedAt: String
+}
+
+input CreatePermissionInput {
+  code: String
+  name: String!
+  description: String
+  group: String
+  action: String!
+  resource: String!
+}
+input UpdatePermissionInput {
+  id: ID!
+  name: String
+  description: String
+  group: String
+  action: String
+  resource: String
+  code: String
+}
+
+extend type Query {
+  permissions(
+    search: String
+    group: String
+    resource: String
+    action: String
+  ): [Permission!]!
+}
+
+extend type Mutation {
+  createPermission(input: CreatePermissionInput!): Permission!
+  updatePermission(input: UpdatePermissionInput!): Permission!
+}

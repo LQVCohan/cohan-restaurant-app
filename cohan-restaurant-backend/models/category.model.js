@@ -1,21 +1,31 @@
+// src/models/Category.js
 import mongoose from "mongoose";
-const { Schema, model, Types } = mongoose;
+import BaseSchemaModel from "./baseSchemaModel.js";
 
-const baseOptions = { timestamps: true };
-
-const CategorySchema = new Schema(
-  {
-    restaurantId: { type: Types.ObjectId, ref: "Restaurant" },
-    name: { type: String, required: true },
-    parentId: { type: Types.ObjectId, ref: "Category" },
-    order: { type: Number, default: 0 },
+const categorySchema = BaseSchemaModel({
+  restaurantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Restaurant",
+    required: true,
+    index: true,
   },
-  baseOptions
+  timeSlot: {
+    type: String,
+    enum: ["breakfast", "lunch", "dinner", "late_night"],
+    required: true,
+    index: true,
+  },
+  name: { type: String, required: true, trim: true },
+  order: { type: Number, default: 0 },
+  isActive: { type: Boolean, default: true },
+});
+
+// Tên category duy nhất trong cùng (restaurantId, timeSlot)
+categorySchema.index(
+  { restaurantId: 1, timeSlot: 1, name: 1 },
+  { unique: true }
 );
 
-CategorySchema.index(
-  { restaurantId: 1, name: 1 },
-  { unique: true, partialFilterExpression: { restaurantId: { $exists: true } } }
-);
-
-export default mongoose.model("Category", CategorySchema);
+export const Category =
+  mongoose.models.Category || mongoose.model("Category", categorySchema);
+export default Category;

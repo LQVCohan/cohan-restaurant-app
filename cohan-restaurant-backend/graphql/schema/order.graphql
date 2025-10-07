@@ -1,0 +1,31 @@
+input OrderLineInput {
+  menuItemId: ID!
+  preparationId: ID
+  preparationName: String
+  quantity: Int = 1
+  weightKg: Float
+  modifierOptionIds: [ID!]
+  note: String
+}
+
+input QuoteOrderInput {
+  restaurantId: ID!
+  lines: [OrderLineInput!]!
+}
+
+type QuoteLine {
+  menuItemId: ID!
+  unit: Float!
+  prepPrice: Float!
+  modifiersTotalPerUnit: Float!
+  subtotal: Float!
+}
+
+type QuoteOrderPayload {
+  lines: [QuoteLine!]!
+  total: Float!
+}
+
+extend type Mutation {
+  quoteOrder(input: QuoteOrderInput!): QuoteOrderPayload! # BE tính tiền authoritative
+}

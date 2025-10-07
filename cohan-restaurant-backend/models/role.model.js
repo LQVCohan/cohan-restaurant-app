@@ -1,16 +1,24 @@
 import mongoose from "mongoose";
-const { Schema, model, Types } = mongoose;
+import BaseSchemaModel from "./baseSchemaModel.js";
 
-const baseOptions = { timestamps: true };
-
-const RoleSchema = new Schema(
-  {
-    name: { type: String, required: true, unique: true },
-    description: String,
-    permissions: [{ type: Types.ObjectId, ref: "Permission" }],
-    ownerId: { type: Types.ObjectId, ref: "User" },
+const roleSchema = BaseSchemaModel({
+  name: { type: String, required: true, trim: true },
+  slug: {
+    type: String,
+    required: true,
+    trim: true,
+    lowercase: true,
+    unique: true,
+    index: true,
   },
-  baseOptions
-);
+  description: { type: String },
 
-export default mongoose.model("Role", RoleSchema);
+  permissions: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "Permission", index: true },
+  ],
+  parent: { type: String, trim: true, lowercase: true },
+  isSystem: { type: Boolean, default: false },
+});
+
+export const Role = mongoose.models.Role || mongoose.model("Role", roleSchema);
+export default Role;

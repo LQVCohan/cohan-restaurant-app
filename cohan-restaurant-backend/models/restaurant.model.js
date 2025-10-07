@@ -1,5 +1,6 @@
 // src/models/restaurant.js
 import mongoose from "mongoose";
+import BaseSchemaModel from "./baseSchemaModel.js";
 const addressSchema = new mongoose.Schema({
   line1: String,
   line2: String,
@@ -8,7 +9,7 @@ const addressSchema = new mongoose.Schema({
   city: String,
   country: String,
 });
-const restaurantSchema = new mongoose.Schema({
+const restaurantSchema = BaseSchemaModel({
   name: { type: String, required: true },
   avatar: String,
   coverImage: String,
