@@ -1,3 +1,4 @@
+// src/graphql/resolvers/index.js
 import baseResolvers from "./base.js";
 import role from "./role/index.js";
 import restaurant from "./restaurant/index.js";
@@ -6,8 +7,15 @@ import permission from "./permission/index.js";
 import menu from "./menu/index.js";
 import category from "./category/index.js";
 import modifierGroup from "./modifier/index.js";
+import table from "./table/index.js";
+import floor from "./floor/index.js";
+
+// 🆕 Import thêm module quản lý kho, nguyên liệu, recipe, consumption
+import inventory from "./inventory/index.js";
+
 export default {
   ...baseResolvers,
+
   Query: {
     ...(role.Query || {}),
     ...(restaurant.Query || {}),
@@ -16,7 +24,13 @@ export default {
     ...(menu.Query || {}),
     ...(category.Query || {}),
     ...(modifierGroup.Query || {}),
+    ...(table.Query || {}),
+    ...(floor.Query || {}),
+
+    // 🆕 thêm inventory Query (ingredients, warehouses, stockItems, recipe, ...)
+    ...(inventory.Query || {}),
   },
+
   Mutation: {
     ...(role.Mutation || {}),
     ...(restaurant.Mutation || {}),
@@ -25,8 +39,14 @@ export default {
     ...(category.Mutation || {}),
     ...(menu.Mutation || {}),
     ...(modifierGroup.Mutation || {}),
+    ...(table.Mutation || {}),
+    ...(floor.Mutation || {}),
+
+    // 🆕 thêm inventory Mutation (create/update ingredient, stock adjust, consumeForOrder, reservation, ...)
+    ...(inventory.Mutation || {}),
   },
-  // nếu bạn có type-level resolvers:
+
+  // Nếu bạn có type-level resolvers (giữ nguyên logic)
   ...(role.Role ? { Role: role.Role } : {}),
   ...(restaurant.Restaurant ? { Restaurant: restaurant.Restaurant } : {}),
   ...(user.User ? { User: user.User } : {}),
@@ -34,4 +54,5 @@ export default {
   ...(menu.Menu ? { Menu: menu.Menu } : {}),
   ...(category.Category ? { Category: category.Category } : {}),
   ...(modifierGroup.Modifier ? { Modifier: modifierGroup.Modifier } : {}),
+  ...(inventory.Inventory ? { Inventory: inventory.Inventory } : {}), // optional
 };

@@ -1,0 +1,354 @@
+scalar JSON
+
+enum Unit {
+  g
+  kg
+  ml
+  l
+  unit
+  piece
+  tbsp
+  tsp
+  pack
+  bottle
+  can
+}
+
+enum MovementType {
+  inbound
+  outbound
+  adjustment
+  transfer
+}
+
+type Ingredient {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  sku: String
+  category: String
+  baseUnit: Unit!
+  conversions: [UnitConversion!]!
+  costPerBaseUnit: Float
+  photos: [String!]!
+  minStock: Float
+  notes: String
+  isActive: Boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+type UnitConversion {
+  from: Unit!
+  to: Unit!
+  ratio: Float! # 1 from = ratio to
+}
+
+input UnitConversionInput {
+  from: Unit!
+  to: Unit!
+  ratio: Float!
+}
+
+input CreateIngredientInput {
+  restaurantId: ID!
+  name: String!
+  sku: String
+  category: String
+  baseUnit: Unit!
+  conversions: [UnitConversionInput!]
+  costPerBaseUnit: Float
+  photos: [String!]
+  minStock: Float
+  notes: String
+  isActive: Boolean
+}
+
+input UpdateIngredientInput {
+  id: ID!
+  name: String
+  sku: String
+  category: String
+  baseUnit: Unit
+  conversions: [UnitConversionInput!]
+  costPerBaseUnit: Float
+  photos: [String!]
+  minStock: Float
+  notes: String
+  isActive: Boolean
+}
+
+type Warehouse {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  code: String
+  address: String
+  isActive: Boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+input CreateWarehouseInput {
+  restaurantId: ID!
+  name: String!
+  code: String
+  address: String
+  isActive: Boolean
+}
+
+input UpdateWarehouseInput {
+  id: ID!
+  name: String
+  code: String
+  address: String
+  isActive: Boolean
+}
+
+type StockItem {
+  id: ID!
+  restaurantId: ID!
+  warehouseId: ID!
+  ingredientId: ID!
+  onHand: Float!
+  reserved: Float!
+  batches: [StockBatch!]!
+  createdAt: Date
+  updatedAt: Date
+}
+
+type StockBatch {
+  id: ID!
+  lot: String
+  qty: Float!
+  expiry: Date
+  costPerBaseUnit: Float
+  createdAt: Date
+  updatedAt: Date
+}
+
+input StockBatchInput {
+  lot: String
+  qty: Float!
+  expiry: Date
+  costPerBaseUnit: Float
+}
+
+type StockMovement {
+  id: ID!
+  restaurantId: ID!
+  warehouseId: ID!
+  ingredientId: ID!
+  type: MovementType!
+  qty: Float!
+  reason: String
+  meta: JSON
+  createdAt: Date
+  updatedAt: Date
+}
+
+# Recipe
+type Recipe {
+  id: ID!
+  restaurantId: ID!
+  menuItemId: ID!
+  yieldQty: Float
+  yieldUnit: String
+  baseComponents: [RecipeComponent!]!
+  variants: [RecipeVariant!]!
+  notes: String
+  isActive: Boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+type RecipeComponent {
+  ingredientId: ID!
+  qty: Float!
+  unit: String
+  wastePct: Float
+}
+
+type RecipeVariant {
+  preparationMethodName: String!
+  components: [RecipeComponent!]!
+}
+
+input RecipeComponentInput {
+  ingredientId: ID!
+  qty: Float! # theo baseUnit của ingredient
+  unit: String
+  wastePct: Float
+}
+
+input RecipeVariantInput {
+  preparationMethodName: String!
+  components: [RecipeComponentInput!]!
+}
+
+input UpsertRecipeInput {
+  restaurantId: ID!
+  menuItemId: ID!
+  yieldQty: Float
+  yieldUnit: String
+  baseComponents: [RecipeComponentInput!]
+  variants: [RecipeVariantInput!]
+  notes: String
+  isActive: Boolean
+}
+
+# Order consumption
+input OrderLineInput {
+  menuItemId: ID!
+  quantity: Float
+  preparationMethodName: String # tuỳ chọn, để lấy variant phù hợp
+  weightGrams: Float # nếu món tính theo kg → truyền gram để quy đổi
+}
+
+input ConsumeForOrderInput {
+  restaurantId: ID!
+  warehouseId: ID!
+  orderCode: String! # để trace (VD ORD-2025-0001)
+  lines: [OrderLineInput!]!
+  allowNegative: Boolean = false # nếu false → thiếu kho sẽ lỗi
+}
+
+type ConsumptionResult {
+  success: Boolean!
+  totalConsumed: Float! # tổng gram/ml/... đã trừ (quy ra baseUnit của từng nguyên liệu)
+  movements: [StockMovement!]! # các movement được ghi nhận
+  lowStocks: [Ingredient!]! # cảnh báo dưới minStock
+}
+
+type MovementSummary {
+  inbound: Float!
+  outbound: Float!
+  adjustment: Float!
+  transferIn: Float!
+  transferOut: Float!
+  net: Float! # inbound + transferIn - outbound - transferOut + adjustment
+  count: Int!
+}
+
+extend type Query {
+  ingredients(
+    restaurantId: ID!
+    search: String
+    limit: Int = 100
+  ): [Ingredient!]!
+  ingredient(id: ID!): Ingredient
+
+  warehouses(restaurantId: ID!): [Warehouse!]!
+
+  stockItems(
+    restaurantId: ID!
+    warehouseId: ID
+    ingredientIds: [ID!]
+    lowOnly: Boolean
+    limit: Int = 200
+  ): [StockItem!]!
+
+  recipe(restaurantId: ID!, menuItemId: ID!): Recipe
+
+  stockMovements(
+    restaurantId: ID!
+    warehouseId: ID
+    ingredientId: ID
+    type: MovementType
+    orderCode: String
+    dateFrom: Date
+    dateTo: Date
+    limit: Int = 200
+    sort: Int = -1 # -1: mới nhất trước, 1: cũ nhất trước
+  ): [StockMovement!]!
+
+  stockMovementSummary(
+    restaurantId: ID!
+    warehouseId: ID
+    ingredientId: ID
+    dateFrom: Date
+    dateTo: Date
+  ): MovementSummary!
+}
+
+extend type Mutation {
+  createIngredient(input: CreateIngredientInput!): Ingredient!
+  updateIngredient(input: UpdateIngredientInput!): Ingredient!
+  deleteIngredient(id: ID!): Boolean!
+
+  createWarehouse(input: CreateWarehouseInput!): Warehouse!
+  updateWarehouse(input: UpdateWarehouseInput!): Warehouse!
+  deleteWarehouse(id: ID!): Boolean!
+
+  upsertStockItem(
+    restaurantId: ID!
+    warehouseId: ID!
+    ingredientId: ID!
+    onHand: Float
+    reserved: Float
+    batches: [StockBatchInput!]
+  ): StockItem!
+
+  adjustStock(
+    restaurantId: ID!
+    warehouseId: ID!
+    ingredientId: ID!
+    qty: Float!
+    reason: String
+  ): StockItem!
+
+  transferStock(
+    restaurantId: ID!
+    fromWarehouseId: ID!
+    toWarehouseId: ID!
+    ingredientId: ID!
+    qty: Float!
+    reason: String
+  ): Boolean!
+
+  upsertRecipe(input: UpsertRecipeInput!): Recipe!
+  deleteRecipe(restaurantId: ID!, menuItemId: ID!): Boolean!
+
+  consumeForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
+
+  reserveForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
+  commitReservationForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
+  cancelReservationForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
+}
+
+enum ServingMode {
+  PORTION
+  BY_WEIGHT
+}
+
+type ServingVariant {
+  key: String! # "portion" | "byWeight"
+  mode: ServingMode! # PORTION | BY_WEIGHT
+  yieldQty: Float!
+  yieldUnit: String! # "portion" | "100g" | "g"
+  preparationMethodName: String
+  components: [RecipeComponent!]!
+}
+
+extend type Recipe {
+  servingVariants: [ServingVariant!]!
+}
+
+input ServingVariantInput {
+  key: String!
+  mode: ServingMode!
+  yieldQty: Float!
+  yieldUnit: String!
+  preparationMethodName: String
+  components: [RecipeComponentInput!]!
+}
+
+extend input UpsertRecipeInput {
+  servingVariants: [ServingVariantInput!]
+}
+
+# Order: cho phép chỉ định serving
+extend input OrderLineInput {
+  servingKey: String
+  servingMode: ServingMode
+}

@@ -1,22 +1,36 @@
 import mongoose from "mongoose";
-const { Schema, model, Types } = mongoose;
+import BaseSchemaModel from "./baseSchemaModel.js";
 
-const baseOptions = { timestamps: true };
+export const MovementTypeEnum = [
+  "inbound",
+  "outbound",
+  "adjustment",
+  "transfer",
+];
 
-const StockMovementSchema = new Schema(
-  {
-    restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true },
-    ingredientId: { type: Types.ObjectId, ref: "Ingredient", required: true },
-    type: { type: String, enum: ["IN", "OUT", "ADJ"], required: true },
-    qty: { type: Number, required: true },
-    unit: String,
-    refOrderId: { type: Types.ObjectId, ref: "Order" },
-    note: String,
-    byUserId: { type: Types.ObjectId, ref: "User" },
+const StockMovementSchema = BaseSchemaModel({
+  restaurantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Restaurant",
+    required: true,
+    index: true,
   },
-  baseOptions
-);
-
-StockMovementSchema.index({ restaurantId: 1, ingredientId: 1, createdAt: -1 });
+  warehouseId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Warehouse",
+    required: true,
+    index: true,
+  },
+  ingredientId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Ingredient",
+    required: true,
+    index: true,
+  },
+  type: { type: String, enum: MovementTypeEnum, required: true, index: true },
+  qty: { type: Number, required: true }, // +/- (theo baseUnit)
+  reason: { type: String }, // "order:xxx", "receive:POxxx"...
+  meta: { type: Object, default: {} },
+});
 
 export default mongoose.model("StockMovement", StockMovementSchema);

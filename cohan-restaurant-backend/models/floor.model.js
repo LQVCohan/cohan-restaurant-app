@@ -1,18 +1,26 @@
+// src/models/floor.model.js
 import mongoose from "mongoose";
-const { Schema, model, Types } = mongoose;
+import BaseSchemaModel from "./baseSchemaModel.js";
 
-const baseOptions = { timestamps: true };
-
-const FloorSchema = new Schema(
-  {
-    restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true },
-    name: { type: String, required: true },
-    order: { type: Number, default: 0 },
-    mapImageUrl: String,
+const FloorSchema = BaseSchemaModel({
+  restaurantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Restaurant",
+    required: true,
+    index: true,
   },
-  baseOptions
-);
+  name: { type: String, required: true, trim: true },
+  level: { type: Number, required: true, index: true }, // tầng 1,2,3...
+  description: { type: String },
+  planImage: { type: String }, // ảnh sơ đồ tầng (PNG/JPG/SVG)
+  isActive: { type: Boolean, default: true },
+  meta: {
+    width: { type: Number, default: 1920 }, // kích thước canvas FE để quy đổi tọa độ
+    height: { type: Number, default: 1080 },
+  },
+});
 
-FloorSchema.index({ restaurantId: 1, order: 1 });
+// Unique: mỗi nhà hàng 1 level (tầng) duy nhất
+FloorSchema.index({ restaurantId: 1, level: 1 }, { unique: true });
 
 export default mongoose.model("Floor", FloorSchema);

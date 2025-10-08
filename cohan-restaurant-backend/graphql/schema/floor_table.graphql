@@ -1,0 +1,197 @@
+scalar Date
+
+enum TableStatus {
+  available
+  occupied
+  reserved
+  cleaning
+  offline
+}
+
+enum TableType {
+  standard
+  booth
+  vip
+  outdoor
+  bar
+  private
+}
+
+type Floor {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  level: Int!
+  description: String
+  planImage: String
+  isActive: Boolean
+  meta: FloorMeta
+  createdAt: Date
+  updatedAt: Date
+}
+
+type FloorMeta {
+  width: Int
+  height: Int
+}
+
+input FloorMetaInput {
+  width: Int
+  height: Int
+}
+
+input CreateFloorInput {
+  restaurantId: ID!
+  name: String!
+  level: Int!
+  description: String
+  planImage: String
+  isActive: Boolean
+  meta: FloorMetaInput
+}
+
+input UpdateFloorInput {
+  id: ID!
+  name: String
+  level: Int
+  description: String
+  planImage: String
+  isActive: Boolean
+  meta: FloorMetaInput
+}
+
+type Position {
+  x: Float!
+  y: Float!
+  rotation: Float
+  shape: String
+  w: Float
+  h: Float
+  path: String
+}
+
+input PositionInput {
+  x: Float!
+  y: Float!
+  rotation: Float
+  shape: String
+  w: Float
+  h: Float
+  path: String
+}
+
+type Table {
+  id: ID!
+  restaurantId: ID!
+  floorId: ID!
+  code: String!
+  type: TableType!
+  capacity: Int!
+  position: Position!
+  photos: [String!]!
+  vrUrl: String
+  notes: String
+  status: TableStatus!
+  floorLevel: Int
+  tags: [String!]
+  isJoinable: Boolean
+  joinGroupId: String
+  createdAt: Date
+  updatedAt: Date
+}
+
+input CreateTableInput {
+  restaurantId: ID!
+  floorId: ID!
+  code: String!
+  type: TableType = standard
+  capacity: Int!
+  position: PositionInput!
+  photos: [String!]
+  vrUrl: String
+  notes: String
+  status: TableStatus
+  tags: [String!]
+  isJoinable: Boolean
+  joinGroupId: String
+}
+
+input UpdateTableInput {
+  id: ID!
+  code: String
+  type: TableType
+  capacity: Int
+  position: PositionInput
+  photos: [String!]
+  vrUrl: String
+  notes: String
+  status: TableStatus
+  tags: [String!]
+  isJoinable: Boolean
+  joinGroupId: String
+}
+
+input MoveTableInput {
+  id: ID!
+  floorId: ID
+  position: PositionInput
+}
+
+input SetTableStatusInput {
+  id: ID!
+  status: TableStatus!
+}
+
+input SwapTableCodesInput {
+  restaurantId: ID!
+  floorId: ID!
+  aId: ID!
+  bId: ID!
+}
+
+input BulkUpsertTablesInput {
+  restaurantId: ID!
+  floorId: ID!
+  items: [BulkTableItemInput!]! # code là unique trong floor → upsert theo code
+}
+
+input BulkTableItemInput {
+  code: String!
+  type: TableType = standard
+  capacity: Int!
+  position: PositionInput!
+  photos: [String!]
+  vrUrl: String
+  notes: String
+  status: TableStatus
+  tags: [String!]
+  isJoinable: Boolean
+  joinGroupId: String
+}
+extend type Query {
+  floors(restaurantId: ID!): [Floor!]!
+  floorByLevel(restaurantId: ID!, level: Int!): Floor
+  tables(
+    restaurantId: ID!
+    floorId: ID
+    status: TableStatus
+    type: TableType
+    search: String
+    limit: Int = 200
+  ): [Table!]!
+  tableByCode(restaurantId: ID!, floorId: ID!, code: String!): Table
+}
+
+extend type Mutation {
+  createFloor(input: CreateFloorInput!): Floor!
+  updateFloor(input: UpdateFloorInput!): Floor!
+  deleteFloor(id: ID!): Boolean! # hard delete; nếu muốn soft → đổi bool/flag
+  createTable(input: CreateTableInput!): Table!
+  updateTable(input: UpdateTableInput!): Table!
+  deleteTable(id: ID!): Boolean!
+
+  moveTable(input: MoveTableInput!): Table! # đổi sàn / đổi tọa độ
+  setTableStatus(input: SetTableStatusInput!): Table! # đổi trạng thái nhanh
+  swapTableCodes(input: SwapTableCodesInput!): Boolean! # hoán đổi code giữa 2 bàn
+  bulkUpsertTables(input: BulkUpsertTablesInput!): Int! # trả về số bàn upsert
+}

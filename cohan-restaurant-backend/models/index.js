@@ -8,12 +8,13 @@ export { default as Category } from "./category.model.js";
 export { default as MenuItem } from "./menuitem.model.js";
 export { default as Menu } from "./menu.model.js";
 export { default as ModifierGroup } from "./modifier-group.model.js";
+export { default as Warehouse } from "./warehouse.model.js";
 export { default as Combo } from "./combo.model.js";
 export { default as Ingredient } from "./ingredient.model.js";
 export { default as Recipe } from "./recipe.model.js";
-
 export { default as InventoryItem } from "./inventory-item.model.js";
 export { default as StockMovement } from "./stock-movement.model.js";
+export { default as StockItem } from "./stockItem.model.js";
 export { default as Supplier } from "./supplier.model.js";
 export { default as Reservation } from "./reservation.model.js";
 export { default as AvailabilityLock } from "./availability-lock.model.js";

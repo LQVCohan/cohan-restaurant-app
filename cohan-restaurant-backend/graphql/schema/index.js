@@ -17,6 +17,8 @@ const files = [
   "menu.graphql",
   "category.graphql",
   "modifier.graphql",
+  "floor_table.graphql",
+  "inventory.graphql",
 ].map((f) => fs.readFileSync(path.join(schemaDir, f), "utf8"));
 
 const typeDefs = mergeTypeDefs(files, { useSchemaDefinition: true });
