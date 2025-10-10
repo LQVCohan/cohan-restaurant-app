@@ -2,21 +2,32 @@
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { User, Role } from "../../../models/index.js";
 import process from "process";
+import { User, Role } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
+
+import { validatePasswordStrong } from "../../../lib/passwordPolicy.js";
+import { verifyRecaptcha } from "../../../lib/recaptcha.js";
+
+// ✅ dùng mutation verify đã chuẩn hóa & helper gửi mail
+import emailVerificationMutation, {
+  issueAndSendVerificationForUser,
+} from "../auth/emailVerification.mutation.js";
+
 const signToken = (user) => {
   const payload = {
     id: String(user._id),
     email: user.email,
-    role: (user.slug || user.name || "").toLowerCase(),
+    role: (user.role?.slug || user.role?.name || "").toLowerCase(),
   };
   return jwt.sign(payload, process.env.JWT_SECRET || "dev_secret", {
-    expiresIn: "7d",
+    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    issuer: process.env.JWT_ISSUER || "foodhub-system",
   });
 };
 
 export const UserMutation = {
+  // ========== Role ==========
   assignRoleToUser: async (_, { input }, { user }) => {
     requireRole(user, ["admin"]);
     const { userId, roleId } = input;
@@ -28,16 +39,15 @@ export const UserMutation = {
     }
     const role = await Role.findById(roleId).lean();
     if (!role) throw new GraphQLError("Role not found");
-
     const u = await User.findById(userId);
     if (!u) throw new GraphQLError("User not found");
-    u.role = roleId; // một role duy nhất
+    u.role = roleId;
     await u.save();
-
     return u.toObject();
   },
 
-  createUser: async (_, { input }) => {
+  // ========== Register ==========
+  createUser: async (_, { input }, ctx) => {
     const {
       fullName,
       username,
@@ -47,6 +57,7 @@ export const UserMutation = {
       password,
       roleId,
       customerType,
+      captchaToken,
       provider = "local",
     } = input;
 
@@ -55,11 +66,29 @@ export const UserMutation = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    if (!password || password.length < 6) {
-      throw new GraphQLError("Password must be at least 6 characters", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
+
+    const policy = validatePasswordStrong(password);
+    if (!policy.ok) {
+      throw new GraphQLError(
+        `Weak password: ${
+          policy.reason || "Password does not meet requirements"
+        }`,
+        {
+          extensions: { code: "BAD_USER_INPUT" },
+        }
+      );
     }
+
+    const recaptcha = await verifyRecaptcha(captchaToken, ctx);
+    if (!recaptcha.ok) {
+      throw new GraphQLError(
+        recaptcha.reason || "reCAPTCHA verification failed",
+        {
+          extensions: { code: "BAD_USER_INPUT" },
+        }
+      );
+    }
+
     let roleDoc = null;
     if (roleId) {
       if (!mongoose.isValidObjectId(roleId)) {
@@ -74,22 +103,20 @@ export const UserMutation = {
         });
       }
     }
-    // Uniqueness checks
+
     const exists = await User.findOne({
       $or: [
-        { email: input.email?.toLowerCase().trim() },
-        { phone: input.phone?.replace(/\s+/g, "").replace(/^\+84/, "0") },
-        { username: input.username?.toLowerCase().trim() },
+        { email: email?.toLowerCase().trim() },
+        { phone: phone?.replace(/\s+/g, "").replace(/^\+84/, "0") },
+        { username: username?.toLowerCase().trim() },
       ],
     });
-
     if (exists) {
       throw new GraphQLError("Email/Phone/Username already in use", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
 
-    // Tạo user
     const doc = new User({
       fullName: fullName.trim(),
       username: username?.trim(),
@@ -102,37 +129,55 @@ export const UserMutation = {
       role: roleId || undefined,
       loyaltyPoints: 0,
       totalOrders: 0,
-      totalSpend: 0,
+      totalSpending: 0,
     });
-
     await doc.setPassword(password);
-
     await doc.save();
+
+    // gửi email xác minh nếu bật
+    if (
+      String(process.env.ENABLE_EMAIL_VERIFICATION || "true").toLowerCase() ===
+      "true"
+    ) {
+      try {
+        await issueAndSendVerificationForUser(doc);
+      } catch (err) {
+        console.error("Email verification send failed:", err);
+        // không throw để không block đăng ký
+      }
+    }
 
     const userObj = await User.findById(doc._id)
       .populate("role")
       .lean({ virtuals: true });
 
     const token = signToken({ ...userObj, role: userObj.role });
-
     const roleName = (
       userObj.role?.slug ||
       userObj.role?.name ||
       ""
     ).toLowerCase();
-    return {
-      token,
-      user: { ...userObj, roleName },
-    };
+    return { token, user: { ...userObj, roleName } };
   },
 
-  // Đăng nhập bằng một trong email/username/phone
-  login: async (_, { email, username, phone, password }) => {
+  // ========== Login ==========
+  login: async (_, { email, username, phone, password, captchaToken }, ctx) => {
     if (!password) {
       throw new GraphQLError("Password is required", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+
+    const recaptcha = await verifyRecaptcha(captchaToken, ctx);
+    if (!recaptcha.ok) {
+      throw new GraphQLError(
+        recaptcha.reason || "reCAPTCHA verification failed",
+        {
+          extensions: { code: "BAD_USER_INPUT" },
+        }
+      );
+    }
+
     const q = {
       $or: [
         ...(email ? [{ email: email.toLowerCase().trim() }] : []),
@@ -160,11 +205,17 @@ export const UserMutation = {
         extensions: { code: "FORBIDDEN" },
       });
 
-    // check password
-    let ok = false;
-    if (user.checkPassword) {
-      ok = await user.checkPassword(password);
-    }
+    // Nếu muốn chặn login khi chưa verify, bật đoạn này:
+    // if (
+    //   process.env.ENABLE_EMAIL_VERIFICATION === "true" &&
+    //   !user.emailVerified
+    // ) {
+    //   throw new GraphQLError("Email not verified. Please check your inbox.", {
+    //     extensions: { code: "FORBIDDEN" },
+    //   });
+    // }
+
+    const ok = user.checkPassword ? await user.checkPassword(password) : false;
     if (!ok)
       throw new GraphQLError("Invalid credentials", {
         extensions: { code: "UNAUTHENTICATED" },
@@ -173,18 +224,16 @@ export const UserMutation = {
     const userObj = await User.findById(user._id)
       .populate("role")
       .lean({ virtuals: true });
-
     const token = signToken({ ...userObj, role: userObj.role });
-
     const roleName = (
       userObj.role?.slug ||
       userObj.role?.name ||
       ""
     ).toLowerCase();
 
-    return {
-      token,
-      user: { ...userObj, roleName },
-    };
+    return { token, user: { ...userObj, roleName } };
   },
+
+  // ========== gộp các mutation verify từ file chuyên trách ==========
+  ...emailVerificationMutation,
 };

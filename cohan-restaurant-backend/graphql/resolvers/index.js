@@ -9,7 +9,7 @@ import category from "./category/index.js";
 import modifierGroup from "./modifier/index.js";
 import table from "./table/index.js";
 import floor from "./floor/index.js";
-
+import auth from "./auth/index.js";
 // 🆕 Import thêm module quản lý kho, nguyên liệu, recipe, consumption
 import inventory from "./inventory/index.js";
 
@@ -42,8 +42,8 @@ export default {
     ...(table.Mutation || {}),
     ...(floor.Mutation || {}),
 
-    // 🆕 thêm inventory Mutation (create/update ingredient, stock adjust, consumeForOrder, reservation, ...)
     ...(inventory.Mutation || {}),
+    ...(auth.Mutation || {}),
   },
 
   // Nếu bạn có type-level resolvers (giữ nguyên logic)

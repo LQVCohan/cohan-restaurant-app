@@ -1,6 +1,6 @@
 // src/server.js
 import "dotenv/config";
-import { connectDB } from "../config/db.js";
+import { connectDB } from "../../config/db.js";
 import { createServer } from "./createServer.js";
 import process from "process";
 const startServer = async () => {

@@ -18,6 +18,8 @@ import MenuManagement from "../components/admin/MenuManagement";
 
 import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
 import ManagerLayout from "../layouts/ManagerLayout";
+import VerifyEmailPending from "../pages/VerifyEmailPending";
+import VerifyEmailConfirm from "../pages/VerifyEmailConfirm";
 import axios from "axios";
 
 const useAuth = () => {
@@ -112,6 +114,8 @@ const PrivateRoute = ({ children, allowedRoles }) => {
 const AppRouter = () => {
   return (
     <Routes>
+      <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
+      <Route path="/verify-email" element={<VerifyEmailPending />} />
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/test" element={<Dashboard />} />

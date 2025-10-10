@@ -1,24 +1,23 @@
-import { useState, useEffect } from "react";
+// src/hooks/useRouter.js
+import { useLocation, useNavigate } from "react-router-dom";
 
 export const useRouter = () => {
-  const [currentRoute, setCurrentRoute] = useState("/");
+  const navigateRR = useNavigate();
+  const location = useLocation();
 
-  useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.slice(1) || "/";
-      setCurrentRoute(hash);
-    };
-
-    handleHashChange();
-    window.addEventListener("hashchange", handleHashChange);
-
-    return () => window.removeEventListener("hashchange", handleHashChange);
-  }, []);
-
-  const navigate = (route) => {
-    window.location.hash = route;
-    setCurrentRoute(route);
+  const navigate = (path, options = {}) => {
+    localStorage.setItem("last_visited_route", location.pathname);
+    navigateRR(path, options);
   };
 
-  return { currentRoute, navigate };
+  const goBack = () => {
+    const last = localStorage.getItem("last_visited_route") || "/";
+    navigateRR(last, { replace: true });
+  };
+
+  return {
+    currentRoute: location.pathname,
+    navigate,
+    goBack,
+  };
 };

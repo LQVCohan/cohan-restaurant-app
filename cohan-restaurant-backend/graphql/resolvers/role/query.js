@@ -2,7 +2,7 @@ import { Role } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
 export const RoleQuery = {
   role: async (_, { search, parent }, { user }) => {
-    requireRole(user, ["admin", "manager"]); // ai được xem danh sách role
+    //    requireRole(user, ["admin", "manager"]); // ai được xem danh sách role
     const q = {};
     if (search)
       q.$or = [

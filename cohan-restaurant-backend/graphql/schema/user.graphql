@@ -1,3 +1,7 @@
+# =========================
+# User Schema (updated)
+# =========================
+
 type User {
   id: ID!
   fullName: String!
@@ -16,6 +20,7 @@ type User {
   customerType: String
   totalOrders: Int
   totalSpending: Float
+  emailVerified: Boolean
   createdAt: String
   updatedAt: String
   createdBy: User
@@ -34,32 +39,52 @@ input CreateUserInput {
   roleId: ID
   refRestaurantIds: [ID!]
   customerType: String
+  captchaToken: String # 👈 thêm nếu bạn bật reCAPTCHA cho đăng ký (tùy chọn)
 }
 
-extend type Mutation {
-  createUser(input: CreateUserInput!): AuthPayload!
-  login(
-    email: String
-    username: String
-    phone: String
-    password: String!
-  ): AuthPayload!
-  assignRoleToUser(input: AssignRoleToUserInput!): User!
+# Nếu muốn dùng captcha cho login, có thể tách input như sau:
+input LoginInput {
+  email: String
+  username: String
+  phone: String
+  password: String!
+  captchaToken: String # 👈 tùy chọn
+}
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+input AssignRoleToUserInput {
+  userId: ID!
+  roleId: ID!
+}
+
+enum CustomerType {
+  VIP
+  NEW
+  OFTEN
 }
 
 extend type Query {
   me: User
 }
-type AuthPayload {
-  token: String!
-  user: User!
-}
-input AssignRoleToUserInput {
-  userId: ID!
-  roleId: ID!
-}
-enum CustomerType {
-  VIP
-  NEW
-  OFTEN
+
+extend type Mutation {
+  createUser(input: CreateUserInput!): AuthPayload!
+
+  login(
+    email: String
+    username: String
+    phone: String
+    password: String!
+    captchaToken: String
+  ): AuthPayload!
+
+  assignRoleToUser(input: AssignRoleToUserInput!): User!
+
+  requestEmailVerification(email: String!): Boolean!
+  verifyEmail(token: String!): Boolean!
+  resendVerification(email: String!): Boolean!
 }
