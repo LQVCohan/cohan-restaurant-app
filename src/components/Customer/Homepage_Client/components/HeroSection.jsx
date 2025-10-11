@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "../../styles/Homepage/HeroSection.scss";
+import "../../../../styles/Homepage/HeroSection.scss";
 
 const HeroSection = ({ onSearch }) => {
   const [address, setAddress] = useState("");

@@ -1,7 +1,7 @@
 // src/pages/ForbiddenPage.jsx
 import React from "react";
 import { useRouter } from "../hooks/useRouter";
-import "../styles/Forbidden.scss"; // nếu bạn muốn style riêng
+import "./ForbiddenPage.scss"; // nếu bạn muốn style riêng
 
 const ForbiddenPage = () => {
   const { goBack } = useRouter();

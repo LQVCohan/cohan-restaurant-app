@@ -1,5 +1,5 @@
 import React from "react";
-import "../../styles/Homepage/Cart.scss";
+import "../../../../styles/Homepage/Cart.scss";
 
 const Cart = ({ isOpen, onClose, cart, onUpdateQuantity, totalPrice }) => {
   return (

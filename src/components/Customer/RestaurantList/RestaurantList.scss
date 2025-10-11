@@ -1,0 +1,341 @@
+@use "../../../styles/variables" as *;
+@use "../../../styles/mixins" as *;
+
+.restaurant-list {
+  min-height: 100vh;
+  background-color: $light-color;
+}
+
+.container {
+  max-width: $desktop;
+  margin: 0 auto;
+  padding: $spacing-xl $spacing-md;
+
+  @include responsive(mobile) {
+    padding: $spacing-md;
+  }
+}
+
+.content-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: $spacing-xl;
+
+  @include responsive(desktop) {
+    grid-template-columns: 250px 1fr;
+  }
+
+  @include responsive(tablet) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.filter-toggle {
+  display: none;
+  width: 100%;
+  padding: $spacing-md;
+  background: $primary-color;
+  color: $white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: $spacing-md;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: $primary-dark;
+  }
+
+  @include responsive(tablet) {
+    display: block;
+  }
+}
+
+// Results Section
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+
+  @include responsive(tablet) {
+    order: 1;
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: $white;
+    padding: $spacing-lg;
+    border-radius: 1rem;
+    @include card-shadow;
+
+    @include responsive(tablet) {
+      flex-direction: column;
+      gap: $spacing-md;
+      align-items: stretch;
+    }
+  }
+
+  &__info {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+
+    @include responsive(tablet) {
+      justify-content: space-between;
+    }
+
+    @include responsive(mobile) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: $spacing-sm;
+    }
+  }
+
+  &__count {
+    font-weight: 600;
+    color: $dark-color;
+    font-size: $font-size-base;
+
+    @include responsive(mobile) {
+      font-size: $font-size-sm;
+    }
+  }
+
+  &__view-toggle {
+    display: flex;
+    background: #f1f5f9;
+    border-radius: 0.5rem;
+    padding: 0.25rem;
+
+    @include responsive(mobile) {
+      width: 100%;
+    }
+  }
+
+  &__view-btn {
+    padding: 0.5rem $spacing-md;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    transition: all 0.3s ease;
+    font-size: $font-size-sm;
+    font-weight: 500;
+    color: $text-muted;
+
+    @include responsive(mobile) {
+      flex: 1;
+      padding: 0.75rem;
+    }
+
+    &--active {
+      background: $white;
+      @include card-shadow;
+      color: $primary-color;
+      font-weight: 600;
+    }
+
+    &:hover:not(&--active) {
+      color: $dark-color;
+    }
+  }
+
+  &__sort-select {
+    padding: 0.75rem $spacing-md;
+    border: 1px solid $border-color;
+    border-radius: 0.5rem;
+    background: $white;
+    cursor: pointer;
+    font-size: $font-size-sm;
+    color: $dark-color;
+    min-width: 180px;
+
+    &:focus {
+      outline: none;
+      border-color: $primary-color;
+      box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+    }
+
+    @include responsive(mobile) {
+      width: 100%;
+      min-width: auto;
+    }
+  }
+}
+
+// Restaurant Grid
+.restaurants-grid {
+  display: grid;
+  gap: $spacing-lg;
+
+  &--grid {
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+
+    @include responsive(tablet) {
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+
+    @include responsive(mobile) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &--list {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Empty State
+.empty-state {
+  text-align: center;
+  padding: 4rem $spacing-xl;
+  background: $white;
+  border-radius: 1rem;
+  @include card-shadow;
+
+  &__icon {
+    font-size: 4rem;
+    margin-bottom: $spacing-md;
+    opacity: 0.5;
+  }
+
+  &__title {
+    font-size: $font-size-xl;
+    font-weight: 600;
+    color: $dark-color;
+    margin-bottom: $spacing-sm;
+  }
+
+  &__text {
+    color: $text-muted;
+    margin-bottom: $spacing-xl;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.6;
+  }
+
+  @include responsive(mobile) {
+    padding: $spacing-xl $spacing-md;
+
+    &__icon {
+      font-size: 3rem;
+    }
+
+    &__title {
+      font-size: $font-size-lg;
+    }
+  }
+}
+
+// Loading State
+.loading {
+  @include flex-center;
+  padding: $spacing-2xl;
+  color: $text-muted;
+  background: $white;
+  border-radius: 1rem;
+  @include card-shadow;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f1f5f9;
+  border-top: 4px solid $primary-color;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: $spacing-md;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+// Button Styles
+.btn {
+  @include button-base;
+
+  &--primary {
+    background: $primary-color;
+    color: $white;
+
+    &:hover {
+      background: $primary-dark;
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  &--secondary {
+    background: $white;
+    color: $primary-color;
+    border: 1px solid $primary-color;
+
+    &:hover {
+      background: $primary-color;
+      color: $white;
+    }
+
+    &:active {
+      transform: translateY(1px);
+    }
+  }
+
+  &--outline {
+    background: transparent;
+    color: $text-muted;
+    border: 1px solid $border-color;
+
+    &:hover {
+      background: $light-color;
+      border-color: $primary-color;
+      color: $primary-color;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+
+    &:hover {
+      transform: none;
+    }
+  }
+}
+
+// Responsive adjustments
+@include responsive(tablet) {
+  .content-layout {
+    gap: $spacing-md;
+  }
+}
+
+@include responsive(mobile) {
+  .container {
+    padding: $spacing-md $spacing-sm;
+  }
+
+  .results {
+    gap: $spacing-md;
+
+    &__header {
+      padding: $spacing-md;
+    }
+  }
+
+  .restaurants-grid {
+    gap: $spacing-md;
+  }
+}

@@ -1,0 +1,124 @@
+@use "../../../../../../styles/variables" as *;
+@use "../../../../../../styles/mixins" as *;
+.search-hero {
+  background: linear-gradient(135deg, $primary-color, $primary-dark);
+  padding: $spacing-2xl $spacing-md;
+  color: $white;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+
+  // Background pattern
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: radial-gradient(
+        circle at 20% 50%,
+        rgba(255, 255, 255, 0.1) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 80% 20%,
+        rgba(255, 255, 255, 0.1) 0%,
+        transparent 50%
+      );
+    pointer-events: none;
+  }
+
+  &__content {
+    max-width: $desktop;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  &__title {
+    font-size: $font-size-4xl;
+    font-weight: 800;
+    margin: 0 0 $spacing-md 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+    @include responsive(tablet) {
+      font-size: $font-size-3xl;
+    }
+
+    @include responsive(mobile) {
+      font-size: $font-size-2xl;
+    }
+  }
+
+  &__subtitle {
+    font-size: $font-size-lg;
+    margin: 0 0 $spacing-xl 0;
+    opacity: 0.9;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+
+    @include responsive(mobile) {
+      font-size: $font-size-base;
+    }
+  }
+
+  &__search-container {
+    max-width: 600px;
+    margin: 0 auto;
+    position: relative;
+    display: flex;
+    background: $white;
+    border-radius: 2rem;
+    padding: 0.5rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+
+    @include responsive(mobile) {
+      flex-direction: column;
+      border-radius: 1rem;
+      padding: 0.75rem;
+    }
+  }
+
+  &__search-box {
+    flex: 1;
+    padding: 1rem 1.5rem;
+    border: none;
+    border-radius: 1.5rem;
+    font-size: $font-size-base;
+    outline: none;
+    color: $dark-color;
+
+    &::placeholder {
+      color: $text-muted;
+    }
+
+    @include responsive(mobile) {
+      margin-bottom: $spacing-sm;
+      border-radius: 0.75rem;
+    }
+  }
+
+  &__search-btn {
+    background: $primary-color;
+    color: $white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 1.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+
+    &:hover {
+      background: $primary-dark;
+      transform: translateY(-1px);
+    }
+
+    @include responsive(mobile) {
+      border-radius: 0.75rem;
+      padding: 1rem;
+    }
+  }
+}

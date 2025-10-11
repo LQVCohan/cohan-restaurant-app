@@ -1,5 +1,5 @@
 import React from "react";
-import "../../styles/Homepage/DishGrid.scss";
+import "../../../../styles/Homepage/DishGrid.scss";
 
 const DishGrid = ({ dishes, onAddToCart }) => {
   return (

@@ -1,0 +1,52 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.header {
+  background: $white;
+  @include card-shadow;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+
+  &__content {
+    max-width: $desktop;
+    margin: 0 auto;
+    padding: $spacing-md;
+    @include flex-between;
+  }
+
+  &__logo {
+    font-size: $font-size-2xl;
+    font-weight: 800;
+    color: $primary-color;
+    text-decoration: none;
+  }
+
+  &__nav {
+    display: flex;
+    gap: $spacing-xl;
+    align-items: center;
+
+    @include responsive(tablet) {
+      display: none;
+    }
+  }
+
+  &__nav-link {
+    text-decoration: none;
+    color: $secondary-color;
+    font-weight: 500;
+    transition: color 0.3s ease;
+
+    &:hover,
+    &--active {
+      color: $primary-color;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: $spacing-md;
+    align-items: center;
+  }
+}

@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../context/AuthContext";
-import "../../styles/Homepage/Header.scss";
+import { AuthContext } from "../../../../context/AuthContext";
+import "../../../../styles/Homepage/Header.scss";
 
 const Header = ({ onCartToggle, cartItemCount }) => {
   const navigate = useNavigate();

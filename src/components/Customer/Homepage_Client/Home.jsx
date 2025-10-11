@@ -1,15 +1,15 @@
 import React, { useState } from "react";
-import Header from "./Header";
-import HeroSection from "./HeroSection";
-import Categories from "./Categories";
-import RestaurantGrid from "./RestaurantGrid";
-import DishGrid from "./DishGrid";
-import HowItWorks from "./HowItWorks";
-import Cart from "./Cart";
-import TableBooking from "./TableBooking";
-import Footer from "./Footer";
-import { useCart } from "../../hooks/useCart";
-import "../../styles/Homepage/Home.scss";
+import Header from "./components/Header";
+import HeroSection from "./components/HeroSection";
+import Categories from "./components/Categories";
+import RestaurantGrid from "./components/RestaurantGrid";
+import DishGrid from "./components/DishGrid";
+import HowItWorks from "./components/HowItWorks";
+import Cart from "./components/Cart";
+import TableBooking from "./components/TableBooking";
+import Footer from "./components/Footer";
+import { useCart } from "../../../hooks/useCart";
+import "../../../styles/Homepage/Home.scss";
 
 const Home = () => {
   // Sample data - trong thực tế sẽ fetch từ API
@@ -161,10 +161,10 @@ const Home = () => {
     }
   };
 
-  const handleRestaurantClick = (restaurantId) => {
+  const handleRestaurantInfoClick = (restaurantId) => {
     const restaurant = restaurants.find((r) => r.id === restaurantId);
     setSelectedRestaurant(restaurant);
-    setIsTableBookingOpen(true);
+    setIsTableBookingOpen(false);
   };
 
   const handleAddToCart = (dish) => {
@@ -221,7 +221,7 @@ const Home = () => {
       {/* Restaurant Grid */}
       <RestaurantGrid
         restaurants={filteredRestaurants}
-        onRestaurantClick={handleRestaurantClick}
+        onRestaurantInfoClick={handleRestaurantInfoClick}
       />
 
       {/* Popular Dishes */}

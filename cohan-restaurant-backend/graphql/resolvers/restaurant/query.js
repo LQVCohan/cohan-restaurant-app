@@ -30,4 +30,26 @@ export const RestaurantQuery = {
   },
 
   restaurant: (_, { id }) => Restaurant.findById(id),
+  restaurantsTop: async (_, { limit = 6, addressFilter }) => {
+    const filter = { status: "active" };
+
+    // lọc địa chỉ (tuỳ chọn)
+    if (addressFilter?.city) {
+      filter["address.city"] = { $regex: addressFilter.city, $options: "i" };
+    }
+    if (addressFilter?.district) {
+      filter["address.district"] = {
+        $regex: addressFilter.district,
+        $options: "i",
+      };
+    }
+
+    // Sort theo avgRating giảm dần; _id làm tie-breaker ổn định
+    const docs = await Restaurant.find(filter)
+      .sort({ avgRating: -1, _id: 1 })
+      .limit(Math.max(0, Math.min(limit, 50))) // chặn limit quá lớn
+      .lean();
+
+    return docs;
+  },
 };

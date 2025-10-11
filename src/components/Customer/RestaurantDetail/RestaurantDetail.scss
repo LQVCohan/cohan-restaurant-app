@@ -1,0 +1,273 @@
+.restaurant-detail {
+  font-family: "Inter", sans-serif;
+  background: #f8fafc;
+  color: #1e293b;
+
+  .center-screen {
+    min-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e2e8f0;
+      border-top: 4px solid #0284c7;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 10px;
+    }
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .header {
+    background: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      .logo {
+        font-weight: 800;
+        font-size: 1.5rem;
+        color: #0284c7;
+        text-decoration: none;
+      }
+      .header-actions {
+        display: flex;
+        gap: 1rem;
+      }
+    }
+  }
+
+  .hero {
+    position: relative;
+    height: 400px;
+    overflow: hidden;
+    .hero-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.3),
+        rgba(0, 0, 0, 0.6)
+      );
+    }
+    .hero-content {
+      position: absolute;
+      bottom: 2rem;
+      left: 2rem;
+      right: 2rem;
+      color: white;
+      .restaurant-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 16px;
+        border: 4px solid #fff;
+        object-fit: cover;
+        margin-bottom: 1rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      }
+      .restaurant-name {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 0 0 0.5rem;
+      }
+      .restaurant-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+        .status-badge {
+          padding: 0.5rem 1rem;
+          border-radius: 999px;
+          font-weight: 700;
+          font-size: 0.875rem;
+          &.status-open {
+            background: #10b981;
+            color: white;
+          }
+          &.status-closed {
+            background: #ef4444;
+            color: white;
+          }
+        }
+        .badge {
+          background: rgba(255, 255, 255, 0.2);
+          padding: 0.5rem 1rem;
+          border-radius: 999px;
+          backdrop-filter: blur(10px);
+        }
+      }
+      .restaurant-desc {
+        margin: 0;
+        font-size: 1.05rem;
+        opacity: 0.9;
+      }
+    }
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+
+  .action-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .content-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+  }
+  .main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .card {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    h2 {
+      margin: 0 0 1rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    h3 {
+      margin: 0 0 1rem;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #334155;
+    }
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+    border: none;
+    border-radius: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.25s ease;
+    &.btn-primary {
+      background: #0284c7;
+      color: white;
+      &:hover {
+        background: #0369a1;
+        transform: translateY(-2px);
+      }
+    }
+    &.btn-secondary {
+      background: white;
+      color: #0284c7;
+      border: 2px solid #0284c7;
+      &:hover {
+        background: #0284c7;
+        color: white;
+        transform: translateY(-2px);
+      }
+    }
+    &.btn-success {
+      background: #10b981;
+      color: white;
+      &:hover {
+        background: #059669;
+        transform: translateY(-2px);
+      }
+    }
+  }
+
+  .fab {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #0284c7;
+    color: white;
+    font-size: 1.5rem;
+    display: grid;
+    place-items: center;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(2, 132, 199, 0.3);
+    transition: 0.25s ease;
+    &:hover {
+      transform: scale(1.05);
+      background: #0369a1;
+    }
+  }
+
+  .scroll-top {
+    position: fixed;
+    bottom: 2rem;
+    left: 2rem;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #0284c7;
+    color: #0284c7;
+    display: none;
+    place-items: center;
+    cursor: pointer;
+    transition: 0.25s ease;
+    &.show {
+      display: grid;
+    }
+    &:hover {
+      background: #0284c7;
+      color: white;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .content-grid {
+      grid-template-columns: 1fr;
+    }
+    .hero .hero-content {
+      left: 1rem;
+      right: 1rem;
+      bottom: 1rem;
+      .restaurant-name {
+        font-size: 2rem;
+      }
+    }
+  }
+}

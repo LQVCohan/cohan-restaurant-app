@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "../../styles/Homepage/TableBooking.scss";
+import "../../../../styles/Homepage/TableBooking.scss";
 
 const TableBooking = ({ restaurant, isOpen, onClose, onBookTable }) => {
   const [bookingData, setBookingData] = useState({

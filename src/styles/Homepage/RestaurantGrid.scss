@@ -1,5 +1,5 @@
 .restaurants {
-  padding: 4rem 1rem;
+  padding: 3rem 1rem; // giảm 25%
   background: linear-gradient(to bottom right, #f0f9ff, #dbeafe);
 
   &__container {
@@ -11,11 +11,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 3rem;
+    margin-bottom: 2rem; // giảm
   }
 
   &__title {
-    font-size: 1.875rem;
+    font-size: 1.5rem; // giảm từ 1.875rem (~-20%)
     font-weight: bold;
     color: #0c4a6e;
   }
@@ -27,6 +27,7 @@
     border: none;
     cursor: pointer;
     transition: color 0.2s;
+    font-size: 0.9rem; // nhỏ lại
 
     &:hover {
       color: #075985;
@@ -36,7 +37,7 @@
   &__grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 2rem;
+    gap: 1.5rem; // giảm
 
     @media (min-width: 768px) {
       grid-template-columns: repeat(2, 1fr);
@@ -50,48 +51,59 @@
 
 .restaurant-card {
   background: white;
-  border-radius: 1rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border-radius: 0.8rem; // nhỏ hơn
+  box-shadow: 0 8px 12px -3px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   cursor: pointer;
-  transition: box-shadow 0.2s;
+  transition: box-shadow 0.2s, transform 0.2s;
 
   &:hover {
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 16px 20px -5px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
   }
 
   &__image {
-    height: 12rem;
+    height: 9.5rem; // giảm từ 12rem (~80%)
     background: linear-gradient(to right, #38bdf8, #0ea5e9);
     display: flex;
     align-items: center;
     justify-content: center;
 
     span {
-      font-size: 3.75rem;
+      font-size: 3rem; // nhỏ hơn
+    }
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
   }
 
   &__content {
-    padding: 1.5rem;
+    padding: 1.2rem; // giảm
   }
 
   &__name {
-    font-size: 1.25rem;
+    font-size: 1rem; // giảm từ 1.25rem
     font-weight: bold;
     color: #0c4a6e;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
   }
 
   &__description {
     color: #0284c7;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.6rem;
+    font-size: 0.9rem;
   }
 
   &__info {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.5rem;
+    font-size: 0.85rem;
   }
 
   &__rating {
@@ -110,5 +122,45 @@
 
   &__delivery {
     color: #0284c7;
+  }
+
+  /* =========================
+     🔹 Hai nút hành động (thu nhỏ 20%)
+     ========================= */
+  &__actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.8rem; // giảm
+    gap: 0.4rem;
+  }
+
+  &__btn {
+    flex: 1;
+    padding: 0.45rem 0.6rem; // giảm ~20%
+    border-radius: 0.4rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+
+    &--primary {
+      background-color: #0ea5e9;
+      color: white;
+
+      &:hover {
+        background-color: #0284c7;
+      }
+    }
+
+    &--ghost {
+      background-color: transparent;
+      border: 1.5px solid #0ea5e9;
+      color: #0ea5e9;
+
+      &:hover {
+        background-color: #e0f2fe;
+      }
+    }
   }
 }

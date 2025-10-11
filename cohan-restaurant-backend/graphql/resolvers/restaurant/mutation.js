@@ -37,38 +37,38 @@ export const RestaurantMutation = {
     try {
       const { managerId, ...rest } = input;
 
-      if (!mongoose.isValidObjectId(managerId)) {
-        throw new GraphQLError("Invalid managerId", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
+      // if (!mongoose.isValidObjectId(managerId)) {
+      //   throw new GraphQLError("Invalid managerId", {
+      //     extensions: { code: "BAD_USER_INPUT" },
+      //   });
+      // }
 
       // Lấy user (không cần populate, ta tự resolve)
-      const manager = await User.findById(managerId).lean();
-      if (!manager) {
-        throw new GraphQLError("Manager not found", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
+      // const manager = await User.findById(managerId).lean();
+      // if (!manager) {
+      //   throw new GraphQLError("Manager not found", {
+      //     extensions: { code: "BAD_USER_INPUT" },
+      //   });
+      // }
 
       // Kiểm tra user có role 'manager'
-      const isManager = await userHasRoleSlug(manager, "manager");
-      if (!isManager) {
-        throw new GraphQLError("User is not a manager", {
-          extensions: { code: "FORBIDDEN" },
-        });
-      }
+      // const isManager = await userHasRoleSlug(manager, "manager");
+      // if (!isManager) {
+      //   throw new GraphQLError("User is not a manager", {
+      //     extensions: { code: "FORBIDDEN" },
+      //   });
+      // }
 
       // Đảm bảo 1 manager chỉ có 1 nhà hàng
-      const existed = await Restaurant.exists({ managerId });
-      if (existed) {
-        throw new GraphQLError(
-          "This manager is already assigned to another restaurant",
-          {
-            extensions: { code: "BAD_REQUEST" },
-          }
-        );
-      }
+      // const existed = await Restaurant.exists({ managerId });
+      // if (existed) {
+      //   throw new GraphQLError(
+      //     "This manager is already assigned to another restaurant",
+      //     {
+      //       extensions: { code: "BAD_REQUEST" },
+      //     }
+      //   );
+      // }
 
       const doc = await Restaurant.create({ ...rest, managerId });
       return doc.toObject(); // có virtual id

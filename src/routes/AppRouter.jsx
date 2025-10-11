@@ -1,5 +1,5 @@
 // src/AppRouter.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Routes,
   Route,
@@ -7,62 +7,69 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import Login from "../components/Login";
-import TableLayout from "../components/TableLayout";
-import StaffOrder from "../components/StaffOrder";
-import Home from "../components/Homepage_Client/Home";
-import RestaurantsList from "../components/RestaurantsList";
-import RestaurantDetail from "../components/RestaurantDetail";
-import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
-import MenuManagement from "../components/admin/MenuManagement";
 
-import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
-import ManagerLayout from "../layouts/ManagerLayout";
+// 🔹 Apollo Client Imports (the way you prefer)
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
+
+// ==== Public Components ====
+import Home from "../components/Customer/Homepage_Client/Home";
+import Login from "../components/Login";
 import VerifyEmailPending from "../pages/VerifyEmailPending";
 import VerifyEmailConfirm from "../pages/VerifyEmailConfirm";
-import axios from "axios";
+import ForbiddenPage from "../pages/ForbiddenPage";
 
+// ==== Customer ====
+import RestaurantsList from "../components/Customer/RestaurantList/RestaurantList";
+import RestaurantDetail from "../components/Customer/RestaurantDetail/RestaurantDetail";
+
+// ==== Manager/Admin ====
+import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
+import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
+import MenuManagement from "../components/admin/MenuManagement";
+import ManagerLayout from "../layouts/ManagerLayout";
+
+// ==== Staff ====
+import StaffOrder from "../components/StaffOrder";
+import TableLayout from "../components/TableLayout";
+
+// =========================
+// 🔐 GraphQL Query: me
+// =========================
+const ME_QUERY = gql`
+  query Me {
+    me {
+      id
+      fullName
+      email
+      roleName
+      emailVerified
+    }
+  }
+`;
+
+// =========================
+// 🔒 Auth Hook (GraphQL version)
+// =========================
 const useAuth = () => {
+  const navigate = useNavigate();
   const [token, setToken] = useState(
     () => localStorage.getItem("token") || sessionStorage.getItem("token")
   );
-  const [role, setRole] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
-  const verifyToken = useCallback(async () => {
-    const storedToken =
-      localStorage.getItem("token") || sessionStorage.getItem("token");
-    console.log("Verifying token:", storedToken);
-    if (storedToken) {
-      try {
-        const response = await axios.post(
-          "/api/auth/verify",
-          {},
-          { headers: { Authorization: `Bearer ${storedToken}` } }
-        );
-        console.log("Verify response:", response.data);
-        setRole(response.data.role);
-      } catch (error) {
-        console.error("Verify error:", {
-          status: error.response?.status,
-          data: error.response?.data,
-          message: error.message,
-          url: error.config?.url,
-        });
-        setToken(null);
-        setRole(null);
-        navigate("/login");
-      }
-    } else {
+  // Nếu chưa có token thì bỏ qua query me
+  const { data, loading, error, refetch } = useQuery(ME_QUERY, {
+    skip: !token,
+    fetchPolicy: "network-only",
+    onError: () => {
+      localStorage.removeItem("token");
+      sessionStorage.removeItem("token");
+      setToken(null);
       navigate("/login");
-    }
-    setLoading(false);
-  }, [navigate]);
+    },
+  });
 
-  useEffect(() => {
-    verifyToken();
-  }, [verifyToken, token]);
+  const role = data?.me?.roleName || null;
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -70,85 +77,100 @@ const useAuth = () => {
         localStorage.getItem("token") || sessionStorage.getItem("token");
       if (newToken !== token) {
         setToken(newToken);
-        console.log("Token updated from storage:", newToken);
+        if (newToken) refetch?.();
       }
     };
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, [token]);
+  }, [token, refetch]);
 
-  return { token, role, loading };
+  useEffect(() => {
+    if (!token) navigate("/login");
+  }, [token, navigate]);
+
+  return { token, role, loading, error };
 };
 
+// =========================
+// 🔐 PrivateRoute
+// =========================
 const PrivateRoute = ({ children, allowedRoles }) => {
   const { token, role, loading } = useAuth();
   const location = useLocation();
 
-  console.log(
-    "PrivateRoute - Token:",
-    token,
-    "Role:",
-    role,
-    "Loading:",
-    loading,
-    "Path:",
-    location.pathname
-  );
+  if (loading) return null;
+  if (!token)
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  if (allowedRoles && role && !allowedRoles.includes(role))
+    return <Navigate to="/403" replace />;
 
-  if (loading) {
-    return null;
-  }
-  if (!token) {
-    console.log("No token - Redirecting to /login");
-    return <Navigate to="/login" state={{ from: location }} />;
-  }
-  if (allowedRoles && !allowedRoles.includes(role)) {
-    console.log("Role not allowed:", role, "Redirecting to /login");
-    return <Navigate to="/login" state={{ from: location }} />;
-  }
-
-  console.log("Rendering Dashboard");
   return children;
 };
 
+// =========================
+// 🌐 App Router
+// =========================
 const AppRouter = () => {
   return (
     <Routes>
-      <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
-      <Route path="/verify-email" element={<VerifyEmailPending />} />
+      {/* ===== PUBLIC ===== */}
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/test" element={<Dashboard />} />
+      <Route path="/verify-email" element={<VerifyEmailPending />} />
+      <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
+      <Route path="/403" element={<ForbiddenPage />} />
+
+      {/* ===== CUSTOMER ===== */}
       <Route
         path="/restaurants"
         element={
-          <PrivateRoute allowedRoles={["customer"]}>
+          <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
             <RestaurantsList />
           </PrivateRoute>
         }
       />
       <Route
-        path="/restaurants/:id"
+        path="/restaurant/:id"
         element={
-          <PrivateRoute allowedRoles={["customer"]}>
+          <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
             <RestaurantDetail />
           </PrivateRoute>
         }
       />
       <Route
-        path="/admin/dashboard"
+        path="/restaurant/:id/layout"
         element={
-          <PrivateRoute allowedRoles={["admin"]}>
-            <Dashboard />
+          <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
+            <TableLayout />
           </PrivateRoute>
         }
       />
+
+      {/* ===== STAFF ===== */}
+      <Route
+        path="/staff/orders"
+        element={
+          <PrivateRoute allowedRoles={["staff"]}>
+            <StaffOrder />
+          </PrivateRoute>
+        }
+      />
+
+      {/* ===== MANAGER / ADMIN ===== */}
       <Route
         path="/manager"
         element={<Navigate to="/manager/dashboard" replace />}
       />
-
-      <Route path="/manager/dashboard" element={<ManagerLayout />} />
+      <Route
+        path="/manager/dashboard"
+        element={
+          <PrivateRoute allowedRoles={["manager", "admin"]}>
+            <ManagerLayout>
+              <Dashboard />
+            </ManagerLayout>
+          </PrivateRoute>
+        }
+      />
       <Route
         path="/manager/staff"
         element={
@@ -159,67 +181,44 @@ const AppRouter = () => {
           </PrivateRoute>
         }
       />
-      <Route path="/manager/staff/:tab" element={<StaffManagement />} />
-      <Route
-        path="/staff/orders"
-        element={
-          <PrivateRoute allowedRoles={["staff"]}>
-            <StaffOrder />
-          </PrivateRoute>
-        }
-      />
-
-      <Route
-        path="/restaurants/:id/layout"
-        element={
-          <PrivateRoute allowedRoles={["manager", "admin", "customer"]}>
-            <TableLayout />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          <PrivateRoute
-            allowedRoles={["customer", "manager", "staff", "admin"]}
-          >
-            <div>Thông tin cá nhân</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/reserved-tables"
-        element={
-          <PrivateRoute allowedRoles={["customer"]}>
-            <div>Bàn đã đặt</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/order-history"
-        element={
-          <PrivateRoute allowedRoles={["customer"]}>
-            <div>Lịch sử đặt bàn</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/vouchers"
-        element={
-          <PrivateRoute allowedRoles={["customer"]}>
-            <div>Voucher</div>
-          </PrivateRoute>
-        }
-      />
       <Route
         path="/menu"
         element={
           <PrivateRoute allowedRoles={["admin", "manager"]}>
-            <MenuManagement />
+            <ManagerLayout>
+              <MenuManagement />
+            </ManagerLayout>
           </PrivateRoute>
         }
       />
-      {/* Additional sections */}
+
+      {/* ===== ADMIN ===== */}
+      <Route
+        path="/admin/dashboard"
+        element={
+          <PrivateRoute allowedRoles={["admin"]}>
+            <Dashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/users"
+        element={
+          <PrivateRoute allowedRoles={["admin"]}>
+            <div>Quản Lý Người Dùng</div>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <PrivateRoute allowedRoles={["admin"]}>
+            <div>Cài Đặt Hệ Thống</div>
+          </PrivateRoute>
+        }
+      />
+
+      {/* ===== MANAGER EXTENDED ===== */}
       <Route
         path="/employees"
         element={
@@ -261,30 +260,29 @@ const AppRouter = () => {
         }
       />
       <Route
-        path="/users"
-        element={
-          <PrivateRoute allowedRoles={["admin"]}>
-            <div>Quản Lý Người Dùng</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
         path="/analytics"
         element={
           <PrivateRoute allowedRoles={["admin", "manager"]}>
-            <div>Phân Tích/Báo Cáo</div>
+            <div>Phân Tích / Báo Cáo</div>
           </PrivateRoute>
         }
       />
+
+      {/* ===== UNIVERSAL ===== */}
       <Route
-        path="/settings"
+        path="/profile"
         element={
-          <PrivateRoute allowedRoles={["admin"]}>
-            <div>Cài Đặt</div>
+          <PrivateRoute
+            allowedRoles={["customer", "manager", "staff", "admin"]}
+          >
+            <div>Trang Thông Tin Cá Nhân</div>
           </PrivateRoute>
         }
       />
-      <Route path="/logout" element={<Navigate to="/login" />} />
+
+      {/* ===== MISC ===== */}
+      <Route path="/logout" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 };

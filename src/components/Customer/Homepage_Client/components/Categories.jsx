@@ -1,5 +1,5 @@
 import React from "react";
-import "../../styles/Homepage/Categories.scss";
+import "../../../../styles/Homepage/Categories.scss";
 
 const Categories = ({ onCategorySelect }) => {
   const categories = [

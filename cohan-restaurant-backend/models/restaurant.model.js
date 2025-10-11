@@ -27,15 +27,21 @@ const restaurantSchema = BaseSchemaModel({
   notesOnHours: String,
   notesOnAmenities: String,
   cuisineType: String,
+  avgRating: {
+    type: Number,
+    min: 0,
+    max: 5,
+    default: 0,
+  },
   status: { type: String, enum: ["active", "inactive"], default: "active" },
   managerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-    required: false, // bắt buộc có quản lý
+    required: false,
   },
 });
 restaurantSchema.index(
-  { managerId: 1 },
+  { managerId: 1, status: 1, avgRating: -1 },
   {
     unique: true,
     partialFilterExpression: { managerId: { $type: "objectId" } },

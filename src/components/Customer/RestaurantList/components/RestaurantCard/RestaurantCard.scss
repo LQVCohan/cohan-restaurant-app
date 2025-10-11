@@ -1,0 +1,410 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.restaurant-card {
+  background: $white;
+  border-radius: 1rem;
+  overflow: hidden;
+  @include card-shadow;
+  @include hover-lift;
+  cursor: pointer;
+  border: 1px solid $border-color;
+  transition: all 0.3s ease;
+  position: relative;
+
+  // List view modifications
+  .restaurants-grid--list & {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 0;
+
+    @include responsive(tablet) {
+      grid-template-columns: 150px 1fr;
+    }
+
+    @include responsive(mobile) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &:hover {
+    border-color: rgba($primary-color, 0.3);
+  }
+
+  // Image Section
+  &__image {
+    position: relative;
+    height: 200px;
+    overflow: hidden;
+    background: $light-color;
+
+    .restaurants-grid--list & {
+      height: 150px;
+
+      @include responsive(mobile) {
+        height: 180px;
+      }
+    }
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+  }
+
+  &:hover &__image img {
+    transform: scale(1.05);
+  }
+
+  // Badges
+  &__badges {
+    position: absolute;
+    top: $spacing-md;
+    left: $spacing-md;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-sm;
+    z-index: 2;
+  }
+
+  &__badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: $font-size-xs;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
+    &--featured {
+      background: rgba($danger-color, 0.9);
+      color: $white;
+    }
+
+    &--new {
+      background: rgba($success-color, 0.9);
+      color: $white;
+    }
+
+    &--promotion {
+      background: rgba($warning-color, 0.9);
+      color: $white;
+    }
+  }
+
+  // Favorite Button
+  &__favorite {
+    position: absolute;
+    top: $spacing-md;
+    right: $spacing-md;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    @include flex-center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    z-index: 2;
+
+    &:hover {
+      background: $white;
+      transform: scale(1.1);
+    }
+
+    &--favorited {
+      background: rgba($danger-color, 0.1);
+
+      &:hover {
+        background: rgba($danger-color, 0.2);
+      }
+    }
+  }
+
+  // Content Section
+  &__content {
+    padding: $spacing-lg;
+
+    .restaurants-grid--list & {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: $spacing-md $spacing-lg;
+    }
+
+    @include responsive(mobile) {
+      padding: $spacing-md;
+    }
+  }
+
+  // Header
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.75rem;
+    gap: $spacing-sm;
+  }
+
+  &__name {
+    font-size: $font-size-xl;
+    font-weight: 700;
+    color: $dark-color;
+    margin: 0;
+    line-height: 1.3;
+    flex: 1;
+
+    .restaurants-grid--list & {
+      font-size: $font-size-lg;
+    }
+
+    @include responsive(mobile) {
+      font-size: $font-size-lg;
+    }
+  }
+
+  &__status {
+    font-size: $font-size-xs;
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+
+    &--open {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    &--closed {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    &--break {
+      background: #fef3c7;
+      color: #92400e;
+    }
+  }
+
+  // Meta Information
+  &__meta {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+
+    @include responsive(mobile) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: $spacing-sm;
+    }
+  }
+
+  &__rating {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: $font-size-sm;
+
+    &-stars {
+      color: #fbbf24;
+      font-size: $font-size-base;
+    }
+
+    &-score {
+      font-weight: 600;
+      color: $dark-color;
+    }
+
+    &-count {
+      color: $text-muted;
+    }
+  }
+
+  &__cuisine {
+    font-size: $font-size-sm;
+    color: $text-muted;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  &__price {
+    font-size: $font-size-sm;
+    color: $primary-color;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  // Description
+  &__description {
+    color: $text-muted;
+    font-size: $font-size-sm;
+    line-height: 1.5;
+    margin-bottom: $spacing-md;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+
+    .restaurants-grid--list & {
+      -webkit-line-clamp: 3;
+      margin-bottom: auto;
+    }
+  }
+
+  // Footer
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: $spacing-md;
+    border-top: 1px solid #f1f5f9;
+    gap: $spacing-md;
+
+    @include responsive(mobile) {
+      flex-direction: column;
+      gap: $spacing-md;
+      align-items: stretch;
+    }
+  }
+
+  &__info {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    font-size: $font-size-sm;
+    color: $text-muted;
+
+    @include responsive(mobile) {
+      justify-content: space-around;
+    }
+  }
+
+  &__info-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+  }
+
+  // Actions
+  &__actions {
+    display: flex;
+    gap: $spacing-sm;
+
+    @include responsive(mobile) {
+      justify-content: space-between;
+    }
+
+    .btn {
+      font-size: $font-size-xs;
+      padding: 0.5rem 0.75rem;
+
+      @include responsive(mobile) {
+        flex: 1;
+        font-size: $font-size-sm;
+        padding: 0.75rem;
+      }
+    }
+  }
+}
+
+// Hover effects for interactive elements
+.restaurant-card__favorite,
+.restaurant-card__actions .btn {
+  &:focus {
+    outline: 2px solid $primary-color;
+    outline-offset: 2px;
+  }
+}
+
+// Loading state for images
+.restaurant-card__image {
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      rgba($border-color, 0.2) 25%,
+      rgba($border-color, 0.4) 50%,
+      rgba($border-color, 0.2) 75%
+    );
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    z-index: 1;
+  }
+
+  img {
+    position: relative;
+    z-index: 2;
+
+    &:loaded + &::before {
+      display: none;
+    }
+  }
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+// Special styling for featured restaurants
+.restaurant-card {
+  &[data-featured="true"] {
+    border-color: rgba($warning-color, 0.3);
+
+    &:hover {
+      border-color: $warning-color;
+      box-shadow: 0 10px 25px rgba($warning-color, 0.2);
+    }
+  }
+}
+
+// Accessibility improvements
+@media (prefers-reduced-motion: reduce) {
+  .restaurant-card {
+    &:hover {
+      transform: none;
+    }
+
+    &__image img {
+      transition: none;
+    }
+
+    &:hover &__image img {
+      transform: none;
+    }
+  }
+}
+
+// Print styles
+@media print {
+  .restaurant-card {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid $border-color;
+
+    &__favorite,
+    &__actions {
+      display: none;
+    }
+  }
+}

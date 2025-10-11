@@ -1,97 +1,170 @@
-// seedRestaurants.js
-import { GraphQLClient, gql } from "graphql-request";
+// scripts/seedRestaurantsViaGQL.js
+// Node 18+ (có sẵn fetch). Nếu Node < 18, cài thêm: npm i node-fetch và import('node-fetch').
 
-// Endpoint GraphQL
-const endpoint = "http://localhost:4000/graphql";
-const client = new GraphQLClient(endpoint);
+import crypto from "crypto";
+import process from "process";
+// ====== ENV CONFIG ======
+const GRAPHQL_ENDPOINT =
+  process.env.GRAPHQL_ENDPOINT || "http://localhost:4000/graphql";
+const AUTH_TOKEN = process.env.AUTH_TOKEN || ""; // Bearer token nếu server yêu cầu auth
+// MANAGER_IDS: "656d1f...a,656d1f...b,656d1f...c"
+const MANAGER_IDS = (process.env.MANAGER_IDS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
-// Mutation GraphQL
-const mutation = gql`
+// ====== GQL MUTATION ======
+const CREATE_RESTAURANT_MUTATION = `
   mutation CreateRestaurant($input: CreateRestaurantInput!) {
     createRestaurant(input: $input) {
       id
       name
-      manager {
-        id
-        name
-        email
-      }
+      manager { id fullName }
+      avgRating
+      status
     }
   }
 `;
 
-// Giả sử bạn đã có sẵn 20 managerId trong DB
-// ⚠️ Thay các ObjectId này bằng _id thật của User (manager role)
-const managerIds = [
-  "67123456789abcdef000001",
-  "67123456789abcdef000002",
-  "67123456789abcdef000003",
-  "67123456789abcdef000004",
-  "67123456789abcdef000005",
-  "67123456789abcdef000006",
-  "67123456789abcdef000007",
-  "67123456789abcdef000008",
-  "67123456789abcdef000009",
-  "67123456789abcdef000010",
-  "67123456789abcdef000011",
-  "67123456789abcdef000012",
-  "67123456789abcdef000013",
-  "67123456789abcdef000014",
-  "67123456789abcdef000015",
-  "67123456789abcdef000016",
-  "67123456789abcdef000017",
-  "67123456789abcdef000018",
-  "67123456789abcdef000019",
-  "67123456789abcdef000020",
-];
+// ====== UTIL ======
+const randomFrom = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-// Hàm tạo input cho mỗi nhà hàng
-const generateRestaurantInput = (index, managerId) => ({
-  name: `Nhà hàng Mẫu ${index}`,
-  avatar: `https://picsum.photos/200?random=${index}`,
-  coverImage: `https://picsum.photos/800/200?random=${index}`,
-  spaceImages: [
-    `https://picsum.photos/400/300?random=${index}`,
-    `https://picsum.photos/400/301?random=${index}`,
-  ],
-  address: {
-    line1: `${index} Đường ABC`,
-    city: index % 2 === 0 ? "Hà Nội" : "TP.HCM",
-    district: index % 3 === 0 ? "Quận 1" : "Quận 3",
-    country: "Vietnam",
-  },
-  phone: `090${String(index).padStart(7, "0")}`,
-  email: `contact${index}@restaurant.com`,
-  featuredMenu: ["Phở", "Bún bò", "Cơm gà"],
-  amenities: ["WiFi", "Điều hòa", "Chỗ đỗ xe"],
-  seatingCapacity: 40 + index,
-  priceRange: index % 2 === 0 ? "$$" : "$$$",
-  openingHours: "08:00",
-  closingHours: "22:00",
-  description: "Nhà hàng mẫu phục vụ chuyên nghiệp.",
-  notesOnHours: "Có thể đóng cửa sớm vào ngày lễ.",
-  notesOnAmenities: "Có chỗ để xe miễn phí.",
-  cuisineType: index % 2 === 0 ? "Việt Nam" : "Hàn Quốc",
-  status: "active",
-  managerId, // gán quản lý
-});
-
-// Hàm seed 20 nhà hàng
-const seedRestaurants = async () => {
-  for (let i = 1; i <= 20; i++) {
-    const input = generateRestaurantInput(i, managerIds[i - 1]);
-    try {
-      const data = await client.request(mutation, { input });
-      console.log(
-        `✅ Tạo thành công: ${data.createRestaurant.name} (Manager: ${data.createRestaurant.manager.email})`
-      );
-    } catch (err) {
-      console.error(
-        `❌ Lỗi khi tạo nhà hàng ${i}:`,
-        err?.response?.errors || err.message
-      );
-    }
-  }
+const randomObjectId = () => {
+  // Tạo chuỗi 24 hex giống ObjectId để test nhanh
+  return crypto.randomBytes(12).toString("hex");
 };
 
-seedRestaurants();
+const cities = ["TP. Hồ Chí Minh", "Hà Nội", "Đà Nẵng"];
+const districtsHCM = [
+  "Quận 1",
+  "Quận 3",
+  "Quận 5",
+  "Quận 7",
+  "Bình Thạnh",
+  "Thủ Đức",
+  "Gò Vấp",
+];
+const cuisines = [
+  "Việt Nam",
+  "Hàn Quốc",
+  "Nhật Bản",
+  "Trung Hoa",
+  "Âu Mỹ",
+  "Thái Lan",
+  "Hải sản",
+  "Ăn chay",
+];
+const priceRanges = [
+  "100.000 - 300.000đ",
+  "200.000 - 500.000đ",
+  "300.000 - 700.000đ",
+];
+const namePrefixes = [
+  "Sài Gòn",
+  "Hương Vị",
+  "Ngon",
+  "Ẩm Thực",
+  "Taste",
+  "Fusion",
+];
+
+// Tạo mảng 10 managerId (xoay vòng từ ENV nếu có, nếu không -> random)
+const buildManagerIds = (count = 10) => {
+  if (MANAGER_IDS.length > 0) {
+    return Array.from(
+      { length: count },
+      (_, i) => MANAGER_IDS[i % MANAGER_IDS.length]
+    );
+  }
+  return Array.from({ length: count }, () => randomObjectId());
+};
+
+const buildRestaurantInput = (i, managerId) => {
+  const city = randomFrom(cities);
+  const district =
+    city === "TP. Hồ Chí Minh" ? randomFrom(districtsHCM) : "Trung tâm";
+  const open = "08:00";
+  const close = "22:00";
+
+  return {
+    name: `Nhà hàng ${randomFrom(namePrefixes)} ${i + 1}`,
+    avatar: `https://picsum.photos/seed/ava${i}/100`,
+    coverImage: `https://picsum.photos/seed/cov${i}/800/400`,
+    spaceImages: [
+      `https://picsum.photos/seed/space${i}a/800/400`,
+      `https://picsum.photos/seed/space${i}b/800/400`,
+    ],
+    address: {
+      line1: `Số ${10 + i} đường Nguyễn Văn ${String.fromCharCode(65 + i)}`,
+      ward: `Phường ${1 + (i % 10)}`,
+      district,
+      city,
+      country: "Việt Nam",
+    },
+    phone: `09${Math.floor(10000000 + Math.random() * 89999999)}`,
+    email: `restaurant${i + 1}@example.com`,
+    featuredMenu: [
+      "Phở bò đặc biệt",
+      "Cơm tấm sườn bì chả",
+      "Gỏi cuốn tôm thịt",
+    ],
+    amenities: ["Wifi miễn phí", "Thanh toán thẻ"],
+    seatingCapacity: 30 + Math.floor(Math.random() * 70),
+    priceRange: randomFrom(priceRanges),
+    openingHours: open,
+    closingHours: close,
+    description: `Không gian ấm cúng, món ${randomFrom(cuisines)} đặc sắc.`,
+    notesOnHours: "Giờ có thể thay đổi cuối tuần.",
+    notesOnAmenities: "Một số tiện ích chỉ áp dụng tại chi nhánh trung tâm.",
+    cuisineType: randomFrom(cuisines),
+    status: "active",
+    managerId, // ⬅️ bắt buộc theo schema của bạn
+  };
+};
+
+async function callGraphQL(query, variables) {
+  const headers = {
+    "Content-Type": "application/json",
+  };
+  if (AUTH_TOKEN) {
+    headers["Authorization"] = `Bearer ${AUTH_TOKEN}`;
+  }
+
+  const res = await fetch(GRAPHQL_ENDPOINT, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ query, variables }),
+  });
+
+  const json = await res.json();
+  if (!res.ok || json.errors) {
+    const errorMsg =
+      json.errors?.map((e) => e.message).join("; ") || `HTTP ${res.status}`;
+    throw new Error(errorMsg);
+  }
+  return json.data;
+}
+
+async function main() {
+  try {
+    console.log("➡️  Endpoint:", GRAPHQL_ENDPOINT);
+    const managerIds = buildManagerIds(10);
+
+    const created = [];
+    for (let i = 0; i < 10; i++) {
+      const input = buildRestaurantInput(i, managerIds[i]);
+      const data = await callGraphQL(CREATE_RESTAURANT_MUTATION, { input });
+      created.push(data.createRestaurant);
+      console.log(
+        `✅ Created: ${data.createRestaurant.name} (id=${data.createRestaurant.id}) manager=${managerIds[i]}`
+      );
+    }
+
+    console.log(`\n🍽️  Done. Created ${created.length} restaurants.`);
+  } catch (err) {
+    console.error("❌ Error seeding restaurants via GraphQL:", err.message);
+    process.exit(1);
+  }
+}
+
+main();
