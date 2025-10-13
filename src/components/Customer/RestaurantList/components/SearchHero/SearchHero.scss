@@ -1,7 +1,7 @@
-@use "../../../../../../styles/variables" as *;
-@use "../../../../../../styles/mixins" as *;
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
 .search-hero {
-  background: linear-gradient(135deg, $primary-color, $primary-dark);
+  background: linear-gradient(135deg, $primary, $primary-hover);
   padding: $spacing-2xl $spacing-md;
   color: $white;
   text-align: center;
@@ -37,30 +37,30 @@
   }
 
   &__title {
-    font-size: $font-size-4xl;
+    font-size: $spacing-2xl;
     font-weight: 800;
     margin: 0 0 $spacing-md 0;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 
-    @include responsive(tablet) {
-      font-size: $font-size-3xl;
+    @include r-tablet {
+      font-size: $spacing-xl;
     }
 
-    @include responsive(mobile) {
-      font-size: $font-size-2xl;
+    @include r-mobile {
+      font-size: $text-2xl;
     }
   }
 
   &__subtitle {
-    font-size: $font-size-lg;
+    font-size: $text-lg;
     margin: 0 0 $spacing-xl 0;
     opacity: 0.9;
     max-width: 600px;
     margin-left: auto;
     margin-right: auto;
 
-    @include responsive(mobile) {
-      font-size: $font-size-base;
+    @include r-mobile {
+      font-size: $text-base;
     }
   }
 
@@ -74,7 +74,7 @@
     padding: 0.5rem;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       border-radius: 1rem;
       padding: 0.75rem;
@@ -86,22 +86,22 @@
     padding: 1rem 1.5rem;
     border: none;
     border-radius: 1.5rem;
-    font-size: $font-size-base;
+    font-size: $text-base;
     outline: none;
-    color: $dark-color;
+    color: $gray-900;
 
     &::placeholder {
       color: $text-muted;
     }
 
-    @include responsive(mobile) {
+    @include r-mobile {
       margin-bottom: $spacing-sm;
       border-radius: 0.75rem;
     }
   }
 
   &__search-btn {
-    background: $primary-color;
+    background: $primary;
     color: $white;
     border: none;
     padding: 0.75rem 1.5rem;
@@ -112,11 +112,11 @@
     white-space: nowrap;
 
     &:hover {
-      background: $primary-dark;
+      background: $primary-hover;
       transform: translateY(-1px);
     }
 
-    @include responsive(mobile) {
+    @include r-mobile {
       border-radius: 0.75rem;
       padding: 1rem;
     }

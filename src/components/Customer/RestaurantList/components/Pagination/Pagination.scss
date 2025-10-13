@@ -12,7 +12,7 @@
   @include card-shadow;
 
   &__info {
-    font-size: $font-size-sm;
+    font-size: $text-sm;
     color: $text-muted;
     font-weight: 500;
   }
@@ -37,25 +37,25 @@
     cursor: pointer;
     transition: all 0.3s ease;
     font-weight: 500;
-    font-size: $font-size-sm;
+    font-size: $text-sm;
     min-width: 44px;
     height: 44px;
     @include flex-center;
 
     &:hover:not(:disabled) {
-      background: $light-color;
-      border-color: $primary-color;
-      color: $primary-color;
+      background: $gray-50;
+      border-color: $primary;
+      color: $primary;
     }
 
     &--active {
-      background: $primary-color;
+      background: $primary;
       color: $white;
-      border-color: $primary-color;
+      border-color: $primary;
 
       &:hover {
-        background: $primary-dark;
-        border-color: $primary-dark;
+        background: $primary-hover;
+        border-color: $primary-hover;
       }
     }
 
@@ -75,7 +75,7 @@
       }
     }
 
-    @include responsive(mobile) {
+    @include r-mobile {
       min-width: 40px;
       height: 40px;
       padding: 0.5rem 0.75rem;
@@ -89,13 +89,13 @@
     @include flex-center;
     height: 44px;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       height: 40px;
       padding: 0.5rem 0.25rem;
     }
   }
 
-  @include responsive(mobile) {
+  @include r-mobile {
     padding: $spacing-lg;
 
     &__controls {

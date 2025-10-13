@@ -18,17 +18,17 @@
     grid-template-columns: 200px 1fr;
     gap: 0;
 
-    @include responsive(tablet) {
+    @include r-tablet {
       grid-template-columns: 150px 1fr;
     }
 
-    @include responsive(mobile) {
+    @include r-mobile {
       grid-template-columns: 1fr;
     }
   }
 
   &:hover {
-    border-color: rgba($primary-color, 0.3);
+    border-color: rgba($primary, 0.3);
   }
 
   // Image Section
@@ -36,12 +36,12 @@
     position: relative;
     height: 200px;
     overflow: hidden;
-    background: $light-color;
+    background: $gray-50;
 
     .restaurants-grid--list & {
       height: 150px;
 
-      @include responsive(mobile) {
+      @include r-mobile {
         height: 180px;
       }
     }
@@ -72,24 +72,24 @@
   &__badge {
     padding: 0.25rem 0.75rem;
     border-radius: 1rem;
-    font-size: $font-size-xs;
+    font-size: $text-xs;
     font-weight: 600;
     backdrop-filter: blur(10px);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 
     &--featured {
-      background: rgba($danger-color, 0.9);
+      background: rgba($error-red, 0.9);
       color: $white;
     }
 
     &--new {
-      background: rgba($success-color, 0.9);
+      background: rgba($success-green, 0.9);
       color: $white;
     }
 
     &--promotion {
-      background: rgba($warning-color, 0.9);
+      background: rgba($warning-yellow, 0.9);
       color: $white;
     }
   }
@@ -116,10 +116,10 @@
     }
 
     &--favorited {
-      background: rgba($danger-color, 0.1);
+      background: rgba($error-red, 0.1);
 
       &:hover {
-        background: rgba($danger-color, 0.2);
+        background: rgba($error-red, 0.2);
       }
     }
   }
@@ -135,7 +135,7 @@
       padding: $spacing-md $spacing-lg;
     }
 
-    @include responsive(mobile) {
+    @include r-mobile {
       padding: $spacing-md;
     }
   }
@@ -150,24 +150,24 @@
   }
 
   &__name {
-    font-size: $font-size-xl;
+    font-size: $text-xl;
     font-weight: 700;
-    color: $dark-color;
+    color: $gray-900;
     margin: 0;
     line-height: 1.3;
     flex: 1;
 
     .restaurants-grid--list & {
-      font-size: $font-size-lg;
+      font-size: $text-lg;
     }
 
-    @include responsive(mobile) {
-      font-size: $font-size-lg;
+    @include r-mobile {
+      font-size: $text-lg;
     }
   }
 
   &__status {
-    font-size: $font-size-xs;
+    font-size: $text-xs;
     font-weight: 600;
     padding: 0.25rem 0.75rem;
     border-radius: 1rem;
@@ -199,7 +199,7 @@
     margin-bottom: 0.75rem;
     flex-wrap: wrap;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       align-items: flex-start;
       gap: $spacing-sm;
@@ -210,16 +210,16 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    font-size: $font-size-sm;
+    font-size: $text-sm;
 
     &-stars {
       color: #fbbf24;
-      font-size: $font-size-base;
+      font-size: $text-base;
     }
 
     &-score {
       font-weight: 600;
-      color: $dark-color;
+      color: $gray-900;
     }
 
     &-count {
@@ -228,7 +228,7 @@
   }
 
   &__cuisine {
-    font-size: $font-size-sm;
+    font-size: $text-sm;
     color: $text-muted;
     display: flex;
     align-items: center;
@@ -236,8 +236,8 @@
   }
 
   &__price {
-    font-size: $font-size-sm;
-    color: $primary-color;
+    font-size: $text-sm;
+    color: $primary;
     font-weight: 600;
     display: flex;
     align-items: center;
@@ -247,7 +247,7 @@
   // Description
   &__description {
     color: $text-muted;
-    font-size: $font-size-sm;
+    font-size: $text-sm;
     line-height: 1.5;
     margin-bottom: $spacing-md;
     display: -webkit-box;
@@ -270,7 +270,7 @@
     border-top: 1px solid #f1f5f9;
     gap: $spacing-md;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       gap: $spacing-md;
       align-items: stretch;
@@ -281,10 +281,10 @@
     display: flex;
     align-items: center;
     gap: $spacing-md;
-    font-size: $font-size-sm;
+    font-size: $text-sm;
     color: $text-muted;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       justify-content: space-around;
     }
   }
@@ -301,17 +301,17 @@
     display: flex;
     gap: $spacing-sm;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       justify-content: space-between;
     }
 
     .btn {
-      font-size: $font-size-xs;
+      font-size: $text-xs;
       padding: 0.5rem 0.75rem;
 
-      @include responsive(mobile) {
+      @include r-mobile {
         flex: 1;
-        font-size: $font-size-sm;
+        font-size: $text-sm;
         padding: 0.75rem;
       }
     }
@@ -322,7 +322,7 @@
 .restaurant-card__favorite,
 .restaurant-card__actions .btn {
   &:focus {
-    outline: 2px solid $primary-color;
+    outline: 2px solid $primary;
     outline-offset: 2px;
   }
 }
@@ -369,11 +369,11 @@
 // Special styling for featured restaurants
 .restaurant-card {
   &[data-featured="true"] {
-    border-color: rgba($warning-color, 0.3);
+    border-color: rgba($warning-yellow, 0.3);
 
     &:hover {
-      border-color: $warning-color;
-      box-shadow: 0 10px 25px rgba($warning-color, 0.2);
+      border-color: $warning-yellow;
+      box-shadow: 0 10px 25px rgba($warning-yellow, 0.2);
     }
   }
 }

@@ -1,0 +1,204 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.menu-item-card {
+  @include card;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+
+  &--grid {
+    padding: $spacing-md;
+  }
+
+  &--list {
+    padding: $spacing-md;
+    display: grid;
+    grid-template-columns: 100px 1fr auto;
+    gap: $spacing-md;
+    align-items: center;
+  }
+
+  &__image {
+    width: 100%;
+    height: 150px;
+    background: #f3f4f6;
+    border-radius: $border-radius-sm;
+    margin-bottom: $spacing-md;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: #9ca3af;
+
+    .menu-item-card--list & {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 0;
+      font-size: 2rem;
+    }
+  }
+
+  &__content {
+    position: relative;
+    flex: 1;
+  }
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: $spacing-sm;
+
+    .menu-item-card--list & {
+      margin-bottom: $spacing-xs;
+    }
+  }
+
+  &__info {
+    flex: 1;
+  }
+
+  &__name {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: $text-primary;
+    margin: 0 0 0.25rem 0;
+
+    .menu-item-card--list & {
+      font-size: 1rem;
+    }
+  }
+
+  &__category {
+    font-size: 0.875rem;
+    color: $text-gray;
+    margin: 0;
+
+    .menu-item-card--list & {
+      font-size: 0.75rem;
+    }
+  }
+
+  &__status {
+    padding: 0.25rem $spacing-sm;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+
+    &--available {
+      background: $success-100;
+      color: $success-800;
+    }
+
+    &--unavailable {
+      background: $error-50;
+      color: $error-800;
+    }
+  }
+
+  &__status-price {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: $spacing-xs;
+
+    .menu-item-card--grid & {
+      display: none;
+    }
+  }
+
+  &__price {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: $primary;
+    margin-bottom: $spacing-sm;
+
+    .menu-item-card--list & {
+      font-size: 1rem;
+      margin-bottom: 0;
+    }
+  }
+
+  &__description {
+    font-size: 0.875rem;
+    color: $text-gray;
+    margin-bottom: $spacing-sm;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+
+    .menu-item-card--grid & {
+      display: none;
+    }
+  }
+
+  &__methods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  &__actions {
+    position: absolute;
+    top: $spacing-sm;
+    right: $spacing-sm;
+    display: flex;
+    gap: $spacing-xs;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+
+    .menu-item-card:hover & {
+      opacity: 1;
+    }
+
+    .menu-item-card--list & {
+      position: static;
+      opacity: 1;
+      flex-direction: column;
+    }
+  }
+}
+
+.method-tag {
+  padding: 0.25rem $spacing-sm;
+  background: $primary-light;
+  color: $primary;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: $border-radius-sm;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  background: white;
+  box-shadow: $shadow-sm;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: $shadow-md;
+  }
+
+  &--edit {
+    &:hover {
+      background: #fef3c7;
+    }
+  }
+
+  &--delete {
+    &:hover {
+      background: #fef2f2;
+    }
+  }
+}

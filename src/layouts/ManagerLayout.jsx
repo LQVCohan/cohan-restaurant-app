@@ -11,6 +11,7 @@ import TableManagement from "../components/Dashboard_Manager/Table/TableManageme
 import CustomerManagement from "../components/Dashboard_Manager/Customer/CustomerManagement";
 import PromotionManagement from "../components/Dashboard_Manager/Promotion/PromotionManagement";
 import "./ManagerLayout.scss";
+import StorageManagement from "../components/Dashboard_Manager/Storage/StorageManagement";
 const ManagerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -74,7 +75,7 @@ const ManagerLayout = () => {
       case "menu":
         return <MenuManagement />;
       case "inventory":
-        return <Inventory />;
+        return <StorageManagement />;
       case "staff":
         return <StaffManagement />;
       case "customers":

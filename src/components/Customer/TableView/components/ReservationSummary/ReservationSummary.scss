@@ -1,0 +1,195 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+.reservation-summary {
+  position: sticky;
+  bottom: $spacing-lg;
+  z-index: 10;
+}
+
+.summary-card {
+  @include card;
+  background: white;
+  border: 2px solid #0284c7;
+  box-shadow: 0 8px 25px rgba(2, 132, 199, 0.15);
+  overflow: hidden;
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-lg;
+  background: $primary-light;
+  border-bottom: 2px solid $border-color;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: $spacing-md;
+    text-align: center;
+  }
+
+  .summary-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0c4a6e;
+    margin: 0;
+  }
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+
+  &--success {
+    background: $success-light;
+    color: #059669;
+    border: 2px solid #059669;
+  }
+
+  &--warning {
+    background: #fffbeb;
+    color: #d97706;
+    border: 2px solid #d97706;
+  }
+
+  &--danger {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 2px solid #dc2626;
+  }
+
+  .status-icon {
+    font-size: 1rem;
+  }
+}
+
+.summary-content {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: $spacing-xl;
+  padding: $spacing-lg;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: $spacing-lg;
+  }
+}
+
+.booking-info {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-sm 0;
+    border-bottom: 1px solid $border-color;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      font-size: 0.875rem;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    .info-value {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #0c4a6e;
+    }
+  }
+}
+
+.availability-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: $spacing-sm;
+
+  .availability-count {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .count-number {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #0284c7;
+      line-height: 1;
+    }
+
+    .count-label {
+      font-size: 0.875rem;
+      color: #6b7280;
+      font-weight: 500;
+    }
+  }
+
+  .availability-message {
+    font-size: 0.875rem;
+    color: #0c4a6e;
+    margin: 0;
+    max-width: 200px;
+  }
+}
+
+.summary-actions {
+  background: #f8fafc;
+  padding: $spacing-lg;
+  border-top: 2px solid $border-color;
+
+  .tips {
+    .tips-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #0c4a6e;
+      margin-bottom: $spacing-md;
+    }
+
+    .tips-list {
+      margin: 0;
+      padding-left: $spacing-lg;
+      color: #6b7280;
+
+      li {
+        font-size: 0.875rem;
+        margin-bottom: $spacing-xs;
+        line-height: 1.4;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+  }
+}
+
+// Animation for sticky behavior
+@media (max-width: 768px) {
+  .reservation-summary {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    border-radius: 0;
+
+    .summary-card {
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
+    }
+  }
+}

@@ -1,0 +1,375 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.recipe-list {
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    &-left {
+      display: flex;
+      gap: $spacing-md;
+      flex-wrap: wrap;
+
+      @include mobile {
+        justify-content: center;
+      }
+    }
+
+    &-right {
+      display: flex;
+      gap: $spacing-sm;
+      flex-wrap: wrap;
+
+      @include mobile {
+        justify-content: center;
+      }
+    }
+  }
+
+  .search-filter {
+    display: flex;
+    gap: $spacing-md;
+    flex-wrap: wrap;
+    align-items: center;
+
+    @include mobile {
+      flex-direction: column;
+    }
+  }
+
+  .search-input {
+    @include form-input;
+    min-width: 250px;
+
+    @include mobile {
+      min-width: auto;
+      width: 100%;
+    }
+  }
+
+  .filter-select {
+    @include form-input;
+    background: white;
+    color: #0c4a6e;
+  }
+
+  .recipes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: $spacing-md;
+
+    @include mobile {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+.recipe-card {
+  .recipe-header {
+    padding: $spacing-md;
+    background: linear-gradient(45deg, #f1f5f9, #e2e8f0);
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    margin: (-$spacing-lg) (-$spacing-lg) $spacing-md (-$spacing-lg);
+  }
+
+  .recipe-icon {
+    font-size: 2.5rem;
+  }
+
+  .recipe-info {
+    flex: 1;
+  }
+
+  .recipe-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0c4a6e;
+    margin: 0 0 0.25rem 0;
+  }
+
+  .recipe-category {
+    font-size: 0.75rem;
+    color: #6b7280;
+    background: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: $border-radius-sm;
+    display: inline-block;
+  }
+
+  .recipe-description {
+    margin-bottom: $spacing-md;
+    color: #6b7280;
+    line-height: 1.5;
+  }
+
+  .recipe-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+  }
+
+  .stat-item {
+    text-align: center;
+    padding: 0.75rem;
+    background: #f8fafc;
+    border-radius: 0.5rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: $primary;
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+  }
+
+  .recipe-actions {
+    display: flex;
+    gap: $spacing-sm;
+    margin-top: $spacing-md;
+    flex-wrap: wrap;
+  }
+}
+
+// Recipe Modal Styles
+.recipe-section {
+  margin-bottom: $spacing-xl;
+
+  .section-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #0c4a6e;
+    margin-bottom: $spacing-md;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
+
+    @include mobile {
+      flex-direction: column;
+      gap: $spacing-sm;
+      align-items: stretch;
+    }
+  }
+}
+
+.ingredient-row {
+  margin-bottom: $spacing-md;
+}
+
+.input-with-action {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: flex-end;
+
+  .form-input,
+  select {
+    flex: 1;
+  }
+}
+
+.method-tabs {
+  display: flex;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.method-tab {
+  padding: $spacing-sm $spacing-md;
+  background: #f1f5f9;
+  border: 2px solid $border-color;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: #6b7280;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+
+  &.active {
+    background: $primary;
+    color: white;
+    border-color: $primary;
+  }
+
+  &:hover:not(.active) {
+    background: #e2e8f0;
+    border-color: $primary;
+  }
+
+  .method-remove {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+}
+
+.method-content {
+  .subsection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
+
+    h4 {
+      margin: 0;
+      color: #0c4a6e;
+    }
+
+    @include mobile {
+      flex-direction: column;
+      gap: $spacing-sm;
+      align-items: stretch;
+    }
+  }
+
+  .method-ingredient-row {
+    margin-bottom: $spacing-sm;
+  }
+
+  .method-cost {
+    text-align: right;
+    padding: $spacing-md;
+    background: #f0f9ff;
+    border-radius: 0.5rem;
+    margin-top: $spacing-md;
+    color: $primary;
+  }
+}
+
+// Recipe Detail Modal Styles
+.recipe-detail {
+  .recipe-info-card,
+  .ingredients-card,
+  .method-card,
+  .cost-summary {
+    margin-bottom: $spacing-lg;
+
+    h3,
+    h4,
+    h5 {
+      color: #0c4a6e;
+      margin-top: 0;
+    }
+  }
+
+  .ingredients-list {
+    .ingredient-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: $spacing-sm 0;
+      border-bottom: 1px solid $border-color;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .ingredient-info {
+        flex: 1;
+
+        .ingredient-name {
+          display: block;
+          font-weight: 500;
+        }
+
+        .ingredient-amount {
+          display: block;
+          font-size: 0.875rem;
+          color: #6b7280;
+        }
+      }
+
+      .ingredient-cost {
+        font-weight: 600;
+        color: $primary;
+      }
+    }
+  }
+
+  .method-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: $spacing-sm;
+    }
+
+    .method-cost {
+      background: #f0f9ff;
+      padding: $spacing-sm $spacing-md;
+      border-radius: 0.5rem;
+      color: $primary;
+      font-weight: 600;
+    }
+  }
+
+  .method-description {
+    margin-bottom: $spacing-md;
+
+    p {
+      margin: 0;
+      line-height: 1.6;
+    }
+  }
+
+  .method-ingredients {
+    h5 {
+      margin-bottom: $spacing-sm;
+    }
+  }
+
+  .cost-summary {
+    .cost-breakdown {
+      .cost-item {
+        display: flex;
+        justify-content: space-between;
+        padding: $spacing-sm 0;
+        border-bottom: 1px solid $border-color;
+      }
+    }
+
+    .total-cost {
+      margin-top: $spacing-md;
+      padding-top: $spacing-md;
+      border-top: 2px solid $primary;
+      text-align: right;
+      color: $primary;
+    }
+  }
+}

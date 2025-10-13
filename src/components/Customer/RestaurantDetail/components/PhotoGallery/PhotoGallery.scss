@@ -1,0 +1,381 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.photo-gallery {
+  .gallery-empty {
+    @include flex-center;
+    flex-direction: column;
+    gap: $spacing-lg;
+    padding: $spacing-2xl;
+    text-align: center;
+    color: $text-muted;
+
+    .empty-icon {
+      font-size: 4rem;
+      margin-bottom: $spacing-md;
+    }
+
+    h3 {
+      font-size: 1.25rem;
+      color: $gray-800;
+      margin: 0;
+    }
+
+    p {
+      margin: 0;
+      max-width: 400px;
+    }
+  }
+}
+
+.gallery-header {
+  text-align: center;
+  margin-bottom: $spacing-xl;
+
+  .gallery-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: $gray-800;
+    margin-bottom: $spacing-sm;
+  }
+
+  .gallery-subtitle {
+    color: $text-muted;
+    font-size: 1rem;
+    margin: 0;
+  }
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: $spacing-lg;
+  margin-bottom: $spacing-xl;
+
+  @include r-tablet {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: $spacing-md;
+  }
+
+  @include r-mobile {
+    grid-template-columns: repeat(2, 1fr);
+    gap: $spacing-sm;
+  }
+}
+
+.gallery-item {
+  position: relative;
+  aspect-ratio: 4/3;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  cursor: pointer;
+  background: $gray-50;
+  transition: all 0.3s ease;
+
+  &--featured {
+    grid-column: span 2;
+    grid-row: span 2;
+
+    @include r-tablet {
+      grid-column: span 1;
+      grid-row: span 1;
+    }
+  }
+
+  &:hover {
+    transform: translateY(-4px);
+    @include card-shadow;
+
+    .gallery-overlay {
+      opacity: 1;
+    }
+
+    img {
+      transform: scale(1.05);
+    }
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+}
+
+.gallery-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  @include flex-center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.gallery-overlay-content {
+  @include flex-center;
+  flex-direction: column;
+  gap: $spacing-sm;
+  color: $white;
+  text-align: center;
+
+  .gallery-icon {
+    font-size: 1.5rem;
+  }
+
+  .gallery-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+}
+
+.gallery-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+  color: $white;
+  padding: $spacing-lg $spacing-md $spacing-md;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.gallery-actions {
+  text-align: center;
+}
+
+// Lightbox Styles
+.lightbox-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  @include flex-center;
+  z-index: 2000;
+  padding: $spacing-lg;
+}
+
+.lightbox-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 1200px;
+  max-height: 800px;
+  display: flex;
+  flex-direction: column;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: -60px;
+  right: 0;
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  color: $white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  @include flex-center;
+  transition: all 0.3s ease;
+  z-index: 10;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  @include r-mobile {
+    top: $spacing-md;
+    right: $spacing-md;
+    width: 40px;
+    height: 40px;
+    font-size: 1.125rem;
+  }
+}
+
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  color: $white;
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  @include flex-center;
+  transition: all 0.3s ease;
+  z-index: 10;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-50%) scale(1.1);
+  }
+
+  &--prev {
+    left: $spacing-lg;
+  }
+
+  &--next {
+    right: $spacing-lg;
+  }
+
+  @include r-mobile {
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+
+    &--prev {
+      left: $spacing-md;
+    }
+
+    &--next {
+      right: $spacing-md;
+    }
+  }
+}
+
+.lightbox-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-lg;
+}
+
+.lightbox-image {
+  max-width: 100%;
+  max-height: 70%;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  @include card-shadow;
+}
+
+.lightbox-info {
+  text-align: center;
+  color: $white;
+  max-width: 600px;
+}
+
+.lightbox-counter {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: $spacing-sm;
+}
+
+.lightbox-caption {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: $spacing-lg;
+  line-height: 1.5;
+}
+
+.lightbox-actions {
+  display: flex;
+  gap: $spacing-md;
+  justify-content: center;
+
+  @include r-mobile {
+    flex-direction: column;
+  }
+}
+
+.lightbox-action {
+  padding: 0.75rem $spacing-lg;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.5rem;
+  color: $white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+.lightbox-thumbnails {
+  display: flex;
+  gap: $spacing-sm;
+  justify-content: center;
+  padding: $spacing-lg 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @include r-mobile {
+    padding: $spacing-md 0;
+  }
+}
+
+.thumbnail {
+  width: 60px;
+  height: 45px;
+  border: 2px solid transparent;
+  border-radius: 0.25rem;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: none;
+  padding: 0;
+  flex-shrink: 0;
+
+  &--active {
+    border-color: $white;
+  }
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.7);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @include r-mobile {
+    width: 50px;
+    height: 38px;
+  }
+}
+
+// Responsive adjustments
+@include r-mobile {
+  .gallery-grid {
+    .gallery-item--featured {
+      grid-column: span 2;
+      grid-row: span 1;
+    }
+  }
+
+  .lightbox-overlay {
+    padding: $spacing-md;
+  }
+
+  .lightbox-image {
+    max-height: 60%;
+  }
+
+  .lightbox-info {
+    font-size: 0.875rem;
+  }
+}

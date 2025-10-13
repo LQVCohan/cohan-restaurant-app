@@ -3,168 +3,166 @@
 
 .restaurant-list {
   min-height: 100vh;
-  background-color: $light-color;
-}
+  background-color: $gray-50;
+  margin-top: 70px;
+  .container {
+    max-width: $desktop;
+    margin: 0 auto;
 
-.container {
-  max-width: $desktop;
-  margin: 0 auto;
-  padding: $spacing-xl $spacing-md;
+    padding: $spacing-xl $spacing-md;
+    .content-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: $spacing-xl;
 
-  @include responsive(mobile) {
-    padding: $spacing-md;
-  }
-}
+      @include r-desktop {
+        grid-template-columns: 250px 1fr;
+      }
 
-.content-layout {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: $spacing-xl;
+      @include r-tablet {
+        grid-template-columns: 1fr;
+      }
+      .results {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-lg;
 
-  @include responsive(desktop) {
-    grid-template-columns: 250px 1fr;
-  }
+        @include r-tablet {
+          order: 1;
+        }
 
-  @include responsive(tablet) {
-    grid-template-columns: 1fr;
-  }
-}
+        &__header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: $white;
+          padding: $spacing-lg;
+          border-radius: 1rem;
+          @include card-shadow;
 
-.filter-toggle {
-  display: none;
-  width: 100%;
-  padding: $spacing-md;
-  background: $primary-color;
-  color: $white;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin-bottom: $spacing-md;
-  transition: all 0.3s ease;
+          @include r-tablet {
+            flex-direction: column;
+            gap: $spacing-md;
+            align-items: stretch;
+          }
+        }
 
-  &:hover {
-    background: $primary-dark;
-  }
+        &__info {
+          display: flex;
+          align-items: center;
+          gap: $spacing-md;
 
-  @include responsive(tablet) {
-    display: block;
+          @include r-tablet {
+            justify-content: space-between;
+          }
+
+          @include r-mobile {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: $spacing-sm;
+          }
+        }
+
+        &__count {
+          font-weight: 600;
+          color: $gray-900;
+          font-size: $text-base;
+
+          @include r-mobile {
+            font-size: $text-sm;
+          }
+        }
+
+        &__view-toggle {
+          display: flex;
+          background: #f1f5f9;
+          border-radius: 0.5rem;
+          padding: 0.25rem;
+
+          @include r-mobile {
+            width: 100%;
+          }
+        }
+
+        &__view-btn {
+          padding: 0.5rem $spacing-md;
+          border: none;
+          background: none;
+          cursor: pointer;
+          border-radius: 0.25rem;
+          transition: all 0.3s ease;
+          font-size: $text-sm;
+          font-weight: 500;
+          color: $text-muted;
+
+          @include r-mobile {
+            flex: 1;
+            padding: 0.75rem;
+          }
+
+          &--active {
+            background: $white;
+            @include card-shadow;
+            color: $primary;
+            font-weight: 600;
+          }
+
+          &:hover:not(&--active) {
+            color: $gray-900;
+          }
+        }
+
+        &__sort-select {
+          padding: 0.75rem $spacing-md;
+          border: 1px solid $border-color;
+          border-radius: 0.5rem;
+          background: $white;
+          cursor: pointer;
+          font-size: $text-sm;
+          color: $gray-900;
+          min-width: 180px;
+
+          &:focus {
+            outline: none;
+            border-color: $primary;
+            box-shadow: 0 0 0 3px rgba($primary, 0.1);
+          }
+
+          @include r-mobile {
+            width: 100%;
+            min-width: auto;
+          }
+          .filter-toggle {
+            display: none;
+            width: 100%;
+            padding: $spacing-md;
+            background: $primary;
+            color: $white;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: $spacing-md;
+            transition: all 0.3s ease;
+
+            &:hover {
+              background: $primary-hover;
+            }
+
+            @include r-tablet {
+              display: block;
+            }
+          }
+        }
+      }
+    }
+    @include r-mobile {
+      padding: $spacing-md;
+    }
   }
 }
 
 // Results Section
-.results {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-lg;
-
-  @include responsive(tablet) {
-    order: 1;
-  }
-
-  &__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: $white;
-    padding: $spacing-lg;
-    border-radius: 1rem;
-    @include card-shadow;
-
-    @include responsive(tablet) {
-      flex-direction: column;
-      gap: $spacing-md;
-      align-items: stretch;
-    }
-  }
-
-  &__info {
-    display: flex;
-    align-items: center;
-    gap: $spacing-md;
-
-    @include responsive(tablet) {
-      justify-content: space-between;
-    }
-
-    @include responsive(mobile) {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: $spacing-sm;
-    }
-  }
-
-  &__count {
-    font-weight: 600;
-    color: $dark-color;
-    font-size: $font-size-base;
-
-    @include responsive(mobile) {
-      font-size: $font-size-sm;
-    }
-  }
-
-  &__view-toggle {
-    display: flex;
-    background: #f1f5f9;
-    border-radius: 0.5rem;
-    padding: 0.25rem;
-
-    @include responsive(mobile) {
-      width: 100%;
-    }
-  }
-
-  &__view-btn {
-    padding: 0.5rem $spacing-md;
-    border: none;
-    background: none;
-    cursor: pointer;
-    border-radius: 0.25rem;
-    transition: all 0.3s ease;
-    font-size: $font-size-sm;
-    font-weight: 500;
-    color: $text-muted;
-
-    @include responsive(mobile) {
-      flex: 1;
-      padding: 0.75rem;
-    }
-
-    &--active {
-      background: $white;
-      @include card-shadow;
-      color: $primary-color;
-      font-weight: 600;
-    }
-
-    &:hover:not(&--active) {
-      color: $dark-color;
-    }
-  }
-
-  &__sort-select {
-    padding: 0.75rem $spacing-md;
-    border: 1px solid $border-color;
-    border-radius: 0.5rem;
-    background: $white;
-    cursor: pointer;
-    font-size: $font-size-sm;
-    color: $dark-color;
-    min-width: 180px;
-
-    &:focus {
-      outline: none;
-      border-color: $primary-color;
-      box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
-    }
-
-    @include responsive(mobile) {
-      width: 100%;
-      min-width: auto;
-    }
-  }
-}
 
 // Restaurant Grid
 .restaurants-grid {
@@ -174,11 +172,11 @@
   &--grid {
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
 
-    @include responsive(tablet) {
+    @include r-tablet {
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     }
 
-    @include responsive(mobile) {
+    @include r-mobile {
       grid-template-columns: 1fr;
     }
   }
@@ -203,9 +201,9 @@
   }
 
   &__title {
-    font-size: $font-size-xl;
+    font-size: $text-xl;
     font-weight: 600;
-    color: $dark-color;
+    color: $gray-900;
     margin-bottom: $spacing-sm;
   }
 
@@ -218,7 +216,7 @@
     line-height: 1.6;
   }
 
-  @include responsive(mobile) {
+  @include r-mobile {
     padding: $spacing-xl $spacing-md;
 
     &__icon {
@@ -226,7 +224,7 @@
     }
 
     &__title {
-      font-size: $font-size-lg;
+      font-size: $text-lg;
     }
   }
 }
@@ -245,7 +243,7 @@
   width: 40px;
   height: 40px;
   border: 4px solid #f1f5f9;
-  border-top: 4px solid $primary-color;
+  border-top: 4px solid $primary;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-right: $spacing-md;
@@ -265,11 +263,11 @@
   @include button-base;
 
   &--primary {
-    background: $primary-color;
+    background: $primary;
     color: $white;
 
     &:hover {
-      background: $primary-dark;
+      background: $primary-hover;
       transform: translateY(-1px);
     }
 
@@ -280,11 +278,11 @@
 
   &--secondary {
     background: $white;
-    color: $primary-color;
-    border: 1px solid $primary-color;
+    color: $primary;
+    border: 1px solid $primary;
 
     &:hover {
-      background: $primary-color;
+      background: $primary;
       color: $white;
     }
 
@@ -299,9 +297,9 @@
     border: 1px solid $border-color;
 
     &:hover {
-      background: $light-color;
-      border-color: $primary-color;
-      color: $primary-color;
+      background: $gray-50;
+      border-color: $primary;
+      color: $primary;
     }
   }
 
@@ -316,13 +314,13 @@
 }
 
 // Responsive adjustments
-@include responsive(tablet) {
+@include r-tablet {
   .content-layout {
     gap: $spacing-md;
   }
 }
 
-@include responsive(mobile) {
+@include r-mobile {
   .container {
     padding: $spacing-md $spacing-sm;
   }

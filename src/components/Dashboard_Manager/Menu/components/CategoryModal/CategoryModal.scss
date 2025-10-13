@@ -1,0 +1,126 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.category-modal {
+  .form-group {
+    margin-bottom: $spacing-lg;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: $spacing-sm;
+    color: #374151;
+  }
+
+  .form-input,
+  .form-textarea {
+    @include form-input;
+
+    &--error {
+      border-color: $error-600;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+    }
+  }
+
+  .form-textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .form-error {
+    display: block;
+    color: $error-600;
+    font-size: 0.75rem;
+    margin-top: $spacing-xs;
+  }
+}
+
+.icon-selector {
+  .icon-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: $spacing-sm;
+    margin-bottom: $spacing-md;
+    padding: $spacing-md;
+    border: 2px solid $border-color;
+    border-radius: $border-radius-sm;
+    background: #f8fafc;
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(6, 1fr);
+    }
+  }
+
+  .icon-option {
+    width: 40px;
+    height: 40px;
+    border: 2px solid transparent;
+    border-radius: $border-radius-sm;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    transition: all 0.3s ease;
+
+    &:hover {
+      border-color: $primary;
+      transform: scale(1.1);
+    }
+
+    &--selected {
+      border-color: $primary;
+      background: $primary-light;
+      transform: scale(1.1);
+    }
+  }
+
+  .custom-icon {
+    .form-input {
+      text-align: center;
+      font-size: 1.125rem;
+    }
+  }
+}
+
+.form-actions {
+  display: flex;
+  gap: $spacing-md;
+  justify-content: flex-end;
+  padding-top: $spacing-lg;
+  border-top: 2px solid $border-color;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+.btn {
+  @include button-base;
+
+  &--primary {
+    background: $primary;
+    color: white;
+
+    &:hover {
+      background: $primary-hover;
+    }
+  }
+
+  &--secondary {
+    background: $text-gray;
+    color: white;
+
+    &:hover {
+      background: #4b5563;
+    }
+  }
+}

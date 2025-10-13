@@ -4,7 +4,28 @@ enum TimeSlot {
   dinner
   late_night
 }
+enum PriceUpdateMode {
+  PERCENT
+  AMOUNT
+}
 
+input BulkPriceUpdateTarget {
+  categoryId: ID
+  menuItemIds: [ID!]
+}
+input BulkPriceUpdateInput {
+  restaurantId: ID!
+  timeSlot: TimeSlot
+  target: BulkPriceUpdateTarget!
+  mode: PriceUpdateMode!
+  value: Float!
+  roundTo: Int
+  floorZero: Boolean
+}
+type BulkPriceUpdateResult {
+  updatedCount: Int!
+  items: [MenuItem!]!
+}
 type Menu {
   id: ID!
   restaurantId: ID!
@@ -28,7 +49,23 @@ input PreparationMethodInput {
   price: Float!
   isDefault: Boolean
 }
-
+input MenuItemFilter {
+  restaurantId: ID!
+  timeSlot: TimeSlot
+  categoryId: ID
+  status: String
+  search: String
+  minPrice: Float
+  maxPrice: Float
+}
+type MenuItemEdge {
+  node: MenuItem!
+  cursor: ID!
+}
+type MenuItemConnection {
+  edges: [MenuItemEdge!]!
+  pageInfo: PageInfo!
+}
 type MenuItem {
   id: ID!
   restaurantId: ID!
@@ -99,9 +136,15 @@ extend type Query {
     search: String
     limit: Int = 50
   ): [MenuItem!]!
+  menuItemsConnection(
+    limit: Int = 20
+    cursor: ID
+    filter: MenuItemFilter!
+  ): MenuItemConnection!
 }
 
 extend type Mutation {
+  bulkUpdateMenuItemPrices(input: BulkPriceUpdateInput!): BulkPriceUpdateResult!
   ensureMenu(input: EnsureMenuInput!): Menu!
   createMenuItem(input: CreateMenuItemInput!): MenuItem!
   updateMenuItem(input: UpdateMenuItemInput!): MenuItem!

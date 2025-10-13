@@ -39,7 +39,9 @@
     box-shadow: v.$shadow-hover;
   }
 }
-
+@mixin card-shadow {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
 // FoodHub Card Style
 @mixin card {
   background: v.$bg-primary;
@@ -85,7 +87,13 @@
     box-shadow: 0 8px 25px rgba($bg-color, 0.3);
   }
 }
-
+@mixin hover-lift {
+  transition: all 0.3s ease;
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  }
+}
 @mixin button-primary {
   @include button-base;
   background: v.$primary;
@@ -244,9 +252,9 @@
   background: linear-gradient(135deg, $from 0%, $to 100%);
 }
 
-@mixin status-badge($bg-color, $text-color) {
+@mixin status-badge($bg-color, $text-primary) {
   background: $bg-color;
-  color: $text-color;
+  color: $text-primary;
   padding: v.$spacing-xs v.$spacing-sm;
   border-radius: v.$radius-full;
   font-size: 0.75rem;
@@ -280,4 +288,9 @@
   @media (max-width: v.$mobile) {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+@mixin form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: v.$spacing-md;
 }

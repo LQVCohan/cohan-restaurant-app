@@ -31,7 +31,9 @@ import ManagerLayout from "../layouts/ManagerLayout";
 
 // ==== Staff ====
 import StaffOrder from "../components/StaffOrder";
-import TableLayout from "../components/TableLayout";
+
+import MainLayout from "@/layouts/MainLayout";
+import TableView from "../components/Customer/TableView/TableView";
 
 // =========================
 // 🔐 GraphQL Query: me
@@ -112,178 +114,180 @@ const PrivateRoute = ({ children, allowedRoles }) => {
 // =========================
 const AppRouter = () => {
   return (
-    <Routes>
-      {/* ===== PUBLIC ===== */}
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/verify-email" element={<VerifyEmailPending />} />
-      <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
-      <Route path="/403" element={<ForbiddenPage />} />
+    <MainLayout>
+      <Routes>
+        {/* ===== PUBLIC ===== */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/verify-email" element={<VerifyEmailPending />} />
+        <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
+        <Route path="/403" element={<ForbiddenPage />} />
 
-      {/* ===== CUSTOMER ===== */}
-      <Route
-        path="/restaurants"
-        element={
-          <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
-            <RestaurantsList />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/restaurant/:id"
-        element={
-          <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
-            <RestaurantDetail />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/restaurant/:id/layout"
-        element={
-          <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
-            <TableLayout />
-          </PrivateRoute>
-        }
-      />
+        {/* ===== CUSTOMER ===== */}
+        <Route
+          path="/restaurants"
+          element={
+            <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
+              <RestaurantsList />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/restaurant/:id"
+          element={
+            <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
+              <RestaurantDetail />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/restaurant/table"
+          element={
+            <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
+              <TableView />
+            </PrivateRoute>
+          }
+        />
 
-      {/* ===== STAFF ===== */}
-      <Route
-        path="/staff/orders"
-        element={
-          <PrivateRoute allowedRoles={["staff"]}>
-            <StaffOrder />
-          </PrivateRoute>
-        }
-      />
+        {/* ===== STAFF ===== */}
+        <Route
+          path="/staff/orders"
+          element={
+            <PrivateRoute allowedRoles={["staff"]}>
+              <StaffOrder />
+            </PrivateRoute>
+          }
+        />
 
-      {/* ===== MANAGER / ADMIN ===== */}
-      <Route
-        path="/manager"
-        element={<Navigate to="/manager/dashboard" replace />}
-      />
-      <Route
-        path="/manager/dashboard"
-        element={
-          <PrivateRoute allowedRoles={["manager", "admin"]}>
-            <ManagerLayout>
+        {/* ===== MANAGER / ADMIN ===== */}
+        <Route
+          path="/manager"
+          element={<Navigate to="/manager/dashboard" replace />}
+        />
+        <Route
+          path="/manager/dashboard"
+          element={
+            <PrivateRoute allowedRoles={["manager", "admin", "customer"]}>
+              <ManagerLayout>
+                <Dashboard />
+              </ManagerLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/manager/staff"
+          element={
+            <PrivateRoute allowedRoles={["manager", "admin"]}>
+              <ManagerLayout>
+                <StaffManagement />
+              </ManagerLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/menu"
+          element={
+            <PrivateRoute allowedRoles={["admin", "manager"]}>
+              <ManagerLayout>
+                <MenuManagement />
+              </ManagerLayout>
+            </PrivateRoute>
+          }
+        />
+
+        {/* ===== ADMIN ===== */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
               <Dashboard />
-            </ManagerLayout>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/manager/staff"
-        element={
-          <PrivateRoute allowedRoles={["manager", "admin"]}>
-            <ManagerLayout>
-              <StaffManagement />
-            </ManagerLayout>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/menu"
-        element={
-          <PrivateRoute allowedRoles={["admin", "manager"]}>
-            <ManagerLayout>
-              <MenuManagement />
-            </ManagerLayout>
-          </PrivateRoute>
-        }
-      />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <div>Quản Lý Người Dùng</div>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <PrivateRoute allowedRoles={["admin"]}>
+              <div>Cài Đặt Hệ Thống</div>
+            </PrivateRoute>
+          }
+        />
 
-      {/* ===== ADMIN ===== */}
-      <Route
-        path="/admin/dashboard"
-        element={
-          <PrivateRoute allowedRoles={["admin"]}>
-            <Dashboard />
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/users"
-        element={
-          <PrivateRoute allowedRoles={["admin"]}>
-            <div>Quản Lý Người Dùng</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <PrivateRoute allowedRoles={["admin"]}>
-            <div>Cài Đặt Hệ Thống</div>
-          </PrivateRoute>
-        }
-      />
+        {/* ===== MANAGER EXTENDED ===== */}
+        <Route
+          path="/employees"
+          element={
+            <PrivateRoute allowedRoles={["admin", "manager"]}>
+              <div>Quản Lý Nhân Viên</div>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/inventory"
+          element={
+            <PrivateRoute allowedRoles={["admin", "manager"]}>
+              <div>Quản Lý Kho</div>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <PrivateRoute allowedRoles={["admin", "manager"]}>
+              <div>Quản Lý Đơn Hàng</div>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/reservations"
+          element={
+            <PrivateRoute allowedRoles={["admin", "manager"]}>
+              <div>Quản Lý Đặt Bàn</div>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/promotions"
+          element={
+            <PrivateRoute allowedRoles={["admin", "manager"]}>
+              <div>Quản Lý Khuyến Mãi</div>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <PrivateRoute allowedRoles={["admin", "manager"]}>
+              <div>Phân Tích / Báo Cáo</div>
+            </PrivateRoute>
+          }
+        />
 
-      {/* ===== MANAGER EXTENDED ===== */}
-      <Route
-        path="/employees"
-        element={
-          <PrivateRoute allowedRoles={["admin", "manager"]}>
-            <div>Quản Lý Nhân Viên</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/inventory"
-        element={
-          <PrivateRoute allowedRoles={["admin", "manager"]}>
-            <div>Quản Lý Kho</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/orders"
-        element={
-          <PrivateRoute allowedRoles={["admin", "manager"]}>
-            <div>Quản Lý Đơn Hàng</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/reservations"
-        element={
-          <PrivateRoute allowedRoles={["admin", "manager"]}>
-            <div>Quản Lý Đặt Bàn</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/promotions"
-        element={
-          <PrivateRoute allowedRoles={["admin", "manager"]}>
-            <div>Quản Lý Khuyến Mãi</div>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/analytics"
-        element={
-          <PrivateRoute allowedRoles={["admin", "manager"]}>
-            <div>Phân Tích / Báo Cáo</div>
-          </PrivateRoute>
-        }
-      />
+        {/* ===== UNIVERSAL ===== */}
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "staff", "admin"]}
+            >
+              <div>Trang Thông Tin Cá Nhân</div>
+            </PrivateRoute>
+          }
+        />
 
-      {/* ===== UNIVERSAL ===== */}
-      <Route
-        path="/profile"
-        element={
-          <PrivateRoute
-            allowedRoles={["customer", "manager", "staff", "admin"]}
-          >
-            <div>Trang Thông Tin Cá Nhân</div>
-          </PrivateRoute>
-        }
-      />
-
-      {/* ===== MISC ===== */}
-      <Route path="/logout" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* ===== MISC ===== */}
+        <Route path="/logout" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </MainLayout>
   );
 };
 

@@ -1,0 +1,269 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+.restaurant-info {
+  &__grid {
+    display: grid;
+    gap: $spacing-xl;
+  }
+
+  &__about {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: $text-muted;
+    margin-bottom: $spacing-lg;
+  }
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-xl;
+    align-items: stretch;
+
+    @include r-mobile {
+      grid-template-columns: 1fr;
+    }
+  }
+  &__highlights {
+    h3 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: $gray-800;
+      margin-bottom: $spacing-md;
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+    }
+  }
+}
+
+.info-section {
+  &__title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: $gray-800;
+    margin-bottom: $spacing-lg;
+    padding-bottom: $spacing-md;
+    border-bottom: 2px solid $border-color;
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+  }
+
+  &__content {
+    display: grid;
+    flex-direction: column;
+    gap: $spacing-lg;
+  }
+}
+
+.highlights-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: $spacing-md;
+}
+
+.highlights-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  background: $gray-50;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  color: $gray-800;
+}
+
+.highlights-icon {
+  width: 24px;
+  height: 24px;
+  background: #10b981;
+  color: $white;
+  border-radius: 50%;
+  @include flex-center;
+  font-size: 0.875rem;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.amenities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $spacing-md;
+
+  @include r-mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.amenity-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  border-radius: 0.5rem;
+  border: 1px solid $border-color;
+  transition: all 0.3s ease;
+
+  &--available {
+    background: rgba(#10b981, 0.05);
+    border-color: rgba(#10b981, 0.2);
+
+    .amenity-label {
+      color: $gray-800;
+    }
+  }
+
+  &--unavailable {
+    background: rgba($text-muted, 0.05);
+    border-color: rgba($text-muted, 0.2);
+
+    .amenity-label {
+      color: $text-muted;
+    }
+  }
+}
+
+.amenity-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.amenity-label {
+  flex: 1;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.amenity-status {
+  font-size: 1rem;
+}
+
+.working-hours {
+  background: $gray-50;
+  border-radius: 0.75rem;
+  padding: $spacing-lg;
+
+  &__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-sm 0;
+    border-bottom: 1px solid rgba($border-color, 0.5);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  &__day {
+    font-weight: 500;
+    color: $gray-800;
+    font-size: 1rem;
+  }
+
+  &__time {
+    font-weight: 600;
+    color: #3b82f6;
+    font-size: 1rem;
+  }
+}
+
+.contact-info {
+  display: grid;
+  gap: $spacing-lg;
+}
+
+.contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-md;
+  padding: $spacing-md;
+  background: $gray-50;
+  border-radius: 0.75rem;
+}
+
+.contact-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.contact-details {
+  flex: 1;
+
+  strong {
+    display: block;
+    font-weight: 600;
+    color: $gray-800;
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+  }
+
+  p {
+    margin: 0;
+    color: $text-muted;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+}
+
+.map-container {
+  margin-top: $spacing-lg;
+}
+
+.map-placeholder {
+  background: $gray-50;
+  border: 2px dashed $border-color;
+  border-radius: 0.75rem;
+  padding: $spacing-2xl;
+  text-align: center;
+  color: $text-muted;
+
+  .map-icon {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: $spacing-md;
+  }
+
+  p {
+    margin-bottom: $spacing-lg;
+    font-size: 1rem;
+  }
+}
+
+// Responsive adjustments
+@include r-tablet {
+  .amenities-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@include r-mobile {
+  .restaurant-info__grid {
+    gap: $spacing-lg;
+  }
+
+  .info-section__title {
+    font-size: 1.125rem;
+  }
+
+  .working-hours__item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .contact-item {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .map-placeholder {
+    padding: $spacing-xl;
+
+    .map-icon {
+      font-size: 2rem;
+    }
+  }
+}

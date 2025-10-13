@@ -1,82 +1,156 @@
-// src/graphql/resolvers/restaurant/mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { User, Role, Restaurant } from "../../../models/index.js";
 
+function badInput(message) {
+  return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
+}
+function forbidden(message) {
+  return new GraphQLError(message, { extensions: { code: "FORBIDDEN" } });
+}
+function notFound(message = "Resource not found") {
+  return new GraphQLError(message, { extensions: { code: "NOT_FOUND" } });
+}
+function toObjectId(id) {
+  if (!mongoose.isValidObjectId(id)) throw badInput("Invalid ID");
+  return new mongoose.Types.ObjectId(id);
+}
+
 async function userHasRoleSlug(userDoc, slug) {
+  if (!userDoc) return false;
   const want = String(slug).toLowerCase();
-  const role = userDoc.role || [];
-
-  // TH1: đã populate => phần tử là object có slug/name
-  const fromPopulated = role
-    .filter((r) => r && typeof r === "object")
-    .map((r) => (r.slug || r.name || "").toLowerCase());
-
-  // TH2: phần tử là string slug (ít gặp)
-  const stringRoles = role
-    .filter((r) => typeof r === "string")
-    .map((s) => s.toLowerCase());
-
-  // TH3: phần tử là ObjectId => cần truy vấn Role để lấy slug
-  const objectIds = role.filter((r) => mongoose.isValidObjectId(r));
-  let fromIds = [];
-  if (objectIds.length) {
-    const roleDocs = await Role.find(
-      { _id: { $in: objectIds } },
-      { slug: 1, name: 1 }
-    ).lean();
-    fromIds = roleDocs.map((r) => (r.slug || r.name || "").toLowerCase());
+  const role = userDoc.role;
+  if (!role) return false;
+  if (
+    typeof role === "object" &&
+    role !== null &&
+    !mongoose.isValidObjectId(role)
+  ) {
+    const s = (role.slug || role.name || "").toLowerCase();
+    return s === want;
   }
+  if (mongoose.isValidObjectId(role)) {
+    const roleDoc = await Role.findById(role).lean();
+    const s = (roleDoc?.slug || roleDoc?.name || "").toLowerCase();
+    return s === want;
+  }
+  if (typeof role === "string") {
+    return role.toLowerCase() === want;
+  }
+  return false;
+}
 
-  const all = new Set([...fromPopulated, ...stringRoles, ...fromIds]);
-  return all.has(want);
+function isAdmin(user) {
+  return (
+    !!user &&
+    (user.roleName?.toLowerCase?.() === "admin" ||
+      user.role === "admin" ||
+      user.role?.slug?.toLowerCase?.() === "admin")
+  );
+}
+async function isManager(user) {
+  return (
+    !!user &&
+    (user.roleName?.toLowerCase?.() === "manager" ||
+      (await userHasRoleSlug(user, "manager")))
+  );
+}
+
+/** Kiểm tra quyền sửa/xoá theo nhà hàng */
+async function assertCanMutateRestaurant(user, restaurantDoc) {
+  if (!user) throw forbidden("Unauthorized");
+  if (isAdmin(user)) return true;
+  const manager = await isManager(user);
+  if (!manager) throw forbidden("Insufficient permission");
+  if (String(restaurantDoc.managerId) !== String(user._id)) {
+    throw forbidden("You can only modify your own restaurant");
+  }
+  return true;
+}
+
+/** Tạo nhà hàng */
+async function createRestaurant(_, { input }, { user }) {
+  if (!user) throw forbidden("Unauthorized");
+  const admin = isAdmin(user);
+  const manager = await isManager(user);
+  if (!admin && !manager) throw forbidden("Insufficient permission");
+
+  const { managerId, ...rest } = input;
+  let finalManagerId = managerId;
+  if (manager && !admin) finalManagerId = String(user._id);
+  if (!finalManagerId) throw badInput("managerId is required");
+
+  const mId = toObjectId(finalManagerId);
+  const managerDoc = await User.findById(mId).populate("role");
+  if (!managerDoc) throw badInput("Manager not found");
+  const isRoleManager = await userHasRoleSlug(managerDoc, "manager");
+  if (!isRoleManager) throw forbidden("Target user is not a manager");
+
+  const existed = await Restaurant.exists({ managerId: mId });
+  if (existed)
+    throw badInput("This manager is already assigned to another restaurant");
+
+  const created = await Restaurant.create({ ...rest, managerId: mId });
+  return created.toObject();
+}
+
+/** Cập nhật nhà hàng (không đổi manager) */
+async function updateRestaurant(_, { id, input }, { user }) {
+  if (!user) throw forbidden("Unauthorized");
+  const _id = toObjectId(id);
+  const doc = await Restaurant.findById(_id);
+  if (!doc) throw notFound("Restaurant not found");
+  await assertCanMutateRestaurant(user, doc);
+  const { managerId, ...rest } = input || {};
+  Object.assign(doc, rest);
+  await doc.save();
+  return doc.toObject();
+}
+
+/** Xoá nhà hàng */
+async function deleteRestaurant(_, { id }, { user }) {
+  if (!user) throw forbidden("Unauthorized");
+  const _id = toObjectId(id);
+  const doc = await Restaurant.findById(_id);
+  if (!doc) throw notFound("Restaurant not found");
+  await assertCanMutateRestaurant(user, doc);
+  await Restaurant.deleteOne({ _id });
+  return true;
+}
+
+/** Cập nhật manager nhà hàng (chỉ admin) */
+async function updateRestaurantManager(_, { input }, { user }) {
+  if (!isAdmin(user)) throw forbidden("Admin only");
+  const { restaurantId, managerId } = input || {};
+  if (!restaurantId || !managerId)
+    throw badInput("restaurantId and managerId are required");
+
+  const rId = toObjectId(restaurantId);
+  const mId = toObjectId(managerId);
+
+  const doc = await Restaurant.findById(rId);
+  if (!doc) throw notFound("Restaurant not found");
+
+  const managerDoc = await User.findById(mId).populate("role");
+  if (!managerDoc) throw badInput("Manager not found");
+  const isRoleManager = await userHasRoleSlug(managerDoc, "manager");
+  if (!isRoleManager) throw forbidden("Target user is not a manager");
+
+  const existed = await Restaurant.exists({
+    managerId: mId,
+    _id: { $ne: rId },
+  });
+  if (existed)
+    throw badInput("This manager is already assigned to another restaurant");
+
+  doc.managerId = mId;
+  await doc.save();
+  return doc.toObject();
 }
 
 export const RestaurantMutation = {
-  async createRestaurant(_, { input }) {
-    try {
-      const { managerId, ...rest } = input;
-
-      // if (!mongoose.isValidObjectId(managerId)) {
-      //   throw new GraphQLError("Invalid managerId", {
-      //     extensions: { code: "BAD_USER_INPUT" },
-      //   });
-      // }
-
-      // Lấy user (không cần populate, ta tự resolve)
-      // const manager = await User.findById(managerId).lean();
-      // if (!manager) {
-      //   throw new GraphQLError("Manager not found", {
-      //     extensions: { code: "BAD_USER_INPUT" },
-      //   });
-      // }
-
-      // Kiểm tra user có role 'manager'
-      // const isManager = await userHasRoleSlug(manager, "manager");
-      // if (!isManager) {
-      //   throw new GraphQLError("User is not a manager", {
-      //     extensions: { code: "FORBIDDEN" },
-      //   });
-      // }
-
-      // Đảm bảo 1 manager chỉ có 1 nhà hàng
-      // const existed = await Restaurant.exists({ managerId });
-      // if (existed) {
-      //   throw new GraphQLError(
-      //     "This manager is already assigned to another restaurant",
-      //     {
-      //       extensions: { code: "BAD_REQUEST" },
-      //     }
-      //   );
-      // }
-
-      const doc = await Restaurant.create({ ...rest, managerId });
-      return doc.toObject(); // có virtual id
-    } catch (err) {
-      console.error("Error creating restaurant:", err);
-      throw new GraphQLError(err.message || "Error creating restaurant", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
-    }
-  },
+  createRestaurant,
+  updateRestaurant,
+  deleteRestaurant,
+  updateRestaurantManager,
 };

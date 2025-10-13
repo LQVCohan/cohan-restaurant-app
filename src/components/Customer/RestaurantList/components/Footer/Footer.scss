@@ -14,16 +14,16 @@
     grid-template-columns: 2fr repeat(4, 1fr);
     gap: $spacing-xl;
 
-    @include responsive(desktop) {
+    @include r-desktop {
       grid-template-columns: repeat(3, 1fr);
     }
 
-    @include responsive(tablet) {
+    @include r-tablet {
       grid-template-columns: repeat(2, 1fr);
       gap: $spacing-lg;
     }
 
-    @include responsive(mobile) {
+    @include r-mobile {
       grid-template-columns: 1fr;
       padding: $spacing-xl $spacing-md;
     }
@@ -31,7 +31,7 @@
 
   &__section {
     &--main {
-      @include responsive(desktop) {
+      @include r-desktop {
         grid-column: 1 / -1;
         display: grid;
         grid-template-columns: 2fr 1fr;
@@ -39,7 +39,7 @@
         margin-bottom: $spacing-lg;
       }
 
-      @include responsive(tablet) {
+      @include r-tablet {
         grid-column: 1 / -1;
         display: block;
         margin-bottom: $spacing-lg;
@@ -48,13 +48,13 @@
   }
 
   &__brand {
-    @include responsive(desktop) {
+    @include r-desktop {
       max-width: none;
     }
   }
 
   &__logo {
-    font-size: $font-size-xl;
+    font-size: $text-xl;
     font-weight: 800;
     margin-bottom: $spacing-md;
     color: $white;
@@ -66,24 +66,24 @@
     margin-bottom: $spacing-lg;
     max-width: 400px;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       margin-bottom: $spacing-md;
     }
   }
 
   &__social {
-    @include responsive(desktop) {
+    @include r-desktop {
       text-align: right;
     }
 
-    @include responsive(tablet) {
+    @include r-tablet {
       text-align: left;
       margin-top: $spacing-lg;
     }
   }
 
   &__social-title {
-    font-size: $font-size-base;
+    font-size: $text-base;
     font-weight: 600;
     margin-bottom: $spacing-md;
     color: $white;
@@ -93,7 +93,7 @@
     display: flex;
     gap: $spacing-md;
 
-    @include responsive(desktop) {
+    @include r-desktop {
       justify-content: flex-end;
     }
   }
@@ -107,7 +107,7 @@
     background: rgba(255, 255, 255, 0.1);
     border-radius: 50%;
     text-decoration: none;
-    font-size: $font-size-lg;
+    font-size: $text-lg;
     transition: all 0.3s ease;
 
     &:hover {
@@ -117,7 +117,7 @@
   }
 
   &__section-title {
-    font-size: $font-size-base;
+    font-size: $text-base;
     font-weight: 700;
     margin-bottom: $spacing-md;
     color: $white;
@@ -133,7 +133,7 @@
     color: #94a3b8;
     text-decoration: none;
     transition: color 0.3s ease;
-    font-size: $font-size-sm;
+    font-size: $text-sm;
     display: flex;
     align-items: center;
     gap: $spacing-xs;
@@ -155,12 +155,12 @@
     align-items: flex-start;
     gap: $spacing-sm;
     color: #94a3b8;
-    font-size: $font-size-sm;
+    font-size: $text-sm;
     line-height: 1.5;
   }
 
   &__contact-icon {
-    font-size: $font-size-base;
+    font-size: $text-base;
     margin-top: 2px;
   }
 
@@ -175,7 +175,7 @@
     padding: $spacing-lg $spacing-md;
     @include flex-between;
 
-    @include responsive(tablet) {
+    @include r-tablet {
       flex-direction: column;
       gap: $spacing-md;
       text-align: center;
@@ -184,7 +184,7 @@
 
   &__copyright {
     color: #94a3b8;
-    font-size: $font-size-sm;
+    font-size: $text-sm;
     margin: 0;
   }
 
@@ -192,7 +192,7 @@
     display: flex;
     gap: $spacing-lg;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       gap: $spacing-sm;
     }
@@ -201,7 +201,7 @@
   &__bottom-link {
     color: #94a3b8;
     text-decoration: none;
-    font-size: $font-size-sm;
+    font-size: $text-sm;
     transition: color 0.3s ease;
 
     &:hover {

@@ -1,0 +1,203 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-lg;
+  padding: $spacing-lg;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: $shadow-sm;
+  margin-top: $spacing-lg;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: $spacing-md;
+    padding: $spacing-md;
+  }
+
+  &__per-page {
+    display: flex;
+    align-items: center;
+
+    .per-page-label {
+      display: flex;
+      align-items: center;
+      gap: $spacing-sm;
+      font-size: 0.875rem;
+      color: 0c4a6e;
+      font-weight: 500;
+    }
+
+    .per-page-select {
+      @include form-input;
+      padding: $spacing-xs $spacing-sm;
+      font-size: 0.875rem;
+      min-width: 60px;
+      cursor: pointer;
+    }
+  }
+
+  &__info {
+    .page-info {
+      font-size: 0.875rem;
+      color: #6b7280;
+      font-weight: 500;
+    }
+  }
+
+  &__nav {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+
+    @media (max-width: 480px) {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+
+  &__jump {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    font-size: 0.875rem;
+    color: 0c4a6e;
+
+    .jump-label {
+      font-weight: 500;
+    }
+
+    .jump-input {
+      @include form-input;
+      width: 60px;
+      padding: $spacing-xs;
+      text-align: center;
+      font-size: 0.875rem;
+    }
+
+    .jump-total {
+      color: #6b7280;
+      font-weight: 500;
+    }
+  }
+}
+
+.page-numbers {
+  display: flex;
+  gap: 0.25rem;
+
+  @media (max-width: 480px) {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+.page-btn {
+  @include button-base;
+  min-width: 40px;
+  height: 40px;
+  padding: $spacing-xs $spacing-sm;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: white;
+  color: 0c4a6e;
+  border: 2px solid $border-color;
+  margin: 0;
+
+  &:hover:not(:disabled) {
+    background: $primary-light;
+    border-color: #0284c7;
+    color: #0284c7;
+  }
+
+  &--active {
+    background: #0284c7;
+    border-color: #0284c7;
+    color: white;
+
+    &:hover {
+      background: $primary-hover;
+      border-color: $primary-hover;
+    }
+  }
+
+  &--disabled {
+    background: #f9fafb;
+    color: #d1d5db;
+    border-color: #e5e7eb;
+    cursor: not-allowed;
+
+    &:hover {
+      transform: none;
+      background: #f9fafb;
+      border-color: #e5e7eb;
+    }
+  }
+
+  &--dots {
+    background: transparent;
+    border: none;
+    cursor: default;
+    color: #6b7280;
+
+    &:hover {
+      transform: none;
+      background: transparent;
+      border: none;
+    }
+  }
+
+  &--prev,
+  &--next {
+    padding: $spacing-xs $spacing-md;
+    font-weight: 600;
+
+    @media (max-width: 480px) {
+      font-size: 0.75rem;
+      padding: $spacing-xs;
+    }
+  }
+
+  @media (max-width: 480px) {
+    min-width: 35px;
+    height: 35px;
+    font-size: 0.75rem;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 640px) {
+  .pagination {
+    &__per-page,
+    &__info,
+    &__jump {
+      order: 2;
+    }
+
+    &__nav {
+      order: 1;
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .pagination {
+    &__per-page .per-page-label {
+      flex-direction: column;
+      text-align: center;
+      gap: 0.25rem;
+    }
+
+    &__jump {
+      flex-direction: column;
+      text-align: center;
+      gap: 0.25rem;
+    }
+  }
+}

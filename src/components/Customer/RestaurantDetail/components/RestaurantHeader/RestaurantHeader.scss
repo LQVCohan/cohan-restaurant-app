@@ -1,0 +1,175 @@
+$primary: #0284c7;
+$primary-hover: #0369a1;
+$text-primary: #0c4a6e;
+$gray: #6b7280;
+$radius: 1rem;
+$shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+.restaurant-header {
+  background: #f1f5f9;
+  padding: 1rem;
+
+  &__cover {
+    position: relative;
+    border-radius: $radius;
+    overflow: hidden;
+    box-shadow: $shadow;
+    border: 2px solid #e2e8f0;
+    height: 380px;
+
+    &-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.9;
+    }
+  }
+
+  &__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.25),
+      rgba(0, 0, 0, 0.6)
+    );
+  }
+
+  &__top-actions {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 5;
+  }
+
+  &__right-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  &__bottom {
+    position: absolute;
+    left: 1.5rem;
+    right: 1.5rem;
+    bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    z-index: 10;
+    color: #fff;
+  }
+
+  &__avatar {
+    img {
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 1.25rem;
+      border: 4px solid #fff;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  &__info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__name {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  }
+
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-weight: 600;
+  }
+
+  &__rating {
+    background: rgba(255, 255, 255, 0.85);
+    color: $text-primary;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    box-shadow: $shadow;
+  }
+
+  &__status {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-weight: 700;
+    box-shadow: $shadow;
+
+    &.status--open {
+      background: #10b981;
+    }
+
+    &.status--closed {
+      background: #ef4444;
+    }
+  }
+
+  &__cuisine {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    box-shadow: $shadow;
+  }
+
+  &__address {
+    font-size: 0.95rem;
+    opacity: 0.95;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  &__actions {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    border-radius: 0.75rem;
+    border: 2px solid transparent;
+    padding: 0.65rem 1.25rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: $shadow;
+
+    &--primary {
+      background: $primary;
+      color: white;
+
+      &:hover {
+        background: $primary-hover;
+        transform: translateY(-2px);
+      }
+    }
+
+    &--secondary {
+      background: white;
+      color: $primary;
+      border-color: $primary;
+
+      &:hover {
+        background: $primary-light;
+        transform: translateY(-2px);
+      }
+    }
+  }
+}

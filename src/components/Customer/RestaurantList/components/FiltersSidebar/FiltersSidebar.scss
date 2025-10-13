@@ -10,7 +10,7 @@
   position: sticky;
   top: 100px;
 
-  @include responsive(tablet) {
+  @include r-tablet {
     position: static;
     order: 2;
     display: none;
@@ -28,17 +28,17 @@
   }
 
   &__title {
-    font-size: $font-size-lg;
+    font-size: $text-lg;
     font-weight: 700;
-    color: $dark-color;
+    color: $gray-900;
     margin: 0;
   }
 
   &__clear-all {
     background: none;
     border: none;
-    color: $primary-color;
-    font-size: $font-size-sm;
+    color: $primary;
+    font-size: $text-sm;
     font-weight: 600;
     cursor: pointer;
     padding: 0.25rem 0.5rem;
@@ -46,7 +46,7 @@
     transition: all 0.3s ease;
 
     &:hover {
-      background: rgba($primary-color, 0.1);
+      background: rgba($primary, 0.1);
     }
   }
 
@@ -59,9 +59,9 @@
   }
 
   &__section-title {
-    font-size: $font-size-base;
+    font-size: $text-base;
     font-weight: 600;
-    color: $dark-color;
+    color: $gray-900;
     margin-bottom: $spacing-md;
     display: flex;
     align-items: center;
@@ -83,19 +83,19 @@
     transition: background-color 0.3s ease;
 
     &:hover {
-      background: rgba($primary-color, 0.05);
+      background: rgba($primary, 0.05);
     }
   }
 
   &__checkbox {
     width: 18px;
     height: 18px;
-    accent-color: $primary-color;
+    accent-color: $primary;
     cursor: pointer;
   }
 
   &__label {
-    font-size: $font-size-sm;
+    font-size: $text-sm;
     color: #374151;
     cursor: pointer;
     flex: 1;
@@ -103,7 +103,7 @@
   }
 
   &__count {
-    font-size: $font-size-xs;
+    font-size: $text-xs;
     color: $text-muted;
     background: #f1f5f9;
     padding: 0.25rem 0.5rem;
@@ -125,7 +125,7 @@
 
     &:hover {
       background: #e2e8f0;
-      color: $dark-color;
+      color: $gray-900;
     }
   }
 }

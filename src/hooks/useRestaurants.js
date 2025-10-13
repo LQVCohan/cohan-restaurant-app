@@ -1,7 +1,7 @@
+// src/hooks/useRestaurants.js
 import { useState, useMemo } from "react";
-import { restaurantsData } from "../data/restaurantsData";
 
-export const useRestaurants = () => {
+export const useRestaurants = (source = [], { itemsPerPage = 12 } = {}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("relevance");
@@ -10,94 +10,103 @@ export const useRestaurants = () => {
     districts: [],
     cuisines: [],
     ratings: [],
-    priceRanges: [], // Thêm filter mức giá
+    priceRanges: [],
   });
 
-  const itemsPerPage = 6;
-
-  // Filter và search logic
   const filteredRestaurants = useMemo(() => {
-    let filtered = restaurantsData.filter((restaurant) => {
-      // Search filter
+    let filtered = source.filter((restaurant) => {
+      // Search
       if (searchTerm.trim() !== "") {
-        const searchLower = searchTerm.toLowerCase();
-        const matchesSearch =
-          restaurant.name.toLowerCase().includes(searchLower) ||
-          restaurant.cuisine.toLowerCase().includes(searchLower) ||
-          restaurant.description.toLowerCase().includes(searchLower) ||
-          restaurant.district.toLowerCase().includes(searchLower);
+        const s = searchTerm.toLowerCase();
+        const fields = [
+          restaurant.name,
+          restaurant.cuisine,
+          restaurant.description,
+          restaurant.district,
+        ]
+          .filter(Boolean)
+          .map((x) => x.toLowerCase());
+        const matchesSearch = fields.some((f) => f.includes(s));
         if (!matchesSearch) return false;
       }
-
-      // District filter
+      // District
       if (
         filters.districts.length > 0 &&
         !filters.districts.includes(restaurant.district)
       ) {
         return false;
       }
-
-      // Cuisine filter
+      // Cuisine
       if (
         filters.cuisines.length > 0 &&
         !filters.cuisines.includes(restaurant.cuisine)
       ) {
         return false;
       }
-
-      // Rating filter
+      // Ratings
       if (filters.ratings.length > 0) {
-        const matchesRating = filters.ratings.some((rating) => {
-          if (rating === "5") return restaurant.rating >= 4.9;
-          if (rating === "4") return restaurant.rating >= 4.0;
-          if (rating === "3") return restaurant.rating >= 3.0;
+        const ok = filters.ratings.some((r) => {
+          if (r === "5")
+            return (restaurant.avgRating ?? restaurant.rating ?? 0) >= 4.9;
+          if (r === "4")
+            return (restaurant.avgRating ?? restaurant.rating ?? 0) >= 4.0;
+          if (r === "3")
+            return (restaurant.avgRating ?? restaurant.rating ?? 0) >= 3.0;
           return false;
         });
-        if (!matchesRating) return false;
+        if (!ok) return false;
       }
-
-      // Price range filter
-      if (filters.priceRanges.length > 0) {
-        const priceMatch = filters.priceRanges.some((range) => {
-          const maxPrice = parseInt(restaurant.priceRange.split(" - ")[1]);
-          if (range === "under-100k") return maxPrice < 100;
-          if (range === "100k-300k") return maxPrice >= 100 && maxPrice <= 300;
-          if (range === "over-300k") return maxPrice > 300;
+      // Price ranges (tuỳ theo format giá của bạn)
+      if (filters.priceRanges.length > 0 && restaurant.priceRange) {
+        const [minStr, maxStr] = restaurant.priceRange
+          .replace(/[^\d\-\s]/g, "")
+          .split("-")
+          .map((t) => t.trim());
+        const min = Number((minStr || "0").replace(/\./g, ""));
+        const max = Number((maxStr || "0").replace(/\./g, ""));
+        const match = filters.priceRanges.some((range) => {
+          if (range === "under-100k") return max < 100_000;
+          if (range === "100k-300k") return min >= 100_000 && max <= 300_000;
+          if (range === "over-300k") return min > 300_000;
           return false;
         });
-        if (!priceMatch) return false;
+        if (!match) return false;
       }
-
       return true;
     });
 
-    // Sort logic (giữ nguyên như cũ)
+    // Sort
     switch (sortBy) {
       case "rating":
-        filtered.sort((a, b) => b.rating - a.rating);
+        filtered.sort(
+          (a, b) =>
+            (b.avgRating ?? b.rating ?? 0) - (a.avgRating ?? a.rating ?? 0)
+        );
         break;
-      case "price-low":
-        filtered.sort((a, b) => {
-          const aPrice = parseInt(a.priceRange.split("k")[0]);
-          const bPrice = parseInt(b.priceRange.split("k")[0]);
-          return aPrice - bPrice;
-        });
+      case "price-low": {
+        const toMin = (pr) => {
+          if (!pr) return Number.POSITIVE_INFINITY;
+          const [minStr] = pr
+            .replace(/[^\d\-\s]/g, "")
+            .split("-")
+            .map((t) => t.trim());
+          return Number((minStr || "0").replace(/\./g, ""));
+        };
+        filtered.sort((a, b) => toMin(a.priceRange) - toMin(b.priceRange));
         break;
+      }
       case "distance":
-        filtered.sort((a, b) => {
-          const aDistance = parseFloat(a.distance);
-          const bDistance = parseFloat(b.distance);
-          return aDistance - bDistance;
-        });
+        filtered.sort(
+          (a, b) =>
+            (parseFloat(a.distance) || 0) - (parseFloat(b.distance) || 0)
+        );
         break;
       default:
         break;
     }
-
     return filtered;
-  }, [searchTerm, filters, sortBy]);
+  }, [source, searchTerm, filters, sortBy]);
 
-  // Pagination
   const totalPages = Math.ceil(filteredRestaurants.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentRestaurants = filteredRestaurants.slice(
@@ -105,7 +114,6 @@ export const useRestaurants = () => {
     startIndex + itemsPerPage
   );
 
-  // Event handlers
   const handleFilterChange = (filterType, value) => {
     setFilters((prev) => ({
       ...prev,
@@ -117,31 +125,24 @@ export const useRestaurants = () => {
   };
 
   const handleClearFilters = () => {
-    setFilters({
-      districts: [],
-      cuisines: [],
-      ratings: [],
-      priceRanges: [],
-    });
+    setFilters({ districts: [], cuisines: [], ratings: [], priceRanges: [] });
     setSearchTerm("");
     setCurrentPage(1);
   };
 
   const handleToggleFavorite = (event, restaurantId) => {
-    event.stopPropagation();
+    event?.stopPropagation?.();
     setFavorites((prev) => {
-      const newFavorites = new Set(prev);
-      if (newFavorites.has(restaurantId)) {
-        newFavorites.delete(restaurantId);
-      } else {
-        newFavorites.add(restaurantId);
-      }
-      return newFavorites;
+      const next = new Set(prev);
+      next.has(restaurantId)
+        ? next.delete(restaurantId)
+        : next.add(restaurantId);
+      return next;
     });
   };
 
   return {
-    // State
+    // state
     searchTerm,
     setSearchTerm,
     currentPage,
@@ -150,13 +151,11 @@ export const useRestaurants = () => {
     setSortBy,
     favorites,
     filters,
-
-    // Computed
+    // computed
     filteredRestaurants,
     currentRestaurants,
     totalPages,
-
-    // Handlers
+    // handlers
     handleFilterChange,
     handleClearFilters,
     handleToggleFavorite,

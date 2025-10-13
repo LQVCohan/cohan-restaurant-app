@@ -1,0 +1,46 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.tabs-card {
+  margin-bottom: $spacing-lg;
+  padding: 0;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 2px solid $border-color;
+  overflow-x: auto;
+
+  @include mobile {
+    flex-wrap: wrap;
+  }
+}
+
+.tab {
+  padding: $spacing-md $spacing-lg;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+  font-size: 0.875rem;
+
+  &.active {
+    color: $primary;
+    border-bottom-color: $primary;
+    background: #f0f9ff;
+  }
+
+  &:hover:not(.active) {
+    color: $primary;
+    background: #f8fafc;
+  }
+
+  @include mobile {
+    flex: 1;
+    text-align: center;
+  }
+}

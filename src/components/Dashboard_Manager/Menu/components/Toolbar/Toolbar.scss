@@ -1,0 +1,419 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.toolbar {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: $shadow-md;
+  margin-bottom: $spacing-lg;
+  overflow: hidden;
+
+  &__main {
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    padding: $spacing-lg;
+    flex-wrap: wrap;
+
+    @media (max-width: 1024px) {
+      flex-direction: column;
+      align-items: stretch;
+      gap: $spacing-md;
+    }
+  }
+
+  &__search {
+    /* Không chiếm full, cho phép co giãn trong khoảng mong muốn */
+    flex: 0 1 clamp(220px, 32vw, 360px);
+    max-width: 420px;
+    min-width: 220px;
+
+    @media (max-width: 768px) {
+      /* Mobile vẫn để tự co giãn theo layout cột */
+      flex: 1 1 auto;
+      min-width: auto;
+      max-width: 100%;
+    }
+  }
+
+  &__quick-filters {
+    display: flex;
+    gap: $spacing-sm;
+    align-items: center;
+
+    @media (max-width: 768px) {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+
+  &__view-controls {
+    display: flex;
+    align-items: center;
+  }
+
+  &__actions {
+    display: flex;
+    flex: 1; /* Cho phép cụm nút chiếm phần còn lại của dòng */
+    gap: $spacing-sm;
+    justify-content: flex-end;
+    min-width: 260px;
+
+    .action-btn {
+      flex: 1 1 0; /* Mỗi nút tự chia đều phần còn lại */
+      text-align: center;
+    }
+
+    @media (max-width: 1024px) {
+      flex-wrap: wrap;
+      justify-content: stretch;
+
+      .action-btn {
+        flex: 1 1 100%; /* Mỗi nút full chiều rộng khi xuống dòng */
+      }
+    }
+  }
+
+  &__advanced-filters {
+    border-top: 2px solid $border-color;
+    background: #f8fafc;
+    padding: $spacing-lg;
+  }
+
+  &__summary {
+    border-top: 1px solid $border-color;
+    padding: $spacing-md $spacing-lg;
+    background: #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: $spacing-md;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+}
+
+// Search Box
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .search-icon {
+    position: absolute;
+    left: $spacing-md;
+    color: $text-gray;
+    font-size: 1rem;
+    z-index: 1;
+  }
+
+  .search-input {
+    @include form-input;
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+    width: 100%;
+    font-size: 0.875rem;
+
+    &:focus {
+      border-color: $primary;
+      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+    }
+  }
+
+  .search-clear {
+    position: absolute;
+    right: $spacing-md;
+    background: none;
+    border: none;
+    color: $text-gray;
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0.25rem;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: $error-600;
+      color: white;
+    }
+  }
+}
+
+// Filter Controls
+.filter-select {
+  @include form-input;
+  min-width: 150px;
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  @media (max-width: 768px) {
+    min-width: 120px;
+  }
+}
+
+.filter-toggle {
+  @include button-base;
+  background: $text-gray;
+  color: white;
+  font-size: 0.875rem;
+  padding: $spacing-sm $spacing-md;
+
+  &:hover {
+    background: #4b5563;
+  }
+
+  &--active {
+    background: $primary;
+
+    &:hover {
+      background: $primary-hover;
+    }
+  }
+}
+
+// View Switcher
+.view-switcher {
+  display: flex;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-sm;
+  overflow: hidden;
+}
+
+.view-btn {
+  @include button-base;
+  background: white;
+  color: $text-gray;
+  border: none;
+  padding: $spacing-sm $spacing-md;
+  font-size: 1rem;
+  border-radius: 0;
+  margin: 0;
+
+  &:hover {
+    background: $primary-light;
+    color: $primary;
+  }
+
+  &--active {
+    background: $primary;
+    color: white;
+
+    &:hover {
+      background: $primary-hover;
+    }
+  }
+}
+
+// Action Buttons
+.action-btn {
+  @include button-base;
+  font-size: 0.875rem;
+  padding: $spacing-sm $spacing-md;
+  white-space: nowrap;
+
+  &--primary {
+    background: $primary;
+    color: white;
+
+    &:hover {
+      background: $primary-hover;
+    }
+  }
+
+  &--secondary {
+    background: white;
+    color: $primary;
+    border: 2px solid $primary;
+
+    &:hover {
+      background: $primary-light;
+    }
+  }
+
+  @media (max-width: 768px) {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+// Advanced Filters
+.advanced-filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: $spacing-lg;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.filter-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: $text-primary;
+  white-space: nowrap;
+}
+
+.price-range {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+.price-input {
+  @include form-input;
+  width: 120px;
+  font-size: 0.875rem;
+  text-align: center;
+
+  @media (max-width: 768px) {
+    width: 100px;
+  }
+}
+
+.price-separator {
+  color: $text-gray;
+  font-weight: 600;
+}
+
+.price-apply-btn {
+  @include button-base;
+  background: $primary;
+  color: white;
+  font-size: 0.875rem;
+  padding: $spacing-xs $spacing-md;
+
+  &:hover {
+    background: $primary-hover;
+  }
+}
+
+.clear-filters-btn {
+  @include button-base;
+  background: $error-600;
+  color: white;
+  font-size: 0.875rem;
+  padding: $spacing-xs $spacing-md;
+
+  &:hover {
+    background: #dc2626;
+  }
+}
+
+// Summary
+.summary-info {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+
+  @media (max-width: 768px) {
+    justify-content: center;
+  }
+}
+
+.item-count {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.filter-indicator {
+  font-size: 0.75rem;
+  color: $primary;
+  background: $primary-light;
+  padding: 0.25rem $spacing-sm;
+  border-radius: 0.25rem;
+}
+
+// Active Filters
+.active-filters {
+  display: flex;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    justify-content: center;
+  }
+}
+
+.filter-tag {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  background: $warning-600;
+  color: white;
+  padding: 0.25rem $spacing-sm;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+
+  button {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0;
+    margin-left: 0.25rem;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 480px) {
+  .toolbar {
+    &__main {
+      padding: $spacing-md;
+    }
+
+    &__advanced-filters {
+      padding: $spacing-md;
+    }
+
+    &__summary {
+      padding: $spacing-sm $spacing-md;
+    }
+  }
+
+  .action-btn,
+  .filter-select {
+    font-size: 0.75rem;
+    padding: $spacing-xs $spacing-sm;
+  }
+
+  .search-input {
+    font-size: 0.75rem;
+  }
+}

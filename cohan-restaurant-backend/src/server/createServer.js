@@ -9,7 +9,7 @@ import { makeExecutableSchema } from "@graphql-tools/schema";
 import typeDefs from "../../graphql/schema/index.js";
 import resolvers from "../../graphql/resolvers/index.js";
 import buildContext from "../../graphql/context.js";
-
+import process from "process";
 export async function createServer() {
   const app = Fastify({
     logger: { level: process.env.LOG_LEVEL || "info" },

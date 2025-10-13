@@ -1,56 +1,140 @@
-import React, { useContext, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../../../context/AuthContext";
+import React, { useContext, useMemo, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { AuthContext } from "@/context/AuthContext";
 import "../../../../styles/Homepage/Header.scss";
 
-const Header = ({ onCartToggle, cartItemCount }) => {
+const Header = ({ onCartToggle, cartItemCount = 0 }) => {
   const navigate = useNavigate();
-  const { user, logout } = useContext(AuthContext);
+  const location = useLocation();
+  const { user, logout } = useContext(AuthContext) || {};
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [lang, setLang] = useState(() => localStorage.getItem("lang") || "vi");
 
   const handleLogout = () => {
-    logout();
+    logout?.();
     setShowUserMenu(false);
     navigate("/");
   };
 
-  const toggleUserMenu = () => {
-    setShowUserMenu(!showUserMenu);
+  const toggleUserMenu = () => setShowUserMenu((s) => !s);
+
+  const goto = (path) => {
+    setShowUserMenu(false);
+    if (location.pathname !== path) navigate(path);
+  };
+
+  // Lấy 2 từ cuối của tên. Nếu không có fullName → rút gọn email/username
+  const shortDisplayName = useMemo(() => {
+    const full = user?.fullName?.trim();
+    if (full) {
+      const parts = full.split(/\s+/);
+      return parts.slice(-2).join(" ");
+    }
+    const fromEmail =
+      typeof user?.email === "string"
+        ? user.email.split("@")[0]?.replace(/[._-]+/g, " ")
+        : "";
+    const fromUsername =
+      typeof user?.username === "string"
+        ? user.username.replace(/[._-]+/g, " ")
+        : "";
+    const base = fromEmail || fromUsername || "Người dùng";
+    const parts = base.trim().split(/\s+/);
+    return parts.slice(-2).join(" ");
+  }, [user]);
+
+  const roleLabel = useMemo(() => {
+    const role = (user?.roleName || user?.role || "").toString().toLowerCase();
+    if (role === "customer") return "👤 Khách hàng";
+    if (role === "staff") return "👨‍🍳 Nhân viên";
+    if (role === "manager") return "👨‍💼 Quản lý";
+    if (role === "owner") return "👑 Chủ nhà hàng";
+    if (role === "admin") return "🛡️ Admin";
+    return "👤 Người dùng";
+  }, [user]);
+
+  const handleLangChange = (e) => {
+    const next = e.target.value;
+    setLang(next);
+    localStorage.setItem("lang", next);
+    // Sau này có i18n, có thể trigger i18n.changeLanguage(next) ở đây
   };
 
   return (
     <header className="header">
       <div className="header__container">
-        <div className="header__logo">
+        {/* Logo */}
+        <button className="header__logo" onClick={() => goto("/")}>
           <div className="header__logo-icon">🍽️</div>
           <h1 className="header__logo-text">FoodHub</h1>
-        </div>
+        </button>
 
+        {/* Nav */}
         <nav className="header__nav">
-          <a href="#home" className="header__nav-link">
+          <button
+            className={`header__nav-link${
+              location.pathname === "/" ? " is-active" : ""
+            }`}
+            onClick={() => goto("/")}
+          >
             Trang chủ
-          </a>
-          <a href="#restaurants" className="header__nav-link">
+          </button>
+          <button
+            className={`header__nav-link${
+              location.pathname.startsWith("/restaurants") ? " is-active" : ""
+            }`}
+            onClick={() => goto("/restaurants")}
+          >
             Nhà hàng
-          </a>
-          <a href="#menu" className="header__nav-link">
+          </button>
+          <button
+            className={`header__nav-link${
+              location.pathname === "/menu" ? " is-active" : ""
+            }`}
+            onClick={() => goto("/menu")}
+          >
             Thực đơn
-          </a>
-          <a href="#contact" className="header__nav-link">
+          </button>
+          <button
+            className={`header__nav-link${
+              location.pathname === "/contact" ? " is-active" : ""
+            }`}
+            onClick={() => goto("/contact")}
+          >
             Liên hệ
-          </a>
+          </button>
         </nav>
 
+        {/* Actions */}
         <div className="header__actions">
+          {/* search (placeholder) */}
           <div className="header__search">
             <input
               type="text"
-              placeholder="Tìm kiếm món ăn..."
+              placeholder="Tìm món, nhà hàng…"
               className="header__search-input"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") goto("/restaurants");
+              }}
             />
             <span className="header__search-icon">🔍</span>
           </div>
 
+          {/* Language switcher */}
+          <div className="header__lang">
+            <select
+              className="header__lang-select"
+              value={lang}
+              onChange={handleLangChange}
+              aria-label="Language"
+              title="Language"
+            >
+              <option value="vi">VI</option>
+              <option value="en">EN</option>
+            </select>
+          </div>
+
+          {/* User / Auth */}
           {user ? (
             <div className="header__user-menu">
               <button className="header__avatar-btn" onClick={toggleUserMenu}>
@@ -59,47 +143,31 @@ const Header = ({ onCartToggle, cartItemCount }) => {
                   alt="Avatar"
                   className="header__avatar"
                 />
-                <span className="header__user-name">
-                  {user?.fullName || user?.email}
-                </span>
+                <span className="header__user-name">{shortDisplayName}</span>
                 <span className="header__dropdown-arrow">▼</span>
               </button>
 
               {showUserMenu && (
                 <div className="header__dropdown">
                   <div className="header__dropdown-item">
-                    <span className="header__user-role">
-                      {user?.role === "customer" && "👤 Khách hàng"}
-                      {user?.role === "staff" && "👨‍🍳 Nhân viên"}
-                      {user?.role === "manager" && "👨‍💼 Quản lý"}
-                      {user?.role === "owner" && "👑 Chủ nhà hàng"}
-                    </span>
+                    <span className="header__user-role">{roleLabel}</span>
                   </div>
                   <hr className="header__dropdown-divider" />
                   <button
                     className="header__dropdown-item header__dropdown-button"
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      navigate("/profile");
-                    }}
+                    onClick={() => goto("/profile")}
                   >
                     👤 Thông tin cá nhân
                   </button>
                   <button
                     className="header__dropdown-item header__dropdown-button"
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      navigate("/orders");
-                    }}
+                    onClick={() => goto("/orders")}
                   >
                     📋 Đơn hàng của tôi
                   </button>
                   <button
                     className="header__dropdown-item header__dropdown-button"
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      navigate("/settings");
-                    }}
+                    onClick={() => goto("/settings")}
                   >
                     ⚙️ Cài đặt
                   </button>
@@ -116,15 +184,20 @@ const Header = ({ onCartToggle, cartItemCount }) => {
           ) : (
             <button
               className="header__login-btn"
-              onClick={() => navigate("/login")}
+              onClick={() => goto("/login")}
             >
               Đăng nhập
             </button>
           )}
 
-          <button className="header__cart-btn" onClick={onCartToggle}>
+          {/* Cart */}
+          <button
+            className="header__cart-btn"
+            onClick={onCartToggle}
+            aria-label="Giỏ hàng"
+          >
             🛒
-            {cartItemCount > 0 && (
+            {Number(cartItemCount) > 0 && (
               <span className="header__cart-count">{cartItemCount}</span>
             )}
           </button>

@@ -41,7 +41,7 @@ const restaurantSchema = BaseSchemaModel({
   },
 });
 restaurantSchema.index(
-  { managerId: 1, status: 1, avgRating: -1 },
+  { status: 1, avgRating: -1 },
   {
     unique: true,
     partialFilterExpression: { managerId: { $type: "objectId" } },

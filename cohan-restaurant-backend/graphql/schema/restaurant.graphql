@@ -30,12 +30,16 @@ type Restaurant {
   manager: User
   tables: [Table]
   categories: [Category]
-  avgRating: Int
+  avgRating: Float
 }
 
-input AddressFilter {
+input RestaurantFilter {
   city: String
   district: String
+  cuisineTypes: [String!]
+  minRating: Float
+  priceRange: [String!]
+  search: String
 }
 
 type PageInfo {
@@ -57,10 +61,31 @@ extend type Query {
   restaurants(
     limit: Int = 20
     cursor: ID
-    addressFilter: AddressFilter
+    restaurantFilter: RestaurantFilter
   ): RestaurantConnection!
+
   restaurant(id: ID!): Restaurant
-  restaurantsTop(limit: Int = 6, addressFilter: AddressFilter): [Restaurant!]!
+
+  restaurantsTop(
+    limit: Int = 6
+    restaurantFilter: RestaurantFilter
+  ): [Restaurant!]!
+
+  restaurantsByManager(
+    managerId: ID!
+    limit: Int = 20
+    cursor: ID
+    restaurantFilter: RestaurantFilter
+  ): RestaurantConnection!
+}
+
+input AddressInput {
+  line1: String
+  line2: String
+  ward: String
+  district: String
+  city: String
+  country: String
 }
 
 input CreateRestaurantInput {
@@ -85,22 +110,37 @@ input CreateRestaurantInput {
   managerId: ID!
 }
 
-input AddressInput {
-  line1: String
-  line2: String
-  ward: String
-  district: String
-  city: String
-  country: String
+input UpdateRestaurantInput {
+  name: String
+  avatar: String
+  coverImage: String
+  spaceImages: [String]
+  address: AddressInput
+  phone: String
+  email: String
+  featuredMenu: [String]
+  amenities: [String]
+  seatingCapacity: Int
+  priceRange: String
+  openingHours: String
+  closingHours: String
+  description: String
+  notesOnHours: String
+  notesOnAmenities: String
+  cuisineType: String
+  status: String
+}
+
+input UpdateRestaurantManagerInput {
+  restaurantId: ID!
+  managerId: ID!
 }
 
 extend type Mutation {
   createRestaurant(input: CreateRestaurantInput!): Restaurant!
+  updateRestaurant(id: ID!, input: UpdateRestaurantInput!): Restaurant!
+  deleteRestaurant(id: ID!): Boolean!
   updateRestaurantManager(input: UpdateRestaurantManagerInput!): Restaurant!
-}
-input UpdateRestaurantManagerInput {
-  restaurantId: ID!
-  managerId: ID!
 }
 
 type Category {
@@ -116,6 +156,7 @@ type Table {
   capacity: Int!
   status: TableStatus!
 }
+
 enum TableStatus {
   available
   occupied

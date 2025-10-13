@@ -23,7 +23,7 @@
 }
 
 .title {
-  font-size: $font-size-4xl;
+  font-size: $spacing-2xl;
   font-weight: $font-weight-extrabold;
   @include gradient-text;
   text-align: center;
@@ -37,7 +37,7 @@
 }
 
 .subtitle {
-  font-size: $font-size-lg;
+  font-size: $text-lg;
   color: $text-secondary;
   text-align: center;
   margin-bottom: $spacing-2xl;
@@ -65,8 +65,8 @@
   color: $text-secondary;
   border: 2px solid rgba(102, 126, 234, 0.2);
   padding: $spacing-sm $spacing-lg;
-  font-size: $font-size-sm;
-  font-weight: $font-weight-medium;
+  font-size: $text-sm;
+  font-weight: 500;
   transition: $transition-smooth;
 
   &:hover {
@@ -123,12 +123,12 @@
 }
 
 .label {
-  font-weight: $font-weight-semibold;
+  font-weight: 600;
   color: $text-primary;
-  font-size: $font-size-base;
+  font-size: $text-base;
 
   @include respond-to("tablet") {
-    font-size: $font-size-lg;
+    font-size: $text-lg;
   }
 }
 
@@ -157,7 +157,7 @@
   left: $spacing-md;
   top: 50%;
   transform: translateY(-50%);
-  font-size: $font-size-lg;
+  font-size: $text-lg;
   pointer-events: none;
 }
 
@@ -184,8 +184,8 @@
 .searchBtn {
   @include button-primary;
   padding: $spacing-lg $spacing-2xl;
-  font-size: $font-size-lg;
-  font-weight: $font-weight-bold;
+  font-size: $text-lg;
+  font-weight: 700;
   display: flex;
   align-items: center;
   gap: $spacing-sm;
@@ -205,7 +205,7 @@
   color: $accent-color;
   border: 2px solid rgba(239, 68, 68, 0.3);
   padding: $spacing-md $spacing-lg;
-  font-weight: $font-weight-medium;
+  font-weight: 500;
   transition: $transition-smooth;
 
   &:hover {
@@ -247,19 +247,19 @@
 }
 
 .resultsTitle {
-  font-size: $font-size-xl;
-  font-weight: $font-weight-bold;
+  font-size: $text-xl;
+  font-weight: 700;
   color: $text-primary;
   margin-bottom: $spacing-xs;
 
   @include respond-to("tablet") {
-    font-size: $font-size-2xl;
+    font-size: $text-2xl;
   }
 }
 
 .resultsSubtitle {
   color: $text-secondary;
-  font-size: $font-size-base;
+  font-size: $text-base;
 }
 
 .resultsControls {
@@ -281,15 +281,15 @@
 }
 
 .sortLabel {
-  font-weight: $font-weight-medium;
+  font-weight: 500;
   color: $text-secondary;
-  font-size: $font-size-sm;
+  font-size: $text-sm;
 }
 
 .sortSelect {
   @include input-base;
   padding: $spacing-sm $spacing-md;
-  font-size: $font-size-sm;
+  font-size: $text-sm;
   min-width: 150px;
   cursor: pointer;
 }
@@ -308,7 +308,7 @@
   color: $text-secondary;
   border: none;
   padding: $spacing-sm;
-  font-size: $font-size-lg;
+  font-size: $text-lg;
   width: 2.5rem;
   height: 2.5rem;
   transition: $transition-smooth;
@@ -394,8 +394,8 @@
 }
 
 .noResultsTitle {
-  font-size: $font-size-xl;
-  font-weight: $font-weight-bold;
+  font-size: $text-xl;
+  font-weight: 700;
   color: $text-primary;
 }
 
@@ -408,7 +408,7 @@
 .resetBtn {
   @include button-accent;
   padding: $spacing-md $spacing-lg;
-  font-weight: $font-weight-medium;
+  font-weight: 500;
 }
 
 .foodCard {
@@ -480,8 +480,8 @@
   color: $text-primary;
   padding: $spacing-xs $spacing-sm;
   border-radius: $radius-full;
-  font-size: $font-size-xs;
-  font-weight: $font-weight-medium;
+  font-size: $text-xs;
+  font-weight: 500;
   z-index: 3;
 }
 
@@ -494,18 +494,18 @@
 }
 
 .foodName {
-  font-weight: $font-weight-bold;
+  font-weight: 700;
   color: $text-primary;
   margin-bottom: $spacing-sm;
-  font-size: $font-size-base;
+  font-size: $text-base;
 
   @include respond-to("tablet") {
-    font-size: $font-size-lg;
+    font-size: $text-lg;
   }
 }
 
 .foodRestaurant {
-  font-size: $font-size-sm;
+  font-size: $text-sm;
   color: $text-secondary;
   margin-bottom: $spacing-sm;
   display: flex;
@@ -513,7 +513,7 @@
   gap: $spacing-xs;
 
   @include respond-to("tablet") {
-    font-size: $font-size-base;
+    font-size: $text-base;
   }
 }
 
@@ -522,14 +522,14 @@
 }
 
 .foodArea {
-  font-size: $font-size-xs;
+  font-size: $text-xs;
   color: $text-light;
   display: flex;
   align-items: center;
   gap: $spacing-xs;
 
   @include respond-to("tablet") {
-    font-size: $font-size-sm;
+    font-size: $text-sm;
   }
 }
 
@@ -539,25 +539,25 @@
 }
 
 .foodPrice {
-  font-weight: $font-weight-bold;
+  font-weight: 700;
   color: $primary;
-  font-size: $font-size-base;
+  font-size: $text-base;
 
   @include respond-to("tablet") {
-    font-size: $font-size-lg;
+    font-size: $text-lg;
   }
 }
 
 .addBtn {
   @include button-primary;
   padding: $spacing-sm $spacing-md;
-  font-size: $font-size-sm;
-  font-weight: $font-weight-medium;
+  font-size: $text-sm;
+  font-weight: 500;
   white-space: nowrap;
 
   @include respond-to("tablet") {
     padding: $spacing-sm $spacing-lg;
-    font-size: $font-size-base;
+    font-size: $text-base;
   }
 }
 

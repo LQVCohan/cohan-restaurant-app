@@ -2,182 +2,175 @@
 @use "../../../styles/mixins" as *;
 
 .menu-management {
-  max-width: 1400px;
+  max-width: 100vw;
   margin: 0 auto;
-  min-height: 100vh;
-  background-color: $gray-50;
-  padding: $spacing-6;
+  padding: $spacing-md;
+  font-family: $font-family;
+  color: $text-primary;
 
-  @include mobile {
-    padding: $spacing-4;
-  }
   &__header {
     @include card;
-    padding: $spacing-xl;
-    margin-bottom: $spacing-xl;
-  }
-
-  &__header-content {
-    @include flex-between;
+    padding: $spacing-lg;
+    margin-bottom: $spacing-md;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     flex-wrap: wrap;
-    gap: $spacing-lg;
+    gap: $spacing-md;
   }
 
   &__title {
-    font-size: $text-2xl;
-    font-weight: $font-bold;
+    font-size: 1.875rem;
+    font-weight: 700;
     color: $text-primary;
-    margin-bottom: $spacing-xs;
+    margin: 0;
   }
 
-  &__subtitle {
-    color: $text-secondary;
-    font-size: $text-sm;
-  }
-
-  &__header-actions {
+  &__controls {
     display: flex;
     gap: $spacing-md;
     align-items: center;
     flex-wrap: wrap;
   }
 
-  &__controls {
+  &__main {
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__content {
     @include card;
-    padding: $spacing-xl;
-    margin-bottom: $spacing-xl;
+    padding: $spacing-lg;
+    width: 93.5vw;
+  }
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+
+  &__label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    white-space: nowrap;
   }
 
-  &__controls-content {
-    @include flex-between;
-    flex-wrap: wrap;
-    gap: $spacing-lg;
-  }
-
-  &__controls-left {
-    display: flex;
-    gap: $spacing-lg;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  &__controls-right {
-    display: flex;
-    gap: $spacing-sm;
-    align-items: center;
-  }
-
-  &__search {
-    position: relative;
-    min-width: 250px;
-  }
-
-  &__search-input {
+  &__select {
     @include form-input;
-    padding-left: 2.5rem;
-  }
-
-  &__search-icon {
-    position: absolute;
-    left: $spacing-md;
-    top: 50%;
-    transform: translateY(-50%);
-    color: $text-muted;
-  }
-
-  &__filter {
-    @include form-input;
-    cursor: pointer;
     min-width: 150px;
   }
+}
 
-  &__view-toggle {
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-lg;
+  flex-wrap: wrap;
+  gap: $spacing-md;
+}
+
+.search-bar {
+  flex: 1;
+  max-width: 400px;
+
+  &__input {
+    @include form-input;
+  }
+}
+
+.view-controls {
+  display: flex;
+  gap: $spacing-sm;
+}
+
+.menu-grid {
+  &--grid {
+    @include responsive-grid(300px);
+  }
+
+  &--list {
     display: flex;
-    background: $bg-secondary;
-    border-radius: $radius-md;
-    padding: $spacing-xs;
+    flex-direction: column;
+    gap: $spacing-md;
   }
+}
 
-  &__view-btn {
-    padding: $spacing-sm;
-    border: none;
-    background: transparent;
-    border-radius: $radius-sm;
-    cursor: pointer;
-    color: $text-muted;
-    transition: all 0.2s ease;
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3rem $spacing-md;
+  color: $text-gray;
 
-    &--active {
-      background: $bg-primary;
-      color: $primary;
-      box-shadow: $shadow-sm;
-    }
-  }
-
-  &__menu {
-    margin-bottom: $spacing-2xl;
-
-    &--grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: $spacing-lg;
-    }
-
-    &--list {
-      display: flex;
-      flex-direction: column;
-      gap: $spacing-md;
-    }
-  }
-
-  &__empty-state {
-    @include card;
-    text-align: center;
-    padding: 4rem $spacing-2xl;
-  }
-
-  &__empty-icon {
+  &__icon {
     font-size: 4rem;
-    margin-bottom: $spacing-lg;
+    margin-bottom: $spacing-md;
   }
 
-  &__empty-title {
-    font-size: $text-xl;
-    font-weight: $font-semibold;
-    color: $text-secondary;
+  &__title {
     margin-bottom: $spacing-sm;
+    color: $text-primary;
   }
 
-  &__empty-description {
-    color: $text-muted;
-    margin-bottom: $spacing-2xl;
+  &__description {
+    margin: 0;
+  }
+}
+
+// Button styles
+.btn {
+  @include button-base;
+
+  &--primary {
+    background: $primary;
+    color: white;
+
+    &:hover {
+      background: $primary-hover;
+    }
   }
 
-  @include mobile {
-    &__header {
-      padding: $spacing-lg;
-    }
+  &--secondary {
+    background: $text-gray;
+    color: white;
 
-    &__header-content {
-      flex-direction: column;
-      align-items: flex-start;
+    &:hover {
+      background: #4b5563;
     }
+  }
 
-    &__controls-content {
-      flex-direction: column;
-      align-items: stretch;
+  &--success {
+    background: #059669;
+    color: white;
+
+    &:hover {
+      background: #047857;
     }
+  }
 
-    &__controls-left {
-      flex-direction: column;
+  &--warning {
+    background: $warning-600;
+    color: white;
+
+    &:hover {
+      background: $warning-700;
     }
+  }
 
-    &__search {
-      min-width: auto;
-    }
+  &--danger {
+    background: $error-600;
+    color: white;
 
-    &__menu--grid {
-      grid-template-columns: 1fr;
+    &:hover {
+      background: $error-700;
     }
   }
 }

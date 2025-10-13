@@ -1,55 +1,126 @@
-import { Restaurant, Order } from "../../../models/index.js";
+import mongoose from "mongoose";
+import { GraphQLError } from "graphql";
+import { Restaurant } from "../../../models/index.js";
+
+function toObjectIdOrNull(id) {
+  if (!id) return null;
+  return mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
+}
+
+function buildFilter(restaurantFilter) {
+  const f = {};
+  if (!restaurantFilter) return f;
+
+  const { city, district, cuisineTypes, minRating, priceRange, search } =
+    restaurantFilter;
+
+  if (city) f["address.city"] = { $regex: city, $options: "i" };
+  if (district) f["address.district"] = { $regex: district, $options: "i" };
+
+  if (Array.isArray(cuisineTypes) && cuisineTypes.length > 0) {
+    f.cuisineType = { $in: cuisineTypes };
+  }
+
+  if (typeof minRating === "number") {
+    f.avgRating = { $gte: minRating };
+  }
+
+  if (Array.isArray(priceRange) && priceRange.length > 0) {
+    f.priceRange = { $in: priceRange };
+  }
+
+  if (search && search.trim()) {
+    const s = search.trim();
+    f.$or = [
+      { name: { $regex: s, $options: "i" } },
+      { description: { $regex: s, $options: "i" } },
+      { cuisineType: { $regex: s, $options: "i" } },
+      { "address.city": { $regex: s, $options: "i" } },
+      { "address.district": { $regex: s, $options: "i" } },
+    ];
+  }
+
+  return f;
+}
+
+/** Danh sách nhà hàng với cursor pagination và bộ lọc */
+async function restaurants(_, { limit = 20, cursor, restaurantFilter }) {
+  const f = buildFilter(restaurantFilter);
+  const cId = toObjectIdOrNull(cursor);
+  if (cId) f._id = { ...(f._id || {}), $gt: cId };
+
+  const docs = await Restaurant.find(f)
+    .sort({ _id: 1 })
+    .limit(limit + 1);
+  const hasNextPage = docs.length > limit;
+  const slice = hasNextPage ? docs.slice(0, -1) : docs;
+
+  return {
+    edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
+    pageInfo: {
+      endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
+      hasNextPage,
+    },
+  };
+}
+
+/** Chi tiết nhà hàng */
+async function restaurant(_, { id }) {
+  if (!mongoose.isValidObjectId(id)) {
+    throw new GraphQLError("Invalid ID", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+  const doc = await Restaurant.findById(id);
+  return doc || null;
+}
+
+/** Top nhà hàng theo rating với bộ lọc */
+async function restaurantsTop(_, { limit = 6, restaurantFilter }) {
+  const f = buildFilter(restaurantFilter);
+  const docs = await Restaurant.find(f)
+    .sort({ avgRating: -1, _id: 1 })
+    .limit(limit);
+  return docs;
+}
+
+/** Danh sách nhà hàng theo manager với cursor pagination và bộ lọc */
+async function restaurantsByManager(
+  _,
+  { managerId, limit = 20, cursor, restaurantFilter }
+) {
+  if (!mongoose.isValidObjectId(managerId)) {
+    throw new GraphQLError("Invalid managerId", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
+
+  const f = {
+    managerId: new mongoose.Types.ObjectId(managerId),
+    ...buildFilter(restaurantFilter),
+  };
+  const cId = toObjectIdOrNull(cursor);
+  if (cId) f._id = { ...(f._id || {}), $gt: cId };
+
+  const docs = await Restaurant.find(f)
+    .sort({ _id: 1 })
+    .limit(limit + 1);
+
+  const hasNextPage = docs.length > limit;
+  const slice = hasNextPage ? docs.slice(0, -1) : docs;
+
+  return {
+    edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
+    pageInfo: {
+      endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
+      hasNextPage,
+    },
+  };
+}
+
 export const RestaurantQuery = {
-  restaurants: async (_, { limit = 20, cursor, addressFilter }) => {
-    const filter = cursor ? { _id: { $gt: cursor } } : {};
-    if (addressFilter) {
-      if (addressFilter.city) {
-        filter["address.city"] = { $regex: addressFilter.city, $options: "i" }; // Tìm kiếm theo thành phố
-      }
-      if (addressFilter.district) {
-        filter["address.district"] = {
-          $regex: addressFilter.district,
-          $options: "i",
-        }; // Tìm kiếm theo quận/huyện
-      }
-    }
-
-    const docs = await Restaurant.find(filter)
-      .sort({ _id: 1 })
-      .limit(limit + 1);
-
-    const hasNextPage = docs.length > limit;
-    const slice = hasNextPage ? docs.slice(0, -1) : docs;
-    return {
-      edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
-      pageInfo: {
-        endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
-        hasNextPage,
-      },
-    };
-  },
-
-  restaurant: (_, { id }) => Restaurant.findById(id),
-  restaurantsTop: async (_, { limit = 6, addressFilter }) => {
-    const filter = { status: "active" };
-
-    // lọc địa chỉ (tuỳ chọn)
-    if (addressFilter?.city) {
-      filter["address.city"] = { $regex: addressFilter.city, $options: "i" };
-    }
-    if (addressFilter?.district) {
-      filter["address.district"] = {
-        $regex: addressFilter.district,
-        $options: "i",
-      };
-    }
-
-    // Sort theo avgRating giảm dần; _id làm tie-breaker ổn định
-    const docs = await Restaurant.find(filter)
-      .sort({ avgRating: -1, _id: 1 })
-      .limit(Math.max(0, Math.min(limit, 50))) // chặn limit quá lớn
-      .lean();
-
-    return docs;
-  },
+  restaurants,
+  restaurant,
+  restaurantsTop,
+  restaurantsByManager,
 };

@@ -1,0 +1,238 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.price-edit-modal {
+  .modal__content {
+    padding: 0;
+  }
+}
+
+.price-edit-content {
+  display: flex;
+  flex-direction: column;
+  height: 70vh;
+}
+
+.bulk-change-section {
+  padding: $spacing-lg;
+  border-bottom: 2px solid $border-color;
+  background: #f8fafc;
+
+  .section-title {
+    color: $text-primary;
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: $spacing-md;
+  }
+}
+
+.bulk-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $spacing-md;
+  align-items: end;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bulk-control-group {
+  .form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: $spacing-xs;
+    color: #374151;
+  }
+
+  .form-select,
+  .form-input {
+    @include form-input;
+  }
+}
+
+.bulk-actions {
+  display: flex;
+  gap: $spacing-sm;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+}
+
+.price-list-section {
+  flex: 1;
+  padding: $spacing-lg;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+
+  .section-title {
+    color: $text-primary;
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .summary-text {
+    font-size: 0.875rem;
+    color: $text-gray;
+    background: $primary-light;
+    padding: $spacing-xs $spacing-sm;
+    border-radius: 0.25rem;
+  }
+}
+
+.price-table {
+  flex: 1;
+  overflow: hidden;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-sm;
+}
+
+.price-table-header {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr 1fr 1fr 1fr;
+  gap: $spacing-sm;
+  padding: $spacing-md;
+  background: $text-primary;
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+    padding: $spacing-sm;
+  }
+}
+
+.price-table-body {
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.price-item {
+  border-bottom: 1px solid $border-color;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.price-row {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr 1fr 1fr 1fr;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-md;
+  align-items: center;
+  transition: background-color 0.3s ease;
+
+  &:hover {
+    background: #f8fafc;
+  }
+
+  &--changed {
+    background: #fef3c7;
+
+    &:hover {
+      background: #fde68a;
+    }
+  }
+
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+    padding: $spacing-xs $spacing-sm;
+  }
+}
+
+.item-name {
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.item-category {
+  font-size: 0.875rem;
+  color: $text-gray;
+}
+
+.price-input {
+  width: 100%;
+  padding: $spacing-xs;
+  border: 1px solid $border-color;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  text-align: right;
+
+  &:focus {
+    outline: none;
+    border-color: $primary;
+  }
+}
+
+.change-indicator {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.125rem $spacing-xs;
+  border-radius: 0.25rem;
+
+  &--increase {
+    background: $success-100;
+    color: $success-800;
+  }
+
+  &--decrease {
+    background: $error-50;
+    color: $error-800;
+  }
+}
+
+.modal-actions {
+  padding: $spacing-lg;
+  border-top: 2px solid $border-color;
+  display: flex;
+  gap: $spacing-md;
+  justify-content: flex-end;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+}
+
+.btn {
+  @include button-base;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+
+    &:hover {
+      transform: none;
+    }
+  }
+
+  &--primary {
+    background: $primary;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background: $primary-hover;
+    }
+  }
+
+  &--secondary {
+    background: $text-gray;
+    color: white;
+
+    &:hover {
+      background: #4b5563;
+    }
+  }
+}

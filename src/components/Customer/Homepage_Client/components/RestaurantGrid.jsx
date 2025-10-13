@@ -10,8 +10,8 @@ import "../../../../styles/Homepage/RestaurantGrid.scss";
    - Lấy đúng 6 nhà hàng có avgRating cao nhất
    ========================= */
 const GET_TOP_RESTAURANTS = gql`
-  query GetTopRestaurants($limit: Int, $addressFilter: AddressFilter) {
-    restaurantsTop(limit: $limit, addressFilter: $addressFilter) {
+  query GetTopRestaurants($limit: Int, $restaurantFilter: RestaurantFilter) {
+    restaurantsTop(limit: $limit, restaurantFilter: $restaurantFilter) {
       id
       name
       coverImage

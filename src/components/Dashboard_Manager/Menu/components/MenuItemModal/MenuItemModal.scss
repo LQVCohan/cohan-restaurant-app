@@ -1,0 +1,143 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.menu-item-modal {
+  .modal__content {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+}
+
+.menu-item-form {
+  .form-section {
+    margin-bottom: $spacing-xl;
+
+    &:last-of-type {
+      margin-bottom: $spacing-lg;
+    }
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+  }
+
+  .form-group {
+    margin-bottom: $spacing-md;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: $spacing-sm;
+    color: #374151;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    @include form-input;
+  }
+
+  .form-textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-md;
+}
+
+.section-title {
+  color: $text-primary;
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.methods-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-md;
+}
+
+.method-item {
+  padding: $spacing-md;
+  border: 2px solid $border-color;
+  border-radius: $border-radius-sm;
+  background: #f8fafc;
+
+  .method-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-md;
+  }
+
+  .method-title {
+    color: $text-primary;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+  }
+}
+
+.form-actions {
+  display: flex;
+  gap: $spacing-md;
+  justify-content: flex-end;
+  padding-top: $spacing-lg;
+  border-top: 2px solid $border-color;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+.btn {
+  @include button-base;
+
+  &--small {
+    padding: $spacing-xs $spacing-sm;
+    font-size: 0.75rem;
+  }
+
+  &--primary {
+    background: $primary;
+    color: white;
+
+    &:hover {
+      background: $primary-hover;
+    }
+  }
+
+  &--secondary {
+    background: $text-gray;
+    color: white;
+
+    &:hover {
+      background: #4b5563;
+    }
+  }
+
+  &--danger {
+    background: $error-600;
+    color: white;
+
+    &:hover {
+      background: $error-700;
+    }
+  }
+}

@@ -14,7 +14,19 @@ export const formatDate = (dateString) => {
     day: "numeric",
   });
 };
+export const formatNumber = (number, decimals = 1) => {
+  return Number(number).toFixed(decimals);
+};
 
+export const getSupplyCategoryName = (category) => {
+  const categories = {
+    beverage: "Đồ uống",
+    cleaning: "Vệ sinh",
+    packaging: "Đóng gói",
+    utensil: "Dụng cụ",
+  };
+  return categories[category] || category;
+};
 export const getDisplayPrice = (item) => {
   if (!item.cookingMethods || item.cookingMethods.length === 0) {
     return formatPrice(item.price);
@@ -70,4 +82,38 @@ export const getCategoryEmoji = (category) => {
     beverage: "☕",
   };
   return emojiMap[category] || "🍽️";
+};
+export function formatAddress(addr) {
+  if (!addr || typeof addr !== "object") return "";
+  const parts = [
+    addr.line1,
+    addr.line2,
+    addr.ward,
+    addr.district,
+    addr.city,
+    addr.country,
+  ].filter(Boolean);
+  return parts.join(", ");
+}
+
+export function safeArray(a) {
+  return Array.isArray(a) ? a : [];
+}
+
+export function safeNumber(n, fallback = 0) {
+  return typeof n === "number" ? n : fallback;
+}
+
+export function safeString(s, fallback = "") {
+  return typeof s === "string" ? s : fallback;
+}
+export const getCategoryName = (category) => {
+  const categories = {
+    meat: "Thịt cá",
+    vegetable: "Rau củ",
+    spice: "Gia vị",
+    dairy: "Sữa & trứng",
+    grain: "Ngũ cốc",
+  };
+  return categories[category] || category;
 };
