@@ -1,5 +1,5 @@
 scalar Date
-
+scalar DateTime
 type Query {
   _empty: String
 }

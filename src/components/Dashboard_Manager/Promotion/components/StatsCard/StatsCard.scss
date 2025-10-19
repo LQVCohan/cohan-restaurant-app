@@ -6,7 +6,7 @@
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: $spacing-md;
+    gap: 1rem;
 
     @include mobile {
       grid-template-columns: repeat(2, 1fr);
@@ -16,7 +16,7 @@
       background: $primary-light;
       border: 2px solid $border-color;
       border-radius: $border-radius;
-      padding: $spacing-md;
+      padding: 1rem;
       text-align: center;
       transition: all 0.2s ease;
 

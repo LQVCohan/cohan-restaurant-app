@@ -1,0 +1,77 @@
+.storage-management {
+  .container {
+    max-width: 1200px; // Giới hạn chiều rộng của container
+    margin: 0 auto; // Đảm bảo container ở giữa
+    padding: 20px;
+  }
+
+  .main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px; // Khoảng cách giữa các phần tử trong main-content
+
+    .tab-content {
+      display: flex;
+      justify-content: space-between; // Cân đối các tab nội dung
+      gap: 20px; // Khoảng cách giữa các tab
+    }
+
+    // Các phần tử trong tab-content
+    .tab-content > div {
+      flex: 1; // Chia đều không gian
+    }
+  }
+
+  // Header và AlertSystem mặc định có thể được căn chỉnh sẵn
+  .header {
+    margin-bottom: 20px;
+  }
+
+  .alert-system {
+    margin-bottom: 20px;
+  }
+}
+
+.tabs {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px; // Khoảng cách giữa các tab
+
+  .tab-button {
+    padding: 10px 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    text-align: center;
+
+    &.active {
+      background-color: #007bff;
+      color: white;
+    }
+  }
+}
+
+.tab-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+
+  .tab-pane {
+    flex: 1;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.alert-system {
+  background-color: #ffcc00;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  color: #333;
+  font-weight: bold;
+}

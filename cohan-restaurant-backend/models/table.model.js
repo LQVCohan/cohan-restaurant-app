@@ -76,6 +76,7 @@ const TableSchema = BaseSchemaModel({
 
   isJoinable: { type: Boolean, default: false },
   joinGroupId: { type: String },
+  deposit: { type: Number, default: 1 },
 });
 
 // Không trùng code trong cùng floor của cùng nhà hàng

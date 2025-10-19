@@ -20,7 +20,7 @@
 .quick-actions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: $spacing-md;
+  gap: 1rem;
 }
 
 .quick-action-btn {

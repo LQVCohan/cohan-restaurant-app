@@ -9,9 +9,9 @@
 
   @include mobile {
     flex-direction: column;
-    gap: $spacing-md;
+    gap: 1rem;
     text-align: center;
-    padding: $spacing-md;
+    padding: 1rem;
   }
 
   .header-left {
@@ -43,7 +43,7 @@
 
     @include mobile {
       justify-content: center;
-      gap: $spacing-md;
+      gap: 1rem;
     }
 
     .stat-item {

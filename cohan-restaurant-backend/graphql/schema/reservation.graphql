@@ -1,0 +1,61 @@
+type Reservation {
+  id: ID!
+  orderCode: String!
+  restaurantId: ID!
+  tableId: ID!
+  userId: ID!
+
+  timeFrom: DateTime!
+  timeTo: DateTime
+  durationMinutes: Int!
+
+  customerName: String
+  customerPhone: String
+  customerEmail: String
+
+  partySize: Int!
+  note: String
+
+  depositAmount: Int!
+  depositTxnId: ID
+  depositStatus: String!
+
+  status: String!
+  pendingPaymentExpiresAt: DateTime
+
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input CreateReservationInput {
+  restaurantId: ID!
+  tableId: ID! # ⬅️ chỉ 1 bàn
+  timeFrom: DateTime!
+  durationMinutes: Int = 90
+  partySize: Int = 2
+  note: String
+
+  customerName: String!
+  customerPhone: String
+  customerEmail: String
+
+  depositAmount: Int = 0
+}
+
+input UpdateReservationStatusInput {
+  id: ID!
+  status: String!
+  depositStatus: String
+  depositTxnId: ID
+}
+
+type Query {
+  reservation(id: ID!): Reservation
+  myReservations(limit: Int = 20, cursor: ID): [Reservation!]!
+}
+
+type Mutation {
+  createReservation(input: CreateReservationInput!): Reservation!
+  updateReservationStatus(input: UpdateReservationStatusInput!): Reservation!
+  cancelReservation(id: ID!): Reservation!
+}

@@ -1,0 +1,213 @@
+.modifier-modal {
+  .modal {
+    max-width: 600px;
+  }
+
+  .modifier-modal__header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+
+    .modifier-modal__title {
+      margin: 0 0 8px 0;
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .modifier-modal__subtitle {
+      margin: 0;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+  }
+
+  .modifier-modal__content {
+    padding: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+  }
+
+  .modifier-modal__footer {
+    padding: 20px 24px;
+    border-top: 1px solid #e5e7eb;
+    background: #f8fafc;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    align-items: center;
+
+    .modifier-total {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #1f2937;
+
+      .modifier-total__price {
+        color: #dc2626;
+      }
+    }
+
+    .modifier-actions {
+      display: flex;
+      gap: 12px;
+    }
+  }
+}
+
+.modifier-group {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f1f5f9;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .modifier-group__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+
+    .modifier-group__title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #1f2937;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .modifier-group__badge {
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 500;
+
+        &.modifier-group__required {
+          background: #fecaca;
+          color: #dc2626;
+        }
+      }
+    }
+  }
+}
+
+.modifier-options {
+  display: grid;
+  gap: 12px;
+
+  .modifier-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+
+    &:hover {
+      border-color: #3b82f6;
+      background: #f8fafc;
+    }
+
+    &.selected {
+      border-color: #10b981;
+      background: #f0fdf4;
+    }
+
+    .modifier-option__radio,
+    .modifier-option__checkbox {
+      width: 20px;
+      height: 20px;
+      border: 2px solid #d1d5db;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .modifier-option__radio {
+      border-radius: 50%;
+    }
+
+    .modifier-option__checkbox {
+      border-radius: 4px;
+    }
+
+    &.selected {
+      .modifier-option__radio {
+        border-color: #10b981;
+
+        &::after {
+          content: "";
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 10px;
+          height: 10px;
+          background: #10b981;
+          border-radius: 50%;
+        }
+      }
+
+      .modifier-option__checkbox {
+        border-color: #10b981;
+        background: #10b981;
+
+        &::after {
+          content: "✓";
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          color: white;
+          font-size: 0.8rem;
+          font-weight: bold;
+        }
+      }
+    }
+
+    .modifier-option__info {
+      flex: 1;
+
+      .modifier-option__name {
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0 0 4px 0;
+      }
+
+      .modifier-option__desc {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin: 0;
+      }
+    }
+
+    .modifier-option__price {
+      font-weight: 700;
+      color: #dc2626;
+      font-size: 1rem;
+
+      &.free {
+        color: #10b981;
+      }
+    }
+  }
+}

@@ -1,15 +1,17 @@
+// src/components/Customer/RestaurantList/RestaurantList.scss
 @use "../../../styles/variables" as *;
 @use "../../../styles/mixins" as *;
 
-.restaurant-list {
+.restaurant-list-search {
   min-height: 100vh;
   background-color: $gray-50;
   margin-top: 70px;
+
   .container {
     max-width: $desktop;
     margin: 0 auto;
+    padding: $spacing-xl 1rem;
 
-    padding: $spacing-xl $spacing-md;
     .content-layout {
       display: grid;
       grid-template-columns: 300px 1fr;
@@ -22,6 +24,7 @@
       @include r-tablet {
         grid-template-columns: 1fr;
       }
+
       .results {
         display: flex;
         flex-direction: column;
@@ -42,7 +45,7 @@
 
           @include r-tablet {
             flex-direction: column;
-            gap: $spacing-md;
+            gap: 1rem;
             align-items: stretch;
           }
         }
@@ -50,7 +53,7 @@
         &__info {
           display: flex;
           align-items: center;
-          gap: $spacing-md;
+          gap: 1rem;
 
           @include r-tablet {
             justify-content: space-between;
@@ -85,7 +88,7 @@
         }
 
         &__view-btn {
-          padding: 0.5rem $spacing-md;
+          padding: 0.5rem 1rem;
           border: none;
           background: none;
           cursor: pointer;
@@ -113,7 +116,7 @@
         }
 
         &__sort-select {
-          padding: 0.75rem $spacing-md;
+          padding: 0.75rem 1rem;
           border: 1px solid $border-color;
           border-radius: 0.5rem;
           background: $white;
@@ -127,45 +130,18 @@
             border-color: $primary;
             box-shadow: 0 0 0 3px rgba($primary, 0.1);
           }
-
-          @include r-mobile {
-            width: 100%;
-            min-width: auto;
-          }
-          .filter-toggle {
-            display: none;
-            width: 100%;
-            padding: $spacing-md;
-            background: $primary;
-            color: $white;
-            border: none;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: $spacing-md;
-            transition: all 0.3s ease;
-
-            &:hover {
-              background: $primary-hover;
-            }
-
-            @include r-tablet {
-              display: block;
-            }
-          }
         }
       }
     }
+
     @include r-mobile {
-      padding: $spacing-md;
+      padding: 1rem;
     }
   }
 }
 
-// Results Section
-
-// Restaurant Grid
-.restaurants-grid {
+/* Results grid container */
+.restaurants-grid-search {
   display: grid;
   gap: $spacing-lg;
 
@@ -181,56 +157,108 @@
     }
   }
 
+  /* LIST VIEW: đúng 1 cột */
   &--list {
     grid-template-columns: 1fr;
   }
 }
 
-// Empty State
-.empty-state {
-  text-align: center;
-  padding: 4rem $spacing-xl;
-  background: $white;
-  border-radius: 1rem;
-  @include card-shadow;
+/* ================================
+   Biến thể thẻ ở chế độ LIST
+   (nếu RestaurantCard có SCSS riêng, bạn có thể chuyển block này sang file đó)
+   ================================= */
+.restaurant-card {
+  &--list {
+    display: flex !important;
+    align-items: stretch;
+    gap: 1.25rem;
+    padding: 1rem;
+    width: 100%;
+    background: $white;
+    border-radius: 1rem;
+    border: 1px solid $border-color;
+    @include card-shadow;
 
-  &__icon {
-    font-size: 4rem;
-    margin-bottom: $spacing-md;
-    opacity: 0.5;
-  }
+    .restaurant-card__image {
+      flex: 0 0 220px;
+      height: 140px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: $gray-100;
 
-  &__title {
-    font-size: $text-xl;
-    font-weight: 600;
-    color: $gray-900;
-    margin-bottom: $spacing-sm;
-  }
-
-  &__text {
-    color: $text-muted;
-    margin-bottom: $spacing-xl;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
-    line-height: 1.6;
-  }
-
-  @include r-mobile {
-    padding: $spacing-xl $spacing-md;
-
-    &__icon {
-      font-size: 3rem;
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
     }
 
-    &__title {
-      font-size: $text-lg;
+    .restaurant-card__details {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      text-align: left;
+    }
+
+    .restaurant-card__name {
+      margin: 0 0 0.25rem 0;
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: $gray-900;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .restaurant-card__meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.35rem;
+
+      .rating {
+        color: #f59e0b;
+        font-weight: 600;
+      }
+      .cuisine {
+        color: $text-muted;
+      }
+      .price {
+        color: $primary;
+        font-weight: 600;
+      }
+    }
+
+    .restaurant-card__desc {
+      color: $text-muted;
+      margin: 0 0 0.5rem 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .restaurant-card__footer {
+      margin-top: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+
+      .address {
+        color: $text-muted;
+        font-size: 0.9rem;
+      }
     }
   }
 }
 
-// Loading State
-.loading {
+/* Misc */
+.results__loading,
+.results__error {
   @include flex-center;
   padding: $spacing-2xl;
   color: $text-muted;
@@ -239,101 +267,27 @@
   @include card-shadow;
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f1f5f9;
-  border-top: 4px solid $primary;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-right: $spacing-md;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-// Button Styles
-.btn {
-  @include button-base;
-
-  &--primary {
-    background: $primary;
-    color: $white;
-
-    &:hover {
-      background: $primary-hover;
-      transform: translateY(-1px);
-    }
-
-    &:active {
-      transform: translateY(0);
-    }
-  }
-
-  &--secondary {
-    background: $white;
-    color: $primary;
-    border: 1px solid $primary;
-
-    &:hover {
-      background: $primary;
-      color: $white;
-    }
-
-    &:active {
-      transform: translateY(1px);
-    }
-  }
-
-  &--outline {
-    background: transparent;
-    color: $text-muted;
-    border: 1px solid $border-color;
-
-    &:hover {
-      background: $gray-50;
-      border-color: $primary;
-      color: $primary;
-    }
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-
-    &:hover {
-      transform: none;
-    }
-  }
-}
-
-// Responsive adjustments
+/* Responsive tweaks */
 @include r-tablet {
   .content-layout {
-    gap: $spacing-md;
+    gap: 1rem;
   }
 }
 
 @include r-mobile {
   .container {
-    padding: $spacing-md $spacing-sm;
+    padding: 1rem $spacing-sm;
   }
 
   .results {
-    gap: $spacing-md;
+    gap: 1rem;
 
     &__header {
-      padding: $spacing-md;
+      padding: 1rem;
     }
   }
 
-  .restaurants-grid {
-    gap: $spacing-md;
+  .restaurants-grid-search {
+    gap: 1rem;
   }
 }

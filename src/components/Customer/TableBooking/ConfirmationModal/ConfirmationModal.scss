@@ -1,0 +1,135 @@
+@use "../../../../styles/variables.scss" as *;
+@use "../../../../styles/mixins.scss" as *;
+
+.confirmation-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba($gray-900, 0.6);
+  @include flex-center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-in-out;
+
+  &__content {
+    background: $white;
+    border-radius: $radius-2xl;
+    padding: $spacing-8;
+    width: 90%;
+    max-width: 480px;
+    box-shadow: $shadow-xl;
+    text-align: center;
+    position: relative;
+    animation: scaleUp 0.3s ease-in-out;
+  }
+
+  &__icon {
+    font-size: 3rem;
+    color: $info-500;
+    margin-bottom: $spacing-4;
+  }
+
+  &__title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: $gray-900;
+    margin-bottom: $spacing-3;
+  }
+
+  &__message {
+    font-size: 1rem;
+    color: $gray-700;
+    margin-bottom: $spacing-6;
+    line-height: 1.5;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: center;
+    gap: $spacing-4;
+  }
+
+  &__button {
+    min-width: 120px;
+    padding: $spacing-3 $spacing-5;
+    border: none;
+    border-radius: $radius-lg;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all $transition-base;
+    font-size: 0.95rem;
+
+    &--confirm {
+      background: linear-gradient(135deg, $success-500 0%, $success-hover 100%);
+      color: $white;
+      &:hover {
+        background: linear-gradient(
+          135deg,
+          $success-hover 0%,
+          $success-700 100%
+        );
+      }
+    }
+
+    &--cancel {
+      background: $gray-200;
+      color: $gray-800;
+      &:hover {
+        background: $gray-300;
+      }
+    }
+  }
+
+  &__close {
+    position: absolute;
+    top: $spacing-3;
+    right: $spacing-3;
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    color: $gray-500;
+    cursor: pointer;
+    transition: color 0.2s;
+
+    &:hover {
+      color: $gray-700;
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@include r-mobile {
+  .confirmation-modal {
+    &__content {
+      padding: $spacing-6;
+      width: 95%;
+    }
+
+    &__title {
+      font-size: 1.25rem;
+    }
+    &__message {
+      font-size: 0.9rem;
+    }
+    &__button {
+      font-size: 0.85rem;
+    }
+  }
+}

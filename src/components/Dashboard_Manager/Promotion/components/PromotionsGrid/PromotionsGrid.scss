@@ -7,7 +7,7 @@
   .promotions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: $spacing-md;
+    gap: 1rem;
 
     @include mobile {
       grid-template-columns: 1fr;
@@ -22,7 +22,7 @@
 
     .empty-icon {
       font-size: 4rem;
-      margin-bottom: $spacing-md;
+      margin-bottom: 1rem;
       display: block;
     }
 

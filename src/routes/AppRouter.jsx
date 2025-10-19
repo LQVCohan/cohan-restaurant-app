@@ -1,5 +1,5 @@
 // src/AppRouter.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Routes,
   Route,
@@ -7,7 +7,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-
+import { AuthContext } from "../context/AuthContext";
 // 🔹 Apollo Client Imports (the way you prefer)
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
@@ -32,8 +32,9 @@ import ManagerLayout from "../layouts/ManagerLayout";
 // ==== Staff ====
 import StaffOrder from "../components/StaffOrder";
 
-import MainLayout from "@/layouts/MainLayout";
-import TableView from "../components/Customer/TableView/TableView";
+import MainLayout from "../layouts/MainLayout";
+
+import TableBooking from "../components/Customer/TableBooking/TableBooking";
 
 // =========================
 // 🔐 GraphQL Query: me
@@ -113,6 +114,8 @@ const PrivateRoute = ({ children, allowedRoles }) => {
 // 🌐 App Router
 // =========================
 const AppRouter = () => {
+  const { refRestaurant, restaurants } = useContext(AuthContext);
+  console.log("refRestaurant, restaurants", refRestaurant, restaurants);
   return (
     <MainLayout>
       <Routes>
@@ -141,10 +144,10 @@ const AppRouter = () => {
           }
         />
         <Route
-          path="/restaurant/table"
+          path="/restaurant/:id/table"
           element={
             <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
-              <TableView />
+              <TableBooking />
             </PrivateRoute>
           }
         />

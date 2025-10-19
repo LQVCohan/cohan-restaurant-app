@@ -1,3 +1,4 @@
+// src/components/Customer/RestaurantList/RestaurantList.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
@@ -47,7 +48,7 @@ const LIMIT = 12;
 
 const RestaurantList = () => {
   const navigate = useNavigate();
-  const [currentView, setCurrentView] = useState("grid");
+  const [currentView, setCurrentView] = useState("grid"); // "grid" | "list"
   const [showFilters, setShowFilters] = useState(false);
 
   // 👉 State tích luỹ dữ liệu đã tải theo cursor
@@ -56,16 +57,11 @@ const RestaurantList = () => {
   const [hasNextPage, setHasNextPage] = useState(false);
 
   // 👉 BE chỉ hỗ trợ addressFilter => rút từ bộ lọc FE (nếu muốn)
-  // Ở đây minh hoạ: nếu user chọn đúng 1 district/city thì pass xuống BE
   const [addressFilter, setAddressFilter] = useState(undefined);
 
-  // 1) Tạo filter gửi BE từ hook (cuisines, ratings, priceRanges, search)
-  // - ratings FE: ["5","4","3"] -> chuyển thành minRating ~ 5 | 4 | 3
-  // - priceRanges FE: ["under-100k","100k-300k","over-300k"] -> gửi nguyên mảng
-  // - search lấy từ searchTerm
   const [searchTermLocal, setSearchTermLocal] = useState("");
 
-  // 2) SOURCE cho hook sẽ đến từ accumulated (BE phân trang)
+  // SOURCE cho hook đến từ accumulated (đã lấy từ BE)
   const source = useMemo(() => {
     return accumulated.map((node) => ({
       id: node.id,
@@ -76,13 +72,13 @@ const RestaurantList = () => {
       avgRating: node.avgRating,
       district: node.address?.district,
       city: node.address?.city,
-      image: node.coverImage || node.avatar || "",
-      badges: [], // 👈 tránh lỗi .map() ở RestaurantCard nếu undefined
+      image: node.coverImage || node.avatar || "/public/default-dishes.jpg",
+      badges: [],
       status: node.status || "open",
     }));
   }, [accumulated]);
 
-  // 3) Hook FE cho lọc/sắp xếp/ưu thích (lọc hiển thị UI)
+  // Hook FE cho lọc/sắp xếp/ưu thích (lọc hiển thị UI)
   const {
     searchTerm,
     setSearchTerm,
@@ -95,16 +91,15 @@ const RestaurantList = () => {
     handleFilterChange,
     handleClearFilters,
     handleToggleFavorite,
-  } = useRestaurants(source, { itemsPerPage: 10_000 }); // không phân trang FE
+  } = useRestaurants(source, { itemsPerPage: 10000 });
 
   // Đồng bộ searchTerm từ UI xuống state local để gửi BE
   useEffect(() => {
     setSearchTermLocal(searchTerm);
   }, [searchTerm]);
 
-  // 4) Chuẩn hoá filter gửi BE (RestaurantFilter)
+  // Filter gửi BE
   const gqlFilters = useMemo(() => {
-    // minRating: ưu tiên lớn nhất trong danh sách chọn
     let minRating = 0;
     if (filters.ratings.includes("5")) minRating = 5;
     else if (filters.ratings.includes("4")) minRating = 4;
@@ -118,9 +113,9 @@ const RestaurantList = () => {
     };
   }, [filters.cuisines, filters.priceRanges, filters.ratings, searchTermLocal]);
 
-  // 5) Khi user đổi bộ lọc địa chỉ -> addressFilter xuống BE
+  // addressFilter (city/district) gửi BE
   useEffect(() => {
-    const city = filters.cities?.[0] || filters.city || undefined; // nếu có filter city riêng
+    const city = filters.cities?.[0] || filters.city || undefined;
     const district = filters.districts?.[0] || undefined;
     const nextAF = city || district ? { city, district } : undefined;
 
@@ -129,8 +124,8 @@ const RestaurantList = () => {
     );
   }, [filters]);
 
-  // 6) Query trang đầu
-  const { data, loading, error, fetchMore, refetch, networkStatus } = useQuery(
+  // Query trang đầu
+  const { data, loading, error, fetchMore, refetch } = useQuery(
     GET_RESTAURANTS,
     {
       variables: { limit: LIMIT, addressFilter, filter: gqlFilters },
@@ -139,7 +134,7 @@ const RestaurantList = () => {
     }
   );
 
-  // 7) Khi có trang đầu, nạp vào accumulated
+  // Khi có trang đầu, nạp vào accumulated
   useEffect(() => {
     if (!data?.restaurants) return;
     const edges = data.restaurants.edges ?? [];
@@ -149,7 +144,7 @@ const RestaurantList = () => {
     setHasNextPage(!!data.restaurants.pageInfo?.hasNextPage);
   }, [data]);
 
-  // 8) Load thêm trang tiếp theo từ BE
+  // Load thêm trang tiếp theo từ BE
   const handleLoadMore = async () => {
     if (!hasNextPage || !endCursor) return;
     const more = await fetchMore({
@@ -170,28 +165,23 @@ const RestaurantList = () => {
     setHasNextPage(!!more?.data?.restaurants?.pageInfo?.hasNextPage);
   };
 
-  // 9) Khi addressFilter hoặc gqlFilters đổi → refetch trang đầu
+  // Khi filter đổi → refetch trang đầu
   useEffect(() => {
     refetch({ limit: LIMIT, cursor: null, addressFilter, filter: gqlFilters });
-    // reset accumulated sẽ được set lại ở effect khi data về
   }, [addressFilter, gqlFilters, refetch]);
 
   // Handlers
-  const handleSearch = () => {
-    // Đã đồng bộ searchTerm -> gqlFilters -> BE; refetch ở effect trên
-  };
-
+  const handleSearch = () => {};
   const handleMakeReservation = (event, restaurantId) => {
     event.stopPropagation();
     navigate(`/restaurants/${restaurantId}/layout`);
   };
-
   const handleViewDetails = (restaurantId) => {
     navigate(`/restaurants/${restaurantId}`);
   };
 
   return (
-    <div className="restaurant-list">
+    <div className="restaurant-list-search">
       <SearchHero
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
@@ -211,13 +201,6 @@ const RestaurantList = () => {
           />
 
           <main className="results">
-            {/* <button
-              className="filter-toggle"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              🔧 Bộ lọc tìm kiếm
-            </button> */}
-
             <div className="results__header">
               <div className="results__info">
                 <div className="results__count">
@@ -259,7 +242,6 @@ const RestaurantList = () => {
               </select>
             </div>
 
-            {/* Loading lần đầu */}
             {loading && accumulated.length === 0 && (
               <div className="results__loading">Đang tải dữ liệu…</div>
             )}
@@ -267,16 +249,16 @@ const RestaurantList = () => {
               <div className="results__error">Không tải được danh sách.</div>
             )}
 
-            {/* Data */}
             {accumulated.length > 0 && (
               <>
                 <div
-                  className={`restaurants-grid restaurants-grid--${currentView}`}
+                  className={`restaurants-grid-search restaurants-grid-search--${currentView}`}
                 >
                   {currentRestaurants.map((restaurant) => (
                     <RestaurantCard
                       key={restaurant.id}
                       restaurant={restaurant}
+                      variant={currentView} // <-- truyền biến thể
                       isFavorited={favorites.has(restaurant.id)}
                       onToggleFavorite={handleToggleFavorite}
                       onMakeReservation={handleMakeReservation}
@@ -285,7 +267,6 @@ const RestaurantList = () => {
                   ))}
                 </div>
 
-                {/* Phân trang server: Tải thêm bằng cursor */}
                 <div className="results__load-more">
                   {hasNextPage ? (
                     <button onClick={handleLoadMore} disabled={loading}>

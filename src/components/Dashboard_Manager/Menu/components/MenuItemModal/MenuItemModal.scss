@@ -20,12 +20,12 @@
   .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: $spacing-md;
-    margin-bottom: $spacing-md;
+    gap: 1rem;
+    margin-bottom: 1rem;
   }
 
   .form-group {
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
   }
 
   .form-label {
@@ -52,7 +52,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: $spacing-md;
+  margin-bottom: 1rem;
 }
 
 .section-title {
@@ -65,11 +65,11 @@
 .methods-list {
   display: flex;
   flex-direction: column;
-  gap: $spacing-md;
+  gap: 1rem;
 }
 
 .method-item {
-  padding: $spacing-md;
+  padding: 1rem;
   border: 2px solid $border-color;
   border-radius: $border-radius-sm;
   background: #f8fafc;
@@ -78,7 +78,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
   }
 
   .method-title {
@@ -91,7 +91,7 @@
 
 .form-actions {
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   justify-content: flex-end;
   padding-top: $spacing-lg;
   border-top: 2px solid $border-color;

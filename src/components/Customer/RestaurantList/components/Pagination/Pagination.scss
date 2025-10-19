@@ -4,7 +4,7 @@
 .pagination {
   @include flex-center;
   flex-direction: column;
-  gap: $spacing-md;
+  gap: 1rem;
   margin-top: $spacing-xl;
   padding: $spacing-xl;
   background: $white;
@@ -100,7 +100,7 @@
 
     &__controls {
       flex-direction: column;
-      gap: $spacing-md;
+      gap: 1rem;
     }
 
     &__numbers {

@@ -46,7 +46,7 @@
   padding: 0 $spacing-lg $spacing-2xl;
   gap: 0 !important;
   @include r-mobile {
-    padding: 0 $spacing-md $spacing-xl;
+    padding: 0 1rem $spacing-xl;
   }
 }
 
@@ -60,13 +60,13 @@
 
   @include r-mobile {
     top: 70px;
-    padding: $spacing-md 0;
+    padding: 1rem 0;
   }
 }
 
 .nav-tabs {
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -84,7 +84,7 @@
   display: flex;
   align-items: center;
   gap: $spacing-sm;
-  padding: $spacing-md $spacing-lg;
+  padding: 1rem $spacing-lg;
   background: $white;
   border: 1px solid $border-color;
   border-radius: 0.75rem;
@@ -96,7 +96,7 @@
   white-space: nowrap;
 
   @include r-mobile {
-    padding: $spacing-sm $spacing-md;
+    padding: $spacing-sm 1rem;
     font-size: 0.75rem;
   }
 

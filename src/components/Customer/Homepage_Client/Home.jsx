@@ -136,8 +136,15 @@ const Home = () => {
   const [filteredRestaurants, setFilteredRestaurants] = useState(restaurants);
 
   // Cart hook
-  const { cart, addToCart, updateQuantity, getTotalItems, getTotalPrice } =
-    useCart();
+  const {
+    cart,
+    addToCart,
+    updateQuantity,
+    getTotalItems,
+    getTotalPrice,
+    clearCart,
+    removeRestaurantItems,
+  } = useCart();
 
   // Event handlers
   const handleCategoryFilter = (category) => {
@@ -240,6 +247,9 @@ const Home = () => {
         cart={cart}
         onUpdateQuantity={updateQuantity}
         totalPrice={getTotalPrice()}
+        onCheckoutSuccess={clearCart} // thanh toán xong thì clear
+        onClearCart={clearCart} // nút "Xóa tất cả"
+        onRemoveRestaurantItems={removeRestaurantItems}
       />
 
       {/* Table Booking Modal */}

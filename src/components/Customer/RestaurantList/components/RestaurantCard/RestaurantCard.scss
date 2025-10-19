@@ -61,8 +61,8 @@
   // Badges
   &__badges {
     position: absolute;
-    top: $spacing-md;
-    left: $spacing-md;
+    top: 1rem;
+    left: 1rem;
     display: flex;
     flex-direction: column;
     gap: $spacing-sm;
@@ -97,8 +97,8 @@
   // Favorite Button
   &__favorite {
     position: absolute;
-    top: $spacing-md;
-    right: $spacing-md;
+    top: 1rem;
+    right: 1rem;
     width: 40px;
     height: 40px;
     background: rgba(255, 255, 255, 0.9);
@@ -132,11 +132,11 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: $spacing-md $spacing-lg;
+      padding: 1rem $spacing-lg;
     }
 
     @include r-mobile {
-      padding: $spacing-md;
+      padding: 1rem;
     }
   }
 
@@ -195,7 +195,7 @@
   &__meta {
     display: flex;
     align-items: center;
-    gap: $spacing-md;
+    gap: 1rem;
     margin-bottom: 0.75rem;
     flex-wrap: wrap;
 
@@ -249,7 +249,7 @@
     color: $text-muted;
     font-size: $text-sm;
     line-height: 1.5;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -266,13 +266,13 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: $spacing-md;
+    padding-top: 1rem;
     border-top: 1px solid #f1f5f9;
-    gap: $spacing-md;
+    gap: 1rem;
 
     @include r-mobile {
       flex-direction: column;
-      gap: $spacing-md;
+      gap: 1rem;
       align-items: stretch;
     }
   }
@@ -280,7 +280,7 @@
   &__info {
     display: flex;
     align-items: center;
-    gap: $spacing-md;
+    gap: 1rem;
     font-size: $text-sm;
     color: $text-muted;
 

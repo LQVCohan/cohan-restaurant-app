@@ -1,0 +1,230 @@
+@use "../../../../styles/variables.scss" as *;
+@use "../../../../styles/mixins.scss" as *;
+
+.floor-map {
+  @include card;
+  overflow: hidden;
+  width: 100vw;
+  &__header {
+    padding: $spacing-6;
+    background: $gray-50;
+    border-bottom: 1px solid $gray-200;
+  }
+
+  &__title {
+    @include flex-center;
+    gap: $spacing-4;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: $gray-900;
+    margin: 0 0 $spacing-2 0;
+  }
+
+  &__icon {
+    font-size: 1.5rem;
+  }
+
+  &__description {
+    color: $gray-600;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  &__container {
+    position: relative;
+    min-height: 600px;
+    background: linear-gradient(135deg, $gray-50 0%, $gray-200 100%);
+    border: 3px solid $gray-300;
+    border-radius: $radius-xl;
+    margin: $spacing-6;
+    overflow: hidden;
+  }
+
+  &__wall {
+    background: linear-gradient(135deg, $gray-600 0%, $gray-700 100%);
+    position: absolute;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+
+    &--top {
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 20px;
+    }
+    &--bottom {
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 20px;
+    }
+    &--left {
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 20px;
+    }
+    &--right {
+      top: 0;
+      bottom: 0;
+      right: 0;
+      width: 20px;
+    }
+  }
+
+  &__door {
+    background: linear-gradient(135deg, $warning-400 0%, $warning-500 100%);
+    position: absolute;
+    border-radius: $radius-sm;
+    box-shadow: $shadow-md;
+
+    &::before {
+      content: "🚪";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.2rem;
+    }
+  }
+
+  &__window {
+    background: linear-gradient(135deg, $info-400 0%, $info-500 100%);
+    position: absolute;
+    border-radius: $radius-sm;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+
+    &::before {
+      content: "🪟";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1rem;
+    }
+  }
+
+  &__feature {
+    position: absolute;
+    border-radius: $radius-md;
+
+    &--bar {
+      background: linear-gradient(
+        135deg,
+        $secondary-400 0%,
+        $secondary-600 100%
+      );
+      box-shadow: 0 4px 8px rgba($secondary-500, 0.3);
+
+      &::before {
+        content: "🍸";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.5rem;
+      }
+    }
+
+    &--stage {
+      background: linear-gradient(135deg, $error-400 0%, $error-600 100%);
+      box-shadow: 0 4px 8px rgba($error-400, 0.3);
+
+      &::before {
+        content: "🎤";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.5rem;
+      }
+    }
+  }
+
+  &__table {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    @include flex-center;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all $transition-base;
+    border: 3px solid transparent;
+    box-shadow: $shadow-md;
+
+    &:hover {
+      transform: scale(1.1);
+      z-index: 10;
+    }
+
+    &--available {
+      background: linear-gradient(135deg, $success-500 0%, $success-hover 100%);
+      color: $white;
+
+      &:hover {
+        background: linear-gradient(
+          135deg,
+          $success-hover 0%,
+          $success-700 100%
+        );
+        box-shadow: 0 4px 12px rgba($success-500, 0.4);
+      }
+    }
+
+    &--occupied {
+      background: linear-gradient(135deg, $error-500 0%, $error-600 100%);
+      color: $white;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    &--reserved {
+      background: linear-gradient(135deg, $warning-500 0%, $warning-600 100%);
+      color: $white;
+      cursor: not-allowed;
+      opacity: 0.8;
+    }
+
+    &--selected {
+      background: linear-gradient(135deg, $info-500 0%, $info-600 100%);
+      color: $white;
+      border-color: $info-700;
+      box-shadow: 0 0 0 3px rgba($info-500, 0.3);
+      transform: scale(1.15);
+    }
+  }
+
+  &__table-capacity {
+    position: absolute;
+    bottom: -8px;
+    right: -8px;
+    background: $white;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    @include flex-center;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+}
+
+@include r-mobile {
+  .floor-map {
+    &__container {
+      min-height: 400px;
+      margin: $spacing-4;
+    }
+    &__table {
+      width: 40px;
+      height: 40px;
+      font-size: 0.8rem;
+    }
+    &__table-capacity {
+      width: 16px;
+      height: 16px;
+      font-size: 0.6rem;
+    }
+  }
+}

@@ -27,7 +27,7 @@
       font-size: 1.125rem;
       font-weight: 600;
       color: $gray-800;
-      margin-bottom: $spacing-md;
+      margin-bottom: 1rem;
       display: flex;
       align-items: center;
       gap: $spacing-sm;
@@ -41,7 +41,7 @@
     font-weight: 700;
     color: $gray-800;
     margin-bottom: $spacing-lg;
-    padding-bottom: $spacing-md;
+    padding-bottom: 1rem;
     border-bottom: 2px solid $border-color;
     display: flex;
     align-items: center;
@@ -60,14 +60,14 @@
   padding: 0;
   margin: 0;
   display: grid;
-  gap: $spacing-md;
+  gap: 1rem;
 }
 
 .highlights-item {
   display: flex;
   align-items: center;
-  gap: $spacing-md;
-  padding: $spacing-md;
+  gap: 1rem;
+  padding: 1rem;
   background: $gray-50;
   border-radius: 0.5rem;
   font-size: 1rem;
@@ -89,7 +89,7 @@
 .amenities-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: $spacing-md;
+  gap: 1rem;
 
   @include r-mobile {
     grid-template-columns: 1fr;
@@ -99,8 +99,8 @@
 .amenity-item {
   display: flex;
   align-items: center;
-  gap: $spacing-md;
-  padding: $spacing-md;
+  gap: 1rem;
+  padding: 1rem;
   border-radius: 0.5rem;
   border: 1px solid $border-color;
   transition: all 0.3s ease;
@@ -177,8 +177,8 @@
 .contact-item {
   display: flex;
   align-items: flex-start;
-  gap: $spacing-md;
-  padding: $spacing-md;
+  gap: 1rem;
+  padding: 1rem;
   background: $gray-50;
   border-radius: 0.75rem;
 }
@@ -223,7 +223,7 @@
   .map-icon {
     font-size: 3rem;
     display: block;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
   }
 
   p {

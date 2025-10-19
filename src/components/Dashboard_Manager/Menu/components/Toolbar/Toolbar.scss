@@ -11,14 +11,14 @@
   &__main {
     display: flex;
     align-items: center;
-    gap: $spacing-md;
+    gap: 1rem;
     padding: $spacing-lg;
     flex-wrap: wrap;
 
     @media (max-width: 1024px) {
       flex-direction: column;
       align-items: stretch;
-      gap: $spacing-md;
+      gap: 1rem;
     }
   }
 
@@ -82,13 +82,13 @@
 
   &__summary {
     border-top: 1px solid $border-color;
-    padding: $spacing-md $spacing-lg;
+    padding: 1rem $spacing-lg;
     background: #f1f5f9;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: $spacing-md;
+    gap: 1rem;
 
     @media (max-width: 768px) {
       flex-direction: column;
@@ -105,7 +105,7 @@
 
   .search-icon {
     position: absolute;
-    left: $spacing-md;
+    left: 1rem;
     color: $text-gray;
     font-size: 1rem;
     z-index: 1;
@@ -126,7 +126,7 @@
 
   .search-clear {
     position: absolute;
-    right: $spacing-md;
+    right: 1rem;
     background: none;
     border: none;
     color: $text-gray;
@@ -160,7 +160,7 @@
   background: $text-gray;
   color: white;
   font-size: 0.875rem;
-  padding: $spacing-sm $spacing-md;
+  padding: $spacing-sm 1rem;
 
   &:hover {
     background: #4b5563;
@@ -188,7 +188,7 @@
   background: white;
   color: $text-gray;
   border: none;
-  padding: $spacing-sm $spacing-md;
+  padding: $spacing-sm 1rem;
   font-size: 1rem;
   border-radius: 0;
   margin: 0;
@@ -212,7 +212,7 @@
 .action-btn {
   @include button-base;
   font-size: 0.875rem;
-  padding: $spacing-sm $spacing-md;
+  padding: $spacing-sm 1rem;
   white-space: nowrap;
 
   &--primary {
@@ -256,7 +256,7 @@
 .filter-group {
   display: flex;
   align-items: center;
-  gap: $spacing-md;
+  gap: 1rem;
 
   @media (max-width: 768px) {
     flex-direction: column;
@@ -303,7 +303,7 @@
   background: $primary;
   color: white;
   font-size: 0.875rem;
-  padding: $spacing-xs $spacing-md;
+  padding: $spacing-xs 1rem;
 
   &:hover {
     background: $primary-hover;
@@ -315,7 +315,7 @@
   background: $error-600;
   color: white;
   font-size: 0.875rem;
-  padding: $spacing-xs $spacing-md;
+  padding: $spacing-xs 1rem;
 
   &:hover {
     background: #dc2626;
@@ -326,7 +326,7 @@
 .summary-info {
   display: flex;
   align-items: center;
-  gap: $spacing-md;
+  gap: 1rem;
 
   @media (max-width: 768px) {
     justify-content: center;
@@ -395,15 +395,15 @@
 @media (max-width: 480px) {
   .toolbar {
     &__main {
-      padding: $spacing-md;
+      padding: 1rem;
     }
 
     &__advanced-filters {
-      padding: $spacing-md;
+      padding: 1rem;
     }
 
     &__summary {
-      padding: $spacing-sm $spacing-md;
+      padding: $spacing-sm 1rem;
     }
   }
 

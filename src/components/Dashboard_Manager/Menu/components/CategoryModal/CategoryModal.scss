@@ -42,8 +42,8 @@
     display: grid;
     grid-template-columns: repeat(8, 1fr);
     gap: $spacing-sm;
-    margin-bottom: $spacing-md;
-    padding: $spacing-md;
+    margin-bottom: 1rem;
+    padding: 1rem;
     border: 2px solid $border-color;
     border-radius: $border-radius-sm;
     background: #f8fafc;
@@ -88,7 +88,7 @@
 
 .form-actions {
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   justify-content: flex-end;
   padding-top: $spacing-lg;
   border-top: 2px solid $border-color;

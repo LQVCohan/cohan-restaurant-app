@@ -1,33 +1,23 @@
 import React from "react";
 import "./RestaurantHeader.scss";
-
+import { useNavigate } from "react-router-dom";
 /**
  * Component hiển thị phần đầu trang chi tiết nhà hàng
  * Dữ liệu nhận từ props:
  * { id, name, avatar, coverImage, rating, status, cuisine, addressText }
  */
 const RestaurantHeader = ({ restaurant, onReservationClick }) => {
-  const { name, avatar, coverImage, rating, status, cuisine, addressText } =
+  const { name, avatar, coverImage, rating, status, cuisine, addressText, id } =
     restaurant || {};
-
+  console.log("restaurant", restaurant);
+  const navigate = useNavigate();
   const handleBack = () => {
     if (document.referrer) window.history.back();
     else window.location.href = "/";
   };
 
-  const handleShare = async () => {
-    const shareData = {
-      title: name,
-      text: `${name} • ${cuisine} • ${addressText || ""}`,
-      url: window.location.href,
-    };
-    try {
-      if (navigator.share) await navigator.share(shareData);
-      else {
-        await navigator.clipboard.writeText(window.location.href);
-        alert("Đã sao chép liên kết!");
-      }
-    } catch {}
+  const handleGoTableBooking = async (id) => {
+    navigate(`/restaurant/${id}/table`);
   };
 
   const handleCall = () => {
@@ -58,8 +48,11 @@ const RestaurantHeader = ({ restaurant, onReservationClick }) => {
             ← Quay lại
           </button>
           <div className="restaurant-header__right-actions">
-            <button className="btn btn--secondary" onClick={handleShare}>
-              📤 Chia sẻ
+            <button
+              className="btn btn--secondary"
+              onClick={() => handleGoTableBooking(id)}
+            >
+              📤 Table
             </button>
             <button className="btn btn--secondary" onClick={handleMap}>
               🗺️ Chỉ đường

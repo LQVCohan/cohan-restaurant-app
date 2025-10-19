@@ -1,7 +1,8 @@
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
 
-.menu-section {
+/* ====== Khối tổng ====== */
+.menu-section-restaurant-detail {
   .menu-loading,
   .menu-empty {
     @include flex-center;
@@ -15,7 +16,7 @@
   .menu-empty {
     &__icon {
       font-size: 4rem;
-      margin-bottom: $spacing-md;
+      margin-bottom: 1rem;
     }
 
     h3 {
@@ -31,6 +32,7 @@
   }
 }
 
+/* ====== Header ====== */
 .menu-header {
   text-align: center;
   margin-bottom: $spacing-xl;
@@ -48,9 +50,10 @@
   }
 }
 
+/* ====== Layout ====== */
 .menu-layout {
   display: grid;
-  grid-template-columns: 250px 1fr;
+  grid-template-columns: 200px 1fr;
   gap: $spacing-xl;
 
   @include r-tablet {
@@ -65,13 +68,14 @@
   }
 }
 
+/* ====== Danh mục ====== */
 .menu-categories {
   display: flex;
   flex-direction: column;
   gap: $spacing-sm;
   position: sticky;
-  top: 120px;
-
+  margin-top: 20px;
+  width: 200px;
   @include r-tablet {
     flex-direction: row;
     overflow-x: auto;
@@ -90,18 +94,17 @@
   display: flex;
   align-items: center;
   gap: $spacing-sm;
-  padding: $spacing-md;
+  padding: 0.75rem;
   background: $white;
   border: 1px solid $border-color;
   border-radius: 0.75rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  text-align: left;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
 
   @include r-tablet {
     white-space: nowrap;
-    min-width: 150px;
+    min-width: 140px;
   }
 
   &:hover {
@@ -118,257 +121,133 @@
       background: #2563eb;
     }
   }
-
-  &__icon {
-    font-size: 1.125rem;
-  }
-
-  &__name {
-    flex: 1;
-    font-weight: 500;
-  }
-
-  &__count {
-    font-size: 0.75rem;
-    opacity: 0.8;
-  }
 }
 
+/* ====== Nội dung menu ====== */
 .menu-content {
   background: $white;
   border-radius: 1rem;
   overflow: hidden;
   @include card-shadow;
+  padding: $spacing-md;
 }
 
-.menu-category-content {
-  padding: $spacing-xl;
-
-  @include r-mobile {
-    padding: $spacing-lg;
-  }
-}
-
-.menu-category-header {
-  margin-bottom: $spacing-xl;
-  text-align: center;
-
-  .menu-category-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: $gray-800;
-    margin-bottom: $spacing-sm;
-  }
-
-  .menu-category-description {
-    color: $text-muted;
-    font-size: 1rem;
-    max-width: 600px;
-    margin: 0 auto;
-  }
-}
-
-.menu-items {
+/* ====== Grid hiển thị món ăn: 2 thẻ mỗi hàng ====== */
+.menu-items--two-cols-wide {
   display: grid;
-  gap: $spacing-xl;
-}
-
-.menu-item {
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: $spacing-lg;
-  padding: $spacing-lg;
-  border: 1px solid $border-color;
-  border-radius: 1rem;
-  transition: all 0.3s ease;
-
-  @include r-tablet {
-    grid-template-columns: 150px 1fr;
-    gap: $spacing-md;
-    padding: $spacing-md;
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* ✅ 2 cột đều nhau */
+  gap: $spacing-md;
+  width: 600px;
+  .menu-item {
+    width: 100%;
   }
-
   @include r-mobile {
     grid-template-columns: 1fr;
-    text-align: center;
   }
+}
+
+/* ====== Thẻ món hình chữ nhật ====== */
+.menu-item--rect {
+  display: grid;
+  grid-template-columns: 60px 1fr; /* khung ảnh + nội dung */
+  gap: $spacing-md;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid $border-color;
+  border-radius: 10px;
+  background: $white;
+  transition: all 0.2s ease;
 
   &:hover {
     border-color: #3b82f6;
-    @include hover-lift;
+    transform: translateY(-1px);
   }
 
-  &__image {
-    position: relative;
+  /* Khung ảnh bên trái */
+  .menu-item__image-frame {
+    width: 200px;
     height: 150px;
-    border-radius: 0.75rem;
+    border-radius: 6px;
     overflow: hidden;
-    background: $gray-50;
-
-    @include r-tablet {
-      height: 120px;
-    }
-
-    @include r-mobile {
-      height: 200px;
-    }
+    background: $gray-50 url("/images/food/placeholder.jpg") center/cover
+      no-repeat;
+    border: 1px solid $border-color;
+    flex-shrink: 0;
 
     img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.3s ease;
+      display: block;
+      transition: transform 0.25s ease;
     }
   }
 
-  &:hover &__image img {
+  &:hover .menu-item__image-frame img {
     transform: scale(1.05);
   }
 
-  &__badge {
-    position: absolute;
-    top: $spacing-sm;
-    left: $spacing-sm;
-    padding: 0.25rem 0.75rem;
-    background: rgba(#ef4444, 0.9);
-    color: $white;
-    border-radius: 1rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    backdrop-filter: blur(10px);
-
-    &--new {
-      background: rgba(#10b981, 0.9);
-    }
-  }
-
-  &__content {
+  /* Nội dung bên phải */
+  .menu-item__content {
     display: flex;
     flex-direction: column;
-    gap: $spacing-md;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
   }
 
-  &__header {
-    @include flex-between;
-    align-items: flex-start;
-    gap: $spacing-md;
-
-    @include r-mobile {
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
+  .menu-item__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 6px;
   }
 
-  &__name {
-    font-size: 1.125rem;
+  .menu-item__name {
+    font-size: 0.9rem;
     font-weight: 600;
     color: $gray-800;
     margin: 0;
-    line-height: 1.3;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    line-height: 1.2;
   }
 
-  &__price {
-    font-size: 1.25rem;
+  .menu-item__price {
+    font-size: 0.85rem;
     font-weight: 700;
-    color: #3b82f6;
+    color: #2563eb;
     white-space: nowrap;
   }
 
-  &__description {
-    color: $text-muted;
-    font-size: 0.875rem;
-    line-height: 1.5;
+  .menu-item__description--clamp {
     margin: 0;
-  }
-
-  &__ingredients {
     font-size: 0.75rem;
-
-    .ingredients-label {
-      font-weight: 600;
-      color: $gray-800;
-      margin-right: $spacing-sm;
-    }
-
-    .ingredients-list {
-      color: $text-muted;
-    }
-  }
-
-  &__meta {
-    display: flex;
-    align-items: center;
-    gap: $spacing-lg;
-    flex-wrap: wrap;
-
-    @include r-mobile {
-      justify-content: center;
-    }
-  }
-
-  &__rating {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.875rem;
-
-    .rating-stars {
-      color: #fbbf24;
-    }
-
-    .rating-score {
-      font-weight: 600;
-      color: $gray-800;
-    }
-
-    .rating-count {
-      color: $text-muted;
-    }
-  }
-
-  &__spicy {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.875rem;
-
-    .spicy-level {
-      font-size: 0.75rem;
-    }
-  }
-
-  &__tags {
-    display: flex;
-    gap: $spacing-xs;
-    flex-wrap: wrap;
-  }
-
-  &__tag {
-    padding: 0.25rem 0.5rem;
-    background: $gray-50;
+    line-height: 1.3;
     color: $text-muted;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    font-weight: 500;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  &__actions {
+  .menu-item__actions {
     display: flex;
-    gap: $spacing-sm;
-    margin-top: auto;
-
-    @include r-mobile {
-      justify-content: center;
-    }
+    gap: 6px;
+    margin-top: 4px;
 
     .btn--small {
-      padding: 0.5rem $spacing-md;
+      padding: 0.35rem 0.6rem;
       font-size: 0.75rem;
+      border-radius: 6px;
     }
   }
 }
 
+/* ====== Spinner ====== */
 .spinner {
   width: 40px;
   height: 40px;
@@ -384,5 +263,57 @@
   }
   100% {
     transform: rotate(360deg);
+  }
+}
+.cart-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  height: 48px;
+  min-width: 48px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #111827;
+  color: #fff;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  z-index: 50;
+
+  .cart-fab__count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+  }
+}
+.menu-item__method-select {
+  margin: 4px 0 6px;
+  select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    background: #fff;
+    color: #111827;
+    &:hover {
+      border-color: #cbd5e1;
+    }
+    &:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
   }
 }

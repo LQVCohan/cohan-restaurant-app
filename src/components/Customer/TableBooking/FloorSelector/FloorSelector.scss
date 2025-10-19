@@ -1,0 +1,90 @@
+@use "../../../../styles/variables.scss" as *;
+@use "../../../../styles/mixins.scss" as *;
+
+.floor-selector {
+  @include card;
+  padding: $spacing-6;
+  max-width: fit-content;
+  &__title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: $gray-900;
+    margin: 0 0 $spacing-6 0;
+  }
+
+  &__buttons {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-2;
+  }
+
+  &__button {
+    width: 100%;
+    padding: $spacing-6;
+    border: none;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    transition: all $transition-base;
+    border-radius: $radius-lg;
+
+    &:hover {
+      background: $gray-100;
+      transform: translateX(4px);
+    }
+
+    &--active {
+      background: linear-gradient(135deg, $info-100 0%, $info-200 100%);
+      border: 2px solid $info-500;
+      color: $info-700;
+    }
+  }
+
+  &__button-content {
+    @include flex-center;
+    gap: $spacing-4;
+    justify-content: flex-start;
+  }
+
+  &__icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+  }
+
+  &__info {
+    text-align: left;
+  }
+
+  &__name {
+    font-weight: 600;
+    font-size: 0.875rem;
+    line-height: 1.2;
+  }
+
+  &__count {
+    font-size: 0.75rem;
+    color: $gray-600;
+    margin-top: $spacing-1;
+  }
+}
+
+@include r-mobile {
+  .floor-selector {
+    &__buttons {
+      flex-direction: row;
+      overflow-x: auto;
+      gap: $spacing-4;
+      padding-bottom: $spacing-2;
+    }
+    &__button {
+      flex-shrink: 0;
+      min-width: 120px;
+    }
+    &__icon {
+      font-size: 1.5rem;
+    }
+    &__name {
+      font-size: 0.8rem;
+    }
+  }
+}

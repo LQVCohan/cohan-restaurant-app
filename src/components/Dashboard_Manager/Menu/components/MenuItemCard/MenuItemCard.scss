@@ -8,14 +8,14 @@
   overflow: hidden;
 
   &--grid {
-    padding: $spacing-md;
+    padding: 1rem;
   }
 
   &--list {
-    padding: $spacing-md;
+    padding: 1rem;
     display: grid;
     grid-template-columns: 100px 1fr auto;
-    gap: $spacing-md;
+    gap: 1rem;
     align-items: center;
   }
 
@@ -24,7 +24,7 @@
     height: 150px;
     background: #f3f4f6;
     border-radius: $border-radius-sm;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
     display: flex;
     align-items: center;
     justify-content: center;

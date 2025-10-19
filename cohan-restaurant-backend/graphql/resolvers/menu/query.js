@@ -95,7 +95,7 @@ export const MenuQuery = {
     // Cursor
     const cId = cursor && toObj(cursor);
     if (cId) q._id = { ...(q._id || {}), $gt: cId };
-
+    console.log("info: ", q);
     const docs = await MenuItem.find(q)
       .sort({ _id: 1 })
       .limit(limit + 1)
@@ -111,5 +111,23 @@ export const MenuQuery = {
         hasNextPage,
       },
     };
+  },
+  topMenuItems: async (_parent, { limit = 8, restaurantId, categoryId }) => {
+    const LIM = Math.min(Math.max(limit, 1), 50); // 1..50
+
+    const q = {};
+    if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
+      q.restaurantId = new mongoose.Types.ObjectId(restaurantId);
+    }
+    if (categoryId && mongoose.isValidObjectId(categoryId)) {
+      q.categoryId = new mongoose.Types.ObjectId(categoryId);
+    }
+
+    const docs = await MenuItem.find(q)
+      .sort({ point: -1, createdAt: -1, _id: 1 }) // ưu tiên point cao
+      .limit(LIM)
+      .lean({ virtuals: true });
+
+    return docs;
   },
 };

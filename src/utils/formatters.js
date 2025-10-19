@@ -4,7 +4,9 @@ export const formatPrice = (price) => {
     currency: "VND",
   }).format(price);
 };
-
+export const formatQuantity = (quantity, unit) => {
+  return unit === "kg" ? `${quantity}${unit}` : `${quantity} ${unit}`;
+};
 export const formatDate = (dateString) => {
   const date = new Date(dateString);
   return date.toLocaleDateString("vi-VN", {
@@ -116,4 +118,14 @@ export const getCategoryName = (category) => {
     grain: "Ngũ cốc",
   };
   return categories[category] || category;
+};
+export const formatCurrency = (amount) => {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(amount);
+};
+
+export const formatDateTime = (date, time) => {
+  return `${formatDate(date)} lúc ${time}`;
 };

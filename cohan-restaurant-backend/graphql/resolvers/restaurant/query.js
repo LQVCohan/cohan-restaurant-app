@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Restaurant } from "../../../models/index.js";
+import { Restaurant, User } from "../../../models/index.js";
 
 function toObjectIdOrNull(id) {
   if (!id) return null;
@@ -117,10 +117,39 @@ async function restaurantsByManager(
     },
   };
 }
+async function refRestaurants(_, { userId }) {
+  if (!mongoose.isValidObjectId(userId)) {
+    throw new GraphQLError("Invalid userId", {
+      extensions: { code: "BAD_USER_INPUT" },
+    });
+  }
 
+  // Tìm user và lấy danh sách nhà hàng mà họ có quyền truy cập
+  const user = await User.findById(userId).select("refRestaurant");
+
+  if (!user) {
+    throw new GraphQLError("User not found", {
+      extensions: { code: "NOT_FOUND" },
+    });
+  }
+
+  const restaurantIds = user.refRestaurant;
+
+  if (!restaurantIds || restaurantIds.length === 0) {
+    return [];
+  }
+
+  // Lấy nhà hàng từ danh sách refRestaurant của người dùng
+  const restaurants = await Restaurant.find({
+    _id: { $in: restaurantIds },
+  });
+
+  return restaurants;
+}
 export const RestaurantQuery = {
   restaurants,
   restaurant,
   restaurantsTop,
   restaurantsByManager,
+  refRestaurants,
 };

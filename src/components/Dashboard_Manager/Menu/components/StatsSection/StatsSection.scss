@@ -5,11 +5,11 @@
   background: $white;
   border: 1px solid $border-color;
   border-radius: $radius-lg;
-  margin-bottom: $spacing-md;
+  margin-bottom: 1rem;
   transition: $transition-all;
 
   &__header {
-    padding: $spacing-sm $spacing-md;
+    padding: $spacing-sm 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -42,7 +42,7 @@
   }
 
   &__content {
-    padding: $spacing-md;
+    padding: 1rem;
     transition: $transition-all;
   }
 
@@ -50,7 +50,7 @@
     .stats-section__content {
       height: 0;
       overflow: hidden;
-      padding: 0 $spacing-md;
+      padding: 0 1rem;
     }
   }
 }
@@ -72,7 +72,7 @@
   background: $white;
   border: 1px solid $border-color;
   border-radius: $radius-md;
-  padding: $spacing-md;
+  padding: 1rem;
   min-height: 72px;
   @include flex-column;
   gap: $spacing-xs;

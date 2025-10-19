@@ -22,14 +22,14 @@
     color: $text-primary;
     font-size: 1.125rem;
     font-weight: 600;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
   }
 }
 
 .bulk-controls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: $spacing-md;
+  gap: 1rem;
   align-items: end;
 
   @media (max-width: 768px) {
@@ -73,7 +73,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: $spacing-md;
+  margin-bottom: 1rem;
 
   .section-title {
     color: $text-primary;
@@ -102,7 +102,7 @@
   display: grid;
   grid-template-columns: 2fr 1.5fr 1.5fr 1fr 1fr 1fr;
   gap: $spacing-sm;
-  padding: $spacing-md;
+  padding: 1rem;
   background: $text-primary;
   color: white;
   font-weight: 600;
@@ -131,7 +131,7 @@
   display: grid;
   grid-template-columns: 2fr 1.5fr 1.5fr 1fr 1fr 1fr;
   gap: $spacing-sm;
-  padding: $spacing-sm $spacing-md;
+  padding: $spacing-sm 1rem;
   align-items: center;
   transition: background-color 0.3s ease;
 
@@ -198,7 +198,7 @@
   padding: $spacing-lg;
   border-top: 2px solid $border-color;
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   justify-content: flex-end;
 
   @media (max-width: 768px) {

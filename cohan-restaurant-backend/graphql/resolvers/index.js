@@ -10,6 +10,8 @@ import modifierGroup from "./modifier/index.js";
 import table from "./table/index.js";
 import floor from "./floor/index.js";
 import auth from "./auth/index.js";
+import order from "./order/index.js";
+import reservation from "./reservation/index.js";
 // 🆕 Import thêm module quản lý kho, nguyên liệu, recipe, consumption
 import inventory from "./inventory/index.js";
 
@@ -26,9 +28,9 @@ export default {
     ...(modifierGroup.Query || {}),
     ...(table.Query || {}),
     ...(floor.Query || {}),
-
-    // 🆕 thêm inventory Query (ingredients, warehouses, stockItems, recipe, ...)
+    ...(order.Query || {}),
     ...(inventory.Query || {}),
+    ...(reservation.Query || {}),
   },
 
   Mutation: {
@@ -41,9 +43,10 @@ export default {
     ...(modifierGroup.Mutation || {}),
     ...(table.Mutation || {}),
     ...(floor.Mutation || {}),
-
     ...(inventory.Mutation || {}),
     ...(auth.Mutation || {}),
+    ...(order.Mutation || {}),
+    ...(reservation.Mutation || {}),
   },
 
   // Nếu bạn có type-level resolvers (giữ nguyên logic)

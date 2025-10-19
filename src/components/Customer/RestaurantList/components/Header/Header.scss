@@ -11,7 +11,7 @@
   &__content {
     max-width: $desktop;
     margin: 0 auto;
-    padding: $spacing-md;
+    padding: 1rem;
     @include flex-between;
   }
 
@@ -46,7 +46,7 @@
 
   &__actions {
     display: flex;
-    gap: $spacing-md;
+    gap: 1rem;
     align-items: center;
   }
 }

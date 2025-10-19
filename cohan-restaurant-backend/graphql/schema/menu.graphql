@@ -82,6 +82,7 @@ type MenuItem {
   avgPrepTimeMin: Int
   recipe: String
   notes: String
+  point: Int
   createdAt: Date
   updatedAt: Date
 }
@@ -141,6 +142,7 @@ extend type Query {
     cursor: ID
     filter: MenuItemFilter!
   ): MenuItemConnection!
+  topMenuItems(limit: Int = 8, restaurantId: ID, categoryId: ID): [MenuItem!]!
 }
 
 extend type Mutation {

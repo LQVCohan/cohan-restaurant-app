@@ -1,28 +1,39 @@
-// models/order-item.schema.js (ESM)
+// src/models/order-item.schema.js
 import mongoose from "mongoose";
-const { Schema, Types } = mongoose;
+const { Schema } = mongoose;
 
-const AppliedModifierSchema = new Schema(
+const OrderModifierSchema = new Schema(
   {
-    groupId: { type: Types.ObjectId, ref: "ModifierGroup" },
-    optionId: { type: Types.ObjectId, ref: "ModifierOption" },
-    name: String,
-    priceDelta: Number,
+    optionId: { type: String },
+    optionName: { type: String, required: true },
+    groupId: { type: String },
+    price: { type: Number, default: 0 },
   },
   { _id: false }
 );
 
 const OrderItemSchema = new Schema(
   {
-    menuItemId: { type: Types.ObjectId, ref: "MenuItem", required: true },
-    nameSnapshot: String,
-    priceSnapshot: Number,
-    qty: { type: Number, default: 1 },
-    modifiers: [AppliedModifierSchema],
-    note: String,
-    subtotal: Number,
+    dishId: String,
+    menuId: String,
+    categoryId: String,
+    name: { type: String, required: true },
+    unit: { type: String, default: "phần" },
+    image: String,
+    price: { type: Number, required: true },
+    modifiersPrice: { type: Number, default: 0 },
+    method: String,
+    methodDelta: { type: Number, default: 0 },
+    description: String,
+    quantity: { type: Number, required: true, min: 1 },
+    modifiers: { type: [OrderModifierSchema], default: [] },
   },
-  { _id: false }
+  { _id: false, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
+
+OrderItemSchema.virtual("lineSubtotal").get(function () {
+  const p = Number(this.price || 0) + Number(this.modifiersPrice || 0);
+  return Math.max(0, p * Number(this.quantity || 0));
+});
 
 export default OrderItemSchema;

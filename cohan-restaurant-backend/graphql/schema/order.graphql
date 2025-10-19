@@ -1,31 +1,168 @@
-input OrderLineInput {
-  menuItemId: ID!
-  preparationId: ID
-  preparationName: String
-  quantity: Int = 1
-  weightKg: Float
-  modifierOptionIds: [ID!]
+type Shipping {
+  fullName: String
+  phone: String
+  email: String # ✅ thêm email
+  address: String
+  note: String
+  deliveryMethod: String
+  deliveryTime: String
+  scheduleDate: String
+  scheduleTime: String
+}
+
+input ShippingInput {
+  fullName: String
+  phone: String
+  email: String # ✅ thêm email
+  address: String
+  note: String
+  deliveryMethod: String
+  deliveryTime: String
+  scheduleDate: String
+  scheduleTime: String
+}
+
+type OrderModifier {
+  optionId: ID
+  optionName: String!
+  groupId: ID
+  price: Int
+}
+
+input OrderModifierInput {
+  optionId: ID
+  optionName: String!
+  groupId: ID
+  price: Int
+}
+
+type OrderItem {
+  dishId: String
+  menuId: String
+  categoryId: String
+  name: String!
+  unit: String
+  image: String
+  price: Int!
+  modifiersPrice: Int
+  method: String
+  methodDelta: Int
+  description: String
+  quantity: Int!
+  modifiers: [OrderModifier!]
+  lineSubtotal: Int
+}
+
+input OrderItemInput {
+  dishId: String
+  menuId: String
+  categoryId: String
+  name: String!
+  unit: String
+  image: String
+  price: Int!
+  modifiersPrice: Int
+  method: String
+  methodDelta: Int
+  description: String
+  quantity: Int!
+  modifiers: [OrderModifierInput!]
+}
+
+input CustomerInput { # ✅ cho khách chưa đăng nhập
+  fullName: String
+  phone: String
+  email: String
+}
+
+type OrderTotals {
+  subtotal: Int!
+  discount: Int!
+  tax: Int!
+  service: Int!
+  grandTotal: Int!
+}
+
+type StatusEvent {
+  status: String!
+  at: String!
+  byUserId: ID
   note: String
 }
 
-input QuoteOrderInput {
+type OrderPayment {
+  method: String
+  paidAmount: Int
+  currency: String
+  status: String
+  txnRef: String
+  paidAt: String
+}
+
+type Order {
+  id: ID!
+  orderCode: String # ✅ mã gộp các đơn
+  userId: ID
   restaurantId: ID!
-  lines: [OrderLineInput!]!
+  reservationId: ID
+  orderType: String!
+  shipping: Shipping
+  items: [OrderItem!]!
+  totals: OrderTotals!
+  payment: OrderPayment
+  statusTimeline: [StatusEvent!]!
+  currentStatus: String!
+  note: String
+  createdAt: String!
+  updatedAt: String!
 }
 
-type QuoteLine {
-  menuItemId: ID!
-  unit: Float!
-  prepPrice: Float!
-  modifiersTotalPerUnit: Float!
-  subtotal: Float!
+input CreateOrderInput {
+  orderCode: String # ✅ truyền chung cho các đơn tách
+  userId: ID
+  restaurantId: ID!
+  reservationId: ID
+  orderType: String
+  shipping: ShippingInput
+  items: [OrderItemInput!]!
+  note: String
+  paymentMethod: String!
+  customer: CustomerInput # ✅ dành cho khách chưa login
 }
 
-type QuoteOrderPayload {
-  lines: [QuoteLine!]!
-  total: Float!
+input UpdateOrderStatusInput {
+  id: ID!
+  status: String!
+  note: String
+}
+
+type OrdersConnection {
+  edges: [OrderEdge!]!
+  pageInfo: PageInfo!
+}
+
+type OrderEdge {
+  node: Order!
+  cursor: ID!
+}
+
+type PageInfo {
+  endCursor: ID
+  hasNextPage: Boolean!
+}
+
+extend type Query {
+  order(id: ID!): Order
+  ordersByRestaurant(
+    restaurantId: ID!
+    limit: Int = 20
+    cursor: ID
+  ): OrdersConnection!
+  ordersByUser(userId: ID!, limit: Int = 20, cursor: ID): OrdersConnection!
 }
 
 extend type Mutation {
-  quoteOrder(input: QuoteOrderInput!): QuoteOrderPayload! # BE tính tiền authoritative
+  createOrder(input: CreateOrderInput!): Order!
+  updateOrderStatus(input: UpdateOrderStatusInput!): Order!
+  cancelOrder(id: ID!, reason: String): Order!
 }

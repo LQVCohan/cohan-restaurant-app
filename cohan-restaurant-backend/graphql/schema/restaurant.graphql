@@ -77,6 +77,8 @@ extend type Query {
     cursor: ID
     restaurantFilter: RestaurantFilter
   ): RestaurantConnection!
+
+  refRestaurants(userId: ID!): [Restaurant!]!
 }
 
 input AddressInput {

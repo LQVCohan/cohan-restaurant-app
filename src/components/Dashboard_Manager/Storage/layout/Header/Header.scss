@@ -10,7 +10,7 @@
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: $spacing-md;
+  gap: 1rem;
 
   @include mobile {
     flex-direction: column;

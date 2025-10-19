@@ -1,0 +1,550 @@
+@use "../../../styles/variables" as *;
+@use "../../../styles/mixins" as *;
+
+/* ─────────────────────────────────
+   Layout & Scroll
+────────────────────────────────── */
+.booking-modal-content {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: $spacing-md 0;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: $bg-secondary;
+    border-radius: $radius-sm;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: $radius-sm;
+    &:hover {
+      background: $text-secondary;
+    }
+  }
+}
+
+/* Optional wrapper if dùng trong JSX */
+.booking-modal-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+}
+
+/* ─────────────────────────────────
+   Footer actions
+────────────────────────────────── */
+.booking-modal-footer {
+  display: flex;
+  gap: $spacing-md;
+  justify-content: flex-end;
+
+  @include tablet {
+    flex-direction: column;
+  }
+
+  .btn {
+    min-width: 140px;
+    @include tablet {
+      width: 100%;
+    }
+  }
+}
+
+/* ─────────────────────────────────
+   Sections
+────────────────────────────────── */
+.booking-section {
+  margin-bottom: $spacing-xl;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: $text-primary;
+  margin: 0 0 $spacing-md 0;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+/* ─────────────────────────────────
+   Restaurant info
+────────────────────────────────── */
+.restaurant-info {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 2px solid $primary-blue;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-xl;
+}
+.restaurant-name {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1e40af;
+  margin: 0 0 $spacing-sm 0;
+}
+.restaurant-address {
+  color: #3730a3;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* ─────────────────────────────────
+   Form styles
+────────────────────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-md;
+
+  @include tablet {
+    grid-template-columns: 1fr;
+  }
+}
+.form-group {
+  display: flex;
+  flex-direction: column;
+
+  &--full {
+    grid-column: 1 / -1;
+  }
+}
+.form-label {
+  font-weight: 600;
+  color: $text-primary;
+  margin-bottom: $spacing-sm;
+  font-size: 0.9rem;
+}
+.form-input,
+.form-textarea {
+  @include form-input;
+
+  &--error {
+    border-color: #ef4444;
+    &:focus {
+      border-color: #ef4444;
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+  }
+}
+.form-textarea {
+  resize: vertical;
+  font-family: inherit;
+  min-height: 100px;
+}
+.form-error {
+  color: #ef4444;
+  font-size: 0.8rem;
+  margin-top: $spacing-xs;
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+
+  &::before {
+    content: "⚠️";
+    font-size: 0.7rem;
+  }
+}
+
+/* ─────────────────────────────────
+   Table Picker (khi chưa có tableId)
+────────────────────────────────── */
+.table-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: $spacing-sm;
+
+  @include tablet {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.table-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: $gray-800;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  .left {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    background: #c7d2fe;
+    border-radius: 999px;
+    display: inline-block;
+  }
+
+  .cap {
+    font-size: 0.9rem;
+    color: $text-secondary;
+  }
+
+  &:hover {
+    background: #eef2ff;
+    border-color: #c7d2fe;
+  }
+
+  &.selected {
+    background: #eef2ff;
+    border-color: #a5b4fc;
+    color: #3730a3;
+    box-shadow: 0 0 0 3px rgba(#a5b4fc, 0.25);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    text-decoration: line-through;
+  }
+
+  /* trạng thái tuỳ chọn nếu bạn render thêm class theo status */
+  &.is-occupied {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  &.is-reserved {
+    border-style: dashed;
+  }
+  &.is-available {
+  }
+}
+
+/* ─────────────────────────────────
+   Selected table display
+────────────────────────────────── */
+.selected-table-display {
+  display: flex;
+  justify-content: center;
+}
+
+.table-card-large {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 3px solid #0ea5e9;
+  border-radius: $radius-xl;
+  padding: $spacing-xl;
+  display: flex;
+  align-items: center;
+  gap: $spacing-lg;
+  width: 100%;
+  transition: all $transition-base;
+  box-shadow: 0 8px 25px rgba(14, 165, 233, 0.15);
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(14, 165, 233, 0.25);
+  }
+
+  @include mobile {
+    flex-direction: column;
+    text-align: center;
+    gap: $spacing-md;
+  }
+}
+.table-icon {
+  font-size: 3rem;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  border-radius: $radius-full;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+  flex-shrink: 0;
+}
+.table-info {
+  flex: 1;
+}
+.table-id-large {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0c4a6e;
+  margin-bottom: $spacing-sm;
+}
+.table-details {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  @include mobile {
+    align-items: center;
+  }
+}
+.table-capacity-large {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #0369a1;
+}
+.table-floor {
+  font-size: 1rem;
+  color: #0284c7;
+  font-weight: 500;
+}
+
+/* ─────────────────────────────────
+   Party size selector
+────────────────────────────────── */
+.party-size-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-md;
+  background: $bg-secondary;
+  border: 2px solid $border-light;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+}
+.party-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: $radius-full;
+  background: $primary-blue;
+  color: white;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all $transition-base;
+
+  &:hover:not(:disabled) {
+    background: #2563eb;
+    transform: scale(1.1);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+.party-input {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: $text-primary;
+  width: 80px;
+  text-align: center;
+  border: 2px solid $border-light;
+  border-radius: $radius-sm;
+  padding: $spacing-sm;
+  background: white;
+  transition: all $transition-base;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-blue;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  &[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+/* ─────────────────────────────────
+   Date & time selection
+────────────────────────────────── */
+.datetime-selection {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $spacing-md;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─────────────────────────────────
+   Notice box
+────────────────────────────────── */
+.notice-box {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid $warning-yellow;
+  border-radius: $radius-md;
+  padding: $spacing-lg;
+}
+.notice-title {
+  color: #92400e;
+  font-weight: 600;
+  margin: 0 0 $spacing-md 0;
+  font-size: 1rem;
+}
+.notice-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: #92400e;
+
+  li {
+    margin-bottom: $spacing-sm;
+    padding-left: $spacing-md;
+    position: relative;
+    font-size: 0.9rem;
+    line-height: 1.5;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+    &::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: $warning-yellow;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+  }
+}
+
+/* ─────────────────────────────────
+   Summary
+────────────────────────────────── */
+.summary-box {
+  background: #f0f9ff;
+  border: 2px solid $primary-blue;
+  border-radius: $radius-md;
+  padding: $spacing-lg;
+}
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-md;
+  padding-bottom: $spacing-sm;
+  border-bottom: 1px solid #bfdbfe;
+  gap: $spacing-md;
+
+  &:last-child {
+    margin-bottom: 0;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  &--highlight {
+    background: #dbeafe;
+    margin: $spacing-sm (-$spacing-lg) 0 (-$spacing-lg);
+    padding: $spacing-md $spacing-lg;
+    border-radius: $radius-sm;
+    border-bottom: none;
+    font-weight: 600;
+  }
+}
+.summary-label {
+  font-weight: 500;
+  color: #1e40af;
+  flex-shrink: 0;
+}
+.summary-value {
+  font-weight: 600;
+  color: #1e40af;
+  text-align: right;
+  word-break: break-word;
+}
+
+/* ─────────────────────────────────
+   Buttons
+────────────────────────────────── */
+.btn {
+  @include button-base;
+
+  &--primary {
+    @include button-primary;
+  }
+  &--success {
+    @include button-success;
+  }
+  &--secondary {
+    background: $bg-secondary;
+    color: $text-secondary;
+    border: 2px solid #d1d5db;
+
+    &:hover:not(:disabled) {
+      background: #e2e8f0;
+      border-color: #94a3b8;
+    }
+  }
+}
+
+/* ─────────────────────────────────
+   Spinner
+────────────────────────────────── */
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: $radius-full;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+  margin-right: $spacing-sm;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ─────────────────────────────────
+   Responsive tweaks
+────────────────────────────────── */
+@include tablet {
+  .booking-modal-content {
+    max-height: 60vh;
+  }
+  .table-card-large {
+    padding: $spacing-lg;
+  }
+  .party-size-selector {
+    gap: $spacing-sm;
+  }
+  .party-input {
+    width: 60px;
+    font-size: 1.2rem;
+  }
+  .party-btn {
+    width: 35px;
+    height: 35px;
+    font-size: 1rem;
+  }
+}
+@include mobile {
+  .table-id-large {
+    font-size: 1.5rem;
+  }
+  .table-capacity-large {
+    font-size: 1rem;
+  }
+  .summary-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: $spacing-xs;
+  }
+  .summary-value {
+    text-align: left;
+  }
+}

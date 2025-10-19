@@ -1,0 +1,138 @@
+@use "../../../styles/variables" as *;
+@use "../../../styles/mixins" as *;
+
+/* ✅ Không render overlay riêng nữa.
+   Modal gốc đã lo overlay + container.
+   Ta chỉ style phần nội dung bên trong. */
+
+.success-modal {
+  // bọc toàn bộ content bên trong .modal__content
+}
+
+.success-icon {
+  font-size: 4rem;
+  text-align: center;
+  margin-bottom: 1rem;
+  animation: bounce 2s infinite;
+}
+
+.success-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: $text-primary;
+  text-align: center;
+  margin: 0 0 $spacing-sm 0;
+}
+
+.success-message {
+  text-align: center;
+  color: $text-secondary;
+  margin: 0 0 $spacing-xl 0;
+}
+
+.booking-confirmation {
+  background: #f0f9ff;
+  border: 2px solid $primary-blue;
+  border-radius: $radius-md;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-xl;
+
+  &.order {
+    background: #f8faff;
+    border-color: #93c5fd;
+  }
+
+  h3 {
+    color: #1e40af;
+    margin: 0 0 1rem 0;
+    font-weight: 700;
+  }
+}
+
+.confirmation-details {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: $spacing-sm;
+  border-bottom: 1px solid #bfdbfe;
+
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  &--highlight {
+    background: #dbeafe;
+    margin: $spacing-sm (-$spacing-lg) 0 (-$spacing-lg);
+    padding: 1rem $spacing-lg;
+    border-radius: $radius-sm;
+    border-bottom: none;
+  }
+}
+
+.summary-label {
+  font-weight: 500;
+  color: #1e40af;
+}
+
+.summary-value {
+  font-weight: 600;
+  color: #1e40af;
+  text-align: right;
+}
+
+.success-actions {
+  display: flex;
+  gap: 1rem;
+  padding: $spacing-xl 0 0; // nằm trong ModalFooter nên chỉ cần padding top
+
+  @include tablet {
+    flex-direction: column;
+  }
+}
+
+/* Chip danh sách đơn đã tạo */
+.orders-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.order-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+
+  .dot {
+    width: 4px;
+    height: 4px;
+    background: #a5b4fc;
+    border-radius: 999px;
+    display: inline-block;
+  }
+}
+
+/* Simple bounce for icon */
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-3px);
+  }
+}

@@ -23,7 +23,7 @@
   &__header {
     @include flex-between;
     margin-bottom: $spacing-lg;
-    padding-bottom: $spacing-md;
+    padding-bottom: 1rem;
     border-bottom: 1px solid $border-color;
   }
 
@@ -62,7 +62,7 @@
     font-size: $text-base;
     font-weight: 600;
     color: $gray-900;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: $spacing-sm;

@@ -2,8 +2,7 @@
 @use "../../../../../styles/mixins" as *;
 
 .tabs-card {
-  margin-bottom: $spacing-lg;
-  padding: 0;
+  padding: 10px;
 }
 
 .tabs {
@@ -17,7 +16,7 @@
 }
 
 .tab {
-  padding: $spacing-md $spacing-lg;
+  padding: 1rem $spacing-lg;
   background: none;
   border: none;
   cursor: pointer;

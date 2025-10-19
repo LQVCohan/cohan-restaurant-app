@@ -5,7 +5,7 @@
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: $spacing-md;
+    gap: 1rem;
     margin-bottom: $spacing-lg;
 
     .stat-card {
@@ -32,7 +32,7 @@
     align-items: center;
     margin-bottom: $spacing-lg;
     flex-wrap: wrap;
-    gap: $spacing-md;
+    gap: 1rem;
 
     @include mobile {
       flex-direction: column;
@@ -41,7 +41,7 @@
 
     &-left {
       display: flex;
-      gap: $spacing-md;
+      gap: 1rem;
     }
 
     &-right {
@@ -59,7 +59,7 @@
   .allocations-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: $spacing-md;
+    gap: 1rem;
 
     @include mobile {
       grid-template-columns: 1fr;
@@ -72,8 +72,8 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: $spacing-md;
-    gap: $spacing-md;
+    margin-bottom: 1rem;
+    gap: 1rem;
 
     .allocation-info {
       flex: 1;
@@ -97,7 +97,7 @@
   }
 
   .allocation-details {
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
 
     .detail-item {
       display: flex;
@@ -122,7 +122,7 @@
   }
 
   .ingredients-summary {
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
 
     h4 {
       font-size: 0.875rem;
@@ -171,11 +171,11 @@
 
 // Allocation Modal Styles
 .allocation-preview {
-  margin-top: $spacing-md;
+  margin-top: 1rem;
 
   h4 {
     color: #0c4a6e;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
   }
 
   .ingredients-table {
@@ -228,8 +228,8 @@
   }
 
   .cost-summary {
-    margin-top: $spacing-md;
-    padding: $spacing-md;
+    margin-top: 1rem;
+    padding: 1rem;
     background: #f0f9ff;
     border-radius: 0.5rem;
 
@@ -265,7 +265,7 @@
 
   .empty-icon {
     font-size: 4rem;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
   }
 
   h3 {

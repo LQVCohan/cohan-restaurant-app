@@ -21,10 +21,7 @@ const categorySchema = BaseSchemaModel({
 });
 
 // Tên category duy nhất trong cùng (restaurantId, timeSlot)
-categorySchema.index(
-  { restaurantId: 1, timeSlot: 1, name: 1 },
-  { unique: true }
-);
+categorySchema.index({ restaurantId: 1, timeSlot: 1 }, { unique: true });
 
 export const Category =
   mongoose.models.Category || mongoose.model("Category", categorySchema);

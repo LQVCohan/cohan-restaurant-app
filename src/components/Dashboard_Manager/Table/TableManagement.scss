@@ -4,7 +4,7 @@
 .table-management {
   min-height: 100vh;
   @include flex-column;
-  padding: $spacing-md;
+  padding: 1rem;
   position: relative;
   background: $bg-secondary;
   color: $text-primary;
@@ -13,9 +13,9 @@
   .top-actions {
     @include flex-between;
     align-items: center;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
     background: $white;
-    padding: $spacing-md;
+    padding: 1rem;
     border-radius: $radius-lg;
     box-shadow: $shadow-sm;
 
@@ -39,16 +39,16 @@
   .main-layout {
     display: flex;
     flex: 1;
-    gap: $spacing-md;
+    gap: 1rem;
     .table_sidebar {
       width: $sidebar-width;
       background: $white;
       border-radius: $radius-lg;
       box-shadow: $shadow-sm;
-      padding: $spacing-md;
+      padding: 1rem;
       height: fit-content;
       position: sticky;
-      top: $spacing-md;
+      top: 1rem;
 
       &-section {
         margin-bottom: $spacing-lg;
@@ -131,10 +131,10 @@
         }
         .search-container {
           position: relative;
-          margin-bottom: $spacing-md;
+          margin-bottom: 1rem;
           .search-input {
             width: 100%;
-            padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
+            padding: $spacing-sm 1rem $spacing-sm 2.5rem;
             border: 2px solid $border-color;
             border-radius: $radius-lg;
             font-size: $text-sm;
@@ -231,20 +231,20 @@
   .main-content {
     flex: 1;
     @include flex-column;
-    gap: $spacing-md;
+    gap: 1rem;
   }
 
   // Tables Container
   .tables-container {
     background: $white;
     border-radius: $radius-lg;
-    padding: $spacing-md;
+    padding: 1rem;
     box-shadow: $shadow-sm;
     flex: 1;
     .tables-header {
       @include flex-between;
       align-items: center;
-      margin-bottom: $spacing-md;
+      margin-bottom: 1rem;
 
       h2 {
         font-size: $text-lg;
@@ -262,8 +262,8 @@
       background: $bg-secondary;
       border: 1px solid $border-color;
       border-radius: $radius-lg;
-      padding: $spacing-md;
-      margin-bottom: $spacing-md;
+      padding: 1rem;
+      margin-bottom: 1rem;
       @include flex-center;
       .filter-section {
         display: flex;
@@ -271,7 +271,7 @@
         align-items: center;
         flex-wrap: wrap;
         .filter-select {
-          padding: $spacing-sm $spacing-md;
+          padding: $spacing-sm 1rem;
           border: 1px solid $border-color;
           border-radius: $radius-md;
           font-size: $text-sm;
@@ -301,12 +301,12 @@
       @include custom-scrollbar;
       .empty-state {
         text-align: center;
-        padding: $spacing-3xl $spacing-md;
+        padding: $spacing-3xl 1rem;
         color: $text-muted;
 
         &-icon {
           font-size: $text-5xl;
-          margin-bottom: $spacing-md;
+          margin-bottom: 1rem;
         }
 
         &-text {
@@ -479,11 +479,11 @@
   // Modal Footer
   .modal-footer {
     display: flex;
-    gap: $spacing-md;
+    gap: 1rem;
     justify-content: flex-end;
-    padding-top: $spacing-md;
+    padding-top: 1rem;
     border-top: 1px solid $border-color;
-    margin-top: $spacing-md;
+    margin-top: 1rem;
   }
 
   // Payment Styles
@@ -504,7 +504,7 @@
     background: $bg-secondary;
     border: 1px solid $border-color;
     border-radius: $radius-lg;
-    padding: $spacing-md;
+    padding: 1rem;
   }
 
   .bill-item {
@@ -536,7 +536,7 @@
     &-price {
       font-weight: $font-bold;
       color: $warning-yellow;
-      margin-left: $spacing-md;
+      margin-left: 1rem;
     }
   }
 
@@ -549,11 +549,11 @@
     background: $bg-secondary;
     border: 2px solid $border-color;
     border-radius: $radius-lg;
-    padding: $spacing-md;
+    padding: 1rem;
     cursor: pointer;
     transition: $transition-all;
     @include flex-center;
-    gap: $spacing-md;
+    gap: 1rem;
     position: relative;
 
     &:hover {
@@ -612,7 +612,7 @@
     background: $bg-secondary;
     border: 1px solid $border-color;
     border-radius: $radius-lg;
-    padding: $spacing-md;
+    padding: 1rem;
   }
 
   .change-display {
@@ -620,7 +620,7 @@
     border: 1px solid $success-200;
     border-radius: $radius-md;
     padding: $spacing-sm;
-    margin-top: $spacing-md;
+    margin-top: 1rem;
     @include flex-between;
     align-items: center;
   }
@@ -647,8 +647,8 @@
     background: $bg-secondary;
     border: 2px solid $border-color;
     border-radius: $radius-lg;
-    padding: $spacing-md;
-    margin-top: $spacing-md;
+    padding: 1rem;
+    margin-top: 1rem;
 
     &-row {
       @include flex-between;
@@ -677,11 +677,11 @@
   // Menu Search
   .menu-search {
     position: relative;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
 
     &-input {
       width: 100%;
-      padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
+      padding: $spacing-sm 1rem $spacing-sm 2.5rem;
       border: 2px solid $border-color;
       border-radius: $radius-lg;
       font-size: $text-sm;
@@ -692,7 +692,7 @@
     background: $bg-secondary;
     border-radius: $radius-lg;
     padding: $spacing-lg;
-    margin-top: $spacing-md;
+    margin-top: 1rem;
   }
 
   .summary-items {
@@ -744,7 +744,7 @@
     background: $bg-secondary;
     border: 2px solid $border-color;
     border-radius: $radius-lg;
-    padding: $spacing-md;
+    padding: 1rem;
     cursor: pointer;
     transition: $transition-all;
     @include flex-between;
@@ -774,14 +774,14 @@
       font-weight: $font-bold;
       color: $warning-yellow;
       font-size: $text-lg;
-      margin-left: $spacing-md;
+      margin-left: 1rem;
     }
   }
 
   // Diagram Modal Styles
   .diagram-controls {
     display: flex;
-    gap: $spacing-md;
+    gap: 1rem;
     margin-bottom: $spacing-lg;
     align-items: center;
     flex-wrap: wrap;
@@ -793,7 +793,7 @@
 
     &-input {
       width: 100%;
-      padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
+      padding: $spacing-sm 1rem $spacing-sm 2.5rem;
       border: 2px solid $border-color;
       border-radius: $radius-lg;
       font-size: $text-sm;
@@ -834,8 +834,8 @@
     background: $bg-secondary;
     border: 2px solid $border-color;
     border-radius: $radius-lg;
-    padding: $spacing-md;
-    margin-bottom: $spacing-md;
+    padding: 1rem;
+    margin-bottom: 1rem;
     overflow: auto;
   }
 
@@ -848,7 +848,7 @@
   .diagram-legend {
     @include flex-center;
     gap: $spacing-xl;
-    padding: $spacing-md;
+    padding: 1rem;
     background: $bg-secondary;
     border-radius: $radius-md;
     flex-wrap: wrap;
@@ -933,7 +933,7 @@
 
     .top-actions {
       flex-direction: column;
-      gap: $spacing-md;
+      gap: 1rem;
       align-items: stretch;
 
       &-right {
@@ -951,7 +951,7 @@
     }
 
     .diagram-legend {
-      gap: $spacing-md;
+      gap: 1rem;
     }
   }
 
@@ -972,11 +972,11 @@
 }
 .table-quick-info {
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   font-size: $text-sm;
   opacity: 0.9;
-  margin-bottom: $spacing-md;
-  padding: $spacing-md;
+  margin-bottom: 1rem;
+  padding: 1rem;
   background: $bg-secondary;
   border-radius: $radius-md;
   .quick-info-item {
@@ -989,7 +989,7 @@
   .orders-header {
     @include flex-between;
     align-items: center;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
     padding-bottom: $spacing-sm;
     border-bottom: 2px solid $border-color;
     .section-title {
@@ -1003,7 +1003,7 @@
 
     .orders-summary {
       display: flex;
-      gap: $spacing-md;
+      gap: 1rem;
       font-size: $text-sm;
       .orders-count {
         color: $text-muted;
@@ -1024,7 +1024,7 @@
     .order-item {
       @include flex-between;
       align-items: flex-start;
-      padding: $spacing-md;
+      padding: 1rem;
       background: $bg-secondary;
       border-radius: $radius-lg;
       margin-bottom: $spacing-sm;
@@ -1059,7 +1059,7 @@
         color: $warning-yellow;
         font-size: $text-lg;
         white-space: nowrap;
-        margin-left: $spacing-md;
+        margin-left: 1rem;
       }
     }
   }
@@ -1067,11 +1067,11 @@
 
 .table-quick-info {
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   font-size: $text-sm;
   opacity: 0.9;
-  margin-bottom: $spacing-md;
-  padding: $spacing-md;
+  margin-bottom: 1rem;
+  padding: 1rem;
   background: $bg-secondary;
   border-radius: $radius-md;
 }
@@ -1088,7 +1088,7 @@
 .orders-header {
   @include flex-between;
   align-items: center;
-  margin-bottom: $spacing-md;
+  margin-bottom: 1rem;
   padding-bottom: $spacing-sm;
   border-bottom: 2px solid $border-color;
 }
@@ -1104,7 +1104,7 @@
 
 .orders-summary {
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   font-size: $text-sm;
 }
 
@@ -1128,7 +1128,7 @@
 .order-item {
   @include flex-between;
   align-items: flex-start;
-  padding: $spacing-md;
+  padding: 1rem;
   background: $bg-secondary;
   border-radius: $radius-lg;
   margin-bottom: $spacing-sm;
@@ -1164,18 +1164,18 @@
   color: $warning-yellow;
   font-size: $text-lg;
   white-space: nowrap;
-  margin-left: $spacing-md;
+  margin-left: 1rem;
 }
 
 .empty-state {
   text-align: center;
-  padding: $spacing-3xl $spacing-md;
+  padding: $spacing-3xl 1rem;
   color: $text-muted;
 }
 
 .empty-state-icon {
   font-size: $text-5xl;
-  margin-bottom: $spacing-md;
+  margin-bottom: 1rem;
 }
 
 .empty-state-text {
@@ -1190,16 +1190,16 @@
 
 .modal-footer {
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   justify-content: flex-end;
-  padding-top: $spacing-md;
+  padding-top: 1rem;
   border-top: 1px solid $border-color;
-  margin-top: $spacing-md;
+  margin-top: 1rem;
 }
 
 .diagram-controls {
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   margin-bottom: $spacing-lg;
   align-items: center;
   flex-wrap: wrap;
@@ -1212,7 +1212,7 @@
 
 .diagram-search-input {
   width: 100%;
-  padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
+  padding: $spacing-sm 1rem $spacing-sm 2.5rem;
   border: 2px solid $border-color;
   border-radius: $radius-lg;
   font-size: $text-sm;
@@ -1252,8 +1252,8 @@
   background: $bg-secondary;
   border: 2px solid $border-color;
   border-radius: $radius-lg;
-  padding: $spacing-md;
-  margin-bottom: $spacing-md;
+  padding: 1rem;
+  margin-bottom: 1rem;
   overflow: auto;
 }
 
@@ -1266,7 +1266,7 @@
 .diagram-legend {
   @include flex-center;
   gap: $spacing-xl;
-  padding: $spacing-md;
+  padding: 1rem;
   background: $bg-secondary;
   border-radius: $radius-md;
   flex-wrap: wrap;
@@ -1343,24 +1343,24 @@
 }
 
 .order-header {
-  margin-bottom: $spacing-md;
+  margin-bottom: 1rem;
 }
 
 .menu-search {
   position: relative;
-  margin-bottom: $spacing-md;
+  margin-bottom: 1rem;
 }
 
 .menu-search-input {
   width: 100%;
-  padding: $spacing-sm $spacing-md $spacing-sm 2.5rem;
+  padding: $spacing-sm 1rem $spacing-sm 2.5rem;
   border: 2px solid $border-color;
   border-radius: $radius-lg;
   font-size: $text-sm;
 }
 
 .delivery-partners {
-  margin-bottom: $spacing-md;
+  margin-bottom: 1rem;
 }
 
 .partners-grid {
@@ -1373,11 +1373,11 @@
   background: $bg-secondary;
   border: 2px solid $border-color;
   border-radius: $radius-lg;
-  padding: $spacing-md;
+  padding: 1rem;
   cursor: pointer;
   transition: $transition-all;
   @include flex-center;
-  gap: $spacing-md;
+  gap: 1rem;
 }
 
 .partner-card:hover {
@@ -1418,7 +1418,7 @@
 
 .menu-sections {
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   flex-wrap: wrap;
 }
 
@@ -1436,7 +1436,7 @@
   background: $bg-secondary;
   border: 1px solid $border-color;
   border-radius: $radius-lg;
-  padding: $spacing-md;
+  padding: 1rem;
   @include flex-between;
   align-items: center;
 }
@@ -1469,7 +1469,7 @@
 }
 
 .menu-item-actions {
-  margin-left: $spacing-md;
+  margin-left: 1rem;
 }
 
 .quantity-controls {
@@ -1488,7 +1488,7 @@
   background: $bg-secondary;
   border-radius: $radius-lg;
   padding: $spacing-lg;
-  margin-top: $spacing-md;
+  margin-top: 1rem;
 }
 
 .summary-items {
@@ -1539,7 +1539,7 @@
   background: $bg-secondary;
   border: 2px solid $border-color;
   border-radius: $radius-lg;
-  padding: $spacing-md;
+  padding: 1rem;
   cursor: pointer;
   transition: $transition-all;
   @include flex-between;
@@ -1570,7 +1570,7 @@
   font-weight: $font-bold;
   color: $warning-yellow;
   font-size: $text-lg;
-  margin-left: $spacing-md;
+  margin-left: 1rem;
 }
 
 .payment-section {
@@ -1590,7 +1590,7 @@
   background: $bg-secondary;
   border: 1px solid $border-color;
   border-radius: $radius-lg;
-  padding: $spacing-md;
+  padding: 1rem;
 }
 
 .bill-item {
@@ -1623,7 +1623,7 @@
 .bill-item-price {
   font-weight: $font-bold;
   color: $warning-yellow;
-  margin-left: $spacing-md;
+  margin-left: 1rem;
 }
 
 .payment-methods {
@@ -1635,11 +1635,11 @@
   background: $bg-secondary;
   border: 2px solid $border-color;
   border-radius: $radius-lg;
-  padding: $spacing-md;
+  padding: 1rem;
   cursor: pointer;
   transition: $transition-all;
   @include flex-center;
-  gap: $spacing-md;
+  gap: 1rem;
   position: relative;
 }
 
@@ -1698,7 +1698,7 @@
   background: $bg-secondary;
   border: 1px solid $border-color;
   border-radius: $radius-lg;
-  padding: $spacing-md;
+  padding: 1rem;
 }
 
 .change-display {
@@ -1706,7 +1706,7 @@
   border: 1px solid $success-200;
   border-radius: $radius-md;
   padding: $spacing-sm;
-  margin-top: $spacing-md;
+  margin-top: 1rem;
   @include flex-between;
   align-items: center;
 }
@@ -1733,8 +1733,8 @@
   background: $bg-secondary;
   border: 2px solid $border-color;
   border-radius: $radius-lg;
-  padding: $spacing-md;
-  margin-top: $spacing-md;
+  padding: 1rem;
+  margin-top: 1rem;
 }
 
 .payment-total-row {

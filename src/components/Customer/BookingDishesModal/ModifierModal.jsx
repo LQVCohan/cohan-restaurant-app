@@ -1,0 +1,250 @@
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
+import Modal, { ModalFooter } from "../../common/Modal";
+import { formatCurrency } from "../../../utils/formatters";
+import "./ModifierModal.scss";
+
+/** ──────────────────────────────────────────────────────────────
+ * GraphQL: lấy tất cả ModifierGroups của 1 nhà hàng
+ * Ta sẽ lọc theo item.modifierGroupIds ở FE (vì schema chưa có query by IDs)
+ * ──────────────────────────────────────────────────────────────
+ */
+const GET_MODIFIER_GROUPS = gql`
+  query ModifierGroups($restaurantId: ID!, $search: String) {
+    modifierGroups(restaurantId: $restaurantId, search: $search) {
+      id
+      name
+      selectionType # "single" | "multiple"
+      required
+      appliesTo
+      isActive
+      options {
+        id
+        name
+        priceDelta
+        isDefault
+      }
+    }
+  }
+`;
+
+const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
+  // item: { id, name, price (VND), modifierGroupIds: [ID!] }
+  const [selected, setSelected] = useState({}); // { [groupId]: [optionId, ...] }
+  const [totalPrice, setTotalPrice] = useState(0);
+
+  // Query tất cả groups của nhà hàng => lọc theo item.modifierGroupIds
+  const { data, loading, error } = useQuery(GET_MODIFIER_GROUPS, {
+    variables: { restaurantId, search: null },
+    skip: !isOpen || !restaurantId,
+    fetchPolicy: "cache-first",
+  });
+
+  const groupsForItem = useMemo(() => {
+    if (!data?.modifierGroups || !item?.modifierGroupIds?.length) return [];
+    const setIds = new Set(item.modifierGroupIds.map(String));
+    return data.modifierGroups.filter((g) => setIds.has(String(g.id)));
+  }, [data, item]);
+
+  /** Khởi tạo chọn mặc định mỗi khi mở modal / đổi item / dữ liệu groups sẵn sàng */
+  useEffect(() => {
+    if (!isOpen || !item || groupsForItem.length === 0) return;
+
+    const init = {};
+    groupsForItem.forEach((g) => {
+      const defaults = (g.options || [])
+        .filter((o) => o.isDefault)
+        .map((o) => o.id);
+      if (g.selectionType === "single") {
+        if (defaults.length > 0) init[g.id] = [defaults[0]];
+        else init[g.id] = []; // nếu required=true mà không có default thì để trống
+      } else {
+        init[g.id] = defaults; // multiple: có thể nhiều default
+      }
+    });
+    setSelected(init);
+  }, [isOpen, item, groupsForItem]);
+
+  /** Tính tổng = base (VND) + sum(priceDelta đã chọn) */
+  useEffect(() => {
+    if (!item) return;
+
+    let sum = Number(item.price || 0);
+    groupsForItem.forEach((g) => {
+      const chosen = selected[g.id] || [];
+      chosen.forEach((opId) => {
+        const op = g.options?.find((x) => String(x.id) === String(opId));
+        if (op) sum += Number(op.priceDelta || 0);
+      });
+    });
+
+    setTotalPrice(sum);
+  }, [item, selected, groupsForItem]);
+
+  /** Chọn / bỏ chọn 1 option trong group */
+  const toggleOption = useCallback((group, optionId) => {
+    setSelected((prev) => {
+      const next = { ...prev };
+      const arr = Array.isArray(next[group.id]) ? [...next[group.id]] : [];
+
+      if (group.selectionType === "single") {
+        // single => chỉ 1 lựa chọn
+        next[group.id] = [optionId];
+      } else {
+        // multiple => bật/tắt
+        const idx = arr.findIndex((id) => String(id) === String(optionId));
+        if (idx >= 0) {
+          arr.splice(idx, 1);
+        } else {
+          arr.push(optionId);
+        }
+        next[group.id] = arr;
+      }
+      return next;
+    });
+  }, []);
+
+  /** Áp dụng: trả kết quả lên cha */
+  const handleApply = () => {
+    if (!item) return;
+    const newModifiers = [];
+    let newModifiersPrice = 0;
+
+    groupsForItem.forEach((g) => {
+      const chosen = selected[g.id] || [];
+      chosen.forEach((opId) => {
+        const op = g.options?.find((x) => String(x.id) === String(opId));
+        if (!op) return;
+        newModifiers.push({
+          groupName: g.name,
+          optionName: op.name,
+          price: Number(op.priceDelta || 0), // đồng bộ format bạn đang dùng
+        });
+        newModifiersPrice += Number(op.priceDelta || 0);
+      });
+    });
+
+    onApply?.(item.id, newModifiers, newModifiersPrice);
+    onClose?.();
+  };
+
+  if (!isOpen || !item) return null;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="md"
+      className="modifier-modal"
+    >
+      <div className="modifier-modal__header">
+        <h3 className="modifier-modal__title">Tùy chọn cho {item.name}</h3>
+        <p className="modifier-modal__subtitle">
+          Tùy chỉnh món ăn theo ý thích của bạn
+        </p>
+      </div>
+
+      <div className="modifier-modal__content">
+        {loading ? (
+          <div className="modifier-loading">Đang tải tuỳ chọn...</div>
+        ) : error ? (
+          <div className="modifier-error">Lỗi: {error.message}</div>
+        ) : groupsForItem.length === 0 ? (
+          <div className="modifier-empty">Món này chưa có tuỳ chọn.</div>
+        ) : (
+          groupsForItem.map((group) => {
+            const selectedIds = selected[group.id] || [];
+            return (
+              <div key={group.id} className="modifier-group">
+                <div className="modifier-group__header">
+                  <h4 className="modifier-group__title">
+                    {group.name}
+                    <span
+                      className={`modifier-group__badge ${
+                        group.required ? "modifier-group__required" : ""
+                      }`}
+                    >
+                      {group.required ? "Bắt buộc" : "Tùy chọn"}
+                    </span>
+                  </h4>
+                  {group.selectionType === "single" ? (
+                    <div className="modifier-group__hint">Chọn 1</div>
+                  ) : (
+                    <div className="modifier-group__hint">Chọn nhiều</div>
+                  )}
+                </div>
+
+                <div className="modifier-options">
+                  {group.options?.map((op) => {
+                    const isSelected = selectedIds.some(
+                      (id) => String(id) === String(op.id)
+                    );
+                    return (
+                      <div
+                        key={op.id}
+                        className={`modifier-option ${
+                          isSelected ? "selected" : ""
+                        }`}
+                        onClick={() => toggleOption(group, op.id)}
+                      >
+                        <div
+                          className={`modifier-option__${
+                            group.selectionType === "single"
+                              ? "radio"
+                              : "checkbox"
+                          }`}
+                        />
+                        <div className="modifier-option__info">
+                          <h5 className="modifier-option__name">{op.name}</h5>
+                          {op.isDefault && (
+                            <span className="modifier-option__default">
+                              Mặc định
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className={`modifier-option__price ${
+                            Number(op.priceDelta) === 0 ? "free" : ""
+                          }`}
+                        >
+                          {Number(op.priceDelta) === 0
+                            ? "Miễn phí"
+                            : (op.priceDelta > 0 ? "+" : "") +
+                              formatCurrency(Number(op.priceDelta))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <ModalFooter className="modifier-modal__footer">
+        <div className="modifier-total">
+          Tổng:{" "}
+          <span className="modifier-total__price">
+            {formatCurrency(totalPrice)}
+          </span>
+        </div>
+        <div className="modifier-actions">
+          <button className="btn btn--secondary" onClick={onClose}>
+            Hủy
+          </button>
+          <button
+            className="btn btn--success"
+            onClick={handleApply}
+            disabled={loading || !!error}
+          >
+            Áp dụng
+          </button>
+        </div>
+      </ModalFooter>
+    </Modal>
+  );
+};
+
+export default ModifierModal;

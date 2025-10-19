@@ -7,9 +7,9 @@
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: $spacing-md;
-    margin-bottom: $spacing-md;
-
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 10px;
     @include mobile {
       flex-direction: column;
       align-items: stretch;
@@ -17,7 +17,7 @@
 
     &-left {
       display: flex;
-      gap: $spacing-md;
+      gap: 1rem;
       flex-wrap: wrap;
 
       @include mobile {
@@ -38,7 +38,7 @@
 
   .search-filter {
     display: flex;
-    gap: $spacing-md;
+    gap: 1rem;
     flex-wrap: wrap;
     align-items: center;
 
@@ -66,7 +66,7 @@
   .ingredients-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: $spacing-md;
+    gap: 1rem;
 
     @include mobile {
       grid-template-columns: 1fr;
@@ -76,12 +76,12 @@
 
 .ingredient-card {
   .ingredient-header {
-    padding: $spacing-md;
+    padding: 1rem;
     background: linear-gradient(45deg, #f1f5f9, #e2e8f0);
     display: flex;
     align-items: center;
-    gap: $spacing-md;
-    margin: (-$spacing-lg) (-$spacing-lg) $spacing-md (-$spacing-lg);
+    gap: 1rem;
+    margin: (-$spacing-lg) (-$spacing-lg) 1rem (-$spacing-lg);
   }
 
   .ingredient-icon {
@@ -111,8 +111,8 @@
   .ingredient-stats {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: $spacing-md;
-    margin-bottom: $spacing-md;
+    gap: 1rem;
+    margin-bottom: 1rem;
   }
 
   .stat-item {
@@ -137,21 +137,21 @@
   .ingredient-actions {
     display: flex;
     gap: $spacing-sm;
-    margin-top: $spacing-md;
+    margin-top: 1rem;
     flex-wrap: wrap;
   }
 
   .status-badge {
     &.status-in-stock {
-      @include status-badge(#dcfce7, #dcfce7-text);
+      @include status-badge(#dcfce7, #0c4a6e);
     }
 
     &.status-low-stock {
-      @include status-badge(#fef3c7, #fef3c7-text);
+      @include status-badge(#fef3c7, #0c4a6e);
     }
 
     &.status-out-of-stock {
-      @include status-badge(#fee2e2, #fee2e2-text);
+      @include status-badge(#fee2e2, #0c4a6e);
     }
   }
 }

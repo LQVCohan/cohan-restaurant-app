@@ -27,7 +27,7 @@
   font-weight: $font-weight-extrabold;
   @include gradient-text;
   text-align: center;
-  margin-bottom: $spacing-md;
+  margin-bottom: 1rem;
   position: relative;
   z-index: 2;
 
@@ -51,7 +51,7 @@
 .quickFilters {
   display: flex;
   flex-wrap: wrap;
-  gap: $spacing-md;
+  gap: 1rem;
   justify-content: center;
   margin-bottom: $spacing-2xl;
   position: relative;
@@ -154,7 +154,7 @@
 
 .inputIcon {
   position: absolute;
-  left: $spacing-md;
+  left: 1rem;
   top: 50%;
   transform: translateY(-50%);
   font-size: $text-lg;
@@ -172,7 +172,7 @@
 .actions {
   display: flex;
   flex-direction: column;
-  gap: $spacing-md;
+  gap: 1rem;
   align-items: center;
 
   @include respond-to("tablet") {
@@ -204,7 +204,7 @@
   background: rgba(239, 68, 68, 0.1);
   color: $accent-color;
   border: 2px solid rgba(239, 68, 68, 0.3);
-  padding: $spacing-md $spacing-lg;
+  padding: 1rem $spacing-lg;
   font-weight: 500;
   transition: $transition-smooth;
 
@@ -265,7 +265,7 @@
 .resultsControls {
   display: flex;
   flex-direction: column;
-  gap: $spacing-md;
+  gap: 1rem;
   align-items: flex-start;
 
   @include respond-to("tablet") {
@@ -288,7 +288,7 @@
 
 .sortSelect {
   @include input-base;
-  padding: $spacing-sm $spacing-md;
+  padding: $spacing-sm 1rem;
   font-size: $text-sm;
   min-width: 150px;
   cursor: pointer;
@@ -359,7 +359,7 @@
 
   &.list {
     grid-template-columns: 1fr;
-    gap: $spacing-md;
+    gap: 1rem;
 
     .foodCard {
       display: flex;
@@ -374,7 +374,7 @@
 
       .foodContent {
         flex: 1;
-        padding: $spacing-md;
+        padding: 1rem;
       }
     }
   }
@@ -407,7 +407,7 @@
 
 .resetBtn {
   @include button-accent;
-  padding: $spacing-md $spacing-lg;
+  padding: 1rem $spacing-lg;
   font-weight: 500;
 }
 
@@ -518,7 +518,7 @@
 }
 
 .foodMeta {
-  margin-bottom: $spacing-md;
+  margin-bottom: 1rem;
 }
 
 .foodArea {
@@ -535,7 +535,7 @@
 
 .foodFooter {
   @include flex-between;
-  gap: $spacing-md;
+  gap: 1rem;
 }
 
 .foodPrice {
@@ -550,7 +550,7 @@
 
 .addBtn {
   @include button-primary;
-  padding: $spacing-sm $spacing-md;
+  padding: $spacing-sm 1rem;
   font-size: $text-sm;
   font-weight: 500;
   white-space: nowrap;

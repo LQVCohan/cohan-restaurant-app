@@ -93,6 +93,7 @@ type Table {
   notes: String
   status: TableStatus!
   floorLevel: Int
+  deposit: Int
   tags: [String!]
   isJoinable: Boolean
   joinGroupId: String
@@ -107,6 +108,7 @@ input CreateTableInput {
   type: TableType = standard
   capacity: Int!
   position: PositionInput!
+  deposit: Int
   photos: [String!]
   vrUrl: String
   notes: String
@@ -123,6 +125,7 @@ input UpdateTableInput {
   capacity: Int
   position: PositionInput
   photos: [String!]
+  deposit: Int
   vrUrl: String
   notes: String
   status: TableStatus
@@ -152,7 +155,7 @@ input SwapTableCodesInput {
 input BulkUpsertTablesInput {
   restaurantId: ID!
   floorId: ID!
-  items: [BulkTableItemInput!]! # code là unique trong floor → upsert theo code
+  items: [BulkTableItemInput!]!
 }
 
 input BulkTableItemInput {
@@ -161,6 +164,7 @@ input BulkTableItemInput {
   capacity: Int!
   position: PositionInput!
   photos: [String!]
+  deposit: Int
   vrUrl: String
   notes: String
   status: TableStatus

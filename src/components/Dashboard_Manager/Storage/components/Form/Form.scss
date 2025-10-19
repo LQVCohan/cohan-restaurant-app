@@ -1,7 +1,7 @@
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
 .form-group {
-  margin-bottom: $spacing-md;
+  margin-bottom: 1rem;
 }
 
 .form-label {
@@ -29,7 +29,7 @@
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: $spacing-md;
+  gap: 1rem;
 
   @include mobile {
     grid-template-columns: 1fr;
@@ -39,7 +39,7 @@
 .form-row-3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: $spacing-md;
+  gap: 1rem;
 
   @include mobile {
     grid-template-columns: 1fr;
@@ -48,7 +48,7 @@
 
 .form-actions {
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   justify-content: flex-end;
   margin-top: $spacing-xl;
   padding-top: $spacing-lg;

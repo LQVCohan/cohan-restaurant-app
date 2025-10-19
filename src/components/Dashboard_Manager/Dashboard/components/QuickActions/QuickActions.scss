@@ -5,7 +5,7 @@
   margin-bottom: $spacing-lg;
 
   .quick-actions-header {
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
 
     .quick-actions-title {
       font-size: 1.125rem;
@@ -16,7 +16,7 @@
 
   .quick-actions-grid {
     @include responsive-grid(200px);
-    gap: $spacing-md;
+    gap: 1rem;
 
     .btn {
       &.btn-primary {

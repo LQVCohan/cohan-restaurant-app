@@ -59,7 +59,7 @@
     }
 
     @include mobile {
-      gap: $spacing-md;
+      gap: 1rem;
 
       .step-item {
         .step-number {
@@ -84,7 +84,7 @@
         color: $text-primary;
         margin-bottom: $spacing-lg;
         text-align: center;
-        padding-bottom: $spacing-md;
+        padding-bottom: 1rem;
         border-bottom: 2px solid $border-light;
       }
 
@@ -92,7 +92,7 @@
         font-size: 1rem;
         font-weight: 600;
         color: $text-primary;
-        margin-bottom: $spacing-md;
+        margin-bottom: 1rem;
         padding-bottom: $spacing-sm;
         border-bottom: 1px solid $border-light;
       }
@@ -105,7 +105,7 @@
 
       @include mobile {
         grid-template-columns: 1fr;
-        gap: $spacing-md;
+        gap: 1rem;
       }
     }
 
@@ -151,10 +151,10 @@
     .department-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: $spacing-md;
+      gap: 1rem;
 
       .department-card {
-        padding: $spacing-md;
+        padding: 1rem;
         border: 2px solid $border-light;
         border-radius: $radius-md;
         cursor: pointer;
@@ -200,7 +200,7 @@
         display: flex;
         align-items: center;
         gap: $spacing-sm;
-        padding: $spacing-md;
+        padding: 1rem;
         border: 2px solid $border-light;
         border-radius: $radius-md;
         cursor: pointer;
@@ -246,7 +246,7 @@
 
       .salary-currency {
         position: absolute;
-        right: $spacing-md;
+        right: 1rem;
         font-weight: 600;
         color: $text-secondary;
         background: $bg-tertiary;
@@ -276,7 +276,7 @@
     .submit-error {
       background: $error-100;
       color: $error-500;
-      padding: $spacing-md;
+      padding: 1rem;
       border-radius: $radius-md;
       border: 2px solid $error-500;
       font-weight: 500;
@@ -290,12 +290,12 @@
     .footer-left,
     .footer-right {
       display: flex;
-      gap: $spacing-md;
+      gap: 1rem;
     }
 
     @include mobile {
       flex-direction: column;
-      gap: $spacing-md;
+      gap: 1rem;
 
       .footer-left,
       .footer-right {

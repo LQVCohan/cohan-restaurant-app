@@ -92,6 +92,8 @@ const userSchema = BaseSchemaModel({
   emailVerified: { type: Boolean, default: false },
   emailVerifyToken: { type: String, default: null },
   emailVerifyTokenExp: { type: Date, default: null },
+  isGuest: { type: Boolean, default: false, index: true },
+  guestExpiresAt: { type: Date, index: true }, // TTL index bên dưới
 });
 
 userSchema.pre("validate", function (next) {
@@ -131,6 +133,9 @@ userSchema.index({
   "address.city": 1,
   "address.district": 1,
 });
-
+userSchema.index(
+  { guestExpiresAt: 1 },
+  { expireAfterSeconds: 0, partialFilterExpression: { isGuest: true } }
+);
 export const User = mongoose.models.User || mongoose.model("User", userSchema);
 export default User;

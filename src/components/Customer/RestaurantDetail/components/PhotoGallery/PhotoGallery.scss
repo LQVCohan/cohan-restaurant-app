@@ -12,7 +12,7 @@
 
     .empty-icon {
       font-size: 4rem;
-      margin-bottom: $spacing-md;
+      margin-bottom: 1rem;
     }
 
     h3 {
@@ -54,7 +54,7 @@
 
   @include r-tablet {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: $spacing-md;
+    gap: 1rem;
   }
 
   @include r-mobile {
@@ -139,7 +139,7 @@
   right: 0;
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
   color: $white;
-  padding: $spacing-lg $spacing-md $spacing-md;
+  padding: $spacing-lg 1rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
 }
@@ -192,8 +192,8 @@
   }
 
   @include r-mobile {
-    top: $spacing-md;
-    right: $spacing-md;
+    top: 1rem;
+    right: 1rem;
     width: 40px;
     height: 40px;
     font-size: 1.125rem;
@@ -236,11 +236,11 @@
     font-size: 1.25rem;
 
     &--prev {
-      left: $spacing-md;
+      left: 1rem;
     }
 
     &--next {
-      right: $spacing-md;
+      right: 1rem;
     }
   }
 }
@@ -283,7 +283,7 @@
 
 .lightbox-actions {
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   justify-content: center;
 
   @include r-mobile {
@@ -322,7 +322,7 @@
   }
 
   @include r-mobile {
-    padding: $spacing-md 0;
+    padding: 1rem 0;
   }
 }
 
@@ -368,7 +368,7 @@
   }
 
   .lightbox-overlay {
-    padding: $spacing-md;
+    padding: 1rem;
   }
 
   .lightbox-image {

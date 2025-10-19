@@ -12,12 +12,14 @@ import PriceEditModal from "./components/PriceEditModal/PriceEditModal";
 import PromotionModal from "./components/PromotionModal/PromotionModal";
 
 import { AuthContext } from "../../../context/AuthContext";
-import { gql, useQuery } from "@apollo/client";
+import { gql } from "@apollo/client";
+import { useQuery } from "@apollo/client/react";
 
 /* ===========================
-   GraphQL
+   GraphQL (cùng file cho dễ theo dõi)
    =========================== */
 
+// Lấy danh sách nhà hàng của manager hiện tại (Connection)
 const GET_MANAGER_RESTAURANTS = gql`
   query ManagerRestaurants($managerId: ID!, $limit: Int = 50, $cursor: ID) {
     restaurantsByManager(
@@ -44,6 +46,7 @@ const GET_MANAGER_RESTAURANTS = gql`
   }
 `;
 
+// MenuItem Connection + đủ dữ liệu để render chế biến & công thức
 const MENU_ITEMS_CONNECTION = gql`
   query MenuItemsConnection(
     $limit: Int = 20
@@ -83,53 +86,84 @@ const MENU_ITEMS_CONNECTION = gql`
   }
 `;
 
+const BULK_UPDATE_MENUITEM_PRICES = gql`
+  mutation BulkUpdateMenuItemPrices($input: BulkUpdateMenuItemPricesInput!) {
+    bulkUpdateMenuItemPrices(input: $input) {
+      updatedCount
+      items {
+        id
+        basePrice
+        preparationMethods {
+          name
+          price
+          isDefault
+        }
+      }
+    }
+  }
+`;
+
 /* ===========================
    Helpers
    =========================== */
 
+// cố gắng parse JSON từ trường recipe để lấy ingredients (nếu có)
+function parseIngredientsFromRecipe(recipe) {
+  if (!recipe || typeof recipe !== "string") return [];
+  try {
+    const obj = JSON.parse(recipe);
+    if (Array.isArray(obj?.ingredients)) {
+      // chuẩn hoá { name, amount, unit? }
+      return obj.ingredients
+        .filter((x) => x && x.name)
+        .map((x) => ({
+          name: String(x.name),
+          amount: x.amount ?? "",
+          unit: x.unit ?? "",
+        }));
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+// chuẩn hoá 1 node MenuItem từ BE thành shape FE đang dùng
 function normalizeItem(node) {
-  // giữ nguyên preparationMethods từ BE
-  const pm = Array.isArray(node.preparationMethods)
+  // methods từ preparationMethods
+  const methods = Array.isArray(node.preparationMethods)
     ? node.preparationMethods.map((m) => ({
         name: m.name,
         price: typeof m.price === "number" ? m.price : 0,
+        // cookTime: không có ở từng method -> fallback avgPrepTimeMin
+        cookTime:
+          typeof node.avgPrepTimeMin === "number" ? node.avgPrepTimeMin : "",
+        unit: "portion",
         isDefault: !!m.isDefault,
       }))
     : [];
 
-  // đồng thời map thêm "methods" để tương thích UI/Modal cũ
-  const methods = pm.map((m) => ({
-    name: m.name,
-    price: m.price,
-    cookTime:
-      typeof node.avgPrepTimeMin === "number" ? node.avgPrepTimeMin : "",
-    unit: "portion",
-    isDefault: m.isDefault,
-  }));
+  // công thức/ingredients
+  const ingredients = parseIngredientsFromRecipe(node.recipe);
 
   return {
     ...node,
+    // bổ sung field mà UI cũ mong đợi
     image: node.thumbImage || "🍽️",
-    preparationMethods: pm,
-    methods, // để Modal/List dùng
+    methods,
+    ingredients,
   };
 }
 
-function averageItemPrice(item) {
-  if (typeof item.basePrice === "number" && item.basePrice > 0)
-    return item.basePrice;
-  const pm = Array.isArray(item.preparationMethods)
-    ? item.preparationMethods
-    : [];
-  if (!pm.length) return 0;
-  return (
-    pm.reduce((s, p) => s + (typeof p.price === "number" ? p.price : 0), 0) /
-    pm.length
-  );
+function formatVnd(n) {
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(Number(n || 0));
 }
 
 /* ===========================
-   Component
+   Component chính
    =========================== */
 
 const MenuManagement = () => {
@@ -139,6 +173,7 @@ const MenuManagement = () => {
   const [currentRestaurant, setCurrentRestaurant] = useState("");
   const [currentTimeSlot, setCurrentTimeSlot] = useState("breakfast");
 
+  // Toolbar filters
   const [currentView, setCurrentView] = useState("grid");
   const [searchTerm, setSearchTerm] = useState("");
   const [currentCategory, setCurrentCategory] = useState("");
@@ -154,7 +189,7 @@ const MenuManagement = () => {
 
   const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
 
-  // 1) Restaurants of manager
+  // 1) Query danh sách nhà hàng của manager
   const {
     data: mgrData,
     loading: mgrLoading,
@@ -164,16 +199,18 @@ const MenuManagement = () => {
     skip: !managerId,
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const managerRestaurants =
     mgrData?.restaurantsByManager?.edges?.map((e) => e.node) || [];
 
+  // auto-chọn nhà hàng đầu tiên
   useEffect(() => {
     if (!currentRestaurant && managerRestaurants.length > 0) {
       setCurrentRestaurant(managerRestaurants[0].id);
     }
   }, [managerRestaurants, currentRestaurant]);
 
-  // 2) Filters for menu
+  // 2) Build filter cho query menu items
   const filterVars = useMemo(
     () => ({
       restaurantId: currentRestaurant || null,
@@ -196,7 +233,7 @@ const MenuManagement = () => {
     ]
   );
 
-  // 3) Menu items connection
+  // 3) Query menu items theo cursor
   const {
     data: menuData,
     loading: menuLoading,
@@ -204,11 +241,16 @@ const MenuManagement = () => {
     fetchMore,
     refetch,
   } = useQuery(MENU_ITEMS_CONNECTION, {
-    skip: !currentRestaurant,
-    variables: { limit: 20, cursor: null, filter: filterVars },
+    skip: !currentRestaurant, // chưa chọn nhà hàng thì chưa query
+    variables: {
+      limit: 20,
+      cursor: null,
+      filter: filterVars,
+    },
     notifyOnNetworkStatusChange: true,
   });
 
+  // refetch khi đổi filter/timeslot/restaurant
   useEffect(() => {
     if (!currentRestaurant) return;
     refetch({ limit: 20, cursor: null, filter: filterVars });
@@ -223,8 +265,10 @@ const MenuManagement = () => {
     filterVars,
   ]);
 
+  // 4) Chuẩn hoá dữ liệu items
   const edges = menuData?.menuItemsConnection?.edges || [];
-  const items = edges.map((e) => normalizeItem(e.node));
+  const rawItems = edges.map((e) => e.node);
+  const items = rawItems.map(normalizeItem);
   const pageInfo = menuData?.menuItemsConnection?.pageInfo || {
     endCursor: null,
     hasNextPage: false,
@@ -254,25 +298,37 @@ const MenuManagement = () => {
     });
   };
 
+  // 5) Stats từ items đã tải
   const stats = useMemo(() => {
     const total = items.length;
     const available = items.filter((i) => i.status === "available").length;
     const avg =
       total === 0
         ? 0
-        : Math.round(
-            items.reduce((s, it) => s + averageItemPrice(it), 0) / total
-          );
+        : items.reduce((sum, it) => {
+            if (typeof it.basePrice === "number" && it.basePrice > 0)
+              return sum + it.basePrice;
+            const pm = Array.isArray(it.methods) ? it.methods : [];
+            if (pm.length === 0) return sum;
+            const avgPm =
+              pm.reduce(
+                (s, p) => s + (typeof p.price === "number" ? p.price : 0),
+                0
+              ) / pm.length;
+            return sum + avgPm;
+          }, 0) / total;
+
     const totalCategories = new Set(items.map((i) => i.categoryId)).size;
 
     return {
       totalDishes: total,
       availableDishes: available,
       totalCategories,
-      avgPrice: avg,
+      avgPrice: Math.round(avg || 0),
     };
   }, [items]);
 
+  // 6) Modal helpers
   const openModal = (key, editId = null) =>
     setModals((p) => ({ ...p, [key]: { isOpen: true, editId } }));
   const closeModal = (key) =>
@@ -288,7 +344,7 @@ const MenuManagement = () => {
 
   return (
     <div className="menu-management">
-      {/* Header */}
+      {/* Header: chọn nhà hàng & timeslot */}
       <div className="menu-management__header">
         <h1 className="menu-management__title">🍽️ Quản lý Menu</h1>
         <div className="menu-management__controls">
@@ -333,6 +389,7 @@ const MenuManagement = () => {
           >
             ➕ Thêm món
           </button>
+
           <button
             className="btn btn--secondary"
             onClick={() => openModal("category")}
@@ -378,7 +435,7 @@ const MenuManagement = () => {
             </div>
           )}
 
-          {menuLoading && items.length === 0 && (
+          {menuLoading && edges.length === 0 && (
             <div className="loading-state">
               <div className="spinner" />
               <p>Đang tải món ăn...</p>
@@ -398,26 +455,32 @@ const MenuManagement = () => {
           {items.length > 0 && (
             <>
               <div className={`menu-grid menu-grid--${currentView}`}>
-                {items.map((item) =>
-                  currentView === "grid" ? (
-                    <MenuItemCard
-                      key={item.id}
-                      item={item}
-                      onEdit={() => openModal("menuItem", item.id)}
-                      onDelete={() => {}}
-                      viewMode="grid"
-                    />
-                  ) : (
-                    // Nếu bạn có ListRow, thay lại ở đây
-                    <MenuItemCard
-                      key={item.id}
-                      item={item}
-                      onEdit={() => openModal("menuItem", item.id)}
-                      onDelete={() => {}}
-                      viewMode="list"
-                    />
-                  )
-                )}
+                {items.map((item) => {
+                  // khối mở rộng hiển thị chế biến + công thức (không sửa MenuItemCard)
+                  // chỉ để tạo key khác; state cục bộ nằm ngoài scope => dùng details/summary HTML
+                  return (
+                    <div key={item.id} className="menu-card-wrapper">
+                      {currentView === "grid" ? (
+                        <MenuItemCard
+                          item={item}
+                          onEdit={() => openModal("menuItem", item.id)}
+                          onDelete={() => {}}
+                          viewMode="grid"
+                        />
+                      ) : (
+                        // <MenuItemListRow ... />
+                        <MenuItemCard
+                          item={item}
+                          onEdit={() => openModal("menuItem", item.id)}
+                          onDelete={() => {}}
+                          viewMode="list"
+                        />
+                      )}
+
+                      {/* Phần mở rộng: Cách chế biến & Nguyên liệu */}
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="cursor-pagination">
@@ -430,7 +493,9 @@ const MenuManagement = () => {
                     {menuLoading ? "Đang tải..." : "Tải thêm"}
                   </button>
                 ) : (
-                  <div className="cursor-pagination__end">Đã tải hết</div>
+                  <div className="cursor-pagination__end">
+                    <label>Đã tải hết</label>
+                  </div>
                 )}
               </div>
             </>
@@ -447,14 +512,16 @@ const MenuManagement = () => {
           refetch({ limit: 20, cursor: null, filter: filterVars });
         }}
         onClose={() => closeModal("menuItem")}
+        // có thể truyền categories nếu bạn đã có query riêng
         categories={[]}
-        // truyền danh sách items hiện có để Modal lấy item đang sửa và đổ preparationMethods vào methods
         menuItems={items}
       />
 
       <CategoryModal
         isOpen={modals.category.isOpen}
-        onSave={() => closeModal("category")}
+        onSave={() => {
+          closeModal("category");
+        }}
         onClose={() => closeModal("category")}
       />
 
@@ -470,7 +537,9 @@ const MenuManagement = () => {
 
       <PromotionModal
         isOpen={modals.promotion.isOpen}
-        onSave={() => closeModal("promotion")}
+        onSave={() => {
+          closeModal("promotion");
+        }}
         onClose={() => closeModal("promotion")}
       />
     </div>

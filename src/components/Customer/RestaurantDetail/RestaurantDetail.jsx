@@ -8,14 +8,14 @@ import MenuSection from "./components/MenuSection/MenuSection";
 import ReviewsSection from "./components/ReviewsSection/ReviewsSection";
 import PhotoGallery from "./components/PhotoGallery/PhotoGallery";
 import SimilarRestaurants from "./components/SimilarRestaurants/SimilarRestaurants";
-import ReservationForm from "./components/ReservationForm/ReservationForm";
-
+import BookingModal from "../BookingTableModal/BookingModal";
 import "./RestaurantDetail.scss";
 
 const RestaurantDetail = () => {
   const { id } = useParams();
   const { restaurant, loading, error } = useRestaurant(id);
-  const [showReservation, setShowReservation] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  // const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   if (loading) {
@@ -53,21 +53,22 @@ const RestaurantDetail = () => {
     { id: "reviews", label: "⭐ Đánh giá", icon: "⭐" },
     { id: "photos", label: "📸 Hình ảnh", icon: "📸" },
   ];
-
+  const imgAvaUrl = restaurant.avatar || restaurant.imgAvaUrl;
+  const imgThumbUrl = restaurant?.coverImage || restaurant.imgThumbUrl;
   return (
     <div className="restaurant-detail">
       <RestaurantHeader
         restaurant={{
           id: restaurant.id,
           name: restaurant.name,
-          avatar: restaurant.avatar,
-          coverImage: restaurant.image,
+          avatar: imgAvaUrl,
+          coverImage: imgThumbUrl,
           rating: restaurant.rating,
           status: restaurant.status,
           cuisine: restaurant.cuisine,
           addressText: restaurant.addressText,
         }}
-        onReservationClick={() => setShowReservation(true)}
+        onReservationClick={() => setShowBookingModal(true)}
       />
 
       <div className="restaurant-content">
@@ -81,7 +82,7 @@ const RestaurantDetail = () => {
                 }`}
                 onClick={() => setActiveTab(tab.id)}
               >
-                <span className="tab-icon">{tab.icon}</span>
+                {/* <span className="tab-icon">{tab.icon}</span> */}
                 <span className="tab-label">{tab.label}</span>
               </button>
             ))}
@@ -123,11 +124,39 @@ const RestaurantDetail = () => {
         </div>
       </div>
 
-      <ReservationForm
-        restaurant={restaurant}
-        show={showReservation}
-        onClose={() => setShowReservation(false)}
+      <BookingModal
+        isOpen={showBookingModal}
+        onClose={() => setShowBookingModal(false)}
+        // tableId={selectedTable?.tableId}
+        // tableCapacity={selectedTable?.capacity}
+        // tableFloor={selectedTable?.floor}
+        // onBookingConfirmed={handleBookingConfirmed}
       />
+
+      {/* <QRPaymentModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        booking={currentBooking}
+        onPaymentConfirmed={handlePaymentConfirmed}
+      />
+
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        booking={currentBooking}
+      /> */}
+
+      {/* Notifications */}
+      {/* <div className="notifications">
+        {notifications.map((notification) => (
+          <div
+            key={notification.id}
+            className={`notification notification--${notification.type}`}
+          >
+            {notification.message}
+          </div>
+        ))}
+      </div> */}
     </div>
   );
 };

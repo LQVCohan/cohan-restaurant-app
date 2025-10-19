@@ -39,18 +39,6 @@ const GET_RESTAURANT = gql`
         fullName
         email
       }
-      tables {
-        id
-        code
-        capacity
-        status
-      }
-      categories {
-        id
-        name
-        parentId
-        order
-      }
     }
   }
 `;
@@ -86,18 +74,22 @@ export const useRestaurant = (restaurantId) => {
   const restaurant = useMemo(() => {
     const r = data?.restaurant;
     if (!r) return null;
-
+    const imgThumbUrl = "/default-thumb-restaurant.jpg";
+    const imgAvaUrl = "/default-avata-restaurant.jpg";
     // Ánh xạ về shape mà FE đang dùng
     return {
       ...r,
+      imgThumbUrl: imgThumbUrl,
+      imgAvaUrl: imgAvaUrl,
       photos: r.spaceImages || [],
       cuisine: r.cuisineType || "",
       district: r.address?.district || "",
       city: r.address?.city || "",
       rating: typeof r.avgRating === "number" ? r.avgRating : undefined,
       // fallback hiển thị
-      image: r.coverImage || r.avatar || "",
+      image: imgThumbUrl || imgAvaUrl || "",
       // một vài field cho UI khác có thể cần
+
       addressText: [
         r.address?.line1,
         r.address?.line2,

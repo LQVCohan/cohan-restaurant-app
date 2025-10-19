@@ -1,55 +1,68 @@
+// src/hooks/useCart.js
 import { useState, useCallback } from "react";
 
 export const useCart = () => {
   const [cart, setCart] = useState([]);
 
+  // dish cần có: id (dishId), restaurantId, name, price, image?, method?, quantity?
   const addToCart = useCallback((dish) => {
-    setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === dish.id);
-      if (existingItem) {
-        return prevCart.map((item) =>
-          item.id === dish.id ? { ...item, quantity: item.quantity + 1 } : item
+    const incoming = { ...dish, quantity: dish.quantity || 1 };
+    setCart((prev) => {
+      // Gộp theo cặp (id + restaurantId) để tránh trùng món từ nhà hàng khác
+      const found = prev.find(
+        (i) => i.id === incoming.id && i.restaurantId === incoming.restaurantId
+      );
+      if (found) {
+        return prev.map((i) =>
+          i.id === incoming.id && i.restaurantId === incoming.restaurantId
+            ? { ...i, quantity: (i.quantity || 1) + 1 }
+            : i
         );
       }
-      return [...prevCart, { ...dish, quantity: 1 }];
+      return [...prev, incoming];
     });
   }, []);
 
-  const updateQuantity = useCallback((dishId, change) => {
-    setCart((prevCart) => {
-      return prevCart
-        .map((item) => {
-          if (item.id === dishId) {
-            const newQuantity = item.quantity + change;
-            return newQuantity > 0 ? { ...item, quantity: newQuantity } : null;
+  // Thay đổi số lượng theo itemId (delta có thể âm/dương)
+  const updateQuantity = useCallback((itemId, change) => {
+    setCart((prev) =>
+      prev
+        .map((i) => {
+          if (i.id === itemId) {
+            const next = (i.quantity || 1) + Number(change || 0);
+            return next > 0 ? { ...i, quantity: next } : null;
           }
-          return item;
+          return i;
         })
-        .filter(Boolean);
-    });
+        .filter(Boolean)
+    );
   }, []);
 
-  const removeFromCart = useCallback((dishId) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== dishId));
+  const removeFromCart = useCallback(
+    (itemId) => setCart((prev) => prev.filter((i) => i.id !== itemId)),
+    []
+  );
+
+  const clearCart = useCallback(() => setCart([]), []);
+
+  // Xóa toàn bộ món theo một nhà hàng
+  const removeRestaurantItems = useCallback((restaurantId) => {
+    setCart((prev) => prev.filter((i) => i.restaurantId !== restaurantId));
   }, []);
 
-  const clearCart = useCallback(() => {
-    setCart([]);
-  }, []);
+  // ✅ Tổng số lượng món trong giỏ (sum quantity)
+  const getTotalItems = useCallback(
+    () => cart.reduce((sum, i) => sum + (i.quantity || 0), 0),
+    [cart]
+  );
 
-  const getTotalItems = useCallback(() => {
-    return cart.reduce((sum, item) => sum + item.quantity, 0);
-  }, [cart]);
-
-  const getTotalPrice = useCallback(() => {
-    return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  }, [cart]);
-
-  const getCartItemCount = useCallback(
-    (dishId) => {
-      const item = cart.find((item) => item.id === dishId);
-      return item ? item.quantity : 0;
-    },
+  // Tổng tiền toàn giỏ
+  const getTotalPrice = useCallback(
+    () =>
+      cart.reduce(
+        (sum, i) => sum + (Number(i.price) || 0) * (i.quantity || 1),
+        0
+      ),
     [cart]
   );
 
@@ -59,8 +72,8 @@ export const useCart = () => {
     updateQuantity,
     removeFromCart,
     clearCart,
-    getTotalItems,
+    removeRestaurantItems,
+    getTotalItems, // 👈 đã bổ sung lại
     getTotalPrice,
-    getCartItemCount,
   };
 };

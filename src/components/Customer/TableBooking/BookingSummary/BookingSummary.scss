@@ -1,0 +1,130 @@
+@use "../../../../styles/variables.scss" as *;
+@use "../../../../styles/mixins.scss" as *;
+
+.booking-summary {
+  @include card;
+  padding: $spacing-6;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-4;
+
+  &__title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: $gray-900;
+    margin-bottom: $spacing-2;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-3;
+  }
+
+  &__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-3 $spacing-4;
+    background: $gray-50;
+    border-radius: $radius-md;
+    transition: all $transition-base;
+
+    &:hover {
+      background: $gray-100;
+      transform: translateY(-2px);
+    }
+
+    &--highlight {
+      background: linear-gradient(135deg, $info-50 0%, $info-100 100%);
+      border: 1px solid $info-200;
+    }
+  }
+
+  &__label {
+    font-weight: 600;
+    color: $gray-700;
+    font-size: 0.9rem;
+  }
+
+  &__value {
+    font-weight: 700;
+    color: $gray-900;
+    font-size: 0.95rem;
+  }
+
+  &__divider {
+    height: 1px;
+    background: $gray-200;
+    margin: $spacing-2 0;
+  }
+
+  &__total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-4;
+    background: linear-gradient(135deg, $info-100 0%, $info-200 100%);
+    border-radius: $radius-lg;
+    border: 1px solid $info-300;
+    font-weight: 700;
+    color: $info-700;
+    font-size: 1rem;
+  }
+
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-3;
+    margin-top: $spacing-4;
+  }
+
+  &__button {
+    padding: $spacing-4;
+    border: none;
+    border-radius: $radius-lg;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all $transition-base;
+    @include flex-center;
+
+    &--confirm {
+      background: linear-gradient(135deg, $success-500 0%, $success-hover 100%);
+      color: $white;
+      &:hover {
+        background: linear-gradient(
+          135deg,
+          $success-hover 0%,
+          $success-700 100%
+        );
+        box-shadow: 0 4px 8px rgba($success-500, 0.4);
+      }
+    }
+
+    &--cancel {
+      background: $gray-200;
+      color: $gray-800;
+      &:hover {
+        background: $gray-300;
+      }
+    }
+  }
+}
+
+@include r-mobile {
+  .booking-summary {
+    padding: $spacing-4;
+
+    &__title {
+      font-size: 1rem;
+    }
+    &__label,
+    &__value {
+      font-size: 0.85rem;
+    }
+    &__button {
+      font-size: 0.9rem;
+    }
+  }
+}

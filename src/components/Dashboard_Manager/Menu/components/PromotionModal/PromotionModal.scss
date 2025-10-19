@@ -21,18 +21,18 @@
     color: $text-primary;
     font-size: 1.125rem;
     font-weight: 600;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
     padding-bottom: $spacing-sm;
     border-bottom: 2px solid $border-color;
   }
 
   .form-grid {
     @include form-grid;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
   }
 
   .form-group {
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
   }
 
   .form-label {
@@ -87,7 +87,7 @@
 }
 
 .promotion-preview {
-  padding: $spacing-md;
+  padding: 1rem;
   background: #f8fafc;
   border-radius: $border-radius-sm;
   border: 2px solid $border-color;
@@ -103,7 +103,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
   }
 
   .preview-title {
@@ -132,7 +132,7 @@
 
   .preview-description {
     color: $text-gray;
-    margin-bottom: $spacing-md;
+    margin-bottom: 1rem;
     font-style: italic;
   }
 
@@ -154,7 +154,7 @@
 
 .form-actions {
   display: flex;
-  gap: $spacing-md;
+  gap: 1rem;
   justify-content: flex-end;
   padding-top: $spacing-lg;
   border-top: 2px solid $border-color;
