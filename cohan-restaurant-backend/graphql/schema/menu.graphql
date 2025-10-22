@@ -116,6 +116,7 @@ input UpdateMenuItemInput {
   id: ID!
   name: String
   description: String
+  categoryId: String
   basePrice: Float
   preparationMethods: [PreparationMethodInput!]
   thumbImage: String

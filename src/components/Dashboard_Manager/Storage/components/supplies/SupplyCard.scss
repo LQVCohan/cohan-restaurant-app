@@ -1,0 +1,98 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.supply-card {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: $white;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(2, 8, 20, 0.06);
+  }
+
+  .supply-header {
+    padding: 1rem;
+    background: linear-gradient(45deg, #f1f5f9, #e2e8f0);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  }
+
+  .supply-icon {
+    font-size: 2.5rem;
+  }
+
+  .supply-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .supply-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0c4a6e;
+    margin: 0 0 0.25rem 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .supply-category {
+    font-size: 0.75rem;
+    color: #6b7280;
+    background: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: $border-radius-sm;
+    display: inline-block;
+  }
+
+  .supply-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+
+    .stat-item {
+      text-align: center;
+      padding: 0.75rem;
+      background: #f8fafc;
+      border-radius: 0.5rem;
+
+      .stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: $primary;
+        margin-bottom: 0.25rem;
+      }
+
+      .stat-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+      }
+    }
+  }
+
+  .supply-actions {
+    display: flex;
+    gap: $spacing-sm;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .status-badge {
+    &.status-in-stock {
+      @include status-badge(#dcfce7, #0c4a6e);
+    }
+
+    &.status-low-stock {
+      @include status-badge(#fef3c7, #0c4a6e);
+    }
+
+    &.status-out-of-stock {
+      @include status-badge(#fee2e2, #0c4a6e);
+    }
+  }
+}

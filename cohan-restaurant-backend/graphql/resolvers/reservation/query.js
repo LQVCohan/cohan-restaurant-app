@@ -13,9 +13,11 @@ function toObjectId(id) {
 }
 
 export const ReservationQuery = {
-  async reservation(_, { id }, ctx) {
-    const doc = await Reservation.findById(toObjectId(id));
-    return doc || null;
+  async reservation(_, { id, orderCode }, ctx) {
+    if (orderCode)
+      return Reservation.findOne({ orderCode }).lean({ virtuals: true });
+    if (id) return Reservation.findById(id).lean({ virtuals: true });
+    return null;
   },
 
   async myReservations(_, { limit = 20, cursor }, ctx) {

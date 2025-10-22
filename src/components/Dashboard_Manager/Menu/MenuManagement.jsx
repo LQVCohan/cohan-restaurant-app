@@ -102,7 +102,16 @@ const BULK_UPDATE_MENUITEM_PRICES = gql`
     }
   }
 `;
-
+const GET_CATEGORIES = gql`
+  query GetCategories($restaurantId: ID!, $timeSlot: TimeSlot!) {
+    categories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
+      id
+      name
+      order
+      isActive
+    }
+  }
+`;
 /* ===========================
    Helpers
    =========================== */
@@ -179,7 +188,7 @@ const MenuManagement = () => {
   const [currentCategory, setCurrentCategory] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [priceRange, setPriceRange] = useState({ minPrice: "", maxPrice: "" });
-
+  // const [categories, setCategories] = useState([]);
   const [modals, setModals] = useState({
     menuItem: { isOpen: false, editId: null },
     category: { isOpen: false },
@@ -232,7 +241,14 @@ const MenuManagement = () => {
       priceRange,
     ]
   );
-
+  // get categories
+  const cRestaurantId = currentRestaurant;
+  const cTimeSlot = currentTimeSlot;
+  const { data: categoryData } = useQuery(GET_CATEGORIES, {
+    variables: { restaurantId: cRestaurantId, timeSlot: cTimeSlot },
+    skip: !currentRestaurant,
+    fetchPolicy: "network-only",
+  });
   // 3) Query menu items theo cursor
   const {
     data: menuData,
@@ -513,7 +529,7 @@ const MenuManagement = () => {
         }}
         onClose={() => closeModal("menuItem")}
         // có thể truyền categories nếu bạn đã có query riêng
-        categories={[]}
+        categories={categoryData?.categories || []}
         menuItems={items}
       />
 

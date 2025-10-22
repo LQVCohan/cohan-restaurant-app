@@ -2,11 +2,18 @@ import React, { useState, useEffect, useCallback } from "react";
 import Modal from "../../../components/common/Modal";
 import Button from "../../../components/common/Button";
 import Card from "../../../components/common/Card";
-import Notification from "../../../components/common/Notification";
+// ❌ Bỏ Notification component cũ
+// import Notification from "../../../components/common/Notification";
 import OrderModal from "./OrderModal";
 import "./TableManagement.scss";
 
+// ✅ Dùng hook global notification
+import { useNotification } from "../../../hooks/useNotification";
+
 const TableManagement = () => {
+  // ✅ Lấy showNotification từ global provider
+  const { showNotification } = useNotification();
+
   // State management
   const [floors, setFloors] = useState([
     {
@@ -220,6 +227,7 @@ const TableManagement = () => {
       y: 0,
     },
   ]);
+
   const [deliveryPartners] = useState([
     {
       id: 1,
@@ -266,6 +274,7 @@ const TableManagement = () => {
       description: "Giao hàng từ Gojek",
     },
   ]);
+
   const [menuItems] = useState({
     main: [
       {
@@ -432,6 +441,7 @@ const TableManagement = () => {
       },
     ],
   });
+
   // Modal states
   const [showTableDiagram, setShowTableDiagram] = useState(false);
   const [showTableDetail, setShowTableDetail] = useState(false);
@@ -440,6 +450,7 @@ const TableManagement = () => {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCookingMethodModal, setShowCookingMethodModal] = useState(false);
+
   // Current selections
   const [currentTable, setCurrentTable] = useState(null);
   const [currentFloor, setCurrentFloor] = useState(1);
@@ -449,6 +460,7 @@ const TableManagement = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("cash");
   const [currentCookingItem, setCurrentCookingItem] = useState(null);
   const [selectedCookingMethod, setSelectedCookingMethod] = useState(null);
+
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [menuSearchQuery, setMenuSearchQuery] = useState("");
@@ -461,6 +473,7 @@ const TableManagement = () => {
   const [currentSort, setCurrentSort] = useState("number");
   const [diagramFloorFilter, setDiagramFloorFilter] = useState("");
   const [diagramStatusFilter, setDiagramStatusFilter] = useState("");
+
   // Form states
   const [floorForm, setFloorForm] = useState({
     name: "",
@@ -475,19 +488,14 @@ const TableManagement = () => {
   });
   const [customerPaid, setCustomerPaid] = useState("");
   const [editingFloor, setEditingFloor] = useState(null);
-  // Notification state
-  const [notification, setNotification] = useState({
-    show: false,
-    message: "",
-    type: "success",
-  });
+
   // Utility functions
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("vi-VN", {
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(amount);
-  };
+
   const calculateDuration = (startTime) => {
     if (!startTime) return "Chưa vào";
     const now = new Date();
@@ -496,14 +504,12 @@ const TableManagement = () => {
     start.setHours(parseInt(hours), parseInt(minutes), 0, 0);
     const diffMs = now - start;
     const diffMins = Math.floor(diffMs / (1000 * 60));
-    if (diffMins < 60) {
-      return `${diffMins} phút`;
-    } else {
-      const hours = Math.floor(diffMins / 60);
-      const mins = diffMins % 60;
-      return `${hours}h ${mins}p`;
-    }
+    if (diffMins < 60) return `${diffMins} phút`;
+    const h = Math.floor(diffMins / 60);
+    const m = diffMins % 60;
+    return `${h}h ${m}p`;
   };
+
   const getStatusText = (status) => {
     const statusMap = {
       available: "Trống",
@@ -513,6 +519,7 @@ const TableManagement = () => {
     };
     return statusMap[status] || status;
   };
+
   const getAreaText = (area) => {
     const areaMap = {
       indoor: "Trong nhà",
@@ -522,17 +529,11 @@ const TableManagement = () => {
     };
     return areaMap[area] || area;
   };
-  const showNotification = (message, type = "success") => {
-    setNotification({ show: true, message, type });
-    setTimeout(
-      () => setNotification({ show: false, message: "", type: "success" }),
-      3000
-    );
-  };
+
   // Chart calculation
   const getTableStats = () => {
-    const stats = tables.reduce((acc, table) => {
-      acc[table.status] = (acc[table.status] || 0) + 1;
+    const stats = tables.reduce((acc, t) => {
+      acc[t.status] = (acc[t.status] || 0) + 1;
       return acc;
     }, {});
     return {
@@ -543,41 +544,45 @@ const TableManagement = () => {
       cleaning: stats.cleaning || 0,
     };
   };
-  const getFloorTableCount = (floorId) => {
-    return tables.filter((table) => table.floorId === floorId).length;
-  };
+
+  const getFloorTableCount = (floorId) =>
+    tables.filter((t) => t.floorId === floorId).length;
+
   // Table operations
   const changeTableStatus = (tableId, newStatus) => {
-    setTables((prevTables) =>
-      prevTables.map((table) => {
-        if (table.id === tableId) {
-          const updatedTable = { ...table, status: newStatus };
-          if (newStatus === "available") {
-            updatedTable.customer = null;
-            updatedTable.orderTime = null;
-            updatedTable.total = 0;
-            updatedTable.orders = [];
-            updatedTable.entryTime = null;
-            updatedTable.guestCount = 0;
-          }
-          if (newStatus === "occupied" && !table.customer) {
-            updatedTable.customer = "Khách hàng mới";
-            updatedTable.orderTime = new Date().toLocaleTimeString("vi-VN", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            updatedTable.entryTime = new Date().toLocaleTimeString("vi-VN", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-            updatedTable.guestCount = Math.min(table.seats, 2);
-          }
-          return updatedTable;
+    setTables((prev) =>
+      prev.map((t) => {
+        if (t.id !== tableId) return t;
+        const updated = { ...t, status: newStatus };
+        if (newStatus === "available") {
+          Object.assign(updated, {
+            customer: null,
+            orderTime: null,
+            total: 0,
+            orders: [],
+            entryTime: null,
+            guestCount: 0,
+          });
         }
-        return table;
+        if (newStatus === "occupied" && !t.customer) {
+          Object.assign(updated, {
+            customer: "Khách hàng mới",
+            orderTime: new Date().toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            entryTime: new Date().toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            guestCount: Math.min(t.seats, 2),
+          });
+        }
+        return updated;
       })
     );
   };
+
   const handleTableClick = (tableId) => {
     const table = tables.find((t) => t.id === tableId);
     if (table.status === "occupied" || table.status === "reserved") {
@@ -585,27 +590,27 @@ const TableManagement = () => {
       setShowTableDetail(true);
     }
   };
+
   // Floor operations
   const selectFloor = (floorId) => {
-    setFloors((prevFloors) =>
-      prevFloors.map((floor) => ({ ...floor, active: floor.id === floorId }))
-    );
+    setFloors((prev) => prev.map((f) => ({ ...f, active: f.id === floorId })));
     setCurrentFloor(floorId);
   };
+
   const saveFloor = () => {
     if (!floorForm.name.trim()) {
       showNotification("Vui lòng nhập tên tầng!", "error");
       return;
     }
     if (editingFloor) {
-      setFloors((prevFloors) =>
-        prevFloors.map((floor) =>
-          floor.id === editingFloor.id
-            ? { ...floor, ...floorForm, icon: floorForm.icon || "🏢" }
-            : floor
+      setFloors((prev) =>
+        prev.map((f) =>
+          f.id === editingFloor.id
+            ? { ...f, ...floorForm, icon: floorForm.icon || "🏢" }
+            : f
         )
       );
-      showNotification("Đã cập nhật thông tin tầng!");
+      showNotification("Đã cập nhật thông tin tầng!", "success");
     } else {
       const newFloor = {
         id: Math.max(...floors.map((f) => f.id)) + 1,
@@ -613,13 +618,14 @@ const TableManagement = () => {
         icon: floorForm.icon || "🏢",
         active: false,
       };
-      setFloors((prevFloors) => [...prevFloors, newFloor]);
-      showNotification("Đã thêm tầng mới!");
+      setFloors((prev) => [...prev, newFloor]);
+      showNotification("Đã thêm tầng mới!", "success");
     }
     setShowFloorModal(false);
     setFloorForm({ name: "", icon: "", description: "" });
     setEditingFloor(null);
   };
+
   const editFloor = (floorId) => {
     const floor = floors.find((f) => f.id === floorId);
     setEditingFloor(floor);
@@ -630,24 +636,24 @@ const TableManagement = () => {
     });
     setShowFloorModal(true);
   };
+
   const deleteFloor = (floorId) => {
     const floor = floors.find((f) => f.id === floorId);
-    const tableCount = getFloorTableCount(floorId);
-    if (tableCount > 0) {
+    const count = getFloorTableCount(floorId);
+    if (count > 0) {
       showNotification(
-        `Không thể xóa tầng "${floor.name}" vì còn ${tableCount} bàn!`,
+        `Không thể xóa tầng "${floor.name}" vì còn ${count} bàn!`,
         "error"
       );
       return;
     }
     if (window.confirm(`Bạn có chắc muốn xóa tầng "${floor.name}"?`)) {
-      setFloors((prevFloors) => prevFloors.filter((f) => f.id !== floorId));
-      if (currentFloor === floorId) {
-        setCurrentFloor(null);
-      }
-      showNotification("Đã xóa tầng!");
+      setFloors((prev) => prev.filter((f) => f.id !== floorId));
+      if (currentFloor === floorId) setCurrentFloor(null);
+      showNotification("Đã xóa tầng!", "success");
     }
   };
+
   // Table management
   const saveTable = () => {
     const { number, seats, floorId, area } = tableForm;
@@ -655,7 +661,11 @@ const TableManagement = () => {
       showNotification("Vui lòng điền đầy đủ thông tin!", "error");
       return;
     }
-    if (tables.some((t) => t.number.toLowerCase() === number.toLowerCase())) {
+    if (
+      tables.some(
+        (t) => (t.number || "").toLowerCase() === number.toLowerCase()
+      )
+    ) {
       showNotification("Số bàn đã tồn tại!", "error");
       return;
     }
@@ -675,11 +685,12 @@ const TableManagement = () => {
       x: Math.random() * 400 + 50,
       y: Math.random() * 300 + 50,
     };
-    setTables((prevTables) => [...prevTables, newTable]);
+    setTables((prev) => [...prev, newTable]);
     setShowAddTableModal(false);
     setTableForm({ number: "", seats: 4, floorId: "", area: "indoor" });
-    showNotification("Đã thêm bàn mới!");
+    showNotification("Đã thêm bàn mới!", "success");
   };
+
   // Order operations
   const openOrderModal = (tableId) => {
     const table = tables.find((t) => t.id === tableId);
@@ -689,6 +700,7 @@ const TableManagement = () => {
     setSelectedDeliveryPartner(null);
     setShowOrderModal(true);
   };
+
   const selectCookingMethod = (itemId, method) => {
     setCurrentOrder((prev) => ({
       ...prev,
@@ -701,14 +713,10 @@ const TableManagement = () => {
     }));
     setShowCookingMethodModal(false);
   };
+
   const updateQuantity = (itemId, change) => {
     const currentQty = currentOrder[itemId]?.quantity || 0;
-    let newQty;
-    if (change === 0) {
-      newQty = currentQty;
-    } else {
-      newQty = Math.max(0, currentQty + change);
-    }
+    let newQty = change === 0 ? currentQty : Math.max(0, currentQty + change);
     if (newQty > 0) {
       if (!currentOrder[itemId] || !currentOrder[itemId].cookingMethod) {
         const item = [...menuItems.main, ...menuItems.beverages].find(
@@ -729,9 +737,10 @@ const TableManagement = () => {
       }));
     }
   };
+
   const submitOrder = () => {
     const orderItems = Object.keys(currentOrder).filter(
-      (itemId) => currentOrder[itemId].quantity > 0
+      (id) => currentOrder[id].quantity > 0
     );
     if (orderItems.length === 0) {
       showNotification("Vui lòng chọn ít nhất một món!", "error");
@@ -759,46 +768,43 @@ const TableManagement = () => {
         item: itemName,
         quantity: orderItem.quantity,
         price: itemPrice,
-        subtotal: subtotal,
+        subtotal,
         cookingMethod: orderItem.cookingMethod || "",
         customMethod: orderItem.customMethod || "",
         weight: orderItem.weight || 0,
       };
     });
-    setTables((prevTables) =>
-      prevTables.map((table) => {
-        if (table.id === currentTable.id) {
-          const updatedOrders = [...(table.orders || []), ...newOrders];
-          return {
-            ...table,
-            orders: updatedOrders,
-            total: updatedOrders.reduce(
-              (sum, order) => sum + order.subtotal,
-              0
-            ),
-            status: "occupied",
-            customer: table.customer || "Khách hàng mới",
-            orderTime:
-              table.orderTime ||
-              new Date().toLocaleTimeString("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            entryTime:
-              table.entryTime ||
-              new Date().toLocaleTimeString("vi-VN", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-          };
-        }
-        return table;
+
+    setTables((prev) =>
+      prev.map((t) => {
+        if (t.id !== currentTable.id) return t;
+        const updatedOrders = [...(t.orders || []), ...newOrders];
+        return {
+          ...t,
+          orders: updatedOrders,
+          total: updatedOrders.reduce((sum, o) => sum + o.subtotal, 0),
+          status: "occupied",
+          customer: t.customer || "Khách hàng mới",
+          orderTime:
+            t.orderTime ||
+            new Date().toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          entryTime:
+            t.entryTime ||
+            new Date().toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+        };
       })
     );
     setShowOrderModal(false);
-    showNotification("✅ Đã thêm đơn hàng thành công!");
+    showNotification("✅ Đã thêm đơn hàng thành công!", "success");
   };
-  // Payment operations
+
+  // Payment
   const openPaymentModal = () => {
     if (!selectedTableDetail || selectedTableDetail.total <= 0) {
       showNotification("Bàn này chưa có đơn hàng để thanh toán!", "error");
@@ -806,17 +812,19 @@ const TableManagement = () => {
     }
     setShowPaymentModal(true);
   };
+
   const calculateChange = () => {
     const paid = parseFloat(customerPaid) || 0;
     const subtotal = selectedTableDetail?.total || 0;
     const tax = Math.round(subtotal * 0.1);
-    const total = subtotal + tax;
-    return paid - total;
+    return paid - (subtotal + tax);
   };
+
   const processPaymentConfirm = () => {
     const subtotal = selectedTableDetail.total;
     const tax = Math.round(subtotal * 0.1);
     const total = subtotal + tax;
+
     if (selectedPaymentMethod === "cash") {
       const paid = parseFloat(customerPaid) || 0;
       if (paid < total) {
@@ -824,113 +832,103 @@ const TableManagement = () => {
         return;
       }
     }
+
     if (
       window.confirm("Thanh toán thành công! Bạn có muốn in hóa đơn không?")
     ) {
       printInvoice();
     }
+
     changeTableStatus(selectedTableDetail.id, "cleaning");
     setShowPaymentModal(false);
     setShowTableDetail(false);
     setCustomerPaid("");
-    const paymentMethodText = {
+
+    const methodText = {
       cash: "tiền mặt",
       card: "thẻ ngân hàng",
       transfer: "chuyển khoản",
     };
     showNotification(
-      `✅ Thanh toán thành công bằng ${paymentMethodText[selectedPaymentMethod]}!`
+      `✅ Thanh toán thành công bằng ${methodText[selectedPaymentMethod]}!`,
+      "success"
     );
   };
+
   const printInvoice = () => {
     console.log("Printing invoice for table:", selectedTableDetail.number);
-    showNotification("🖨️ Đã gửi lệnh in hóa đơn!");
+    showNotification("🖨️ Đã gửi lệnh in hóa đơn!", "info");
   };
-  // Filter and search functions
+
+  // Filters
   const getFilteredTables = () => {
-    let filteredTables = [...tables];
-    if (currentFloor) {
-      filteredTables = filteredTables.filter(
-        (table) => table.floorId === currentFloor
-      );
-    }
+    let filtered = [...tables];
+    if (currentFloor)
+      filtered = filtered.filter((t) => t.floorId === currentFloor);
     if (searchQuery) {
-      filteredTables = filteredTables.filter(
-        (table) =>
-          table.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (table.customer &&
-            table.customer.toLowerCase().includes(searchQuery.toLowerCase()))
+      filtered = filtered.filter(
+        (t) =>
+          (t.number || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (t.customer &&
+            t.customer.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
-    if (currentFilters.status) {
-      filteredTables = filteredTables.filter(
-        (table) => table.status === currentFilters.status
-      );
-    }
-    if (currentFilters.area) {
-      filteredTables = filteredTables.filter(
-        (table) => table.area === currentFilters.area
-      );
-    }
-    filteredTables.sort((a, b) => {
+    if (currentFilters.status)
+      filtered = filtered.filter((t) => t.status === currentFilters.status);
+    if (currentFilters.area)
+      filtered = filtered.filter((t) => t.area === currentFilters.area);
+
+    filtered.sort((a, b) => {
       switch (currentSort) {
         case "number":
-          return a.number.localeCompare(b.number);
-        case "status":
-          const statusOrder = {
-            occupied: 0,
-            reserved: 1,
-            cleaning: 2,
-            available: 3,
-          };
-          return (statusOrder[a.status] || 4) - (statusOrder[b.status] || 4);
+          return (a.number || "").localeCompare(b.number || "");
+        case "status": {
+          const order = { occupied: 0, reserved: 1, cleaning: 2, available: 3 };
+          return (order[a.status] ?? 4) - (order[b.status] ?? 4);
+        }
         case "total-desc":
           return b.total - a.total;
         default:
           return 0;
       }
     });
-    return filteredTables;
+    return filtered;
   };
+
   const getFilteredMenuItems = () => {
-    const allItems = [...menuItems.main, ...menuItems.beverages];
-    if (!menuSearchQuery) return allItems;
-    return allItems.filter(
-      (item) =>
-        item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
-        item.description.toLowerCase().includes(menuSearchQuery.toLowerCase())
+    const all = [...menuItems.main, ...menuItems.beverages];
+    if (!menuSearchQuery) return all;
+    return all.filter(
+      (i) =>
+        i.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
+        i.description.toLowerCase().includes(menuSearchQuery.toLowerCase())
     );
   };
+
   const getDiagramFilteredTables = () => {
-    let filteredTables = [...tables];
-    if (diagramFloorFilter) {
-      filteredTables = filteredTables.filter(
-        (table) => table.floorId === parseInt(diagramFloorFilter)
+    let filtered = [...tables];
+    if (diagramFloorFilter)
+      filtered = filtered.filter(
+        (t) => t.floorId === parseInt(diagramFloorFilter)
       );
-    }
-    if (diagramStatusFilter) {
-      filteredTables = filteredTables.filter(
-        (table) => table.status === diagramStatusFilter
-      );
-    }
+    if (diagramStatusFilter)
+      filtered = filtered.filter((t) => t.status === diagramStatusFilter);
     if (diagramSearchQuery) {
-      filteredTables = filteredTables.filter(
-        (table) =>
-          table.number
+      filtered = filtered.filter(
+        (t) =>
+          (t.number || "")
             .toLowerCase()
             .includes(diagramSearchQuery.toLowerCase()) ||
-          (table.customer &&
-            table.customer
-              .toLowerCase()
-              .includes(diagramSearchQuery.toLowerCase()))
+          (t.customer &&
+            t.customer.toLowerCase().includes(diagramSearchQuery.toLowerCase()))
       );
     }
-    return filteredTables;
+    return filtered;
   };
-  // Render functions
+
+  // Render helpers
   const renderCircularChart = () => {
-    const stats = getTableStats();
-    const { total, available, occupied, reserved, cleaning } = stats;
+    const { total, available, occupied, reserved, cleaning } = getTableStats();
     if (total === 0) {
       return (
         <div className="chart-container">
@@ -943,20 +941,19 @@ const TableManagement = () => {
         </div>
       );
     }
+
     const radius = 55;
     const circumference = 2 * Math.PI * radius;
-    const availablePercent = (available / total) * 100;
-    const occupiedPercent = (occupied / total) * 100;
-    const reservedPercent = (reserved / total) * 100;
-    const cleaningPercent = (cleaning / total) * 100;
-    let currentOffset = 0;
-    const availableOffset = currentOffset;
-    currentOffset += (availablePercent / 100) * circumference;
-    const occupiedOffset = currentOffset;
-    currentOffset += (occupiedPercent / 100) * circumference;
-    const reservedOffset = currentOffset;
-    currentOffset += (reservedPercent / 100) * circumference;
-    const cleaningOffset = currentOffset;
+    const pct = (v) => (v / total) * circumference;
+
+    let offset = 0;
+    const parts = [
+      { val: available, color: "#10b981" },
+      { val: occupied, color: "#f59e0b" },
+      { val: reserved, color: "#3b82f6" },
+      { val: cleaning, color: "#8b5cf6" },
+    ];
+
     return (
       <div className="chart-container">
         <div className="chart-wrapper">
@@ -969,66 +966,26 @@ const TableManagement = () => {
               stroke="#e2e8f0"
               strokeWidth="16"
             />
-            {available > 0 && (
-              <circle
-                cx="70"
-                cy="70"
-                r={radius}
-                fill="none"
-                stroke="#10b981"
-                strokeWidth="16"
-                strokeDasharray={`${
-                  (availablePercent / 100) * circumference
-                } ${circumference}`}
-                strokeDashoffset={-availableOffset}
-                transform="rotate(-90 70 70)"
-              />
-            )}
-            {occupied > 0 && (
-              <circle
-                cx="70"
-                cy="70"
-                r={radius}
-                fill="none"
-                stroke="#f59e0b"
-                strokeWidth="16"
-                strokeDasharray={`${
-                  (occupiedPercent / 100) * circumference
-                } ${circumference}`}
-                strokeDashoffset={-occupiedOffset}
-                transform="rotate(-90 70 70)"
-              />
-            )}
-            {reserved > 0 && (
-              <circle
-                cx="70"
-                cy="70"
-                r={radius}
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth="16"
-                strokeDasharray={`${
-                  (reservedPercent / 100) * circumference
-                } ${circumference}`}
-                strokeDashoffset={-reservedOffset}
-                transform="rotate(-90 70 70)"
-              />
-            )}
-            {cleaning > 0 && (
-              <circle
-                cx="70"
-                cy="70"
-                r={radius}
-                fill="none"
-                stroke="#8b5cf6"
-                strokeWidth="16"
-                strokeDasharray={`${
-                  (cleaningPercent / 100) * circumference
-                } ${circumference}`}
-                strokeDashoffset={-cleaningOffset}
-                transform="rotate(-90 70 70)"
-              />
-            )}
+            {parts.map((p, idx) => {
+              if (p.val <= 0) return null;
+              const dash = `${pct(p.val)} ${circumference}`;
+              const el = (
+                <circle
+                  key={idx}
+                  cx="70"
+                  cy="70"
+                  r={radius}
+                  fill="none"
+                  stroke={p.color}
+                  strokeWidth="16"
+                  strokeDasharray={dash}
+                  strokeDashoffset={-offset}
+                  transform="rotate(-90 70 70)"
+                />
+              );
+              offset += pct(p.val);
+              return el;
+            })}
           </svg>
           <div className="chart-center">
             <div className="chart-total">{total}</div>
@@ -1056,6 +1013,7 @@ const TableManagement = () => {
       </div>
     );
   };
+
   const renderTableActions = (table) => {
     switch (table.status) {
       case "available":
@@ -1153,18 +1111,10 @@ const TableManagement = () => {
         return null;
     }
   };
+
   return (
     <div className="table-management">
-      {/* Notification */}
-      {notification.show && (
-        <Notification
-          message={notification.message}
-          type={notification.type}
-          onClose={() =>
-            setNotification({ show: false, message: "", type: "success" })
-          }
-        />
-      )}
+      {/* ❌ Bỏ Notification local vì đã có NotificationContainer global */}
       {/* Top Actions Bar */}
       <div className="top-actions">
         <h1>🍽️ Quản Lý Bàn Ăn</h1>
@@ -1185,13 +1135,13 @@ const TableManagement = () => {
           </Button>
         </div>
       </div>
+
       {/* Main Layout */}
       <div className="main-layout">
-        {/* table_sidebar */}
+        {/* Sidebar */}
         <aside className="table_sidebar">
-          {/* Circular Chart */}
           <div className="table_sidebar-section">{renderCircularChart()}</div>
-          {/* Search Tables */}
+
           <div className="table_sidebar-section">
             <h3 className="table_sidebar-title">🔍 Tìm bàn</h3>
             <div className="search-container">
@@ -1205,7 +1155,7 @@ const TableManagement = () => {
               <span className="search-icon">🔍</span>
             </div>
           </div>
-          {/* Floor Management */}
+
           <div className="table_sidebar-section">
             <h3 className="table_sidebar-title">🏢 Tầng</h3>
             <div className="floor-list">
@@ -1251,6 +1201,7 @@ const TableManagement = () => {
             </div>
           </div>
         </aside>
+
         {/* Main Content */}
         <main className="main-content">
           <div className="tables-container">
@@ -1274,14 +1225,14 @@ const TableManagement = () => {
                   variant="secondary"
                   size="sm"
                   onClick={() =>
-                    showNotification("🔄 Đã làm mới danh sách bàn!")
+                    showNotification("🔄 Đã làm mới danh sách bàn!", "info")
                   }
                 >
                   🔄 Làm mới
                 </Button>
               </div>
             </div>
-            {/* Table Controls */}
+
             <div className="table-controls">
               <div className="filter-section">
                 <select
@@ -1337,7 +1288,7 @@ const TableManagement = () => {
                 </Button>
               </div>
             </div>
-            {/* Tables Grid */}
+
             <div className="tables-grid">
               {getFilteredTables().length === 0 ? (
                 <div className="empty-state">
@@ -1398,6 +1349,7 @@ const TableManagement = () => {
           </div>
         </main>
       </div>
+
       {/* Table Diagram Modal */}
       <Modal
         isOpen={showTableDiagram}
@@ -1422,9 +1374,9 @@ const TableManagement = () => {
               onChange={(e) => setDiagramFloorFilter(e.target.value)}
             >
               <option value="">Tất cả tầng</option>
-              {floors.map((floor) => (
-                <option key={floor.id} value={floor.id}>
-                  {floor.icon} {floor.name}
+              {floors.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.icon} {f.name}
                 </option>
               ))}
             </select>
@@ -1441,6 +1393,7 @@ const TableManagement = () => {
             </select>
           </div>
         </div>
+
         <div className="diagram-container">
           <svg
             className="diagram-svg"
@@ -1448,7 +1401,6 @@ const TableManagement = () => {
             height="500"
             viewBox="0 0 600 400"
           >
-            {/* Background grid */}
             <defs>
               <pattern
                 id="grid"
@@ -1465,53 +1417,53 @@ const TableManagement = () => {
               </pattern>
             </defs>
             <rect width="100%" height="100%" fill="url(#grid)" />
-            {/* Tables */}
-            {getDiagramFilteredTables().map((table) => (
-              <g key={table.id} className={`diagram-table ${table.status}`}>
+            {getDiagramFilteredTables().map((t) => (
+              <g key={t.id} className={`diagram-table ${t.status}`}>
                 <circle
-                  cx={table.x}
-                  cy={table.y}
+                  cx={t.x}
+                  cy={t.y}
                   r="25"
-                  className={`table-circle status-${table.status}`}
-                  onClick={() => handleTableClick(table.id)}
+                  className={`table-circle status-${t.status}`}
+                  onClick={() => handleTableClick(t.id)}
                 />
                 <text
-                  x={table.x}
-                  y={table.y - 5}
+                  x={t.x}
+                  y={t.y - 5}
                   textAnchor="middle"
                   className="table-number-text"
                   fontSize="10"
                   fontWeight="bold"
                 >
-                  {table.number}
+                  {t.number}
                 </text>
                 <text
-                  x={table.x}
-                  y={table.y + 8}
+                  x={t.x}
+                  y={t.y + 8}
                   textAnchor="middle"
                   className="table-seats-text"
                   fontSize="8"
                 >
-                  {table.seats > 0 ? `${table.seats} chỗ` : "Mang về"}
+                  {t.seats > 0 ? `${t.seats} chỗ` : "Mang về"}
                 </text>
-                {table.customer && (
+                {t.customer && (
                   <text
-                    x={table.x}
-                    y={table.y + 45}
+                    x={t.x}
+                    y={t.y + 45}
                     textAnchor="middle"
                     className="table-customer-text"
                     fontSize="8"
                     fill="#64748b"
                   >
-                    {table.customer.length > 10
-                      ? table.customer.substring(0, 10) + "..."
-                      : table.customer}
+                    {t.customer.length > 10
+                      ? t.customer.substring(0, 10) + "..."
+                      : t.customer}
                   </text>
                 )}
               </g>
             ))}
           </svg>
         </div>
+
         <div className="diagram-legend">
           <div className="legend-item">
             <div className="legend-circle available"></div>
@@ -1531,6 +1483,7 @@ const TableManagement = () => {
           </div>
         </div>
       </Modal>
+
       {/* Floor Modal */}
       <Modal
         isOpen={showFloorModal}
@@ -1549,7 +1502,7 @@ const TableManagement = () => {
             placeholder="VD: Tầng 1, Tầng trệt, Sân thượng..."
             value={floorForm.name}
             onChange={(e) =>
-              setFloorForm((prev) => ({ ...prev, name: e.target.value }))
+              setFloorForm((p) => ({ ...p, name: e.target.value }))
             }
           />
         </div>
@@ -1562,7 +1515,7 @@ const TableManagement = () => {
             maxLength="2"
             value={floorForm.icon}
             onChange={(e) =>
-              setFloorForm((prev) => ({ ...prev, icon: e.target.value }))
+              setFloorForm((p) => ({ ...p, icon: e.target.value }))
             }
           />
         </div>
@@ -1574,7 +1527,7 @@ const TableManagement = () => {
             placeholder="Mô tả ngắn về tầng này..."
             value={floorForm.description}
             onChange={(e) =>
-              setFloorForm((prev) => ({ ...prev, description: e.target.value }))
+              setFloorForm((p) => ({ ...p, description: e.target.value }))
             }
           />
         </div>
@@ -1594,6 +1547,7 @@ const TableManagement = () => {
           </Button>
         </div>
       </Modal>
+
       {/* Add Table Modal */}
       <Modal
         isOpen={showAddTableModal}
@@ -1611,7 +1565,7 @@ const TableManagement = () => {
             placeholder="VD: B01, A12..."
             value={tableForm.number}
             onChange={(e) =>
-              setTableForm((prev) => ({ ...prev, number: e.target.value }))
+              setTableForm((p) => ({ ...p, number: e.target.value }))
             }
           />
         </div>
@@ -1624,7 +1578,7 @@ const TableManagement = () => {
             max="20"
             value={tableForm.seats}
             onChange={(e) =>
-              setTableForm((prev) => ({ ...prev, seats: e.target.value }))
+              setTableForm((p) => ({ ...p, seats: e.target.value }))
             }
           />
         </div>
@@ -1634,13 +1588,13 @@ const TableManagement = () => {
             className="form-select"
             value={tableForm.floorId}
             onChange={(e) =>
-              setTableForm((prev) => ({ ...prev, floorId: e.target.value }))
+              setTableForm((p) => ({ ...p, floorId: e.target.value }))
             }
           >
             <option value="">Chọn tầng...</option>
-            {floors.map((floor) => (
-              <option key={floor.id} value={floor.id}>
-                {floor.icon} {floor.name}
+            {floors.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.icon} {f.name}
               </option>
             ))}
           </select>
@@ -1651,7 +1605,7 @@ const TableManagement = () => {
             className="form-select"
             value={tableForm.area}
             onChange={(e) =>
-              setTableForm((prev) => ({ ...prev, area: e.target.value }))
+              setTableForm((p) => ({ ...p, area: e.target.value }))
             }
           >
             <option value="indoor">🏢 Trong nhà</option>
@@ -1680,6 +1634,7 @@ const TableManagement = () => {
           </Button>
         </div>
       </Modal>
+
       {/* Table Detail Modal */}
       <Modal
         isOpen={showTableDetail}
@@ -1700,6 +1655,7 @@ const TableManagement = () => {
                 💰 {formatCurrency(selectedTableDetail.total)}
               </span>
             </div>
+
             <div className="orders-section">
               <div className="orders-header">
                 <h4 className="section-title">📋 Món đã order</h4>
@@ -1715,8 +1671,8 @@ const TableManagement = () => {
               <div className="orders-list">
                 {selectedTableDetail.orders &&
                 selectedTableDetail.orders.length > 0 ? (
-                  selectedTableDetail.orders.map((order, index) => (
-                    <div key={index} className="order-item">
+                  selectedTableDetail.orders.map((order, idx) => (
+                    <div key={idx} className="order-item">
                       <div className="order-item-info">
                         <div className="order-item-name">
                           {order.item}{" "}
@@ -1752,6 +1708,7 @@ const TableManagement = () => {
                 )}
               </div>
             </div>
+
             <div className="modal-footer">
               <Button
                 variant="secondary"
@@ -1779,6 +1736,7 @@ const TableManagement = () => {
           </>
         )}
       </Modal>
+
       {/* Order Modal */}
       <Modal
         isOpen={showOrderModal}
@@ -1798,31 +1756,30 @@ const TableManagement = () => {
                   onChange={(e) => setMenuSearchQuery(e.target.value)}
                 />
               </div>
+
               {currentTable.area === "takeaway" && (
                 <div className="delivery-partners">
                   <h4 className="section-title">🚚 Chọn đối tác giao hàng</h4>
                   <div className="partners-grid">
                     {deliveryPartners
-                      .filter((partner) => partner.status === "online")
-                      .map((partner) => (
+                      .filter((p) => p.status === "online")
+                      .map((p) => (
                         <div
-                          key={partner.id}
+                          key={p.id}
                           className={`partner-card ${
-                            selectedDeliveryPartner?.id === partner.id
+                            selectedDeliveryPartner?.id === p.id
                               ? "selected"
                               : ""
                           }`}
-                          onClick={() => setSelectedDeliveryPartner(partner)}
+                          onClick={() => setSelectedDeliveryPartner(p)}
                         >
-                          <div className="partner-logo">{partner.logo}</div>
+                          <div className="partner-logo">{p.logo}</div>
                           <div className="partner-info">
-                            <div className="partner-name">{partner.name}</div>
+                            <div className="partner-name">{p.name}</div>
                             <div className="partner-commission">
-                              Hoa hồng: {partner.commission}
+                              Hoa hồng: {p.commission}
                             </div>
-                            <div className="partner-rating">
-                              ⭐ {partner.rating}
-                            </div>
+                            <div className="partner-rating">⭐ {p.rating}</div>
                           </div>
                         </div>
                       ))}
@@ -1830,12 +1787,13 @@ const TableManagement = () => {
                 </div>
               )}
             </div>
+
             <div className="menu-sections">
               <div className="menu-section">
                 <h4 className="section-title">🍜 Món chính</h4>
                 <div className="menu-items">
                   {getFilteredMenuItems()
-                    .filter((item) => item.category === "main")
+                    .filter((i) => i.category === "main")
                     .map((item) => (
                       <div key={item.id} className="menu-item">
                         <div className="menu-item-info">
@@ -1881,11 +1839,12 @@ const TableManagement = () => {
                     ))}
                 </div>
               </div>
+
               <div className="menu-section">
                 <h4 className="section-title">🥤 Đồ uống</h4>
                 <div className="menu-items">
                   {getFilteredMenuItems()
-                    .filter((item) => item.category === "beverage")
+                    .filter((i) => i.category === "beverage")
                     .map((item) => (
                       <div key={item.id} className="menu-item">
                         <div className="menu-item-info">
@@ -1932,11 +1891,12 @@ const TableManagement = () => {
                 </div>
               </div>
             </div>
+
             <div className="order-summary">
               <h4 className="section-title">📋 Tóm tắt đơn hàng</h4>
               <div className="summary-items">
                 {Object.keys(currentOrder).filter(
-                  (itemId) => currentOrder[itemId].quantity > 0
+                  (id) => currentOrder[id].quantity > 0
                 ).length === 0 ? (
                   <div className="summary-item">
                     <span>Chưa có món nào</span>
@@ -1944,17 +1904,17 @@ const TableManagement = () => {
                   </div>
                 ) : (
                   Object.keys(currentOrder)
-                    .filter((itemId) => currentOrder[itemId].quantity > 0)
-                    .map((itemId) => {
+                    .filter((id) => currentOrder[id].quantity > 0)
+                    .map((id) => {
                       const item = [
                         ...menuItems.main,
                         ...menuItems.beverages,
-                      ].find((i) => i.id == itemId);
-                      const orderItem = currentOrder[itemId];
+                      ].find((i) => i.id == id);
+                      const orderItem = currentOrder[id];
                       const itemPrice = orderItem.price || item.price;
                       const subtotal = itemPrice * orderItem.quantity;
                       return (
-                        <div key={itemId} className="summary-item">
+                        <div key={id} className="summary-item">
                           <span>
                             {item.name} x{orderItem.quantity}
                           </span>
@@ -1968,13 +1928,13 @@ const TableManagement = () => {
                   <span>
                     {formatCurrency(
                       Object.keys(currentOrder)
-                        .filter((itemId) => currentOrder[itemId].quantity > 0)
-                        .reduce((total, itemId) => {
+                        .filter((id) => currentOrder[id].quantity > 0)
+                        .reduce((total, id) => {
                           const item = [
                             ...menuItems.main,
                             ...menuItems.beverages,
-                          ].find((i) => i.id == itemId);
-                          const orderItem = currentOrder[itemId];
+                          ].find((i) => i.id == id);
+                          const orderItem = currentOrder[id];
                           const itemPrice = orderItem.price || item.price;
                           return total + itemPrice * orderItem.quantity;
                         }, 0)
@@ -1983,6 +1943,7 @@ const TableManagement = () => {
                 </div>
               </div>
             </div>
+
             <div className="modal-footer">
               <Button
                 variant="secondary"
@@ -1997,6 +1958,7 @@ const TableManagement = () => {
           </>
         )}
       </Modal>
+
       {/* Cooking Method Modal */}
       <Modal
         isOpen={showCookingMethodModal}
@@ -2010,9 +1972,9 @@ const TableManagement = () => {
         {currentCookingItem && (
           <>
             <div className="cooking-methods">
-              {currentCookingItem.cookingMethods.map((method, index) => (
+              {currentCookingItem.cookingMethods.map((method, idx) => (
                 <div
-                  key={index}
+                  key={idx}
                   className="cooking-method"
                   onClick={() =>
                     selectCookingMethod(currentCookingItem.id, method)
@@ -2041,6 +2003,7 @@ const TableManagement = () => {
           </>
         )}
       </Modal>
+
       {/* Payment Modal */}
       <Modal
         isOpen={showPaymentModal}
@@ -2054,14 +2017,13 @@ const TableManagement = () => {
       >
         {selectedTableDetail && (
           <>
-            {/* Bill Summary */}
             <div className="payment-section">
               <h4 className="payment-section-title">📋 Chi tiết hóa đơn</h4>
               <div className="bill-summary">
                 {selectedTableDetail.orders &&
                 selectedTableDetail.orders.length > 0 ? (
-                  selectedTableDetail.orders.map((order, index) => (
-                    <div key={index} className="bill-item">
+                  selectedTableDetail.orders.map((order, idx) => (
+                    <div key={idx} className="bill-item">
                       <div className="bill-item-info">
                         <div className="bill-item-name">
                           {order.item} x{order.quantity}
@@ -2085,7 +2047,7 @@ const TableManagement = () => {
                 )}
               </div>
             </div>
-            {/* Payment Methods */}
+
             <div className="payment-section">
               <h4 className="payment-section-title">
                 💳 Phương thức thanh toán
@@ -2110,25 +2072,25 @@ const TableManagement = () => {
                     name: "Chuyển khoản",
                     desc: "Banking, Momo, ZaloPay",
                   },
-                ].map((method) => (
+                ].map((m) => (
                   <div
-                    key={method.id}
+                    key={m.id}
                     className={`payment-method ${
-                      selectedPaymentMethod === method.id ? "selected" : ""
+                      selectedPaymentMethod === m.id ? "selected" : ""
                     }`}
-                    onClick={() => setSelectedPaymentMethod(method.id)}
+                    onClick={() => setSelectedPaymentMethod(m.id)}
                   >
-                    <div className="payment-method-icon">{method.icon}</div>
+                    <div className="payment-method-icon">{m.icon}</div>
                     <div className="payment-method-info">
-                      <div className="payment-method-name">{method.name}</div>
-                      <div className="payment-method-desc">{method.desc}</div>
+                      <div className="payment-method-name">{m.name}</div>
+                      <div className="payment-method-desc">{m.desc}</div>
                     </div>
                     <div className="payment-method-check">✓</div>
                   </div>
                 ))}
               </div>
             </div>
-            {/* Cash Payment Details */}
+
             {selectedPaymentMethod === "cash" && (
               <div className="payment-section">
                 <h4 className="payment-section-title">
@@ -2162,7 +2124,7 @@ const TableManagement = () => {
                 </div>
               </div>
             )}
-            {/* Payment Summary */}
+
             <div className="payment-total">
               <div className="payment-total-row">
                 <span>Tạm tính:</span>
@@ -2184,6 +2146,7 @@ const TableManagement = () => {
                 </span>
               </div>
             </div>
+
             <div className="modal-footer">
               <Button
                 variant="secondary"
@@ -2201,4 +2164,5 @@ const TableManagement = () => {
     </div>
   );
 };
+
 export default TableManagement;

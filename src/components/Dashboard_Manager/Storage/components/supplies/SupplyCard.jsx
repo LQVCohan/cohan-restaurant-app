@@ -1,72 +1,84 @@
 import React from "react";
 import Card from "../../../../common/Card";
 import Button from "../../../../common/Button";
-import { formatPrice } from "../../../../../utils/formatters";
+import "./SupplyCard.scss";
 
-const SupplyCard = ({
-  supply,
-  onEdit,
-  onDelete,
-  onAddStock,
-  getStockStatus,
-}) => {
-  const status = getStockStatus(supply);
+const SupplyCard = ({ supply, onEdit, onDelete, onToggleActive }) => {
+  const {
+    name,
+    category,
+    unit,
+    costPerUnit,
+    pricePerUnit,
+    minStock,
+    isActive,
+    updatedAt,
+  } = supply;
+
+  const statusClass = isActive ? "active" : "inactive";
+  const statusText = isActive ? "Đang dùng" : "Ngừng";
 
   return (
-    <Card className="supply-card" hoverable onClick={() => onEdit(supply.id)}>
+    <Card className="supply-card">
       <div className="supply-header">
-        <div className="supply-icon">{supply.icon}</div>
-        <div className="supply-info">
-          <h3 className="supply-name">{supply.name}</h3>
-          <span className="supply-category">{supply.category}</span>
-        </div>
-        <span className={`status-badge ${status.class}`}>{status.text}</span>
+        <h3>{name}</h3>
+        <span className={`badge ${statusClass}`}>{statusText}</span>
       </div>
 
-      <div className="supply-content">
-        <div className="supply-stats">
-          <div className="stat-item">
-            <div className="stat-value">{supply.currentStock}</div>
-            <div className="stat-label">Tồn kho ({supply.unit})</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value">{formatPrice(supply.costPrice)}</div>
-            <div className="stat-label">Giá nhập/{supply.unit}</div>
-          </div>
+      <div className="supply-body">
+        <div className="info-row">
+          <span className="label">Danh mục:</span>
+          <span className="value">{category || "—"}</span>
         </div>
 
-        <div className="supply-actions">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(supply.id);
-            }}
-          >
-            ✏️ Sửa
-          </Button>
-          <Button
-            variant="success"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddStock(supply.id);
-            }}
-          >
-            📦 Nhập kho
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(supply.id);
-            }}
-          >
-            🗑️ Xóa
-          </Button>
+        <div className="info-row">
+          <span className="label">Đơn vị:</span>
+          <span className="value">{unit}</span>
         </div>
+
+        <div className="info-row">
+          <span className="label">Giá nhập:</span>
+          <span className="value">
+            {costPerUnit ? `${costPerUnit.toLocaleString()}đ/${unit}` : "—"}
+          </span>
+        </div>
+
+        {pricePerUnit ? (
+          <div className="info-row">
+            <span className="label">Giá bán:</span>
+            <span className="value">
+              {pricePerUnit.toLocaleString()}đ/{unit}
+            </span>
+          </div>
+        ) : null}
+
+        <div className="info-row">
+          <span className="label">Tồn tối thiểu:</span>
+          <span className="value">{minStock ?? 0}</span>
+        </div>
+
+        <div className="info-row">
+          <span className="label">Cập nhật:</span>
+          <span className="value small">
+            {new Date(updatedAt).toLocaleDateString("vi-VN")}
+          </span>
+        </div>
+      </div>
+
+      <div className="actions">
+        <Button size="sm" onClick={onEdit}>
+          ✏️ Sửa
+        </Button>
+        <Button size="sm" variant="danger" onClick={onDelete}>
+          🗑️ Xóa
+        </Button>
+        <Button
+          size="sm"
+          variant={isActive ? "secondary" : "success"}
+          onClick={onToggleActive}
+        >
+          {isActive ? "🚫 Ngừng" : "✅ Kích hoạt"}
+        </Button>
       </div>
     </Card>
   );

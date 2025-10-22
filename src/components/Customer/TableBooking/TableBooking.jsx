@@ -46,8 +46,6 @@ const GET_TABLES = gql`
         y
       }
       status
-      # optional floor if your schema returns it
-      # floor
     }
   }
 `;
@@ -164,6 +162,7 @@ const TableBooking = () => {
         onClose={() => setShowBookingModal(false)}
         restaurantId={restaurantId}
         tableId={selectedTable?.id}
+        tableCode={selectedTable?.label}
         tableCapacity={selectedTable?.capacity}
         tableFloor={selectedTable?.floor}
         onBookingConfirmed={handleBookingConfirmed}

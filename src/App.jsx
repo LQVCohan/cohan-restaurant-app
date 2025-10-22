@@ -7,14 +7,18 @@ import { ApolloProvider } from "@apollo/client/react";
 import { apolloClient } from "./apollo/client";
 import "./styles/globals.scss";
 import ScrollToTop from "./components/common/ScrollToTop";
-
+import NotificationContainer from "./components/common/NotificationContainer";
+import { NotificationProvider } from "./context/NotificationProvider";
 function App() {
   return (
     <ApolloProvider client={apolloClient}>
       <Router>
         <AuthProvider>
-          <ScrollToTop />
-          <AppRouter />
+          <NotificationProvider>
+            <ScrollToTop />
+            <AppRouter />
+            <NotificationContainer />
+          </NotificationProvider>
         </AuthProvider>
       </Router>
     </ApolloProvider>

@@ -1,0 +1,121 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.ingredient-list {
+  padding: $spacing-sm 0;
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+    padding: $spacing-sm $spacing-md;
+    background: $white;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    border-radius: $border-radius-md;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+    @include mobile {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    &-left,
+    &-right {
+      display: flex;
+      gap: $spacing-md;
+      flex-wrap: wrap;
+
+      @include mobile {
+        justify-content: center;
+      }
+    }
+  }
+
+  .search-filter {
+    display: flex;
+    gap: $spacing-md;
+    flex-wrap: wrap;
+    align-items: center;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: stretch;
+      gap: $spacing-sm;
+    }
+  }
+
+  .search-input {
+    @include form-input;
+    min-width: 280px;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+
+    &:focus {
+      border-color: rgba($primary, 0.35);
+      box-shadow: 0 0 0 4px rgba($primary, 0.08);
+      outline: none;
+    }
+
+    @include mobile {
+      min-width: auto;
+      width: 100%;
+    }
+  }
+
+  .filter-select {
+    @include form-input;
+    background: $white;
+    color: $text-strong;
+    min-width: 180px;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+
+    &:focus {
+      border-color: rgba($primary, 0.35);
+      box-shadow: 0 0 0 4px rgba($primary, 0.08);
+      outline: none;
+    }
+
+    @include mobile {
+      width: 100%;
+      min-width: 0;
+    }
+  }
+
+  .ingredients-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: $spacing-md;
+
+    @include mobile {
+      grid-template-columns: 1fr;
+      gap: $spacing-sm;
+    }
+  }
+}
+
+/* utilities dùng chung */
+.space-y-3 > * + * {
+  margin-top: $spacing-md;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-md;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-md;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}

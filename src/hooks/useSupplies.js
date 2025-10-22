@@ -1,120 +1,101 @@
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, gql } from "@apollo/client";
+import { useState, useMemo } from "react";
 
-const initialSupplies = [
-  {
-    id: 1,
-    name: "Coca Cola",
-    category: "beverage",
-    unit: "chai",
-    currentStock: 120,
-    minStock: 50,
-    costPrice: 15000,
-    supplier: "Coca Cola VN",
-    notes: "Chai 330ml",
-    icon: "🥤",
-  },
-  {
-    id: 2,
-    name: "Khăn lạnh",
-    category: "cleaning",
-    unit: "cái",
-    currentStock: 200,
-    minStock: 100,
-    costPrice: 2000,
-    supplier: "Vệ sinh Minh Anh",
-    notes: "Khăn lạnh dùng một lần",
-    icon: "🧻",
-  },
-  {
-    id: 3,
-    name: "Hộp đựng thức ăn",
-    category: "packaging",
-    unit: "cái",
-    currentStock: 500,
-    minStock: 200,
-    costPrice: 5000,
-    supplier: "Bao bì Việt",
-    notes: "Hộp giấy thân thiện môi trường",
-    icon: "📦",
-  },
-];
+// ===== GraphQL =====
+const GET_SUPPLIES = gql`
+  query Supplies($restaurantId: ID!, $search: String, $category: String) {
+    supplies(
+      restaurantId: $restaurantId
+      search: $search
+      category: $category
+    ) {
+      id
+      name
+      category
+      unit
+      costPerUnit
+      pricePerUnit
+      minStock
+      isActive
+      updatedAt
+    }
+  }
+`;
 
-export const useSupplies = () => {
-  const [supplies, setSupplies] = useState(initialSupplies);
-  const [filteredSupplies, setFilteredSupplies] = useState(supplies);
+const CREATE_SUPPLY = gql`
+  mutation CreateSupply($input: CreateSupplyInput!) {
+    createSupply(input: $input) {
+      id
+      name
+      category
+      unit
+      costPerUnit
+      isActive
+    }
+  }
+`;
+
+const UPDATE_SUPPLY = gql`
+  mutation UpdateSupply($id: ID!, $input: UpdateSupplyInput!) {
+    updateSupply(id: $id, input: $input) {
+      id
+      name
+      category
+      unit
+      costPerUnit
+      isActive
+    }
+  }
+`;
+
+const DELETE_SUPPLY = gql`
+  mutation DeleteSupply($id: ID!) {
+    deleteSupply(id: $id)
+  }
+`;
+
+// ===== Hook logic =====
+export const useSupplies = (restaurantId) => {
   const [filters, setFilters] = useState({
     search: "",
     category: "",
   });
 
-  useEffect(() => {
-    let filtered = supplies;
+  const { data, loading, refetch } = useQuery(GET_SUPPLIES, {
+    variables: { restaurantId, ...filters },
+    skip: !restaurantId,
+  });
 
-    if (filters.search) {
-      filtered = filtered.filter((supply) =>
-        supply.name.toLowerCase().includes(filters.search.toLowerCase())
-      );
-    }
+  const [createSupply] = useMutation(CREATE_SUPPLY);
+  const [updateSupply] = useMutation(UPDATE_SUPPLY);
+  const [deleteSupply] = useMutation(DELETE_SUPPLY);
 
-    if (filters.category) {
-      filtered = filtered.filter(
-        (supply) => supply.category === filters.category
-      );
-    }
+  const supplies = useMemo(() => data?.supplies || [], [data]);
 
-    setFilteredSupplies(filtered);
-  }, [supplies, filters]);
-
-  const getStockStatus = (item) => {
-    if (item.currentStock === 0) {
-      return {
-        value: "out-of-stock",
-        class: "status-out-of-stock",
-        text: "Hết hàng",
-      };
-    } else if (item.currentStock <= item.minStock) {
-      return { value: "low-stock", class: "status-low-stock", text: "Sắp hết" };
-    } else {
-      return { value: "in-stock", class: "status-in-stock", text: "Còn hàng" };
-    }
+  // ==== CRUD Wrappers ====
+  const addSupply = async (input) => {
+    await createSupply({ variables: { input } });
+    refetch();
   };
 
-  const addSupply = (supplyData) => {
-    const newId = Math.max(...supplies.map((s) => s.id)) + 1;
-    setSupplies([...supplies, { id: newId, ...supplyData }]);
+  const editSupply = async (id, input) => {
+    await updateSupply({ variables: { id, input } });
+    refetch();
   };
 
-  const updateSupply = (id, supplyData) => {
-    setSupplies(
-      supplies.map((supply) =>
-        supply.id === id ? { ...supply, ...supplyData } : supply
-      )
-    );
-  };
-
-  const deleteSupply = (id) => {
-    setSupplies(supplies.filter((supply) => supply.id !== id));
-  };
-
-  const addStock = (id, amount) => {
-    setSupplies(
-      supplies.map((supply) =>
-        supply.id === id
-          ? { ...supply, currentStock: supply.currentStock + amount }
-          : supply
-      )
-    );
+  const removeSupply = async (id) => {
+    await deleteSupply({ variables: { id } });
+    refetch();
   };
 
   return {
     supplies,
-    filteredSupplies,
+    loading,
     filters,
     setFilters,
     addSupply,
-    updateSupply,
-    deleteSupply,
-    addStock,
-    getStockStatus,
+    editSupply,
+    removeSupply,
+    refetch,
   };
 };

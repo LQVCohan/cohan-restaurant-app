@@ -55,7 +55,6 @@ const RecipeSchema = BaseSchemaModel({
   yieldQty: { type: Number, default: 1 },
   yieldUnit: { type: String, default: "portion" },
   baseComponents: { type: [ComponentSchema], default: [] },
-  variants: { type: [VariantSchema], default: [] },
 
   // ✅ NEW
   servingVariants: { type: [ServingVariantSchema], default: [] },

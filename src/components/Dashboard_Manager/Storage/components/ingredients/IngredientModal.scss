@@ -1,0 +1,97 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+/* Scope để không ảnh hưởng modal khác */
+.ingredient-modal {
+  .modal-body {
+    padding: $spacing-lg;
+    background: $white;
+
+    &.space-y-3 > * + * {
+      margin-top: $spacing-lg;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 0.35rem;
+
+      .hint {
+        font-weight: 500;
+        color: $text-muted;
+        margin-left: 0.25rem;
+      }
+      .req {
+        color: #b91c1c;
+      } /* dùng màu trực tiếp, không tạo biến mới */
+    }
+
+    input,
+    select,
+    textarea {
+      @include form-input;
+      width: 100%;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+      &:focus {
+        border-color: rgba($primary, 0.35);
+        box-shadow: 0 0 0 4px rgba($primary, 0.1);
+        outline: none;
+      }
+    }
+
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+
+    .error {
+      display: block;
+      margin-top: 0.35rem;
+      font-size: 0.8rem;
+      color: #b91c1c;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: $spacing-lg;
+
+      @include mobile {
+        grid-template-columns: 1fr;
+        gap: $spacing-md;
+      }
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: $spacing-lg;
+
+      @include mobile {
+        grid-template-columns: 1fr;
+        gap: $spacing-md;
+      }
+    }
+  }
+
+  .modal-footer,
+  .form-actions {
+    padding: $spacing-lg;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: $spacing-md;
+    background: linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);
+
+    button {
+      transition: transform 0.1s ease, box-shadow 0.12s ease;
+      &:active {
+        transform: translateY(1px);
+      }
+    }
+  }
+}

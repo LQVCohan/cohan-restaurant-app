@@ -1,4 +1,5 @@
 import React from "react";
+import Modal, { ModalFooter } from "@/components/common/Modal";
 import { formatCurrency, formatDateTime } from "@/utils/formatters";
 import "./SuccessModal.scss";
 
@@ -18,13 +19,16 @@ const SuccessModal = ({
     : "Cảm ơn bạn đã đặt món. Chúng tôi sẽ xử lý đơn hàng ngay!";
 
   return (
-    <div
-      className="success-modal"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      size="sm"
+      closeOnOverlayClick
+      closeOnEscape
     >
-      <div className="success-modal__content">
+      <div className="success-modal">
         <div className="success-icon">🎉</div>
-        <h2 className="success-title">{title}</h2>
         <p className="success-message">{sub}</p>
 
         {isBooking ? (
@@ -33,21 +37,23 @@ const SuccessModal = ({
           <OrderConfirmation order={order} />
         )}
 
-        <div className="success-actions">
+        <ModalFooter>
           <button
             className="action-btn action-btn--secondary"
             onClick={onClose}
           >
             Đóng
           </button>
-        </div>
+        </ModalFooter>
       </div>
-    </div>
+    </Modal>
   );
 };
 
 const BookingConfirmation = ({ booking }) => {
   if (!booking) return null;
+
+  // dt có thể là Date hoặc string (từ formatDateTime)
   const dt = booking.timeFromISO
     ? new Date(booking.timeFromISO)
     : booking.date && booking.time
@@ -74,7 +80,7 @@ const BookingConfirmation = ({ booking }) => {
           label="✉️ Email"
           value={booking.customerEmail || "-"}
         />
-        <ConfirmationItem label="🪑 Bàn" value={booking.tableId || "-"} />
+        <ConfirmationItem label="🪑 Bàn" value={booking.tableCode || "-"} />
         <ConfirmationItem
           label="👥 Số người"
           value={`${booking.partySize || "-"} người`}
@@ -87,6 +93,9 @@ const BookingConfirmation = ({ booking }) => {
           label="🆔 Mã đặt bàn"
           value={`#${booking.id || "-"}`}
         />
+        {booking.orderCode && (
+          <ConfirmationItem label="🔖 Order code" value={booking.orderCode} />
+        )}
       </div>
     </div>
   );
@@ -95,7 +104,7 @@ const BookingConfirmation = ({ booking }) => {
 const OrderConfirmation = ({ order }) => {
   if (!order) return null;
   return (
-    <div className="booking-confirmation">
+    <div className="booking-confirmation order">
       <h3>🧾 Thông tin đơn hàng</h3>
       <div className="confirmation-details">
         <ConfirmationItem

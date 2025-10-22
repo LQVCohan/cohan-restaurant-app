@@ -139,6 +139,7 @@ export const MenuMutation = {
       : null;
 
     const fields = [
+      "categoryId",
       "name",
       "description",
       "thumbImage",

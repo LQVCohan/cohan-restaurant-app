@@ -1,0 +1,133 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.ingredient-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  background: $white;
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    border-color 0.18s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: rgba($primary, 0.15);
+    box-shadow: 0 8px 16px rgba(2, 8, 20, 0.06), 0 2px 6px rgba(2, 8, 20, 0.04);
+    cursor: pointer;
+  }
+
+  .ingredient-header {
+    padding: $spacing-md $spacing-lg;
+    background: linear-gradient(135deg, #f4f7fb 0%, #eef2f7 100%);
+    display: flex;
+    align-items: center;
+    gap: $spacing-md;
+    margin: (-$spacing-lg) (-$spacing-lg) $spacing-md (-$spacing-lg);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  }
+
+  .ingredient-icon {
+    font-size: 2.25rem;
+    line-height: 1;
+    filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.6));
+  }
+
+  .ingredient-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ingredient-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #334155;
+    margin: 0 0 0.25rem 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ingredient-category {
+    font-size: 0.75rem;
+    color: $text-muted;
+    background: $white;
+    padding: 0.25rem 0.5rem;
+    border-radius: $border-radius-sm;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    display: inline-block;
+  }
+
+  .ingredient-content {
+    padding: 0 $spacing-lg $spacing-lg $spacing-lg;
+  }
+
+  .ingredient-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $spacing-md;
+    margin-bottom: $spacing-md;
+
+    .stat-item {
+      text-align: center;
+      padding: 0.75rem;
+      background: #f8fafc;
+      border-radius: 0.75rem;
+      border: 1px solid rgba(0, 0, 0, 0.04);
+
+      .stat-value {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: $primary;
+        margin-bottom: 0.25rem;
+        letter-spacing: 0.2px;
+      }
+
+      .stat-label {
+        font-size: 0.75rem;
+        color: $text-muted;
+      }
+    }
+  }
+
+  .ingredient-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    margin-top: $spacing-sm;
+
+    > * {
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+
+      &:active {
+        transform: translateY(1px);
+        box-shadow: none;
+      }
+    }
+  }
+
+  /* Status badge: hỗ trợ 2 kiểu class */
+  .status-badge {
+    margin-left: auto;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+
+    &.status-in-stock,
+    &.success {
+      @include status-badge(#dcfce7, #166534);
+      border: 1px solid rgba(22, 101, 52, 0.15);
+    }
+
+    &.status-low-stock,
+    &.warning {
+      @include status-badge(#fef3c7, #92400e);
+      border: 1px solid rgba(146, 64, 14, 0.18);
+    }
+
+    &.status-out-of-stock,
+    &.danger {
+      @include status-badge(#fee2e2, #991b1b);
+      border: 1px solid rgba(153, 27, 27, 0.18);
+    }
+  }
+}

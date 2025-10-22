@@ -86,7 +86,7 @@ const userSchema = BaseSchemaModel({
     default: "NEW",
     index: true,
   },
-
+  avatarUrl: { type: String },
   totalOrders: { type: Number, default: 0 },
   totalSpending: { type: Number, default: 0 },
   emailVerified: { type: Boolean, default: false },

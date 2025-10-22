@@ -1,246 +1,362 @@
-import React, { useState, useEffect } from "react";
-import Modal from "../../../../common/Modal";
-import FormGroup from "../Form/FormGroup";
-import FormLabel from "../Form/FormLabel";
-import FormInput from "../Form/FormInput";
-import FormSelect from "../Form/FormSelect";
-import FormTextarea from "../Form/FormTextarea";
-import Button from "../../../../common/Button";
-import {
-  SUPPLY_CATEGORIES,
-  SUPPLY_UNITS,
-} from "../../../../../utils/constants";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import Modal, { ModalFooter } from "../../../../common/Modal";
+import "./SupplyModal.scss";
 
-const SupplyModal = ({ isOpen, onClose, onSave, onDelete, supply = null }) => {
-  const [formData, setFormData] = useState({
-    name: "",
-    category: "beverage",
-    unit: "chai",
-    currentStock: "",
-    minStock: "",
-    costPrice: "",
-    supplier: "",
-    notes: "",
-  });
+const UNITS = [
+  "g",
+  "kg",
+  "ml",
+  "l",
+  "unit",
+  "piece",
+  "tbsp",
+  "tsp",
+  "pack",
+  "bottle",
+  "can",
+];
 
+const DEFAULT_FORM = {
+  name: "",
+  sku: "",
+  category: "",
+  unit: "unit",
+  costPerUnit: "",
+  pricePerUnit: "",
+  minStock: "",
+  notes: "",
+  isActive: true,
+};
+
+const SupplyModal = ({
+  isOpen,
+  onClose,
+  initial = null,
+  onSubmit, // ({ payload, isEditing, id })
+  onDelete, // (id) => Promise<void>  | optional
+}) => {
+  const [form, setForm] = useState(DEFAULT_FORM);
   const [errors, setErrors] = useState({});
-  const isEditing = !!supply;
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const isEditing = !!initial;
 
   useEffect(() => {
-    if (supply) {
-      setFormData({
-        name: supply.name,
-        category: supply.category,
-        unit: supply.unit,
-        currentStock: supply.currentStock.toString(),
-        minStock: supply.minStock.toString(),
-        costPrice: supply.costPrice.toString(),
-        supplier: supply.supplier,
-        notes: supply.notes,
+    if (initial) {
+      setForm({
+        name: initial?.name || "",
+        sku: initial?.sku || "",
+        category: initial?.category || "",
+        unit: initial?.unit || "unit",
+        costPerUnit: initial?.costPerUnit ?? "",
+        pricePerUnit: initial?.pricePerUnit ?? "",
+        minStock: initial?.minStock ?? "",
+        notes: initial?.notes || "",
+        isActive: initial?.isActive ?? true,
       });
     } else {
-      setFormData({
-        name: "",
-        category: "beverage",
-        unit: "chai",
-        currentStock: "",
-        minStock: "",
-        costPrice: "",
-        supplier: "",
-        notes: "",
-      });
+      setForm(DEFAULT_FORM);
     }
     setErrors({});
-  }, [supply, isOpen]);
+    setSaving(false);
+    setDeleting(false);
+  }, [initial, isOpen]);
 
-  const handleChange = (field) => (e) => {
-    setFormData({ ...formData, [field]: e.target.value });
-    if (errors[field]) {
-      setErrors({ ...errors, [field]: "" });
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  const validate = useCallback(() => {
+    const e = {};
+    if (!form.name.trim()) e.name = "Tên vật phẩm là bắt buộc";
+    if (!form.unit) e.unit = "Bắt buộc";
+    if (form.costPerUnit === "" || Number(form.costPerUnit) < 0)
+      e.costPerUnit = "Giá nhập phải ≥ 0";
+    if (form.pricePerUnit !== "" && Number(form.pricePerUnit) < 0)
+      e.pricePerUnit = "Giá bán phải ≥ 0";
+    if (form.minStock === "" || Number(form.minStock) < 0)
+      e.minStock = "Tồn tối thiểu phải ≥ 0";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }, [form]);
+
+  const payload = useMemo(
+    () => ({
+      name: form.name.trim(),
+      sku: form.sku?.trim() || undefined,
+      category: form.category?.trim() || "",
+      unit: form.unit,
+      costPerUnit: Number(form.costPerUnit) || 0,
+      pricePerUnit: form.pricePerUnit === "" ? null : Number(form.pricePerUnit),
+      minStock: Number(form.minStock) || 0,
+      notes: form.notes?.trim() || "",
+      isActive: !!form.isActive,
+    }),
+    [form]
+  );
+
+  const doSave = useCallback(
+    async (closeAfter = true) => {
+      if (saving) return;
+      if (!validate()) return;
+      try {
+        setSaving(true);
+        await onSubmit?.({ payload, isEditing, id: initial?.id });
+        if (closeAfter) onClose?.();
+        else {
+          // Lưu & tạo mới → reset form giữ trạng thái isActive/đơn vị
+          setForm((f) => ({
+            ...DEFAULT_FORM,
+            unit: f.unit,
+            isActive: f.isActive,
+          }));
+          setErrors({});
+        }
+      } finally {
+        setSaving(false);
+      }
+    },
+    [saving, validate, onSubmit, payload, isEditing, initial?.id, onClose]
+  );
+
+  const doDelete = useCallback(async () => {
+    if (!isEditing || !onDelete || deleting) return;
+    if (!window.confirm("Bạn có chắc muốn xóa vật phẩm này?")) return;
+    try {
+      setDeleting(true);
+      await onDelete(initial.id);
+      onClose?.();
+    } finally {
+      setDeleting(false);
+    }
+  }, [isEditing, onDelete, deleting, initial, onClose]);
+
+  // Ctrl/⌘ + Enter => Lưu
+  const onKeyDown = (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      doSave(true);
     }
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Tên vật phẩm là bắt buộc";
-    }
-
-    if (!formData.currentStock || parseFloat(formData.currentStock) < 0) {
-      newErrors.currentStock = "Số lượng hiện tại phải >= 0";
-    }
-
-    if (!formData.minStock || parseFloat(formData.minStock) < 0) {
-      newErrors.minStock = "Mức tối thiểu phải >= 0";
-    }
-
-    if (!formData.costPrice || parseInt(formData.costPrice) < 0) {
-      newErrors.costPrice = "Giá nhập phải >= 0";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
-    const supplyData = {
-      ...formData,
-      currentStock: parseFloat(formData.currentStock) || 0,
-      minStock: parseFloat(formData.minStock) || 0,
-      costPrice: parseInt(formData.costPrice) || 0,
-      icon: getSupplyCategoryIcon(formData.category),
-    };
-
-    onSave(supplyData);
-    onClose();
-  };
-
-  const handleDelete = () => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa vật phẩm này?")) {
-      onDelete(supply.id);
-      onClose();
-    }
-  };
-
-  const getSupplyCategoryIcon = (category) => {
-    const icons = {
-      beverage: "🥤",
-      cleaning: "🧻",
-      packaging: "📦",
-      utensil: "🍴",
-    };
-    return icons[category] || "📦";
-  };
+  if (!isOpen) return null;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
-      title={isEditing ? "Chỉnh sửa vật phẩm" : "Thêm vật phẩm"}
-      size="lg"
+      onClose={saving || deleting ? () => {} : onClose}
+      title={isEditing ? "Sửa vật phẩm" : "Thêm vật phẩm"}
+      size="md"
+      closeOnOverlayClick={!saving && !deleting}
     >
-      <form onSubmit={handleSubmit}>
-        <div className="form-row">
-          <FormGroup>
-            <FormLabel required>Tên vật phẩm</FormLabel>
-            <FormInput
-              placeholder="Ví dụ: Coca Cola"
-              value={formData.name}
-              onChange={handleChange("name")}
-              required
+      {/* nội dung trong modal__content để ăn style của Modal.scss */}
+      <div className="supply-modal-content" onKeyDown={onKeyDown}>
+        {/* Hàng 1 */}
+        <div className="grid-2">
+          <div className="field">
+            <label className="label">
+              Tên vật phẩm <span className="req">*</span>
+            </label>
+            <input
+              className="control"
+              value={form.name}
+              onChange={(e) => set({ name: e.target.value })}
+              placeholder="VD: Nước suối Lavie"
+              disabled={saving || deleting}
             />
-            {errors.name && <div className="error-message">{errors.name}</div>}
-          </FormGroup>
+            {errors.name && <div className="error">{errors.name}</div>}
+          </div>
 
-          <FormGroup>
-            <FormLabel>Danh mục</FormLabel>
-            <FormSelect
-              options={SUPPLY_CATEGORIES}
-              value={formData.category}
-              onChange={handleChange("category")}
+          <div className="field">
+            <label className="label">
+              SKU <span className="hint">(tùy chọn)</span>
+            </label>
+            <input
+              className="control"
+              value={form.sku}
+              onChange={(e) => set({ sku: e.target.value })}
+              placeholder="Mã hàng"
+              disabled={saving || deleting}
             />
-          </FormGroup>
+          </div>
         </div>
 
-        <div className="form-row-3">
-          <FormGroup>
-            <FormLabel>Đơn vị tính</FormLabel>
-            <FormSelect
-              options={SUPPLY_UNITS}
-              value={formData.unit}
-              onChange={handleChange("unit")}
+        {/* Hàng 2 */}
+        <div className="grid-3">
+          <div className="field">
+            <label className="label">Danh mục</label>
+            <input
+              className="control"
+              value={form.category}
+              onChange={(e) => set({ category: e.target.value })}
+              placeholder="VD: beverage / tissue / supply"
+              disabled={saving || deleting}
             />
-          </FormGroup>
+          </div>
 
-          <FormGroup>
-            <FormLabel required>Số lượng hiện tại</FormLabel>
-            <FormInput
-              type="number"
-              placeholder="0"
-              min="0"
-              step="0.1"
-              value={formData.currentStock}
-              onChange={handleChange("currentStock")}
-              required
-            />
-            {errors.currentStock && (
-              <div className="error-message">{errors.currentStock}</div>
-            )}
-          </FormGroup>
+          <div className="field">
+            <label className="label">
+              Đơn vị tính <span className="req">*</span>
+            </label>
+            <select
+              className="control"
+              value={form.unit}
+              onChange={(e) => set({ unit: e.target.value })}
+              disabled={saving || deleting}
+            >
+              {UNITS.map((u) => (
+                <option key={u} value={u}>
+                  {u}
+                </option>
+              ))}
+            </select>
+            {errors.unit && <div className="error">{errors.unit}</div>}
+          </div>
 
-          <FormGroup>
-            <FormLabel required>Mức tối thiểu</FormLabel>
-            <FormInput
-              type="number"
-              placeholder="0"
-              min="0"
-              step="0.1"
-              value={formData.minStock}
-              onChange={handleChange("minStock")}
-              required
-            />
-            {errors.minStock && (
-              <div className="error-message">{errors.minStock}</div>
-            )}
-          </FormGroup>
+          <div className="field">
+            <label className="label">Trạng thái</label>
+            <select
+              className="control"
+              value={form.isActive ? "1" : "0"}
+              onChange={(e) => set({ isActive: e.target.value === "1" })}
+              disabled={saving || deleting}
+            >
+              <option value="1">Đang dùng</option>
+              <option value="0">Ngừng</option>
+            </select>
+          </div>
         </div>
 
-        <div className="form-row">
-          <FormGroup>
-            <FormLabel required>Giá nhập (VNĐ)</FormLabel>
-            <FormInput
-              type="number"
-              placeholder="0"
-              min="0"
-              value={formData.costPrice}
-              onChange={handleChange("costPrice")}
-              required
-            />
-            {errors.costPrice && (
-              <div className="error-message">{errors.costPrice}</div>
+        {/* Hàng 3 */}
+        <div className="grid-3">
+          <div className="field">
+            <label className="label">
+              Giá nhập (VNĐ) <span className="req">*</span>
+            </label>
+            <div className="input-with-prefix">
+              <span className="prefix">₫</span>
+              <input
+                className="control"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.costPerUnit}
+                onChange={(e) => set({ costPerUnit: e.target.value })}
+                placeholder="0"
+                disabled={saving || deleting}
+              />
+            </div>
+            {errors.costPerUnit && (
+              <div className="error">{errors.costPerUnit}</div>
             )}
-          </FormGroup>
+          </div>
 
-          <FormGroup>
-            <FormLabel>Nhà cung cấp</FormLabel>
-            <FormInput
-              placeholder="Tên nhà cung cấp"
-              value={formData.supplier}
-              onChange={handleChange("supplier")}
+          <div className="field">
+            <label className="label">Giá bán (VNĐ)</label>
+            <div className="input-with-prefix">
+              <span className="prefix">₫</span>
+              <input
+                className="control"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.pricePerUnit}
+                onChange={(e) => set({ pricePerUnit: e.target.value })}
+                placeholder="0"
+                disabled={saving || deleting}
+              />
+            </div>
+            {errors.pricePerUnit && (
+              <div className="error">{errors.pricePerUnit}</div>
+            )}
+          </div>
+
+          <div className="field">
+            <label className="label">
+              Tồn tối thiểu <span className="req">*</span>
+            </label>
+            <input
+              className="control"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.minStock}
+              onChange={(e) => set({ minStock: e.target.value })}
+              placeholder="0"
+              disabled={saving || deleting}
             />
-          </FormGroup>
+            {errors.minStock && <div className="error">{errors.minStock}</div>}
+          </div>
         </div>
 
-        <FormGroup>
-          <FormLabel>Ghi chú</FormLabel>
-          <FormTextarea
+        {/* Ghi chú */}
+        <div className="field">
+          <label className="label">Ghi chú</label>
+          <textarea
+            className="control"
+            rows={3}
+            value={form.notes}
+            onChange={(e) => set({ notes: e.target.value })}
             placeholder="Ghi chú về vật phẩm..."
-            value={formData.notes}
-            onChange={handleChange("notes")}
+            disabled={saving || deleting}
           />
-        </FormGroup>
-
-        <div className="form-actions">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Hủy
-          </Button>
-          {isEditing && (
-            <Button type="button" variant="danger" onClick={handleDelete}>
-              Xóa
-            </Button>
-          )}
-          <Button type="submit" variant="primary">
-            Lưu
-          </Button>
         </div>
-      </form>
+      </div>
+
+      {/* Footer đồng bộ style Modal */}
+      <ModalFooter>
+        {!isEditing && (
+          <button
+            type="button"
+            className="btn btn--secondary"
+            onClick={() => setForm(DEFAULT_FORM)}
+            disabled={saving || deleting}
+            title="Xóa hết dữ liệu vừa nhập"
+          >
+            Reset
+          </button>
+        )}
+
+        {isEditing && onDelete && (
+          <button
+            type="button"
+            className="btn btn--danger"
+            onClick={doDelete}
+            disabled={saving || deleting}
+            title="Xóa vật phẩm này"
+          >
+            {deleting ? "Đang xóa..." : "Xóa"}
+          </button>
+        )}
+
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={onClose}
+          disabled={saving || deleting}
+        >
+          Hủy
+        </button>
+
+        {!isEditing && (
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => doSave(false)}
+            disabled={saving || deleting}
+            title="Lưu và tiếp tục thêm mới"
+          >
+            {saving ? "Đang lưu..." : "Lưu & tạo mới"}
+          </button>
+        )}
+
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={() => doSave(true)}
+          disabled={saving || deleting}
+        >
+          {saving ? "Đang lưu..." : isEditing ? "Lưu thay đổi" : "Tạo vật phẩm"}
+        </button>
+      </ModalFooter>
     </Modal>
   );
 };

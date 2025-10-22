@@ -1,122 +1,203 @@
 import React, { useState } from "react";
-import SupplyCard from "./SupplyCard";
+import { gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import SupplyModal from "./SupplyModal";
 import Button from "../../../../common/Button";
-import { useSupplies } from "../../../../../hooks/useSupplies";
-import { SUPPLY_CATEGORIES } from "../../../../../utils/constants";
-import "./supplies.scss";
+import "./SupplyList.scss";
 
-const SupplyList = () => {
-  const {
-    filteredSupplies,
-    filters,
-    setFilters,
-    addSupply,
-    updateSupply,
-    deleteSupply,
-    addStock,
-    getStockStatus,
-  } = useSupplies();
+// ================== GraphQL ==================
+const GET_SUPPLIES = gql`
+  query Supplies($restaurantId: ID!, $search: String, $limit: Int) {
+    supplies(restaurantId: $restaurantId, search: $search, limit: $limit) {
+      id
+      name
+      category
+      unit
+      costPerUnit
+      pricePerUnit
+      minStock
+      isActive
+      notes
+    }
+  }
+`;
 
-  const [showModal, setShowModal] = useState(false);
-  const [editingSupply, setEditingSupply] = useState(null);
+const CREATE_SUPPLY = gql`
+  mutation CreateSupply($input: CreateSupplyInput!) {
+    createSupply(input: $input) {
+      id
+      name
+      unit
+      isActive
+    }
+  }
+`;
 
-  const handleSearch = (e) => {
-    setFilters({ ...filters, search: e.target.value });
+const UPDATE_SUPPLY = gql`
+  mutation UpdateSupply($id: ID!, $input: UpdateSupplyInput!) {
+    updateSupply(id: $id, input: $input) {
+      id
+      name
+      unit
+      isActive
+    }
+  }
+`;
+
+const DELETE_SUPPLY = gql`
+  mutation DeleteSupply($id: ID!) {
+    deleteSupply(id: $id)
+  }
+`;
+
+// ================== Component ==================
+const SupplyList = ({ restaurantId }) => {
+  const [search, setSearch] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+
+  const { data, loading, error, refetch } = useQuery(GET_SUPPLIES, {
+    variables: { restaurantId, search, limit: 200 },
+    skip: !restaurantId,
+  });
+
+  const [createSupply] = useMutation(CREATE_SUPPLY);
+  const [updateSupply] = useMutation(UPDATE_SUPPLY);
+  const [deleteSupply] = useMutation(DELETE_SUPPLY);
+
+  const openNewModal = () => {
+    setEditing(null);
+    setModalOpen(true);
   };
 
-  const handleCategoryFilter = (e) => {
-    setFilters({ ...filters, category: e.target.value });
+  const openEditModal = (supply) => {
+    setEditing(supply);
+    setModalOpen(true);
   };
 
-  const handleAddStock = (id) => {
-    const supply = filteredSupplies.find((s) => s.id === id);
-    const amount = prompt(`Nhập số lượng ${supply.unit} muốn thêm:`);
-    if (amount && !isNaN(amount) && parseFloat(amount) > 0) {
-      addStock(id, parseFloat(amount));
+  const handleClose = () => {
+    setModalOpen(false);
+    setEditing(null);
+  };
+
+  // ======= SAVE (create or update) =======
+  const handleSave = async ({ payload, isEditing, id }) => {
+    try {
+      if (isEditing) {
+        await updateSupply({ variables: { id, input: payload } });
+      } else {
+        await createSupply({
+          variables: { input: { ...payload, restaurantId } },
+        });
+      }
+      await refetch();
+    } catch (err) {
+      console.error("Save supply error:", err);
     }
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa vật phẩm này?")) {
-      deleteSupply(id);
+  // ======= DELETE =======
+  const handleDelete = async (id) => {
+    try {
+      await deleteSupply({ variables: { id } });
+      await refetch();
+    } catch (err) {
+      console.error("Delete supply error:", err);
+      alert("Không thể xóa vật phẩm: " + err.message);
     }
   };
 
-  const handleEdit = (id) => {
-    const supply = filteredSupplies.find((s) => s.id === id);
-    setEditingSupply(supply);
-    setShowModal(true);
-  };
-
-  const handleAdd = () => {
-    setEditingSupply(null);
-    setShowModal(true);
-  };
-
-  const handleSave = (supplyData) => {
-    if (editingSupply) {
-      updateSupply(editingSupply.id, supplyData);
-    } else {
-      addSupply(supplyData);
-    }
-  };
-
-  const handleModalClose = () => {
-    setShowModal(false);
-    setEditingSupply(null);
-  };
+  const supplies = data?.supplies ?? [];
 
   return (
     <div className="supply-list">
       <div className="toolbar">
         <div className="toolbar-left">
-          <div className="search-filter">
-            <input
-              type="text"
-              className="search-input"
-              placeholder="🔍 Tìm kiếm vật phẩm..."
-              value={filters.search}
-              onChange={handleSearch}
-            />
-            <select
-              className="filter-select"
-              value={filters.category}
-              onChange={handleCategoryFilter}
-            >
-              <option value="">Tất cả danh mục</option>
-              {SUPPLY_CATEGORIES.map((category) => (
-                <option key={category.value} value={category.value}>
-                  {category.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <input
+            className="search-input"
+            placeholder="🔍 Tìm vật phẩm..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && refetch()}
+          />
+          <Button variant="primary" onClick={() => refetch()}>
+            Làm mới
+          </Button>
         </div>
+
         <div className="toolbar-right">
-          <Button onClick={handleAdd}>➕ Thêm vật phẩm</Button>
+          <Button variant="success" onClick={openNewModal}>
+            ➕ Thêm vật phẩm
+          </Button>
         </div>
       </div>
 
+      {loading && <div className="text-center">Đang tải...</div>}
+      {error && <div className="error">Lỗi: {error.message}</div>}
+
+      {!loading && supplies.length === 0 && (
+        <div className="text-center text-muted">Chưa có vật phẩm nào</div>
+      )}
+
       <div className="supplies-grid">
-        {filteredSupplies.map((supply) => (
-          <SupplyCard
-            key={supply.id}
-            supply={supply}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onAddStock={handleAddStock}
-            getStockStatus={getStockStatus}
-          />
+        {supplies.map((supply) => (
+          <div key={supply.id} className="supply-card">
+            <div className="supply-header">
+              <div className="supply-info">
+                <div className="supply-name">{supply.name}</div>
+                <div className="supply-category">
+                  {supply.category || "Không phân loại"}
+                </div>
+              </div>
+              <span
+                className={`status-badge ${
+                  supply.isActive ? "status-in-stock" : "status-out-of-stock"
+                }`}
+              >
+                {supply.isActive ? "Đang dùng" : "Ngừng"}
+              </span>
+            </div>
+
+            <div className="supply-stats">
+              <div className="stat-item">
+                <div className="stat-value">{supply.unit}</div>
+                <div className="stat-label">Đơn vị</div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-value">
+                  ₫{Number(supply.costPerUnit || 0).toLocaleString()}
+                </div>
+                <div className="stat-label">Giá nhập</div>
+              </div>
+            </div>
+
+            <div className="supply-actions">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => openEditModal(supply)}
+              >
+                ✏️ Sửa
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => handleDelete(supply.id)}
+              >
+                🗑️ Xóa
+              </Button>
+            </div>
+          </div>
         ))}
       </div>
 
+      {/* ===== Modal thêm/sửa ===== */}
       <SupplyModal
-        isOpen={showModal}
-        onClose={handleModalClose}
-        onSave={handleSave}
-        onDelete={deleteSupply}
-        supply={editingSupply}
+        isOpen={modalOpen}
+        onClose={handleClose}
+        initial={editing}
+        onSubmit={handleSave}
+        onDelete={handleDelete}
       />
     </div>
   );

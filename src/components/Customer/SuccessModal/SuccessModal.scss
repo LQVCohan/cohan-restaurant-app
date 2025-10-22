@@ -1,12 +1,9 @@
 @use "../../../styles/variables" as *;
 @use "../../../styles/mixins" as *;
 
-/* ✅ Không render overlay riêng nữa.
-   Modal gốc đã lo overlay + container.
-   Ta chỉ style phần nội dung bên trong. */
-
+/* Dùng chung bên trong Modal gốc */
 .success-modal {
-  // bọc toàn bộ content bên trong .modal__content
+  // container nội dung
 }
 
 .success-icon {
@@ -87,17 +84,18 @@
   text-align: right;
 }
 
+/* Nút ở ModalFooter của Modal gốc */
 .success-actions {
   display: flex;
   gap: 1rem;
-  padding: $spacing-xl 0 0; // nằm trong ModalFooter nên chỉ cần padding top
+  padding: $spacing-xl 0 0;
 
   @include tablet {
     flex-direction: column;
   }
 }
 
-/* Chip danh sách đơn đã tạo */
+/* Chip danh sách đơn đã tạo (nếu dùng) */
 .orders-list {
   display: flex;
   flex-wrap: wrap;

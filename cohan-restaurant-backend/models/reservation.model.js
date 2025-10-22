@@ -17,7 +17,7 @@ const ReservationSchema = BaseSchemaModel(
       required: true,
       index: true,
     },
-
+    restaurantName: { type: String, default: "" },
     tableId: {
       type: Types.ObjectId,
       ref: "Table",
@@ -48,7 +48,7 @@ const ReservationSchema = BaseSchemaModel(
     depositTxnId: { type: Types.ObjectId, ref: "PaymentTransaction" },
     depositStatus: {
       type: String,
-      enum: ["unpaid", "pending", "paid", "refunded"],
+      enum: ["unpaid", "pending", "paid", "refunded", "cancelled"],
       default: "pending",
     },
 

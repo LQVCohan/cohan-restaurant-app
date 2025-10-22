@@ -8,6 +8,7 @@ const CREATE_RESERVATION = gql`
       id
       orderCode
       restaurantId
+      restaurantName
       tableId
       userId
       timeFrom

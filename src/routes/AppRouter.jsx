@@ -8,9 +8,9 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-// 🔹 Apollo Client Imports (the way you prefer)
-import { gql } from "@apollo/client";
-import { useQuery } from "@apollo/client/react";
+
+// ✅ Apollo Client (gọn, đúng package)
+import { gql, useQuery } from "@apollo/client";
 
 // ==== Public Components ====
 import Home from "../components/Customer/Homepage_Client/Home";
@@ -22,6 +22,10 @@ import ForbiddenPage from "../pages/ForbiddenPage";
 // ==== Customer ====
 import RestaurantsList from "../components/Customer/RestaurantList/RestaurantList";
 import RestaurantDetail from "../components/Customer/RestaurantDetail/RestaurantDetail";
+import TableBooking from "../components/Customer/TableBooking/TableBooking";
+import OrdersPage from "../components/Customer/OrdersManagement/OrdersPage";
+// ✅ Profile Page (vừa tạo)
+import ProfilePage from "../components/Customer/Profile/ProfilePage";
 
 // ==== Manager/Admin ====
 import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
@@ -33,8 +37,6 @@ import ManagerLayout from "../layouts/ManagerLayout";
 import StaffOrder from "../components/StaffOrder";
 
 import MainLayout from "../layouts/MainLayout";
-
-import TableBooking from "../components/Customer/TableBooking/TableBooking";
 
 // =========================
 // 🔐 GraphQL Query: me
@@ -60,7 +62,6 @@ const useAuth = () => {
     () => localStorage.getItem("token") || sessionStorage.getItem("token")
   );
 
-  // Nếu chưa có token thì bỏ qua query me
   const { data, loading, error, refetch } = useQuery(ME_QUERY, {
     skip: !token,
     fetchPolicy: "network-only",
@@ -73,7 +74,9 @@ const useAuth = () => {
   });
 
   const role = data?.me?.roleName || null;
+  const emailVerified = data?.me?.emailVerified ?? false;
 
+  // Đồng bộ token khi tab khác thay đổi
   useEffect(() => {
     const handleStorageChange = () => {
       const newToken =
@@ -87,25 +90,35 @@ const useAuth = () => {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, [token, refetch]);
 
+  // Nếu mất token -> về login
   useEffect(() => {
     if (!token) navigate("/login");
   }, [token, navigate]);
 
-  return { token, role, loading, error };
+  return { token, role, emailVerified, loading, error };
 };
 
 // =========================
-// 🔐 PrivateRoute
+// 🔐 PrivateRoute ( kiểm tra emailVerified tuỳ ý)
 // =========================
-const PrivateRoute = ({ children, allowedRoles }) => {
-  const { token, role, loading } = useAuth();
+const PrivateRoute = ({
+  children,
+  allowedRoles,
+  requireVerifiedEmail = false,
+}) => {
+  const { token, role, emailVerified, loading } = useAuth();
   const location = useLocation();
 
   if (loading) return null;
+
   if (!token)
     return <Navigate to="/login" state={{ from: location }} replace />;
+
   if (allowedRoles && role && !allowedRoles.includes(role))
     return <Navigate to="/403" replace />;
+
+  if (requireVerifiedEmail && !emailVerified)
+    return <Navigate to="/verify-email" replace />;
 
   return children;
 };
@@ -116,6 +129,7 @@ const PrivateRoute = ({ children, allowedRoles }) => {
 const AppRouter = () => {
   const { refRestaurant, restaurants } = useContext(AuthContext);
   console.log("refRestaurant, restaurants", refRestaurant, restaurants);
+
   return (
     <MainLayout>
       <Routes>
@@ -128,9 +142,23 @@ const AppRouter = () => {
 
         {/* ===== CUSTOMER ===== */}
         <Route
+          path="/orders"
+          element={
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "admin"]}
+              requireVerifiedEmail
+            >
+              <OrdersPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
           path="/restaurants"
           element={
-            <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "admin"]}
+              requireVerifiedEmail
+            >
               <RestaurantsList />
             </PrivateRoute>
           }
@@ -138,7 +166,10 @@ const AppRouter = () => {
         <Route
           path="/restaurant/:id"
           element={
-            <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "admin"]}
+              requireVerifiedEmail
+            >
               <RestaurantDetail />
             </PrivateRoute>
           }
@@ -146,7 +177,10 @@ const AppRouter = () => {
         <Route
           path="/restaurant/:id/table"
           element={
-            <PrivateRoute allowedRoles={["customer", "manager", "admin"]}>
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "admin"]}
+              requireVerifiedEmail
+            >
               <TableBooking />
             </PrivateRoute>
           }
@@ -156,7 +190,7 @@ const AppRouter = () => {
         <Route
           path="/staff/orders"
           element={
-            <PrivateRoute allowedRoles={["staff"]}>
+            <PrivateRoute allowedRoles={["staff"]} requireVerifiedEmail>
               <StaffOrder />
             </PrivateRoute>
           }
@@ -170,7 +204,10 @@ const AppRouter = () => {
         <Route
           path="/manager/dashboard"
           element={
-            <PrivateRoute allowedRoles={["manager", "admin", "customer"]}>
+            <PrivateRoute
+              allowedRoles={["manager", "admin"]}
+              requireVerifiedEmail
+            >
               <ManagerLayout>
                 <Dashboard />
               </ManagerLayout>
@@ -180,7 +217,10 @@ const AppRouter = () => {
         <Route
           path="/manager/staff"
           element={
-            <PrivateRoute allowedRoles={["manager", "admin"]}>
+            <PrivateRoute
+              allowedRoles={["manager", "admin"]}
+              requireVerifiedEmail
+            >
               <ManagerLayout>
                 <StaffManagement />
               </ManagerLayout>
@@ -190,7 +230,10 @@ const AppRouter = () => {
         <Route
           path="/menu"
           element={
-            <PrivateRoute allowedRoles={["admin", "manager"]}>
+            <PrivateRoute
+              allowedRoles={["admin", "manager"]}
+              requireVerifiedEmail
+            >
               <ManagerLayout>
                 <MenuManagement />
               </ManagerLayout>
@@ -202,7 +245,7 @@ const AppRouter = () => {
         <Route
           path="/admin/dashboard"
           element={
-            <PrivateRoute allowedRoles={["admin"]}>
+            <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
               <Dashboard />
             </PrivateRoute>
           }
@@ -210,7 +253,7 @@ const AppRouter = () => {
         <Route
           path="/users"
           element={
-            <PrivateRoute allowedRoles={["admin"]}>
+            <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
               <div>Quản Lý Người Dùng</div>
             </PrivateRoute>
           }
@@ -218,7 +261,7 @@ const AppRouter = () => {
         <Route
           path="/settings"
           element={
-            <PrivateRoute allowedRoles={["admin"]}>
+            <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
               <div>Cài Đặt Hệ Thống</div>
             </PrivateRoute>
           }
@@ -228,7 +271,10 @@ const AppRouter = () => {
         <Route
           path="/employees"
           element={
-            <PrivateRoute allowedRoles={["admin", "manager"]}>
+            <PrivateRoute
+              allowedRoles={["admin", "manager"]}
+              requireVerifiedEmail
+            >
               <div>Quản Lý Nhân Viên</div>
             </PrivateRoute>
           }
@@ -236,23 +282,22 @@ const AppRouter = () => {
         <Route
           path="/inventory"
           element={
-            <PrivateRoute allowedRoles={["admin", "manager"]}>
+            <PrivateRoute
+              allowedRoles={["admin", "manager"]}
+              requireVerifiedEmail
+            >
               <div>Quản Lý Kho</div>
             </PrivateRoute>
           }
         />
-        <Route
-          path="/orders"
-          element={
-            <PrivateRoute allowedRoles={["admin", "manager"]}>
-              <div>Quản Lý Đơn Hàng</div>
-            </PrivateRoute>
-          }
-        />
+
         <Route
           path="/reservations"
           element={
-            <PrivateRoute allowedRoles={["admin", "manager"]}>
+            <PrivateRoute
+              allowedRoles={["admin", "manager"]}
+              requireVerifiedEmail
+            >
               <div>Quản Lý Đặt Bàn</div>
             </PrivateRoute>
           }
@@ -260,7 +305,10 @@ const AppRouter = () => {
         <Route
           path="/promotions"
           element={
-            <PrivateRoute allowedRoles={["admin", "manager"]}>
+            <PrivateRoute
+              allowedRoles={["admin", "manager"]}
+              requireVerifiedEmail
+            >
               <div>Quản Lý Khuyến Mãi</div>
             </PrivateRoute>
           }
@@ -268,7 +316,10 @@ const AppRouter = () => {
         <Route
           path="/analytics"
           element={
-            <PrivateRoute allowedRoles={["admin", "manager"]}>
+            <PrivateRoute
+              allowedRoles={["admin", "manager"]}
+              requireVerifiedEmail
+            >
               <div>Phân Tích / Báo Cáo</div>
             </PrivateRoute>
           }
@@ -280,8 +331,9 @@ const AppRouter = () => {
           element={
             <PrivateRoute
               allowedRoles={["customer", "manager", "staff", "admin"]}
+              requireVerifiedEmail
             >
-              <div>Trang Thông Tin Cá Nhân</div>
+              <ProfilePage />
             </PrivateRoute>
           }
         />

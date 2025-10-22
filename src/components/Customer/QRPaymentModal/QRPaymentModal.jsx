@@ -1,35 +1,51 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Modal, { ModalFooter } from "@/components/common/Modal";
+import { gql } from "@apollo/client";
+import { useLazyQuery } from "@apollo/client/react";
 import { usePaymentTimer } from "../../../hooks/usePaymentTimer";
 import { useNotification } from "../../../hooks/useNotification";
 import { formatCurrency } from "../../../utils/formatters";
 import "./QRPaymentModal.scss";
+
+/* ───────────────── GraphQL ──────────────── */
+const GET_RESERVATION_STATUS = gql`
+  query ReservationStatus($id: ID, $orderCode: String) {
+    reservation(id: $id, orderCode: $orderCode) {
+      id
+      orderCode
+      status
+      depositStatus
+      depositTxnId
+      depositAmount
+      pendingPaymentExpiresAt
+      updatedAt
+    }
+  }
+`;
 
 /**
  * Props:
  * - isOpen: boolean
  * - onClose: () => void
  * - booking: {
- *     id, deposit, reservationId?, orderCode?, customerName?, ...
+ *     id, orderCode?, reservationId?, deposit,
  *   }
- * - onPaymentConfirmed: (booking) => void
- * - onCheckPayment?: (booking) => Promise<"paid"|"pending"|"failed">
- *     // TUỲ CHỌN: nếu bạn có API check realtime trạng thái thanh toán
+ * - onPaymentConfirmed: (reservation) => void
  */
-const QRPaymentModal = ({
-  isOpen,
-  onClose,
-  booking,
-  onPaymentConfirmed,
-  onCheckPayment,
-}) => {
+const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
   const depositAmount = Number(booking?.deposit) || 0;
+
+  const orderCode = booking?.orderCode || null;
+
   const { timeLeft, formattedTime, startTimer, stopTimer, resetTimer } =
     usePaymentTimer(600);
   const { showNotification } = useNotification();
   const [isChecking, setIsChecking] = useState(false);
 
-  // Bắt đầu/ dừng timer theo open state
+  const [fetchStatus] = useLazyQuery(GET_RESERVATION_STATUS, {
+    fetchPolicy: "network-only",
+  });
+
   useEffect(() => {
     if (isOpen && booking) {
       resetTimer(600);
@@ -41,11 +57,13 @@ const QRPaymentModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, booking]);
 
-  // Hết giờ thì đóng & thông báo
   useEffect(() => {
     if (!isOpen) return;
     if (timeLeft === 0) {
-      showNotification("Hết thời gian thanh toán! Đơn cọc sẽ bị hủy.", "error");
+      showNotification(
+        "⏰ Hết thời gian thanh toán! Đặt cọc sẽ bị hủy.",
+        "error"
+      );
       onClose?.();
     }
   }, [timeLeft, isOpen, onClose, showNotification]);
@@ -56,30 +74,45 @@ const QRPaymentModal = ({
     return "normal";
   }, [timeLeft]);
 
-  // Nút “✅ Tôi đã chuyển khoản” —> chỉ CHECK trạng thái, không auto pass
   const handleConfirmPaid = async () => {
-    if (!onCheckPayment) {
-      showNotification(
-        "Đang kiểm tra thanh toán… Vui lòng tích hợp onCheckPayment để kiểm tra trên server.",
-        "info"
-      );
+    if (!orderCode) {
+      showNotification("Không có thông tin mã đặt bàn để kiểm tra.", "error");
       return;
     }
 
     setIsChecking(true);
     try {
-      const status = await onCheckPayment(booking);
-      if (status === "paid") {
+      const variables = { orderCode };
+
+      const { data } = await fetchStatus({ variables });
+      const rs = data?.reservation;
+      const isPaid = rs?.depositStatus === "paid";
+      const isPending = rs?.depositStatus === "pending";
+      const isFailed =
+        rs?.depositStatus === ["failed", "cancelled", "refunded"].includes();
+      if (!rs) {
+        showNotification("Không tìm thấy đơn đặt bàn để kiểm tra.", "error");
+        return;
+      }
+      console.log("status:", isPaid);
+      console.log("status:", isPending);
+      console.log("status:", isFailed);
+      if (isPaid) {
         stopTimer();
-        showNotification("Thanh toán thành công!", "success");
-        onPaymentConfirmed?.(booking);
-      } else if (status === "pending") {
+        showNotification("✅ Thanh toán thành công!", "success");
+        onPaymentConfirmed?.(rs);
+      } else if (isPending) {
         showNotification(
-          "Thanh toán chưa ghi nhận. Vui lòng chờ hoặc thử lại sau ít phút.",
+          "Thanh toán chưa được ghi nhận. Vui lòng chờ thêm vài phút.",
           "warning"
         );
+      } else if (isFailed) {
+        showNotification("Thanh toán thất bại hoặc bị hủy.", "error");
       } else {
-        showNotification("Thanh toán thất bại. Vui lòng thử lại!", "error");
+        showNotification(
+          "Trạng thái chưa xác định. Vui lòng thử lại sau.",
+          "info"
+        );
       }
     } catch (err) {
       showNotification(
@@ -94,7 +127,7 @@ const QRPaymentModal = ({
   const handleCancel = () => {
     if (
       window.confirm(
-        "Bạn muốn đóng màn hình thanh toán? Bạn vẫn có thể thanh toán ở trang quản lý đặt bàn trong thời hạn 10 phút."
+        "Bạn muốn đóng màn hình thanh toán? Bạn vẫn có thể thanh toán trong vòng 10 phút kể từ khi đặt bàn."
       )
     ) {
       stopTimer();
@@ -102,7 +135,6 @@ const QRPaymentModal = ({
     }
   };
 
-  // Dùng Modal base — không cần tự overlay nữa
   if (!isOpen) return null;
 
   return (
@@ -115,10 +147,9 @@ const QRPaymentModal = ({
       closeOnEscape
     >
       <div className="qrpay">
-        {/* Header ngắn với timer */}
         <div className="qrpay__header">
           <div className="qrpay__timer">
-            <span className="timer-text">Thời gian còn lại: </span>
+            <span>Thời gian còn lại: </span>
             <span className={`timer-countdown timer-countdown--${timerColor}`}>
               {formattedTime}
             </span>
@@ -127,7 +158,6 @@ const QRPaymentModal = ({
 
         <div className="qrpay__body">
           <QRCodeSection />
-
           <PaymentInfo booking={booking} amount={depositAmount} />
         </div>
 
@@ -136,12 +166,10 @@ const QRPaymentModal = ({
             className="btn btn--success"
             onClick={handleConfirmPaid}
             disabled={isChecking}
-            title="Chỉ xác nhận sau khi bạn đã chuyển khoản. Hệ thống sẽ kiểm tra trạng thái trên server."
           >
             {isChecking ? (
               <>
-                <span className="loading-spinner" />
-                Đang kiểm tra...
+                <span className="loading-spinner" /> Kiểm tra...
               </>
             ) : (
               "✅ Tôi đã chuyển khoản"
@@ -155,6 +183,8 @@ const QRPaymentModal = ({
     </Modal>
   );
 };
+
+/* ───────────────── Subcomponents ──────────────── */
 
 const QRCodeSection = () => (
   <div className="qr-code-container">
@@ -183,17 +213,13 @@ const PaymentInfo = ({ booking, amount }) => (
     </div>
 
     <div className="payment-details">
-      <PaymentDetail label="Mã đặt bàn" value={`#${booking?.id ?? "—"}`} />
-      {/* Tuỳ chỉnh thông tin tài khoản nhận */}
+      <PaymentDetail
+        label="Mã đặt bàn (Order Code)"
+        value={`#${booking?.orderCode || booking?.id || "—"}`}
+      />
       <PaymentDetail label="Ngân hàng" value="Vietcombank" />
       <PaymentDetail label="Số tài khoản" value="1234567890" />
       <PaymentDetail label="Chủ tài khoản" value="Golden Dragon Restaurant" />
-      {booking?.reservationId && (
-        <PaymentDetail
-          label="ReservationId"
-          value={String(booking.reservationId)}
-        />
-      )}
     </div>
 
     <PaymentWarning />

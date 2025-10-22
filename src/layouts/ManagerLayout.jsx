@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Sidebar from "../components/Dashboard_Manager/Sidebar";
 import Header from "../components/Dashboard_Manager/Header";
 import Dashboard from "../components/Dashboard_Manager/Dashboard";
@@ -15,7 +15,48 @@ import StorageManagement from "../components/Dashboard_Manager/Storage/StorageMa
 const ManagerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
-
+  const validPages = useMemo(
+    () =>
+      new Set([
+        "dashboard",
+        "tables",
+        "orders",
+        "menu",
+        "inventory",
+        "staff",
+        "customers",
+        "analytics",
+        "transactions",
+        "reports",
+        "settings",
+        "schedules",
+        "promotions",
+        "rates",
+        "finance",
+        "setting",
+        "backup", // thống nhất tên với Sidebar
+      ]),
+    []
+  );
+  useEffect(() => {
+    const hash = window.location.hash?.replace("#", "");
+    if (hash && validPages.has(hash)) {
+      setCurrentPage(hash);
+      return;
+    }
+    const saved = localStorage.getItem("manager.currentPage");
+    if (saved && validPages.has(saved)) {
+      setCurrentPage(saved);
+    }
+  }, [validPages]);
+  useEffect(() => {
+    if (validPages.has(currentPage)) {
+      localStorage.setItem("manager.currentPage", currentPage);
+      if (window.location.hash !== `#${currentPage}`) {
+        history.replaceState(null, "", `#${currentPage}`);
+      }
+    }
+  }, [currentPage, validPages]);
   // Close sidebar on window resize
   useEffect(() => {
     const handleResize = () => {
@@ -64,7 +105,6 @@ const ManagerLayout = () => {
     setSidebarOpen(false);
   };
   const renderContent = () => {
-    console.log("content: ", currentPage);
     switch (currentPage) {
       case "dashboard":
         return <Dashboard />;
@@ -82,24 +122,19 @@ const ManagerLayout = () => {
         return <CustomerManagement />;
       case "analytics":
         return <ManagerAnalyst />;
-      case "transactions":
-        return <Transactions />;
-      case "reports":
-        return <Reports />;
+
+      // case "transactions": return <Transactions />;
+      // case "reports": return <Reports />;
       case "settings":
-        return <Settings />;
+      case "rates":
+      case "finance":
+      case "setting":
+      case "backup":
+        return <div>Đang phát triển…</div>;
       case "schedules":
         return <ScheduleManagement />;
       case "promotions":
         return <PromotionManagement />;
-      case "rates":
-        return <Settings />;
-      case "finance":
-        return <Settings />;
-      case "setting":
-        return <Settings />;
-      case "back-up":
-        return <Settings />;
       default:
         return <div>Content not found</div>;
     }
@@ -120,6 +155,7 @@ const ManagerLayout = () => {
         isOpen={sidebarOpen}
         onClose={closeSidebar}
         onPageChange={setCurrentPage}
+        activeItem={currentPage}
       />
 
       {/* Main Content Area */}

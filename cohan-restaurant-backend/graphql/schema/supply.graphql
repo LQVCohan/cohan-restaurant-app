@@ -1,0 +1,74 @@
+type Supply {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  sku: String
+  category: String
+  unit: Unit!
+  costPerUnit: Float
+  pricePerUnit: Float
+  photos: [String!]
+  minStock: Float
+  notes: String
+  isActive: Boolean
+  meta: JSON
+  createdAt: Date
+  updatedAt: Date
+}
+
+input CreateSupplyInput {
+  restaurantId: ID!
+  name: String!
+  sku: String
+  category: String
+  unit: Unit!
+  costPerUnit: Float
+  pricePerUnit: Float
+  photos: [String!]
+  minStock: Float
+  notes: String
+  isActive: Boolean
+  meta: JSON
+}
+
+input UpdateSupplyInput {
+  name: String
+  sku: String
+  category: String
+  unit: Unit
+  costPerUnit: Float
+  pricePerUnit: Float
+  photos: [String!]
+  minStock: Float
+  notes: String
+  isActive: Boolean
+  meta: JSON
+}
+
+# =========================
+# Queries
+# =========================
+
+extend type Query {
+  supplies(
+    restaurantId: ID!
+    category: String
+    isActive: Boolean
+    search: String
+    limit: Int = 100
+  ): [Supply!]!
+
+  supply(id: ID!, restaurantId: ID!): Supply
+}
+
+# =========================
+# Mutations
+# =========================
+
+extend type Mutation {
+  createSupply(input: CreateSupplyInput!): Supply!
+
+  updateSupply(id: ID!, input: UpdateSupplyInput!): Supply!
+
+  deleteSupply(id: ID!): Boolean!
+}

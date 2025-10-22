@@ -1,0 +1,48 @@
+.app-notifications {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 10050; // cao hơn modal overlay 9999
+  pointer-events: none; // không chặn click nền, nhưng từng toast sẽ bật lại
+}
+
+.app-toast {
+  pointer-events: auto;
+  min-width: 260px;
+  max-width: 420px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  color: #111827;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  border-left: 6px solid #93c5fd;
+  animation: slideIn 180ms ease-out;
+
+  &--success {
+    border-left-color: #22c55e;
+  }
+  &--error {
+    border-left-color: #ef4444;
+  }
+  &--warning {
+    border-left-color: #f59e0b;
+  }
+  &--info {
+    border-left-color: #3b82f6;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

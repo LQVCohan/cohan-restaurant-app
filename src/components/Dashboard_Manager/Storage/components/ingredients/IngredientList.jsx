@@ -1,10 +1,12 @@
+// src/components/.../ingredients/IngredientList.jsx
 import React, { useState } from "react";
 import IngredientCard from "./IngredientCard";
+import IngredientModal from "./IngredientModal";
 import Button from "../../../../common/Button";
 import { useIngredients } from "../../../../../hooks/useIngredients";
-import "./ingredients.scss";
+import "./IngredientList.scss";
 
-const IngredientList = () => {
+const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
   const {
     filteredIngredients,
     filters,
@@ -14,21 +16,16 @@ const IngredientList = () => {
     deleteIngredient,
     addStock,
     getStockStatus,
-  } = useIngredients();
+  } = useIngredients(restaurantId, selectedWarehouseId);
 
   const [showModal, setShowModal] = useState(false);
 
-  const handleSearch = (e) => {
+  const handleSearch = (e) =>
     setFilters({ ...filters, search: e.target.value });
-  };
-
-  const handleCategoryFilter = (e) => {
+  const handleCategoryFilter = (e) =>
     setFilters({ ...filters, category: e.target.value });
-  };
-
-  const handleStatusFilter = (e) => {
+  const handleStatusFilter = (e) =>
     setFilters({ ...filters, status: e.target.value });
-  };
 
   const handleAddStock = (id) => {
     const ingredient = filteredIngredients.find((i) => i.id === id);
@@ -92,18 +89,26 @@ const IngredientList = () => {
           <IngredientCard
             key={ingredient.id}
             ingredient={ingredient}
-            onEdit={() => {
-              /* Handle edit */
-            }}
+            onEdit={() => setShowModal(true)} // tuỳ bạn mở modal edit
             onDelete={handleDelete}
             onAddStock={handleAddStock}
             onShowUsage={() => {
-              /* Handle show usage */
+              /* show recipe usage nếu muốn */
             }}
             getStockStatus={getStockStatus}
           />
         ))}
       </div>
+
+      <IngredientModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSave={(data) => {
+          if (data.id) updateIngredient(data.id, data);
+          else addIngredient(data);
+        }}
+        onDelete={(id) => deleteIngredient(id)}
+      />
     </div>
   );
 };

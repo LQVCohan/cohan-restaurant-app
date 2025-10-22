@@ -2,6 +2,36 @@
 import React, { useState, useEffect } from "react";
 import Modal from "../../../../common/Modal";
 import "./MenuItemModal.scss";
+import { gql } from "@apollo/client";
+import { useMutation } from "@apollo/client/react";
+
+const UPDATE_MENUITEM = gql`
+  mutation UpdateMenuItem($input: UpdateMenuItemInput!) {
+    updateMenuItem(input: $input) {
+      id
+      restaurantId
+      menuId
+      categoryId
+      name
+      description
+      basePrice
+      preparationMethods {
+        name
+        price
+      }
+      thumbImage
+      mediaAssetIds
+      modifierGroupIds
+      status
+      avgPrepTimeMin
+      recipe
+      notes
+      point
+      createdAt
+      updatedAt
+    }
+  }
+`;
 
 const MenuItemModal = ({
   isOpen,
@@ -13,12 +43,31 @@ const MenuItemModal = ({
 }) => {
   const [formData, setFormData] = useState({
     name: "",
-    category: "",
+    categoryId: "",
     status: "available",
-    image: "",
+    thumbImage: "",
     description: "",
-    // Chỉ còn methods (dùng cho UI) — sẽ map từ/ra preparationMethods ở tầng mutation nếu cần
-    methods: [{ name: "", price: "", cookTime: "", unit: "portion" }],
+    preparationMethods: [
+      { name: "", price: "", cookTime: "", unit: "portion" },
+    ],
+  });
+  const [toasts, setToasts] = useState([]);
+
+  const pushToast = (text, type = "success") =>
+    setToasts((t) => [
+      ...t,
+      { id: crypto?.randomUUID?.() || String(Math.random()), text, type },
+    ]);
+
+  const [updateMenuItemMutation] = useMutation(UPDATE_MENUITEM, {
+    onError: (e) => {
+      pushToast(`Lỗi cập nhật món: ${e.message}`, "error");
+      onSave?.();
+    },
+    onCompleted: () => {
+      pushToast("Cập nhật món thành công", "success");
+      onSave?.();
+    },
   });
 
   // Load data khi edit
@@ -26,26 +75,26 @@ const MenuItemModal = ({
     if (editId && Array.isArray(menuItems)) {
       const item = menuItems.find((i) => i.id === editId);
       if (item) {
-        // Ưu tiên lấy từ item.methods (nếu normalize ở trang manager đã có)
-        let methods = Array.isArray(item.methods) ? item.methods : [];
-        // fallback từ preparationMethods (BE) -> map về methods cho UI modal
-        if (!methods.length && Array.isArray(item.preparationMethods)) {
-          methods = item.preparationMethods.map((m) => ({
-            name: m.name,
-            price: m.price,
-            // cookTime không có ở m — lấy avgPrepTimeMin nếu có trong item
-            cookTime: item.avgPrepTimeMin || "",
-            unit: "portion",
-          }));
-        }
+        // Ưu tiên dùng item.preparationMethods (chuẩn BE)
+        let pm = Array.isArray(item.preparationMethods)
+          ? item.preparationMethods.map((m) => ({
+              name: m.name,
+              price: m.price,
+              // UI có cookTime để tính avg; nếu không có thì mượn avgPrepTimeMin
+              cookTime: item.avgPrepTimeMin || "",
+              unit: "portion",
+            }))
+          : [];
+
         setFormData({
           name: item.name || "",
-          category: item.category || "",
+          categoryId:
+            item.categoryId || item.category?.id || item.category || "",
           status: item.status || "available",
-          image: item.image || "",
+          thumbImage: item.thumbImage || "",
           description: item.description || "",
-          methods: methods.length
-            ? methods
+          preparationMethods: pm.length
+            ? pm
             : [{ name: "", price: "", cookTime: "", unit: "portion" }],
         });
       }
@@ -53,11 +102,13 @@ const MenuItemModal = ({
       // Reset form
       setFormData({
         name: "",
-        category: "",
+        categoryId: "",
         status: "available",
-        image: "",
+        thumbImage: "",
         description: "",
-        methods: [{ name: "", price: "", cookTime: "", unit: "portion" }],
+        preparationMethods: [
+          { name: "", price: "", cookTime: "", unit: "portion" },
+        ],
       });
     }
   }, [editId, menuItems, isOpen]);
@@ -65,28 +116,30 @@ const MenuItemModal = ({
   const handleInputChange = (field, value) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-  const handleMethodChange = (index, field, value) =>
+  const handlePMChange = (index, field, value) =>
     setFormData((prev) => ({
       ...prev,
-      methods: prev.methods.map((m, i) =>
+      preparationMethods: prev.preparationMethods.map((m, i) =>
         i === index ? { ...m, [field]: value } : m
       ),
     }));
 
-  const addMethod = () =>
+  const addPM = () =>
     setFormData((prev) => ({
       ...prev,
-      methods: [
-        ...prev.methods,
+      preparationMethods: [
+        ...prev.preparationMethods,
         { name: "", price: "", cookTime: "", unit: "portion" },
       ],
     }));
 
-  const removeMethod = (index) => {
-    if (formData.methods.length > 1) {
+  const removePM = (index) => {
+    if (formData.preparationMethods.length > 1) {
       setFormData((prev) => ({
         ...prev,
-        methods: prev.methods.filter((_, i) => i !== index),
+        preparationMethods: prev.preparationMethods.filter(
+          (_, i) => i !== index
+        ),
       }));
     }
   };
@@ -94,31 +147,51 @@ const MenuItemModal = ({
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!formData.name.trim() || !formData.category) {
+    if (!formData.name.trim() || !formData.categoryId) {
       alert("Vui lòng điền đầy đủ thông tin bắt buộc");
       return;
     }
 
-    const validMethods = formData.methods.filter(
+    const validPM = formData.preparationMethods.filter(
       (m) => m.name.trim() && m.price !== "" && m.cookTime !== ""
     );
-    if (!validMethods.length) {
+    if (!validPM.length) {
       alert("Vui lòng thêm ít nhất một cách chế biến");
       return;
     }
 
-    const processedData = {
-      ...formData,
-      methods: validMethods.map((m) => ({
-        ...m,
+    // Tính avgPrepTimeMin từ cookTime của các preparationMethods (số nguyên phút)
+    const cookTimes = validPM
+      .map((m) => parseInt(m.cookTime, 10))
+      .filter((n) => Number.isFinite(n) && n >= 0);
+
+    const avgPrepTimeMin =
+      cookTimes.length > 0
+        ? Math.round(cookTimes.reduce((a, b) => a + b, 0) / cookTimes.length)
+        : undefined;
+
+    // XÂY DỰNG INPUT ĐÚNG SCHEMA: dùng preparationMethods, KHÔNG dùng image
+    const inputPayload = {
+      id: editId,
+      name: formData.name,
+      categoryId: formData.categoryId,
+      status: formData.status,
+      description: formData.description,
+      preparationMethods: validPM.map((m) => ({
+        name: m.name,
         price: parseFloat(m.price),
-        cookTime: parseInt(m.cookTime),
       })),
+      ...(Number.isFinite(avgPrepTimeMin) ? { avgPrepTimeMin } : {}),
+      ...(formData.thumbImage?.trim()
+        ? { thumbImage: formData.thumbImage.trim() }
+        : {}),
     };
 
-    // Lưu ý: nếu BE của bạn nhận "preparationMethods",
-    // thì ở mutation bạn map processedData.methods -> preparationMethods trước khi gửi.
-    onSave(processedData);
+    updateMenuItemMutation({
+      variables: {
+        input: inputPayload,
+      },
+    });
   };
 
   return (
@@ -148,14 +221,16 @@ const MenuItemModal = ({
               <label className="form-label">Danh mục *</label>
               <select
                 className="form-select"
-                value={formData.category}
-                onChange={(e) => handleInputChange("category", e.target.value)}
+                value={formData.categoryId}
+                onChange={(e) =>
+                  handleInputChange("categoryId", e.target.value)
+                }
                 required
               >
                 <option value="">Chọn danh mục</option>
                 {Array.isArray(categories) &&
                   categories.map((c) => (
-                    <option key={c.id || c._id || c.name} value={c.name}>
+                    <option key={c.id || c._id || c.name} value={c.id || c._id}>
                       {c.icon ? `${c.icon} ` : ""}
                       {c.name}
                     </option>
@@ -176,12 +251,14 @@ const MenuItemModal = ({
             </div>
 
             <div className="form-group">
-              <label className="form-label">Ảnh món ăn</label>
+              <label className="form-label">Ảnh món ăn (URL/emoji)</label>
               <input
                 type="text"
                 className="form-input"
-                value={formData.image}
-                onChange={(e) => handleInputChange("image", e.target.value)}
+                value={formData.thumbImage}
+                onChange={(e) =>
+                  handleInputChange("thumbImage", e.target.value)
+                }
                 placeholder="URL ảnh hoặc emoji"
               />
             </div>
@@ -202,25 +279,21 @@ const MenuItemModal = ({
         <div className="form-section">
           <div className="section-header">
             <h4 className="section-title">🍳 Cách chế biến</h4>
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={addMethod}
-            >
+            <button type="button" className="btn btn--primary" onClick={addPM}>
               ➕ Thêm cách
             </button>
           </div>
 
           <div className="methods-list">
-            {formData.methods.map((method, index) => (
+            {formData.preparationMethods.map((method, index) => (
               <div key={index} className="method-item">
                 <div className="method-header">
                   <h5 className="method-title">Cách chế biến {index + 1}</h5>
-                  {formData.methods.length > 1 && (
+                  {formData.preparationMethods.length > 1 && (
                     <button
                       type="button"
                       className="btn btn--danger btn--small"
-                      onClick={() => removeMethod(index)}
+                      onClick={() => removePM(index)}
                     >
                       🗑️ Xóa
                     </button>
@@ -235,7 +308,7 @@ const MenuItemModal = ({
                       className="form-input"
                       value={method.name}
                       onChange={(e) =>
-                        handleMethodChange(index, "name", e.target.value)
+                        handlePMChange(index, "name", e.target.value)
                       }
                       required
                     />
@@ -248,7 +321,7 @@ const MenuItemModal = ({
                       className="form-input"
                       value={method.price}
                       onChange={(e) =>
-                        handleMethodChange(index, "price", e.target.value)
+                        handlePMChange(index, "price", e.target.value)
                       }
                       required
                     />
@@ -261,7 +334,7 @@ const MenuItemModal = ({
                       className="form-input"
                       value={method.cookTime}
                       onChange={(e) =>
-                        handleMethodChange(index, "cookTime", e.target.value)
+                        handlePMChange(index, "cookTime", e.target.value)
                       }
                       required
                     />
@@ -273,7 +346,7 @@ const MenuItemModal = ({
                       className="form-select"
                       value={method.unit}
                       onChange={(e) =>
-                        handleMethodChange(index, "unit", e.target.value)
+                        handlePMChange(index, "unit", e.target.value)
                       }
                     >
                       <option value="portion">Phần</option>

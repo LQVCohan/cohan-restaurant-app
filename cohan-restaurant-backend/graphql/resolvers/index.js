@@ -1,4 +1,3 @@
-// src/graphql/resolvers/index.js
 import baseResolvers from "./base.js";
 import role from "./role/index.js";
 import restaurant from "./restaurant/index.js";
@@ -12,8 +11,12 @@ import floor from "./floor/index.js";
 import auth from "./auth/index.js";
 import order from "./order/index.js";
 import reservation from "./reservation/index.js";
+
 // 🆕 Import thêm module quản lý kho, nguyên liệu, recipe, consumption
 import inventory from "./inventory/index.js";
+
+// 🆕 Import module Supply (vật phẩm khác: nước ngọt, khăn lạnh,...)
+import supply from "./supply/index.js";
 
 export default {
   ...baseResolvers,
@@ -30,6 +33,7 @@ export default {
     ...(floor.Query || {}),
     ...(order.Query || {}),
     ...(inventory.Query || {}),
+    ...(supply.Query || {}), // 🆕 Thêm Query supply
     ...(reservation.Query || {}),
   },
 
@@ -44,12 +48,13 @@ export default {
     ...(table.Mutation || {}),
     ...(floor.Mutation || {}),
     ...(inventory.Mutation || {}),
+    ...(supply.Mutation || {}), // 🆕 Thêm Mutation supply
     ...(auth.Mutation || {}),
     ...(order.Mutation || {}),
     ...(reservation.Mutation || {}),
   },
 
-  // Nếu bạn có type-level resolvers (giữ nguyên logic)
+  // Nếu có type-level resolvers
   ...(role.Role ? { Role: role.Role } : {}),
   ...(restaurant.Restaurant ? { Restaurant: restaurant.Restaurant } : {}),
   ...(user.User ? { User: user.User } : {}),
@@ -57,5 +62,6 @@ export default {
   ...(menu.Menu ? { Menu: menu.Menu } : {}),
   ...(category.Category ? { Category: category.Category } : {}),
   ...(modifierGroup.Modifier ? { Modifier: modifierGroup.Modifier } : {}),
-  ...(inventory.Inventory ? { Inventory: inventory.Inventory } : {}), // optional
+  ...(inventory.Inventory ? { Inventory: inventory.Inventory } : {}),
+  ...(supply.Supply ? { Supply: supply.Supply } : {}), // 🆕 optional: type resolver riêng cho Supply
 };

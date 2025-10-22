@@ -12,7 +12,7 @@ export { default as Warehouse } from "./warehouse.model.js";
 export { default as Combo } from "./combo.model.js";
 export { default as Ingredient } from "./ingredient.model.js";
 export { default as Recipe } from "./recipe.model.js";
-export { default as InventoryItem } from "./inventory-item.model.js";
+export { default as Supply } from "./supply.model.js";
 export { default as StockMovement } from "./stock-movement.model.js";
 export { default as StockItem } from "./stockItem.model.js";
 export { default as Supplier } from "./supplier.model.js";

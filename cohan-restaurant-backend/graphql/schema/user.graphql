@@ -12,6 +12,7 @@ type User {
   role: Role
   status: String
   provider: String
+  avatarUrl: String
   refRestaurants: [Restaurant]
   point: Int
   loyaltyPoints: Int
@@ -27,6 +28,15 @@ type User {
   updatedBy: User
 }
 
+input AddressInput {
+  line1: String
+  line2: String
+  ward: String
+  district: String
+  city: String
+  country: String
+}
+
 input CreateUserInput {
   fullName: String!
   username: String
@@ -39,16 +49,25 @@ input CreateUserInput {
   roleId: ID
   refRestaurantIds: [ID!]
   customerType: String
-  captchaToken: String # 👈 thêm nếu bạn bật reCAPTCHA cho đăng ký (tùy chọn)
+  captchaToken: String
 }
 
-# Nếu muốn dùng captcha cho login, có thể tách input như sau:
 input LoginInput {
   email: String
   username: String
   phone: String
   password: String!
-  captchaToken: String # 👈 tùy chọn
+  captchaToken: String
+}
+
+# ⬇️ Thêm input cho updateUser
+input UpdateUserInput {
+  fullName: String
+  username: String
+  email: String
+  phone: String
+  address: AddressInput
+  avatarUrl: String
 }
 
 type AuthPayload {
@@ -70,10 +89,14 @@ enum CustomerType {
 extend type Query {
   me: User
 }
-
+input UpdateAvatarInput {
+  fileBase64: String # Data URL "data:image/png;base64,..." hoặc chỉ phần base64 đều được
+  fileUrl: String # tuỳ chọn: nếu bạn đã upload ở nơi khác và chỉ muốn set URL
+}
 extend type Mutation {
+  changeMyPassword(currentPassword: String!, newPassword: String!): Boolean!
+  updateAvatar(input: UpdateAvatarInput!): User!
   createUser(input: CreateUserInput!): AuthPayload!
-
   login(
     email: String
     username: String
@@ -81,10 +104,11 @@ extend type Mutation {
     password: String!
     captchaToken: String
   ): AuthPayload!
-
   assignRoleToUser(input: AssignRoleToUserInput!): User!
 
   requestEmailVerification(email: String!): Boolean!
   verifyEmail(token: String!): Boolean!
   resendVerification(email: String!): Boolean!
+
+  updateUser(input: UpdateUserInput!): User!
 }

@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "./Styles/Sidebar.scss";
 
-const Sidebar = ({ isOpen, onClose, onPageChange }) => {
-  const [activeItem, setActiveItem] = useState("dashboard");
-
+const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
   // Navigation items data
   const navigationSections = [
     {
@@ -81,16 +79,13 @@ const Sidebar = ({ isOpen, onClose, onPageChange }) => {
 
   // Handle navigation item click
   const handleItemClick = (item) => {
-    setActiveItem(item.id);
     onPageChange(item.id);
-    console.log("item.page: ", item.page);
-    // Close sidebar on mobile after selection
+
     if (window.innerWidth <= 768) {
       onClose();
     }
   };
 
-  // Close sidebar when clicking outside on mobile
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (isOpen && window.innerWidth <= 768) {

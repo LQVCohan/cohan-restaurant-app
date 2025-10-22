@@ -1,4 +1,3 @@
-// src/components/Customer/BookingTableModal/BookingModal.jsx
 import React, { useState, useEffect, useContext, useMemo } from "react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
@@ -87,7 +86,8 @@ const BookingModal = ({
   isOpen,
   onClose,
   restaurantId,
-  tableId, // optional: nếu đã chọn ngoài rồi
+  tableCode,
+  tableId, // optional
   tableCapacity, // optional
   tableFloor, // optional
   onBookingConfirmed, // (reservation) => void
@@ -95,8 +95,8 @@ const BookingModal = ({
   const { user } = useContext(AuthContext) || {};
   const { createBooking, isLoading } = useBookingTable();
   const { showNotification } = useNotification();
-
-  // Nhà hàng
+  console.log("tableCode", tableCode);
+  /* Lấy dữ liệu nhà hàng */
   const { data: rData } = useQuery(GET_RESTAURANT, {
     variables: { id: restaurantId },
     skip: !restaurantId,
@@ -104,8 +104,8 @@ const BookingModal = ({
   });
   const restaurant = rData?.restaurant;
 
-  // Nếu chưa có tableId => cần chọn
-  const needPickTable = !tableId;
+  /* useMemo để ổn định deps */
+  const needPickTable = useMemo(() => !tableId, [tableId]);
 
   const { data: tablesData, loading: tablesLoading } = useQuery(
     GET_TABLES_BY_RESTAURANT,
@@ -115,12 +115,11 @@ const BookingModal = ({
       fetchPolicy: "network-only",
     }
   );
-  const tables = tablesData?.tables || [];
 
-  // Bàn được chọn trong modal
+  const tables = useMemo(() => tablesData?.tables ?? [], [tablesData]);
+
+  /* State quản lý form */
   const [pickedTable, setPickedTable] = useState(null);
-
-  // State form
   const [formData, setFormData] = useState({
     customerName: "",
     customerPhone: "",
@@ -133,7 +132,7 @@ const BookingModal = ({
   const [errors, setErrors] = useState({});
   const [showSummary, setShowSummary] = useState(false);
 
-  // Prefill khi mở modal
+  /* Prefill khi mở modal */
   useEffect(() => {
     if (!isOpen) return;
 
@@ -161,11 +160,11 @@ const BookingModal = ({
       customerName,
       customerPhone,
       customerEmail,
-      time: prev.time || "", // để user tự chọn
+      time: prev.time || "",
     }));
   }, [isOpen, needPickTable, tableId, tableCapacity, user]);
 
-  // Auto-pick bàn đầu tiên nếu chưa có (khi bắt buộc chọn trong modal)
+  /* Tự động chọn bàn đầu tiên nếu cần */
   useEffect(() => {
     if (!isOpen) return;
     if (needPickTable && tables.length > 0 && !pickedTable?.id) {
@@ -284,7 +283,7 @@ const BookingModal = ({
     try {
       const input = {
         restaurantId,
-        tableId: pickedTable.id, // ⬅️ chỉ 1 bàn
+        tableId: pickedTable.id,
         timeFrom: timeFromISO,
         durationMinutes: 90,
         partySize: Number(formData.partySize) || 2,
@@ -294,10 +293,10 @@ const BookingModal = ({
         customerEmail: formData.customerEmail?.trim() || null,
         depositAmount: deposit,
       };
-      console.log("input:", input);
+
       const reservation = await createBooking(input);
       if (!reservation) throw new Error("Không nhận được dữ liệu đặt bàn.");
-
+      console.log("Reservation created:", reservation);
       onBookingConfirmed?.(reservation);
       onClose?.();
     } catch (e) {
@@ -336,7 +335,7 @@ const BookingModal = ({
             />
           ) : (
             <SelectedTable
-              tableCode={pickedTable?.code || pickedTable?.id || tableId}
+              tableCode={tableCode || pickedTable?.label || pickedTable?.label}
               capacity={capacity}
               floor={tableFloor}
             />
