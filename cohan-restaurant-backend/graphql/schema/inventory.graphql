@@ -108,7 +108,7 @@ input UpdateWarehouseInput {
 type StockItem {
   id: ID!
   restaurantId: ID!
-  warehouseId: ID!
+  warehouseId: ID
   ingredientId: ID!
   onHand: Float!
   reserved: Float!

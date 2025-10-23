@@ -7,7 +7,7 @@ import Tabs from "./layout/Tabs/Tabs";
 import IngredientList from "./components/ingredients/IngredientList";
 import SupplyList from "./components/supplies/SupplyList";
 import RecipeList from "./components/recipes/RecipeList";
-import AlertSystem from "./components/alerts/AlertSystem";
+
 import "./StorageManagement.scss";
 
 import {
@@ -168,8 +168,9 @@ const StorageManagement = () => {
       component: (
         <SupplyList
           restaurantId={currentRestaurant}
-          ingredients={ingredients}
-          loading={ingLoading}
+          warehouseId={selectedWarehouseId} // ✅ thêm
+          warehouses={warehouses} // ✅ để dùng cho chuyển kho
+          warehousesLoading={whLoading} // ✅ spinner trong modal/select
           onReload={refetchIngredients}
         />
       ),
@@ -215,13 +216,13 @@ const StorageManagement = () => {
         <Header
           restaurantList={managerRestaurants}
           currentRestaurantId={currentRestaurant}
-          onRestaurantChange={setCurrentRestaurant} // <<< nhận sự kiện chọn nhà hàng
-          warehouses={warehouses} // nếu Header cần biết để filter
+          onRestaurantChange={setCurrentRestaurant}
+          warehouses={warehouses}
           selectedWarehouseId={selectedWarehouseId}
           onWarehouseChange={setSelectedWarehouseId}
+          restaurantsLoading={mgrLoading}
+          warehousesLoading={whLoading}
         />
-
-        <AlertSystem />
 
         <div className="main-content">
           <Tabs

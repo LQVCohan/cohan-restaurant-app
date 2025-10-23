@@ -29,14 +29,6 @@ const ServingVariantSchema = new mongoose.Schema(
   { _id: true }
 );
 
-const VariantSchema = new mongoose.Schema(
-  {
-    preparationMethodName: { type: String, required: true, trim: true },
-    components: { type: [ComponentSchema], default: [] },
-  },
-  { _id: true }
-);
-
 const RecipeSchema = BaseSchemaModel({
   restaurantId: {
     type: mongoose.Schema.Types.ObjectId,

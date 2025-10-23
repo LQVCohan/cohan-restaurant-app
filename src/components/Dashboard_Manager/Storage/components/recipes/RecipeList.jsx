@@ -2,12 +2,17 @@ import React, { useState } from "react";
 import RecipeCard from "./RecipeCard";
 import RecipeModal from "./RecipeModal";
 import RecipeDetailModal from "./RecipeDetailModal";
-import Button from "../../../../common/Card";
+import Button from "../../../../common/Button";
 import { useRecipes } from "../../../../../hooks/useRecipes";
 import { RECIPE_CATEGORIES } from "../../../../../utils/constants";
 import "./recipes.scss";
 
-const RecipeList = () => {
+/**
+ * Nhận restaurantId từ parent (StorageManagement) để lọc dữ liệu theo nhà hàng.
+ * Thêm select "Buổi" để lọc menuItems theo timeSlot.
+ */
+const RecipeList = ({ restaurantId }) => {
+  const [timeSlot, setTimeSlot] = useState(null); // 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'LATE_NIGHT' | null
   const {
     filteredRecipes,
     filters,
@@ -15,7 +20,7 @@ const RecipeList = () => {
     addRecipe,
     updateRecipe,
     deleteRecipe,
-  } = useRecipes();
+  } = useRecipes(restaurantId, timeSlot);
 
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -57,8 +62,12 @@ const RecipeList = () => {
     if (editingRecipe) {
       updateRecipe(editingRecipe.id, recipeData);
     } else {
+      // Khi tạo mới từ UI này, bạn có thể cần chọn món (menuItem) trước.
+      // Ở layout hiện tại, ta giả định recipeData.id đã là menuItemId (như bạn đang map).
       addRecipe(recipeData);
     }
+    setShowModal(false);
+    setEditingRecipe(null);
   };
 
   const handleModalClose = () => {
@@ -83,6 +92,7 @@ const RecipeList = () => {
               value={filters.search}
               onChange={handleSearch}
             />
+
             <select
               className="filter-select"
               value={filters.category}
@@ -95,8 +105,23 @@ const RecipeList = () => {
                 </option>
               ))}
             </select>
+
+            {/* NEW: chọn buổi (timeSlot) */}
+            <select
+              className="filter-select"
+              value={timeSlot || ""}
+              onChange={(e) => setTimeSlot(e.target.value || null)}
+              title="Chọn buổi để lọc menu"
+            >
+              <option value="">— Tất cả buổi —</option>
+              <option value="breakfast">Sáng</option>
+              <option value="lunch">Trưa</option>
+              <option value="dinner">Tối</option>
+              <option value="late-night">Đêm</option>
+            </select>
           </div>
         </div>
+
         <div className="toolbar-right">
           <Button onClick={handleAdd}>➕ Thêm công thức</Button>
         </div>

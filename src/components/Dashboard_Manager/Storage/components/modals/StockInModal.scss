@@ -1,0 +1,58 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+/* Áp dụng cho nội dung modal nhập/xuất/điều chỉnh */
+.stockin-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0;
+
+  label {
+    display: block;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 2px;
+
+    input,
+    select,
+    textarea {
+      @include form-input;
+      width: 100%;
+      background: #ffffff;
+      border-color: rgba(0, 0, 0, 0.12);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+      &:focus {
+        border-color: rgba($primary, 0.45);
+        box-shadow: 0 0 0 4px rgba($primary, 0.12);
+        outline: none;
+      }
+    }
+  }
+
+  .grid-2,
+  .grid-3 {
+    display: grid;
+    gap: 12px;
+  }
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @include mobile {
+    .grid-2,
+    .grid-3 {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+/* Nút disabled rõ ràng hơn */
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -6,7 +6,7 @@ const RecipeCard = ({ recipe, onEdit, onDelete, onViewDetails }) => {
   const totalIngredients = recipe.baseIngredients.length;
 
   return (
-    <Card className="recipe-card" hoverable onClick={() => onEdit(recipe.id)}>
+    <Card className="recipe-card" hover onClick={() => onEdit(recipe.id)}>
       <div className="recipe-header">
         <div className="recipe-icon">{recipe.icon}</div>
         <div className="recipe-info">

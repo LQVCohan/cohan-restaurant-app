@@ -1,0 +1,27 @@
+.stocktransfer-modal {
+  display: grid;
+  gap: 12px;
+
+  label {
+    display: block;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 6px;
+
+    input,
+    select {
+      display: block;
+      width: 100%;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      padding: 8px 10px;
+      transition: border-color 0.2s ease;
+
+      &:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+      }
+    }
+  }
+}

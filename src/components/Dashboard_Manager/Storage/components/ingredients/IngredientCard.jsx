@@ -16,7 +16,7 @@ const IngredientCard = ({
   return (
     <Card
       className="ingredient-card"
-      hoverable
+      hover
       onClick={() => onShowUsage(ingredient.id)}
     >
       <div className="ingredient-header">

@@ -2,84 +2,74 @@
 @use "../../../../../styles/mixins" as *;
 
 .supply-list {
-  padding: $spacing-sm 0;
-
   .toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    padding: 10px;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(2, 8, 20, 0.04);
 
     @include mobile {
       flex-direction: column;
       align-items: stretch;
     }
+  }
 
-    &-left {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
+  .toolbar-left {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
 
-      @include mobile {
-        justify-content: center;
-      }
-    }
-
-    &-right {
-      display: flex;
-      gap: $spacing-sm;
-      flex-wrap: wrap;
-
-      @include mobile {
-        justify-content: center;
-      }
+    @include mobile {
+      width: 100%;
     }
   }
 
-  .search-filter {
+  .toolbar-right {
     display: flex;
-    gap: 1rem;
+    gap: 8px;
     flex-wrap: wrap;
-    align-items: center;
+    margin-left: auto;
 
     @include mobile {
-      flex-direction: column;
+      margin-left: 0;
+      justify-content: flex-end;
     }
   }
 
   .search-input {
     @include form-input;
-    min-width: 250px;
+    width: 220px; // ✅ nhỏ gọn
+    padding: 8px 10px;
+    &:focus {
+      border-color: rgba(2, 132, 199, 0.35);
+      box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.08);
+    }
 
     @include mobile {
-      min-width: auto;
       width: 100%;
     }
   }
 
   .filter-select {
     @include form-input;
-    background: white;
-    color: #0c4a6e;
+    min-width: 160px;
+    background: #ffffff;
   }
 
   .supplies-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 12px;
 
     @include mobile {
       grid-template-columns: 1fr;
+      gap: 10px;
     }
-  }
-
-  .no-data {
-    text-align: center;
-    color: #64748b;
-    font-style: italic;
-    margin-top: 1rem;
   }
 }

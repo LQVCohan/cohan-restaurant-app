@@ -133,7 +133,7 @@ extend type Query {
   menu(restaurantId: ID!, timeSlot: TimeSlot!): Menu
   menuItems(
     restaurantId: ID!
-    timeSlot: TimeSlot!
+    timeSlot: TimeSlot
     categoryId: ID
     search: String
     limit: Int = 50

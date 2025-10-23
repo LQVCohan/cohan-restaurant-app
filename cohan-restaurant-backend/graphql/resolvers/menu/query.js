@@ -20,6 +20,7 @@ export const MenuQuery = {
     if (!menu) return [];
     const q = { restaurantId, menuId: menu._id };
     if (categoryId) q.categoryId = categoryId;
+    if (timeSlot) q.timeSlot = timeSlot;
     if (search) q.name = new RegExp(search, "i");
     return MenuItem.find(q)
       .limit(limit)

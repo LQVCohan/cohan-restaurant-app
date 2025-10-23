@@ -51,7 +51,7 @@ const menuItemSchema = BaseSchemaModel({
   },
   avgPrepTimeMin: { type: Number, default: 10, min: 0 },
   point: { type: Number, default: 0, min: 0 },
-  recipe: { type: String, trim: true },
+
   notes: { type: String, trim: true },
 });
 

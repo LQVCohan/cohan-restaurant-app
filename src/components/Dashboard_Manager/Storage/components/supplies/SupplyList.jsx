@@ -1,116 +1,165 @@
-import React, { useState } from "react";
-import { gql } from "@apollo/client";
-import { useQuery, useMutation } from "@apollo/client/react";
-import SupplyModal from "./SupplyModal";
+// src/components/Dashboard_Manager/Storage/components/supplies/SupplyList.jsx
+import React, { useMemo, useState, useEffect } from "react";
+import Card from "../../../../common/Card";
 import Button from "../../../../common/Button";
+import SupplyCard from "./SupplyCard";
+import SupplyModal from "./SupplyModal";
+import useSupply from "../../../../../hooks/useSupply";
+import StockInModal from "../modals/StockInModal";
+import StockOutModal from "../modals/StockOutModal";
+import StockTransferModal from "../modals/StockTransferModal";
 import "./SupplyList.scss";
 
-// ================== GraphQL ==================
-const GET_SUPPLIES = gql`
-  query Supplies($restaurantId: ID!, $search: String, $limit: Int) {
-    supplies(restaurantId: $restaurantId, search: $search, limit: $limit) {
-      id
-      name
-      category
-      unit
-      costPerUnit
-      pricePerUnit
-      minStock
-      isActive
-      notes
-    }
-  }
-`;
+const SupplyList = ({
+  restaurantId,
+  warehouseId = null,
+  warehouses = [],
+  warehousesLoading = false,
+}) => {
+  const {
+    supplies,
+    getStockItem,
+    loading,
+    error,
+    handleCreate,
+    handleUpdate,
+    handleDelete,
+    handleInbound,
+    handleOutbound,
+    handleTransfer,
+    refresh,
+  } = useSupply(restaurantId, warehouseId);
 
-const CREATE_SUPPLY = gql`
-  mutation CreateSupply($input: CreateSupplyInput!) {
-    createSupply(input: $input) {
-      id
-      name
-      unit
-      isActive
-    }
-  }
-`;
-
-const UPDATE_SUPPLY = gql`
-  mutation UpdateSupply($id: ID!, $input: UpdateSupplyInput!) {
-    updateSupply(id: $id, input: $input) {
-      id
-      name
-      unit
-      isActive
-    }
-  }
-`;
-
-const DELETE_SUPPLY = gql`
-  mutation DeleteSupply($id: ID!) {
-    deleteSupply(id: $id)
-  }
-`;
-
-// ================== Component ==================
-const SupplyList = ({ restaurantId }) => {
+  // ====== UI state ======
   const [search, setSearch] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
+  const [category, setCategory] = useState("");
+  const [unit, setUnit] = useState("");
+  const [current, setCurrent] = useState(null);
+  const [mode, setMode] = useState(null); // 'in' | 'out' | 'transfer'
+  const [isModalOpen, setIsModalOpen] = useState(false); // SupplyModal
+  const [editing, setEditing] = useState(null); // supply đang sửa
 
-  const { data, loading, error, refetch } = useQuery(GET_SUPPLIES, {
-    variables: { restaurantId, search, limit: 200 },
-    skip: !restaurantId,
-  });
+  // reset theo nhà hàng/kho
+  useEffect(() => {
+    setSearch("");
+    setCategory("");
+    setUnit("");
+  }, [restaurantId, warehouseId]);
 
-  const [createSupply] = useMutation(CREATE_SUPPLY);
-  const [updateSupply] = useMutation(UPDATE_SUPPLY);
-  const [deleteSupply] = useMutation(DELETE_SUPPLY);
+  const filtered = useMemo(() => {
+    let list = supplies || [];
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (s) =>
+          s.name?.toLowerCase().includes(q) ||
+          s.category?.toLowerCase().includes(q)
+      );
+    }
+    if (category) list = list.filter((s) => s.category === category);
+    if (unit) list = list.filter((s) => s.unit === unit);
+    return list;
+  }, [supplies, search, category, unit]);
 
-  const openNewModal = () => {
+  const formatNum = (n) =>
+    (Number.isFinite(Number(n)) ? Number(n) : 0).toLocaleString("vi-VN", {
+      maximumFractionDigits: 2,
+    });
+
+  // ----- SupplyModal handlers -----
+  const openCreate = () => {
     setEditing(null);
-    setModalOpen(true);
+    setIsModalOpen(true);
   };
-
-  const openEditModal = (supply) => {
+  const openEdit = (supply) => {
     setEditing(supply);
-    setModalOpen(true);
+    setIsModalOpen(true);
   };
-
-  const handleClose = () => {
-    setModalOpen(false);
+  const closeModal = () => {
+    setIsModalOpen(false);
     setEditing(null);
   };
-
-  // ======= SAVE (create or update) =======
-  const handleSave = async ({ payload, isEditing, id }) => {
-    try {
-      if (isEditing) {
-        await updateSupply({ variables: { id, input: payload } });
-      } else {
-        await createSupply({
-          variables: { input: { ...payload, restaurantId } },
-        });
-      }
-      await refetch();
-    } catch (err) {
-      console.error("Save supply error:", err);
+  const submitSupply = async (values) => {
+    if (editing) {
+      await handleUpdate(editing.id, { ...values, restaurantId });
+    } else {
+      await handleCreate({ ...values, restaurantId });
     }
+    closeModal();
   };
 
-  // ======= DELETE =======
-  const handleDelete = async (id) => {
-    try {
-      await deleteSupply({ variables: { id } });
-      await refetch();
-    } catch (err) {
-      console.error("Delete supply error:", err);
-      alert("Không thể xóa vật phẩm: " + err.message);
+  // ----- Stock modals -----
+  const requireWarehouse = () => {
+    if (!warehouseId) {
+      alert("Vui lòng chọn kho trước khi thao tác tồn (nhập/xuất).");
+      return false;
     }
+    return true;
   };
 
-  const supplies = data?.supplies ?? [];
+  const openIn = (s) => {
+    if (!requireWarehouse()) return;
+    setCurrent(s);
+    setMode("in");
+  };
+  const openOut = (s) => {
+    if (!requireWarehouse()) return;
+    setCurrent(s);
+    setMode("out");
+  };
+  const openTransfer = (s) => {
+    setCurrent(s);
+    setMode("transfer");
+  };
+  const closeStockModal = () => {
+    setCurrent(null);
+    setMode(null);
+  };
+
+  const submitInbound = async (values) => {
+    if (!current) return;
+    await handleInbound({
+      restaurantId,
+      warehouseId, // nhập vào kho đang chọn
+      supplyId: current.id,
+      qty: values.qty,
+      lot: values.lot,
+      expiry: values.expiry,
+      costPerBaseUnit: values.costPerBaseUnit,
+      reason: values.reason,
+      supplier: values.supplier,
+    });
+    closeStockModal();
+  };
+
+  const submitOutbound = async (values) => {
+    if (!current) return;
+    await handleOutbound({
+      restaurantId,
+      warehouseId, // xuất từ kho đang chọn
+      supplyId: current.id,
+      qty: values.qty,
+      reason: values.reason,
+    });
+    closeStockModal();
+  };
+
+  const submitTransfer = async (values) => {
+    if (!current) return;
+    await handleTransfer({
+      restaurantId,
+      supplyId: current.id,
+      fromWarehouseId: values.fromWarehouseId,
+      toWarehouseId: values.toWarehouseId,
+      qty: values.qty,
+      reason: values.reason,
+    });
+    closeStockModal();
+  };
 
   return (
     <div className="supply-list">
+      {/* Toolbar */}
       <div className="toolbar">
         <div className="toolbar-left">
           <input
@@ -118,87 +167,114 @@ const SupplyList = ({ restaurantId }) => {
             placeholder="🔍 Tìm vật phẩm..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && refetch()}
           />
-          <Button variant="primary" onClick={() => refetch()}>
-            Làm mới
-          </Button>
+          <select
+            className="filter-select"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="">Tất cả danh mục</option>
+            <option value="drink">Nước uống</option>
+            <option value="tissue">Khăn giấy</option>
+            <option value="clean">Vệ sinh</option>
+            <option value="sauce">Gia vị đóng gói</option>
+            <option value="other">Khác</option>
+          </select>
+          <select
+            className="filter-select"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+          >
+            <option value="">Tất cả đơn vị</option>
+            <option value="unit">unit</option>
+            <option value="piece">piece</option>
+            <option value="pack">pack</option>
+            <option value="bottle">bottle</option>
+            <option value="can">can</option>
+          </select>
         </div>
 
         <div className="toolbar-right">
-          <Button variant="success" onClick={openNewModal}>
+          <span className="toolbar-hint">
+            Tổng: <strong>{formatNum(filtered.length)}</strong> vật phẩm
+          </span>
+          <Button onClick={refresh} disabled={loading}>
+            {loading ? "⟳ Đang tải…" : "🔄 Tải lại"}
+          </Button>
+          <Button variant="primary" onClick={openCreate}>
             ➕ Thêm vật phẩm
           </Button>
         </div>
       </div>
 
-      {loading && <div className="text-center">Đang tải...</div>}
-      {error && <div className="error">Lỗi: {error.message}</div>}
-
-      {!loading && supplies.length === 0 && (
-        <div className="text-center text-muted">Chưa có vật phẩm nào</div>
+      {/* List */}
+      {loading ? (
+        <Card padding="default">Đang tải vật phẩm…</Card>
+      ) : error ? (
+        <Card padding="default" className="error">
+          Lỗi: {error.message}
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card padding="default">Chưa có vật phẩm phù hợp</Card>
+      ) : (
+        <div className="supplies-grid">
+          {filtered.map((supply) => {
+            const stockItem = getStockItem(supply.id);
+            return (
+              <SupplyCard
+                key={supply.id}
+                supply={supply}
+                stockItem={stockItem}
+                onEdit={() => openEdit(supply)}
+                onDelete={async () => await handleDelete(supply.id)}
+                onStockClick={openIn}
+                onStockOutClick={openOut}
+                onTransferClick={openTransfer}
+              />
+            );
+          })}
+        </div>
       )}
 
-      <div className="supplies-grid">
-        {supplies.map((supply) => (
-          <div key={supply.id} className="supply-card">
-            <div className="supply-header">
-              <div className="supply-info">
-                <div className="supply-name">{supply.name}</div>
-                <div className="supply-category">
-                  {supply.category || "Không phân loại"}
-                </div>
-              </div>
-              <span
-                className={`status-badge ${
-                  supply.isActive ? "status-in-stock" : "status-out-of-stock"
-                }`}
-              >
-                {supply.isActive ? "Đang dùng" : "Ngừng"}
-              </span>
-            </div>
+      {/* SupplyModal: create/update */}
+      {isModalOpen && (
+        <SupplyModal
+          isOpen
+          onClose={closeModal}
+          initial={editing}
+          onSubmit={submitSupply}
+        />
+      )}
 
-            <div className="supply-stats">
-              <div className="stat-item">
-                <div className="stat-value">{supply.unit}</div>
-                <div className="stat-label">Đơn vị</div>
-              </div>
-              <div className="stat-item">
-                <div className="stat-value">
-                  ₫{Number(supply.costPerUnit || 0).toLocaleString()}
-                </div>
-                <div className="stat-label">Giá nhập</div>
-              </div>
-            </div>
-
-            <div className="supply-actions">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => openEditModal(supply)}
-              >
-                ✏️ Sửa
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => handleDelete(supply.id)}
-              >
-                🗑️ Xóa
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* ===== Modal thêm/sửa ===== */}
-      <SupplyModal
-        isOpen={modalOpen}
-        onClose={handleClose}
-        initial={editing}
-        onSubmit={handleSave}
-        onDelete={handleDelete}
-      />
+      {/* Stock modals */}
+      {mode === "in" && current && (
+        <StockInModal
+          isOpen
+          onClose={closeStockModal}
+          onConfirm={submitInbound}
+          mode="in"
+          supply={current}
+        />
+      )}
+      {mode === "out" && current && (
+        <StockOutModal
+          isOpen
+          onClose={closeStockModal}
+          onConfirm={submitOutbound}
+          supply={current}
+        />
+      )}
+      {mode === "transfer" && current && (
+        <StockTransferModal
+          isOpen
+          onClose={closeStockModal}
+          onConfirm={submitTransfer}
+          supply={current}
+          warehouses={warehouses || []}
+          warehousesLoading={warehousesLoading}
+          currentWarehouseId={warehouseId || ""}
+        />
+      )}
     </div>
   );
 };

@@ -1,11 +1,30 @@
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
 
+/* ============================
+   HEADER CARD & TITLE
+============================ */
 .header-card {
   margin-bottom: $spacing-lg;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "title actions"
+    "selects selects";
+  gap: 12px;
+  align-items: center;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "title"
+      "actions"
+      "selects";
+  }
 }
 
 .header-section {
+  grid-area: title;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -29,12 +48,159 @@
   }
 }
 
+/* ============================
+   ACTION BUTTONS
+============================ */
 .header-actions {
+  grid-area: actions;
   display: flex;
   gap: $spacing-sm;
   flex-wrap: wrap;
+  justify-content: flex-end;
 
   @include mobile {
     justify-content: center;
+  }
+}
+
+/* ============================
+   SELECT SECTION
+============================ */
+.select-container {
+  grid-area: selects;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* Export Excel mẫu */
+.export-sample-button {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(2, 6, 23, 0.12);
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+
+  &:hover {
+    background: #f8fafc;
+    transform: translateY(-1px);
+  }
+}
+
+/* ============================
+   SELECT BOX + LABEL
+============================ */
+.select-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  @include mobile {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.select-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Spinner inline nhỏ */
+.inline-loader {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(99, 102, 241, 0.25);
+  border-top-color: #6366f1;
+  animation: spin 0.75s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.select-box {
+  min-width: 220px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(2, 6, 23, 0.12);
+  background: #ffffff;
+  color: #0f172a;
+  padding: 0 12px;
+  font-size: 14px;
+  line-height: 40px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:focus {
+    outline: none;
+    border-color: rgba($primary, 0.45);
+    box-shadow: 0 0 0 4px rgba($primary, 0.12);
+  }
+
+  &:disabled {
+    background: #f3f4f6;
+    color: #94a3b8;
+    cursor: not-allowed;
+  }
+
+  /* Hiệu ứng loading khi fetch */
+  &.loading {
+    background-image: linear-gradient(
+      90deg,
+      rgba(2, 6, 23, 0.03),
+      rgba(2, 6, 23, 0.06),
+      rgba(2, 6, 23, 0.03)
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ============================
+   RESPONSIVE
+============================ */
+@media (max-width: 768px) {
+  .header-actions {
+    justify-content: flex-start;
+  }
+
+  .select-container {
+    align-items: stretch;
+  }
+
+  .select-group {
+    width: 100%;
+  }
+
+  .select-box {
+    width: 60%;
+    min-width: 0;
   }
 }

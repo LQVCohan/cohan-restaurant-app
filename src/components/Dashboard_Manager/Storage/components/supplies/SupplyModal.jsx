@@ -1,140 +1,130 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+// SupplyModal.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import Modal, { ModalFooter } from "../../../../common/Modal";
 import "./SupplyModal.scss";
 
+/**
+ * SupplyModal
+ * - Tạo/Sửa vật phẩm (không phải nhập/xuất kho)
+ * - Đồng bộ FIFO: cung cấp nút mở nhanh "Nhập kho" / "Xuất kho" (optional)
+ *
+ * Props:
+ *  - isOpen: boolean
+ *  - onClose: fn()
+ *  - initial: Supply | null
+ *  - onSubmit: fn(input)  // { restaurantId?, name, category, unit, costPerUnit, minStock, isActive }
+ *  - onOpenInbound?: fn(supply)   // Mở modal nhập kho (tuỳ chọn)
+ *  - onOpenOutbound?: fn(supply)  // Mở modal xuất kho (tuỳ chọn)
+ */
 const UNITS = [
-  "g",
-  "kg",
-  "ml",
-  "l",
-  "unit",
-  "piece",
-  "tbsp",
-  "tsp",
-  "pack",
-  "bottle",
-  "can",
+  { value: "unit", label: "unit" },
+  { value: "piece", label: "piece" },
+  { value: "bottle", label: "bottle" },
+  { value: "can", label: "can" },
+  { value: "pack", label: "pack" },
+  { value: "g", label: "g" },
+  { value: "kg", label: "kg" },
+  { value: "ml", label: "ml" },
+  { value: "l", label: "l" },
+  { value: "tbsp", label: "tbsp" },
+  { value: "tsp", label: "tsp" },
 ];
 
-const DEFAULT_FORM = {
+const CATEGORIES = [
+  { value: "drink", label: "Đồ uống" },
+  { value: "tissue", label: "Khăn giấy" },
+  { value: "cleaning", label: "Vệ sinh" },
+  { value: "sauce", label: "Gia vị/đóng gói" },
+  { value: "other", label: "Khác" },
+];
+
+const defaultForm = {
   name: "",
-  sku: "",
-  category: "",
+  category: "other",
   unit: "unit",
   costPerUnit: "",
-  pricePerUnit: "",
   minStock: "",
-  notes: "",
   isActive: true,
+  notes: "",
 };
 
 const SupplyModal = ({
   isOpen,
   onClose,
   initial = null,
-  onSubmit, // ({ payload, isEditing, id })
-  onDelete, // (id) => Promise<void>  | optional
+  onSubmit,
+  onOpenInbound,
+  onOpenOutbound,
 }) => {
-  const [form, setForm] = useState(DEFAULT_FORM);
-  const [errors, setErrors] = useState({});
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const isEditing = !!initial;
+  const [form, setForm] = useState(defaultForm);
+  const [errors, setErrors] = useState({});
+
+  // derived subtitle (FIFO hint)
+  const subtitle = useMemo(
+    () =>
+      isEditing
+        ? "Chỉnh sửa vật phẩm. Gợi ý: nhập/xuất kho theo FIFO sẽ trừ từ lô cũ trước."
+        : "Thêm vật phẩm mới. Kho sẽ quản lý theo lô và xuất FIFO.",
+    [isEditing]
+  );
 
   useEffect(() => {
     if (initial) {
       setForm({
-        name: initial?.name || "",
-        sku: initial?.sku || "",
-        category: initial?.category || "",
-        unit: initial?.unit || "unit",
-        costPerUnit: initial?.costPerUnit ?? "",
-        pricePerUnit: initial?.pricePerUnit ?? "",
-        minStock: initial?.minStock ?? "",
-        notes: initial?.notes || "",
-        isActive: initial?.isActive ?? true,
+        name: initial.name ?? "",
+        category: initial.category ?? "other",
+        unit: initial.unit ?? "unit",
+        costPerUnit:
+          typeof initial.costPerUnit === "number"
+            ? String(initial.costPerUnit)
+            : "",
+        minStock:
+          typeof initial.minStock === "number" ? String(initial.minStock) : "",
+        isActive: initial.isActive ?? true,
+        notes: initial.notes ?? "",
       });
     } else {
-      setForm(DEFAULT_FORM);
+      setForm(defaultForm);
     }
     setErrors({});
-    setSaving(false);
-    setDeleting(false);
   }, [initial, isOpen]);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
-  const validate = useCallback(() => {
+  const validate = () => {
     const e = {};
-    if (!form.name.trim()) e.name = "Tên vật phẩm là bắt buộc";
+    if (!form.name.trim()) e.name = "Bắt buộc";
     if (!form.unit) e.unit = "Bắt buộc";
     if (form.costPerUnit === "" || Number(form.costPerUnit) < 0)
-      e.costPerUnit = "Giá nhập phải ≥ 0";
-    if (form.pricePerUnit !== "" && Number(form.pricePerUnit) < 0)
-      e.pricePerUnit = "Giá bán phải ≥ 0";
-    if (form.minStock === "" || Number(form.minStock) < 0)
-      e.minStock = "Tồn tối thiểu phải ≥ 0";
+      e.costPerUnit = "≥ 0";
+    if (form.minStock === "" || Number(form.minStock) < 0) e.minStock = "≥ 0";
     setErrors(e);
     return Object.keys(e).length === 0;
-  }, [form]);
+  };
 
-  const payload = useMemo(
-    () => ({
+  const handleSave = () => {
+    if (!validate()) return;
+    const payload = {
       name: form.name.trim(),
-      sku: form.sku?.trim() || undefined,
-      category: form.category?.trim() || "",
-      unit: form.unit,
+      category: form.category || "other",
+      unit: form.unit || "unit",
       costPerUnit: Number(form.costPerUnit) || 0,
-      pricePerUnit: form.pricePerUnit === "" ? null : Number(form.pricePerUnit),
       minStock: Number(form.minStock) || 0,
-      notes: form.notes?.trim() || "",
       isActive: !!form.isActive,
-    }),
-    [form]
-  );
+      notes: form.notes?.trim() || "",
+    };
+    onSubmit?.(payload);
+  };
 
-  const doSave = useCallback(
-    async (closeAfter = true) => {
-      if (saving) return;
-      if (!validate()) return;
-      try {
-        setSaving(true);
-        await onSubmit?.({ payload, isEditing, id: initial?.id });
-        if (closeAfter) onClose?.();
-        else {
-          // Lưu & tạo mới → reset form giữ trạng thái isActive/đơn vị
-          setForm((f) => ({
-            ...DEFAULT_FORM,
-            unit: f.unit,
-            isActive: f.isActive,
-          }));
-          setErrors({});
-        }
-      } finally {
-        setSaving(false);
-      }
-    },
-    [saving, validate, onSubmit, payload, isEditing, initial?.id, onClose]
-  );
+  const openInbound = () => {
+    if (!isEditing) return;
+    onOpenInbound?.(initial);
+  };
 
-  const doDelete = useCallback(async () => {
-    if (!isEditing || !onDelete || deleting) return;
-    if (!window.confirm("Bạn có chắc muốn xóa vật phẩm này?")) return;
-    try {
-      setDeleting(true);
-      await onDelete(initial.id);
-      onClose?.();
-    } finally {
-      setDeleting(false);
-    }
-  }, [isEditing, onDelete, deleting, initial, onClose]);
-
-  // Ctrl/⌘ + Enter => Lưu
-  const onKeyDown = (e) => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      doSave(true);
-    }
+  const openOutbound = () => {
+    if (!isEditing) return;
+    onOpenOutbound?.(initial);
   };
 
   if (!isOpen) return null;
@@ -142,219 +132,160 @@ const SupplyModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={saving || deleting ? () => {} : onClose}
-      title={isEditing ? "Sửa vật phẩm" : "Thêm vật phẩm"}
+      onClose={onClose}
+      title={isEditing ? "✏️ Chỉnh sửa vật phẩm" : "➕ Thêm vật phẩm"}
       size="md"
-      closeOnOverlayClick={!saving && !deleting}
     >
-      {/* nội dung trong modal__content để ăn style của Modal.scss */}
-      <div className="supply-modal-content" onKeyDown={onKeyDown}>
-        {/* Hàng 1 */}
+      <div className="supply-modal">
+        <p className="supply-modal__subtitle">{subtitle}</p>
+
         <div className="grid-2">
-          <div className="field">
-            <label className="label">
-              Tên vật phẩm <span className="req">*</span>
-            </label>
+          <label className="fm-field">
+            <span className="fm-label">
+              Tên vật phẩm <b className="req">*</b>
+            </span>
             <input
-              className="control"
+              className="fm-input"
               value={form.name}
               onChange={(e) => set({ name: e.target.value })}
-              placeholder="VD: Nước suối Lavie"
-              disabled={saving || deleting}
+              placeholder="Ví dụ: Coca-Cola lon 330ml"
             />
-            {errors.name && <div className="error">{errors.name}</div>}
-          </div>
+            {errors.name && <small className="fm-error">{errors.name}</small>}
+          </label>
 
-          <div className="field">
-            <label className="label">
-              SKU <span className="hint">(tùy chọn)</span>
-            </label>
-            <input
-              className="control"
-              value={form.sku}
-              onChange={(e) => set({ sku: e.target.value })}
-              placeholder="Mã hàng"
-              disabled={saving || deleting}
-            />
-          </div>
-        </div>
-
-        {/* Hàng 2 */}
-        <div className="grid-3">
-          <div className="field">
-            <label className="label">Danh mục</label>
-            <input
-              className="control"
+          <label className="fm-field">
+            <span className="fm-label">Danh mục</span>
+            <select
+              className="fm-input"
               value={form.category}
               onChange={(e) => set({ category: e.target.value })}
-              placeholder="VD: beverage / tissue / supply"
-              disabled={saving || deleting}
-            />
-          </div>
-
-          <div className="field">
-            <label className="label">
-              Đơn vị tính <span className="req">*</span>
-            </label>
-            <select
-              className="control"
-              value={form.unit}
-              onChange={(e) => set({ unit: e.target.value })}
-              disabled={saving || deleting}
             >
-              {UNITS.map((u) => (
-                <option key={u} value={u}>
-                  {u}
+              {CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
                 </option>
               ))}
             </select>
-            {errors.unit && <div className="error">{errors.unit}</div>}
-          </div>
-
-          <div className="field">
-            <label className="label">Trạng thái</label>
-            <select
-              className="control"
-              value={form.isActive ? "1" : "0"}
-              onChange={(e) => set({ isActive: e.target.value === "1" })}
-              disabled={saving || deleting}
-            >
-              <option value="1">Đang dùng</option>
-              <option value="0">Ngừng</option>
-            </select>
-          </div>
+          </label>
         </div>
 
-        {/* Hàng 3 */}
+        {/* row: unit + costPerUnit */}
         <div className="grid-3">
-          <div className="field">
-            <label className="label">
-              Giá nhập (VNĐ) <span className="req">*</span>
-            </label>
-            <div className="input-with-prefix">
-              <span className="prefix">₫</span>
-              <input
-                className="control"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.costPerUnit}
-                onChange={(e) => set({ costPerUnit: e.target.value })}
-                placeholder="0"
-                disabled={saving || deleting}
-              />
-            </div>
-            {errors.costPerUnit && (
-              <div className="error">{errors.costPerUnit}</div>
-            )}
-          </div>
+          <label className="fm-field">
+            <span className="fm-label">
+              Đơn vị <b className="req">*</b>
+            </span>
+            <select
+              className="fm-input"
+              value={form.unit}
+              onChange={(e) => set({ unit: e.target.value })}
+            >
+              {UNITS.map((u) => (
+                <option key={u.value} value={u.value}>
+                  {u.label}
+                </option>
+              ))}
+            </select>
+            {errors.unit && <small className="fm-error">{errors.unit}</small>}
+          </label>
 
-          <div className="field">
-            <label className="label">Giá bán (VNĐ)</label>
-            <div className="input-with-prefix">
-              <span className="prefix">₫</span>
-              <input
-                className="control"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.pricePerUnit}
-                onChange={(e) => set({ pricePerUnit: e.target.value })}
-                placeholder="0"
-                disabled={saving || deleting}
-              />
-            </div>
-            {errors.pricePerUnit && (
-              <div className="error">{errors.pricePerUnit}</div>
-            )}
-          </div>
-
-          <div className="field">
-            <label className="label">
-              Tồn tối thiểu <span className="req">*</span>
-            </label>
+          <label className="fm-field">
+            <span className="fm-label">
+              Giá/đơn vị (VNĐ) <b className="req">*</b>
+            </span>
             <input
-              className="control"
+              className="fm-input"
+              type="number"
+              min="0"
+              step="1"
+              value={form.costPerUnit}
+              onChange={(e) => set({ costPerUnit: e.target.value })}
+              placeholder="0"
+            />
+            {errors.costPerUnit && (
+              <small className="fm-error">{errors.costPerUnit}</small>
+            )}
+          </label>
+
+          <label className="fm-field">
+            <span className="fm-label">
+              Tồn tối thiểu <b className="req">*</b>
+            </span>
+            <input
+              className="fm-input"
               type="number"
               min="0"
               step="0.01"
               value={form.minStock}
               onChange={(e) => set({ minStock: e.target.value })}
               placeholder="0"
-              disabled={saving || deleting}
             />
-            {errors.minStock && <div className="error">{errors.minStock}</div>}
-          </div>
+            {errors.minStock && (
+              <small className="fm-error">{errors.minStock}</small>
+            )}
+          </label>
         </div>
 
-        {/* Ghi chú */}
-        <div className="field">
-          <label className="label">Ghi chú</label>
-          <textarea
-            className="control"
-            rows={3}
-            value={form.notes}
-            onChange={(e) => set({ notes: e.target.value })}
-            placeholder="Ghi chú về vật phẩm..."
-            disabled={saving || deleting}
-          />
+        <div className="grid-2">
+          <label className="fm-field">
+            <span className="fm-label">Trạng thái</span>
+            <select
+              className="fm-input"
+              value={form.isActive ? "1" : "0"}
+              onChange={(e) => set({ isActive: e.target.value === "1" })}
+            >
+              <option value="1">Đang dùng</option>
+              <option value="0">Ngừng</option>
+            </select>
+          </label>
+
+          <label className="fm-field">
+            <span className="fm-label">Ghi chú</span>
+            <input
+              className="fm-input"
+              value={form.notes}
+              onChange={(e) => set({ notes: e.target.value })}
+              placeholder="Mô tả ngắn…"
+            />
+          </label>
         </div>
+
+        {isEditing && (onOpenInbound || onOpenOutbound) && (
+          <div className="hint-box">
+            <div className="hint-text">
+              <b>FIFO:</b> Khi xuất kho, hệ thống sẽ tự động trừ từ những lô cũ
+              nhất trước (ưu tiên lô sắp hết hạn).
+            </div>
+            <div className="hint-actions">
+              {onOpenInbound && (
+                <button
+                  type="button"
+                  className="btn btn--light"
+                  onClick={openInbound}
+                >
+                  📦 Nhập kho
+                </button>
+              )}
+              {onOpenOutbound && (
+                <button
+                  type="button"
+                  className="btn btn--light"
+                  onClick={openOutbound}
+                >
+                  📤 Xuất kho
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Footer đồng bộ style Modal */}
       <ModalFooter>
-        {!isEditing && (
-          <button
-            type="button"
-            className="btn btn--secondary"
-            onClick={() => setForm(DEFAULT_FORM)}
-            disabled={saving || deleting}
-            title="Xóa hết dữ liệu vừa nhập"
-          >
-            Reset
-          </button>
-        )}
-
-        {isEditing && onDelete && (
-          <button
-            type="button"
-            className="btn btn--danger"
-            onClick={doDelete}
-            disabled={saving || deleting}
-            title="Xóa vật phẩm này"
-          >
-            {deleting ? "Đang xóa..." : "Xóa"}
-          </button>
-        )}
-
-        <button
-          type="button"
-          className="btn btn--secondary"
-          onClick={onClose}
-          disabled={saving || deleting}
-        >
+        <button className="btn btn--secondary" onClick={onClose}>
           Hủy
         </button>
-
-        {!isEditing && (
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={() => doSave(false)}
-            disabled={saving || deleting}
-            title="Lưu và tiếp tục thêm mới"
-          >
-            {saving ? "Đang lưu..." : "Lưu & tạo mới"}
-          </button>
-        )}
-
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={() => doSave(true)}
-          disabled={saving || deleting}
-        >
-          {saving ? "Đang lưu..." : isEditing ? "Lưu thay đổi" : "Tạo vật phẩm"}
+        <button className="btn btn--primary" onClick={handleSave}>
+          {isEditing ? "Lưu thay đổi" : "Tạo vật phẩm"}
         </button>
       </ModalFooter>
     </Modal>

@@ -2,73 +2,120 @@ type Supply {
   id: ID!
   restaurantId: ID!
   name: String!
-  sku: String
   category: String
   unit: Unit!
   costPerUnit: Float
-  pricePerUnit: Float
-  photos: [String!]
   minStock: Float
-  notes: String
   isActive: Boolean
-  meta: JSON
   createdAt: Date
   updatedAt: Date
 }
+input StockOutboundInput {
+  restaurantId: ID!
+  warehouseId: ID!
+  supplyId: ID!
+  qty: Float! # > 0
+  reason: String
+  meta: JSON
+}
+
+# 🔄 Chuyển kho giữa 2 kho cùng nhà hàng
+input StockTransferInput {
+  restaurantId: ID!
+  fromWarehouseId: ID!
+  toWarehouseId: ID!
+  supplyId: ID!
+  qty: Float! # > 0
+  reason: String
+  meta: JSON
+}
+# Supply cùng stockItem (từ StockItem chung)
+type SupplyWithStock {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  category: String
+  unit: Unit!
+  costPerUnit: Float
+  minStock: Float
+  isActive: Boolean
+  createdAt: Date
+  updatedAt: Date
+
+  stockItem: StockItem
+}
+
+# ========= Inputs =========
 
 input CreateSupplyInput {
   restaurantId: ID!
   name: String!
-  sku: String
   category: String
-  unit: Unit!
+  unit: Unit = unit
   costPerUnit: Float
-  pricePerUnit: Float
-  photos: [String!]
   minStock: Float
-  notes: String
-  isActive: Boolean
-  meta: JSON
+  isActive: Boolean = true
 }
 
 input UpdateSupplyInput {
   name: String
-  sku: String
   category: String
   unit: Unit
   costPerUnit: Float
-  pricePerUnit: Float
-  photos: [String!]
   minStock: Float
-  notes: String
   isActive: Boolean
+}
+
+# Điều chỉnh ±qty (ghi log kiểu "adjustment")
+input AdjustSupplyInput {
+  restaurantId: ID!
+  warehouseId: ID!
+  supplyId: ID!
+  qty: Float! # + tăng / - giảm
+  reason: String
   meta: JSON
 }
 
-# =========================
-# Queries
-# =========================
-
-extend type Query {
-  supplies(
-    restaurantId: ID!
-    category: String
-    isActive: Boolean
-    search: String
-    limit: Int = 100
-  ): [Supply!]!
-
-  supply(id: ID!, restaurantId: ID!): Supply
+# Nhập kho (inbound + thêm batch)
+input StockInboundInput {
+  restaurantId: ID!
+  warehouseId: ID!
+  supplyId: ID!
+  qty: Float!
+  costPerBaseUnit: Float
+  lot: String
+  expiry: Date
+  supplier: String
+  reason: String
+  meta: JSON
 }
 
-# =========================
-# Mutations
-# =========================
+# Xuất kho FIFO (trừ batch cũ trước)
+input StockOutboundInput {
+  restaurantId: ID!
+  warehouseId: ID!
+  supplyId: ID!
+  qty: Float! # > 0
+  reason: String
+  meta: JSON
+}
+
+# ========= Queries / Mutations =========
+
+extend type Query {
+  # Trả Supply kèm stockItem (nếu truyền warehouseId -> stock ở kho đó; nếu không -> tổng across kho)
+  supplies(restaurantId: ID!, warehouseId: ID): [SupplyWithStock!]!
+  supply(id: ID!): SupplyWithStock
+
+  supplyStockItems(restaurantId: ID!, supplyId: ID): [StockItem!]!
+}
 
 extend type Mutation {
   createSupply(input: CreateSupplyInput!): Supply!
-
   updateSupply(id: ID!, input: UpdateSupplyInput!): Supply!
-
   deleteSupply(id: ID!): Boolean!
+  stockTransfer(input: StockTransferInput!): Boolean!
+  adjustSupply(input: AdjustSupplyInput!): StockItem!
+  stockInbound(input: StockInboundInput!): StockItem!
+  stockOutbound(input: StockOutboundInput!): StockItem!
 }

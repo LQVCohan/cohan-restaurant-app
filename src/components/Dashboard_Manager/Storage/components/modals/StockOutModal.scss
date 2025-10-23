@@ -1,0 +1,29 @@
+@use "../../../../../styles/mixins" as *;
+
+.stockout-modal {
+  > * + * {
+    margin-top: 12px;
+  }
+
+  label {
+    display: block;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 6px;
+
+    input,
+    select,
+    textarea {
+      @include form-input;
+      width: 100%;
+      background: #ffffff;
+      border-color: rgba(0, 0, 0, 0.12);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      &:focus {
+        border-color: rgba(2, 132, 199, 0.45);
+        box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.12);
+        outline: none;
+      }
+    }
+  }
+}
