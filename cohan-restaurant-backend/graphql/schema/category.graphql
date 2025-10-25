@@ -5,8 +5,8 @@ type Category {
   name: String!
   order: Int
   isActive: Boolean
-  createdAt: Date
-  updatedAt: Date
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 input CreateCategoryInput {

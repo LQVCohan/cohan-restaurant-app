@@ -15,8 +15,8 @@ type ModifierGroup {
   appliesTo: String
   options: [ModifierOption!]!
   isActive: Boolean
-  createdAt: Date
-  updatedAt: Date
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 # ====== Inputs ======

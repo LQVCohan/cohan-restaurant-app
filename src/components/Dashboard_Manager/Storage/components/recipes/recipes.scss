@@ -10,6 +10,7 @@
     gap: 1rem;
     margin-bottom: 1rem;
     padding: 10px;
+
     @include mobile {
       flex-direction: column;
       align-items: stretch;
@@ -44,6 +45,8 @@
 
     @include mobile {
       flex-direction: column;
+      align-items: stretch;
+      gap: $spacing-sm;
     }
   }
 
@@ -61,6 +64,11 @@
     @include form-input;
     background: white;
     color: #0c4a6e;
+    min-width: 160px;
+
+    @include mobile {
+      width: 100%;
+    }
   }
 
   .recipes-grid {
@@ -114,11 +122,17 @@
     line-height: 1.5;
   }
 
+  /* cập nhật: hiển thị 3 cột thống kê */
   .recipe-stats {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
     margin-bottom: 1rem;
+
+    @include mobile {
+      grid-template-columns: 1fr 1fr;
+      row-gap: 0.75rem;
+    }
   }
 
   .stat-item {
@@ -126,6 +140,7 @@
     padding: 0.75rem;
     background: #f8fafc;
     border-radius: 0.5rem;
+    border: 1px solid #eef2f7;
   }
 
   .stat-value {
@@ -133,6 +148,8 @@
     font-weight: 700;
     color: $primary;
     margin-bottom: 0.25rem;
+    line-height: 1.1;
+    word-break: break-word;
   }
 
   .stat-label {
@@ -145,10 +162,14 @@
     gap: $spacing-sm;
     margin-top: 1rem;
     flex-wrap: wrap;
+
+    @include mobile {
+      justify-content: flex-start;
+    }
   }
 }
 
-// Recipe Modal Styles
+/* Recipe Modal Styles */
 .recipe-section {
   margin-bottom: $spacing-xl;
 
@@ -203,7 +224,7 @@
   cursor: pointer;
   font-weight: 500;
   color: #6b7280;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   gap: $spacing-sm;
@@ -268,7 +289,7 @@
   }
 }
 
-// Recipe Detail Modal Styles
+/* Recipe Detail Modal Styles */
 .recipe-detail {
   .recipe-info-card,
   .ingredients-card,
@@ -314,6 +335,7 @@
       .ingredient-cost {
         font-weight: 600;
         color: $primary;
+        white-space: nowrap;
       }
     }
   }
@@ -336,6 +358,7 @@
       border-radius: 0.5rem;
       color: $primary;
       font-weight: 600;
+      white-space: nowrap;
     }
   }
 

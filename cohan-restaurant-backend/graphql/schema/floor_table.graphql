@@ -1,5 +1,3 @@
-scalar Date
-
 enum TableStatus {
   available
   occupied
@@ -26,8 +24,8 @@ type Floor {
   planImage: String
   isActive: Boolean
   meta: FloorMeta
-  createdAt: Date
-  updatedAt: Date
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 type FloorMeta {
@@ -97,8 +95,8 @@ type Table {
   tags: [String!]
   isJoinable: Boolean
   joinGroupId: String
-  createdAt: Date
-  updatedAt: Date
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 input CreateTableInput {

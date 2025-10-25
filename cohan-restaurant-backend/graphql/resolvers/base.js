@@ -1,7 +1,8 @@
-import { GraphQLDateTime } from "graphql-scalars";
+import { GraphQLDateTime, GraphQLJSON } from "graphql-scalars";
 
 export default {
-  Date: GraphQLDateTime,
+  DateTime: GraphQLDateTime,
+  JSON: GraphQLJSON,
   Query: {
     _empty: () => "ok",
   },

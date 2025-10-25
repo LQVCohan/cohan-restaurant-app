@@ -1,68 +1,71 @@
+// src/graphql/context.js
 import jwt from "jsonwebtoken";
 import { User } from "../models/index.js";
-import createLoaders from "./loaders/index.js"; // nếu bạn có DataLoader
-import process from "process";
+import { createLoaders } from "./loaders/index.js"; // DataLoader per-request
 
 export default async function buildContext(request, reply) {
   let user = null;
 
-  try {
-    // 1) Lấy token từ header Authorization: Bearer <token>
-    const auth = request.headers.authorization || request.headers.Authorization;
-    let token = null;
-    if (auth && auth.startsWith("Bearer ")) {
-      token = auth.slice(7).trim();
-    }
+  // 1) Lấy Bearer token từ header
+  const rawAuth =
+    request.headers?.authorization || request.headers?.Authorization || "";
+  const parts = rawAuth.trim().split(/\s+/); // ["Bearer", "<token>"]
+  const token = parts[0]?.toLowerCase() === "bearer" ? parts[1] : null;
 
-    // const token = request.cookies?.token || token;
-
-    // 2) Verify JWT
-    if (token) {
+  // 2) Verify & tải user
+  if (token) {
+    try {
       const payload = jwt.verify(
         token,
         process.env.JWT_SECRET || "dev_secret5"
       );
-      // payload nên có userId / id khi tạo token
-      const userDoc = await User.findById(payload.id)
-        .populate("role")
-        .lean({ virtuals: true });
 
-      if (userDoc) {
-        // 3) Chuẩn hoá roleNames để hasRole/requireRole hoạt động
-        const roleName = (
-          userDoc.role?.slug ||
-          userDoc.role?.name ||
-          ""
-        ).toLowerCase();
-        user = {
-          id: String(userDoc._id),
-          email: userDoc.email,
-          fullName: userDoc.fullName,
-          role: userDoc.role, // có thể là array object (đã populate)
-          roleName, // array ['admin','manager',...]
-          status: userDoc.status,
-          provider: userDoc.provider,
-          refRestaurants: userDoc.refRestaurants,
-          point: userDoc.point,
-          loyaltyPoints: userDoc.loyaltyPoints,
-          customerType: userDoc.customerType,
-          totalOrders: userDoc.totalOrders,
-          totalSpending: userDoc.totalSpending,
-        };
+      // chấp nhận id ở nhiều key: id | sub | userId
+      const userId = String(payload.id || payload.sub || payload.userId || "");
+      if (userId) {
+        const userDoc = await User.findById(userId)
+          .populate("role")
+          .lean({ virtuals: true });
+
+        if (userDoc) {
+          const roleName = (
+            userDoc.role?.slug ||
+            userDoc.role?.name ||
+            ""
+          ).toLowerCase();
+
+          user = {
+            id: String(userDoc._id),
+            email: userDoc.email,
+            fullName: userDoc.fullName,
+            role: userDoc.role, // object đã populate
+            roleName, // string, ví dụ "admin"
+            status: userDoc.status,
+            provider: userDoc.provider,
+            refRestaurants: userDoc.refRestaurants,
+            point: userDoc.point,
+            loyaltyPoints: userDoc.loyaltyPoints,
+            customerType: userDoc.customerType,
+            totalOrders: userDoc.totalOrders,
+            totalSpending: userDoc.totalSpending,
+          };
+        }
       }
+    } catch (err) {
+      // token không hợp lệ/hết hạn → user = null
+      request.log?.warn({ err }, "JWT verify failed; user = null");
     }
-  } catch (e) {
-    request.log?.warn({ err: e }, "JWT verify failed; user = null");
-    user = null;
   }
+
   if (user) {
-    request.log.info({ userId: user.id, role: user.roleName }, "Context user");
+    request.log?.info({ userId: user.id, role: user.roleName }, "Context user");
   } else {
-    request.log.info("Context user = null");
+    request.log?.info("Context user = null");
   }
+
   return {
     user,
-    loaders: createLoaders?.(), // nếu bạn dùng
+    loaders: createLoaders ? createLoaders() : undefined, // per-request
     request,
     reply,
   };

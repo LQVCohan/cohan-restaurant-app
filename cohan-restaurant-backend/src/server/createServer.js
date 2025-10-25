@@ -11,6 +11,7 @@ import typeDefs from "../../graphql/schema/index.js";
 import resolvers from "../../graphql/resolvers/index.js";
 import buildContext from "../../graphql/context.js";
 import uploadRoutes from "./plugins/upload.route.js";
+import { createLoaders } from "../../graphql/loaders/index.js";
 
 export async function createServer() {
   const app = Fastify({
@@ -28,8 +29,6 @@ export async function createServer() {
 
   await app.register(helmet, { contentSecurityPolicy: false });
 
-  const schema = makeExecutableSchema({ typeDefs, resolvers });
-
   const RL_GLOBAL_MAX = Number(process.env.RL_GLOBAL_MAX || 200);
   const RL_GLOBAL_WINDOW = process.env.RL_GLOBAL_WINDOW || "1 minute";
   await app.register(rateLimit, {
@@ -44,13 +43,20 @@ export async function createServer() {
       return (Array.isArray(xfwd) ? xfwd[0] : xfwd) || req.ip;
     },
   });
+  const schema = makeExecutableSchema({ typeDefs, resolvers });
 
   await app.register(mercurius, {
     schema,
     graphiql: process.env.NODE_ENV !== "production",
     ide: process.env.NODE_ENV !== "production",
     subscription: true,
-    context: (request, reply) => buildContext(request, reply),
+    context: async (request, reply) => {
+      const baseContext = await buildContext(request, reply);
+      return {
+        ...baseContext,
+        loaders: createLoaders(), // thêm loaders ở đây
+      };
+    },
   });
 
   // Mount /api (=> có POST /api/upload) + /uploads static

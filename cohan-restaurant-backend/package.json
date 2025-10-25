@@ -31,7 +31,7 @@
     "express": "^5.1.0",
     "graphql": "^16.11.0",
     "graphql-request": "^7.2.0",
-    "graphql-scalars": "^1.24.2",
+    "graphql-scalars": "^1.25.0",
     "jsonwebtoken": "^9.0.2",
     "lodash-es": "^4.17.21",
     "mercurius": "^16.2.0",

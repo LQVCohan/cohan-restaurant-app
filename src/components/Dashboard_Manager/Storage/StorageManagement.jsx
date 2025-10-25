@@ -1,5 +1,5 @@
 // src/components/Dashboard_Manager/Storage/StorageManagement.jsx
-import React, { useState, useEffect, useContext, useMemo } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useQuery } from "@apollo/client";
 import { AuthContext } from "../../../context/AuthContext";
 import Header from "./layout/Header/Header";
@@ -7,7 +7,7 @@ import Tabs from "./layout/Tabs/Tabs";
 import IngredientList from "./components/ingredients/IngredientList";
 import SupplyList from "./components/supplies/SupplyList";
 import RecipeList from "./components/recipes/RecipeList";
-
+import useRecipes from "@/hooks/useRecipes";
 import "./StorageManagement.scss";
 
 import {
@@ -16,7 +16,6 @@ import {
   WAREHOUSES_QUERY,
   STOCK_ITEMS_QUERY,
   STOCK_MOVEMENTS_QUERY,
-  MENU_ITEMS_FOR_RECIPE,
 } from "./graphql/inventory.gql";
 
 const StorageManagement = () => {
@@ -28,7 +27,7 @@ const StorageManagement = () => {
   const [selectedWarehouseId, setSelectedWarehouseId] = useState(null);
   const [ingredientSearch, setIngredientSearch] = useState("");
 
-  /** 1) Nhà hàng theo Manager */
+  // ==== 1) Nhà hàng theo Manager ====
   const {
     data: mgrData,
     loading: mgrLoading,
@@ -47,10 +46,9 @@ const StorageManagement = () => {
     }
   }, [managerRestaurants]);
 
-  /** 2) Dữ liệu Inventory phụ thuộc currentRestaurant */
   const restaurantReady = Boolean(currentRestaurant);
 
-  // Ingredients
+  // ==== 2) Ingredients ====
   const {
     data: ingData,
     loading: ingLoading,
@@ -66,19 +64,18 @@ const StorageManagement = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  // Warehouses
+  // ==== 3) Warehouses ====
   const {
     data: whData,
     loading: whLoading,
     error: whError,
-    refetch: refetchWarehouses,
   } = useQuery(WAREHOUSES_QUERY, {
     variables: { restaurantId: currentRestaurant },
     skip: !restaurantReady,
     fetchPolicy: "cache-and-network",
   });
 
-  // Stock (phục vụ tab Inventory/Allocation sau này)
+  // ==== 4) StockItems/Movements (để dành tab sau) ====
   const {
     data: stockData,
     loading: stockLoading,
@@ -96,7 +93,6 @@ const StorageManagement = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  // Movements (nếu cần hiển thị lịch sử/Xem cảnh báo)
   const {
     data: movData,
     loading: movLoading,
@@ -113,24 +109,32 @@ const StorageManagement = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  // Menu items cho RecipeList (để chọn món liên kết công thức)
+  // ==== 5) Recipes (hook đã tối ưu: gộp menuItem + recipe, phân trang, CRUD) ====
+  const [recipeTimeSlot, setRecipeTimeSlot] = useState(null); // 'breakfast'|'lunch'|'dinner'|'late-night'|null
+  const [recipeSearch, setRecipeSearch] = useState(null); // search server-side
+  const [recipeCategoryId, setRecipeCategoryId] = useState(null); // nếu có category cho Menu/Category
+
   const {
-    data: menuItemsData,
-    loading: menuLoading,
-    error: menuError,
-  } = useQuery(MENU_ITEMS_FOR_RECIPE, {
-    variables: { restaurantId: currentRestaurant, timeSlot: null, limit: 200 },
-    skip: !restaurantReady || activeTab !== "recipes",
-    fetchPolicy: "cache-and-network",
+    recipes,
+    loading: recipesLoading,
+    error: recipesError,
+    pageInfo: recipesPageInfo,
+    total: recipesTotal,
+    loadMore: loadMoreRecipes,
+    refresh: refreshRecipes,
+    addRecipe: addRecipeHandler,
+    updateRecipe: updateRecipeHandler,
+    deleteRecipe: deleteRecipeHandler,
+  } = useRecipes(currentRestaurant, recipeTimeSlot, {
+    search: recipeSearch,
+    categoryId: recipeCategoryId,
   });
 
+  // ==== Chuẩn bị dữ liệu ====
   const warehouses = whData?.warehouses || [];
   const ingredients = ingData?.ingredients || [];
-  const stockItems = stockData?.stockItems || [];
-  const movements = movData?.stockMovements || [];
-  const menuItems = menuItemsData?.menuItems || [];
 
-  /** Loading / Error gọn nhẹ */
+  // ==== Loading / Error Nhà hàng ====
   if (mgrError) {
     return (
       <div style={{ color: "#b91c1c" }}>
@@ -164,13 +168,12 @@ const StorageManagement = () => {
     {
       id: "supplies",
       label: "🧴 Vật phẩm khác",
-      // Gợi ý: nếu “vật phẩm” cũng là Ingredient (category = 'supply'/'tool'), bạn có thể lọc ngay tại SupplyList
       component: (
         <SupplyList
           restaurantId={currentRestaurant}
-          warehouseId={selectedWarehouseId} // ✅ thêm
-          warehouses={warehouses} // ✅ để dùng cho chuyển kho
-          warehousesLoading={whLoading} // ✅ spinner trong modal/select
+          warehouseId={selectedWarehouseId}
+          warehouses={warehouses}
+          warehousesLoading={whLoading}
           onReload={refetchIngredients}
         />
       ),
@@ -181,32 +184,31 @@ const StorageManagement = () => {
       component: (
         <RecipeList
           restaurantId={currentRestaurant}
+          recipes={recipes}
+          loading={recipesLoading}
+          error={recipesError}
+          pageInfo={recipesPageInfo}
+          total={recipesTotal}
+          onTimeSlotChange={setRecipeTimeSlot}
+          onSearchChange={setRecipeSearch}
+          onCategoryChange={setRecipeCategoryId}
+          loadMore={loadMoreRecipes}
+          onAddRecipe={addRecipeHandler}
+          onUpdateRecipe={updateRecipeHandler}
+          onDeleteRecipe={deleteRecipeHandler}
           ingredients={ingredients}
-          menuItems={menuItems}
-          loading={menuLoading || ingLoading}
-          error={menuError}
         />
       ),
     },
     {
       id: "allocation",
       label: "🎯 Phân bổ nguyên liệu",
-      component: (
-        <div>
-          {/* Gợi ý: truyền warehouses + stockItems để phân bổ theo kho/line sản xuất */}
-          Allocation (dev)
-        </div>
-      ),
+      component: <div>Allocation (dev)</div>,
     },
     {
       id: "inventory",
       label: "📊 Kiểm kê",
-      component: (
-        <div>
-          {/* Bạn có thể dùng stockItems + movements để hiển thị kiểm kê theo kho */}
-          Inventory (dev)
-        </div>
-      ),
+      component: <div>Inventory (dev)</div>,
     },
   ];
 
@@ -216,7 +218,14 @@ const StorageManagement = () => {
         <Header
           restaurantList={managerRestaurants}
           currentRestaurantId={currentRestaurant}
-          onRestaurantChange={setCurrentRestaurant}
+          onRestaurantChange={(id) => {
+            setCurrentRestaurant(id);
+            setSelectedWarehouseId(null); // reset kho khi đổi nhà hàng
+            // reset filter recipes:
+            setRecipeTimeSlot(null);
+            setRecipeSearch(null);
+            setRecipeCategoryId(null);
+          }}
           warehouses={warehouses}
           selectedWarehouseId={selectedWarehouseId}
           onWarehouseChange={setSelectedWarehouseId}
@@ -230,10 +239,14 @@ const StorageManagement = () => {
             activeTab={activeTab}
             onTabChange={(t) => {
               setActiveTab(t);
-              // khi đổi tab Inventory/Allocation thì refetch kho
               if (t === "inventory" || t === "allocation") {
+                // Khi sang tab liên quan kho → refetch tồn & lịch sử
                 refetchStock?.();
                 refetchMovements?.();
+              }
+              if (t === "recipes") {
+                // Chủ động refresh recipe khi quay lại tab
+                refreshRecipes?.();
               }
             }}
           />

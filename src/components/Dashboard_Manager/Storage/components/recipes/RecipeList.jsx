@@ -3,68 +3,95 @@ import RecipeCard from "./RecipeCard";
 import RecipeModal from "./RecipeModal";
 import RecipeDetailModal from "./RecipeDetailModal";
 import Button from "../../../../common/Button";
-import { useRecipes } from "../../../../../hooks/useRecipes";
 import { RECIPE_CATEGORIES } from "../../../../../utils/constants";
 import "./recipes.scss";
 
 /**
- * Nhận restaurantId từ parent (StorageManagement) để lọc dữ liệu theo nhà hàng.
- * Thêm select "Buổi" để lọc menuItems theo timeSlot.
+ * Props:
+ * - restaurantId: ID nhà hàng
+ * - recipes: [{ id, name, menuItemId, servingVariants, ... }]
+ * - loading, error, pageInfo, total
+ * - onSearchChange, onCategoryChange, onTimeSlotChange
+ * - loadMore()
+ * - onAddRecipe(recipeForm)
+ * - onUpdateRecipe(id, recipeForm)
+ * - onDeleteRecipe(id)
  */
-const RecipeList = ({ restaurantId }) => {
-  const [timeSlot, setTimeSlot] = useState(null); // 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'LATE_NIGHT' | null
-  const {
-    filteredRecipes,
-    filters,
-    setFilters,
-    addRecipe,
-    updateRecipe,
-    deleteRecipe,
-  } = useRecipes(restaurantId, timeSlot);
+const RecipeList = ({
+  restaurantId,
+  recipes = [],
+  loading = false,
+  error = null,
+  pageInfo = { hasNextPage: false },
+  total,
+  onTimeSlotChange,
+  onSearchChange,
+  onCategoryChange,
+  loadMore,
+  onAddRecipe,
+  onUpdateRecipe,
+  onDeleteRecipe,
+  ingredients = [],
+}) => {
+  // ===== UI state =====
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [timeSlot, setTimeSlot] = useState("");
 
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState(null);
   const [viewingRecipe, setViewingRecipe] = useState(null);
 
+  // ===== Filters =====
   const handleSearch = (e) => {
-    setFilters({ ...filters, search: e.target.value });
+    const val = e.target.value;
+    setSearch(val);
+    onSearchChange?.(val || null);
   };
 
   const handleCategoryFilter = (e) => {
-    setFilters({ ...filters, category: e.target.value });
+    const val = e.target.value;
+    setCategory(val);
+    onCategoryChange?.(val || null);
   };
 
-  const handleEdit = (id) => {
-    const recipe = filteredRecipes.find((r) => r.id === id);
-    setEditingRecipe(recipe);
-    setShowModal(true);
+  const handleTimeSlotFilter = (e) => {
+    const val = e.target.value;
+    setTimeSlot(val);
+    onTimeSlotChange?.(val || null);
   };
 
+  // ===== CRUD modal =====
   const handleAdd = () => {
     setEditingRecipe(null);
     setShowModal(true);
   };
 
+  const handleEdit = (id) => {
+    const recipe = recipes.find((r) => r.id === id);
+    setEditingRecipe(recipe || null);
+    setShowModal(true);
+  };
+
   const handleViewDetails = (id) => {
-    const recipe = filteredRecipes.find((r) => r.id === id);
-    setViewingRecipe(recipe);
+    const recipe = recipes.find((r) => r.id === id);
+    setViewingRecipe(recipe || null);
     setShowDetailModal(true);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa công thức này?")) {
-      deleteRecipe(id);
-    }
+  const handleDelete = async (id) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa công thức này?")) return;
+    await onDeleteRecipe?.(id);
   };
 
-  const handleSave = (recipeData) => {
+  const handleSave = async (formData) => {
     if (editingRecipe) {
-      updateRecipe(editingRecipe.id, recipeData);
+      // update
+      await onUpdateRecipe?.(editingRecipe.id, formData);
     } else {
-      // Khi tạo mới từ UI này, bạn có thể cần chọn món (menuItem) trước.
-      // Ở layout hiện tại, ta giả định recipeData.id đã là menuItemId (như bạn đang map).
-      addRecipe(recipeData);
+      // add
+      await onAddRecipe?.(formData);
     }
     setShowModal(false);
     setEditingRecipe(null);
@@ -82,42 +109,43 @@ const RecipeList = ({ restaurantId }) => {
 
   return (
     <div className="recipe-list">
+      {/* Toolbar */}
       <div className="toolbar">
         <div className="toolbar-left">
           <div className="search-filter">
             <input
               type="text"
               className="search-input"
-              placeholder="🔍 Tìm kiếm công thức..."
-              value={filters.search}
+              placeholder="🔍 Tìm kiếm món ăn..."
+              value={search}
               onChange={handleSearch}
             />
 
             <select
               className="filter-select"
-              value={filters.category}
+              value={category}
               onChange={handleCategoryFilter}
+              title="Danh mục món"
             >
               <option value="">Tất cả danh mục</option>
-              {RECIPE_CATEGORIES.map((category) => (
-                <option key={category.value} value={category.value}>
-                  {category.label}
+              {RECIPE_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
                 </option>
               ))}
             </select>
 
-            {/* NEW: chọn buổi (timeSlot) */}
             <select
               className="filter-select"
-              value={timeSlot || ""}
-              onChange={(e) => setTimeSlot(e.target.value || null)}
-              title="Chọn buổi để lọc menu"
+              value={timeSlot}
+              onChange={handleTimeSlotFilter}
+              title="Buổi ăn"
             >
               <option value="">— Tất cả buổi —</option>
               <option value="breakfast">Sáng</option>
               <option value="lunch">Trưa</option>
               <option value="dinner">Tối</option>
-              <option value="late-night">Đêm</option>
+              <option value="late_night">Đêm</option>
             </select>
           </div>
         </div>
@@ -127,30 +155,60 @@ const RecipeList = ({ restaurantId }) => {
         </div>
       </div>
 
-      <div className="recipes-grid">
-        {filteredRecipes.map((recipe) => (
-          <RecipeCard
-            key={recipe.id}
-            recipe={recipe}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onViewDetails={handleViewDetails}
-          />
-        ))}
-      </div>
+      {/* Grid list */}
+      {loading && !recipes.length ? (
+        <div className="recipes-grid">
+          <div className="card">Đang tải công thức...</div>
+        </div>
+      ) : error ? (
+        <div className="recipes-grid">
+          <div className="card error">Lỗi: {error.message}</div>
+        </div>
+      ) : (
+        <>
+          <div className="recipes-grid">
+            {recipes.map((r) => (
+              <RecipeCard
+                key={r.id}
+                recipe={r}
+                onEdit={handleEdit}
+                onViewDetails={handleViewDetails}
+                onDelete={handleDelete}
+              />
+            ))}
+            {!recipes.length && (
+              <div className="card">Không có công thức phù hợp</div>
+            )}
+          </div>
 
+          {pageInfo?.hasNextPage && (
+            <div className="load-more">
+              <Button onClick={loadMore} disabled={loading}>
+                {loading ? "Đang tải..." : "Tải thêm"}
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Modal: Create/Update */}
       <RecipeModal
         isOpen={showModal}
         onClose={handleModalClose}
         onSave={handleSave}
-        onDelete={deleteRecipe}
+        onDelete={handleDelete}
         recipe={editingRecipe}
+        menuItemName={editingRecipe?.menuItem?.name}
+        restaurantId={restaurantId}
+        ingredients={ingredients}
       />
 
+      {/* Modal: Detail view */}
       <RecipeDetailModal
         isOpen={showDetailModal}
         onClose={handleDetailModalClose}
         recipe={viewingRecipe}
+        ingredients={ingredients}
       />
     </div>
   );

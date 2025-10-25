@@ -1,0 +1,1348 @@
+"""
+A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.
+"""
+scalar DateTime
+
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON @specifiedBy(url: "http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf")
+
+type Query {
+  _empty: String
+  me: User
+  restaurants(limit: Int = 20, cursor: ID, restaurantFilter: RestaurantFilter): RestaurantConnection!
+  restaurant(id: ID!): Restaurant
+  restaurantsTop(limit: Int = 6, restaurantFilter: RestaurantFilter): [Restaurant!]!
+  restaurantsByManager(managerId: ID!, limit: Int = 20, cursor: ID, restaurantFilter: RestaurantFilter): RestaurantConnection!
+  refRestaurants(userId: ID!): [Restaurant!]!
+  role(search: String, parent: String): [Role!]!
+  permissions(search: String, group: String, resource: String, action: String): [Permission!]!
+  menus(restaurantId: ID!): [Menu!]!
+  menu(restaurantId: ID!, timeSlot: TimeSlot!): Menu
+  menuItems(restaurantId: ID!, timeSlot: TimeSlot, categoryId: ID, search: String, limit: Int = 50): [MenuItem!]!
+  menuItemsConnection(limit: Int = 20, cursor: ID, filter: MenuItemFilter!): MenuItemConnection!
+  topMenuItems(limit: Int = 8, restaurantId: ID, categoryId: ID): [MenuItem!]!
+  categories(restaurantId: ID!, timeSlot: TimeSlot!): [Category!]!
+  modifierGroups(restaurantId: ID!, search: String): [ModifierGroup!]!
+  modifierGroup(id: ID!): ModifierGroup
+  floors(restaurantId: ID!): [Floor!]!
+  floorByLevel(restaurantId: ID!, level: Int!): Floor
+  tables(restaurantId: ID!, floorId: ID, status: TableStatus, type: TableType, search: String, limit: Int = 200): [Table!]!
+  tableByCode(restaurantId: ID!, floorId: ID!, code: String!): Table
+  ingredients(restaurantId: ID!, search: String, limit: Int = 100): [Ingredient!]!
+  ingredient(id: ID!): Ingredient
+  warehouses(restaurantId: ID!): [Warehouse!]!
+  stockItems(restaurantId: ID!, warehouseId: ID, ingredientIds: [ID!], lowOnly: Boolean, limit: Int = 200): [StockItem!]!
+  menuItemsWithRecipes(restaurantId: ID!, timeSlot: TimeSlot, search: String, categoryId: ID, first: Int = 30, after: String): MenuItemsWithRecipes!
+  recipe(restaurantId: ID!, menuItemId: ID!): Recipe
+  recipesByMenuItems(restaurantId: ID!, menuItemIds: [ID!]!): [Recipe!]!
+  stockMovements(restaurantId: ID!, warehouseId: ID, ingredientId: ID, type: MovementType, orderCode: String, dateFrom: DateTime, dateTo: DateTime, limit: Int = 200, sort: Int = -1): [StockMovement!]!
+  stockMovementSummary(restaurantId: ID!, warehouseId: ID, ingredientId: ID, dateFrom: DateTime, dateTo: DateTime): MovementSummary!
+  order(id: ID!): Order
+  ordersByRestaurant(restaurantId: ID!, limit: Int = 20, cursor: ID): OrdersConnection!
+  ordersByUser(userId: ID!, limit: Int = 20, cursor: ID): OrdersConnection!
+  reservation(id: ID, orderCode: String): Reservation
+  myReservations(limit: Int = 20, cursor: ID): [Reservation!]!
+  supplies(restaurantId: ID!, warehouseId: ID): [SupplyWithStock!]!
+  supply(id: ID!): SupplyWithStock
+  supplyStockItems(restaurantId: ID!, supplyId: ID): [StockItem!]!
+}
+
+type Mutation {
+  _empty: String
+  changeMyPassword(currentPassword: String!, newPassword: String!): Boolean!
+  updateAvatar(input: UpdateAvatarInput!): User!
+  createUser(input: CreateUserInput!): AuthPayload!
+  login(email: String, username: String, phone: String, password: String!, captchaToken: String): AuthPayload!
+  assignRoleToUser(input: AssignRoleToUserInput!): User!
+  requestEmailVerification(email: String!): Boolean!
+  verifyEmail(token: String!): Boolean!
+  resendVerification(email: String!): Boolean!
+  updateUser(input: UpdateUserInput!): User!
+  createRestaurant(input: CreateRestaurantInput!): Restaurant!
+  updateRestaurant(id: ID!, input: UpdateRestaurantInput!): Restaurant!
+  deleteRestaurant(id: ID!): Boolean!
+  updateRestaurantManager(input: UpdateRestaurantManagerInput!): Restaurant!
+  createRole(input: CreateRoleInput!): Role!
+  updateRole(input: UpdateRoleInput!): Role!
+  deleteRole(id: ID!): Boolean!
+  assignRolesToUser(userId: ID!, roleIds: [ID!]!): User!
+  revokeRolesFromUser(userId: ID!, roleIds: [ID!]!): User!
+  createPermission(input: CreatePermissionInput!): Permission!
+  updatePermission(input: UpdatePermissionInput!): Permission!
+  bulkUpdateMenuItemPrices(input: BulkPriceUpdateInput!): BulkPriceUpdateResult!
+  ensureMenu(input: EnsureMenuInput!): Menu!
+  createMenuItem(input: CreateMenuItemInput!): MenuItem!
+  updateMenuItem(input: UpdateMenuItemInput!): MenuItem!
+  deleteMenuItem(id: ID!): Boolean!
+  toggleMenuItemStatus(id: ID!, status: String!): MenuItem!
+  createCategory(input: CreateCategoryInput!): Category!
+  updateCategory(input: UpdateCategoryInput!): Category!
+  deleteCategory(id: ID!): Boolean!
+  createModifierGroup(input: CreateModifierGroupInput!): ModifierGroup!
+  updateModifierGroup(input: UpdateModifierGroupInput!): ModifierGroup!
+  deleteModifierGroup(id: ID!): Boolean!
+  addModifierOption(groupId: ID!, option: ModifierOptionInput!): ModifierGroup!
+  updateModifierOption(groupId: ID!, optionId: ID!, option: ModifierOptionInput!): ModifierGroup!
+  removeModifierOption(groupId: ID!, optionId: ID!): ModifierGroup!
+  setMenuItemModifierGroups(input: SetMenuItemModifierGroupsInput!): Boolean!
+  attachMenuItemModifierGroups(input: AttachMenuItemModifierGroupsInput!): Boolean!
+  detachMenuItemModifierGroups(input: DetachMenuItemModifierGroupsInput!): Boolean!
+  createFloor(input: CreateFloorInput!): Floor!
+  updateFloor(input: UpdateFloorInput!): Floor!
+  deleteFloor(id: ID!): Boolean!
+  createTable(input: CreateTableInput!): Table!
+  updateTable(input: UpdateTableInput!): Table!
+  deleteTable(id: ID!): Boolean!
+  moveTable(input: MoveTableInput!): Table!
+  setTableStatus(input: SetTableStatusInput!): Table!
+  swapTableCodes(input: SwapTableCodesInput!): Boolean!
+  bulkUpsertTables(input: BulkUpsertTablesInput!): Int!
+  createIngredient(input: CreateIngredientInput!): Ingredient!
+  updateIngredient(input: UpdateIngredientInput!): Ingredient!
+  deleteIngredient(id: ID!): Boolean!
+  createWarehouse(input: CreateWarehouseInput!): Warehouse!
+  updateWarehouse(input: UpdateWarehouseInput!): Warehouse!
+  deleteWarehouse(id: ID!): Boolean!
+  upsertStockItem(restaurantId: ID!, warehouseId: ID!, ingredientId: ID!, onHand: Float, reserved: Float, batches: [StockBatchInput!]): StockItem!
+  adjustStock(restaurantId: ID!, warehouseId: ID!, ingredientId: ID!, qty: Float!, reason: String): StockItem!
+  transferStock(restaurantId: ID!, fromWarehouseId: ID!, toWarehouseId: ID!, ingredientId: ID!, qty: Float!, reason: String): Boolean!
+  upsertRecipe(input: UpsertRecipeInput!): Recipe!
+  deleteRecipe(restaurantId: ID!, menuItemId: ID!): Boolean!
+  consumeForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
+  reserveForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
+  commitReservationForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
+  cancelReservationForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
+  createOrder(input: CreateOrderInput!): Order!
+  updateOrderStatus(input: UpdateOrderStatusInput!): Order!
+  cancelOrder(id: ID!, reason: String): Order!
+  changeReservationTable(input: changeReservationTableInput!): Reservation!
+  createReservation(input: CreateReservationInput!): Reservation!
+  updateReservation(input: CreateReservationInput!): Reservation!
+  updateReservationStatus(input: UpdateReservationStatusInput!): Reservation!
+  cancelReservation(id: ID!): Reservation!
+  createSupply(input: CreateSupplyInput!): Supply!
+  updateSupply(id: ID!, input: UpdateSupplyInput!): Supply!
+  deleteSupply(id: ID!): Boolean!
+  stockTransfer(input: StockTransferInput!): Boolean!
+  adjustSupply(input: AdjustSupplyInput!): StockItem!
+  stockInbound(input: StockInboundInput!): StockItem!
+  stockOutbound(input: StockOutboundInput!): StockItem!
+}
+
+type Subscription {
+  _empty: String
+}
+
+type User {
+  id: ID!
+  fullName: String!
+  username: String
+  email: String
+  phone: String
+  address: Address
+  role: Role
+  status: String
+  provider: String
+  avatarUrl: String
+  refRestaurants: [Restaurant]
+  point: Int
+  loyaltyPoints: Int
+  roleName: String!
+  users: [User!]!
+  customerType: String
+  totalOrders: Int
+  totalSpending: Float
+  emailVerified: Boolean
+  createdAt: String
+  updatedAt: String
+  createdBy: User
+  updatedBy: User
+}
+
+input AddressInput {
+  line1: String
+  line2: String
+  ward: String
+  district: String
+  city: String
+  country: String
+}
+
+input CreateUserInput {
+  fullName: String!
+  username: String
+  email: String
+  phone: String
+  address: AddressInput
+  password: String!
+  provider: String
+  status: String
+  roleId: ID
+  refRestaurantIds: [ID!]
+  customerType: String
+  captchaToken: String
+}
+
+input LoginInput {
+  email: String
+  username: String
+  phone: String
+  password: String!
+  captchaToken: String
+}
+
+input UpdateUserInput {
+  fullName: String
+  username: String
+  email: String
+  phone: String
+  address: AddressInput
+  avatarUrl: String
+}
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+input AssignRoleToUserInput {
+  userId: ID!
+  roleId: ID!
+}
+
+enum CustomerType {
+  VIP
+  NEW
+  OFTEN
+}
+
+input UpdateAvatarInput {
+  fileBase64: String
+  fileUrl: String
+}
+
+type Address {
+  line1: String
+  line2: String
+  ward: String
+  district: String
+  city: String
+  country: String
+}
+
+type Restaurant {
+  id: ID!
+  name: String!
+  avatar: String
+  coverImage: String
+  spaceImages: [String]
+  address: Address
+  phone: String
+  email: String
+  featuredMenu: [String]
+  amenities: [String]
+  seatingCapacity: Int
+  priceRange: String
+  openingHours: String
+  closingHours: String
+  description: String
+  notesOnHours: String
+  notesOnAmenities: String
+  cuisineType: String
+  status: String
+  manager: User
+  tables: [Table]
+  categories: [Category]
+  avgRating: Float
+}
+
+input RestaurantFilter {
+  city: String
+  district: String
+  cuisineTypes: [String!]
+  minRating: Float
+  priceRange: [String!]
+  search: String
+}
+
+type PageInfo {
+  endCursor: ID
+  hasNextPage: Boolean!
+}
+
+type RestaurantEdge {
+  node: Restaurant!
+  cursor: ID!
+}
+
+type RestaurantConnection {
+  edges: [RestaurantEdge!]!
+  pageInfo: PageInfo!
+}
+
+input CreateRestaurantInput {
+  name: String!
+  avatar: String
+  coverImage: String
+  spaceImages: [String]
+  address: AddressInput
+  phone: String
+  email: String
+  featuredMenu: [String]
+  amenities: [String]
+  seatingCapacity: Int
+  priceRange: String
+  openingHours: String
+  closingHours: String
+  description: String
+  notesOnHours: String
+  notesOnAmenities: String
+  cuisineType: String
+  status: String
+  managerId: ID!
+}
+
+input UpdateRestaurantInput {
+  name: String
+  avatar: String
+  coverImage: String
+  spaceImages: [String]
+  address: AddressInput
+  phone: String
+  email: String
+  featuredMenu: [String]
+  amenities: [String]
+  seatingCapacity: Int
+  priceRange: String
+  openingHours: String
+  closingHours: String
+  description: String
+  notesOnHours: String
+  notesOnAmenities: String
+  cuisineType: String
+  status: String
+}
+
+input UpdateRestaurantManagerInput {
+  restaurantId: ID!
+  managerId: ID!
+}
+
+type Category {
+  id: ID!
+  name: String!
+  parentId: ID
+  order: Int
+  restaurantId: ID!
+  timeSlot: TimeSlot!
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type Table {
+  id: ID!
+  code: String!
+  capacity: Int!
+  status: TableStatus!
+  restaurantId: ID!
+  floorId: ID!
+  type: TableType!
+  position: Position!
+  photos: [String!]!
+  vrUrl: String
+  notes: String
+  floorLevel: Int
+  deposit: Int
+  tags: [String!]
+  isJoinable: Boolean
+  joinGroupId: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+enum TableStatus {
+  available
+  occupied
+  reserved
+  cleaning
+  offline
+  maintenance
+}
+
+type Role {
+  id: ID!
+  name: String!
+  slug: String!
+  description: String
+  parent: String
+  isSystem: Boolean
+  permissions: [Permission!]!
+  users: [User!]!
+  createdAt: String
+  updatedAt: String
+}
+
+input CreateRoleInput {
+  name: String!
+  slug: String!
+  description: String
+  parent: String
+  permissionIds: [ID!]
+}
+
+input UpdateRoleInput {
+  id: ID!
+  name: String
+  description: String
+  parent: String
+  permissionIds: [ID!]
+}
+
+type Permission {
+  id: ID!
+  code: String!
+  name: String!
+  description: String
+  group: String
+  action: String!
+  resource: String!
+  createdAt: String
+  updatedAt: String
+}
+
+input CreatePermissionInput {
+  code: String
+  name: String!
+  description: String
+  group: String
+  action: String!
+  resource: String!
+}
+
+input UpdatePermissionInput {
+  id: ID!
+  name: String
+  description: String
+  group: String
+  action: String
+  resource: String
+  code: String
+}
+
+enum TimeSlot {
+  breakfast
+  lunch
+  dinner
+  late_night
+}
+
+enum PriceUpdateMode {
+  PERCENT
+  AMOUNT
+}
+
+input BulkPriceUpdateTarget {
+  categoryId: ID
+  menuItemIds: [ID!]
+}
+
+input BulkPriceUpdateInput {
+  restaurantId: ID!
+  timeSlot: TimeSlot
+  target: BulkPriceUpdateTarget!
+  mode: PriceUpdateMode!
+  value: Float!
+  roundTo: Int
+  floorZero: Boolean
+}
+
+type BulkPriceUpdateResult {
+  updatedCount: Int!
+  items: [MenuItem!]!
+}
+
+type Menu {
+  id: ID!
+  restaurantId: ID!
+  timeSlot: TimeSlot!
+  name: String
+  description: String
+  coverImage: String
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type PreparationMethod {
+  name: String!
+  price: Float!
+  isDefault: Boolean
+}
+
+input PreparationMethodInput {
+  name: String!
+  price: Float!
+  isDefault: Boolean
+}
+
+input MenuItemFilter {
+  restaurantId: ID!
+  timeSlot: TimeSlot
+  categoryId: ID
+  status: String
+  search: String
+  minPrice: Float
+  maxPrice: Float
+}
+
+type MenuItemEdge {
+  node: MenuItem!
+  cursor: ID!
+}
+
+type MenuItemConnection {
+  edges: [MenuItemEdge!]!
+  pageInfo: PageInfo!
+}
+
+type MenuItem {
+  id: ID!
+  restaurantId: ID!
+  menuId: ID!
+  categoryId: ID!
+  name: String!
+  description: String
+  basePrice: Float
+  preparationMethods: [PreparationMethod!]!
+  thumbImage: String
+  mediaAssetIds: [ID!]
+  modifierGroupIds: [ID!]
+  status: String
+  avgPrepTimeMin: Int
+  recipe: String
+  notes: String
+  point: Int
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input EnsureMenuInput {
+  restaurantId: ID!
+  timeSlot: TimeSlot!
+  name: String
+  description: String
+  coverImage: String
+}
+
+input CreateMenuItemInput {
+  restaurantId: ID!
+  timeSlot: TimeSlot!
+  categoryId: ID!
+  name: String!
+  description: String
+  basePrice: Float
+  preparationMethods: [PreparationMethodInput!]
+  thumbImage: String
+  mediaAssetIds: [ID!]
+  modifierGroupIds: [ID!]
+  status: String
+  avgPrepTimeMin: Int
+  recipe: String
+  notes: String
+}
+
+input UpdateMenuItemInput {
+  id: ID!
+  name: String
+  description: String
+  categoryId: String
+  basePrice: Float
+  preparationMethods: [PreparationMethodInput!]
+  thumbImage: String
+  mediaAssetIds: [ID!]
+  modifierGroupIds: [ID!]
+  status: String
+  avgPrepTimeMin: Int
+  recipe: String
+  notes: String
+}
+
+input CreateCategoryInput {
+  restaurantId: ID!
+  timeSlot: TimeSlot!
+  name: String!
+  order: Int
+}
+
+input UpdateCategoryInput {
+  id: ID!
+  name: String
+  order: Int
+  isActive: Boolean
+}
+
+type ModifierOption {
+  id: ID
+  name: String!
+  priceDelta: Float!
+  isDefault: Boolean
+}
+
+type ModifierGroup {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  selectionType: String!
+  required: Boolean
+  appliesTo: String
+  options: [ModifierOption!]!
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input ModifierOptionInput {
+  name: String!
+  priceDelta: Float!
+  isDefault: Boolean
+}
+
+input CreateModifierGroupInput {
+  restaurantId: ID!
+  name: String!
+  selectionType: String = "multiple"
+  required: Boolean = false
+  appliesTo: String = "item"
+  options: [ModifierOptionInput!]
+  isActive: Boolean = true
+}
+
+input UpdateModifierGroupInput {
+  id: ID!
+  name: String
+  selectionType: String
+  required: Boolean
+  appliesTo: String
+  isActive: Boolean
+}
+
+input SetMenuItemModifierGroupsInput {
+  menuItemId: ID!
+  groupIds: [ID!]!
+}
+
+input AttachMenuItemModifierGroupsInput {
+  menuItemId: ID!
+  groupIds: [ID!]!
+}
+
+input DetachMenuItemModifierGroupsInput {
+  menuItemId: ID!
+  groupIds: [ID!]!
+}
+
+enum TableType {
+  standard
+  booth
+  vip
+  outdoor
+  bar
+  private
+}
+
+type Floor {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  level: Int!
+  description: String
+  planImage: String
+  isActive: Boolean
+  meta: FloorMeta
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type FloorMeta {
+  width: Int
+  height: Int
+}
+
+input FloorMetaInput {
+  width: Int
+  height: Int
+}
+
+input CreateFloorInput {
+  restaurantId: ID!
+  name: String!
+  level: Int!
+  description: String
+  planImage: String
+  isActive: Boolean
+  meta: FloorMetaInput
+}
+
+input UpdateFloorInput {
+  id: ID!
+  name: String
+  level: Int
+  description: String
+  planImage: String
+  isActive: Boolean
+  meta: FloorMetaInput
+}
+
+type Position {
+  x: Float!
+  y: Float!
+  rotation: Float
+  shape: String
+  w: Float
+  h: Float
+  path: String
+}
+
+input PositionInput {
+  x: Float!
+  y: Float!
+  rotation: Float
+  shape: String
+  w: Float
+  h: Float
+  path: String
+}
+
+input CreateTableInput {
+  restaurantId: ID!
+  floorId: ID!
+  code: String!
+  type: TableType = standard
+  capacity: Int!
+  position: PositionInput!
+  deposit: Int
+  photos: [String!]
+  vrUrl: String
+  notes: String
+  status: TableStatus
+  tags: [String!]
+  isJoinable: Boolean
+  joinGroupId: String
+}
+
+input UpdateTableInput {
+  id: ID!
+  code: String
+  type: TableType
+  capacity: Int
+  position: PositionInput
+  photos: [String!]
+  deposit: Int
+  vrUrl: String
+  notes: String
+  status: TableStatus
+  tags: [String!]
+  isJoinable: Boolean
+  joinGroupId: String
+}
+
+input MoveTableInput {
+  id: ID!
+  floorId: ID
+  position: PositionInput
+}
+
+input SetTableStatusInput {
+  id: ID!
+  status: TableStatus!
+}
+
+input SwapTableCodesInput {
+  restaurantId: ID!
+  floorId: ID!
+  aId: ID!
+  bId: ID!
+}
+
+input BulkUpsertTablesInput {
+  restaurantId: ID!
+  floorId: ID!
+  items: [BulkTableItemInput!]!
+}
+
+input BulkTableItemInput {
+  code: String!
+  type: TableType = standard
+  capacity: Int!
+  position: PositionInput!
+  photos: [String!]
+  deposit: Int
+  vrUrl: String
+  notes: String
+  status: TableStatus
+  tags: [String!]
+  isJoinable: Boolean
+  joinGroupId: String
+}
+
+enum Unit {
+  g
+  kg
+  ml
+  l
+  unit
+  piece
+  tbsp
+  tsp
+  pack
+  bottle
+  can
+}
+
+enum MovementType {
+  inbound
+  outbound
+  adjustment
+  transfer
+}
+
+type Ingredient {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  sku: String
+  category: String
+  baseUnit: Unit!
+  conversions: [UnitConversion!]!
+  costPerBaseUnit: Float
+  photos: [String!]!
+  minStock: Float
+  notes: String
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type UnitConversion {
+  from: Unit!
+  to: Unit!
+  ratio: Float!
+}
+
+input UnitConversionInput {
+  from: Unit!
+  to: Unit!
+  ratio: Float!
+}
+
+input CreateIngredientInput {
+  restaurantId: ID!
+  name: String!
+  sku: String
+  category: String
+  baseUnit: Unit!
+  conversions: [UnitConversionInput!]
+  costPerBaseUnit: Float
+  photos: [String!]
+  minStock: Float
+  notes: String
+  isActive: Boolean
+}
+
+input UpdateIngredientInput {
+  id: ID!
+  name: String
+  sku: String
+  category: String
+  baseUnit: Unit
+  conversions: [UnitConversionInput!]
+  costPerBaseUnit: Float
+  photos: [String!]
+  minStock: Float
+  notes: String
+  isActive: Boolean
+}
+
+type Warehouse {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  code: String
+  address: String
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CreateWarehouseInput {
+  restaurantId: ID!
+  name: String!
+  code: String
+  address: String
+  isActive: Boolean
+}
+
+input UpdateWarehouseInput {
+  id: ID!
+  name: String
+  code: String
+  address: String
+  isActive: Boolean
+}
+
+type StockItem {
+  id: ID!
+  restaurantId: ID!
+  warehouseId: ID
+  ingredientId: ID!
+  onHand: Float!
+  reserved: Float!
+  batches: [StockBatch!]!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type StockBatch {
+  id: ID!
+  lot: String
+  qty: Float!
+  expiry: DateTime
+  costPerBaseUnit: Float
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input StockBatchInput {
+  lot: String
+  qty: Float!
+  expiry: DateTime
+  costPerBaseUnit: Float
+}
+
+type StockMovement {
+  id: ID!
+  restaurantId: ID!
+  warehouseId: ID!
+  ingredientId: ID!
+  type: MovementType!
+  qty: Float!
+  reason: String
+  meta: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type Recipe {
+  id: ID!
+  restaurantId: ID!
+  menuItemId: ID!
+  servingVariants: [ServingVariant!]!
+  notes: String
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type RecipeComponent {
+  ingredientId: ID!
+  qty: Float!
+  unit: String
+  wastePct: Float
+  ingredientName: String
+}
+
+type RecipeVariant {
+  preparationMethodName: String!
+  components: [RecipeComponent!]!
+}
+
+input RecipeComponentInput {
+  ingredientId: ID!
+  qty: Float!
+  unit: String
+  wastePct: Float
+}
+
+input RecipeVariantInput {
+  preparationMethodName: String!
+  components: [RecipeComponentInput!]!
+}
+
+type MenuItemsWithRecipes {
+  items: [MenuItemWithRecipe!]!
+  total: Int
+  pageInfo: PageInfo!
+}
+
+input UpsertRecipeInput {
+  restaurantId: ID!
+  menuItemId: ID!
+  yieldQty: Float
+  yieldUnit: String
+  baseComponents: [RecipeComponentInput!]
+  variants: [RecipeVariantInput!]
+  notes: String
+  isActive: Boolean
+  servingVariants: [ServingVariantInput!]
+}
+
+input OrderLineInput {
+  menuItemId: ID!
+  quantity: Float
+  preparationMethodName: String
+  weightGrams: Float
+  servingKey: String
+  servingMode: ServingMode
+}
+
+input ConsumeForOrderInput {
+  restaurantId: ID!
+  warehouseId: ID!
+  orderCode: String!
+  lines: [OrderLineInput!]!
+  allowNegative: Boolean = false
+}
+
+type ConsumptionResult {
+  success: Boolean!
+  totalConsumed: Float!
+  movements: [StockMovement!]!
+  lowStocks: [Ingredient!]!
+}
+
+type MovementSummary {
+  inbound: Float!
+  outbound: Float!
+  adjustment: Float!
+  transferIn: Float!
+  transferOut: Float!
+  net: Float!
+  count: Int!
+}
+
+type MenuItemWithRecipe {
+  menuItem: MenuItem!
+  recipe: Recipe
+}
+
+enum ServingMode {
+  PORTION
+  BY_WEIGHT
+}
+
+type ServingVariant {
+  key: String!
+  mode: ServingMode!
+  yieldQty: Float!
+  yieldUnit: String!
+  preparationMethodName: String
+  components: [RecipeComponent!]!
+}
+
+input ServingVariantInput {
+  key: String!
+  mode: ServingMode!
+  yieldQty: Float!
+  yieldUnit: String!
+  preparationMethodName: String
+  components: [RecipeComponentInput!]!
+}
+
+type Shipping {
+  fullName: String
+  phone: String
+  email: String
+  address: String
+  note: String
+  deliveryMethod: String
+  deliveryTime: String
+  scheduleDate: String
+  scheduleTime: String
+}
+
+input ShippingInput {
+  fullName: String
+  phone: String
+  email: String
+  address: String
+  note: String
+  deliveryMethod: String
+  deliveryTime: String
+  scheduleDate: String
+  scheduleTime: String
+}
+
+type OrderModifier {
+  optionId: ID
+  optionName: String!
+  groupId: ID
+  price: Int
+}
+
+input OrderModifierInput {
+  optionId: ID
+  optionName: String!
+  groupId: ID
+  price: Int
+}
+
+type OrderItem {
+  dishId: String
+  menuId: String
+  categoryId: String
+  name: String!
+  unit: String
+  image: String
+  price: Int!
+  modifiersPrice: Int
+  method: String
+  methodDelta: Int
+  description: String
+  quantity: Int!
+  modifiers: [OrderModifier!]
+  lineSubtotal: Int
+}
+
+input OrderItemInput {
+  dishId: String
+  menuId: String
+  categoryId: String
+  name: String!
+  unit: String
+  image: String
+  price: Int!
+  modifiersPrice: Int
+  method: String
+  methodDelta: Int
+  description: String
+  quantity: Int!
+  modifiers: [OrderModifierInput!]
+}
+
+input CustomerInput {
+  fullName: String
+  phone: String
+  email: String
+}
+
+type OrderTotals {
+  subtotal: Int!
+  discount: Int!
+  tax: Int!
+  service: Int!
+  grandTotal: Int!
+}
+
+type StatusEvent {
+  status: String!
+  at: String!
+  byUserId: ID
+  note: String
+}
+
+type OrderPayment {
+  method: String
+  paidAmount: Int
+  currency: String
+  status: String
+  txnRef: String
+  paidAt: String
+}
+
+type Order {
+  id: ID!
+  orderCode: String
+  userId: ID
+  restaurantId: ID!
+  reservationId: ID
+  orderType: String!
+  shipping: Shipping
+  items: [OrderItem!]!
+  totals: OrderTotals!
+  payment: OrderPayment
+  statusTimeline: [StatusEvent!]!
+  currentStatus: String!
+  note: String
+  createdAt: String!
+  updatedAt: String!
+}
+
+input CreateOrderInput {
+  orderCode: String
+  userId: ID
+  restaurantId: ID!
+  reservationId: ID
+  orderType: String
+  shipping: ShippingInput
+  items: [OrderItemInput!]!
+  note: String
+  paymentMethod: String!
+  customer: CustomerInput
+}
+
+input UpdateOrderStatusInput {
+  id: ID!
+  status: String!
+  note: String
+}
+
+type OrdersConnection {
+  edges: [OrderEdge!]!
+  pageInfo: PageInfo!
+}
+
+type OrderEdge {
+  node: Order!
+  cursor: ID!
+}
+
+type Reservation {
+  id: ID!
+  orderCode: String!
+  restaurantId: ID!
+  restaurantName: String
+  tableId: ID!
+  userId: ID!
+  timeFrom: DateTime!
+  timeTo: DateTime
+  customerName: String
+  customerPhone: String
+  customerEmail: String
+  partySize: Int!
+  note: String
+  depositAmount: Int!
+  depositTxnId: ID
+  depositStatus: String!
+  status: String!
+  pendingPaymentExpiresAt: DateTime
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input CreateReservationInput {
+  restaurantId: ID!
+  tableId: ID!
+  timeTo: DateTime!
+  partySize: Int = 2
+  note: String
+  restaurantName: String
+  customerName: String!
+  customerPhone: String
+  customerEmail: String
+  depositAmount: Int
+}
+
+input UpdateReservationInput {
+  id: ID!
+  timeTo: DateTime!
+  partySize: Int = 2
+  note: String
+  customerName: String!
+  customerPhone: String
+  customerEmail: String
+}
+
+input UpdateReservationStatusInput {
+  id: ID!
+  status: String!
+  depositStatus: String
+  depositTxnId: ID
+}
+
+input changeReservationTableInput {
+  id: ID!
+  newRestaurantId: ID
+  newTableId: ID
+  acceptPenalty: Boolean
+  note: String
+}
+
+type Supply {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  category: String
+  unit: Unit!
+  costPerUnit: Float
+  minStock: Float
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input StockOutboundInput {
+  restaurantId: ID!
+  warehouseId: ID!
+  supplyId: ID!
+  qty: Float!
+  reason: String
+  meta: JSON
+}
+
+input StockTransferInput {
+  restaurantId: ID!
+  fromWarehouseId: ID!
+  toWarehouseId: ID!
+  supplyId: ID!
+  qty: Float!
+  reason: String
+  meta: JSON
+}
+
+type SupplyWithStock {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  category: String
+  unit: Unit!
+  costPerUnit: Float
+  minStock: Float
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+  stockItem: StockItem
+}
+
+input CreateSupplyInput {
+  restaurantId: ID!
+  name: String!
+  category: String
+  unit: Unit = unit
+  costPerUnit: Float
+  minStock: Float
+  isActive: Boolean = true
+}
+
+input UpdateSupplyInput {
+  name: String
+  category: String
+  unit: Unit
+  costPerUnit: Float
+  minStock: Float
+  isActive: Boolean
+}
+
+input AdjustSupplyInput {
+  restaurantId: ID!
+  warehouseId: ID!
+  supplyId: ID!
+  qty: Float!
+  reason: String
+  meta: JSON
+}
+
+input StockInboundInput {
+  restaurantId: ID!
+  warehouseId: ID!
+  supplyId: ID!
+  qty: Float!
+  costPerBaseUnit: Float
+  lot: String
+  expiry: DateTime
+  supplier: String
+  reason: String
+  meta: JSON
+}

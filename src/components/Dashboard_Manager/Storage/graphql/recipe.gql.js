@@ -1,6 +1,127 @@
+// src/components/Dashboard_Manager/Storage/graphql/recipe.gql.js
 import { gql } from "@apollo/client";
 
-/** Lấy menu items để gắn recipe */
+/* ===========================================================
+   🔹 FRAGMENTS (dùng lại nhiều nơi)
+   =========================================================== */
+
+export const FR_RECIPE_COMPONENT_FIELDS = gql`
+  fragment RecipeComponentFields on RecipeComponent {
+    ingredientId
+    ingredientName
+    qty
+    unit
+    wastePct
+  }
+`;
+
+export const FR_SERVING_VARIANT_FIELDS = gql`
+  fragment ServingVariantFields on ServingVariant {
+    key
+    mode
+    yieldQty
+    yieldUnit
+    preparationMethodName
+    components {
+      ...RecipeComponentFields
+    }
+  }
+  ${FR_RECIPE_COMPONENT_FIELDS}
+`;
+
+export const FR_RECIPE_FIELDS = gql`
+  fragment RecipeFields on Recipe {
+    id
+    restaurantId
+    menuItemId
+    notes
+    isActive
+    createdAt
+    updatedAt
+    servingVariants {
+      ...ServingVariantFields
+    }
+  }
+  ${FR_SERVING_VARIANT_FIELDS}
+`;
+
+/* ===========================================================
+   🔹 QUERY: Danh sách món + công thức (phân trang)
+   =========================================================== */
+
+export const Q_MENU_ITEMS_WITH_RECIPES_PAGED = gql`
+  query MenuItemsWithRecipes(
+    $restaurantId: ID!
+    $timeSlot: TimeSlot
+    $search: String
+    $categoryId: ID
+    $first: Int = 30
+    $after: String
+  ) {
+    menuItemsWithRecipes(
+      restaurantId: $restaurantId
+      timeSlot: $timeSlot
+      search: $search
+      categoryId: $categoryId
+      first: $first
+      after: $after
+    ) {
+      items {
+        menuItem {
+          id
+          name
+          description
+        }
+        recipe {
+          ...RecipeFields
+        }
+      }
+      total
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+  ${FR_RECIPE_FIELDS}
+`;
+
+/* ===========================================================
+   🔹 QUERY: Lấy 1 công thức cụ thể theo menuItem
+   =========================================================== */
+export const Q_RECIPE = gql`
+  query Recipe($restaurantId: ID!, $menuItemId: ID!) {
+    recipe(restaurantId: $restaurantId, menuItemId: $menuItemId) {
+      ...RecipeFields
+    }
+  }
+  ${FR_RECIPE_FIELDS}
+`;
+
+/* ===========================================================
+   🔹 MUTATION: Tạo / Cập nhật Recipe (Upsert)
+   =========================================================== */
+export const M_UPSERT_RECIPE = gql`
+  mutation UpsertRecipe($input: UpsertRecipeInput!) {
+    upsertRecipe(input: $input) {
+      ...RecipeFields
+    }
+  }
+  ${FR_RECIPE_FIELDS}
+`;
+
+/* ===========================================================
+   🔹 MUTATION: Xoá Recipe
+   =========================================================== */
+export const M_DELETE_RECIPE = gql`
+  mutation DeleteRecipe($restaurantId: ID!, $menuItemId: ID!) {
+    deleteRecipe(restaurantId: $restaurantId, menuItemId: $menuItemId)
+  }
+`;
+
+/* ===========================================================
+   🔹 QUERY: Lấy danh sách menu items để gán công thức
+   =========================================================== */
 export const Q_MENU_ITEMS_FOR_RECIPE = gql`
   query MenuItemsForRecipe(
     $restaurantId: ID!
@@ -24,81 +145,25 @@ export const Q_MENU_ITEMS_FOR_RECIPE = gql`
   }
 `;
 
-/** Lấy 1 recipe theo (restaurantId + menuItemId) */
-export const Q_RECIPE = gql`
-  query Recipe($restaurantId: ID!, $menuItemId: ID!) {
-    recipe(restaurantId: $restaurantId, menuItemId: $menuItemId) {
-      id
-      restaurantId
-      menuItemId
-      yieldQty
-      yieldUnit
-      baseComponents {
-        ingredientId
-        qty
-        unit
-        wastePct
-      }
-      servingVariants {
-        key
-        mode
-        yieldQty
-        yieldUnit
-        preparationMethodName
-        components {
-          ingredientId
-          qty
-          unit
-          wastePct
-        }
-      }
-      notes
-      isActive
-      createdAt
-      updatedAt
+/* ===========================================================
+   🔹 QUERY: Recipes theo nhiều MenuItem (nếu cần batch)
+   =========================================================== */
+export const Q_RECIPES_BY_MENUITEMS = gql`
+  query RecipesByMenuItems($restaurantId: ID!, $menuItemIds: [ID!]!) {
+    recipesByMenuItems(restaurantId: $restaurantId, menuItemIds: $menuItemIds) {
+      ...RecipeFields
     }
   }
+  ${FR_RECIPE_FIELDS}
 `;
-
-/** Tạo/cập nhật recipe */
-export const M_UPSERT_RECIPE = gql`
-  mutation UpsertRecipe($input: UpsertRecipeInput!) {
-    upsertRecipe(input: $input) {
+export const M_UPDATE_MENU_ITEM_BASIC = gql`
+  mutation UpdateMenuItemBasic($input: UpdateMenuItemBasicInput!) {
+    updateMenuItemBasic(input: $input) {
       id
-      restaurantId
-      menuItemId
-      yieldQty
-      yieldUnit
-      baseComponents {
-        ingredientId
-        qty
-        unit
-        wastePct
-      }
-      servingVariants {
-        key
-        mode
-        yieldQty
-        yieldUnit
-        preparationMethodName
-        components {
-          ingredientId
-          qty
-          unit
-          wastePct
-        }
-      }
-      notes
-      isActive
-      createdAt
+      name
+      description
+      categoryId
       updatedAt
     }
-  }
-`;
-
-/** Xoá recipe */
-export const M_DELETE_RECIPE = gql`
-  mutation DeleteRecipe($restaurantId: ID!, $menuItemId: ID!) {
-    deleteRecipe(restaurantId: $restaurantId, menuItemId: $menuItemId)
   }
 `;

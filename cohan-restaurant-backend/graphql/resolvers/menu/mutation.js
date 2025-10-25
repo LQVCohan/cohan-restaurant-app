@@ -176,7 +176,40 @@ export const MenuMutation = {
     await MenuItem.findByIdAndDelete(id);
     return true;
   },
+  updateMenuItemBasic: async (_p, { input }) => {
+    const { restaurantId, menuItemId, name, description, categoryId } = input;
+    if (![restaurantId, menuItemId].every(mongoose.isValidObjectId)) {
+      throw new GraphQLError("Invalid ids");
+    }
+    if (categoryId && !mongoose.isValidObjectId(categoryId)) {
+      throw new GraphQLError("Invalid categoryId");
+    }
 
+    // Xây patch theo trường có truyền
+    const patch = {};
+    if (typeof name === "string") patch.name = name;
+    if (typeof description === "string") patch.description = description;
+    if (categoryId) patch.categoryId = categoryId;
+
+    if (!Object.keys(patch).length) {
+      // Không có gì để cập nhật → trả về bản ghi hiện tại
+      const doc = await MenuItem.findOne({
+        _id: menuItemId,
+        restaurantId,
+      }).lean({ virtuals: true });
+      if (!doc) throw new GraphQLError("MenuItem not found");
+      return doc;
+    }
+
+    const doc = await MenuItem.findOneAndUpdate(
+      { _id: menuItemId, restaurantId },
+      { $set: patch },
+      { new: true, runValidators: true }
+    ).lean({ virtuals: true });
+
+    if (!doc) throw new GraphQLError("MenuItem not found");
+    return doc;
+  },
   toggleMenuItemStatus: async (_, { id, status }) => {
     const item = await MenuItem.findById(id);
     if (!item) throw new GraphQLError("MenuItem not found");

@@ -62,6 +62,8 @@ export default {
   ...(menu.Menu ? { Menu: menu.Menu } : {}),
   ...(category.Category ? { Category: category.Category } : {}),
   ...(modifierGroup.Modifier ? { Modifier: modifierGroup.Modifier } : {}),
-  ...(inventory.Inventory ? { Inventory: inventory.Inventory } : {}),
+  ...(inventory.RecipeComponent
+    ? { RecipeComponent: inventory.RecipeComponent }
+    : {}),
   ...(supply.Supply ? { Supply: supply.Supply } : {}), // 🆕 optional: type resolver riêng cho Supply
 };

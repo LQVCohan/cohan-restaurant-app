@@ -14,16 +14,28 @@ export const MenuQuery = {
     _,
     { restaurantId, timeSlot, categoryId, search, limit = 50 }
   ) => {
-    const menu = await Menu.findOne({ restaurantId, timeSlot }).lean({
-      virtuals: true,
-    });
-    if (!menu) return [];
-    const q = { restaurantId, menuId: menu._id };
-    if (categoryId) q.categoryId = categoryId;
-    if (timeSlot) q.timeSlot = timeSlot;
-    if (search) q.name = new RegExp(search, "i");
+    if (!mongoose.isValidObjectId(restaurantId)) return [];
+
+    const q = { restaurantId };
+
+    if (timeSlot) {
+      const menu = await Menu.findOne({ restaurantId, timeSlot }).lean({
+        virtuals: true,
+      });
+      if (!menu) return [];
+      q.menuId = menu._id;
+    }
+
+    // Optional filters
+    if (categoryId && mongoose.isValidObjectId(categoryId)) {
+      q.categoryId = categoryId;
+    }
+    if (search?.trim()) {
+      q.name = new RegExp(search.trim(), "i");
+    }
+
     return MenuItem.find(q)
-      .limit(limit)
+      .limit(Math.min(limit ?? 50, 500))
       .sort({ name: 1 })
       .lean({ virtuals: true });
   },

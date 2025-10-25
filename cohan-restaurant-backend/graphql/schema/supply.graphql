@@ -7,8 +7,8 @@ type Supply {
   costPerUnit: Float
   minStock: Float
   isActive: Boolean
-  createdAt: Date
-  updatedAt: Date
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 input StockOutboundInput {
   restaurantId: ID!
@@ -39,8 +39,8 @@ type SupplyWithStock {
   costPerUnit: Float
   minStock: Float
   isActive: Boolean
-  createdAt: Date
-  updatedAt: Date
+  createdAt: DateTime
+  updatedAt: DateTime
 
   stockItem: StockItem
 }
@@ -84,7 +84,7 @@ input StockInboundInput {
   qty: Float!
   costPerBaseUnit: Float
   lot: String
-  expiry: Date
+  expiry: DateTime
   supplier: String
   reason: String
   meta: JSON

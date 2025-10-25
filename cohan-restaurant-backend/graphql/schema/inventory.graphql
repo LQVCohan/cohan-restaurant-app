@@ -1,5 +1,7 @@
+scalar DateTime
 scalar JSON
 
+"Đơn vị tính chuẩn cho nguyên liệu"
 enum Unit {
   g
   kg
@@ -14,6 +16,7 @@ enum Unit {
   can
 }
 
+"Loại dịch chuyển kho"
 enum MovementType {
   inbound
   outbound
@@ -21,6 +24,20 @@ enum MovementType {
   transfer
 }
 
+"Chuyển đổi giữa các đơn vị (1 from = ratio to)"
+type UnitConversion {
+  from: Unit!
+  to: Unit!
+  ratio: Float!
+}
+
+input UnitConversionInput {
+  from: Unit!
+  to: Unit!
+  ratio: Float!
+}
+
+"Nguyên liệu (Ingredient)"
 type Ingredient {
   id: ID!
   restaurantId: ID!
@@ -34,20 +51,20 @@ type Ingredient {
   minStock: Float
   notes: String
   isActive: Boolean
-  createdAt: Date
-  updatedAt: Date
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
-type UnitConversion {
-  from: Unit!
-  to: Unit!
-  ratio: Float! # 1 from = ratio to
-}
-
-input UnitConversionInput {
-  from: Unit!
-  to: Unit!
-  ratio: Float!
+"Kho (Warehouse)"
+type Warehouse {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  code: String
+  address: String
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 input CreateIngredientInput {
@@ -78,17 +95,6 @@ input UpdateIngredientInput {
   isActive: Boolean
 }
 
-type Warehouse {
-  id: ID!
-  restaurantId: ID!
-  name: String!
-  code: String
-  address: String
-  isActive: Boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
 input CreateWarehouseInput {
   restaurantId: ID!
   name: String!
@@ -105,6 +111,25 @@ input UpdateWarehouseInput {
   isActive: Boolean
 }
 
+"Chi tiết batch trong kho"
+type StockBatch {
+  id: ID!
+  lot: String
+  qty: Float!
+  expiry: DateTime
+  costPerBaseUnit: Float
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input StockBatchInput {
+  lot: String
+  qty: Float!
+  expiry: DateTime
+  costPerBaseUnit: Float
+}
+
+"Item trong kho (StockItem)"
 type StockItem {
   id: ID!
   restaurantId: ID!
@@ -113,27 +138,11 @@ type StockItem {
   onHand: Float!
   reserved: Float!
   batches: [StockBatch!]!
-  createdAt: Date
-  updatedAt: Date
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
-type StockBatch {
-  id: ID!
-  lot: String
-  qty: Float!
-  expiry: Date
-  costPerBaseUnit: Float
-  createdAt: Date
-  updatedAt: Date
-}
-
-input StockBatchInput {
-  lot: String
-  qty: Float!
-  expiry: Date
-  costPerBaseUnit: Float
-}
-
+"Movement ghi nhận mỗi lần nhập/xuất/điều chỉnh kho"
 type StockMovement {
   id: ID!
   restaurantId: ID!
@@ -143,94 +152,125 @@ type StockMovement {
   qty: Float!
   reason: String
   meta: JSON
-  createdAt: Date
-  updatedAt: Date
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
-# Recipe
-type Recipe {
-  id: ID!
-  restaurantId: ID!
-  menuItemId: ID!
-  yieldQty: Float
-  yieldUnit: String
-  baseComponents: [RecipeComponent!]!
-  variants: [RecipeVariant!]!
-  notes: String
-  isActive: Boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
+"Thành phần công thức"
 type RecipeComponent {
+  ingredientId: ID!
+  qty: Float!
+  unit: String
+  wastePct: Float
+  ingredientName: String
+}
+
+input RecipeComponentInput {
   ingredientId: ID!
   qty: Float!
   unit: String
   wastePct: Float
 }
 
-type RecipeVariant {
-  preparationMethodName: String!
+"Phương pháp chế biến (variant) trong công thức"
+enum ServingMode {
+  PORTION
+  BY_WEIGHT
+}
+
+type ServingVariant {
+  key: String! # "portion" | "byWeight"
+  mode: ServingMode!
+  yieldQty: Float!
+  yieldUnit: String! # "portion" | "100g" | "g"
+  preparationMethodName: String
   components: [RecipeComponent!]!
 }
 
-input RecipeComponentInput {
-  ingredientId: ID!
-  qty: Float! # theo baseUnit của ingredient
-  unit: String
-  wastePct: Float
-}
-
-input RecipeVariantInput {
-  preparationMethodName: String!
+input ServingVariantInput {
+  key: String!
+  mode: ServingMode!
+  yieldQty: Float!
+  yieldUnit: String!
+  preparationMethodName: String
   components: [RecipeComponentInput!]!
 }
 
+"Recipe: chỉ còn servingVariants, không có baseComponents"
+type Recipe {
+  id: ID!
+  restaurantId: ID!
+  menuItemId: ID!
+  servingVariants: [ServingVariant!]!
+  notes: String
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+"Input UpsertRecipe chỉ dùng servingVariants, bỏ baseComponents"
 input UpsertRecipeInput {
   restaurantId: ID!
   menuItemId: ID!
   yieldQty: Float
   yieldUnit: String
-  baseComponents: [RecipeComponentInput!]
-  variants: [RecipeVariantInput!]
   notes: String
   isActive: Boolean
+  servingVariants: [ServingVariantInput!]
 }
 
-# Order consumption
+"MenuItem kèm Recipe để hiển thị danh sách"
+type MenuItemWithRecipe {
+  menuItem: MenuItem!
+  recipe: Recipe
+}
+
+type MenuItemsWithRecipes {
+  items: [MenuItemWithRecipe!]!
+  total: Int
+  pageInfo: PageInfo!
+}
+
+"OrderLine: cho phép định nghĩa cách phục vụ"
 input OrderLineInput {
   menuItemId: ID!
   quantity: Float
-  preparationMethodName: String # tuỳ chọn, để lấy variant phù hợp
-  weightGrams: Float # nếu món tính theo kg → truyền gram để quy đổi
+  preparationMethodName: String
+  weightGrams: Float
+  servingKey: String
+  servingMode: ServingMode
 }
 
+"Consumption (trừ kho theo order)"
 input ConsumeForOrderInput {
   restaurantId: ID!
   warehouseId: ID!
-  orderCode: String! # để trace (VD ORD-2025-0001)
+  orderCode: String!
   lines: [OrderLineInput!]!
-  allowNegative: Boolean = false # nếu false → thiếu kho sẽ lỗi
+  allowNegative: Boolean = false
 }
 
+"Trả kết quả khi trừ kho"
 type ConsumptionResult {
   success: Boolean!
-  totalConsumed: Float! # tổng gram/ml/... đã trừ (quy ra baseUnit của từng nguyên liệu)
-  movements: [StockMovement!]! # các movement được ghi nhận
-  lowStocks: [Ingredient!]! # cảnh báo dưới minStock
+  totalConsumed: Float!
+  movements: [StockMovement!]!
+  lowStocks: [Ingredient!]!
 }
 
+"Thống kê movement trong thời gian"
 type MovementSummary {
   inbound: Float!
   outbound: Float!
   adjustment: Float!
   transferIn: Float!
   transferOut: Float!
-  net: Float! # inbound + transferIn - outbound - transferOut + adjustment
+  net: Float!
   count: Int!
 }
 
 extend type Query {
+  # Ingredient
   ingredients(
     restaurantId: ID!
     search: String
@@ -238,8 +278,10 @@ extend type Query {
   ): [Ingredient!]!
   ingredient(id: ID!): Ingredient
 
+  # Warehouse
   warehouses(restaurantId: ID!): [Warehouse!]!
 
+  # Stock
   stockItems(
     restaurantId: ID!
     warehouseId: ID
@@ -248,38 +290,53 @@ extend type Query {
     limit: Int = 200
   ): [StockItem!]!
 
-  recipe(restaurantId: ID!, menuItemId: ID!): Recipe
+  # Recipe
+  menuItemsWithRecipes(
+    restaurantId: ID!
+    timeSlot: TimeSlot
+    search: String
+    categoryId: ID
+    first: Int = 30
+    after: String
+  ): MenuItemsWithRecipes!
 
+  recipe(restaurantId: ID!, menuItemId: ID!): Recipe
+  recipesByMenuItems(restaurantId: ID!, menuItemIds: [ID!]!): [Recipe!]!
+
+  # Movement
   stockMovements(
     restaurantId: ID!
     warehouseId: ID
     ingredientId: ID
     type: MovementType
     orderCode: String
-    dateFrom: Date
-    dateTo: Date
+    dateFrom: DateTime
+    dateTo: DateTime
     limit: Int = 200
-    sort: Int = -1 # -1: mới nhất trước, 1: cũ nhất trước
+    sort: Int = -1
   ): [StockMovement!]!
 
   stockMovementSummary(
     restaurantId: ID!
     warehouseId: ID
     ingredientId: ID
-    dateFrom: Date
-    dateTo: Date
+    dateFrom: DateTime
+    dateTo: DateTime
   ): MovementSummary!
 }
 
 extend type Mutation {
+  # Ingredient
   createIngredient(input: CreateIngredientInput!): Ingredient!
   updateIngredient(input: UpdateIngredientInput!): Ingredient!
   deleteIngredient(id: ID!): Boolean!
 
+  # Warehouse
   createWarehouse(input: CreateWarehouseInput!): Warehouse!
   updateWarehouse(input: UpdateWarehouseInput!): Warehouse!
   deleteWarehouse(id: ID!): Boolean!
 
+  # Stock
   upsertStockItem(
     restaurantId: ID!
     warehouseId: ID!
@@ -306,49 +363,13 @@ extend type Mutation {
     reason: String
   ): Boolean!
 
+  # Recipe
   upsertRecipe(input: UpsertRecipeInput!): Recipe!
   deleteRecipe(restaurantId: ID!, menuItemId: ID!): Boolean!
 
+  # Consumption
   consumeForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
-
   reserveForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
   commitReservationForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
   cancelReservationForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
-}
-
-enum ServingMode {
-  PORTION
-  BY_WEIGHT
-}
-
-type ServingVariant {
-  key: String! # "portion" | "byWeight"
-  mode: ServingMode! # PORTION | BY_WEIGHT
-  yieldQty: Float!
-  yieldUnit: String! # "portion" | "100g" | "g"
-  preparationMethodName: String
-  components: [RecipeComponent!]!
-}
-
-extend type Recipe {
-  servingVariants: [ServingVariant!]!
-}
-
-input ServingVariantInput {
-  key: String!
-  mode: ServingMode!
-  yieldQty: Float!
-  yieldUnit: String!
-  preparationMethodName: String
-  components: [RecipeComponentInput!]!
-}
-
-extend input UpsertRecipeInput {
-  servingVariants: [ServingVariantInput!]
-}
-
-# Order: cho phép chỉ định serving
-extend input OrderLineInput {
-  servingKey: String
-  servingMode: ServingMode
 }

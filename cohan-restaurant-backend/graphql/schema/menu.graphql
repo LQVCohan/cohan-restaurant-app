@@ -34,8 +34,8 @@ type Menu {
   description: String
   coverImage: String
   isActive: Boolean
-  createdAt: Date
-  updatedAt: Date
+  createdAt: DateTime
+  updatedAt: DateTime
 }
 
 type PreparationMethod {
@@ -83,10 +83,16 @@ type MenuItem {
   recipe: String
   notes: String
   point: Int
-  createdAt: Date
-  updatedAt: Date
+  createdAt: DateTime
+  updatedAt: DateTime
 }
-
+input UpdateMenuItemBasicInput {
+  restaurantId: ID!
+  menuItemId: ID!
+  name: String
+  description: String
+  categoryId: ID
+}
 input EnsureMenuInput {
   restaurantId: ID!
   timeSlot: TimeSlot!
@@ -153,4 +159,5 @@ extend type Mutation {
   updateMenuItem(input: UpdateMenuItemInput!): MenuItem!
   deleteMenuItem(id: ID!): Boolean!
   toggleMenuItemStatus(id: ID!, status: String!): MenuItem!
+  updateMenuItemBasic(input: UpdateMenuItemBasicInput!): MenuItem!
 }

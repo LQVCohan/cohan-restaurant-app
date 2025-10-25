@@ -4,113 +4,80 @@ import Card from "../../../../common/Card";
 import { useIngredients } from "../../../../../hooks/useIngredients";
 import { formatPrice } from "../../../../../utils/formatters";
 
-const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
-  const { ingredients } = useIngredients();
-
+/**
+ * recipe: {
+ *   servingVariants: [
+ *     { key, preparationMethodName, components: [{ ingredientId, qty, unit, ingredientName? }] }
+ *   ]
+ * }
+ */
+const RecipeDetailModal = ({ isOpen, onClose, recipe, ingredients }) => {
+  // const { ingredients } = useIngredients();
   if (!recipe) return null;
 
-  const getIngredientName = (ingredientId) => {
-    const ingredient = ingredients.find((i) => i.id === ingredientId);
-    return ingredient ? ingredient.name : "Nguyên liệu không tồn tại";
-  };
+  const findIngredient = (ingredientId) =>
+    ingredients.find((i) => String(i.id) === String(ingredientId));
 
-  const getIngredientPrice = (ingredientId) => {
-    const ingredient = ingredients.find((i) => i.id === ingredientId);
-    return ingredient ? ingredient.costPrice : 0;
-  };
+  const getIngredientName = (comp) =>
+    comp.ingredientName ||
+    findIngredient(comp.ingredientId)?.name ||
+    "Nguyên liệu không tồn tại";
 
-  const calculateIngredientCost = (ingredientId, amount) => {
-    return getIngredientPrice(ingredientId) * amount;
-  };
+  const getIngredientCost = (comp) =>
+    Number(findIngredient(comp.ingredientId)?.costPerBaseUnit ?? 0);
 
-  const calculateMethodCost = (method) => {
-    return method.ingredients.reduce((total, ing) => {
-      return total + calculateIngredientCost(ing.ingredientId, ing.amount);
-    }, 0);
-  };
+  const calcItemCost = (comp) =>
+    (Number(comp.qty) || 0) * getIngredientCost(comp);
+
+  const calcVariantCost = (variant) =>
+    (variant?.components || []).reduce((sum, c) => sum + calcItemCost(c), 0);
+
+  const variants = recipe.servingVariants || [];
+  const minCost = variants.length
+    ? Math.min(...variants.map(calcVariantCost))
+    : 0;
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`${recipe.icon} ${recipe.name}`}
+      title={`🍽️ ${recipe.name || ""}`}
       size="lg"
     >
       <div className="recipe-detail">
-        {/* Basic Info */}
-        <Card className="recipe-info-card">
-          <h3>📝 Thông tin món ăn</h3>
-          <p>
-            <strong>Danh mục:</strong> {recipe.category}
-          </p>
-          <p>
-            <strong>Mô tả:</strong> {recipe.description}
-          </p>
-        </Card>
-
-        {/* Base Ingredients */}
-        <Card className="ingredients-card">
-          <h3>🥬 Nguyên liệu cơ bản</h3>
-          <div className="ingredients-list">
-            {recipe.baseIngredients.map((ingredient, index) => (
-              <div key={index} className="ingredient-item">
-                <div className="ingredient-info">
-                  <span className="ingredient-name">
-                    {getIngredientName(ingredient.ingredientId)}
-                  </span>
-                  <span className="ingredient-amount">
-                    {ingredient.amount} {ingredient.unit}
-                  </span>
-                </div>
-                <div className="ingredient-cost">
-                  {formatPrice(
-                    calculateIngredientCost(
-                      ingredient.ingredientId,
-                      ingredient.amount
-                    )
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Cooking Methods */}
+        {/* Variants */}
         <div className="methods-section">
           <h3>👨‍🍳 Phương pháp chế biến</h3>
-          {recipe.methods.map((method, index) => (
-            <Card key={method.id} className="method-card">
-              <div className="method-header">
-                <h4>{method.name}</h4>
-                <div className="method-cost">
-                  Chi phí: {formatPrice(calculateMethodCost(method))}
-                </div>
-              </div>
 
-              <div className="method-description">
-                <p>{method.description}</p>
+          {variants.map((v, idx) => (
+            <Card key={v.key || idx} className="method-card">
+              <div className="method-header">
+                <h4>{v.preparationMethodName || v.key}</h4>
+                <div className="method-cost">
+                  Chi phí: {formatPrice(calcVariantCost(v))}
+                </div>
               </div>
 
               <div className="method-ingredients">
                 <h5>Nguyên liệu cần thiết:</h5>
                 <div className="ingredients-list">
-                  {method.ingredients.map((ingredient, ingredientIndex) => (
-                    <div key={ingredientIndex} className="ingredient-item">
+                  {(v.components || []).map((c, i) => (
+                    <div key={i} className="ingredient-item">
                       <div className="ingredient-info">
                         <span className="ingredient-name">
-                          {getIngredientName(ingredient.ingredientId)}
+                          {getIngredientName(c)}
                         </span>
                         <span className="ingredient-amount">
-                          {ingredient.amount} {ingredient.unit}
+                          {(Number(c.qty) || 0).toLocaleString("vi-VN", {
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          {c.unit ||
+                            findIngredient(c.ingredientId)?.baseUnit ||
+                            ""}
                         </span>
                       </div>
                       <div className="ingredient-cost">
-                        {formatPrice(
-                          calculateIngredientCost(
-                            ingredient.ingredientId,
-                            ingredient.amount
-                          )
-                        )}
+                        {formatPrice(calcItemCost(c))}
                       </div>
                     </div>
                   ))}
@@ -118,26 +85,25 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
               </div>
             </Card>
           ))}
+
+          {!variants.length && (
+            <Card className="method-card">Chưa cấu hình phương pháp.</Card>
+          )}
         </div>
 
-        {/* Total Cost Summary */}
+        {/* Summary */}
         <Card className="cost-summary">
           <h3>💰 Tổng kết chi phí</h3>
           <div className="cost-breakdown">
-            {recipe.methods.map((method, index) => (
-              <div key={method.id} className="cost-item">
-                <span>{method.name}:</span>
-                <span>{formatPrice(calculateMethodCost(method))}</span>
+            {variants.map((v, idx) => (
+              <div key={v.key || idx} className="cost-item">
+                <span>{v.preparationMethodName || v.key}:</span>
+                <span>{formatPrice(calcVariantCost(v))}</span>
               </div>
             ))}
           </div>
           <div className="total-cost">
-            <strong>
-              Chi phí thấp nhất:{" "}
-              {formatPrice(
-                Math.min(...recipe.methods.map(calculateMethodCost))
-              )}
-            </strong>
+            <strong>Chi phí thấp nhất: {formatPrice(minCost)}</strong>
           </div>
         </Card>
       </div>
