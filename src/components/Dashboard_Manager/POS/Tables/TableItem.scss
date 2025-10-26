@@ -1,0 +1,105 @@
+@use "../../../../styles/variables" as v;
+@use "../../../../styles/mixins" as m;
+.table-item-container {
+  position: relative;
+}
+
+.table-item {
+  aspect-ratio: 1;
+  border: 2px solid v.$gray-200;
+  border-radius: v.$radius-md;
+  @include m.flex-center;
+  flex-direction: column;
+  cursor: pointer;
+  transition: v.$transition-all;
+  font-size: v.$text-sm;
+  font-weight: 500;
+  position: relative;
+  padding: v.$spacing-xs;
+
+  &--available {
+    background: v.$table-available-bg;
+    border-color: v.$table-available-bd;
+    color: v.$table-available-tx;
+  }
+  &--occupied {
+    background: v.$table-occupied-bg;
+    border-color: v.$table-occupied-bd;
+    color: v.$table-occupied-tx;
+  }
+  &--reserved {
+    background: v.$table-reserved-bg;
+    border-color: v.$table-reserved-bd;
+    color: v.$table-reserved-tx;
+  }
+  &--selected {
+    background: v.$primary !important;
+    color: v.$white !important;
+    border-color: v.$primary !important;
+  }
+
+  &:hover .table-menu-btn {
+    opacity: 1;
+  }
+}
+
+.table-status-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+
+  &--available {
+    background: v.$table-available-bd;
+  }
+  &--occupied {
+    background: v.$table-occupied-bd;
+  }
+  &--reserved {
+    background: v.$table-reserved-bd;
+  }
+}
+
+.table-menu-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  cursor: pointer;
+  @include m.flex-center;
+  color: v.$gray-600;
+  transition: v.$transition-all;
+  opacity: 0;
+
+  &:hover {
+    background: v.$white;
+    color: v.$primary;
+    box-shadow: v.$shadow-sm;
+  }
+}
+
+.table-code {
+  font-weight: 600;
+  margin-bottom: v.$spacing-xs;
+}
+.table-capacity {
+  font-size: v.$text-xs;
+  margin-bottom: v.$spacing-xs;
+}
+
+.table-customer-info {
+  font-size: 0.6rem;
+  color: v.$gray-600;
+  text-align: center;
+  line-height: 1.2;
+
+  &:not(:last-child) {
+    margin-bottom: 1px;
+  }
+}

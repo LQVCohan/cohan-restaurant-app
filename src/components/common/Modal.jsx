@@ -2,20 +2,24 @@ import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import "./Modal.scss";
 const Modal = ({
+  // Support both `isOpen` (internal) and `open` (used across the app)
   isOpen,
+  open,
   onClose,
   title,
   children,
+  footer,
   size = "md",
   showCloseButton = true,
   closeOnOverlayClick = true,
   closeOnEscape = true,
 }) => {
+  const visibleProp = typeof isOpen !== "undefined" ? isOpen : open;
   const [isVisible, setIsVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
+    if (visibleProp) {
       setShouldRender(true);
 
       const timer = setTimeout(() => {
@@ -30,23 +34,23 @@ const Modal = ({
       }, 800); // Match transition duration
       return () => clearTimeout(timer);
     }
-  }, [isOpen]);
+  }, [visibleProp]);
 
   useEffect(() => {
     if (!closeOnEscape) return;
 
     const handleEscape = (event) => {
-      if (event.key === "Escape" && isOpen) {
-        onClose();
+      if (event.key === "Escape" && visibleProp) {
+        onClose?.();
       }
     };
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen, onClose, closeOnEscape]);
+  }, [visibleProp, onClose, closeOnEscape]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (visibleProp) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "auto";
@@ -55,7 +59,7 @@ const Modal = ({
     return () => {
       document.body.style.overflow = "auto";
     };
-  }, [isOpen]);
+  }, [visibleProp]);
 
   const handleOverlayClick = (event) => {
     if (closeOnOverlayClick && event.target === event.currentTarget) {
@@ -98,6 +102,7 @@ const Modal = ({
         )}
 
         <div className="modal__content">{children}</div>
+        {footer ? <div className="modal__footer">{footer}</div> : null}
       </div>
     </div>,
     document.body // Render to body

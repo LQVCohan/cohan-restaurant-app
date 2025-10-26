@@ -1,0 +1,230 @@
+@use "../../../../styles/variables" as v;
+@use "../../../../styles/mixins" as m;
+
+.print-modal {
+  .print-types {
+    margin-bottom: v.$spacing-lg;
+    h4 {
+      margin: 0 0 v.$spacing-md 0;
+      color: v.$gray-900;
+      font-size: v.$text-lg;
+    }
+  }
+
+  .type-buttons {
+    display: flex;
+    gap: v.$spacing-sm;
+  }
+
+  .type-btn {
+    padding: v.$spacing-sm v.$spacing-lg;
+    border: 2px solid v.$gray-200;
+    background: v.$white;
+    border-radius: v.$radius-md;
+    cursor: pointer;
+    transition: v.$transition-all;
+    font-weight: 500;
+    &:hover {
+      border-color: v.$primary;
+      background: v.$primary-light;
+    }
+    &.active {
+      border-color: v.$primary;
+      background: v.$primary;
+      color: v.$white;
+    }
+  }
+
+  .print-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: v.$spacing-xl;
+    margin-bottom: v.$spacing-xl;
+    @include m.r-mobile {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .printer-section,
+  .queue-section {
+    h4 {
+      margin: 0 0 v.$spacing-md 0;
+      color: v.$gray-900;
+      font-size: v.$text-lg;
+    }
+  }
+
+  .printers-list {
+    display: flex;
+    flex-direction: column;
+    gap: v.$spacing-sm;
+    max-height: 300px;
+    overflow-y: auto;
+    @include m.custom-scrollbar;
+  }
+
+  .printer-item {
+    padding: v.$spacing-md;
+    border: 2px solid v.$gray-200;
+    border-radius: v.$radius-md;
+    cursor: pointer;
+    transition: v.$transition-all;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    &.online {
+      border-color: v.$success-500;
+      background: v.$success-50;
+      &:hover {
+        background: v.$success-100;
+      }
+      &.selected {
+        background: v.$success-500;
+        color: v.$white;
+      }
+    }
+    &.offline {
+      border-color: v.$error-500;
+      background: v.$error-50;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    &.busy {
+      border-color: v.$warning-500;
+      background: v.$warning-50;
+      cursor: not-allowed;
+    }
+  }
+
+  .printer-info {
+    flex: 1;
+  }
+
+  .printer-name {
+    font-weight: 600;
+    margin-bottom: v.$spacing-xs;
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-xs;
+  }
+
+  .printer-details {
+    display: flex;
+    gap: v.$spacing-md;
+    font-size: v.$text-xs;
+    color: v.$gray-600;
+    .printer-item.selected & {
+      color: rgba(255, 255, 255, 0.8);
+    }
+  }
+
+  .status-icon {
+    &.online {
+      color: v.$success-500;
+    }
+    &.offline {
+      color: v.$error-500;
+    }
+    &.busy {
+      color: v.$warning-500;
+      animation: spin 1s linear infinite;
+    }
+  }
+  .selected-icon {
+    color: v.$white;
+  }
+
+  .queue-section .queue-header {
+    @include m.flex-between;
+    margin-bottom: v.$spacing-md;
+  }
+
+  .queue-list {
+    max-height: 300px;
+    overflow-y: auto;
+    @include m.custom-scrollbar;
+  }
+
+  .queue-empty {
+    text-align: center;
+    color: v.$gray-600;
+    padding: v.$spacing-xl;
+    font-style: italic;
+  }
+
+  .queue-item {
+    padding: v.$spacing-md;
+    border: 1px solid v.$gray-200;
+    border-radius: v.$radius-md;
+    margin-bottom: v.$spacing-sm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    &.printing {
+      border-color: v.$warning-500;
+      background: v.$warning-50;
+    }
+    &.completed {
+      border-color: v.$success-500;
+      background: v.$success-50;
+    }
+    &.failed {
+      border-color: v.$error-500;
+      background: v.$error-50;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .queue-info {
+    flex: 1;
+  }
+
+  .queue-header-info {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-sm;
+    margin-bottom: v.$spacing-xs;
+    font-weight: 500;
+  }
+
+  .queue-printer,
+  .queue-items {
+    font-size: v.$text-xs;
+    color: v.$gray-600;
+  }
+
+  .queue-status {
+    &.printing {
+      color: v.$warning-500;
+      animation: spin 1s linear infinite;
+    }
+    &.completed {
+      color: v.$success-500;
+    }
+    &.failed {
+      color: v.$error-500;
+    }
+  }
+
+  .print-actions {
+    display: flex;
+    gap: v.$spacing-md;
+    justify-content: flex-end;
+    border-top: 1px solid v.$gray-200;
+    padding-top: v.$spacing-lg;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

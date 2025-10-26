@@ -1,0 +1,54 @@
+@use "../../../styles/variables" as v;
+@use "../../../styles/mixins" as m;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  font-family: v.$font-family;
+  background-color: v.$gray-100;
+  color: v.$gray-900;
+  box-sizing: border-box;
+}
+
+#root {
+  height: 100%;
+}
+
+/* ========== POS page layout ========== */
+.pos-container {
+  display: grid;
+  grid-template-columns: 300px 1fr 400px;
+  height: 100vh;
+  gap: v.$spacing-md;
+  padding: v.$spacing-md;
+
+  @include m.r-tablet {
+    grid-template-columns: 250px 1fr 350px;
+  }
+
+  @include m.r-mobile {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+    height: auto;
+    min-height: 100vh;
+  }
+}
+
+.left-panel,
+.center-panel,
+.right-panel {
+  @include m.card;
+  display: flex;
+  flex-direction: column;
+
+  @include m.r-mobile {
+    height: auto;
+    min-height: 300px;
+  }
+}

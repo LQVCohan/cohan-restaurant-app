@@ -1,0 +1,45 @@
+@use "../../../../styles/variables" as v;
+@use "../../../../styles/mixins" as m;
+
+.category-tabs-container {
+  padding: 0 v.$spacing-lg;
+  border-bottom: 1px solid v.$gray-200;
+}
+
+.category-tabs {
+  display: flex;
+  gap: v.$spacing-sm;
+  overflow-x: auto;
+  padding-bottom: v.$spacing-sm;
+  @include m.custom-scrollbar;
+  @include m.r-mobile {
+    gap: v.$spacing-xs;
+  }
+}
+
+.category-tab {
+  padding: v.$spacing-sm v.$spacing-lg;
+  border: none;
+  background: v.$gray-50;
+  color: v.$gray-600;
+  border-radius: v.$radius-md;
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 500;
+  transition: v.$transition-all;
+  font-size: v.$text-sm;
+
+  &.active {
+    background: v.$primary;
+    color: v.$white;
+  }
+  &:hover:not(.active) {
+    background: v.$gray-100;
+    color: v.$gray-700;
+  }
+
+  @include m.r-mobile {
+    padding: v.$spacing-xs v.$spacing-md;
+    font-size: v.$text-xs;
+  }
+}

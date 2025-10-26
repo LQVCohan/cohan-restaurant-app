@@ -32,7 +32,8 @@ import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
 import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
 import MenuManagement from "../components/admin/MenuManagement";
 import ManagerLayout from "../layouts/ManagerLayout";
-
+import POS from "../components/Dashboard_Manager/POS/POS";
+import { PosProvider } from "../context/PosContext";
 // ==== Staff ====
 import StaffOrder from "../components/StaffOrder";
 
@@ -211,6 +212,19 @@ const AppRouter = () => {
               <ManagerLayout>
                 <Dashboard />
               </ManagerLayout>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/manager/dashboard/POS"
+          element={
+            <PrivateRoute
+              allowedRoles={["manager", "admin"]}
+              requireVerifiedEmail
+            >
+              <PosProvider>
+                <POS />
+              </PosProvider>
             </PrivateRoute>
           }
         />

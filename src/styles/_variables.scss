@@ -333,3 +333,43 @@ $nav-height: 4rem;
 $nav-padding: #{$spacing-4} #{$spacing-6};
 $sidebar-width: 280px;
 $header-height: 70px;
+// ================================
+// APPEND – POS compatibility aliases & tokens
+// Mục tiêu: giữ nguyên hệ biến FoodHub, bổ sung alias để code POS chạy mượt
+// ================================
+
+// ---- Font size aliases (map từ POS -> hệ FoodHub)
+$font-size-xs: $text-xs;
+$font-size-sm: $text-sm;
+$font-size-base: $text-base;
+$font-size-lg: $text-lg;
+$font-size-xl: $text-xl;
+$font-size-2xl: $text-2xl;
+
+// ---- Radius aliases (map từ POS)
+$border-radius-sm: $radius-sm;
+$border-radius-md: $radius-md;
+$border-radius-lg: $radius-lg;
+$border-radius-xl: $radius-2xl; // POS dùng khá nhiều "xl" ~ phong cách bo tròn lớn
+
+// ---- Primary aliases (một số code POS cũ gọi primary-color)
+$primary-color: $primary;
+$primary-hover: $primary-hover;
+
+// ---- Status-based UI tokens cho trạng thái bàn (để code ngắn gọn & đồng nhất)
+$table-available-bg: $success-50;
+$table-available-bd: $success-500;
+$table-available-tx: $success-700;
+
+$table-occupied-bg: $error-50;
+$table-occupied-bd: $error-500;
+$table-occupied-tx: $error-600;
+
+$table-reserved-bg: $warning-50;
+$table-reserved-bd: $warning-500;
+$table-reserved-tx: $warning-600;
+
+// ---- Z-index tiện dụng cho overlay/dropdown/notification (nếu thiếu trong code POS)
+$z-dropdown: 1000 !default;
+$z-modal: 1050 !default;
+$z-toast: 1080 !default;

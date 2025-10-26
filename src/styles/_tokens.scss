@@ -1,3 +1,4 @@
+/* Giữ nguyên các biến hiện có – KHÔNG ĐỔI TÊN HAY GIÁ TRỊ */
 :root {
   --brand: #0ea5e9;
   --brand-600: #0284c7;
@@ -20,6 +21,31 @@
   --shadow-lg: 0 16px 40px rgba(2, 6, 23, 0.1);
 
   --ring: 0 0 0 4px rgba(14, 165, 233, 0.12);
+
+  /* BỔ SUNG (không đụng biến cũ) */
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --ink-weak: #475569;
+  --ink-weakest: #94a3b8;
+  --surface-subtle: #f8fafc;
+  --accent-bg: #e0f2fe;
+  --accent-soft: #f0f9ff;
+  --success-bg: #ecfdf5;
+  --warning-bg: #fff7ed;
+  --danger-bg: #fef2f2;
+
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-7: 28px;
+  --spacing-8: 32px;
+
+  --z-modal: 1000;
+  --z-popover: 1100;
+  --z-toast: 1200;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -31,10 +57,21 @@
     --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.35);
     --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
     --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+
+    --border: #243042;
+    --border-strong: #324156;
+    --ink-weak: #9fb0c9;
+    --ink-weakest: #6a7a92;
+    --surface-subtle: #0b1730;
+    --accent-bg: #062539;
+    --accent-soft: #0a3050;
+    --success-bg: #052e1a;
+    --warning-bg: #3c2a07;
+    --danger-bg: #3b1313;
   }
 }
 
-/* helpers */
+/* helpers (bạn đã có) */
 .glass {
   background: linear-gradient(
     180deg,

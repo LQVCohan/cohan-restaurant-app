@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-
+import { useNavigate, useLocation } from "react-router-dom";
 export const useDashboard = () => {
   const [selectedRestaurant, setSelectedRestaurant] = useState("all");
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     revenue: "₫24.8M",
     orders: 156,
@@ -47,11 +48,9 @@ export const useDashboard = () => {
     [updateStats]
   );
 
-  const handleSwitchToPOS = useCallback(() => {
-    alert(
-      "🖥️ Chuyển sang giao diện POS...\n(Tính năng demo - sẽ chuyển đến màn hình bán hàng)"
-    );
-  }, []);
+  const handleSwitchToPOS = () => {
+    navigate("/manager/dashboard/POS");
+  };
 
   const handleGenerateReport = useCallback(() => {
     alert("📈 Đang tạo báo cáo tổng hợp...\n(Tính năng demo)");
