@@ -843,11 +843,11 @@ body {
   gap: $spacing-md;
   padding: $spacing-md;
 
-  @include responsive(tablet) {
+  @include r-tablet {
     grid-template-columns: 250px 1fr 350px;
   }
 
-  @include responsive(mobile) {
+  @include r-mobile {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto 1fr;
     height: auto;
@@ -862,7 +862,7 @@ body {
   display: flex;
   flex-direction: column;
 
-  @include responsive(mobile) {
+  @include r-mobile {
     height: auto;
     min-height: 300px;
   }
@@ -1285,11 +1285,11 @@ body {
   gap: $spacing-md;
   padding: $spacing-md;
 
-  @include responsive(tablet) {
+  @include r-tablet {
     grid-template-columns: 250px 1fr 350px;
   }
 
-  @include responsive(mobile) {
+  @include r-mobile {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto 1fr;
     height: auto;
@@ -1304,7 +1304,7 @@ body {
   display: flex;
   flex-direction: column;
 
-  @include responsive(mobile) {
+  @include r-mobile {
     height: auto;
     min-height: 300px;
   }
@@ -2542,7 +2542,7 @@ src/components/Tables/TableGrid.scss
   max-height: 500px;
   @include scrollbar;
 
-  @include responsive(mobile) {
+  @include r-mobile {
     grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
     gap: $spacing-xs;
   }
@@ -2992,7 +2992,7 @@ src/components/Menu/MenuGrid.scss
   position: relative;
   width: 300px;
 
-  @include responsive(mobile) {
+  @include r-mobile {
     width: 200px;
   }
 }
@@ -3021,7 +3021,7 @@ src/components/Menu/MenuGrid.scss
   flex: 1;
   @include scrollbar;
 
-  @include responsive(mobile) {
+  @include r-mobile {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: $spacing-sm;
     padding: $spacing-md;
@@ -3089,7 +3089,7 @@ src/components/Menu/CategoryTabs.scss
   padding-bottom: $spacing-sm;
   @include scrollbar;
 
-  @include responsive(mobile) {
+  @include r-mobile {
     gap: $spacing-xs;
   }
 }
@@ -3116,7 +3116,7 @@ src/components/Menu/CategoryTabs.scss
     color: $gray-700;
   }
 
-  @include responsive(mobile) {
+  @include r-mobile {
     padding: $spacing-xs $spacing-md;
     font-size: $font-size-xs;
   }
@@ -3170,7 +3170,7 @@ src/components/Menu/MenuItem.scss
   background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
   @include flex-center;
   
-  @include responsive(mobile) {
+  @include r-mobile {
     height: 100px;
   }
 }
@@ -3178,7 +3178,7 @@ src/components/Menu/MenuItem.scss
 .menu-item-emoji {
   font-size: 2rem;
   
-  @include responsive(mobile) {
+  @include r-mobile {
     font-size: 1.5rem;
   }
 }
@@ -3186,7 +3186,7 @@ src/components/Menu/MenuItem.scss
 .menu-item-info {
   padding: $spacing-md;
   
-  @include responsive(mobile) {
+  @include r-mobile {
     padding: $spacing-sm;
   }
 }
@@ -3440,7 +3440,7 @@ src/components/Order/OrderPanel.scss
     padding: $spacing-sm;
   }
 
-  @include responsive(mobile) {
+  @include r-mobile {
     grid-template-columns: 1fr;
   }
 }
@@ -4589,7 +4589,7 @@ src/components/Modals/PaymentModal.scss
     grid-template-columns: repeat(2, 1fr);
     gap: $spacing-sm;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       grid-template-columns: 1fr;
     }
   }
@@ -4731,7 +4731,7 @@ src/components/Modals/PaymentModal.scss
     grid-template-columns: 1fr 1fr;
     gap: $spacing-md;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       grid-template-columns: 1fr;
     }
   }
@@ -5096,7 +5096,7 @@ src/components/Modals/PrintModal.scss
     gap: $spacing-xl;
     margin-bottom: $spacing-xl;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       grid-template-columns: 1fr;
     }
   }
@@ -5810,7 +5810,7 @@ src/components/Layout/MobileMenu.scss
   box-shadow: $shadow-lg;
   cursor: pointer;
 
-  @include responsive(mobile) {
+  @include r-mobile {
     display: flex;
   }
 }
@@ -5836,7 +5836,7 @@ src/components/Layout/MobileMenu.scss
     }
   }
 
-  @include responsive(mobile) {
+  @include r-mobile {
     display: block;
   }
 
@@ -6605,11 +6605,11 @@ src/components/Reports/ReportsModal.scss
     gap: $spacing-lg;
     margin-bottom: $spacing-xl;
 
-    @include responsive(tablet) {
+    @include r-tablet {
       grid-template-columns: repeat(2, 1fr);
     }
 
-    @include responsive(mobile) {
+    @include r-mobile {
       grid-template-columns: 1fr;
     }
   }
@@ -6682,7 +6682,7 @@ src/components/Reports/ReportsModal.scss
     grid-template-columns: 1fr 1fr;
     gap: $spacing-xl;
 
-    @include responsive(tablet) {
+    @include r-tablet {
       grid-template-columns: 1fr;
     }
   }
@@ -7305,7 +7305,7 @@ src/components/Modals/PrintQueueModal.scss
     border-radius: $border-radius-lg;
     margin-bottom: $spacing-lg;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       gap: $spacing-md;
     }
@@ -7315,7 +7315,7 @@ src/components/Modals/PrintQueueModal.scss
     display: flex;
     gap: $spacing-lg;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       justify-content: space-between;
       width: 100%;
     }
@@ -7346,7 +7346,7 @@ src/components/Modals/PrintQueueModal.scss
     display: flex;
     gap: $spacing-sm;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -7464,7 +7464,7 @@ src/components/Modals/PrintQueueModal.scss
     align-items: center;
     margin-bottom: $spacing-sm;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       align-items: flex-start;
       gap: $spacing-xs;
@@ -7515,7 +7515,7 @@ src/components/Modals/PrintQueueModal.scss
     justify-content: space-between;
     align-items: flex-end;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       align-items: flex-start;
       gap: $spacing-sm;
@@ -7962,7 +7962,7 @@ src/components/Modals/StaffModal.scss
     background: $gray-50;
     border-radius: $border-radius-lg;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       gap: $spacing-md;
     }
@@ -7972,7 +7972,7 @@ src/components/Modals/StaffModal.scss
     display: flex;
     gap: $spacing-lg;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       justify-content: space-between;
       width: 100%;
     }
@@ -8077,7 +8077,7 @@ src/components/Modals/StaffModal.scss
     color: $gray-600;
     margin-bottom: $spacing-xs;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       gap: $spacing-xs;
     }
@@ -8095,7 +8095,7 @@ src/components/Modals/StaffModal.scss
     gap: $spacing-xs;
     align-self: flex-start;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: row;
       align-self: flex-end;
     }
@@ -8121,7 +8121,7 @@ src/components/Modals/StaffModal.scss
       gap: $spacing-md;
       margin-bottom: $spacing-xl;
 
-      @include responsive(mobile) {
+      @include r-mobile {
         grid-template-columns: 1fr;
       }
 
@@ -8937,7 +8937,7 @@ src/components/Modals/PrintQueueModal.scss
     gap: $spacing-md;
     margin-bottom: $spacing-xl;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       grid-template-columns: repeat(2, 1fr);
     }
   }
@@ -8985,7 +8985,7 @@ src/components/Modals/PrintQueueModal.scss
     padding-bottom: $spacing-lg;
     border-bottom: 1px solid $gray-200;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       gap: $spacing-md;
     }
@@ -9123,7 +9123,7 @@ src/components/Modals/PrintQueueModal.scss
     font-size: $font-size-xs;
     color: $gray-600;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       gap: $spacing-xs;
     }
@@ -9629,7 +9629,7 @@ src/components/Modals/StaffModal.scss
     padding-bottom: $spacing-lg;
     border-bottom: 1px solid $gray-200;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       gap: $spacing-md;
     }
@@ -9639,7 +9639,7 @@ src/components/Modals/StaffModal.scss
     display: flex;
     gap: $spacing-xl;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       justify-content: space-between;
       width: 100%;
     }
@@ -9750,7 +9750,7 @@ src/components/Modals/StaffModal.scss
     color: $gray-600;
     margin-bottom: $spacing-xs;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       gap: $spacing-xs;
     }
@@ -9786,7 +9786,7 @@ src/components/Modals/StaffModal.scss
       gap: $spacing-md;
       margin-bottom: $spacing-xl;
 
-      @include responsive(mobile) {
+      @include r-mobile {
         grid-template-columns: 1fr;
       }
 
@@ -10335,11 +10335,11 @@ src/components/Modals/InventoryModal.scss
     gap: $spacing-md;
     margin-bottom: $spacing-xl;
 
-    @include responsive(tablet) {
+    @include r-tablet {
       grid-template-columns: repeat(3, 1fr);
     }
 
-    @include responsive(mobile) {
+    @include r-mobile {
       grid-template-columns: repeat(2, 1fr);
     }
   }
@@ -10372,7 +10372,7 @@ src/components/Modals/InventoryModal.scss
       background: linear-gradient(135deg, #8b5cf6, #7c3aed);
       grid-column: 1 / -1;
 
-      @include responsive(tablet) {
+      @include r-tablet {
         grid-column: auto;
       }
 
@@ -10410,7 +10410,7 @@ src/components/Modals/InventoryModal.scss
     padding-bottom: $spacing-lg;
     border-bottom: 1px solid $gray-200;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       gap: $spacing-md;
     }
@@ -10421,7 +10421,7 @@ src/components/Modals/InventoryModal.scss
     gap: $spacing-md;
     align-items: center;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       width: 100%;
     }
   }
@@ -10443,7 +10443,7 @@ src/components/Modals/InventoryModal.scss
     padding-left: 2.5rem;
     width: 250px;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       width: 100%;
     }
   }
@@ -10452,7 +10452,7 @@ src/components/Modals/InventoryModal.scss
     @include input-base;
     width: 150px;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       width: 100%;
     }
   }
@@ -10567,7 +10567,7 @@ src/components/Modals/InventoryModal.scss
     font-size: $font-size-xs;
     color: $gray-600;
 
-    @include responsive(mobile) {
+    @include r-mobile {
       flex-direction: column;
       gap: $spacing-xs;
     }
@@ -10662,7 +10662,7 @@ src/components/Modals/InventoryModal.scss
       gap: $spacing-md;
       margin-bottom: $spacing-xl;
 
-      @include responsive(mobile) {
+      @include r-mobile {
         grid-template-columns: 1fr;
       }
     }
@@ -11319,7 +11319,7 @@ src/components/Modals/MoveTableModal.scss
   }
 
   // Responsive Design
-  @include responsive(mobile) {
+  @include r-mobile {
     .move-info {
       padding: $spacing-md;
     }
@@ -11882,7 +11882,7 @@ src/components/Modals/MergeTableModal.scss
   }
 
   // Responsive Design
-  @include responsive(tablet) {
+  @include r-tablet {
     .tables-grid {
       grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
       gap: $spacing-md;
@@ -11899,7 +11899,7 @@ src/components/Modals/MergeTableModal.scss
     }
   }
 
-  @include responsive(mobile) {
+  @include r-mobile {
     .merge-info {
       padding: $spacing-md;
     }
@@ -12055,7 +12055,7 @@ src/components/Modals/ReservationModal.scss
       grid-template-columns: 1fr 1fr;
       gap: $spacing-md;
 
-      @include responsive(mobile) {
+      @include r-mobile {
         grid-template-columns: 1fr;
       }
 
@@ -12079,7 +12079,7 @@ src/components/Modals/ReservationModal.scss
       grid-template-columns: 1fr 1fr;
       gap: $spacing-md;
 
-      @include responsive(mobile) {
+      @include r-mobile {
         grid-template-columns: 1fr;
       }
     }
@@ -12595,7 +12595,7 @@ src/components/Modals/ReservationModal.scss
   }
 
   // Responsive Design
-  @include responsive(tablet) {
+  @include r-tablet {
     .reservation-form {
       .form-grid {
         grid-template-columns: 1fr;
@@ -12615,7 +12615,7 @@ src/components/Modals/ReservationModal.scss
     }
   }
 
-  @include responsive(mobile) {
+  @include r-mobile {
     .reservation-form {
       .form-section {
         margin-bottom: $spacing-lg;
@@ -13363,7 +13363,7 @@ src/components/Modals/SplitBillModal.scss
       grid-template-columns: repeat(3, 1fr);
       gap: $spacing-md;
 
-      @include responsive(mobile) {
+      @include r-mobile {
         grid-template-columns: 1fr;
       }
     }
@@ -13741,7 +13741,7 @@ src/components/Modals/SplitBillModal.scss
   }
 
   // Responsive Design
-  @include responsive(mobile) {
+  @include r-mobile {
     .split-methods .method-options {
       grid-template-columns: 1fr;
     }

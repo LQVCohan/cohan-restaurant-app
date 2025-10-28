@@ -11,13 +11,9 @@ import floor from "./floor/index.js";
 import auth from "./auth/index.js";
 import order from "./order/index.js";
 import reservation from "./reservation/index.js";
-
-// 🆕 Import thêm module quản lý kho, nguyên liệu, recipe, consumption
 import inventory from "./inventory/index.js";
-
-// 🆕 Import module Supply (vật phẩm khác: nước ngọt, khăn lạnh,...)
 import supply from "./supply/index.js";
-
+import eventLogResolvers from "./event_log/index.js";
 export default {
   ...baseResolvers,
 
@@ -35,6 +31,7 @@ export default {
     ...(inventory.Query || {}),
     ...(supply.Query || {}), // 🆕 Thêm Query supply
     ...(reservation.Query || {}),
+    ...(eventLogResolvers.Query || {}),
   },
 
   Mutation: {
@@ -52,6 +49,7 @@ export default {
     ...(auth.Mutation || {}),
     ...(order.Mutation || {}),
     ...(reservation.Mutation || {}),
+    ...(eventLogResolvers.Mutation || {}),
   },
 
   // Nếu có type-level resolvers

@@ -1,70 +1,370 @@
-import { useState, useEffect } from "react";
+// ===============================
+// useTableManagement.js (fast, optimistic)
+// ===============================
+import { gql, useMutation, useQuery } from "@apollo/client";
+import { useCallback, useMemo } from "react";
 
-export const useTableManagement = () => {
-  const [tables, setTables] = useState([]);
-  const [selectedTable, setSelectedTable] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [activeArea, setActiveArea] = useState("outdoor");
+/* ========= Fragments ========= */
+const F_TABLE_MIN = gql`
+  fragment TableMin on Table {
+    __typename
+    id
+    code
+    capacity
+    status
+    type
+    floorId
+    floorLevel
+    joinGroupId
+    tags
+    position {
+      x
+      y
+      w
+      h
+      rotation
+      shape
+      path
+    }
+  }
+`;
 
-  // Mock data
-  const mockTables = [
-    { id: "O1", area: "outdoor", seats: 4, status: "available" },
-    {
-      id: "O2",
-      area: "outdoor",
-      seats: 2,
-      status: "occupied",
-      time: "15 phút",
-    },
-    { id: "O3", area: "outdoor", seats: 6, status: "reserved", time: "19:00" },
-    // ... more tables
-  ];
+/* ========= Queries ========= */
+const Q_TABLES = gql`
+  query Tables($restaurantId: ID!) {
+    tables(restaurantId: $restaurantId) {
+      ...TableMin
+    }
+  }
+  ${F_TABLE_MIN}
+`;
 
-  useEffect(() => {
-    setTables(mockTables);
-  }, []);
+/* ========= Mutations ========= */
+const M_CREATE = gql`
+  mutation CreateTable($input: CreateTableInput!) {
+    createTable(input: $input) {
+      ...TableMin
+    }
+  }
+  ${F_TABLE_MIN}
+`;
+const M_UPDATE = gql`
+  mutation UpdateTable($input: UpdateTableInput!) {
+    updateTable(input: $input) {
+      ...TableMin
+    }
+  }
+  ${F_TABLE_MIN}
+`;
+const M_DELETE = gql`
+  mutation DeleteTable($id: ID!) {
+    deleteTable(id: $id)
+  }
+`;
+const M_SET_STATUS = gql`
+  mutation SetTableStatus($input: SetTableStatusInput!) {
+    setTableStatus(input: $input) {
+      id
+      status
+      __typename
+    }
+  }
+`;
+const M_MOVE = gql`
+  mutation MoveTable($input: MoveTableInput!) {
+    moveTable(input: $input) {
+      id
+      floorId
+      floorLevel
+      position {
+        x
+        y
+        w
+        h
+        rotation
+        shape
+        path
+      }
+      __typename
+    }
+  }
+`;
+const M_SWAP_CODES = gql`
+  mutation SwapCodes($input: SwapTableCodesInput!) {
+    swapTableCodes(input: $input)
+  }
+`;
+const M_BULK_UPSERT = gql`
+  mutation BulkUpsertTables($input: BulkUpsertTablesInput!) {
+    bulkUpsertTables(input: $input)
+  }
+`;
+const M_MERGE = gql`
+  mutation MergeTables($input: MergeTablesInput!) {
+    mergeTables(input: $input) {
+      joinGroupId
+      anchorId
+      tableIds
+      __typename
+    }
+  }
+`;
+const M_SPLIT = gql`
+  mutation SplitTables($input: SplitTablesInput!) {
+    splitTables(input: $input) {
+      ok
+      unmergedTableIds
+      __typename
+    }
+  }
+`;
 
-  const filteredTables = tables.filter((table) => {
-    const matchesSearch = table.id
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || table.status === statusFilter;
-    const matchesArea = table.area === activeArea;
-
-    return matchesSearch && matchesStatus && matchesArea;
+/* ========= Hook ========= */
+export default function useTableManagement({ restaurantId }) {
+  const { data, loading, error } = useQuery(Q_TABLES, {
+    variables: { restaurantId },
+    skip: !restaurantId,
+    fetchPolicy: "cache-and-network",
   });
 
-  const getStatusCounts = () => {
-    return {
-      all: tables.length,
-      available: tables.filter((t) => t.status === "available").length,
-      occupied: tables.filter((t) => t.status === "occupied").length,
-      reserved: tables.filter((t) => t.status === "reserved").length,
-      cleaning: tables.filter((t) => t.status === "cleaning").length,
-    };
-  };
+  /* ------ helpers for cache ------ */
+  const readTable = (cache, id) =>
+    cache.readFragment({
+      id: cache.identify({ __typename: "Table", id }),
+      fragment: F_TABLE_MIN,
+    });
+  const writeTable = (cache, table) =>
+    cache.writeFragment({
+      id: cache.identify({ __typename: "Table", id: table.id }),
+      fragment: F_TABLE_MIN,
+      data: table,
+    });
 
-  const updateTableStatus = (tableId, newStatus) => {
-    setTables((prev) =>
-      prev.map((table) =>
-        table.id === tableId ? { ...table, status: newStatus } : table
-      )
-    );
-  };
+  /* ------ mutations with optimistic UI ------ */
+  const [createMut] = useMutation(M_CREATE, {
+    // tùy chọn: có thể thêm optimistic nếu input đã đủ field
+  });
+
+  const [updateMut] = useMutation(M_UPDATE, {
+    optimisticResponse: ({ input }) => ({
+      updateTable: {
+        __typename: "Table",
+        ...input, // id + các field sửa
+      },
+    }),
+    update(cache, { data }) {
+      if (!data?.updateTable) return;
+      writeTable(cache, data.updateTable);
+    },
+  });
+
+  const [deleteMut] = useMutation(M_DELETE, {
+    optimisticResponse: ({ id }) => ({ deleteTable: true }),
+    update(cache, { variables }) {
+      const idRef = cache.identify({ __typename: "Table", id: variables.id });
+      cache.evict({ id: idRef });
+      cache.gc();
+    },
+  });
+
+  const [setStatusMut] = useMutation(M_SET_STATUS, {
+    optimisticResponse: ({ input }) => ({
+      setTableStatus: {
+        __typename: "Table",
+        id: input.id,
+        status: input.status,
+      },
+    }),
+    update(cache, { data }) {
+      const t = data?.setTableStatus;
+      if (!t) return;
+      cache.modify({
+        id: cache.identify({ __typename: "Table", id: t.id }),
+        fields: { status: () => t.status },
+      });
+    },
+  });
+
+  const [moveMut] = useMutation(M_MOVE, {
+    optimisticResponse: ({ input }) => ({
+      moveTable: {
+        __typename: "Table",
+        id: input.id,
+        floorId:
+          input.floorId ??
+          readTable(window.__APOLLO_CLIENT__?.cache ?? {}, input.id)?.floorId,
+        floorLevel:
+          readTable(window.__APOLLO_CLIENT__?.cache ?? {}, input.id)
+            ?.floorLevel ?? null,
+        position: input.position ?? null,
+      },
+    }),
+    update(cache, { data }) {
+      const t = data?.moveTable;
+      if (!t) return;
+      cache.modify({
+        id: cache.identify({ __typename: "Table", id: t.id }),
+        fields: {
+          floorId: () => t.floorId,
+          floorLevel: () => t.floorLevel,
+          position: () => t.position,
+        },
+      });
+    },
+  });
+
+  const [swapCodesMut] = useMutation(M_SWAP_CODES, {
+    optimisticResponse: () => ({ swapTableCodes: true }),
+    update(cache, { variables }) {
+      const { aId, bId } = variables.input;
+      const a = readTable(cache, aId);
+      const b = readTable(cache, bId);
+      if (!a || !b) return;
+      // hoán đổi code ngay trong cache
+      cache.modify({
+        id: cache.identify({ __typename: "Table", id: aId }),
+        fields: { code: () => b.code },
+      });
+      cache.modify({
+        id: cache.identify({ __typename: "Table", id: bId }),
+        fields: { code: () => a.code },
+      });
+    },
+  });
+
+  const [bulkUpsertMut] = useMutation(M_BULK_UPSERT);
+
+  const [mergeMut] = useMutation(M_MERGE, {
+    optimisticResponse: ({ input }) => ({
+      mergeTables: {
+        __typename: "MergeTablesPayload",
+        joinGroupId: `optim-${Date.now()}`, // id tạm cho UI
+        anchorId: input.anchorId,
+        tableIds: input.tableIds,
+      },
+    }),
+    update(cache, { data }) {
+      const payload = data?.mergeTables;
+      if (!payload) return;
+      payload.tableIds.forEach((id) => {
+        cache.modify({
+          id: cache.identify({ __typename: "Table", id }),
+          fields: { joinGroupId: () => payload.joinGroupId },
+        });
+      });
+    },
+  });
+
+  const [splitMut] = useMutation(M_SPLIT, {
+    optimisticResponse: ({ input }) => ({
+      splitTables: {
+        __typename: "SplitTablesPayload",
+        ok: true,
+        unmergedTableIds: input.tableIds ?? [],
+      },
+    }),
+    update(cache, { data }) {
+      const payload = data?.splitTables;
+      if (!payload) return;
+      (payload.unmergedTableIds || []).forEach((id) => {
+        cache.modify({
+          id: cache.identify({ __typename: "Table", id }),
+          fields: { joinGroupId: () => null },
+        });
+      });
+    },
+  });
+
+  /* ------ public API ------ */
+  const tables = useMemo(() => data?.tables ?? [], [data]);
+
+  const createTable = useCallback(
+    async (input) =>
+      (await createMut({ variables: { input } }))?.data?.createTable,
+    [createMut]
+  );
+  const updateTable = useCallback(
+    async (input) =>
+      (await updateMut({ variables: { input } }))?.data?.updateTable,
+    [updateMut]
+  );
+  const deleteTable = useCallback(
+    async (id) =>
+      (await deleteMut({ variables: { id } }))?.data?.deleteTable ?? false,
+    [deleteMut]
+  );
+  const setTableStatus = useCallback(
+    async ({ id, status }) =>
+      (await setStatusMut({ variables: { input: { id, status } } }))?.data
+        ?.setTableStatus,
+    [setStatusMut]
+  );
+  const moveTable = useCallback(
+    async ({ id, floorId, position }) =>
+      (await moveMut({ variables: { input: { id, floorId, position } } }))?.data
+        ?.moveTable,
+    [moveMut]
+  );
+  const swapTableCodes = useCallback(
+    async ({ restaurantId, floorId, aId, bId }) =>
+      (
+        await swapCodesMut({
+          variables: { input: { restaurantId, floorId, aId, bId } },
+        })
+      )?.data?.swapTableCodes ?? true,
+    [swapCodesMut]
+  );
+  const bulkUpsertTables = useCallback(
+    async (input) =>
+      (await bulkUpsertMut({ variables: { input } }))?.data?.bulkUpsertTables,
+    [bulkUpsertMut]
+  );
+  const mergeTables = useCallback(
+    async ({ tableIds, anchorId, joinGroupId }) =>
+      (
+        await mergeMut({
+          variables: {
+            input: { restaurantId, tableIds, anchorId, joinGroupId },
+          },
+        })
+      )?.data?.mergeTables,
+    [mergeMut, restaurantId]
+  );
+  const splitTables = useCallback(
+    async ({ joinGroupId, mode, tableIds }) =>
+      (
+        await splitMut({
+          variables: { input: { restaurantId, joinGroupId, mode, tableIds } },
+        })
+      )?.data?.splitTables,
+    [splitMut, restaurantId]
+  );
+
+  const fetchTableByCode = useCallback(
+    (code) =>
+      tables.find(
+        (t) => (t.code || "").toLowerCase() === (code || "").toLowerCase()
+      ) || null,
+    [tables]
+  );
 
   return {
-    tables: filteredTables,
-    selectedTable,
-    setSelectedTable,
-    searchTerm,
-    setSearchTerm,
-    statusFilter,
-    setStatusFilter,
-    activeArea,
-    setActiveArea,
-    getStatusCounts,
-    updateTableStatus,
+    tables,
+    tablesLoading: loading,
+    tablesError: error,
+
+    // mutations (đã có optimistic)
+    createTable,
+    updateTable,
+    deleteTable,
+    setTableStatus,
+    moveTable,
+    swapTableCodes,
+    bulkUpsertTables,
+    mergeTables,
+    splitTables,
+
+    // helper
+    fetchTableByCode,
   };
-};
+}

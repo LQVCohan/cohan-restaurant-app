@@ -1,0 +1,488 @@
+/* LeftPanel.module.scss — status-colored cards + prettier buttons + kebab trigger */
+
+/* Tokens */
+:root {
+  --fh-primary: #0284c7;
+  --fh-primary-hover: #0369a1;
+  --fh-primary-light: #f0f9ff;
+  --fh-text: #0c4a6e;
+  --fh-gray: #64748b;
+  --fh-border: #e2e8f0;
+  --fh-card: #ffffff;
+
+  /* status palette */
+  --s-available-bg: #ecfdf5;
+  --s-available-bd: #a7f3d0;
+  --s-available-tx: #065f46;
+
+  --s-occupied-bg: #fef2f2;
+  --s-occupied-bd: #fecaca;
+  --s-occupied-tx: #7f1d1d;
+
+  --s-reserved-bg: #fffbeb;
+  --s-reserved-bd: #fde68a;
+  --s-reserved-tx: #78350f;
+
+  --s-cleaning-bg: #eef2ff;
+  --s-cleaning-bd: #c7d2fe;
+  --s-cleaning-tx: #3730a3;
+
+  --s-offline-bg: #f1f5f9;
+  --s-offline-bd: #e2e8f0;
+  --s-offline-tx: #334155;
+
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 8px 18px rgba(0, 0, 0, 0.08);
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  height: 100%;
+  min-height: 0;
+  background: var(--fh-card);
+  border: 2px solid var(--fh-border);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Header */
+.header {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.navTabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* chia đều */
+  gap: 0.35rem;
+  background: #f8fafc;
+  padding: 0.15rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--fh-border);
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%; /* fill cell */
+  background: transparent;
+  border: 0;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.5rem;
+  font-weight: 800;
+  font-size: 0.92rem;
+  color: var(--fh-gray);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.12s;
+}
+.tab:hover {
+  color: var(--fh-text);
+  transform: translateY(-1px);
+}
+.active {
+  background: var(--fh-primary-light);
+  color: var(--fh-primary);
+}
+.newOrderBox {
+  margin-top: 0.5rem;
+  border: 1.5px solid var(--fh-border);
+  background: #ffffff;
+  border-radius: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.newOrderBox h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--fh-text);
+}
+
+.newOrderActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.newOrderActions .btn {
+  border: 1.5px solid var(--fh-border);
+  background: #fff;
+  color: var(--fh-text);
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.55rem;
+  font-weight: 800;
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.15s, background 0.15s,
+    border-color 0.15s;
+}
+.newOrderActions .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.newOrderActions .primary {
+  background: var(--fh-primary);
+  color: #fff;
+  border-color: var(--fh-primary);
+}
+/* Select tầng + search nằm 1 hàng */
+.filterRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.select,
+.search {
+  width: 100%;
+  border: 1.5px solid var(--fh-border);
+  background: #fff;
+  color: #0f172a;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.select:focus,
+.search:focus {
+  border-color: var(--fh-primary);
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+
+/* Chips trạng thái */
+.statusChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.chip {
+  border: 1.5px solid var(--fh-border);
+  background: #f8fafc;
+  color: var(--fh-text);
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+}
+.chip:hover {
+  background: #eef6ff;
+  transform: translateY(-1px);
+}
+.chipActive {
+  background: var(--fh-primary);
+  border-color: var(--fh-primary);
+  color: #fff;
+}
+
+/* Toolbar (nút đẹp hơn) */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.15rem 0 0.2rem;
+}
+.left,
+.right {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1.5px solid var(--fh-border);
+  background: #fff;
+  color: var(--fh-text);
+  padding: 0.5rem 0.7rem;
+  border-radius: 0.6rem;
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.15s, background 0.15s,
+    border-color 0.15s;
+}
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.primary {
+  background: var(--fh-primary);
+  color: #fff;
+  border-color: var(--fh-primary);
+}
+.success {
+  background: #22c55e;
+  color: #fff;
+  border-color: #22c55e;
+}
+.violet {
+  background: #8b5cf6;
+  color: #fff;
+  border-color: #8b5cf6;
+}
+.ghost {
+  background: #fff;
+  color: var(--fh-primary);
+  border-color: var(--fh-primary);
+}
+.disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.groupChip {
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.45rem;
+  background: var(--fh-primary-light);
+  color: var(--fh-primary);
+  border: 1px solid var(--fh-border);
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+/* Grid bàn — nén min width để dễ thêm 1 cột nếu có thêm không gian từ layout */
+.tablesGrid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(120px, 1fr)
+  ); /* trước 128px -> 120px */
+  gap: 0.6rem;
+  min-height: 120px;
+}
+
+/* Card bàn + màu theo status qua data-attr */
+.tableItem {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 0.25rem;
+  padding: 0.6rem;
+  border: 1.5px solid var(--fh-border);
+  background: #fff;
+  border-radius: 0.6rem;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.15s, border-color 0.15s,
+    background 0.15s;
+}
+.tableItem:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  border-color: #dbe3ea;
+}
+
+.tableItem[data-status="available"] {
+  background: var(--s-available-bg);
+  border-color: var(--s-available-bd);
+}
+.tableItem[data-status="available"] .tableCode {
+  color: var(--s-available-tx);
+}
+
+.tableItem[data-status="occupied"] {
+  background: var(--s-occupied-bg);
+  border-color: var(--s-occupied-bd);
+}
+.tableItem[data-status="occupied"] .tableCode {
+  color: var(--s-occupied-tx);
+}
+
+.tableItem[data-status="reserved"] {
+  background: var(--s-reserved-bg);
+  border-color: var(--s-reserved-bd);
+}
+.tableItem[data-status="reserved"] .tableCode {
+  color: var(--s-reserved-tx);
+}
+
+.tableItem[data-status="cleaning"] {
+  background: var(--s-cleaning-bg);
+  border-color: var(--s-cleaning-bd);
+}
+.tableItem[data-status="cleaning"] .tableCode {
+  color: var(--s-cleaning-tx);
+}
+
+.tableItem[data-status="offline"] {
+  background: var(--s-offline-bg);
+  border-color: var(--s-offline-bd);
+  opacity: 0.9;
+}
+.tableItem[data-status="offline"] .tableCode {
+  color: var(--s-offline-tx);
+}
+
+.tableTop {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Kebab (3 chấm) mở modal hành động bàn */
+.kebab {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 26px;
+  height: 22px;
+  display: none; /* ẩn mặc định */
+  place-items: center;
+  background: transparent;
+  border: none; /* không viền */
+  color: #0ea5b7; /* xanh nhạt đồng bộ giao diện */
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.tableItem:hover .kebab {
+  display: grid; /* chỉ hiện khi hover card */
+}
+.kebab:hover {
+  color: var(--fh-primary);
+  transform: translateY(-1px);
+}
+
+.badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.4rem;
+  background: #fff;
+  color: var(--fh-text);
+  border: 1px solid var(--fh-border);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.tableCode {
+  font-weight: 900;
+  color: var(--fh-text);
+  font-size: 1rem;
+  letter-spacing: 0.2px;
+}
+.tableMeta {
+  color: var(--fh-gray);
+  font-size: 0.8rem;
+}
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.kv {
+  background: #fff;
+  border: 1px solid var(--fh-border);
+  border-radius: 0.4rem;
+  padding: 0.12rem 0.35rem;
+  font-size: 0.74rem;
+  color: #334155;
+}
+.dim {
+  opacity: 0.75;
+}
+
+/* chọn & drag */
+.selected {
+  outline: 2px solid var(--fh-primary);
+  outline-offset: 2px;
+}
+.checked {
+  box-shadow: inset 0 0 0 2px var(--fh-primary);
+}
+.dragHint {
+  margin-left: 0.25rem;
+  opacity: 0.35;
+  font-size: 0.95rem;
+}
+.dragging {
+  z-index: 2;
+  box-shadow: var(--shadow-md);
+  transform: scale(1.01);
+}
+.over {
+  outline: 2px dashed var(--fh-primary);
+  outline-offset: 3px;
+}
+
+/* dots */
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  display: inline-block;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.dotAvailable {
+  background: #16a34a;
+}
+.dotOccupied {
+  background: #ef4444;
+}
+.dotReserved {
+  background: #f59e0b;
+}
+.dotCleaning {
+  background: #06b6d4;
+}
+.dotOffline {
+  background: #9ca3af;
+}
+
+/* Empty */
+.empty {
+  color: var(--fh-text);
+  opacity: 0.85;
+  background: #f8fafc;
+  border: 1.5px dashed var(--fh-border);
+  border-radius: 0.6rem;
+  padding: 0.7rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  /* nếu màn hình bé hơn, tăng co để vẫn cố thêm cột khi Center đã hẹp */
+  .tablesGrid {
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  }
+}
+@media (max-width: 820px) {
+  .filterRow {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .tablesGrid {
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  }
+  .tab {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+  }
+  .btn {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.8rem;
+  }
+  .chip {
+    padding: 0.3rem 0.5rem;
+    font-size: 0.8rem;
+  }
+  .select,
+  .search {
+    padding: 0.4rem 0.55rem;
+    font-size: 0.85rem;
+  }
+}

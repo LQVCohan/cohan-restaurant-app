@@ -1,365 +1,396 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+/* eslint-disable react-refresh/only-export-components */
+// PosContext.jsx — Full floor features: floors (id,name,level), activeLevel filter,
+// map level <-> id, provide activeFloorId & setActiveFloorId, and full table actions.
 
-const PosContext = createContext(null);
-export const usePOS = () => useContext(PosContext);
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
 
-const SAMPLE_TABLES = {
-  1: [
-    { code: "T01", capacity: 2, status: "available" },
-    { code: "T02", capacity: 4, status: "occupied" },
-    { code: "T03", capacity: 6, status: "available" },
-    { code: "T04", capacity: 2, status: "reserved" },
-    { code: "T05", capacity: 8, status: "available" },
-    { code: "T06", capacity: 4, status: "occupied" },
-    { code: "T07", capacity: 2, status: "available" },
-    { code: "T08", capacity: 6, status: "available" },
-  ],
-  2: [
-    { code: "T09", capacity: 4, status: "available" },
-    { code: "T10", capacity: 6, status: "occupied" },
-    { code: "T11", capacity: 8, status: "available" },
-    { code: "T12", capacity: 2, status: "available" },
-  ],
-  3: [
-    { code: "VIP01", capacity: 10, status: "available" },
-    { code: "VIP02", capacity: 12, status: "reserved" },
-    { code: "VIP03", capacity: 8, status: "available" },
-  ],
-};
+import useMenuManagement from "../hooks/useMenuManagement";
+import useFloorManagement from "../hooks/useFloorManagement";
+import useTableManagement from "../hooks/useTableManagement";
 
-const MENU = [
-  {
-    id: 1,
-    name: "Gỏi cuốn tôm thịt",
-    category: "appetizer",
-    price: 45000,
-    emoji: "🥗",
-    description: "Gỏi cuốn tươi với tôm và thịt",
-  },
-  {
-    id: 2,
-    name: "Nem nướng Nha Trang",
-    category: "appetizer",
-    price: 55000,
-    emoji: "🍢",
-    description: "Nem nướng thơm ngon đặc sản",
-  },
-  {
-    id: 3,
-    name: "Bò lúc lắc",
-    category: "main",
-    price: 180000,
-    emoji: "🥩",
-    description: "Thịt bò thăn lúc lắc với khoai tây",
-  },
-  {
-    id: 4,
-    name: "Cơm tấm sườn nướng",
-    category: "main",
-    price: 65000,
-    emoji: "🍚",
-    description: "Cơm tấm với sườn nướng thơm lừng",
-  },
-  {
-    id: 5,
-    name: "Tôm hùm nướng phô mai",
-    category: "seafood",
-    price: 450000,
-    emoji: "🦞",
-    description: "Tôm hùm tươi nướng với phô mai",
-  },
-  {
-    id: 6,
-    name: "Cua rang me",
-    category: "seafood",
-    price: 280000,
-    emoji: "🦀",
-    description: "Cua biển rang me chua ngọt",
-  },
-  {
-    id: 7,
-    name: "Lẩu thái hải sản",
-    category: "hotpot",
-    price: 320000,
-    emoji: "🍲",
-    description: "Lẩu thái chua cay với hải sản tươi",
-  },
-  {
-    id: 8,
-    name: "Lẩu gà lá é",
-    category: "hotpot",
-    price: 250000,
-    emoji: "🍲",
-    description: "Lẩu gà với lá é thơm đặc trưng",
-  },
-  {
-    id: 9,
-    name: "Nước dừa tươi",
-    category: "drink",
-    price: 25000,
-    emoji: "🥥",
-    description: "Nước dừa tươi mát lạnh",
-  },
-  {
-    id: 10,
-    name: "Sinh tố bơ",
-    category: "drink",
-    price: 35000,
-    emoji: "🥑",
-    description: "Sinh tố bơ béo ngậy",
-  },
-  {
-    id: 11,
-    name: "Chè ba màu",
-    category: "dessert",
-    price: 30000,
-    emoji: "🍧",
-    description: "Chè ba màu truyền thống",
-  },
-  {
-    id: 12,
-    name: "Bánh flan",
-    category: "dessert",
-    price: 25000,
-    emoji: "🍮",
-    description: "Bánh flan mềm mịn",
-  },
-];
+const PosContext = createContext(undefined);
 
-export function PosProvider({ children }) {
-  const [tables, setTables] = useState(SAMPLE_TABLES);
-  const [currentFloor, setCurrentFloor] = useState(1);
+/** Hook tiện dụng để lấy context */
+export function usePos() {
+  const ctx = useContext(PosContext);
+  if (!ctx) throw new Error("usePos must be used within a <PosProvider>.");
+  return ctx;
+}
+
+/**
+ * PosProvider
+ * Props:
+ * - restaurantId (bắt buộc)
+ * - initialFloorId? (ID tầng khởi tạo)
+ * - initialFloorLevel? (level tầng khởi tạo, nếu truyền level sẽ ưu tiên level)
+ */
+export default function PosProvider({
+  children,
+  restaurantId,
+  initialFloorId = null,
+  initialFloorLevel = null,
+}) {
+  // ================== POS state khác (giữ nguyên của bạn) ==================
+  const [currentFloor, setCurrentFloor] = useState(1); // level dùng cho UI cũ (nếu còn)
   const [currentTable, setCurrentTable] = useState(null);
-  const [category, setCategory] = useState("all");
-  const [search, setSearch] = useState("");
-  const [order, setOrder] = useState([]);
+  const [currentOrderType, setCurrentOrderType] = useState("dine_in");
+  const [tableOrders, setTableOrders] = useState({});
+  const [currentOrder, setCurrentOrder] = useState([]);
+  const [menuItems, setMenuItems] = useState([]);
+  const [currentCategory, setCurrentCategory] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [printers, setPrinters] = useState({});
+  const [selectedPrintType, setSelectedPrintType] = useState("kitchen");
+  const [printQueue, setPrintQueue] = useState([]);
+  const [selectedPrinter, setSelectedPrinter] = useState(null);
 
-  // Modal states
-  const [menuItemDraft, setMenuItemDraft] = useState(null);
-  const [showPayment, setShowPayment] = useState(false);
-  const [showReservation, setShowReservation] = useState(false);
-  const [showSplitBill, setShowSplitBill] = useState(false);
-  const [showDiscount, setShowDiscount] = useState(false);
-  const [showPrintQueue, setShowPrintQueue] = useState(false);
-  const [showCustomer, setShowCustomer] = useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
+  // ================== FLOORS (level-first) ==================
+  const {
+    floors, // [{id,name,level}, ...]
+    floorsLoading,
+    floorsError,
+    refetchFloors,
+    activeLevel, // filter chính bằng level
+    setActiveLevel,
+    getIdFromLevel, // level -> id
+    getLevelFromId, // id -> level
+  } = useFloorManagement({ restaurantId, initialFloorId, initialFloorLevel });
+  const {
+    menus,
+    timeSlotOptions,
+    selectedTimeSlot,
+    setSelectedTimeSlot,
+    itemsWithPrice, // <-- dùng để vẽ menu
+    itemsLoading,
+    itemsError,
+  } = useMenuManagement({
+    restaurantId,
+    defaultTimeSlot: "lunch",
+    pageSize: 100,
+  });
 
-  // NEW: chuyển/ghép bàn
-  const [showTransfer, setShowTransfer] = useState(false);
-  const [showMerge, setShowMerge] = useState(false);
+  // Cung cấp thêm API theo id để tiện kết nối những chỗ cũ dùng floorId
+  const activeFloorId = useMemo(
+    () => (activeLevel != null ? getIdFromLevel(activeLevel) : null),
+    [activeLevel, getIdFromLevel]
+  );
+  const setActiveFloorId = useCallback(
+    (idOrNull) => {
+      if (!idOrNull) return setActiveLevel(null);
+      const lvl = getLevelFromId(idOrNull);
+      setActiveLevel(lvl ?? null);
+    },
+    [getLevelFromId, setActiveLevel]
+  );
 
-  // Helpers to find/set table by code
-  function findTableByCode(code) {
-    for (const floor of Object.keys(tables)) {
-      const idx = tables[floor].findIndex((t) => t.code === code);
-      if (idx !== -1) return [Number(floor), idx];
+  // ================== TABLES (đủ chức năng) ==================
+  const {
+    tables: allTables, // danh sách bàn thô từ server (có floorLevel)
+    tablesLoading,
+    tablesError,
+    refetchTables,
+    // mutations:
+    createTable,
+    updateTable,
+    deleteTable,
+    setTableStatus,
+    moveTable,
+    swapTableCodes,
+    bulkUpsertTables,
+    mergeTables,
+    splitTables,
+    // helpers:
+    fetchTableByCode,
+  } = useTableManagement({ restaurantId });
+
+  // ================== Filter của POS cho bảng ==================
+  const [tableSearch, setTableSearch] = useState(""); // tìm code/status/type/tags
+  const [statusFilter, setStatusFilter] = useState("all"); // available|occupied|reserved|cleaning|offline|all
+  const [typeFilter, setTypeFilter] = useState("all"); // standard|vip|outdoor|...|all
+
+  // ================== Derived: tables đã lọc theo level + status/type/search ==================
+  // ================== Derived: tables đã lọc theo level + status + search nâng cao ==================
+  const tables = useMemo(() => {
+    let list = allTables || [];
+
+    // 1) Lọc theo tầng (level)
+    if (activeLevel != null) {
+      list = list.filter((t) => Number(t.floorLevel) === Number(activeLevel));
     }
-    return [null, null];
-  }
-  function setTableStatus(code, status) {
-    setTables((prev) => {
-      const next = { ...prev };
-      const [floor, idx] = findTableByCode(code);
-      if (floor && idx != null) {
-        next[floor] = [...next[floor]];
-        next[floor][idx] = { ...next[floor][idx], status };
-      }
-      return next;
-    });
-  }
-  const allTables = useMemo(() => {
-    const out = [];
-    for (const floor of Object.keys(tables)) {
-      for (const t of tables[floor]) out.push({ floor: Number(floor), ...t });
-    }
-    return out;
-  }, [tables]);
 
-  // Business: Transfer current order context to another table (demo logic)
-  function transferTo(targetCode) {
-    if (!currentTable?.code || !targetCode || targetCode === currentTable.code)
-      return;
-    // Source becomes available, target becomes occupied, and set currentTable to target
-    setTableStatus(currentTable.code, "available");
-    setTableStatus(targetCode, "occupied");
-    const [tf] = findTableByCode(targetCode);
-    setCurrentFloor(tf || currentFloor);
-    setCurrentTable({
-      code: targetCode,
-      capacity: allTables.find((t) => t.code === targetCode)?.capacity || 0,
-    });
-  }
-
-  // Business: Merge multiple source tables into a target (demo: mark sources available, target occupied)
-  function mergeInto(targetCode, sourceCodes = []) {
-    if (!targetCode || sourceCodes.length === 0) return;
-    for (const sc of sourceCodes) {
-      if (sc === targetCode) continue;
-      setTableStatus(sc, "available"); // released after merge
+    // 2) Lọc theo trạng thái (nếu có)
+    if (statusFilter && statusFilter !== "all") {
+      list = list.filter((t) => t.status === statusFilter);
     }
-    setTableStatus(targetCode, "occupied");
-    // Optionally move "context" to target if current table is merged
-    if (currentTable?.code && sourceCodes.includes(currentTable.code)) {
-      const [tf] = findTableByCode(targetCode);
-      setCurrentFloor(tf || currentFloor);
-      setCurrentTable({
-        code: targetCode,
-        capacity: allTables.find((t) => t.code === targetCode)?.capacity || 0,
+
+    // 3) Tìm kiếm: quy tắc đặc biệt cho mã bàn (code)
+    // - Nếu text có dấu cách ở CUỐI (trailing space) => exact match theo code
+    // - Nếu không có trailing space => prefix match theo code (A1 khớp A1, A10…)
+    // - Vẫn hỗ trợ tìm rộng theo status/tags/type khi không exact
+    const rawQ = tableSearch ?? ""; // KHÔNG trim toàn bộ, để giữ trailing space
+    const hasTrailingSpace = /\s$/.test(rawQ); // true nếu có dấu cách ở cuối
+    const q = rawQ.toLowerCase(); // giữ nguyên khoảng trắng
+    const qNoTrail = rawQ.replace(/\s+$/, "").toLowerCase(); // bỏ chỉ khoảng trắng CUỐI
+
+    if (q.length > 0) {
+      list = list.filter((t) => {
+        const code = (t.code || "").toLowerCase();
+        const status = (t.status || "").toLowerCase();
+        const type = (t.type || "").toLowerCase();
+        const tags = Array.isArray(t.tags)
+          ? t.tags.join(" ").toLowerCase()
+          : "";
+
+        // Ưu tiên tìm theo code
+        if (hasTrailingSpace) {
+          // EXACT: chỉ khớp đúng mã
+          return code === qNoTrail;
+        }
+        // PREFIX: A1 khớp A1, A10...
+        if (qNoTrail && code.startsWith(qNoTrail)) return true;
+
+        // Fallback: tìm rộng theo các trường khác (khi không exact)
+        return (
+          status.includes(qNoTrail) ||
+          type.includes(qNoTrail) ||
+          tags.includes(qNoTrail)
+        );
       });
     }
-  }
 
-  const filteredMenu = useMemo(
-    () =>
-      MENU.filter(
-        (m) =>
-          (category === "all" || m.category === category) &&
-          (m.name.toLowerCase().includes(search.toLowerCase()) ||
-            m.description.toLowerCase().includes(search.toLowerCase()))
-      ),
-    [category, search]
-  );
+    return list;
+  }, [allTables, activeLevel, statusFilter, tableSearch]);
 
-  const subtotal = useMemo(
-    () => order.reduce((s, it) => s + it.price * it.quantity, 0),
-    [order]
-  );
-  const tax = useMemo(() => subtotal * 0.1, [subtotal]);
-  const service = useMemo(() => subtotal * 0.05, [subtotal]);
-  const discount = useMemo(
-    () => order.reduce((acc, it) => acc + (it.discountValue || 0), 0),
-    [order]
-  );
-  const total = useMemo(
-    () => subtotal + tax + service - discount,
-    [subtotal, tax, service, discount]
-  );
-
-  function formatPrice(v) {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(v);
-  }
-  function selectFloor(floor) {
-    setCurrentFloor(Number(floor));
-  }
-  function selectTable(code, capacity) {
-    setCurrentTable({ code, capacity });
-  }
-  function openAddItem(item) {
-    setMenuItemDraft({
-      item,
-      quantity: 1,
-      cookingOption: "Bình thường",
-      unit: "Phần",
-      note: "",
+  // ================== Helper đếm số lượng theo status (trên allTables, không theo filter) ==================
+  const getStatusCounts = useMemo(() => {
+    const counters = {
+      available: 0,
+      occupied: 0,
+      reserved: 0,
+      cleaning: 0,
+      offline: 0,
+    };
+    (allTables || []).forEach((t) => {
+      if (counters[t.status] != null) counters[t.status] += 1;
     });
-  }
-  function confirmAddItem() {
-    if (!menuItemDraft) return;
-    const { item, quantity, cookingOption, unit, note } = menuItemDraft;
-    setOrder((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        menuItemId: item.id,
-        name: item.name,
-        price: item.price,
-        quantity,
-        cookingOption,
-        unit,
-        note,
-      },
-    ]);
-    setMenuItemDraft(null);
-  }
-  function changeQty(id, delta) {
-    setOrder((prev) =>
-      prev.map((it) =>
-        it.id === id
-          ? { ...it, quantity: Math.max(1, it.quantity + delta) }
-          : it
-      )
-    );
-  }
-  function removeItem(id) {
-    setOrder((prev) => prev.filter((it) => it.id !== id));
-  }
-  function clearOrder() {
-    setOrder([]);
-  }
-  function applyItemDiscount(id, type, value) {
-    setOrder((prev) =>
-      prev.map((it) =>
-        it.id === id
-          ? {
-              ...it,
-              discountType: type,
-              discountValue:
-                type === "percent"
-                  ? Math.round((it.price * it.quantity * value) / 100)
-                  : value,
-            }
-          : it
-      )
-    );
-  }
+    return () => ({ ...counters, all: allTables?.length ?? 0 });
+  }, [allTables]);
 
-  const value = {
-    tables,
-    setTables,
-    currentFloor,
-    selectFloor,
-    currentTable,
-    selectTable,
-    category,
-    setCategory,
-    search,
-    setSearch,
-    menu: MENU,
-    filteredMenu,
-    order,
-    setOrder,
-    menuItemDraft,
-    setMenuItemDraft,
-    openAddItem,
-    confirmAddItem,
-    changeQty,
-    removeItem,
-    clearOrder,
-    applyItemDiscount,
-    subtotal,
-    tax,
-    service,
-    discount,
-    total,
-    formatPrice,
+  // ================== POS: chọn bàn để order ==================
+  const selectTableForOrder = useCallback(
+    (code, capacity) => {
+      setCurrentTable({ code, capacity });
+      setCurrentOrderType("dine_in");
+      const exist = tableOrders[code] || [];
+      const restored = exist.map((i) => ({
+        ...i,
+        isNew: false,
+        isExisting: true,
+      }));
+      setCurrentOrder(restored);
+    },
+    [tableOrders]
+  );
 
-    showPayment,
-    setShowPayment,
-    showReservation,
-    setShowReservation,
-    showSplitBill,
-    setShowSplitBill,
-    showDiscount,
-    setShowDiscount,
-    showPrintQueue,
-    setShowPrintQueue,
-    showCustomer,
-    setShowCustomer,
-    confirmClear,
-    setConfirmClear,
+  const clearOrder = useCallback(() => setCurrentOrder([]), []);
 
-    // new
-    showTransfer,
-    setShowTransfer,
-    showMerge,
-    setShowMerge,
-    allTables,
-    transferTo,
-    mergeInto,
-  };
+  const saveOrder = useCallback(() => {
+    if (!currentTable) return;
+    setTableOrders((prev) => ({ ...prev, [currentTable.code]: currentOrder }));
+  }, [currentTable, currentOrder]);
+
+  // ================== Đồng hồ (giữ nguyên) ==================
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // ================== Derived khác của POS (menu, totals, status text) ==================
+  const filteredMenu = useMemo(() => {
+    const q = (searchTerm || "").toLowerCase().trim();
+    const byCat = (i) =>
+      currentCategory === "all" || (i.category || "main") === currentCategory;
+    const bySearch = (i) =>
+      !q ||
+      i.name?.toLowerCase().includes(q) ||
+      i.description?.toLowerCase().includes(q);
+    return (itemsWithPrice || []).filter((i) => byCat(i) && bySearch(i));
+  }, [itemsWithPrice, currentCategory, searchTerm]);
+  const totals = useMemo(() => {
+    const subtotal = currentOrder.reduce((s, i) => s + i.total, 0);
+    const discount = 0;
+    const base = Math.max(0, subtotal - discount);
+    const tax = Math.round(base * 0.1);
+    const service = Math.round(base * 0.05);
+    const total = base + tax + service;
+    return { subtotal, discount, tax, service, total };
+  }, [currentOrder]);
+
+  const getStatusText = useCallback(
+    (s) =>
+      ({
+        available: "Trống",
+        occupied: "Có khách",
+        reserved: "Đã đặt",
+        cleaning: "Đang dọn",
+        offline: "Ngưng",
+      }[s] || s),
+    []
+  );
+
+  // ================== Context Value ==================
+  const value = useMemo(
+    () => ({
+      // ---- id gốc ----
+      restaurantId,
+      menus,
+      timeSlotOptions,
+      selectedTimeSlot,
+      setSelectedTimeSlot,
+      // ---- Floors (đủ chức năng) ----
+      floors,
+      floorsLoading,
+      floorsError,
+      refetchFloors,
+      // filter theo level
+      activeLevel,
+      setActiveLevel,
+      // ánh xạ id <-> level
+      getIdFromLevel,
+      getLevelFromId,
+      // tiện ích theo id (để tương thích nơi cũ)
+      activeFloorId,
+      setActiveFloorId,
+
+      // ---- Tables + filters ----
+      tables, // đã lọc theo activeLevel/status/type/search
+      tablesLoading,
+      tablesError,
+      refetchTables,
+      tableSearch,
+      setTableSearch,
+      statusFilter,
+      setStatusFilter,
+      typeFilter,
+      setTypeFilter,
+
+      // ---- Mutations/Actions bàn ----
+      createTable,
+      updateTable,
+      deleteTable,
+      setTableStatus,
+      moveTable,
+      swapTableCodes,
+      bulkUpsertTables,
+      mergeTables,
+      splitTables,
+
+      // ---- POS selection & Orders ----
+      currentFloor,
+      setCurrentFloor,
+      currentTable,
+      setCurrentTable,
+      currentOrderType,
+      setCurrentOrderType,
+      tableOrders,
+      setTableOrders,
+      currentOrder,
+      setCurrentOrder,
+      selectTableForOrder,
+
+      // ---- POS khác ----
+      menuItems,
+      setMenuItems,
+      currentCategory,
+      setCurrentCategory,
+      searchTerm,
+      setSearchTerm,
+      paymentMethod,
+      setPaymentMethod,
+      printers,
+      setPrinters,
+      selectedPrinter,
+      setSelectedPrinter,
+      selectedPrintType,
+      setSelectedPrintType,
+      printQueue,
+      setPrintQueue,
+      now,
+
+      // ---- Helpers ----
+      filteredMenu,
+      totals,
+      getStatusText,
+      fetchTableByCode,
+      getStatusCounts,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      menus,
+      timeSlotOptions,
+      selectedTimeSlot,
+      filteredMenu,
+      restaurantId,
+      // floors
+      floors,
+      floorsLoading,
+      floorsError,
+      refetchFloors,
+      activeLevel,
+      getIdFromLevel,
+      getLevelFromId,
+      activeFloorId,
+      // tables
+      tables,
+      tablesLoading,
+      tablesError,
+      refetchTables,
+      tableSearch,
+      statusFilter,
+      typeFilter,
+      // table actions
+      createTable,
+      updateTable,
+      deleteTable,
+      setTableStatus,
+      moveTable,
+      swapTableCodes,
+      bulkUpsertTables,
+      mergeTables,
+      splitTables,
+      // pos selection
+      currentFloor,
+      currentTable,
+      currentOrderType,
+      tableOrders,
+      currentOrder,
+      // pos misc
+      menuItems,
+      currentCategory,
+      searchTerm,
+      paymentMethod,
+      printers,
+      selectedPrinter,
+      selectedPrintType,
+      printQueue,
+      now,
+      // helpers
+      filteredMenu,
+      totals,
+      getStatusText,
+      fetchTableByCode,
+      getStatusCounts,
+    ]
+  );
 
   return <PosContext.Provider value={value}>{children}</PosContext.Provider>;
 }

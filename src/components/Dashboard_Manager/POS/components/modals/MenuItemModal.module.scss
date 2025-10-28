@@ -1,0 +1,42 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: grid;
+  place-items: center;
+}
+.modal {
+  background: #fff;
+  border-radius: 1rem;
+  padding: 2rem;
+  width: 520px;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+}
+.title {
+  font-weight: 600;
+  color: #0c4a6e;
+}
+.opt {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+}
+.optActive {
+  background: #0284c7;
+  color: #fff;
+}
+.btn {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+}
+.primary {
+  background: #0284c7;
+  color: #fff;
+}
+.secondary {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}

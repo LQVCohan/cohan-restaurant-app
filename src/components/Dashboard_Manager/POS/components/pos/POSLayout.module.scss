@@ -1,0 +1,181 @@
+/* POSLayout.module.scss — Responsive, giữ nguyên template color của FoodHub */
+
+/* ---------------- Design Tokens (Quick Reference) ---------------- */
+:root {
+  /* Colors */
+  --fh-primary: #0284c7;
+  --fh-primary-hover: #0369a1;
+  --fh-primary-light: #f0f9ff;
+  --fh-text: #0c4a6e;
+  --fh-gray: #6b7280;
+
+  /* Layout + Surfaces */
+  --fh-bg: #f1f5f9; /* nền trang (KHÔNG đổi) */
+  --fh-card-bg: #ffffff; /* card trắng */
+  --fh-card-border: #e2e8f0; /* border 2px */
+  --fh-radius: 1rem;
+  --fh-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 8px rgba(0, 0, 0, 0.06),
+    0 12px 24px rgba(0, 0, 0, 0.08);
+
+  /* Spacing & Typography */
+  --fh-space-1: 0.25rem;
+  --fh-space-2: 0.5rem;
+  --fh-space-3: 1rem; /* padding ngoài container */
+  --fh-space-4: 1.5rem; /* padding trong card */
+  --fh-space-5: 2rem;
+
+  --fh-font: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+    sans-serif;
+}
+
+/* ---------------- Breakpoints ---------------- */
+$bp-mobile: 480px;
+$bp-tablet: 768px;
+$bp-laptop: 1024px;
+$bp-desktop: 1280px;
+$bp-wide: 1536px;
+
+/* ---------------- Container (giữ nền & font) ---------------- */
+.container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--fh-space-3);
+  padding: var(--fh-space-3);
+  min-height: 100dvh;
+  background: var(--fh-bg); /* KHÔNG đổi */
+  color: var(--fh-text); /* xanh đậm chủ đạo */
+  font-family: var(--fh-font);
+  box-sizing: border-box;
+}
+
+/* ---------------- Card (giữ trắng + viền 2px + radius 1rem + shadow) ---------------- */
+.card {
+  background: var(--fh-card-bg);
+  border: 2px solid var(--fh-card-border);
+  border-radius: var(--fh-radius);
+  box-shadow: var(--fh-shadow);
+  padding: var(--fh-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fh-space-3);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+  will-change: transform;
+
+  /* Hover effects theo guideline */
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06), 0 8px 16px rgba(0, 0, 0, 0.1),
+      0 20px 40px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* ---------------- Responsive Grid ---------------- */
+/* Mobile: 1 cột */
+@media (min-width: $bp-mobile) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tablet: 2 cột (Left + Center), RightPanel span full width phía dưới */
+@media (min-width: $bp-tablet) {
+  .container {
+    grid-template-columns: 1.05fr 1.2fr;
+    gap: var(--fh-space-5);
+  }
+  .container > :nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Laptop: 3 cột truyền thống POS */
+@media (min-width: $bp-laptop) {
+  .container {
+    grid-template-columns: 360px minmax(0, 1fr) 380px;
+  }
+  .container > :nth-child(3) {
+    grid-column: auto;
+  }
+}
+
+/* Desktop: thoáng hơn */
+@media (min-width: $bp-desktop) {
+  .container {
+    gap: 1.25rem;
+    padding: 1.25rem;
+  }
+}
+
+/* Wide: giới hạn độ rộng để không quá trải */
+@media (min-width: $bp-wide) {
+  .container {
+    max-width: 1600px;
+    margin-inline: auto;
+  }
+}
+
+/* ---------------- Utilities ---------------- */
+.scroll {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.fill {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Accent helpers (không bắt buộc, để sẵn nếu cần nút/link nhất quán) */
+.accent {
+  color: var(--fh-primary);
+}
+.accentButton {
+  background: var(--fh-primary);
+  color: #fff;
+  border: 1px solid transparent;
+  border-radius: calc(var(--fh-radius) - 0.25rem);
+  padding: 0.625rem 0.875rem;
+  box-shadow: var(--fh-shadow);
+  transition: background 160ms ease, transform 120ms ease, box-shadow 160ms ease;
+
+  &:hover {
+    background: var(--fh-primary-hover);
+    transform: translateY(-1px);
+  }
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+/* iOS safe-area */
+@supports (padding: max(0px)) {
+  .container {
+    padding-left: max(var(--fh-space-3), env(safe-area-inset-left));
+    padding-right: max(var(--fh-space-3), env(safe-area-inset-right));
+    padding-top: max(var(--fh-space-3), env(safe-area-inset-top));
+    padding-bottom: max(var(--fh-space-3), env(safe-area-inset-bottom));
+  }
+}
+/* Full-bleed wrapper: tràn rộng, không bị max-width của layout cha */
+.pageFull {
+  width: 100vw;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  /* Nếu parent là flex/grid, cho phép co */
+  min-width: 0;
+
+  /* Chặn mọi max-width của ancestor theo phạm vi của trang POS */
+  :global([class*="container"]),
+  :global([class*="wrapper"]) {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+}
+
+/* đảm bảo grid POS cũng không bị bó */
+.container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}

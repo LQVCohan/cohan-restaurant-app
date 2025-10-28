@@ -1,0 +1,92 @@
+type EventLog {
+  id: ID!
+  restaurantId: ID
+  floorId: ID
+  tableId: ID
+  orderId: ID
+
+  actorUserId: ID
+  customerProfileId: ID
+
+  verb: String!
+  object: EventObject
+  target: EventObject
+
+  source: String
+  ip: String
+  userAgent: String
+
+  sessionId: String
+  correlationId: String
+
+  status: String
+  meta: JSON
+  diff: JSON
+
+  at: String
+  createdAt: String
+  updatedAt: String
+}
+
+type EventObject {
+  kind: String
+  id: ID
+  code: String
+}
+
+input EventLogsFilter {
+  restaurantId: ID
+  floorId: ID
+  tableId: ID
+  orderId: ID
+  actorUserId: ID
+  verb: String
+  status: String
+  text: String
+  from: String # ISO date
+  to: String # ISO date
+}
+
+type EventLogsConnection {
+  total: Int!
+  items: [EventLog!]!
+}
+
+input CreateEventLogInput {
+  restaurantId: ID
+  floorId: ID
+  tableId: ID
+  orderId: ID
+  actorUserId: ID
+  customerProfileId: ID
+  verb: String!
+  object: EventObjectInput
+  target: EventObjectInput
+  source: String
+  ip: String
+  userAgent: String
+  sessionId: String
+  correlationId: String
+  status: String
+  meta: JSON
+  diff: JSON
+  at: String
+}
+
+input EventObjectInput {
+  kind: String
+  id: ID
+  code: String
+}
+
+extend type Query {
+  eventLogs(
+    filter: EventLogsFilter
+    limit: Int = 50
+    skip: Int = 0
+  ): EventLogsConnection!
+}
+
+extend type Mutation {
+  createEventLog(input: CreateEventLogInput!): EventLog!
+}

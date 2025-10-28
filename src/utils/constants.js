@@ -501,3 +501,20 @@ export const TABLE_FEATURES = [
   "Không khí trong lành",
   "Sôi động",
 ];
+export const ORDER_TYPES = {
+  DINE_IN: "dine_in",
+  TAKEAWAY: "takeaway",
+  DELIVERY: "delivery",
+};
+
+export const TABLE_STATUS = {
+  AVAILABLE: "available",
+  OCCUPIED: "occupied",
+  RESERVED: "reserved",
+};
+
+export const PRINTER_STATUS = {
+  ONLINE: "online",
+  OFFLINE: "offline",
+  BUSY: "busy",
+};

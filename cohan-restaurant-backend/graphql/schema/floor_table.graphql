@@ -170,6 +170,38 @@ input BulkTableItemInput {
   isJoinable: Boolean
   joinGroupId: String
 }
+input MergeTablesInput {
+  restaurantId: ID!
+  tableIds: [ID!]! # các bàn sẽ vào 1 nhóm
+  anchorId: ID! # bàn đại diện (hiển thị & nhận order)
+  joinGroupId: String # nếu không truyền -> server tự sinh
+}
+
+type MergeResult {
+  joinGroupId: String!
+  anchorId: ID!
+  tableIds: [ID!]!
+}
+input SplitTablesInput {
+  restaurantId: ID!
+  joinGroupId: String!
+  # Chế độ tách:
+  mode: SplitMode! # ALL | PARTIAL
+  # Nếu PARTIAL, chỉ lock-in các itemIds chuyển đi:
+  itemIds: [ID!]
+  toTableId: ID # đổ item sang bàn có sẵn
+  createNewTable: Boolean
+}
+
+enum SplitMode {
+  ALL
+  PARTIAL
+}
+
+type SplitResult {
+  ok: Boolean!
+  unmergedTableIds: [ID!]!
+}
 extend type Query {
   floors(restaurantId: ID!): [Floor!]!
   floorByLevel(restaurantId: ID!, level: Int!): Floor
@@ -185,6 +217,8 @@ extend type Query {
 }
 
 extend type Mutation {
+  mergeTables(input: MergeTablesInput!): MergeResult!
+  splitTables(input: SplitTablesInput!): SplitResult!
   createFloor(input: CreateFloorInput!): Floor!
   updateFloor(input: UpdateFloorInput!): Floor!
   deleteFloor(id: ID!): Boolean! # hard delete; nếu muốn soft → đổi bool/flag
