@@ -75,6 +75,7 @@ type MenuItem {
   description: String
   basePrice: Float
   preparationMethods: [PreparationMethod!]!
+  servingVariants: [ServingVariant]
   thumbImage: String
   mediaAssetIds: [ID!]
   modifierGroupIds: [ID!]
@@ -86,6 +87,7 @@ type MenuItem {
   createdAt: DateTime
   updatedAt: DateTime
 }
+
 input UpdateMenuItemBasicInput {
   restaurantId: ID!
   menuItemId: ID!

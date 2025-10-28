@@ -72,6 +72,20 @@ const Q_MENU_ITEMS = gql`
       limit: $limit
     ) {
       ...MenuItemFields
+      servingVariants {
+        # Thêm vào đây
+        key
+        mode
+        yieldQty
+        yieldUnit
+        preparationMethodName
+        components {
+          ingredientId
+          qty
+          unit
+          wastePct
+        }
+      }
     }
   }
   ${FRAG_MENU_ITEM}
@@ -88,6 +102,19 @@ const Q_MENU_ITEMS_CONNECTION = gql`
         cursor
         node {
           ...MenuItemFields
+          servingVariants {
+            key
+            mode
+            yieldQty
+            yieldUnit
+            preparationMethodName
+            components {
+              ingredientId
+              qty
+              unit
+              wastePct
+            }
+          }
         }
       }
       pageInfo {

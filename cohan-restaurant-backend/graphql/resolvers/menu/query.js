@@ -1,7 +1,6 @@
-// src/graphql/resolvers/menu/query.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Menu, MenuItem } from "../../../models/index.js";
+import { Menu, MenuItem, Recipe } from "../../../models/index.js";
 
 export const MenuQuery = {
   menus: (_, { restaurantId }) =>
@@ -17,7 +16,6 @@ export const MenuQuery = {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
 
     const q = { restaurantId };
-
     if (timeSlot) {
       const menu = await Menu.findOne({ restaurantId, timeSlot }).lean({
         virtuals: true,
@@ -34,11 +32,23 @@ export const MenuQuery = {
       q.name = new RegExp(search.trim(), "i");
     }
 
-    return MenuItem.find(q)
+    const menuItems = await MenuItem.find(q)
       .limit(Math.min(limit ?? 50, 500))
       .sort({ name: 1 })
       .lean({ virtuals: true });
+
+    // Get servingVariants and preparationMethods from Recipe
+    for (const item of menuItems) {
+      const recipe = await Recipe.findOne({ menuItemId: item._id }).lean();
+      if (recipe && recipe.servingVariants) {
+        // Add servingVariants and preparationMethods to MenuItem
+        item.servingVariants = recipe.servingVariants;
+      }
+    }
+
+    return menuItems;
   },
+
   menuItemsConnection: async (_, { limit = 20, cursor, filter }) => {
     if (!filter || !filter.restaurantId) {
       throw new GraphQLError("filter.restaurantId is required", {
@@ -125,6 +135,7 @@ export const MenuQuery = {
       },
     };
   },
+
   topMenuItems: async (_parent, { limit = 8, restaurantId, categoryId }) => {
     const LIM = Math.min(Math.max(limit, 1), 50); // 1..50
 

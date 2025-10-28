@@ -1,7 +1,8 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import cls from "./CenterPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { formatPrice } from "../../utils/format";
+import MenuItemModal from "../modals/MenuItemModal";
 
 export default function CenterPanel() {
   const {
@@ -69,19 +70,46 @@ export default function CenterPanel() {
     });
   }, [filteredMenu]);
 
-  const handleAdd = (item) => {
-    // addItemToOrder cần { menuItem: { id, name, price }, cookingOption, unit }
-    const menuItem = {
-      id: item.id,
-      name: item.name,
-      price: Number(item._displayPrice || 0),
-    };
-    addItemToOrder?.({
-      menuItem,
-      cookingOption: item._defaultCooking || "Bình thường",
-      unit: item._unit || "Phần",
-    });
-  };
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  const openModal = useCallback((item) => {
+    setSelectedItem(item);
+    setModalOpen(true);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModalOpen(false);
+    setSelectedItem(null);
+  }, []);
+
+  const handleModalAdd = useCallback(
+    (payload) => {
+      const {
+        menuItem,
+        quantity = 1,
+        cookingOption,
+        unit,
+        note,
+      } = payload || {};
+      const core = {
+        id: menuItem?.id,
+        name: menuItem?.name,
+        price: Number(menuItem?._displayPrice ?? menuItem?.price ?? 0),
+      };
+
+      addItemToOrder?.({
+        menuItem: core,
+        cookingOption,
+        unit,
+        note,
+        quantity,
+      });
+      closeModal();
+    },
+    [addItemToOrder, closeModal]
+  );
 
   return (
     <div className={cls.wrapper}>
@@ -119,7 +147,7 @@ export default function CenterPanel() {
         </div>
       </div>
 
-      {/* Tabs danh mục (giữ như cũ) */}
+      {/* Tabs danh mục */}
       <div className={cls.tabs}>
         {categoryTabs.map((c) => (
           <button
@@ -145,10 +173,10 @@ export default function CenterPanel() {
             <div
               key={item.id}
               className={cls.card}
-              onClick={() => handleAdd(item)}
+              onClick={() => openModal(item)}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => e.key === "Enter" && handleAdd(item)}
+              onKeyDown={(e) => e.key === "Enter" && openModal(item)}
               title={`${item.name} — ${formatPrice(price)}`}
             >
               <div className={cls.image}>
@@ -191,6 +219,14 @@ export default function CenterPanel() {
           );
         })}
       </div>
+
+      {/* Modal cho item */}
+      <MenuItemModal
+        isOpen={modalOpen}
+        item={selectedItem}
+        onAdd={handleModalAdd}
+        onClose={closeModal}
+      />
     </div>
   );
 }

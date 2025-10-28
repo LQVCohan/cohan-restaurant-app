@@ -14,6 +14,7 @@ export default function RightPanel() {
     totals,
     clearOrder,
     saveOrder,
+    addItemToOrder,
   } = usePos();
 
   const hasItems = currentOrder && currentOrder.length > 0;
