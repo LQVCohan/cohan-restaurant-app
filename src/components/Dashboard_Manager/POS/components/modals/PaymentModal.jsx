@@ -31,6 +31,7 @@ export function PaymentModal({ isOpen, totals, onComplete, onClose }) {
             ))}
           </div>
         </div>
+
         <div className={s.group}>
           <label>Số tiền khách đưa:</label>
           <input
@@ -40,6 +41,7 @@ export function PaymentModal({ isOpen, totals, onComplete, onClose }) {
             onChange={(e) => setPaid(Number(e.target.value) || 0)}
           />
         </div>
+
         <div className={s.row}>
           <span>Tổng tiền:</span>
           <span>{formatPrice(totals?.total || 0)}</span>
@@ -48,6 +50,36 @@ export function PaymentModal({ isOpen, totals, onComplete, onClose }) {
           <span>Tiền thừa:</span>
           <span>{formatPrice(change)}</span>
         </div>
+
+        {/* Hiển thị thông tin chuyển khoản nếu phương thức thanh toán là chuyển khoản */}
+        {method === "transfer" && (
+          <div className={s.transferInfo}>
+            <h4>Thông tin chuyển khoản</h4>
+            <div className={s.paymentDetails}>
+              <div className={s.detailItem}>
+                <span>Số tài khoản:</span>
+                <span>1234567890</span>
+              </div>
+              <div className={s.detailItem}>
+                <span>Ngân hàng:</span>
+                <span>Vietcombank</span>
+              </div>
+              <div className={s.detailItem}>
+                <span>Chủ tài khoản:</span>
+                <span>Golden Dragon Restaurant</span>
+              </div>
+            </div>
+            <div className={s.qrCode}>
+              <img
+                src="https://via.placeholder.com/150" // Bạn có thể thay bằng mã QR thực tế
+                alt="QR Code"
+                className={s.qrImage}
+              />
+              <p>Quét mã QR để thanh toán</p>
+            </div>
+          </div>
+        )}
+
         <div className={s.actions}>
           <button className={s.secondary} onClick={onClose}>
             Hủy

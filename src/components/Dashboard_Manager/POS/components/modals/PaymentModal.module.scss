@@ -1,1 +1,122 @@
-/* PaymentModal.module.scss - SCSS styles for PaymentModal */
+/* PaymentModal.module.scss */
+.backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5); /* Nền mờ */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 450px;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #0c4a6e;
+  margin-bottom: 16px;
+}
+
+.group {
+  margin-bottom: 16px;
+}
+
+.grid {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 8px 16px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f1f5f9;
+  color: #0c4a6e;
+  transition: background-color 0.3s;
+}
+
+.btn.active {
+  background-color: #0284c7;
+  color: white;
+}
+
+.input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.secondary {
+  background-color: #f3f4f6;
+  color: #1f2937;
+  border: 1px solid #ddd;
+  padding: 10px 20px;
+}
+
+.success {
+  background-color: #22c55e;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+.success:hover {
+  background-color: #16a34a;
+}
+
+.transferInfo {
+  margin-top: 20px;
+}
+
+.paymentDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qrCode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.qrImage {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+  margin-bottom: 10px;
+}
+
+.qr-instruction {
+  font-size: 1rem;
+  color: #6b7280;
+  text-align: center;
+}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import cls from "./CenterPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { formatPrice } from "../../utils/format";
@@ -6,21 +6,18 @@ import MenuItemModal from "../modals/MenuItemModal";
 
 export default function CenterPanel() {
   const {
-    // dữ liệu & filter hiện có trong POS context
     filteredMenu,
     currentCategory,
     setCurrentCategory,
     setSearchTerm,
     addItemToOrder,
 
-    // nếu bạn đã nối useMenuManagement vào PosContext, các biến dưới sẽ có
-    // (nếu chưa có thì UI vẫn chạy bình thường)
     timeSlotOptions,
     selectedTimeSlot,
     setSelectedTimeSlot,
   } = usePos();
 
-  // Tabs danh mục (giữ static như bản của bạn để không phụ thuộc Category collection)
+  // Tabs danh mục
   const categoryTabs = useMemo(
     () => [
       { key: "all", label: "Tất cả" },
@@ -36,12 +33,9 @@ export default function CenterPanel() {
 
   const onSelectCategory = (cat) => setCurrentCategory?.(cat);
 
-  // Chuẩn hoá giá hiển thị (hỗ trợ schema mới: basePrice + preparationMethods)
   const withDisplay = useMemo(() => {
     return (filteredMenu || []).map((it) => {
-      // 1) Giá: ưu tiên basePrice > 0
       const base = Number(it.basePrice ?? 0);
-      // 2) Nếu không có basePrice, lấy giá của preparation mặc định hoặc cái đầu tiên
       const defaultPrep =
         Array.isArray(it.preparationMethods) && it.preparationMethods.length > 0
           ? it.preparationMethods.find((p) => p?.isDefault) ||
@@ -49,7 +43,6 @@ export default function CenterPanel() {
           : null;
       const prepPrice = Number(defaultPrep?.price ?? 0);
 
-      // 3) Fallback: item.price (dữ liệu cũ) hoặc 0
       const displayPrice =
         base > 0
           ? base
@@ -57,7 +50,6 @@ export default function CenterPanel() {
           ? prepPrice
           : Number(it.price ?? 0);
 
-      // Unit: theo kg nếu byWeight
       const unit = it.byWeight ? "Kg" : "Phần";
       const cookingOption = defaultPrep?.name || "Bình thường";
 
@@ -92,6 +84,7 @@ export default function CenterPanel() {
         cookingOption,
         unit,
         note,
+        price,
       } = payload || {};
       const core = {
         id: menuItem?.id,
@@ -120,7 +113,6 @@ export default function CenterPanel() {
         </h2>
 
         <div className={cls.search}>
-          {/* Hiển thị select timeSlot nếu context có cung cấp */}
           {Array.isArray(timeSlotOptions) &&
             timeSlotOptions.length > 0 &&
             typeof setSelectedTimeSlot === "function" && (
@@ -181,7 +173,6 @@ export default function CenterPanel() {
             >
               <div className={cls.image}>
                 {thumb ? (
-                  // Nếu có ảnh
                   <img
                     src={thumb}
                     alt={item.name}
@@ -194,7 +185,6 @@ export default function CenterPanel() {
                     loading="lazy"
                   />
                 ) : (
-                  // Fallback emoji
                   <span aria-hidden="true">{emoji}</span>
                 )}
               </div>

@@ -168,7 +168,51 @@ export default function PosProvider({
 
     return list;
   }, [allTables, activeLevel, statusFilter, tableSearch]);
+  // MenuItem được thêm vào danh sách order hiện tại
+  const addItemToOrder = useCallback(
+    ({ menuItem, quantity, cookingOption, unit, note, price }) => {
+      const existingItemIndex = currentOrder.findIndex(
+        (item) =>
+          item.id === menuItem.id &&
+          item.cookingOption === cookingOption &&
+          item.unit === unit
+      );
 
+      if (existingItemIndex !== -1) {
+        // Update quantity if item already exists
+        const updatedOrder = [...currentOrder];
+        updatedOrder[existingItemIndex].quantity += quantity;
+        updatedOrder[existingItemIndex].total =
+          updatedOrder[existingItemIndex].quantity *
+          updatedOrder[existingItemIndex].price;
+        setCurrentOrder(updatedOrder);
+      } else {
+        // Add new item to the order
+        const newItem = {
+          ...menuItem,
+          quantity,
+          cookingOption,
+          unit,
+          note,
+          price,
+          total: quantity * price,
+        };
+        setCurrentOrder((prevOrder) => [...prevOrder, newItem]);
+      }
+    },
+    [currentOrder]
+  );
+  const updateItemQty = useCallback(
+    (itemId, newQuantity) => {
+      const updatedOrder = currentOrder.map((item) =>
+        item.id === itemId
+          ? { ...item, quantity: newQuantity, total: item.price * newQuantity }
+          : item
+      );
+      setCurrentOrder(updatedOrder);
+    },
+    [currentOrder]
+  );
   // ================== Helper đếm số lượng theo status (trên allTables, không theo filter) ==================
   const getStatusCounts = useMemo(() => {
     const counters = {
@@ -188,6 +232,10 @@ export default function PosProvider({
   const selectTableForOrder = useCallback(
     (code, capacity) => {
       setCurrentTable({ code, capacity });
+      if (!tableOrders[code]) {
+        return;
+      }
+
       setCurrentOrderType("dine_in");
       const exist = tableOrders[code] || [];
       const restored = exist.map((i) => ({
@@ -199,12 +247,28 @@ export default function PosProvider({
     },
     [tableOrders]
   );
-
+  const [toastItems, setToastItems] = useState([]);
   const clearOrder = useCallback(() => setCurrentOrder([]), []);
 
   const saveOrder = useCallback(() => {
-    if (!currentTable) return;
-    setTableOrders((prev) => ({ ...prev, [currentTable.code]: currentOrder }));
+    if (currentOrder.length === 0 || !currentTable) {
+      setToastItems([
+        ...toastItems,
+        {
+          id: new Date().getTime(),
+          type: "error",
+          text: "Chưa có món ăn nào trong đơn hoặc chưa có bàn nào được chọn. Vui lòng thêm món trước khi lưu.",
+        },
+      ]);
+      return;
+    }
+    setTableOrders((prev) => ({ ...prev, [currentTable?.code]: currentOrder }));
+    const table = fetchTableByCode(currentTable.code, restaurantId);
+    console.log("Saving order for table:", table);
+    setTableStatus({ id: table.id, status: "occupied" });
+    setCurrentOrder([]);
+    setCurrentTable(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTable, currentOrder]);
 
   // ================== Đồng hồ (giữ nguyên) ==================
@@ -225,6 +289,8 @@ export default function PosProvider({
       i.description?.toLowerCase().includes(q);
     return (itemsWithPrice || []).filter((i) => byCat(i) && bySearch(i));
   }, [itemsWithPrice, currentCategory, searchTerm]);
+
+  // Tổng tiền order hiện tại
   const totals = useMemo(() => {
     const subtotal = currentOrder.reduce((s, i) => s + i.total, 0);
     const discount = 0;
@@ -303,10 +369,17 @@ export default function PosProvider({
       setCurrentOrderType,
       tableOrders,
       setTableOrders,
+
+      selectTableForOrder,
+      // Clear + Save order
+      clearOrder,
+      saveOrder,
+      // Thêm món vào order
+      addItemToOrder,
+      updateItemQty,
+      // order hiện tại
       currentOrder,
       setCurrentOrder,
-      selectTableForOrder,
-
       // ---- POS khác ----
       menuItems,
       setMenuItems,

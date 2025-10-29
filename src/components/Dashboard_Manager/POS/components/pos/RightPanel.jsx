@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import cls from "./RightPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { formatPrice } from "../../utils/format";
-
+import Toast from "../../../../ui/Toast";
+import { PaymentModal } from "../modals/PaymentModal";
 export default function RightPanel() {
   const navigate = useNavigate();
   const {
@@ -14,13 +15,100 @@ export default function RightPanel() {
     totals,
     clearOrder,
     saveOrder,
-    addItemToOrder,
   } = usePos();
 
-  const hasItems = currentOrder && currentOrder.length > 0;
+  const [toastItems, setToastItems] = useState([]);
+  const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
 
+  const handlePaymentConfirm = (paymentMethod, paymentAmount) => {
+    // Thực hiện thanh toán logic ở đây (có thể gửi paymentMethod và paymentAmount vào backend)
+    console.log(
+      "Thanh toán với phương thức:",
+      paymentMethod,
+      "Số tiền thanh toán:",
+      paymentAmount
+    );
+    closePaymentModal(); // Đóng modal sau khi xác nhận thanh toán
+  };
+  const closePaymentModal = () => {
+    setPaymentModalOpen(false); // Close the Payment Modal
+  };
+  const hasItems = currentOrder && currentOrder.length > 0;
+  const getItemPrice = (item) => {
+    if (item && !isNaN(item.price) && item.price > 0) {
+      return formatPrice(item.price);
+    }
+    return "₫ 0"; // Giá trị mặc định khi không có giá hợp lệ
+  };
+  const getItemTotal = (item) => {
+    if (item && !isNaN(item.total) && item.total > 0) {
+      return formatPrice(item.total);
+    }
+    return "₫ 0"; // Giá trị mặc định khi không có tổng hợp lệ
+  };
+  const handleQtyChange = (item, change) => {
+    const newQty = Math.max(1, item.quantity + change); // Số lượng không được nhỏ hơn 1
+    updateItemQty(item.id, newQty);
+  };
+  const handleQtyInput = (e, item) => {
+    const newQty = Math.max(1, Number(e.target.value) || 1); // Số lượng không được nhỏ hơn 1
+    updateItemQty(item.id, newQty);
+  };
+
+  const handleSaveOrder = () => {
+    // Lưu đơn hàng
+
+    if (!currentTable) {
+      setToastItems([
+        ...toastItems,
+        {
+          id: new Date().getTime(),
+          type: "error",
+          text: "Vui lòng chọn bàn trước khi lưu.",
+        },
+      ]);
+      return;
+    }
+    try {
+      saveOrder();
+      const newToastItem = {
+        id: new Date().getTime(), // Unique ID for the toast item
+        type: "success",
+        text: `Đã lưu vào bàn ${currentTable?.code}`,
+      };
+      setToastItems((prevItems) => [...prevItems, newToastItem]);
+    } catch (error) {
+      setToastItems([
+        ...toastItems,
+        {
+          id: new Date().getTime(),
+          type: "error",
+          text: "Lưu đơn hàng thất bại.",
+          error: error.message,
+        },
+      ]);
+      console.error("Error saving order:", error);
+      return;
+    }
+
+    // Tạo thông báo và hiển thị
+  };
   return (
     <div className={cls.wrapper}>
+      <Toast
+        items={toastItems}
+        onClose={(id) =>
+          setToastItems((prevItems) =>
+            prevItems.filter((item) => item.id !== id)
+          )
+        }
+      />
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={closePaymentModal}
+        onConfirm={handlePaymentConfirm}
+        totalAmount={totals.total}
+      />
       {/* HEADER */}
       <div className={cls.header}>
         <div className={cls.headerRow}>
@@ -56,27 +144,33 @@ export default function RightPanel() {
               <div className={cls.itemMain}>
                 <div className={cls.itemName}>{item.name}</div>
                 <div className={cls.itemMeta}>
-                  {item.unit || "Phần"} · {formatPrice(item.price)}
+                  {item.unit || "Phần"} · {getItemPrice(item)}{" "}
+                  {/* Hiển thị giá hợp lệ */}
                 </div>
               </div>
 
               <div className={cls.itemActions}>
                 <button
                   className={cls.qtyBtn}
-                  onClick={() => updateItemQty(item.id, -1)}
+                  onClick={() => handleQtyChange(item, -1)}
                 >
                   −
                 </button>
-                <span className={cls.qty}>{item.quantity}</span>
+                <input
+                  className={cls.qtyInput}
+                  type="number"
+                  value={item.quantity}
+                  min="1"
+                  onChange={(e) => handleQtyInput(e, item)} // Cập nhật số lượng trực tiếp
+                />
                 <button
                   className={cls.qtyBtn}
-                  onClick={() => updateItemQty(item.id, +1)}
+                  onClick={() => handleQtyChange(item, +1)}
                 >
                   +
                 </button>
-
-                <div className={cls.itemTotal}>{formatPrice(item.total)}</div>
-
+                <div className={cls.itemTotal}>{getItemTotal(item)}</div>{" "}
+                {/* Hiển thị tổng hợp lệ */}
                 <button
                   className={cls.removeBtn}
                   onClick={() => removeItem(item.id)}
@@ -133,7 +227,7 @@ export default function RightPanel() {
           <button
             type="button"
             className={`${cls.btn} ${cls.primary}`}
-            onClick={saveOrder}
+            onClick={handleSaveOrder}
             disabled={!hasItems}
           >
             Lưu
@@ -161,6 +255,7 @@ export default function RightPanel() {
             type="button"
             className={`${cls.btn} ${cls.success}`}
             disabled={!hasItems}
+            onClick={() => setPaymentModalOpen(true)}
             title="Thanh toán"
           >
             Thanh toán

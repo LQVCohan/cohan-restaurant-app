@@ -17,6 +17,7 @@ const F_TABLE_MIN = gql`
     floorLevel
     joinGroupId
     tags
+    restaurantId
     position {
       x
       y
@@ -341,9 +342,12 @@ export default function useTableManagement({ restaurantId }) {
   );
 
   const fetchTableByCode = useCallback(
-    (code) =>
+    (code, restaurantId) =>
       tables.find(
-        (t) => (t.code || "").toLowerCase() === (code || "").toLowerCase()
+        (t) =>
+          (t.code || "").toLowerCase() === (code || "").toLowerCase() &&
+          (t.restaurantId || "").toLowerCase() ===
+            (restaurantId || "").toLowerCase()
       ) || null,
     [tables]
   );
