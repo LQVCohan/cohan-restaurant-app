@@ -12,42 +12,51 @@ const mapDeliveryToOrderType = (deliveryMethod) => {
 
 const normalizePaymentMethod = (m) => (m === "transfer" ? "bank_transfer" : m);
 
+/**
+ * quantity ở đây phải là float → dùng parseFloat
+ */
 function normalizeItem(i) {
+  const qty = parseFloat(i.quantity ?? 1);
+  const price = Number(i.price || 0);
+  const lineSubtotal = Math.round(price * qty);
   return {
     dishId: i.dishId ?? i.id,
     menuId: i.menuId,
     categoryId: i.categoryId,
     name: i.name,
-    unit: i.unit || "phần",
-    image: i.image,
+    unit: i.unit || "portion",
     price: Number(i.price || 0),
     modifiersPrice: Number(i.modifiersPrice || 0),
     method: i.method || i.cookingMethod || "",
     methodDelta: Number(i.methodDelta || 0),
     description: i.description || "",
-    quantity: Number(i.quantity || 1),
+    quantity: Number.isFinite(qty) ? qty : 1,
     modifiers: (i.modifiers || []).map((m) => ({
       optionId: m.optionId,
       optionName: m.optionName,
       groupId: m.groupId,
       price: Number(m.price || 0),
     })),
+    lineSubtotal,
   };
 }
 
+/**
+ * Tính total phải nhân được với quantity là số lẻ
+ */
 function computeTotals(items) {
   let base = 0;
   let mods = 0;
   for (const it of items) {
-    base += Number(it.price || 0) * Number(it.quantity || 0);
-    mods += Number(it.modifiersPrice || 0) * Number(it.quantity || 0);
+    const qty = Number(it.quantity || 0);
+    base += Number(it.price || 0) * qty;
+    mods += Number(it.modifiersPrice || 0) * qty;
   }
-  const subtotal = base;
-  const total = subtotal + mods;
-  const tax = Math.round(total * 0.1);
-  const service = 0;
+  const subtotal = base + mods;
+  const tax = Math.round(subtotal * 0.1);
+  const service = Math.round(subtotal * 0.05);
   const discount = 0;
-  const grandTotal = total + tax + service - discount;
+  const grandTotal = subtotal + tax + service - discount;
   return { subtotal, discount, tax, service, grandTotal };
 }
 
@@ -67,7 +76,7 @@ async function createPaymentTxn(orderDoc, method) {
   });
 }
 
-// ✅ tạo hoặc tìm user guest theo email/phone, TTL 30 ngày
+// tạo hoặc tìm user khách từ phone/email
 async function ensureUserForOrder(ctxUserId, explicitUserId, customer) {
   if (ctxUserId) return toId(ctxUserId);
   if (explicitUserId && mongoose.isValidObjectId(explicitUserId)) {
@@ -78,9 +87,8 @@ async function ensureUserForOrder(ctxUserId, explicitUserId, customer) {
   const email = customer?.email?.trim()?.toLowerCase();
   const fullName = customer?.fullName?.trim();
 
-  if (!phone && !email) return undefined; // server vẫn cho phép, nếu bạn muốn bắt buộc hãy throw
+  if (!phone && !email) return undefined;
 
-  // tìm theo phone hoặc email
   const q = [];
   if (phone) q.push({ phone });
   if (email) q.push({ email });
@@ -96,18 +104,119 @@ async function ensureUserForOrder(ctxUserId, explicitUserId, customer) {
       isGuest: true,
       guestExpiresAt: expires,
     });
-  } else {
-    // nếu có sẵn, đảm bảo roleName hợp lệ
-    if (!user.roleName) {
-      user.roleName = "customer";
-      await user.save();
-    }
+  } else if (!user.roleName) {
+    user.roleName = "customer";
+    await user.save();
   }
 
   return user._id;
 }
 
 export const OrderMutation = {
+  // ===================== POS upsert by table =====================
+  async upsertTableOrder(_, { input }, ctx) {
+    const {
+      restaurantId,
+      tableCode,
+      orderCode,
+      items,
+      note,
+      customer,
+      clientMeta,
+    } = input;
+
+    if (!restaurantId) throw new Error("restaurantId is required");
+    if (!tableCode) throw new Error("tableCode is required");
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error("No items to upsert");
+    }
+
+    // lấy (hoặc tạo) user nếu có truyền customer
+    const userId = await ensureUserForOrder(
+      ctx?.user?.id,
+      null,
+      customer || {}
+    );
+
+    // tìm order hiện có của bàn này
+    let existingOrder = null;
+    if (orderCode) {
+      existingOrder = await Order.findOne({
+        restaurantId: toId(restaurantId),
+        orderCode,
+      });
+    } else {
+      existingOrder = await Order.findOne({
+        restaurantId: toId(restaurantId),
+        tableCode,
+        currentStatus: { $in: ["confirmed", "preparing", "served"] },
+      }).sort({ createdAt: -1 });
+    }
+
+    const normalizedItems = items.map(normalizeItem);
+
+    let isNewOrder = false;
+    let doc;
+
+    if (!existingOrder) {
+      // tạo mới
+      isNewOrder = true;
+      doc = await Order.create({
+        orderCode: orderCode || `POS-${tableCode}-${Date.now().toString(36)}`,
+        restaurantId: toId(restaurantId),
+        tableCode,
+        userId,
+        orderType: "dine_in",
+        shipping: null,
+        items: normalizedItems,
+        totals: computeTotals(normalizedItems),
+        note: note || "",
+        payment: {
+          method: "cash",
+          status: "pending",
+        },
+        customer: customer
+          ? {
+              fullName: customer.fullName,
+              phone: customer.phone,
+              email: customer.email,
+            }
+          : undefined,
+        currentStatus: "confirmed",
+        statusTimeline: [
+          {
+            status: "confirmed",
+            at: new Date(),
+            byUserId: userId,
+            note: "Created from POS",
+          },
+        ],
+        clientMeta,
+      });
+    } else {
+      // append
+      const mergedItems = [...(existingOrder.items || []), ...normalizedItems];
+      existingOrder.items = mergedItems;
+      existingOrder.totals = computeTotals(mergedItems);
+      if (note) existingOrder.note = note;
+      if (customer) {
+        existingOrder.customer = {
+          fullName: customer.fullName,
+          phone: customer.phone,
+          email: customer.email,
+        };
+        if (userId) existingOrder.userId = userId;
+      }
+      doc = await existingOrder.save();
+    }
+
+    return {
+      isNewOrder,
+      order: doc.toJSON(),
+    };
+  },
+
+  // ===================== create order chuẩn =====================
   async createOrder(_, { input }, ctx) {
     const {
       orderCode,
@@ -119,7 +228,8 @@ export const OrderMutation = {
       items,
       note,
       paymentMethod,
-      customer, // { fullName, phone, email }
+      customer,
+      tableCode,
     } = input;
 
     if (!restaurantId) throw new Error("restaurantId is required");
@@ -149,6 +259,7 @@ export const OrderMutation = {
           ? toId(reservationId)
           : undefined,
       orderType: orderType || mapDeliveryToOrderType(shipping?.deliveryMethod),
+      tableCode: tableCode || undefined,
       shipping,
       items: normalizedItems,
       totals,
@@ -161,13 +272,20 @@ export const OrderMutation = {
         currency: "VND",
         paidAt: new Date(),
       },
+      customer: customer
+        ? {
+            fullName: customer.fullName,
+            phone: customer.phone,
+            email: customer.email,
+          }
+        : undefined,
       statusTimeline: [
         { status: "confirmed", at: new Date(), byUserId: effectiveUserId },
       ],
     });
 
     await createPaymentTxn(doc, paymentMethod);
-    return doc.toJSON(); // có virtual id
+    return doc.toJSON();
   },
 
   async updateOrderStatus(_, { input }, ctx) {
@@ -207,6 +325,7 @@ export const OrderMutation = {
     ];
     await doc.save();
 
+    // refund nếu đã trả
     const paid =
       doc.payment?.status === "paid" && (doc.totals?.grandTotal || 0) > 0;
     if (paid) {

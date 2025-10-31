@@ -35,6 +35,34 @@ input OrderModifierInput {
   groupId: ID
   price: Int
 }
+input PosOrderItemInput {
+  dishId: ID
+  menuId: ID
+  categoryId: ID
+  name: String!
+  unit: String
+  price: Int!
+  quantity: Int!
+  method: String
+  description: String
+  modifiers: [OrderModifierInput!]
+}
+
+input UpsertTableOrderInput {
+  restaurantId: ID!
+  tableCode: String!
+  orderCode: String
+  items: [OrderItemInput!]!
+  note: String
+  paymentMethod: String
+  customer: CustomerInput
+  clientMeta: JSON
+}
+
+type UpsertTableOrderPayload {
+  order: Order!
+  isNewOrder: Boolean!
+}
 
 type OrderItem {
   dishId: String
@@ -48,7 +76,7 @@ type OrderItem {
   method: String
   methodDelta: Int
   description: String
-  quantity: Int!
+  quantity: Float!
   modifiers: [OrderModifier!]
   lineSubtotal: Int
 }
@@ -65,7 +93,7 @@ input OrderItemInput {
   method: String
   methodDelta: Int
   description: String
-  quantity: Int!
+  quantity: Float!
   modifiers: [OrderModifierInput!]
 }
 
@@ -101,8 +129,8 @@ type OrderPayment {
 
 type Order {
   id: ID!
+  tableCode: String
   orderCode: String # ✅ mã gộp các đơn
-  userId: ID
   restaurantId: ID!
   reservationId: ID
   orderType: String!
@@ -115,6 +143,7 @@ type Order {
   note: String
   createdAt: String!
   updatedAt: String!
+  customer: User
 }
 
 input CreateOrderInput {
@@ -152,6 +181,11 @@ type PageInfo {
 }
 
 extend type Query {
+  orderByTableCode(
+    restaurantId: ID!
+    tableCode: String!
+    onlyActive: Boolean = true
+  ): Order
   order(id: ID!): Order
   ordersByRestaurant(
     restaurantId: ID!
@@ -159,9 +193,27 @@ extend type Query {
     cursor: ID
   ): OrdersConnection!
   ordersByUser(userId: ID!, limit: Int = 20, cursor: ID): OrdersConnection!
+  orderByTable(restaurantId: ID!, tableCode: String!): Order
+  orders(
+    restaurantId: ID!
+    tableCode: String
+    orderCode: String
+    statuses: [String!]
+    from: String
+    to: String
+    limit: Int = 20
+    cursor: ID
+  ): OrdersConnection!
 }
 
 extend type Mutation {
+  upsertTableOrder(input: UpsertTableOrderInput!): UpsertTableOrderPayload!
+  openTableSession(restaurantId: ID!, tableCode: String!): Order!
+  closeTableSession(
+    restaurantId: ID!
+    tableCode: String!
+    orderCode: String
+  ): Order!
   createOrder(input: CreateOrderInput!): Order!
   updateOrderStatus(input: UpdateOrderStatusInput!): Order!
   cancelOrder(id: ID!, reason: String): Order!

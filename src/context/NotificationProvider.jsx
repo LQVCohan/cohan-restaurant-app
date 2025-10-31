@@ -18,6 +18,7 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const timeoutRefs = useRef({});
 
+  // Show a notification with message, type and optional duration
   const showNotification = useCallback(
     (message, type = "info", duration = 4000) => {
       if (!message) return;
@@ -35,6 +36,7 @@ export const NotificationProvider = ({ children }) => {
     []
   );
 
+  // Remove a specific notification by its ID
   const removeNotification = useCallback((id) => {
     setNotifications((prev) => prev.filter((x) => x.id !== id));
     if (timeoutRefs.current[id]) {
@@ -43,12 +45,14 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
+  // Clear all notifications
   const clearAll = useCallback(() => {
     Object.values(timeoutRefs.current).forEach(clearTimeout);
     timeoutRefs.current = {};
     setNotifications([]);
   }, []);
 
+  // Cleanup timeouts when the component unmounts
   useEffect(() => {
     return () => {
       Object.values(timeoutRefs.current).forEach(clearTimeout);
@@ -56,6 +60,7 @@ export const NotificationProvider = ({ children }) => {
     };
   }, []);
 
+  // Memoize the context value
   const value = useMemo(
     () => ({ notifications, showNotification, removeNotification, clearAll }),
     [notifications, showNotification, removeNotification, clearAll]

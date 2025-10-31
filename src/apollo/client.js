@@ -101,8 +101,5 @@ export const apolloClient = new ApolloClient({
 
 /* Dev helper: cho phép truy cập cache trong optimistic/update nếu cần */
 if (import.meta.env.DEV) {
-  // ví dụ trong hook bạn có thể dùng: window.__APOLLO_CLIENT__.cache
-  // (chỉ hỗ trợ dev/debug; không dựa vào nó trong production logic)
-  // eslint-disable-next-line no-underscore-dangle
   window.__APOLLO_CLIENT__ = apolloClient;
 }

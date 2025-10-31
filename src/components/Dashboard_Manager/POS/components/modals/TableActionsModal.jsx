@@ -10,7 +10,7 @@ function TableActionsModalCore({
   table,
   onClose,
   onUpdated,
-  onSave,
+  onSave, // giữ lại để không hỏng chỗ cũ
 }) {
   const reallyOpen = open ?? isOpen;
 
@@ -27,9 +27,10 @@ function TableActionsModalCore({
     splitTables,
     deleteTable,
     fetchTableByCode,
+    saveTableCustomer, // 👉 mới: lưu customer vào POS + order
   } = usePos();
 
-  // ----- local states
+  // ----- local states -----
   const [code, setCode] = useState("");
   const [capacity, setCapacity] = useState(0);
   const [type, setType] = useState("standard");
@@ -40,9 +41,11 @@ function TableActionsModalCore({
   const [swapWithCode, setSwapWithCode] = useState("");
   const [mergeCodes, setMergeCodes] = useState("");
 
+  // thông tin khách
   const [cust, setCust] = useState({
     name: "",
     phone: "",
+    email: "",
     guests: 0,
     checkin: "",
     note: "",
@@ -51,6 +54,7 @@ function TableActionsModalCore({
   const [busy, setBusy] = useState({});
   const setBusyKey = (k, v) => setBusy((b) => ({ ...b, [k]: v }));
 
+  // khi mở modal -> fill dữ liệu
   useEffect(() => {
     if (table && reallyOpen) {
       setCode(table.code || "");
@@ -61,9 +65,12 @@ function TableActionsModalCore({
       setMoveLevel(table.floorLevel ?? null);
       setSwapWithCode("");
       setMergeCodes("");
+
+      // fill customer
       setCust({
-        name: table.customerName || "",
-        phone: table.phone || "",
+        name: table.customerName || table.customer?.fullName || "",
+        phone: table.phone || table.customer?.phone || "",
+        email: table.customer?.email || "",
         guests: table.guestCount || 0,
         checkin: table.checkinTime || "",
         note: table.note || "",
@@ -77,7 +84,7 @@ function TableActionsModalCore({
   );
   const canSplit = !!table?.joinGroupId;
 
-  // ===== UX: lock scroll + ESC to close
+  // lock scroll + ESC
   useEffect(() => {
     if (!reallyOpen) return;
     const prev = document.body.style.overflow;
@@ -94,7 +101,7 @@ function TableActionsModalCore({
 
   if (!reallyOpen || !table) return null;
 
-  // ===== actions
+  /* ================== ACTIONS ================== */
   const handleSaveBasics = async () => {
     if (!table?.id) return;
     setBusyKey("save", true);
@@ -110,7 +117,6 @@ function TableActionsModalCore({
           .filter(Boolean),
       };
       await updateTable(patch);
-
       onUpdated?.();
     } catch (e) {
       console.error(e);
@@ -126,7 +132,6 @@ function TableActionsModalCore({
     try {
       await setTableStatus({ id: table.id, status: next });
       setStatusLocal(next);
-
       onUpdated?.();
     } catch (e) {
       console.error(e);
@@ -143,7 +148,6 @@ function TableActionsModalCore({
     setBusyKey("move", true);
     try {
       await moveTable({ id: table.id, floorId });
-
       onUpdated?.();
     } catch (e) {
       console.error(e);
@@ -169,7 +173,6 @@ function TableActionsModalCore({
         aId: table.id,
         bId: b.id,
       });
-
       onUpdated?.();
       setSwapWithCode("");
     } catch (e) {
@@ -197,7 +200,6 @@ function TableActionsModalCore({
     setBusyKey("merge", true);
     try {
       await mergeTables({ tableIds: ids, anchorId: table.id });
-
       onUpdated?.();
       setMergeCodes("");
     } catch (e) {
@@ -217,7 +219,6 @@ function TableActionsModalCore({
         mode: "PARTIAL",
         tableIds: [table.id],
       });
-
       onUpdated?.();
     } catch (e) {
       console.error(e);
@@ -233,7 +234,6 @@ function TableActionsModalCore({
     setBusyKey("delete", true);
     try {
       await deleteTable(table.id);
-
       onUpdated?.();
       onClose?.();
     } catch (e) {
@@ -244,16 +244,32 @@ function TableActionsModalCore({
     }
   };
 
+  // ✅ Lưu thông tin khách
   const saveCustomerInfo = async () => {
+    const customer = {
+      fullName: cust.name,
+      phone: cust.phone,
+      email: cust.email,
+      note: cust.note,
+      guestCount: cust.guests,
+      checkin: cust.checkin,
+    };
+
     try {
+      // gọi context để POS biết, và để nó tự đẩy lên order nếu bàn có order
+      await saveTableCustomer(table.code, customer);
+
+      // nếu trước đây bạn truyền onSave từ ngoài thì vẫn gọi
       await onSave?.(table.code, cust);
+
+      onUpdated?.();
     } catch (e) {
       console.error(e);
       alert("Lưu thông tin khách thất bại.");
     }
   };
 
-  // ===== render to body via Portal
+  /* ================== RENDER ================== */
   return createPortal(
     <div className={s.backdrop} onClick={onClose}>
       <div
@@ -465,7 +481,7 @@ function TableActionsModalCore({
             </div>
           </div>
 
-          {/* 6) Thông tin khách (tuỳ chọn) */}
+          {/* 6) Thông tin khách */}
           <div className={s.group}>
             <div className={s.label}>Thông tin khách</div>
             <div className={s.twoCols}>
@@ -483,6 +499,14 @@ function TableActionsModalCore({
                   className={s.input}
                   value={cust.phone}
                   onChange={(e) => setCust({ ...cust, phone: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className={s.label}>Email</label>
+                <input
+                  className={s.input}
+                  value={cust.email}
+                  onChange={(e) => setCust({ ...cust, email: e.target.value })}
                 />
               </div>
               <div>
@@ -528,6 +552,7 @@ function TableActionsModalCore({
             </div>
           </div>
 
+          {/* Delete */}
           <div className={s.actionsEnd}>
             <button
               className={`${s.btn} ${s.danger}`}
@@ -563,4 +588,5 @@ function TableActionsModalCore({
 export default function TableActionsModal(props) {
   return <TableActionsModalCore {...props} />;
 }
+
 export { TableActionsModalCore as TableActionsModal };

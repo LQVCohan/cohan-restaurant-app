@@ -1,3 +1,4 @@
+// src/components/Dashboard_Manager/POS/components/CenterPanel.jsx
 import React, { useState, useMemo, useCallback } from "react";
 import cls from "./CenterPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
@@ -10,14 +11,12 @@ export default function CenterPanel() {
     currentCategory,
     setCurrentCategory,
     setSearchTerm,
-    addItemToOrder,
-
+    addToOrder,
     timeSlotOptions,
     selectedTimeSlot,
     setSelectedTimeSlot,
   } = usePos();
 
-  // Tabs danh mục
   const categoryTabs = useMemo(
     () => [
       { key: "all", label: "Tất cả" },
@@ -33,6 +32,7 @@ export default function CenterPanel() {
 
   const onSelectCategory = (cat) => setCurrentCategory?.(cat);
 
+  // gắn _displayPrice + unit + defaultCooking
   const withDisplay = useMemo(() => {
     return (filteredMenu || []).map((it) => {
       const base = Number(it.basePrice ?? 0);
@@ -50,8 +50,8 @@ export default function CenterPanel() {
           ? prepPrice
           : Number(it.price ?? 0);
 
-      const unit = it.byWeight ? "Kg" : "Phần";
-      const cookingOption = defaultPrep?.name || "Bình thường";
+      const unit = it.byWeight ? "kg" : "portion";
+      const cookingOption = defaultPrep?.name || "";
 
       return {
         ...it,
@@ -62,7 +62,7 @@ export default function CenterPanel() {
     });
   }, [filteredMenu]);
 
-  // Modal state
+  // modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
@@ -86,27 +86,35 @@ export default function CenterPanel() {
         note,
         price,
       } = payload || {};
-      const core = {
-        id: menuItem?.id,
-        name: menuItem?.name,
-        price: Number(menuItem?._displayPrice ?? menuItem?.price ?? 0),
-      };
 
-      addItemToOrder?.({
-        menuItem: core,
+      // menuItem ở đây là object đầy đủ từ API menu
+      if (!menuItem) return;
+
+      addToOrder?.({
+        menuItem: {
+          id: menuItem.id,
+          dishId: menuItem.id,
+          name: menuItem.name,
+          price:
+            price ?? Number(menuItem._displayPrice ?? menuItem.price ?? 0) ?? 0,
+          // 👇 cố gắng map cho đủ
+          menuId: menuItem.menuId ?? menuItem.menu?.id ?? null,
+          categoryId: menuItem.categoryId ?? menuItem.category?.id ?? null,
+        },
         cookingOption,
         unit,
         note,
         quantity,
+        price,
       });
+
       closeModal();
     },
-    [addItemToOrder, closeModal]
+    [addToOrder, closeModal]
   );
 
   return (
     <div className={cls.wrapper}>
-      {/* Header: tiêu đề + (tuỳ chọn) select khung giờ + ô tìm kiếm */}
       <div className={cls.header}>
         <h2 style={{ color: "#0c4a6e", fontWeight: 700, margin: 0 }}>
           Thực đơn
@@ -139,7 +147,6 @@ export default function CenterPanel() {
         </div>
       </div>
 
-      {/* Tabs danh mục */}
       <div className={cls.tabs}>
         {categoryTabs.map((c) => (
           <button
@@ -154,7 +161,6 @@ export default function CenterPanel() {
         ))}
       </div>
 
-      {/* Lưới món ăn */}
       <div className={cls.grid}>
         {withDisplay.map((item) => {
           const price = Number(item._displayPrice || 0);
@@ -210,7 +216,6 @@ export default function CenterPanel() {
         })}
       </div>
 
-      {/* Modal cho item */}
       <MenuItemModal
         isOpen={modalOpen}
         item={selectedItem}

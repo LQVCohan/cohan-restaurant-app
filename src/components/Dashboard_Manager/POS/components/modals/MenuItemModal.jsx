@@ -1,74 +1,169 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import stylesModal from "./MenuItemModal.module.scss";
 
 export default function MenuItemModal({ isOpen, item, onAdd, onClose }) {
   const [qty, setQty] = useState(1);
   const [cooking, setCooking] = useState(null);
-  const [unit, setUnit] = useState("portion"); // Mặc định là "portion"
+  const [unit, setUnit] = useState("portion");
   const [note, setNote] = useState("");
   const [price, setPrice] = useState(0);
   const [servingVariants, setServingVariants] = useState([]);
+  const [selectedVariantKey, setSelectedVariantKey] = useState(null);
 
-  // Đảm bảo modal hiển thị đúng khi mở
+  // bảo vệ
+  const prepMethods = Array.isArray(item?.preparationMethods)
+    ? item.preparationMethods
+    : [];
+
+  // giá default ưu tiên: _displayPrice (tính ở CenterPanel) -> basePrice -> price
+  const baseDisplayPrice = useMemo(() => {
+    if (!item) return 0;
+    return (
+      Number(item._displayPrice ?? 0) ||
+      Number(item.basePrice ?? 0) ||
+      Number(item.price ?? 0) ||
+      0
+    );
+  }, [item]);
+
   useEffect(() => {
-    if (isOpen && item) {
-      const defaultCooking = item.preparationMethods.find(
-        (method) => method.isDefault
-      );
-      setCooking(
-        defaultCooking ? defaultCooking.name : item.preparationMethods[0]?.name
-      );
-      setPrice(
-        defaultCooking
-          ? defaultCooking.price
-          : item.preparationMethods[0]?.price
-      );
+    if (!isOpen || !item) return;
 
-      // Lấy dữ liệu servingVariants từ item và quyết định đơn vị tính
-      const variants = item.servingVariants || [];
-      setServingVariants(variants);
+    // reset state khi mở modal
+    setQty(1);
+    setNote("");
+    const variants = Array.isArray(item.servingVariants)
+      ? item.servingVariants
+      : [];
+    setServingVariants(variants);
 
-      // Nếu có servingVariants, ưu tiên theo "PORTION" hoặc "BY_WEIGHT"
-      const defaultUnit = variants.find((variant) => variant.mode === "PORTION")
-        ? "portion"
-        : variants.find((variant) => variant.mode === "BY_WEIGHT")
-        ? "kg"
-        : "portion"; // Nếu không có gì, mặc định là "portion"
-      setUnit(defaultUnit);
+    // chọn cooking default
+    let initialCooking = null;
+    let initialPrice = baseDisplayPrice;
+
+    if (prepMethods.length > 0) {
+      const def =
+        prepMethods.find((m) => m?.isDefault) || prepMethods[0] || null;
+      initialCooking = def?.name || null;
+      if (def?.price != null) {
+        initialPrice = Number(def.price);
+      }
     }
-  }, [isOpen, item]);
+
+    // nếu có servingVariants → xác định unit
+    if (variants.length > 0) {
+      // ưu tiên PORTION
+      const portionVar = variants.find((v) => v.mode === "PORTION");
+      const weightVar = variants.find((v) => v.mode === "BY_WEIGHT");
+      if (portionVar) {
+        setUnit("portion");
+        setSelectedVariantKey(portionVar.key);
+        // nếu variant có price riêng thì dùng
+        if (typeof portionVar.price === "number") {
+          initialPrice = portionVar.price;
+        }
+        if (portionVar.preparationMethodName) {
+          initialCooking = portionVar.preparationMethodName;
+        }
+      } else if (weightVar) {
+        setUnit("kg");
+        setSelectedVariantKey(weightVar.key);
+        if (typeof weightVar.price === "number") {
+          initialPrice = weightVar.price;
+        }
+        if (weightVar.preparationMethodName) {
+          initialCooking = weightVar.preparationMethodName;
+        }
+      } else {
+        // không match gì → để mặc định
+        setUnit("portion");
+        setSelectedVariantKey(variants[0]?.key ?? null);
+      }
+    } else {
+      // không có variants → mặc định portion
+      setUnit("portion");
+      setSelectedVariantKey(null);
+    }
+
+    setCooking(initialCooking);
+    setPrice(initialPrice);
+  }, [isOpen, item, prepMethods, baseDisplayPrice]);
 
   const change = (d) => setQty((q) => Math.max(1, q + d));
 
   const handleCookingChange = (selectedCooking) => {
     setCooking(selectedCooking.name);
-    setPrice(selectedCooking.price);
+    // nếu cooking có price riêng thì set, không thì giữ nguyên
+    if (typeof selectedCooking.price === "number") {
+      setPrice(Number(selectedCooking.price));
+    }
   };
 
-  const add = () => {
-    onAdd?.({
-      menuItem: item,
-      quantity: qty,
-      cookingOption: cooking,
-      unit,
-      note,
-      price,
-    });
+  const handleSelectVariant = (variant) => {
+    setSelectedVariantKey(variant.key);
+    // đổi unit theo variant
+    if (variant.mode === "PORTION") {
+      setUnit("portion");
+    } else if (variant.mode === "BY_WEIGHT") {
+      setUnit("kg");
+    } else {
+      // fallback
+      setUnit(variant.mode?.toLowerCase?.() || "portion");
+    }
+
+    // nếu variant có cách chế biến riêng
+    if (variant.preparationMethodName) {
+      setCooking(variant.preparationMethodName);
+    }
+
+    // nếu variant có price riêng thì set
+    if (typeof variant.price === "number") {
+      setPrice(Number(variant.price));
+    } else {
+      // không có thì giữ price hiện tại
+    }
   };
 
   const handleQuantityChange = (e) => {
     const value = e.target.value;
-    // Validate số lượng chỉ được phép là số nguyên khi chọn "Portion"
+    // nếu đơn vị là portion thì chỉ cho số nguyên
     if (unit === "portion" && !Number.isInteger(Number(value))) {
       return;
     }
     setQty(Number(value) || 1);
   };
 
+  const add = () => {
+    if (!item) return;
+    onAdd?.({
+      menuItem: {
+        // GỬI ĐỦ để useOrderManagement không lỗi
+        id: item.id,
+        dishId: item.dishId || item.id,
+        name: item.name,
+        price: price,
+        _displayPrice: price,
+        menuId: item.menuId || item.menu_id || null,
+        categoryId: item.categoryId || item.category_id || null,
+        image: item.thumbImage || item.image || null,
+        servingVariants: item.servingVariants || [],
+        preparationMethods: item.preparationMethods || [],
+        byWeight: !!item.byWeight,
+      },
+      quantity: qty,
+      cookingOption: cooking,
+      unit,
+      note,
+      price,
+      // để sau này nếu muốn lưu theo variant
+      servingVariantKey: selectedVariantKey,
+    });
+  };
+
   if (!isOpen || !item) return null;
 
-  // Kiểm tra và đảm bảo giá hợp lệ trước khi gọi .toLocaleString()
-  const formattedPrice = price ? price.toLocaleString() : "₫ 0";
+  const formattedPrice =
+    typeof price === "number" ? `₫ ${price.toLocaleString("vi-VN")}` : "₫ 0";
 
   return (
     <div className={stylesModal.backdrop}>
@@ -84,8 +179,7 @@ export default function MenuItemModal({ isOpen, item, onAdd, onClose }) {
         <div className={stylesModal.group}>
           <label className={stylesModal.label}>Cách chế biến:</label>
           <div className={stylesModal.grid}>
-            {item.preparationMethods.length === 0 ? (
-              // Nếu không có preparationMethods, hiển thị thông báo
+            {prepMethods.length === 0 ? (
               <div className={stylesModal.noPrepContainer}>
                 <span className={stylesModal.noPrepIcon}>⚠️</span>
                 <p className={stylesModal.noPrepText}>
@@ -93,8 +187,9 @@ export default function MenuItemModal({ isOpen, item, onAdd, onClose }) {
                 </p>
               </div>
             ) : (
-              item.preparationMethods.map((o) => (
+              prepMethods.map((o) => (
                 <button
+                  /* dùng name làm key là ok vì server trả uniq */
                   key={o.name}
                   className={`${stylesModal.opt} ${
                     cooking === o.name ? stylesModal.optActive : ""
@@ -102,43 +197,56 @@ export default function MenuItemModal({ isOpen, item, onAdd, onClose }) {
                   onClick={() => handleCookingChange(o)}
                 >
                   {o.name}
+                  {typeof o.price === "number" && o.price > 0
+                    ? ` (+${o.price.toLocaleString("vi-VN")}đ)`
+                    : ""}
                 </button>
               ))
             )}
           </div>
         </div>
 
-        {/* Đơn vị tính (Portion hoặc Kg) */}
+        {/* Đơn vị / Serving variant */}
         <div className={stylesModal.group}>
-          <label className={stylesModal.label}>Đơn vị tính:</label>
+          <label className={stylesModal.label}>Đơn vị tính / Khẩu phần:</label>
           <div className={stylesModal.grid}>
             {servingVariants.length === 0 ? (
-              // Không có servingVariants, mặc định chọn "Portion"
               <button
                 className={`${stylesModal.opt} ${
                   unit === "portion" ? stylesModal.optActive : ""
                 }`}
-                onClick={() => setUnit("portion")}
+                onClick={() => {
+                  setUnit("portion");
+                  setSelectedVariantKey(null);
+                  // khi quay về portion mà không có variant thì dùng giá base
+                  setPrice(baseDisplayPrice);
+                }}
               >
-                Portion
+                Phần
               </button>
             ) : (
-              // Hiển thị theo servingVariants
               servingVariants.map((variant) => (
                 <button
                   key={variant.key}
                   className={`${stylesModal.opt} ${
-                    unit === variant.mode.toLowerCase()
+                    selectedVariantKey === variant.key
                       ? stylesModal.optActive
                       : ""
                   }`}
-                  onClick={() => setUnit(variant.mode.toLowerCase())}
+                  onClick={() => handleSelectVariant(variant)}
                 >
                   {variant.mode === "PORTION"
-                    ? "Portion"
+                    ? "Phần"
                     : variant.mode === "BY_WEIGHT"
                     ? "Kg"
                     : variant.mode}
+                  {typeof variant.price === "number" &&
+                  Number(variant.price) > 0
+                    ? ` · ${Number(variant.price).toLocaleString("vi-VN")}đ`
+                    : ""}
+                  {variant.preparationMethodName
+                    ? ` · ${variant.preparationMethodName}`
+                    : ""}
                 </button>
               ))
             )}
@@ -165,11 +273,11 @@ export default function MenuItemModal({ isOpen, item, onAdd, onClose }) {
           </div>
         </div>
 
-        {/* Hiển thị giá */}
+        {/* Giá */}
         <div className={stylesModal.group}>
           <label className={stylesModal.label}>Giá:</label>
           <div className={stylesModal.price}>
-            <span>{`₫ ${formattedPrice}`}</span>
+            <span>{formattedPrice}</span>
           </div>
         </div>
 
@@ -185,7 +293,7 @@ export default function MenuItemModal({ isOpen, item, onAdd, onClose }) {
           />
         </div>
 
-        {/* Nút hành động */}
+        {/* Actions */}
         <div className={stylesModal.actions}>
           <button
             className={`${stylesModal.btn} ${stylesModal.secondary}`}
