@@ -1,37 +1,92 @@
 // src/graphql/order/query.js
 import mongoose from "mongoose";
-import { Order, User } from "../../../models/index.js";
+import { Order } from "../../../models/index.js";
 
-function toObjectIdOrNull(id) {
-  if (!id) return null;
-  return mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
+const toObjectId = (id) =>
+  id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
+
+function buildFilter(filter = {}) {
+  const q = {};
+
+  if (filter.restaurantId) {
+    const rid = toObjectId(filter.restaurantId);
+    if (rid) q.restaurantId = rid;
+  }
+
+  if (filter.tableCode) {
+    q.tableCode = filter.tableCode;
+  }
+
+  if (filter.orderCode) {
+    q.orderCode = filter.orderCode;
+  }
+
+  if (
+    filter.statuses &&
+    Array.isArray(filter.statuses) &&
+    filter.statuses.length
+  ) {
+    q.currentStatus = { $in: filter.statuses };
+  } else if (filter.status) {
+    q.currentStatus = filter.status;
+  }
+
+  // date range
+  if (filter.dateFrom || filter.dateTo) {
+    q.createdAt = {};
+    if (filter.dateFrom) q.createdAt.$gte = new Date(filter.dateFrom);
+    if (filter.dateTo) q.createdAt.$lte = new Date(filter.dateTo);
+  }
+
+  // keyword: tìm sơ bộ theo orderCode / tableCode
+  if (filter.keyword) {
+    const kw = filter.keyword.trim();
+    q.$or = [
+      { orderCode: { $regex: kw, $options: "i" } },
+      { tableCode: { $regex: kw, $options: "i" } },
+    ];
+  }
+
+  return q;
 }
 
 export const OrderQuery = {
-  // Lấy 1 order theo id
+  // GET /order?id=...
   async order(_, { id }) {
     if (!mongoose.isValidObjectId(id)) return null;
-    // dùng lean để nhanh, field con sẽ được resolver Order.customer xử lý tiếp
     const doc = await Order.findById(id).lean({ virtuals: true });
     return doc || null;
   },
 
-  // Lấy danh sách order theo nhà hàng (phân trang cursor)
+  // ✅ cái client của bạn đang gọi đây
+  async orders(_, { filter = {}, limit = 50, offset = 0 }) {
+    const q = buildFilter(filter);
+    const [items, totalCount] = await Promise.all([
+      Order.find(q)
+        .sort({ createdAt: -1 })
+        .skip(offset)
+        .limit(limit)
+        .lean({ virtuals: true }),
+      Order.countDocuments(q),
+    ]);
+
+    return {
+      items,
+      totalCount,
+    };
+  },
+
+  // Giữ nguyên dạng connection cũ
   async ordersByRestaurant(_, { restaurantId, limit = 20, cursor }) {
     if (!mongoose.isValidObjectId(restaurantId)) {
       throw new Error("Invalid restaurantId");
     }
-
-    const filter = {
-      restaurantId: new mongoose.Types.ObjectId(restaurantId),
-    };
-
-    const cursorId = toObjectIdOrNull(cursor);
-    if (cursorId) {
-      filter._id = { ...(filter._id || {}), $gt: cursorId };
+    const f = { restaurantId: new mongoose.Types.ObjectId(restaurantId) };
+    if (cursor && mongoose.isValidObjectId(cursor)) {
+      f._id = { $gt: new mongoose.Types.ObjectId(cursor) };
     }
 
-    const docs = await Order.find(filter)
+    const docs = await Order.find(f)
       .sort({ _id: 1 })
       .limit(limit + 1)
       .lean({ virtuals: true });
@@ -48,22 +103,16 @@ export const OrderQuery = {
     };
   },
 
-  // Lấy danh sách order theo user
   async ordersByUser(_, { userId, limit = 20, cursor }) {
     if (!mongoose.isValidObjectId(userId)) {
       throw new Error("Invalid userId");
     }
-
-    const filter = {
-      userId: new mongoose.Types.ObjectId(userId),
-    };
-
-    const cursorId = toObjectIdOrNull(cursor);
-    if (cursorId) {
-      filter._id = { ...(filter._id || {}), $gt: cursorId };
+    const f = { userId: new mongoose.Types.ObjectId(userId) };
+    if (cursor && mongoose.isValidObjectId(cursor)) {
+      f._id = { $gt: new mongoose.Types.ObjectId(cursor) };
     }
 
-    const docs = await Order.find(filter)
+    const docs = await Order.find(f)
       .sort({ _id: 1 })
       .limit(limit + 1)
       .lean({ virtuals: true });
@@ -80,75 +129,28 @@ export const OrderQuery = {
     };
   },
 
-  // 👉 tiện cho POS: lấy order hiện tại theo restaurant + tableCode
-  // (nếu bạn muốn dùng ở client thay vì query orders(filter:{tableCode}))
-  async orderByTableCode(_, { restaurantId, tableCode, onlyActive = true }) {
-    if (!restaurantId) throw new Error("restaurantId is required");
-    if (!tableCode) throw new Error("tableCode is required");
-
-    const filter = {
-      restaurantId: new mongoose.Types.ObjectId(restaurantId),
-      tableCode, // bạn đã thêm field này vào model Order
-    };
-
-    if (onlyActive) {
-      filter.currentStatus = { $in: ["confirmed", "preparing", "served"] };
+  // 👇 cái bạn hỏi "orderByTableCode khai báo ở schema như thế nào"
+  // đây chính là resolver của nó
+  async ordersByTableCode(
+    _,
+    { restaurantId, tableCode, limit = 20, offset = 0 }
+  ) {
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new Error("Invalid restaurantId");
     }
+    const q = {
+      restaurantId: new mongoose.Types.ObjectId(restaurantId),
+      tableCode,
+    };
+    const [items, totalCount] = await Promise.all([
+      Order.find(q)
+        .sort({ createdAt: -1 })
+        .skip(offset)
+        .limit(limit)
+        .lean({ virtuals: true }),
+      Order.countDocuments(q),
+    ]);
 
-    const doc = await Order.findOne(filter)
-      .sort({ createdAt: -1 })
-      .lean({ virtuals: true });
-
-    return doc || null;
-  },
-};
-
-/**
- * Các field-level resolvers cho type Order
- * để bạn có thể query:
- *
- *   order(id: "...") {
- *     id
- *     tableCode
- *     customer {
- *       id
- *       fullName
- *       phone
- *       email
- *     }
- *   }
- *
- * mà KHÔNG cần thay đổi cấu trúc MongoDB (vẫn dùng chung collection User).
- */
-export const OrderResolvers = {
-  Order: {
-    // 👉 bổ sung field "customer" cho Order
-    // Ưu tiên: userId -> User
-    // Fallback: shipping.phone / shipping.email -> User
-    async customer(order) {
-      // 1. ưu tiên userId
-      const userId = order.userId || order.user?.id;
-      if (userId && mongoose.isValidObjectId(userId)) {
-        const u = await User.findById(userId).lean();
-        if (u) return u;
-      }
-
-      // 2. fallback: theo phone / email từ shipping
-      const phone = order?.shipping?.phone?.trim();
-      const rawEmail = order?.shipping?.email?.trim();
-      const email = rawEmail ? rawEmail.toLowerCase() : null;
-
-      if (phone || email) {
-        const $or = [];
-        if (phone) $or.push({ phone });
-        if (email) $or.push({ email });
-
-        const u = await User.findOne({ $or }).lean();
-        if (u) return u;
-      }
-
-      // 3. không có => null
-      return null;
-    },
+    return { items, totalCount };
   },
 };

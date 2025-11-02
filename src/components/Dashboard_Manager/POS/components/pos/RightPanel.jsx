@@ -1,16 +1,15 @@
-// src/components/Dashboard_Manager/POS/components/RightPanel.jsx
-import React, { useState } from "react";
+// src/components/Dashboard_Manager/POS/components/panels/RightPanel.jsx
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import cls from "./RightPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
+import { useNotification } from "../../../../../hooks/useNotification";
 import { formatPrice } from "../../utils/format";
-import Toast from "../../../../ui/Toast";
 import { PaymentModal } from "../modals/PaymentModal";
 
 export default function RightPanel() {
   const navigate = useNavigate();
   const {
-    restaurantId,
     currentTable,
     currentOrder,
     updateItemQty,
@@ -20,166 +19,292 @@ export default function RightPanel() {
     saveOrder,
   } = usePos();
 
-  const [toastItems, setToastItems] = useState([]);
+  // dùng notification global
+  const { showNotification } = useNotification?.() || {
+    showNotification: (msg, type) => console.log(type || "info", msg),
+  };
+
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [pulse, setPulse] = useState(false);
 
-  const hasItems = currentOrder && currentOrder.length > 0;
+  const hasItems = Array.isArray(currentOrder) && currentOrder.length > 0;
 
-  const showToast = (type, text) => {
-    setToastItems((prev) => [
-      ...prev,
-      { id: Date.now() + Math.random(), type, text },
-    ]);
+  // tách nhóm: món đã lưu & món mới
+  const { existingItems, newItems } = useMemo(() => {
+    const ex = [];
+    const nw = [];
+    (currentOrder || []).forEach((it) => {
+      if (it.isExisting && !it.isNew) ex.push(it);
+      else nw.push(it);
+    });
+    return { existingItems: ex, newItems: nw };
+  }, [currentOrder]);
+
+  const handlePaymentConfirm = (paymentMethod, paymentAmount) => {
+    console.log("Thanh toán:", paymentMethod, paymentAmount);
+    closePaymentModal();
   };
 
-  const handleQtyChange = (item, change) => {
-    const newQty = Math.max(1, item.quantity + change);
-    updateItemQty(item.dishId || item.id, newQty);
-  };
-
-  const handleQtyInput = (e, item) => {
-    const newQty = Math.max(1, Number(e.target.value) || 1);
-    updateItemQty(item.dishId || item.id, newQty);
-  };
+  const closePaymentModal = () => setPaymentModalOpen(false);
 
   const handleSaveOrder = async () => {
     if (!currentTable) {
-      showToast("error", "Vui lòng chọn bàn trước khi lưu.");
-      return;
-    }
-    if (!restaurantId) {
-      showToast("error", "Thiếu restaurantId, vui lòng kiểm tra PosProvider.");
+      showNotification("Vui lòng chọn bàn trước khi lưu.", "error");
       return;
     }
 
-    const res = await saveOrder({ restaurantId, persist: true });
-    if (res.success) {
-      showToast("success", res.message || "Đã lưu đơn.");
+    const res = await saveOrder?.({
+      persist: true,
+      restaurantId: currentTable.restaurantId,
+    });
+
+    if (res?.success) {
+      // hiệu ứng viền xanh
+      setPulse(true);
+      setTimeout(() => setPulse(false), 650);
+
+      showNotification(`Đã lưu vào bàn ${currentTable.code}`, "success", 3000);
+
+      // nếu bạn muốn clear/làm trống sau khi lưu thì mở 2 dòng dưới
+      // clearOrder();
+      // setCurrentTable(null); // nếu context cho phép
     } else {
-      showToast("error", res.message || "Lưu đơn thất bại.");
+      showNotification(res?.message || "Lưu đơn hàng thất bại.", "error");
     }
   };
 
-  const getItemMeta = (item) => {
-    const unitLabel = item.unit === "kg" || item.unit === "KG" ? "Kg" : "Phần";
-    const price =
-      typeof item.price === "number" ? formatPrice(item.price) : "₫ 0";
-    const method = item.method || item.cookingOption;
-    return `${unitLabel} · ${price}${method ? ` · ${method}` : ""}`.trim();
+  const handleQtyChange = (item, change) => {
+    const next = Math.max(1, Number(item.quantity || 1) + change);
+    updateItemQty(item.dishId || item.id, next);
+  };
+
+  const handleQtyInput = (e, item) => {
+    const v = Math.max(1, Number(e.target.value) || 1);
+    updateItemQty(item.dishId || item.id, v);
+  };
+
+  const getItemPrice = (item) => {
+    const p = Number(item.price || 0);
+    return formatPrice(p);
+  };
+
+  const getItemTotal = (item) => {
+    const t =
+      item.total != null
+        ? Number(item.total)
+        : Number(item.price || 0) * Number(item.quantity || 1);
+    return formatPrice(t);
   };
 
   return (
-    <div className={cls.wrapper}>
-      <Toast
-        items={toastItems}
-        onClose={(id) =>
-          setToastItems((prev) => prev.filter((t) => t.id !== id))
-        }
-      />
-
+    <div
+      className={`${cls.wrapper} ${pulse ? cls.pulse : ""}`}
+      data-pos-order-panel
+    >
       <PaymentModal
         isOpen={isPaymentModalOpen}
-        onClose={() => setPaymentModalOpen(false)}
-        onConfirm={() => setPaymentModalOpen(false)}
-        totalAmount={finalTotals.total}
+        onClose={closePaymentModal}
+        onConfirm={handlePaymentConfirm}
+        totalAmount={finalTotals?.total || 0}
       />
 
+      {/* HEADER */}
       <div className={cls.header}>
-        <div className={cls.headerRow}>
-          <div className={cls.headerLeft}>
-            <div className={cls.headerTitle}>
-              {currentTable
-                ? `Bàn ${currentTable.code} (${currentTable.capacity} chỗ)`
-                : "Chọn bàn"}
+        <div className={cls.headerLeft}>
+          <div className={cls.tableName}>
+            {currentTable ? `Bàn ${currentTable.code}` : "Chọn bàn"}
+          </div>
+          {currentTable ? (
+            <div className={cls.tableMeta}>
+              {currentTable.capacity || 0} chỗ ·{" "}
+              <span className={cls.statusBadge}>
+                {currentTable.status || "available"}
+              </span>
             </div>
-            <div className={cls.headerTime}>
-              {new Date().toLocaleTimeString("vi-VN")}
-            </div>
+          ) : (
+            <div className={cls.tableMeta}>Chưa chọn bàn</div>
+          )}
+        </div>
+        <div className={cls.headerRight}>
+          <div className={cls.timer}>
+            {new Date().toLocaleTimeString("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })}
           </div>
           <button
-            type="button"
             className={cls.backBtn}
             onClick={() => navigate("/manager/dashboard")}
+            title="Quay về Dashboard"
           >
-            ← Quay về
+            ←
           </button>
         </div>
       </div>
 
-      <div className={cls.list}>
-        {hasItems ? (
-          currentOrder.map((item, idx) => (
-            <div
-              key={(item.dishId || item.id || "") + "-" + idx}
-              className={`${cls.itemRow} ${
-                item.isNew ? cls.itemNew : cls.itemOld
-              }`}
-            >
-              <div className={cls.itemMain}>
-                <div className={cls.itemName}>{item.name}</div>
-                <div className={cls.itemMeta}>{getItemMeta(item)}</div>
-              </div>
-              <div className={cls.itemActions}>
-                <div className={cls.qtyControls}>
-                  <button
-                    className={cls.qtyBtn}
-                    onClick={() => handleQtyChange(item, -1)}
-                  >
-                    −
-                  </button>
-                  <input
-                    className={cls.qtyInput}
-                    type="number"
-                    min="1"
-                    value={item.quantity}
-                    onChange={(e) => handleQtyInput(e, item)}
-                  />
-                  <button
-                    className={cls.qtyBtn}
-                    onClick={() => handleQtyChange(item, +1)}
-                  >
-                    +
-                  </button>
-                </div>
-                <div className={cls.itemTotal}>
-                  {formatPrice(item.total || item.price * item.quantity || 0)}
-                </div>
-                <button
-                  className={cls.removeBtn}
-                  onClick={() => removeItem(item.dishId || item.id)}
-                >
-                  ×
-                </button>
-              </div>
+      {/* BODY SCROLL */}
+      <div className={cls.body}>
+        {/* nhóm món mới */}
+        {newItems.length > 0 && (
+          <>
+            <div className={cls.groupHeader}>
+              Món mới đang nhập{" "}
+              <span className={cls.groupCount}>{newItems.length}</span>
             </div>
-          ))
-        ) : (
-          <div className={cls.empty}>Chưa có món nào được chọn</div>
+            <div className={cls.itemsList}>
+              {newItems.map((item) => (
+                <div
+                  key={item._lineId || item.dishId || item.id}
+                  className={cls.orderItemNew}
+                >
+                  <div className={cls.itemHeaderRow}>
+                    <div className={cls.itemName}>{item.name}</div>
+                    <button
+                      className={cls.removeBtn}
+                      onClick={() => removeItem(item.dishId || item.id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className={cls.itemControls}>
+                    <span className={cls.badgeNew}>Mới</span>
+                    <div className={cls.qtyControls}>
+                      <button
+                        className={cls.qtyBtn}
+                        onClick={() => handleQtyChange(item, -1)}
+                      >
+                        −
+                      </button>
+                      <input
+                        className={cls.qtyInput}
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => handleQtyInput(e, item)}
+                      />
+                      <button
+                        className={cls.qtyBtn}
+                        onClick={() => handleQtyChange(item, +1)}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className={cls.itemPrice}>{getItemTotal(item)}</div>
+                  </div>
+
+                  <div className={cls.itemMetaRow}>
+                    <span>
+                      {item.unit === "kg" ? "Kg" : "Phần"} ·{" "}
+                      {getItemPrice(item)}
+                    </span>
+                    {item.method || item.cookingOption ? (
+                      <span className={cls.method}>
+                        {item.method || item.cookingOption}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ngăn cách */}
+        {newItems.length > 0 && existingItems.length > 0 && (
+          <div className={cls.dividerLabel}>Đã lưu trên bàn</div>
+        )}
+
+        {/* nhóm đã lưu */}
+        {existingItems.length > 0 && (
+          <div className={cls.itemsList}>
+            {existingItems.map((item) => (
+              <div
+                key={item._lineId || item.dishId || item.id}
+                className={cls.orderItemExisting}
+              >
+                <div className={cls.itemHeaderRow}>
+                  <div className={cls.itemName}>{item.name}</div>
+                  <button
+                    className={cls.removeBtn}
+                    onClick={() =>
+                      removeItem(item._lineId || item.dishId || item.id)
+                    }
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className={cls.itemControls}>
+                  <span className={cls.badgeSaved}>ĐÃ LƯU</span>
+                  <div className={cls.qtyControls}>
+                    <button
+                      className={cls.qtyBtn}
+                      onClick={() => handleQtyChange(item, -1)}
+                    >
+                      −
+                    </button>
+                    <input
+                      className={cls.qtyInput}
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => handleQtyInput(e, item)}
+                    />
+                    <button
+                      className={cls.qtyBtn}
+                      onClick={() => handleQtyChange(item, +1)}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className={cls.itemPrice}>{getItemTotal(item)}</div>
+                </div>
+
+                <div className={cls.itemMetaRow}>
+                  <span>
+                    {item.unit === "kg" ? "Kg" : "Phần"} · {getItemPrice(item)}
+                  </span>
+                  {item.method || item.cookingOption ? (
+                    <span className={cls.method}>
+                      {item.method || item.cookingOption}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!hasItems && (
+          <div className={cls.empty}>Chưa có món nào trong order</div>
         )}
       </div>
 
+      {/* FOOTER */}
       <div className={cls.footer}>
         <div className={cls.summary}>
           <div className={cls.row}>
             <span>Tạm tính:</span>
-            <strong>{formatPrice(finalTotals.subtotal)}</strong>
+            <strong>{formatPrice(finalTotals?.subtotal || 0)}</strong>
           </div>
           <div className={cls.row}>
             <span>Giảm giá:</span>
-            <strong>{formatPrice(finalTotals.discount)}</strong>
+            <strong>{formatPrice(finalTotals?.discount || 0)}</strong>
           </div>
           <div className={cls.row}>
             <span>Thuế VAT (10%):</span>
-            <strong>{formatPrice(finalTotals.tax)}</strong>
+            <strong>{formatPrice(finalTotals?.tax || 0)}</strong>
           </div>
           <div className={cls.row}>
             <span>Phí phục vụ (5%):</span>
-            <strong>{formatPrice(finalTotals.service)}</strong>
+            <strong>{formatPrice(finalTotals?.service || 0)}</strong>
           </div>
           <div className={cls.hr} />
           <div className={`${cls.row} ${cls.grand}`}>
             <span>Tổng cộng:</span>
-            <strong>{formatPrice(finalTotals.total)}</strong>
+            <strong>{formatPrice(finalTotals?.total || 0)}</strong>
           </div>
         </div>
 
@@ -192,6 +317,7 @@ export default function RightPanel() {
           >
             Xóa
           </button>
+
           <button
             type="button"
             className={`${cls.btn} ${cls.primary}`}
@@ -200,17 +326,31 @@ export default function RightPanel() {
           >
             Lưu
           </button>
-          <button type="button" className={`${cls.btn} ${cls.violet}`}>
+
+          <button
+            type="button"
+            className={`${cls.btn} ${cls.violet}`}
+            disabled={!hasItems}
+            title="In tổng"
+          >
             🖨️ In tổng
           </button>
-          <button type="button" className={`${cls.btn} ${cls.primary}`}>
+
+          <button
+            type="button"
+            className={`${cls.btn} ${cls.primary}`}
+            disabled={!hasItems}
+            title="In đơn"
+          >
             In đơn
           </button>
+
           <button
             type="button"
             className={`${cls.btn} ${cls.success}`}
-            onClick={() => setPaymentModalOpen(true)}
             disabled={!hasItems}
+            onClick={() => setPaymentModalOpen(true)}
+            title="Thanh toán"
           >
             Thanh toán
           </button>

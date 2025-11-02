@@ -63,5 +63,6 @@ export default {
   ...(inventory.RecipeComponent
     ? { RecipeComponent: inventory.RecipeComponent }
     : {}),
-  ...(supply.Supply ? { Supply: supply.Supply } : {}), // 🆕 optional: type resolver riêng cho Supply
+  ...(supply.Supply ? { Supply: supply.Supply } : {}),
+  ...(order.Order ? { Order: order.Order } : {}),
 };

@@ -35,18 +35,6 @@ input OrderModifierInput {
   groupId: ID
   price: Int
 }
-input PosOrderItemInput {
-  dishId: ID
-  menuId: ID
-  categoryId: ID
-  name: String!
-  unit: String
-  price: Int!
-  quantity: Int!
-  method: String
-  description: String
-  modifiers: [OrderModifierInput!]
-}
 
 input UpsertTableOrderInput {
   restaurantId: ID!
@@ -129,11 +117,12 @@ type OrderPayment {
 
 type Order {
   id: ID!
-  tableCode: String
-  orderCode: String # ✅ mã gộp các đơn
+  orderCode: String
   restaurantId: ID!
+  userId: ID
   reservationId: ID
   orderType: String!
+  tableCode: String
   shipping: Shipping
   items: [OrderItem!]!
   totals: OrderTotals!
@@ -143,20 +132,21 @@ type Order {
   note: String
   createdAt: String!
   updatedAt: String!
-  customer: User
+  user: User
 }
 
 input CreateOrderInput {
-  orderCode: String # ✅ truyền chung cho các đơn tách
+  orderCode: String
   userId: ID
   restaurantId: ID!
   reservationId: ID
   orderType: String
+  tableCode: String
   shipping: ShippingInput
   items: [OrderItemInput!]!
   note: String
   paymentMethod: String!
-  customer: CustomerInput # ✅ dành cho khách chưa login
+  customer: CustomerInput
 }
 
 input UpdateOrderStatusInput {
@@ -179,41 +169,40 @@ type PageInfo {
   endCursor: ID
   hasNextPage: Boolean!
 }
-
+input OrderFilterInput {
+  restaurantId: ID
+  tableCode: String
+  orderCode: String
+  status: String
+  statuses: [String!]
+  dateFrom: String
+  dateTo: String
+  keyword: String
+}
+type OrderList {
+  items: [Order!]!
+  totalCount: Int!
+}
 extend type Query {
-  orderByTableCode(
-    restaurantId: ID!
-    tableCode: String!
-    onlyActive: Boolean = true
-  ): Order
   order(id: ID!): Order
+  orders(filter: OrderFilterInput, limit: Int, offset: Int): OrderList!
   ordersByRestaurant(
     restaurantId: ID!
     limit: Int = 20
     cursor: ID
   ): OrdersConnection!
   ordersByUser(userId: ID!, limit: Int = 20, cursor: ID): OrdersConnection!
-  orderByTable(restaurantId: ID!, tableCode: String!): Order
-  orders(
+
+  ordersByTableCode(
     restaurantId: ID!
-    tableCode: String
-    orderCode: String
-    statuses: [String!]
-    from: String
-    to: String
-    limit: Int = 20
-    cursor: ID
-  ): OrdersConnection!
+    tableCode: String!
+    limit: Int
+    offset: Int
+  ): OrderList!
 }
 
 extend type Mutation {
   upsertTableOrder(input: UpsertTableOrderInput!): UpsertTableOrderPayload!
-  openTableSession(restaurantId: ID!, tableCode: String!): Order!
-  closeTableSession(
-    restaurantId: ID!
-    tableCode: String!
-    orderCode: String
-  ): Order!
   createOrder(input: CreateOrderInput!): Order!
   updateOrderStatus(input: UpdateOrderStatusInput!): Order!
   cancelOrder(id: ID!, reason: String): Order!

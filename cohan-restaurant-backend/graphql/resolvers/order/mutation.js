@@ -1,8 +1,14 @@
 // src/graphql/order/mutation.js
 import mongoose from "mongoose";
-import { Order, PaymentTransaction, User } from "../../../models/index.js";
+import {
+  Order,
+  PaymentTransaction,
+  User,
+  Table,
+} from "../../../models/index.js";
 
-const toId = (id) => new mongoose.Types.ObjectId(id);
+const toId = (id) =>
+  id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
 
 const mapDeliveryToOrderType = (deliveryMethod) => {
   if (deliveryMethod === "dinein") return "dine_in";
@@ -10,27 +16,28 @@ const mapDeliveryToOrderType = (deliveryMethod) => {
   return "delivery";
 };
 
-const normalizePaymentMethod = (m) => (m === "transfer" ? "bank_transfer" : m);
+const normalizePaymentMethod = (m) =>
+  m === "transfer" ? "bank_transfer" : m || "cash";
 
-/**
- * quantity ở đây phải là float → dùng parseFloat
- */
+// 👉 chỗ mấu chốt: quantity có thể là 0.5 nên parseFloat
 function normalizeItem(i) {
   const qty = parseFloat(i.quantity ?? 1);
   const price = Number(i.price || 0);
-  const lineSubtotal = Math.round(price * qty);
+  const modifiersPrice = Number(i.modifiersPrice || 0);
+  const lineSubtotal = Math.round(price * qty + modifiersPrice * qty);
+
   return {
     dishId: i.dishId ?? i.id,
     menuId: i.menuId,
     categoryId: i.categoryId,
     name: i.name,
     unit: i.unit || "portion",
-    price: Number(i.price || 0),
-    modifiersPrice: Number(i.modifiersPrice || 0),
+    price,
+    modifiersPrice,
     method: i.method || i.cookingMethod || "",
     methodDelta: Number(i.methodDelta || 0),
     description: i.description || "",
-    quantity: Number.isFinite(qty) ? qty : 1,
+    quantity: qty,
     modifiers: (i.modifiers || []).map((m) => ({
       optionId: m.optionId,
       optionName: m.optionName,
@@ -41,18 +48,16 @@ function normalizeItem(i) {
   };
 }
 
-/**
- * Tính total phải nhân được với quantity là số lẻ
- */
 function computeTotals(items) {
-  let base = 0;
-  let mods = 0;
+  let subtotal = 0;
   for (const it of items) {
-    const qty = Number(it.quantity || 0);
-    base += Number(it.price || 0) * qty;
-    mods += Number(it.modifiersPrice || 0) * qty;
+    // nếu item chưa có lineSubtotal thì tự tính lại
+    const line =
+      it.lineSubtotal != null
+        ? Number(it.lineSubtotal)
+        : Number(it.price || 0) * Number(it.quantity || 0);
+    subtotal += line;
   }
-  const subtotal = base + mods;
   const tax = Math.round(subtotal * 0.1);
   const service = Math.round(subtotal * 0.05);
   const discount = 0;
@@ -76,7 +81,7 @@ async function createPaymentTxn(orderDoc, method) {
   });
 }
 
-// tạo hoặc tìm user khách từ phone/email
+// ✅ tạo / tìm user guest theo phone/email
 async function ensureUserForOrder(ctxUserId, explicitUserId, customer) {
   if (ctxUserId) return toId(ctxUserId);
   if (explicitUserId && mongoose.isValidObjectId(explicitUserId)) {
@@ -89,10 +94,11 @@ async function ensureUserForOrder(ctxUserId, explicitUserId, customer) {
 
   if (!phone && !email) return undefined;
 
-  const q = [];
-  if (phone) q.push({ phone });
-  if (email) q.push({ email });
-  let user = await User.findOne(q.length ? { $or: q } : { _id: null });
+  const or = [];
+  if (phone) or.push({ phone });
+  if (email) or.push({ email });
+
+  let user = await User.findOne(or.length ? { $or: or } : { _id: null });
 
   if (!user) {
     const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -113,7 +119,7 @@ async function ensureUserForOrder(ctxUserId, explicitUserId, customer) {
 }
 
 export const OrderMutation = {
-  // ===================== POS upsert by table =====================
+  // POS upsert
   async upsertTableOrder(_, { input }, ctx) {
     const {
       restaurantId,
@@ -125,27 +131,29 @@ export const OrderMutation = {
       clientMeta,
     } = input;
 
-    if (!restaurantId) throw new Error("restaurantId is required");
-    if (!tableCode) throw new Error("tableCode is required");
+    if (!restaurantId) {
+      throw new Error("restaurantId is required");
+    }
+    if (!tableCode) {
+      throw new Error("tableCode is required");
+    }
     if (!Array.isArray(items) || items.length === 0) {
       throw new Error("No items to upsert");
     }
 
-    // lấy (hoặc tạo) user nếu có truyền customer
-    const userId = await ensureUserForOrder(
-      ctx?.user?.id,
-      null,
-      customer || {}
-    );
+    // tìm xem POS này đã nhập customer cho bàn chưa
+    const userId = await ensureUserForOrder(ctx?.user?.id, null, customer);
 
-    // tìm order hiện có của bàn này
+    // 1. tìm order hiện có
     let existingOrder = null;
     if (orderCode) {
       existingOrder = await Order.findOne({
         restaurantId: toId(restaurantId),
         orderCode,
       });
-    } else {
+    }
+    if (!existingOrder) {
+      // tìm theo bàn
       existingOrder = await Order.findOne({
         restaurantId: toId(restaurantId),
         tableCode,
@@ -155,39 +163,36 @@ export const OrderMutation = {
 
     const normalizedItems = items.map(normalizeItem);
 
-    let isNewOrder = false;
     let doc;
+    let isNewOrder = false;
 
     if (!existingOrder) {
-      // tạo mới
       isNewOrder = true;
+      const totals = computeTotals(normalizedItems);
       doc = await Order.create({
-        orderCode: orderCode || `POS-${tableCode}-${Date.now().toString(36)}`,
+        orderCode:
+          orderCode ||
+          `POS-${tableCode}-${Date.now().toString(36).toUpperCase()}`,
         restaurantId: toId(restaurantId),
         tableCode,
-        userId,
         orderType: "dine_in",
-        shipping: null,
+        shipping: {
+          address: tableCode,
+        },
+        userId,
         items: normalizedItems,
-        totals: computeTotals(normalizedItems),
+        totals,
         note: note || "",
+        currentStatus: "confirmed",
         payment: {
           method: "cash",
           status: "pending",
         },
-        customer: customer
-          ? {
-              fullName: customer.fullName,
-              phone: customer.phone,
-              email: customer.email,
-            }
-          : undefined,
-        currentStatus: "confirmed",
         statusTimeline: [
           {
             status: "confirmed",
             at: new Date(),
-            byUserId: userId,
+            byUserId: ctx?.user?._id,
             note: "Created from POS",
           },
         ],
@@ -196,19 +201,26 @@ export const OrderMutation = {
     } else {
       // append
       const mergedItems = [...(existingOrder.items || []), ...normalizedItems];
+      const totals = computeTotals(mergedItems);
       existingOrder.items = mergedItems;
-      existingOrder.totals = computeTotals(mergedItems);
+      existingOrder.totals = totals;
       if (note) existingOrder.note = note;
-      if (customer) {
-        existingOrder.customer = {
-          fullName: customer.fullName,
-          phone: customer.phone,
-          email: customer.email,
-        };
-        if (userId) existingOrder.userId = userId;
+      if (userId && !existingOrder.userId) {
+        existingOrder.userId = userId;
       }
       doc = await existingOrder.save();
     }
+
+    // ✅ cập nhật trạng thái bàn sang occupied
+    await Table.updateOne(
+      {
+        restaurantId: toId(restaurantId),
+        code: tableCode,
+      },
+      {
+        $set: { status: "occupied" },
+      }
+    ).catch(() => {});
 
     return {
       isNewOrder,
@@ -216,7 +228,7 @@ export const OrderMutation = {
     };
   },
 
-  // ===================== create order chuẩn =====================
+  // tạo order (cho khách đặt từ ngoài)
   async createOrder(_, { input }, ctx) {
     const {
       orderCode,
@@ -224,12 +236,12 @@ export const OrderMutation = {
       restaurantId,
       reservationId,
       orderType,
+      tableCode,
       shipping,
       items,
       note,
       paymentMethod,
       customer,
-      tableCode,
     } = input;
 
     if (!restaurantId) throw new Error("restaurantId is required");
@@ -254,13 +266,10 @@ export const OrderMutation = {
       orderCode: orderCode || null,
       userId: effectiveUserId,
       restaurantId: toId(restaurantId),
-      reservationId:
-        reservationId && mongoose.isValidObjectId(reservationId)
-          ? toId(reservationId)
-          : undefined,
+      reservationId: reservationId ? toId(reservationId) : undefined,
       orderType: orderType || mapDeliveryToOrderType(shipping?.deliveryMethod),
-      tableCode: tableCode || undefined,
-      shipping,
+      tableCode,
+      shipping: tableCode ? { address: tableCode } : shipping, // nếu là POS thì ưu tiên tableCode
       items: normalizedItems,
       totals,
       note,
@@ -272,17 +281,18 @@ export const OrderMutation = {
         currency: "VND",
         paidAt: new Date(),
       },
-      customer: customer
-        ? {
-            fullName: customer.fullName,
-            phone: customer.phone,
-            email: customer.email,
-          }
-        : undefined,
       statusTimeline: [
         { status: "confirmed", at: new Date(), byUserId: effectiveUserId },
       ],
     });
+
+    // nếu là tại bàn -> cập nhật bàn
+    if (tableCode) {
+      await Table.updateOne(
+        { restaurantId: toId(restaurantId), code: tableCode },
+        { $set: { status: "occupied" } }
+      ).catch(() => {});
+    }
 
     await createPaymentTxn(doc, paymentMethod);
     return doc.toJSON();
@@ -325,7 +335,6 @@ export const OrderMutation = {
     ];
     await doc.save();
 
-    // refund nếu đã trả
     const paid =
       doc.payment?.status === "paid" && (doc.totals?.grandTotal || 0) > 0;
     if (paid) {

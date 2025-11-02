@@ -40,6 +40,7 @@
   flex-direction: column;
   gap: 0.6rem;
   height: 100%;
+  overflow: hidden;
   min-height: 0;
   background: var(--fh-card);
   border: 2px solid var(--fh-border);
@@ -253,12 +254,14 @@
 /* Grid bàn — nén min width để dễ thêm 1 cột nếu có thêm không gian từ layout */
 .tablesGrid {
   display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   grid-template-columns: repeat(
     auto-fill,
     minmax(120px, 1fr)
   ); /* trước 128px -> 120px */
   gap: 0.6rem;
-  min-height: 120px;
 }
 
 /* Card bàn + màu theo status qua data-attr */

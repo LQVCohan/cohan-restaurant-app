@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useMemo } from "react";
-import stylesModal from "./MenuItemModal.module.scss";
-
+// src/components/Dashboard_Manager/POS/components/modals/MenuItemModal.jsx
+import React, { useState, useEffect } from "react";
+import s from "./MenuItemModal.module.scss";
+import { formatPrice } from "../../utils/format";
+import { flyToOrder } from "../../../../../utils/flyToOrder";
 export default function MenuItemModal({ isOpen, item, onAdd, onClose }) {
   const [qty, setQty] = useState(1);
   const [cooking, setCooking] = useState(null);
@@ -8,304 +10,156 @@ export default function MenuItemModal({ isOpen, item, onAdd, onClose }) {
   const [note, setNote] = useState("");
   const [price, setPrice] = useState(0);
   const [servingVariants, setServingVariants] = useState([]);
-  const [selectedVariantKey, setSelectedVariantKey] = useState(null);
-
-  // bảo vệ
-  const prepMethods = Array.isArray(item?.preparationMethods)
-    ? item.preparationMethods
-    : [];
-
-  // giá default ưu tiên: _displayPrice (tính ở CenterPanel) -> basePrice -> price
-  const baseDisplayPrice = useMemo(() => {
-    if (!item) return 0;
-    return (
-      Number(item._displayPrice ?? 0) ||
-      Number(item.basePrice ?? 0) ||
-      Number(item.price ?? 0) ||
-      0
-    );
-  }, [item]);
 
   useEffect(() => {
-    if (!isOpen || !item) return;
+    if (isOpen && item) {
+      const defaultCooking =
+        item.preparationMethods?.find((m) => m.isDefault) ??
+        item.preparationMethods?.[0] ??
+        null;
+      setCooking(defaultCooking ? defaultCooking.name : null);
+      setPrice(defaultCooking?.price ?? item.basePrice ?? 0);
+      setServingVariants(item.servingVariants ?? []);
 
-    // reset state khi mở modal
-    setQty(1);
-    setNote("");
-    const variants = Array.isArray(item.servingVariants)
-      ? item.servingVariants
-      : [];
-    setServingVariants(variants);
-
-    // chọn cooking default
-    let initialCooking = null;
-    let initialPrice = baseDisplayPrice;
-
-    if (prepMethods.length > 0) {
-      const def =
-        prepMethods.find((m) => m?.isDefault) || prepMethods[0] || null;
-      initialCooking = def?.name || null;
-      if (def?.price != null) {
-        initialPrice = Number(def.price);
-      }
+      // auto chọn unit
+      const hasPortion = item.servingVariants?.some(
+        (v) => v.mode === "PORTION"
+      );
+      const hasWeight = item.servingVariants?.some(
+        (v) => v.mode === "BY_WEIGHT"
+      );
+      setUnit(hasPortion ? "portion" : hasWeight ? "kg" : "portion");
+      setQty(1);
+      setNote("");
     }
+  }, [isOpen, item]);
 
-    // nếu có servingVariants → xác định unit
-    if (variants.length > 0) {
-      // ưu tiên PORTION
-      const portionVar = variants.find((v) => v.mode === "PORTION");
-      const weightVar = variants.find((v) => v.mode === "BY_WEIGHT");
-      if (portionVar) {
-        setUnit("portion");
-        setSelectedVariantKey(portionVar.key);
-        // nếu variant có price riêng thì dùng
-        if (typeof portionVar.price === "number") {
-          initialPrice = portionVar.price;
-        }
-        if (portionVar.preparationMethodName) {
-          initialCooking = portionVar.preparationMethodName;
-        }
-      } else if (weightVar) {
-        setUnit("kg");
-        setSelectedVariantKey(weightVar.key);
-        if (typeof weightVar.price === "number") {
-          initialPrice = weightVar.price;
-        }
-        if (weightVar.preparationMethodName) {
-          initialCooking = weightVar.preparationMethodName;
-        }
-      } else {
-        // không match gì → để mặc định
-        setUnit("portion");
-        setSelectedVariantKey(variants[0]?.key ?? null);
-      }
-    } else {
-      // không có variants → mặc định portion
-      setUnit("portion");
-      setSelectedVariantKey(null);
-    }
+  if (!isOpen || !item) return null;
 
-    setCooking(initialCooking);
-    setPrice(initialPrice);
-  }, [isOpen, item, prepMethods, baseDisplayPrice]);
+  const formattedPrice = formatPrice(price);
+  const changeQty = (d) => setQty((q) => Math.max(1, q + d));
 
-  const change = (d) => setQty((q) => Math.max(1, q + d));
-
-  const handleCookingChange = (selectedCooking) => {
-    setCooking(selectedCooking.name);
-    // nếu cooking có price riêng thì set, không thì giữ nguyên
-    if (typeof selectedCooking.price === "number") {
-      setPrice(Number(selectedCooking.price));
-    }
-  };
-
-  const handleSelectVariant = (variant) => {
-    setSelectedVariantKey(variant.key);
-    // đổi unit theo variant
-    if (variant.mode === "PORTION") {
-      setUnit("portion");
-    } else if (variant.mode === "BY_WEIGHT") {
-      setUnit("kg");
-    } else {
-      // fallback
-      setUnit(variant.mode?.toLowerCase?.() || "portion");
-    }
-
-    // nếu variant có cách chế biến riêng
-    if (variant.preparationMethodName) {
-      setCooking(variant.preparationMethodName);
-    }
-
-    // nếu variant có price riêng thì set
-    if (typeof variant.price === "number") {
-      setPrice(Number(variant.price));
-    } else {
-      // không có thì giữ price hiện tại
-    }
-  };
-
-  const handleQuantityChange = (e) => {
-    const value = e.target.value;
-    // nếu đơn vị là portion thì chỉ cho số nguyên
-    if (unit === "portion" && !Number.isInteger(Number(value))) {
-      return;
-    }
-    setQty(Number(value) || 1);
-  };
-
-  const add = () => {
-    if (!item) return;
+  const handleAdd = () => {
+    const menuCard = document.querySelector(`[data-menu-id="${item.id}"]`);
+    const rightPanel = document.querySelector("[data-pos-order-panel]");
+    if (menuCard && rightPanel) flyToOrder(menuCard, rightPanel);
     onAdd?.({
-      menuItem: {
-        // GỬI ĐỦ để useOrderManagement không lỗi
-        id: item.id,
-        dishId: item.dishId || item.id,
-        name: item.name,
-        price: price,
-        _displayPrice: price,
-        menuId: item.menuId || item.menu_id || null,
-        categoryId: item.categoryId || item.category_id || null,
-        image: item.thumbImage || item.image || null,
-        servingVariants: item.servingVariants || [],
-        preparationMethods: item.preparationMethods || [],
-        byWeight: !!item.byWeight,
-      },
+      menuItem: item,
       quantity: qty,
       cookingOption: cooking,
       unit,
       note,
       price,
-      // để sau này nếu muốn lưu theo variant
-      servingVariantKey: selectedVariantKey,
     });
   };
 
-  if (!isOpen || !item) return null;
-
-  const formattedPrice =
-    typeof price === "number" ? `₫ ${price.toLocaleString("vi-VN")}` : "₫ 0";
-
   return (
-    <div className={stylesModal.backdrop}>
-      <div className={stylesModal.modal}>
-        <div className={stylesModal.header}>
-          <h3 className={stylesModal.title}>{item.name}</h3>
-          <button className={stylesModal.close} onClick={onClose}>
+    <div className={s.backdrop} onClick={onClose}>
+      <div className={s.modal} onClick={(e) => e.stopPropagation()}>
+        {/* HEADER */}
+        <div className={s.header}>
+          {item.thumbImage ? (
+            <img src={item.thumbImage} alt={item.name} className={s.image} />
+          ) : (
+            <div className={s.imagePlaceholder}>🍽️</div>
+          )}
+          <button className={s.close} onClick={onClose}>
             ×
           </button>
         </div>
 
-        {/* Cách chế biến */}
-        <div className={stylesModal.group}>
-          <label className={stylesModal.label}>Cách chế biến:</label>
-          <div className={stylesModal.grid}>
-            {prepMethods.length === 0 ? (
-              <div className={stylesModal.noPrepContainer}>
-                <span className={stylesModal.noPrepIcon}>⚠️</span>
-                <p className={stylesModal.noPrepText}>
-                  Món ăn này không có cách chế biến đặc biệt.
-                </p>
+        {/* BODY */}
+        <div className={s.body}>
+          <h3 className={s.title}>{item.name}</h3>
+          {item.description && <p className={s.desc}>{item.description}</p>}
+
+          {/* Cách chế biến */}
+          <div className={s.group}>
+            <div className={s.label}>Cách chế biến:</div>
+            {item.preparationMethods?.length ? (
+              <div className={s.optionList}>
+                {item.preparationMethods.map((m) => (
+                  <button
+                    key={m.name}
+                    onClick={() => {
+                      setCooking(m.name);
+                      setPrice(m.price);
+                    }}
+                    className={`${s.chip} ${
+                      cooking === m.name ? s.active : ""
+                    }`}
+                  >
+                    {m.name}
+                  </button>
+                ))}
               </div>
             ) : (
-              prepMethods.map((o) => (
-                <button
-                  /* dùng name làm key là ok vì server trả uniq */
-                  key={o.name}
-                  className={`${stylesModal.opt} ${
-                    cooking === o.name ? stylesModal.optActive : ""
-                  }`}
-                  onClick={() => handleCookingChange(o)}
-                >
-                  {o.name}
-                  {typeof o.price === "number" && o.price > 0
-                    ? ` (+${o.price.toLocaleString("vi-VN")}đ)`
-                    : ""}
-                </button>
-              ))
+              <div className={s.noOption}>Không có tuỳ chọn đặc biệt</div>
             )}
           </div>
-        </div>
 
-        {/* Đơn vị / Serving variant */}
-        <div className={stylesModal.group}>
-          <label className={stylesModal.label}>Đơn vị tính / Khẩu phần:</label>
-          <div className={stylesModal.grid}>
-            {servingVariants.length === 0 ? (
-              <button
-                className={`${stylesModal.opt} ${
-                  unit === "portion" ? stylesModal.optActive : ""
-                }`}
-                onClick={() => {
-                  setUnit("portion");
-                  setSelectedVariantKey(null);
-                  // khi quay về portion mà không có variant thì dùng giá base
-                  setPrice(baseDisplayPrice);
-                }}
-              >
-                Phần
+          {/* Đơn vị tính */}
+          <div className={s.group}>
+            <div className={s.label}>Đơn vị tính:</div>
+            <div className={s.optionList}>
+              {(servingVariants.length
+                ? servingVariants.map((v) => v.mode.toLowerCase())
+                : ["portion"]
+              ).map((v) => (
+                <button
+                  key={v}
+                  className={`${s.chip} ${unit === v ? s.active : ""}`}
+                  onClick={() => setUnit(v)}
+                >
+                  {v === "portion" ? "Phần" : "Kg"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Số lượng */}
+          <div className={s.group}>
+            <div className={s.label}>Số lượng:</div>
+            <div className={s.qtyControls}>
+              <button className={s.qtyBtn} onClick={() => changeQty(-1)}>
+                −
               </button>
-            ) : (
-              servingVariants.map((variant) => (
-                <button
-                  key={variant.key}
-                  className={`${stylesModal.opt} ${
-                    selectedVariantKey === variant.key
-                      ? stylesModal.optActive
-                      : ""
-                  }`}
-                  onClick={() => handleSelectVariant(variant)}
-                >
-                  {variant.mode === "PORTION"
-                    ? "Phần"
-                    : variant.mode === "BY_WEIGHT"
-                    ? "Kg"
-                    : variant.mode}
-                  {typeof variant.price === "number" &&
-                  Number(variant.price) > 0
-                    ? ` · ${Number(variant.price).toLocaleString("vi-VN")}đ`
-                    : ""}
-                  {variant.preparationMethodName
-                    ? ` · ${variant.preparationMethodName}`
-                    : ""}
-                </button>
-              ))
-            )}
+              <input
+                className={s.qtyInput}
+                type="number"
+                min={1}
+                step={unit === "kg" ? 0.1 : 1}
+                value={qty}
+                onChange={(e) => setQty(Number(e.target.value) || 1)}
+              />
+              <button className={s.qtyBtn} onClick={() => changeQty(+1)}>
+                +
+              </button>
+            </div>
           </div>
-        </div>
 
-        {/* Số lượng */}
-        <div className={stylesModal.group}>
-          <label className={stylesModal.label}>Số lượng:</label>
-          <div className={stylesModal.qtyRow}>
-            <button className={stylesModal.qtyBtn} onClick={() => change(-1)}>
-              −
-            </button>
-            <input
-              className={stylesModal.input}
-              type="number"
-              min={1}
-              value={qty}
-              onChange={handleQuantityChange}
+          {/* Ghi chú */}
+          <div className={s.group}>
+            <div className={s.label}>Ghi chú cho bếp:</div>
+            <textarea
+              className={s.textarea}
+              rows={3}
+              value={note}
+              placeholder="Không cay, ít muối..."
+              onChange={(e) => setNote(e.target.value)}
             />
-            <button className={stylesModal.qtyBtn} onClick={() => change(+1)}>
-              +
-            </button>
           </div>
         </div>
 
-        {/* Giá */}
-        <div className={stylesModal.group}>
-          <label className={stylesModal.label}>Giá:</label>
-          <div className={stylesModal.price}>
-            <span>{formattedPrice}</span>
+        {/* FOOTER */}
+        <div className={s.footer}>
+          <div className={s.priceBox}>
+            <span className={s.priceLabel}>Giá:</span>
+            <strong className={s.priceValue}>{formattedPrice}</strong>
           </div>
-        </div>
 
-        {/* Ghi chú */}
-        <div className={stylesModal.group}>
-          <label className={stylesModal.label}>Ghi chú:</label>
-          <textarea
-            className={`${stylesModal.input} ${stylesModal.textarea}`}
-            rows={3}
-            value={note}
-            placeholder="Ghi chú đặc biệt..."
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </div>
-
-        {/* Actions */}
-        <div className={stylesModal.actions}>
-          <button
-            className={`${stylesModal.btn} ${stylesModal.secondary}`}
-            onClick={onClose}
-          >
-            Hủy
-          </button>
-          <button
-            className={`${stylesModal.btn} ${stylesModal.primary}`}
-            onClick={add}
-          >
-            Thêm vào đơn
+          <button className={s.addBtn} onClick={handleAdd}>
+            + Thêm vào đơn
           </button>
         </div>
       </div>
