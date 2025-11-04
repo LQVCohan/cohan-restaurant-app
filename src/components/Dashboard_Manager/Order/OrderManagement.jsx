@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Clock,
   User,
@@ -11,94 +11,143 @@ import {
   Plus,
   Download,
   History,
+  Loader,
 } from "lucide-react";
 import OrderCard from "./components/OrderCard";
 import OrderModal from "./components/OrderModal";
 import ItemModal from "./components/ItemModal";
 import HistoryModal from "./components/HistoryModal";
 import StatsCard from "./components/StatsCard";
-import { sampleOrders, sampleHistory } from "./data/orderData";
+import useOrderManagement from "../../../hooks/useOrderManagement";
+
+// ID nhà hàng (Bạn cần lấy ID này từ context, props, hoặc .env)
+const RESTAURANT_ID = "YOUR_RESTAURANT_ID_GOES_HERE";
+
+// HÀM CHUYỂN ĐỔI (ADAPTER)
+const mapGqlOrderToUiOrder = (gqlOrder) => {
+  if (!gqlOrder) return null;
+
+  let orderType = "table";
+  if (gqlOrder.tableCode.toLowerCase().includes("takeaway")) {
+    orderType = "takeaway";
+  } else if (gqlOrder.tableCode.toLowerCase().includes("delivery")) {
+    orderType = "delivery";
+  }
+
+  return {
+    id: gqlOrder.id,
+    customerName: gqlOrder.user?.fullName || "Khách lẻ",
+    tableNumber: gqlOrder.tableCode,
+    orderTime: new Date(gqlOrder.createdAt),
+    status: gqlOrder.currentStatus,
+    type: orderType,
+    items: (gqlOrder.items || []).map((item) => ({
+      id: item.dishId,
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+      status: gqlOrder.currentStatus === "pending" ? "pending" : "confirmed",
+    })),
+    total: gqlOrder.totals?.grandTotal || 0,
+    _rawGql: gqlOrder,
+  };
+};
 
 const OrderManagement = () => {
-  const [orders, setOrders] = useState(sampleOrders);
-  const [orderHistory, setOrderHistory] = useState(sampleHistory);
-  const [filteredOrders, setFilteredOrders] = useState(sampleOrders);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [tableFilter, setTableFilter] = useState("");
+  const [orders, setOrders] = useState([]);
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
+  const {
+    orders: gqlOrders,
+    ordersLoading,
+    ordersError,
+    loadOrders,
+  } = useOrderManagement();
 
-  // Filter orders
+  // 1. GỌI API KHI COMPONENT MOUNT
+  useEffect(() => {
+    if (RESTAURANT_ID !== "YOUR_RESTAURANT_ID_GOES_HERE") {
+      loadOrders({ variables: { restaurantId: RESTAURANT_ID, limit: 100 } });
+    } else {
+      console.warn("RESTAURANT_ID is not set. Please set it to fetch orders.");
+    }
+  }, [loadOrders]);
+
+  // 2. CHUYỂN ĐỔI DỮ LIỆU KHI API TRẢ VỀ
+  useEffect(() => {
+    if (gqlOrders && gqlOrders.length > 0) {
+      const mappedOrders = gqlOrders.map(mapGqlOrderToUiOrder).filter(Boolean);
+      setOrders(mappedOrders);
+    } else {
+      setOrders([]);
+    }
+  }, [gqlOrders]);
+
+  // 3. LỌC VÀ SẮP XẾP
   useEffect(() => {
     let filtered = orders.filter((order) => {
       const matchesSearch =
         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.tableNumber.toLowerCase().includes(searchTerm.toLowerCase());
-
       const matchesStatus = !statusFilter || order.status === statusFilter;
       const matchesTable = !tableFilter || order.type === tableFilter;
-
       return matchesSearch && matchesStatus && matchesTable;
     });
 
-    // Sort by alert priority
+    const getOrderAlertPriority = (orderTime) => {
+      if (!orderTime) return 0;
+      const now = new Date();
+      const time = new Date(orderTime);
+      const timeDiff = Math.floor((now - time) / (1000 * 60));
+      if (timeDiff >= 30) return 3; // Critical
+      if (timeDiff >= 20) return 2; // Danger
+      if (timeDiff >= 10) return 1; // Warning
+      return 0; // Normal
+    };
+
     filtered.sort((a, b) => {
       const alertA = getOrderAlertPriority(a.orderTime);
       const alertB = getOrderAlertPriority(b.orderTime);
       return alertB - alertA;
     });
-
     setFilteredOrders(filtered);
   }, [orders, searchTerm, statusFilter, tableFilter]);
 
-  // Get alert priority
-  const getOrderAlertPriority = (orderTime) => {
-    const now = new Date();
-    const timeDiff = Math.floor((now - orderTime) / (1000 * 60));
-
-    if (timeDiff >= 30) return 3; // Critical
-    if (timeDiff >= 20) return 2; // Danger
-    if (timeDiff >= 10) return 1; // Warning
-    return 0; // Normal
-  };
-
-  // Update order status
+  // 4. HÀM CẬP NHẬT
+  // TODO: Bạn cần gọi mutation từ hook để cập nhật server
   const updateOrderStatus = (orderId, newStatus) => {
     setOrders((prevOrders) => {
       const updatedOrders = prevOrders
         .map((order) => {
           if (order.id === orderId) {
             const updatedOrder = { ...order, status: newStatus };
-
-            // Auto-confirm all items when order is confirmed
             if (newStatus === "confirmed") {
               updatedOrder.items = order.items.map((item) => ({
                 ...item,
                 status: item.status === "pending" ? "confirmed" : item.status,
               }));
             }
-
-            // Move to history if completed
             if (newStatus === "completed") {
               updatedOrder.completedTime = new Date();
               setOrderHistory((prev) => [updatedOrder, ...prev]);
-              return null; // Will be filtered out
+              return null;
             }
-
             return updatedOrder;
           }
           return order;
         })
-        .filter(Boolean); // Remove null values
-
+        .filter(Boolean);
       return updatedOrders;
     });
   };
 
-  // Update item status
   const updateItemStatus = (orderId, itemIndex, newStatus) => {
     setOrders((prevOrders) =>
       prevOrders.map((order) => {
@@ -115,15 +164,15 @@ const OrderManagement = () => {
     );
   };
 
-  // Calculate stats
-  const stats = {
-    total: orders.length,
-    pending: orders.filter(
-      (o) => o.status !== "completed" && o.status !== "cancelled"
-    ).length,
-    preparing: orders.filter((o) => o.status === "preparing").length,
-    completed: orderHistory.length,
-  };
+  const stats = useMemo(
+    () => ({
+      total: orders.length,
+      pending: orders.filter((o) => o.status === "pending").length,
+      preparing: orders.filter((o) => o.status === "preparing").length,
+      completed: orderHistory.length,
+    }),
+    [orders, orderHistory]
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -159,7 +208,7 @@ const OrderManagement = () => {
           />
           <StatsCard
             icon={<Clock className="text-orange-600" />}
-            title="Chưa hoàn thành"
+            title="Chờ xác nhận"
             value={stats.pending}
             bgColor="bg-orange-50"
           />
@@ -193,7 +242,6 @@ const OrderManagement = () => {
                   <Eye size={16} />
                 </div>
               </div>
-
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -205,7 +253,6 @@ const OrderManagement = () => {
                 <option value="preparing">Đang chuẩn bị</option>
                 <option value="ready">Sẵn sàng</option>
               </select>
-
               <select
                 value={tableFilter}
                 onChange={(e) => setTableFilter(e.target.value)}
@@ -217,7 +264,6 @@ const OrderManagement = () => {
                 <option value="delivery">Giao hàng</option>
               </select>
             </div>
-
             <div className="flex gap-2">
               <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
                 <Download size={16} />
@@ -232,14 +278,32 @@ const OrderManagement = () => {
         </div>
 
         {/* Orders Grid */}
-        {filteredOrders.length === 0 ? (
+        {ordersLoading && (
+          <div className="flex justify-center items-center h-64">
+            <Loader size={32} className="text-blue-600 animate-spin" />
+            <p className="ml-2 text-gray-600">Đang tải đơn hàng...</p>
+          </div>
+        )}
+        {ordersError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-lg text-center">
+            <AlertTriangle size={48} className="mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Đã xảy ra lỗi</h3>
+            <p>Không thể tải dữ liệu đơn hàng. Vui lòng thử lại.</p>
+            <pre className="text-xs text-left mt-4 bg-red-100 p-2 rounded">
+              {ordersError.message}
+            </pre>
+          </div>
+        )}
+        {!ordersLoading && !ordersError && filteredOrders.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
             <CheckCircle size={48} className="text-gray-300 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-600 mb-2">
               Không có đơn hàng nào
             </h3>
             <p className="text-gray-500">
-              Thử thay đổi bộ lọc hoặc tạo đơn hàng mới
+              {orders.length > 0
+                ? "Không tìm thấy kết quả phù hợp"
+                : "Chưa có đơn hàng nào để hiển thị"}
             </p>
           </div>
         ) : (
@@ -264,7 +328,6 @@ const OrderManagement = () => {
             onUpdateItemStatus={updateItemStatus}
           />
         )}
-
         {selectedItem && (
           <ItemModal
             item={selectedItem.item}
@@ -272,7 +335,6 @@ const OrderManagement = () => {
             onClose={() => setSelectedItem(null)}
           />
         )}
-
         {showHistory && (
           <HistoryModal
             orderHistory={orderHistory}

@@ -1,11 +1,12 @@
 // src/components/Dashboard_Manager/POS/components/panels/RightPanel.jsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import cls from "./RightPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { useNotification } from "../../../../../hooks/useNotification";
 import { formatPrice } from "../../utils/format";
-import { PaymentModal } from "../modals/PaymentModal";
+import PaymentModal from "../modals/PaymentModal";
+import ConfirmDeleteModal from "../modals/ConfirmDeleteModal";
 
 export default function RightPanel() {
   const navigate = useNavigate();
@@ -17,6 +18,8 @@ export default function RightPanel() {
     finalTotals,
     clearOrder,
     saveOrder,
+    setTableStatus,
+    setCurrentTable,
   } = usePos();
 
   // dùng notification global
@@ -39,13 +42,16 @@ export default function RightPanel() {
     });
     return { existingItems: ex, newItems: nw };
   }, [currentOrder]);
-
-  const handlePaymentConfirm = (paymentMethod, paymentAmount) => {
-    console.log("Thanh toán:", paymentMethod, paymentAmount);
-    closePaymentModal();
-  };
-
-  const closePaymentModal = () => setPaymentModalOpen(false);
+  const closePaymentModal = useCallback(() => {
+    setPaymentModalOpen(false);
+  }, []);
+  const handlePaymentConfirm = useCallback(
+    (paymentMethod, paymentAmount) => {
+      console.log("Thanh toán:", paymentMethod, paymentAmount);
+      closePaymentModal();
+    },
+    [closePaymentModal]
+  );
 
   const handleSaveOrder = async () => {
     if (!currentTable) {
@@ -95,6 +101,45 @@ export default function RightPanel() {
         : Number(item.price || 0) * Number(item.quantity || 1);
     return formatPrice(t);
   };
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [isClearModalOpen, setClearModalOpen] = useState(false);
+
+  const handleDeleteItem = (action, selectedReason) => {
+    // action is provided by modal but for single-item delete it's ignored
+    removeItem(itemToDelete._lineId || itemToDelete.dishId || itemToDelete.id);
+    setDeleteModalOpen(false);
+    setItemToDelete(null);
+    showNotification(
+      `Đã xóa món${selectedReason ? ` — ${selectedReason}` : ""}`,
+      "info"
+    );
+  };
+  const handleShowDeleteModal = (item) => {
+    setItemToDelete(item);
+    setDeleteModalOpen(true);
+  };
+
+  const handleShowClearModal = () => setClearModalOpen(true);
+
+  const handleClearConfirm = (action, selectedReason, customReason) => {
+    // action: 'clear_items' or 'clear_table'
+    if (action === "clear_table") {
+      // delete all items and mark table as available
+      clearOrder();
+      if (currentTable?.id && typeof setTableStatus === "function") {
+        setTableStatus({ id: currentTable.id, status: "available" });
+      }
+      if (typeof setCurrentTable === "function") setCurrentTable(null);
+      showNotification(`Đã xóa thông tin bàn ${currentTable?.code || ""}`);
+    } else {
+      // just clear items
+      clearOrder();
+      showNotification(`Đã xóa tất cả món (giữ thông tin bàn)`);
+    }
+
+    setClearModalOpen(false);
+  };
 
   return (
     <div
@@ -106,8 +151,21 @@ export default function RightPanel() {
         onClose={closePaymentModal}
         onConfirm={handlePaymentConfirm}
         totalAmount={finalTotals?.total || 0}
+        order={currentOrder}
+        table={currentTable}
       />
-
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDeleteItem}
+      />
+      {/* modal for clearing all items / clearing table */}
+      <ConfirmDeleteModal
+        isOpen={isClearModalOpen}
+        onClose={() => setClearModalOpen(false)}
+        onConfirm={handleClearConfirm}
+        showScopeChoice={true}
+      />
       {/* HEADER */}
       <div className={cls.header}>
         <div className={cls.headerLeft}>
@@ -228,9 +286,7 @@ export default function RightPanel() {
                   <div className={cls.itemName}>{item.name}</div>
                   <button
                     className={cls.removeBtn}
-                    onClick={() =>
-                      removeItem(item._lineId || item.dishId || item.id)
-                    }
+                    onClick={() => handleShowDeleteModal(item)}
                   >
                     ×
                   </button>
@@ -312,7 +368,7 @@ export default function RightPanel() {
           <button
             type="button"
             className={`${cls.btn} ${cls.secondary}`}
-            onClick={clearOrder}
+            onClick={handleShowClearModal}
             disabled={!hasItems}
           >
             Xóa

@@ -1,45 +1,34 @@
 import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
+const { Types } = mongoose;
 
-const { Types, model } = mongoose;
-
-const PaymentTransactionSchema = BaseSchemaModel({
-  restaurantId: { type: Types.ObjectId, ref: "Restaurant", index: true },
-  orderId: { type: Types.ObjectId, ref: "Order", index: true },
-  reservationId: { type: Types.ObjectId, ref: "Reservation" },
-
-  method: {
-    type: String,
-    enum: ["cash", "card", "e_wallet", "bank_transfer", "transfer"],
-    required: true,
+const TransactionSchema = BaseSchemaModel(
+  {
+    restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true },
+    orderId: { type: Types.ObjectId, ref: "Order", required: true },
+    invoiceId: { type: Types.ObjectId, ref: "Invoice" },
+    userId: { type: Types.ObjectId, ref: "User" },
+    method: {
+      type: String,
+      enum: ["cash", "card", "transfer", "other"],
+      required: true,
+    },
+    paidAmount: { type: Number, required: true },
+    changeAmount: { type: Number, default: 0 },
+    currency: { type: String, default: "VND" },
+    status: {
+      type: String,
+      enum: ["SUCCESS", "PENDING", "FAILED"],
+      default: "SUCCESS",
+    },
+    txnRef: { type: String }, // Mã giao dịch từ bên thứ 3 (VD: VNPay)
+    paidAt: { type: Date, default: Date.now },
   },
+  {}
+);
 
-  currency: { type: String, default: "VND" },
-  amount: { type: Number, required: true, min: 0 },
+TransactionSchema.index({ restaurantId: 1, orderId: 1 });
+TransactionSchema.index({ paidAt: -1 });
 
-  status: {
-    type: String,
-    enum: [
-      "pending",
-      "authorized",
-      "captured",
-      "succeeded",
-      "failed",
-      "refunded",
-      "cancelled",
-    ],
-    default: "pending",
-    index: true,
-  },
-
-  provider: String,
-  providerTxnId: String,
-  message: String,
-  meta: Object,
-  paidAt: Date,
-});
-
-PaymentTransactionSchema.index({ orderId: 1, status: 1 });
-PaymentTransactionSchema.index({ restaurantId: 1, createdAt: -1 });
-
-export default model("PaymentTransaction", PaymentTransactionSchema);
+export default mongoose.models.Transaction ||
+  mongoose.model("Transaction", TransactionSchema);

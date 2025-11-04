@@ -5,6 +5,7 @@ import {
   PaymentTransaction,
   User,
   Table,
+  EventLog,
 } from "../../../models/index.js";
 
 const toId = (id) =>
@@ -129,6 +130,8 @@ export const OrderMutation = {
       note,
       customer,
       clientMeta,
+      replaceItems,
+      userId: explicitUserId,
     } = input;
 
     if (!restaurantId) {
@@ -137,14 +140,38 @@ export const OrderMutation = {
     if (!tableCode) {
       throw new Error("tableCode is required");
     }
-    if (!Array.isArray(items) || items.length === 0) {
+
+    // normalize items array
+    const normalizedItems = Array.isArray(items)
+      ? items.map(normalizeItem)
+      : [];
+
+    // allow empty items only in replace mode when customer info is present
+    if (!Array.isArray(items) || (items.length === 0 && !replaceItems)) {
       throw new Error("No items to upsert");
     }
 
-    // tìm xem POS này đã nhập customer cho bàn chưa
-    const userId = await ensureUserForOrder(ctx?.user?.id, null, customer);
+    if (Array.isArray(items) && items.length === 0 && replaceItems) {
+      // require some customer info to persist an empty order
+      const hasCustomer = !!(
+        customer &&
+        (customer.phone || customer.email || customer.fullName)
+      );
+      if (!hasCustomer) {
+        throw new Error(
+          "Cannot save empty order without customer information. Provide customer phone/email or fullName."
+        );
+      }
+    }
 
-    // 1. tìm order hiện có
+    // determine effective user (may create guest user)
+    const userId = await ensureUserForOrder(
+      ctx?.user?.id,
+      explicitUserId,
+      customer
+    );
+
+    // try to find existing order by code or by table
     let existingOrder = null;
     if (orderCode) {
       existingOrder = await Order.findOne({
@@ -153,20 +180,17 @@ export const OrderMutation = {
       });
     }
     if (!existingOrder) {
-      // tìm theo bàn
       existingOrder = await Order.findOne({
         restaurantId: toId(restaurantId),
         tableCode,
-        currentStatus: { $in: ["confirmed", "preparing", "served"] },
-      }).sort({ createdAt: -1 });
+      });
     }
 
-    const normalizedItems = items.map(normalizeItem);
-
-    let doc;
+    let doc = null;
     let isNewOrder = false;
 
     if (!existingOrder) {
+      // create new order
       isNewOrder = true;
       const totals = computeTotals(normalizedItems);
       doc = await Order.create({
@@ -176,18 +200,13 @@ export const OrderMutation = {
         restaurantId: toId(restaurantId),
         tableCode,
         orderType: "dine_in",
-        shipping: {
-          address: tableCode,
-        },
+        shipping: { address: tableCode },
         userId,
         items: normalizedItems,
         totals,
         note: note || "",
         currentStatus: "confirmed",
-        payment: {
-          method: "cash",
-          status: "pending",
-        },
+        payment: { method: "cash", status: "pending" },
         statusTimeline: [
           {
             status: "confirmed",
@@ -199,16 +218,53 @@ export const OrderMutation = {
         clientMeta,
       });
     } else {
-      // append
-      const mergedItems = [...(existingOrder.items || []), ...normalizedItems];
-      const totals = computeTotals(mergedItems);
-      existingOrder.items = mergedItems;
-      existingOrder.totals = totals;
-      if (note) existingOrder.note = note;
-      if (userId && !existingOrder.userId) {
-        existingOrder.userId = userId;
+      // update existing order
+      if (replaceItems) {
+        // Replace semantics: client provided the desired final list of items.
+        const totals = computeTotals(normalizedItems);
+        existingOrder.items = normalizedItems;
+        existingOrder.totals = totals;
+        if (note) existingOrder.note = note;
+        if (userId && !existingOrder.userId) existingOrder.userId = userId;
+        doc = await existingOrder.save();
+
+        // Log event: replacement occurred; if items array is empty, log specially
+        try {
+          await EventLog.create({
+            restaurantId: toId(restaurantId),
+            tableId: undefined,
+            orderId: doc._id,
+            actorUserId: toId(ctx?.user?.id),
+            verb:
+              Array.isArray(items) && items.length === 0
+                ? "order.save_empty"
+                : "order.replace_items",
+            object: { kind: "Order", id: doc._id, code: doc.orderCode },
+            source: (clientMeta && clientMeta.source) || "pos",
+            userAgent:
+              (clientMeta && clientMeta.ua) ||
+              ctx?.req?.headers["user-agent"] ||
+              "",
+            meta: { note: note || null, clientMeta },
+            status: "success",
+          });
+        } catch (e) {
+          // logging failure shouldn't block operation
+          console.warn("EventLog.create failed:", e.message);
+        }
+      } else {
+        // append (backwards-compatible)
+        const mergedItems = [
+          ...(existingOrder.items || []),
+          ...normalizedItems,
+        ];
+        const totals = computeTotals(mergedItems);
+        existingOrder.items = mergedItems;
+        existingOrder.totals = totals;
+        if (note) existingOrder.note = note;
+        if (userId && !existingOrder.userId) existingOrder.userId = userId;
+        doc = await existingOrder.save();
       }
-      doc = await existingOrder.save();
     }
 
     // ✅ cập nhật trạng thái bàn sang occupied

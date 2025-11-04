@@ -41,6 +41,8 @@ input UpsertTableOrderInput {
   tableCode: String!
   orderCode: String
   items: [OrderItemInput!]!
+
+  replaceItems: Boolean
   note: String
   paymentMethod: String
   customer: CustomerInput

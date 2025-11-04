@@ -159,6 +159,7 @@ export default function PosProvider({
     addToOrder,
     updateItemQty,
     removeItem,
+    clearAll,
     saveOrder: rawSaveOrder,
     fetchOrderByTable,
     fetchOrderById,
@@ -187,37 +188,82 @@ export default function PosProvider({
         (allTables || []).find(
           (t) => (t.code || "").toLowerCase() === code.toLowerCase()
         ) || null;
-
-      // gọi hook để lấy order
-      const res = await fetchOrderByTable(restaurantId, code, 20);
-
-      if (res?.success) {
-        const orderDoc = res.data?.[0] || null;
-        if (orderDoc) {
-          const restored = (orderDoc.items || []).map((i) => ({
-            ...i,
-            isExisting: true,
-            isNew: false,
-            _lineId: `${i.dishId || i.id}-${Date.now()}-${Math.random()}`,
-          }));
-          console.log("Restored order items:", restored);
-          setCurrentOrder(restored);
-        } else {
-          setCurrentOrder([]);
-        }
+      const statusTable = table?.status || "available";
+      if (!table) {
+        console.warn("Table not found for code:", code);
+        return;
+      } else if (statusTable === "offline") {
+        showNotification(
+          `Bàn ${code} hiện đang ngoại tuyến và không thể chọn.`,
+          "error"
+        );
+        return;
+      } else if (statusTable === "cleaning") {
+        showNotification(
+          `Bàn ${code} đang được dọn dẹp. Vui lòng chọn bàn khác.`,
+          "warning"
+        );
+        return;
+      } else if (statusTable === "reserved") {
+        showNotification(
+          `Bàn ${code} đã được đặt trước. Vui lòng chọn bàn khác.`,
+          "warning"
+        );
+        return;
       } else {
-        setCurrentOrder([]);
-      }
+        console.log("Selecting table:", table);
+        if (statusTable === "available") {
+          showNotification(`Đã chọn bàn ${code}.`, "success");
+          setCurrentTable({
+            id: table?.id,
+            code,
+            capacity,
+            status: statusTable,
+            restaurantId,
+            orderCode: null,
+          });
+          setCurrentOrderType("dine_in");
 
-      setCurrentTable({
-        id: table?.id,
-        code,
-        capacity,
-        status: table?.status || "available",
-        restaurantId,
-        orderCode: res?.data?.[0]?.orderCode || null,
-      });
-      setCurrentOrderType("dine_in");
+          // Use functional update to avoid stale closure on `currentOrder`.
+          // Clear the current order only if there are items; handle null/undefined safely.
+          setCurrentOrder((prev) => (prev && prev.length > 0 ? [] : prev));
+        } else {
+          showNotification(`Đã chọn bàn ${code} có khách.`, "info");
+          const res = await fetchOrderByTable(restaurantId, code, 20);
+
+          if (res?.success) {
+            const orderDoc = res.data?.[0] || null;
+
+            if (orderDoc) {
+              const restored = (orderDoc.items || []).map((i) => ({
+                ...i,
+                orderCode: orderDoc.orderCode,
+                isExisting: true,
+                isNew: false,
+                _lineId: `${i.dishId || i.id}-${Date.now()}-${Math.random()}`,
+              }));
+              console.log("Restored order items:", restored);
+              setCurrentOrder(restored);
+              setCurrentTable({
+                id: table?.id,
+                code,
+                capacity,
+                status: table?.status || "available",
+                restaurantId,
+                orderCode: res?.data?.[0]?.orderCode || null,
+              });
+              setCurrentOrderType("dine_in");
+            } else {
+              console.log(
+                "No existing order found for table. Starting new order."
+              );
+            }
+          } else {
+            setCurrentOrder([]);
+          }
+        }
+      }
+      // gọi hook để lấy order
     },
     [
       allTables,
@@ -279,7 +325,11 @@ export default function PosProvider({
 
   const finalTotals = totals ?? localTotals;
 
-  const clearOrder = useCallback(() => setCurrentOrder([]), []);
+  // clearOrder now provided by order management hook (tracks deletions)
+  // fallback to local clear if hook doesn't provide it
+  const clearOrder =
+    (typeof clearAll !== "undefined" && clearAll) ||
+    (() => setCurrentOrder([]));
 
   const getStatusText = useCallback(
     (s) =>

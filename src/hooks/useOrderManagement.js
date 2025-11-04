@@ -73,6 +73,13 @@ const ORDERS_BY_RESTAURANT = gql`
             service
             grandTotal
           }
+          createdAt
+          updatedAt
+          user {
+            id
+            fullName
+          }
+          orderCode
         }
         cursor
       }
@@ -138,6 +145,9 @@ export default function useOrderManagement(pos = null) {
     total: 0,
   });
   const [orderNote, setOrderNote] = useState("");
+  // track existing items removed on client so save can request replacement
+  // (server currently appends items; replaceItems=true forces replace)
+  const [removedExistingItems, setRemovedExistingItems] = useState([]);
 
   // mutations / queries
   const [upsertTableOrder] = useMutation(UPSERT_TABLE_ORDER);
@@ -254,24 +264,31 @@ export default function useOrderManagement(pos = null) {
         menuItem.basePrice ??
         0;
 
-      // cố gắng gộp nếu là món mới cùng cấu hình
+      // cố gắng gộp nếu là món cùng cấu hình
+      // IMPORTANT: only merge into unsaved/new items so the UI can show
+      // saved items (isExisting) separately. New additions should appear
+      // under the "Mới" group (isNew) and only be merged into saved
+      // items after a successful save that returns the server order.
       const idx = currentOrder.findIndex(
         (it) =>
+          !it.isExisting && // only merge into items that are not yet saved
           (it.dishId || it.id) === (menuItem.dishId || menuItem.id) &&
           (it.method || it.cookingOption || "") === (cookingOption || "") &&
-          (it.unit || "portion") === (unit || "portion") &&
-          !it.isExisting // chỉ gộp vào món chưa lưu, món đã lưu tách riêng
+          (it.unit || "portion") === (unit || "portion")
       );
 
       if (idx !== -1) {
         const updated = [...currentOrder];
         const nextQty = Number(updated[idx].quantity || 0) + Number(quantity);
+        // preserve existing server identifiers; mark as edited so it will
+        // be sent to server in the outgoing delta payload.
         updated[idx] = {
           ...updated[idx],
           quantity: nextQty,
           lineSubtotal:
             (itemPrice + Number(updated[idx].modifiersPrice || 0)) * nextQty,
           _edited: true,
+          // keep isExisting/isNew flags as they were (if it was saved, it stays saved)
         };
         setCurrentOrder(updated);
       } else {
@@ -327,7 +344,18 @@ export default function useOrderManagement(pos = null) {
 
         // 1) xóa theo lineId (chuẩn nhất)
         const byLine = prev.findIndex((it) => it._lineId === key);
-        if (byLine !== -1) return prev.filter((_, i) => i !== byLine);
+        if (byLine !== -1) {
+          const removed = prev[byLine];
+          // if removed item was existing on server, track it so we can
+          // request a full replace on save to remove it on server.
+          if (removed.isExisting) {
+            setRemovedExistingItems((s) => [
+              ...s,
+              removed._lineId || removed.dishId || removed.id,
+            ]);
+          }
+          return prev.filter((_, i) => i !== byLine);
+        }
 
         // 2) xóa theo dishId (nếu món mới chưa có _lineId)
         const byDish = prev.findIndex((it) => it.dishId === key);
@@ -343,6 +371,25 @@ export default function useOrderManagement(pos = null) {
     },
     [setCurrentOrder]
   );
+
+  // clear all items on the client for the current table while tracking
+  // any existing (server-sourced) items so saveOrder can request a replace
+  const clearAll = useCallback(() => {
+    // collect identifiers of existing items
+    const existingIds = (currentOrder || [])
+      .filter((it) => it.isExisting)
+      .map((it) => it._lineId || it.dishId || it.id);
+
+    if (existingIds.length > 0) {
+      setRemovedExistingItems((s) => [...s, ...existingIds]);
+    }
+
+    // clear client order and local tableOrders mapping
+    setCurrentOrder([]);
+    if (setTableOrders && currentTable?.code) {
+      setTableOrders((prev) => ({ ...prev, [currentTable.code]: [] }));
+    }
+  }, [currentOrder, setCurrentOrder, setTableOrders, currentTable]);
 
   /* ============================================================
      6) SAVE / UPSERT
@@ -376,22 +423,47 @@ export default function useOrderManagement(pos = null) {
       const outgoing = [];
       const skipped = [];
 
-      (currentOrder || []).forEach((it, idx) => {
-        const n = normalizeOutgoingItem(it, idx);
-        if (n._invalid) {
-          skipped.push(n);
-        } else {
-          outgoing.push(n);
-        }
-      });
+      // If deletions of existing items occurred, we must send the full
+      // desired items list and request a replace on the server so the
+      // server will remove deleted lines. Otherwise we can continue with
+      // delta behavior (send only new/edited items to append).
+      const useReplace =
+        removedExistingItems && removedExistingItems.length > 0;
 
-      if (!outgoing.length) {
-        return {
-          success: false,
-          message:
-            "Không món nào hợp lệ để lưu (thiếu dishId/menuId/categoryId). Bạn cần chọn lại từ menu.",
-          skipped,
-        };
+      if (useReplace) {
+        // Build full outgoing list from currentOrder (client's desired final state)
+        (currentOrder || []).forEach((it, idx) => {
+          const n = normalizeOutgoingItem(it, idx);
+          if (n._invalid) skipped.push(n);
+          else outgoing.push(n);
+        });
+
+        if (!outgoing.length) {
+          // server schema requires at least one item when creating/updating an order.
+          return {
+            success: false,
+            message:
+              "Không thể lưu: danh sách món trống sau khi xóa. Nếu bạn muốn huỷ đơn, hãy dùng hủy order.",
+            skipped,
+          };
+        }
+      } else {
+        // delta behavior: only send new or edited items to append
+        (currentOrder || []).forEach((it, idx) => {
+          if (it.isExisting && !it._edited && !it.isNew) return;
+          const n = normalizeOutgoingItem(it, idx);
+          if (n._invalid) skipped.push(n);
+          else outgoing.push(n);
+        });
+
+        if (!outgoing.length) {
+          return {
+            success: false,
+            message:
+              "Không món nào hợp lệ để lưu (thiếu dishId/menuId/categoryId). Bạn cần chọn lại từ menu.",
+            skipped,
+          };
+        }
       }
 
       try {
@@ -402,6 +474,8 @@ export default function useOrderManagement(pos = null) {
               tableCode: currentTable.code,
               orderCode: currentTable.orderCode || null,
               items: outgoing,
+              // ask server to replace items if we deleted existing ones
+              replaceItems: useReplace || undefined,
               note: orderNote,
               customer: extraCustomer,
               clientMeta: {
@@ -429,6 +503,8 @@ export default function useOrderManagement(pos = null) {
             ...prev,
             [currentTable.code]: normalized,
           }));
+          // clear deletion tracking after successful save
+          setRemovedExistingItems([]);
         }
 
         return {
@@ -450,6 +526,8 @@ export default function useOrderManagement(pos = null) {
       upsertTableOrder,
       setTableOrders,
       setCurrentOrder,
+      removedExistingItems,
+      setRemovedExistingItems,
       normalizeOutgoingItem,
       makeLineId,
     ]
@@ -490,7 +568,6 @@ export default function useOrderManagement(pos = null) {
             .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
         })),
       }));
-
       return {
         success: true,
         data: normalized,
@@ -528,6 +605,7 @@ export default function useOrderManagement(pos = null) {
     addToOrder,
     updateItemQty,
     removeItem,
+    clearAll,
     saveOrder,
 
     // fetch

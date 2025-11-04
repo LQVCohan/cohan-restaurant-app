@@ -77,19 +77,19 @@ function TableCard({ t, active, selected, onClick, onOpenTableActions }) {
       <div className={`${cls.tableMeta} ${cls.metaRow}`}>
         <span className={cls.kv}>{t.capacity ?? 0} chỗ</span>
         <span className={cls.kv}>{t.status}</span>
-        {t.position?.shape && (
+        {/* {t.position?.shape && (
           <span className={cls.kv}>
             {t.position.shape}
             {t.position.w && t.position.h
               ? ` ${t.position.w}×${t.position.h}`
               : ""}
           </span>
-        )}
-        {Number.isFinite(t.position?.x) && Number.isFinite(t.position?.y) && (
+        )} */}
+        {/* {Number.isFinite(t.position?.x) && Number.isFinite(t.position?.y) && (
           <span className={cls.kv}>
             ({t.position.x}, {t.position.y})
           </span>
-        )}
+        )} */}
       </div>
 
       {/* Nút 3 chấm (kebab) – ẩn mặc định, hiện khi hover card (styled trong SCSS) */}

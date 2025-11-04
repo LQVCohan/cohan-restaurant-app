@@ -1,9 +1,8 @@
 import mongoose from "mongoose";
-const { Schema, model, Types } = mongoose;
+import BaseSchemaModel from "./baseSchemaModel.js"; // Giả định
+const { Types } = mongoose;
 
-const baseOptions = { timestamps: true };
-
-const CashflowSchema = new Schema(
+const CashflowSchema = BaseSchemaModel(
   {
     restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true },
     type: { type: String, enum: ["INCOME", "EXPENSE"], required: true },
@@ -11,14 +10,15 @@ const CashflowSchema = new Schema(
     currency: { type: String, default: "VND" },
     ref: {
       kind: String,
-      id: { type: Types.ObjectId },
+      id: { type: Types.ObjectId }, // e.g., kind: 'Invoice', id: ...
     },
     note: String,
     at: { type: Date, default: Date.now },
   },
-  baseOptions
+  {} // Options bổ sung (nếu có)
 );
 
 CashflowSchema.index({ restaurantId: 1, at: -1 });
 
-export default mongoose.model("Cashflow", CashflowSchema);
+export default mongoose.models.Cashflow ||
+  mongoose.model("Cashflow", CashflowSchema);

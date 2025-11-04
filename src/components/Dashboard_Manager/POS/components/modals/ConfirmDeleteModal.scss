@@ -1,0 +1,82 @@
+/* Overlay background */
+.modal-overlay-delete {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* Modal container */
+.modal-container {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 300px;
+  max-width: 100%;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Title */
+.modal-container h2 {
+  margin-bottom: 15px;
+}
+
+/* Reason select box */
+.reason-group {
+  margin-bottom: 15px;
+}
+
+.reason-select {
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Custom reason textarea */
+.custom-reason-input {
+  width: 100%;
+  height: 80px;
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-top: 5px;
+}
+
+/* Modal buttons */
+.modal-buttons {
+  display: flex;
+  justify-content: space-between;
+}
+
+.btn-cancel,
+.btn-confirm {
+  padding: 8px 15px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.btn-cancel {
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+}
+
+.btn-confirm {
+  background-color: #007bff;
+  color: white;
+  border: none;
+}
+
+.btn-confirm:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
