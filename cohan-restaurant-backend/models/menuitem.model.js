@@ -16,19 +16,16 @@ const menuItemSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
   menuId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Menu",
     required: true,
-    index: true,
   },
   categoryId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
     required: true,
-    index: true,
   },
 
   name: { type: String, required: true, trim: true },
@@ -47,7 +44,6 @@ const menuItemSchema = BaseSchemaModel({
     type: String,
     enum: ["available", "unavailable", "out_of_stock"],
     default: "available",
-    index: true,
   },
   avgPrepTimeMin: { type: Number, default: 10, min: 0 },
   point: { type: Number, default: 0, min: 0 },

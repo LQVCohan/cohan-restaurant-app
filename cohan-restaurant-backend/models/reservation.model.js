@@ -15,7 +15,6 @@ const ReservationSchema = BaseSchemaModel(
       type: Types.ObjectId,
       ref: "Restaurant",
       required: true,
-      index: true,
     },
     restaurantName: { type: String, default: "" },
     tableId: {
@@ -76,7 +75,6 @@ const ReservationSchema = BaseSchemaModel(
     orderCode: {
       type: String,
       unique: true,
-      index: true,
     },
   },
   {

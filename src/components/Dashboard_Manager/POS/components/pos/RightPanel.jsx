@@ -4,9 +4,10 @@ import { useNavigate } from "react-router-dom";
 import cls from "./RightPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { useNotification } from "../../../../../hooks/useNotification";
-import { formatPrice } from "../../utils/format";
+import { formatPrice } from "@/utils/formatters";
 import PaymentModal from "../modals/PaymentModal";
 import ConfirmDeleteModal from "../modals/ConfirmDeleteModal";
+import useOrderManagement from "@/hooks/useOrderManagement";
 
 export default function RightPanel() {
   const navigate = useNavigate();
@@ -22,7 +23,9 @@ export default function RightPanel() {
     setCurrentTable,
   } = usePos();
 
-  // dùng notification global
+  const pos = usePos();
+  const { preparePayment } = useOrderManagement(pos);
+
   const { showNotification } = useNotification?.() || {
     showNotification: (msg, type) => console.log(type || "info", msg),
   };
@@ -32,7 +35,6 @@ export default function RightPanel() {
 
   const hasItems = Array.isArray(currentOrder) && currentOrder.length > 0;
 
-  // tách nhóm: món đã lưu & món mới
   const { existingItems, newItems } = useMemo(() => {
     const ex = [];
     const nw = [];
@@ -42,15 +44,53 @@ export default function RightPanel() {
     });
     return { existingItems: ex, newItems: nw };
   }, [currentOrder]);
-  const closePaymentModal = useCallback(() => {
-    setPaymentModalOpen(false);
-  }, []);
-  const handlePaymentConfirm = useCallback(
-    (paymentMethod, paymentAmount) => {
-      console.log("Thanh toán:", paymentMethod, paymentAmount);
-      closePaymentModal();
+
+  const closePaymentModal = useCallback(() => setPaymentModalOpen(false), []);
+
+  // Mở modal: LƯU trước, lỗi thì báo ngay – không mở modal
+  const openPaymentModal = useCallback(async () => {
+    if (!hasItems) return;
+    if (!currentTable?.restaurantId) {
+      showNotification("Thiếu restaurantId.", "error");
+      return;
+    }
+    const res = await preparePayment({
+      restaurantId: currentTable.restaurantId,
+    });
+    if (!res?.success) {
+      showNotification(
+        res?.message || "Lưu đơn thất bại trước khi thanh toán.",
+        "error"
+      );
+      return;
+    }
+    setPaymentModalOpen(true);
+  }, [hasItems, currentTable, preparePayment, showNotification]);
+
+  // Dọn bàn sau khi thanh toán thành công
+  const handlePaymentComplete = useCallback(
+    (payload) => {
+      showNotification("Thanh toán thành công.", "success");
+      const inv =
+        payload?.server?.invoice?.number || payload?.server?.invoice?.id;
+      if (inv) showNotification(`Hóa đơn: ${inv}`, "info");
+
+      // Clear order & trả bàn
+      clearOrder();
+      if (currentTable?.id && typeof setTableStatus === "function") {
+        setTableStatus({ id: currentTable.id, status: "available" });
+      }
+      if (typeof setCurrentTable === "function") setCurrentTable(null);
+
+      setPaymentModalOpen(false);
     },
-    [closePaymentModal]
+    [
+      clearOrder,
+      currentTable,
+      setTableStatus,
+      setCurrentTable,
+      showNotification,
+    ]
   );
 
   const handleSaveOrder = async () => {
@@ -58,22 +98,14 @@ export default function RightPanel() {
       showNotification("Vui lòng chọn bàn trước khi lưu.", "error");
       return;
     }
-
     const res = await saveOrder?.({
       persist: true,
       restaurantId: currentTable.restaurantId,
     });
-
     if (res?.success) {
-      // hiệu ứng viền xanh
       setPulse(true);
       setTimeout(() => setPulse(false), 650);
-
       showNotification(`Đã lưu vào bàn ${currentTable.code}`, "success", 3000);
-
-      // nếu bạn muốn clear/làm trống sau khi lưu thì mở 2 dòng dưới
-      // clearOrder();
-      // setCurrentTable(null); // nếu context cho phép
     } else {
       showNotification(res?.message || "Lưu đơn hàng thất bại.", "error");
     }
@@ -83,17 +115,12 @@ export default function RightPanel() {
     const next = Math.max(1, Number(item.quantity || 1) + change);
     updateItemQty(item.dishId || item.id, next);
   };
-
   const handleQtyInput = (e, item) => {
     const v = Math.max(1, Number(e.target.value) || 1);
     updateItemQty(item.dishId || item.id, v);
   };
 
-  const getItemPrice = (item) => {
-    const p = Number(item.price || 0);
-    return formatPrice(p);
-  };
-
+  const getItemPrice = (item) => formatPrice(Number(item.price || 0));
   const getItemTotal = (item) => {
     const t =
       item.total != null
@@ -101,12 +128,12 @@ export default function RightPanel() {
         : Number(item.price || 0) * Number(item.quantity || 1);
     return formatPrice(t);
   };
+
   const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isClearModalOpen, setClearModalOpen] = useState(false);
 
   const handleDeleteItem = (action, selectedReason) => {
-    // action is provided by modal but for single-item delete it's ignored
     removeItem(itemToDelete._lineId || itemToDelete.dishId || itemToDelete.id);
     setDeleteModalOpen(false);
     setItemToDelete(null);
@@ -115,17 +142,9 @@ export default function RightPanel() {
       "info"
     );
   };
-  const handleShowDeleteModal = (item) => {
-    setItemToDelete(item);
-    setDeleteModalOpen(true);
-  };
 
-  const handleShowClearModal = () => setClearModalOpen(true);
-
-  const handleClearConfirm = (action, selectedReason, customReason) => {
-    // action: 'clear_items' or 'clear_table'
+  const handleClearConfirm = (action) => {
     if (action === "clear_table") {
-      // delete all items and mark table as available
       clearOrder();
       if (currentTable?.id && typeof setTableStatus === "function") {
         setTableStatus({ id: currentTable.id, status: "available" });
@@ -133,11 +152,9 @@ export default function RightPanel() {
       if (typeof setCurrentTable === "function") setCurrentTable(null);
       showNotification(`Đã xóa thông tin bàn ${currentTable?.code || ""}`);
     } else {
-      // just clear items
       clearOrder();
       showNotification(`Đã xóa tất cả món (giữ thông tin bàn)`);
     }
-
     setClearModalOpen(false);
   };
 
@@ -149,23 +166,25 @@ export default function RightPanel() {
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={closePaymentModal}
-        onConfirm={handlePaymentConfirm}
         totalAmount={finalTotals?.total || 0}
         order={currentOrder}
         table={currentTable}
+        onConfirm={() => {}} // optional
+        onComplete={handlePaymentComplete} // dọn bàn tại đây
       />
+
       <ConfirmDeleteModal
         isOpen={isDeleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDeleteItem}
       />
-      {/* modal for clearing all items / clearing table */}
       <ConfirmDeleteModal
         isOpen={isClearModalOpen}
         onClose={() => setClearModalOpen(false)}
         onConfirm={handleClearConfirm}
         showScopeChoice={true}
       />
+
       {/* HEADER */}
       <div className={cls.header}>
         <div className={cls.headerLeft}>
@@ -201,9 +220,8 @@ export default function RightPanel() {
         </div>
       </div>
 
-      {/* BODY SCROLL */}
+      {/* BODY */}
       <div className={cls.body}>
-        {/* nhóm món mới */}
         {newItems.length > 0 && (
           <>
             <div className={cls.groupHeader}>
@@ -225,7 +243,6 @@ export default function RightPanel() {
                       ×
                     </button>
                   </div>
-
                   <div className={cls.itemControls}>
                     <span className={cls.badgeNew}>Mới</span>
                     <div className={cls.qtyControls}>
@@ -251,17 +268,16 @@ export default function RightPanel() {
                     </div>
                     <div className={cls.itemPrice}>{getItemTotal(item)}</div>
                   </div>
-
                   <div className={cls.itemMetaRow}>
                     <span>
                       {item.unit === "kg" ? "Kg" : "Phần"} ·{" "}
                       {getItemPrice(item)}
                     </span>
-                    {item.method || item.cookingOption ? (
+                    {(item.method || item.cookingOption) && (
                       <span className={cls.method}>
                         {item.method || item.cookingOption}
                       </span>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               ))}
@@ -269,12 +285,10 @@ export default function RightPanel() {
           </>
         )}
 
-        {/* ngăn cách */}
         {newItems.length > 0 && existingItems.length > 0 && (
           <div className={cls.dividerLabel}>Đã lưu trên bàn</div>
         )}
 
-        {/* nhóm đã lưu */}
         {existingItems.length > 0 && (
           <div className={cls.itemsList}>
             {existingItems.map((item) => (
@@ -286,12 +300,14 @@ export default function RightPanel() {
                   <div className={cls.itemName}>{item.name}</div>
                   <button
                     className={cls.removeBtn}
-                    onClick={() => handleShowDeleteModal(item)}
+                    onClick={() => {
+                      setItemToDelete(item);
+                      setDeleteModalOpen(true);
+                    }}
                   >
                     ×
                   </button>
                 </div>
-
                 <div className={cls.itemControls}>
                   <span className={cls.badgeSaved}>ĐÃ LƯU</span>
                   <div className={cls.qtyControls}>
@@ -317,16 +333,15 @@ export default function RightPanel() {
                   </div>
                   <div className={cls.itemPrice}>{getItemTotal(item)}</div>
                 </div>
-
                 <div className={cls.itemMetaRow}>
                   <span>
                     {item.unit === "kg" ? "Kg" : "Phần"} · {getItemPrice(item)}
                   </span>
-                  {item.method || item.cookingOption ? (
+                  {(item.method || item.cookingOption) && (
                     <span className={cls.method}>
                       {item.method || item.cookingOption}
                     </span>
-                  ) : null}
+                  )}
                 </div>
               </div>
             ))}
@@ -345,18 +360,6 @@ export default function RightPanel() {
             <span>Tạm tính:</span>
             <strong>{formatPrice(finalTotals?.subtotal || 0)}</strong>
           </div>
-          <div className={cls.row}>
-            <span>Giảm giá:</span>
-            <strong>{formatPrice(finalTotals?.discount || 0)}</strong>
-          </div>
-          <div className={cls.row}>
-            <span>Thuế VAT (10%):</span>
-            <strong>{formatPrice(finalTotals?.tax || 0)}</strong>
-          </div>
-          <div className={cls.row}>
-            <span>Phí phục vụ (5%):</span>
-            <strong>{formatPrice(finalTotals?.service || 0)}</strong>
-          </div>
           <div className={cls.hr} />
           <div className={`${cls.row} ${cls.grand}`}>
             <span>Tổng cộng:</span>
@@ -368,12 +371,11 @@ export default function RightPanel() {
           <button
             type="button"
             className={`${cls.btn} ${cls.secondary}`}
-            onClick={handleShowClearModal}
+            onClick={() => setClearModalOpen(true)}
             disabled={!hasItems}
           >
             Xóa
           </button>
-
           <button
             type="button"
             className={`${cls.btn} ${cls.primary}`}
@@ -382,30 +384,11 @@ export default function RightPanel() {
           >
             Lưu
           </button>
-
-          <button
-            type="button"
-            className={`${cls.btn} ${cls.violet}`}
-            disabled={!hasItems}
-            title="In tổng"
-          >
-            🖨️ In tổng
-          </button>
-
-          <button
-            type="button"
-            className={`${cls.btn} ${cls.primary}`}
-            disabled={!hasItems}
-            title="In đơn"
-          >
-            In đơn
-          </button>
-
           <button
             type="button"
             className={`${cls.btn} ${cls.success}`}
             disabled={!hasItems}
-            onClick={() => setPaymentModalOpen(true)}
+            onClick={openPaymentModal}
             title="Thanh toán"
           >
             Thanh toán

@@ -9,9 +9,9 @@
   padding: $spacing-4;
 }
 
-.modal {
+.modal-order {
   background: white;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
   max-width: 48rem;
   width: 100%;
   max-height: 90vh;
@@ -38,7 +38,7 @@
   color: $gray-400;
   cursor: pointer;
   padding: $spacing-1;
-  border-radius: $rounded;
+  border-radius: 4px;
   transition: color 0.2s ease;
 
   &:hover {
@@ -90,7 +90,7 @@
 
 .statusBadge {
   &.pending {
-    @include status-badge($yellow-100, $yellow-500);
+    @include status-badge(#fff3cd, #ffc107);
   }
 
   &.confirmed {
@@ -98,15 +98,15 @@
   }
 
   &.preparing {
-    @include status-badge($secondary-300-100, $secondary-300-600);
+    @include status-badge(#f2f6ff, #3356cc);
   }
 
   &.ready {
-    @include status-badge($green-100, $green-600);
+    @include status-badge(#d1e7dd, #198754);
   }
 
   &.completed {
-    @include status-badge($green-100, $green-600);
+    @include status-badge(#d1e7dd, #198754);
   }
 
   &.cancelled {
@@ -124,7 +124,7 @@
   @include flex-between;
   padding: $spacing-4;
   background-color: $gray-50;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
   border: 1px solid $gray-200;
   gap: $spacing-4;
 
@@ -180,7 +180,7 @@
 .statusSelect {
   padding: $spacing-1 $spacing-2;
   border: 1px solid $gray-300;
-  border-radius: $rounded;
+  border-radius: 4px;
   font-size: $text-sm;
   background: white;
 
@@ -194,7 +194,7 @@
   @include flex-between;
   padding: $spacing-4;
   background-color: $gray-100;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
   font-size: $text-lg;
   font-weight: 700;
 }
@@ -204,7 +204,7 @@
 }
 
 .totalAmount {
-  color: $green-600;
+  color: #198754;
 }
 
 .notesTitle {
@@ -216,8 +216,8 @@
 .notesContent {
   padding: $spacing-3;
   background-color: $yellow-50;
-  border-left: 4px solid $yellow-500;
-  border-radius: $rounded-lg;
+  border-left: 4px solid #ffc107;
+  border-radius: 0.5rem;
   color: $yellow-800;
   margin: 0;
 }

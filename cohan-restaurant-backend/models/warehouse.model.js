@@ -6,12 +6,11 @@ const WarehouseSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
   name: { type: String, required: true, trim: true },
   code: { type: String, trim: true },
   address: { type: String },
-  isActive: { type: Boolean, default: true, index: true },
+  isActive: { type: Boolean, default: true },
 });
 WarehouseSchema.index({ restaurantId: 1, name: 1 }, { unique: true });
 

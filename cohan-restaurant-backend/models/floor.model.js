@@ -7,10 +7,9 @@ const FloorSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
   name: { type: String, required: true, trim: true },
-  level: { type: Number, required: true, index: true }, // tầng 1,2,3...
+  level: { type: Number, required: true }, // tầng 1,2,3...
   description: { type: String },
   planImage: { type: String }, // ảnh sơ đồ tầng (PNG/JPG/SVG)
   isActive: { type: Boolean, default: true },

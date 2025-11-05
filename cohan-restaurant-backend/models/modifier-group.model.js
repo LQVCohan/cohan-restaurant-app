@@ -18,7 +18,6 @@ const modifierGroupSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
   name: { type: String, required: true, trim: true }, // “Tuỳ chọn thêm”, “Tuỳ chọn gia giảm”, ...
   selectionType: {

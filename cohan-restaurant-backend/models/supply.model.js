@@ -9,14 +9,13 @@ const SupplySchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
 
   name: { type: String, required: true, trim: true, index: "text" },
 
-  sku: { type: String, trim: true, index: true },
+  sku: { type: String, trim: true },
 
-  category: { type: String, trim: true, index: true }, // "drink", "disposable", "tissue"...
+  category: { type: String, trim: true }, // "drink", "disposable", "tissue"...
 
   unit: {
     type: String,
@@ -35,7 +34,7 @@ const SupplySchema = BaseSchemaModel({
 
   notes: { type: String, trim: true },
 
-  isActive: { type: Boolean, default: true, index: true },
+  isActive: { type: Boolean, default: true },
 });
 
 // Đảm bảo mỗi nhà hàng không bị trùng tên Supply

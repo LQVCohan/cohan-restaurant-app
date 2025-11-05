@@ -11,7 +11,7 @@
 
 .modal {
   background: white;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
   max-width: 32rem;
   width: 100%;
   max-height: 90vh;
@@ -38,7 +38,7 @@
   color: $gray-400;
   cursor: pointer;
   padding: $spacing-1;
-  border-radius: $rounded;
+  border-radius: 4px;
   transition: color 0.2s ease;
 
   &:hover {
@@ -94,13 +94,13 @@
   color: $gray-900;
 
   &.total {
-    color: $green-600;
+    color: #198754;
   }
 }
 
 .statusBadge {
   &.pending {
-    @include status-badge($yellow-100, $yellow-500);
+    @include status-badge(#fff3cd, #ffc107);
   }
 
   &.confirmed {
@@ -108,7 +108,7 @@
   }
 
   &.preparing {
-    @include status-badge($secondary-300-100, $secondary-300-600);
+    @include status-badge(#f2f6ff, #3356cc);
   }
 }
 
@@ -127,8 +127,8 @@
 .notesContent {
   padding: $spacing-3;
   background-color: $yellow-50;
-  border-left: 4px solid $yellow-500;
-  border-radius: $rounded-lg;
+  border-left: 4px solid #ffc107;
+  border-radius: 0.5rem;
 
   p {
     color: $yellow-800;
@@ -144,7 +144,7 @@
   margin: 0 0 $spacing-2 0;
 
   svg {
-    color: $secondary-300-600;
+    color: #3356cc;
   }
 }
 
@@ -152,7 +152,7 @@
   padding: $spacing-4;
   background-color: $gray-50;
   border-left: 4px solid $secondary-300-500;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
 
   p {
     color: $gray-700;

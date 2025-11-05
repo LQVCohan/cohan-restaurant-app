@@ -38,7 +38,17 @@ const OrderItemSchema = new mongoose.Schema(
         price: { type: Number, default: 0 }, // Giá của tùy chọn (modifier)
       },
     ],
-    lineSubtotal: { type: Number, default: 0 }, // Tổng giá của món ăn (quantity * price + modifiersPrice)
+    lineSubtotal: { type: Number, default: 0 },
+    status: {
+      type: String,
+      default: "pending",
+      enum: ["pending", "preparing", "ready", "served", "cancelled"],
+    },
+    recipeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Recipe",
+    },
+    note: { type: String },
   },
   { _id: false }
 );
@@ -56,8 +66,13 @@ const OrderSchema = BaseSchemaModel({
   reservationId: { type: mongoose.Schema.Types.ObjectId, ref: "Reservation" },
   orderType: {
     type: String,
-    enum: ["dine_in", "takeaway", "delivery"],
     required: true,
+    enum: [
+      "dine_in", // <-- Giá trị chuẩn cho "Tại bàn"
+      "takeaway", // Mang về (Khách tự lấy)
+      "delivery", // Giao hàng (Nhà hàng đi giao)
+    ],
+    default: "dine_in",
   },
   shipping: {
     fullName: String,

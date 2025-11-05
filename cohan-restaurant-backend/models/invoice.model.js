@@ -1,8 +1,8 @@
+// src/models/invoice.model.js
 import mongoose from "mongoose";
-import BaseSchemaModel from "./baseSchemaModel.js"; // Giả định
+import BaseSchemaModel from "./baseSchemaModel.js";
 const { Schema, Types } = mongoose;
 
-// Schema này đã được "đồng bộ" với OrderItem GQL
 const InvoiceLineSchema = new Schema(
   {
     dishId: { type: String },
@@ -13,7 +13,7 @@ const InvoiceLineSchema = new Schema(
     price: { type: Number, required: true },
     modifiersPrice: { type: Number, default: 0 },
     quantity: { type: Number, required: true },
-    total: { type: Number, required: true }, // = (price + modifiersPrice) * quantity
+    totals: { type: Number, required: true }, // (price + modifiersPrice) * quantity
     modifiers: [
       {
         optionId: Types.ObjectId,
@@ -26,14 +26,14 @@ const InvoiceLineSchema = new Schema(
   { _id: false }
 );
 
-// Đồng bộ với OrderTotals GQL
+// Tổng tiền (chi tiết)
 const InvoiceTotalsSchema = new Schema(
   {
     subtotal: { type: Number, required: true },
     discount: { type: Number, default: 0 },
     tax: { type: Number, default: 0 },
     service: { type: Number, default: 0 },
-    grandTotal: { type: Number, required: true },
+    grandTotal: { type: Number, required: true }, // subtotal - discount + tax + service
   },
   { _id: false }
 );
@@ -44,15 +44,46 @@ const InvoiceSchema = BaseSchemaModel(
     orderId: { type: Types.ObjectId, ref: "Order", required: true },
     userId: { type: Types.ObjectId, ref: "User" },
     tableCode: { type: String },
+
+    // Số hoá đơn tăng dần, hiển thị cho khách (vd. INV-2025-000123)
+    number: { type: String, unique: true, sparse: true },
+
+    // Thời điểm phát hành hoá đơn
+    issuedAt: { type: Date, required: true },
+
+    // Dòng hàng
     lines: [InvoiceLineSchema],
+
+    // Tổng tiền chi tiết
     totals: { type: InvoiceTotalsSchema, required: true },
-    code: { type: String, unique: true, sparse: true }, // Mã hóa đơn
+
+    // Số tiền đã thanh toán trên hoá đơn (lũy kế)
+    paid: { type: Number, default: 0 },
+
+    // Trạng thái thanh toán của hoá đơn
+    status: {
+      type: String,
+      enum: ["UNPAID", "PARTIAL", "PAID", "VOID"],
+      default: "UNPAID",
+      index: true,
+    },
+
+    // Tiền tệ hiển thị trên hoá đơn
+    currency: { type: String, default: "VND" },
+
+    // Tham chiếu giao dịch thanh toán mới nhất (PaymentTransaction._id)
+    refTransactionId: { type: Types.ObjectId, ref: "PaymentTransaction" },
+
+    // (tuỳ chọn) mã/QR hiển thị cho khách, nếu bạn vẫn cần
+    code: { type: String, unique: true, sparse: true },
   },
   {}
 );
 
 InvoiceSchema.index({ restaurantId: 1, orderId: 1 });
-InvoiceSchema.index({ code: 1 });
+InvoiceSchema.index({ number: 1 }, { unique: true, sparse: true });
+InvoiceSchema.index({ code: 1 }, { unique: true, sparse: true });
 
-export default mongoose.models.Invoice ||
-  mongoose.model("Invoice", InvoiceSchema);
+export const Invoice =
+  mongoose.models.Invoice || mongoose.model("Invoice", InvoiceSchema);
+export default Invoice;

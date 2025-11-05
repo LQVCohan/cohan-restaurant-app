@@ -1,0 +1,107 @@
+# src/schema/payments.graphql
+scalar DateTime
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  E_WALLET
+}
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+  PENDING
+  CANCELED
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  VOID
+}
+
+enum CashflowType {
+  INFLOW
+  OUTFLOW
+}
+enum CashflowCategory {
+  SALE
+  REFUND
+  OTHER
+}
+
+input PayOrderInput {
+  orderId: ID!
+  restaurantId: ID!
+  paidAmount: Float!
+  method: String!
+  paidAt: DateTime
+  note: String
+  externalRef: String
+}
+
+type PayOrderResult {
+  order: Order!
+  invoice: Invoice!
+  transaction: PaymentTransaction!
+  cashflow: Cashflow!
+}
+
+type CashflowReference {
+  kind: String
+  id: ID
+  orderId: ID
+}
+
+type Cashflow {
+  id: ID!
+  type: CashflowType!
+  category: CashflowCategory!
+  amount: Float!
+  occurredAt: DateTime!
+  method: PaymentMethod
+  currency: String
+  reference: CashflowReference
+  note: String
+  createdBy: ID
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+type Invoice {
+  id: ID!
+  number: String!
+  status: InvoiceStatus!
+  totals: Float!
+  paid: Float!
+  issuedAt: DateTime!
+  orderId: ID!
+  customerId: ID
+  currency: String
+  refTransactionId: ID
+  meta: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+type PaymentTransaction {
+  id: ID!
+  orderId: ID!
+  paidAmount: Float!
+  method: PaymentMethod!
+  status: PaymentStatus!
+  paidAt: DateTime!
+  note: String
+  externalRef: String
+  createdBy: ID
+  meta: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+extend type Query {
+  paymentTransactionsByOrder(orderId: ID!): [PaymentTransaction!]!
+  invoicesByOrder(orderId: ID!): [Invoice!]!
+}
+
+extend type Mutation {
+  payOrder(input: PayOrderInput!): PayOrderResult!
+}

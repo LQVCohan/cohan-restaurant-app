@@ -12,6 +12,7 @@ import {
 
 // TÍNH TOÁN SỐ LƯỢNG MÓN
 const getItemCounts = (items) => {
+  // Logic này giờ sẽ chạy đúng vì GQL 'items' đã có 'status'
   const totalItems = items.length;
   const pendingCount = items.filter((item) => item.status === "pending").length;
   const confirmedCount = items.filter(
@@ -34,22 +35,23 @@ const formatCurrency = (amount) => {
 
 const OrderCard = ({ order, onUpdateStatus, onViewOrder, onViewItem }) => {
   // Get alert class and priority
-  const getOrderAlertClass = (orderTime) => {
-    if (!orderTime) return "";
+  const getOrderAlertClass = (createdAt) => {
+    if (!createdAt) return "";
     const now = new Date();
-    const time = new Date(orderTime); // Đảm bảo đây là object Date
+    const time = new Date(createdAt); // <-- SỬA: Dùng createdAt
     const timeDiff = Math.floor((now - time) / (1000 * 60));
 
     if (timeDiff >= 30) return "border-l-4 border-red-600 bg-red-50";
     if (timeDiff >= 20) return "border-l-4 border-red-500 bg-red-50";
     if (timeDiff >= 10) return "border-l-4 border-yellow-500 bg-yellow-50";
     return "border-l-4 border-gray-200";
-  }; // Get time warning badge
+  };
 
-  const getTimeWarningBadge = (orderTime) => {
-    if (!orderTime) return null;
+  // Get time warning badge
+  const getTimeWarningBadge = (createdAt) => {
+    if (!createdAt) return null;
     const now = new Date();
-    const time = new Date(orderTime); // Đảm bảo đây là object Date
+    const time = new Date(createdAt); // <-- SỬA: Dùng createdAt
     const timeDiff = Math.floor((now - time) / (1000 * 60));
 
     if (timeDiff >= 30) {
@@ -72,9 +74,11 @@ const OrderCard = ({ order, onUpdateStatus, onViewOrder, onViewItem }) => {
       );
     }
     return <span className="text-gray-500 text-xs">{timeDiff}p trước</span>;
-  }; // Get status badge
+  };
 
+  // Get status badge
   const getStatusBadge = (status) => {
+    // SỬA: Dùng currentStatus
     const statusConfig = {
       pending: {
         bg: "bg-yellow-100",
@@ -107,11 +111,13 @@ const OrderCard = ({ order, onUpdateStatus, onViewOrder, onViewItem }) => {
         {config.label}
       </span>
     );
-  }; // Get table icon
+  };
 
+  // Get table icon
   const getTableIcon = (type) => {
+    // SỬA: Dùng orderType và "dine_in"
     switch (type) {
-      case "table":
+      case "dine_in": // <-- SỬA: Đổi "table" thành "dine_in"
         return "🪑";
       case "takeaway":
         return "🛍️";
@@ -120,11 +126,14 @@ const OrderCard = ({ order, onUpdateStatus, onViewOrder, onViewItem }) => {
       default:
         return "🪑";
     }
-  }; // Get action buttons
+  };
 
+  // Get action buttons
   const getActionButtons = () => {
     const buttons = [];
-    switch (order.status) {
+    switch (
+      order.currentStatus // <-- SỬA: Dùng currentStatus
+    ) {
       case "pending":
         buttons.push(
           <button
@@ -156,7 +165,6 @@ const OrderCard = ({ order, onUpdateStatus, onViewOrder, onViewItem }) => {
           </button>
         );
         break;
-      // HOÀN THIỆN PHẦN BỊ CẮT
       case "preparing":
         buttons.push(
           <button
@@ -179,17 +187,18 @@ const OrderCard = ({ order, onUpdateStatus, onViewOrder, onViewItem }) => {
           </button>
         );
         break;
-      default: // Không có action cho đơn completed hoặc cancelled
+      default:
         break;
     }
     return buttons;
   };
 
-  const { totalItems, pendingCount } = getItemCounts(order.items);
-  const alertClass = getOrderAlertClass(order.orderTime);
-  const timeWarningBadge = getTimeWarningBadge(order.orderTime);
-  const statusBadge = getStatusBadge(order.status);
-  const actionButtons = getActionButtons(); // HOÀN THIỆN PHẦN JSX (RENDER)
+  // --- Lấy dữ liệu đã được GQL cung cấp ---
+  const { totalItems, pendingCount } = getItemCounts(order.items || []);
+  const alertClass = getOrderAlertClass(order.createdAt); // <-- SỬA
+  const timeWarningBadge = getTimeWarningBadge(order.createdAt); // <-- SỬA
+  const statusBadge = getStatusBadge(order.currentStatus); // <-- SỬA
+  const actionButtons = getActionButtons();
 
   return (
     <div
@@ -200,7 +209,8 @@ const OrderCard = ({ order, onUpdateStatus, onViewOrder, onViewItem }) => {
         <div className="flex justify-between items-center mb-2">
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold text-blue-700">
-              {getTableIcon(order.type)} {order.tableNumber}
+              {getTableIcon(order.orderType)} {order.tableCode}{" "}
+              {/* <-- SỬA: Dùng orderType và tableCode */}
             </span>
             <span className="text-gray-400">|</span>
             <span className="text-sm text-gray-500 font-mono">
@@ -211,9 +221,11 @@ const OrderCard = ({ order, onUpdateStatus, onViewOrder, onViewItem }) => {
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-700">
           <User size={14} className="text-gray-500" />
-          <span>{order.customerName}</span>
+          {/* SỬA: Dùng user.fullName */}
+          <span>{order.user?.fullName || "Khách lẻ"}</span>
         </div>
       </div>
+
       {/* Body Card */}
       <div className="p-4">
         <div className="flex justify-between items-center mb-4">
@@ -225,33 +237,29 @@ const OrderCard = ({ order, onUpdateStatus, onViewOrder, onViewItem }) => {
             Món ({pendingCount} chờ)
           </h4>
           <div className="max-h-24 overflow-y-auto space-y-1 pr-2">
-            {order.items.slice(0, 3).map(
-              (
-                item,
-                index // Chỉ hiển thị 3 món đầu
-              ) => (
-                <div
-                  key={index}
-                  onClick={() =>
-                    onViewItem({
-                      item,
-                      orderInfo: { id: order.id, table: order.tableNumber },
-                    })
-                  }
-                  className="flex justify-between items-center text-sm p-1 rounded hover:bg-gray-50 cursor-pointer"
-                >
-                  <span className="text-gray-700 truncate">
-                    <span className="font-medium text-blue-600">
-                      {item.quantity}x
-                    </span>
-                    {item.name}
-                  </span>
-                  {item.status === "pending" && (
-                    <Clock size={12} className="text-yellow-500" />
-                  )}
-                </div>
-              )
-            )}
+            {/* Logic này giờ sẽ chạy đúng vì 'order.items' đã có 'status' */}
+            {(order.items || []).slice(0, 3).map((item, index) => (
+              <div
+                key={index}
+                onClick={() =>
+                  onViewItem({
+                    item,
+                    orderInfo: { id: order.id, table: order.tableCode }, // <-- SỬA
+                  })
+                }
+                className="flex justify-between items-center text-sm p-1 rounded hover:bg-gray-50 cursor-pointer"
+              >
+                <span className="text-gray-700 truncate">
+                  <span className="font-medium text-blue-600">
+                    {item.quantity}x
+                  </span>{" "}
+                  {item.name}
+                </span>
+                {item.status === "pending" && (
+                  <Clock size={12} className="text-yellow-500" />
+                )}
+              </div>
+            ))}
             {order.items.length > 3 && (
               <div className="text-xs text-gray-500 text-center mt-1">
                 ... và {order.items.length - 3} món khác
@@ -261,7 +269,8 @@ const OrderCard = ({ order, onUpdateStatus, onViewOrder, onViewItem }) => {
         </div>
         <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
           <span className="text-lg font-bold text-gray-800">
-            {formatCurrency(order.total)}
+            {/* SỬA: Dùng totals.grandTotal */}
+            {formatCurrency(order.totals.grandTotal)}
           </span>
           <button
             onClick={() => onViewOrder(order)}
@@ -271,6 +280,7 @@ const OrderCard = ({ order, onUpdateStatus, onViewOrder, onViewItem }) => {
           </button>
         </div>
       </div>
+
       {/* Footer Card (Actions) */}
       {actionButtons.length > 0 && (
         <div className="bg-gray-50 p-3 rounded-b-lg border-t border-gray-200">

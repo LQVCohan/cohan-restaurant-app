@@ -7,13 +7,11 @@ const categorySchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
   timeSlot: {
     type: String,
     enum: ["breakfast", "lunch", "dinner", "late_night"],
     required: true,
-    index: true,
   },
   name: { type: String, required: true, trim: true },
   order: { type: Number, default: 0 },

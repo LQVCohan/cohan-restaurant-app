@@ -9,7 +9,6 @@ const permissionSchema = BaseSchemaModel({
     trim: true,
     lowercase: true,
     unique: true,
-    index: true,
   },
   action: { type: String, trim: true, lowercase: true, required: true },
   resource: { type: String, trim: true, lowercase: true, required: true },

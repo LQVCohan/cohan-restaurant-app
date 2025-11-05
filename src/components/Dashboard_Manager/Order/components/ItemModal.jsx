@@ -1,8 +1,61 @@
 import React from "react";
-import { X, ChefHat, StickyNote, BookOpen } from "lucide-react";
+import { X, ChefHat, StickyNote, BookOpen, Loader } from "lucide-react";
+import { gql, useQuery } from "@apollo/client";
 
+// 1. Định nghĩa Query để lấy chi tiết Recipe
+const GET_RECIPE_DETAILS = gql`
+  query GetRecipeById($id: ID!) {
+    recipe(id: $id) {
+      # (Giả sử bạn có query 'recipe' trả về 1 Recipe)
+      id
+      notes # (Đây là ghi chú/hướng dẫn của công thức)
+    }
+  }
+`;
+
+// 2. Component con để tải và hiển thị công thức
+const RecipeDetails = ({ recipeId }) => {
+  const { data, loading, error } = useQuery(GET_RECIPE_DETAILS, {
+    variables: { id: recipeId },
+    skip: !recipeId, // Bỏ qua nếu không có recipeId
+  });
+
+  if (loading) {
+    return (
+      <div className="p-4 bg-gray-50 rounded-lg flex items-center justify-center">
+        <Loader size={16} className="animate-spin text-purple-600" />
+        <span className="ml-2 text-gray-600">Đang tải công thức...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+        <p className="text-red-700">Lỗi tải công thức: {error.message}</p>
+      </div>
+    );
+  }
+
+  if (!data?.recipe || !data.recipe.notes) {
+    return (
+      <div className="p-4 bg-gray-50 border-l-4 border-gray-300 rounded-lg">
+        <p className="text-gray-600">Món này không có công thức/ghi chú.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 bg-gray-50 border-l-4 border-purple-500 rounded-lg">
+      <p className="text-gray-700 leading-relaxed">{data.recipe.notes}</p>
+    </div>
+  );
+};
+
+// 3. Component Modal chính (đã cập nhật)
 const ItemModal = ({ item, orderInfo, onClose }) => {
   const getItemStatusText = (status) => {
+    // ... (Hàm này giữ nguyên)
     const statusMap = {
       pending: "Chưa xác nhận",
       confirmed: "Đã xác nhận",
@@ -12,12 +65,12 @@ const ItemModal = ({ item, orderInfo, onClose }) => {
   };
 
   const getStatusBadge = (status) => {
+    // ... (Hàm này giữ nguyên)
     const statusConfig = {
       pending: { bg: "bg-yellow-100", text: "text-yellow-800" },
       confirmed: { bg: "bg-blue-100", text: "text-blue-800" },
       preparing: { bg: "bg-purple-100", text: "text-purple-800" },
     };
-
     const config = statusConfig[status] || statusConfig.pending;
     return (
       <span
@@ -26,6 +79,14 @@ const ItemModal = ({ item, orderInfo, onClose }) => {
         {getItemStatusText(status)}
       </span>
     );
+  };
+
+  // (Hàm format tiền)
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount || 0);
   };
 
   return (
@@ -61,19 +122,13 @@ const ItemModal = ({ item, orderInfo, onClose }) => {
               <div className="flex justify-between">
                 <span className="text-gray-600">Đơn giá:</span>
                 <span className="font-medium">
-                  {new Intl.NumberFormat("vi-VN", {
-                    style: "currency",
-                    currency: "VND",
-                  }).format(item.price)}
+                  {formatCurrency(item.price)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Thành tiền:</span>
                 <span className="font-medium text-green-600">
-                  {new Intl.NumberFormat("vi-VN", {
-                    style: "currency",
-                    currency: "VND",
-                  }).format(item.price * item.quantity)}
+                  {formatCurrency(item.price * item.quantity)}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -83,28 +138,27 @@ const ItemModal = ({ item, orderInfo, onClose }) => {
             </div>
           </div>
 
-          {/* Notes */}
-          {item.notes && (
+          {/* Notes (SỬA LẠI ĐỂ DÙNG `item.note` HOẶC `item.description`) */}
+          {item.note && (
             <div className="mb-6">
               <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
                 <StickyNote className="text-yellow-600" />
-                Ghi chú đặc biệt:
+                Ghi chú đặc biệt (của khách):
               </h4>
               <div className="p-3 bg-yellow-50 border-l-4 border-yellow-500 rounded-lg">
-                <p className="text-yellow-800">{item.notes}</p>
+                <p className="text-yellow-800">{item.note}</p>
               </div>
             </div>
           )}
 
-          {/* Recipe */}
+          {/* Recipe (SỬA LẠI ĐỂ DÙNG COMPONENT MỚI) */}
           <div className="mb-6">
             <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
               <BookOpen className="text-purple-600" />
-              Công thức chế biến:
+              Ghi chú công thức (cho bếp):
             </h4>
-            <div className="p-4 bg-gray-50 border-l-4 border-purple-500 rounded-lg">
-              <p className="text-gray-700 leading-relaxed">{item.recipe}</p>
-            </div>
+            {/* Truyền `recipeId` vào component con */}
+            <RecipeDetails recipeId={item.recipeId} />
           </div>
 
           {/* Actions */}

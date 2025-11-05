@@ -42,17 +42,15 @@ const TableSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
   floorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Floor",
     required: true,
-    index: true,
   },
 
   code: { type: String, required: true, trim: true }, // ký hiệu bàn: T01, B12...
-  type: { type: String, enum: TableType, default: "standard", index: true },
+  type: { type: String, enum: TableType, default: "standard" },
 
   capacity: { type: Number, required: true, min: 1 },
 
@@ -66,11 +64,10 @@ const TableSchema = BaseSchemaModel({
     type: String,
     enum: TableStatus,
     default: "available",
-    index: true,
   },
 
   // denormalize để filter/sort nhanh (không join floor khi list)
-  floorLevel: { type: Number, default: 1, index: true },
+  floorLevel: { type: Number, default: 1 },
 
   tags: { type: [String], default: [] },
 

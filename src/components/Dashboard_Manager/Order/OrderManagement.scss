@@ -110,7 +110,7 @@
   width: 100%;
   padding: $spacing-2 $spacing-4 $spacing-2 2.5rem;
   border: 1px solid $gray-300;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
   font-size: $text-sm;
 
   &:focus {
@@ -131,7 +131,7 @@
 .filterSelect {
   padding: $spacing-2 $spacing-4;
   border: 1px solid $gray-300;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
   font-size: $text-sm;
   background: white;
 

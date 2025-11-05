@@ -1,5 +1,4 @@
-/* SCSS Module cho PaymentModal */
-/* Nhúng font (nếu cần, hoặc kế thừa từ global) */
+/* SCSS Module cho PaymentModal - Giao diện 2 cột */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 :root {
@@ -16,7 +15,7 @@
     Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
-.backdrop_overlay {
+.backdrop {
   position: fixed;
   top: 0;
   left: 0;
@@ -33,14 +32,14 @@
 
 .modal {
   background: white;
-  padding: 0; /* Xóa padding cũ */
+  padding: 0;
   border-radius: 16px;
-  max-width: 480px;
+  max-width: 800px; /* RỘNG RA ĐỂ CHIA 2 CỘT */
   width: 90%;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   position: relative;
   animation: slideIn 0.3s ease-out;
-  overflow: hidden; /* Để bo góc header */
+  overflow: hidden;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -72,7 +71,7 @@
 }
 
 .title {
-  font-size: 1.5rem; /* Điều chỉnh */
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--color-primary-dark);
   padding: 24px 24px 16px 24px;
@@ -82,7 +81,7 @@
 
 .orderInfo {
   text-align: left;
-  padding: 0 24px 16px 24px;
+  padding: 8px 24px 16px 24px;
   font-size: 0.9rem;
   color: var(--color-text-secondary);
   border-bottom: 1px solid var(--color-border);
@@ -91,20 +90,149 @@
   }
 }
 
-/* Phần nội dung có thể cuộn */
-.summary,
-.group {
-  padding: 16px 24px;
+/* --- BỐ CỤC 2 CỘT --- */
+.mainContent {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  overflow-y: auto; /* Cho phép 2 cột cuộn */
 }
 
+.leftPanel {
+  background: #f9fafb; /* Nền nhẹ cho cột hóa đơn */
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto; /* Cho phép cột trái cuộn riêng */
+}
+
+.rightPanel {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto; /* Cho phép cột phải cuộn riêng */
+}
+
+.panelTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--color-border);
+  background: #f3f4f6;
+}
+
+/* CỘT TRÁI - CHI TIẾT MÓN */
+.itemsList {
+  padding: 16px 24px;
+  flex-grow: 1; /* Đẩy summary xuống dưới */
+  min-height: 150px; /* Chiều cao tối thiểu */
+}
+
+.itemRow {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--color-border);
+  &:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+}
+
+.itemInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+}
+
+.itemName {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  flex: 1;
+}
+
+.itemPrice {
+  font-size: 0.85rem;
+  color: var(--color-gray);
+  margin-left: 10px;
+}
+
+.itemTotal {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-align: right;
+}
+
+/* CỘT TRÁI - TỔNG KẾT */
+.summary {
+  background: white;
+  padding: 16px 24px;
+  border-top: 1px solid var(--color-border);
+  margin-top: auto; /* Đẩy xuống dưới cùng cột trái */
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1rem;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--color-border);
+
+  &:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+  }
+
+  & .label {
+    margin-bottom: 0;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-gray);
+  }
+
+  span:last-child {
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+}
+
+.discount {
+  color: var(--color-success) !important;
+}
+
+.totalRow {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  border-bottom: none;
+  & .label {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+  }
+}
+
+.totalAmount {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+/* CỘT PHẢI - THANH TOÁN */
 .group {
+  padding: 16px 24px;
   border-bottom: 1px dashed var(--color-border);
 }
 
 .label {
   display: block;
   font-size: 0.9rem;
-  font-weight: 600; /* Đậm hơn */
+  font-weight: 600;
   color: var(--color-text-primary);
   margin-bottom: 12px;
 }
@@ -142,7 +270,7 @@
 .input {
   width: 100%;
   padding: 12px 16px;
-  font-size: 1.5rem; /* To hơn */
+  font-size: 1.5rem;
   font-weight: 700;
   border-radius: 8px;
   border: 1px solid var(--color-border);
@@ -164,7 +292,7 @@
 }
 
 .suggestionBtn {
-  flex: 1 1 auto; /* Tự động co giãn */
+  flex: 1 1 auto;
   padding: 8px 10px;
   font-size: 0.9rem;
   background: #f3f4f6;
@@ -176,57 +304,6 @@
   &:hover {
     background-color: #e5e7eb;
   }
-}
-
-.summary {
-  background: #f9fafb; /* Nền nhẹ */
-  padding: 16px 24px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 1rem;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-  border-bottom: 1px dashed var(--color-border);
-
-  &:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-  }
-
-  & .label {
-    margin-bottom: 0;
-    font-size: 1rem;
-    font-weight: 500;
-    color: var(--color-gray);
-  }
-
-  span:last-child {
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-}
-
-.totalRow {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--color-border);
-  border-bottom: none;
-  & .label {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--color-text-primary);
-  }
-}
-
-.totalAmount {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--color-primary);
 }
 
 .changeRow {
@@ -253,7 +330,7 @@
   background: var(--color-primary-light);
   border-radius: 8px;
   border: 1px solid #bdeaff;
-  margin: 0 24px 16px 24px; /* Đặt trong padding */
+  margin: 16px 24px 0 24px;
 
   @media (max-width: 500px) {
     grid-template-columns: 1fr;
@@ -264,10 +341,6 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  h4 {
-    margin: 0 0 5px 0;
-    color: var(--color-primary-dark);
-  }
   .detailItem {
     display: flex;
     justify-content: space-between;
@@ -278,14 +351,6 @@
     b {
       color: var(--color-text-primary);
     }
-  }
-  .transferAmount {
-    color: var(--color-primary);
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-top: 5px;
-    padding-top: 5px;
-    border-top: 1px dashed #bdeaff;
   }
 }
 
@@ -307,20 +372,21 @@
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid var(--color-border);
-  background: white; /* Nền cho QR placeholder */
+  background: white;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+/* FOOTER ACTIONS */
 .actions {
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 12px;
-  padding: 16px 24px; /* Padding cho footer */
+  padding: 16px 24px;
   background: #f9fafb;
   border-top: 1px solid var(--color-border);
-  margin-top: auto; /* Đẩy xuống dưới cùng */
+  margin-top: auto;
 
   button {
     padding: 14px 20px;
@@ -359,7 +425,6 @@
   }
 }
 
-/* Spinner cho nút loading */
 .spinner {
   position: absolute;
   top: 50%;

@@ -51,7 +51,7 @@
   font-weight: 600;
 
   &.warning {
-    background-color: $yellow-500;
+    background-color: #ffc107;
   }
 
   &.danger {
@@ -66,7 +66,7 @@
 
 .statusBadge {
   &.pending {
-    @include status-badge($yellow-100, $yellow-500);
+    @include status-badge(#fff3cd, #ffc107);
   }
 
   &.confirmed {
@@ -74,15 +74,15 @@
   }
 
   &.preparing {
-    @include status-badge($secondary-300-100, $secondary-300-600);
+    @include status-badge(#f2f6ff, #3356cc);
   }
 
   &.ready {
-    @include status-badge($green-100, $green-600);
+    @include status-badge(#d1e7dd, #198754);
   }
 
   &.completed {
-    @include status-badge($green-100, $green-600);
+    @include status-badge(#d1e7dd, #198754);
   }
 
   &.cancelled {
@@ -92,7 +92,7 @@
 
 .customerInfo {
   background-color: $gray-50;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
   padding: $spacing-4;
   margin-bottom: $spacing-4;
 }
@@ -135,7 +135,7 @@
   padding: $spacing-3;
   background: white;
   border: 1px solid $gray-200;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
 
@@ -181,7 +181,7 @@
 
   svg {
     &:first-child {
-      color: $yellow-500;
+      color: #ffc107;
     }
 
     &:nth-child(2) {
@@ -198,7 +198,7 @@
   @include flex-between;
   padding: $spacing-4;
   background-color: $gray-50;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
   margin-bottom: $spacing-4;
 }
 
@@ -234,7 +234,7 @@
 
 .prepareButton {
   @include button-base;
-  background-color: $secondary-300-600;
+  background-color: #3356cc;
   color: white;
   flex: 1;
 

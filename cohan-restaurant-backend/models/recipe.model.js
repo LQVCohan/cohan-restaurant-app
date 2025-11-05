@@ -34,13 +34,11 @@ const RecipeSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
   menuItemId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "MenuItem",
     required: true,
-    index: true,
   },
 
   // Legacy baseline (giữ nguyên để không phá dữ liệu cũ)
@@ -52,7 +50,7 @@ const RecipeSchema = BaseSchemaModel({
   servingVariants: { type: [ServingVariantSchema], default: [] },
 
   notes: { type: String },
-  isActive: { type: Boolean, default: true, index: true },
+  isActive: { type: Boolean, default: true },
 });
 RecipeSchema.index({ restaurantId: 1, menuItemId: 1 }, { unique: true });
 

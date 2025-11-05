@@ -5,7 +5,7 @@ const { Types } = mongoose;
 const CashflowSchema = BaseSchemaModel(
   {
     restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true },
-    type: { type: String, enum: ["INCOME", "EXPENSE"], required: true },
+    type: { type: String, enum: ["INFLOW", "OUTFLOW"], required: true },
     amount: { type: Number, required: true },
     currency: { type: String, default: "VND" },
     ref: {

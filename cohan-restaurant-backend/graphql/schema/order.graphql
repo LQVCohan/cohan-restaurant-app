@@ -65,10 +65,13 @@ type OrderItem {
   modifiersPrice: Int
   method: String
   methodDelta: Int
-  description: String
+  note: String
   quantity: Float!
   modifiers: [OrderModifier!]
   lineSubtotal: Int
+  status: String
+  recipeId: ID
+  recipe: Recipe
 }
 
 input OrderItemInput {
@@ -85,6 +88,7 @@ input OrderItemInput {
   description: String
   quantity: Float!
   modifiers: [OrderModifierInput!]
+  status: String
 }
 
 input CustomerInput { # ✅ cho khách chưa đăng nhập

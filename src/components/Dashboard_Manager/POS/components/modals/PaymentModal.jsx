@@ -1,8 +1,10 @@
+// src/components/Dashboard_Manager/POS/components/panels/modals/PaymentModal.jsx
 import React, { useState, useEffect, memo } from "react";
-import s from "./PaymentModal.module.scss"; // Đảm bảo file SCSS này tồn tại
-import { formatPrice } from "@/utils/formatters"; // Đảm bảo đường dẫn này đúng
+import s from "./PaymentModal.module.scss";
+import { formatPrice } from "@/utils/formatters";
+import useOrderManagement from "@/hooks/useOrderManagement";
+import { usePos } from "@/context/PosContext";
 
-// --- Component QR Code (Nội tuyến) ---
 const QRCodePlaceholder = ({ value }) => (
   <div className={s.qrImage}>
     <svg
@@ -36,103 +38,145 @@ const QRCodePlaceholder = ({ value }) => (
   </div>
 );
 
-// --- Component Chính ---
 function PaymentModal({
   isOpen,
-  order, // Đây là 'currentOrder' (mảng)
-  table, // Đây là 'currentTable'
+  order,
+  table,
   onClose,
-  onComplete,
+  onConfirm, // optional (compat)
+  onComplete, // sẽ dùng để dọn bàn ở RightPanel
   totalAmount,
-  loading,
 }) {
-  const [method, setMethod] = useState("cash");
+  const [method, setMethod] = useState("cash"); // 'cash' | 'card' | 'transfer'
   const [paidAmount, setPaidAmount] = useState(0);
+  const [isConfirming, setIsConfirming] = useState(false);
 
-  // Lấy totalAmount từ order đó, hoặc từ prop 'totalAmount' nếu bạn truyền riêng
+  const pos = usePos?.() || null;
+  const { validatePayment, confirmPayment, payLoading } =
+    useOrderManagement(pos);
 
-  // Lấy danh sách món ăn từ order đó
-
-  const changeAmount = Math.max(0, paidAmount - totalAmount);
+  const busy = Boolean(payLoading);
+  const changeAmount = Math.max(
+    0,
+    (Number(paidAmount) || 0) - (Number(totalAmount) || 0)
+  );
 
   useEffect(() => {
-    if (method === "card" || method === "transfer") {
-      setPaidAmount(totalAmount);
-    } else {
-      // Khi chuyển về tiền mặt, reset về 0
-      setPaidAmount(0);
-    }
-  }, [method, isOpen, totalAmount]); // Thêm isOpen để reset khi mở lại
+    if (method === "card" || method === "transfer")
+      setPaidAmount(totalAmount || 0);
+    else setPaidAmount(0);
+    setIsConfirming(false);
+  }, [method, isOpen, totalAmount]);
 
-  const handleSuggestion = (value) => {
-    if (value === "exact") {
-      setPaidAmount(totalAmount);
-    } else {
-      setPaidAmount(value);
-    }
-  };
+  const handleSuggestion = (v) =>
+    setPaidAmount(v === "exact" ? totalAmount || 0 : v);
+  const handleShowConfirm = () => !busy && setIsConfirming(true);
 
-  const handleComplete = () => {
-    if (loading) return;
-    onComplete?.({
-      orderId: order.id,
+  const mapNote = () =>
+    method === "cash"
+      ? `Khách đưa ${formatPrice(paidAmount)} - Thối lại ${formatPrice(
+          changeAmount
+        )}`
+      : `Thanh toán ${method.toUpperCase()}`;
+
+  const suggestions = (() => {
+    const total = Number(totalAmount || 0);
+    if (total <= 0) return [50000, 100000, 200000];
+    const sgs = new Set();
+    sgs.add(Math.ceil(total / 1000) * 1000);
+    if (total < 100000) {
+      sgs.add(100000);
+      sgs.add(200000);
+      sgs.add(500000);
+    } else if (total < 500000) {
+      sgs.add(Math.ceil(total / 100000) * 100000);
+      sgs.add(500000);
+      sgs.add(1000000);
+    } else {
+      sgs.add(Math.ceil(total / 100000) * 100000);
+      sgs.add(1000000);
+      sgs.add(2000000);
+    }
+    return Array.from(sgs)
+      .filter((v) => v >= total)
+      .slice(0, 3);
+  })();
+
+  const executePayment = async () => {
+    if (busy) return;
+
+    const restaurantId =
+      table?.restaurantId ||
+      table?.restaurant_id ||
+      pos?.currentTable?.restaurantId ||
+      null;
+    if (!restaurantId) {
+      alert("Thiếu restaurantId. Vui lòng chọn bàn và lưu đơn trước.");
+      return;
+    }
+
+    const check = validatePayment({
       method,
-      paidAmount: paidAmount,
-      total: totalAmount,
+      paidAmount: Number(paidAmount || 0),
+      total: Number(totalAmount || 0),
+    });
+    if (!check.ok) {
+      alert(check.message);
+      return;
+    }
+
+    const res = await confirmPayment({
+      restaurantId,
+      method,
+      paidAmount: Number(paidAmount || 0),
+      note: mapNote(),
+    });
+
+    if (!res?.success) {
+      alert(res?.message || "Thanh toán thất bại.");
+      return;
+    }
+
+    onConfirm?.(method, paidAmount); // compat
+    onComplete?.({
+      orderId: order?.[0]?.orderId || order?.[0]?.id || null,
+      method,
+      paidAmount: Number(paidAmount || 0),
+      total: Number(totalAmount || 0),
       change: changeAmount,
       status: "COMPLETED",
+      server: res?.data || null,
     });
+
+    setIsConfirming(false);
+    onClose?.();
   };
 
-  // Tạo gợi ý tiền
-  const getSuggestions = (total) => {
-    if (total === 0) return [50000, 100000, 200000];
-    const suggestions = new Set();
-    suggestions.add(Math.ceil(total / 1000) * 1000); // Làm tròn
-
-    if (total < 100000) {
-      suggestions.add(100000);
-      suggestions.add(200000);
-      suggestions.add(500000);
-    } else if (total < 500000) {
-      suggestions.add(Math.ceil(total / 100000) * 100000);
-      suggestions.add(500000);
-      suggestions.add(1000000);
-    } else {
-      suggestions.add(Math.ceil(total / 100000) * 100000);
-      suggestions.add(1000000);
-      suggestions.add(2000000);
-    }
-    return Array.from(suggestions)
-      .filter((val) => val >= total) // Bao gồm cả tiền đủ
-      .slice(0, 3);
-  };
-
-  const suggestions = getSuggestions(totalAmount);
   if (!isOpen) return null;
 
   const isCash = method === "cash";
   const isTransfer = method === "transfer";
+  const disableConfirm =
+    busy || (isCash && Number(paidAmount || 0) < Number(totalAmount || 0));
 
   return (
-    <div className={s.backdrop_overlay} onClick={onClose}>
+    <div className={s.backdrop} onClick={onClose}>
       <div className={s.modal} onClick={(e) => e.stopPropagation()}>
-        <button className={s.closeButton} onClick={onClose} disabled={loading}>
+        <button className={s.closeButton} onClick={onClose} disabled={busy}>
           &times;
         </button>
+
         <h3 className={s.title}>🧾 Thanh Toán Hóa Đơn</h3>
         <p className={s.orderInfo}>
           Bàn: <b>{table?.code || "..."}</b> | Hóa đơn:{" "}
-          <b>{order[0]?.orderCode || "..."}</b>
+          <b>{order?.[0]?.orderCode || "..."}</b>
         </p>
 
-        {/* Bố cục 2 cột */}
         <div className={s.mainContent}>
-          {/* --- CỘT TRÁI (CHI TIẾT MÓN) --- */}
           <div className={s.leftPanel}>
             <h4 className={s.panelTitle}>Chi tiết Hóa đơn</h4>
             <div className={s.itemsList}>
-              {order.length > 0 ? (
+              {Array.isArray(order) && order.length > 0 ? (
                 order.map((item, index) => (
                   <div
                     key={item._lineId || item.dishId || index}
@@ -143,13 +187,15 @@ function PaymentModal({
                         {item.quantity} x {item.name}
                       </span>
                       <span className={s.itemPrice}>
-                        {formatPrice(item.price + (item.modifiersPrice || 0))}
+                        {formatPrice(
+                          (item.price || 0) + (item.modifiersPrice || 0)
+                        )}
                       </span>
                     </div>
                     <div className={s.itemTotal}>
                       {formatPrice(
-                        (item.price + (item.modifiersPrice || 0)) *
-                          item.quantity
+                        ((item.price || 0) + (item.modifiersPrice || 0)) *
+                          (item.quantity || 0)
                       )}
                     </div>
                   </div>
@@ -162,35 +208,16 @@ function PaymentModal({
             </div>
           </div>
 
-          {/* --- CỘT PHẢI (THANH TOÁN) --- */}
           <div className={s.rightPanel}>
-            {/* TỔNG KẾT */}
             <div className={s.summary}>
-              <div className={s.row}>
-                <span>Tạm tính:</span>
-                <span>{formatPrice(totalAmount.subtotal)}</span>
-              </div>
-              <div className={s.row}>
-                <span>Giảm giá:</span>
-                <span className={s.discount}>
-                  - {formatPrice(totalAmount.discount)}
-                </span>
-              </div>
-              <div className={s.row}>
-                <span>VAT/Phí:</span>
-                <span>
-                  {formatPrice(totalAmount.tax + totalAmount.service)}
-                </span>
-              </div>
               <div className={`${s.row} ${s.totalRow}`}>
                 <span className={s.label}>Khách cần trả</span>
                 <span className={s.totalAmount}>
-                  {formatPrice(totalAmount)}
+                  {formatPrice(totalAmount || 0)}
                 </span>
               </div>
             </div>
 
-            {/* PHƯƠNG THỨC */}
             <div className={s.group}>
               <label className={s.label}>Chọn phương thức</label>
               <div className={s.grid}>
@@ -199,6 +226,7 @@ function PaymentModal({
                     key={m}
                     className={`${s.btn} ${method === m ? s.active : ""}`}
                     onClick={() => setMethod(m)}
+                    disabled={isConfirming || busy}
                   >
                     {m === "cash"
                       ? "Tiền mặt"
@@ -210,7 +238,6 @@ function PaymentModal({
               </div>
             </div>
 
-            {/* THÔNG TIN CHUYỂN KHOẢN */}
             {isTransfer && (
               <div className={s.transferInfo}>
                 <div className={s.paymentDetails}>
@@ -221,16 +248,15 @@ function PaymentModal({
                     <span>Số TK:</span> <b>1234567890</b>
                   </div>
                   <div className={s.detailItem}>
-                    <span>Số tiền:</span> <b>{formatPrice(totalAmount)}</b>
+                    <span>Số tiền:</span> <b>{formatPrice(totalAmount || 0)}</b>
                   </div>
                 </div>
                 <div className={s.qrCode}>
-                  <QRCodePlaceholder value={formatPrice(totalAmount)} />
+                  <QRCodePlaceholder value={formatPrice(totalAmount || 0)} />
                 </div>
               </div>
             )}
 
-            {/* SỐ TIỀN (TIỀN MẶT) */}
             {isCash && (
               <div className={s.group}>
                 <label className={s.label}>Số tiền khách đưa</label>
@@ -241,6 +267,7 @@ function PaymentModal({
                   onChange={(e) => setPaidAmount(Number(e.target.value) || 0)}
                   placeholder="0"
                   autoFocus
+                  disabled={isConfirming || busy}
                 />
                 <div className={s.suggestions}>
                   {suggestions.map((val) => (
@@ -248,6 +275,7 @@ function PaymentModal({
                       key={val}
                       className={s.suggestionBtn}
                       onClick={() => handleSuggestion(val)}
+                      disabled={isConfirming || busy}
                     >
                       {formatPrice(val)}
                     </button>
@@ -264,27 +292,42 @@ function PaymentModal({
           </div>
         </div>
 
-        {/* HÀNH ĐỘNG */}
         <div className={s.actions}>
-          <button className={s.secondary} onClick={onClose} disabled={loading}>
-            Hủy
-          </button>
-          <button
-            className={`${s.success} ${loading ? s.loading : ""}`}
-            onClick={handleComplete}
-            disabled={loading || (isCash && paidAmount < totalAmount)}
-          >
-            {loading ? (
-              <span className={s.spinner}></span>
-            ) : (
-              "Hoàn tất thanh toán"
-            )}
-          </button>
+          {!isConfirming ? (
+            <>
+              <button className={s.secondary} onClick={onClose} disabled={busy}>
+                Quay lại
+              </button>
+              <button
+                className={s.success}
+                onClick={handleShowConfirm}
+                disabled={disableConfirm}
+              >
+                Hoàn tất thanh toán
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className={s.secondary}
+                onClick={() => setIsConfirming(false)}
+                disabled={busy}
+              >
+                Quay lại
+              </button>
+              <button
+                className={`${s.success} ${busy ? s.loading : ""}`}
+                onClick={executePayment}
+                disabled={busy}
+              >
+                {busy ? <span className={s.spinner}></span> : "XÁC NHẬN"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// Bọc component bằng memo khi export
 export default memo(PaymentModal);

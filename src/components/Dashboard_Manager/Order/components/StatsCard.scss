@@ -14,7 +14,7 @@
 .iconContainer {
   width: 3rem;
   height: 3rem;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
   @include flex-center;
   margin: 0 auto $spacing-4;
 
@@ -43,7 +43,7 @@
     background-color: $secondary-300-50;
 
     svg {
-      color: $secondary-300-600;
+      color: #3356cc;
     }
   }
 
@@ -51,7 +51,7 @@
     background-color: $green-50;
 
     svg {
-      color: $green-600;
+      color: #198754;
     }
   }
 }

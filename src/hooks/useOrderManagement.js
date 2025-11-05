@@ -1,12 +1,11 @@
 // src/hooks/useOrderManagement.js
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useMutation, useLazyQuery, gql } from "@apollo/client";
 
 /* ============================================================
    1) GRAPHQL
    ============================================================ */
 
-// ✅ mutation POS chính
 const UPSERT_TABLE_ORDER = gql`
   mutation UpsertTableOrder($input: UpsertTableOrderInput!) {
     upsertTableOrder(input: $input) {
@@ -35,12 +34,13 @@ const UPSERT_TABLE_ORDER = gql`
           service
           grandTotal
         }
+        createdAt
+        updatedAt
       }
     }
   }
 `;
 
-// ❗ Lúc nãy bạn chỉ lấy 3 field → phải lấy FULL để về client đủ data
 const ORDERS_BY_RESTAURANT = gql`
   query OrdersByRestaurant($restaurantId: ID!, $limit: Int, $cursor: ID) {
     ordersByRestaurant(
@@ -63,8 +63,9 @@ const ORDERS_BY_RESTAURANT = gql`
             price
             modifiersPrice
             method
-            description
+            note
             quantity
+            status
           }
           totals {
             subtotal
@@ -73,13 +74,9 @@ const ORDERS_BY_RESTAURANT = gql`
             service
             grandTotal
           }
+          orderType
           createdAt
           updatedAt
-          user {
-            id
-            fullName
-          }
-          orderCode
         }
         cursor
       }
@@ -120,10 +117,38 @@ const GET_ORDER = gql`
       note
       createdAt
       updatedAt
-      user {
+    }
+  }
+`;
+
+// Thanh toán
+const PAY_ORDER = gql`
+  mutation PayOrder($input: PayOrderInput!) {
+    payOrder(input: $input) {
+      order {
         id
-        fullName
-        email
+      }
+      invoice {
+        id
+        number
+        status
+        totals
+        paid
+        issuedAt
+      }
+      transaction {
+        id
+        paidAmount
+        method
+        status
+        paidAt
+      }
+      cashflow {
+        id
+        amount
+        type
+        category
+        occurredAt
       }
     }
   }
@@ -145,12 +170,14 @@ export default function useOrderManagement(pos = null) {
     total: 0,
   });
   const [orderNote, setOrderNote] = useState("");
-  // track existing items removed on client so save can request replacement
-  // (server currently appends items; replaceItems=true forces replace)
   const [removedExistingItems, setRemovedExistingItems] = useState([]);
 
-  // mutations / queries
+  // Lưu lại orderId sau preparePayment để confirmPayment dùng, tránh save lần 2
+  const lastPreparedOrderIdRef = useRef(null);
+
+  // apollo
   const [upsertTableOrder] = useMutation(UPSERT_TABLE_ORDER);
+  const [mutPayOrder, { loading: payLoading }] = useMutation(PAY_ORDER);
 
   const [loadOrderById, { data: orderByIdData }] = useLazyQuery(GET_ORDER, {
     fetchPolicy: "network-only",
@@ -197,7 +224,6 @@ export default function useOrderManagement(pos = null) {
      4) HELPERS
      ============================================================ */
 
-  // tạo id dòng để xóa/chỉnh đúng item
   const makeLineId = useCallback(
     () =>
       `line_${Date.now().toString(36)}_${Math.random()
@@ -206,14 +232,12 @@ export default function useOrderManagement(pos = null) {
     []
   );
 
-  // chuẩn hóa 1 item TRƯỚC KHI GỬI LÊN SERVER
   const normalizeOutgoingItem = useCallback((it, idx) => {
     const dishId = it.dishId || it.id || it.dish_id || null;
     const menuId = it.menuId || it.menuItemId || it.menu_id || null;
     const categoryId = it.categoryId || it.category_id || null;
 
     if (!dishId || !menuId || !categoryId) {
-      // đánh dấu để bỏ, vì server sẽ báo lỗi
       return {
         _invalid: true,
         _index: idx,
@@ -241,11 +265,16 @@ export default function useOrderManagement(pos = null) {
     };
   }, []);
 
+  const mapGqlMethod = useCallback((m) => {
+    if (m === "cash") return "CASH";
+    if (m === "card") return "CARD";
+    return "BANK_TRANSFER";
+  }, []);
+
   /* ============================================================
      5) CRUD CLIENT
      ============================================================ */
 
-  // thêm món từ menu/modal
   const addToOrder = useCallback(
     ({
       menuItem,
@@ -264,14 +293,9 @@ export default function useOrderManagement(pos = null) {
         menuItem.basePrice ??
         0;
 
-      // cố gắng gộp nếu là món cùng cấu hình
-      // IMPORTANT: only merge into unsaved/new items so the UI can show
-      // saved items (isExisting) separately. New additions should appear
-      // under the "Mới" group (isNew) and only be merged into saved
-      // items after a successful save that returns the server order.
-      const idx = currentOrder.findIndex(
+      const idx = (currentOrder || []).findIndex(
         (it) =>
-          !it.isExisting && // only merge into items that are not yet saved
+          !it.isExisting &&
           (it.dishId || it.id) === (menuItem.dishId || menuItem.id) &&
           (it.method || it.cookingOption || "") === (cookingOption || "") &&
           (it.unit || "portion") === (unit || "portion")
@@ -280,15 +304,12 @@ export default function useOrderManagement(pos = null) {
       if (idx !== -1) {
         const updated = [...currentOrder];
         const nextQty = Number(updated[idx].quantity || 0) + Number(quantity);
-        // preserve existing server identifiers; mark as edited so it will
-        // be sent to server in the outgoing delta payload.
         updated[idx] = {
           ...updated[idx],
           quantity: nextQty,
           lineSubtotal:
             (itemPrice + Number(updated[idx].modifiersPrice || 0)) * nextQty,
           _edited: true,
-          // keep isExisting/isNew flags as they were (if it was saved, it stays saved)
         };
         setCurrentOrder(updated);
       } else {
@@ -314,7 +335,6 @@ export default function useOrderManagement(pos = null) {
     [currentOrder, setCurrentOrder, makeLineId]
   );
 
-  // cập nhật số lượng
   const updateItemQty = useCallback(
     (key, newQty) => {
       const q = Math.max(1, Number(newQty) || 1);
@@ -336,18 +356,14 @@ export default function useOrderManagement(pos = null) {
     [setCurrentOrder]
   );
 
-  // xóa 1 item
   const removeItem = useCallback(
     (key) => {
       setCurrentOrder((prev) => {
         if (!prev?.length) return prev;
 
-        // 1) xóa theo lineId (chuẩn nhất)
         const byLine = prev.findIndex((it) => it._lineId === key);
         if (byLine !== -1) {
           const removed = prev[byLine];
-          // if removed item was existing on server, track it so we can
-          // request a full replace on save to remove it on server.
           if (removed.isExisting) {
             setRemovedExistingItems((s) => [
               ...s,
@@ -357,25 +373,19 @@ export default function useOrderManagement(pos = null) {
           return prev.filter((_, i) => i !== byLine);
         }
 
-        // 2) xóa theo dishId (nếu món mới chưa có _lineId)
         const byDish = prev.findIndex((it) => it.dishId === key);
         if (byDish !== -1) return prev.filter((_, i) => i !== byDish);
 
-        // 3) xóa theo id (phòng trường hợp item.id)
         const byId = prev.findIndex((it) => it.id === key);
         if (byId !== -1) return prev.filter((_, i) => i !== byId);
 
-        // 4) fallback: không match key nào → thôi không xóa
         return prev;
       });
     },
     [setCurrentOrder]
   );
 
-  // clear all items on the client for the current table while tracking
-  // any existing (server-sourced) items so saveOrder can request a replace
   const clearAll = useCallback(() => {
-    // collect identifiers of existing items
     const existingIds = (currentOrder || [])
       .filter((it) => it.isExisting)
       .map((it) => it._lineId || it.dishId || it.id);
@@ -384,7 +394,6 @@ export default function useOrderManagement(pos = null) {
       setRemovedExistingItems((s) => [...s, ...existingIds]);
     }
 
-    // clear client order and local tableOrders mapping
     setCurrentOrder([]);
     if (setTableOrders && currentTable?.code) {
       setTableOrders((prev) => ({ ...prev, [currentTable.code]: [] }));
@@ -392,8 +401,9 @@ export default function useOrderManagement(pos = null) {
   }, [currentOrder, setCurrentOrder, setTableOrders, currentTable]);
 
   /* ============================================================
-     6) SAVE / UPSERT
+     6) SAVE / UPSERT (TRƯỚC confirmPayment để tránh TDZ)
      ============================================================ */
+
   const saveOrder = useCallback(
     async ({ persist = true, restaurantId, extraCustomer = null } = {}) => {
       if (!currentTable?.code) {
@@ -406,8 +416,7 @@ export default function useOrderManagement(pos = null) {
         return { success: false, message: "Thiếu restaurantId khi lưu order." };
       }
 
-      // lưu xuống map local trước
-      setTableOrders((prev) => ({
+      setTableOrders?.((prev) => ({
         ...prev,
         [currentTable.code]: currentOrder,
       }));
@@ -419,19 +428,12 @@ export default function useOrderManagement(pos = null) {
         };
       }
 
-      // chuẩn hóa từng item để đảm bảo có đủ 3 trường
       const outgoing = [];
       const skipped = [];
-
-      // If deletions of existing items occurred, we must send the full
-      // desired items list and request a replace on the server so the
-      // server will remove deleted lines. Otherwise we can continue with
-      // delta behavior (send only new/edited items to append).
       const useReplace =
         removedExistingItems && removedExistingItems.length > 0;
 
       if (useReplace) {
-        // Build full outgoing list from currentOrder (client's desired final state)
         (currentOrder || []).forEach((it, idx) => {
           const n = normalizeOutgoingItem(it, idx);
           if (n._invalid) skipped.push(n);
@@ -439,7 +441,6 @@ export default function useOrderManagement(pos = null) {
         });
 
         if (!outgoing.length) {
-          // server schema requires at least one item when creating/updating an order.
           return {
             success: false,
             message:
@@ -448,7 +449,7 @@ export default function useOrderManagement(pos = null) {
           };
         }
       } else {
-        // delta behavior: only send new or edited items to append
+        // delta behavior: chỉ gửi món mới hoặc đã sửa
         (currentOrder || []).forEach((it, idx) => {
           if (it.isExisting && !it._edited && !it.isNew) return;
           const n = normalizeOutgoingItem(it, idx);
@@ -456,12 +457,60 @@ export default function useOrderManagement(pos = null) {
           else outgoing.push(n);
         });
 
+        // PATCH: Không có thay đổi vẫn coi là thành công → dùng order hiện có
         if (!outgoing.length) {
+          // đoán nhanh orderId từ item
+          const guessedId =
+            currentOrder?.[0]?.orderId || currentOrder?.[0]?.id || null;
+
+          if (guessedId) {
+            return {
+              success: true,
+              message: "Không có thay đổi. Dùng order hiện có.",
+              skipped,
+              data: { id: guessedId },
+            };
+          }
+
+          // fallback: query theo bàn để lấy order hiện có
+          try {
+            const res = await loadOrders({
+              variables: {
+                restaurantId,
+                limit: 10,
+                cursor: null,
+              },
+              fetchPolicy: "network-only",
+            });
+
+            const edges = res?.data?.ordersByRestaurant?.edges || [];
+            const matched = edges
+              .map((e) => e.node)
+              .filter(
+                (o) =>
+                  (o.tableCode || "").toLowerCase() ===
+                  (currentTable?.code || "").toLowerCase()
+              );
+
+            if (matched?.length) {
+              return {
+                success: true,
+                message: "Không có thay đổi. Dùng order hiện có.",
+                skipped,
+                data: matched[0],
+              };
+            }
+          } catch (e) {
+            // bỏ qua
+          }
+
+          // tối thiểu vẫn success để cho phép bước thanh toán, orderId có thể null
           return {
-            success: false,
+            success: true,
             message:
-              "Không món nào hợp lệ để lưu (thiếu dishId/menuId/categoryId). Bạn cần chọn lại từ menu.",
+              "Không có thay đổi để lưu. Tiếp tục thanh toán với order hiện có.",
             skipped,
+            data: { id: null },
           };
         }
       }
@@ -474,7 +523,6 @@ export default function useOrderManagement(pos = null) {
               tableCode: currentTable.code,
               orderCode: currentTable.orderCode || null,
               items: outgoing,
-              // ask server to replace items if we deleted existing ones
               replaceItems: useReplace || undefined,
               note: orderNote,
               customer: extraCustomer,
@@ -496,14 +544,15 @@ export default function useOrderManagement(pos = null) {
               Number(i.quantity || 1),
             isExisting: true,
             isNew: false,
-            _lineId: makeLineId(),
+            _lineId: `srv_${serverOrder.id}_${(i.dishId || i.name || "x")
+              .toString()
+              .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
           }));
           setCurrentOrder(normalized);
-          setTableOrders((prev) => ({
+          setTableOrders?.((prev) => ({
             ...prev,
             [currentTable.code]: normalized,
           }));
-          // clear deletion tracking after successful save
           setRemovedExistingItems([]);
         }
 
@@ -529,13 +578,166 @@ export default function useOrderManagement(pos = null) {
       removedExistingItems,
       setRemovedExistingItems,
       normalizeOutgoingItem,
-      makeLineId,
+      loadOrders,
     ]
   );
 
   /* ============================================================
-     7) FETCH
+     7) PAYMENT FLOW
      ============================================================ */
+
+  // 7.1 Chuẩn bị trước khi mở modal: LƯU ĐƠN + trả orderId/items/totals
+  const preparePayment = useCallback(
+    async ({ restaurantId } = {}) => {
+      if (!restaurantId) {
+        return { success: false, message: "Thiếu restaurantId." };
+      }
+      if (!currentOrder?.length) {
+        return { success: false, message: "Chưa có món để thanh toán." };
+      }
+
+      // Lưu đơn — nếu không có thay đổi vẫn trả success với orderId hiện có
+      const saved = await saveOrder({ persist: true, restaurantId });
+      if (!saved?.success) return saved;
+
+      const orderId = saved?.data?.id || saved?.data?._id || null;
+      lastPreparedOrderIdRef.current = orderId ?? null;
+
+      // Lấy totals mới nhất từ state (đã tính sẵn)
+      return {
+        success: true,
+        data: {
+          orderId,
+          items: currentOrder,
+          totals,
+        },
+      };
+    },
+    [saveOrder, currentOrder, totals]
+  );
+
+  // 7.2 Kiểm tra điều kiện thanh toán (để enable/disable nút Xác nhận)
+  const validatePayment = useCallback(
+    ({ method = "cash", paidAmount = 0, total = totals.total } = {}) => {
+      const t = Number(total || 0);
+      if (!(t > 0))
+        return { ok: false, message: "Tổng cần thanh toán không hợp lệ." };
+
+      if (method === "cash") {
+        const p = Number(paidAmount || 0);
+        if (!(p >= t)) {
+          return { ok: false, message: "Tiền mặt khách đưa phải ≥ tổng tiền." };
+        }
+      }
+      // card/transfer: không bắt buộc nhập paidAmount
+      return { ok: true };
+    },
+    [totals.total]
+  );
+
+  // 7.3 XÁC NHẬN trong modal: thanh toán NGAY, KHÔNG lưu lại nữa
+  const confirmPayment = useCallback(
+    async ({
+      restaurantId,
+      method = "cash",
+      paidAmount = 0,
+      note = "",
+      externalRef = null,
+    } = {}) => {
+      if (!restaurantId)
+        return { success: false, message: "Thiếu restaurantId." };
+
+      // kiểm tra số tiền
+      const valid = validatePayment({
+        method,
+        paidAmount,
+        total: totals.total,
+      });
+      if (!valid.ok) return { success: false, message: valid.message };
+
+      // dùng orderId đã chuẩn bị; nếu chưa có thì vẫn fallback save
+      let orderId = lastPreparedOrderIdRef.current;
+      if (!orderId) {
+        const saved = await saveOrder({ persist: true, restaurantId });
+        if (!saved?.success) return saved;
+        orderId = saved?.data?.id || saved?.data?._id || null;
+        lastPreparedOrderIdRef.current = orderId ?? null;
+      }
+      if (!orderId) {
+        return {
+          success: false,
+          message: "Không lấy được orderId để thanh toán.",
+        };
+      }
+      const amountToCharge = Number(totals.total || 0);
+      const paid = method === "cash" ? Number(paidAmount || 0) : amountToCharge;
+      // thanh toán
+
+      const idempotency =
+        externalRef ||
+        `ref_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+      try {
+        const { data } = await mutPayOrder({
+          variables: {
+            input: {
+              orderId,
+              restaurantId,
+              paidAmount: paid,
+              method,
+              note,
+              externalRef: idempotency,
+            },
+          },
+        });
+
+        // refresh order (không bắt buộc)
+        try {
+          await loadOrderById({ variables: { id: orderId } });
+        } catch {}
+        return { success: true, data: data?.payOrder };
+      } catch (err) {
+        return {
+          success: false,
+          message: err?.message || "Thanh toán thất bại.",
+        };
+      }
+    },
+    [
+      validatePayment,
+      totals.total,
+      saveOrder,
+      mutPayOrder,
+      mapGqlMethod,
+      loadOrderById,
+    ]
+  );
+
+  // Back-compat: checkoutOrder (giữ lại nếu chỗ khác đang gọi)
+  const checkoutOrder = useCallback(
+    async ({
+      restaurantId,
+      method = "cash",
+      note = "",
+      externalRef = null,
+    } = {}) => {
+      const prep = await preparePayment({ restaurantId });
+      if (!prep?.success) return prep;
+      return confirmPayment({
+        restaurantId,
+        method,
+        paidAmount: method === "cash" ? totals.total : 0,
+        note,
+        externalRef,
+      });
+    },
+    [preparePayment, confirmPayment, totals.total]
+  );
+
+  /* ============================================================
+     8) FETCH
+     ============================================================ */
+
   const fetchOrderByTable = useCallback(
     async (restaurantId, tableCode, limit = 10, cursor = null) => {
       if (!restaurantId || !tableCode) {
@@ -553,7 +755,6 @@ export default function useOrderManagement(pos = null) {
           (o) => (o.tableCode || "").toLowerCase() === tableCode.toLowerCase()
         );
 
-      // ⚠️ QUAN TRỌNG: gắn cờ để RightPanel biết món nào là "đã lưu"
       const normalized = matched.map((ord) => ({
         ...ord,
         items: (ord.items || []).map((it) => ({
@@ -592,7 +793,7 @@ export default function useOrderManagement(pos = null) {
   );
 
   /* ============================================================
-     8) RETURN
+     9) RETURN
      ============================================================ */
   return {
     // state
@@ -615,5 +816,13 @@ export default function useOrderManagement(pos = null) {
     ordersLoading,
     ordersError,
     orderById: orderByIdData?.order ?? null,
+    loadOrders,
+    // payment API cho UI
+    preparePayment, // dùng khi bấm "Thanh toán": lưu + trả orderId/items/totals; nếu lỗi báo ngay
+    validatePayment, // kiểm tra điều kiện trước khi enable nút XÁC NHẬN
+    confirmPayment, // dùng trong modal khi bấm XÁC NHẬN: thanh toán ngay (không lưu lại)
+    // giữ lại để tương thích
+    checkoutOrder,
+    payLoading,
   };
 }

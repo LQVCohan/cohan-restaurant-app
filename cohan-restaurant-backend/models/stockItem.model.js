@@ -16,19 +16,16 @@ const StockItemSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
-    index: true,
   },
   warehouseId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Warehouse",
     required: true,
-    index: true,
   },
   ingredientId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Ingredient",
     required: true,
-    index: true,
   },
 
   onHand: { type: Number, default: 0 }, // tổng tồn kho (baseUnit)

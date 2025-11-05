@@ -11,7 +11,7 @@
 
 .modal {
   background: white;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
   max-width: 64rem;
   width: 100%;
   max-height: 90vh;
@@ -44,7 +44,7 @@
   color: $gray-400;
   cursor: pointer;
   padding: $spacing-1;
-  border-radius: $rounded;
+  border-radius: 4px;
   transition: color 0.2s ease;
 
   &:hover {
@@ -101,7 +101,7 @@
 
 .historyItem {
   border: 1px solid $gray-200;
-  border-radius: $rounded-lg;
+  border-radius: 0.5rem;
   padding: $spacing-4;
   background-color: $gray-50;
 }
@@ -133,7 +133,7 @@
 }
 
 .completedBadge {
-  @include status-badge($green-100, $green-600);
+  @include status-badge(#d1e7dd, #198754);
 }
 
 .timeInfo {
@@ -178,7 +178,7 @@
 .itemTag {
   background: white;
   padding: $spacing-1 $spacing-2;
-  border-radius: $rounded;
+  border-radius: 4px;
   border: 1px solid $gray-200;
   font-size: $text-xs;
   color: $gray-700;
@@ -196,7 +196,7 @@
 
 .totalAmount {
   font-weight: 600;
-  color: $green-600;
+  color: #198754;
 }
 
 .viewButton {
@@ -206,7 +206,7 @@
   background-color: $gray-600;
   color: white;
   border: none;
-  border-radius: $rounded;
+  border-radius: 4px;
   font-size: $text-sm;
   cursor: pointer;
   transition: background-color 0.2s ease;

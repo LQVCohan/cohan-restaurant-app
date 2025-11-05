@@ -1,4 +1,3 @@
-// src/graphql/order/mutation.js
 import mongoose from "mongoose";
 import {
   Order,
@@ -6,6 +5,7 @@ import {
   User,
   Table,
   EventLog,
+  Recipe,
 } from "../../../models/index.js";
 
 const toId = (id) =>
@@ -37,7 +37,7 @@ function normalizeItem(i) {
     modifiersPrice,
     method: i.method || i.cookingMethod || "",
     methodDelta: Number(i.methodDelta || 0),
-    description: i.description || "",
+    note: i.description || "", // <-- Đã cập nhật (từ 'description' qua 'note')
     quantity: qty,
     modifiers: (i.modifiers || []).map((m) => ({
       optionId: m.optionId,
@@ -46,6 +46,7 @@ function normalizeItem(i) {
       price: Number(m.price || 0),
     })),
     lineSubtotal,
+    status: i.status || "pending",
   };
 }
 
@@ -66,20 +67,26 @@ function computeTotals(items) {
   return { subtotal, discount, tax, service, grandTotal };
 }
 
-async function createPaymentTxn(orderDoc, method) {
+async function createPaymentTxn(orderDoc, method, session) {
+  // Thêm session
   const normalized = normalizePaymentMethod(method);
   const amount = orderDoc?.totals?.grandTotal || 0;
-  return PaymentTransaction.create({
-    restaurantId: orderDoc.restaurantId,
-    orderId: orderDoc._id,
-    method: normalized,
-    currency: "VND",
-    amount,
-    status: "succeeded",
-    provider: normalized === "bank_transfer" ? "vietqr" : undefined,
-    paidAt: new Date(),
-    message: "Auto-created on confirmed payment",
-  });
+  return PaymentTransaction.create(
+    [
+      {
+        restaurantId: orderDoc.restaurantId,
+        orderId: orderDoc._id,
+        method: normalized,
+        currency: "VND",
+        amount,
+        status: "succeeded",
+        provider: normalized === "bank_transfer" ? "vietqr" : undefined,
+        paidAt: new Date(),
+        message: "Auto-created on confirmed payment",
+      },
+    ],
+    { session } // <-- Truyền session vào
+  );
 }
 
 // ✅ tạo / tìm user guest theo phone/email
@@ -146,13 +153,11 @@ export const OrderMutation = {
       ? items.map(normalizeItem)
       : [];
 
-    // allow empty items only in replace mode when customer info is present
+    // (Logic kiểm tra items rỗng giữ nguyên)
     if (!Array.isArray(items) || (items.length === 0 && !replaceItems)) {
       throw new Error("No items to upsert");
     }
-
     if (Array.isArray(items) && items.length === 0 && replaceItems) {
-      // require some customer info to persist an empty order
       const hasCustomer = !!(
         customer &&
         (customer.phone || customer.email || customer.fullName)
@@ -186,13 +191,27 @@ export const OrderMutation = {
       });
     }
 
+    // Đính kèm recipeId (logic của bạn)
+    const itemsWithRecipeId = await Promise.all(
+      normalizedItems.map(async (item) => {
+        const recipe = await Recipe.findOne(
+          { menuItemId: item.menuId, restaurantId: toId(restaurantId) },
+          { _id: 1 }
+        ).lean();
+
+        return {
+          ...item,
+          recipeId: recipe ? recipe._id : null,
+        };
+      })
+    );
     let doc = null;
     let isNewOrder = false;
 
     if (!existingOrder) {
       // create new order
       isNewOrder = true;
-      const totals = computeTotals(normalizedItems);
+      const totals = computeTotals(itemsWithRecipeId);
       doc = await Order.create({
         orderCode:
           orderCode ||
@@ -202,7 +221,7 @@ export const OrderMutation = {
         orderType: "dine_in",
         shipping: { address: tableCode },
         userId,
-        items: normalizedItems,
+        items: itemsWithRecipeId, // <-- Đã cập nhật
         totals,
         note: note || "",
         currentStatus: "confirmed",
@@ -220,15 +239,15 @@ export const OrderMutation = {
     } else {
       // update existing order
       if (replaceItems) {
-        // Replace semantics: client provided the desired final list of items.
-        const totals = computeTotals(normalizedItems);
-        existingOrder.items = normalizedItems;
+        // Replace
+        const totals = computeTotals(itemsWithRecipeId);
+        existingOrder.items = itemsWithRecipeId; // <-- Đã cập nhật
         existingOrder.totals = totals;
         if (note) existingOrder.note = note;
         if (userId && !existingOrder.userId) existingOrder.userId = userId;
         doc = await existingOrder.save();
 
-        // Log event: replacement occurred; if items array is empty, log specially
+        // (Log event)
         try {
           await EventLog.create({
             restaurantId: toId(restaurantId),
@@ -249,14 +268,13 @@ export const OrderMutation = {
             status: "success",
           });
         } catch (e) {
-          // logging failure shouldn't block operation
           console.warn("EventLog.create failed:", e.message);
         }
       } else {
-        // append (backwards-compatible)
+        // append (lỗi logic: phải dùng itemsWithRecipeId)
         const mergedItems = [
           ...(existingOrder.items || []),
-          ...normalizedItems,
+          ...itemsWithRecipeId, // <-- SỬA: Dùng items đã đính kèm recipeId
         ];
         const totals = computeTotals(mergedItems);
         existingOrder.items = mergedItems;
@@ -316,7 +334,19 @@ export const OrderMutation = {
     );
 
     const normalizedItems = items.map(normalizeItem);
-    const totals = computeTotals(normalizedItems);
+
+    // Đính kèm recipeId
+    const itemsWithRecipeId = await Promise.all(
+      normalizedItems.map(async (item) => {
+        const recipe = await Recipe.findOne(
+          { menuItemId: item.menuId, restaurantId: toId(restaurantId) },
+          { _id: 1 }
+        ).lean();
+        return { ...item, recipeId: recipe ? recipe._id : null };
+      })
+    );
+
+    const totals = computeTotals(itemsWithRecipeId);
 
     const doc = await Order.create({
       orderCode: orderCode || null,
@@ -325,8 +355,8 @@ export const OrderMutation = {
       reservationId: reservationId ? toId(reservationId) : undefined,
       orderType: orderType || mapDeliveryToOrderType(shipping?.deliveryMethod),
       tableCode,
-      shipping: tableCode ? { address: tableCode } : shipping, // nếu là POS thì ưu tiên tableCode
-      items: normalizedItems,
+      shipping: tableCode ? { address: tableCode } : shipping,
+      items: itemsWithRecipeId, // <-- Đã cập nhật
       totals,
       note,
       currentStatus: "confirmed",
@@ -342,7 +372,6 @@ export const OrderMutation = {
       ],
     });
 
-    // nếu là tại bàn -> cập nhật bàn
     if (tableCode) {
       await Table.updateOne(
         { restaurantId: toId(restaurantId), code: tableCode },
@@ -350,7 +379,7 @@ export const OrderMutation = {
       ).catch(() => {});
     }
 
-    await createPaymentTxn(doc, paymentMethod);
+    await createPaymentTxn(doc, paymentMethod); // <-- 'createPaymentTxn' nên dùng session
     return doc.toJSON();
   },
 
@@ -408,4 +437,10 @@ export const OrderMutation = {
 
     return doc.toJSON();
   },
+
+  // -----------------------------------------------------------------
+  // HÀM MỚI: XỬ LÝ THANH TOÁN TỪ POS (ĐƯỢC GỌI TỪ PAYMENTMODAL)
+  // -----------------------------------------------------------------
+
+  // -----------------------------------------------------------------
 };

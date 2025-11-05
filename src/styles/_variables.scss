@@ -373,3 +373,259 @@ $table-reserved-tx: $warning-600;
 $z-dropdown: 1000 !default;
 $z-modal: 1050 !default;
 $z-toast: 1080 !default;
+// ================================
+// 🎨 FOODHUB DESIGN SYSTEM EXTENSIONS (2025-11)
+// ================================
+
+// Bổ sung / chuẩn hóa palette cho consistency với toàn bộ scale
+
+// Primary scale (nếu thiếu vài tone sáng/tối)
+$primary-50: #f0f9ff !default;
+$primary-100: #e0f2fe !default;
+$primary-200: #bae6fd !default;
+$primary-300: #7dd3fc !default;
+$primary-400: #38bdf8 !default;
+$primary-500: #0ea5e9 !default;
+$primary-600: #0284c7 !default;
+$primary-700: #0369a1 !default;
+$primary-800: #075985 !default;
+$primary-900: #0c4a6e !default;
+
+// Info scale (bổ sung tone sáng nhất/tối nhất nếu cần)
+$info-50: #eff6ff !default;
+$info-100: #dbeafe !default;
+$info-200: #bfdbfe !default;
+$info-300: #93c5fd !default;
+$info-400: #60a5fa !default;
+$info-500: #3b82f6 !default;
+$info-600: #2563eb !default;
+$info-700: #1d4ed8 !default;
+$info-800: #1e40af !default;
+$info-900: #1e3a8a !default;
+
+// Secondary scale (chuẩn hóa violet tone)
+$secondary-50: #faf5ff !default;
+$secondary-100: #f3e8ff !default;
+$secondary-200: #e9d5ff !default;
+$secondary-300: #d8b4fe !default;
+$secondary-400: #c084fc !default;
+$secondary-500: #a855f7 !default;
+$secondary-600: #9333ea !default;
+$secondary-700: #7e22ce !default;
+$secondary-800: #6b21a8 !default;
+$secondary-900: #581c87 !default;
+
+// Success (green)
+$success-50: #f0fdf4 !default;
+$success-100: #dcfce7 !default;
+$success-200: #bbf7d0 !default;
+$success-300: #86efac !default;
+$success-400: #4ade80 !default;
+$success-500: #22c55e !default;
+$success-600: #16a34a !default;
+$success-700: #15803d !default;
+$success-800: #166534 !default;
+$success-900: #14532d !default;
+
+// Warning (amber)
+$warning-50: #fffbeb !default;
+$warning-100: #fef3c7 !default;
+$warning-200: #fde68a !default;
+$warning-300: #fcd34d !default;
+$warning-400: #fbbf24 !default;
+$warning-500: #f59e0b !default;
+$warning-600: #d97706 !default;
+$warning-700: #b45309 !default;
+$warning-800: #92400e !default;
+$warning-900: #78350f !default;
+
+// Error (red)
+$error-50: #fef2f2 !default;
+$error-100: #fee2e2 !default;
+$error-200: #fecaca !default;
+$error-300: #fca5a5 !default;
+$error-400: #f87171 !default;
+$error-500: #ef4444 !default;
+$error-600: #dc2626 !default;
+$error-700: #b91c1c !default;
+$error-800: #991b1b !default;
+$error-900: #7f1d1d !default;
+
+// Gray scale (neutral)
+$gray-50: #f8fafc !default;
+$gray-100: #f1f5f9 !default;
+$gray-200: #e2e8f0 !default;
+$gray-300: #cbd5e1 !default;
+$gray-400: #94a3b8 !default;
+$gray-500: #64748b !default;
+$gray-600: #475569 !default;
+$gray-700: #334155 !default;
+$gray-800: #1e293b !default;
+$gray-900: #0f172a !default;
+
+// --------------------------------
+// 🌈 COLOR MAP (for loops / theming)
+// --------------------------------
+$colors: (
+  "primary": (
+    50: $primary-50,
+    100: $primary-100,
+    200: $primary-200,
+    300: $primary-300,
+    400: $primary-400,
+    500: $primary-500,
+    600: $primary-600,
+    700: $primary-700,
+    800: $primary-800,
+    900: $primary-900,
+  ),
+  "info": (
+    50: $info-50,
+    100: $info-100,
+    200: $info-200,
+    300: $info-300,
+    400: $info-400,
+    500: $info-500,
+    600: $info-600,
+    700: $info-700,
+    800: $info-800,
+    900: $info-900,
+  ),
+  "secondary": (
+    50: $secondary-50,
+    100: $secondary-100,
+    200: $secondary-200,
+    300: $secondary-300,
+    400: $secondary-400,
+    500: $secondary-500,
+    600: $secondary-600,
+    700: $secondary-700,
+    800: $secondary-800,
+    900: $secondary-900,
+  ),
+  "success": (
+    50: $success-50,
+    100: $success-100,
+    200: $success-200,
+    300: $success-300,
+    400: $success-400,
+    500: $success-500,
+    600: $success-600,
+    700: $success-700,
+    800: $success-800,
+    900: $success-900,
+  ),
+  "warning": (
+    50: $warning-50,
+    100: $warning-100,
+    200: $warning-200,
+    300: $warning-300,
+    400: $warning-400,
+    500: $warning-500,
+    600: $warning-600,
+    700: $warning-700,
+    800: $warning-800,
+    900: $warning-900,
+  ),
+  "error": (
+    50: $error-50,
+    100: $error-100,
+    200: $error-200,
+    300: $error-300,
+    400: $error-400,
+    500: $error-500,
+    600: $error-600,
+    700: $error-700,
+    800: $error-800,
+    900: $error-900,
+  ),
+  "gray": (
+    50: $gray-50,
+    100: $gray-100,
+    200: $gray-200,
+    300: $gray-300,
+    400: $gray-400,
+    500: $gray-500,
+    600: $gray-600,
+    700: $gray-700,
+    800: $gray-800,
+    900: $gray-900,
+  ),
+);
+// ================================
+// 🎯 ALIASES: $red-*, $green-*, $yellow-*, $blue-*, $purple-*, $gray-*
+// Map về các scale đã có: error/success/warning/info/secondary/gray
+// Dùng !default để KHÔNG ghi đè biến đã tồn tại
+// ================================
+
+// Red → Error
+$red-50: $error-50 !default;
+$red-100: $error-100 !default;
+$red-200: $error-200 !default;
+$red-300: $error-300 !default;
+$red-400: $error-400 !default;
+$red-500: $error-500 !default;
+$red-600: $error-600 !default;
+$red-700: $error-700 !default;
+$red-800: $error-800 !default;
+$red-900: $error-900 !default;
+
+// Green → Success
+$green-50: $success-50 !default;
+$green-100: $success-100 !default;
+$green-200: $success-200 !default;
+$green-300: $success-300 !default;
+$green-400: $success-400 !default;
+$green-500: $success-500 !default;
+$green-600: $success-600 !default;
+$green-700: $success-700 !default;
+$green-800: $success-800 !default;
+$green-900: $success-900 !default;
+
+// Yellow → Warning
+$yellow-50: $warning-50 !default;
+$yellow-100: $warning-100 !default;
+$yellow-200: $warning-200 !default;
+$yellow-300: $warning-300 !default;
+$yellow-400: $warning-400 !default;
+$yellow-500: $warning-500 !default;
+$yellow-600: $warning-600 !default;
+$yellow-700: $warning-700 !default;
+$yellow-800: $warning-800 !default;
+$yellow-900: $warning-900 !default;
+
+// Blue → Info (ưu tiên tone info-* làm “blue” chung)
+$blue-50: $info-50 !default;
+$blue-100: $info-100 !default;
+$blue-200: $info-200 !default;
+$blue-300: $info-300 !default;
+$blue-400: $info-400 !default;
+$blue-500: $info-500 !default;
+$blue-600: $info-600 !default;
+$blue-700: $info-700 !default;
+$blue-800: $info-800 !default;
+$blue-900: $info-900 !default;
+
+// Purple → Secondary
+$purple-50: $secondary-50 !default;
+$purple-100: $secondary-100 !default;
+$purple-200: $secondary-200 !default;
+$purple-300: $secondary-300 !default;
+$purple-400: $secondary-400 !default;
+$purple-500: $secondary-500 !default;
+$purple-600: $secondary-600 !default;
+$purple-700: $secondary-700 !default;
+$purple-800: $secondary-800 !default;
+$purple-900: $secondary-900 !default;
+
+// Gray → Gray (đã có sẵn, khai báo alias đầy đủ cho đồng bộ)
+$grey-50: $gray-50 !default; // cả hai biến gray/grey
+$grey-100: $gray-100 !default;
+$grey-200: $gray-200 !default;
+$grey-300: $gray-300 !default;
+$grey-400: $gray-400 !default;
+$grey-500: $gray-500 !default;
+$grey-600: $gray-600 !default;
+$grey-700: $gray-700 !default;
+$grey-800: $gray-800 !default;
+$grey-900: $gray-900 !default;

@@ -22,7 +22,7 @@ const userSchema = BaseSchemaModel({
     type: String,
     trim: true,
     lowercase: true,
-    index: true,
+
     unique: true,
     sparse: true,
   },
@@ -31,7 +31,7 @@ const userSchema = BaseSchemaModel({
     type: String,
     lowercase: true,
     trim: true,
-    index: true,
+
     unique: true,
     sparse: true,
     validate: {
@@ -47,7 +47,7 @@ const userSchema = BaseSchemaModel({
   phone: {
     type: String,
     trim: true,
-    index: true,
+
     unique: true,
     sparse: true,
     validate: {
@@ -73,7 +73,6 @@ const userSchema = BaseSchemaModel({
     type: String,
     enum: ["active", "inactive", "blocked", "pending"],
     default: "active",
-    index: true,
   },
 
   role: { type: mongoose.Schema.Types.ObjectId, ref: "Role" },
@@ -84,7 +83,6 @@ const userSchema = BaseSchemaModel({
     type: String,
     enum: ["VIP", "NEW", "OFTEN"],
     default: "NEW",
-    index: true,
   },
   avatarUrl: { type: String },
   totalOrders: { type: Number, default: 0 },
@@ -92,8 +90,8 @@ const userSchema = BaseSchemaModel({
   emailVerified: { type: Boolean, default: false },
   emailVerifyToken: { type: String, default: null },
   emailVerifyTokenExp: { type: Date, default: null },
-  isGuest: { type: Boolean, default: false, index: true },
-  guestExpiresAt: { type: Date, index: true }, // TTL index bên dưới
+  isGuest: { type: Boolean, default: false },
+  guestExpiresAt: { type: Date }, // TTL index bên dưới
 });
 
 userSchema.pre("validate", function (next) {
