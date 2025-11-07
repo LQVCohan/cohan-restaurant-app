@@ -13,6 +13,8 @@ import {
   closestCenter,
 } from "@dnd-kit/core";
 import { TableActionsModal } from "../modals/TableActionsModal";
+import { useReservation } from "../../../../../hooks/useReservation";
+import { useNotification } from "../../../../../hooks/useNotification";
 
 /* -------------------------------- UI bits -------------------------------- */
 
@@ -57,7 +59,7 @@ function TableCard({ t, active, selected, onClick, onOpenTableActions }) {
       className={`${cls.tableItem} ${active ? cls.selected : ""} ${
         selected ? cls.checked : ""
       } ${isDragging ? cls.dragging : ""} ${isOver ? cls.over : ""}`}
-      data-status={t.status} // SCSS dùng để tô màu theo trạng thái
+      data-status={t.status}
       onClick={onClick}
       role="button"
       tabIndex={0}
@@ -77,22 +79,8 @@ function TableCard({ t, active, selected, onClick, onOpenTableActions }) {
       <div className={`${cls.tableMeta} ${cls.metaRow}`}>
         <span className={cls.kv}>{t.capacity ?? 0} chỗ</span>
         <span className={cls.kv}>{t.status}</span>
-        {/* {t.position?.shape && (
-          <span className={cls.kv}>
-            {t.position.shape}
-            {t.position.w && t.position.h
-              ? ` ${t.position.w}×${t.position.h}`
-              : ""}
-          </span>
-        )} */}
-        {/* {Number.isFinite(t.position?.x) && Number.isFinite(t.position?.y) && (
-          <span className={cls.kv}>
-            ({t.position.x}, {t.position.y})
-          </span>
-        )} */}
       </div>
 
-      {/* Nút 3 chấm (kebab) – ẩn mặc định, hiện khi hover card (styled trong SCSS) */}
       <button
         type="button"
         className={cls.kebab}
@@ -124,32 +112,34 @@ function TableCard({ t, active, selected, onClick, onOpenTableActions }) {
 export default function LeftPanel({ className = "" }) {
   const {
     restaurantId,
-
-    // Floors & filter
     floors,
     activeLevel,
     setActiveLevel,
-
-    // Tables + filters
     tables,
     tableSearch,
     setTableSearch,
     statusFilter,
     setStatusFilter,
-
-    // Tabs (order type)
     currentOrderType,
     setCurrentOrderType,
-
-    // Actions
     selectTableForOrder,
     swapTableCodes,
     mergeTables,
     splitTables,
     refetchTables,
+
+    // helpers
+    fetchOrderByTable,
+    fetchTableByCode,
+    setTableStatus,
+
+    // NEW from context (hook order)
+    updateOrderCustomerByCode,
   } = usePos();
-  setTimeout(() => refetchTables?.(), 500);
-  // Tabs config (chia đều 3 cột bằng CSS grid)
+
+  const { showNotification } = useNotification();
+  const { createReservation } = useReservation();
+
   const tabs = useMemo(
     () => [
       { key: "dine_in", label: "Bàn ăn" },
@@ -160,11 +150,9 @@ export default function LeftPanel({ className = "" }) {
   );
   const setTab = (key) => setCurrentOrderType(key);
 
-  // Multi-select
   const [multiSelect, setMultiSelect] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // Modal actions
   const [actionsOpen, setActionsOpen] = useState(false);
   const [activeTableForActions, setActiveTableForActions] = useState(null);
   const onOpenTableActions = useCallback((t) => {
@@ -172,7 +160,6 @@ export default function LeftPanel({ className = "" }) {
     setActionsOpen(true);
   }, []);
 
-  // Status counts
   const counts = useMemo(() => {
     const base = {
       all: tables?.length || 0,
@@ -249,7 +236,6 @@ export default function LeftPanel({ className = "" }) {
     await refetchTables?.();
   };
 
-  // Drag & drop -> swap codes giữa 2 bàn cùng tầng
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, {
@@ -273,9 +259,114 @@ export default function LeftPanel({ className = "" }) {
     setMultiSelect(false);
   };
 
+  /**
+   * ✅ Được gọi từ TableActionsModal.saveCustomerInfo
+   * - Nếu bàn có order: cập nhật trực tiếp order.user (không query lại OrdersByRestaurantNow)
+   * - Nếu bàn trống: tạo Reservation và set status = reserved
+   * (chỉ 1 lần refetchTables ở cuối)
+   */
+  const handleSaveCustomerFromModal = useCallback(
+    async (tableCode, cust) => {
+      try {
+        const code = (tableCode || "").trim();
+        const table =
+          fetchTableByCode?.(code, restaurantId) ||
+          (tables || []).find(
+            (t) => (t.code || "").toLowerCase() === code.toLowerCase()
+          );
+        if (!table) {
+          showNotification?.("Không tìm thấy bàn để lưu khách.", "error");
+          return;
+        }
+
+        // 1) Có order? (chỉ gọi 1 lần)
+        const res = await fetchOrderByTable?.(restaurantId, code, 1, 0);
+        const activeOrder = res?.data?.[0] || null;
+
+        if (activeOrder) {
+          // cập nhật user vào đơn bằng orderCode (không cần query thêm)
+          await updateOrderCustomerByCode({
+            restaurantId,
+            orderCode: activeOrder.orderCode,
+            customer: {
+              fullName: (cust?.fullName || cust?.name || "").trim(),
+              phone: (cust?.phone || "").trim(),
+              email: (cust?.email || "").trim().toLowerCase(),
+            },
+          });
+          showNotification?.(
+            `Đã cập nhật thông tin khách cho đơn #${activeOrder.orderCode}.`,
+            "success"
+          );
+
+          // Nếu bàn đang reserved → chuyển sang occupied
+          try {
+            if (table.status === "reserved") {
+              await setTableStatus?.({ id: table.id, status: "occupied" });
+            }
+            // eslint-disable-next-line no-empty
+          } catch {}
+          await refetchTables?.();
+          return;
+        }
+
+        // 2) Không có order → nếu available thì tạo reservation
+        if (table.status === "available") {
+          const isoTime = cust?.checkin
+            ? new Date(cust.checkin).toISOString()
+            : new Date().toISOString();
+
+          await createReservation({
+            restaurantId,
+            tableId: table.id,
+            timeTo: isoTime,
+            partySize:
+              Number.isFinite(Number(cust?.guests)) && Number(cust?.guests) > 0
+                ? Number(cust?.guests)
+                : Number(table.capacity || 2),
+            note: cust?.note || "",
+            customerName: (cust?.name || cust?.fullName || "Guest").trim(),
+            customerPhone: (cust?.phone || "").trim(),
+            customerEmail: (cust?.email || "").trim().toLowerCase(),
+            depositAmount: 0,
+            durationMinutes: 90,
+          });
+
+          try {
+            await setTableStatus?.({ id: table.id, status: "reserved" });
+            // eslint-disable-next-line no-empty
+          } catch {}
+
+          showNotification?.(
+            `Đã tạo đặt bàn cho ${code} và chuyển trạng thái sang "Đã đặt".`,
+            "success"
+          );
+          await refetchTables?.();
+        } else {
+          // các trạng thái khác thì chỉ refresh 1 lần
+          await refetchTables?.();
+        }
+      } catch (e) {
+        console.error(e);
+        showNotification?.("Lưu thông tin khách thất bại.", "error");
+      }
+    },
+    [
+      restaurantId,
+      tables,
+      fetchTableByCode,
+      fetchOrderByTable,
+      updateOrderCustomerByCode,
+      setTableStatus,
+      refetchTables,
+      createReservation,
+      showNotification,
+    ]
+  );
+
   return (
     <div className={`${cls.wrapper} ${className}`}>
-      {/* Tabs chia đều */}
+      {/* Tabs */}
       <div className={cls.header}>
         <div className={cls.navTabs}>
           {tabs.map((t) => (
@@ -292,7 +383,7 @@ export default function LeftPanel({ className = "" }) {
           ))}
         </div>
 
-        {/* Hộp “Tạo đơn mới” theo tab */}
+        {/* New order boxes by tab */}
         {currentOrderType === "dine_in" && (
           <div className={cls.newOrderBox}>
             <h4>Tạo đơn mới (Bàn ăn)</h4>
@@ -300,19 +391,13 @@ export default function LeftPanel({ className = "" }) {
               <button
                 className={`${cls.btn} ${cls.primary}`}
                 onClick={() => {
-                  // Gợi ý: focus ô tìm kiếm để chọn bàn nhanh
                   const el = document.querySelector(`.${cls.search}`);
                   el?.focus();
                 }}
               >
                 Chọn bàn
               </button>
-              <button
-                className={cls.btn}
-                onClick={() => {
-                  /* mở modal đặt bàn nếu có */
-                }}
-              >
+              <button className={cls.btn} onClick={() => {}}>
                 + Đặt bàn
               </button>
             </div>
@@ -325,18 +410,11 @@ export default function LeftPanel({ className = "" }) {
             <div className={cls.newOrderActions}>
               <button
                 className={`${cls.btn} ${cls.primary}`}
-                onClick={() => {
-                  /* mở form giao hàng */
-                }}
+                onClick={() => {}}
               >
                 + Đơn giao
               </button>
-              <button
-                className={cls.btn}
-                onClick={() => {
-                  /* chọn khách cũ */
-                }}
-              >
+              <button className={cls.btn} onClick={() => {}}>
                 Chọn khách cũ
               </button>
             </div>
@@ -349,25 +427,18 @@ export default function LeftPanel({ className = "" }) {
             <div className={cls.newOrderActions}>
               <button
                 className={`${cls.btn} ${cls.primary}`}
-                onClick={() => {
-                  /* form nhanh */
-                }}
+                onClick={() => {}}
               >
                 + Đơn mang về
               </button>
-              <button
-                className={cls.btn}
-                onClick={() => {
-                  /* chọn combo */
-                }}
-              >
+              <button className={cls.btn} onClick={() => {}}>
                 Chọn combo
               </button>
             </div>
           </div>
         )}
 
-        {/* Select tầng + tìm kiếm chung 1 hàng */}
+        {/* Select tầng + tìm kiếm */}
         <div className={cls.filterRow}>
           <select
             className={cls.select}
@@ -418,7 +489,7 @@ export default function LeftPanel({ className = "" }) {
         </div>
       </div>
 
-      {/* Toolbar – luôn đủ nút khi bật chọn nhiều */}
+      {/* Toolbar */}
       <div className={cls.toolbar}>
         <div className={cls.left}>
           <button
@@ -506,6 +577,7 @@ export default function LeftPanel({ className = "" }) {
         table={activeTableForActions}
         onClose={() => setActionsOpen(false)}
         onUpdated={() => refetchTables?.()}
+        onSave={handleSaveCustomerFromModal}
       />
     </div>
   );

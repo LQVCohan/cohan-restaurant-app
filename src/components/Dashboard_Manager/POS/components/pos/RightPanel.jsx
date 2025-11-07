@@ -32,6 +32,7 @@ export default function RightPanel() {
 
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
   const [pulse, setPulse] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   const hasItems = Array.isArray(currentOrder) && currentOrder.length > 0;
 
@@ -158,6 +159,40 @@ export default function RightPanel() {
     setClearModalOpen(false);
   };
 
+  // Tránh lỗi nếu chưa có handlePrint trong scope
+  const handlePrint = (mode = "draft") => {
+    try {
+      showNotification(
+        mode === "final" ? "In hóa đơn..." : "In phiếu tạm tính...",
+        "info"
+      );
+    } catch (e) {
+      showNotification("Không thể in. Vui lòng thử lại.", "error");
+    }
+  };
+
+  // Chuẩn hóa các trường breakdown có thể có trong finalTotals
+  const totals = finalTotals || {};
+  const breakdownConfig = [
+    { key: "subtotal", label: "Tạm tính", cls: "" },
+    { key: "discount", label: "Giảm giá", cls: "neg" },
+    { key: "serviceCharge", label: "Phí phục vụ", cls: "" },
+    { key: "deliveryFee", label: "Phí giao hàng", cls: "" },
+    { key: "tax", label: "Thuế", cls: "" },
+    { key: "rounding", label: "Làm tròn", cls: "" },
+    { key: "paid", label: "Đã thanh toán", cls: "neg" },
+    { key: "due", label: "Còn phải trả", cls: "pos" },
+    { key: "change", label: "Tiền thừa", cls: "pos" },
+  ];
+
+  const breakdownRows = breakdownConfig
+    .filter(({ key }) => totals[key] !== undefined && totals[key] !== null)
+    .map(({ key, label, cls: c }) => ({
+      label,
+      value: totals[key],
+      clsName: c,
+    }));
+
   return (
     <div
       className={`${cls.wrapper} ${pulse ? cls.pulse : ""}`}
@@ -169,8 +204,8 @@ export default function RightPanel() {
         totalAmount={finalTotals?.total || 0}
         order={currentOrder}
         table={currentTable}
-        onConfirm={() => {}} // optional
-        onComplete={handlePaymentComplete} // dọn bàn tại đây
+        onConfirm={() => {}}
+        onComplete={handlePaymentComplete}
       />
 
       <ConfirmDeleteModal
@@ -360,7 +395,38 @@ export default function RightPanel() {
             <span>Tạm tính:</span>
             <strong>{formatPrice(finalTotals?.subtotal || 0)}</strong>
           </div>
-          <div className={cls.hr} />
+
+          {/* Toggle breakdown */}
+          <button
+            type="button"
+            className={`${cls.btn} ${cls.breakdownToggle}`}
+            onClick={() => setShowBreakdown((v) => !v)}
+            aria-expanded={showBreakdown}
+            aria-controls="totals-breakdown"
+            title={showBreakdown ? "Thu gọn chi tiết" : "Mở chi tiết"}
+          >
+            {showBreakdown ? "Thu gọn chi tiết" : "Chi tiết"}
+          </button>
+
+          {/* COLLAPSIBLE BREAKDOWN */}
+          {showBreakdown && (
+            <div id="totals-breakdown" className={cls.breakdown}>
+              {breakdownRows.length === 0 && (
+                <div className={cls.muted}>Không có thành phần chi tiết.</div>
+              )}
+              {breakdownRows.map((r) => (
+                <div
+                  key={r.label}
+                  className={`${cls.breakdownRow} ${cls[r.clsName] || ""}`}
+                >
+                  <span>{r.label}</span>
+                  <span>{formatPrice(Number(r.value) || 0)}</span>
+                </div>
+              ))}
+              <div className={cls.hr} />
+            </div>
+          )}
+
           <div className={`${cls.row} ${cls.grand}`}>
             <span>Tổng cộng:</span>
             <strong>{formatPrice(finalTotals?.total || 0)}</strong>
@@ -392,6 +458,25 @@ export default function RightPanel() {
             title="Thanh toán"
           >
             Thanh toán
+          </button>
+          <button
+            type="button"
+            className={`${cls.btn} ${cls.warning}`}
+            onClick={() => handlePrint("draft")}
+            disabled={!hasItems}
+            title="In phiếu tạm tính"
+          >
+            In tạm tính
+          </button>
+
+          <button
+            type="button"
+            className={`${cls.btn} ${cls.warning}`}
+            onClick={() => handlePrint("final")}
+            disabled={!hasItems}
+            title="In hóa đơn"
+          >
+            In hóa đơn
           </button>
         </div>
       </div>

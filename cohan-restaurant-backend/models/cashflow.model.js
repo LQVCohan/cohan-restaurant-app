@@ -13,7 +13,7 @@ const CashflowSchema = BaseSchemaModel(
       id: { type: Types.ObjectId }, // e.g., kind: 'Invoice', id: ...
     },
     note: String,
-    at: { type: Date, default: Date.now },
+    occurredAt: { type: Date, default: Date.now },
   },
   {} // Options bổ sung (nếu có)
 );

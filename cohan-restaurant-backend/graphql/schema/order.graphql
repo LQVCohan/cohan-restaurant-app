@@ -1,7 +1,9 @@
+# --- Value Objects ---
+
 type Shipping {
   fullName: String
   phone: String
-  email: String # ✅ thêm email
+  email: String
   address: String
   note: String
   deliveryMethod: String
@@ -10,16 +12,21 @@ type Shipping {
   scheduleTime: String
 }
 
-input ShippingInput {
-  fullName: String
-  phone: String
-  email: String # ✅ thêm email
-  address: String
-  note: String
-  deliveryMethod: String
-  deliveryTime: String
-  scheduleDate: String
-  scheduleTime: String
+enum OrderStatus {
+  pending
+  preparing
+  ready
+  served
+  cancelled
+  completed
+}
+
+enum ItemStatus {
+  pending
+  preparing
+  ready
+  served
+  cancelled
 }
 
 type OrderModifier {
@@ -34,67 +41,6 @@ input OrderModifierInput {
   optionName: String!
   groupId: ID
   price: Int
-}
-
-input UpsertTableOrderInput {
-  restaurantId: ID!
-  tableCode: String!
-  orderCode: String
-  items: [OrderItemInput!]!
-
-  replaceItems: Boolean
-  note: String
-  paymentMethod: String
-  customer: CustomerInput
-  clientMeta: JSON
-}
-
-type UpsertTableOrderPayload {
-  order: Order!
-  isNewOrder: Boolean!
-}
-
-type OrderItem {
-  dishId: String
-  menuId: String
-  categoryId: String
-  name: String!
-  unit: String
-  image: String
-  price: Int!
-  modifiersPrice: Int
-  method: String
-  methodDelta: Int
-  note: String
-  quantity: Float!
-  modifiers: [OrderModifier!]
-  lineSubtotal: Int
-  status: String
-  recipeId: ID
-  recipe: Recipe
-}
-
-input OrderItemInput {
-  dishId: String
-  menuId: String
-  categoryId: String
-  name: String!
-  unit: String
-  image: String
-  price: Int!
-  modifiersPrice: Int
-  method: String
-  methodDelta: Int
-  description: String
-  quantity: Float!
-  modifiers: [OrderModifierInput!]
-  status: String
-}
-
-input CustomerInput { # ✅ cho khách chưa đăng nhập
-  fullName: String
-  phone: String
-  email: String
 }
 
 type OrderTotals {
@@ -121,6 +67,28 @@ type OrderPayment {
   paidAt: String
 }
 
+# --- Core Types ---
+
+type OrderItem {
+  dishId: String
+  menuId: String
+  categoryId: String
+  name: String!
+  unit: String
+  image: String
+  price: Int!
+  modifiersPrice: Int
+  method: String
+  methodDelta: Int
+  note: String
+  quantity: Float!
+  modifiers: [OrderModifier!]
+  lineSubtotal: Int
+  status: String
+  recipeId: ID
+  recipe: Recipe
+}
+
 type Order {
   id: ID!
   orderCode: String
@@ -139,6 +107,60 @@ type Order {
   createdAt: String!
   updatedAt: String!
   user: User
+}
+
+# --- Inputs ---
+
+input ShippingInput {
+  fullName: String
+  phone: String
+  email: String
+  address: String
+  note: String
+  deliveryMethod: String
+  deliveryTime: String
+  scheduleDate: String
+  scheduleTime: String
+}
+
+input OrderItemInput {
+  dishId: String
+  menuId: String
+  categoryId: String
+  name: String!
+  unit: String
+  image: String
+  price: Int!
+  modifiersPrice: Int
+  method: String
+  methodDelta: Int
+  description: String
+  quantity: Float!
+  modifiers: [OrderModifierInput!]
+  status: String
+}
+
+input CustomerInput {
+  fullName: String
+  phone: String
+  email: String
+}
+
+input UpsertTableOrderInput {
+  restaurantId: ID!
+  tableCode: String!
+  orderCode: String
+  items: [OrderItemInput!]!
+  replaceItems: Boolean
+  note: String
+  paymentMethod: String
+  customer: CustomerInput
+  clientMeta: JSON
+}
+
+type UpsertTableOrderPayload {
+  order: Order!
+  isNewOrder: Boolean!
 }
 
 input CreateOrderInput {
@@ -161,9 +183,45 @@ input UpdateOrderStatusInput {
   note: String
 }
 
-type OrdersConnection {
-  edges: [OrderEdge!]!
-  pageInfo: PageInfo!
+input UpdateOrderStatusByCodeInput {
+  restaurantId: ID!
+  orderCode: String!
+  status: OrderStatus!
+  note: String
+}
+
+input UpdateOrderItemStatusByCodeInput {
+  restaurantId: ID!
+  orderCode: String!
+  itemKey: String!
+  status: ItemStatus!
+  note: String
+}
+
+type UpdateOrderStatusByCodePayload {
+  order: Order!
+}
+
+type UpdateOrderItemStatusByCodePayload {
+  order: Order!
+}
+
+# --- NEW: chỉ cập nhật khách hàng cho order hiện có ---
+input UpdateOrderCustomerByCodeInput {
+  restaurantId: ID!
+  orderCode: String!
+  customer: CustomerInput!
+}
+
+type UpdateOrderCustomerByCodePayload {
+  order: Order!
+}
+
+# --- Connections & Lists ---
+
+type PageInfo {
+  endCursor: ID
+  hasNextPage: Boolean!
 }
 
 type OrderEdge {
@@ -171,10 +229,11 @@ type OrderEdge {
   cursor: ID!
 }
 
-type PageInfo {
-  endCursor: ID
-  hasNextPage: Boolean!
+type OrdersConnection {
+  edges: [OrderEdge!]!
+  pageInfo: PageInfo!
 }
+
 input OrderFilterInput {
   restaurantId: ID
   tableCode: String
@@ -185,18 +244,32 @@ input OrderFilterInput {
   dateTo: String
   keyword: String
 }
+
 type OrderList {
   items: [Order!]!
   totalCount: Int!
 }
+
+# --- Root ---
+
 extend type Query {
   order(id: ID!): Order
   orders(filter: OrderFilterInput, limit: Int, offset: Int): OrderList!
+
+  # ONLY current/active orders (exclude cancelled, completed)
+  ordersByRestaurantNow(
+    restaurantId: ID!
+    limit: Int = 20
+    cursor: ID
+  ): OrdersConnection!
+
+  # ALL orders including cancelled & completed
   ordersByRestaurant(
     restaurantId: ID!
     limit: Int = 20
     cursor: ID
   ): OrdersConnection!
+
   ordersByUser(userId: ID!, limit: Int = 20, cursor: ID): OrdersConnection!
 
   ordersByTableCode(
@@ -212,4 +285,17 @@ extend type Mutation {
   createOrder(input: CreateOrderInput!): Order!
   updateOrderStatus(input: UpdateOrderStatusInput!): Order!
   cancelOrder(id: ID!, reason: String): Order!
+
+  updateOrderStatusByCode(
+    input: UpdateOrderStatusByCodeInput!
+  ): UpdateOrderStatusByCodePayload!
+
+  updateOrderItemStatusByCode(
+    input: UpdateOrderItemStatusByCodeInput!
+  ): UpdateOrderItemStatusByCodePayload!
+
+  # --- NEW ---
+  updateOrderCustomerByCode(
+    input: UpdateOrderCustomerByCodeInput!
+  ): UpdateOrderCustomerByCodePayload!
 }

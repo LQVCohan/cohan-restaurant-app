@@ -11,7 +11,7 @@ const CREATE_RESERVATION = gql`
       restaurantName
       tableId
       userId
-      timeFrom
+      timeTo
       timeTo
       durationMinutes
       customerName

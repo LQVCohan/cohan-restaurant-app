@@ -1,6 +1,3 @@
-// ===============================
-// useTableManagement.js (fast, optimistic)
-// ===============================
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { useCallback, useMemo } from "react";
 
@@ -91,7 +88,7 @@ const M_MOVE = gql`
   }
 `;
 const M_SWAP_CODES = gql`
-  mutation SwapCodes($input: SwapTableCodesInput!) {
+  mutation SwapTableCodes($input: SwapTableCodesInput!) {
     swapTableCodes(input: $input)
   }
 `;
@@ -120,9 +117,8 @@ const M_SPLIT = gql`
   }
 `;
 
-/* ========= Hook ========= */
 export default function useTableManagement({ restaurantId }) {
-  const { data, loading, error } = useQuery(Q_TABLES, {
+  const { data, loading, error, refetch } = useQuery(Q_TABLES, {
     variables: { restaurantId },
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
@@ -142,15 +138,12 @@ export default function useTableManagement({ restaurantId }) {
     });
 
   /* ------ mutations with optimistic UI ------ */
-  const [createMut] = useMutation(M_CREATE, {
-    // tùy chọn: có thể thêm optimistic nếu input đã đủ field
-  });
-
+  const [createMut] = useMutation(M_CREATE);
   const [updateMut] = useMutation(M_UPDATE, {
     optimisticResponse: ({ input }) => ({
       updateTable: {
         __typename: "Table",
-        ...input, // id + các field sửa
+        ...input,
       },
     }),
     update(cache, { data }) {
@@ -158,7 +151,6 @@ export default function useTableManagement({ restaurantId }) {
       writeTable(cache, data.updateTable);
     },
   });
-
   const [deleteMut] = useMutation(M_DELETE, {
     optimisticResponse: ({ id }) => ({ deleteTable: true }),
     update(cache, { variables }) {
@@ -167,7 +159,6 @@ export default function useTableManagement({ restaurantId }) {
       cache.gc();
     },
   });
-
   const [setStatusMut] = useMutation(M_SET_STATUS, {
     optimisticResponse: ({ input }) => ({
       setTableStatus: {
@@ -185,7 +176,6 @@ export default function useTableManagement({ restaurantId }) {
       });
     },
   });
-
   const [moveMut] = useMutation(M_MOVE, {
     optimisticResponse: ({ input }) => ({
       moveTable: {
@@ -213,7 +203,6 @@ export default function useTableManagement({ restaurantId }) {
       });
     },
   });
-
   const [swapCodesMut] = useMutation(M_SWAP_CODES, {
     optimisticResponse: () => ({ swapTableCodes: true }),
     update(cache, { variables }) {
@@ -221,7 +210,6 @@ export default function useTableManagement({ restaurantId }) {
       const a = readTable(cache, aId);
       const b = readTable(cache, bId);
       if (!a || !b) return;
-      // hoán đổi code ngay trong cache
       cache.modify({
         id: cache.identify({ __typename: "Table", id: aId }),
         fields: { code: () => b.code },
@@ -232,14 +220,12 @@ export default function useTableManagement({ restaurantId }) {
       });
     },
   });
-
   const [bulkUpsertMut] = useMutation(M_BULK_UPSERT);
-
   const [mergeMut] = useMutation(M_MERGE, {
     optimisticResponse: ({ input }) => ({
       mergeTables: {
         __typename: "MergeTablesPayload",
-        joinGroupId: `optim-${Date.now()}`, // id tạm cho UI
+        joinGroupId: `optim-${Date.now()}`,
         anchorId: input.anchorId,
         tableIds: input.tableIds,
       },
@@ -255,7 +241,6 @@ export default function useTableManagement({ restaurantId }) {
       });
     },
   });
-
   const [splitMut] = useMutation(M_SPLIT, {
     optimisticResponse: ({ input }) => ({
       splitTables: {
@@ -276,7 +261,6 @@ export default function useTableManagement({ restaurantId }) {
     },
   });
 
-  /* ------ public API ------ */
   const tables = useMemo(() => data?.tables ?? [], [data]);
 
   const createTable = useCallback(
@@ -342,14 +326,17 @@ export default function useTableManagement({ restaurantId }) {
   );
 
   const fetchTableByCode = useCallback(
-    (code, restaurantId) =>
-      tables.find(
-        (t) =>
-          (t.code || "").toLowerCase() === (code || "").toLowerCase() &&
-          (t.restaurantId || "").toLowerCase() ===
-            (restaurantId || "").toLowerCase()
-      ) || null,
-    [tables]
+    (code, rid) => {
+      const r = (rid ?? restaurantId) || "";
+      return (
+        tables.find(
+          (t) =>
+            (t.code || "").toLowerCase() === (code || "").toLowerCase() &&
+            String(t.restaurantId || "") === String(r)
+        ) || null
+      );
+    },
+    [tables, restaurantId]
   );
 
   return {
@@ -357,7 +344,10 @@ export default function useTableManagement({ restaurantId }) {
     tablesLoading: loading,
     tablesError: error,
 
-    // mutations (đã có optimistic)
+    // expose refetch cho FE
+    refetchTables: refetch,
+
+    // mutations
     createTable,
     updateTable,
     deleteTable,

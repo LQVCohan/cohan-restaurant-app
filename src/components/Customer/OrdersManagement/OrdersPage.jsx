@@ -150,7 +150,7 @@ const CREATE_RESERVATION = gql`
       restaurantId
       restaurantName
       tableId
-      timeFrom
+      timeTo
       durationMinutes
       partySize
       depositAmount
@@ -315,9 +315,9 @@ export default function OrdersPage() {
       header: {
         id: `#${r.orderCode || r.id}`,
         restaurant: r.restaurantName || "Nhà hàng",
-        timeText: `${new Date(r.timeFrom).toLocaleDateString(
+        timeText: `${new Date(r.timeTo).toLocaleDateString(
           "vi-VN"
-        )}, ${new Date(r.timeFrom).toLocaleTimeString("vi-VN", {
+        )}, ${new Date(r.timeTo).toLocaleTimeString("vi-VN", {
           hour: "2-digit",
           minute: "2-digit",
         })} • Thời lượng: ${r.durationMinutes} phút`,
@@ -708,13 +708,13 @@ export default function OrdersPage() {
         isOpen={!!changeTimeTarget}
         onClose={() => setChangeTimeTarget(null)}
         initialDate={
-          changeTimeTarget?.timeFrom
-            ? new Date(changeTimeTarget.timeFrom).toISOString().slice(0, 10)
+          changeTimeTarget?.timeTo
+            ? new Date(changeTimeTarget.timeTo).toISOString().slice(0, 10)
             : undefined
         }
         initialTime={
-          changeTimeTarget?.timeFrom
-            ? new Date(changeTimeTarget.timeFrom).toTimeString().slice(0, 5)
+          changeTimeTarget?.timeTo
+            ? new Date(changeTimeTarget.timeTo).toTimeString().slice(0, 5)
             : "19:30"
         }
         onSubmit={({ iso }) => {
@@ -725,7 +725,7 @@ export default function OrdersPage() {
               input: {
                 restaurantId: changeTimeTarget.restaurantId,
                 tableId: changeTimeTarget.tableId,
-                timeFrom: iso,
+                timeTo: iso,
                 durationMinutes: changeTimeTarget.durationMinutes || 90,
                 partySize: changeTimeTarget.partySize || 2,
                 note: changeTimeTarget.note || undefined,

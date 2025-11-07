@@ -8,6 +8,7 @@ import {
   PaymentTransaction,
   Cashflow,
   EventLog,
+  Table, // ✅ thêm: để trả bàn khi thanh toán xong
 } from "../../../models/index.js";
 
 export const payOrder = async (_parent, { input }, ctx) => {
@@ -44,9 +45,18 @@ export const payOrder = async (_parent, { input }, ctx) => {
       throw new Error("restaurantId của order không khớp.");
     }
 
-    const totalAmount = Number(order.totalAmount ?? 0);
-    const totalPaid = Number(order.totalPaid ?? 0);
-    const remain = Math.max(0, totalAmount - totalPaid);
+    // ✅ hỗ trợ cả 2 dạng schema
+    const grossTotal =
+      Number(order.totalAmount ?? 0) ||
+      Number(order?.totals?.grandTotal ?? 0) ||
+      0;
+
+    const existingPaid =
+      Number(order.totalPaid ?? 0) ||
+      Number(order?.payment?.paidAmount ?? 0) ||
+      0;
+
+    const remain = Math.max(0, grossTotal - existingPaid);
 
     const now = paidAt ? dayjs(paidAt).toDate() : new Date();
     const pay = Math.min(Number(paidAmount), remain || Number(paidAmount));
@@ -95,38 +105,101 @@ export const payOrder = async (_parent, { input }, ctx) => {
           note,
           externalRef,
           createdBy: ctx?.user?.id,
-          meta: { beforePaid: totalPaid, afterPaid: totalPaid + pay },
+          meta: { beforePaid: existingPaid, afterPaid: existingPaid + pay },
         },
       ],
       { session }
     ).then((r) => r[0]);
 
-    // 2) Cập nhật Order
-    const newTotalPaid = totalPaid + pay;
-    order.totalPaid = newTotalPaid;
-    order.paymentMethod = normMethod;
+    // 2) Cập nhật Order (tương thích 2 dạng)
+    const newTotalPaid = existingPaid + pay;
 
-    if (newTotalPaid + 1e-6 >= totalAmount) {
-      order.status = "PAID";
-      order.paidAt = now;
-    } else {
-      order.status = "PARTIALLY_PAID";
+    // trường phẳng
+    if (Order.schema.path("totalPaid")) order.totalPaid = newTotalPaid;
+    if (Order.schema.path("paymentMethod")) order.paymentMethod = normMethod;
+
+    // trường lồng payment
+    const hasPaymentNested = !!Order.schema?.path("payment");
+    if (hasPaymentNested) {
+      order.payment = {
+        ...(order.payment || {}),
+        method: normMethod,
+        status: newTotalPaid + 1e-6 >= grossTotal ? "paid" : "pending",
+        paidAmount: newTotalPaid,
+        currency: order.payment?.currency || "VND",
+        paidAt: newTotalPaid + 1e-6 >= grossTotal ? now : order.payment?.paidAt,
+      };
     }
+
+    // status thanh toán theo schema cũ
+    if (Order.schema.path("status")) {
+      order.status =
+        newTotalPaid + 1e-6 >= grossTotal ? "PAID" : "PARTIALLY_PAID";
+      if (newTotalPaid + 1e-6 >= grossTotal && Order.schema.path("paidAt")) {
+        order.paidAt = now;
+      }
+    }
+
     if (!order.restaurantId) order.restaurantId = restaurantId;
+
+    // ✅ Chỉ khi đã thanh toán đủ mới completed & free table
+    const fullyPaid = newTotalPaid + 1e-6 >= grossTotal;
+    if (fullyPaid) {
+      // currentStatus (schema mới)
+      if (Order.schema.path("currentStatus")) {
+        order.currentStatus = "completed";
+      } else {
+        // nếu schema không có currentStatus thì bỏ qua
+        order.set("currentStatus", "completed", { strict: false });
+      }
+
+      // statusTimeline (schema mới)
+      if (Order.schema.path("statusTimeline")) {
+        order.statusTimeline = [
+          ...(order.statusTimeline || []),
+          {
+            status: "completed",
+            at: now,
+            byUserId: ctx?.user?.id,
+            note: note || "Paid successfully",
+          },
+        ];
+      } else {
+        // vẫn push “mềm” nếu không khai báo
+        const tl = order.get("statusTimeline") || [];
+        tl.push({
+          status: "completed",
+          at: now,
+          byUserId: ctx?.user?.id,
+          note: note || "Paid successfully",
+        });
+        order.set("statusTimeline", tl, { strict: false });
+      }
+    }
+
     await order.save({ session });
 
-    // 3) totals cho Invoice (object)
-    const totals = {
-      subtotal: Number(order.subtotal ?? totalAmount),
-      discount: Number(order.discount ?? 0),
-      tax: Number(order.tax ?? 0),
-      service: Number(order.service ?? 0),
-      grandTotal:
-        Number(order.subtotal ?? totalAmount) -
-        Number(order.discount ?? 0) +
-        Number(order.tax ?? 0) +
-        Number(order.service ?? 0),
-    };
+    // 3) totals cho Invoice (object) — ưu tiên field `totals` nếu có
+    const totals =
+      order?.totals && typeof order.totals === "object"
+        ? {
+            subtotal: Number(order.totals.subtotal ?? 0),
+            discount: Number(order.totals.discount ?? 0),
+            tax: Number(order.totals.tax ?? 0),
+            service: Number(order.totals.service ?? 0),
+            grandTotal: Number(order.totals.grandTotal ?? grossTotal),
+          }
+        : {
+            subtotal: Number(order.subtotal ?? grossTotal),
+            discount: Number(order.discount ?? 0),
+            tax: Number(order.tax ?? 0),
+            service: Number(order.service ?? 0),
+            grandTotal:
+              Number(order.subtotal ?? grossTotal) -
+              Number(order.discount ?? 0) +
+              Number(order.tax ?? 0) +
+              Number(order.service ?? 0),
+          };
 
     // 4) Tạo / cập nhật Invoice
     let invoice = await Invoice.findOne({
@@ -210,8 +283,14 @@ export const payOrder = async (_parent, { input }, ctx) => {
           occurredAt: now,
           method: normMethod,
           currency: order.currency ?? "VND",
-          reference: { kind: "PAYMENT_TRANSACTION", id: trx._id, orderId },
-          note: `Thanh toán order #${order.code || order._id}`,
+          reference: {
+            kind: "PAYMENT_TRANSACTION",
+            id: trx._id,
+            orderId,
+          },
+          note: `Thanh toán order #${
+            order.orderCode || order.code || order._id
+          }`,
           createdBy: ctx?.user?.id,
         },
       ],
@@ -225,7 +304,11 @@ export const payOrder = async (_parent, { input }, ctx) => {
         orderId,
         verb: "order.pay",
         actorUserId: ctx?.user?.id,
-        object: { kind: "Order", id: orderId, code: order.code },
+        object: {
+          kind: "Order",
+          id: orderId,
+          code: order.orderCode || order.code,
+        },
         target: { kind: "PaymentTransaction", id: trx._id },
         source: "pos",
         status: "success",
@@ -236,13 +319,25 @@ export const payOrder = async (_parent, { input }, ctx) => {
           transactionId: trx._id,
           invoiceId: invoice._id,
           currency: order.currency ?? "VND",
-          newStatus: order.status,
+          newStatus:
+            order.currentStatus || order.status || invoice.status || "PAID",
         },
         correlationId: externalRef || undefined,
         sessionId: ctx?.sessionId || undefined,
       },
       { session }
     );
+
+    // ✅ Chỉ khi fullyPaid mới trả bàn về available
+    if (fullyPaid && order.tableCode) {
+      // ưu tiên dùng restaurantId gắn trên order (nếu có)
+      const rId = order.restaurantId || restaurantId;
+      await Table.updateOne(
+        { restaurantId: rId, code: order.tableCode },
+        { $set: { status: "available" } },
+        { session }
+      ).catch(() => {});
+    }
 
     await session.commitTransaction();
     session.endSession();

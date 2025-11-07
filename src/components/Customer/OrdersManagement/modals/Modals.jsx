@@ -31,8 +31,8 @@ export const Modal = ({ isOpen, title, children, footer, onClose }) => {
 
 /* ===== Reservation Detail Layout ===== */
 export const ReservationDetails = ({ order }) => {
-  const time = order?.timeFrom
-    ? new Date(order.timeFrom).toLocaleString("vi-VN")
+  const time = order?.timeTo
+    ? new Date(order.timeTo).toLocaleString("vi-VN")
     : "—";
   return (
     <div className="reservation-detail">

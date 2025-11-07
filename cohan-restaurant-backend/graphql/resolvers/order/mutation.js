@@ -6,6 +6,7 @@ import {
   Table,
   EventLog,
   Recipe,
+  Reservation, // <-- NEW
 } from "../../../models/index.js";
 
 const toId = (id) =>
@@ -20,7 +21,7 @@ const mapDeliveryToOrderType = (deliveryMethod) => {
 const normalizePaymentMethod = (m) =>
   m === "transfer" ? "bank_transfer" : m || "cash";
 
-// 👉 chỗ mấu chốt: quantity có thể là 0.5 nên parseFloat
+// 👉 quantity có thể là 0.5 nên parseFloat
 function normalizeItem(i) {
   const qty = parseFloat(i.quantity ?? 1);
   const price = Number(i.price || 0);
@@ -37,7 +38,7 @@ function normalizeItem(i) {
     modifiersPrice,
     method: i.method || i.cookingMethod || "",
     methodDelta: Number(i.methodDelta || 0),
-    note: i.description || "", // <-- Đã cập nhật (từ 'description' qua 'note')
+    note: i.description || "",
     quantity: qty,
     modifiers: (i.modifiers || []).map((m) => ({
       optionId: m.optionId,
@@ -53,7 +54,6 @@ function normalizeItem(i) {
 function computeTotals(items) {
   let subtotal = 0;
   for (const it of items) {
-    // nếu item chưa có lineSubtotal thì tự tính lại
     const line =
       it.lineSubtotal != null
         ? Number(it.lineSubtotal)
@@ -68,7 +68,6 @@ function computeTotals(items) {
 }
 
 async function createPaymentTxn(orderDoc, method, session) {
-  // Thêm session
   const normalized = normalizePaymentMethod(method);
   const amount = orderDoc?.totals?.grandTotal || 0;
   return PaymentTransaction.create(
@@ -85,7 +84,7 @@ async function createPaymentTxn(orderDoc, method, session) {
         message: "Auto-created on confirmed payment",
       },
     ],
-    { session } // <-- Truyền session vào
+    { session }
   );
 }
 
@@ -126,6 +125,24 @@ async function ensureUserForOrder(ctxUserId, explicitUserId, customer) {
   return user._id;
 }
 
+// 🔎 Tìm reservation đã xác nhận cho 1 bàn
+async function findActiveReservationForTable(restaurantId, tableCode) {
+  const table = await Table.findOne(
+    { restaurantId: toId(restaurantId), code: tableCode },
+    { _id: 1 }
+  ).lean();
+  if (!table) return null;
+
+  const resv = await Reservation.findOne({
+    restaurantId: toId(restaurantId),
+    tableId: table._id,
+    status: { $in: ["confirmed", "seated"] },
+  })
+    .sort({ timeTo: -1 })
+    .lean();
+  return resv;
+}
+
 export const OrderMutation = {
   // POS upsert
   async upsertTableOrder(_, { input }, ctx) {
@@ -162,26 +179,33 @@ export const OrderMutation = {
         customer &&
         (customer.phone || customer.email || customer.fullName)
       );
-      if (!hasCustomer) {
+      // cho phép case replaceItems rỗng nếu có reservation confirmed (không ép buộc customer)
+      const resv = await findActiveReservationForTable(restaurantId, tableCode);
+      if (!hasCustomer && !resv) {
         throw new Error(
           "Cannot save empty order without customer information. Provide customer phone/email or fullName."
         );
       }
     }
 
-    // determine effective user (may create guest user)
-    const userId = await ensureUserForOrder(
-      ctx?.user?.id,
-      explicitUserId,
-      customer
-    );
+    // 🔗 kiểm tra reservation confirmed trên bàn
+    const reservation =
+      (await findActiveReservationForTable(restaurantId, tableCode)) || null;
 
-    // try to find existing order by code or by table
+    // determine effective user
+    const userId = reservation
+      ? toId(reservation.userId)
+      : await ensureUserForOrder(ctx?.user?.id, explicitUserId, customer);
+
+    // determine effective orderCode (ưu tiênreservation.orderCode)
+    const effectiveOrderCode = reservation?.orderCode || orderCode || null;
+
+    // try to find existing order by code (ưu tiên code từ reservation) hoặc by table
     let existingOrder = null;
-    if (orderCode) {
+    if (effectiveOrderCode) {
       existingOrder = await Order.findOne({
         restaurantId: toId(restaurantId),
-        orderCode,
+        orderCode: effectiveOrderCode,
       });
     }
     if (!existingOrder) {
@@ -191,7 +215,7 @@ export const OrderMutation = {
       });
     }
 
-    // Đính kèm recipeId (logic của bạn)
+    // Đính kèm recipeId
     const itemsWithRecipeId = await Promise.all(
       normalizedItems.map(async (item) => {
         const recipe = await Recipe.findOne(
@@ -205,6 +229,7 @@ export const OrderMutation = {
         };
       })
     );
+
     let doc = null;
     let isNewOrder = false;
 
@@ -214,14 +239,15 @@ export const OrderMutation = {
       const totals = computeTotals(itemsWithRecipeId);
       doc = await Order.create({
         orderCode:
-          orderCode ||
+          effectiveOrderCode ||
           `POS-${tableCode}-${Date.now().toString(36).toUpperCase()}`,
         restaurantId: toId(restaurantId),
         tableCode,
         orderType: "dine_in",
         shipping: { address: tableCode },
         userId,
-        items: itemsWithRecipeId, // <-- Đã cập nhật
+        reservationId: reservation ? toId(reservation._id) : undefined,
+        items: itemsWithRecipeId,
         totals,
         note: note || "",
         currentStatus: "confirmed",
@@ -231,23 +257,38 @@ export const OrderMutation = {
             status: "confirmed",
             at: new Date(),
             byUserId: ctx?.user?._id,
-            note: "Created from POS",
+            note: reservation
+              ? "Order created from confirmed reservation"
+              : "Created from POS",
           },
         ],
         clientMeta,
       });
+
+      // Nếu có reservation confirmed -> chuyển sang 'seated'
+      if (reservation && reservation.status === "confirmed") {
+        try {
+          await Reservation.updateOne(
+            { _id: reservation._id },
+            { $set: { status: "seated" } }
+          );
+        } catch (e) {
+          // ignore
+        }
+      }
     } else {
       // update existing order
       if (replaceItems) {
-        // Replace
         const totals = computeTotals(itemsWithRecipeId);
-        existingOrder.items = itemsWithRecipeId; // <-- Đã cập nhật
+        existingOrder.items = itemsWithRecipeId;
         existingOrder.totals = totals;
         if (note) existingOrder.note = note;
         if (userId && !existingOrder.userId) existingOrder.userId = userId;
+        if (reservation && !existingOrder.reservationId) {
+          existingOrder.reservationId = toId(reservation._id);
+        }
         doc = await existingOrder.save();
 
-        // (Log event)
         try {
           await EventLog.create({
             restaurantId: toId(restaurantId),
@@ -271,17 +312,30 @@ export const OrderMutation = {
           console.warn("EventLog.create failed:", e.message);
         }
       } else {
-        // append (lỗi logic: phải dùng itemsWithRecipeId)
+        // append
         const mergedItems = [
           ...(existingOrder.items || []),
-          ...itemsWithRecipeId, // <-- SỬA: Dùng items đã đính kèm recipeId
+          ...itemsWithRecipeId,
         ];
         const totals = computeTotals(mergedItems);
         existingOrder.items = mergedItems;
         existingOrder.totals = totals;
         if (note) existingOrder.note = note;
         if (userId && !existingOrder.userId) existingOrder.userId = userId;
+        if (reservation && !existingOrder.reservationId) {
+          existingOrder.reservationId = toId(reservation._id);
+        }
         doc = await existingOrder.save();
+      }
+
+      // nếu có reservation confirmed thì chuyển seated
+      if (reservation && reservation.status === "confirmed") {
+        try {
+          await Reservation.updateOne(
+            { _id: reservation._id },
+            { $set: { status: "seated" } }
+          );
+        } catch {}
       }
     }
 
@@ -302,7 +356,7 @@ export const OrderMutation = {
     };
   },
 
-  // tạo order (cho khách đặt từ ngoài)
+  // tạo order (khách đặt từ ngoài)
   async createOrder(_, { input }, ctx) {
     const {
       orderCode,
@@ -335,7 +389,6 @@ export const OrderMutation = {
 
     const normalizedItems = items.map(normalizeItem);
 
-    // Đính kèm recipeId
     const itemsWithRecipeId = await Promise.all(
       normalizedItems.map(async (item) => {
         const recipe = await Recipe.findOne(
@@ -356,7 +409,7 @@ export const OrderMutation = {
       orderType: orderType || mapDeliveryToOrderType(shipping?.deliveryMethod),
       tableCode,
       shipping: tableCode ? { address: tableCode } : shipping,
-      items: itemsWithRecipeId, // <-- Đã cập nhật
+      items: itemsWithRecipeId,
       totals,
       note,
       currentStatus: "confirmed",
@@ -379,7 +432,7 @@ export const OrderMutation = {
       ).catch(() => {});
     }
 
-    await createPaymentTxn(doc, paymentMethod); // <-- 'createPaymentTxn' nên dùng session
+    await createPaymentTxn(doc, paymentMethod);
     return doc.toJSON();
   },
 
@@ -439,8 +492,199 @@ export const OrderMutation = {
   },
 
   // -----------------------------------------------------------------
-  // HÀM MỚI: XỬ LÝ THANH TOÁN TỪ POS (ĐƯỢC GỌI TỪ PAYMENTMODAL)
+  // ĐỔI TRẠNG THÁI ORDER THEO orderCode + restaurantId
   // -----------------------------------------------------------------
+  async updateOrderStatusByCode(_, { input }, ctx) {
+    const { restaurantId, orderCode, status, note } = input;
+
+    if (!restaurantId) throw new Error("restaurantId is required");
+    if (!orderCode) throw new Error("orderCode is required");
+
+    const ORDER_STATUS_SET = new Set([
+      "pending",
+      "preparing",
+      "ready",
+      "served",
+      "cancelled",
+      "completed",
+    ]);
+    if (!ORDER_STATUS_SET.has(status)) {
+      throw new Error("Invalid order status");
+    }
+
+    const doc = await Order.findOne({
+      restaurantId: toId(restaurantId),
+      orderCode,
+    });
+    if (!doc) throw new Error("Order not found");
+
+    const byUserId =
+      ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)
+        ? toId(ctx.user.id)
+        : undefined;
+
+    doc.currentStatus = status;
+    doc.statusTimeline = [
+      ...(doc.statusTimeline || []),
+      { status, at: new Date(), note, byUserId },
+    ];
+    await doc.save();
+
+    try {
+      if (
+        (status === "served" ||
+          status === "completed" ||
+          status === "cancelled") &&
+        doc.tableCode
+      ) {
+        await Table.updateOne(
+          { restaurantId: doc.restaurantId, code: doc.tableCode },
+          {
+            $set: { status: status === "cancelled" ? "available" : "occupied" },
+          }
+        );
+      }
+    } catch (e) {}
+
+    try {
+      await EventLog.create({
+        restaurantId: doc.restaurantId,
+        orderId: doc._id,
+        actorUserId: byUserId,
+        verb: "order.update_status_by_code",
+        object: { kind: "Order", id: doc._id, code: doc.orderCode },
+        source: "api",
+        userAgent: ctx?.req?.headers?.["user-agent"] || "",
+        meta: { from: "byCode", toStatus: status, note },
+        status: "success",
+      });
+    } catch {}
+
+    return { order: doc.toJSON() };
+  },
 
   // -----------------------------------------------------------------
+  // ĐỔI TRẠNG THÁI 1 MÓN THEO orderCode + restaurantId
+  // -----------------------------------------------------------------
+  async updateOrderItemStatusByCode(_, { input }, ctx) {
+    const { restaurantId, orderCode, itemKey, status, note } = input;
+
+    if (!restaurantId) throw new Error("restaurantId is required");
+    if (!orderCode) throw new Error("orderCode is required");
+    if (itemKey == null) throw new Error("itemKey is required");
+
+    const ITEM_STATUS_SET = new Set([
+      "pending",
+      "preparing",
+      "ready",
+      "served",
+      "cancelled",
+    ]);
+    if (!ITEM_STATUS_SET.has(status)) {
+      throw new Error("Invalid item status");
+    }
+
+    const doc = await Order.findOne({
+      restaurantId: toId(restaurantId),
+      orderCode,
+    });
+    if (!doc) throw new Error("Order not found");
+
+    const keyStr = String(itemKey);
+    let idx = -1;
+    for (let i = 0; i < (doc.items || []).length; i++) {
+      const it = doc.items[i] || {};
+      if (it.dishId && String(it.dishId) === keyStr) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx === -1) throw new Error("Order item not found");
+
+    const byUserId =
+      ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)
+        ? toId(ctx.user.id)
+        : undefined;
+
+    const prev = doc.items[idx]?.status || "pending";
+    doc.items[idx].status = status;
+
+    const itemRef = {
+      itemIndex: idx,
+      dishId: doc.items[idx]?.dishId || null,
+      name: doc.items[idx]?.name || null,
+      from: prev,
+      to: status,
+    };
+    doc.statusTimeline = [
+      ...(doc.statusTimeline || []),
+      {
+        status: `${status}`,
+        at: new Date(),
+        note: note || JSON.stringify(itemRef),
+        byUserId,
+      },
+    ];
+
+    await doc.save();
+
+    try {
+      await EventLog.create({
+        restaurantId: doc.restaurantId,
+        orderId: doc._id,
+        actorUserId: byUserId,
+        verb: "order_item.update_status_by_code",
+        object: {
+          kind: "OrderItem",
+          id: doc._id,
+          code: doc.orderCode,
+          itemIndex: idx,
+          dishId: doc.items[idx]?.dishId || null,
+        },
+        source: "api",
+        userAgent: ctx?.req?.headers?.["user-agent"] || "",
+        meta: { from: prev, to: status, note, itemRef },
+        status: "success",
+      });
+    } catch {}
+
+    return { order: doc.toJSON() };
+  },
+
+  // -----------------------------------------------------------------
+  // NEW: Cập nhật khách hàng (user) của order theo restaurantId + orderCode
+  // -----------------------------------------------------------------
+  async updateOrderCustomerByCode(_, { input }, ctx) {
+    const { restaurantId, orderCode, customer } = input;
+
+    if (!restaurantId) throw new Error("restaurantId is required");
+    if (!orderCode) throw new Error("orderCode is required");
+    if (!customer) throw new Error("customer is required");
+
+    const doc = await Order.findOne({
+      restaurantId: toId(restaurantId),
+      orderCode,
+    });
+    if (!doc) throw new Error("Order not found");
+
+    const userId = await ensureUserForOrder(ctx?.user?.id, null, customer);
+    if (!userId) throw new Error("Cannot resolve user for customer");
+
+    doc.userId = userId;
+    doc.statusTimeline = [
+      ...(doc.statusTimeline || []),
+      {
+        status: "customer_attached",
+        at: new Date(),
+        note: `Attach customer to order: ${customer.fullName || ""}`,
+        byUserId:
+          ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)
+            ? toId(ctx.user.id)
+            : undefined,
+      },
+    ];
+    await doc.save();
+
+    return { order: doc.toJSON() };
+  },
 };

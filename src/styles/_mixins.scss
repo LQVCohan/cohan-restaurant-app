@@ -42,7 +42,7 @@
 @mixin card-shadow {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
-// FoodHub Card Style
+
 @mixin card {
   background: v.$bg-primary;
   border-radius: v.$radius-lg;
@@ -70,23 +70,40 @@
   font-family: v.$font-family;
   cursor: pointer;
   transition: all 0.2s ease;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  &:hover {
-    opacity: 0.5;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  }
+  &:disabled,
+  &[aria-disabled="true"] {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  svg {
+    width: 1rem;
+    height: 1rem;
   }
 }
 
+// Gradient variant (2 tham số)
 @mixin button-variant($bg-color, $hover-color) {
   @include button-base;
   background: linear-gradient(135deg, $bg-color, $hover-color);
-  color: white;
+  color: v.$white;
 
   &:hover:not(:disabled) {
     box-shadow: 0 8px 25px rgba($bg-color, 0.3);
   }
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
 }
+
 @mixin hover-lift {
   transition: all 0.3s ease;
   &:hover {
@@ -94,16 +111,39 @@
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   }
 }
+
 @mixin button-primary {
   @include button-base;
   background: v.$primary;
   color: v.$white;
   box-shadow: v.$shadow-base;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: v.$primary-hover;
     transform: translateY(-1px);
     box-shadow: v.$shadow-hover;
+  }
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+}
+
+// 🔴 Danger (solid, KHÔNG dùng button-variant để tránh sai tham số)
+@mixin button-danger {
+  @include button-base;
+  background: v.$red-600;
+  color: v.$white;
+  box-shadow: 0 8px 25px rgba(v.$red-600, 0.25);
+
+  &:hover:not(:disabled) {
+    background: mix(v.$white, v.$red-600, 10%);
+  }
+  &:active:not(:disabled) {
+    background: mix(black, v.$red-600, 10%);
+    transform: translateY(1px);
+  }
+  &:focus-visible {
+    box-shadow: 0 0 0 3px rgba(v.$red-600, 0.35);
   }
 }
 
@@ -113,21 +153,28 @@
   color: v.$text-primary;
   border: 2px solid v.$border-color;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: v.$primary-light;
     border-color: v.$primary;
     transform: translateY(-1px);
   }
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
 }
+
 @mixin button-success {
   @include button-base;
   background: v.$gradient-success;
-  color: white;
+  color: v.$white;
 
   &:hover:not(:disabled) {
     background: linear-gradient(135deg, #059669 0%, #047857 100%);
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+  }
+  &:active:not(:disabled) {
+    transform: translateY(1px);
   }
 }
 
@@ -150,7 +197,7 @@
 }
 
 // ===============
-// Responsive (giữ cả alias cũ & mới)
+// Responsive
 // ===============
 @mixin mobile {
   @media (max-width: v.$mobile) {
@@ -242,7 +289,6 @@
       transform: rotate(360deg);
     }
   }
-
   animation: spin 1s linear infinite;
 }
 
@@ -263,9 +309,9 @@
   background: linear-gradient(135deg, $from 0%, $to 100%);
 }
 
-@mixin status-badge($bg-color, $text-primary) {
+@mixin status-badge($bg-color, $text-color) {
   background: $bg-color;
-  color: $text-primary;
+  color: $text-color;
   padding: v.$spacing-xs v.$spacing-sm;
   border-radius: v.$radius-full;
   font-size: 0.75rem;
@@ -273,7 +319,7 @@
   text-transform: uppercase;
 }
 
-// helpers
+// Color helpers
 @function custom-darken($color, $amount) {
   $l: lightness($color) - $amount;
   @return hsl(hue($color), saturation($color), max(0, min(100%, $l)));
@@ -283,6 +329,7 @@
   @return hsl(hue($color), saturation($color), max(0, min(100%, $l)));
 }
 
+// Grids
 @mixin responsive-grid($min-width: 200px) {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax($min-width, 1fr));
@@ -295,7 +342,6 @@
   display: grid;
   grid-template-columns: repeat($columns, 1fr);
   gap: $gap;
-
   @media (max-width: v.$mobile) {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -305,6 +351,8 @@
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: v.$spacing-md;
 }
+
+// Modals
 @mixin modal-overlay {
   position: fixed;
   inset: 0;
@@ -325,7 +373,7 @@
   }
 }
 @mixin modal-content {
-  background: white;
+  background: v.$white;
   border-radius: v.$radius-xl;
   max-width: 600px;
   width: 100%;
@@ -335,8 +383,31 @@
   box-shadow: v.$shadow-lg;
   transform: translateY(30px) scale(0.95);
   transition: all v.$transition-base;
-  -webkit-border-radius: v.$radius-xl;
-  -moz-border-radius: v.$radius-xl;
-  -ms-border-radius: v.$radius-xl;
-  -o-border-radius: v.$radius-xl;
+}
+
+// =======================
+// 🔔 ALERT MIXINS
+// =======================
+@mixin alert-critical {
+  border-left: 4px solid v.$red-600;
+  background-color: rgba(v.$red-600, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(v.$red-600, 0.08);
+  color: inherit;
+
+  @media (prefers-color-scheme: dark) {
+    background-color: rgba(v.$red-600, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(v.$red-600, 0.18);
+  }
+}
+
+@mixin alert-warning {
+  border-left: 4px solid #ffc107;
+  background-color: rgba(#ffc107, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(#ffc107, 0.08);
+  color: inherit;
+
+  @media (prefers-color-scheme: dark) {
+    background-color: rgba(#ffc107, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(#ffc107, 0.14);
+  }
 }

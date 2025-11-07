@@ -274,8 +274,8 @@ const BookingModal = ({
       return;
     }
 
-    const timeFromISO = localDateTimeToISO(formData.date, formData.time);
-    if (!timeFromISO) {
+    const timeToISO = localDateTimeToISO(formData.date, formData.time);
+    if (!timeToISO) {
       showNotification("Thời gian không hợp lệ.", "error");
       return;
     }
@@ -284,7 +284,7 @@ const BookingModal = ({
       const input = {
         restaurantId,
         tableId: pickedTable.id,
-        timeFrom: timeFromISO,
+        timeTo: timeToISO,
         durationMinutes: 90,
         partySize: Number(formData.partySize) || 2,
         note: formData.notes || "",

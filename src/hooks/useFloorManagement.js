@@ -39,7 +39,7 @@ export default function useFloorManagement({
 
   // helper: tra level/id
   const getIdFromLevel = (lvl) =>
-    floors.find((f) => f.level === Number(lvl))?.id ?? null;
+    floors.find((f) => Number(f.level) === Number(lvl))?.id ?? null;
   const getLevelFromId = (id) =>
     floors.find((f) => String(f.id) === String(id))?.level ?? null;
 

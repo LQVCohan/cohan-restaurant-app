@@ -1,11 +1,8 @@
-# src/schema/payments.graphql
-scalar DateTime
-
 enum PaymentMethod {
-  CASH
-  CARD
-  BANK_TRANSFER
-  E_WALLET
+  cash
+  card
+  bank_transfer
+  e_wallet
 }
 enum PaymentStatus {
   SUCCESS
@@ -57,10 +54,9 @@ type CashflowReference {
 type Cashflow {
   id: ID!
   type: CashflowType!
-  category: CashflowCategory!
+
   amount: Float!
   occurredAt: DateTime!
-  method: PaymentMethod
   currency: String
   reference: CashflowReference
   note: String
@@ -72,7 +68,7 @@ type Invoice {
   id: ID!
   number: String!
   status: InvoiceStatus!
-  totals: Float!
+  totals: OrderTotals!
   paid: Float!
   issuedAt: DateTime!
   orderId: ID!

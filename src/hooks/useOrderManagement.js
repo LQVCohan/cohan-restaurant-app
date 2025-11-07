@@ -1,11 +1,16 @@
-// src/hooks/useOrderManagement.js
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useMutation, useLazyQuery, gql } from "@apollo/client";
+import {
+  useMutation,
+  useLazyQuery,
+  useApolloClient,
+  gql,
+} from "@apollo/client";
 
 /* ============================================================
    1) GRAPHQL
    ============================================================ */
 
+// Upsert table order
 const UPSERT_TABLE_ORDER = gql`
   mutation UpsertTableOrder($input: UpsertTableOrderInput!) {
     upsertTableOrder(input: $input) {
@@ -15,6 +20,11 @@ const UPSERT_TABLE_ORDER = gql`
         orderCode
         tableCode
         currentStatus
+        restaurantId
+        user {
+          id
+          fullName
+        }
         items {
           dishId
           menuId
@@ -24,8 +34,9 @@ const UPSERT_TABLE_ORDER = gql`
           price
           modifiersPrice
           method
-          description
+          note
           quantity
+          status
         }
         totals {
           subtotal
@@ -41,9 +52,10 @@ const UPSERT_TABLE_ORDER = gql`
   }
 `;
 
-const ORDERS_BY_RESTAURANT = gql`
-  query OrdersByRestaurant($restaurantId: ID!, $limit: Int, $cursor: ID) {
-    ordersByRestaurant(
+/** ✅ ONLY “current” orders (exclude cancelled & completed) */
+const ORDERS_BY_RESTAURANT_NOW = gql`
+  query OrdersByRestaurantNow($restaurantId: ID!, $limit: Int, $cursor: ID) {
+    ordersByRestaurantNow(
       restaurantId: $restaurantId
       limit: $limit
       cursor: $cursor
@@ -54,6 +66,11 @@ const ORDERS_BY_RESTAURANT = gql`
           orderCode
           tableCode
           currentStatus
+          restaurantId
+          user {
+            id
+            fullName
+          }
           items {
             dishId
             menuId
@@ -88,6 +105,60 @@ const ORDERS_BY_RESTAURANT = gql`
   }
 `;
 
+/** ✅ FULL history (includes cancelled & completed) */
+const ORDERS_BY_RESTAURANT_ALL = gql`
+  query OrdersByRestaurant($restaurantId: ID!, $limit: Int, $cursor: ID) {
+    ordersByRestaurant(
+      restaurantId: $restaurantId
+      limit: $limit
+      cursor: $cursor
+    ) {
+      edges {
+        node {
+          id
+          orderCode
+          tableCode
+          currentStatus
+          restaurantId
+          user {
+            id
+            fullName
+          }
+          items {
+            dishId
+            menuId
+            categoryId
+            name
+            unit
+            price
+            modifiersPrice
+            method
+            note
+            quantity
+            status
+          }
+          totals {
+            subtotal
+            discount
+            tax
+            service
+            grandTotal
+          }
+          orderType
+          createdAt
+          updatedAt
+        }
+        cursor
+      }
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+    }
+  }
+`;
+
+// Single order
 const GET_ORDER = gql`
   query GetOrder($id: ID!) {
     order(id: $id) {
@@ -106,6 +177,7 @@ const GET_ORDER = gql`
         method
         description
         quantity
+        status
       }
       totals {
         subtotal
@@ -121,12 +193,17 @@ const GET_ORDER = gql`
   }
 `;
 
-// Thanh toán
+// Pay
 const PAY_ORDER = gql`
   mutation PayOrder($input: PayOrderInput!) {
     payOrder(input: $input) {
       order {
         id
+        orderCode
+        tableCode
+        currentStatus
+        totals
+        updatedAt
       }
       invoice {
         id
@@ -154,13 +231,92 @@ const PAY_ORDER = gql`
   }
 `;
 
+/* === Status mutations by orderCode === */
+const UPDATE_ORDER_STATUS_BY_CODE = gql`
+  mutation UpdateOrderStatusByCode($input: UpdateOrderStatusByCodeInput!) {
+    updateOrderStatusByCode(input: $input) {
+      order {
+        id
+        orderCode
+        currentStatus
+        updatedAt
+        items {
+          dishId
+          name
+          status
+          price
+          modifiersPrice
+          quantity
+          method
+          note
+        }
+      }
+    }
+  }
+`;
+
+const UPDATE_ORDER_ITEM_STATUS_BY_CODE = gql`
+  mutation UpdateOrderItemStatusByCode(
+    $input: UpdateOrderItemStatusByCodeInput!
+  ) {
+    updateOrderItemStatusByCode(input: $input) {
+      order {
+        id
+        orderCode
+        tableCode
+        currentStatus
+        items {
+          dishId
+          menuId
+          categoryId
+          name
+          unit
+          price
+          modifiersPrice
+          method
+          note
+          quantity
+          status
+        }
+        updatedAt
+      }
+    }
+  }
+`;
+
+/* === NEW: update order.user by orderCode (attach customer) === */
+const UPDATE_ORDER_CUSTOMER_BY_CODE = gql`
+  mutation UpdateOrderCustomerByCode($input: UpdateOrderCustomerByCodeInput!) {
+    updateOrderCustomerByCode(input: $input) {
+      order {
+        id
+        orderCode
+        tableCode
+        restaurantId
+        user {
+          id
+          fullName
+        }
+        updatedAt
+      }
+    }
+  }
+`;
+
 /* ============================================================
    2) HOOK
    ============================================================ */
 
 export default function useOrderManagement(pos = null) {
-  const { currentOrder, setCurrentOrder, currentTable, setTableOrders } =
-    pos ?? {};
+  const apollo = useApolloClient();
+
+  const {
+    currentOrder,
+    setCurrentOrder,
+    currentTable,
+    setTableOrders,
+    restaurantId,
+  } = pos ?? {};
 
   const [totals, setTotals] = useState({
     subtotal: 0,
@@ -172,23 +328,34 @@ export default function useOrderManagement(pos = null) {
   const [orderNote, setOrderNote] = useState("");
   const [removedExistingItems, setRemovedExistingItems] = useState([]);
 
-  // Lưu lại orderId sau preparePayment để confirmPayment dùng, tránh save lần 2
+  // Keep last prepared orderId for confirmPayment (avoid double save)
   const lastPreparedOrderIdRef = useRef(null);
 
-  // apollo
+  // apollo mutations
   const [upsertTableOrder] = useMutation(UPSERT_TABLE_ORDER);
   const [mutPayOrder, { loading: payLoading }] = useMutation(PAY_ORDER);
+  const [mutUpdateOrderStatusByCode] = useMutation(UPDATE_ORDER_STATUS_BY_CODE);
+  const [mutUpdateOrderItemStatusByCode] = useMutation(
+    UPDATE_ORDER_ITEM_STATUS_BY_CODE
+  );
+  const [mutUpdateOrderCustomerByCode] = useMutation(
+    UPDATE_ORDER_CUSTOMER_BY_CODE
+  );
 
+  // queries
   const [loadOrderById, { data: orderByIdData }] = useLazyQuery(GET_ORDER, {
     fetchPolicy: "network-only",
   });
 
   const [
-    loadOrders,
-    { data: ordersData, loading: ordersLoading, error: ordersError },
-  ] = useLazyQuery(ORDERS_BY_RESTAURANT, {
-    fetchPolicy: "network-only",
-  });
+    loadOrdersNow,
+    { data: ordersNowData, loading: ordersNowLoading, error: ordersNowError },
+  ] = useLazyQuery(ORDERS_BY_RESTAURANT_NOW, { fetchPolicy: "network-only" });
+
+  const [
+    loadOrdersAll,
+    { data: ordersAllData, loading: ordersAllLoading, error: ordersAllError },
+  ] = useLazyQuery(ORDERS_BY_RESTAURANT_ALL, { fetchPolicy: "network-only" });
 
   /* ============================================================
      3) TÍNH TỔNG
@@ -196,13 +363,15 @@ export default function useOrderManagement(pos = null) {
   useEffect(() => {
     const newTotals = (currentOrder || []).reduce(
       (acc, item) => {
+        const q = Number(item.quantity || 0);
+        const price = Number(item.price || 0);
+        const mod = Number(item.modifiersPrice || 0);
         const line =
           item.lineSubtotal != null
             ? Number(item.lineSubtotal)
-            : (Number(item.price || 0) + Number(item.modifiersPrice || 0)) *
-              Number(item.quantity || 0);
+            : (price + mod) * q;
 
-        acc.subtotal += line;
+        acc.subtotal += Number.isFinite(line) ? line : 0;
         return acc;
       },
       { subtotal: 0, discount: 0, tax: 0, service: 0 }
@@ -242,7 +411,36 @@ export default function useOrderManagement(pos = null) {
         _invalid: true,
         _index: idx,
         original: it,
+        reason: "missing_ids",
       };
+    }
+
+    const unit = it.unit || "portion";
+    const rawQty = it.quantity != null ? it.quantity : 1;
+
+    let quantity;
+    if (unit === "kg") {
+      const f = parseFloat(rawQty);
+      if (!Number.isFinite(f) || f <= 0) {
+        return {
+          _invalid: true,
+          _index: idx,
+          original: it,
+          reason: "qty_invalid_kg",
+        };
+      }
+      quantity = Math.round(f * 10) / 10;
+    } else {
+      const n = Math.round(Number(rawQty) || 0);
+      if (!Number.isFinite(n) || n <= 0) {
+        return {
+          _invalid: true,
+          _index: idx,
+          original: it,
+          reason: "qty_invalid_portion",
+        };
+      }
+      quantity = n;
     }
 
     return {
@@ -250,29 +448,293 @@ export default function useOrderManagement(pos = null) {
       menuId,
       categoryId,
       name: it.name,
-      unit: it.unit || "portion",
+      unit,
       price: Math.round(it.price || 0),
       modifiersPrice: Math.round(it.modifiersPrice || 0),
       method: it.method || "",
-      description: it.description || "",
-      quantity: Number(it.quantity || 1),
+      description: it.description || it.note || "",
+      quantity,
       modifiers: (it.modifiers || []).map((m) => ({
         optionId: m.optionId,
         optionName: m.optionName,
         groupId: m.groupId,
         price: Math.round(m.price || 0),
       })),
+      status: it.status ?? "pending",
     };
   }, []);
 
-  const mapGqlMethod = useCallback((m) => {
-    if (m === "cash") return "CASH";
-    if (m === "card") return "CARD";
-    return "BANK_TRANSFER";
-  }, []);
+  const writeOrderIntoCache = useCallback(
+    (order) => {
+      if (!order?.id) return;
+
+      apollo.cache.writeFragment({
+        id: apollo.cache.identify({ __typename: "Order", id: order.id }),
+        fragment: gql`
+          fragment _OrderPatch on Order {
+            id
+            orderCode
+            tableCode
+            currentStatus
+            restaurantId
+            updatedAt
+            totals {
+              subtotal
+              discount
+              tax
+              service
+              grandTotal
+            }
+            user {
+              id
+              fullName
+            }
+            items {
+              dishId
+              menuId
+              categoryId
+              name
+              unit
+              price
+              modifiersPrice
+              method
+              note
+              quantity
+              status
+            }
+          }
+        `,
+        data: { ...order },
+      });
+
+      const bumpInConn = (conn) => {
+        if (!conn?.edges) return conn;
+        return {
+          ...conn,
+          edges: conn.edges.map((e) =>
+            e?.node?.id === order.id
+              ? { ...e, node: { ...e.node, ...order } }
+              : e
+          ),
+        };
+      };
+
+      try {
+        const now = apollo.readQuery({
+          query: ORDERS_BY_RESTAURANT_NOW,
+          variables: { restaurantId: order.restaurantId, limit: 100 },
+        });
+        if (now?.ordersByRestaurantNow) {
+          apollo.writeQuery({
+            query: ORDERS_BY_RESTAURANT_NOW,
+            variables: { restaurantId: order.restaurantId, limit: 100 },
+            data: {
+              ordersByRestaurantNow: bumpInConn(now.ordersByRestaurantNow),
+            },
+          });
+        }
+      } catch {}
+
+      try {
+        const all = apollo.readQuery({
+          query: ORDERS_BY_RESTAURANT_ALL,
+          variables: { restaurantId: order.restaurantId, limit: 100 },
+        });
+        if (all?.ordersByRestaurant) {
+          apollo.writeQuery({
+            query: ORDERS_BY_RESTAURANT_ALL,
+            variables: { restaurantId: order.restaurantId, limit: 100 },
+            data: { ordersByRestaurant: bumpInConn(all.ordersByRestaurant) },
+          });
+        }
+      } catch {}
+    },
+    [apollo]
+  );
 
   /* ============================================================
-     5) CRUD CLIENT
+     5) STATUS HELPERS
+     ============================================================ */
+  const VALID_ITEM_STATUS = useRef(
+    new Set(["pending", "preparing", "ready", "served", "cancelled"])
+  );
+
+  const changeOrderStatusByCode = useCallback(
+    async ({ restaurantId, orderCode, status, note, afterSuccess }) => {
+      if (!restaurantId)
+        return { success: false, message: "Thiếu restaurantId." };
+      if (!orderCode) return { success: false, message: "Thiếu orderCode." };
+
+      try {
+        const { data } = await mutUpdateOrderStatusByCode({
+          variables: { input: { restaurantId, orderCode, status, note } },
+        });
+
+        const updated = data?.updateOrderStatusByCode?.order || null;
+
+        if (updated) writeOrderIntoCache(updated);
+
+        await afterSuccess?.(updated);
+        return { success: true, data: updated };
+      } catch (err) {
+        return {
+          success: false,
+          message: err?.message || "Cập nhật trạng thái đơn thất bại.",
+        };
+      }
+    },
+    [mutUpdateOrderStatusByCode, writeOrderIntoCache]
+  );
+
+  const changeOrderItemStatusByCode = useCallback(
+    async ({
+      restaurantId,
+      orderCode,
+      itemKey,
+      status,
+      note,
+      afterSuccess,
+    }) => {
+      if (!restaurantId)
+        return { success: false, message: "Thiếu restaurantId." };
+      if (!orderCode) return { success: false, message: "Thiếu orderCode." };
+      if (!itemKey && itemKey !== 0)
+        return { success: false, message: "Thiếu itemKey." };
+      if (!VALID_ITEM_STATUS.current.has(status)) {
+        return { success: false, message: "Trạng thái không hợp lệ." };
+      }
+
+      // optimistic for POS state
+      let idx = -1;
+      let prevStatus = null;
+      if (Array.isArray(currentOrder) && currentOrder.length) {
+        idx = currentOrder.findIndex(
+          (it, i) =>
+            it._lineId === itemKey ||
+            it.dishId === itemKey ||
+            it.id === itemKey ||
+            i === itemKey
+        );
+        if (idx >= 0) {
+          prevStatus = currentOrder[idx]?.status ?? "pending";
+          setCurrentOrder((prev) =>
+            (prev || []).map((it, i) =>
+              i === idx ? { ...it, status, _edited: true } : it
+            )
+          );
+          if (setTableOrders && currentTable?.code) {
+            setTableOrders((prev) => ({
+              ...prev,
+              [currentTable.code]: (prev?.[currentTable.code] || []).map(
+                (it, i) => (i === idx ? { ...it, status, _edited: true } : it)
+              ),
+            }));
+          }
+        }
+      }
+
+      try {
+        const { data } = await mutUpdateOrderItemStatusByCode({
+          variables: {
+            input: {
+              restaurantId,
+              orderCode,
+              itemKey: String(itemKey),
+              status,
+              note,
+            },
+          },
+        });
+
+        const serverOrder = data?.updateOrderItemStatusByCode?.order || null;
+
+        if (serverOrder) {
+          const normalized = (serverOrder.items || []).map((i) => ({
+            ...i,
+            lineSubtotal:
+              (Number(i.price || 0) + Number(i.modifiersPrice || 0)) *
+              Number(i.quantity || 1),
+            isExisting: true,
+            isNew: false,
+            _lineId: `srv_${serverOrder.id}_${(i.dishId || i.name || "x")
+              .toString()
+              .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
+          }));
+
+          if (setCurrentOrder) setCurrentOrder(normalized);
+          if (setTableOrders && currentTable?.code) {
+            setTableOrders((prev) => ({
+              ...prev,
+              [currentTable.code]: normalized,
+            }));
+          }
+
+          writeOrderIntoCache(serverOrder);
+        }
+
+        await afterSuccess?.(serverOrder);
+        return { success: true, data: serverOrder };
+      } catch (err) {
+        if (idx >= 0 && prevStatus != null) {
+          setCurrentOrder((prev) =>
+            (prev || []).map((it, i) =>
+              i === idx ? { ...it, status: prevStatus, _edited: false } : it
+            )
+          );
+          if (setTableOrders && currentTable?.code) {
+            setTableOrders((prev) => ({
+              ...prev,
+              [currentTable.code]: (prev?.[currentTable.code] || []).map(
+                (it, i) =>
+                  i === idx ? { ...it, status: prevStatus, _edited: false } : it
+              ),
+            }));
+          }
+        }
+        return {
+          success: false,
+          message: err?.message || "Đổi trạng thái món thất bại.",
+        };
+      }
+    },
+    [
+      mutUpdateOrderItemStatusByCode,
+      currentOrder,
+      setCurrentOrder,
+      setTableOrders,
+      currentTable,
+      writeOrderIntoCache,
+    ]
+  );
+
+  /* Back-compat: old updateItemStatus -> call new mutation */
+  const updateItemStatus = useCallback(
+    async ({ itemKey, status, restaurantId, orderCode, afterSuccess }) => {
+      let finalOrderCode = orderCode;
+      if (!finalOrderCode && currentTable?.orderCode) {
+        finalOrderCode = currentTable.orderCode;
+      }
+      if (!finalOrderCode) {
+        return {
+          success: false,
+          message: "Thiếu orderCode để đổi trạng thái món.",
+        };
+      }
+
+      return changeOrderItemStatusByCode({
+        restaurantId,
+        orderCode: finalOrderCode,
+        itemKey,
+        status,
+        note: undefined,
+        afterSuccess,
+      });
+    },
+    [changeOrderItemStatusByCode, currentTable?.orderCode]
+  );
+
+  /* ============================================================
+     6) CLIENT CRUD (add/update/remove/clear)
      ============================================================ */
 
   const addToOrder = useCallback(
@@ -293,17 +755,33 @@ export default function useOrderManagement(pos = null) {
         menuItem.basePrice ??
         0;
 
+      const chosenUnit = unit || (menuItem.byWeight ? "kg" : "portion");
+
+      let q;
+      if (chosenUnit === "kg") {
+        const f = parseFloat(quantity);
+        q = Number.isFinite(f) && f > 0 ? Math.round(f * 10) / 10 : 0.5;
+      } else {
+        const n = Math.round(Number(quantity) || 0);
+        q = Math.max(1, n);
+      }
+
       const idx = (currentOrder || []).findIndex(
         (it) =>
           !it.isExisting &&
           (it.dishId || it.id) === (menuItem.dishId || menuItem.id) &&
           (it.method || it.cookingOption || "") === (cookingOption || "") &&
-          (it.unit || "portion") === (unit || "portion")
+          (it.unit || "portion") === (chosenUnit || "portion")
       );
 
       if (idx !== -1) {
         const updated = [...currentOrder];
-        const nextQty = Number(updated[idx].quantity || 0) + Number(quantity);
+        const prev = Number(updated[idx].quantity || 0) || 0;
+        const nextQty =
+          chosenUnit === "kg"
+            ? Math.round((prev + q) * 10) / 10
+            : Math.max(1, Math.round(prev + q));
+
         updated[idx] = {
           ...updated[idx],
           quantity: nextQty,
@@ -319,13 +797,13 @@ export default function useOrderManagement(pos = null) {
           menuId: menuItem.menuId,
           categoryId: menuItem.categoryId,
           name: menuItem.name,
-          unit: unit || (menuItem.byWeight ? "kg" : "portion"),
+          unit: chosenUnit,
           price: Number(itemPrice),
           modifiersPrice: 0,
           method: cookingOption,
           description: note,
-          quantity: Number(quantity || 1),
-          lineSubtotal: Number(itemPrice) * Number(quantity || 1),
+          quantity: q,
+          lineSubtotal: Number(itemPrice) * q,
           isNew: true,
           isExisting: false,
         };
@@ -337,10 +815,18 @@ export default function useOrderManagement(pos = null) {
 
   const updateItemQty = useCallback(
     (key, newQty) => {
-      const q = Math.max(1, Number(newQty) || 1);
       setCurrentOrder((prev) =>
         (prev || []).map((it) => {
           if (it._lineId === key || it.dishId === key || it.id === key) {
+            const unit = it.unit || "portion";
+            let q;
+            if (unit === "kg") {
+              const f = parseFloat(newQty);
+              q = Number.isFinite(f) && f > 0 ? Math.round(f * 10) / 10 : 0.1;
+            } else {
+              const n = Math.round(Number(newQty) || 0);
+              q = Math.max(1, n);
+            }
             return {
               ...it,
               quantity: q,
@@ -401,7 +887,7 @@ export default function useOrderManagement(pos = null) {
   }, [currentOrder, setCurrentOrder, setTableOrders, currentTable]);
 
   /* ============================================================
-     6) SAVE / UPSERT (TRƯỚC confirmPayment để tránh TDZ)
+     7) SAVE / UPSERT
      ============================================================ */
 
   const saveOrder = useCallback(
@@ -444,12 +930,11 @@ export default function useOrderManagement(pos = null) {
           return {
             success: false,
             message:
-              "Không thể lưu: danh sách món trống sau khi xóa. Nếu bạn muốn huỷ đơn, hãy dùng hủy order.",
+              "Không thể lưu: tất cả món không hợp lệ sau khi xoá/sửa (kiểm tra số lượng/đơn vị).",
             skipped,
           };
         }
       } else {
-        // delta behavior: chỉ gửi món mới hoặc đã sửa
         (currentOrder || []).forEach((it, idx) => {
           if (it.isExisting && !it._edited && !it.isNew) return;
           const n = normalizeOutgoingItem(it, idx);
@@ -457,9 +942,7 @@ export default function useOrderManagement(pos = null) {
           else outgoing.push(n);
         });
 
-        // PATCH: Không có thay đổi vẫn coi là thành công → dùng order hiện có
         if (!outgoing.length) {
-          // đoán nhanh orderId từ item
           const guessedId =
             currentOrder?.[0]?.orderId || currentOrder?.[0]?.id || null;
 
@@ -472,18 +955,13 @@ export default function useOrderManagement(pos = null) {
             };
           }
 
-          // fallback: query theo bàn để lấy order hiện có
           try {
-            const res = await loadOrders({
-              variables: {
-                restaurantId,
-                limit: 10,
-                cursor: null,
-              },
+            const res = await loadOrdersNow({
+              variables: { restaurantId, limit: 10, cursor: null },
               fetchPolicy: "network-only",
             });
 
-            const edges = res?.data?.ordersByRestaurant?.edges || [];
+            const edges = res?.data?.ordersByRestaurantNow?.edges || [];
             const matched = edges
               .map((e) => e.node)
               .filter(
@@ -500,11 +978,10 @@ export default function useOrderManagement(pos = null) {
                 data: matched[0],
               };
             }
-          } catch (e) {
-            // bỏ qua
+          } catch {
+            // ignore
           }
 
-          // tối thiểu vẫn success để cho phép bước thanh toán, orderId có thể null
           return {
             success: true,
             message:
@@ -525,7 +1002,7 @@ export default function useOrderManagement(pos = null) {
               items: outgoing,
               replaceItems: useReplace || undefined,
               note: orderNote,
-              customer: extraCustomer,
+              customer: extraCustomer, // có thể undefined nếu bàn reserved
               clientMeta: {
                 savedAt: new Date().toISOString(),
                 ua: typeof navigator !== "undefined" ? navigator.userAgent : "",
@@ -554,12 +1031,14 @@ export default function useOrderManagement(pos = null) {
             [currentTable.code]: normalized,
           }));
           setRemovedExistingItems([]);
+
+          writeOrderIntoCache(serverOrder);
         }
 
         return {
           success: true,
           message: skipped.length
-            ? `Đã lưu đơn, nhưng bỏ qua ${skipped.length} món cũ không đủ field.`
+            ? `Đã lưu đơn. Bỏ qua ${skipped.length} món không hợp lệ (đơn vị/số lượng).`
             : "Đã lưu đơn lên server.",
           skipped,
           data: serverOrder,
@@ -578,15 +1057,15 @@ export default function useOrderManagement(pos = null) {
       removedExistingItems,
       setRemovedExistingItems,
       normalizeOutgoingItem,
-      loadOrders,
+      loadOrdersNow,
+      writeOrderIntoCache,
     ]
   );
 
   /* ============================================================
-     7) PAYMENT FLOW
+     8) PAYMENT FLOW
      ============================================================ */
 
-  // 7.1 Chuẩn bị trước khi mở modal: LƯU ĐƠN + trả orderId/items/totals
   const preparePayment = useCallback(
     async ({ restaurantId } = {}) => {
       if (!restaurantId) {
@@ -596,27 +1075,20 @@ export default function useOrderManagement(pos = null) {
         return { success: false, message: "Chưa có món để thanh toán." };
       }
 
-      // Lưu đơn — nếu không có thay đổi vẫn trả success với orderId hiện có
       const saved = await saveOrder({ persist: true, restaurantId });
       if (!saved?.success) return saved;
 
       const orderId = saved?.data?.id || saved?.data?._id || null;
       lastPreparedOrderIdRef.current = orderId ?? null;
 
-      // Lấy totals mới nhất từ state (đã tính sẵn)
       return {
         success: true,
-        data: {
-          orderId,
-          items: currentOrder,
-          totals,
-        },
+        data: { orderId, items: currentOrder, totals },
       };
     },
     [saveOrder, currentOrder, totals]
   );
 
-  // 7.2 Kiểm tra điều kiện thanh toán (để enable/disable nút Xác nhận)
   const validatePayment = useCallback(
     ({ method = "cash", paidAmount = 0, total = totals.total } = {}) => {
       const t = Number(total || 0);
@@ -629,13 +1101,11 @@ export default function useOrderManagement(pos = null) {
           return { ok: false, message: "Tiền mặt khách đưa phải ≥ tổng tiền." };
         }
       }
-      // card/transfer: không bắt buộc nhập paidAmount
       return { ok: true };
     },
     [totals.total]
   );
 
-  // 7.3 XÁC NHẬN trong modal: thanh toán NGAY, KHÔNG lưu lại nữa
   const confirmPayment = useCallback(
     async ({
       restaurantId,
@@ -647,7 +1117,6 @@ export default function useOrderManagement(pos = null) {
       if (!restaurantId)
         return { success: false, message: "Thiếu restaurantId." };
 
-      // kiểm tra số tiền
       const valid = validatePayment({
         method,
         paidAmount,
@@ -655,7 +1124,6 @@ export default function useOrderManagement(pos = null) {
       });
       if (!valid.ok) return { success: false, message: valid.message };
 
-      // dùng orderId đã chuẩn bị; nếu chưa có thì vẫn fallback save
       let orderId = lastPreparedOrderIdRef.current;
       if (!orderId) {
         const saved = await saveOrder({ persist: true, restaurantId });
@@ -671,7 +1139,6 @@ export default function useOrderManagement(pos = null) {
       }
       const amountToCharge = Number(totals.total || 0);
       const paid = method === "cash" ? Number(paidAmount || 0) : amountToCharge;
-      // thanh toán
 
       const idempotency =
         externalRef ||
@@ -691,10 +1158,13 @@ export default function useOrderManagement(pos = null) {
           },
         });
 
-        // refresh order (không bắt buộc)
+        const paidOrder = data?.payOrder?.order || null;
+        if (paidOrder) writeOrderIntoCache(paidOrder);
+
         try {
           await loadOrderById({ variables: { id: orderId } });
         } catch {}
+
         return { success: true, data: data?.payOrder };
       } catch (err) {
         return {
@@ -708,12 +1178,11 @@ export default function useOrderManagement(pos = null) {
       totals.total,
       saveOrder,
       mutPayOrder,
-      mapGqlMethod,
       loadOrderById,
+      writeOrderIntoCache,
     ]
   );
 
-  // Back-compat: checkoutOrder (giữ lại nếu chỗ khác đang gọi)
   const checkoutOrder = useCallback(
     async ({
       restaurantId,
@@ -735,7 +1204,7 @@ export default function useOrderManagement(pos = null) {
   );
 
   /* ============================================================
-     8) FETCH
+     9) FETCH
      ============================================================ */
 
   const fetchOrderByTable = useCallback(
@@ -743,12 +1212,10 @@ export default function useOrderManagement(pos = null) {
       if (!restaurantId || !tableCode) {
         return { success: false, message: "missing restaurantId/tableCode" };
       }
-
-      const res = await loadOrders({
+      const res = await loadOrdersNow({
         variables: { restaurantId, limit, cursor },
       });
-
-      const edges = res?.data?.ordersByRestaurant?.edges || [];
+      const edges = res?.data?.ordersByRestaurantNow?.edges || [];
       const matched = edges
         .map((e) => e.node)
         .filter(
@@ -772,10 +1239,10 @@ export default function useOrderManagement(pos = null) {
       return {
         success: true,
         data: normalized,
-        pageInfo: res?.data?.ordersByRestaurant?.pageInfo,
+        pageInfo: res?.data?.ordersByRestaurantNow?.pageInfo,
       };
     },
-    [loadOrders]
+    [loadOrdersNow]
   );
 
   const fetchOrderById = useCallback(
@@ -793,8 +1260,115 @@ export default function useOrderManagement(pos = null) {
   );
 
   /* ============================================================
-     9) RETURN
+     10) ATTACH / UPDATE CUSTOMER (NEW)
      ============================================================ */
+
+  // Dùng khi đã biết orderCode để tránh gọi OrdersByRestaurantNow
+  const updateOrderCustomerByCode = useCallback(
+    async ({ restaurantId, orderCode, customer }) => {
+      if (!restaurantId)
+        return { success: false, message: "Thiếu restaurantId." };
+      if (!orderCode) return { success: false, message: "Thiếu orderCode." };
+
+      const clean = {
+        fullName: (customer?.fullName || customer?.name || "").trim(),
+        phone: (customer?.phone || "").trim(),
+        email: (customer?.email || "").trim().toLowerCase(),
+      };
+
+      try {
+        const { data } = await mutUpdateOrderCustomerByCode({
+          variables: { input: { restaurantId, orderCode, customer: clean } },
+        });
+        const srv = data?.updateOrderCustomerByCode?.order || null;
+        if (srv) writeOrderIntoCache(srv);
+        return { success: true, data: srv };
+      } catch (err) {
+        return {
+          success: false,
+          message: err?.message || "Cập nhật khách vào đơn thất bại.",
+        };
+      }
+    },
+    [mutUpdateOrderCustomerByCode, writeOrderIntoCache]
+  );
+
+  // Dùng khi chưa biết orderCode → có thể phát sinh 1 lần OrdersByRestaurantNow
+  const attachCustomerToOrder = useCallback(
+    async (...args) => {
+      let tableCode = null;
+      let customer = null;
+
+      if (args.length === 2) {
+        tableCode = args[0];
+        customer = args[1];
+      } else {
+        customer = args[0];
+        tableCode = currentTable?.code || null;
+      }
+
+      const clean = {
+        fullName: (customer?.fullName || customer?.name || "").trim(),
+        phone: (customer?.phone || "").trim(),
+        email: (customer?.email || "").trim().toLowerCase(),
+      };
+
+      if (tableCode && setTableOrders) {
+        setTableOrders((prev) => ({
+          ...prev,
+          [tableCode]: { ...(prev?.[tableCode] || {}), customer: clean },
+        }));
+      }
+
+      // Nếu đã có orderCode hiện tại
+      let orderCode = currentTable?.orderCode || null;
+
+      if (!orderCode && tableCode && restaurantId && fetchOrderByTable) {
+        try {
+          const r = await fetchOrderByTable(restaurantId, tableCode, 1, 0);
+          orderCode = r?.data?.[0]?.orderCode || null;
+        } catch {}
+      }
+
+      if (orderCode && restaurantId) {
+        return updateOrderCustomerByCode({
+          restaurantId,
+          orderCode,
+          customer: clean,
+        });
+      }
+
+      return {
+        success: true,
+        message:
+          "Đã lưu thông tin khách tạm thời, sẽ đẩy lên server khi có order.",
+      };
+    },
+    [
+      currentTable?.orderCode,
+      currentTable?.code,
+      restaurantId,
+      setTableOrders,
+      fetchOrderByTable,
+      updateOrderCustomerByCode,
+    ]
+  );
+
+  /* ============================================================
+     11) RETURN
+     ============================================================ */
+
+  const ordersNow =
+    ordersNowData?.ordersByRestaurantNow?.edges?.map((e) => e.node) || [];
+  const ordersAll =
+    ordersAllData?.ordersByRestaurant?.edges?.map((e) => e.node) || [];
+
+  // Back-compat aliases
+  const loadOrders = loadOrdersNow;
+  const orders = ordersNow;
+  const ordersLoading = ordersNowLoading;
+  const ordersError = ordersNowError;
+
   return {
     // state
     currentOrder,
@@ -809,20 +1383,78 @@ export default function useOrderManagement(pos = null) {
     clearAll,
     saveOrder,
 
+    // status by code
+    changeOrderStatusByCode,
+    changeOrderItemStatusByCode,
+
+    // Back-compat API
+    updateItemStatus,
+
+    // handler factories
+    makeItemStatusHandler: useCallback(
+      ({ orderRef, setOrder, restaurantId, orderCode }) => {
+        return async (itemKey, nextStatus, note) => {
+          const res = await changeOrderItemStatusByCode({
+            restaurantId,
+            orderCode,
+            itemKey,
+            status: nextStatus,
+            note,
+            afterSuccess: (srv) => {
+              if (srv && typeof setOrder === "function") setOrder(srv);
+            },
+          });
+          return res;
+        };
+      },
+      [changeOrderItemStatusByCode]
+    ),
+    makeOrderStatusHandler: useCallback(
+      ({ orderRef, setOrder, restaurantId, orderCode }) => {
+        return async (nextStatus, note) => {
+          const res = await changeOrderStatusByCode({
+            restaurantId,
+            orderCode,
+            status: nextStatus,
+            note,
+            afterSuccess: (srv) => {
+              if (srv && typeof setOrder === "function") setOrder(srv);
+            },
+          });
+          return res;
+        };
+      },
+      [changeOrderStatusByCode]
+    ),
+
     // fetch
     fetchOrderByTable,
     fetchOrderById,
-    orders: ordersData?.ordersByRestaurant?.edges?.map((e) => e.node) || [],
+
+    // NOW vs ALL
+    loadOrdersNow,
+    loadOrdersAll,
+    ordersNow,
+    ordersAll,
     ordersLoading,
+    ordersAllLoading,
     ordersError,
+    ordersAllError,
+
+    // single order cache & loader
     orderById: orderByIdData?.order ?? null,
     loadOrders,
-    // payment API cho UI
-    preparePayment, // dùng khi bấm "Thanh toán": lưu + trả orderId/items/totals; nếu lỗi báo ngay
-    validatePayment, // kiểm tra điều kiện trước khi enable nút XÁC NHẬN
-    confirmPayment, // dùng trong modal khi bấm XÁC NHẬN: thanh toán ngay (không lưu lại)
-    // giữ lại để tương thích
+    orders,
+
+    // payment API for UI
+    preparePayment,
+    validatePayment,
+    confirmPayment,
     checkoutOrder,
     payLoading,
+
+    // NEW
+    updateOrderCustomerByCode,
+    attachCustomerToOrder,
   };
 }

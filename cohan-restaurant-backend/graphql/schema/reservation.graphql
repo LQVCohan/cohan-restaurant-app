@@ -5,7 +5,7 @@ type Reservation {
   restaurantName: String
   tableId: ID!
   userId: ID!
-  timeFrom: DateTime!
+
   timeTo: DateTime
   customerName: String
   customerPhone: String
@@ -19,6 +19,7 @@ type Reservation {
   pendingPaymentExpiresAt: DateTime
   createdAt: DateTime!
   updatedAt: DateTime!
+  durationMinutes: Int
 }
 
 input CreateReservationInput {
@@ -32,6 +33,7 @@ input CreateReservationInput {
   customerPhone: String
   customerEmail: String
   depositAmount: Int
+  durationMinutes: Int
 }
 input UpdateReservationInput {
   id: ID!

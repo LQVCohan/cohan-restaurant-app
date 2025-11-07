@@ -30,7 +30,7 @@ const ReservationSchema = BaseSchemaModel(
     },
 
     // --- Thời gian ---
-    timeFrom: { type: Date, required: true },
+    timeTo: { type: Date, required: true },
     durationMinutes: { type: Number, default: 90 },
 
     // --- Thông tin khách hàng ---
@@ -107,21 +107,12 @@ ReservationSchema.pre("save", function (next) {
 // Indexes
 // ─────────────────────────────────────────────────────────────
 
-ReservationSchema.index({ restaurantId: 1, timeFrom: 1 });
+ReservationSchema.index({ restaurantId: 1, timeTo: 1 });
 ReservationSchema.index({ userId: 1 });
 ReservationSchema.index({ status: 1 });
 
 // Khi reservation hết TTL, MongoDB tự xóa document → FE có thể query thất bại = đã hết hạn
 // hoặc BE có cron check trước khi xóa để cập nhật status = "cancelled"
 
-// ─────────────────────────────────────────────────────────────
-// Virtuals
-// ─────────────────────────────────────────────────────────────
-
-// Virtual: thời gian kết thúc
-ReservationSchema.virtual("timeTo").get(function () {
-  if (!this.timeFrom || !this.durationMinutes) return null;
-  return new Date(this.timeFrom.getTime() + this.durationMinutes * 60000);
-});
-
-export default mongoose.model("Reservation", ReservationSchema);
+export const Reservation = mongoose.model("Reservation", ReservationSchema);
+export default Reservation;

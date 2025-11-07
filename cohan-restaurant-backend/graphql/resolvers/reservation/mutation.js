@@ -40,10 +40,7 @@ async function getRestaurantOrThrow(
   return r;
 }
 
-async function getTableOrThrow(
-  tableId,
-  fields = "restaurantId status capacity code deposit"
-) {
+async function getTableOrThrow(tableId) {
   const t = await Table.findById(toObjectId(tableId)).lean();
   if (!t) {
     throw new GraphQLError("Table not found", {

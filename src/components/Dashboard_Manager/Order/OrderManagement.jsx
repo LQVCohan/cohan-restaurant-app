@@ -1,3 +1,4 @@
+// src/pages/OrderManagement/OrderManagement.js
 import React, {
   useState,
   useEffect,
@@ -20,7 +21,8 @@ import {
   Loader,
   ChevronDown, // <-- Icon cho Select Box
 } from "lucide-react";
-import { gql, useMutation } from "@apollo/client";
+// ❗️ SỬA: Thêm useQuery, useLazyQuery
+import { gql, useMutation, useQuery, useLazyQuery } from "@apollo/client";
 
 // ---- Import các component con và hook ----
 import OrderCard from "./components/OrderCard";
@@ -28,6 +30,8 @@ import OrderCard from "./components/OrderCard";
 import OrderModal from "./components/OrderModal";
 import ItemModal from "./components/ItemModal";
 import HistoryModal from "./components/HistoryModal";
+// ✅ MỚI: Import modal mới
+import NewOrderModal from "./components/NewOrderModal.jsx";
 import StatsCard from "./components/StatsCard";
 import useOrderManagement from "../../../hooks/useOrderManagement";
 import { useNotification } from "@/hooks/useNotification";
@@ -38,49 +42,6 @@ import { AuthContext } from "@/context/AuthContext"; // <-- Import AuthContext
 // -----------------------------------------------------------------
 
 // (Query chính, hook 'useOrderManagement' của bạn phải dùng query này)
-const QUERY_ORDERS_BY_RESTAURANT = gql`
-  query OrdersByRestaurant($restaurantId: ID!, $limit: Int, $cursor: ID) {
-    ordersByRestaurant(
-      restaurantId: $restaurantId
-      limit: $limit
-      cursor: $cursor
-    ) {
-      edges {
-        node {
-          id
-          orderCode
-          tableCode
-          currentStatus
-          orderType
-          createdAt
-          user {
-            id
-            fullName
-          }
-          items {
-            dishId
-            name
-            quantity
-            price
-            modifiersPrice
-            status
-          }
-          totals {
-            subtotal
-            discount
-            tax
-            service
-            grandTotal
-          }
-        }
-      }
-      pageInfo {
-        endCursor
-        hasNextPage
-      }
-    }
-  }
-`;
 
 // Mutation để cập nhật trạng thái đơn (pending -> confirmed, v.v...)
 const MUTATION_UPDATE_STATUS = gql`
@@ -92,7 +53,8 @@ const MUTATION_UPDATE_STATUS = gql`
   }
 `;
 
-// (Đã xóa MUTATION_COMPLETE_PAYMENT)
+// ✅ MỚI: Query để lấy dữ liệu Bàn và Menu cho Modal
+// (Giả định cấu trúc GQL, bạn cần điều chỉnh cho phù hợp)
 
 // -----------------------------------------------------------------
 // 2. HOOK LẤY DANH SÁCH NHÀ HÀNG (TỪ AUTHCONTEXT)
@@ -112,10 +74,11 @@ const OrderManagement = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  // ✅ MỚI: State cho modal mới
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [tableFilter, setTableFilter] = useState("");
-  // (Đã xóa state thanh toán)
 
   const { showNotification } = useNotification?.() || {
     showNotification: (msg, type) => console.log(type || "info", msg),
@@ -125,13 +88,21 @@ const OrderManagement = () => {
   const { restaurantList } = useRestaurant();
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
 
-  // --- Gọi Hook Fetch Dữ liệu ---
-  const { orders, ordersLoading, ordersError, loadOrders, refetchOrders } =
-    useOrderManagement();
+  // --- Gọi Hook Fetch Dữ liệu (cho List) ---
+  const {
+    orders,
+    ordersLoading,
+    ordersError,
+    loadOrders,
+    updateItemStatus,
+    changeOrderItemStatusByCode,
+    changeOrderStatusByCode,
+  } = useOrderManagement();
+
+  // ✅ MỚI: Hook Fetch Dữ liệu (cho Modal - Bàn & Menu) ---
 
   // --- Khởi tạo Mutations ---
   const [updateOrderStatusMutation] = useMutation(MUTATION_UPDATE_STATUS);
-  // (Đã xóa mutation thanh toán)
 
   // --- 4. Logic Fetch Dữ liệu ---
 
@@ -142,17 +113,23 @@ const OrderManagement = () => {
     }
   }, [restaurantList, selectedRestaurantId]);
 
-  // Tự động fetch khi 'selectedRestaurantId' thay đổi
+  // ❗️ SỬA: Tự động fetch khi 'selectedRestaurantId' thay đổi
   useEffect(() => {
-    if (loadOrders && selectedRestaurantId) {
-      loadOrders({
-        variables: {
-          restaurantId: selectedRestaurantId,
-          limit: 100,
-        },
-      });
+    if (selectedRestaurantId) {
+      // 1. Fetch danh sách orders (như cũ)
+      if (loadOrders) {
+        loadOrders({
+          variables: {
+            restaurantId: selectedRestaurantId,
+            limit: 100,
+          },
+        });
+      }
+      // 2. Fetch dữ liệu POS (bàn, menu) cho modal
     }
-  }, [loadOrders, selectedRestaurantId]);
+  }, [loadOrders, selectedRestaurantId]); // Thêm loadPosData
+
+  // ✅ MỚI: Memoize dữ liệu POS
 
   // --- 5. Các hàm xử lý (useCallback) ---
   const handleUpdateStatus = useCallback(
@@ -166,8 +143,6 @@ const OrderManagement = () => {
     [updateOrderStatusMutation]
   );
 
-  // (Đã xóa các hàm xử lý thanh toán)
-
   const handleViewOrder = useCallback((order) => {
     setSelectedOrder(order);
   }, []);
@@ -175,6 +150,23 @@ const OrderManagement = () => {
   const handleViewItem = useCallback((itemData) => {
     setSelectedItem(itemData);
   }, []);
+
+  // ✅ MỚI: Hàm xử lý khi tạo đơn thành công
+  const handleNewOrderSuccess = useCallback(() => {
+    // Đóng modal
+    setShowNewOrderModal(false);
+
+    // Tải lại danh sách đơn hàng
+    if (loadOrders && selectedRestaurantId) {
+      loadOrders({
+        variables: {
+          restaurantId: selectedRestaurantId,
+          limit: 100,
+        },
+        fetchPolicy: "network-only", // Đảm bảo lấy dữ liệu mới
+      });
+    }
+  }, [loadOrders, selectedRestaurantId]);
 
   // --- 6. Filter & Stats (useMemo) ---
   const filteredOrders = useMemo(() => {
@@ -205,6 +197,55 @@ const OrderManagement = () => {
       completed: 0,
     };
   }, [orders]);
+  const handleChangeItemStatusByCode = useCallback(
+    (payload) => {
+      return changeOrderItemStatusByCode({
+        ...payload,
+        afterSuccess: (serverOrder) => {
+          // Cập nhật ngay modal nếu đang mở đúng order
+          if (serverOrder) {
+            setSelectedOrder((prev) => {
+              if (!prev || prev.id !== serverOrder.id) return prev;
+              // merge để không mất các field mà server không trả (user, restaurantId, ...)
+              return { ...prev, ...serverOrder };
+            });
+          }
+          // Làm mới danh sách bên ngoài (nếu muốn bỏ refetch, có thể xóa khối này)
+          loadOrders({
+            variables: { restaurantId: selectedRestaurantId, limit: 100 },
+            fetchPolicy: "network-only",
+          });
+        },
+      });
+    },
+    [changeOrderItemStatusByCode, loadOrders, selectedRestaurantId]
+  );
+
+  const handleUpdateItemStatus = useCallback(
+    (orderId, itemKey, nextStatus) => {
+      const ord = orders.find((o) => o.id === orderId);
+
+      return updateItemStatus({
+        orderId,
+        itemKey,
+        status: nextStatus,
+        restaurantId: selectedRestaurantId,
+        tableCode: ord?.tableCode,
+        itemsSnapshot: ord?.items,
+        afterSuccess: (updatedServerOrder) => {
+          if (updatedServerOrder) {
+            setSelectedOrder(updatedServerOrder);
+          }
+          // làm mới list sau khi server nhận
+          loadOrders({
+            variables: { restaurantId: selectedRestaurantId, limit: 100 },
+            fetchPolicy: "network-only",
+          });
+        },
+      });
+    },
+    [orders, selectedRestaurantId, loadOrders, updateItemStatus]
+  );
 
   // --- 7. RENDER GIAO DIỆN ---
   return (
@@ -330,8 +371,14 @@ const OrderManagement = () => {
                 <Download size={16} />
                 Xuất báo cáo
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                <Plus size={16} />
+
+              {/* ❗️ SỬA: Nút "Đơn hàng mới" */}
+              <button
+                onClick={() => setShowNewOrderModal(true)}
+                // Disable nếu chưa chọn NH hoặc dữ liệu POS (bàn/menu) chưa tải xong
+                disabled={!selectedRestaurantId}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
                 Đơn hàng mới
               </button>
             </div>
@@ -386,13 +433,25 @@ const OrderManagement = () => {
         )}
 
         {/* Modals */}
-        {/* (Đã xóa PaymentModal) */}
 
+        {/* ✅ MỚI: Render Modal Tạo Đơn */}
+        {showNewOrderModal && (
+          <NewOrderModal
+            isOpen={showNewOrderModal}
+            onClose={() => setShowNewOrderModal(false)}
+            restaurantId={selectedRestaurantId}
+            // Truyền menu
+            onSuccess={handleNewOrderSuccess} // Truyền callback
+          />
+        )}
+
+        {/* (Các modal cũ giữ nguyên) */}
         {selectedOrder && (
           <OrderModal
             order={selectedOrder}
             onClose={() => setSelectedOrder(null)}
-            onUpdateItemStatus={() => {}}
+            onUpdateItemStatus={handleUpdateItemStatus}
+            onChangeItemStatusByCode={handleChangeItemStatusByCode}
           />
         )}
 
