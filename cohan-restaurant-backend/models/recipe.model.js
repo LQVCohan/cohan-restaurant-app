@@ -9,8 +9,7 @@ const ComponentSchema = new mongoose.Schema(
       ref: "Ingredient",
       required: true,
     },
-    qty: { type: Number, required: true, min: 0 }, // theo baseUnit của ingredient
-    unit: { type: String }, // hiển thị (không dùng để tính)
+
     wastePct: { type: Number, default: 0 }, // % hao hụt 0..100
   },
   { _id: true }

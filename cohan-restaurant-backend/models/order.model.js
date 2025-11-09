@@ -112,6 +112,7 @@ const OrderSchema = BaseSchemaModel({
           "draft",
           "pending",
           "confirmed",
+          "customer_attached",
           "preparing",
           "ready",
           "served",

@@ -54,7 +54,6 @@ type CashflowReference {
 type Cashflow {
   id: ID!
   type: CashflowType!
-
   amount: Float!
   occurredAt: DateTime!
   currency: String

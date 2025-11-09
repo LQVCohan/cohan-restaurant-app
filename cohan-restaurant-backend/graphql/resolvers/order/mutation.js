@@ -89,40 +89,39 @@ async function createPaymentTxn(orderDoc, method, session) {
 }
 
 // ✅ tạo / tìm user guest theo phone/email
-async function ensureUserForOrder(ctxUserId, explicitUserId, customer) {
-  if (ctxUserId) return toId(ctxUserId);
-  if (explicitUserId && mongoose.isValidObjectId(explicitUserId)) {
-    return toId(explicitUserId);
-  }
-
+async function ensureUserForOrder(userId, customer) {
+  if (userId) return userId;
   const phone = customer?.phone?.trim();
   const email = customer?.email?.trim()?.toLowerCase();
   const fullName = customer?.fullName?.trim();
-
-  if (!phone && !email) return undefined;
-
-  const or = [];
-  if (phone) or.push({ phone });
-  if (email) or.push({ email });
-
-  let user = await User.findOne(or.length ? { $or: or } : { _id: null });
-
-  if (!user) {
-    const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    user = await User.create({
-      fullName,
-      phone,
-      email,
-      roleName: "customer",
+  if (phone) {
+    const foundByPhone = await User.findOne({
+      phone: phone.trim(),
       isGuest: true,
-      guestExpiresAt: expires,
-    });
-  } else if (!user.roleName) {
-    user.roleName = "customer";
-    await user.save();
+    }).select({ _id: 1 });
+    if (foundByPhone) return foundByPhone._id;
   }
 
-  return user._id;
+  // Sau đó email
+  if (email) {
+    const foundByEmail = await User.findOne({
+      email: email.trim(),
+      isGuest: true,
+    }).select({ _id: 1 });
+    if (foundByEmail) return foundByEmail._id;
+  }
+
+  // Không có -> tạo guest
+  const guest = new User({
+    fullName: (fullName || "Guest").trim(),
+    phone: phone?.trim() || undefined,
+    email: email?.trim() || undefined,
+    isGuest: true,
+    status: "active",
+    guestExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // TTL 30 ngày
+  });
+  await guest.save();
+  return guest._id;
 }
 
 // 🔎 Tìm reservation đã xác nhận cho 1 bàn
@@ -219,7 +218,7 @@ export const OrderMutation = {
     const itemsWithRecipeId = await Promise.all(
       normalizedItems.map(async (item) => {
         const recipe = await Recipe.findOne(
-          { menuItemId: item.menuId, restaurantId: toId(restaurantId) },
+          { menuItemId: item.dishId, restaurantId: toId(restaurantId) },
           { _id: 1 }
         ).lean();
 
@@ -357,7 +356,7 @@ export const OrderMutation = {
   },
 
   // tạo order (khách đặt từ ngoài)
-  async createOrder(_, { input }, ctx) {
+  async createOrder(_, { input }) {
     const {
       orderCode,
       userId,
@@ -378,7 +377,6 @@ export const OrderMutation = {
     }
 
     const effectiveUserId = await ensureUserForOrder(
-      ctx?.user?.id,
       userId,
       customer || {
         fullName: shipping?.fullName,
@@ -667,7 +665,7 @@ export const OrderMutation = {
     });
     if (!doc) throw new Error("Order not found");
 
-    const userId = await ensureUserForOrder(ctx?.user?.id, null, customer);
+    const userId = await ensureUserForOrder(null, customer);
     if (!userId) throw new Error("Cannot resolve user for customer");
 
     doc.userId = userId;

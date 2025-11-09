@@ -175,7 +175,7 @@ const GET_ORDER = gql`
         price
         modifiersPrice
         method
-        description
+        note
         quantity
         status
       }
@@ -202,14 +202,26 @@ const PAY_ORDER = gql`
         orderCode
         tableCode
         currentStatus
-        totals
+        totals {
+          subtotal
+          discount
+          tax
+          service
+          grandTotal
+        }
         updatedAt
       }
       invoice {
         id
         number
         status
-        totals
+        totals {
+          subtotal
+          discount
+          tax
+          service
+          grandTotal
+        }
         paid
         issuedAt
       }
@@ -224,7 +236,7 @@ const PAY_ORDER = gql`
         id
         amount
         type
-        category
+
         occurredAt
       }
     }
@@ -240,6 +252,13 @@ const UPDATE_ORDER_STATUS_BY_CODE = gql`
         orderCode
         currentStatus
         updatedAt
+        totals {
+          subtotal
+          discount
+          tax
+          service
+          grandTotal
+        }
         items {
           dishId
           name
@@ -265,6 +284,13 @@ const UPDATE_ORDER_ITEM_STATUS_BY_CODE = gql`
         orderCode
         tableCode
         currentStatus
+        totals {
+          subtotal
+          discount
+          tax
+          service
+          grandTotal
+        }
         items {
           dishId
           menuId
@@ -452,7 +478,7 @@ export default function useOrderManagement(pos = null) {
       price: Math.round(it.price || 0),
       modifiersPrice: Math.round(it.modifiersPrice || 0),
       method: it.method || "",
-      description: it.description || it.note || "",
+      note: it.description || it.note || "",
       quantity,
       modifiers: (it.modifiers || []).map((m) => ({
         optionId: m.optionId,
@@ -801,7 +827,7 @@ export default function useOrderManagement(pos = null) {
           price: Number(itemPrice),
           modifiersPrice: 0,
           method: cookingOption,
-          description: note,
+          note: note,
           quantity: q,
           lineSubtotal: Number(itemPrice) * q,
           isNew: true,

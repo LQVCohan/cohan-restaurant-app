@@ -1,3 +1,4 @@
+// src/components/Dashboard_Manager/POS/components/panels/LeftPanel.jsx
 import React, { useMemo, useState, useCallback } from "react";
 import cls from "./LeftPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
@@ -243,6 +244,7 @@ export default function LeftPanel({ className = "" }) {
     }),
     useSensor(KeyboardSensor)
   );
+
   const onDragEnd = async ({ active, over }) => {
     if (!active?.id || !over?.id || active.id === over.id) return;
     const a = tables.find((t) => t.id === active.id);
@@ -363,6 +365,47 @@ export default function LeftPanel({ className = "" }) {
       showNotification,
     ]
   );
+
+  /* ---------- NEW: Reset toàn bộ bàn về TRỐNG (bulk) ---------- */
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetAllTables = useCallback(async () => {
+    if (!restaurantId) {
+      showNotification?.("Không xác định được nhà hàng.", "error");
+      return;
+    }
+    const ok = window.confirm(
+      "Bạn có muốn reset toàn bộ bàn về TRỐNG?\nHành động này chỉ đổi trạng thái bàn, không ảnh hưởng đến order hay hóa đơn."
+    );
+    if (!ok) return;
+
+    try {
+      setIsResetting(true);
+      const list = (tables || []).filter((t) => t.status !== "available");
+      if (list.length === 0) {
+        showNotification?.("Tất cả bàn đang ở trạng thái trống.", "info");
+        return;
+      }
+
+      const chunkSize = 10;
+      for (let i = 0; i < list.length; i += chunkSize) {
+        const chunk = list.slice(i, i + chunkSize);
+        // eslint-disable-next-line no-await-in-loop
+        await Promise.all(
+          chunk.map((t) => setTableStatus?.({ id: t.id, status: "available" }))
+        );
+      }
+
+      await refetchTables?.();
+      showNotification?.(`Đã reset ${list.length} bàn về TRỐNG.`, "success");
+    } catch (e) {
+      console.error(e);
+      showNotification?.("Reset bàn thất bại. Vui lòng thử lại.", "error");
+    } finally {
+      setIsResetting(false);
+    }
+  }, [restaurantId, tables, setTableStatus, refetchTables, showNotification]);
+  /* ------------------------------------------------------------ */
 
   return (
     <div className={`${cls.wrapper} ${className}`}>
@@ -544,6 +587,19 @@ export default function LeftPanel({ className = "" }) {
               </button>
             </>
           )}
+        </div>
+
+        {/* NEW: nút Reset toàn bộ bàn về TRỐNG */}
+        <div className={cls.right}>
+          <button
+            type="button"
+            className={`${cls.btn} ${cls.violet}`}
+            onClick={handleResetAllTables}
+            disabled={isResetting || (tables?.length ?? 0) === 0}
+            title="Đặt tất cả bàn về TRỐNG"
+          >
+            {isResetting ? "Đang reset..." : "Reset toàn bộ bàn"}
+          </button>
         </div>
       </div>
 

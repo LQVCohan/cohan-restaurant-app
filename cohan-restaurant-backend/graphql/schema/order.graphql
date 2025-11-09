@@ -134,7 +134,7 @@ input OrderItemInput {
   modifiersPrice: Int
   method: String
   methodDelta: Int
-  description: String
+  note: String
   quantity: Float!
   modifiers: [OrderModifierInput!]
   status: String

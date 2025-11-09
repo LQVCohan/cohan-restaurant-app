@@ -8,7 +8,8 @@ import {
   PaymentTransaction,
   Cashflow,
   EventLog,
-  Table, // ✅ thêm: để trả bàn khi thanh toán xong
+  Table, // ✅ trả bàn khi thanh toán xong
+  Reservation, // ✅ thêm: để cập nhật trạng thái reservation theo orderCode
 } from "../../../models/index.js";
 
 export const payOrder = async (_parent, { input }, ctx) => {
@@ -20,6 +21,7 @@ export const payOrder = async (_parent, { input }, ctx) => {
     note,
     externalRef,
     restaurantId,
+    orderCode, // ✅ thêm: để map reservation theo mã đặt bàn
   } = input || {};
 
   if (!orderId) throw new Error("Thiếu orderId");
@@ -328,15 +330,35 @@ export const payOrder = async (_parent, { input }, ctx) => {
       { session }
     );
 
-    // ✅ Chỉ khi fullyPaid mới trả bàn về available
-    if (fullyPaid && order.tableCode) {
-      // ưu tiên dùng restaurantId gắn trên order (nếu có)
-      const rId = order.restaurantId || restaurantId;
-      await Table.updateOne(
-        { restaurantId: rId, code: order.tableCode },
-        { $set: { status: "available" } },
-        { session }
-      ).catch(() => {});
+    // ✅ Nếu fullyPaid:
+    //   - Trả bàn về available (như cũ)
+    //   - Đồng thời đổi trạng thái Reservation (nếu tìm thấy theo orderCode + restaurantId)
+    if (fullyPaid) {
+      if (order.tableCode) {
+        const rId = order.restaurantId || restaurantId;
+        await Table.updateOne(
+          { restaurantId: rId, code: order.tableCode },
+          { $set: { status: "available" } },
+          { session }
+        ).catch(() => {});
+      }
+
+      // ✅ Cập nhật Reservation: tìm theo orderCode + restaurantId
+      //    - set status = "completed"
+      //    - lưu kèm orderId (schema không có thì ghi mềm với { strict: false })
+      if (orderCode) {
+        await Reservation.updateOne(
+          { restaurantId, orderCode },
+          {
+            $set: {
+              status: "completed",
+              // ghi mềm orderId để dễ truy vết ở FE/BE (schema chưa khai báo vẫn OK):
+              orderId,
+            },
+          },
+          { session, strict: false }
+        ).catch(() => {});
+      }
     }
 
     await session.commitTransaction();
