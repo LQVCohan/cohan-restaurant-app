@@ -67,9 +67,12 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
           tableCode
           currentStatus
           restaurantId
+          note
           user {
             id
             fullName
+            email
+            phone
           }
           items {
             dishId

@@ -57,7 +57,7 @@
 
 .navTabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr); /* chia đều */
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.35rem;
   background: #f8fafc;
   padding: 0.15rem;
@@ -68,7 +68,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 100%; /* fill cell */
+  width: 100%;
   background: transparent;
   border: 0;
   padding: 0.45rem 0.6rem;
@@ -78,6 +78,7 @@
   color: var(--fh-gray);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, transform 0.12s;
+  white-space: nowrap;
 }
 .tab:hover {
   color: var(--fh-text);
@@ -171,6 +172,7 @@
   font-size: 0.85rem;
   cursor: pointer;
   transition: background 0.15s, transform 0.12s;
+  white-space: nowrap;
 }
 .chip:hover {
   background: #eef6ff;
@@ -251,25 +253,32 @@
   font-size: 0.82rem;
 }
 
-/* Grid bàn — nén min width để dễ thêm 1 cột nếu có thêm không gian từ layout */
+/* Grid bàn (không trào, không kéo dãn chiều cao khi ít item) */
 .tablesGrid {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+
+  /* vùng cuộn chuẩn, không co giãn lạ khi nhiều item */
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  grid-template-columns: repeat(
-    auto-fill,
-    minmax(120px, 1fr)
-  ); /* trước 128px -> 120px */
-  gap: 0.6rem;
-}
 
+  align-content: flex-start; /* đừng giãn đều theo trục dọc */
+  align-items: stretch; /* mỗi item tự cao theo content */
+}
+.tablesGrid > * {
+  box-sizing: border-box;
+  flex: 1 0 120px; /* min-width ~120px, auto grow; sẽ tạo 2-3-4 cột tùy rộng */
+  min-width: 120px;
+}
 /* Card bàn + màu theo status qua data-attr */
 .tableItem {
   position: relative;
-  display: grid;
-  grid-template-rows: auto auto auto;
-  gap: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.25rem;
+
   padding: 0.6rem;
   border: 1.5px solid var(--fh-border);
   background: #fff;
@@ -277,6 +286,10 @@
   cursor: pointer;
   transition: transform 0.12s, box-shadow 0.15s, border-color 0.15s,
     background 0.15s;
+
+  overflow: hidden;
+  min-width: 0;
+  min-height: 86px; /* đảm bảo luôn đủ chỗ cho top/name/meta */
 }
 .tableItem:hover {
   transform: translateY(-1px);
@@ -328,7 +341,9 @@
 .tableTop {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.35rem;
+  min-width: 0;
 }
 
 /* Kebab (3 chấm) mở modal hành động bàn */
@@ -338,18 +353,18 @@
   bottom: 6px;
   width: 26px;
   height: 22px;
-  display: none; /* ẩn mặc định */
+  display: none;
   place-items: center;
   background: transparent;
-  border: none; /* không viền */
-  color: #0ea5b7; /* xanh nhạt đồng bộ giao diện */
+  border: none;
+  color: #0ea5b7;
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
   padding: 0;
 }
 .tableItem:hover .kebab {
-  display: grid; /* chỉ hiện khi hover card */
+  display: grid;
 }
 .kebab:hover {
   color: var(--fh-primary);
@@ -365,17 +380,24 @@
   color: var(--fh-text);
   border: 1px solid var(--fh-border);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  white-space: nowrap; /* tránh badge làm vỡ layout */
 }
 
 .tableCode {
+  margin: 2px 0;
   font-weight: 900;
   color: var(--fh-text);
   font-size: 1rem;
   letter-spacing: 0.2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 .tableMeta {
   color: var(--fh-gray);
   font-size: 0.8rem;
+  min-width: 0;
+  margin-top: auto; /* đẩy meta xuống cuối khi card cao hơn min-height */
 }
 .metaRow {
   display: flex;
@@ -390,6 +412,7 @@
   padding: 0.12rem 0.35rem;
   font-size: 0.74rem;
   color: #334155;
+  white-space: nowrap;
 }
 .dim {
   opacity: 0.75;
@@ -457,7 +480,6 @@
 
 /* Responsive */
 @media (max-width: 1100px) {
-  /* nếu màn hình bé hơn, tăng co để vẫn cố thêm cột khi Center đã hẹp */
   .tablesGrid {
     grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
   }

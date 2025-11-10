@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import s from "./TableActionsModal.module.scss";
 import { usePos } from "../../../../../context/PosContext";
@@ -28,15 +28,15 @@ function TableActionsModalCore({
     splitTables,
     deleteTable,
     fetchTableByCode,
-    fetchOrderByTable,
 
     // NEW: từ PosContext, đã export
     attachCustomerToOrder,
     saveTableCustomer, // local-only để đồng bộ UI
+    fetchOrderByTable,
   } = usePos();
 
   const { changeOrderStatusByCode } = useOrderManagement();
-  const { createReservationForTable } = useReservation();
+  const { createReservationForTable, findConfirmedByTable } = useReservation();
 
   // ----- local states -----
   const [code, setCode] = useState("");
@@ -49,20 +49,77 @@ function TableActionsModalCore({
   const [swapWithCode, setSwapWithCode] = useState("");
   const [mergeCodes, setMergeCodes] = useState("");
 
+  // Helpers ngày/giờ
+  const getTodayLocal = () => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const buildTimeSlots = useMemo(() => {
+    const slots = [];
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        const hh = String(h).padStart(2, "0");
+        const mm = String(m).padStart(2, "0");
+        slots.push(`${hh}:${mm}`);
+      }
+    }
+    return slots;
+  }, []);
+
+  const [todayStr, setTodayStr] = useState(getTodayLocal());
+
+  // Toggle: Đặt theo khung giờ (bật = tạo reservation; tắt = chỉ lưu thông tin vào bàn)
+  const [useTimeslot, setUseTimeslot] = useState(true);
+
   // thông tin khách (chỉ cho UI)
   const [cust, setCust] = useState({
     name: "",
     phone: "",
     email: "",
     guests: 0,
-    checkin: "",
+    checkinDate: "", // YYYY-MM-DD
+    checkinTime: "", // HH:mm
     note: "",
   });
 
   const [busy, setBusy] = useState({});
   const setBusyKey = (k, v) => setBusy((b) => ({ ...b, [k]: v }));
 
-  // khi mở modal -> fill dữ liệu
+  // ===== Helpers so sánh trước khi set =====
+  const setCustIfChanged = (patch) => {
+    let changed = false;
+    setCust((prev) => {
+      const next = { ...prev, ...patch };
+      for (const k of Object.keys(next)) {
+        if (next[k] !== prev[k]) {
+          changed = true;
+          break;
+        }
+      }
+      return changed ? next : prev;
+    });
+    return changed;
+  };
+
+  // ===== Refs để tránh deps gây lặp =====
+  const findConfirmedByTableRef = useRef(findConfirmedByTable);
+  const fetchOrderByTableRef = useRef(fetchOrderByTable);
+  useEffect(() => {
+    findConfirmedByTableRef.current = findConfirmedByTable;
+  }, [findConfirmedByTable]);
+  useEffect(() => {
+    fetchOrderByTableRef.current = fetchOrderByTable;
+  }, [fetchOrderByTable]);
+
+  // Đã hydrate cho bàn nào (tránh lặp)
+  const hydratedReservationFor = useRef(null); // table.id
+  const hydratedOrderFor = useRef(null); // table.code
+
+  // khi mở modal -> fill dữ liệu cơ bản + reset flags hydrate
   useEffect(() => {
     if (table && reallyOpen) {
       setCode(table.code || "");
@@ -73,6 +130,11 @@ function TableActionsModalCore({
       setMoveLevel(table.floorLevel ?? null);
       setSwapWithCode("");
       setMergeCodes("");
+      setTodayStr(getTodayLocal());
+      setUseTimeslot(true);
+
+      hydratedReservationFor.current = null;
+      hydratedOrderFor.current = null;
 
       // reset form khách khi mở modal
       setCust({
@@ -80,17 +142,127 @@ function TableActionsModalCore({
         phone: "",
         email: "",
         guests: 0,
-        checkin: "",
+        checkinDate: getTodayLocal(),
+        checkinTime: "",
         note: "",
       });
     }
   }, [table, reallyOpen]);
+
+  // Helper tách ISO -> {date, time}
+  const isoToDateTimeParts = (iso) => {
+    if (!iso) return { date: "", time: "" };
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return { date: "", time: "" };
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const HH = String(d.getHours()).padStart(2, "0");
+    const MM = String(d.getMinutes()).padStart(2, "0");
+    return { date: `${yyyy}-${mm}-${dd}`, time: `${HH}:${MM}` };
+  };
+
+  // Sau khi mở modal, nếu bàn đang reserved → load reservation; nếu có order → load user
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrate() {
+      if (!reallyOpen || !table?.id || !restaurantId) return;
+
+      // Ưu tiên reservation khi status = reserved (chỉ chạy 1 lần cho table.id)
+      if (
+        table.status === "reserved" &&
+        hydratedReservationFor.current !== table.id
+      ) {
+        try {
+          const res = await findConfirmedByTableRef.current?.({
+            restaurantId,
+            tableId: table.id,
+          });
+          const r = res?.data ?? res?.reservation ?? res?.result ?? res ?? null;
+
+          if (r && !cancelled) {
+            const name = r.customerName ?? r.customerFullName ?? r.name ?? "";
+            const phone = r.customerPhone ?? r.phone ?? "";
+            const email = r.customerEmail ?? r.email ?? "";
+            const partySize = Number(r.partySize || 0);
+            const note = r.note ?? "";
+            const { date, time } = isoToDateTimeParts(r.timeTo);
+
+            setCustIfChanged({
+              name,
+              phone,
+              email,
+              guests: Number.isFinite(partySize) ? partySize : 0,
+              checkinDate: date || getTodayLocal(),
+              checkinTime: time || "",
+              note,
+            });
+          }
+        } catch (e) {
+          console.warn("findConfirmedByTable failed:", e);
+        } finally {
+          hydratedReservationFor.current = table.id;
+        }
+      }
+
+      // Luôn thử lấy order hiện tại, nhưng chỉ 1 lần cho table.code
+      if (hydratedOrderFor.current !== table?.code) {
+        try {
+          const ores = await fetchOrderByTableRef.current?.(
+            restaurantId,
+            table.code,
+            1,
+            0
+          );
+          const activeOrder = ores?.data?.[0] || null;
+          const u = activeOrder?.user || activeOrder?.customer || null;
+          if (u && !cancelled) {
+            setCustIfChanged({
+              name: u.name || u.fullName || "",
+              phone: u.phone || "",
+              email: u.email || "",
+              guests:
+                (Number.isFinite(Number(activeOrder?.partySize))
+                  ? Number(activeOrder?.partySize)
+                  : undefined) ?? undefined,
+            });
+          }
+        } catch (e) {
+          console.warn("fetchOrderByTable failed:", e);
+        } finally {
+          hydratedOrderFor.current = table?.code || null;
+        }
+      }
+    }
+
+    hydrate();
+    return () => {
+      cancelled = true;
+    };
+    // CHÚ Ý: không đưa các hàm vào deps để tránh identity thay đổi gây lặp
+  }, [reallyOpen, restaurantId, table?.id, table?.code, table?.status]);
 
   const floorsSorted = useMemo(
     () => (floors || []).slice().sort((a, b) => a.level - b.level),
     [floors]
   );
   const canSplit = !!table?.joinGroupId;
+
+  // Ẩn slot đã qua trong ngày hiện tại
+  const visibleTimeSlots = useMemo(() => {
+    return (dateStr) => {
+      if (!dateStr || dateStr !== todayStr) return buildTimeSlots;
+      const now = new Date();
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+      const cutoff = Math.min(1440, Math.ceil(nowMins / 30) * 30);
+      return buildTimeSlots.filter((t) => {
+        const [hh, mm] = t.split(":").map((n) => Number(n) || 0);
+        const mins = hh * 60 + mm;
+        return mins >= cutoff;
+      });
+    };
+  }, [buildTimeSlots, todayStr]);
 
   // lock scroll + ESC
   useEffect(() => {
@@ -117,6 +289,14 @@ function TableActionsModalCore({
       .match(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/);
 
   const isPhoneVN = (s) => /^(0|\+84)\d{9,10}$/.test(String(s || ""));
+
+  const combineDateTimeToISO = (dateStr, timeStr) => {
+    if (!dateStr || !timeStr) return null;
+    const [y, m, d] = dateStr.split("-").map((n) => Number(n));
+    const [hh, mm] = timeStr.split(":").map((n) => Number(n));
+    const dt = new Date(y, m - 1, d, hh, mm, 0, 0);
+    return dt.toISOString();
+  };
 
   const validateCustomerForReservation = () => {
     const size = Number(cust.guests || 0);
@@ -147,7 +327,27 @@ function TableActionsModalCore({
       alert("Email không hợp lệ.");
       return false;
     }
+
+    if (useTimeslot) {
+      if (!cust.checkinDate) {
+        alert("Vui lòng chọn ngày.");
+        return false;
+      }
+      if (!cust.checkinTime) {
+        alert("Vui lòng chọn giờ (khung 30 phút).");
+        return false;
+      }
+      if (cust.checkinDate < todayStr) {
+        alert("Ngày phải từ hôm nay trở đi.");
+        return false;
+      }
+    }
     return true;
+  };
+
+  const clampGuests = (val) => {
+    const n = Math.max(0, Number.isFinite(val) ? val : 0);
+    return n;
   };
 
   /* ================== ACTIONS ================== */
@@ -180,7 +380,12 @@ function TableActionsModalCore({
     if (!table?.id || next === status) return;
     if (next === "available" && table?.code && restaurantId) {
       try {
-        const res = await fetchOrderByTable?.(restaurantId, table.code, 1, 0);
+        const res = await fetchOrderByTableRef.current?.(
+          restaurantId,
+          table.code,
+          1,
+          0
+        );
         const activeOrder = res?.data?.[0] || null;
 
         if (activeOrder) {
@@ -318,6 +523,14 @@ function TableActionsModalCore({
     }
   };
 
+  // tăng/giảm số khách
+  const incGuests = (delta) => {
+    setCust((prev) => {
+      const next = clampGuests((prev.guests || 0) + delta);
+      return { ...prev, guests: next };
+    });
+  };
+
   // ✅ Lưu thông tin khách
   const saveCustomerInfo = async () => {
     const customer = {
@@ -328,50 +541,53 @@ function TableActionsModalCore({
     };
 
     try {
-      // Luôn đồng bộ local để UI RightPanel/LeftPanel hiển thị tức thì
+      // Đồng bộ local để UI hiển thị ngay
       await saveTableCustomer(table.code, {
         ...customer,
         guests: Number(cust.guests || 0),
-        checkin: cust.checkin || "",
+        checkinDate: useTimeslot ? cust.checkinDate || todayStr : "",
+        checkinTime: useTimeslot ? cust.checkinTime || "" : "",
       });
-
-      // Cho parent hook cũ nếu họ truyền (giữ tương thích)
-      // await onSave?.(table.code, {
-      //   ...customer,
-      //   guests: Number(cust.guests || 0),
-      //   checkin: cust.checkin || "",
-      // });
 
       // --- LUỒNG CHÍNH ---
       if (status === "available") {
-        // Bàn trống -> tạo reservation mới
-        if (!validateCustomerForReservation()) return;
+        if (useTimeslot) {
+          if (!validateCustomerForReservation()) return;
 
-        setBusyKey("saveCustomer", true);
-        const res = await createReservationForTable({
-          restaurantId,
-          tableId: table.id,
-          customer,
-          partySize: Number(cust.guests || 0),
-          timeTo: cust.checkin || new Date().toISOString(),
-          durationMinutes: 90,
-          note: cust.note || "",
-          restaurantName: "",
-          maxCapacity: table.capacity,
-        });
-        setBusyKey("saveCustomer", false);
+          const iso = combineDateTimeToISO(
+            cust.checkinDate || todayStr,
+            cust.checkinTime
+          );
 
-        if (!res?.success) {
-          alert(res?.message || "Tạo đặt bàn thất bại.");
+          setBusyKey("saveCustomer", true);
+          const res = await createReservationForTable({
+            restaurantId,
+            tableId: table.id,
+            customer,
+            partySize: Number(cust.guests || 0),
+            timeTo: iso || new Date().toISOString(),
+            durationMinutes: 90,
+            note: cust.note || "",
+            restaurantName: "",
+            maxCapacity: table.capacity,
+          });
+          setBusyKey("saveCustomer", false);
+
+          if (!res?.success) {
+            alert(res?.message || "Tạo đặt bàn thất bại.");
+            return;
+          }
+          alert("Đã tạo đặt bàn và chuyển bàn sang trạng thái ĐÃ ĐẶT.");
+          onUpdated?.();
+          return;
+        } else {
+          alert("Đã lưu thông tin khách cho bàn (không đặt theo khung giờ).");
+          onUpdated?.();
           return;
         }
-        alert("Đã tạo đặt bàn và chuyển bàn sang trạng thái ĐÃ ĐẶT.");
-        onUpdated?.();
-        return;
       }
 
       if (status === "occupied" || table?.orderCode) {
-        // Có khách/đang có order -> chỉ cập nhật order.user
         const r = await attachCustomerToOrder(table.code, customer);
         if (!r?.success) {
           alert(r?.message || "Cập nhật khách vào đơn thất bại.");
@@ -383,7 +599,6 @@ function TableActionsModalCore({
       }
 
       if (status === "reserved") {
-        // Tránh TABLE_UNAVAILABLE do tạo mới
         alert(
           "Bàn đang ở trạng thái ĐÃ ĐẶT. Nếu khách đã tới, hãy đổi trạng thái sang CÓ KHÁCH rồi cập nhật thông tin đơn."
         );
@@ -400,6 +615,13 @@ function TableActionsModalCore({
   /* ================== RENDER ================== */
   return createPortal(
     <div className={s.backdrop} onClick={onClose}>
+      {/* Ẩn mũi tên input number cho stepper */}
+      <style>{`
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+      `}</style>
+
       <div
         className={s.modal}
         role="dialog"
@@ -637,29 +859,116 @@ function TableActionsModalCore({
                   onChange={(e) => setCust({ ...cust, email: e.target.value })}
                 />
               </div>
+
+              {/* Số khách với stepper + / - */}
               <div>
                 <label className={s.label}>Số khách</label>
-                <input
-                  className={s.input}
-                  type="number"
-                  min={0}
-                  value={cust.guests}
-                  onChange={(e) =>
-                    setCust({ ...cust, guests: Number(e.target.value) || 0 })
-                  }
-                />
+                <div className={s.stepper}>
+                  <button
+                    type="button"
+                    className={`${s.btnIcon}`}
+                    aria-label="Giảm"
+                    onClick={() => incGuests(-1)}
+                  >
+                    −
+                  </button>
+                  <input
+                    className={`${s.input} ${s.inputCenter}`}
+                    type="number"
+                    min={0}
+                    value={cust.guests}
+                    onChange={(e) =>
+                      setCust({
+                        ...cust,
+                        guests: clampGuests(Number(e.target.value) || 0),
+                      })
+                    }
+                  />
+                  <button
+                    type="button"
+                    className={`${s.btnIcon}`}
+                    aria-label="Tăng"
+                    onClick={() => incGuests(1)}
+                  >
+                    +
+                  </button>
+                </div>
+                <div className={s.hint}>
+                  Tối đa gợi ý: {Number(table.capacity || 0)}
+                </div>
               </div>
+
+              {/* Toggle: Đặt theo khung giờ */}
               <div>
-                <label className={s.label}>Thời gian vào</label>
-                <input
-                  className={s.input}
-                  type="datetime-local"
-                  value={cust.checkin}
-                  onChange={(e) =>
-                    setCust({ ...cust, checkin: e.target.value })
-                  }
-                />
+                <label className={s.label}>Đặt theo khung giờ</label>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: ".5rem",
+                  }}
+                >
+                  <input
+                    id="useTimeslot"
+                    type="checkbox"
+                    checked={useTimeslot}
+                    onChange={(e) => setUseTimeslot(e.target.checked)}
+                    // Ẩn chọn khung giờ nếu bàn KHÔNG phải available hoặc reserved
+                    disabled={
+                      !(status === "available" || status === "reserved")
+                    }
+                  />
+                  <label htmlFor="useTimeslot" className={s.hint}>
+                    Bật để chọn ngày/giờ và tạo đặt bàn; tắt để chỉ lưu thông
+                    tin vào bàn.
+                  </label>
+                </div>
               </div>
+
+              {/* Ngày & Giờ: chỉ render khi bật toggle và trạng thái cho phép */}
+              {useTimeslot &&
+                (status === "available" || status === "reserved") && (
+                  <>
+                    {/* Ngày: chỉ hôm nay -> tương lai */}
+                    <div>
+                      <label className={s.label}>Ngày</label>
+                      <input
+                        className={s.input}
+                        type="date"
+                        min={todayStr}
+                        value={cust.checkinDate}
+                        onChange={(e) =>
+                          setCust({ ...cust, checkinDate: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    {/* Giờ: slot 30 phút & ẩn slot đã qua trong ngày hiện tại */}
+                    <div>
+                      <label className={s.label}>Giờ (khung 30 phút)</label>
+                      <select
+                        className={`${s.input} ${s.select || ""}`}
+                        value={cust.checkinTime}
+                        onChange={(e) =>
+                          setCust({ ...cust, checkinTime: e.target.value })
+                        }
+                      >
+                        <option value="" disabled>
+                          Chọn giờ
+                        </option>
+                        {(cust.checkinDate
+                          ? visibleTimeSlots(cust.checkinDate)
+                          : buildTimeSlots
+                        ).map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+
               <div style={{ gridColumn: "1 / -1" }}>
                 <label className={s.label}>Ghi chú</label>
                 <textarea

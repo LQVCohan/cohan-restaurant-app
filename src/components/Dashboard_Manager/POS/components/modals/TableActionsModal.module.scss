@@ -52,12 +52,8 @@
   border-radius: 1rem;
   border: 1px solid var(--fh-border);
   box-shadow: var(--shadow-md);
-  width: clamp(
-    560px,
-    64vw,
-    980px
-  ); /* đủ rộng trên desktop, co lại trên laptop */
-  max-height: min(90vh, 1000px); /* không vượt quá chiều cao viewport */
+  width: clamp(560px, 64vw, 980px);
+  max-height: min(90vh, 1000px);
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
@@ -149,6 +145,48 @@
 .select:focus {
   border-color: var(--fh-primary);
   box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+/* Vô hiệu nút tăng/giảm mặc định của number input */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Stepper + / - cho số khách */
+.stepper {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  gap: 0.4rem;
+  align-items: center;
+}
+.btnIcon {
+  height: 40px;
+  border-radius: 0.6rem;
+  border: 1.5px solid var(--fh-border);
+  background: #fff;
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: var(--fh-text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.15s, background 0.15s,
+    border-color 0.15s, color 0.15s;
+}
+.btnIcon:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--fh-primary);
+  color: var(--fh-primary);
+}
+.inputCenter {
+  text-align: center;
 }
 
 .tableInfo {
@@ -277,4 +315,40 @@
     width: 96vw;
     border-radius: 0.85rem;
   }
+}
+.stepper {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 0.4rem;
+}
+.btnIcon {
+  border: 1.5px solid var(--fh-border);
+  background: #fff;
+  border-radius: 0.6rem;
+  width: 40px;
+  height: 40px;
+  font-weight: 900;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.15s, background 0.15s;
+}
+.btnIcon:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.inputCenter {
+  text-align: center;
+}
+
+/* Hide number input native spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
 }

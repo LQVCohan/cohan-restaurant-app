@@ -26,6 +26,8 @@ type User {
   updatedAt: String
   createdBy: User
   updatedBy: User
+  isGuest: Boolean
+  guestExpiresAt: DateTime
 }
 
 input AddressInput {
@@ -85,17 +87,34 @@ enum CustomerType {
   NEW
   OFTEN
 }
-
+input AdminUpdateUserInput {
+  fullName: String
+  username: String
+  email: String
+  phone: String
+  address: AddressInput
+  avatarUrl: String
+  status: String # 'active' | 'inactive' | 'blocked' | 'pending'
+  customerType: CustomerType
+  loyaltyPoints: Int
+  totalOrders: Int
+  totalSpending: Float
+  isGuest: Boolean
+  guestExpiresAt: String
+  refRestaurantIds: [ID!]
+  roleId: ID
+}
 extend type Query {
   me: User
+  roleList: [Role!]!
+  users(roleId: ID, search: String, isGuest: Boolean): [User!]!
+  customers(search: String, includeGuests: Boolean): [User!]!
 }
 input UpdateAvatarInput {
-  fileBase64: String # Data URL "data:image/png;base64,..." hoặc chỉ phần base64 đều được
-  fileUrl: String # tuỳ chọn: nếu bạn đã upload ở nơi khác và chỉ muốn set URL
+  fileBase64: String
+  fileUrl: String
 }
 extend type Mutation {
-  changeMyPassword(currentPassword: String!, newPassword: String!): Boolean!
-  updateAvatar(input: UpdateAvatarInput!): User!
   createUser(input: CreateUserInput!): AuthPayload!
   login(
     email: String
@@ -104,11 +123,21 @@ extend type Mutation {
     password: String!
     captchaToken: String
   ): AuthPayload!
-  assignRoleToUser(input: AssignRoleToUserInput!): User!
+  changeMyPassword(currentPassword: String!, newPassword: String!): Boolean!
+  updateUser(input: UpdateUserInput!): User!
+  updateAvatar(input: UpdateAvatarInput!): User!
 
+  # Email verification (nếu bạn đã triển khai)
   requestEmailVerification(email: String!): Boolean!
   verifyEmail(token: String!): Boolean!
   resendVerification(email: String!): Boolean!
 
-  updateUser(input: UpdateUserInput!): User!
+  # Role & Admin operations
+  assignRoleToUser(input: AssignRoleToUserInput!): User!
+  adminUpdateUser(userId: ID!, input: AdminUpdateUserInput!): User!
+  setUserStatus(userId: ID!, status: String!): User!
+  softDeleteUser(userId: ID!): Boolean!
+
+  # Guest helpers
+  createGuestUser(fullName: String, phone: String, expiresInDays: Int): User!
 }

@@ -1,7 +1,9 @@
+// src/resolvers/restaurant.mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { User, Role, Restaurant } from "../../../models/index.js";
 
+/* ========== Helpers chung cho Mutation ========== */
 function badInput(message) {
   return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
 }
@@ -21,6 +23,8 @@ async function userHasRoleSlug(userDoc, slug) {
   const want = String(slug).toLowerCase();
   const role = userDoc.role;
   if (!role) return false;
+
+  // role có thể là object, ObjectId hoặc string
   if (
     typeof role === "object" &&
     role !== null &&
@@ -48,6 +52,7 @@ function isAdmin(user) {
       user.role?.slug?.toLowerCase?.() === "admin")
   );
 }
+
 async function isManager(user) {
   return (
     !!user &&
@@ -68,6 +73,8 @@ async function assertCanMutateRestaurant(user, restaurantDoc) {
   return true;
 }
 
+/* ========== Mutations ========== */
+
 /** Tạo nhà hàng */
 async function createRestaurant(_, { input }, { user }) {
   if (!user) throw forbidden("Unauthorized");
@@ -75,8 +82,10 @@ async function createRestaurant(_, { input }, { user }) {
   const manager = await isManager(user);
   if (!admin && !manager) throw forbidden("Insufficient permission");
 
-  const { managerId, ...rest } = input;
+  const { managerId, ...rest } = input || {};
   let finalManagerId = managerId;
+
+  // Manager tự tạo thì bắt buộc assign chính họ (trừ khi admin)
   if (manager && !admin) finalManagerId = String(user._id);
   if (!finalManagerId) throw badInput("managerId is required");
 
@@ -86,6 +95,7 @@ async function createRestaurant(_, { input }, { user }) {
   const isRoleManager = await userHasRoleSlug(managerDoc, "manager");
   if (!isRoleManager) throw forbidden("Target user is not a manager");
 
+  // Đảm bảo 1 manager chỉ có 1 restaurant
   const existed = await Restaurant.exists({ managerId: mId });
   if (existed)
     throw badInput("This manager is already assigned to another restaurant");
@@ -94,14 +104,16 @@ async function createRestaurant(_, { input }, { user }) {
   return created.toObject();
 }
 
-/** Cập nhật nhà hàng (không đổi manager) */
+/** Cập nhật nhà hàng (không đổi manager qua đây) */
 async function updateRestaurant(_, { id, input }, { user }) {
   if (!user) throw forbidden("Unauthorized");
   const _id = toObjectId(id);
+
   const doc = await Restaurant.findById(_id);
   if (!doc) throw notFound("Restaurant not found");
   await assertCanMutateRestaurant(user, doc);
-  const { managerId, ...rest } = input || {};
+
+  const { managerId, ...rest } = input || {}; // chặn đổi manager ở mutation này
   Object.assign(doc, rest);
   await doc.save();
   return doc.toObject();
@@ -111,16 +123,19 @@ async function updateRestaurant(_, { id, input }, { user }) {
 async function deleteRestaurant(_, { id }, { user }) {
   if (!user) throw forbidden("Unauthorized");
   const _id = toObjectId(id);
+
   const doc = await Restaurant.findById(_id);
   if (!doc) throw notFound("Restaurant not found");
   await assertCanMutateRestaurant(user, doc);
+
   await Restaurant.deleteOne({ _id });
   return true;
 }
 
-/** Cập nhật manager nhà hàng (chỉ admin) */
+/** Cập nhật manager nhà hàng (Admin only) */
 async function updateRestaurantManager(_, { input }, { user }) {
   if (!isAdmin(user)) throw forbidden("Admin only");
+
   const { restaurantId, managerId } = input || {};
   if (!restaurantId || !managerId)
     throw badInput("restaurantId and managerId are required");
@@ -136,6 +151,7 @@ async function updateRestaurantManager(_, { input }, { user }) {
   const isRoleManager = await userHasRoleSlug(managerDoc, "manager");
   if (!isRoleManager) throw forbidden("Target user is not a manager");
 
+  // Đảm bảo 1 manager chỉ có 1 restaurant
   const existed = await Restaurant.exists({
     managerId: mId,
     _id: { $ne: rId },

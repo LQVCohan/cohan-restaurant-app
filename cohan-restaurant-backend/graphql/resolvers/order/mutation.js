@@ -194,10 +194,15 @@ export const OrderMutation = {
     // determine effective user
     const userId = reservation
       ? toId(reservation.userId)
-      : await ensureUserForOrder(ctx?.user?.id, explicitUserId, customer);
+      : await ensureUserForOrder(explicitUserId || ctx?.user?.id, customer);
 
-    // determine effective orderCode (ưu tiênreservation.orderCode)
+    // determine effective orderCode (ưu tiên reservation.orderCode)
     const effectiveOrderCode = reservation?.orderCode || orderCode || null;
+
+    // Chỉ coi các order đang hoạt động (không completed/cancelled)
+    const ACTIVE_ORDER_FILTER = {
+      currentStatus: { $nin: ["completed", "cancelled"] },
+    };
 
     // try to find existing order by code (ưu tiên code từ reservation) hoặc by table
     let existingOrder = null;
@@ -205,12 +210,14 @@ export const OrderMutation = {
       existingOrder = await Order.findOne({
         restaurantId: toId(restaurantId),
         orderCode: effectiveOrderCode,
+        ...ACTIVE_ORDER_FILTER, // ⬅️ lọc trạng thái
       });
     }
     if (!existingOrder) {
       existingOrder = await Order.findOne({
         restaurantId: toId(restaurantId),
         tableCode,
+        ...ACTIVE_ORDER_FILTER, // ⬅️ lọc trạng thái
       });
     }
 

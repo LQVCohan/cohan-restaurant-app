@@ -189,7 +189,7 @@ input SplitTablesInput {
   mode: SplitMode! # ALL | PARTIAL
   # Nếu PARTIAL, chỉ lock-in các itemIds chuyển đi:
   itemIds: [ID!]
-  toTableId: ID # đổ item sang bàn có sẵn
+  tableIds: ID # đổ item sang bàn có sẵn
   createNewTable: Boolean
 }
 

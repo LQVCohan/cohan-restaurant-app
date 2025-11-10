@@ -1,20 +1,29 @@
-import React, { useState } from "react";
+// src/pages/CustomerManagement/index.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import CustomerList from "./CustomerList";
 import CustomerFilters from "./CustomerFilters";
 import PromotionModal from "./PromotionModal";
 import CustomerDetailModal from "./CustomerModal";
-import useCustomers from "../../../hooks/useCustomers";
+import useUserManagement from "../../../hooks/useUserManagement";
 import "./CustomerManagement.scss";
+
+const GUEST_ICON = "🟡"; // icon đánh dấu guest
 
 const CustomerManagement = () => {
   const {
+    // dữ liệu từ hook
     customers,
     filteredCustomers,
     loading,
+
+    // tiện ích giữ tương thích UI cũ
     searchCustomers,
     filterCustomers,
     switchRestaurant,
-  } = useCustomers();
+
+    // HÀM MỤC ĐÍCH SỬ DỤNG MỚI
+    getCustomers,
+  } = useUserManagement();
 
   const [selectedRestaurant, setSelectedRestaurant] = useState("saigon");
   const [showRightSidebar, setShowRightSidebar] = useState(false);
@@ -23,27 +32,64 @@ const CustomerManagement = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Lấy customers (bao gồm guest) khi vào trang
+  useEffect(() => {
+    // includeGuests = true để có cả khách vãng lai (isGuest = true)
+    getCustomers({ includeGuests: true });
+  }, [getCustomers]);
+
+  // Danh sách nhà hàng
   const restaurants = [
     { value: "saigon", label: "🏮 Nhà Hàng Sài Gòn" },
     { value: "hanoi", label: "🏛️ Nhà Hàng Hà Nội" },
     { value: "danang", label: "🌊 Nhà Hàng Đà Nẵng" },
   ];
 
-  const quickFilters = [
-    { key: "all", label: "Tất cả", icon: "👥", count: 1247 },
-    { key: "vip", label: "VIP", icon: "⭐", count: 89 },
-    { key: "new", label: "Mới", icon: "🆕", count: 156 },
-    { key: "frequent", label: "Thường xuyên", icon: "🔥", count: 234 },
-  ];
+  // Đếm theo tag nhanh trên chính tập customers
+  const quickFilters = useMemo(() => {
+    const total = customers.length || 0;
+    const vip = customers.filter(
+      (c) => (c.customerType || "").toUpperCase() === "VIP"
+    ).length;
+    const isNew = customers.filter(
+      (c) => (c.customerType || "").toUpperCase() === "NEW"
+    ).length;
+    const often = customers.filter(
+      (c) => (c.customerType || "").toUpperCase() === "OFTEN"
+    ).length;
+
+    return [
+      { key: "all", label: "Tất cả", icon: "👥", count: total },
+      { key: "vip", label: "VIP", icon: "⭐", count: vip },
+      { key: "new", label: "Mới", icon: "🆕", count: isNew },
+      { key: "frequent", label: "Thường xuyên", icon: "🔥", count: often },
+    ];
+  }, [customers]);
+
+  // Decorate khách hàng: thêm icon 🟡 cho guest, đảm bảo có field `name` để list render mượt
+  const decoratedCustomers = useMemo(() => {
+    return (filteredCustomers || []).map((c) => {
+      const baseName = c.fullName || c.name || "Khách hàng";
+      const nameWithIcon = c.isGuest ? `${baseName} ${GUEST_ICON}` : baseName;
+      return {
+        ...c,
+        name: nameWithIcon, // nhiều list item sử dụng `name`; nếu dùng `fullName` vẫn OK
+        displayName: nameWithIcon,
+      };
+    });
+  }, [filteredCustomers]);
 
   const handleRestaurantChange = (restaurantId) => {
     setSelectedRestaurant(restaurantId);
     switchRestaurant(restaurantId);
+    // có thể refetch theo nhà hàng nếu BE hỗ trợ filter theo restaurant
+    getCustomers({ includeGuests: true, search: searchQuery });
   };
 
   const handleSearch = (query) => {
     setSearchQuery(query);
     searchCustomers(query);
+    getCustomers({ includeGuests: true, search: query });
   };
 
   const handleFilter = (filter) => {
@@ -81,6 +127,13 @@ const CustomerManagement = () => {
                   </option>
                 ))}
               </select>
+
+              {/* Legend nhỏ cho icon guest */}
+              <div className="header__legend">
+                <span className="legend-item">
+                  <span className="legend-dot">{GUEST_ICON}</span> Guest
+                </span>
+              </div>
             </div>
           </div>
 
@@ -92,7 +145,7 @@ const CustomerManagement = () => {
               </div>
               <div className="stat-item stat-item--total">
                 <span>📊</span>
-                <span>1,247 Khách</span>
+                <span>{customers.length} Khách</span>
               </div>
             </div>
 
@@ -135,7 +188,7 @@ const CustomerManagement = () => {
                 <span>{filter.icon}</span>
                 <div className="filter-btn__content">
                   <span>{filter.label}</span>
-                  <span className="count">{filter.count}</span>{" "}
+                  <span className="count">{filter.count}</span>
                 </div>
               </button>
             ))}
@@ -175,7 +228,7 @@ const CustomerManagement = () => {
       <div className="customer-management__content">
         <div className="content__main">
           <CustomerList
-            customers={filteredCustomers}
+            customers={decoratedCustomers}
             loading={loading}
             onCustomerClick={handleCustomerClick}
           />

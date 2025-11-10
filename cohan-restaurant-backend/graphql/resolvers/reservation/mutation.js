@@ -145,8 +145,8 @@ async function resolveUserIdFromContact({
   // Không có -> tạo guest
   const guest = new User({
     fullName: (customerName || "Guest").trim(),
-    phone: customerPhone?.trim() || null,
-    email: customerEmail?.trim() || null,
+    phone: customerPhone?.trim() || undefined,
+    email: customerEmail?.trim() || undefined,
     isGuest: true,
     status: "active",
     guestExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // TTL 30 ngày
@@ -157,7 +157,7 @@ async function resolveUserIdFromContact({
 
 export const ReservationMutation = {
   /* ───────────────── createReservation ───────────────── */
-  async createReservation(_, { input }, _ctx) {
+  async createReservation(_, { input }) {
     try {
       const {
         restaurantId,

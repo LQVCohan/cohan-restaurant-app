@@ -60,6 +60,7 @@ input changeReservationTableInput {
 type Query {
   reservation(id: ID, orderCode: String): Reservation
   myReservations(limit: Int = 20, cursor: ID): [Reservation!]!
+  confirmedReservationByTable(restaurantId: ID!, tableId: ID!): Reservation
 }
 
 type Mutation {

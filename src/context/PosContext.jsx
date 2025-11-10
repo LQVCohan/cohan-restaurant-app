@@ -14,6 +14,7 @@ import useFloorManagement from "../hooks/useFloorManagement";
 import useTableManagement from "../hooks/useTableManagement";
 import useOrderManagement from "../hooks/useOrderManagement";
 import { useNotification } from "../hooks/useNotification";
+import { useTableDraft } from "../hooks/useTableDraft"; // ✅ NEW: lưu tạm draft theo bàn
 
 const PosContext = createContext(undefined);
 
@@ -106,6 +107,9 @@ export default function PosProvider({
     fetchTableByCode,
   } = useTableManagement({ restaurantId });
 
+  // 🔗 NEW: draft hooks (BE)
+  const { getTableDraft, upsertTableDraft, deleteTableDraft } = useTableDraft();
+
   // table filters
   const [tableSearch, setTableSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -170,7 +174,7 @@ export default function PosProvider({
     orderNote,
     setOrderNote,
     attachCustomerToOrder,
-    updateOrderCustomerByCode, // NEW: expose để dùng nơi khác nếu cần
+    updateOrderCustomerByCode, // expose
   } = useOrderManagement({
     currentOrder,
     setCurrentOrder,
@@ -296,7 +300,22 @@ export default function PosProvider({
     ]
   );
 
-  // ✅ Lưu thông tin khách LOCAL-ONLY (không gọi network)
+  // Utility: tìm table theo code
+  const findTableByCode = useCallback(
+    (code) => {
+      if (!code) return null;
+      return (
+        (allTables || []).find(
+          (t) => (t.code || "").toLowerCase() === String(code).toLowerCase()
+        ) || null
+      );
+    },
+    [allTables]
+  );
+
+  // ✅ Cập nhật: Lưu thông tin khách
+  // - Luôn đồng bộ state local (như trước).
+  // - Nếu có dữ liệu thời gian hoặc số khách → lưu DRAFT lên BE (useTableDraft).
   const saveTableCustomer = useCallback(
     async (tableCode, rawCustomer = {}) => {
       const code = (tableCode || "").trim();
@@ -308,14 +327,40 @@ export default function PosProvider({
       const phone = (rawCustomer.phone ?? "").toString().trim();
       const email = (rawCustomer.email ?? "").toString().trim().toLowerCase();
       const note = (rawCustomer.note ?? "").toString();
+
       const guestCount = Number.isFinite(Number(rawCustomer.guests))
         ? Number(rawCustomer.guests)
         : Number.isFinite(Number(rawCustomer.guestCount))
         ? Number(rawCustomer.guestCount)
         : null;
-      const checkin = rawCustomer.checkin || rawCustomer.checkinTime || "";
 
-      // 1) Lưu vào state local để lần saveOrder gửi kèm (nếu cần)
+      // Hỗ trợ input theo cả 2 kiểu:
+      // - checkin: ISO hoặc datetime-local (frontend)
+      // - checkinDate + checkinTime: tách riêng ngày/giờ
+      const checkinDate = rawCustomer.checkinDate || "";
+      const checkinTime = rawCustomer.checkinTime || "";
+      const checkinRaw = rawCustomer.checkin || rawCustomer.timeTo || "";
+
+      const toISO = () => {
+        // Ưu tiên date + time; fallback checkinRaw nếu có
+        if (checkinDate && checkinTime) {
+          const [y, m, d] = String(checkinDate).split("-").map(Number);
+          const [hh, mm] = String(checkinTime).split(":").map(Number);
+          if (!Number.isNaN(y) && !Number.isNaN(hh)) {
+            const dt = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, 0);
+            return dt.toISOString();
+          }
+        }
+        if (checkinRaw) {
+          // nếu đã là ISO thì dùng luôn, nếu là "YYYY-MM-DDTHH:mm" (datetime-local), Date vẫn parse được
+          const dt = new Date(checkinRaw);
+          if (!Number.isNaN(dt.getTime())) return dt.toISOString();
+        }
+        return null;
+      };
+      const isoTime = toISO();
+
+      // 1) Lưu vào state local để UI phản hồi tức thì
       setTableOrders((prev) => ({
         ...prev,
         [code]: {
@@ -336,20 +381,81 @@ export default function PosProvider({
                 customerName: fullName || prev.customerName,
                 phone: phone || prev.phone,
                 guestCount: guestCount ?? prev.guestCount ?? undefined,
-                checkinTime: checkin || prev.checkinTime,
+                checkinTime:
+                  isoTime ||
+                  checkinRaw ||
+                  (checkinDate && checkinTime
+                    ? `${checkinDate}T${checkinTime}`
+                    : prev.checkinTime),
                 note: note || prev.note,
               }
             : prev
         );
       }
 
+      // 3) NEW: Lưu DRAFT lên BE (nếu có thông tin để “đặt theo khung giờ”)
+      //    Điều kiện: có ngày/giờ hoặc có số khách (party size)
+      try {
+        const tableDoc =
+          findTableByCode(code) ||
+          (typeof fetchTableByCode === "function"
+            ? fetchTableByCode(code)
+            : null);
+
+        const tableId = tableDoc?.id || null;
+        const shouldDraft =
+          !!isoTime ||
+          !!guestCount ||
+          !!fullName ||
+          !!phone ||
+          !!email ||
+          !!note;
+
+        if (restaurantId && shouldDraft) {
+          await upsertTableDraft({
+            restaurantId,
+            tableId, // tốt nhất có tableId để đảm bảo unique vững
+            tableCode: code, // fallback nếu thiếu id
+            customerName: fullName || null,
+            customerPhone: phone || null,
+            customerEmail: email || null,
+            note: note || null,
+            partySize: Number.isFinite(guestCount) ? guestCount : null,
+            timeTo: isoTime,
+            ttlHours: 72,
+          });
+        }
+      } catch (e) {
+        console.warn("Upsert table draft failed:", e);
+        // Không chặn flow — chỉ log cảnh báo
+      }
+
       showNotification?.(`Đã lưu thông tin khách cho bàn ${code}.`, "success");
       return {
         success: true,
-        customer: { fullName, phone, email, note, guestCount, checkin },
+        customer: {
+          fullName,
+          phone,
+          email,
+          note,
+          guestCount,
+          checkin:
+            isoTime ||
+            checkinRaw ||
+            (checkinDate && checkinTime ? `${checkinDate}T${checkinTime}` : ""),
+        },
       };
     },
-    [currentTable, setCurrentTable, setTableOrders, showNotification]
+    [
+      restaurantId,
+      currentTable,
+      setCurrentTable,
+      setTableOrders,
+      showNotification,
+      upsertTableDraft,
+      fetchTableByCode,
+      findTableByCode,
+    ]
   );
 
   // đếm theo trạng thái
@@ -450,6 +556,7 @@ export default function PosProvider({
           console.warn("setTableStatus failed:", e);
         }
 
+        // dọn cache Table.status
         try {
           apollo.cache.modify({
             id: apollo.cache.identify({
@@ -585,7 +692,12 @@ export default function PosProvider({
       getStatusText,
       fetchTableByCode,
       getStatusCounts,
-      saveTableCustomer,
+
+      // khách & draft
+      saveTableCustomer, // ✅ updated
+      getTableDraft, // ✅ export
+      upsertTableDraft, // ✅ export
+      deleteTableDraft, // ✅ export
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -652,6 +764,9 @@ export default function PosProvider({
       setOrderNote,
       attachCustomerToOrder,
       updateOrderCustomerByCode,
+      getTableDraft,
+      upsertTableDraft,
+      deleteTableDraft,
     ]
   );
 

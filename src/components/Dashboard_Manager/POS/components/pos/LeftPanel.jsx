@@ -1,4 +1,3 @@
-// src/components/Dashboard_Manager/POS/components/panels/LeftPanel.jsx
 import React, { useMemo, useState, useCallback } from "react";
 import cls from "./LeftPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
@@ -68,14 +67,17 @@ function TableCard({ t, active, selected, onClick, onOpenTableActions }) {
       style={style}
       {...attributes}
       {...listeners}
-      title={`Bàn ${t.code} • ${t.capacity ?? 0} chỗ • ${t.status}`}
+      title={`Bàn ${t.displayCode || t.code} • ${t.capacity ?? 0} chỗ • ${
+        t.status
+      }${t.isGroup ? " • (Nhóm bàn)" : ""}`}
     >
       <div className={cls.tableTop}>
         <StatusDot status={t.status} />
         {t.type && <span className={cls.badge}>{t.type}</span>}
+        {t.isGroup && <span className={cls.badge}>Nhóm</span>}
       </div>
 
-      <div className={cls.tableCode}>Bàn {t.code}</div>
+      <div className={cls.tableCode}>Bàn {t.displayCode || t.code}</div>
 
       <div className={`${cls.tableMeta} ${cls.metaRow}`}>
         <span className={cls.kv}>{t.capacity ?? 0} chỗ</span>
@@ -124,7 +126,6 @@ export default function LeftPanel({ className = "" }) {
     currentOrderType,
     setCurrentOrderType,
     selectTableForOrder,
-    swapTableCodes,
     mergeTables,
     splitTables,
     refetchTables,
@@ -161,6 +162,68 @@ export default function LeftPanel({ className = "" }) {
     setActionsOpen(true);
   }, []);
 
+  // ---------- Gom nhóm bàn để hiển thị một thẻ duy nhất cho nhóm ----------
+  const uiTables = useMemo(() => {
+    if (!Array.isArray(tables) || tables.length === 0) return [];
+
+    const groups = new Map();
+    const singles = [];
+
+    tables.forEach((t) => {
+      if (t.joinGroupId) {
+        if (!groups.has(t.joinGroupId)) groups.set(t.joinGroupId, []);
+        groups.get(t.joinGroupId).push(t);
+      } else {
+        singles.push({
+          ...t,
+          isGroup: false,
+          memberIds: [t.id],
+          displayCode: t.code,
+        });
+      }
+    });
+
+    const precedence = [
+      "occupied",
+      "reserved",
+      "cleaning",
+      "offline",
+      "available",
+    ];
+
+    const groupCards = Array.from(groups.values()).map((arr) => {
+      const sortedByCode = [...arr].sort((a, b) =>
+        String(a.code).localeCompare(String(b.code), undefined, {
+          numeric: true,
+        })
+      );
+      const displayCode = sortedByCode.map((x) => x.code).join("+");
+      const anchor = sortedByCode[0];
+      const groupStatus =
+        precedence.find((s) => arr.some((x) => x.status === s)) || "available";
+      const totalCapacity =
+        arr.reduce((sum, x) => sum + (Number(x.capacity) || 0), 0) ||
+        anchor.capacity;
+
+      const tags = Array.from(new Set(arr.flatMap((x) => x.tags || [])));
+      const memberIds = arr.map((x) => x.id);
+      const memberCodes = sortedByCode.map((x) => x.code);
+
+      return {
+        ...anchor,
+        isGroup: true,
+        memberIds,
+        memberCodes,
+        displayCode,
+        status: groupStatus,
+        capacity: totalCapacity,
+        tags,
+      };
+    });
+
+    return [...singles, ...groupCards];
+  }, [tables]);
+
   const counts = useMemo(() => {
     const base = {
       all: tables?.length || 0,
@@ -187,56 +250,23 @@ export default function LeftPanel({ className = "" }) {
     return selectedEntities.every((t) => t.joinGroupId === gid) ? gid : null;
   }, [selectedEntities]);
 
-  const canSwap = useMemo(() => {
-    if (!restaurantId || selectedEntities.length !== 2) return false;
-    const [a, b] = selectedEntities;
-    return String(a.floorId) === String(b.floorId);
-  }, [selectedEntities, restaurantId]);
-
-  const toggleSelect = (id) =>
-    setSelectedIds((s) =>
-      s.includes(id) ? s.filter((x) => x !== id) : [...s, id]
-    );
+  const toggleSelect = (entity) => {
+    const ids = entity?.memberIds || [entity?.id];
+    setSelectedIds((s) => {
+      const allIncluded = ids.every((id) => s.includes(id));
+      if (allIncluded) return s.filter((x) => !ids.includes(x));
+      return Array.from(new Set([...s, ...ids]));
+    });
+  };
 
   const handleClickTable = (t) => {
-    if (multiSelect) return toggleSelect(t.id);
-    selectTableForOrder(t.code, t.capacity || 0);
+    if (multiSelect) return toggleSelect(t);
+    // với nhóm: lấy anchor theo code hiện tại (t.code là anchor)
+    const anchor = fetchTableByCode?.(t.code, t.restaurantId) || t;
+    selectTableForOrder(anchor.code, anchor.capacity || 0);
   };
 
-  const handleSwap = async () => {
-    if (!canSwap) return;
-    const [a, b] = selectedEntities;
-    await swapTableCodes({
-      restaurantId,
-      floorId: a.floorId,
-      aId: a.id,
-      bId: b.id,
-    });
-    setSelectedIds([]);
-    setMultiSelect(false);
-    await refetchTables?.();
-  };
-
-  const handleMerge = async () => {
-    if (selectedIds.length < 2) return;
-    await mergeTables({ tableIds: selectedIds, anchorId: selectedIds[0] });
-    setSelectedIds([]);
-    setMultiSelect(false);
-    await refetchTables?.();
-  };
-
-  const handleSplitPartial = async () => {
-    if (!sameGroupSelected) return;
-    await splitTables({
-      joinGroupId: sameGroupSelected,
-      mode: "PARTIAL",
-      tableIds: selectedIds,
-    });
-    setSelectedIds([]);
-    setMultiSelect(false);
-    await refetchTables?.();
-  };
-
+  // ---------- Kéo thả: gộp bàn thay vì đổi code ----------
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, {
@@ -247,25 +277,42 @@ export default function LeftPanel({ className = "" }) {
 
   const onDragEnd = async ({ active, over }) => {
     if (!active?.id || !over?.id || active.id === over.id) return;
+
     const a = tables.find((t) => t.id === active.id);
     const b = tables.find((t) => t.id === over.id);
-    if (!a || !b || String(a.floorId) !== String(b.floorId)) return;
-    await swapTableCodes({
-      restaurantId,
-      floorId: a.floorId,
-      aId: a.id,
-      bId: b.id,
-    });
-    await refetchTables?.();
-    setSelectedIds([]);
-    setMultiSelect(false);
+    if (!a || !b) return;
+    if (String(a.floorId) !== String(b.floorId)) return;
+
+    const ok = window.confirm(
+      `Bạn có chắc muốn gộp bàn ${a.code} vào bàn ${
+        b.code
+      }?\nSau khi gộp, giao diện sẽ hiển thị dạng "${[a.code, b.code]
+        .sort((x, y) =>
+          String(x).localeCompare(String(y), undefined, { numeric: true })
+        )
+        .join("+")}".`
+    );
+    if (!ok) return;
+
+    try {
+      await mergeTables({ tableIds: [a.id, b.id], anchorId: b.id });
+      await refetchTables?.();
+      const name = [a.code, b.code]
+        .sort((x, y) =>
+          String(x).localeCompare(String(y), undefined, { numeric: true })
+        )
+        .join("+");
+      showNotification?.(`Đã gộp bàn thành công: ${name}`, "success");
+      setSelectedIds([]);
+      setMultiSelect(false);
+    } catch (e) {
+      console.error(e);
+      showNotification?.("Gộp bàn thất bại. Vui lòng thử lại.", "error");
+    }
   };
 
   /**
-   * ✅ Được gọi từ TableActionsModal.saveCustomerInfo
-   * - Nếu bàn có order: cập nhật trực tiếp order.user (không query lại OrdersByRestaurantNow)
-   * - Nếu bàn trống: tạo Reservation và set status = reserved
-   * (chỉ 1 lần refetchTables ở cuối)
+   * Lưu thông tin khách (giữ nguyên như trước)
    */
   const handleSaveCustomerFromModal = useCallback(
     async (tableCode, cust) => {
@@ -281,12 +328,10 @@ export default function LeftPanel({ className = "" }) {
           return;
         }
 
-        // 1) Có order? (chỉ gọi 1 lần)
         const res = await fetchOrderByTable?.(restaurantId, code, 1, 0);
         const activeOrder = res?.data?.[0] || null;
 
         if (activeOrder) {
-          // cập nhật user vào đơn bằng orderCode (không cần query thêm)
           await updateOrderCustomerByCode({
             restaurantId,
             orderCode: activeOrder.orderCode,
@@ -301,18 +346,15 @@ export default function LeftPanel({ className = "" }) {
             "success"
           );
 
-          // Nếu bàn đang reserved → chuyển sang occupied
           try {
             if (table.status === "reserved") {
               await setTableStatus?.({ id: table.id, status: "occupied" });
             }
-            // eslint-disable-next-line no-empty
           } catch {}
           await refetchTables?.();
           return;
         }
 
-        // 2) Không có order → nếu available thì tạo reservation
         if (table.status === "available") {
           const isoTime = cust?.checkin
             ? new Date(cust.checkin).toISOString()
@@ -336,7 +378,6 @@ export default function LeftPanel({ className = "" }) {
 
           try {
             await setTableStatus?.({ id: table.id, status: "reserved" });
-            // eslint-disable-next-line no-empty
           } catch {}
 
           showNotification?.(
@@ -345,7 +386,6 @@ export default function LeftPanel({ className = "" }) {
           );
           await refetchTables?.();
         } else {
-          // các trạng thái khác thì chỉ refresh 1 lần
           await refetchTables?.();
         }
       } catch (e) {
@@ -366,7 +406,7 @@ export default function LeftPanel({ className = "" }) {
     ]
   );
 
-  /* ---------- NEW: Reset toàn bộ bàn về TRỐNG (bulk) ---------- */
+  /* ---------- Reset toàn bộ bàn về TRỐNG (bulk) ---------- */
   const [isResetting, setIsResetting] = useState(false);
 
   const handleResetAllTables = useCallback(async () => {
@@ -405,7 +445,43 @@ export default function LeftPanel({ className = "" }) {
       setIsResetting(false);
     }
   }, [restaurantId, tables, setTableStatus, refetchTables, showNotification]);
-  /* ------------------------------------------------------------ */
+
+  /* --------- Lọc theo tầng + Tìm kiếm (contains & exact) + Trạng thái --------- */
+  const filteredUiTables = useMemo(() => {
+    const levelFiltered = (uiTables || []).filter((t) =>
+      activeLevel == null ? true : String(t.floorLevel) === String(activeLevel)
+    );
+
+    const raw = tableSearch || "";
+    const endsWithSpace = /\s$/.test(raw);
+    const q = raw.trim().toLowerCase();
+
+    const searchFiltered = q
+      ? levelFiltered.filter((t) => {
+          const display = String(t.displayCode || t.code || "").toLowerCase();
+          if (endsWithSpace) {
+            // exact mode: khớp đúng mã hiển thị hoặc bất kỳ mã thành viên
+            const exactCodes = new Set([
+              display,
+              ...(t.memberCodes || []).map((x) => String(x).toLowerCase()),
+              String(t.code || "").toLowerCase(),
+            ]);
+            return exactCodes.has(q);
+          }
+          // contains mode: tìm trong displayCode hoặc code của anchor
+          const pool = [display, String(t.code || "").toLowerCase()];
+          return pool.some((s) => s.includes(q));
+        })
+      : levelFiltered;
+
+    const status = statusFilter || "all";
+    const statusFiltered =
+      status === "all"
+        ? searchFiltered
+        : searchFiltered.filter((t) => t.status === status);
+
+    return statusFiltered;
+  }, [uiTables, activeLevel, tableSearch, statusFilter]);
 
   return (
     <div className={`${cls.wrapper} ${className}`}>
@@ -549,7 +625,22 @@ export default function LeftPanel({ className = "" }) {
                 className={`${cls.btn} ${
                   selectedIds.length >= 2 ? cls.success : cls.disabled
                 }`}
-                onClick={handleMerge}
+                onClick={async () => {
+                  if (selectedIds.length < 2) return;
+                  try {
+                    await mergeTables({
+                      tableIds: selectedIds,
+                      anchorId: selectedIds[0],
+                    });
+                    await refetchTables?.();
+                    setSelectedIds([]);
+                    setMultiSelect(false);
+                    showNotification?.("Đã gộp bàn đã chọn.", "success");
+                  } catch (e) {
+                    console.error(e);
+                    showNotification?.("Gộp bàn thất bại.", "error");
+                  }
+                }}
                 disabled={selectedIds.length < 2}
                 title="Gộp nhóm các bàn đã chọn"
               >
@@ -560,20 +651,27 @@ export default function LeftPanel({ className = "" }) {
                 className={`${cls.btn} ${
                   sameGroupSelected ? cls.violet : cls.disabled
                 }`}
-                onClick={handleSplitPartial}
+                onClick={async () => {
+                  if (!sameGroupSelected) return;
+                  try {
+                    await splitTables({
+                      joinGroupId: sameGroupSelected,
+                      mode: "PARTIAL",
+                      tableIds: selectedIds,
+                    });
+                    await refetchTables?.();
+                    setSelectedIds([]);
+                    setMultiSelect(false);
+                    showNotification?.("Đã tách bàn.", "success");
+                  } catch (e) {
+                    console.error(e);
+                    showNotification?.("Tách bàn thất bại.", "error");
+                  }
+                }}
                 disabled={!sameGroupSelected}
                 title="Tách các bàn đã chọn khỏi nhóm"
               >
                 Tách bàn
-              </button>
-
-              <button
-                className={`${cls.btn} ${canSwap ? cls.primary : cls.disabled}`}
-                onClick={handleSwap}
-                disabled={!canSwap}
-                title="Đổi chỗ (swap code) giữa 2 bàn cùng tầng"
-              >
-                Đổi chỗ
               </button>
 
               <button
@@ -589,7 +687,7 @@ export default function LeftPanel({ className = "" }) {
           )}
         </div>
 
-        {/* NEW: nút Reset toàn bộ bàn về TRỐNG */}
+        {/* Reset toàn bộ bàn về TRỐNG */}
         <div className={cls.right}>
           <button
             type="button"
@@ -610,13 +708,15 @@ export default function LeftPanel({ className = "" }) {
         onDragEnd={onDragEnd}
       >
         <div className={cls.tablesGrid}>
-          {tables?.length ? (
-            tables.map((t) => (
+          {filteredUiTables?.length ? (
+            filteredUiTables.map((t) => (
               <TableCard
                 key={t.id}
                 t={t}
                 active={false}
-                selected={selectedIds.includes(t.id)}
+                selected={(t.memberIds || [t.id]).every((id) =>
+                  selectedIds.includes(id)
+                )}
                 onClick={() => handleClickTable(t)}
                 onOpenTableActions={onOpenTableActions}
               />
@@ -627,7 +727,6 @@ export default function LeftPanel({ className = "" }) {
         </div>
       </DndContext>
 
-      {/* Modal hành động bàn */}
       <TableActionsModal
         open={actionsOpen}
         table={activeTableForActions}

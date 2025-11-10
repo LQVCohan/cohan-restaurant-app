@@ -40,11 +40,7 @@ const restaurantSchema = BaseSchemaModel({
     required: false,
   },
 });
-restaurantSchema.index(
-  { status: 1, avgRating: -1 },
-  {
-    unique: true,
-    partialFilterExpression: { managerId: { $type: "objectId" } },
-  }
-);
+restaurantSchema.index({ status: 1, avgRating: -1 });
+restaurantSchema.index({ "address.city": 1, "address.district": 1 });
+restaurantSchema.index({ cuisineType: 1 });
 export default mongoose.model("Restaurant", restaurantSchema);

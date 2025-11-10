@@ -35,3 +35,4 @@ export { default as EventLog } from "./event-log.model.js";
 export { default as Recommendation } from "./recommendation.model.js";
 export { default as Cashflow } from "./cashflow.model.js";
 export { default as AuditLog } from "./audit-log.model.js";
+export { default as TableDraft } from "./tableDraft.model.js";

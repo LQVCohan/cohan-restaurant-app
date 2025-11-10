@@ -475,7 +475,208 @@ export const UserMutation = {
     const roleName = (saved.role?.slug || saved.role?.name || "").toLowerCase();
     return { ...saved, roleName };
   },
+  async createGuestUser(_, { fullName, phone, expiresInDays = 30 }, { user }) {
+    requireRole(user, ["admin", "manager", "staff"]);
 
+    const doc = new User({
+      fullName: (fullName || "Guest").trim(),
+      phone: phone ? normalizePhone(phone) : undefined,
+      status: "active",
+      isGuest: true,
+      guestExpiresAt: dayjs().add(expiresInDays, "day").toDate(),
+      customerType: "NEW",
+      loyaltyPoints: 0,
+      totalOrders: 0,
+      totalSpending: 0,
+    });
+
+    await doc.save();
+    const saved = await User.findById(doc._id)
+      .populate("role")
+      .lean({ virtuals: true });
+    return saved;
+  },
+
+  // === NEW: admin cập nhật user bất kỳ ===
+  async adminUpdateUser(_, { userId, input }, { user: authUser }) {
+    requireRole(authUser, ["admin", "manager"]);
+    if (!mongoose.isValidObjectId(userId)) {
+      throw new GraphQLError("Invalid userId", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+
+    const u = await User.findById(userId);
+    if (!u) {
+      throw new GraphQLError("User not found", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
+
+    const updates = {};
+    if (typeof input.fullName === "string")
+      updates.fullName = input.fullName.trim();
+    if (typeof input.username === "string" && input.username.trim()) {
+      const nextUsername = input.username.trim().toLowerCase();
+      const existUsername = await User.findOne({
+        _id: { $ne: u._id },
+        username: nextUsername,
+      }).lean();
+      if (existUsername) {
+        throw new GraphQLError("Username already in use", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      updates.username = nextUsername;
+    }
+    if (typeof input.email === "string") {
+      const nextEmail = input.email.trim().toLowerCase() || null;
+      if (nextEmail) {
+        const existEmail = await User.findOne({
+          _id: { $ne: u._id },
+          email: nextEmail,
+        }).lean();
+        if (existEmail) {
+          throw new GraphQLError("Email already in use", {
+            extensions: { code: "BAD_USER_INPUT" },
+          });
+        }
+        if (u.email && u.email !== nextEmail) updates.emailVerified = false;
+      } else {
+        updates.emailVerified = false;
+      }
+      updates.email = nextEmail;
+    }
+    if (typeof input.phone === "string") {
+      const nextPhone = normalizePhone(input.phone);
+      if (nextPhone) {
+        const existPhone = await User.findOne({
+          _id: { $ne: u._id },
+          phone: nextPhone,
+        }).lean();
+        if (existPhone) {
+          throw new GraphQLError("Phone already in use", {
+            extensions: { code: "BAD_USER_INPUT" },
+          });
+        }
+        updates.phone = nextPhone;
+      } else {
+        updates.phone = null;
+      }
+    }
+    if (input.address && typeof input.address === "object") {
+      updates.address = {
+        line1: input.address.line1 ?? u.address?.line1 ?? "",
+        line2: input.address.line2 ?? u.address?.line2 ?? "",
+        ward: input.address.ward ?? u.address?.ward ?? "",
+        district: input.address.district ?? u.address?.district ?? "",
+        city: input.address.city ?? u.address?.city ?? "",
+        country: input.address.country ?? u.address?.country ?? "vietnam",
+      };
+    }
+    if (Object.prototype.hasOwnProperty.call(input, "avatarUrl")) {
+      const v = (input.avatarUrl ?? "").toString().trim();
+      updates.avatarUrl = v || null;
+    }
+    if (typeof input.status === "string") {
+      const s = input.status.toLowerCase();
+      if (!["active", "inactive", "blocked", "pending"].includes(s)) {
+        throw new GraphQLError("Invalid status", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      updates.status = s;
+    }
+    if (typeof input.customerType === "string")
+      updates.customerType = input.customerType;
+    if (typeof input.loyaltyPoints === "number")
+      updates.loyaltyPoints = Math.max(0, input.loyaltyPoints);
+    if (typeof input.totalOrders === "number")
+      updates.totalOrders = Math.max(0, input.totalOrders);
+    if (typeof input.totalSpending === "number")
+      updates.totalSpending = Math.max(0, input.totalSpending);
+    if (typeof input.isGuest === "boolean") updates.isGuest = input.isGuest;
+    if (input.guestExpiresAt)
+      updates.guestExpiresAt = new Date(input.guestExpiresAt);
+    if (Array.isArray(input.refRestaurantIds)) {
+      updates.refRestaurants = input.refRestaurantIds.map(
+        (id) => new mongoose.Types.ObjectId(id)
+      );
+    }
+
+    // cho phép đổi role trực tiếp
+    if (input.roleId) {
+      if (!mongoose.isValidObjectId(input.roleId)) {
+        throw new GraphQLError("Invalid roleId", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      const roleDoc = await Role.findById(input.roleId).lean();
+      if (!roleDoc) {
+        throw new GraphQLError("Role not found", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      updates.role = input.roleId;
+    }
+
+    const saved = await User.findByIdAndUpdate(u._id, updates, {
+      new: true,
+      runValidators: true,
+    })
+      .populate("role")
+      .lean({ virtuals: true });
+
+    return saved;
+  },
+
+  // === NEW: đổi status nhanh ===
+  async setUserStatus(_, { userId, status }, { user: authUser }) {
+    requireRole(authUser, ["admin", "manager"]);
+    if (!mongoose.isValidObjectId(userId)) {
+      throw new GraphQLError("Invalid userId", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const s = (status || "").toLowerCase();
+    if (!["active", "inactive", "blocked", "pending"].includes(s)) {
+      throw new GraphQLError("Invalid status", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const saved = await User.findByIdAndUpdate(
+      userId,
+      { status: s },
+      { new: true }
+    ).lean();
+    if (!saved) {
+      throw new GraphQLError("User not found", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
+    return saved;
+  },
+
+  // === NEW: xoá mềm (đặt inactive) ===
+  async softDeleteUser(_, { userId }, { user: authUser }) {
+    requireRole(authUser, ["admin"]);
+    if (!mongoose.isValidObjectId(userId)) {
+      throw new GraphQLError("Invalid userId", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const saved = await User.findByIdAndUpdate(
+      userId,
+      { status: "inactive" },
+      { new: true }
+    ).lean();
+    if (!saved) {
+      throw new GraphQLError("User not found", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
+    return true;
+  },
   // ========== verify email mutations ==========
   ...emailVerificationMutation,
 };

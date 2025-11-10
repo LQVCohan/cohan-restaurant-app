@@ -1,10 +1,32 @@
+// src/resolvers/restaurant.query.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Restaurant, User } from "../../../models/index.js";
 
+/* ============================ Helpers ============================ */
+
+function badInput(message) {
+  return new GraphQLError(message, { extensions: { code: "BAD_USER_INPUT" } });
+}
+function notFound(message = "Resource not found") {
+  return new GraphQLError(message, { extensions: { code: "NOT_FOUND" } });
+}
+
 function toObjectIdOrNull(id) {
   if (!id) return null;
   return mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
+}
+
+function clampLimit(n, min = 1, max = 100) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return min;
+  return Math.max(min, Math.min(max, Math.floor(x)));
+}
+
+function safeRegexContains(value) {
+  const s = String(value || "").trim();
+  if (!s) return null;
+  return { $regex: s, $options: "i" };
 }
 
 function buildFilter(restaurantFilter) {
@@ -14,11 +36,13 @@ function buildFilter(restaurantFilter) {
   const { city, district, cuisineTypes, minRating, priceRange, search } =
     restaurantFilter;
 
-  if (city) f["address.city"] = { $regex: city, $options: "i" };
-  if (district) f["address.district"] = { $regex: district, $options: "i" };
+  const cityRx = safeRegexContains(city);
+  const districtRx = safeRegexContains(district);
+  if (cityRx) f["address.city"] = cityRx;
+  if (districtRx) f["address.district"] = districtRx;
 
   if (Array.isArray(cuisineTypes) && cuisineTypes.length > 0) {
-    f.cuisineType = { $in: cuisineTypes };
+    f.cuisineType = { $in: cuisineTypes.filter(Boolean) };
   }
 
   if (typeof minRating === "number") {
@@ -26,34 +50,43 @@ function buildFilter(restaurantFilter) {
   }
 
   if (Array.isArray(priceRange) && priceRange.length > 0) {
-    f.priceRange = { $in: priceRange };
+    f.priceRange = { $in: priceRange.filter(Boolean) };
   }
 
-  if (search && search.trim()) {
-    const s = search.trim();
+  const sRx = safeRegexContains(search);
+  if (sRx) {
     f.$or = [
-      { name: { $regex: s, $options: "i" } },
-      { description: { $regex: s, $options: "i" } },
-      { cuisineType: { $regex: s, $options: "i" } },
-      { "address.city": { $regex: s, $options: "i" } },
-      { "address.district": { $regex: s, $options: "i" } },
+      { name: sRx },
+      { description: sRx },
+      { cuisineType: sRx },
+      { "address.city": sRx },
+      { "address.district": sRx },
     ];
   }
 
   return f;
 }
 
-/** Danh sách nhà hàng với cursor pagination và bộ lọc */
+/* ============================ Queries ============================ */
+
+/** Danh sách nhà hàng với cursor pagination và bộ lọc
+ *  - sort theo _id tăng dần
+ *  - cursor là _id, dùng $gt (forward pagination)
+ */
 async function restaurants(_, { limit = 20, cursor, restaurantFilter }) {
+  const lim = clampLimit(limit, 1, 100);
+
   const f = buildFilter(restaurantFilter);
   const cId = toObjectIdOrNull(cursor);
   if (cId) f._id = { ...(f._id || {}), $gt: cId };
 
   const docs = await Restaurant.find(f)
     .sort({ _id: 1 })
-    .limit(limit + 1);
-  const hasNextPage = docs.length > limit;
-  const slice = hasNextPage ? docs.slice(0, -1) : docs;
+    .limit(lim + 1)
+    .lean();
+
+  const hasNextPage = docs.length > lim;
+  const slice = hasNextPage ? docs.slice(0, lim) : docs;
 
   return {
     edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
@@ -67,20 +100,22 @@ async function restaurants(_, { limit = 20, cursor, restaurantFilter }) {
 /** Chi tiết nhà hàng */
 async function restaurant(_, { id }) {
   if (!mongoose.isValidObjectId(id)) {
-    throw new GraphQLError("Invalid ID", {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
+    throw badInput("Invalid ID");
   }
-  const doc = await Restaurant.findById(id);
-  return doc || null;
+  const doc = await Restaurant.findById(id).lean();
+  return doc || null; // SDL của bạn cho phép null
 }
 
 /** Top nhà hàng theo rating với bộ lọc */
 async function restaurantsTop(_, { limit = 6, restaurantFilter }) {
+  const lim = clampLimit(limit, 1, 100);
   const f = buildFilter(restaurantFilter);
+
   const docs = await Restaurant.find(f)
     .sort({ avgRating: -1, _id: 1 })
-    .limit(limit);
+    .limit(lim)
+    .lean();
+
   return docs;
 }
 
@@ -90,24 +125,25 @@ async function restaurantsByManager(
   { managerId, limit = 20, cursor, restaurantFilter }
 ) {
   if (!mongoose.isValidObjectId(managerId)) {
-    throw new GraphQLError("Invalid managerId", {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
+    throw badInput("Invalid managerId");
   }
 
+  const lim = clampLimit(limit, 1, 100);
   const f = {
     managerId: new mongoose.Types.ObjectId(managerId),
     ...buildFilter(restaurantFilter),
   };
+
   const cId = toObjectIdOrNull(cursor);
   if (cId) f._id = { ...(f._id || {}), $gt: cId };
 
   const docs = await Restaurant.find(f)
     .sort({ _id: 1 })
-    .limit(limit + 1);
+    .limit(lim + 1)
+    .lean();
 
-  const hasNextPage = docs.length > limit;
-  const slice = hasNextPage ? docs.slice(0, -1) : docs;
+  const hasNextPage = docs.length > lim;
+  const slice = hasNextPage ? docs.slice(0, lim) : docs;
 
   return {
     edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
@@ -117,35 +153,37 @@ async function restaurantsByManager(
     },
   };
 }
+
+/** Các nhà hàng tham chiếu theo user.refRestaurant */
 async function refRestaurants(_, { userId }) {
   if (!mongoose.isValidObjectId(userId)) {
-    throw new GraphQLError("Invalid userId", {
-      extensions: { code: "BAD_USER_INPUT" },
-    });
+    throw badInput("Invalid userId");
   }
 
-  // Tìm user và lấy danh sách nhà hàng mà họ có quyền truy cập
-  const user = await User.findById(userId).select("refRestaurant");
+  const user = await User.findById(userId).select("refRestaurant").lean();
+  if (!user) throw notFound("User not found");
 
-  if (!user) {
-    throw new GraphQLError("User not found", {
-      extensions: { code: "NOT_FOUND" },
-    });
-  }
+  const ref = Array.isArray(user.refRestaurant) ? user.refRestaurant : [];
+  if (ref.length === 0) return [];
 
-  const restaurantIds = user.refRestaurant;
+  // Chuẩn hoá về ObjectId, loại phần tử rỗng/trùng
+  const ids = [
+    ...new Set(
+      ref
+        .map((x) => (mongoose.isValidObjectId(x) ? String(x) : null))
+        .filter(Boolean)
+    ),
+  ].map((s) => new mongoose.Types.ObjectId(s));
 
-  if (!restaurantIds || restaurantIds.length === 0) {
-    return [];
-  }
+  if (ids.length === 0) return [];
 
-  // Lấy nhà hàng từ danh sách refRestaurant của người dùng
-  const restaurants = await Restaurant.find({
-    _id: { $in: restaurantIds },
-  });
+  const restaurants = await Restaurant.find({ _id: { $in: ids } })
+    .sort({ _id: 1 })
+    .lean();
 
   return restaurants;
 }
+
 export const RestaurantQuery = {
   restaurants,
   restaurant,
