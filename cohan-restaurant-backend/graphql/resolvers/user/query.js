@@ -67,10 +67,10 @@ export const UserQuery = {
   },
 
   // ========== Lấy toàn bộ users (mục đích: tổng quản trị) ==========
-  // Args: roleId?: ID, isGuest?: Boolean, search?: String
+
   async users(_, { roleId, isGuest, search }, { user: authUser }) {
     try {
-      // Chỉ cho admin (tuỳ chỉnh nếu bạn muốn cho manager xem)
+     
       requireRole(authUser, ["admin", "manager"]);
 
       const cond = {};

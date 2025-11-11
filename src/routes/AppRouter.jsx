@@ -48,7 +48,21 @@ const ME_QUERY = gql`
       id
       fullName
       email
-      roleName
+      role {
+        id
+        name
+        slug
+        description
+        parent
+        isSystem
+        permissions {
+          id
+          name
+        }
+
+        createdAt
+        updatedAt
+      }
       emailVerified
     }
   }

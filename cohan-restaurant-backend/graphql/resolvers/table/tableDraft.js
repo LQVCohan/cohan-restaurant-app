@@ -50,14 +50,18 @@ function isAdmin(user) {
   );
 }
 async function isManager(user) {
+  const me = user.user;
   return (
-    !!user &&
-    (user.roleName?.toLowerCase?.() === "manager" ||
-      (await userHasRoleSlug(user, "manager")))
+    !!me &&
+    (me.role?.name?.toLowerCase?.() === "manager" ||
+      (await userHasRoleSlug(me, "manager")))
   );
 }
 
 async function assertCanWriteRestaurant(user, restaurantId) {
+  console.log("----------------------");
+  console.log("ctx: ", user);
+  console.log("----------------------");
   if (!user) throw forbidden("Unauthorized");
   if (isAdmin(user)) return true;
 
@@ -69,7 +73,7 @@ async function assertCanWriteRestaurant(user, restaurantId) {
 
   const r = await Restaurant.findById(rid).lean();
   if (!r) throw notFound("Restaurant not found");
-  if (String(r.managerId) !== String(user._id)) {
+  if (String(r.managerId) !== String(user.user.id)) {
     throw forbidden("You can only modify your own restaurant");
   }
   return true;
@@ -108,7 +112,7 @@ async function tableDraftsByRestaurant(_, { restaurantId }, { user }) {
 
 /* ============================ Mutations ============================ */
 
-async function upsertTableDraft(_, { input }, { user }) {
+async function upsertTableDraft(_, { input }, _ctx) {
   const {
     restaurantId,
     tableId,
@@ -122,7 +126,7 @@ async function upsertTableDraft(_, { input }, { user }) {
     ttlHours,
   } = input || {};
 
-  await assertCanWriteRestaurant(user, restaurantId);
+  await assertCanWriteRestaurant(_ctx, restaurantId);
 
   if (!tableId && !tableCode) {
     throw badInput("tableId or tableCode is required");

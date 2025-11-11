@@ -125,7 +125,15 @@ userSchema.methods.checkPassword = async function (plain) {
   if (!this.passwordHash) return false;
   return bcrypt.compare(plain, this.passwordHash);
 };
-
+userSchema.virtual("roleName").get(function () {
+  // Khi chưa populate role thì chỉ có ObjectId
+  const r = this.role;
+  if (!r) return "";
+  // Nếu đã populate => r có {slug, name}
+  const slug = r.slug || r?.toObject?.()?.slug;
+  const name = r.name || r?.toObject?.()?.name;
+  return (slug || name || "").toString().toLowerCase();
+});
 userSchema.index({
   fullName: "text",
   "address.city": 1,

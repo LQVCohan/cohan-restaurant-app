@@ -82,11 +82,11 @@ export const OrderQuery = {
       throw new Error("Invalid restaurantId");
     }
     const f = {
-      restaurantId: new mongoose.Types.ObjectId(restaurantId),
+      restaurantId: restaurantId,
       currentStatus: { $nin: ACTIVE_EXCLUDE },
     };
     if (cursor && mongoose.isValidObjectId(cursor)) {
-      f._id = { $gt: new mongoose.Types.ObjectId(cursor) };
+      f._id = { $gt: cursor };
     }
 
     const docs = await Order.find(f)

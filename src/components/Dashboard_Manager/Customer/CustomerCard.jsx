@@ -40,6 +40,31 @@ const CustomerCard = ({ customer }) => {
       setShowBillModal(true);
     }
   };
+  const safeMembershipDays = (() => {
+    const v = customer?.joinDate;
+    if (!v) return 0;
+
+    // v có thể là ISO string hoặc số ms (nếu đâu đó truyền thẳng)
+    let ms;
+    if (typeof v === "number" && Number.isFinite(v)) {
+      ms = v;
+    } else if (typeof v === "string") {
+      if (/^\d+$/.test(v.trim())) {
+        const n = Number(v.trim());
+        ms = v.trim().length === 10 ? n * 1000 : n;
+      } else {
+        const parsed = Date.parse(v);
+        if (!Number.isFinite(parsed)) return 0;
+        ms = parsed;
+      }
+    } else if (v instanceof Date) {
+      ms = v.getTime();
+    } else {
+      return 0;
+    }
+
+    return Math.max(0, Math.floor((Date.now() - ms) / (1000 * 60 * 60 * 24)));
+  })();
 
   // Đảm bảo recentOrders luôn là array
   const recentOrders = customer.recentOrders || [];
@@ -134,12 +159,7 @@ const CustomerCard = ({ customer }) => {
             </div>
             <div className="text-center p-3 bg-purple-50 rounded-xl">
               <div className="text-lg font-bold text-purple-600">
-                {customer.joinDate
-                  ? Math.floor(
-                      (new Date() - new Date(customer.joinDate)) /
-                        (1000 * 60 * 60 * 24)
-                    )
-                  : 0}
+                {safeMembershipDays}
               </div>
               <div className="text-xs text-gray-600">Ngày thành viên</div>
             </div>

@@ -211,10 +211,9 @@ function TableActionsModalCore({
         try {
           const ores = await fetchOrderByTableRef.current?.(
             restaurantId,
-            table.code,
-            1,
-            0
+            table.code
           );
+          console.log("ores: ", ores);
           const activeOrder = ores?.data?.[0] || null;
           const u = activeOrder?.user || activeOrder?.customer || null;
           if (u && !cancelled) {
@@ -587,7 +586,7 @@ function TableActionsModalCore({
         }
       }
 
-      if (status === "occupied" || table?.orderCode) {
+      if (status === "occupied") {
         const r = await attachCustomerToOrder(table.code, customer);
         if (!r?.success) {
           alert(r?.message || "Cập nhật khách vào đơn thất bại.");

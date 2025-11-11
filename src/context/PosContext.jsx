@@ -202,7 +202,7 @@ export default function PosProvider({
       // Dò order hoạt động từ DB
       let activeOrderDoc = null;
       try {
-        const res = await fetchOrderByTable(restaurantId, code, 1, 0);
+        const res = await fetchOrderByTable(restaurantId, code);
         activeOrderDoc = res?.data?.[0] || null;
       } catch (e) {
         console.warn("fetchOrderByTable failed:", e);
@@ -414,8 +414,8 @@ export default function PosProvider({
         if (restaurantId && shouldDraft) {
           await upsertTableDraft({
             restaurantId,
-            tableId, // tốt nhất có tableId để đảm bảo unique vững
-            tableCode: code, // fallback nếu thiếu id
+            tableId,
+            tableCode: code,
             customerName: fullName || null,
             customerPhone: phone || null,
             customerEmail: email || null,
@@ -534,7 +534,7 @@ export default function PosProvider({
       if (tableCode && tableOrders?.[tableCode]?.customer) {
         const c = tableOrders[tableCode].customer || {};
         customerFromState = {
-          fullName: (c.fullName || c.name || "").trim(),
+          fullName: (c.fullName || "").trim(),
           phone: (c.phone || "").trim(),
           email: (c.email || "").trim().toLowerCase(),
         };

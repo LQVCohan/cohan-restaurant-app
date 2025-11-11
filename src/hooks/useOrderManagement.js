@@ -325,6 +325,8 @@ const UPDATE_ORDER_CUSTOMER_BY_CODE = gql`
         user {
           id
           fullName
+          email
+          phone
         }
         updatedAt
       }
@@ -1300,7 +1302,7 @@ export default function useOrderManagement(pos = null) {
       if (!orderCode) return { success: false, message: "Thiếu orderCode." };
 
       const clean = {
-        fullName: (customer?.fullName || customer?.name || "").trim(),
+        fullName: (customer?.fullName || "").trim(),
         phone: (customer?.phone || "").trim(),
         email: (customer?.email || "").trim().toLowerCase(),
       };
@@ -1354,7 +1356,7 @@ export default function useOrderManagement(pos = null) {
 
       if (!orderCode && tableCode && restaurantId && fetchOrderByTable) {
         try {
-          const r = await fetchOrderByTable(restaurantId, tableCode, 1, 0);
+          const r = await fetchOrderByTable(restaurantId, tableCode);
           orderCode = r?.data?.[0]?.orderCode || null;
         } catch {}
       }

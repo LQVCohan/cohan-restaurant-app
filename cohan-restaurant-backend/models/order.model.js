@@ -57,7 +57,7 @@ const OrderItemSchema = new mongoose.Schema(
 const OrderSchema = BaseSchemaModel({
   orderCode: { type: String },
   tableCode: { type: String },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   restaurantId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",

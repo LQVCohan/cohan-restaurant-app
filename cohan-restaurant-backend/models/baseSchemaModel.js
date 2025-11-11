@@ -7,6 +7,16 @@ export default function BaseSchemaModel(definition, options = {}) {
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
     ...options,
   });
 

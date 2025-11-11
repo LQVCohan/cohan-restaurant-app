@@ -16,8 +16,8 @@ type User {
   refRestaurants: [Restaurant]
   point: Int
   loyaltyPoints: Int
-  roleName: String!
-  users: [User!]!
+  roleName: String
+
   customerType: String
   totalOrders: Int
   totalSpending: Float
