@@ -29,7 +29,7 @@ input CreateReservationInput {
   partySize: Int = 2
   note: String
   restaurantName: String
-  customerName: String!
+  customerName: String
   customerPhone: String
   customerEmail: String
   depositAmount: Int

@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { NotificationContext } from "../context/NotificationProvider";
+import { NotificationContext } from "../context/NotificationContext";
 
 // Custom hook to use notifications context
 export const useNotification = () => {

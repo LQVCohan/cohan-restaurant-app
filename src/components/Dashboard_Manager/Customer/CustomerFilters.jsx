@@ -1,4 +1,60 @@
-import React, { useState } from "react";
+// src/pages/CustomerManagement/CustomerFilters.jsx
+import React, { useMemo, useState } from "react";
+
+const CATEGORY_META = {
+  all: { label: "Tất cả", icon: "👥", cls: "bg-slate-100 text-slate-700" },
+  vip: { label: "VIP", icon: "⭐", cls: "bg-amber-100 text-amber-800" },
+  frequent: {
+    label: "Thường xuyên",
+    icon: "🔥",
+    cls: "bg-indigo-100 text-indigo-800",
+  },
+  new: { label: "Mới", icon: "🆕", cls: "bg-emerald-100 text-emerald-800" },
+};
+
+const STATUS_META = {
+  online: { label: "Đang online", dot: "bg-green-500" },
+  ordering: { label: "Đang order", dot: "bg-blue-500" },
+  away: { label: "Đang away", dot: "bg-yellow-500" },
+  offline: { label: "Offline", dot: "bg-gray-400" },
+};
+
+const CATEGORY_KEYS = ["all", "vip", "frequent", "new"];
+const STATUS_KEYS = ["online", "ordering", "away", "offline"];
+
+const ToggleChip = ({ active, onClick, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={[
+      "px-3 py-1.5 rounded-full text-sm font-semibold border transition",
+      active
+        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+        : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-slate-50",
+    ].join(" ")}
+  >
+    {children}
+  </button>
+);
+
+const CategoryPill = ({ id, active, onClick }) => {
+  const meta = CATEGORY_META[id] || CATEGORY_META.all;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition",
+        active
+          ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+          : `border-slate-200 ${meta.cls} hover:brightness-95`,
+      ].join(" ")}
+    >
+      <span>{meta.icon}</span>
+      <span>{meta.label}</span>
+    </button>
+  );
+};
 
 const CustomerFilters = ({ onClose, onApplyFilters }) => {
   const [category, setCategory] = useState("all");
@@ -9,135 +65,155 @@ const CustomerFilters = ({ onClose, onApplyFilters }) => {
     ordering: true,
   });
 
+  const allOn = useMemo(() => Object.values(status).every(Boolean), [status]);
+  const noneOn = useMemo(
+    () => Object.values(status).every((v) => !v),
+    [status]
+  );
+
+  const toggleStatus = (key) => setStatus((s) => ({ ...s, [key]: !s[key] }));
+
+  const selectAllStatus = () =>
+    setStatus({ online: true, away: true, offline: true, ordering: true });
+
+  const clearAllStatus = () =>
+    setStatus({ online: false, away: false, offline: false, ordering: false });
+
   const applyFilters = () => {
-    const filters = {
-      category,
-      status,
-    };
-    onApplyFilters(filters);
-    onClose();
+    onApplyFilters && onApplyFilters({ category, status });
+    onClose && onClose();
   };
 
   const resetFilters = () => {
     setCategory("all");
-    setStatus({
-      online: true,
-      away: true,
-      offline: true,
-      ordering: true,
-    });
-    onApplyFilters({ category: "all", status });
-    onClose();
-  };
-
-  const toggleStatus = (statusKey) => {
-    setStatus((prevStatus) => ({
-      ...prevStatus,
-      [statusKey]: !prevStatus[statusKey],
-    }));
+    selectAllStatus();
+    onApplyFilters &&
+      onApplyFilters({
+        category: "all",
+        status: { online: true, away: true, offline: true, ordering: true },
+      });
+    onClose && onClose();
   };
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Bộ Lọc Nâng Cao</h3>
+    <aside className="w-80 h-full bg-white border-l border-gray-200 flex flex-col">
+      {/* Header (sticky) */}
+      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-5 py-4 flex items-center justify-between">
+        <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+          Bộ lọc nâng cao
+        </h3>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-xl"
+          className="text-slate-400 hover:text-slate-600 transition text-xl leading-none"
+          aria-label="Đóng bộ lọc"
+          title="Đóng"
         >
           ✕
         </button>
       </div>
 
-      {/* Category Filter */}
-      <div>
-        <h4 className="font-medium text-gray-900">Loại Khách Hàng</h4>
-        <div className="space-y-3">
-          {["all", "vip", "frequent", "new"].map((cat) => (
-            <label
-              key={cat}
-              className="flex items-center space-x-2 cursor-pointer"
-            >
-              <input
-                type="radio"
-                name="category"
-                value={cat}
-                checked={category === cat}
-                onChange={(e) => setCategory(e.target.value)}
-                className="text-blue-600 focus:ring-blue-500"
+      {/* Content */}
+      <div className="flex-1 overflow-auto px-5 py-5 space-y-6">
+        {/* Category */}
+        <section>
+          <div className="mb-3">
+            <h4 className="text-sm font-semibold text-slate-900">
+              Loại khách hàng
+            </h4>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Lọc nhanh theo nhóm hành vi/giá trị.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {CATEGORY_KEYS.map((k) => (
+              <CategoryPill
+                key={k}
+                id={k}
+                active={category === k}
+                onClick={() => setCategory(k)}
               />
-              <span className="text-sm">
-                {cat === "all"
-                  ? "Tất cả"
-                  : cat === "vip"
-                  ? "VIP"
-                  : cat === "frequent"
-                  ? "Thường xuyên"
-                  : "Mới"}
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
+            ))}
+          </div>
+        </section>
 
-      {/* Status Filter */}
-      <div>
-        <h4 className="font-medium text-gray-900">Trạng Thái</h4>
-        <div className="space-y-2">
-          {["online", "away", "offline", "ordering"].map((statusKey) => (
-            <label
-              key={statusKey}
-              className="flex items-center space-x-3 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={status[statusKey]}
-                onChange={() => toggleStatus(statusKey)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <div className="flex items-center space-x-2">
-                <div
-                  className={`w-3 h-3 rounded-full ${
-                    statusKey === "online"
-                      ? "bg-green-500"
-                      : statusKey === "away"
-                      ? "bg-yellow-500"
-                      : statusKey === "offline"
-                      ? "bg-gray-400"
-                      : "bg-blue-500"
-                  }`}
-                ></div>
-                <span className="text-sm">
-                  {statusKey === "online"
-                    ? "Đang online"
-                    : statusKey === "away"
-                    ? "Đang away"
-                    : statusKey === "offline"
-                    ? "Offline"
-                    : "Đang order"}
+        <div className="h-px bg-slate-200/80" />
+
+        {/* Status */}
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-semibold text-slate-900">
+                Trạng thái
+              </h4>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Chọn nhiều trạng thái cùng lúc.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <ToggleChip active={allOn} onClick={selectAllStatus}>
+                Chọn hết
+              </ToggleChip>
+              <ToggleChip active={noneOn} onClick={clearAllStatus}>
+                Bỏ chọn
+              </ToggleChip>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2">
+            {STATUS_KEYS.map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => toggleStatus(k)}
+                className={[
+                  "w-full flex items-center justify-between rounded-xl border px-3 py-2 transition",
+                  status[k]
+                    ? "bg-slate-50 border-blue-300"
+                    : "bg-white border-slate-200 hover:border-blue-300",
+                ].join(" ")}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className={"w-2.5 h-2.5 rounded-full " + STATUS_META[k].dot}
+                  />
+                  <span className="text-sm font-medium text-slate-800">
+                    {STATUS_META[k].label}
+                  </span>
+                </div>
+                <span
+                  className={[
+                    "text-xs font-bold px-2 py-0.5 rounded",
+                    status[k]
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-200 text-slate-700",
+                  ].join(" ")}
+                >
+                  {status[k] ? "Bật" : "Tắt"}
                 </span>
-              </div>
-            </label>
-          ))}
-        </div>
+              </button>
+            ))}
+          </div>
+        </section>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3 mt-4">
-        <button
-          className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium"
-          onClick={resetFilters}
-        >
-          Đặt lại
-        </button>
-        <button
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium"
-          onClick={applyFilters}
-        >
-          Áp dụng
-        </button>
+      {/* Footer (sticky) */}
+      <div className="sticky bottom-0 bg-white border-t border-gray-200 px-5 py-4">
+        <div className="flex gap-3">
+          <button
+            onClick={resetFilters}
+            className="w-full h-10 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-sm font-semibold transition"
+          >
+            Đặt lại
+          </button>
+          <button
+            onClick={applyFilters}
+            className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm transition"
+          >
+            Áp dụng
+          </button>
+        </div>
       </div>
-    </div>
+    </aside>
   );
 };
 

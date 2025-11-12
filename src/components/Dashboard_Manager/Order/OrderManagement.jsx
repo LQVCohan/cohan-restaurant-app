@@ -4,7 +4,7 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
-  useContext, // <-- Import useContext
+  useContext,
 } from "react";
 import {
   Clock,
@@ -19,31 +19,23 @@ import {
   Download,
   History,
   Loader,
-  ChevronDown, // <-- Icon cho Select Box
+  ChevronDown,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
-// ❗️ SỬA: Thêm useQuery, useLazyQuery
 import { gql, useMutation, useQuery, useLazyQuery } from "@apollo/client";
 
-// ---- Import các component con và hook ----
 import OrderCard from "./components/OrderCard";
-
 import OrderModal from "./components/OrderModal";
 import ItemModal from "./components/ItemModal";
 import HistoryModal from "./components/HistoryModal";
-// ✅ MỚI: Import modal mới
 import NewOrderModal from "./components/NewOrderModal.jsx";
 import StatsCard from "./components/StatsCard";
 import useOrderManagement from "../../../hooks/useOrderManagement";
 import { useNotification } from "@/hooks/useNotification";
-import { AuthContext } from "@/context/AuthContext"; // <-- Import AuthContext
+import { AuthContext } from "@/context/AuthContext";
 
-// -----------------------------------------------------------------
-// 1. CÁC GQL STRING
-// -----------------------------------------------------------------
-
-// (Query chính, hook 'useOrderManagement' của bạn phải dùng query này)
-
-// Mutation để cập nhật trạng thái đơn (pending -> confirmed, v.v...)
+// ---------------- GQL ----------------
 const MUTATION_UPDATE_STATUS = gql`
   mutation UpdateOrderStatus($input: UpdateOrderStatusInput!) {
     updateOrderStatus(input: $input) {
@@ -53,12 +45,7 @@ const MUTATION_UPDATE_STATUS = gql`
   }
 `;
 
-// ✅ MỚI: Query để lấy dữ liệu Bàn và Menu cho Modal
-// (Giả định cấu trúc GQL, bạn cần điều chỉnh cho phù hợp)
-
-// -----------------------------------------------------------------
-// 2. HOOK LẤY DANH SÁCH NHÀ HÀNG (TỪ AUTHCONTEXT)
-// -----------------------------------------------------------------
+// ---------------- Auth/Restaurant ----------------
 const useRestaurant = () => {
   const { restaurants } = useContext(AuthContext);
   return {
@@ -66,31 +53,32 @@ const useRestaurant = () => {
   };
 };
 
-// -----------------------------------------------------------------
-// 3. COMPONENT CHÍNH
-// -----------------------------------------------------------------
+// ---------------- Component ----------------
 const OrderManagement = () => {
-  // --- State của Trang (Filter, Modal) ---
+  // Modal & filter state
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
-  // ✅ MỚI: State cho modal mới
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [tableFilter, setTableFilter] = useState("");
+
+  // NEW: focus mode (Kitchen view)
+  const [focusMode, setFocusMode] = useState(false);
 
   const { showNotification } = useNotification?.() || {
     showNotification: (msg, type) => console.log(type || "info", msg),
   };
 
-  // --- State Quản lý Nhà hàng ---
+  // Restaurant
   const { restaurantList } = useRestaurant();
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
 
-  // --- Gọi Hook Fetch Dữ liệu (cho List) ---
+  // Orders data
   const {
-    orders,
+    orders = [],
     ordersLoading,
     ordersError,
     loadOrders,
@@ -99,39 +87,38 @@ const OrderManagement = () => {
     changeOrderStatusByCode,
   } = useOrderManagement();
 
-  // ✅ MỚI: Hook Fetch Dữ liệu (cho Modal - Bàn & Menu) ---
-
-  // --- Khởi tạo Mutations ---
+  // Mutations
   const [updateOrderStatusMutation] = useMutation(MUTATION_UPDATE_STATUS);
 
-  // --- 4. Logic Fetch Dữ liệu ---
-
-  // Tự động chọn nhà hàng đầu tiên khi load
+  // Auto-pick first restaurant
   useEffect(() => {
     if (restaurantList.length > 0 && !selectedRestaurantId) {
       setSelectedRestaurantId(restaurantList[0].id);
     }
   }, [restaurantList, selectedRestaurantId]);
 
-  // ❗️ SỬA: Tự động fetch khi 'selectedRestaurantId' thay đổi
+  // Fetch orders on restaurant change
   useEffect(() => {
-    if (selectedRestaurantId) {
-      // 1. Fetch danh sách orders (như cũ)
-      if (loadOrders) {
-        loadOrders({
-          variables: {
-            restaurantId: selectedRestaurantId,
-            limit: 100,
-          },
-        });
-      }
-      // 2. Fetch dữ liệu POS (bàn, menu) cho modal
+    if (selectedRestaurantId && loadOrders) {
+      loadOrders({
+        variables: {
+          restaurantId: selectedRestaurantId,
+          limit: 100,
+        },
+      });
     }
-  }, [loadOrders, selectedRestaurantId]); // Thêm loadPosData
+  }, [loadOrders, selectedRestaurantId]);
 
-  // ✅ MỚI: Memoize dữ liệu POS
+  // Toggle focus with keyboard "f"
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key.toLowerCase() === "f") setFocusMode((s) => !s);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
-  // --- 5. Các hàm xử lý (useCallback) ---
+  // Handlers
   const handleUpdateStatus = useCallback(
     (orderId, newStatus) => {
       updateOrderStatusMutation({
@@ -151,66 +138,30 @@ const OrderManagement = () => {
     setSelectedItem(itemData);
   }, []);
 
-  // ✅ MỚI: Hàm xử lý khi tạo đơn thành công
   const handleNewOrderSuccess = useCallback(() => {
-    // Đóng modal
     setShowNewOrderModal(false);
-
-    // Tải lại danh sách đơn hàng
     if (loadOrders && selectedRestaurantId) {
       loadOrders({
         variables: {
           restaurantId: selectedRestaurantId,
           limit: 100,
         },
-        fetchPolicy: "network-only", // Đảm bảo lấy dữ liệu mới
+        fetchPolicy: "network-only",
       });
     }
   }, [loadOrders, selectedRestaurantId]);
 
-  // --- 6. Filter & Stats (useMemo) ---
-  const filteredOrders = useMemo(() => {
-    // (Logic filter giữ nguyên)
-    return (orders || []).filter((order) => {
-      const matchesSearch =
-        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.user?.fullName || "Khách lẻ")
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        order.tableCode.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus =
-        !statusFilter || order.currentStatus === statusFilter;
-      const matchesTable = !tableFilter || order.orderType === tableFilter;
-      return matchesSearch && matchesStatus && matchesTable;
-    });
-  }, [orders, searchTerm, statusFilter, tableFilter]);
-
-  const stats = useMemo(() => {
-    // (Logic stats giữ nguyên)
-    return {
-      total: orders.length,
-      pending: orders.filter(
-        (o) =>
-          o.currentStatus !== "completed" && o.currentStatus !== "cancelled"
-      ).length,
-      preparing: orders.filter((o) => o.currentStatus === "preparing").length,
-      completed: 0,
-    };
-  }, [orders]);
   const handleChangeItemStatusByCode = useCallback(
     (payload) => {
       return changeOrderItemStatusByCode({
         ...payload,
         afterSuccess: (serverOrder) => {
-          // Cập nhật ngay modal nếu đang mở đúng order
           if (serverOrder) {
             setSelectedOrder((prev) => {
               if (!prev || prev.id !== serverOrder.id) return prev;
-              // merge để không mất các field mà server không trả (user, restaurantId, ...)
               return { ...prev, ...serverOrder };
             });
           }
-          // Làm mới danh sách bên ngoài (nếu muốn bỏ refetch, có thể xóa khối này)
           loadOrders({
             variables: { restaurantId: selectedRestaurantId, limit: 100 },
             fetchPolicy: "network-only",
@@ -236,7 +187,6 @@ const OrderManagement = () => {
           if (updatedServerOrder) {
             setSelectedOrder(updatedServerOrder);
           }
-          // làm mới list sau khi server nhận
           loadOrders({
             variables: { restaurantId: selectedRestaurantId, limit: 100 },
             fetchPolicy: "network-only",
@@ -247,12 +197,51 @@ const OrderManagement = () => {
     [orders, selectedRestaurantId, loadOrders, updateItemStatus]
   );
 
-  // --- 7. RENDER GIAO DIỆN ---
+  // Filters & stats
+  const filteredOrders = useMemo(() => {
+    return (orders || []).filter((order) => {
+      const matchesSearch =
+        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.user?.fullName || "Khách lẻ")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        order.tableCode.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus =
+        !statusFilter || order.currentStatus === statusFilter;
+      const matchesTable = !tableFilter || order.orderType === tableFilter;
+      return matchesSearch && matchesStatus && matchesTable;
+    });
+  }, [orders, searchTerm, statusFilter, tableFilter]);
+
+  const stats = useMemo(() => {
+    return {
+      total: orders.length,
+      pending: orders.filter(
+        (o) =>
+          o.currentStatus !== "completed" && o.currentStatus !== "cancelled"
+      ).length,
+      preparing: orders.filter((o) => o.currentStatus === "preparing").length,
+      completed: 0,
+    };
+  }, [orders]);
+
+  // Classes for layout
+  const rootPadding = focusMode ? "p-3 md:p-4" : "p-6";
+  const containerWidth = focusMode ? "max-w-[100%]" : "max-w-7xl";
+  const ordersGridCols = focusMode
+    ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6"
+    : "grid-cols-1 lg:grid-cols-2 xl:grid-cols-3";
+  const ordersGridGap = focusMode ? "gap-3 md:gap-4" : "gap-6";
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className={`min-h-screen bg-gray-50 ${rootPadding}`}>
+      <div className={`${containerWidth} mx-auto`}>
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-6">
+        <div
+          className={`bg-white rounded-lg shadow-sm border border-gray-200 ${
+            focusMode ? "p-3 md:p-4" : "p-8"
+          } mb-6 ${focusMode ? "sticky top-0 z-40" : ""}`}
+        >
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -262,82 +251,46 @@ const OrderManagement = () => {
                 Theo dõi và xử lý đơn hàng nhà hàng theo thời gian thực
               </p>
             </div>
-            <button
-              onClick={() => setShowHistory(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <History size={20} />
-              Lịch sử đơn hàng
-            </button>
-          </div>
-        </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* (Stats Card giữ nguyên) */}
-          <StatsCard
-            icon={<CheckCircle className="text-blue-600" />}
-            title="Tổng đơn hàng"
-            value={stats.total}
-            bgColor="bg-blue-50"
-          />
-          <StatsCard
-            icon={<Clock className="text-orange-600" />}
-            title="Chưa hoàn thành"
-            value={stats.pending}
-            bgColor="bg-orange-50"
-          />
-          <StatsCard
-            icon={<ChefHat className="text-purple-600" />}
-            title="Đang chuẩn bị"
-            value={stats.preparing}
-            bgColor="bg-purple-50"
-          />
-          <StatsCard
-            icon={<CheckCircle className="text-green-600" />}
-            title="Hoàn thành"
-            value={stats.completed}
-            bgColor="bg-green-50"
-          />
-        </div>
-
-        {/* Controls */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex flex-wrap gap-4 items-center">
-              {/* --- ĐÂY LÀ MỤC CHỌN NHÀ HÀNG --- */}
-              {/* Sửa: Hiển thị nếu có 1 hoặc nhiều nhà hàng */}
-              {restaurantList.length > 0 && (
-                <div className="relative min-w-[250px]">
-                  <select
-                    value={selectedRestaurantId}
-                    onChange={(e) => setSelectedRestaurantId(e.target.value)}
-                    // Disable nếu chỉ có 1 nhà hàng
-                    disabled={restaurantList.length === 1}
-                    className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none font-medium disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  >
-                    {restaurantList.map((res) => (
-                      <option key={res.id} value={res.id}>
-                        {res.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
-                    <ChevronDown size={16} />
-                  </div>
-                </div>
+            <div className="flex items-center gap-2">
+              {!focusMode && (
+                <button
+                  onClick={() => setShowHistory(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  <History size={20} />
+                  Lịch sử đơn hàng
+                </button>
               )}
-              {/* --------------------------------- */}
 
-              <div className="relative min-w-[300px]">
+              {/* Toggle Focus Mode */}
+              <button
+                onClick={() => setFocusMode((s) => !s)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  focusMode
+                    ? "bg-amber-600 text-white hover:bg-amber-700"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
+                title="Nhấn F để bật/tắt nhanh"
+              >
+                {focusMode ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                {focusMode ? "Thoát chế độ Bếp" : "Chế độ Bếp (Focus)"}
+              </button>
+            </div>
+          </div>
+
+          {/* Quick controls for Focus mode */}
+          {focusMode && (
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="relative">
                 <input
                   type="text"
-                  placeholder="Tìm kiếm đơn hàng..."
+                  placeholder="Tìm nhanh (ID, tên KH, mã bàn)…"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                 />
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                   <Eye size={16} />
                 </div>
               </div>
@@ -345,7 +298,7 @@ const OrderManagement = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
               >
                 <option value="">Tất cả trạng thái</option>
                 <option value="pending">Chờ xác nhận</option>
@@ -354,38 +307,130 @@ const OrderManagement = () => {
                 <option value="ready">Sẵn sàng</option>
               </select>
 
-              <select
-                value={tableFilter}
-                onChange={(e) => setTableFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Tất cả loại</option>
-                <option value="dine_in">Tại bàn</option>
-                <option value="takeaway">Mang về</option>
-                <option value="delivery">Giao hàng</option>
-              </select>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setShowNewOrderModal(true)}
+                  disabled={!selectedRestaurantId}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  Tạo đơn nhanh
+                </button>
+              </div>
             </div>
-
-            <div className="flex gap-2">
-              <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                <Download size={16} />
-                Xuất báo cáo
-              </button>
-
-              {/* ❗️ SỬA: Nút "Đơn hàng mới" */}
-              <button
-                onClick={() => setShowNewOrderModal(true)}
-                // Disable nếu chưa chọn NH hoặc dữ liệu POS (bàn/menu) chưa tải xong
-                disabled={!selectedRestaurantId}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                Đơn hàng mới
-              </button>
-            </div>
-          </div>
+          )}
         </div>
 
-        {/* --- KHU VỰC HIỂN THỊ DỮ LIỆU --- */}
+        {/* Stats (hide in focus) */}
+        {!focusMode && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <StatsCard
+              icon={<CheckCircle className="text-blue-600" />}
+              title="Tổng đơn hàng"
+              value={stats.total}
+              bgColor="bg-blue-50"
+            />
+            <StatsCard
+              icon={<Clock className="text-orange-600" />}
+              title="Chưa hoàn thành"
+              value={stats.pending}
+              bgColor="bg-orange-50"
+            />
+            <StatsCard
+              icon={<ChefHat className="text-purple-600" />}
+              title="Đang chuẩn bị"
+              value={stats.preparing}
+              bgColor="bg-purple-50"
+            />
+            <StatsCard
+              icon={<CheckCircle className="text-green-600" />}
+              title="Hoàn thành"
+              value={stats.completed}
+              bgColor="bg-green-50"
+            />
+          </div>
+        )}
+
+        {/* Controls (hide in focus) */}
+        {!focusMode && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="flex flex-wrap gap-4 items-center justify-between">
+              <div className="flex flex-wrap gap-4 items-center">
+                {restaurantList.length > 0 && (
+                  <div className="relative min-w-[250px]">
+                    <select
+                      value={selectedRestaurantId}
+                      onChange={(e) => setSelectedRestaurantId(e.target.value)}
+                      disabled={restaurantList.length === 1}
+                      className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none font-medium disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    >
+                      {restaurantList.map((res) => (
+                        <option key={res.id} value={res.id}>
+                          {res.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
+                      <ChevronDown size={16} />
+                    </div>
+                  </div>
+                )}
+
+                <div className="relative min-w-[300px]">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm đơn hàng..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    <Eye size={16} />
+                  </div>
+                </div>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Tất cả trạng thái</option>
+                  <option value="pending">Chờ xác nhận</option>
+                  <option value="confirmed">Đã xác nhận</option>
+                  <option value="preparing">Đang chuẩn bị</option>
+                  <option value="ready">Sẵn sàng</option>
+                </select>
+
+                <select
+                  value={tableFilter}
+                  onChange={(e) => setTableFilter(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Tất cả loại</option>
+                  <option value="dine_in">Tại bàn</option>
+                  <option value="takeaway">Mang về</option>
+                  <option value="delivery">Giao hàng</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2">
+                <button className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                  <Download size={16} />
+                  Xuất báo cáo
+                </button>
+
+                <button
+                  onClick={() => setShowNewOrderModal(true)}
+                  disabled={!selectedRestaurantId}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  Đơn hàng mới
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* States */}
         {ordersLoading && (
           <div className="flex justify-center items-center h-64">
             <Loader size={32} className="text-blue-600 animate-spin" />
@@ -417,8 +462,9 @@ const OrderManagement = () => {
           </div>
         )}
 
+        {/* Orders Grid */}
         {!ordersLoading && !ordersError && filteredOrders.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className={`grid ${ordersGridCols} ${ordersGridGap}`}>
             {filteredOrders.map((order) => (
               <OrderCard
                 key={order.id}
@@ -426,26 +472,23 @@ const OrderManagement = () => {
                 onUpdateStatus={handleUpdateStatus}
                 onViewOrder={handleViewOrder}
                 onViewItem={handleViewItem}
-                // (Đã xóa prop onShowPayment)
+                // Pass hint to card if you want it to adjust UI in focus
+                isFocusMode={focusMode}
               />
             ))}
           </div>
         )}
 
         {/* Modals */}
-
-        {/* ✅ MỚI: Render Modal Tạo Đơn */}
         {showNewOrderModal && (
           <NewOrderModal
             isOpen={showNewOrderModal}
             onClose={() => setShowNewOrderModal(false)}
             restaurantId={selectedRestaurantId}
-            // Truyền menu
-            onSuccess={handleNewOrderSuccess} // Truyền callback
+            onSuccess={handleNewOrderSuccess}
           />
         )}
 
-        {/* (Các modal cũ giữ nguyên) */}
         {selectedOrder && (
           <OrderModal
             order={selectedOrder}
@@ -464,7 +507,7 @@ const OrderManagement = () => {
         )}
         {showHistory && (
           <HistoryModal
-            orderHistory={[]}
+            restaurantId={selectedRestaurantId}
             onClose={() => setShowHistory(false)}
             onViewOrder={handleViewOrder}
           />

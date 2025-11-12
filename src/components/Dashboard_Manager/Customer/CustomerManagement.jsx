@@ -1,4 +1,3 @@
-// src/pages/CustomerManagement/index.jsx
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import CustomerList from "./CustomerList";
 import CustomerFilters from "./CustomerFilters";
@@ -7,33 +6,41 @@ import CustomerDetailModal from "./CustomerModal";
 import AddCustomerModal from "./AddCustomerModal";
 import useUserManagement from "../../../hooks/useUserManagement";
 import useOrderManagement from "../../../hooks/useOrderManagement";
-import { AuthContext } from "../../../context/AuthContext"; // ⚠️ chỉnh path nếu khác
+import { AuthContext } from "../../../context/AuthContext";
 import "./CustomerManagement.scss";
 
-// Helper: build recent orders array for cards/modals
-const buildRecentOrdersForUser = (orders = []) => {
-  return orders.slice(0, 5).map((o) => ({
-    date:
-      typeof o.createdAt === "number"
-        ? new Date(
-            String(o.createdAt).length === 10 ? o.createdAt * 1000 : o.createdAt
-          ).toLocaleDateString("vi-VN")
-        : new Date(o.createdAt).toLocaleDateString("vi-VN"),
+/* ===== Helpers ===== */
+const toDateStringVI = (ts) => {
+  if (typeof ts === "number" && Number.isFinite(ts)) {
+    const ms = String(ts).length === 10 ? ts * 1000 : ts;
+    return new Date(ms).toLocaleDateString("vi-VN");
+  }
+  if (typeof ts === "string" && /^\d+$/.test(ts)) {
+    const n = Number(ts);
+    const ms = String(n).length === 10 ? n * 1000 : n;
+    return new Date(ms).toLocaleDateString("vi-VN");
+  }
+  const p = Date.parse(ts);
+  if (!Number.isNaN(p)) return new Date(p).toLocaleDateString("vi-VN");
+  return new Date().toLocaleDateString("vi-VN");
+};
+
+const buildRecentOrdersForUser = (orders = []) =>
+  orders.slice(0, 5).map((o) => ({
+    id: o.id,
+    orderCode: o.orderCode,
+    date: toDateStringVI(o.createdAt),
     amount: o?.totals?.grandTotal || 0,
     items: (o.items || []).map((it) => it.name).filter(Boolean),
-    orderCode: o.orderCode,
-    id: o.id,
+    raw: o,
   }));
-};
 
 const GUEST_BADGE = "🟡";
 
 const CustomerManagement = () => {
-  // ⬇️ Lấy danh sách nhà hàng từ AuthContext (manager)
   const { restaurants = [] } = useContext(AuthContext) || {};
 
   const {
-    customers,
     filteredCustomers,
     loading: usersLoading,
     searchCustomers,
@@ -44,7 +51,6 @@ const CustomerManagement = () => {
 
   const { loadOrdersAll, ordersAll, ordersAllLoading } = useOrderManagement();
 
-  // chọn nhà hàng theo id (lấy từ context)
   const defaultRestaurantId = restaurants?.[0]?.id || "";
   const [selectedRestaurantId, setSelectedRestaurantId] =
     useState(defaultRestaurantId);
@@ -56,17 +62,16 @@ const CustomerManagement = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Đồng bộ khi context nhà hàng thay đổi (lần đầu/mỗi khi reload profile)
+  /* Sync default restaurant */
   useEffect(() => {
     if (!selectedRestaurantId && restaurants?.length) {
       setSelectedRestaurantId(restaurants[0].id);
     }
   }, [restaurants, selectedRestaurantId]);
 
-  // Fetch customers + orders khi mount/đổi nhà hàng
+  /* Initial fetch + when restaurant changes */
   useEffect(() => {
     getCustomers({ includeGuests: true, search: "" });
-
     if (selectedRestaurantId) {
       loadOrdersAll({
         variables: {
@@ -79,7 +84,7 @@ const CustomerManagement = () => {
     }
   }, [getCustomers, loadOrdersAll, selectedRestaurantId]);
 
-  // Search (áp dụng FE filter + có thể refetch ordersAll nếu muốn)
+  /* Search & filter */
   const handleSearch = (query) => {
     setSearchQuery(query);
     searchCustomers(query);
@@ -99,15 +104,18 @@ const CustomerManagement = () => {
     setActiveFilter(filter);
     filterCustomers(filter);
   };
+  const formatCompactCount = (n) =>
+    new Intl.NumberFormat("vi-VN", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(Number(n || 0));
 
   const handleRestaurantChange = (restaurantId) => {
     setSelectedRestaurantId(restaurantId);
-    // Nếu hook user có switchRestaurant theo code, bạn có thể pass name/slug
-    // Ở đây giữ nguyên để không phá flow hiện tại
     switchRestaurant(restaurantId);
   };
 
-  // Map orders -> userId
+  /* Orders map */
   const ordersByUserId = useMemo(() => {
     const map = new Map();
     (ordersAll || []).forEach((o) => {
@@ -116,8 +124,7 @@ const CustomerManagement = () => {
       if (!map.has(uid)) map.set(uid, []);
       map.get(uid).push(o);
     });
-    // sort desc theo createdAt
-    for (const [k, list] of map.entries()) {
+    for (const [, list] of map.entries()) {
       list.sort((a, b) => {
         const ta =
           typeof a.createdAt === "number"
@@ -137,21 +144,18 @@ const CustomerManagement = () => {
     return map;
   }, [ordersAll]);
 
-  // Gắn recentOrders + icon Guest vào mỗi customer
+  /* Decorate customers with recent orders + keep guest icon on card (not in name) */
   const customersDecorated = useMemo(() => {
     return (filteredCustomers || []).map((c) => {
       const uid = c.id;
       const userOrders = (uid && ordersByUserId.get(uid)) || [];
       const recentOrders = buildRecentOrdersForUser(userOrders);
-
-      const baseName = c.name || "Khách hàng";
-      const displayName = c.isGuest ? `${baseName} ${GUEST_BADGE}` : baseName;
-
       return {
         ...c,
-        name: displayName,
-        displayName,
+        // tên KH không gắn icon vàng; icon sẽ hiển thị riêng trên card như trước
+        displayName: c.name || "Khách hàng",
         recentOrders,
+        isGuestBadge: c.isGuest ? GUEST_BADGE : "",
       };
     });
   }, [filteredCustomers, ordersByUserId]);
@@ -177,136 +181,117 @@ const CustomerManagement = () => {
   }, [customersDecorated]);
 
   const handleCustomerClick = (customer) => setSelectedCustomer(customer);
-  const handleSidebarToggle = () => setShowRightSidebar(!showRightSidebar);
-
   const loading = usersLoading || ordersAllLoading;
 
   return (
-    <div className="customer-management">
+    <div
+      className={`customer-management ${
+        showRightSidebar ? "is-sidebar-open" : ""
+      }`}
+    >
       {/* Header */}
-      <div className="customer-management__header">
-        <div className="header__content">
-          <div className="header__left">
-            <div className="header__icon">
-              <span>👥</span>
-            </div>
-            <div className="header__info">
-              <h1>Quản Lý Khách Hàng</h1>
-
-              {/* Dropdown nhà hàng từ AuthContext */}
-              <select
-                value={selectedRestaurantId}
-                onChange={(e) => handleRestaurantChange(e.target.value)}
-                className="restaurant-selector"
-              >
-                {(restaurants || []).map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-
-              <div className="header__legend">
-                <span className="legend-item">
-                  <span className="legend-dot">{GUEST_BADGE}</span> Guest
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="header__right">
-            <div className="stats">
-              <div className="stat-item stat-item--online">
-                <div className="stat-indicator"></div>
-                <span>24 Online</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="btn btn--primary"
-              style={{ marginRight: 8 }}
+      <header className="cm-header">
+        <div className="cm-header__left">
+          <div className="cm-header__icon">👥</div>
+          <div className="cm-header__info">
+            <h1>Quản Lý Khách Hàng</h1>
+            <select
+              value={selectedRestaurantId}
+              onChange={(e) => handleRestaurantChange(e.target.value)}
+              className="cm-restaurant"
             >
-              <span>➕</span>
-              <span>Thêm khách hàng</span>
-            </button>
-
-            <button
-              onClick={handleSidebarToggle}
-              className="btn btn--secondary"
-            >
-              <span>⚙️</span>
-              <span>Bộ Lọc</span>
-            </button>
+              {(restaurants || []).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
-      </div>
 
-      {/* Toolbar */}
-      <div className="customer-management__toolbar">
-        <div className="toolbar__left">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Tìm kiếm khách hàng..."
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="search-input"
-            />
-            <div className="search-icon">🔍</div>
+        <div className="cm-header__right">
+          <div className="cm-header__stat">
+            <span className="dot" />
+            <span>24 Online</span>
           </div>
 
-          <div className="quick-filters">
-            {quickFilters.map((filter) => (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="btn btn--primary"
+          >
+            ➕ Thêm khách hàng
+          </button>
+
+          <button
+            onClick={() => setShowRightSidebar((v) => !v)}
+            className="btn btn--secondary"
+          >
+            ⚙️ Bộ Lọc
+          </button>
+        </div>
+      </header>
+
+      {/* Toolbar */}
+      <div className="cm-toolbar">
+        <div className="cm-toolbar__left">
+          <div className="cm-search">
+            <span className="cm-search__icon">🔍</span>
+            <input
+              type="text"
+              placeholder="Tìm kiếm khách hàng... (Ctrl + K)"
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="cm-quick">
+            {quickFilters.map((f) => (
               <button
-                key={filter.key}
-                onClick={() => handleFilter(filter.key)}
-                className={`filter-btn ${
-                  activeFilter === filter.key ? "active" : ""
+                key={f.key}
+                onClick={() => handleFilter(f.key)}
+                className={`cm-quick__pill ${
+                  activeFilter === f.key ? "is-active" : ""
                 }`}
+                title={`${f.label}: ${f.count.toLocaleString("vi-VN")}`}
               >
-                <span>{filter.icon}</span>
-                <div className="filter-btn__content">
-                  <span>{filter.label}</span>
-                  <span className="count">{filter.count}</span>
-                </div>
+                <span className="cm-quick__icon">{f.icon}</span>
+                <span className="cm-quick__label">{f.label}</span>
+                <span className="cm-quick__count">
+                  {formatCompactCount(f.count)}
+                </span>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="toolbar__right">
-          <button className="btn btn--primary">
-            <span>📊</span>
-            <span>Xuất Báo Cáo</span>
-          </button>
+        <div className="cm-toolbar__right">
+          <button className="btn btn--primary">📊 Xuất Báo Cáo</button>
           <button
             onClick={() => setShowPromotionModal(true)}
             className="btn btn--success"
           >
-            <span>📧</span>
-            <span>Gửi Khuyến Mãi</span>
+            📧 Gửi Khuyến Mãi
           </button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="customer-management__content">
-        <div className="content__main">
+      {/* Content Grid: content + sidebar (2 cột) */}
+      <main className="cm-content">
+        <section className="cm-content__main">
           <CustomerList
             customers={customersDecorated}
             loading={loading}
             onCustomerClick={handleCustomerClick}
           />
-        </div>
+        </section>
 
-        <div className={`content__sidebar ${showRightSidebar ? "show" : ""}`}>
+        <aside className="cm-content__sidebar">
           <CustomerFilters
             onClose={() => setShowRightSidebar(false)}
             onApplyFilters={filterCustomers}
           />
-        </div>
-      </div>
+        </aside>
+      </main>
 
       {/* Modals */}
       {showPromotionModal && (

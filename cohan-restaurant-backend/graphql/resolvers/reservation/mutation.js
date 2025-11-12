@@ -127,7 +127,7 @@ async function resolveUserIdFromContact({
   // Ưu tiên phone
   if (customerPhone) {
     const foundByPhone = await User.findOne({
-      phone: customerPhone.trim(),
+      phone: customerPhone?.trim(),
       isGuest: true,
     }).select({ _id: 1 });
     if (foundByPhone) return foundByPhone._id;
@@ -136,7 +136,7 @@ async function resolveUserIdFromContact({
   // Sau đó email
   if (customerEmail) {
     const foundByEmail = await User.findOne({
-      email: customerEmail.trim(),
+      email: customerEmail?.trim(),
       isGuest: true,
     }).select({ _id: 1 });
     if (foundByEmail) return foundByEmail._id;
@@ -176,11 +176,10 @@ export const ReservationMutation = {
           extensions: { code: "BAD_USER_INPUT" },
         });
       }
-      if (!customerName || !atLeastPhoneOrEmail(customerPhone, customerEmail)) {
-        throw new GraphQLError(
-          "Customer name and (phone or email) are required.",
-          { extensions: { code: "BAD_USER_INPUT" } }
-        );
+      if (!atLeastPhoneOrEmail(customerPhone, customerEmail)) {
+        throw new GraphQLError("phone or email are required.", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
       }
       if (!timeTo) {
         throw new GraphQLError("Missing arrival time (timeTo).", {
@@ -216,7 +215,7 @@ export const ReservationMutation = {
         timeTo: new Date(timeTo),
         partySize,
         note: note || "",
-        customerName: customerName.trim(),
+        customerName: customerName?.trim(),
         customerPhone: customerPhone?.trim() || null,
         customerEmail: customerEmail?.trim() || null,
         depositAmount,

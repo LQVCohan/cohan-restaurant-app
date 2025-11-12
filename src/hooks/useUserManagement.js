@@ -246,6 +246,26 @@ export const ADMIN_UPDATE_USER = gql`
   }
 `;
 
+/* NEW: mutation dùng riêng cho CustomerModal để đồng bộ điểm & phân hạng */
+export const UPDATE_CUSTOMER_METRICS = gql`
+  mutation UpdateCustomerMetrics(
+    $id: ID!
+    $loyaltyPoints: Int!
+    $customerType: CustomerType!
+  ) {
+    updateCustomerMetrics(
+      id: $id
+      loyaltyPoints: $loyaltyPoints
+      customerType: $customerType
+    ) {
+      id
+      loyaltyPoints
+      customerType
+      updatedAt
+    }
+  }
+`;
+
 export const ASSIGN_ROLE_TO_USER = gql`
   mutation AssignRoleToUser($input: AssignRoleToUserInput!) {
     assignRoleToUser(input: $input) {
@@ -291,40 +311,25 @@ const toVietnamCustomerType = (customerType) => {
   if (t === "OFTEN") return "Thường xuyên";
   return "Mới"; // NEW
 };
-const parseDateOrNull = (v) => {
-  if (!v) return null;
-  const str = typeof v === "string" ? v : v?.toString?.() ?? "";
-  const ms = Date.parse(str);
-  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
-};
-// put near other utils
+
 const toISODateOrNull = (v) => {
   if (!v) return null;
-
-  // Date instance
   if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString();
-
-  // number ms
   if (typeof v === "number" && Number.isFinite(v)) {
     const d = new Date(v);
     return Number.isNaN(d.getTime()) ? null : d.toISOString();
   }
-
-  // string
   if (typeof v === "string") {
     const s = v.trim();
-    // pure digits => epoch (ms or s)
     if (/^\d+$/.test(s)) {
       const n = Number(s);
-      const ms = s.length === 10 ? n * 1000 : n; // 10 digits = seconds
+      const ms = s.length === 10 ? n * 1000 : n;
       const d = new Date(ms);
       return Number.isNaN(d.getTime()) ? null : d.toISOString();
     }
-    // ISO-like
     const d = new Date(s);
     return Number.isNaN(d.getTime()) ? null : d.toISOString();
   }
-
   return null;
 };
 
@@ -332,14 +337,23 @@ const statusToCardStatus = (status) => {
   const s = (status || "").toLowerCase();
   if (s === "active") return "online";
   if (s === "pending") return "away";
-  return "offline"; // inactive/blocked/unknown
+  return "offline";
 };
 
 const avatarEmojiFromType = (customerType) => {
   const t = (customerType || "").toUpperCase();
   if (t === "VIP") return "👑";
   if (t === "OFTEN") return "🔥";
-  return "👤"; // NEW/mặc định
+  return "👤";
+};
+
+/* === Loyalty compute (chuẩn hoá theo yêu cầu) === */
+const computePointsFromSpending = (spending) =>
+  Math.max(0, Math.floor((Number(spending) || 0) / 1000));
+const computeTypeFromPoints = (points) => {
+  if (points < 5000) return "NEW";
+  if (points <= 15000) return "OFTEN";
+  return "VIP";
 };
 
 /* ========================= Hook ========================= */
@@ -354,7 +368,7 @@ const useUserManagement = () => {
   const [usersCache, setUsersCache] = useState([]);
 
   // Remember last fetch purpose
-  const lastFetch = useRef({ purpose: null, variables: {} }); // 'allUsers' | 'customers'
+  const lastFetch = useRef({ purpose: null, variables: {} });
 
   // Roles
   const { data: rolesData } = useQuery(GET_ROLE_LIST, {
@@ -381,40 +395,54 @@ const useUserManagement = () => {
   });
   const [createGuestMut, { loading: creatingGuest }] = useMutation(
     CREATE_GUEST_USER,
-    { onCompleted: () => refreshLast() }
+    {
+      onCompleted: () => refreshLast(),
+    }
   );
   const [updateMyUserMut, { loading: updatingMe }] = useMutation(
     UPDATE_MY_USER,
-    { onCompleted: () => refreshLast() }
+    {
+      onCompleted: () => refreshLast(),
+    }
   );
   const [adminUpdateUserMut, { loading: adminUpdating }] = useMutation(
     ADMIN_UPDATE_USER,
-    { onCompleted: () => refreshLast() }
+    {
+      onCompleted: () => refreshLast(),
+    }
   );
   const [assignRoleMut, { loading: assigningRole }] = useMutation(
     ASSIGN_ROLE_TO_USER,
-    { onCompleted: () => refreshLast() }
+    {
+      onCompleted: () => refreshLast(),
+    }
   );
   const [setStatusMut, { loading: settingStatus }] = useMutation(
     SET_USER_STATUS,
-    { onCompleted: () => refreshLast() }
+    {
+      onCompleted: () => refreshLast(),
+    }
   );
   const [softDeleteMut, { loading: softDeleting }] = useMutation(
     SOFT_DELETE_USER,
-    { onCompleted: () => refreshLast() }
+    {
+      onCompleted: () => refreshLast(),
+    }
+  );
+
+  // NEW: mutation chuyên cập nhật loyaltyPoints + customerType (được CustomerModal dùng thẳng)
+  const [updateMetricsMut, { loading: updatingMetrics }] = useMutation(
+    UPDATE_CUSTOMER_METRICS
   );
 
   const refreshLast = useCallback(() => {
     const { purpose, variables } = lastFetch.current || {};
     if (!purpose) return;
-    if (purpose === "allUsers") {
-      fetchUsers({ variables });
-    } else if (purpose === "customers") {
-      getCustomers(variables);
-    }
+    if (purpose === "allUsers") fetchUsers({ variables });
+    else if (purpose === "customers") getCustomers(variables);
   }, [fetchUsers]); // eslint-disable-line
 
-  /* ===== Fetch by purpose (đặt tên theo mục đích sử dụng) ===== */
+  /* ===== Fetch ===== */
 
   const getAllUsers = useCallback(
     ({ roleId, search, isGuest } = {}) => {
@@ -433,13 +461,11 @@ const useUserManagement = () => {
   const getCustomers = useCallback(
     ({ includeGuests = true, search } = {}) => {
       const customerRoleId = roleMap["customer"];
-      // 1) Lấy role=customer
       const v1 = {
         roleId: customerRoleId || undefined,
         search:
           (typeof search === "string" ? search : searchQuery) || undefined,
       };
-      // 2) Nếu includeGuests, gọi thêm isGuest=true (merge bằng setUsersCache ở onCompleted)
       lastFetch.current = {
         purpose: "customers",
         variables: { includeGuests, search },
@@ -455,11 +481,55 @@ const useUserManagement = () => {
     [fetchUsers, roleMap, searchQuery]
   );
 
+  /* ===== Auto-sync loyalty (theo FE rule) =====
+     - Tính points từ totalSpending
+     - Tính customerType từ points
+     - Nếu khác DB ⇒ gọi adminUpdateUser để đồng bộ
+     - Giới hạn mỗi đợt tối đa 10 user để tránh spam
+  */
+  useEffect(() => {
+    if (!usersCache?.length) return;
+    const candidates = [];
+    for (const u of usersCache) {
+      const computedPoints = computePointsFromSpending(u?.totalSpending || 0);
+      const computedType = computeTypeFromPoints(computedPoints);
+      const dbPoints = Number(u?.loyaltyPoints || 0);
+      const dbType = (u?.customerType || "").toUpperCase();
+
+      if (computedPoints !== dbPoints || computedType !== dbType) {
+        candidates.push({
+          id: u.id,
+          loyaltyPoints: computedPoints,
+          customerType: computedType,
+        });
+        if (candidates.length >= 10) break; // throttle
+      }
+    }
+    if (!candidates.length) return;
+
+    (async () => {
+      try {
+        for (const c of candidates) {
+          await adminUpdateUserMut({
+            variables: {
+              userId: c.id,
+              input: {
+                loyaltyPoints: c.loyaltyPoints,
+                customerType: c.customerType,
+              },
+            },
+          });
+        }
+      } catch {
+        // im lặng — không block UI
+      }
+    })();
+  }, [usersCache, adminUpdateUserMut]);
+
   /* ===== Derived ===== */
 
   const allUsers = usersCache;
 
-  // Khách hàng = role 'customer' UNION isGuest=true, sau đó MAP thành đúng shape của CustomerCard
   const customers = useMemo(() => {
     const roleCustomers = allUsers.filter(
       (u) => u.role?.slug?.toLowerCase() === "customer"
@@ -470,35 +540,34 @@ const useUserManagement = () => {
       return acc;
     }, []);
 
-    // 🔁 Chuẩn hoá shape để CustomerCard nhận "customer" trực tiếp
-    return merged.map((u) => ({
-      // Card fields
-      name: u.fullName || u.username || "Khách hàng",
-      avatar: avatarEmojiFromType(u.customerType),
-      status: statusToCardStatus(u.status),
-      customerType: toVietnamCustomerType(u.customerType),
-      totalSpent: u.totalSpending || 0,
-      totalOrders: u.totalOrders || 0,
-      email: u.email || null,
-      phone: u.phone || null,
-      currentActivity: u.isGuest ? "Khách vãng lai" : "Không hoạt động", // tuỳ realtime
-      loyaltyPoints: u.loyaltyPoints || 0,
-      joinDate: toISODateOrNull(u.createdAt),
-      favoriteItems: Array.isArray(u.favoriteItems) ? u.favoriteItems : [], // nếu BE chưa có, là []
-      recentOrders: Array.isArray(u.recentOrders) ? u.recentOrders : [], // nếu BE chưa có, là []
-
-      // giữ thêm data cần thiết khác
-      id: u.id,
-      isGuest: !!u.isGuest,
-      raw: u,
-    }));
+    return merged.map((u) => {
+      const totalSpending = Number(u.totalSpending || 0);
+      const computedPoints = computePointsFromSpending(totalSpending);
+      const computedType = computeTypeFromPoints(computedPoints);
+      return {
+        name: u.fullName || u.username || "Khách hàng",
+        avatar: avatarEmojiFromType(computedType),
+        status: statusToCardStatus(u.status),
+        customerType: toVietnamCustomerType(computedType),
+        totalSpent: totalSpending,
+        totalOrders: u.totalOrders || 0,
+        email: u.email || null,
+        phone: u.phone || null,
+        currentActivity: "Đang hoạt động",
+        loyaltyPoints: computedPoints,
+        joinDate: toISODateOrNull(u.createdAt),
+        favoriteItems: Array.isArray(u.favoriteItems) ? u.favoriteItems : [],
+        recentOrders: Array.isArray(u.recentOrders) ? u.recentOrders : [],
+        id: u.id,
+        isGuest: !!u.isGuest,
+        raw: u,
+      };
+    });
   }, [allUsers]);
 
   const filteredCustomers = useMemo(() => {
     let list = customers;
 
-    // search
-    // (hook này vẫn giữ state searchQuery để dùng cho quick filter client-side)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(
@@ -509,7 +578,6 @@ const useUserManagement = () => {
       );
     }
 
-    // quick filters
     if (activeFilter !== "all") {
       switch (activeFilter) {
         case "vip":
@@ -531,9 +599,9 @@ const useUserManagement = () => {
   /* ===== UI helpers ===== */
 
   const searchUsers = (query) => setSearchQuery(query);
-  const searchCustomers = searchUsers; // tương thích
+  const searchCustomers = searchUsers;
   const filterCustomersByTag = (filterKey) => setActiveFilter(filterKey);
-  const filterCustomers = filterCustomersByTag; // tương thích
+  const filterCustomers = filterCustomersByTag;
   const switchRestaurant = (restaurantId) =>
     setSelectedRestaurant(restaurantId);
 
@@ -541,7 +609,6 @@ const useUserManagement = () => {
 
   const createUser = async (payload) => {
     const input = { ...payload };
-    // nếu truyền roleSlug thì map sang roleId
     if (!input.roleId && payload?.roleSlug && roleMap[payload.roleSlug]) {
       input.roleId = roleMap[payload.roleSlug];
     }
@@ -580,12 +647,28 @@ const useUserManagement = () => {
     await softDeleteMut({ variables: { userId } });
   };
 
+  /* ====== Expose helper để FE tái sử dụng trực tiếp ====== */
+  const updateCustomerMetrics = async (userId, totalSpending) => {
+    const loyaltyPoints = computePointsFromSpending(totalSpending);
+    const customerType = computeTypeFromPoints(loyaltyPoints);
+    // dùng mutation chuyên biệt (nhanh) — nếu BE không bật có thể fallback adminUpdateUser
+    try {
+      await updateMetricsMut({
+        variables: { id: userId, loyaltyPoints, customerType },
+      });
+    } catch {
+      await adminUpdateUserMut({
+        variables: { userId, input: { loyaltyPoints, customerType } },
+      });
+    }
+  };
+
   return {
     // data
     roleList: rolesData?.roleList || [],
     roleMap,
     users: allUsers,
-    customers, // <-- giờ đã đúng shape cho CustomerCard
+    customers,
     filteredCustomers,
 
     // ui
@@ -602,7 +685,8 @@ const useUserManagement = () => {
       adminUpdating ||
       assigningRole ||
       settingStatus ||
-      softDeleting,
+      softDeleting ||
+      updatingMetrics,
     usersLoading,
     creating,
     creatingGuest,
@@ -611,13 +695,14 @@ const useUserManagement = () => {
     assigningRole,
     settingStatus,
     softDeleting,
+    updatingMetrics,
     error: usersError || null,
 
-    // mục đích sử dụng
+    // fetch
     getAllUsers,
     getCustomers,
 
-    // tiện ích UI
+    // ui helpers
     searchUsers,
     searchCustomers,
     filterCustomersByTag,
@@ -632,6 +717,9 @@ const useUserManagement = () => {
     assignRole,
     setUserStatus,
     softDeleteUser,
+
+    // loyalty helpers
+    updateCustomerMetrics,
   };
 };
 

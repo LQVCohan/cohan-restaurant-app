@@ -346,7 +346,9 @@ export const payOrder = async (_parent, { input }, ctx) => {
       // ✅ Cập nhật Reservation: tìm theo orderCode + restaurantId
       //    - set status = "completed"
       //    - lưu kèm orderId (schema không có thì ghi mềm với { strict: false })
-      if (orderCode) {
+
+      if (order.orderCode) {
+        const orderCode = order.orderCode;
         await Reservation.updateOne(
           { restaurantId, orderCode },
           {

@@ -1,0 +1,222 @@
+/* AddCustomerModal — production tone */
+.add-customer-modal {
+  --acm-bg: #ffffff;
+  --acm-border: #e5e7eb;
+  --acm-muted: #6b7280;
+  --acm-heading: #0f172a;
+  --acm-primary: #6366f1;
+  --acm-success: #10b981;
+  --acm-danger: #ef4444;
+  --acm-warning: #f59e0b;
+
+  color: var(--text-primary, #1f2937);
+}
+
+/* Toggle create type */
+.acm-toggle {
+  display: inline-flex;
+  background: #f3f4f6;
+  border: 1px solid var(--acm-border);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 1rem;
+
+  &__btn {
+    border: 0;
+    background: transparent;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    color: var(--acm-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &.is-active {
+      background: var(--acm-primary);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);
+    }
+
+    &:hover {
+      transform: translateY(-1px);
+    }
+  }
+}
+
+/* Alert */
+.acm-alert {
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &--error {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #991b1b;
+  }
+}
+
+/* Section */
+.acm-section {
+  background: var(--acm-bg);
+  border: 1px solid var(--acm-border);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  margin-bottom: 16px;
+
+  &__header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--acm-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+    border-radius: 18px 18px 0 0;
+  }
+
+  &__title {
+    margin: 0;
+    font-weight: 800;
+    color: var(--acm-heading);
+    font-size: 16px;
+    letter-spacing: 0.1px;
+  }
+
+  &__badge {
+    font-size: 12px;
+    padding: 4px 8px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--acm-primary);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    border-radius: 999px;
+    font-weight: 700;
+  }
+
+  &__content {
+    padding: 16px 18px;
+  }
+}
+
+/* Grid */
+.acm-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.acm-col-2 {
+  grid-column: span 2;
+
+  @media (max-width: 768px) {
+    grid-column: span 1;
+  }
+}
+
+/* Field */
+.acm-field {
+  display: block;
+
+  &__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    gap: 8px;
+  }
+
+  &__label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--acm-heading);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  &__icon {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__required {
+    color: var(--acm-danger);
+    margin-left: 4px;
+  }
+
+  &__hint {
+    font-size: 12px;
+    color: var(--acm-muted);
+  }
+
+  &__input {
+    position: relative;
+  }
+
+  &__error {
+    margin-top: 6px;
+    color: #b91c1c;
+    font-size: 12px;
+    font-weight: 600;
+
+    &--block {
+      background: rgba(239, 68, 68, 0.06);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: 10px;
+      padding: 8px 10px;
+    }
+  }
+
+  &--error .acm-input {
+    border-color: rgba(239, 68, 68, 0.6);
+    background: rgba(239, 68, 68, 0.02);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+}
+
+/* Input */
+.acm-input {
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--acm-border);
+  border-radius: 12px;
+  padding: 12px 12px;
+  color: var(--text-primary, #1f2937);
+  transition: all 0.2s ease;
+
+  &::placeholder {
+    color: #9ca3af;
+  }
+
+  &:hover {
+    border-color: #cbd5e1;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--acm-primary);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  }
+}
+
+/* Notes / helper */
+.acm-note {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #92400e;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}

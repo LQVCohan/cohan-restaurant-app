@@ -1,5 +1,37 @@
 # =========================
-# User Schema (updated)
+# Common Scalars
+# =========================
+scalar DateTime
+
+# =========================
+# Core Types
+# =========================
+
+type Role {
+  id: ID!
+  name: String!
+  slug: String!
+  description: String
+  createdAt: String
+  updatedAt: String
+}
+
+type Restaurant {
+  id: ID!
+  name: String!
+}
+
+type Address {
+  line1: String
+  line2: String
+  ward: String
+  district: String
+  city: String
+  country: String
+}
+
+# =========================
+# User Schema
 # =========================
 
 type User {
@@ -30,6 +62,10 @@ type User {
   guestExpiresAt: DateTime
 }
 
+# =========================
+# Inputs
+# =========================
+
 input AddressInput {
   line1: String
   line2: String
@@ -54,15 +90,6 @@ input CreateUserInput {
   captchaToken: String
 }
 
-input LoginInput {
-  email: String
-  username: String
-  phone: String
-  password: String!
-  captchaToken: String
-}
-
-# ⬇️ Thêm input cho updateUser
 input UpdateUserInput {
   fullName: String
   username: String
@@ -72,9 +99,10 @@ input UpdateUserInput {
   avatarUrl: String
 }
 
-type AuthPayload {
-  token: String!
-  user: User!
+input UpdateAvatarInput {
+  fileBase64: String
+  fileUrl: String
+  # clear: Boolean  # nếu cần xoá avatar có thể mở rộng thêm trường này
 }
 
 input AssignRoleToUserInput {
@@ -87,6 +115,7 @@ enum CustomerType {
   NEW
   OFTEN
 }
+
 input AdminUpdateUserInput {
   fullName: String
   username: String
@@ -104,17 +133,33 @@ input AdminUpdateUserInput {
   refRestaurantIds: [ID!]
   roleId: ID
 }
-extend type Query {
+
+# =========================
+# Auth
+# =========================
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
+
+# =========================
+# Queries
+# =========================
+
+type Query {
   me: User
   roleList: [Role!]!
   users(roleId: ID, search: String, isGuest: Boolean): [User!]!
   customers(search: String, includeGuests: Boolean): [User!]!
 }
-input UpdateAvatarInput {
-  fileBase64: String
-  fileUrl: String
-}
-extend type Mutation {
+
+# =========================
+# Mutations
+# =========================
+
+type Mutation {
+  # Auth
   createUser(input: CreateUserInput!): AuthPayload!
   login(
     email: String
@@ -124,20 +169,29 @@ extend type Mutation {
     captchaToken: String
   ): AuthPayload!
   changeMyPassword(currentPassword: String!, newPassword: String!): Boolean!
+
+  # Profile
   updateUser(input: UpdateUserInput!): User!
   updateAvatar(input: UpdateAvatarInput!): User!
 
-  # Email verification (nếu bạn đã triển khai)
+  # Email verification
   requestEmailVerification(email: String!): Boolean!
   verifyEmail(token: String!): Boolean!
   resendVerification(email: String!): Boolean!
 
-  # Role & Admin operations
+  # Role & Admin ops
   assignRoleToUser(input: AssignRoleToUserInput!): User!
   adminUpdateUser(userId: ID!, input: AdminUpdateUserInput!): User!
   setUserStatus(userId: ID!, status: String!): User!
   softDeleteUser(userId: ID!): Boolean!
 
-  # Guest helpers
+  # Guests
   createGuestUser(fullName: String, phone: String, expiresInDays: Int): User!
+
+  # Loyalty/Metrics (NEW): đồng bộ điểm & hạng từ FE tính toán
+  updateCustomerMetrics(
+    id: ID!
+    loyaltyPoints: Int!
+    customerType: CustomerType!
+  ): User!
 }

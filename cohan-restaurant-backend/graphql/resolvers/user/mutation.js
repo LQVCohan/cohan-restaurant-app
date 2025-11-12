@@ -5,6 +5,7 @@ import { GraphQLError } from "graphql";
 import process from "process";
 import { User, Role } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
+import dayjs from "dayjs";
 
 import { validatePasswordStrong } from "../../../lib/passwordPolicy.js";
 import { verifyRecaptcha } from "../../../lib/recaptcha.js";
@@ -35,11 +36,9 @@ function ensureDirSync(dir) {
 }
 
 function saveBase64Avatar(base64, userId) {
-  // base64 có thể là "data:image/png;base64,XXXX" hoặc "XXXX"
   const hasPrefix = /^data:image\/([a-zA-Z0-9+]+);base64,/.test(base64 || "");
   const pureBase64 = hasPrefix ? base64.split(",")[1] : base64;
 
-  // Detect ext từ prefix nếu có
   let ext = "png";
   if (hasPrefix) {
     const m = base64.match(/^data:image\/([a-zA-Z0-9+]+);base64,/);
@@ -53,13 +52,21 @@ function saveBase64Avatar(base64, userId) {
   const absPath = path.join(uploadsDir, filename);
   fs.writeFileSync(absPath, Buffer.from(pureBase64, "base64"));
 
-  // URL public (ví dụ: /uploads/avatars/xxx.png)
   return `/uploads/avatars/${filename}`;
 }
 
 // helper: chuẩn hoá số điện thoại VN nhẹ nhàng
 const normalizePhone = (p) =>
   p ? p.replace(/\s+/g, "").replace(/^\+84/, "0") : p;
+
+/* ===== Loyalty helpers (đồng bộ với FE rule) ===== */
+const computePointsFromSpending = (spending) =>
+  Math.max(0, Math.floor((Number(spending) || 0) / 1000));
+const computeTypeFromPoints = (points) => {
+  if (points < 5000) return "NEW";
+  if (points <= 15000) return "OFTEN";
+  return "VIP";
+};
 
 export const UserMutation = {
   // ========== Role ==========
@@ -131,9 +138,7 @@ export const UserMutation = {
     return true;
   },
 
-  // ========== Change password (alias, input object) ==========
-
-  // ======== CẬP NHẬT AVATAR (nâng cao: base64/fileUrl) =========
+  // ======== Update avatar (giữ lại để nơi khác dùng nếu cần) =========
   async updateAvatar(_, { input }, ctx) {
     const authUser = ctx?.user;
     if (!authUser?.id) {
@@ -160,7 +165,6 @@ export const UserMutation = {
         });
       }
     } else if (input?.fileUrl) {
-      // bạn chỉ định URL sẵn có (VD sau khi gọi REST /api/upload)
       nextUrl = input.fileUrl;
     } else if (typeof input?.clear === "boolean" && input.clear === true) {
       nextUrl = null;
@@ -192,6 +196,7 @@ export const UserMutation = {
       customerType,
       captchaToken,
       provider = "local",
+      status = "active",
     } = input;
 
     if (!fullName?.trim()) {
@@ -210,14 +215,19 @@ export const UserMutation = {
       );
     }
 
-    const recaptcha = await verifyRecaptcha(captchaToken, ctx);
-    if (!recaptcha.ok) {
-      throw new GraphQLError(
-        recaptcha.reason || "reCAPTCHA verification failed",
-        {
-          extensions: { code: "BAD_USER_INPUT" },
-        }
-      );
+    // Allow disabling reCAPTCHA in dev by env flag
+    const recaptchaEnabled =
+      String(process.env.ENABLE_RECAPTCHA ?? "true").toLowerCase() === "true";
+    if (recaptchaEnabled) {
+      const recaptcha = await verifyRecaptcha(captchaToken, ctx);
+      if (!recaptcha.ok) {
+        throw new GraphQLError(
+          recaptcha.reason || "reCAPTCHA verification failed",
+          {
+            extensions: { code: "BAD_USER_INPUT" },
+          }
+        );
+      }
     }
 
     let roleDoc = null;
@@ -237,11 +247,12 @@ export const UserMutation = {
 
     const exists = await User.findOne({
       $or: [
-        { email: email?.toLowerCase().trim() },
-        { phone: normalizePhone(phone) },
-        { username: username?.toLowerCase().trim() },
+        { email: email?.toLowerCase().trim() || null },
+        { phone: normalizePhone(phone) || null },
+        { username: username?.toLowerCase().trim() || null },
       ],
-    });
+    }).lean();
+
     if (exists) {
       throw new GraphQLError("Email/Phone/Username already in use", {
         extensions: { code: "BAD_USER_INPUT" },
@@ -250,12 +261,12 @@ export const UserMutation = {
 
     const doc = new User({
       fullName: fullName.trim(),
-      username: username?.trim(),
-      email: email?.toLowerCase().trim(),
-      phone: phone?.trim(),
+      username: username?.trim() || undefined,
+      email: email?.toLowerCase().trim() || undefined,
+      phone: phone ? normalizePhone(phone.trim()) : undefined,
       address: address || undefined,
       provider,
-      status: "active",
+      status: status.toLowerCase(),
       customerType: customerType || "NEW",
       role: roleId || undefined,
       loyaltyPoints: 0,
@@ -266,7 +277,7 @@ export const UserMutation = {
     await doc.save();
 
     if (
-      String(process.env.ENABLE_EMAIL_VERIFICATION || "true").toLowerCase() ===
+      String(process.env.ENABLE_EMAIL_VERIFICATION ?? "true").toLowerCase() ===
       "true"
     ) {
       try {
@@ -279,7 +290,6 @@ export const UserMutation = {
     const userObj = await User.findById(doc._id)
       .populate("role")
       .lean({ virtuals: true });
-
     const token = signToken({ ...userObj, role: userObj.role });
     const roleName = (
       userObj.role?.slug ||
@@ -297,21 +307,25 @@ export const UserMutation = {
       });
     }
 
-    const recaptcha = await verifyRecaptcha(captchaToken, ctx);
-    if (!recaptcha.ok) {
-      throw new GraphQLError(
-        recaptcha.reason || "reCAPTCHA verification failed",
-        {
-          extensions: { code: "BAD_USER_INPUT" },
-        }
-      );
+    const recaptchaEnabled =
+      String(process.env.ENABLE_RECAPTCHA ?? "true").toLowerCase() === "true";
+    if (recaptchaEnabled) {
+      const recaptcha = await verifyRecaptcha(captchaToken, ctx);
+      if (!recaptcha.ok) {
+        throw new GraphQLError(
+          recaptcha.reason || "reCAPTCHA verification failed",
+          {
+            extensions: { code: "BAD_USER_INPUT" },
+          }
+        );
+      }
     }
 
     const q = {
       $or: [
         ...(email ? [{ email: email.toLowerCase().trim() }] : []),
         ...(username ? [{ username: username.trim() }] : []),
-        ...(phone ? [{ phone: phone.trim() }] : []),
+        ...(phone ? [{ phone: normalizePhone(phone.trim()) }] : []),
       ],
     };
     if (q.$or.length === 0) {
@@ -334,12 +348,6 @@ export const UserMutation = {
         extensions: { code: "FORBIDDEN" },
       });
 
-    // if (process.env.ENABLE_EMAIL_VERIFICATION === "true" && !user.emailVerified) {
-    //   throw new GraphQLError("Email not verified. Please check your inbox.", {
-    //     extensions: { code: "FORBIDDEN" },
-    //   });
-    // }
-
     const ok = user.checkPassword ? await user.checkPassword(password) : false;
     if (!ok)
       throw new GraphQLError("Invalid credentials", {
@@ -355,11 +363,10 @@ export const UserMutation = {
       userObj.role?.name ||
       ""
     ).toLowerCase();
-
     return { token, user: { ...userObj, roleName } };
   },
 
-  // ========== Update current user (có avatarUrl) ==========
+  // ========== Update current user ==========
   updateUser: async (_, { input }, ctx) => {
     const authUser = ctx?.user;
     if (!authUser?.id) {
@@ -376,7 +383,6 @@ export const UserMutation = {
     }
 
     const updates = {};
-    // fullName
     if (typeof input.fullName === "string") {
       const v = input.fullName.trim();
       if (!v) {
@@ -387,12 +393,11 @@ export const UserMutation = {
       updates.fullName = v;
     }
 
-    // username (duy nhất – nếu cho phép đổi)
     if (typeof input.username === "string" && input.username.trim()) {
-      const nextUsername = input.username.trim();
+      const nextUsername = input.username.trim().toLowerCase();
       const existUsername = await User.findOne({
         _id: { $ne: u._id },
-        username: nextUsername.toLowerCase(),
+        username: nextUsername,
       }).lean();
       if (existUsername) {
         throw new GraphQLError("Username already in use", {
@@ -402,7 +407,6 @@ export const UserMutation = {
       updates.username = nextUsername;
     }
 
-    // email (duy nhất)
     if (typeof input.email === "string") {
       const nextEmail = input.email.trim().toLowerCase();
       if (nextEmail) {
@@ -415,18 +419,16 @@ export const UserMutation = {
             extensions: { code: "BAD_USER_INPUT" },
           });
         }
-        // nếu email đổi ⇒ reset verify
         if (u.email && u.email !== nextEmail) {
           updates.emailVerified = false;
         }
         updates.email = nextEmail;
       } else {
-        updates.email = null; // cho phép xoá nếu cần
+        updates.email = null;
         updates.emailVerified = false;
       }
     }
 
-    // phone (duy nhất nhẹ)
     if (typeof input.phone === "string") {
       const nextPhone = normalizePhone(input.phone.trim());
       if (nextPhone) {
@@ -445,7 +447,6 @@ export const UserMutation = {
       }
     }
 
-    // address (ghi đè từng field)
     if (input.address && typeof input.address === "object") {
       updates.address = {
         line1: input.address.line1 ?? u.address?.line1 ?? "",
@@ -457,14 +458,11 @@ export const UserMutation = {
       };
     }
 
-    // avatarUrl (đổi độc lập hoặc kèm các trường khác)
     if (Object.prototype.hasOwnProperty.call(input, "avatarUrl")) {
-      // Cho phép set null/empty để xoá; FE gửi string hoặc null
       const v = (input.avatarUrl ?? "").toString().trim();
       updates.avatarUrl = v || null;
     }
 
-    // cập nhật
     const saved = await User.findByIdAndUpdate(u._id, updates, {
       new: true,
       runValidators: true,
@@ -475,6 +473,8 @@ export const UserMutation = {
     const roleName = (saved.role?.slug || saved.role?.name || "").toLowerCase();
     return { ...saved, roleName };
   },
+
+  // ========== Guest nhanh ==========
   async createGuestUser(_, { fullName, phone, expiresInDays = 30 }, { user }) {
     requireRole(user, ["admin", "manager", "staff"]);
 
@@ -497,7 +497,7 @@ export const UserMutation = {
     return saved;
   },
 
-  // === NEW: admin cập nhật user bất kỳ ===
+  // === Admin update user ===
   async adminUpdateUser(_, { userId, input }, { user: authUser }) {
     requireRole(authUser, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(userId)) {
@@ -516,6 +516,7 @@ export const UserMutation = {
     const updates = {};
     if (typeof input.fullName === "string")
       updates.fullName = input.fullName.trim();
+
     if (typeof input.username === "string" && input.username.trim()) {
       const nextUsername = input.username.trim().toLowerCase();
       const existUsername = await User.findOne({
@@ -529,6 +530,7 @@ export const UserMutation = {
       }
       updates.username = nextUsername;
     }
+
     if (typeof input.email === "string") {
       const nextEmail = input.email.trim().toLowerCase() || null;
       if (nextEmail) {
@@ -547,6 +549,7 @@ export const UserMutation = {
       }
       updates.email = nextEmail;
     }
+
     if (typeof input.phone === "string") {
       const nextPhone = normalizePhone(input.phone);
       if (nextPhone) {
@@ -564,6 +567,7 @@ export const UserMutation = {
         updates.phone = null;
       }
     }
+
     if (input.address && typeof input.address === "object") {
       updates.address = {
         line1: input.address.line1 ?? u.address?.line1 ?? "",
@@ -574,10 +578,12 @@ export const UserMutation = {
         country: input.address.country ?? u.address?.country ?? "vietnam",
       };
     }
+
     if (Object.prototype.hasOwnProperty.call(input, "avatarUrl")) {
       const v = (input.avatarUrl ?? "").toString().trim();
       updates.avatarUrl = v || null;
     }
+
     if (typeof input.status === "string") {
       const s = input.status.toLowerCase();
       if (!["active", "inactive", "blocked", "pending"].includes(s)) {
@@ -587,6 +593,7 @@ export const UserMutation = {
       }
       updates.status = s;
     }
+
     if (typeof input.customerType === "string")
       updates.customerType = input.customerType;
     if (typeof input.loyaltyPoints === "number")
@@ -604,7 +611,6 @@ export const UserMutation = {
       );
     }
 
-    // cho phép đổi role trực tiếp
     if (input.roleId) {
       if (!mongoose.isValidObjectId(input.roleId)) {
         throw new GraphQLError("Invalid roleId", {
@@ -630,7 +636,7 @@ export const UserMutation = {
     return saved;
   },
 
-  // === NEW: đổi status nhanh ===
+  // === Quick status ===
   async setUserStatus(_, { userId, status }, { user: authUser }) {
     requireRole(authUser, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(userId)) {
@@ -657,7 +663,7 @@ export const UserMutation = {
     return saved;
   },
 
-  // === NEW: xoá mềm (đặt inactive) ===
+  // === Soft delete ===
   async softDeleteUser(_, { userId }, { user: authUser }) {
     requireRole(authUser, ["admin"]);
     if (!mongoose.isValidObjectId(userId)) {
@@ -677,6 +683,49 @@ export const UserMutation = {
     }
     return true;
   },
+
+  /* ================= NEW: updateCustomerMetrics =================
+     - Cho phép FE đồng bộ loyaltyPoints & customerType sau khi tính
+     - Yêu cầu quyền admin/manager
+  */
+  async updateCustomerMetrics(
+    _,
+    { id, loyaltyPoints, customerType },
+    { user: authUser }
+  ) {
+    requireRole(authUser, ["admin", "manager"]);
+    if (!mongoose.isValidObjectId(id)) {
+      throw new GraphQLError("Invalid id", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const lp = Math.max(0, Number(loyaltyPoints || 0));
+    const ct = (customerType || "").toUpperCase();
+    if (!["NEW", "OFTEN", "VIP"].includes(ct)) {
+      throw new GraphQLError("Invalid customerType", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+
+    const saved = await User.findByIdAndUpdate(
+      id,
+      {
+        loyaltyPoints: lp,
+        customerType: ct,
+      },
+      { new: true }
+    )
+      .populate("role")
+      .lean({ virtuals: true });
+
+    if (!saved) {
+      throw new GraphQLError("User not found", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
+    return saved;
+  },
+
   // ========== verify email mutations ==========
   ...emailVerificationMutation,
 };

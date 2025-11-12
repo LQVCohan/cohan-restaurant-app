@@ -1,32 +1,92 @@
 // components/CustomerModal.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { gql, useMutation } from "@apollo/client";
 import Modal, { ModalFooter } from "../../../components/common/Modal";
 
-const statusClasses = {
-  online: "bg-green-500 animate-pulse",
-  ordering: "bg-blue-500 animate-bounce",
-  away: "bg-yellow-500",
-  offline: "bg-gray-400",
+/* ===== GraphQL: cập nhật loyaltyPoints & customerType ===== */
+const UPDATE_CUSTOMER_METRICS = gql`
+  mutation UpdateCustomerMetrics(
+    $id: ID!
+    $loyaltyPoints: Int!
+    $customerType: CustomerType!
+  ) {
+    updateCustomerMetrics(
+      id: $id
+      loyaltyPoints: $loyaltyPoints
+      customerType: $customerType
+    ) {
+      id
+      loyaltyPoints
+      customerType
+      updatedAt
+    }
+  }
+`;
+
+/* ===== Status meta + flow (hiển thị) ===== */
+const ORDER_STATUS_META = {
+  pending: {
+    label: "Chờ xác nhận",
+    cls: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  },
+  confirmed: {
+    label: "Đã xác nhận",
+    cls: "bg-blue-100 text-blue-800 border-blue-200",
+  },
+  preparing: {
+    label: "Đang chế biến",
+    cls: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  },
+  ready: {
+    label: "Sẵn sàng",
+    cls: "bg-teal-100 text-teal-800 border-teal-200",
+  },
+  served: {
+    label: "Đã phục vụ",
+    cls: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  },
+  paid: {
+    label: "Đã thanh toán",
+    cls: "bg-green-100 text-green-800 border-green-200",
+  },
+  completed: {
+    label: "Hoàn tất",
+    cls: "bg-green-100 text-green-800 border-green-200",
+  },
+  cancelled: { label: "Đã hủy", cls: "bg-red-100 text-red-800 border-red-200" },
+  default: {
+    label: "Không rõ",
+    cls: "bg-gray-100 text-gray-700 border-gray-200",
+  },
+};
+const ORDER_FLOW = [
+  "pending",
+  "confirmed",
+  "preparing",
+  "ready",
+  "served",
+  "paid",
+  "completed",
+];
+const statusToStep = (st) => {
+  const idx = ORDER_FLOW.indexOf((st || "").toLowerCase());
+  return idx >= 0 ? idx : -1;
+};
+const stepLabel = {
+  pending: "Chờ xác nhận",
+  confirmed: "Đã xác nhận",
+  preparing: "Đang chế biến",
+  ready: "Sẵn sàng",
+  served: "Đã phục vụ",
+  paid: "Đã thanh toán",
+  completed: "Hoàn tất",
 };
 
-const typeClasses = {
-  VIP: "bg-gradient-to-r from-yellow-400 to-orange-500 text-white",
-  "Thường xuyên": "bg-gradient-to-r from-blue-500 to-purple-600 text-white",
-  Mới: "bg-gradient-to-r from-green-500 to-teal-600 text-white",
-};
-
-const typeIcons = {
-  VIP: "⭐ VIP",
-  "Thường xuyên": "🔥 Thường xuyên",
-  Mới: "🆕 Mới",
-};
-
-// ——— Helpers an toàn ———
+/* ===== Helpers thời gian/tiền an toàn ===== */
 const normalizeEpochToMs = (v) => {
-  if (!v) return null;
+  if (v == null) return null;
   if (v instanceof Date) return v.getTime();
   if (typeof v === "number" && Number.isFinite(v)) {
-    // 10 digits → seconds, 13 digits → ms
     const len = String(Math.floor(v)).length;
     return len === 10 ? v * 1000 : v;
   }
@@ -42,39 +102,47 @@ const normalizeEpochToMs = (v) => {
   }
   return null;
 };
+const toDateStringVI = (ts) => {
+  const ms = normalizeEpochToMs(ts);
+  return Number.isFinite(ms)
+    ? new Date(ms).toLocaleDateString("vi-VN")
+    : new Date().toLocaleDateString("vi-VN");
+};
+const ceilToThousand = (n) => Math.ceil((Number(n) || 0) / 1000) * 1000;
 
-const formatVND = (n) =>
-  (Number(n) || 0).toLocaleString("vi-VN", { maximumFractionDigits: 0 }) + "đ";
+const getEntryAmount = (entry) => {
+  if (entry?.raw?.totals?.grandTotal != null) {
+    return Number(entry.raw.totals.grandTotal) || 0;
+  }
+  if (Array.isArray(entry?.raw?.items) && entry.raw.items.length) {
+    return entry.raw.items.reduce((sum, it) => {
+      const p = Number(it?.price || 0) + Number(it?.modifiersPrice || 0);
+      const q = Number(it?.quantity || 1);
+      return sum + p * q;
+    }, 0);
+  }
+  if (entry?.amount != null) return Number(entry.amount) || 0;
+  return 0;
+};
+const getOrderItems = (entry) => {
+  if (Array.isArray(entry?.raw?.items) && entry.raw.items.length) {
+    return entry.raw.items.map((i) => i?.name).filter(Boolean);
+  }
+  return Array.isArray(entry?.items) ? entry.items : [];
+};
 
-const computeMembershipDays = (joinDate) => {
-  const ms = normalizeEpochToMs(joinDate);
-  if (!Number.isFinite(ms)) return 0;
-  return Math.max(0, Math.floor((Date.now() - ms) / (1000 * 60 * 60 * 24)));
+/* ===== Phân hạng dựa trên điểm ===== */
+const classifyCustomerType = (points) => {
+  if (points < 5000) return "NEW";
+  if (points <= 15000) return "OFTEN";
+  return "VIP";
 };
 
 const CustomerModal = ({ customer, onClose, onShowBill }) => {
-  // Notes state
+  // Professional UI: chỉ giữ tính năng cần
   const [notes, setNotes] = useState(customer?.notes || "");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState(customer?.notes || "");
-
-  // Tính toán an toàn
-  const totalSpent = Number(customer?.totalSpent || 0);
-  const totalOrders = Number(customer?.totalOrders || 0);
-  const avgOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0;
-
-  const loyaltyPoints = Number(customer?.loyaltyPoints || 0);
-  const loyaltyLevel =
-    loyaltyPoints >= 1500
-      ? "💎 Kim cương"
-      : loyaltyPoints >= 1000
-      ? "🥇 Vàng"
-      : loyaltyPoints >= 500
-      ? "🥈 Bạc"
-      : "🥉 Đồng";
-
-  // joinDate có thể là ISO | ms | "ms" | "seconds"
-  const membershipDays = computeMembershipDays(customer?.joinDate);
 
   const recentOrders = Array.isArray(customer?.recentOrders)
     ? customer.recentOrders
@@ -82,6 +150,48 @@ const CustomerModal = ({ customer, onClose, onShowBill }) => {
   const favoriteItems = Array.isArray(customer?.favoriteItems)
     ? customer.favoriteItems
     : [];
+
+  // 🔢 FE compute: tổng số đơn, tổng chi tiêu, TB/đơn từ recentOrders
+  const orderCount = recentOrders.length;
+  const totalSpentRaw = useMemo(
+    () => recentOrders.reduce((sum, entry) => sum + getEntryAmount(entry), 0),
+    [recentOrders]
+  );
+  const totalSpent = ceilToThousand(totalSpentRaw);
+  const averagePerOrder =
+    orderCount > 0 ? ceilToThousand(totalSpentRaw / orderCount) : 0;
+
+  // Điểm tích lũy & loại khách theo quy tắc mới
+  const computedPoints = Math.floor(totalSpentRaw / 1000);
+  const computedType = classifyCustomerType(computedPoints);
+
+  // Cập nhật DB nếu khác dữ liệu hiện có
+  const [mutUpdateMetrics] = useMutation(UPDATE_CUSTOMER_METRICS);
+  useEffect(() => {
+    const currentPoints = Number(customer?.loyaltyPoints || 0);
+    const currentType = (customer?.customerType || "").toUpperCase(); // DB enum string
+
+    const needUpdate =
+      currentPoints !== computedPoints || currentType !== computedType;
+    if (!customer?.id || !needUpdate) return;
+
+    mutUpdateMetrics({
+      variables: {
+        id: customer.id,
+        loyaltyPoints: computedPoints,
+        customerType: computedType,
+      },
+    }).catch(() => {
+      // im lặng trong UI
+    });
+  }, [
+    customer?.id,
+    customer?.loyaltyPoints,
+    customer?.customerType,
+    computedPoints,
+    computedType,
+    mutUpdateMetrics,
+  ]);
 
   const idDisplay = useMemo(() => {
     const idStr = customer?.id != null ? String(customer.id) : "0";
@@ -91,31 +201,52 @@ const CustomerModal = ({ customer, onClose, onShowBill }) => {
   const handleSaveNotes = () => {
     setNotes(tempNotes);
     setIsEditingNotes(false);
-    // TODO: call API lưu notes nếu cần
-    // alert("Ghi chú đã được cập nhật thành công!");
+    // TODO: call API lưu notes nếu có
   };
-
   const handleCancelEdit = () => {
     setTempNotes(notes);
     setIsEditingNotes(false);
   };
+  const handleShowBill = (entry) => onShowBill?.(entry);
 
-  const handleShowBill = (orderIndex) => {
-    if (recentOrders[orderIndex]) {
-      onShowBill?.(orderIndex);
+  // membership days
+  const membershipDays = useMemo(() => {
+    const ms = normalizeEpochToMs(customer?.joinDate);
+    if (!Number.isFinite(ms)) return 0;
+    return Math.max(0, Math.floor((Date.now() - ms) / (1000 * 60 * 60 * 24)));
+  }, [customer?.joinDate]);
+
+  // Nhãn hiển thị loại khách sau khi tính & đồng bộ
+  const prettyType = useMemo(() => {
+    switch (computedType) {
+      case "VIP":
+        return {
+          text: "⭐ VIP",
+          cls: "bg-gradient-to-r from-yellow-400 to-orange-500 text-white",
+        };
+      case "OFTEN":
+        return {
+          text: "🔥 Thường xuyên",
+          cls: "bg-gradient-to-r from-blue-500 to-purple-600 text-white",
+        };
+      default:
+        return {
+          text: "🆕 Mới",
+          cls: "bg-gradient-to-r from-green-500 to-teal-600 text-white",
+        };
     }
-  };
+  }, [computedType]);
 
   return (
     <Modal
       isOpen={true}
       onClose={onClose}
       title="Chi tiết khách hàng"
-      size="xl" // xl để thoải mái nội dung; thay "lg" nếu muốn gọn hơn
+      size="xl"
       closeOnOverlayClick
       closeOnEscape
     >
-      {/* Customer Header */}
+      {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 text-white mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -124,10 +255,9 @@ const CustomerModal = ({ customer, onClose, onShowBill }) => {
                 {customer?.avatar || "👤"}
               </div>
               <div
-                className={`absolute -bottom-1 -right-1 w-6 h-6 ${
-                  statusClasses[customer?.status] || statusClasses.offline
-                } rounded-full border-2 border-white`}
-              ></div>
+                className={`absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white`}
+                title="Đang hoạt động"
+              />
             </div>
             <div>
               <h2 className="text-2xl font-bold mb-1">
@@ -136,31 +266,29 @@ const CustomerModal = ({ customer, onClose, onShowBill }) => {
               <p className="text-blue-100 mb-2">ID: #{idDisplay}</p>
               <div className="flex items-center flex-wrap gap-2">
                 <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    typeClasses[customer?.customerType] || typeClasses["Mới"]
-                  }`}
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${prettyType.cls}`}
                 >
-                  {typeIcons[customer?.customerType] || typeIcons["Mới"]}
+                  {prettyType.text}
                 </span>
                 <span className="px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm font-medium">
-                  {loyaltyLevel}
+                  Điểm: {computedPoints.toLocaleString("vi-VN")}
                 </span>
-                {customer?.isGuest && (
-                  <span className="px-3 py-1 bg-yellow-400 text-black rounded-full text-sm font-semibold">
-                    🟡 Guest
-                  </span>
-                )}
+                <span className="px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm font-medium">
+                  Đang hoạt động
+                </span>
               </div>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-3xl font-bold">{loyaltyPoints}</div>
+            <div className="text-3xl font-bold">
+              {computedPoints.toLocaleString("vi-VN")}
+            </div>
             <div className="text-blue-100">Điểm tích lũy</div>
           </div>
         </div>
       </div>
 
-      {/* Contact Info quick row */}
+      {/* Contact quick row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
         <div className="flex items-center text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-3">
           <span className="w-5 text-center mr-3">📧</span>
@@ -172,29 +300,27 @@ const CustomerModal = ({ customer, onClose, onShowBill }) => {
         </div>
         <div className="flex items-center text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-3">
           <span className="w-5 text-center mr-3">⏰</span>
-          <span className="font-medium">
-            {customer?.currentActivity || "Không hoạt động"}
-          </span>
+          <span className="font-medium">Đang hoạt động</span>
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats (production) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-green-50 p-4 rounded-xl text-center">
           <div className="text-2xl font-bold text-green-600">
-            {formatVND(totalSpent)}
+            {totalSpent.toLocaleString("vi-VN")}đ
           </div>
           <div className="text-sm text-gray-600">Tổng chi tiêu</div>
         </div>
         <div className="bg-blue-50 p-4 rounded-xl text-center">
           <div className="text-2xl font-bold text-blue-600">
-            {totalOrders.toLocaleString("vi-VN")}
+            {orderCount.toLocaleString("vi-VN")}
           </div>
           <div className="text-sm text-gray-600">Tổng đơn hàng</div>
         </div>
         <div className="bg-purple-50 p-4 rounded-xl text-center">
           <div className="text-2xl font-bold text-purple-600">
-            {formatVND(Math.round(avgOrderValue / 1000) * 1000)}
+            {averagePerOrder.toLocaleString("vi-VN")}đ
           </div>
           <div className="text-sm text-gray-600">Giá trị TB/đơn</div>
         </div>
@@ -205,32 +331,6 @@ const CustomerModal = ({ customer, onClose, onShowBill }) => {
           <div className="text-sm text-gray-600">Ngày thành viên</div>
         </div>
       </div>
-
-      {/* Favorite Items */}
-      {favoriteItems.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center mb-2">
-            <span className="text-sm font-medium text-gray-600 mr-2">
-              🍽️ Món yêu thích:
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {favoriteItems.slice(0, 6).map((item, index) => (
-              <span
-                key={index}
-                className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-              >
-                {item}
-              </span>
-            ))}
-            {favoriteItems.length > 6 && (
-              <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
-                +{favoriteItems.length - 6}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Recent Orders */}
       <div className="bg-gray-50 rounded-xl p-6 mb-6">
@@ -246,42 +346,93 @@ const CustomerModal = ({ customer, onClose, onShowBill }) => {
               strokeLinejoin="round"
               strokeWidth="2"
               d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-            ></path>
+            />
           </svg>
-          Đơn hàng gần đây ({recentOrders.length})
+          Đơn hàng gần đây ({orderCount})
         </h3>
 
         {recentOrders.length > 0 ? (
           <div className="space-y-3">
-            {recentOrders.map((order, index) => (
-              <div
-                key={index}
-                className="bg-white p-4 rounded-lg border border-gray-200 hover:border-blue-600 cursor-pointer transition-colors"
-                onClick={() => handleShowBill(index)}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="font-medium text-blue-900">
-                    📅 {order.date}
+            {recentOrders.map((entry, index) => {
+              const st = (
+                entry?.status ||
+                entry?.raw?.currentStatus ||
+                "default"
+              ).toLowerCase();
+              const meta = ORDER_STATUS_META[st] || ORDER_STATUS_META.default;
+              const step = statusToStep(st);
+              const totalSteps = ORDER_FLOW.length - 1;
+              const displayDate =
+                entry?.raw?.createdAt != null
+                  ? toDateStringVI(entry.raw.createdAt)
+                  : entry?.date || toDateStringVI(Date.now);
+              const amount = ceilToThousand(getEntryAmount(entry));
+
+              return (
+                <div
+                  key={entry?.id || entry?.orderCode || index}
+                  className="bg-white p-4 rounded-lg border border-gray-200 hover:border-blue-600 cursor-pointer transition-colors"
+                  onClick={() => handleShowBill(entry)}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-medium text-blue-900">
+                      📅 {displayDate}
+                    </div>
+                    <div className="text-lg font-bold text-green-600">
+                      {amount.toLocaleString("vi-VN")}đ
+                    </div>
                   </div>
-                  <div className="text-lg font-bold text-green-600">
-                    {(Number(order.amount) || 0).toLocaleString("vi-VN")}đ
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {(order.items || []).map((item, itemIndex) => (
+
+                  {/* Status badge */}
+                  <div className="mb-2">
                     <span
-                      key={itemIndex}
-                      className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                      className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${meta.cls}`}
                     >
-                      {item}
+                      {meta.label}
                     </span>
-                  ))}
+                  </div>
+
+                  {/* Step progress */}
+                  <div className="mt-2">
+                    <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                      {ORDER_FLOW.map((k, i) => {
+                        const active = i <= step && step >= 0;
+                        return (
+                          <div key={k} className="flex items-center">
+                            <div
+                              className={`w-6 h-1 rounded ${
+                                active ? "bg-blue-600" : "bg-gray-200"
+                              }`}
+                              title={stepLabel[k]}
+                            />
+                            {i < totalSteps && <div className="w-1" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-1 text-[11px] text-gray-600">
+                      {stepLabel[st] || "Trạng thái không rõ"}
+                    </div>
+                  </div>
+
+                  {/* Items */}
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {(getOrderItems(entry) || []).map((item, itemIndex) => (
+                      <span
+                        key={itemIndex}
+                        className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="mt-2 text-xs text-blue-600 font-medium">
+                    👆 Nhấn để xem hóa đơn chi tiết
+                  </div>
                 </div>
-                <div className="mt-2 text-xs text-blue-600 font-medium">
-                  👆 Nhấn để xem hóa đơn chi tiết
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-8">
@@ -296,7 +447,7 @@ const CustomerModal = ({ customer, onClose, onShowBill }) => {
         )}
       </div>
 
-      {/* Notes */}
+      {/* Notes — vẫn giữ nhưng tối giản để production */}
       <div className="bg-yellow-50 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-blue-900 flex items-center">
@@ -311,7 +462,7 @@ const CustomerModal = ({ customer, onClose, onShowBill }) => {
                 strokeLinejoin="round"
                 strokeWidth="2"
                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              ></path>
+              />
             </svg>
             Ghi chú
           </h3>
@@ -356,7 +507,6 @@ const CustomerModal = ({ customer, onClose, onShowBill }) => {
         )}
       </div>
 
-      {/* Footer actions */}
       <ModalFooter>
         <button className="btn btn--secondary" onClick={onClose}>
           Đóng

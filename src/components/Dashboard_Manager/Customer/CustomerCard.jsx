@@ -1,7 +1,87 @@
-// components/CustomerCard.jsx
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import CustomerModal from "./CustomerModal";
 import OrderBillModal from "./OrderBillModal";
+
+/* Helpers… (giữ nguyên như bản trước) */
+const normalizeEpochToMs = (v) => {
+  if (v == null) return null;
+  if (v instanceof Date) return v.getTime();
+  if (typeof v === "number" && Number.isFinite(v)) {
+    const len = String(Math.floor(v)).length;
+    return len === 10 ? v * 1000 : v;
+  }
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (/^\d+$/.test(s)) {
+      const n = Number(s);
+      const len = s.length;
+      return len === 10 ? n * 1000 : n;
+    }
+    const p = Date.parse(s);
+    return Number.isFinite(p) ? p : null;
+  }
+  return null;
+};
+
+const ceilToThousand = (n) => Math.ceil((Number(n) || 0) / 1000) * 1000;
+
+const formatDate = (date) => {
+  const ms = normalizeEpochToMs(date);
+  return Number.isFinite(ms)
+    ? new Date(ms).toLocaleDateString("vi-VN")
+    : "Chưa rõ";
+};
+
+const ORDER_STATUS_META = {
+  pending: {
+    label: "Chờ xác nhận",
+    cls: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  },
+  confirmed: {
+    label: "Đã xác nhận",
+    cls: "bg-blue-100 text-blue-800 border-blue-200",
+  },
+  preparing: {
+    label: "Đang chế biến",
+    cls: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  },
+  ready: {
+    label: "Sẵn sàng",
+    cls: "bg-teal-100 text-teal-800 border-teal-200",
+  },
+  served: {
+    label: "Đã phục vụ",
+    cls: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  },
+  paid: {
+    label: "Đã thanh toán",
+    cls: "bg-green-100 text-green-800 border-green-200",
+  },
+  completed: {
+    label: "Hoàn tất",
+    cls: "bg-green-100 text-green-800 border-green-200",
+  },
+  cancelled: { label: "Đã hủy", cls: "bg-red-100 text-red-800 border-red-200" },
+  default: {
+    label: "Không rõ",
+    cls: "bg-gray-100 text-gray-700 border-gray-200",
+  },
+};
+
+const getEntryAmount = (entry) => {
+  if (entry?.raw?.totals?.grandTotal != null) {
+    return Number(entry.raw.totals.grandTotal) || 0;
+  }
+  if (Array.isArray(entry?.raw?.items) && entry.raw.items.length) {
+    return entry.raw.items.reduce((sum, it) => {
+      const p = Number(it?.price || 0) + Number(it?.modifiersPrice || 0);
+      const q = Number(it?.quantity || 1);
+      return sum + p * q;
+    }, 0);
+  }
+  if (entry?.amount != null) return Number(entry.amount) || 0;
+  return 0;
+};
 
 const CustomerCard = ({ customer }) => {
   const [showModal, setShowModal] = useState(false);
@@ -27,48 +107,44 @@ const CustomerCard = ({ customer }) => {
     Mới: "🆕 Mới",
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("vi-VN");
+  // Xoá biểu tượng 🟡 trong TÊN, nhưng vẫn sẽ hiển thị badge Guest riêng
+  const cleanName = useMemo(
+    () => (customer?.name || "Khách hàng").replace("🟡", "").trim(),
+    [customer?.name]
+  );
+
+  const sortedRecentOrders = useMemo(() => {
+    const list = Array.isArray(customer?.recentOrders)
+      ? customer.recentOrders
+      : [];
+    return [...list].sort((a, b) => {
+      const ams =
+        normalizeEpochToMs(a?.raw?.createdAt ?? a?.createdAt ?? a?.date) ?? 0;
+      const bms =
+        normalizeEpochToMs(b?.raw?.createdAt ?? b?.createdAt ?? b?.date) ?? 0;
+      return bms - ams;
+    });
+  }, [customer?.recentOrders]);
+
+  const feOrderCount = sortedRecentOrders.length;
+  const feTotalSpent = useMemo(
+    () =>
+      sortedRecentOrders.reduce((sum, entry) => sum + getEntryAmount(entry), 0),
+    [sortedRecentOrders]
+  );
+  const feAvgOrder =
+    feOrderCount > 0 ? ceilToThousand(feTotalSpent / feOrderCount) : 0;
+
+  const handleShowBill = (orderEntry) => {
+    if (!orderEntry) return;
+    setSelectedOrder(orderEntry);
+    setShowBillModal(true);
   };
 
-  const handleShowBill = (orderIndex) => {
-    if (customer.recentOrders && customer.recentOrders[orderIndex]) {
-      setSelectedOrder({
-        ...customer.recentOrders[orderIndex],
-        index: orderIndex,
-      });
-      setShowBillModal(true);
-    }
-  };
-  const safeMembershipDays = (() => {
-    const v = customer?.joinDate;
-    if (!v) return 0;
-
-    // v có thể là ISO string hoặc số ms (nếu đâu đó truyền thẳng)
-    let ms;
-    if (typeof v === "number" && Number.isFinite(v)) {
-      ms = v;
-    } else if (typeof v === "string") {
-      if (/^\d+$/.test(v.trim())) {
-        const n = Number(v.trim());
-        ms = v.trim().length === 10 ? n * 1000 : n;
-      } else {
-        const parsed = Date.parse(v);
-        if (!Number.isFinite(parsed)) return 0;
-        ms = parsed;
-      }
-    } else if (v instanceof Date) {
-      ms = v.getTime();
-    } else {
-      return 0;
-    }
-
-    return Math.max(0, Math.floor((Date.now() - ms) / (1000 * 60 * 60 * 24)));
-  })();
-
-  // Đảm bảo recentOrders luôn là array
-  const recentOrders = customer.recentOrders || [];
-  const favoriteItems = customer.favoriteItems || [];
+  const nearest = sortedRecentOrders[0];
+  const favoriteItems = Array.isArray(customer?.favoriteItems)
+    ? customer.favoriteItems
+    : [];
 
   return (
     <>
@@ -82,33 +158,42 @@ const CustomerCard = ({ customer }) => {
             <div className="flex items-center space-x-4">
               <div className="relative">
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl flex items-center justify-center text-2xl shadow-lg">
-                  {customer.avatar || "👤"}
+                  {customer?.avatar || "👤"}
                 </div>
                 <div
                   className={`absolute -bottom-1 -right-1 w-5 h-5 ${
-                    statusClasses[customer.status] || statusClasses.offline
+                    statusClasses[customer?.status] || statusClasses.offline
                   } rounded-full border-2 border-white`}
-                ></div>
+                />
               </div>
               <div>
                 <h3 className="text-xl font-bold text-blue-900 mb-1">
-                  {customer.name}
+                  {cleanName}
                 </h3>
-                <span
-                  className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
-                    typeClasses[customer.customerType] || typeClasses["Mới"]
-                  }`}
-                >
-                  {typeIcons[customer.customerType] || typeIcons["Mới"]}
-                </span>
+                <div className="flex items-center flex-wrap gap-2">
+                  <span
+                    className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
+                      typeClasses[customer?.customerType] || typeClasses["Mới"]
+                    }`}
+                  >
+                    {typeIcons[customer?.customerType] || typeIcons["Mới"]}
+                  </span>
+
+                  {/* Badge Guest riêng (không nằm trong tên) */}
+                  {customer?.isGuest && (
+                    <span className="inline-block px-2.5 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200">
+                      🟡 Guest
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-blue-600">
-                {(customer.totalSpent || 0).toLocaleString()}đ
+                {ceilToThousand(feTotalSpent).toLocaleString("vi-VN")}đ
               </div>
               <div className="text-sm text-gray-600">
-                {customer.totalOrders || 0} đơn hàng
+                {feOrderCount} đơn hàng
               </div>
             </div>
           </div>
@@ -118,28 +203,16 @@ const CustomerCard = ({ customer }) => {
             <div className="flex items-center text-sm text-gray-600">
               <span className="w-5 text-center mr-3">📧</span>
               <span className="truncate">
-                {customer.email || "Chưa có email"}
+                {customer?.email || "Chưa có email"}
               </span>
             </div>
             <div className="flex items-center text-sm text-gray-600">
               <span className="w-5 text-center mr-3">📱</span>
-              <span>{customer.phone || "Chưa có SĐT"}</span>
+              <span>{customer?.phone || "Chưa có SĐT"}</span>
             </div>
             <div className="flex items-center text-sm">
               <span className="w-5 text-center mr-3">⏰</span>
-              <span
-                className={`font-medium ${
-                  customer.status === "online"
-                    ? "text-green-600"
-                    : customer.status === "ordering"
-                    ? "text-blue-600"
-                    : customer.status === "away"
-                    ? "text-yellow-600"
-                    : "text-gray-600"
-                }`}
-              >
-                {customer.currentActivity || "Không hoạt động"}
-              </span>
+              <span className="font-medium text-green-600">Đang hoạt động</span>
             </div>
           </div>
 
@@ -147,28 +220,27 @@ const CustomerCard = ({ customer }) => {
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div className="text-center p-3 bg-blue-50 rounded-xl">
               <div className="text-lg font-bold text-blue-600">
-                {customer.loyaltyPoints || 0}
+                {customer?.loyaltyPoints || 0}
               </div>
               <div className="text-xs text-gray-600">Điểm tích lũy</div>
             </div>
             <div className="text-center p-3 bg-green-50 rounded-xl">
               <div className="text-lg font-bold text-green-600">
-                {customer.totalOrders || 0}
+                {feOrderCount}
               </div>
               <div className="text-xs text-gray-600">Đơn hàng</div>
             </div>
             <div className="text-center p-3 bg-purple-50 rounded-xl">
               <div className="text-lg font-bold text-purple-600">
-                {safeMembershipDays}
+                {feAvgOrder.toLocaleString("vi-VN")}đ
               </div>
-              <div className="text-xs text-gray-600">Ngày thành viên</div>
+              <div className="text-xs text-gray-600">TB/đơn</div>
             </div>
           </div>
         </div>
 
         {/* Card Body */}
         <div className="px-6 pb-4">
-          {/* Favorite Items */}
           {favoriteItems.length > 0 && (
             <div className="mb-4">
               <div className="flex items-center mb-2">
@@ -194,8 +266,8 @@ const CustomerCard = ({ customer }) => {
             </div>
           )}
 
-          {/* Recent Order */}
-          {recentOrders.length > 0 && (
+          {/* Nearest Order */}
+          {nearest ? (
             <div className="bg-gray-50 rounded-xl p-3 mb-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -203,23 +275,44 @@ const CustomerCard = ({ customer }) => {
                     Đơn hàng gần nhất
                   </div>
                   <div className="text-xs text-gray-600">
-                    {recentOrders[0].date}
+                    {formatDate(nearest?.raw?.createdAt ?? nearest?.date)}
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-bold text-green-600">
-                    {(recentOrders[0].amount || 0).toLocaleString()}đ
+                    {ceilToThousand(getEntryAmount(nearest)).toLocaleString(
+                      "vi-VN"
+                    )}
+                    đ
                   </div>
                   <div className="text-xs text-gray-600">
-                    {recentOrders[0].items ? recentOrders[0].items.length : 0}{" "}
-                    món
+                    {(nearest?.items || []).length} món
                   </div>
                 </div>
               </div>
-              {/* Hiển thị một vài món trong đơn hàng gần nhất */}
-              {recentOrders[0].items && recentOrders[0].items.length > 0 && (
+
+              <div className="mt-2">
+                {(() => {
+                  const st = (
+                    nearest?.status ||
+                    nearest?.raw?.currentStatus ||
+                    "default"
+                  ).toLowerCase();
+                  const meta =
+                    ORDER_STATUS_META[st] || ORDER_STATUS_META.default;
+                  return (
+                    <span
+                      className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${meta.cls}`}
+                    >
+                      {meta.label}
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {(nearest?.items || []).length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {recentOrders[0].items.slice(0, 2).map((item, index) => (
+                  {(nearest.items || []).slice(0, 2).map((item, index) => (
                     <span
                       key={index}
                       className="px-2 py-1 bg-white text-gray-600 text-xs rounded-full border"
@@ -227,18 +320,27 @@ const CustomerCard = ({ customer }) => {
                       {item}
                     </span>
                   ))}
-                  {recentOrders[0].items.length > 2 && (
+                  {(nearest.items || []).length > 2 && (
                     <span className="px-2 py-1 bg-blue-100 text-blue-600 text-xs rounded-full">
-                      +{recentOrders[0].items.length - 2}
+                      +{(nearest.items || []).length - 2}
                     </span>
                   )}
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Nếu không có đơn hàng gần đây */}
-          {recentOrders.length === 0 && (
+              <div className="mt-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleShowBill(nearest);
+                  }}
+                  className="text-xs font-medium text-blue-700 hover:text-blue-900"
+                >
+                  👆 Xem hóa đơn chi tiết
+                </button>
+              </div>
+            </div>
+          ) : (
             <div className="bg-gray-50 rounded-xl p-3 mb-4 text-center">
               <div className="text-sm text-gray-500">
                 📝 Chưa có đơn hàng nào
@@ -254,8 +356,7 @@ const CustomerCard = ({ customer }) => {
         <div className="px-6 py-4 bg-gray-50 rounded-b-2xl">
           <div className="flex items-center justify-between">
             <div className="text-xs text-gray-600">
-              Tham gia:{" "}
-              {customer.joinDate ? formatDate(customer.joinDate) : "Chưa rõ"}
+              Tham gia: {formatDate(customer?.joinDate)}
             </div>
             <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2">
               <span>Xem chi tiết</span>
@@ -280,9 +381,16 @@ const CustomerCard = ({ customer }) => {
       {/* Modals */}
       {showModal && (
         <CustomerModal
-          customer={customer}
+          customer={{
+            ...customer,
+            recentOrders: sortedRecentOrders,
+            name: cleanName,
+          }}
           onClose={() => setShowModal(false)}
-          onShowBill={handleShowBill}
+          onShowBill={(entry) => {
+            setSelectedOrder(entry);
+            setShowBillModal(true);
+          }}
         />
       )}
 
@@ -290,7 +398,10 @@ const CustomerCard = ({ customer }) => {
         <OrderBillModal
           customer={customer}
           order={selectedOrder}
-          onClose={() => setShowBillModal(false)}
+          onClose={() => {
+            setShowBillModal(false);
+            setSelectedOrder(null);
+          }}
         />
       )}
     </>

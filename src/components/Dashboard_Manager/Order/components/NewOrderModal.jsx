@@ -9,45 +9,44 @@ import {
   ChevronDown,
   Loader,
   Layers,
+  Search,
+  ChevronRight,
+  ChevronDown as ChevronDownIcon,
+  Eraser,
+  Image as ImageIcon,
 } from "lucide-react";
 
-// ✅ MỚI: Import Modal chung
-// (Hãy đảm bảo đường dẫn này đúng với cấu trúc dự án của bạn)
+// Modal dùng chung
 import Modal from "../../../../components/common/Modal";
 
-// --- Import các hook ---
+// Hooks dữ liệu
 import useOrderManagement from "../../../../hooks/useOrderManagement";
 import useFloorManagement from "../../../../hooks/useFloorManagement";
 import useTableManagement from "../../../../hooks/useTableManagement";
 import useMenuManagement from "../../../../hooks/useMenuManagement";
 import { useNotification } from "@/hooks/useNotification";
 
-// --- CSS ---
-import "./NewOrderModal.scss"; // Import SCSS cho layout bên trong
+// Styles
+import "./NewOrderModal.scss";
 
-// --- Helper Functions ---
-const formatCurrency = (value) => {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(value || 0);
-};
+// Helpers
+const formatCurrency = (value) =>
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+    value || 0
+  );
 
-// --- Component Card Món Ăn (Nội bộ) ---
-// (Logic component DishCard không đổi)
+// ---------------------- DishCard ----------------------
 const DishCard = ({ dish, onAdd }) => {
   const [showMethods, setShowMethods] = useState(false);
   const hasMethods =
-    dish.preparationMethods && dish.preparationMethods.length > 0;
+    Array.isArray(dish.preparationMethods) &&
+    dish.preparationMethods.length > 0;
+
   const defaultPrep = dish._defaultPreparation;
 
   const handleAdd = (prepMethod = null) => {
-    let priceForHook;
-    if (dish.basePrice > 0) {
-      priceForHook = dish.basePrice;
-    } else {
-      priceForHook = prepMethod ? prepMethod.price : 0;
-    }
+    const priceForHook =
+      dish.basePrice > 0 ? dish.basePrice : prepMethod ? prepMethod.price : 0;
 
     onAdd({
       menuItem: dish,
@@ -66,65 +65,106 @@ const DishCard = ({ dish, onAdd }) => {
     }
   };
 
-  const cardClasses = [
-    "dish-card",
-    showMethods ? "dish-card--methods-open" : "",
-  ]
-    .join(" ")
-    .trim();
-
-  if (showMethods) {
-    return (
-      <div className={cardClasses}>
-        <button
-          onClick={() => setShowMethods(false)}
-          className="dish-card__close-methods"
-        >
-          <X size={14} />
-        </button>
-        <h4 className="dish-card__name">{dish.name}</h4>
-        <div className="dish-card__methods-list">
-          {(dish.preparationMethods || []).map((method, index) => (
-            <button
-              key={method.name || index}
-              onClick={() => handleAdd(method)}
-              className="dish-card__method-btn"
-            >
-              {method.name}
-              {dish.basePrice === 0 && (
-                <span className="dish-card__method-price">
-                  {formatCurrency(method.price)}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const imageUrl = dish.imageUrl || null;
 
   return (
-    <button onClick={handleAddDefault} className={cardClasses}>
-      <div>
-        <h4 className="dish-card__name">{dish.name}</h4>
-        {hasMethods && (
-          <span className="dish-card__meta">
-            (Có {dish.preparationMethods.length} cách chế biến)
-          </span>
-        )}
+    <div
+      className={`dish-card ${showMethods ? "dish-card--methods-open" : ""}`}
+    >
+      <div
+        className="dish-card__click"
+        aria-label={`Thêm ${dish.name}`}
+        role="button"
+        tabIndex={0}
+        onClick={handleAddDefault}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") handleAddDefault();
+        }}
+      >
+        <div className="dish-card__thumb">
+          {imageUrl ? (
+            <img src={imageUrl} alt={dish.name} />
+          ) : (
+            <div className="dish-card__thumb--placeholder">
+              <ImageIcon size={20} />
+            </div>
+          )}
+        </div>
+
+        <div className="dish-card__info">
+          <h4 className="dish-card__name" title={dish.name}>
+            {dish.name}
+          </h4>
+
+          <div className="dish-card__meta-row">
+            {hasMethods && (
+              <span className="badge badge--info">
+                {dish.preparationMethods.length} cách chế biến
+              </span>
+            )}
+            {dish.basePrice === 0 && (
+              <span className="badge badge--warning">Giá theo chế biến</span>
+            )}
+          </div>
+
+          <p className="dish-card__price">
+            {formatCurrency(dish._displayPrice)}
+          </p>
+        </div>
       </div>
-      <p className="dish-card__price">{formatCurrency(dish._displayPrice)}</p>
-    </button>
+
+      {/* Nút + nhanh */}
+      <button
+        className="dish-card__add"
+        title="Thêm nhanh"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleAddDefault();
+        }}
+      >
+        <Plus size={16} />
+      </button>
+
+      {/* Popup chọn cách chế biến */}
+      {showMethods && (
+        <div className="dish-card__methods-pop">
+          <button
+            onClick={() => setShowMethods(false)}
+            className="dish-card__methods-close"
+            title="Đóng"
+          >
+            <X size={14} />
+          </button>
+          <div className="dish-card__methods-title">{dish.name}</div>
+          <div className="dish-card__methods-list">
+            {(dish.preparationMethods || []).map((method, idx) => (
+              <button
+                key={method.name || idx}
+                onClick={() => handleAdd(method)}
+                className="dish-card__method-btn"
+              >
+                <span>{method.name}</span>
+                {dish.basePrice === 0 && (
+                  <span className="dish-card__method-price">
+                    {formatCurrency(method.price)}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
-// --- Component Modal Chính (ĐÃ CẬP NHẬT) ---
+// ---------------------- Main Modal ----------------------
 const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
   const { showNotification } = useNotification?.() || {
     showNotification: (msg, type) => console.log(type || "info", msg),
   };
 
-  // --- State cho context của hook (Giữ nguyên) ---
+  // POS Context cho hook Order
   const [currentTable, setCurrentTable] = useState(null);
   const [currentOrder, setCurrentOrder] = useState([]);
   const [tableOrders, setTableOrders] = useState({});
@@ -140,16 +180,14 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     [currentOrder, currentTable, tableOrders]
   );
 
-  // --- Khởi tạo hook TẠO ĐƠN (Giữ nguyên) ---
+  // Hook tạo/lưu đơn
   const { addToOrder, updateItemQty, removeItem, saveOrder, totals } =
     useOrderManagement(posContext);
 
-  // --- Khởi tạo các hook LẤY DỮ LIỆU (Giữ nguyên) ---
+  // Hooks lấy dữ liệu
   const { floors, floorsLoading, activeLevel, setActiveLevel } =
     useFloorManagement({ restaurantId });
-
   const { tables, tablesLoading } = useTableManagement({ restaurantId });
-
   const {
     menus,
     itemsWithPrice,
@@ -158,20 +196,20 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     setSelectedTimeSlot,
   } = useMenuManagement({ restaurantId });
 
-  // --- State nội bộ (Giữ nguyên) ---
   const [isSaving, setIsSaving] = useState(false);
 
-  // --- Logic lọc/map dữ liệu (Giữ nguyên) ---
+  // Bàn khả dụng (theo tầng đang chọn)
   const availableTables = useMemo(() => {
-    return tables.filter(
+    return (tables || []).filter(
       (t) =>
         t.status === "available" &&
         (activeLevel === null || t.floorLevel === activeLevel)
     );
   }, [tables, activeLevel]);
 
+  // Phiên phục vụ
   const sessions = useMemo(() => {
-    const availableSet = new Set(menus.map((m) => m.timeSlot));
+    const availableSet = new Set((menus || []).map((m) => m.timeSlot));
     const slotMap = {
       breakfast: "Sáng",
       lunch: "Trưa",
@@ -189,14 +227,13 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     }
   }, [sessions, selectedTimeSlot, setSelectedTimeSlot]);
 
+  // Nhóm món theo danh mục
   const dishesGroupedByCategory = useMemo(() => {
     const groups = new Map();
     (itemsWithPrice || []).forEach((item) => {
       const catId = item.categoryId || "other";
-      // Tạm dùng categoryId làm tên nếu không có
       const catName =
-        item.category?.name || `Danh mục #${catId.substring(0, 5)}`;
-
+        item.category?.name || `Danh mục #${String(catId).slice(0, 5)}`;
       if (!groups.has(catId)) {
         groups.set(catId, { id: catId, name: catName, dishes: [] });
       }
@@ -205,10 +242,52 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     return Array.from(groups.values());
   }, [itemsWithPrice]);
 
-  // --- Hàm xử lý sự kiện (Giữ nguyên) ---
+  // --------- Làm đẹp: Tìm kiếm & Accordion danh mục ----------
+  const [query, setQuery] = useState("");
+  const [expandedCats, setExpandedCats] = useState(new Set());
+
+  // Mặc định mở toàn bộ khi có dữ liệu
+  useEffect(() => {
+    setExpandedCats(new Set(dishesGroupedByCategory.map((c) => c.id)));
+  }, [dishesGroupedByCategory]);
+
+  // Tự mở tất cả khi đang tìm kiếm
+  useEffect(() => {
+    if (query.trim()) {
+      setExpandedCats(new Set(dishesGroupedByCategory.map((c) => c.id)));
+    }
+  }, [query, dishesGroupedByCategory]);
+
+  const toggleCat = (id) => {
+    setExpandedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredGroups = useMemo(() => {
+    if (!normalizedQuery) return dishesGroupedByCategory;
+    return dishesGroupedByCategory
+      .map((g) => ({
+        ...g,
+        dishes: (g.dishes || []).filter((d) =>
+          [d.name, d.searchKeywords, d.category?.name]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(normalizedQuery)
+        ),
+      }))
+      .filter((g) => g.dishes.length > 0);
+  }, [dishesGroupedByCategory, normalizedQuery]);
+
+  // --------- Handlers ----------
   const handleTableChange = (e) => {
     const tableCode = e.target.value;
-    const selectedTable = tables.find((t) => t.code === tableCode);
+    const selectedTable = (tables || []).find((t) => t.code === tableCode);
     setCurrentTable(selectedTable || null);
   };
 
@@ -217,6 +296,17 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     setActiveLevel(level ? Number(level) : null);
     setCurrentTable(null);
   };
+
+  const clearDraft = () => {
+    setCurrentOrder([]);
+    showNotification("Đã xóa đơn nháp.", "info");
+  };
+
+  const canSave =
+    !isSaving &&
+    !!currentTable &&
+    currentOrder.length > 0 &&
+    !(tablesLoading || floorsLoading);
 
   const handleSaveOrder = async () => {
     if (!currentTable) {
@@ -228,10 +318,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
       return;
     }
     setIsSaving(true);
-    const result = await saveOrder({
-      persist: true,
-      restaurantId: restaurantId,
-    });
+    const result = await saveOrder({ persist: true, restaurantId });
     setIsSaving(false);
 
     if (result.success) {
@@ -244,32 +331,37 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
   };
 
   const handleClose = () => {
-    // Reset state của đơn hàng nháp
     setCurrentTable(null);
     setCurrentOrder([]);
     setTableOrders({});
     setIsSaving(false);
-    // Gọi hàm onClose từ component cha (OrderManagement)
     onClose();
   };
 
+  // Phím tắt: Esc đóng, Enter lưu
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") handleClose();
+      if (e.key === "Enter" && canSave) handleSaveOrder();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen, canSave]); // eslint-disable-line
+
   const isLoading = tablesLoading || floorsLoading;
 
-  // ✅ THAY ĐỔI CHÍNH: Bọc layout trong <Modal>
-  // Component <Modal> sẽ tự xử lý việc ẩn/hiện dựa trên `isOpen`
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
       title="Tạo Đơn Hàng Mới"
-      size="xl" // Dùng size "xl" (80rem) từ Modal.scss
+      size="xl"
     >
-      {/* Layout 2 cột sẽ được render bên trong <div class="modal__content">
-        Chúng ta cần 1 class wrapper để override padding của .modal__content
-      */}
       <div className="new-order-modal-layout">
-        {/* Cột trái: Chọn Bàn & Menu (Không đổi) */}
+        {/* LEFT: Menu & chọn bàn */}
         <section className="new-order-modal__menu-col">
+          {/* Sticky filters */}
           <div className="new-order-modal__controls">
             <div className="controls__table-filter">
               <div className="form-group form-group--floor">
@@ -283,7 +375,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                   <option value="">
                     {floorsLoading ? "Đang tải tầng..." : "Tất cả các tầng"}
                   </option>
-                  {floors.map((floor) => (
+                  {(floors || []).map((floor) => (
                     <option key={floor.id} value={floor.level}>
                       {floor.name}
                     </option>
@@ -298,12 +390,12 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                   value={currentTable?.code || ""}
                   onChange={handleTableChange}
                   className="form-group__select"
-                  disabled={isLoading || availableTables.length === 0}
+                  disabled={isLoading || (availableTables || []).length === 0}
                 >
                   <option value="">
                     {isLoading ? "Đang tải bàn..." : "--- Chọn bàn ---"}
                   </option>
-                  {availableTables.map((table) => (
+                  {(availableTables || []).map((table) => (
                     <option key={table.id} value={table.code}>
                       {table.code}{" "}
                       {table.floorLevel ? `(Tầng ${table.floorLevel})` : ""}
@@ -314,23 +406,37 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
               </div>
             </div>
 
-            <nav className="new-order-modal__sessions">
-              {sessions.map((session) => (
-                <button
-                  key={session.value}
-                  onClick={() => setSelectedTimeSlot(session.value)}
-                  className={`session-tab ${
-                    selectedTimeSlot === session.value
-                      ? "session-tab--active"
-                      : ""
-                  }`}
-                >
-                  {session.label}
-                </button>
-              ))}
-            </nav>
+            {/* Search + Sessions */}
+            <div className="controls__quick">
+              <div className="searchbox">
+                <Search className="searchbox__icon" size={16} />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Tìm món theo tên, danh mục…"
+                  className="searchbox__input"
+                />
+              </div>
+
+              <nav className="new-order-modal__sessions">
+                {(sessions || []).map((session) => (
+                  <button
+                    key={session.value}
+                    onClick={() => setSelectedTimeSlot(session.value)}
+                    className={`session-tab ${
+                      selectedTimeSlot === session.value
+                        ? "session-tab--active"
+                        : ""
+                    }`}
+                  >
+                    {session.label}
+                  </button>
+                ))}
+              </nav>
+            </div>
           </div>
 
+          {/* Grid menu */}
           <div className="new-order-modal__grid-wrapper">
             {itemsLoading && (
               <div className="loading-overlay">
@@ -338,73 +444,131 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
                 <p>Đang tải menu...</p>
               </div>
             )}
-            {!itemsLoading && dishesGroupedByCategory.length === 0 && (
-              <div className="empty-state">
-                Không tìm thấy món ăn cho buổi này.
-              </div>
+
+            {!itemsLoading && filteredGroups.length === 0 && (
+              <div className="empty-state">Không tìm thấy món phù hợp.</div>
             )}
-            {dishesGroupedByCategory.map((category) => (
-              <div key={category.id} className="menu-category">
-                <h3 className="menu-category__title">{category.name}</h3>
-                <div className="menu-category__dish-grid">
-                  {(category.dishes || []).map((dish) => (
-                    <DishCard key={dish.id} dish={dish} onAdd={addToOrder} />
-                  ))}
+
+            {filteredGroups.map((category) => {
+              const isOpen = expandedCats.has(category.id);
+              return (
+                <div key={category.id} className="menu-category">
+                  <button
+                    className="menu-category__title"
+                    onClick={() => toggleCat(category.id)}
+                    title={isOpen ? "Thu gọn" : "Mở rộng"}
+                  >
+                    <span className="menu-category__caret">
+                      {isOpen ? (
+                        <ChevronDownIcon size={18} />
+                      ) : (
+                        <ChevronRight size={18} />
+                      )}
+                    </span>
+                    <span className="menu-category__name">{category.name}</span>
+                    <span className="menu-category__count">
+                      {category.dishes.length} món
+                    </span>
+                  </button>
+
+                  {isOpen && (
+                    <div className="menu-category__dish-grid">
+                      {(category.dishes || []).map((dish) => (
+                        <DishCard
+                          key={dish.id}
+                          dish={dish}
+                          onAdd={addToOrder}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
-        {/* Cột phải: Đơn Hàng Nháp (Không đổi) */}
+        {/* RIGHT: Đơn nháp */}
         <aside className="new-order-modal__draft-col">
-          <h3 className="draft-col__header">
-            Đơn hàng:{" "}
-            <span>{currentTable ? currentTable.code : "(Chưa chọn bàn)"}</span>
-          </h3>
+          <div className="draft-col__header">
+            <div className="draft-col__title">
+              Đơn hàng{" "}
+              <span className="draft-col__table">
+                {currentTable ? currentTable.code : "(Chưa chọn bàn)"}
+              </span>
+            </div>
+
+            <div className="draft-col__actions">
+              <button
+                className="btn btn--ghost"
+                onClick={clearDraft}
+                disabled={currentOrder.length === 0}
+                title="Xóa đơn nháp"
+              >
+                <Eraser size={16} />
+                Xóa đơn
+              </button>
+            </div>
+          </div>
 
           <div className="draft-col__item-list">
             {currentOrder.length === 0 && (
               <div className="empty-state">Vui lòng chọn món từ menu.</div>
             )}
-            {currentOrder.map((item) => (
-              <div key={item._lineId} className="order-item">
-                <div className="order-item__details">
-                  <p className="order-item__name">{item.name}</p>
-                  {item.method && (
-                    <p className="order-item__method">
-                      Cách chế biến: {item.method}
+
+            {currentOrder.map((item) => {
+              const lineTotal = (item.price || 0) * (item.quantity || 0);
+              return (
+                <div key={item._lineId} className="order-item">
+                  <div className="order-item__details">
+                    <p className="order-item__name" title={item.name}>
+                      {item.name}
                     </p>
-                  )}
-                  <p className="order-item__price">
-                    {formatCurrency(item.price)}
-                  </p>
-                </div>
-                <div className="order-item__qty-controls">
+                    {item.method && (
+                      <p className="order-item__method">
+                        Cách chế biến: {item.method}
+                      </p>
+                    )}
+                    <div className="order-item__prices">
+                      <span className="order-item__price">
+                        {formatCurrency(item.price)}
+                      </span>
+                      <span className="order-item__line-total">
+                        {formatCurrency(lineTotal)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="order-item__qty-controls">
+                    <button
+                      onClick={() =>
+                        updateItemQty(item._lineId, item.quantity - 1)
+                      }
+                      title="Giảm"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <span>{item.quantity}</span>
+                    <button
+                      onClick={() =>
+                        updateItemQty(item._lineId, item.quantity + 1)
+                      }
+                      title="Tăng"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
+
                   <button
-                    onClick={() =>
-                      updateItemQty(item._lineId, item.quantity - 1)
-                    }
+                    onClick={() => removeItem(item._lineId)}
+                    className="order-item__remove-btn"
+                    title="Xóa món"
                   >
-                    <Minus size={14} />
-                  </button>
-                  <span>{item.quantity}</span>
-                  <button
-                    onClick={() =>
-                      updateItemQty(item._lineId, item.quantity + 1)
-                    }
-                  >
-                    <Plus size={14} />
+                    <Trash2 size={18} />
                   </button>
                 </div>
-                <button
-                  onClick={() => removeItem(item._lineId)}
-                  className="order-item__remove-btn"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <footer className="draft-col__footer">
@@ -429,13 +593,11 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
 
             <button
               onClick={handleSaveOrder}
-              disabled={
-                isSaving ||
-                !currentTable ||
-                currentOrder.length === 0 ||
-                isLoading
-              }
+              disabled={!canSave}
               className="save-button"
+              title={
+                canSave ? "Lưu đơn hàng (Enter)" : "Chưa đủ thông tin để lưu"
+              }
             >
               {isSaving ? (
                 <Loader size={20} className="spinner" />

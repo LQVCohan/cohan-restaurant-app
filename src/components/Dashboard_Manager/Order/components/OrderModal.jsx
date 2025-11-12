@@ -1,21 +1,51 @@
-import React, { useCallback, useMemo, useState } from "react";
+// src/pages/OrderManagement/components/OrderModal.jsx
+import React, {
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
 import { X, Printer, Loader2 } from "lucide-react";
+import { gql, useMutation } from "@apollo/client";
 import "./OrderModal.scss";
 
-// Giữ nguyên
+/* ---------------- Helpers: tiền tệ & thời gian (an toàn) ---------------- */
+
 const formatCurrency = (amount) => {
-  if (typeof amount !== "number") amount = 0;
-  return amount.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
+  const n = Number(amount);
+  const safe = Number.isFinite(n) ? n : 0;
+  return safe.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
 };
 
-const STATUS_ORDER = [
-  "pending",
-  "confirmed",
-  "preparing",
-  "ready",
-  "served",
-  "cancelled",
-];
+/** Parse nhiều dạng timestamp: number, "1762805854781", seconds(10), {$date: ...}, Date */
+const toEpochMs = (v) => {
+  if (v == null) return null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v.getTime();
+  if (typeof v === "object" && "$date" in v) return toEpochMs(v.$date);
+  if (typeof v === "number" && Number.isFinite(v)) {
+    return v < 1e12 ? v * 1000 : v; // giây -> ms
+  }
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (/^\d+$/.test(s)) {
+      const n = Number(s);
+      return n < 1e12 ? n * 1000 : n;
+    }
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d.getTime();
+  }
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d.getTime();
+};
+
+const toSafeDate = (v) => {
+  const ms = toEpochMs(v);
+  return ms ? new Date(ms) : null;
+};
+
+/* ---------------- Status mapping ---------------- */
+
 const ITEM_STATUS_LABEL = {
   pending: "Chờ xác nhận",
   confirmed: "Đã xác nhận",
@@ -23,17 +53,48 @@ const ITEM_STATUS_LABEL = {
   ready: "Sẵn sàng",
   served: "Đã phục vụ",
   cancelled: "Đã hủy",
+  completed: "Hoàn thành",
+};
+const getItemStatusText = (status) => ITEM_STATUS_LABEL[status] || status;
+
+// orderType → VI
+const toViOrderType = (type) => {
+  switch (type) {
+    case "dine_in":
+      return "Tại bàn";
+    case "takeaway":
+      return "Mang về";
+    case "delivery":
+      return "Giao hàng";
+    default:
+      return type || "Tại bàn";
+  }
 };
 
-/**
- * Props:
- * - order: Order { orderCode, restaurantId, items, ... }
- * - onClose: () => void
- * - onChangeItemStatusByCode?: ({ restaurantId, orderCode, itemKey, status, note? }) => Promise
- * - onUpdateItemStatus?: (payload | legacy) => Promise
- *   + mới: onUpdateItemStatus({ restaurantId, orderCode, itemKey, status })
- *   + cũ:  onUpdateItemStatus(orderId, itemKey, status)
- */
+/* ---------------- Mutations tự dùng trong modal (không sửa hook) ---------------- */
+
+const UPDATE_ORDER_STATUS_BY_CODE = gql`
+  mutation UpdateOrderStatusByCode($input: UpdateOrderStatusByCodeInput!) {
+    updateOrderStatusByCode(input: $input) {
+      order {
+        id
+        currentStatus
+        updatedAt
+      }
+    }
+  }
+`;
+const UPDATE_ORDER_STATUS = gql`
+  mutation UpdateOrderStatus($input: UpdateOrderStatusInput!) {
+    updateOrderStatus(input: $input) {
+      id
+      currentStatus
+    }
+  }
+`;
+
+/* ============================== Component ============================== */
+
 const OrderModal = ({
   order,
   onClose,
@@ -41,31 +102,143 @@ const OrderModal = ({
   onUpdateItemStatus,
 }) => {
   const [savingMap, setSavingMap] = useState({}); // key theo lineId/index -> boolean
+  const completingRef = useRef(false); // chống gọi hoàn tất nhiều lần
 
-  // --- Lấy dữ liệu từ GQL Order Object ---
-  const orderId = order?.id?.slice(-6) || "N/A";
+  // Apollo mutations để tự hoàn tất đơn khi 100%
+  const [mutStatusByCode] = useMutation(UPDATE_ORDER_STATUS_BY_CODE);
+  const [mutStatusById] = useMutation(UPDATE_ORDER_STATUS);
+
+  /* ---------------- Normalize order fields (KHÔNG sửa hook) ---------------- */
+
+  const orderIdShort = useMemo(
+    () => String(order?.id || "").slice(-6) || "N/A",
+    [order?.id]
+  );
+
   const orderCode = order?.orderCode || null;
   const restaurantId = order?.restaurantId || order?.restaurant?.id || null;
 
   const customerName = order?.user?.fullName || "Khách lẻ";
   const tableNumber = order?.tableCode || "N/A";
-  const orderTime = new Date(order?.createdAt || Date.now());
   const orderStatus = order?.currentStatus || "pending";
-  const items = order?.items || [];
-  const totals = order?.totals || { grandTotal: 0 };
   const orderNotes = order?.note || "";
+  const orderTypeVi = toViOrderType(order?.orderType);
 
-  const getItemStatusText = (status) => ITEM_STATUS_LABEL[status] || status;
+  // Thời gian hiển thị an toàn
+  const createdAtDate = useMemo(
+    () => toSafeDate(order?.createdAt),
+    [order?.createdAt]
+  );
+
+  // Totals an toàn
+  const totals = useMemo(() => {
+    const t = order?.totals || {};
+    return {
+      subtotal: Number(t.subtotal || 0),
+      discount: Number(t.discount || 0),
+      tax: Number(t.tax || 0),
+      service: Number(t.service || 0),
+      grandTotal: Number(t.grandTotal || 0),
+    };
+  }, [order?.totals]);
+
+  // Items an toàn (ép số, fallback status)
+  const items = useMemo(() => {
+    const raw = Array.isArray(order?.items) ? order.items : [];
+    return raw.map((it, idx) => {
+      const price = Number(it?.price || 0);
+      const mod = Number(it?.modifiersPrice || 0);
+      const qty = Number(it?.quantity || 0);
+      const per =
+        (Number.isFinite(price) ? price : 0) + (Number.isFinite(mod) ? mod : 0);
+      const lineTotal = per * (Number.isFinite(qty) ? qty : 0);
+      return {
+        ...it,
+        price: Number.isFinite(price) ? price : 0,
+        modifiersPrice: Number.isFinite(mod) ? mod : 0,
+        quantity: Number.isFinite(qty) && qty > 0 ? qty : 0,
+        status: it?.status || "pending",
+        _lineTotal: lineTotal,
+      };
+    });
+  }, [order?.items]);
+
+  /* ---------------- Progress tổng thể ----------------
+     - Loại món bị hủy ra khỏi mẫu số
+     - % = served / alive * 100
+     - Nếu order.currentStatus là 'served' hoặc 'completed' => 100
+  ------------------------------------------------------------------ */
+  const progress = useMemo(() => {
+    if (orderStatus === "served" || orderStatus === "completed") return 100;
+
+    const alive = items.filter((i) => i.status !== "cancelled");
+    if (!alive.length) return 0;
+
+    const servedCount = alive.filter((i) => i.status === "served").length;
+    const pct = Math.round((servedCount / alive.length) * 100);
+    return Math.max(0, Math.min(100, pct));
+  }, [items, orderStatus]);
+
+  /* ---------------- Khi đạt 100% -> tự động chuyển order -> completed ---------------- */
+  useEffect(() => {
+    const shouldComplete =
+      progress === 100 && order?.currentStatus !== "completed";
+    if (!shouldComplete || completingRef.current) return;
+
+    completingRef.current = true;
+
+    const complete = async () => {
+      try {
+        if (restaurantId && orderCode) {
+          await mutStatusByCode({
+            variables: {
+              input: { restaurantId, orderCode, status: "completed" },
+            },
+          });
+        } else if (order?.id) {
+          await mutStatusById({
+            variables: { input: { id: order.id, status: "completed" } },
+          });
+        }
+      } catch (e) {
+        // không chặn UI, chỉ log
+        console.warn("Auto-complete order failed:", e?.message);
+      } finally {
+        // Chờ parent cập nhật lại order; nếu không, tránh spam bằng cờ này
+        setTimeout(() => {
+          completingRef.current = false;
+        }, 1200);
+      }
+    };
+
+    complete();
+  }, [
+    progress,
+    order?.id,
+    orderCode,
+    restaurantId,
+    mutStatusByCode,
+    mutStatusById,
+    order?.currentStatus,
+  ]);
+
+  /* ---------------- Hotkeys: ESC đóng ---------------- */
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
 
   const getStatusClass = (status) => {
-    // map class cho badge (giữ tính mở rộng)
     const map = {
       pending: "pending",
       confirmed: "confirmed",
       preparing: "preparing",
       ready: "ready",
       served: "served",
-      completed: "served", // fallback
+      completed: "served",
       cancelled: "cancelled",
     };
     return map[status] || "pending";
@@ -77,39 +250,17 @@ const OrderModal = ({
     </span>
   );
 
-  // Progress tổng thể: tính dựa trên item “cao nhất” chưa hủy
-  const progress = useMemo(() => {
-    const alive = items.filter((i) => i.status !== "cancelled");
-    if (!alive.length) return 0;
-    const idxMax = Math.max(
-      ...alive.map((i) => STATUS_ORDER.indexOf(i.status))
-    );
-    return Math.max(0, Math.round(((idxMax + 1) / STATUS_ORDER.length) * 100));
-  }, [items]);
+  const handlePrint = () => window.print();
 
-  // Close khi nhấn ESC
-  React.useEffect(() => {
-    const handler = (e) => {
-      if (e.key === "Escape") onClose?.();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  // ✅ Đổi status món: ưu tiên API mới theo orderCode; fallback API cũ
+  /* ---------------- Đổi trạng thái món (giữ API cũ của bạn) ---------------- */
   const handleChangeStatus = useCallback(
     async (item, index, nextStatus) => {
-      const itemKey = item._lineId || item.dishId || index;
+      // dùng lại itemKey cũ: _lineId || dishId || index
+      const itemKey = item?._lineId || item?.dishId || index;
 
-      // Optimistic: bật spinner cho item này
       setSavingMap((m) => ({ ...m, [itemKey]: true }));
-
       try {
-        // Ưu tiên hàm mới theo orderCode + restaurantId
+        // Ưu tiên API mới theo orderCode + restaurantId
         if (
           typeof onChangeItemStatusByCode === "function" &&
           restaurantId &&
@@ -125,7 +276,6 @@ const OrderModal = ({
         }
         // Fallback: hàm cũ nhưng hỗ trợ payload mới
         else if (typeof onUpdateItemStatus === "function") {
-          // Thử chữ ký mới (payload object)
           try {
             const maybeNew = onUpdateItemStatus({
               restaurantId,
@@ -135,7 +285,7 @@ const OrderModal = ({
             });
             if (maybeNew?.then) await maybeNew;
           } catch {
-            // Cuối cùng: chữ ký legacy (orderId, itemKey, status)
+            // Legacy (orderId, itemKey, status)
             const maybeLegacy = onUpdateItemStatus(
               order?.id,
               itemKey,
@@ -148,7 +298,6 @@ const OrderModal = ({
         }
       } catch (err) {
         console.error("Update item status error:", err);
-        // (rollback sẽ do cha xử lý bằng state nguồn; ở đây chỉ log)
       } finally {
         setSavingMap((m) => ({ ...m, [itemKey]: false }));
       }
@@ -162,6 +311,8 @@ const OrderModal = ({
     ]
   );
 
+  /* -------------------------------- Render -------------------------------- */
+
   return (
     <div
       className="modalOverlay"
@@ -173,17 +324,21 @@ const OrderModal = ({
         {/* Header sticky */}
         <div className="modalHeader">
           <div className="modalHeader__left">
-            <h2 className="modalTitle">Chi tiết đơn hàng</h2>
+            <h2 className="modalTitle">
+              Chi tiết đơn hàng {orderCode ? `• ${orderCode}` : ""}
+            </h2>
             <div className="subtleMeta">
-              <span>#{orderId}</span>
+              <span>#{orderIdShort}</span>
               <span className="dot">•</span>
               <span>
-                {orderTime.toLocaleString("vi-VN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  day: "2-digit",
-                  month: "2-digit",
-                })}
+                {createdAtDate
+                  ? createdAtDate.toLocaleString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      day: "2-digit",
+                      month: "2-digit",
+                    })
+                  : "—"}
               </span>
             </div>
           </div>
@@ -229,7 +384,10 @@ const OrderModal = ({
               </div>
               <div className="infoItem">
                 <span className="label">Bàn/Loại:</span>
-                <span className="value">{tableNumber}</span>
+                <span className="value">
+                  {tableNumber}
+                  {orderTypeVi ? ` • ${orderTypeVi}` : ""}
+                </span>
               </div>
               <div className="infoItem">
                 <span className="label">Trạng thái đơn:</span>
@@ -249,6 +407,7 @@ const OrderModal = ({
               {items.map((item, index) => {
                 const key = item._lineId || item.dishId || index;
                 const isSaving = !!savingMap[key];
+
                 const disabledAll =
                   orderStatus === "completed" ||
                   orderStatus === "cancelled" ||
@@ -264,6 +423,11 @@ const OrderModal = ({
                       <div className="itemDetails">
                         {getItemStatusText(item.status)} • Đơn giá:{" "}
                         {formatCurrency(item.price)}
+                        {Number(item.modifiersPrice) > 0
+                          ? ` (+${formatCurrency(item.modifiersPrice)})`
+                          : ""}
+                        {item.method ? ` • CĐB: ${item.method}` : ""}
+                        {item.unit ? ` • ĐV: ${item.unit}` : ""}
                       </div>
                       {item.note && (
                         <div className="itemNote">
@@ -276,10 +440,7 @@ const OrderModal = ({
                       <div className="itemPricing">
                         <div className="quantity">x{item.quantity}</div>
                         <div className="itemTotal">
-                          {formatCurrency(
-                            (item.price + (item.modifiersPrice || 0)) *
-                              item.quantity
-                          )}
+                          {formatCurrency(item._lineTotal)}
                         </div>
                       </div>
 
@@ -293,6 +454,7 @@ const OrderModal = ({
                           disabled={disabledAll || isSaving}
                           aria-label={`Trạng thái của ${item.name}`}
                         >
+                          {/* Không có 'confirmed' để khớp VALID_ITEM_STATUS của hook */}
                           <option value="pending">Chờ xác nhận</option>
                           <option value="preparing">Đang chuẩn bị</option>
                           <option value="ready">Sẵn sàng</option>
@@ -316,7 +478,7 @@ const OrderModal = ({
             </div>
           </div>
 
-          {/* Total */}
+          {/* Totals */}
           <div className="section">
             <div className="totalSection">
               <span className="totalLabel">Tổng cộng</span>
@@ -334,7 +496,7 @@ const OrderModal = ({
             </div>
           )}
 
-          {/* Actions (dự phòng ở footer) */}
+          {/* Actions */}
           <div className="actions">
             <button onClick={onClose} className="cancelButton">
               Đóng

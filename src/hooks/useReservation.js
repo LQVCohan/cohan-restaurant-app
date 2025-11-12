@@ -236,9 +236,7 @@ export function useReservation() {
     const email = (customer.email || "").trim().toLowerCase();
 
     // --- VALIDATE theo BE ---
-    if (!fullName) {
-      return { success: false, message: "Cần tên khách hàng." };
-    }
+
     if (!phone && !email) {
       return {
         success: false,
@@ -270,7 +268,7 @@ export function useReservation() {
       partySize: size,
       note: note || "",
       restaurantName: restaurantName || "",
-      customerName: fullName,
+      customerName: fullName || null,
       customerPhone: trimOrNull(phone),
       customerEmail: trimOrNull(email),
       durationMinutes: safeInt(durationMinutes, 90),
