@@ -109,6 +109,17 @@ type Order {
   user: User
 }
 
+# --- Events / Subscriptions ---
+
+type OrderEvent {
+  type: String!
+  order: Order!
+}
+
+extend type Subscription {
+  orderEvents(restaurantId: ID!): OrderEvent!
+}
+
 # --- Inputs ---
 
 input ShippingInput {

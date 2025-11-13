@@ -3,6 +3,7 @@ import {
   useMutation,
   useLazyQuery,
   useApolloClient,
+  useSubscription, // 👈 thêm
   gql,
 } from "@apollo/client";
 
@@ -328,6 +329,52 @@ const UPDATE_ORDER_CUSTOMER_BY_CODE = gql`
           email
           phone
         }
+        updatedAt
+      }
+    }
+  }
+`;
+
+/* === SUBSCRIPTION: ORDER EVENTS === */
+const ORDER_EVENTS = gql`
+  subscription OrderEvents($restaurantId: ID!) {
+    orderEvents(restaurantId: $restaurantId) {
+      type
+      order {
+        id
+        orderCode
+        tableCode
+        currentStatus
+        restaurantId
+        note
+        user {
+          id
+          fullName
+          email
+          phone
+        }
+        items {
+          dishId
+          menuId
+          categoryId
+          name
+          unit
+          price
+          modifiersPrice
+          method
+          note
+          quantity
+          status
+        }
+        totals {
+          subtotal
+          discount
+          tax
+          service
+          grandTotal
+        }
+        orderType
+        createdAt
         updatedAt
       }
     }
@@ -1386,7 +1433,69 @@ export default function useOrderManagement(pos = null) {
   );
 
   /* ============================================================
-     11) RETURN
+     11) SUBSCRIPTION: merge realtime
+     ============================================================ */
+
+  useSubscription(ORDER_EVENTS, {
+    skip: !restaurantId,
+    variables: { restaurantId },
+    onData: ({ data }) => {
+      const evt = data?.data?.orderEvents;
+      if (!evt?.order) return;
+      const { type, order } = evt;
+      console.log("[WS][ORDER_EVENTS]", evt?.type, evt?.order?.id, evt);
+      // Ghi fragment (đồng bộ node Order)
+      writeOrderIntoCache(order);
+
+      // Nếu order completed/cancelled → loại khỏi NOW
+      const shouldRemoveFromNow =
+        order.currentStatus === "completed" ||
+        order.currentStatus === "cancelled" ||
+        type === "ORDER_CANCELLED" ||
+        type === "ORDER_COMPLETED";
+
+      try {
+        const now = apollo.readQuery({
+          query: ORDERS_BY_RESTAURANT_NOW,
+          variables: { restaurantId, limit: 100 },
+        });
+        if (now?.ordersByRestaurantNow) {
+          const edges = now.ordersByRestaurantNow.edges || [];
+          const exists = edges.some((e) => e?.node?.id === order.id);
+
+          let newEdges = edges;
+          if (shouldRemoveFromNow) {
+            newEdges = edges.filter((e) => e?.node?.id !== order.id);
+          } else if (!exists) {
+            newEdges = [{ node: order, cursor: order.id }, ...edges];
+          } else {
+            newEdges = edges.map((e) =>
+              e?.node?.id === order.id
+                ? { ...e, node: { ...e.node, ...order } }
+                : e
+            );
+          }
+
+          apollo.writeQuery({
+            query: ORDERS_BY_RESTAURANT_NOW,
+            variables: { restaurantId, limit: 100 },
+            data: {
+              ordersByRestaurantNow: {
+                __typename: "OrdersConnection",
+                edges: newEdges,
+                pageInfo: now.ordersByRestaurantNow.pageInfo,
+              },
+            },
+          });
+        }
+      } catch {
+        // ignore
+      }
+    },
+  });
+
+  /* ============================================================
+     12) RETURN
      ============================================================ */
 
   const ordersNow =

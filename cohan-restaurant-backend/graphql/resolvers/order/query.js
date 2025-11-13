@@ -1,4 +1,3 @@
-// src/graphql/order/query.js
 import mongoose from "mongoose";
 import { Order } from "../../../models/index.js";
 

@@ -4,8 +4,12 @@ import {
   InMemoryCache,
   HttpLink,
   ApolloLink,
+  split,
 } from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
+import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
+import { createClient as createWsClient } from "graphql-ws";
+import { getMainDefinition } from "@apollo/client/utilities";
 
 /* ---------------- HTTP link ---------------- */
 const httpLink = new HttpLink({
@@ -28,20 +32,66 @@ const authLink = setContext((_, { headers }) => {
   };
 });
 
-const link = ApolloLink.from([authLink, httpLink]);
+/* ---------------- WS link (subscriptions) ---------------- */
+const wsUrl = import.meta.env.VITE_WS_URL || "ws://localhost:4000/graphql";
 
-/* ---------------- Cache + Type Policies ----------------
-   Bổ sung:
-   - Query.ordersByRestaurant: paginate theo cursor (concat edges nếu có cursor),
-     reset list nếu không truyền cursor (lần fetch đầu).
-   - Order: items/totals/currentStatus/updatedAt: replace (merge: false/replace).
-   - Edge/Connection: set keyFields cho ổn định cache.
----------------------------------------------------------------- */
+const wsLink =
+  typeof window === "undefined"
+    ? null
+    : new GraphQLWsLink(
+        createWsClient({
+          url: wsUrl,
+          connectionParams: () => {
+            const token =
+              localStorage.getItem("auth_token") ||
+              localStorage.getItem("token") ||
+              sessionStorage.getItem("auth_token") ||
+              sessionStorage.getItem("token");
+
+            return {
+              headers: {
+                ...(token ? { authorization: `Bearer ${token}` } : {}),
+              },
+            };
+          },
+          // Debug đơn giản
+          on: {
+            opened: () => {
+              console.log("[WS] connected to", wsUrl);
+            },
+            closed: (event) => {
+              console.log("[WS] closed", event.code, event.reason);
+            },
+            error: (err) => {
+              console.error("[WS] error", err);
+            },
+          },
+        })
+      );
+
+/* ---------------- Split link: subscription -> WS, others -> HTTP ---------------- */
+const httpAuthLink = authLink.concat(httpLink);
+
+const link =
+  typeof window === "undefined" || !wsLink
+    ? httpAuthLink
+    : split(
+        ({ query }) => {
+          const def = getMainDefinition(query);
+          return (
+            def.kind === "OperationDefinition" &&
+            def.operation === "subscription"
+          );
+        },
+        wsLink,
+        httpAuthLink
+      );
+
+/* ---------------- Cache + typePolicies (bạn giữ nguyên) ---------------- */
 const cache = new InMemoryCache({
   typePolicies: {
     Query: {
       fields: {
-        // Các field sẵn có
         tables: {
           keyArgs: ["restaurantId"],
           merge(_existing, incoming) {
@@ -54,16 +104,12 @@ const cache = new InMemoryCache({
             return incoming;
           },
         },
-
-        /* === NEW: paginate OrdersByRestaurant theo cursor === */
         ordersByRestaurant: {
-          // Không khóa theo cursor để có thể merge trang tiếp theo
           keyArgs: ["restaurantId", "limit"],
           merge(existing, incoming, { args }) {
             const edgesIncoming = incoming?.edges ?? [];
             const pageInfoIncoming = incoming?.pageInfo ?? null;
 
-            // Nếu không có cursor (lần đầu hoặc refetch đầu danh sách) -> replace
             if (!args || !args.cursor) {
               return {
                 __typename: incoming.__typename || "OrderConnection",
@@ -72,7 +118,6 @@ const cache = new InMemoryCache({
               };
             }
 
-            // Có cursor -> concat (tránh trùng cursor)
             const seen = new Set(
               (existing?.edges ?? []).map((e) => e?.cursor).filter(Boolean)
             );
@@ -93,24 +138,19 @@ const cache = new InMemoryCache({
         },
       },
     },
-
-    /* === NEW: Chuẩn hóa Order === */
     Order: {
       keyFields: ["id"],
       fields: {
-        // items thay thế toàn bộ sau mutation (không merge từng phần tử)
         items: {
           merge(_existing, incoming) {
             return incoming ?? [];
           },
         },
-        // totals thay toàn bộ
         totals: {
           merge(_existing, incoming) {
             return incoming ?? null;
           },
         },
-        // các field primitive chỉ cần replace
         currentStatus: {
           merge(_existing, incoming) {
             return incoming ?? _existing ?? "pending";
@@ -123,16 +163,12 @@ const cache = new InMemoryCache({
         },
       },
     },
-
-    /* === NEW: Node con của connection === */
     OrderEdge: {
       keyFields: ["cursor"],
     },
     OrderConnection: {
       keyFields: false,
     },
-
-    /* (giữ nguyên) */
     Table: {
       keyFields: ["id"],
       fields: {

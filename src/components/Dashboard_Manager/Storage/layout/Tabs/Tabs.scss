@@ -1,13 +1,25 @@
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
 
+/* Khung chứa tabs – cho nó giống 1 card riêng */
 .tabs-card {
-  padding: 10px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid $border-color;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04);
 }
 
+/* Dải pill bên trong card */
 .tabs {
   display: flex;
-  border-bottom: 2px solid $border-color;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #f3f4f6; // xám rất nhạt
+  border-bottom: none;
   overflow-x: auto;
 
   @include mobile {
@@ -15,31 +27,46 @@
   }
 }
 
+/* Mỗi tab là 1 chip, chia đều ngang */
 .tab {
-  padding: 1rem $spacing-lg;
-  background: none;
-  border: none;
+  flex: 1 1 0;
+  text-align: center;
+  padding: 0.6rem $spacing-md;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid transparent;
   cursor: pointer;
-  font-weight: 600;
-  color: #6b7280;
-  border-bottom: 3px solid transparent;
-  white-space: nowrap;
-  transition: all 0.3s ease;
-  font-size: 0.875rem;
 
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  color: #6b7280; // gray-500
+
+  transition: background-color 0.15s ease, color 0.15s ease,
+    border-color 0.15s ease, box-shadow 0.15s ease, transform 0.08s ease;
+
+  /* Tab đang chọn – nổi hẳn lên khỏi dải xám */
   &.active {
+    background: #ffffff;
     color: $primary;
-    border-bottom-color: $primary;
-    background: #f0f9ff;
+    border-color: rgba($primary, 0.35);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
+    transform: none;
   }
 
+  /* Hover tab thường – chỉ đổi nhẹ */
   &:hover:not(.active) {
+    background: rgba($primary, 0.04);
     color: $primary;
-    background: #f8fafc;
+  }
+
+  &:active:not(.active) {
+    transform: translateY(1px);
   }
 
   @include mobile {
-    flex: 1;
-    text-align: center;
+    flex: 1 1 50%;
+    font-size: 0.8rem;
+    padding: 0.5rem 0.4rem;
   }
 }

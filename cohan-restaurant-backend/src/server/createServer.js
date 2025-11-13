@@ -49,12 +49,28 @@ export async function createServer() {
     schema,
     graphiql: process.env.NODE_ENV !== "production",
     ide: process.env.NODE_ENV !== "production",
-    subscription: true,
+
+    subscription: {
+      context: async (connection, req) => {
+        const baseContext = await buildContext(
+          { headers: connection?.context?.headers || {} },
+          {}
+        );
+        return {
+          ...baseContext,
+          loaders: createLoaders(),
+          pubsub: app.graphql.pubsub, // 👈 thêm dòng này
+        };
+      },
+    },
+
+    // Context cho HTTP query/mutation
     context: async (request, reply) => {
       const baseContext = await buildContext(request, reply);
       return {
         ...baseContext,
-        loaders: createLoaders(), // thêm loaders ở đây
+        loaders: createLoaders(),
+        pubsub: app.graphql.pubsub,
       };
     },
   });

@@ -1,3 +1,4 @@
+/* eslint-disable no-empty */
 import mongoose from "mongoose";
 import {
   Order,
@@ -190,8 +191,8 @@ function customerFromDraft(d) {
 
 export const OrderMutation = {
   // POS upsert
-
-  async upsertTableOrder(_, { input }) {
+  async upsertTableOrder(_, { input }, ctx) {
+    // 👈 thêm ctx
     const {
       restaurantId,
       // ƯU TIÊN tableId, vẫn nhận tableCode để tương thích
@@ -425,10 +426,24 @@ export const OrderMutation = {
       console.warn("TableDraft delete failed:", e?.message || e);
     }
 
+    // 🔔 publish sự kiện
+    try {
+      const payload = {
+        type: isNewOrder ? "ORDER_CREATED" : "ORDER_UPDATED",
+        order: doc.toJSON(),
+      };
+      await ctx?.pubsub?.publish({
+        topic: `ORDER_EVENTS_${String(doc.restaurantId)}`,
+        payload,
+      });
+    } catch {}
+
     return { isNewOrder, order: doc.toJSON() };
   },
+
   // tạo order (khách đặt từ ngoài)
-  async createOrder(_, { input }) {
+  async createOrder(_, { input }, ctx) {
+    // 👈 thêm ctx
     const {
       orderCode,
       userId,
@@ -522,6 +537,15 @@ export const OrderMutation = {
     }
 
     await createPaymentTxn(doc, paymentMethod);
+
+    // 🔔 publish
+    try {
+      await ctx?.pubsub?.publish({
+        topic: `ORDER_EVENTS_${String(doc.restaurantId)}`,
+        payload: { type: "ORDER_CREATED", order: doc.toJSON() },
+      });
+    } catch {}
+
     return doc.toJSON();
   },
 
@@ -542,6 +566,15 @@ export const OrderMutation = {
       { status, at: new Date(), note, byUserId },
     ];
     await doc.save();
+
+    // 🔔 publish
+    try {
+      await ctx?.pubsub?.publish({
+        topic: `ORDER_EVENTS_${String(doc.restaurantId)}`,
+        payload: { type: "ORDER_STATUS_CHANGED", order: doc.toJSON() },
+      });
+    } catch {}
+
     return doc.toJSON();
   },
 
@@ -576,6 +609,14 @@ export const OrderMutation = {
         paidAt: new Date(),
       });
     }
+
+    // 🔔 publish
+    try {
+      await ctx?.pubsub?.publish({
+        topic: `ORDER_EVENTS_${String(doc.restaurantId)}`,
+        payload: { type: "ORDER_CANCELLED", order: doc.toJSON() },
+      });
+    } catch {}
 
     return doc.toJSON();
   },
@@ -644,6 +685,22 @@ export const OrderMutation = {
         userAgent: ctx?.req?.headers?.["user-agent"] || "",
         meta: { from: "byCode", toStatus: status, note },
         status: "success",
+      });
+    } catch {}
+
+    // 🔔 publish
+    try {
+      await ctx?.pubsub?.publish({
+        topic: `ORDER_EVENTS_${String(doc.restaurantId)}`,
+        payload: {
+          type:
+            status === "completed"
+              ? "ORDER_COMPLETED"
+              : status === "cancelled"
+              ? "ORDER_CANCELLED"
+              : "ORDER_STATUS_CHANGED",
+          order: doc.toJSON(),
+        },
       });
     } catch {}
 
@@ -732,10 +789,21 @@ export const OrderMutation = {
       });
     } catch {}
 
+    // 🔔 publish
+    try {
+      await ctx?.pubsub?.publish({
+        topic: `ORDER_EVENTS_${String(doc.restaurantId)}`,
+        payload: {
+          type: "ORDER_ITEM_STATUS_CHANGED",
+          order: doc.toJSON(),
+        },
+      });
+    } catch {}
+
     return { order: doc.toJSON() };
   },
 
-  async updateOrderCustomerByCode(_, { input }) {
+  async updateOrderCustomerByCode(_, { input }, ctx) {
     const { restaurantId, orderCode, customer } = input;
 
     if (!restaurantId) throw new Error("restaurantId is required");
@@ -762,6 +830,14 @@ export const OrderMutation = {
       },
     ];
     await doc.save();
+
+    // 🔔 publish
+    try {
+      await ctx?.pubsub?.publish({
+        topic: `ORDER_EVENTS_${String(doc.restaurantId)}`,
+        payload: { type: "ORDER_CUSTOMER_ATTACHED", order: doc.toJSON() },
+      });
+    } catch {}
 
     return { order: doc.toJSON() };
   },

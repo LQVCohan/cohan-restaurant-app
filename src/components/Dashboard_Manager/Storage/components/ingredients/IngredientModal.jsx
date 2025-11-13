@@ -30,10 +30,9 @@ const defaultForm = {
   initialStockQty: "",
 };
 
-const IngredientModal = ({ isOpen, onClose, initial = null, onSubmit }) => {
+const IngredientModal = ({ isOpen, onClose, initial, isEditing, onSubmit }) => {
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState({});
-  const isEditing = !!initial;
 
   useEffect(() => {
     if (initial) {

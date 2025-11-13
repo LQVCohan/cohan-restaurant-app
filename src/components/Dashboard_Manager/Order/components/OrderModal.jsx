@@ -190,14 +190,14 @@ const OrderModal = ({
     const complete = async () => {
       try {
         if (restaurantId && orderCode) {
-          await mutStatusByCode({
-            variables: {
-              input: { restaurantId, orderCode, status: "completed" },
-            },
+          await mutStatusById({
+            variables: { input: { id: order.id, status: "served" } },
           });
         } else if (order?.id) {
-          await mutStatusById({
-            variables: { input: { id: order.id, status: "completed" } },
+          await mutStatusByCode({
+            variables: {
+              input: { restaurantId, orderCode, status: "served" },
+            },
           });
         }
       } catch (e) {

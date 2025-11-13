@@ -19,7 +19,8 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
   } = useIngredients(restaurantId, selectedWarehouseId);
 
   const [showModal, setShowModal] = useState(false);
-
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingItem, setEditingItem] = useState();
   const handleSearch = (e) =>
     setFilters({ ...filters, search: e.target.value });
   const handleCategoryFilter = (e) =>
@@ -40,7 +41,11 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
       deleteIngredient(id);
     }
   };
-
+  const handleShowModal = (ingredient) => {
+    setShowModal(true);
+    setEditingItem(ingredient);
+    setIsEditing(true);
+  };
   return (
     <div className="ingredient-list">
       <div className="toolbar">
@@ -89,7 +94,7 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
           <IngredientCard
             key={ingredient.id}
             ingredient={ingredient}
-            onEdit={() => setShowModal(true)} // tuỳ bạn mở modal edit
+            onEdit={() => handleShowModal(ingredient)} // tuỳ bạn mở modal edit
             onDelete={handleDelete}
             onAddStock={handleAddStock}
             onShowUsage={() => {
@@ -108,6 +113,8 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
           else addIngredient(data);
         }}
         onDelete={(id) => deleteIngredient(id)}
+        isEditing={isEditing}
+        initial={editingItem}
       />
     </div>
   );

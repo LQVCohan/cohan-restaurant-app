@@ -34,7 +34,7 @@ import StatsCard from "./components/StatsCard";
 import useOrderManagement from "../../../hooks/useOrderManagement";
 import { useNotification } from "@/hooks/useNotification";
 import { AuthContext } from "@/context/AuthContext";
-
+import useOrderSubscription from "../../../hooks/useOrderSubscription";
 // ---------------- GQL ----------------
 const MUTATION_UPDATE_STATUS = gql`
   mutation UpdateOrderStatus($input: UpdateOrderStatusInput!) {
@@ -96,7 +96,7 @@ const OrderManagement = () => {
       setSelectedRestaurantId(restaurantList[0].id);
     }
   }, [restaurantList, selectedRestaurantId]);
-
+  useOrderSubscription(selectedRestaurantId);
   // Fetch orders on restaurant change
   useEffect(() => {
     if (selectedRestaurantId && loadOrders) {
