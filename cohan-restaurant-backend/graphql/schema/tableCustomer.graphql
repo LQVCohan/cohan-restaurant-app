@@ -1,0 +1,64 @@
+# src/graphql/schema/tableCustomer.graphql
+
+type TableCustomer {
+  id: ID!
+  restaurantId: ID!
+  tableId: ID
+  tableCode: String
+  orderCode: String
+
+  customerName: String
+  customerPhone: String
+  customerEmail: String
+  note: String
+  partySize: Int
+  timeTo: DateTime
+
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input UpsertTableCustomerInput {
+  restaurantId: ID!
+  tableId: ID
+  tableCode: String
+  orderCode: String
+
+  customerName: String
+  customerPhone: String
+  customerEmail: String
+  note: String
+  partySize: Int
+  timeTo: DateTime
+}
+
+extend type Query {
+  """
+  Lấy thông tin khách cho một bàn hoặc một orderCode.
+  Ưu tiên tableId > tableCode > orderCode.
+  """
+  tableCustomer(
+    restaurantId: ID!
+    tableId: ID
+    tableCode: String
+    orderCode: String
+  ): TableCustomer
+
+  """
+  Lấy tất cả TableCustomer của 1 nhà hàng
+  """
+  tableCustomersByRestaurant(restaurantId: ID!): [TableCustomer!]!
+}
+
+extend type Mutation {
+  upsertTableCustomer(input: UpsertTableCustomerInput!): TableCustomer!
+
+  deleteTableCustomer(
+    restaurantId: ID!
+    tableId: ID
+    tableCode: String
+    orderCode: String
+  ): Boolean!
+
+  clearTableCustomers(restaurantId: ID!): Boolean!
+}

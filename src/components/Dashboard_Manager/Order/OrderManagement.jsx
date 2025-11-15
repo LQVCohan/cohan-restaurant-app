@@ -34,13 +34,16 @@ import StatsCard from "./components/StatsCard";
 import useOrderManagement from "../../../hooks/useOrderManagement";
 import { useNotification } from "@/hooks/useNotification";
 import { AuthContext } from "@/context/AuthContext";
-import useOrderSubscription from "../../../hooks/useOrderSubscription";
-// ---------------- GQL ----------------
-const MUTATION_UPDATE_STATUS = gql`
+import useSocketOrder from "@/hooks/useSocketOrder";
+
+/* ---------------- GQL: cập nhật trạng thái ORDER theo ID ---------------- */
+
+const UPDATE_ORDER_STATUS = gql`
   mutation UpdateOrderStatus($input: UpdateOrderStatusInput!) {
     updateOrderStatus(input: $input) {
       id
       currentStatus
+      updatedAt
     }
   }
 `;
@@ -76,19 +79,17 @@ const OrderManagement = () => {
   const { restaurantList } = useRestaurant();
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
 
-  // Orders data
+  // Hooks GQL
+  const [mutUpdateOrderStatus] = useMutation(UPDATE_ORDER_STATUS);
+
+  // Orders data từ hook dùng chung
   const {
     orders = [],
     ordersLoading,
     ordersError,
     loadOrders,
-    updateItemStatus,
-    changeOrderItemStatusByCode,
-    changeOrderStatusByCode,
+    updateItemStatus, // đã chuyển sang dùng theo orderId ở hook
   } = useOrderManagement();
-
-  // Mutations
-  const [updateOrderStatusMutation] = useMutation(MUTATION_UPDATE_STATUS);
 
   // Auto-pick first restaurant
   useEffect(() => {
@@ -96,7 +97,21 @@ const OrderManagement = () => {
       setSelectedRestaurantId(restaurantList[0].id);
     }
   }, [restaurantList, selectedRestaurantId]);
-  useOrderSubscription(selectedRestaurantId);
+
+  // socket
+  useSocketOrder(selectedRestaurantId, {
+    onAny: (evt) => {
+      showNotification(
+        `Realtime: ${evt.type} (${evt.order.tableCode})`,
+        "info"
+      );
+      loadOrders({
+        variables: { restaurantId: selectedRestaurantId, limit: 100 },
+        fetchPolicy: "network-only",
+      });
+    },
+  });
+
   // Fetch orders on restaurant change
   useEffect(() => {
     if (selectedRestaurantId && loadOrders) {
@@ -118,16 +133,54 @@ const OrderManagement = () => {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Handlers
+  // ========= Active orders (bỏ served/completed/cancelled) =========
+  const activeOrders = useMemo(
+    () =>
+      (orders || []).filter(
+        (o) =>
+          o.currentStatus !== "served" &&
+          o.currentStatus !== "completed" &&
+          o.currentStatus !== "cancelled"
+      ),
+    [orders]
+  );
+
+  // ========= Handlers =========
+
+  /**
+   * ✅ Cập nhật trạng thái ORDER theo ID
+   * OrderCard đang gọi: onUpdateStatus(orderId, status)
+   */
   const handleUpdateStatus = useCallback(
-    (orderId, newStatus) => {
-      updateOrderStatusMutation({
-        variables: {
-          input: { id: orderId, status: newStatus },
-        },
-      });
+    async (orderId, status) => {
+      if (!orderId || !status) return;
+
+      try {
+        await mutUpdateOrderStatus({
+          variables: {
+            input: {
+              id: orderId,
+              status,
+            },
+          },
+        });
+
+        // reload list để UI sync
+        if (loadOrders && selectedRestaurantId) {
+          await loadOrders({
+            variables: { restaurantId: selectedRestaurantId, limit: 100 },
+            fetchPolicy: "network-only",
+          });
+        }
+      } catch (err) {
+        console.error("Update order status failed:", err);
+        showNotification?.(
+          err?.message || "Cập nhật trạng thái đơn thất bại.",
+          "error"
+        );
+      }
     },
-    [updateOrderStatusMutation]
+    [mutUpdateOrderStatus, loadOrders, selectedRestaurantId, showNotification]
   );
 
   const handleViewOrder = useCallback((order) => {
@@ -151,27 +204,7 @@ const OrderManagement = () => {
     }
   }, [loadOrders, selectedRestaurantId]);
 
-  const handleChangeItemStatusByCode = useCallback(
-    (payload) => {
-      return changeOrderItemStatusByCode({
-        ...payload,
-        afterSuccess: (serverOrder) => {
-          if (serverOrder) {
-            setSelectedOrder((prev) => {
-              if (!prev || prev.id !== serverOrder.id) return prev;
-              return { ...prev, ...serverOrder };
-            });
-          }
-          loadOrders({
-            variables: { restaurantId: selectedRestaurantId, limit: 100 },
-            fetchPolicy: "network-only",
-          });
-        },
-      });
-    },
-    [changeOrderItemStatusByCode, loadOrders, selectedRestaurantId]
-  );
-
+  /** ✅ Đổi trạng thái item theo ORDER ID + itemKey (không dùng orderCode) */
   const handleUpdateItemStatus = useCallback(
     (orderId, itemKey, nextStatus) => {
       const ord = orders.find((o) => o.id === orderId);
@@ -197,33 +230,40 @@ const OrderManagement = () => {
     [orders, selectedRestaurantId, loadOrders, updateItemStatus]
   );
 
-  // Filters & stats
+  // ========= Filters & stats =========
+
+  // chỉ filter trên activeOrders
   const filteredOrders = useMemo(() => {
-    return (orders || []).filter((order) => {
+    return (activeOrders || []).filter((order) => {
       const matchesSearch =
         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (order.user?.fullName || "Khách lẻ")
           .toLowerCase()
           .includes(searchTerm.toLowerCase()) ||
-        order.tableCode.toLowerCase().includes(searchTerm.toLowerCase());
+        (order.tableCode || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
       const matchesStatus =
         !statusFilter || order.currentStatus === statusFilter;
       const matchesTable = !tableFilter || order.orderType === tableFilter;
       return matchesSearch && matchesStatus && matchesTable;
     });
-  }, [orders, searchTerm, statusFilter, tableFilter]);
+  }, [activeOrders, searchTerm, statusFilter, tableFilter]);
 
   const stats = useMemo(() => {
     return {
-      total: orders.length,
-      pending: orders.filter(
+      total: activeOrders.length,
+      pending: activeOrders.filter(
         (o) =>
-          o.currentStatus !== "completed" && o.currentStatus !== "cancelled"
+          o.currentStatus !== "completed" &&
+          o.currentStatus !== "cancelled" &&
+          o.currentStatus !== "served"
       ).length,
-      preparing: orders.filter((o) => o.currentStatus === "preparing").length,
-      completed: 0,
+      preparing: activeOrders.filter((o) => o.currentStatus === "preparing")
+        .length,
+      completed: 0, // có thể map sang served/completed nếu cần
     };
-  }, [orders]);
+  }, [activeOrders]);
 
   // Classes for layout
   const rootPadding = focusMode ? "p-3 md:p-4" : "p-6";
@@ -455,7 +495,7 @@ const OrderManagement = () => {
               Không có đơn hàng nào
             </h3>
             <p className="text-gray-500">
-              {orders.length > 0
+              {activeOrders.length > 0
                 ? "Không tìm thấy kết quả phù hợp"
                 : "Chọn nhà hàng để bắt đầu"}
             </p>
@@ -472,7 +512,6 @@ const OrderManagement = () => {
                 onUpdateStatus={handleUpdateStatus}
                 onViewOrder={handleViewOrder}
                 onViewItem={handleViewItem}
-                // Pass hint to card if you want it to adjust UI in focus
                 isFocusMode={focusMode}
               />
             ))}
@@ -494,7 +533,6 @@ const OrderManagement = () => {
             order={selectedOrder}
             onClose={() => setSelectedOrder(null)}
             onUpdateItemStatus={handleUpdateItemStatus}
-            onChangeItemStatusByCode={handleChangeItemStatusByCode}
           />
         )}
 

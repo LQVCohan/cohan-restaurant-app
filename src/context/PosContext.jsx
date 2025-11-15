@@ -15,7 +15,8 @@ import useTableManagement from "../hooks/useTableManagement";
 import useOrderManagement from "../hooks/useOrderManagement";
 import { useNotification } from "../hooks/useNotification";
 import { useTableDraft } from "../hooks/useTableDraft"; // ✅ NEW: lưu tạm draft theo bàn
-import useOrderSubscription from "@/hooks/useOrderSubscription";
+import useSocketOrder from "@/hooks/useSocketOrder";
+
 const PosContext = createContext(undefined);
 
 export function usePos() {
@@ -109,13 +110,25 @@ export default function PosProvider({
 
   // 🔗 NEW: draft hooks (BE)
   const { getTableDraft, upsertTableDraft, deleteTableDraft } = useTableDraft();
-  useOrderSubscription({
-    restaurantId,
-    onOrderChanged: (payload) => {
-      console.log("ORDER_CHANGED via WS:", payload);
-      // Thường là KHÔNG cần refetch vì hook đã write vào cache,
-      // nhưng nếu muốn “chắc ăn” thì:
-      orders({ variables: { restaurantId, limit: 50 } });
+
+  //Socket
+  useSocketOrder(restaurantId, {
+    onCreated: (order) => {
+      showNotification(`🆕 Đơn mới: ${order.orderCode}`, "info");
+      refetchTables?.();
+    },
+    onUpdated: (order) => {
+      showNotification(`♻️ Cập nhật đơn ${order.orderCode}`, "success");
+    },
+    onStatusChanged: (order) => {
+      showNotification(
+        `🔁 ${order.orderCode} → ${order.currentStatus}`,
+        "info"
+      );
+    },
+    onCancelled: (order) => {
+      showNotification(`❌ Đơn ${order.orderCode} đã bị hủy`, "warning");
+      refetchTables?.();
     },
   });
   // table filters

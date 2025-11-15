@@ -38,7 +38,7 @@ import StaffOrder from "../components/StaffOrder";
 
 import MainLayout from "../layouts/MainLayout";
 import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayout";
-
+import { useNotification } from "@/hooks/useNotification";
 // =========================
 // 🔐 GraphQL Query: me
 // =========================
@@ -73,6 +73,7 @@ const ME_QUERY = gql`
 // =========================
 const useAuth = () => {
   const navigate = useNavigate();
+  const { showNotification } = useNotification();
   const [token, setToken] = useState(
     () => localStorage.getItem("token") || sessionStorage.getItem("token")
   );
@@ -80,14 +81,16 @@ const useAuth = () => {
   const { data, loading, error, refetch } = useQuery(ME_QUERY, {
     skip: !token,
     fetchPolicy: "network-only",
-    onError: () => {
+  });
+  useEffect(() => {
+    if (error) {
+      showNotification(error.message, "error");
       localStorage.removeItem("token");
       sessionStorage.removeItem("token");
       setToken(null);
       navigate("/login");
-    },
-  });
-
+    }
+  }, [error, navigate, showNotification]);
   const role = data?.me?.roleName || null;
   const emailVerified = data?.me?.emailVerified ?? false;
 

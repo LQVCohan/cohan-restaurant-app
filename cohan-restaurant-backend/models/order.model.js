@@ -134,5 +134,5 @@ OrderSchema.index({
   currentStatus: 1,
   createdAt: -1,
 });
-OrderSchema.index({ restaurantId: 1, orderCode: 1 });
+
 export default mongoose.model("Order", OrderSchema);

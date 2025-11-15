@@ -4,6 +4,10 @@ import { ReservationQuery } from "./query.js";
 import { ReservationMutation } from "./mutation.js";
 
 export default {
-  Query: ReservationQuery,
-  Mutation: ReservationMutation,
+  Query: {
+    ...ReservationQuery,
+  },
+  Mutation: {
+    ...ReservationMutation,
+  },
 };

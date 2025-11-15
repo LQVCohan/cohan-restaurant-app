@@ -1,4 +1,3 @@
-// src/pages/OrderManagement/components/OrderModal.jsx
 import React, {
   useCallback,
   useMemo,
@@ -71,44 +70,28 @@ const toViOrderType = (type) => {
   }
 };
 
-/* ---------------- Mutations tự dùng trong modal (không sửa hook) ---------------- */
+/* ---------------- Mutation: updateOrderStatus theo ID ---------------- */
 
-const UPDATE_ORDER_STATUS_BY_CODE = gql`
-  mutation UpdateOrderStatusByCode($input: UpdateOrderStatusByCodeInput!) {
-    updateOrderStatusByCode(input: $input) {
-      order {
-        id
-        currentStatus
-        updatedAt
-      }
-    }
-  }
-`;
 const UPDATE_ORDER_STATUS = gql`
   mutation UpdateOrderStatus($input: UpdateOrderStatusInput!) {
     updateOrderStatus(input: $input) {
       id
       currentStatus
+      updatedAt
     }
   }
 `;
 
 /* ============================== Component ============================== */
 
-const OrderModal = ({
-  order,
-  onClose,
-  onChangeItemStatusByCode,
-  onUpdateItemStatus,
-}) => {
+const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
   const [savingMap, setSavingMap] = useState({}); // key theo lineId/index -> boolean
   const completingRef = useRef(false); // chống gọi hoàn tất nhiều lần
 
-  // Apollo mutations để tự hoàn tất đơn khi 100%
-  const [mutStatusByCode] = useMutation(UPDATE_ORDER_STATUS_BY_CODE);
+  // Apollo mutation: cập nhật status order theo ID
   const [mutStatusById] = useMutation(UPDATE_ORDER_STATUS);
 
-  /* ---------------- Normalize order fields (KHÔNG sửa hook) ---------------- */
+  /* ---------------- Normalize order fields ---------------- */
 
   const orderIdShort = useMemo(
     () => String(order?.id || "").slice(-6) || "N/A",
@@ -116,7 +99,6 @@ const OrderModal = ({
   );
 
   const orderCode = order?.orderCode || null;
-  const restaurantId = order?.restaurantId || order?.restaurant?.id || null;
 
   const customerName = order?.user?.fullName || "Khách lẻ";
   const tableNumber = order?.tableCode || "N/A";
@@ -145,7 +127,7 @@ const OrderModal = ({
   // Items an toàn (ép số, fallback status)
   const items = useMemo(() => {
     const raw = Array.isArray(order?.items) ? order.items : [];
-    return raw.map((it, idx) => {
+    return raw.map((it) => {
       const price = Number(it?.price || 0);
       const mod = Number(it?.modifiersPrice || 0);
       const qty = Number(it?.quantity || 0);
@@ -163,48 +145,46 @@ const OrderModal = ({
     });
   }, [order?.items]);
 
-  /* ---------------- Progress tổng thể ----------------
-     - Loại món bị hủy ra khỏi mẫu số
-     - % = served / alive * 100
-     - Nếu order.currentStatus là 'served' hoặc 'completed' => 100
-  ------------------------------------------------------------------ */
+  /* ---------------- Tiến độ (% món served trên tổng món của ORDER) ---------------- */
   const progress = useMemo(() => {
-    if (orderStatus === "served" || orderStatus === "completed") return 100;
-
     const alive = items.filter((i) => i.status !== "cancelled");
     if (!alive.length) return 0;
 
     const servedCount = alive.filter((i) => i.status === "served").length;
     const pct = Math.round((servedCount / alive.length) * 100);
-    return Math.max(0, Math.min(100, pct));
-  }, [items, orderStatus]);
 
-  /* ---------------- Khi đạt 100% -> tự động chuyển order -> completed ---------------- */
+    // Nếu order đã completed thì fix 100, còn 'served' vẫn theo món
+    if (order?.currentStatus === "completed") return 100;
+
+    return Math.max(0, Math.min(100, pct));
+  }, [items, order?.currentStatus]);
+
+  /* ---------------- Auto-complete: khi 100% -> chuyển order -> served (by ID) ---------------- */
   useEffect(() => {
     const shouldComplete =
-      progress === 100 && order?.currentStatus !== "completed";
+      progress === 100 &&
+      order?.id &&
+      order?.currentStatus !== "served" &&
+      order?.currentStatus !== "completed" &&
+      order?.currentStatus !== "cancelled";
+
     if (!shouldComplete || completingRef.current) return;
 
     completingRef.current = true;
 
     const complete = async () => {
       try {
-        if (restaurantId && orderCode) {
-          await mutStatusById({
-            variables: { input: { id: order.id, status: "served" } },
-          });
-        } else if (order?.id) {
-          await mutStatusByCode({
-            variables: {
-              input: { restaurantId, orderCode, status: "served" },
+        await mutStatusById({
+          variables: {
+            input: {
+              id: order.id,
+              status: "served",
             },
-          });
-        }
+          },
+        });
       } catch (e) {
-        // không chặn UI, chỉ log
         console.warn("Auto-complete order failed:", e?.message);
       } finally {
-        // Chờ parent cập nhật lại order; nếu không, tránh spam bằng cờ này
         setTimeout(() => {
           completingRef.current = false;
         }, 1200);
@@ -212,15 +192,7 @@ const OrderModal = ({
     };
 
     complete();
-  }, [
-    progress,
-    order?.id,
-    orderCode,
-    restaurantId,
-    mutStatusByCode,
-    mutStatusById,
-    order?.currentStatus,
-  ]);
+  }, [progress, order?.id, order?.currentStatus, mutStatusById]);
 
   /* ---------------- Hotkeys: ESC đóng ---------------- */
   useEffect(() => {
@@ -252,47 +224,16 @@ const OrderModal = ({
 
   const handlePrint = () => window.print();
 
-  /* ---------------- Đổi trạng thái món (giữ API cũ của bạn) ---------------- */
+  /* ---------------- Đổi trạng thái món: dùng ORDER ID, KHÔNG dùng orderCode ---------------- */
   const handleChangeStatus = useCallback(
     async (item, index, nextStatus) => {
-      // dùng lại itemKey cũ: _lineId || dishId || index
       const itemKey = item?._lineId || item?.dishId || index;
 
       setSavingMap((m) => ({ ...m, [itemKey]: true }));
       try {
-        // Ưu tiên API mới theo orderCode + restaurantId
-        if (
-          typeof onChangeItemStatusByCode === "function" &&
-          restaurantId &&
-          orderCode
-        ) {
-          const maybe = onChangeItemStatusByCode({
-            restaurantId,
-            orderCode,
-            itemKey,
-            status: nextStatus,
-          });
+        if (typeof onUpdateItemStatus === "function") {
+          const maybe = onUpdateItemStatus(order?.id, itemKey, nextStatus);
           if (maybe?.then) await maybe;
-        }
-        // Fallback: hàm cũ nhưng hỗ trợ payload mới
-        else if (typeof onUpdateItemStatus === "function") {
-          try {
-            const maybeNew = onUpdateItemStatus({
-              restaurantId,
-              orderCode,
-              itemKey,
-              status: nextStatus,
-            });
-            if (maybeNew?.then) await maybeNew;
-          } catch {
-            // Legacy (orderId, itemKey, status)
-            const maybeLegacy = onUpdateItemStatus(
-              order?.id,
-              itemKey,
-              nextStatus
-            );
-            if (maybeLegacy?.then) await maybeLegacy;
-          }
         } else {
           console.warn("No handler provided for item status change.");
         }
@@ -302,13 +243,7 @@ const OrderModal = ({
         setSavingMap((m) => ({ ...m, [itemKey]: false }));
       }
     },
-    [
-      onChangeItemStatusByCode,
-      onUpdateItemStatus,
-      restaurantId,
-      orderCode,
-      order?.id,
-    ]
+    [onUpdateItemStatus, order?.id]
   );
 
   /* -------------------------------- Render -------------------------------- */

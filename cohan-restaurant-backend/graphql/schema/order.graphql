@@ -1,5 +1,4 @@
 # --- Value Objects ---
-
 type Shipping {
   fullName: String
   phone: String
@@ -14,11 +13,12 @@ type Shipping {
 
 enum OrderStatus {
   pending
+  confirmed
   preparing
   ready
   served
-  cancelled
   completed
+  cancelled
 }
 
 enum ItemStatus {
@@ -68,7 +68,6 @@ type OrderPayment {
 }
 
 # --- Core Types ---
-
 type OrderItem {
   dishId: String
   menuId: String
@@ -89,6 +88,15 @@ type OrderItem {
   recipe: Recipe
 }
 
+type OrderCustomerInfo {
+  name: String
+  phone: String
+  email: String
+  note: String
+  partySize: Int
+  timeTo: DateTime
+}
+
 type Order {
   id: ID!
   orderCode: String
@@ -107,21 +115,10 @@ type Order {
   createdAt: String!
   updatedAt: String!
   user: User
-}
-
-# --- Events / Subscriptions ---
-
-type OrderEvent {
-  type: String!
-  order: Order!
-}
-
-extend type Subscription {
-  orderEvents(restaurantId: ID!): OrderEvent!
+  customerInfo: OrderCustomerInfo
 }
 
 # --- Inputs ---
-
 input ShippingInput {
   fullName: String
   phone: String
@@ -157,79 +154,68 @@ input CustomerInput {
   email: String
 }
 
-input UpsertTableOrderInput {
+input CreateOrAppendTableOrderInput {
   restaurantId: ID!
+  tableId: ID
   tableCode: String!
   orderCode: String
   items: [OrderItemInput!]!
-  replaceItems: Boolean
   note: String
-  paymentMethod: String
   customer: CustomerInput
+  userId: ID
   clientMeta: JSON
 }
 
-type UpsertTableOrderPayload {
-  order: Order!
+type CreateOrAppendTableOrderPayload {
   isNewOrder: Boolean!
+  order: Order!
 }
 
-input CreateOrderInput {
-  orderCode: String
-  userId: ID
-  restaurantId: ID!
-  reservationId: ID
-  orderType: String
-  tableCode: String
-  shipping: ShippingInput
-  items: [OrderItemInput!]!
-  note: String
-  paymentMethod: String!
-  customer: CustomerInput
-}
-
+"""
+✅ Cập nhật trạng thái Order theo ID, không dùng code nữa.
+Thêm restaurantId optional để BE có thể check nếu cần.
+"""
 input UpdateOrderStatusInput {
   id: ID!
-  status: String!
-  note: String
-}
-
-input UpdateOrderStatusByCodeInput {
-  restaurantId: ID!
-  orderCode: String!
+  restaurantId: ID
   status: OrderStatus!
   note: String
 }
 
-input UpdateOrderItemStatusByCodeInput {
-  restaurantId: ID!
-  orderCode: String!
+input UpdateOrderItemStatusInput {
+  orderId: ID!
+  restaurantId: ID
   itemKey: String!
   status: ItemStatus!
   note: String
 }
 
-type UpdateOrderStatusByCodePayload {
-  order: Order!
-}
-
-type UpdateOrderItemStatusByCodePayload {
-  order: Order!
-}
-
-# --- NEW: chỉ cập nhật khách hàng cho order hiện có ---
+"""
+Vẫn dùng orderCode cho case gán khách theo cả chuỗi order cùng bàn.
+"""
 input UpdateOrderCustomerByCodeInput {
   restaurantId: ID!
   orderCode: String!
   customer: CustomerInput!
 }
 
+# --- Return types ---
+
+type UpdateOrderItemStatusPayload {
+  order: Order!
+}
+
 type UpdateOrderCustomerByCodePayload {
+  success: Boolean
+  modifiedCount: Int
+}
+
+type CancelOrderPayload {
+  success: Boolean!
   order: Order!
 }
 
 # --- Connections & Lists ---
-
 type PageInfo {
   endCursor: ID
   hasNextPage: Boolean!
@@ -261,52 +247,61 @@ type OrderList {
   totalCount: Int!
 }
 
-# --- Root ---
+type OrderGroup {
+  orderCode: String
+  tableCode: String
+  restaurantId: ID
+  latestStatus: String
+  count: Int
+  orders: [Order!]!
+}
 
+# --- Root ---
 extend type Query {
   order(id: ID!): Order
   orders(filter: OrderFilterInput, limit: Int, offset: Int): OrderList!
-
-  # ONLY current/active orders (exclude cancelled, completed)
   ordersByRestaurantNow(
     restaurantId: ID!
     limit: Int = 20
     cursor: ID
   ): OrdersConnection!
-
-  # ALL orders including cancelled & completed
   ordersByRestaurant(
     restaurantId: ID!
     limit: Int = 20
     cursor: ID
   ): OrdersConnection!
-
   ordersByUser(userId: ID!, limit: Int = 20, cursor: ID): OrdersConnection!
-
   ordersByTableCode(
     restaurantId: ID!
     tableCode: String!
     limit: Int
     offset: Int
   ): OrderList!
+
+  ordersGroupedByTable(restaurantId: ID!, tableCode: String!): [OrderGroup!]!
 }
 
 extend type Mutation {
-  upsertTableOrder(input: UpsertTableOrderInput!): UpsertTableOrderPayload!
-  createOrder(input: CreateOrderInput!): Order!
+  createOrAppendTableOrder(
+    input: CreateOrAppendTableOrderInput!
+  ): CreateOrAppendTableOrderPayload!
+
+  # ✅ Trạng thái Order theo ID
   updateOrderStatus(input: UpdateOrderStatusInput!): Order!
-  cancelOrder(id: ID!, reason: String): Order!
 
-  updateOrderStatusByCode(
-    input: UpdateOrderStatusByCodeInput!
-  ): UpdateOrderStatusByCodePayload!
+  # ✅ Trạng thái món theo orderId
+  updateOrderItemStatus(
+    input: UpdateOrderItemStatusInput!
+  ): UpdateOrderItemStatusPayload!
 
-  updateOrderItemStatusByCode(
-    input: UpdateOrderItemStatusByCodeInput!
-  ): UpdateOrderItemStatusByCodePayload!
-
-  # --- NEW ---
+  # ✅ Gán/đổi khách cho toàn bộ order cùng orderCode
   updateOrderCustomerByCode(
     input: UpdateOrderCustomerByCodeInput!
   ): UpdateOrderCustomerByCodePayload!
+
+  cancelOrder(
+    restaurantId: ID!
+    orderId: ID!
+    reason: String
+  ): CancelOrderPayload!
 }

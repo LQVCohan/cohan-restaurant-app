@@ -35,13 +35,14 @@ const toViOrderType = (t) =>
     ? "Giao hàng"
     : t || "Tại bàn";
 
-const VALID_HISTORY = new Set(["completed", "cancelled"]);
+/** ✅ History gồm: served + completed + cancelled */
+const VALID_HISTORY = new Set(["served", "completed", "cancelled"]);
 
 const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
   const { loadOrdersAll } = useOrderManagement();
 
   const [allOrders, setAllOrders] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("all"); // all | completed | cancelled
+  const [statusFilter, setStatusFilter] = useState("all"); // all | served | completed | cancelled
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [pageInfo, setPageInfo] = useState({
@@ -67,7 +68,7 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
         const edges = Array.isArray(conn?.edges) ? conn.edges : [];
         const nodes = edges.map((e) => e.node);
 
-        // chỉ nhận completed/cancelled
+        // chỉ nhận served / completed / cancelled
         const filtered = nodes.filter((o) =>
           VALID_HISTORY.has(o?.currentStatus)
         );
@@ -99,6 +100,8 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
 
   // áp dụng filter
   const history = useMemo(() => {
+    if (statusFilter === "served")
+      return allOrders.filter((o) => o.currentStatus === "served");
     if (statusFilter === "completed")
       return allOrders.filter((o) => o.currentStatus === "completed");
     if (statusFilter === "cancelled")
@@ -107,13 +110,14 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
   }, [allOrders, statusFilter]);
 
   const summary = useMemo(() => {
+    const served = allOrders.filter((o) => o.currentStatus === "served").length;
     const completed = allOrders.filter(
       (o) => o.currentStatus === "completed"
     ).length;
     const cancelled = allOrders.filter(
       (o) => o.currentStatus === "cancelled"
     ).length;
-    return { completed, cancelled, total: allOrders.length };
+    return { served, completed, cancelled, total: allOrders.length };
   }, [allOrders]);
 
   return (
@@ -140,7 +144,8 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
           {/* Summary + Filter */}
           <div className="hisTopRow">
             <p className="hisSummary">
-              Hoàn thành: <strong>{summary.completed}</strong> • Hủy:{" "}
+              Đã phục vụ: <strong>{summary.served}</strong> • Hoàn thành:{" "}
+              <strong>{summary.completed}</strong> • Hủy:{" "}
               <strong>{summary.cancelled}</strong> • Tổng:{" "}
               <strong>{summary.total}</strong>
             </p>
@@ -151,6 +156,14 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
                 onClick={() => setStatusFilter("all")}
               >
                 Tất cả
+              </button>
+              <button
+                className={`hisChip ${
+                  statusFilter === "served" ? "active" : ""
+                }`}
+                onClick={() => setStatusFilter("served")}
+              >
+                Đã phục vụ
               </button>
               <button
                 className={`hisChip ${
@@ -201,6 +214,8 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
               const updatedAt = toDT(o?.updatedAt);
               const items = Array.isArray(o?.items) ? o.items : [];
               const tags = items.slice(0, 6);
+              const st = o.currentStatus;
+
               return (
                 <div key={o.id} className="historyItem">
                   <div className="itemHeader">
@@ -214,9 +229,13 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
                       </p>
                     </div>
 
-                    {o.currentStatus === "completed" ? (
+                    {st === "served" && (
+                      <span className="servedBadge">Đã phục vụ</span>
+                    )}
+                    {st === "completed" && (
                       <span className="completedBadge">Hoàn thành</span>
-                    ) : (
+                    )}
+                    {st === "cancelled" && (
                       <span className="cancelledBadge">Đã hủy</span>
                     )}
                   </div>

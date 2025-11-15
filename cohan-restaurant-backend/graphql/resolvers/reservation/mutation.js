@@ -2,7 +2,7 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Reservation, Restaurant, Table, User } from "../../../models/index.js";
-
+import generateOrderCode from "../../../utils/generateOrderCode.js";
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) {
     throw new GraphQLError("Invalid ID", {
@@ -221,6 +221,7 @@ export const ReservationMutation = {
         depositAmount,
         depositStatus: depositAmount > 0 ? "pending" : "unpaid",
         status: depositAmount > 0 ? "pending_payment" : "confirmed",
+        orderCode: generateOrderCode("RES", new Date(timeTo)),
       });
 
       const saved = await doc.save();

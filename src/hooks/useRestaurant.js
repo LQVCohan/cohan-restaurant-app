@@ -188,14 +188,13 @@ export const useRestaurant = (restaurantId) => {
     variables: { id: restaurantId },
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
-    onError: (e) => {
-      setError(
-        e?.graphQLErrors?.[0]?.message ||
-          e?.networkError?.message ||
-          "Không thể tải nhà hàng"
-      );
-    },
   });
+  useEffect(() => {
+    if (autoError) {
+      setError(autoError);
+      console.log("error in hook: ", error);
+    }
+  }, [autoError, error]);
 
   useEffect(() => {
     if (restaurantId) {

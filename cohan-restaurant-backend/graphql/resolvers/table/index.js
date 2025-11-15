@@ -1,13 +1,17 @@
 import tableQueries from "./query.js";
 import tableMutations from "./mutation.js";
-import { TableDraftQuery, TableDraftMutation } from "./tableDraft.js";
+
+import { TableCustomerQuery, TableCustomerMutation } from "./tableCustomer.js";
+
 export default {
   Query: {
     ...tableQueries,
-    ...TableDraftQuery,
+
+    ...TableCustomerQuery, // ✅ thêm
   },
   Mutation: {
     ...tableMutations,
-    ...TableDraftMutation,
+
+    ...TableCustomerMutation, // ✅ thêm
   },
 };

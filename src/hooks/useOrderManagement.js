@@ -3,18 +3,18 @@ import {
   useMutation,
   useLazyQuery,
   useApolloClient,
-  useSubscription, // 👈 thêm
   gql,
 } from "@apollo/client";
+import useSocketOrder from "./useSocketOrder";
 
 /* ============================================================
    1) GRAPHQL
    ============================================================ */
 
-// Upsert table order
-const UPSERT_TABLE_ORDER = gql`
-  mutation UpsertTableOrder($input: UpsertTableOrderInput!) {
-    upsertTableOrder(input: $input) {
+/** ✅ CREATE OR APPEND TABLE ORDER (tạo đợt mới với orderCode giữ nguyên nếu có) */
+const CREATE_OR_APPEND_TABLE_ORDER = gql`
+  mutation CreateOrAppendTableOrder($input: CreateOrAppendTableOrderInput!) {
+    createOrAppendTableOrder(input: $input) {
       isNewOrder
       order {
         id
@@ -53,7 +53,62 @@ const UPSERT_TABLE_ORDER = gql`
   }
 `;
 
-/** ✅ ONLY “current” orders (exclude cancelled & completed) */
+/** 🔎 Gom theo đợt (orderCode) của 1 bàn */
+const ORDERS_GROUPED_BY_TABLE = gql`
+  query OrdersGroupedByTable($restaurantId: ID!, $tableCode: String!) {
+    ordersGroupedByTable(restaurantId: $restaurantId, tableCode: $tableCode) {
+      orderCode
+      tableCode
+      latestStatus
+      count
+      orders {
+        id
+        orderCode
+        tableCode
+        currentStatus
+        restaurantId
+        note
+        user {
+          id
+          fullName
+          email
+          phone
+        }
+        items {
+          dishId
+          menuId
+          categoryId
+          name
+          unit
+          price
+          modifiersPrice
+          method
+          note
+          quantity
+          status
+          modifiers {
+            optionId
+            optionName
+            groupId
+            price
+          }
+        }
+        totals {
+          subtotal
+          discount
+          tax
+          service
+          grandTotal
+        }
+        orderType
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
+/** ACTIVE orders (exclude cancelled/completed) – giữ để tương thích màn khác */
 const ORDERS_BY_RESTAURANT_NOW = gql`
   query OrdersByRestaurantNow($restaurantId: ID!, $limit: Int, $cursor: ID) {
     ordersByRestaurantNow(
@@ -95,6 +150,14 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             service
             grandTotal
           }
+          customerInfo {
+            name
+            phone
+            email
+            note
+            partySize
+            timeTo
+          }
           orderType
           createdAt
           updatedAt
@@ -109,7 +172,7 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
   }
 `;
 
-/** ✅ FULL history (includes cancelled & completed) */
+/** ALL orders (including cancelled/completed) – giữ để tương thích */
 const ORDERS_BY_RESTAURANT_ALL = gql`
   query OrdersByRestaurant($restaurantId: ID!, $limit: Int, $cursor: ID) {
     ordersByRestaurant(
@@ -162,7 +225,7 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
   }
 `;
 
-// Single order
+/** Single order – giữ để tương thích */
 const GET_ORDER = gql`
   query GetOrder($id: ID!) {
     order(id: $id) {
@@ -197,7 +260,7 @@ const GET_ORDER = gql`
   }
 `;
 
-// Pay
+/** 💳 Thanh toán 1 order (legacy) */
 const PAY_ORDER = gql`
   mutation PayOrder($input: PayOrderInput!) {
     payOrder(input: $input) {
@@ -215,98 +278,81 @@ const PAY_ORDER = gql`
         }
         updatedAt
       }
+    }
+  }
+`;
+
+/** 💳 Thanh toán trọn đợt theo orderCode (mới) */
+const PAY_ORDERS_BY_CODE = gql`
+  mutation PayOrdersByCode($input: PayOrdersByCodeInput!) {
+    payOrdersByCode(input: $input) {
+      order {
+        id
+        orderCode
+        tableCode
+        currentStatus
+      }
       invoice {
         id
         number
-        status
+        issuedAt
         totals {
-          subtotal
-          discount
-          tax
-          service
           grandTotal
         }
-        paid
-        issuedAt
       }
       transaction {
         id
         paidAmount
         method
         status
-        paidAt
       }
       cashflow {
         id
         amount
         type
-
-        occurredAt
       }
     }
   }
 `;
 
-/* === Status mutations by orderCode === */
-const UPDATE_ORDER_STATUS_BY_CODE = gql`
-  mutation UpdateOrderStatusByCode($input: UpdateOrderStatusByCodeInput!) {
-    updateOrderStatusByCode(input: $input) {
-      order {
-        id
-        orderCode
-        currentStatus
-        updatedAt
-        totals {
-          subtotal
-          discount
-          tax
-          service
-          grandTotal
-        }
-        items {
-          dishId
-          name
-          status
-          price
-          modifiersPrice
-          quantity
-          method
-          note
-        }
+/** ✅ Cập nhật trạng thái 1 order theo ID */
+const UPDATE_ORDER_STATUS = gql`
+  mutation UpdateOrderStatus($input: UpdateOrderStatusInput!) {
+    updateOrderStatus(input: $input) {
+      id
+      orderCode
+      tableCode
+      restaurantId
+      currentStatus
+      totals {
+        subtotal
+        discount
+        tax
+        service
+        grandTotal
       }
+      updatedAt
     }
   }
 `;
 
-const UPDATE_ORDER_ITEM_STATUS_BY_CODE = gql`
-  mutation UpdateOrderItemStatusByCode(
-    $input: UpdateOrderItemStatusByCodeInput!
-  ) {
-    updateOrderItemStatusByCode(input: $input) {
+/** ✅ Cập nhật trạng thái 1 item trong 1 order theo ID */
+const UPDATE_ORDER_ITEM_STATUS = gql`
+  mutation UpdateOrderItemStatus($input: UpdateOrderItemStatusInput!) {
+    updateOrderItemStatus(input: $input) {
       order {
         id
         orderCode
         tableCode
+        restaurantId
         currentStatus
-        totals {
-          subtotal
-          discount
-          tax
-          service
-          grandTotal
-        }
         items {
           dishId
-          menuId
-          categoryId
           name
-          unit
+          status
           price
           modifiersPrice
-          method
-          note
           quantity
-          status
         }
         updatedAt
       }
@@ -314,69 +360,12 @@ const UPDATE_ORDER_ITEM_STATUS_BY_CODE = gql`
   }
 `;
 
-/* === NEW: update order.user by orderCode (attach customer) === */
+/** Gắn/đổi khách cho toàn đợt theo orderCode */
 const UPDATE_ORDER_CUSTOMER_BY_CODE = gql`
   mutation UpdateOrderCustomerByCode($input: UpdateOrderCustomerByCodeInput!) {
     updateOrderCustomerByCode(input: $input) {
-      order {
-        id
-        orderCode
-        tableCode
-        restaurantId
-        user {
-          id
-          fullName
-          email
-          phone
-        }
-        updatedAt
-      }
-    }
-  }
-`;
-
-/* === SUBSCRIPTION: ORDER EVENTS === */
-const ORDER_EVENTS = gql`
-  subscription OrderEvents($restaurantId: ID!) {
-    orderEvents(restaurantId: $restaurantId) {
-      type
-      order {
-        id
-        orderCode
-        tableCode
-        currentStatus
-        restaurantId
-        note
-        user {
-          id
-          fullName
-          email
-          phone
-        }
-        items {
-          dishId
-          menuId
-          categoryId
-          name
-          unit
-          price
-          modifiersPrice
-          method
-          note
-          quantity
-          status
-        }
-        totals {
-          subtotal
-          discount
-          tax
-          service
-          grandTotal
-        }
-        orderType
-        createdAt
-        updatedAt
-      }
+      success
+      modifiedCount
     }
   }
 `;
@@ -396,6 +385,11 @@ export default function useOrderManagement(pos = null) {
     restaurantId,
   } = pos ?? {};
 
+  /** Nhóm đợt theo bàn */
+  const [groups, setGroups] = useState([]);
+  const [activeGroup, setActiveGroup] = useState(null);
+
+  /** Tổng tiền hiển thị ở POS (theo currentOrder ở UI) */
   const [totals, setTotals] = useState({
     subtotal: 0,
     discount: 0,
@@ -406,16 +400,16 @@ export default function useOrderManagement(pos = null) {
   const [orderNote, setOrderNote] = useState("");
   const [removedExistingItems, setRemovedExistingItems] = useState([]);
 
-  // Keep last prepared orderId for confirmPayment (avoid double save)
+  // Keep last prepared orderId for legacy confirmPayment
   const lastPreparedOrderIdRef = useRef(null);
 
   // apollo mutations
-  const [upsertTableOrder] = useMutation(UPSERT_TABLE_ORDER);
-  const [mutPayOrder, { loading: payLoading }] = useMutation(PAY_ORDER);
-  const [mutUpdateOrderStatusByCode] = useMutation(UPDATE_ORDER_STATUS_BY_CODE);
-  const [mutUpdateOrderItemStatusByCode] = useMutation(
-    UPDATE_ORDER_ITEM_STATUS_BY_CODE
-  );
+  const [createOrAppendOrder] = useMutation(CREATE_OR_APPEND_TABLE_ORDER);
+  const [mutPayOrder, { loading: payLoadingLegacy }] = useMutation(PAY_ORDER);
+  const [mutPayByCode, { loading: payLoadingByCode }] =
+    useMutation(PAY_ORDERS_BY_CODE);
+  const [mutUpdateOrderStatus] = useMutation(UPDATE_ORDER_STATUS);
+  const [mutUpdateOrderItemStatus] = useMutation(UPDATE_ORDER_ITEM_STATUS);
   const [mutUpdateOrderCustomerByCode] = useMutation(
     UPDATE_ORDER_CUSTOMER_BY_CODE
   );
@@ -424,19 +418,129 @@ export default function useOrderManagement(pos = null) {
   const [loadOrderById, { data: orderByIdData }] = useLazyQuery(GET_ORDER, {
     fetchPolicy: "network-only",
   });
-
   const [
     loadOrdersNow,
     { data: ordersNowData, loading: ordersNowLoading, error: ordersNowError },
   ] = useLazyQuery(ORDERS_BY_RESTAURANT_NOW, { fetchPolicy: "network-only" });
-
   const [
     loadOrdersAll,
     { data: ordersAllData, loading: ordersAllLoading, error: ordersAllError },
   ] = useLazyQuery(ORDERS_BY_RESTAURANT_ALL, { fetchPolicy: "network-only" });
+  const [loadGroupsQuery] = useLazyQuery(ORDERS_GROUPED_BY_TABLE, {
+    fetchPolicy: "network-only",
+  });
 
   /* ============================================================
-     3) TÍNH TỔNG
+     SOCKET REALTIME EVENTS
+     ============================================================ */
+  const loadGroupsForTable = useCallback(
+    async ({ restaurantId, tableCode }) => {
+      if (!restaurantId || !tableCode) return [];
+
+      const { data } = await loadGroupsQuery({
+        variables: { restaurantId, tableCode },
+      });
+      const gs = data?.ordersGroupedByTable || [];
+      setGroups(gs);
+
+      // chọn đợt mới nhất
+      const latest =
+        [...gs].sort((a, b) => {
+          const ta = new Date(
+            a.orders?.[a.orders.length - 1]?.createdAt || 0
+          ).getTime();
+          const tb = new Date(
+            b.orders?.[b.orders.length - 1]?.createdAt || 0
+          ).getTime();
+          return tb - ta;
+        })[0] || null;
+
+      setActiveGroup(latest);
+
+      // Hydrate currentOrder ở UI bằng gộp món
+      if (latest) {
+        const merged = mergeGroupItems(latest);
+        const uiItems = merged.items.map((i) => ({
+          ...i,
+          lineSubtotal:
+            (Number(i.price || 0) + Number(i.modifiersPrice || 0)) *
+            Number(i.quantity || 0),
+          isNew: !i.isExisting,
+          _lineId: `grp_${latest.orderCode}_${(i.dishId || i.name || "x")
+            .toString()
+            .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
+        }));
+        setCurrentOrder?.(uiItems);
+        if (setTableOrders) {
+          setTableOrders((prev) => ({ ...prev, [tableCode]: uiItems }));
+        }
+      } else {
+        setCurrentOrder?.([]);
+        if (setTableOrders) {
+          setTableOrders((prev) => ({ ...prev, [tableCode]: [] }));
+        }
+      }
+      return gs;
+    },
+    [loadGroupsQuery, setCurrentOrder, setTableOrders]
+  );
+
+  useSocketOrder(restaurantId, {
+    onAny: async (evt) => {
+      const { type, order } = evt || {};
+      if (!order) return;
+
+      // Merge into Apollo cache (best-effort)
+      try {
+        apollo.cache.modify({
+          id: apollo.cache.identify({ __typename: "Order", id: order.id }),
+          fields: {
+            currentStatus: () => order.currentStatus,
+            updatedAt: () => order.updatedAt,
+            items: () => order.items,
+            totals: () => order.totals,
+          },
+        });
+      } catch {}
+
+      // Nếu đang xem theo bàn → reload group để cập nhật gộp món
+      if (currentTable?.code && restaurantId) {
+        try {
+          await loadGroupsForTable({
+            restaurantId,
+            tableCode: currentTable.code,
+          });
+        } catch {}
+      }
+
+      // Giữ hành vi dọn OrdersNow khi order không còn active
+      if (["ORDER_CANCELLED", "ORDER_COMPLETED"].includes(type)) {
+        try {
+          const now = apollo.readQuery({
+            query: ORDERS_BY_RESTAURANT_NOW,
+            variables: { restaurantId, limit: 100 },
+          });
+          if (now?.ordersByRestaurantNow) {
+            apollo.writeQuery({
+              query: ORDERS_BY_RESTAURANT_NOW,
+              variables: { restaurantId, limit: 100 },
+              data: {
+                ordersByRestaurantNow: {
+                  ...now.ordersByRestaurantNow,
+                  edges: now.ordersByRestaurantNow.edges.filter(
+                    (e) => e.node.id !== order.id
+                  ),
+                },
+              },
+            });
+          }
+        } catch {}
+      }
+    },
+  });
+
+  /* ============================================================
+     3) TÍNH TỔNG (theo currentOrder đang hiển thị ở UI)
      ============================================================ */
   useEffect(() => {
     const newTotals = (currentOrder || []).reduce(
@@ -529,7 +633,7 @@ export default function useOrderManagement(pos = null) {
       unit,
       price: Math.round(it.price || 0),
       modifiersPrice: Math.round(it.modifiersPrice || 0),
-      method: it.method || "",
+      method: it.method || it.cookingOption || "",
       note: it.description || it.note || "",
       quantity,
       modifiers: (it.modifiers || []).map((m) => ({
@@ -538,14 +642,12 @@ export default function useOrderManagement(pos = null) {
         groupId: m.groupId,
         price: Math.round(m.price || 0),
       })),
-      status: it.status ?? "pending",
     };
   }, []);
 
   const writeOrderIntoCache = useCallback(
     (order) => {
       if (!order?.id) return;
-
       apollo.cache.writeFragment({
         id: apollo.cache.identify({ __typename: "Order", id: order.id }),
         fragment: gql`
@@ -631,26 +733,115 @@ export default function useOrderManagement(pos = null) {
   );
 
   /* ============================================================
-     5) STATUS HELPERS
+     5) GỘP MÓN THEO ĐỢT
      ============================================================ */
+
+  const itemSignature = (it) => {
+    const mods =
+      (it.modifiers || [])
+        .map((m) => `${m.groupId || ""}:${m.optionId || m.id || ""}`)
+        .sort()
+        .join("|") || "";
+    const unit = it.unit || "portion";
+    const method = it.method || it.cookingOption || "";
+    return `${it.dishId || it.id || it.name}-${unit}-${method}-${mods}`;
+  };
+
+  /**
+   * Gộp items từ nhiều orders (cùng orderCode)
+   * - Mark isExisting = true nếu món xuất hiện ở các order TRƯỚC order mới nhất
+   */
+  const mergeGroupItems = (group) => {
+    if (!group?.orders?.length)
+      return {
+        items: [],
+        totals: { subtotal: 0, discount: 0, tax: 0, service: 0, grandTotal: 0 },
+      };
+
+    const orders = [...group.orders].sort(
+      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
+    );
+    const latestOrderId = orders[orders.length - 1].id;
+
+    const map = new Map();
+    const totals = {
+      subtotal: 0,
+      discount: 0,
+      tax: 0,
+      service: 0,
+      grandTotal: 0,
+    };
+
+    for (const ord of orders) {
+      const t = ord.totals || {};
+      totals.subtotal += Number(t.subtotal || 0);
+      totals.discount += Number(t.discount || 0);
+      totals.tax += Number(t.tax || 0);
+      totals.service += Number(t.service || 0);
+      totals.grandTotal += Number(t.grandTotal || 0);
+
+      for (const it of ord.items || []) {
+        const key = itemSignature(it);
+        const prev = map.get(key) || {
+          ...it,
+          quantity: 0,
+          isExisting: true,
+        };
+        prev.quantity = Number(prev.quantity || 0) + Number(it.quantity || 0);
+        if (ord.id === latestOrderId) prev.isExisting = false;
+        map.set(key, prev);
+      }
+    }
+
+    for (const k of Object.keys(totals)) totals[k] = Math.round(totals[k]);
+    return { items: Array.from(map.values()), totals };
+  };
+
+  /** Tổng gộp của group đang active (dùng cho thanh toán theo đợt) */
+  const mergedCurrent = activeGroup
+    ? mergeGroupItems(activeGroup)
+    : {
+        items: [],
+        totals: { subtotal: 0, discount: 0, tax: 0, service: 0, grandTotal: 0 },
+      };
+
+  /* ============================================================
+     7) STATUS HELPERS (ID-based)
+     ============================================================ */
+
   const VALID_ITEM_STATUS = useRef(
     new Set(["pending", "preparing", "ready", "served", "cancelled"])
   );
 
-  const changeOrderStatusByCode = useCallback(
-    async ({ restaurantId, orderCode, status, note, afterSuccess }) => {
-      if (!restaurantId)
-        return { success: false, message: "Thiếu restaurantId." };
-      if (!orderCode) return { success: false, message: "Thiếu orderCode." };
+  const changeOrderStatus = useCallback(
+    async ({ restaurantId, orderId, status, note, afterSuccess }) => {
+      if (!orderId)
+        return { success: false, message: "Thiếu orderId để đổi trạng thái." };
 
       try {
-        const { data } = await mutUpdateOrderStatusByCode({
-          variables: { input: { restaurantId, orderCode, status, note } },
+        const { data } = await mutUpdateOrderStatus({
+          variables: {
+            input: {
+              id: orderId,
+              restaurantId: restaurantId || undefined,
+              status,
+              note,
+            },
+          },
         });
 
-        const updated = data?.updateOrderStatusByCode?.order || null;
+        const updated = data?.updateOrderStatus || null;
+        if (updated) {
+          writeOrderIntoCache(updated);
 
-        if (updated) writeOrderIntoCache(updated);
+          // nếu đang xem theo bàn, reload group để phản chiếu
+          if (currentTable?.code && restaurantId) {
+            await loadGroupsForTable({
+              restaurantId,
+              tableCode: currentTable.code,
+            });
+          }
+        }
 
         await afterSuccess?.(updated);
         return { success: true, data: updated };
@@ -661,28 +852,25 @@ export default function useOrderManagement(pos = null) {
         };
       }
     },
-    [mutUpdateOrderStatusByCode, writeOrderIntoCache]
+    [
+      mutUpdateOrderStatus,
+      writeOrderIntoCache,
+      currentTable?.code,
+      loadGroupsForTable,
+    ]
   );
 
-  const changeOrderItemStatusByCode = useCallback(
-    async ({
-      restaurantId,
-      orderCode,
-      itemKey,
-      status,
-      note,
-      afterSuccess,
-    }) => {
-      if (!restaurantId)
-        return { success: false, message: "Thiếu restaurantId." };
-      if (!orderCode) return { success: false, message: "Thiếu orderCode." };
+  const changeOrderItemStatus = useCallback(
+    async ({ restaurantId, orderId, itemKey, status, note, afterSuccess }) => {
+      if (!orderId)
+        return { success: false, message: "Thiếu orderId để đổi trạng thái." };
       if (!itemKey && itemKey !== 0)
         return { success: false, message: "Thiếu itemKey." };
       if (!VALID_ITEM_STATUS.current.has(status)) {
         return { success: false, message: "Trạng thái không hợp lệ." };
       }
 
-      // optimistic for POS state
+      // optimistic trong POS UI
       let idx = -1;
       let prevStatus = null;
       if (Array.isArray(currentOrder) && currentOrder.length) {
@@ -712,11 +900,11 @@ export default function useOrderManagement(pos = null) {
       }
 
       try {
-        const { data } = await mutUpdateOrderItemStatusByCode({
+        const { data } = await mutUpdateOrderItemStatus({
           variables: {
             input: {
-              restaurantId,
-              orderCode,
+              orderId,
+              restaurantId: restaurantId || undefined,
               itemKey: String(itemKey),
               status,
               note,
@@ -724,35 +912,26 @@ export default function useOrderManagement(pos = null) {
           },
         });
 
-        const serverOrder = data?.updateOrderItemStatusByCode?.order || null;
-
+        const serverOrder = data?.updateOrderItemStatus?.order || null;
         if (serverOrder) {
-          const normalized = (serverOrder.items || []).map((i) => ({
-            ...i,
-            lineSubtotal:
-              (Number(i.price || 0) + Number(i.modifiersPrice || 0)) *
-              Number(i.quantity || 1),
-            isExisting: true,
-            isNew: false,
-            _lineId: `srv_${serverOrder.id}_${(i.dishId || i.name || "x")
-              .toString()
-              .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
-          }));
-
-          if (setCurrentOrder) setCurrentOrder(normalized);
-          if (setTableOrders && currentTable?.code) {
-            setTableOrders((prev) => ({
-              ...prev,
-              [currentTable.code]: normalized,
-            }));
-          }
-
           writeOrderIntoCache(serverOrder);
         }
 
+        // reload group nếu đang theo bàn
+        if (currentTable?.code && restaurantId) {
+          await loadGroupsForTable({
+            restaurantId,
+            tableCode: currentTable.code,
+          });
+        }
+
         await afterSuccess?.(serverOrder);
-        return { success: true, data: serverOrder };
+        return {
+          success: true,
+          data: serverOrder,
+        };
       } catch (err) {
+        // revert optimistic
         if (idx >= 0 && prevStatus != null) {
           setCurrentOrder((prev) =>
             (prev || []).map((it, i) =>
@@ -776,43 +955,47 @@ export default function useOrderManagement(pos = null) {
       }
     },
     [
-      mutUpdateOrderItemStatusByCode,
+      mutUpdateOrderItemStatus,
       currentOrder,
       setCurrentOrder,
       setTableOrders,
       currentTable,
+      loadGroupsForTable,
       writeOrderIntoCache,
     ]
   );
 
-  /* Back-compat: old updateItemStatus -> call new mutation */
+  /* Back-compat: old updateItemStatus -> call ID-based mutation */
   const updateItemStatus = useCallback(
-    async ({ itemKey, status, restaurantId, orderCode, afterSuccess }) => {
-      let finalOrderCode = orderCode;
-      if (!finalOrderCode && currentTable?.orderCode) {
-        finalOrderCode = currentTable.orderCode;
+    async ({ itemKey, status, restaurantId, orderId, afterSuccess }) => {
+      let finalOrderId = orderId || null;
+
+      // Nếu chưa truyền orderId mà activeGroup chỉ có 1 order → đoán
+      if (!finalOrderId && activeGroup?.orders?.length === 1) {
+        finalOrderId = activeGroup.orders[0].id;
       }
-      if (!finalOrderCode) {
+
+      if (!finalOrderId) {
         return {
           success: false,
-          message: "Thiếu orderCode để đổi trạng thái món.",
+          message: "Thiếu orderId để đổi trạng thái món.",
         };
       }
 
-      return changeOrderItemStatusByCode({
+      return changeOrderItemStatus({
         restaurantId,
-        orderCode: finalOrderCode,
+        orderId: finalOrderId,
         itemKey,
         status,
         note: undefined,
         afterSuccess,
       });
     },
-    [changeOrderItemStatusByCode, currentTable?.orderCode]
+    [changeOrderItemStatus, activeGroup]
   );
 
   /* ============================================================
-     6) CLIENT CRUD (add/update/remove/clear)
+     8) CLIENT CRUD (add/update/remove/clear)
      ============================================================ */
 
   const addToOrder = useCallback(
@@ -825,14 +1008,12 @@ export default function useOrderManagement(pos = null) {
       price = null,
     }) => {
       if (!menuItem) return;
-
       const itemPrice =
         price ??
         menuItem._displayPrice ??
         menuItem.price ??
         menuItem.basePrice ??
         0;
-
       const chosenUnit = unit || (menuItem.byWeight ? "kg" : "portion");
 
       let q;
@@ -965,7 +1146,7 @@ export default function useOrderManagement(pos = null) {
   }, [currentOrder, setCurrentOrder, setTableOrders, currentTable]);
 
   /* ============================================================
-     7) SAVE / UPSERT
+     9) SAVE / UPSERT (tạo đợt mới, chỉ gửi món mới/đã sửa)
      ============================================================ */
 
   const saveOrder = useCallback(
@@ -992,95 +1173,36 @@ export default function useOrderManagement(pos = null) {
         };
       }
 
+      // Chỉ gửi món MỚI hoặc đã chỉnh sửa (đợt mới)
       const outgoing = [];
       const skipped = [];
-      const useReplace =
-        removedExistingItems && removedExistingItems.length > 0;
+      (currentOrder || []).forEach((it, idx) => {
+        if (it.isExisting && !it._edited && !it.isNew) return; // bỏ món cũ không đổi
+        const n = normalizeOutgoingItem(it, idx);
+        if (n._invalid) skipped.push(n);
+        else outgoing.push(n);
+      });
 
-      if (useReplace) {
-        (currentOrder || []).forEach((it, idx) => {
-          const n = normalizeOutgoingItem(it, idx);
-          if (n._invalid) skipped.push(n);
-          else outgoing.push(n);
-        });
-
-        if (!outgoing.length) {
-          return {
-            success: false,
-            message:
-              "Không thể lưu: tất cả món không hợp lệ sau khi xoá/sửa (kiểm tra số lượng/đơn vị).",
-            skipped,
-          };
-        }
-      } else {
-        (currentOrder || []).forEach((it, idx) => {
-          if (it.isExisting && !it._edited && !it.isNew) return;
-          const n = normalizeOutgoingItem(it, idx);
-          if (n._invalid) skipped.push(n);
-          else outgoing.push(n);
-        });
-
-        if (!outgoing.length) {
-          const guessedId =
-            currentOrder?.[0]?.orderId || currentOrder?.[0]?.id || null;
-
-          if (guessedId) {
-            return {
-              success: true,
-              message: "Không có thay đổi. Dùng order hiện có.",
-              skipped,
-              data: { id: guessedId },
-            };
-          }
-
-          try {
-            const res = await loadOrdersNow({
-              variables: { restaurantId, limit: 10, cursor: null },
-              fetchPolicy: "network-only",
-            });
-
-            const edges = res?.data?.ordersByRestaurantNow?.edges || [];
-            const matched = edges
-              .map((e) => e.node)
-              .filter(
-                (o) =>
-                  (o.tableCode || "").toLowerCase() ===
-                  (currentTable?.code || "").toLowerCase()
-              );
-
-            if (matched?.length) {
-              return {
-                success: true,
-                message: "Không có thay đổi. Dùng order hiện có.",
-                skipped,
-                data: matched[0],
-              };
-            }
-          } catch {
-            // ignore
-          }
-
-          return {
-            success: true,
-            message:
-              "Không có thay đổi để lưu. Tiếp tục thanh toán với order hiện có.",
-            skipped,
-            data: { id: null },
-          };
-        }
+      if (!outgoing.length) {
+        return {
+          success: true,
+          message: "Không có thay đổi để lưu.",
+          skipped,
+          data: { id: null },
+        };
       }
 
       try {
-        const res = await upsertTableOrder({
+        const res = await createOrAppendOrder({
           variables: {
             input: {
               restaurantId,
               tableCode: currentTable.code,
-              orderCode: currentTable.orderCode || null,
+              orderCode:
+                activeGroup?.orderCode || currentTable.orderCode || null,
               items: outgoing,
-              replaceItems: useReplace || undefined,
               note: orderNote,
-              customer: extraCustomer, // có thể undefined nếu bàn reserved
+              customer: extraCustomer,
               clientMeta: {
                 savedAt: new Date().toISOString(),
                 ua: typeof navigator !== "undefined" ? navigator.userAgent : "",
@@ -1089,35 +1211,21 @@ export default function useOrderManagement(pos = null) {
           },
         });
 
-        const serverOrder = res?.data?.upsertTableOrder?.order || null;
+        const serverOrder = res?.data?.createOrAppendTableOrder?.order || null;
 
-        if (serverOrder) {
-          const normalized = (serverOrder.items || []).map((i) => ({
-            ...i,
-            lineSubtotal:
-              (Number(i.price || 0) + Number(i.modifiersPrice || 0)) *
-              Number(i.quantity || 1),
-            isExisting: true,
-            isNew: false,
-            _lineId: `srv_${serverOrder.id}_${(i.dishId || i.name || "x")
-              .toString()
-              .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
-          }));
-          setCurrentOrder(normalized);
-          setTableOrders?.((prev) => ({
-            ...prev,
-            [currentTable.code]: normalized,
-          }));
-          setRemovedExistingItems([]);
+        // Sau khi tạo đợt mới → reload groups để gộp hiển thị
+        await loadGroupsForTable({
+          restaurantId,
+          tableCode: currentTable.code,
+        });
 
-          writeOrderIntoCache(serverOrder);
-        }
+        if (serverOrder) writeOrderIntoCache(serverOrder);
 
         return {
           success: true,
           message: skipped.length
-            ? `Đã lưu đơn. Bỏ qua ${skipped.length} món không hợp lệ (đơn vị/số lượng).`
-            : "Đã lưu đơn lên server.",
+            ? `Đã lưu đợt mới. Bỏ qua ${skipped.length} món không hợp lệ (đơn vị/số lượng).`
+            : "Đã lưu đợt mới lên server.",
           skipped,
           data: serverOrder,
         };
@@ -1129,29 +1237,41 @@ export default function useOrderManagement(pos = null) {
       currentOrder,
       currentTable,
       orderNote,
-      upsertTableOrder,
+      createOrAppendOrder,
       setTableOrders,
-      setCurrentOrder,
-      removedExistingItems,
-      setRemovedExistingItems,
       normalizeOutgoingItem,
-      loadOrdersNow,
+      activeGroup?.orderCode,
+      loadGroupsForTable,
       writeOrderIntoCache,
     ]
   );
 
   /* ============================================================
-     8) PAYMENT FLOW
+     10) PAYMENT FLOW
      ============================================================ */
 
+  // Chuẩn bị thanh toán: nếu đang theo đợt, dùng tổng gộp theo group
   const preparePayment = useCallback(
     async ({ restaurantId } = {}) => {
-      if (!restaurantId) {
+      if (!restaurantId)
         return { success: false, message: "Thiếu restaurantId." };
+
+      // Nếu đã có group đang active (đã có orderCode) → không cần tạo/đoán orderId
+      if (activeGroup?.orderCode) {
+        return {
+          success: true,
+          data: {
+            orderCode: activeGroup.orderCode,
+            tableCode: activeGroup.tableCode,
+            items: mergedCurrent.items,
+            totals: mergedCurrent.totals,
+          },
+        };
       }
-      if (!currentOrder?.length) {
+
+      // Fallback legacy: lưu và thanh toán theo 1 order
+      if (!currentOrder?.length)
         return { success: false, message: "Chưa có món để thanh toán." };
-      }
 
       const saved = await saveOrder({ persist: true, restaurantId });
       if (!saved?.success) return saved;
@@ -1164,26 +1284,25 @@ export default function useOrderManagement(pos = null) {
         data: { orderId, items: currentOrder, totals },
       };
     },
-    [saveOrder, currentOrder, totals]
+    [activeGroup?.orderCode, mergedCurrent, currentOrder, totals, saveOrder]
   );
 
   const validatePayment = useCallback(
-    ({ method = "cash", paidAmount = 0, total = totals.total } = {}) => {
-      const t = Number(total || 0);
+    ({ method = "cash", paidAmount = 0, total } = {}) => {
+      const t = Number(total ?? totals.total ?? 0);
       if (!(t > 0))
         return { ok: false, message: "Tổng cần thanh toán không hợp lệ." };
-
       if (method === "cash") {
         const p = Number(paidAmount || 0);
-        if (!(p >= t)) {
+        if (!(p >= t))
           return { ok: false, message: "Tiền mặt khách đưa phải ≥ tổng tiền." };
-        }
       }
       return { ok: true };
     },
     [totals.total]
   );
 
+  // Thanh toán: ưu tiên theo orderCode (đợt), nếu chưa có thì fallback orderId (legacy)
   const confirmPayment = useCallback(
     async ({
       restaurantId,
@@ -1195,6 +1314,49 @@ export default function useOrderManagement(pos = null) {
       if (!restaurantId)
         return { success: false, message: "Thiếu restaurantId." };
 
+      // CASE 1: Có orderCode → payOrdersByCode
+      if (activeGroup?.orderCode) {
+        const grand = Number(mergedCurrent.totals.grandTotal || 0);
+        const valid = validatePayment({ method, paidAmount, total: grand });
+        if (!valid.ok) return { success: false, message: valid.message };
+
+        const paid = method === "cash" ? Number(paidAmount || 0) : grand;
+        const idempotency =
+          externalRef ||
+          `ref_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+        try {
+          const { data } = await mutPayByCode({
+            variables: {
+              input: {
+                restaurantId,
+                orderCode: activeGroup.orderCode,
+                paidAmount: paid,
+                method,
+                note,
+                externalRef: idempotency,
+              },
+            },
+          });
+
+          // Reload group sau khi thanh toán (bàn có thể trống)
+          if (currentTable?.code) {
+            await loadGroupsForTable({
+              restaurantId,
+              tableCode: currentTable.code,
+            });
+          }
+
+          return { success: true, data: data?.payOrdersByCode };
+        } catch (err) {
+          return {
+            success: false,
+            message: err?.message || "Thanh toán theo đợt thất bại.",
+          };
+        }
+      }
+
+      // CASE 2: Legacy — theo orderId
       const valid = validatePayment({
         method,
         paidAmount,
@@ -1215,9 +1377,9 @@ export default function useOrderManagement(pos = null) {
           message: "Không lấy được orderId để thanh toán.",
         };
       }
+
       const amountToCharge = Number(totals.total || 0);
       const paid = method === "cash" ? Number(paidAmount || 0) : amountToCharge;
-
       const idempotency =
         externalRef ||
         `ref_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -1238,11 +1400,9 @@ export default function useOrderManagement(pos = null) {
 
         const paidOrder = data?.payOrder?.order || null;
         if (paidOrder) writeOrderIntoCache(paidOrder);
-
         try {
           await loadOrderById({ variables: { id: orderId } });
         } catch {}
-
         return { success: true, data: data?.payOrder };
       } catch (err) {
         return {
@@ -1252,12 +1412,17 @@ export default function useOrderManagement(pos = null) {
       }
     },
     [
+      activeGroup?.orderCode,
+      mergedCurrent,
       validatePayment,
       totals.total,
       saveOrder,
       mutPayOrder,
+      mutPayByCode,
       loadOrderById,
       writeOrderIntoCache,
+      currentTable?.code,
+      loadGroupsForTable,
     ]
   );
 
@@ -1270,6 +1435,20 @@ export default function useOrderManagement(pos = null) {
     } = {}) => {
       const prep = await preparePayment({ restaurantId });
       if (!prep?.success) return prep;
+
+      // Nếu đã có orderCode (đợt) → dùng tổng gộp của group
+      if (prep?.data?.orderCode) {
+        const grand = Number(prep.data.totals?.grandTotal || 0);
+        return confirmPayment({
+          restaurantId,
+          method,
+          paidAmount: method === "cash" ? grand : 0,
+          note,
+          externalRef,
+        });
+      }
+
+      // Fallback legacy
       return confirmPayment({
         restaurantId,
         method,
@@ -1282,7 +1461,7 @@ export default function useOrderManagement(pos = null) {
   );
 
   /* ============================================================
-     9) FETCH
+     11) FETCH tiện ích (giữ lại cho tương thích)
      ============================================================ */
 
   const fetchOrderByTable = useCallback(
@@ -1338,10 +1517,10 @@ export default function useOrderManagement(pos = null) {
   );
 
   /* ============================================================
-     10) ATTACH / UPDATE CUSTOMER (NEW)
+     12) CUSTOMER helpers
      ============================================================ */
 
-  // Dùng khi đã biết orderCode để tránh gọi OrdersByRestaurantNow
+  // Dùng khi đã biết orderCode
   const updateOrderCustomerByCode = useCallback(
     async ({ restaurantId, orderCode, customer }) => {
       if (!restaurantId)
@@ -1358,9 +1537,15 @@ export default function useOrderManagement(pos = null) {
         const { data } = await mutUpdateOrderCustomerByCode({
           variables: { input: { restaurantId, orderCode, customer: clean } },
         });
-        const srv = data?.updateOrderCustomerByCode?.order || null;
-        if (srv) writeOrderIntoCache(srv);
-        return { success: true, data: srv };
+        const ok = data?.updateOrderCustomerByCode?.success;
+        // reload group để phản ánh khách hàng
+        if (ok && currentTable?.code) {
+          await loadGroupsForTable({
+            restaurantId,
+            tableCode: currentTable.code,
+          });
+        }
+        return { success: !!ok, data: data?.updateOrderCustomerByCode };
       } catch (err) {
         return {
           success: false,
@@ -1368,10 +1553,10 @@ export default function useOrderManagement(pos = null) {
         };
       }
     },
-    [mutUpdateOrderCustomerByCode, writeOrderIntoCache]
+    [mutUpdateOrderCustomerByCode, currentTable?.code, loadGroupsForTable]
   );
 
-  // Dùng khi chưa biết orderCode → có thể phát sinh 1 lần OrdersByRestaurantNow
+  // Dùng khi chưa biết orderCode → thử tìm theo bàn
   const attachCustomerToOrder = useCallback(
     async (...args) => {
       let tableCode = null;
@@ -1398,8 +1583,7 @@ export default function useOrderManagement(pos = null) {
         }));
       }
 
-      // Nếu đã có orderCode hiện tại
-      let orderCode = currentTable?.orderCode || null;
+      let orderCode = activeGroup?.orderCode || currentTable?.orderCode || null;
 
       if (!orderCode && tableCode && restaurantId && fetchOrderByTable) {
         try {
@@ -1429,73 +1613,12 @@ export default function useOrderManagement(pos = null) {
       setTableOrders,
       fetchOrderByTable,
       updateOrderCustomerByCode,
+      activeGroup?.orderCode,
     ]
   );
 
   /* ============================================================
-     11) SUBSCRIPTION: merge realtime
-     ============================================================ */
-
-  useSubscription(ORDER_EVENTS, {
-    skip: !restaurantId,
-    variables: { restaurantId },
-    onData: ({ data }) => {
-      const evt = data?.data?.orderEvents;
-      if (!evt?.order) return;
-      const { type, order } = evt;
-      console.log("[WS][ORDER_EVENTS]", evt?.type, evt?.order?.id, evt);
-      // Ghi fragment (đồng bộ node Order)
-      writeOrderIntoCache(order);
-
-      // Nếu order completed/cancelled → loại khỏi NOW
-      const shouldRemoveFromNow =
-        order.currentStatus === "completed" ||
-        order.currentStatus === "cancelled" ||
-        type === "ORDER_CANCELLED" ||
-        type === "ORDER_COMPLETED";
-
-      try {
-        const now = apollo.readQuery({
-          query: ORDERS_BY_RESTAURANT_NOW,
-          variables: { restaurantId, limit: 100 },
-        });
-        if (now?.ordersByRestaurantNow) {
-          const edges = now.ordersByRestaurantNow.edges || [];
-          const exists = edges.some((e) => e?.node?.id === order.id);
-
-          let newEdges = edges;
-          if (shouldRemoveFromNow) {
-            newEdges = edges.filter((e) => e?.node?.id !== order.id);
-          } else if (!exists) {
-            newEdges = [{ node: order, cursor: order.id }, ...edges];
-          } else {
-            newEdges = edges.map((e) =>
-              e?.node?.id === order.id
-                ? { ...e, node: { ...e.node, ...order } }
-                : e
-            );
-          }
-
-          apollo.writeQuery({
-            query: ORDERS_BY_RESTAURANT_NOW,
-            variables: { restaurantId, limit: 100 },
-            data: {
-              ordersByRestaurantNow: {
-                __typename: "OrdersConnection",
-                edges: newEdges,
-                pageInfo: now.ordersByRestaurantNow.pageInfo,
-              },
-            },
-          });
-        }
-      } catch {
-        // ignore
-      }
-    },
-  });
-
-  /* ============================================================
-     12) RETURN
+     13) RETURN
      ============================================================ */
 
   const ordersNow =
@@ -1516,6 +1639,13 @@ export default function useOrderManagement(pos = null) {
     orderNote,
     setOrderNote,
 
+    // batch groups
+    groups,
+    activeGroup,
+    setActiveGroup,
+    mergedCurrent, // { items, totals } đã gộp theo đợt
+    loadGroupsForTable,
+
     // crud
     addToOrder,
     updateItemQty,
@@ -1523,49 +1653,12 @@ export default function useOrderManagement(pos = null) {
     clearAll,
     saveOrder,
 
-    // status by code
-    changeOrderStatusByCode,
-    changeOrderItemStatusByCode,
+    // status by ID
+    changeOrderStatus,
+    changeOrderItemStatus,
 
-    // Back-compat API
+    // Back-compat API (giờ cũng dùng ID)
     updateItemStatus,
-
-    // handler factories
-    makeItemStatusHandler: useCallback(
-      ({ orderRef, setOrder, restaurantId, orderCode }) => {
-        return async (itemKey, nextStatus, note) => {
-          const res = await changeOrderItemStatusByCode({
-            restaurantId,
-            orderCode,
-            itemKey,
-            status: nextStatus,
-            note,
-            afterSuccess: (srv) => {
-              if (srv && typeof setOrder === "function") setOrder(srv);
-            },
-          });
-          return res;
-        };
-      },
-      [changeOrderItemStatusByCode]
-    ),
-    makeOrderStatusHandler: useCallback(
-      ({ orderRef, setOrder, restaurantId, orderCode }) => {
-        return async (nextStatus, note) => {
-          const res = await changeOrderStatusByCode({
-            restaurantId,
-            orderCode,
-            status: nextStatus,
-            note,
-            afterSuccess: (srv) => {
-              if (srv && typeof setOrder === "function") setOrder(srv);
-            },
-          });
-          return res;
-        };
-      },
-      [changeOrderStatusByCode]
-    ),
 
     // fetch
     fetchOrderByTable,
@@ -1586,14 +1679,14 @@ export default function useOrderManagement(pos = null) {
     loadOrders,
     orders,
 
-    // payment API for UI
+    // payment API for UI (ưu tiên theo đợt)
     preparePayment,
     validatePayment,
     confirmPayment,
     checkoutOrder,
-    payLoading,
+    payLoading: payLoadingLegacy || payLoadingByCode,
 
-    // NEW
+    // customer
     updateOrderCustomerByCode,
     attachCustomerToOrder,
   };

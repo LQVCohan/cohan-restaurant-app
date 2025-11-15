@@ -1,185 +1,234 @@
+// cohan-restaurant-backend/graphql/resolvers/order/query.js
 import mongoose from "mongoose";
 import { Order } from "../../../models/index.js";
-
-const toObjectId = (id) =>
-  id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
-
-const ACTIVE_EXCLUDE = ["cancelled", "completed"];
+import { toId } from "../order/helper/orderUtils.js";
+import { resolveTableSafe } from "../order/helper/tableUtils.js";
+import TableCustomer from "../../../models/tableCustomer.model.js";
+const INACTIVE_STATUSES = ["cancelled", "completed"];
 
 function buildFilter(filter = {}) {
   const q = {};
-
-  if (filter.restaurantId) {
-    const rid = toObjectId(filter.restaurantId);
-    if (rid) q.restaurantId = rid;
+  if (filter.restaurantId && mongoose.isValidObjectId(filter.restaurantId)) {
+    q.restaurantId = toId(filter.restaurantId);
   }
-
   if (filter.tableCode) {
-    q.tableCode = filter.tableCode;
+    q.tableCode = String(filter.tableCode).trim().toUpperCase();
   }
-
   if (filter.orderCode) {
-    q.orderCode = filter.orderCode;
+    q.orderCode = String(filter.orderCode).trim();
   }
-
-  if (
-    filter.statuses &&
-    Array.isArray(filter.statuses) &&
-    filter.statuses.length
-  ) {
-    q.currentStatus = { $in: filter.statuses };
-  } else if (filter.status) {
+  if (filter.status) {
     q.currentStatus = filter.status;
   }
-
   if (filter.dateFrom || filter.dateTo) {
     q.createdAt = {};
     if (filter.dateFrom) q.createdAt.$gte = new Date(filter.dateFrom);
     if (filter.dateTo) q.createdAt.$lte = new Date(filter.dateTo);
   }
-
   if (filter.keyword) {
-    const kw = filter.keyword.trim();
-    q.$or = [
-      { orderCode: { $regex: kw, $options: "i" } },
-      { tableCode: { $regex: kw, $options: "i" } },
-    ];
+    // ví dụ simple free-text trên orderCode/note
+    const k = String(filter.keyword).trim();
+    q.$or = [{ orderCode: new RegExp(k, "i") }, { note: new RegExp(k, "i") }];
   }
-
   return q;
 }
 
+/** Gom nhóm các orders theo orderCode */
+function groupOrdersByCode(orders = []) {
+  const map = new Map();
+  for (const ord of orders) {
+    const key = ord.orderCode || "unknown";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(ord);
+  }
+  return Array.from(map.entries()).map(([orderCode, group]) => ({
+    orderCode,
+    tableCode: group[0]?.tableCode || null,
+    restaurantId: group[0]?.restaurantId,
+    latestStatus: group[group.length - 1]?.currentStatus,
+    count: group.length,
+    orders: group.sort((a, b) => a.createdAt - b.createdAt),
+  }));
+}
+
 export const OrderQuery = {
-  // GET /order?id=...
+  /** Single */
   async order(_, { id }) {
     if (!mongoose.isValidObjectId(id)) return null;
-    const doc = await Order.findById(id).lean({ virtuals: true });
-    return doc || null;
+    return Order.findById(id).lean({ virtuals: true });
   },
 
-  // Giữ nguyên: trả về toàn bộ (có cả cancelled/completed)
+  /**
+   * Danh sách tất cả order (có phân trang offset)
+   */
   async orders(_, { filter = {}, limit = 50, offset = 0 }) {
     const q = buildFilter(filter);
     const [items, totalCount] = await Promise.all([
       Order.find(q)
         .sort({ createdAt: -1 })
         .skip(offset)
-        .limit(limit)
+        .limit(Math.max(1, Math.min(200, limit)))
         .lean({ virtuals: true }),
       Order.countDocuments(q),
     ]);
-
-    return {
-      items,
-      totalCount,
-    };
+    return { items, totalCount };
   },
 
-  // ✅ MỚI: chỉ những đơn đang hoạt động (loại trừ cancelled/completed)
-  async ordersByRestaurantNow(_, { restaurantId, limit = 20, cursor }) {
-    if (!mongoose.isValidObjectId(restaurantId)) {
-      throw new Error("Invalid restaurantId");
-    }
-    const f = {
-      restaurantId: restaurantId,
-      currentStatus: { $nin: ACTIVE_EXCLUDE },
+  /**
+   * Danh sách các order đang hoạt động (exclude cancelled/completed) — cursor connection
+   */
+  async ordersByRestaurantNow(_, { restaurantId, limit = 50, cursor }, _ctx) {
+    if (!restaurantId) throw new Error("restaurantId is required");
+
+    const rid = toId(restaurantId);
+
+    const baseFilter = {
+      restaurantId: rid,
+      currentStatus: { $nin: ["completed", "cancelled"] },
     };
-    if (cursor && mongoose.isValidObjectId(cursor)) {
-      f._id = { $gt: cursor };
+
+    // Pagination kiểu "cursor = _id"
+    const q = Order.find(baseFilter).sort({ _id: 1 });
+    if (cursor) {
+      q.where("_id").gt(cursor);
+    }
+    if (limit) {
+      q.limit(limit + 1); // lấy dư 1 để biết còn next hay không
     }
 
-    const docs = await Order.find(f)
-      .sort({ _id: 1 })
-      .limit(limit + 1)
-      .lean({ virtuals: true });
+    const rows = await q.lean();
 
-    const hasNextPage = docs.length > limit;
-    const slice = hasNextPage ? docs.slice(0, -1) : docs;
+    const hasNextPage = rows.length > limit;
+    const slice = hasNextPage ? rows.slice(0, limit) : rows;
+
+    const lastCursor = slice.length
+      ? String(slice[slice.length - 1]._id)
+      : null;
+
+    // === Map sang TableCustomer ===
+    const tableCodes = [
+      ...new Set(slice.map((o) => o.tableCode).filter(Boolean)),
+    ];
+    const orderCodes = [
+      ...new Set(slice.map((o) => o.orderCode).filter(Boolean)),
+    ];
+
+    const customerDocs = await TableCustomer.find({
+      restaurantId: rid,
+      $or: [
+        ...(tableCodes.length ? [{ tableCode: { $in: tableCodes } }] : []),
+        ...(orderCodes.length ? [{ orderCode: { $in: orderCodes } }] : []),
+      ],
+    })
+      .select({
+        tableCode: 1,
+        orderCode: 1,
+        customerName: 1,
+        customerPhone: 1,
+        customerEmail: 1,
+        note: 1,
+        partySize: 1,
+        timeTo: 1,
+      })
+      .lean();
+
+    const byTableCode = new Map();
+    const byOrderCode = new Map();
+    for (const c of customerDocs) {
+      if (c.tableCode) byTableCode.set(String(c.tableCode), c);
+      if (c.orderCode) byOrderCode.set(String(c.orderCode), c);
+    }
+
+    const edges = slice.map((o) => {
+      const tc =
+        (o.orderCode && byOrderCode.get(String(o.orderCode))) ||
+        (o.tableCode && byTableCode.get(String(o.tableCode))) ||
+        null;
+
+      const customerInfo = tc
+        ? {
+            name: tc.customerName || null,
+            phone: tc.customerPhone || null,
+            email: tc.customerEmail || null,
+            note: tc.note || null,
+            partySize: tc.partySize || null,
+            timeTo: tc.timeTo || null,
+          }
+        : null;
+
+      return {
+        cursor: String(o._id),
+        node: {
+          id: String(o._id),
+          ...o,
+          customerInfo, // ✅ thêm field
+        },
+      };
+    });
 
     return {
-      edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
+      edges,
       pageInfo: {
-        endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
+        endCursor: lastCursor,
         hasNextPage,
       },
     };
   },
 
-  // 🔁 CŨ (đổi nghĩa): trả về TOÀN BỘ đơn (bao gồm cancelled/completed)
-  async ordersByRestaurant(_, { restaurantId, limit = 20, cursor }) {
-    if (!mongoose.isValidObjectId(restaurantId)) {
-      throw new Error("Invalid restaurantId");
-    }
-    const f = { restaurantId: new mongoose.Types.ObjectId(restaurantId) };
-    if (cursor && mongoose.isValidObjectId(cursor)) {
-      f._id = { $gt: new mongoose.Types.ObjectId(cursor) };
-    }
-
-    const docs = await Order.find(f)
-      .sort({ _id: 1 })
-      .limit(limit + 1)
-      .lean({ virtuals: true });
-
-    const hasNextPage = docs.length > limit;
-    const slice = hasNextPage ? docs.slice(0, -1) : docs;
-
-    return {
-      edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
-      pageInfo: {
-        endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
-        hasNextPage,
-      },
-    };
-  },
-
-  async ordersByUser(_, { userId, limit = 20, cursor }) {
-    if (!mongoose.isValidObjectId(userId)) {
-      throw new Error("Invalid userId");
-    }
-    const f = { userId: new mongoose.Types.ObjectId(userId) };
-    if (cursor && mongoose.isValidObjectId(cursor)) {
-      f._id = { $gt: new mongoose.Types.ObjectId(cursor) };
-    }
-
-    const docs = await Order.find(f)
-      .sort({ _id: 1 })
-      .limit(limit + 1)
-      .lean({ virtuals: true });
-
-    const hasNextPage = docs.length > limit;
-    const slice = hasNextPage ? docs.slice(0, -1) : docs;
-
-    return {
-      edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
-      pageInfo: {
-        endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
-        hasNextPage,
-      },
-    };
-  },
-
-  // ✅ SỬA: chỉ trả về các order đang hoạt động của 1 bàn
+  /**
+   * Tất cả orders theo bàn (tableCode) — dùng để lấy lịch sử đợt
+   */
   async ordersByTableCode(
     _,
-    { restaurantId, tableCode, limit = 20, offset = 0 }
+    { restaurantId, tableCode, limit = 50, offset = 0 }
   ) {
     if (!mongoose.isValidObjectId(restaurantId)) {
       throw new Error("Invalid restaurantId");
     }
+    const safeTableCode = String(tableCode).trim().toUpperCase();
     const q = {
-      restaurantId: new mongoose.Types.ObjectId(restaurantId),
-      tableCode,
-      currentStatus: { $nin: ACTIVE_EXCLUDE },
+      restaurantId: toId(restaurantId),
+      tableCode: safeTableCode,
     };
     const [items, totalCount] = await Promise.all([
       Order.find(q)
         .sort({ createdAt: -1 })
         .skip(offset)
-        .limit(limit)
+        .limit(Math.max(1, Math.min(200, limit)))
         .lean({ virtuals: true }),
       Order.countDocuments(q),
     ]);
-
     return { items, totalCount };
   },
+
+  /**
+   * NEW: Gom nhóm theo bàn => nhóm đợt theo orderCode
+   * FE sẽ tự gộp món trùng & gắn cờ món cũ dựa trên trường 'orders'
+   */
+  async ordersGroupedByTable(_, { restaurantId, tableCode }) {
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new Error("Invalid restaurantId");
+    }
+    const safe = String(tableCode).trim().toUpperCase();
+
+    // resolveTableSafe để “ít lỗi” nếu mới tạo bàn
+    const t = await resolveTableSafe(restaurantId, safe);
+    if (!t) return [];
+
+    const f = {
+      restaurantId: toId(restaurantId),
+      tableCode: safe,
+      // KHÔNG lọc INACTIVE ở đây vì muốn cả lịch sử,
+      // nếu muốn chỉ “đang hoạt động” thì thêm currentStatus: {$nin: INACTIVE_STATUSES}
+    };
+
+    const docs = await Order.find(f)
+      .sort({ createdAt: 1, _id: 1 })
+      .lean({ virtuals: true });
+
+    if (!docs.length) return [];
+    return groupOrdersByCode(docs);
+  },
 };
+
+export default { OrderQuery };

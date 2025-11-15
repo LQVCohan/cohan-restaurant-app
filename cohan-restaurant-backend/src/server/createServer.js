@@ -6,7 +6,7 @@ import mercurius from "mercurius";
 import rateLimit from "@fastify/rate-limit";
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import process from "process";
-
+import { Server as SocketIOServer } from "socket.io";
 import typeDefs from "../../graphql/schema/index.js";
 import resolvers from "../../graphql/resolvers/index.js";
 import buildContext from "../../graphql/context.js";
@@ -19,6 +19,7 @@ export async function createServer() {
     trustProxy: true,
   });
 
+  // ---------------- Middleware ----------------
   await app.register(cors, {
     origin: (process.env.CORS_ORIGINS || "http://localhost:5173")
       .split(",")
@@ -31,6 +32,7 @@ export async function createServer() {
 
   const RL_GLOBAL_MAX = Number(process.env.RL_GLOBAL_MAX || 200);
   const RL_GLOBAL_WINDOW = process.env.RL_GLOBAL_WINDOW || "1 minute";
+
   await app.register(rateLimit, {
     global: true,
     enableDraftSpec: true,
@@ -43,47 +45,29 @@ export async function createServer() {
       return (Array.isArray(xfwd) ? xfwd[0] : xfwd) || req.ip;
     },
   });
+
+  // ---------------- GraphQL ----------------
   const schema = makeExecutableSchema({ typeDefs, resolvers });
 
   await app.register(mercurius, {
     schema,
     graphiql: process.env.NODE_ENV !== "production",
     ide: process.env.NODE_ENV !== "production",
-
-    subscription: {
-      context: async (connection, req) => {
-        const baseContext = await buildContext(
-          { headers: connection?.context?.headers || {} },
-          {}
-        );
-        return {
-          ...baseContext,
-          loaders: createLoaders(),
-          pubsub: app.graphql.pubsub, // 👈 thêm dòng này
-        };
-      },
-    },
-
-    // Context cho HTTP query/mutation
+    subscription: false, // ❌ tắt pubsub Mercurius (dùng Socket.IO thay thế)
     context: async (request, reply) => {
       const baseContext = await buildContext(request, reply);
       return {
         ...baseContext,
         loaders: createLoaders(),
-        pubsub: app.graphql.pubsub,
+        io: app.io, // ✅ truyền socket.io instance vào context
       };
     },
   });
 
-  // Mount /api (=> có POST /api/upload) + /uploads static
+  // ---------------- API routes ----------------
   await app.register(uploadRoutes, { prefix: "/api" });
 
   app.get("/health", async () => ({ ok: true, ts: Date.now() }));
-
-  app.addHook("onReady", () => {
-    app.log.info("Registered routes:");
-    app.printRoutes();
-  });
 
   app.setNotFoundHandler((req, reply) => {
     reply.code(404).type("application/json").send({
@@ -94,9 +78,68 @@ export async function createServer() {
       hint: "Expected POST /api/upload for uploads.",
     });
   });
+
+  // ---------------- Socket.IO setup ----------------
+  const io = new SocketIOServer(app.server, {
+    cors: {
+      origin: (process.env.CORS_ORIGINS || "http://localhost:5173")
+        .split(",")
+        .map((s) => s.trim()),
+      methods: ["GET", "POST"],
+      credentials: true,
+    },
+    transports: ["websocket", "polling"],
+  });
+
+  // ✅ Gắn io vào Fastify instance để context GraphQL có thể dùng
+  app.decorate("io", io);
+
+  // ---------------- Socket Events ----------------
+  io.on("connection", (socket) => {
+    app.log.info(`🔌 Client connected: ${socket.id}`);
+
+    socket.on("joinRestaurant", (restaurantId) => {
+      if (!restaurantId) return;
+      const roomName = `restaurant_${restaurantId}`;
+      socket.join(roomName);
+      app.log.info(`👋 Socket ${socket.id} joined room ${roomName}`);
+      socket.emit("joinedRoom", { room: roomName });
+    });
+
+    socket.on("leaveRestaurant", (restaurantId) => {
+      const roomName = `restaurant_${restaurantId}`;
+      socket.leave(roomName);
+      app.log.info(`🚪 Socket ${socket.id} left room ${roomName}`);
+    });
+
+    socket.on("disconnect", (reason) => {
+      app.log.warn(`❌ Socket ${socket.id} disconnected: ${reason}`);
+    });
+  });
+
+  // ---------------- Broadcast Helper ----------------
+  // Cho phép emit tới tất cả client trong phòng nhà hàng
+  app.decorate("broadcastOrderEvent", (restaurantId, payload) => {
+    if (!restaurantId || !payload) return;
+    const room = `restaurant_${restaurantId}`;
+    io.to(room).emit("orderEvents", payload);
+    app.log.info(
+      `[Socket.IO] Broadcast ${payload.type} → ${room} (${
+        payload?.order?.orderCode || "?"
+      })`
+    );
+  });
+
+  // ---------------- Lifecycle hooks ----------------
+  app.addHook("onReady", () => {
+    app.log.info("✅ Server ready, routes:");
+    app.printRoutes();
+  });
+
   app.ready(() => {
     app.log.info("=== ROUTES ===");
     app.log.info("\n" + app.printRoutes());
   });
+
   return app;
 }

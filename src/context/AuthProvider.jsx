@@ -149,10 +149,12 @@ export const AuthProvider = ({ children }) => {
     onCompleted: (urrData) => {
       setRefRestaurant(urrData.restaurantsByUser || []);
     },
-    onError: () => {
-      setRefRestaurant([]);
-    },
   });
+  useEffect(() => {
+    if (urrError) {
+      setRefRestaurant([]);
+    }
+  }, [urrError]);
   useEffect(() => {
     if (urrData && urrData.restaurantsByUser) {
       setRestaurants(urrData.restaurantsByUser);

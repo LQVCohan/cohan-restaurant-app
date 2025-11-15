@@ -10,7 +10,15 @@ enum PaymentStatus {
   PENDING
   CANCELED
 }
-
+input PayOrdersByCodeInput {
+  restaurantId: ID!
+  orderCode: String!
+  paidAmount: Float!
+  method: String! # "cash" | "card" | "bank_transfer" | "e_wallet" | ...
+  paidAt: DateTime
+  note: String
+  externalRef: String
+}
 enum InvoiceStatus {
   UNPAID
   PARTIAL
@@ -98,5 +106,6 @@ extend type Query {
 }
 
 extend type Mutation {
+  payOrdersByCode(input: PayOrdersByCodeInput!): PayOrderResult!
   payOrder(input: PayOrderInput!): PayOrderResult!
 }

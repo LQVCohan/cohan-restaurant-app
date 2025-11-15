@@ -1,5 +1,11 @@
 // src/pages/LoginPage.jsx
-import React, { useState, useContext, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useContext,
+  useMemo,
+  useCallback,
+  useEffect,
+} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
@@ -8,7 +14,7 @@ import { useRouter } from "../hooks/useRouter";
 import "../styles/Login.scss";
 import process from "process";
 import ReCAPTCHA from "react-google-recaptcha";
-
+import { useNotification } from "@/hooks/useNotification";
 const SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 /* ========== GraphQL ========== */
 // LOGIN
@@ -246,7 +252,7 @@ const LoginPage = () => {
   const [captchaRegister, setCaptchaRegister] = useState("");
   const recaptchaLoginRef = React.useRef(null);
   const recaptchaRegisterRef = React.useRef(null);
-
+  const { showNotification } = useNotification();
   /* ======= Lấy role customer ngầm ======= */
   const {
     data: rolesData,
@@ -255,9 +261,12 @@ const LoginPage = () => {
   } = useQuery(ROLES_QUERY, {
     variables: { search: "customer" },
     fetchPolicy: "cache-first",
-    onError: (e) => console.error("ROLES_QUERY error:", e),
   });
-
+  useEffect(() => {
+    if (rolesError) {
+      showNotification(rolesError.message, "error");
+    }
+  }, [rolesError, showNotification]);
   const customerRoleId = useMemo(() => {
     const list = rolesData?.role || [];
     if (!list.length) return "";
