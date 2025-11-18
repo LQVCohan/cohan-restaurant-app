@@ -10,34 +10,32 @@ import {
   Loader,
   Layers,
   Search,
-  ChevronRight,
-  ChevronDown as ChevronDownIcon,
   Eraser,
   Image as ImageIcon,
+  ShoppingCart,
 } from "lucide-react";
 
-// Modal dùng chung
 import Modal from "../../../../components/common/Modal";
 
-// Hooks dữ liệu
 import useOrderManagement from "../../../../hooks/useOrderManagement";
 import useFloorManagement from "../../../../hooks/useFloorManagement";
 import useTableManagement from "../../../../hooks/useTableManagement";
 import useMenuManagement from "../../../../hooks/useMenuManagement";
 import { useNotification } from "@/hooks/useNotification";
 
-// Styles
 import "./NewOrderModal.scss";
 
 // Helpers
 const formatCurrency = (value) =>
-  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
-    value || 0
-  );
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(value || 0);
 
 // ---------------------- DishCard ----------------------
 const DishCard = ({ dish, onAdd }) => {
   const [showMethods, setShowMethods] = useState(false);
+
   const hasMethods =
     Array.isArray(dish.preparationMethods) &&
     dish.preparationMethods.length > 0;
@@ -164,7 +162,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     showNotification: (msg, type) => console.log(type || "info", msg),
   };
 
-  // POS Context cho hook Order
+  // POS-like state local
   const [currentTable, setCurrentTable] = useState(null);
   const [currentOrder, setCurrentOrder] = useState([]);
   const [tableOrders, setTableOrders] = useState({});
@@ -184,7 +182,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
   const { addToOrder, updateItemQty, removeItem, saveOrder, totals } =
     useOrderManagement(posContext);
 
-  // Hooks lấy dữ liệu
+  // Dữ liệu cơ bản
   const { floors, floorsLoading, activeLevel, setActiveLevel } =
     useFloorManagement({ restaurantId });
   const { tables, tablesLoading } = useTableManagement({ restaurantId });
@@ -198,14 +196,19 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
 
   const [isSaving, setIsSaving] = useState(false);
 
-  // Bàn khả dụng (theo tầng đang chọn)
-  const availableTables = useMemo(() => {
-    return (tables || []).filter(
-      (t) =>
-        t.status === "available" &&
-        (activeLevel === null || t.floorLevel === activeLevel)
-    );
-  }, [tables, activeLevel]);
+  // Giỏ hàng overlay
+  const [showCart, setShowCart] = useState(false);
+
+  // Bàn khả dụng (theo tầng)
+  const availableTables = useMemo(
+    () =>
+      (tables || []).filter(
+        (t) =>
+          t.status === "available" &&
+          (activeLevel === null || t.floorLevel === activeLevel)
+      ),
+    [tables, activeLevel]
+  );
 
   // Phiên phục vụ
   const sessions = useMemo(() => {
@@ -227,7 +230,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     }
   }, [sessions, selectedTimeSlot, setSelectedTimeSlot]);
 
-  // Nhóm món theo danh mục
+  // Nhóm danh mục
   const dishesGroupedByCategory = useMemo(() => {
     const groups = new Map();
     (itemsWithPrice || []).forEach((item) => {
@@ -242,47 +245,37 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     return Array.from(groups.values());
   }, [itemsWithPrice]);
 
-  // --------- Làm đẹp: Tìm kiếm & Accordion danh mục ----------
+  const categoryOptions = useMemo(
+    () => [
+      { id: "", name: "Tất cả danh mục" },
+      ...dishesGroupedByCategory.map((c) => ({ id: c.id, name: c.name })),
+    ],
+    [dishesGroupedByCategory]
+  );
+
+  // Tìm kiếm + filter danh mục
   const [query, setQuery] = useState("");
-  const [expandedCats, setExpandedCats] = useState(new Set());
-
-  // Mặc định mở toàn bộ khi có dữ liệu
-  useEffect(() => {
-    setExpandedCats(new Set(dishesGroupedByCategory.map((c) => c.id)));
-  }, [dishesGroupedByCategory]);
-
-  // Tự mở tất cả khi đang tìm kiếm
-  useEffect(() => {
-    if (query.trim()) {
-      setExpandedCats(new Set(dishesGroupedByCategory.map((c) => c.id)));
-    }
-  }, [query, dishesGroupedByCategory]);
-
-  const toggleCat = (id) => {
-    setExpandedCats((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
 
   const normalizedQuery = query.trim().toLowerCase();
-  const filteredGroups = useMemo(() => {
-    if (!normalizedQuery) return dishesGroupedByCategory;
-    return dishesGroupedByCategory
-      .map((g) => ({
-        ...g,
-        dishes: (g.dishes || []).filter((d) =>
-          [d.name, d.searchKeywords, d.category?.name]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase()
-            .includes(normalizedQuery)
-        ),
-      }))
-      .filter((g) => g.dishes.length > 0);
-  }, [dishesGroupedByCategory, normalizedQuery]);
+
+  const filteredDishes = useMemo(() => {
+    return (itemsWithPrice || []).filter((d) => {
+      if (selectedCategoryId) {
+        const catId = d.categoryId || "other";
+        if (catId !== selectedCategoryId) return false;
+      }
+
+      if (!normalizedQuery) return true;
+
+      const text = [d.name, d.searchKeywords, d.category?.name]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return text.includes(normalizedQuery);
+    });
+  }, [itemsWithPrice, selectedCategoryId, normalizedQuery]);
 
   // --------- Handlers ----------
   const handleTableChange = (e) => {
@@ -295,6 +288,10 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     const level = e.target.value;
     setActiveLevel(level ? Number(level) : null);
     setCurrentTable(null);
+  };
+
+  const handleCategoryChange = (e) => {
+    setSelectedCategoryId(e.target.value);
   };
 
   const clearDraft = () => {
@@ -335,6 +332,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
     setCurrentOrder([]);
     setTableOrders({});
     setIsSaving(false);
+    setShowCart(false);
     onClose();
   };
 
@@ -351,6 +349,13 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
 
   const isLoading = tablesLoading || floorsLoading;
 
+  const toggleCart = () => setShowCart((v) => !v);
+
+  const handleCartBackdropClick = (e) => {
+    e.stopPropagation();
+    setShowCart(false);
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -358,256 +363,280 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
       title="Tạo Đơn Hàng Mới"
       size="xl"
     >
-      <div className="new-order-modal-layout">
-        {/* LEFT: Menu & chọn bàn */}
-        <section className="new-order-modal__menu-col">
-          {/* Sticky filters */}
-          <div className="new-order-modal__controls">
-            <div className="controls__table-filter">
-              <div className="form-group form-group--floor">
-                <Layers size={16} className="form-group__icon" />
-                <select
-                  value={activeLevel ?? ""}
-                  onChange={handleFloorChange}
-                  className="form-group__select"
-                  disabled={floorsLoading}
-                >
-                  <option value="">
-                    {floorsLoading ? "Đang tải tầng..." : "Tất cả các tầng"}
-                  </option>
-                  {(floors || []).map((floor) => (
-                    <option key={floor.id} value={floor.level}>
-                      {floor.name}
+      <div className="new-order-modal">
+        <div className="new-order-modal-layout">
+          {/* MAIN COLUMN: Chọn bàn + món */}
+          <section className="new-order-modal__menu-col">
+            {/* Controls */}
+            <div className="new-order-modal__controls">
+              <div className="controls__row controls__row--top">
+                <div className="form-group form-group--floor">
+                  <Layers size={16} className="form-group__icon" />
+                  <select
+                    value={activeLevel ?? ""}
+                    onChange={handleFloorChange}
+                    className="form-group__select"
+                    disabled={floorsLoading}
+                  >
+                    <option value="">
+                      {floorsLoading ? "Đang tải tầng..." : "Tất cả các tầng"}
                     </option>
-                  ))}
-                </select>
-                <ChevronDown size={16} className="form-group__chevron" />
+                    {(floors || []).map((floor) => (
+                      <option key={floor.id} value={floor.level}>
+                        {floor.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={16} className="form-group__chevron" />
+                </div>
+
+                <div className="form-group form-group--table">
+                  <Bookmark size={16} className="form-group__icon" />
+                  <select
+                    value={currentTable?.code || ""}
+                    onChange={handleTableChange}
+                    className="form-group__select"
+                    disabled={isLoading || (availableTables || []).length === 0}
+                  >
+                    <option value="">
+                      {isLoading ? "Đang tải bàn..." : "--- Chọn bàn ---"}
+                    </option>
+                    {(availableTables || []).map((table) => (
+                      <option key={table.id} value={table.code}>
+                        {table.code}{" "}
+                        {table.floorLevel ? `(Tầng ${table.floorLevel})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={16} className="form-group__chevron" />
+                </div>
+
+                {/* Danh mục */}
+                <div className="form-group form-group--category">
+                  <Layers size={16} className="form-group__icon" />
+                  <select
+                    value={selectedCategoryId}
+                    onChange={handleCategoryChange}
+                    className="form-group__select"
+                  >
+                    {categoryOptions.map((cat) => (
+                      <option key={cat.id || "all"} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={16} className="form-group__chevron" />
+                </div>
+
+                {/* Cart icon */}
+                <button
+                  type="button"
+                  className="cart-toggle"
+                  onClick={toggleCart}
+                  disabled={currentOrder.length === 0}
+                  title={
+                    currentOrder.length === 0
+                      ? "Chưa có món trong giỏ"
+                      : "Xem giỏ hàng"
+                  }
+                >
+                  <ShoppingCart size={18} />
+                  {currentOrder.length > 0 && (
+                    <span className="cart-toggle__badge">
+                      {currentOrder.length}
+                    </span>
+                  )}
+                </button>
               </div>
 
-              <div className="form-group form-group--table">
-                <Bookmark size={16} className="form-group__icon" />
-                <select
-                  value={currentTable?.code || ""}
-                  onChange={handleTableChange}
-                  className="form-group__select"
-                  disabled={isLoading || (availableTables || []).length === 0}
-                >
-                  <option value="">
-                    {isLoading ? "Đang tải bàn..." : "--- Chọn bàn ---"}
-                  </option>
-                  {(availableTables || []).map((table) => (
-                    <option key={table.id} value={table.code}>
-                      {table.code}{" "}
-                      {table.floorLevel ? `(Tầng ${table.floorLevel})` : ""}
-                    </option>
+              <div className="controls__row controls__row--bottom">
+                <div className="searchbox">
+                  <Search className="searchbox__icon" size={16} />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Tìm món theo tên, danh mục…"
+                    className="searchbox__input"
+                  />
+                </div>
+
+                <nav className="new-order-modal__sessions">
+                  {(sessions || []).map((session) => (
+                    <button
+                      key={session.value}
+                      onClick={() => setSelectedTimeSlot(session.value)}
+                      className={`session-tab ${
+                        selectedTimeSlot === session.value
+                          ? "session-tab--active"
+                          : ""
+                      }`}
+                    >
+                      {session.label}
+                    </button>
                   ))}
-                </select>
-                <ChevronDown size={16} className="form-group__chevron" />
+                </nav>
               </div>
             </div>
 
-            {/* Search + Sessions */}
-            <div className="controls__quick">
-              <div className="searchbox">
-                <Search className="searchbox__icon" size={16} />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Tìm món theo tên, danh mục…"
-                  className="searchbox__input"
-                />
-              </div>
+            {/* Grid món */}
+            <div className="new-order-modal__grid-wrapper">
+              {itemsLoading && (
+                <div className="loading-overlay">
+                  <Loader className="spinner" size={32} />
+                  <p>Đang tải menu...</p>
+                </div>
+              )}
 
-              <nav className="new-order-modal__sessions">
-                {(sessions || []).map((session) => (
-                  <button
-                    key={session.value}
-                    onClick={() => setSelectedTimeSlot(session.value)}
-                    className={`session-tab ${
-                      selectedTimeSlot === session.value
-                        ? "session-tab--active"
-                        : ""
-                    }`}
-                  >
-                    {session.label}
-                  </button>
-                ))}
-              </nav>
+              {!itemsLoading && filteredDishes.length === 0 && (
+                <div className="empty-state">Không tìm thấy món phù hợp.</div>
+              )}
+
+              {!itemsLoading && filteredDishes.length > 0 && (
+                <div className="menu-grid">
+                  {filteredDishes.map((dish) => (
+                    <DishCard key={dish.id} dish={dish} onAdd={addToOrder} />
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
+          </section>
 
-          {/* Grid menu */}
-          <div className="new-order-modal__grid-wrapper">
-            {itemsLoading && (
-              <div className="loading-overlay">
-                <Loader className="spinner" size={32} />
-                <p>Đang tải menu...</p>
-              </div>
-            )}
-
-            {!itemsLoading && filteredGroups.length === 0 && (
-              <div className="empty-state">Không tìm thấy món phù hợp.</div>
-            )}
-
-            {filteredGroups.map((category) => {
-              const isOpen = expandedCats.has(category.id);
-              return (
-                <div key={category.id} className="menu-category">
-                  <button
-                    className="menu-category__title"
-                    onClick={() => toggleCat(category.id)}
-                    title={isOpen ? "Thu gọn" : "Mở rộng"}
-                  >
-                    <span className="menu-category__caret">
-                      {isOpen ? (
-                        <ChevronDownIcon size={18} />
-                      ) : (
-                        <ChevronRight size={18} />
-                      )}
+          {/* CART OVERLAY */}
+          {showCart && (
+            <div className="cart-overlay" onClick={handleCartBackdropClick}>
+              <div className="cart-panel" onClick={(e) => e.stopPropagation()}>
+                <div className="cart-panel__header">
+                  <div className="cart-panel__title">
+                    <ShoppingCart size={18} />
+                    <span>Giỏ hàng</span>
+                    <span className="cart-panel__table">
+                      {currentTable
+                        ? `Bàn ${currentTable.code}`
+                        : "(Chưa chọn bàn)"}
                     </span>
-                    <span className="menu-category__name">{category.name}</span>
-                    <span className="menu-category__count">
-                      {category.dishes.length} món
-                    </span>
-                  </button>
+                  </div>
+                  <div className="cart-panel__header-actions">
+                    <button
+                      className="cart-panel__clear"
+                      onClick={clearDraft}
+                      disabled={currentOrder.length === 0}
+                    >
+                      <Eraser size={14} />
+                      Xóa đơn
+                    </button>
+                    <button
+                      className="cart-panel__close"
+                      onClick={() => setShowCart(false)}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
 
-                  {isOpen && (
-                    <div className="menu-category__dish-grid">
-                      {(category.dishes || []).map((dish) => (
-                        <DishCard
-                          key={dish.id}
-                          dish={dish}
-                          onAdd={addToOrder}
-                        />
-                      ))}
+                <div className="cart-panel__body">
+                  {currentOrder.length === 0 && (
+                    <div className="empty-state">
+                      Chưa có món trong giỏ. Hãy chọn món từ menu bên dưới.
                     </div>
                   )}
+
+                  {currentOrder.map((item) => {
+                    const lineTotal = (item.price || 0) * (item.quantity || 0);
+                    return (
+                      <div key={item._lineId} className="order-item">
+                        <div className="order-item__details">
+                          <p className="order-item__name" title={item.name}>
+                            {item.name}
+                          </p>
+                          {item.method && (
+                            <p className="order-item__method">
+                              Cách chế biến: {item.method}
+                            </p>
+                          )}
+                          <div className="order-item__prices">
+                            <span className="order-item__price">
+                              {formatCurrency(item.price)}
+                            </span>
+                            <span className="order-item__line-total">
+                              {formatCurrency(lineTotal)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="order-item__qty-controls">
+                          <button
+                            onClick={() =>
+                              updateItemQty(item._lineId, item.quantity - 1)
+                            }
+                            title="Giảm"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span>{item.quantity}</span>
+                          <button
+                            onClick={() =>
+                              updateItemQty(item._lineId, item.quantity + 1)
+                            }
+                            title="Tăng"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={() => removeItem(item._lineId)}
+                          className="order-item__remove-btn"
+                          title="Xóa món"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        </section>
 
-        {/* RIGHT: Đơn nháp */}
-        <aside className="new-order-modal__draft-col">
-          <div className="draft-col__header">
-            <div className="draft-col__title">
-              Đơn hàng{" "}
-              <span className="draft-col__table">
-                {currentTable ? currentTable.code : "(Chưa chọn bàn)"}
-              </span>
-            </div>
-
-            <div className="draft-col__actions">
-              <button
-                className="btn btn--ghost"
-                onClick={clearDraft}
-                disabled={currentOrder.length === 0}
-                title="Xóa đơn nháp"
-              >
-                <Eraser size={16} />
-                Xóa đơn
-              </button>
-            </div>
-          </div>
-
-          <div className="draft-col__item-list">
-            {currentOrder.length === 0 && (
-              <div className="empty-state">Vui lòng chọn món từ menu.</div>
-            )}
-
-            {currentOrder.map((item) => {
-              const lineTotal = (item.price || 0) * (item.quantity || 0);
-              return (
-                <div key={item._lineId} className="order-item">
-                  <div className="order-item__details">
-                    <p className="order-item__name" title={item.name}>
-                      {item.name}
-                    </p>
-                    {item.method && (
-                      <p className="order-item__method">
-                        Cách chế biến: {item.method}
-                      </p>
-                    )}
-                    <div className="order-item__prices">
-                      <span className="order-item__price">
-                        {formatCurrency(item.price)}
-                      </span>
-                      <span className="order-item__line-total">
-                        {formatCurrency(lineTotal)}
-                      </span>
+                <footer className="cart-panel__footer">
+                  <div className="order-totals">
+                    <div className="order-totals__line">
+                      <span>Tạm tính</span>
+                      <span>{formatCurrency(totals.subtotal)}</span>
+                    </div>
+                    <div className="order-totals__line">
+                      <span>VAT (10%)</span>
+                      <span>{formatCurrency(totals.tax)}</span>
+                    </div>
+                    <div className="order-totals__line">
+                      <span>Phí phục vụ (5%)</span>
+                      <span>{formatCurrency(totals.service)}</span>
+                    </div>
+                    <div className="order-totals__line order-totals__line--grand">
+                      <span>Tổng cộng</span>
+                      <span>{formatCurrency(totals.total)}</span>
                     </div>
                   </div>
 
-                  <div className="order-item__qty-controls">
-                    <button
-                      onClick={() =>
-                        updateItemQty(item._lineId, item.quantity - 1)
-                      }
-                      title="Giảm"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <span>{item.quantity}</span>
-                    <button
-                      onClick={() =>
-                        updateItemQty(item._lineId, item.quantity + 1)
-                      }
-                      title="Tăng"
-                    >
-                      <Plus size={14} />
-                    </button>
-                  </div>
-
                   <button
-                    onClick={() => removeItem(item._lineId)}
-                    className="order-item__remove-btn"
-                    title="Xóa món"
+                    onClick={handleSaveOrder}
+                    disabled={!canSave}
+                    className="save-button"
+                    title={
+                      canSave
+                        ? "Lưu đơn hàng (Enter)"
+                        : "Chưa đủ thông tin để lưu"
+                    }
                   >
-                    <Trash2 size={18} />
+                    {isSaving ? (
+                      <Loader size={20} className="spinner" />
+                    ) : (
+                      <Plus size={20} />
+                    )}
+                    Lưu Đơn Hàng
                   </button>
-                </div>
-              );
-            })}
-          </div>
-
-          <footer className="draft-col__footer">
-            <div className="order-totals">
-              <div className="order-totals__line">
-                <span>Tạm tính</span>
-                <span>{formatCurrency(totals.subtotal)}</span>
-              </div>
-              <div className="order-totals__line">
-                <span>VAT (10%)</span>
-                <span>{formatCurrency(totals.tax)}</span>
-              </div>
-              <div className="order-totals__line">
-                <span>Phí phục vụ (5%)</span>
-                <span>{formatCurrency(totals.service)}</span>
-              </div>
-              <div className="order-totals__line order-totals__line--grand">
-                <span>Tổng cộng</span>
-                <span>{formatCurrency(totals.total)}</span>
+                </footer>
               </div>
             </div>
-
-            <button
-              onClick={handleSaveOrder}
-              disabled={!canSave}
-              className="save-button"
-              title={
-                canSave ? "Lưu đơn hàng (Enter)" : "Chưa đủ thông tin để lưu"
-              }
-            >
-              {isSaving ? (
-                <Loader size={20} className="spinner" />
-              ) : (
-                <Plus size={20} />
-              )}
-              Lưu Đơn Hàng
-            </button>
-          </footer>
-        </aside>
+          )}
+        </div>
       </div>
     </Modal>
   );

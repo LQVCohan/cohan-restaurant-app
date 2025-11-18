@@ -1,0 +1,217 @@
+@use "../../../../styles/variables" as *;
+@use "../../../../styles/mixins" as *;
+
+.orderSettingsModal {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-5;
+  padding-bottom: $spacing-2;
+
+  &__section {
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    padding: $spacing-4 $spacing-5;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+
+    @include mobile {
+      padding: $spacing-3;
+    }
+  }
+
+  &__title {
+    font-size: $text-lg;
+    font-weight: 700;
+    color: $gray-900;
+    margin: 0 0 $spacing-2 0;
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+  }
+
+  &__hint {
+    margin: 0 0 $spacing-4 0;
+    font-size: $text-sm;
+    color: $gray-600;
+  }
+
+  /* GRID cho input thời gian */
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: $spacing-4;
+
+    @include tablet {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    @include mobile {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-2;
+    font-size: $text-sm;
+
+    label {
+      font-weight: 600;
+      color: $gray-800;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      border-radius: 0.6rem;
+      border: 1px solid $gray-300;
+      padding: 0.5rem 0.75rem;
+      font-size: $text-sm;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+      &:focus {
+        border-color: $primary-500;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+      }
+    }
+
+    .suffix {
+      font-size: $text-xs;
+      color: $gray-500;
+      margin-left: 0.25rem;
+    }
+  }
+
+  &__field-row {
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+  }
+
+  /* CHIP SIZE */
+  &__chipsize {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-3;
+  }
+
+  &__chipsize-label {
+    font-weight: 600;
+    color: $gray-800;
+  }
+
+  &__chipsize-options {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: $spacing-2;
+  }
+}
+
+/* chip size radio */
+.chipSizeOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid $gray-300;
+  background-color: white;
+  font-size: $text-sm;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  input {
+    accent-color: $primary-500;
+  }
+
+  span {
+    white-space: nowrap;
+  }
+
+  input:checked + span {
+    font-weight: 600;
+  }
+
+  &:has(input:checked) {
+    border-color: $primary-500;
+    background-color: #eef2ff;
+    box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.4);
+  }
+
+  &:hover {
+    border-color: $primary-500;
+    background-color: #f5f3ff;
+  }
+}
+
+/* COLOR SETTINGS */
+.orderSettingsModal {
+  &__colors {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-3;
+  }
+
+  &__color-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: $spacing-4;
+    padding: $spacing-3;
+    border-radius: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.85);
+    border: 1px dashed rgba(148, 163, 184, 0.6);
+
+    @include mobile {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    input[type="color"] {
+      width: 3rem;
+      height: 2.25rem;
+      border-radius: 0.75rem;
+      border: 1px solid $gray-300;
+      padding: 0;
+      cursor: pointer;
+      background: transparent;
+      overflow: hidden;
+    }
+  }
+
+  &__color-label {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+  }
+}
+
+/* chấm preview màu */
+.dot {
+  &--preview {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 999px;
+    border: 2px solid rgba(15, 23, 42, 0.1);
+    box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.4);
+  }
+}
+
+.colorName {
+  font-weight: 600;
+  color: $gray-800;
+  font-size: $text-sm;
+}
+
+.colorDesc {
+  font-size: $text-xs;
+  color: $gray-500;
+}
+
+/* Mobile tweak */
+@media (max-width: 640px) {
+  .orderSettingsModal__section {
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  }
+}

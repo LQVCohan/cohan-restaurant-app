@@ -189,12 +189,13 @@ export const useRestaurant = (restaurantId) => {
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
   });
+
   useEffect(() => {
     if (autoError) {
       setError(autoError);
-      console.log("error in hook: ", error);
+      console.log("error in useRestaurant hook: ", autoError);
     }
-  }, [autoError, error]);
+  }, [autoError]);
 
   useEffect(() => {
     if (restaurantId) {
@@ -279,13 +280,12 @@ export const useRestaurant = (restaurantId) => {
     [autoData, normalizeRestaurant]
   );
 
-  /* ========== Public API ========== */
+  /* ========== Public API (Queries) ========== */
 
   // 1) Lấy toàn bộ thông tin 1 nhà hàng (full)
   const getRestaurantFull = async (id) => {
     const { data } = await runGetRestaurantFull({ variables: { id } });
     return normalizeRestaurant(data?.restaurant);
-    // data?.restaurant đã có đầy đủ fields: tables, categories, manager, ...
   };
 
   // 2) Danh sách (connection)
@@ -347,11 +347,31 @@ export const useRestaurant = (restaurantId) => {
     return data?.restaurantsByManager || null;
   };
 
+  // 🔥 5b) Helper: trả về mảng nhà hàng đã normalize (không phải connection)
+  const listRestaurantsByManagerFlat = async ({
+    managerId,
+    limit = 100,
+    cursor = null,
+    restaurantFilter = {},
+  }) => {
+    const conn = await listRestaurantsByManager({
+      managerId,
+      limit,
+      cursor,
+      restaurantFilter,
+    });
+
+    const edges = conn?.edges || [];
+    return edges.map((e) => normalizeRestaurant(e.node));
+  };
+
   // 6) refRestaurants theo user
   const listRefRestaurants = async (userId) => {
     const { data } = await runRefRestaurants({ variables: { userId } });
     return (data?.refRestaurants || []).map(normalizeRestaurant);
   };
+
+  /* ========== Public API (Mutations) ========== */
 
   // 7) Create
   const createRestaurant = async (input) => {
@@ -379,7 +399,30 @@ export const useRestaurant = (restaurantId) => {
     return normalizeRestaurant(data?.updateRestaurantManager);
   };
 
-  // UX helpers như cũ
+  /* ========== Convenience helpers cho StaffManagement ========== */
+
+  /**
+   * Lấy danh sách nhà hàng mà 1 manager quản lý (đã normalize, mảng thường).
+   * Dùng cho case: "All" → lấy tất cả nhân viên trong các nhà hàng manager này quản lý.
+   */
+  const getManagedRestaurants = async (managerId, options = {}) => {
+    if (!managerId) return [];
+    return listRestaurantsByManagerFlat({
+      managerId,
+      ...options,
+    });
+  };
+
+  /**
+   * Lấy mảng ID nhà hàng mà manager quản lý.
+   */
+  const getManagedRestaurantIds = async (managerId, options = {}) => {
+    const list = await getManagedRestaurants(managerId, options);
+    return list.map((r) => r.id);
+  };
+
+  /* ========== UX helpers ========== */
+
   const toggleFavorite = () => {
     if (!restaurant) return;
     const favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
@@ -440,13 +483,18 @@ export const useRestaurant = (restaurantId) => {
     // single
     getRestaurantFull,
 
-    // lists
+    // lists (connection-based)
     listRestaurants,
     loadMoreRestaurants,
     listTopRestaurants,
     listRestaurantsByManager,
     loadMoreRestaurantsByManager,
     listRefRestaurants,
+
+    // flat list helpers (dùng nhiều cho staff management)
+    listRestaurantsByManagerFlat,
+    getManagedRestaurants,
+    getManagedRestaurantIds,
 
     // mutations
     createRestaurant,

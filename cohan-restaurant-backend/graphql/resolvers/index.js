@@ -15,6 +15,7 @@ import inventory from "./inventory/index.js";
 import supply from "./supply/index.js";
 import eventLogResolvers from "./event_log/index.js";
 import payment from "./payment/index.js";
+import staff from "./staff/index.js";
 export default {
   ...baseResolvers,
 
@@ -34,6 +35,7 @@ export default {
     ...(reservation.Query || {}),
     ...(eventLogResolvers.Query || {}),
     ...(payment.Query || {}),
+    ...(staff.Query || {}),
   },
 
   Mutation: {
@@ -53,6 +55,7 @@ export default {
     ...(reservation.Mutation || {}),
     ...(eventLogResolvers.Mutation || {}),
     ...(payment.Mutation || {}),
+    ...(staff.Mutation || {}),
   },
 
   // Nếu có type-level resolvers

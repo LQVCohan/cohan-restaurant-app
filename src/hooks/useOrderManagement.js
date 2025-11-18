@@ -398,7 +398,6 @@ export default function useOrderManagement(pos = null) {
     total: 0,
   });
   const [orderNote, setOrderNote] = useState("");
-  const [removedExistingItems, setRemovedExistingItems] = useState([]);
 
   // Keep last prepared orderId for legacy confirmPayment
   const lastPreparedOrderIdRef = useRef(null);

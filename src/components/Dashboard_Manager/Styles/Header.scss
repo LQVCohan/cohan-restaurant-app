@@ -27,6 +27,8 @@ $gray-900: #111827;
   cursor: pointer;
   transition: all 0.3s ease;
   font-family: inherit;
+  background: none;
+  padding: 0;
 
   &:focus {
     outline: none;
@@ -48,64 +50,22 @@ $gray-900: #111827;
 
   // Compact mode when sidebar is open
   &--compact {
-    .header__content {
-      padding: 0 1rem; // Reduce padding
-    }
-
-    .header__center {
-      max-width: 250px; // Even smaller search box
-      margin: 0 0.5rem; // Less margin
-    }
-
-    .page-title {
-      font-size: 1rem; // Even smaller title
-    }
-
-    .sidebar-toggle {
-      @include button-base;
-      @include flex-center;
-      width: 44px;
-      height: 44px;
-      background: $gray-100;
-      border-radius: 10px;
-      position: relative;
-      overflow: hidden;
-      padding: 0;
-
-      &:hover {
-        background: $gray-200;
-        transform: scale(1.05);
+    //
+    // --- ĐÃ SỬA ---
+    //
+    // Chỉ-áp-dụng-các-style-thu-gọn-này-trên-mobile (khi-dùng-layout-overlay)
+    @media (max-width: 768px) {
+      .header__content {
+        padding: 0 1rem; // Reduce padding
       }
 
-      &:active {
-        transform: scale(0.95);
+      .header__center {
+        max-width: 250px; // Smaller search box
+        margin: 0 0.5rem; // Less margin
       }
 
-      &.active {
-        background: $primary-blue;
-
-        &:hover {
-          background: custom-darken($primary-blue, 10%);
-        }
-
-        .hamburger-line {
-          background: $white;
-
-          &:nth-child(1) {
-            transform: rotate(-45deg) translate(-5px, 8px);
-            width: 70%;
-          }
-
-          &:nth-child(2) {
-            opacity: 0;
-            transform: translateX(-30px);
-          }
-
-          &:nth-child(3) {
-            transform: rotate(45deg) translate(-5px, -8px);
-            width: 70%;
-          }
-        }
+      .page-title {
+        font-size: 1rem; // Even smaller title
       }
     }
   }
@@ -117,6 +77,10 @@ $gray-900: #111827;
     width: 100%;
     max-width: none;
     transition: padding 0.3s ease;
+
+    @media (max-width: 768px) {
+      padding: 0 1rem;
+    }
   }
 
   &__left {
@@ -124,6 +88,10 @@ $gray-900: #111827;
     align-items: center;
     gap: 0.75rem;
     flex: 0 0 auto;
+
+    @media (max-width: 480px) {
+      gap: 0.5rem;
+    }
   }
 
   &__center {
@@ -131,11 +99,6 @@ $gray-900: #111827;
     max-width: 500px;
     margin: 0 2rem;
     transition: max-width 0.3s ease, margin 0.3s ease;
-
-    &--compact {
-      max-width: 250px;
-      margin: 0 0.5rem;
-    }
 
     @media (max-width: 768px) {
       margin: 0 1rem;
@@ -155,7 +118,7 @@ $gray-900: #111827;
   }
 }
 
-// Sidebar toggle button with < arrow when active
+// Sidebar toggle button (Base styles)
 .sidebar-toggle {
   @include button-base;
   @include flex-center;
@@ -165,7 +128,6 @@ $gray-900: #111827;
   border-radius: 10px;
   position: relative;
   overflow: hidden;
-  padding: 0;
 
   &:hover {
     background: $gray-200;
@@ -176,11 +138,15 @@ $gray-900: #111827;
     transform: scale(0.95);
   }
 
+  // Active state (X icon)
   &.active {
     background: $primary-blue;
 
     &:hover {
-      background: custom-darken($primary-blue, 10%);
+      background: darken(
+        $primary-blue,
+        10%
+      ); // Sửa-lỗi: custom-darken -> darken
     }
 
     .hamburger-line {
@@ -248,6 +214,10 @@ $gray-900: #111827;
   line-height: 1.2;
   margin: 0;
   transition: font-size 0.3s ease;
+
+  @media (max-width: 768px) {
+    font-size: 1.125rem;
+  }
 }
 
 .page-subtitle {
@@ -257,7 +227,7 @@ $gray-900: #111827;
   transition: opacity 0.3s ease;
 }
 
-// Time display - KHÔNG thu gọn
+// Time display
 .time-display {
   display: flex;
   flex-direction: column;
@@ -265,7 +235,6 @@ $gray-900: #111827;
   gap: 2px;
   padding: 0 1rem;
   border-right: 1px solid $gray-200;
-  // Removed transition for hiding
 }
 
 .current-time {
@@ -379,13 +348,12 @@ $gray-900: #111827;
 
 .mark-all-read {
   @include button-base;
-  background: none;
   color: $primary-blue;
   font-size: 0.875rem;
   font-weight: 500;
 
   &:hover {
-    color: custom-darken($primary-blue, 10%);
+    color: darken($primary-blue, 10%); // Sửa-lỗi: custom-darken -> darken
   }
 }
 
@@ -419,18 +387,24 @@ $gray-900: #111827;
   border-radius: 8px;
   @include flex-center;
   font-size: 1.2rem;
+  flex-shrink: 0;
 
+  // Sửa-lỗi: custom-lighten -> lighten
   &--primary {
-    background: custom-lighten($primary-blue, 40%);
+    background: lighten($primary-blue, 40%);
+    color: $primary-blue;
   }
   &--success {
-    background: custom-lighten($success-green, 40%);
+    background: lighten($success-green, 40%);
+    color: $success-green;
   }
   &--warning {
-    background: custom-lighten(#f59e0b, 40%);
+    background: lighten(#f59e0b, 40%);
+    color: #f59e0b;
   }
   &--info {
-    background: custom-lighten(#06b6d4, 40%);
+    background: lighten(#06b6d4, 40%);
+    color: #06b6d4;
   }
 }
 
@@ -467,6 +441,12 @@ $gray-900: #111827;
   border-radius: 50%;
 }
 
+.notification-empty {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  color: $gray-500;
+}
+
 // User Menu
 .user-menu-container {
   position: relative;
@@ -478,7 +458,6 @@ $gray-900: #111827;
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem;
-  background: none;
   border-radius: 12px;
 
   &:hover,
@@ -498,6 +477,7 @@ $gray-900: #111827;
   background: linear-gradient(135deg, $primary-blue 0%, $secondary-purple 100%);
   color: $white;
   font-size: 1.2rem;
+  flex-shrink: 0;
 }
 
 .user-status {
@@ -532,7 +512,7 @@ $gray-900: #111827;
 
 .user-chevron {
   color: #94a3b8;
-  font-size: 0.75rem;
+  font-size: 1rem; // Tăng-kích-thước-cho-icon
   transition: transform 0.2s ease, opacity 0.3s ease;
 }
 
@@ -552,11 +532,6 @@ $gray-900: #111827;
   border: 1px solid $gray-200;
   overflow: hidden;
   z-index: 1000;
-
-  @media (max-width: 768px) {
-    width: 320px;
-    right: -1rem;
-  }
 
   @media (max-width: 480px) {
     width: calc(100vw - 2rem);
@@ -617,7 +592,6 @@ $gray-900: #111827;
   gap: 0.75rem;
   width: 100%;
   padding: 0.75rem 1.5rem;
-  background: none;
   text-align: left;
   color: #374151;
   font-size: 0.875rem;
@@ -627,15 +601,30 @@ $gray-900: #111827;
     color: $primary-blue;
   }
 
-  &--danger:hover {
-    background: rgba(#ef4444, 0.05);
+  &--danger {
     color: #ef4444;
+
+    &:hover {
+      background: rgba(#ef4444, 0.05);
+      color: #ef4444;
+    }
   }
 
   .menu-icon {
-    width: 16px;
-    text-align: center;
-    font-size: 1rem;
+    width: 20px;
+    height: 20px;
+    @include flex-center;
+    font-size: 1.1rem; // Tăng-kích-thước-icon-trong-menu
+    color: $gray-500;
+  }
+
+  // Căn-chỉnh-màu-icon-khi-hover
+  &:hover .menu-icon {
+    color: $primary-blue;
+  }
+
+  &--danger:hover .menu-icon {
+    color: #ef4444;
   }
 }
 
@@ -647,17 +636,23 @@ $gray-900: #111827;
 
 // Responsive Design & Hide Classes
 .hide-mobile {
-  display: block;
-
   @media (max-width: 768px) {
     display: none;
   }
 }
 
 .hide-compact {
-  opacity: 0;
-  transform: scale(0.8);
-  pointer-events: none;
+  //
+  // --- ĐÃ SỬA ---
+  //
+  // Class-này-chỉ-nên-có-tác-dụng-trên-mobile
+  @media (max-width: 768px) {
+    opacity: 0;
+    transform: scale(0.8);
+    pointer-events: none;
+    width: 0;
+    overflow: hidden;
+  }
 }
 
 .show-mobile {
@@ -665,34 +660,5 @@ $gray-900: #111827;
 
   @media (max-width: 768px) {
     display: block;
-  }
-}
-
-@media (max-width: 768px) {
-  .header {
-    &__content {
-      padding: 0 1rem;
-    }
-
-    &__center {
-      margin: 0 1rem;
-      max-width: 300px;
-    }
-  }
-
-  .page-title {
-    font-size: 1.125rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .header {
-    &__left {
-      gap: 0.5rem;
-    }
-
-    &__right {
-      gap: 0.5rem;
-    }
   }
 }

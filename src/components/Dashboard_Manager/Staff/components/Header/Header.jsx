@@ -1,3 +1,4 @@
+// src/pages/StaffManagement/components/Header.jsx
 import React from "react";
 import "./Header.scss";
 
@@ -6,16 +7,8 @@ const Header = ({
   onRestaurantChange,
   onAddEmployee,
   onExportData,
+  restaurantList = [],
 }) => {
-  const restaurants = [
-    { value: "all", label: "🏪 Tất cả nhà hàng" },
-    { value: "district1", label: "🏢 FoodHub Quận 1" },
-    { value: "district3", label: "🏢 FoodHub Quận 3" },
-    { value: "district7", label: "🏢 FoodHub Quận 7" },
-    { value: "binh-thanh", label: "🏢 FoodHub Bình Thạnh" },
-    { value: "thu-duc", label: "🏢 FoodHub Thủ Đức" },
-  ];
-
   return (
     <div className="header-card">
       <div className="header-left">
@@ -29,9 +22,11 @@ const Header = ({
             value={selectedRestaurant}
             onChange={(e) => onRestaurantChange(e.target.value)}
           >
-            {restaurants.map((restaurant) => (
-              <option key={restaurant.value} value={restaurant.value}>
-                {restaurant.label}
+            <option value="all">🏪 Tất cả nhà hàng</option>
+            {restaurantList.map((r) => (
+              <option key={r.id} value={r.id}>
+                {/* nếu trong restaurant có emoji thì xài, không thì mặc định icon */}
+                {r.emoji ? `${r.emoji} ${r.name}` : `🏢 ${r.name}`}
               </option>
             ))}
           </select>

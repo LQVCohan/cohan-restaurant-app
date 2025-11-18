@@ -14,7 +14,6 @@ import useFloorManagement from "../hooks/useFloorManagement";
 import useTableManagement from "../hooks/useTableManagement";
 import useOrderManagement from "../hooks/useOrderManagement";
 import { useNotification } from "../hooks/useNotification";
-import { useTableDraft } from "../hooks/useTableDraft"; // ✅ NEW: lưu tạm draft theo bàn
 import useSocketOrder from "@/hooks/useSocketOrder";
 
 const PosContext = createContext(undefined);
@@ -97,7 +96,7 @@ export default function PosProvider({
     tablesError,
     refetchTables,
     createTable,
-    updateTable, // vẫn dùng cho các patch hợp lệ
+    updateTable,
     deleteTable,
     setTableStatus,
     moveTable,
@@ -108,10 +107,7 @@ export default function PosProvider({
     fetchTableByCode,
   } = useTableManagement({ restaurantId });
 
-  // 🔗 NEW: draft hooks (BE)
-  const { getTableDraft, upsertTableDraft, deleteTableDraft } = useTableDraft();
-
-  //Socket
+  // Socket cho POS (đồng bộ bàn & đơn)
   useSocketOrder(restaurantId, {
     onCreated: (order) => {
       showNotification(`🆕 Đơn mới: ${order.orderCode}`, "info");
@@ -131,6 +127,7 @@ export default function PosProvider({
       refetchTables?.();
     },
   });
+
   // table filters
   const [tableSearch, setTableSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -178,7 +175,7 @@ export default function PosProvider({
     return list;
   }, [allTables, activeLevel, statusFilter, typeFilter, tableSearch]);
 
-  // order management hook (truyền state POS vào)
+  // order management hook (POS state truyền vào)
   const {
     addToOrder,
     updateItemQty,
@@ -195,7 +192,7 @@ export default function PosProvider({
     orderNote,
     setOrderNote,
     attachCustomerToOrder,
-    updateOrderCustomerByCode, // expose
+    updateOrderCustomerByCode,
   } = useOrderManagement({
     currentOrder,
     setCurrentOrder,
@@ -205,7 +202,7 @@ export default function PosProvider({
     restaurantId,
   });
 
-  // chọn bàn => load order của bàn
+  // chọn bàn => load order của bàn (nếu có)
   const selectTableForOrder = useCallback(
     async (code, capacity) => {
       const table =
@@ -220,7 +217,7 @@ export default function PosProvider({
 
       const statusTable = table?.status || "available";
 
-      // Dò order hoạt động từ DB
+      // Dò order hoạt động từ DB (theo bàn)
       let activeOrderDoc = null;
       try {
         const res = await fetchOrderByTable(restaurantId, code);
@@ -244,9 +241,8 @@ export default function PosProvider({
         return;
       }
 
-      // Cho phép chọn cả reserved
+      // Bàn trống, chưa có order
       if (!activeOrderDoc && statusTable === "available") {
-        // Bàn trống
         showNotification(`Đã chọn bàn ${code}.`, "success");
         setCurrentTable({
           id: table?.id,
@@ -254,14 +250,14 @@ export default function PosProvider({
           capacity,
           status: statusTable,
           restaurantId,
-          orderCode: null,
+          orderCode: null, // để BE tự sinh khi saveOrder
         });
         setCurrentOrderType("dine_in");
         setCurrentOrder((prev) => (prev && prev.length > 0 ? [] : prev));
         return;
       }
 
-      // Có order đang hoạt động hoặc bàn reserved/occupied
+      // Bàn có order đang hoạt động
       if (activeOrderDoc) {
         showNotification(`Đã chọn bàn ${code} có khách.`, "info");
         const restored = (activeOrderDoc.items || []).map((i) => ({
@@ -276,13 +272,13 @@ export default function PosProvider({
           id: table?.id,
           code,
           capacity,
-          status: "occupied", // UI: coi như có khách
+          status: "occupied",
           restaurantId,
           orderCode: activeOrderDoc.orderCode || null,
         });
         setCurrentOrderType("dine_in");
 
-        // Nếu trên server/cached đang "available" → cập nhật "occupied"
+        // nếu BE/table cache đang available/reserved → sync sang occupied
         if (
           (statusTable === "available" || statusTable === "reserved") &&
           table?.id &&
@@ -321,165 +317,7 @@ export default function PosProvider({
     ]
   );
 
-  // Utility: tìm table theo code
-  const findTableByCode = useCallback(
-    (code) => {
-      if (!code) return null;
-      return (
-        (allTables || []).find(
-          (t) => (t.code || "").toLowerCase() === String(code).toLowerCase()
-        ) || null
-      );
-    },
-    [allTables]
-  );
-
-  // ✅ Cập nhật: Lưu thông tin khách
-  // - Luôn đồng bộ state local (như trước).
-  // - Nếu có dữ liệu thời gian hoặc số khách → lưu DRAFT lên BE (useTableDraft).
-  const saveTableCustomer = useCallback(
-    async (tableCode, rawCustomer = {}) => {
-      const code = (tableCode || "").trim();
-      if (!code) return { success: false, message: "Thiếu mã bàn" };
-
-      const fullName = (rawCustomer.fullName ?? rawCustomer.name ?? "")
-        .toString()
-        .trim();
-      const phone = (rawCustomer.phone ?? "").toString().trim();
-      const email = (rawCustomer.email ?? "").toString().trim().toLowerCase();
-      const note = (rawCustomer.note ?? "").toString();
-
-      const guestCount = Number.isFinite(Number(rawCustomer.guests))
-        ? Number(rawCustomer.guests)
-        : Number.isFinite(Number(rawCustomer.guestCount))
-        ? Number(rawCustomer.guestCount)
-        : null;
-
-      // Hỗ trợ input theo cả 2 kiểu:
-      // - checkin: ISO hoặc datetime-local (frontend)
-      // - checkinDate + checkinTime: tách riêng ngày/giờ
-      const checkinDate = rawCustomer.checkinDate || "";
-      const checkinTime = rawCustomer.checkinTime || "";
-      const checkinRaw = rawCustomer.checkin || rawCustomer.timeTo || "";
-
-      const toISO = () => {
-        // Ưu tiên date + time; fallback checkinRaw nếu có
-        if (checkinDate && checkinTime) {
-          const [y, m, d] = String(checkinDate).split("-").map(Number);
-          const [hh, mm] = String(checkinTime).split(":").map(Number);
-          if (!Number.isNaN(y) && !Number.isNaN(hh)) {
-            const dt = new Date(y, (m || 1) - 1, d || 1, hh || 0, mm || 0, 0);
-            return dt.toISOString();
-          }
-        }
-        if (checkinRaw) {
-          // nếu đã là ISO thì dùng luôn, nếu là "YYYY-MM-DDTHH:mm" (datetime-local), Date vẫn parse được
-          const dt = new Date(checkinRaw);
-          if (!Number.isNaN(dt.getTime())) return dt.toISOString();
-        }
-        return null;
-      };
-      const isoTime = toISO();
-
-      // 1) Lưu vào state local để UI phản hồi tức thì
-      setTableOrders((prev) => ({
-        ...prev,
-        [code]: {
-          ...(prev?.[code] || {}),
-          customer: { fullName, phone, email },
-        },
-      }));
-
-      // 2) Đồng bộ currentTable local (chỉ để hiển thị)
-      if (
-        currentTable?.code &&
-        currentTable.code.toLowerCase() === code.toLowerCase()
-      ) {
-        setCurrentTable((prev) =>
-          prev
-            ? {
-                ...prev,
-                customerName: fullName || prev.customerName,
-                phone: phone || prev.phone,
-                guestCount: guestCount ?? prev.guestCount ?? undefined,
-                checkinTime:
-                  isoTime ||
-                  checkinRaw ||
-                  (checkinDate && checkinTime
-                    ? `${checkinDate}T${checkinTime}`
-                    : prev.checkinTime),
-                note: note || prev.note,
-              }
-            : prev
-        );
-      }
-
-      // 3) NEW: Lưu DRAFT lên BE (nếu có thông tin để “đặt theo khung giờ”)
-      //    Điều kiện: có ngày/giờ hoặc có số khách (party size)
-      try {
-        const tableDoc =
-          findTableByCode(code) ||
-          (typeof fetchTableByCode === "function"
-            ? fetchTableByCode(code)
-            : null);
-
-        const tableId = tableDoc?.id || null;
-        const shouldDraft =
-          !!isoTime ||
-          !!guestCount ||
-          !!fullName ||
-          !!phone ||
-          !!email ||
-          !!note;
-
-        if (restaurantId && shouldDraft) {
-          await upsertTableDraft({
-            restaurantId,
-            tableId,
-            tableCode: code,
-            customerName: fullName || null,
-            customerPhone: phone || null,
-            customerEmail: email || null,
-            note: note || null,
-            partySize: Number.isFinite(guestCount) ? guestCount : null,
-            timeTo: isoTime,
-            ttlHours: 72,
-          });
-        }
-      } catch (e) {
-        console.warn("Upsert table draft failed:", e);
-        // Không chặn flow — chỉ log cảnh báo
-      }
-
-      showNotification?.(`Đã lưu thông tin khách cho bàn ${code}.`, "success");
-      return {
-        success: true,
-        customer: {
-          fullName,
-          phone,
-          email,
-          note,
-          guestCount,
-          checkin:
-            isoTime ||
-            checkinRaw ||
-            (checkinDate && checkinTime ? `${checkinDate}T${checkinTime}` : ""),
-        },
-      };
-    },
-    [
-      restaurantId,
-      currentTable,
-      setCurrentTable,
-      setTableOrders,
-      showNotification,
-      upsertTableDraft,
-      fetchTableByCode,
-      findTableByCode,
-    ]
-  );
-
-  // đếm theo trạng thái
+  // đếm theo trạng thái bàn
   const getStatusCounts = useMemo(() => {
     const counters = {
       available: 0,
@@ -545,39 +383,30 @@ export default function PosProvider({
     []
   );
 
-  // saveOrder bao ngoài để đổi màu bàn + **không pass customer nếu bàn reserved**
+  /**
+   * ✅ saveOrder wrapper:
+   * - Không can thiệp orderCode (không truyền từ FE nếu chưa có)
+   * - Chỉ thêm restaurantId
+   * - Sau khi lưu: set bàn → occupied + sync cache
+   * - Logic tạo orderCode (POS-...) hoàn toàn ở BE
+   */
   const saveOrder = useCallback(
     async (opts = {}) => {
-      const tableCode = currentTable?.code || opts.tableCode;
-
-      // lấy customer local nếu có
-      let customerFromState = undefined;
-      if (tableCode && tableOrders?.[tableCode]?.customer) {
-        const c = tableOrders[tableCode].customer || {};
-        customerFromState = {
-          fullName: (c.fullName || "").trim(),
-          phone: (c.phone || "").trim(),
-          email: (c.email || "").trim().toLowerCase(),
-        };
-      }
-
-      // Nếu bàn đang reserved: không gửi customer để BE tự attach từ reservation
-      const isReserved = currentTable?.status === "reserved";
-
       const res = await rawSaveOrder({
         ...opts,
         restaurantId,
-        customer: isReserved ? undefined : opts.customer ?? customerFromState,
       });
 
       if (res?.success && currentTable?.id) {
+        const savedOrder = res.data || null;
+
+        // cập nhật trạng thái bàn & cache
         try {
           await setTableStatus({ id: currentTable.id, status: "occupied" });
         } catch (e) {
           console.warn("setTableStatus failed:", e);
         }
 
-        // dọn cache Table.status
         try {
           apollo.cache.modify({
             id: apollo.cache.identify({
@@ -592,22 +421,22 @@ export default function PosProvider({
           });
         } catch {}
 
+        // clear món sau khi lưu, giữ lại bàn + gắn orderCode nếu BE trả về
         setCurrentOrder([]);
-        setCurrentTable(null);
+        setCurrentTable((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: "occupied",
+                orderCode: savedOrder?.orderCode || prev.orderCode || null,
+              }
+            : prev
+        );
       }
 
       return res;
     },
-    [
-      rawSaveOrder,
-      restaurantId,
-      currentTable,
-      apollo,
-      setTableStatus,
-      setCurrentOrder,
-      setCurrentTable,
-      tableOrders,
-    ]
+    [rawSaveOrder, restaurantId, currentTable, apollo, setTableStatus]
   );
 
   // context value
@@ -713,12 +542,6 @@ export default function PosProvider({
       getStatusText,
       fetchTableByCode,
       getStatusCounts,
-
-      // khách & draft
-      saveTableCustomer, // ✅ updated
-      getTableDraft, // ✅ export
-      upsertTableDraft, // ✅ export
-      deleteTableDraft, // ✅ export
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -741,7 +564,6 @@ export default function PosProvider({
       tableSearch,
       statusFilter,
       typeFilter,
-      saveTableCustomer,
       createTable,
       updateTable,
       deleteTable,
@@ -785,9 +607,6 @@ export default function PosProvider({
       setOrderNote,
       attachCustomerToOrder,
       updateOrderCustomerByCode,
-      getTableDraft,
-      upsertTableDraft,
-      deleteTableDraft,
     ]
   );
 

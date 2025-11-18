@@ -1,3 +1,4 @@
+// src/pages/OrderManagement/components/OrderModal.jsx
 import React, {
   useCallback,
   useMemo,
@@ -5,6 +6,7 @@ import React, {
   useEffect,
   useRef,
 } from "react";
+import { createPortal } from "react-dom";
 import { X, Printer, Loader2 } from "lucide-react";
 import { gql, useMutation } from "@apollo/client";
 import "./OrderModal.scss";
@@ -54,6 +56,7 @@ const ITEM_STATUS_LABEL = {
   cancelled: "Đã hủy",
   completed: "Hoàn thành",
 };
+
 const getItemStatusText = (status) => ITEM_STATUS_LABEL[status] || status;
 
 // orderType → VI
@@ -85,16 +88,16 @@ const UPDATE_ORDER_STATUS = gql`
 /* ============================== Component ============================== */
 
 const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
-  const [savingMap, setSavingMap] = useState({}); // key theo lineId/index -> boolean
-  const completingRef = useRef(false); // chống gọi hoàn tất nhiều lần
+  const [savingMap, setSavingMap] = useState({});
+  const completingRef = useRef(false);
+  const [autoServed, setAutoServed] = useState(false); // ✅ đánh dấu đã auto-served
 
-  // Apollo mutation: cập nhật status order theo ID
   const [mutStatusById] = useMutation(UPDATE_ORDER_STATUS);
 
   /* ---------------- Normalize order fields ---------------- */
 
   const orderIdShort = useMemo(
-    () => String(order?.id || "").slice(-6) || "N/A",
+    () => (order?.id ? String(order.id).slice(-6) : "N/A"),
     [order?.id]
   );
 
@@ -106,13 +109,11 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
   const orderNotes = order?.note || "";
   const orderTypeVi = toViOrderType(order?.orderType);
 
-  // Thời gian hiển thị an toàn
   const createdAtDate = useMemo(
     () => toSafeDate(order?.createdAt),
     [order?.createdAt]
   );
 
-  // Totals an toàn
   const totals = useMemo(() => {
     const t = order?.totals || {};
     return {
@@ -124,7 +125,6 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
     };
   }, [order?.totals]);
 
-  // Items an toàn (ép số, fallback status)
   const items = useMemo(() => {
     const raw = Array.isArray(order?.items) ? order.items : [];
     return raw.map((it) => {
@@ -134,6 +134,7 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
       const per =
         (Number.isFinite(price) ? price : 0) + (Number.isFinite(mod) ? mod : 0);
       const lineTotal = per * (Number.isFinite(qty) ? qty : 0);
+
       return {
         ...it,
         price: Number.isFinite(price) ? price : 0,
@@ -146,6 +147,7 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
   }, [order?.items]);
 
   /* ---------------- Tiến độ (% món served trên tổng món của ORDER) ---------------- */
+
   const progress = useMemo(() => {
     const alive = items.filter((i) => i.status !== "cancelled");
     if (!alive.length) return 0;
@@ -153,13 +155,13 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
     const servedCount = alive.filter((i) => i.status === "served").length;
     const pct = Math.round((servedCount / alive.length) * 100);
 
-    // Nếu order đã completed thì fix 100, còn 'served' vẫn theo món
     if (order?.currentStatus === "completed") return 100;
 
     return Math.max(0, Math.min(100, pct));
   }, [items, order?.currentStatus]);
 
-  /* ---------------- Auto-complete: khi 100% -> chuyển order -> served (by ID) ---------------- */
+  /* ---------------- Auto-complete: 100% -> served (by ID) ---------------- */
+
   useEffect(() => {
     const shouldComplete =
       progress === 100 &&
@@ -182,6 +184,8 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
             },
           },
         });
+        // ✅ mark là đã auto-served
+        setAutoServed(true);
       } catch (e) {
         console.warn("Auto-complete order failed:", e?.message);
       } finally {
@@ -194,14 +198,27 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
     complete();
   }, [progress, order?.id, order?.currentStatus, mutStatusById]);
 
+  /* ---------------- Close handler: reload nếu đã auto-served ---------------- */
+
+  const handleClose = useCallback(() => {
+    if (autoServed) {
+      window.location.reload();
+      return;
+    }
+    onClose?.();
+  }, [autoServed, onClose]);
+
   /* ---------------- Hotkeys: ESC đóng ---------------- */
+
   useEffect(() => {
     const handler = (e) => {
-      if (e.key === "Escape") onClose?.();
+      if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
+  }, [handleClose]);
+
+  /* ---------------- Helpers UI ---------------- */
 
   const getStatusClass = (status) => {
     const map = {
@@ -224,7 +241,6 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
 
   const handlePrint = () => window.print();
 
-  /* ---------------- Đổi trạng thái món: dùng ORDER ID, KHÔNG dùng orderCode ---------------- */
   const handleChangeStatus = useCallback(
     async (item, index, nextStatus) => {
       const itemKey = item?._lineId || item?.dishId || index;
@@ -246,23 +262,23 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
     [onUpdateItemStatus, order?.id]
   );
 
-  /* -------------------------------- Render -------------------------------- */
+  /* -------------------------------- JSX -------------------------------- */
 
-  return (
+  const node = (
     <div
-      className="modalOverlay"
-      onClick={onClose}
+      className="orderModalOverlay"
+      onClick={handleClose}
       role="dialog"
       aria-modal="true"
     >
-      <div className="modal-order" onClick={(e) => e.stopPropagation()}>
-        {/* Header sticky */}
-        <div className="modalHeader">
-          <div className="modalHeader__left">
-            <h2 className="modalTitle">
-              Chi tiết đơn hàng {orderCode ? `• ${orderCode}` : ""}
+      <div className="orderModal" onClick={(e) => e.stopPropagation()}>
+        {/* HEADER (không còn chữ Chi tiết đơn hàng, chỉ code + meta) */}
+        <header className="orderModal__header">
+          <div className="orderModal__headerLeft">
+            <h2 className="orderModal__title">
+              {orderCode || `#${orderIdShort}`}
             </h2>
-            <div className="subtleMeta">
+            <div className="orderModal__meta">
               <span>#{orderIdShort}</span>
               <span className="dot">•</span>
               <span>
@@ -277,174 +293,178 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
               </span>
             </div>
           </div>
-          <div className="modalHeader__actions">
+          <div className="orderModal__headerActions">
             <button
               onClick={handlePrint}
-              className="iconButton"
+              className="orderModal__iconButton"
               aria-label="In đơn hàng"
             >
               <Printer size={18} />
               <span>In</span>
             </button>
             <button
-              onClick={onClose}
-              className="iconButton ghost"
+              onClick={handleClose}
+              className="orderModal__iconButton ghost"
               aria-label="Đóng"
             >
               <X size={18} />
               <span>Đóng</span>
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Progress bar */}
-        <div className="orderProgress">
-          <div
-            className="orderProgress__bar"
-            style={{ width: `${progress}%` }}
-          />
-          <div className="orderProgress__label">
-            Tiến độ đơn: <strong>{progress}%</strong>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="modalContent">
-          {/* Order Info */}
-          <div className="section">
-            <div className="infoGrid">
-              <div className="infoItem">
-                <span className="label">Khách hàng:</span>
-                <span className="value">{customerName}</span>
-              </div>
-              <div className="infoItem">
-                <span className="label">Bàn/Loại:</span>
-                <span className="value">
-                  {tableNumber}
-                  {orderTypeVi ? ` • ${orderTypeVi}` : ""}
-                </span>
-              </div>
-              <div className="infoItem">
-                <span className="label">Trạng thái đơn:</span>
-                {getStatusBadge(orderStatus)}
-              </div>
-              <div className="infoItem">
-                <span className="label">Số món:</span>
-                <span className="value">{items.length}</span>
-              </div>
+        {/* BODY: progress + content scroll + footer fixed */}
+        <div className="orderModal__body">
+          {/* progress dính ngay dưới header */}
+          <div className="orderProgress">
+            <div
+              className="orderProgress__bar"
+              style={{ width: `${progress}%` }}
+            />
+            <div className="orderProgress__label">
+              Tiến độ đơn: <strong>{progress}%</strong>
             </div>
           </div>
 
-          {/* Items */}
-          <div className="section">
-            <h3 className="sectionTitle">Chi tiết món</h3>
-            <div className="itemsList">
-              {items.map((item, index) => {
-                const key = item._lineId || item.dishId || index;
-                const isSaving = !!savingMap[key];
+          {/* content scrollable */}
+          <div className="orderModal__scroll">
+            {/* Order info */}
+            <section className="section">
+              <div className="infoGrid">
+                <div className="infoItem">
+                  <span className="label">Khách hàng:</span>
+                  <span className="value">{customerName}</span>
+                </div>
+                <div className="infoItem">
+                  <span className="label">Bàn/Loại:</span>
+                  <span className="value">
+                    {tableNumber}
+                    {orderTypeVi ? ` • ${orderTypeVi}` : ""}
+                  </span>
+                </div>
+                <div className="infoItem">
+                  <span className="label">Trạng thái đơn:</span>
+                  {getStatusBadge(orderStatus)}
+                </div>
+                <div className="infoItem">
+                  <span className="label">Số món:</span>
+                  <span className="value">{items.length}</span>
+                </div>
+              </div>
+            </section>
 
-                const disabledAll =
-                  orderStatus === "completed" ||
-                  orderStatus === "cancelled" ||
-                  item.status === "cancelled";
+            {/* Items */}
+            <section className="section">
+              <h3 className="sectionTitle">Chi tiết món</h3>
+              <div className="itemsList">
+                {items.map((item, index) => {
+                  const key = item._lineId || item.dishId || index;
+                  const isSaving = !!savingMap[key];
 
-                return (
-                  <div
-                    key={key}
-                    className={`itemCard ${isSaving ? "saving" : ""}`}
-                  >
-                    <div className="itemInfo">
-                      <div className="itemName">{item.name}</div>
-                      <div className="itemDetails">
-                        {getItemStatusText(item.status)} • Đơn giá:{" "}
-                        {formatCurrency(item.price)}
-                        {Number(item.modifiersPrice) > 0
-                          ? ` (+${formatCurrency(item.modifiersPrice)})`
-                          : ""}
-                        {item.method ? ` • CĐB: ${item.method}` : ""}
-                        {item.unit ? ` • ĐV: ${item.unit}` : ""}
-                      </div>
-                      {item.note && (
-                        <div className="itemNote">
-                          <span>Ghi chú:</span> {item.note}
+                  const disabledAll =
+                    orderStatus === "completed" ||
+                    orderStatus === "cancelled" ||
+                    item.status === "cancelled";
+
+                  return (
+                    <div
+                      key={key}
+                      className={`itemCard ${isSaving ? "saving" : ""}`}
+                    >
+                      <div className="itemInfo">
+                        <div className="itemName">{item.name}</div>
+                        <div className="itemDetails">
+                          {getItemStatusText(item.status)} • Đơn giá:{" "}
+                          {formatCurrency(item.price)}
+                          {Number(item.modifiersPrice) > 0
+                            ? ` (+${formatCurrency(item.modifiersPrice)})`
+                            : ""}
+                          {item.method ? ` • CĐB: ${item.method}` : ""}
+                          {item.unit ? ` • ĐV: ${item.unit}` : ""}
                         </div>
-                      )}
-                    </div>
-
-                    <div className="itemMeta">
-                      <div className="itemPricing">
-                        <div className="quantity">x{item.quantity}</div>
-                        <div className="itemTotal">
-                          {formatCurrency(item._lineTotal)}
-                        </div>
-                      </div>
-
-                      <div className="itemControl">
-                        <select
-                          value={item.status || "pending"}
-                          onChange={(e) =>
-                            handleChangeStatus(item, index, e.target.value)
-                          }
-                          className="statusSelect"
-                          disabled={disabledAll || isSaving}
-                          aria-label={`Trạng thái của ${item.name}`}
-                        >
-                          {/* Không có 'confirmed' để khớp VALID_ITEM_STATUS của hook */}
-                          <option value="pending">Chờ xác nhận</option>
-                          <option value="preparing">Đang chuẩn bị</option>
-                          <option value="ready">Sẵn sàng</option>
-                          <option value="served">Đã phục vụ</option>
-                          <option value="cancelled">Hủy món</option>
-                        </select>
-                        {isSaving && (
-                          <span
-                            className="savingSpin"
-                            aria-live="polite"
-                            title="Đang lưu"
-                          >
-                            <Loader2 className="spin" size={16} />
-                          </span>
+                        {item.note && (
+                          <div className="itemNote">
+                            <span>Ghi chú:</span> {item.note}
+                          </div>
                         )}
                       </div>
+
+                      <div className="itemMeta">
+                        <div className="itemPricing">
+                          <div className="quantity">x{item.quantity}</div>
+                          <div className="itemTotal">
+                            {formatCurrency(item._lineTotal)}
+                          </div>
+                        </div>
+
+                        <div className="itemControl">
+                          <select
+                            value={item.status || "pending"}
+                            onChange={(e) =>
+                              handleChangeStatus(item, index, e.target.value)
+                            }
+                            className="statusSelect"
+                            disabled={disabledAll || isSaving}
+                            aria-label={`Trạng thái của ${item.name}`}
+                          >
+                            <option value="pending">Chờ xác nhận</option>
+                            <option value="preparing">Đang chuẩn bị</option>
+                            <option value="ready">Sẵn sàng</option>
+                            <option value="served">Đã phục vụ</option>
+                            <option value="cancelled">Hủy món</option>
+                          </select>
+                          {isSaving && (
+                            <span
+                              className="savingSpin"
+                              aria-live="polite"
+                              title="Đang lưu"
+                            >
+                              <Loader2 className="spin" size={16} />
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Totals */}
+            <section className="section">
+              <div className="totalSection">
+                <span className="totalLabel">Tổng cộng</span>
+                <span className="totalAmount">
+                  {formatCurrency(totals.grandTotal)}
+                </span>
+              </div>
+            </section>
+
+            {/* Notes */}
+            {orderNotes && (
+              <section className="section">
+                <h4 className="notesTitle">Ghi chú (Tổng đơn)</h4>
+                <p className="notesContent">{orderNotes}</p>
+              </section>
+            )}
           </div>
 
-          {/* Totals */}
-          <div className="section">
-            <div className="totalSection">
-              <span className="totalLabel">Tổng cộng</span>
-              <span className="totalAmount">
-                {formatCurrency(totals.grandTotal)}
-              </span>
-            </div>
-          </div>
-
-          {/* Notes */}
-          {orderNotes && (
-            <div className="section">
-              <h4 className="notesTitle">Ghi chú (Tổng đơn)</h4>
-              <p className="notesContent">{orderNotes}</p>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="actions">
-            <button onClick={onClose} className="cancelButton">
+          {/* footer cố định */}
+          <footer className="orderModal__footer">
+            <button onClick={handleClose} className="cancelButton">
               Đóng
             </button>
             <button onClick={handlePrint} className="printButton">
               <Printer size={16} />
               In đơn hàng
             </button>
-          </div>
+          </footer>
         </div>
       </div>
     </div>
   );
+
+  return createPortal(node, document.body);
 };
 
 export default OrderModal;

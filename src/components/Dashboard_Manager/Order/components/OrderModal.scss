@@ -1,76 +1,98 @@
+// src/pages/OrderManagement/components/OrderModal.scss
 @use "../../../../styles/variables" as *;
 @use "../../../../styles/mixins" as *;
 
-.modalOverlay {
+.orderModalOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(17, 24, 39, 0.55);
-  backdrop-filter: blur(2px);
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   @include flex-center;
-  z-index: 50;
+  z-index: 20000; // > header 999
   padding: $spacing-4;
 }
 
-.modal-order {
+.orderModal {
   background: white;
   border-radius: 1rem;
   max-width: 54rem;
   width: 100%;
   max-height: 90vh;
-  overflow: hidden; // cho header sticky
+  display: flex;
+  flex-direction: column;
   border: 1px solid $gray-200;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
   @include fade-in;
 
-  // hiệu ứng focus ring khi overlay click-focus
+  // 👇 thêm 2 dòng này để mọi thứ bên trong bị cắt theo bo góc
+  overflow: hidden;
+  position: relative;
+
   &:focus-within {
     outline: 2px solid $primary-300;
     outline-offset: 0;
   }
 }
 
-/* Header sticky với nền mờ */
-.modalHeader {
+/* HEADER */
+
+.orderModal__header {
   position: sticky;
   top: 0;
-  z-index: 1;
-  backdrop-filter: blur(6px);
-  background: rgba(255, 255, 255, 0.85);
+  z-index: 2;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.95);
   border-bottom: 1px solid $gray-200;
   @include flex-between;
   padding: $spacing-4 $spacing-6;
 
-  .modalHeader__left {
+  .orderModal__headerLeft {
     display: flex;
-    align-items: baseline;
-    gap: $spacing-3;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: $spacing-1;
   }
-  .modalHeader__actions {
+
+  .orderModal__headerActions {
     display: flex;
     gap: $spacing-2;
   }
+
+  @include mobile {
+    padding: $spacing-3 $spacing-4;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: $spacing-3;
+
+    .orderModal__headerActions {
+      align-self: stretch;
+      justify-content: flex-end;
+      width: 100%;
+    }
+  }
 }
 
-.modalTitle {
+.orderModal__title {
   font-size: clamp(1.1rem, 1.3vw, $text-2xl);
   font-weight: 700;
   color: $gray-900;
   margin: 0;
 }
 
-.subtleMeta {
+.orderModal__meta {
   display: inline-flex;
   align-items: center;
   gap: $spacing-2;
   color: $gray-500;
   font-size: $text-sm;
+
   .dot {
     opacity: 0.7;
   }
 }
 
-.iconButton {
+.orderModal__iconButton {
   display: inline-flex;
   align-items: center;
   gap: $spacing-2;
@@ -81,33 +103,39 @@
   color: $gray-700;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-size: $text-sm;
 
   &:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
   }
+
   &:active {
     transform: translateY(0);
   }
+
   &.ghost {
     background: $gray-50;
   }
 }
 
-.modalContent {
-  padding: $spacing-6;
-  overflow: auto; // để header sticky hoạt động
-  max-height: calc(90vh - 64px);
+/* BODY LAYOUT: progress + scroll + footer */
+
+.orderModal__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; // để flex children scroll được
 }
 
+/* progress bar ngay dưới header */
+
 .orderProgress {
-  position: sticky;
-  top: 56px; // ngay dưới header
-  z-index: 1;
+  flex-shrink: 0;
   background: linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.85),
-    rgba(255, 255, 255, 0.65)
+    rgba(255, 255, 255, 0.95),
+    rgba(255, 255, 255, 0.8)
   );
   padding: $spacing-2 $spacing-6;
   border-bottom: 1px dashed $gray-200;
@@ -119,12 +147,63 @@
     width: 0;
     transition: width 0.35s ease;
   }
+
   &__label {
     margin-top: $spacing-2;
     font-size: $text-xs;
     color: $gray-600;
   }
+
+  @include mobile {
+    padding: $spacing-2 $spacing-4;
+  }
 }
+
+/* phần giữa scroll được */
+
+.orderModal__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: $spacing-5 $spacing-6;
+  max-height: calc(90vh - 140px); // chừa chỗ header + footer
+
+  @include mobile {
+    padding: $spacing-4;
+  }
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(148, 163, 184, 0.15);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.7);
+    border-radius: 3px;
+  }
+}
+
+/* footer cố định */
+
+.orderModal__footer {
+  flex-shrink: 0;
+  padding: $spacing-3 $spacing-6 $spacing-4;
+  border-top: 1px solid $gray-200;
+  background: linear-gradient(180deg, #f9fafb, #ffffff);
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-3;
+
+  @include mobile {
+    padding: $spacing-3 $spacing-4 $spacing-4;
+    flex-direction: column;
+  }
+}
+
+/* sections */
 
 .section {
   margin-bottom: $spacing-6;
@@ -140,6 +219,8 @@
   color: $gray-900;
   margin: 0 0 $spacing-3 0;
 }
+
+/* info grid */
 
 .infoGrid {
   display: grid;
@@ -160,11 +241,14 @@
   .label {
     color: $gray-600;
   }
+
   .value {
     font-weight: 600;
     color: $gray-900;
   }
 }
+
+/* status badge */
 
 .statusBadge {
   display: inline-flex;
@@ -189,13 +273,16 @@
   &.ready {
     @include status-badge(#e7f8ef, #198754);
   }
-  &.served {
+  &.served,
+  &.completed {
     @include status-badge(#d9f7ff, #0ea5e9);
   }
   &.cancelled {
     @include status-badge($red-100, $red-600);
   }
 }
+
+/* items */
 
 .itemsList {
   display: flex;
@@ -229,10 +316,12 @@
     color: $gray-900;
     margin-bottom: $spacing-1;
   }
+
   .itemDetails {
     font-size: $text-sm;
     color: $gray-600;
   }
+
   .itemNote {
     margin-top: 0.35rem;
     padding: 0.35rem 0.5rem;
@@ -267,6 +356,7 @@
     font-weight: 700;
     color: $gray-900;
   }
+
   .itemTotal {
     font-size: $text-sm;
     color: $gray-600;
@@ -296,6 +386,7 @@
       border-color: $primary-400;
       box-shadow: 0 0 0 3px rgba($primary-400, 0.2);
     }
+
     &:disabled {
       opacity: 0.6;
       cursor: not-allowed;
@@ -305,6 +396,7 @@
   .savingSpin {
     display: inline-flex;
     align-items: center;
+
     .spin {
       animation: spin 1s linear infinite;
     }
@@ -316,6 +408,8 @@
     }
   }
 }
+
+/* totals */
 
 .totalSection {
   @include flex-between;
@@ -329,16 +423,20 @@
   .totalLabel {
     color: $gray-700;
   }
+
   .totalAmount {
     color: #198754;
   }
 }
+
+/* notes */
 
 .notesTitle {
   font-weight: 600;
   color: $gray-900;
   margin: 0 0 $spacing-2 0;
 }
+
 .notesContent {
   padding: $spacing-3;
   background-color: $yellow-50;
@@ -348,42 +446,48 @@
   margin: 0;
 }
 
-.actions {
-  display: none; // ẩn vì đã có action ở header; bật nếu muốn
-}
+/* footer buttons */
 
-/* Nút secondary/primary (giữ mixin cũ) */
 .cancelButton {
   @include button-secondary;
-  flex: 1;
-  background-color: red;
-}
-.printButton {
-  @include button-primary;
-  flex: 1;
+  min-width: 120px;
 }
 
-/* In hoá đơn */
+.printButton {
+  @include button-primary;
+  min-width: 140px;
+}
+
+/* Print */
+
 @media print {
-  .modalOverlay {
+  .orderModalOverlay {
     padding: 0;
     background: white;
+    position: static;
   }
-  .modalHeader,
-  .orderProgress,
-  .iconButton,
-  .statusSelect,
-  .savingSpin {
-    display: none !important;
-  }
-  .modal-order {
+
+  .orderModal {
     max-height: none;
     box-shadow: none;
     border: none;
   }
-  .modalContent {
+
+  .orderModal__header,
+  .orderProgress,
+  .orderModal__footer,
+  .orderModal__iconButton,
+  .statusSelect,
+  .savingSpin {
+    display: none !important;
+  }
+
+  .orderModal__scroll {
+    max-height: none;
+    overflow: visible;
     padding: 0;
   }
+
   .itemCard {
     border: 1px solid #ddd;
   }

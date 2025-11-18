@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import "./Modal.scss";
+
 const Modal = ({
-  // Support both `isOpen` (internal) and `open` (used across the app)
+  // Support both `isOpen` (internal) và `open` (dùng chỗ khác)
   isOpen,
   open,
   onClose,
@@ -13,6 +14,7 @@ const Modal = ({
   showCloseButton = true,
   closeOnOverlayClick = true,
   closeOnEscape = true,
+  className = "", // 👈 thêm prop className để style riêng từng modal
 }) => {
   const visibleProp = typeof isOpen !== "undefined" ? isOpen : open;
   const [isVisible, setIsVisible] = useState(false);
@@ -21,14 +23,12 @@ const Modal = ({
   useEffect(() => {
     if (visibleProp) {
       setShouldRender(true);
-
       const timer = setTimeout(() => {
         setIsVisible(true);
       }, 10);
       return () => clearTimeout(timer);
     } else {
       setIsVisible(false);
-
       const timer = setTimeout(() => {
         setShouldRender(false);
       }, 800); // Match transition duration
@@ -63,7 +63,7 @@ const Modal = ({
 
   const handleOverlayClick = (event) => {
     if (closeOnOverlayClick && event.target === event.currentTarget) {
-      onClose();
+      onClose?.();
     }
   };
 
@@ -78,7 +78,7 @@ const Modal = ({
       aria-labelledby={title ? "modal-title" : undefined}
     >
       <div
-        className={`modal modal--${size}`}
+        className={`modal modal--${size} ${className}`.trim()} // 👈 gắn className thêm
         onClick={(e) => e.stopPropagation()}
       >
         {(title || showCloseButton) && (

@@ -1,11 +1,40 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import SearchBox from "../SearchBox/SearchBox";
+import {
+  FiBell,
+  FiChevronDown,
+  FiUser,
+  FiSettings,
+  FiMoon,
+  FiHelpCircle,
+  FiCommand,
+  FiLogOut,
+  FiInfo,
+  FiCheckCircle,
+  FiAlertTriangle,
+} from "react-icons/fi";
 import "./Styles/Header.scss";
+
+// Hàm-tiện-ích-để-lấy-icon-thông-báo
+const getNotificationIcon = (type) => {
+  switch (type) {
+    case "success":
+      return <FiCheckCircle />;
+    case "warning":
+      return <FiAlertTriangle />;
+    case "primary":
+      return <FiInfo />;
+    case "info":
+    default:
+      return <FiBell />;
+  }
+};
+
 const Header = ({
   pageTitle = "Tổng quan",
   onToggleSidebar,
   sidebarOpen = false,
-  notifications = [],
+  notifications = [], // Thêm-một-vài-thông-báo-mẫu-để-test
   user = {
     name: "Nguyễn Quản Lý",
     role: "Quản lý cửa hàng",
@@ -16,6 +45,10 @@ const Header = ({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+
+  // Refs cho các container dropdown
+  const notificationRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   // Update time every second
   useEffect(() => {
@@ -28,17 +61,22 @@ const Header = ({
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest(".notification-container")) {
+      // Đóng-Notification-Dropdown
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target)
+      ) {
         setShowNotifications(false);
       }
-      if (!event.target.closest(".user-menu-container")) {
+      // Đóng-User-Menu-Dropdown
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setShowUserMenu(false);
       }
     };
 
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []); // Thêm-dependency-array-rỗng
 
   const formatTime = (date) => {
     return date.toLocaleTimeString("vi-VN", {
@@ -59,7 +97,6 @@ const Header = ({
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleToggleSidebar = () => {
-    console.log("Toggle clicked! Current state:", sidebarOpen);
     if (onToggleSidebar) {
       onToggleSidebar();
     }
@@ -67,16 +104,22 @@ const Header = ({
 
   const handleNotificationClick = () => {
     setShowNotifications(!showNotifications);
-    setShowUserMenu(false);
+    setShowUserMenu(false); // Đóng-menu-kia-khi-mở-menu-này
   };
 
   const handleUserMenuClick = () => {
     setShowUserMenu(!showUserMenu);
-    setShowNotifications(false);
+    setShowNotifications(false); // Đóng-menu-kia-khi-mở-menu-này
   };
 
   const markAllAsRead = () => {
     console.log("Mark all notifications as read");
+    // Thêm-logic-xử-lý-tại-đây
+  };
+
+  const handleLogout = () => {
+    console.log("User logged out");
+    // Thêm-logic-đăng-xuất-tại-đây
   };
 
   return (
@@ -130,14 +173,14 @@ const Header = ({
           </div>
 
           {/* Notifications */}
-          <div className="notification-container">
+          <div className="notification-container" ref={notificationRef}>
             <button
               className={`notification-btn ${
                 showNotifications ? "notification-btn--active" : ""
               }`}
               onClick={handleNotificationClick}
             >
-              🔔
+              <FiBell /> {/* Icon-thay-thế */}
               {unreadCount > 0 && (
                 <span className="notification-badge">{unreadCount}</span>
               )}
@@ -152,35 +195,43 @@ const Header = ({
                   </button>
                 </div>
                 <div className="notification-list">
-                  {notifications.map((notification, index) => (
-                    <div
-                      key={index}
-                      className={`notification-item ${
-                        !notification.read ? "notification-item--unread" : ""
-                      }`}
-                    >
+                  {notifications.length > 0 ? (
+                    notifications.map((notification, index) => (
                       <div
-                        className={`notification-icon notification-icon--${notification.type}`}
+                        key={index}
+                        className={`notification-item ${
+                          !notification.read ? "notification-item--unread" : ""
+                        }`}
                       >
-                        {notification.icon}
+                        <div
+                          className={`notification-icon notification-icon--${notification.type}`}
+                        >
+                          {getNotificationIcon(notification.type)}
+                        </div>
+                        <div className="notification-content">
+                          <h4>{notification.title}</h4>
+                          <p>{notification.message}</p>
+                          <span className="notification-time">
+                            {notification.time}
+                          </span>
+                        </div>
+                        {!notification.read && (
+                          <div className="unread-dot"></div>
+                        )}
                       </div>
-                      <div className="notification-content">
-                        <h4>{notification.title}</h4>
-                        <p>{notification.message}</p>
-                        <span className="notification-time">
-                          {notification.time}
-                        </span>
-                      </div>
-                      {!notification.read && <div className="unread-dot"></div>}
+                    ))
+                  ) : (
+                    <div className="notification-empty">
+                      <p>Không có thông báo mới</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}
           </div>
 
           {/* User Menu */}
-          <div className="user-menu-container">
+          <div className="user-menu-container" ref={userMenuRef}>
             <button
               className={`user-menu-btn ${
                 showUserMenu ? "user-menu-btn--active" : ""
@@ -202,7 +253,7 @@ const Header = ({
               <span
                 className={`user-chevron ${sidebarOpen ? "hide-compact" : ""}`}
               >
-                ▼
+                <FiChevronDown /> {/* Icon-thay-thế */}
               </span>
             </button>
 
@@ -213,39 +264,56 @@ const Header = ({
                   <div className="user-details">
                     <h3>{user.name}</h3>
                     <p>{user.email}</p>
-                    <span className="user-badge">Quản lý</span>
+                    <span className="user-badge">{user.role}</span>
                   </div>
                 </div>
 
                 <div className="user-menu-items">
                   <button className="user-menu-item">
-                    <span className="menu-icon">👤</span>
+                    <span className="menu-icon">
+                      <FiUser />
+                    </span>
                     <span>Thông tin cá nhân</span>
                   </button>
                   <button className="user-menu-item">
-                    <span className="menu-icon">⚙️</span>
+                    <span className="menu-icon">
+                      <FiSettings />
+                    </span>
                     <span>Cài đặt tài khoản</span>
                   </button>
                   <button className="user-menu-item">
-                    <span className="menu-icon">🌙</span>
+                    <span className="menu-icon">
+                      <FiMoon />
+                    </span>
                     <span>Chế độ tối</span>
                   </button>
                   <button className="user-menu-item">
-                    <span className="menu-icon">🔔</span>
+                    <span className="menu-icon">
+                      <FiBell />
+                    </span>
                     <span>Cài đặt thông báo</span>
                   </button>
                   <div className="menu-divider"></div>
                   <button className="user-menu-item">
-                    <span className="menu-icon">❓</span>
+                    <span className="menu-icon">
+                      <FiHelpCircle />
+                    </span>
                     <span>Trợ giúp & Hỗ trợ</span>
                   </button>
                   <button className="user-menu-item">
-                    <span className="menu-icon">⌨️</span>
+                    <span className="menu-icon">
+                      <FiCommand />
+                    </span>
                     <span>Phím tắt</span>
                   </button>
                   <div className="menu-divider"></div>
-                  <button className="user-menu-item user-menu-item--danger">
-                    <span className="menu-icon">🚪</span>
+                  <button
+                    className="user-menu-item user-menu-item--danger"
+                    onClick={handleLogout}
+                  >
+                    <span className="menu-icon">
+                      <FiLogOut />
+                    </span>
                     <span>Đăng xuất</span>
                   </button>
                 </div>

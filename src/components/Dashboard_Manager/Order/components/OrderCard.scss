@@ -6,15 +6,8 @@
   padding: $spacing-6;
   transition: all 0.2s ease;
   @include fade-in;
-
-  &.alertCritical {
-    @include alert-critical;
-  }
-
-  &.alertWarning {
-    @include alert-warning;
-  }
-
+  display: flex;
+  flex-direction: column;
   &.ready {
     border-color: $green-400;
   }
@@ -30,6 +23,39 @@
 
   @include mobile {
     padding: $spacing-4;
+  }
+
+  /* FOCUS MODE */
+  &.focus {
+    padding: $spacing-3;
+    // để màu theo thời gian dễ thấy hơn
+    transition: border-color 0.15s ease, background-color 0.15s ease,
+      box-shadow 0.15s ease;
+
+    &.time-ok {
+      // 🟢 bình thường
+      border-color: #16a34a;
+      background-color: #f0fdf4;
+    }
+
+    &.time-warn {
+      // 🟡 cảnh báo
+      border-color: #eab308;
+      background-color: #fefce8;
+    }
+
+    &.time-mid {
+      // 🔴 nguy hiểm
+      border-color: #f97316;
+      background-color: #fff7ed;
+    }
+
+    &.time-high {
+      // 🔴🔴 khẩn cấp
+      border-color: #b91c1c;
+      background-color: #fef2f2;
+      box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.6);
+    }
   }
 }
 
@@ -53,36 +79,82 @@
   margin: 0 0 $spacing-1 0;
 }
 
+.orderTableOnly {
+  font-size: $text-xl;
+  font-weight: 700;
+}
+
 .orderUser {
   @include flex-start;
   gap: $spacing-2;
   font-size: $text-sm;
   color: $gray-600;
+
+  &__name {
+    font-weight: 500;
+    color: $gray-800;
+  }
+
+  &__contact {
+    font-size: $text-xs;
+    color: $gray-500;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
 }
 
+/* thời gian (normal) – mặc định xám, khi .ok thì xanh lá */
 .orderTime {
   @include flex-start;
   gap: $spacing-2;
   font-size: $text-sm;
   color: $gray-600;
-  flex-wrap: wrap;
+
+  &.ok {
+    // 🟢 trạng thái bình thường
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    background-color: #dcfce7; // nền xanh lá nhạt
+    color: #166534; // chữ xanh đậm
+    font-weight: 600;
+    font-size: $text-xs;
+  }
 }
 
-/* Time warning */
+/* Focus mode – time text nhỏ */
+.orderTimeMini {
+  font-size: $text-xs;
+  font-weight: 600;
+  color: $gray-700;
+}
+
+/* Time warning (normal mode) – vàng / đỏ / đỏ đậm */
 .timeWarning {
-  @include status-badge($red-600, white);
+  // dùng mixin để có pill đẹp sẵn, sau đó override màu
+  @include status-badge(#dcfce7, #166534);
   font-weight: 600;
 
   &.warning {
-    background-color: #ffc107;
+    // 🟡 cảnh báo
+    background-color: #fef9c3;
+    color: #92400e;
   }
 
   &.danger {
-    background-color: $red-500;
+    // 🔴 nguy hiểm
+    background-color: #fee2e2;
+    color: #b91c1c;
   }
 
   &.critical {
-    background-color: $red-600;
+    // 🔴🔴 khẩn cấp (icon 🚨 render từ JSX)
+    background-color: #b91c1c;
+    color: #fef2f2;
+    box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.6);
     @include pulse;
   }
 }
@@ -114,32 +186,13 @@
   }
 }
 
-/* Customer / Table info (giữ lại cho reuse) */
-.customerInfo {
-  background-color: $gray-50;
-  border-radius: 0.5rem;
-  padding: $spacing-4;
-  margin-bottom: $spacing-4;
-}
-
-.customerName {
-  @include flex-start;
-  gap: $spacing-2;
-  color: $gray-900;
-  font-weight: 500;
-  margin-bottom: $spacing-1;
-}
-
-.tableInfo {
-  @include flex-start;
-  gap: $spacing-2;
-  font-size: $text-sm;
-  color: $gray-600;
-}
-
 /* Items */
 .itemsSection {
   margin-bottom: $spacing-4;
+  flex: 1;
+  &.focus {
+    margin-bottom: $spacing-2;
+  }
 }
 
 .sectionTitle {
@@ -154,6 +207,7 @@
   display: flex;
   flex-direction: column;
   gap: $spacing-2;
+  height: 100%;
 }
 
 .itemCard {
@@ -168,6 +222,14 @@
   &:hover {
     background-color: $gray-50;
     transform: translateY(-1px);
+  }
+
+  &.focus {
+    padding: $spacing-2 $spacing-3;
+  }
+  &.itemCard--placeholder {
+    visibility: hidden; // 👈 chiếm chỗ, không hiển thị
+    pointer-events: none;
   }
 }
 
@@ -203,9 +265,25 @@
   font-size: $text-sm;
   color: $gray-600;
   font-style: italic;
+  &.itemMore--placeholder {
+    visibility: hidden; // vẫn giữ chiều cao dòng
+  }
 }
 
-/* Totals */
+/* Nút Xong cho focus mode */
+.itemDoneBtn {
+  @include button-success;
+  padding: 0.25rem 0.75rem;
+  font-size: $text-xs;
+  white-space: nowrap;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+/* Totals (normal mode) */
 .totalSection {
   @include flex-between;
   padding: $spacing-4;
@@ -233,6 +311,10 @@
   @include mobile {
     flex-direction: column;
   }
+
+  &.focusActions {
+    margin-top: $spacing-2;
+  }
 }
 
 .confirmButton {
@@ -245,34 +327,17 @@
   flex: 1;
 }
 
-.prepareButton {
-  @include button-base;
-  background-color: #3356cc;
-  color: white;
-  flex: 1;
-
-  &:hover:not(:disabled) {
-    background-color: $secondary-300-700;
-  }
-}
-
 .readyButton {
   @include button-success;
   flex: 1;
 }
 
-.completeButton {
-  @include button-base;
-  background-color: #198754;
-  color: white;
-  flex: 1;
-
-  &:hover:not(:disabled) {
-    background-color: #157347;
-  }
-}
-
 .viewButton {
   @include button-secondary;
   flex: 1;
+
+  &.slim {
+    padding: 0.25rem 0.75rem;
+    font-size: $text-xs;
+  }
 }

@@ -1,20 +1,52 @@
-# =========================
-# Common Scalars
-# =========================
-scalar DateTime
+enum UserType {
+  CUSTOMER
+  STAFF
+  MANAGER
+  ADMIN
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  PROBATION
+  SEASONAL
+  CONTRACT
+}
+
+enum EmploymentStatus {
+  WORKING
+  ON_LEAVE
+  RESIGNED
+  SUSPENDED
+}
+
+enum ShiftType {
+  MORNING
+  AFTERNOON
+  EVENING
+  FULL_DAY
+  ROTATING
+}
+
+enum StaffWorkingDay {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+enum CustomerType {
+  VIP
+  NEW
+  OFTEN
+}
 
 # =========================
 # Core Types
 # =========================
-
-type Role {
-  id: ID!
-  name: String!
-  slug: String!
-  description: String
-  createdAt: String
-  updatedAt: String
-}
 
 type Restaurant {
   id: ID!
@@ -28,6 +60,12 @@ type Address {
   district: String
   city: String
   country: String
+}
+
+type EmergencyContact {
+  name: String
+  phone: String
+  relation: String
 }
 
 # =========================
@@ -60,6 +98,33 @@ type User {
   updatedBy: User
   isGuest: Boolean
   guestExpiresAt: DateTime
+
+  # -------- NEW: phân loại & thuế ----------
+  userType: UserType
+  taxCode: String
+
+  # -------- NEW: thông tin nhân viên ----------
+  employeeCode: String
+  positionTitle: String
+
+  employmentType: EmploymentType
+  employmentStatus: EmploymentStatus
+
+  primaryRestaurant: Restaurant
+  shiftType: ShiftType
+  workingDays: [StaffWorkingDay!]
+
+  dateJoined: DateTime
+  dateLeft: DateTime
+
+  lastLoginAt: DateTime
+  lastLoginIp: String
+  forcePasswordChange: Boolean
+
+  noteInternal: String
+  emergencyContact: EmergencyContact
+  rate: Int
+  rateCount: Int
 }
 
 # =========================
@@ -75,6 +140,12 @@ input AddressInput {
   country: String
 }
 
+input EmergencyContactInput {
+  name: String
+  phone: String
+  relation: String
+}
+
 input CreateUserInput {
   fullName: String!
   username: String
@@ -88,6 +159,21 @@ input CreateUserInput {
   refRestaurantIds: [ID!]
   customerType: String
   captchaToken: String
+
+  # --- NEW: cho phép tạo nhân viên/owner/admin ---
+  userType: UserType
+  taxCode: String
+
+  employeeCode: String
+  positionTitle: String
+  employmentType: EmploymentType
+  employmentStatus: EmploymentStatus
+  primaryRestaurantId: ID
+  shiftType: ShiftType
+  workingDays: [StaffWorkingDay!]
+  dateJoined: DateTime
+  noteInternal: String
+  emergencyContact: EmergencyContactInput
 }
 
 input UpdateUserInput {
@@ -110,12 +196,6 @@ input AssignRoleToUserInput {
   roleId: ID!
 }
 
-enum CustomerType {
-  VIP
-  NEW
-  OFTEN
-}
-
 input AdminUpdateUserInput {
   fullName: String
   username: String
@@ -132,6 +212,23 @@ input AdminUpdateUserInput {
   guestExpiresAt: String
   refRestaurantIds: [ID!]
   roleId: ID
+
+  # --- NEW: staff fields & taxCode ---
+  userType: UserType
+  taxCode: String
+
+  employeeCode: String
+  positionTitle: String
+  employmentType: EmploymentType
+  employmentStatus: EmploymentStatus
+  primaryRestaurantId: ID
+  shiftType: ShiftType
+  workingDays: [StaffWorkingDay!]
+  dateJoined: DateTime
+  dateLeft: DateTime
+  forcePasswordChange: Boolean
+  noteInternal: String
+  emergencyContact: EmergencyContactInput
 }
 
 # =========================
@@ -152,6 +249,15 @@ type Query {
   roleList: [Role!]!
   users(roleId: ID, search: String, isGuest: Boolean): [User!]!
   customers(search: String, includeGuests: Boolean): [User!]!
+
+  # --- NEW: staff queries ---
+  staff(id: ID!): User
+  staffList(
+    restaurantId: ID
+    roleId: ID
+    search: String
+    employmentStatus: EmploymentStatus
+  ): [User!]!
 }
 
 # =========================
@@ -188,10 +294,26 @@ type Mutation {
   # Guests
   createGuestUser(fullName: String, phone: String, expiresInDays: Int): User!
 
-  # Loyalty/Metrics (NEW): đồng bộ điểm & hạng từ FE tính toán
+  # Loyalty/Metrics
   updateCustomerMetrics(
     id: ID!
     loyaltyPoints: Int!
     customerType: CustomerType!
+  ): User!
+
+  # --- NEW: Staff management (CRUD nhân viên) ---
+  # Tạo nhân viên: dùng lại CreateUserInput, resolver gọi chung logic createUser
+  createStaff(input: CreateUserInput!): User!
+
+  # Sửa thông tin nhân viên (dùng AdminUpdateUserInput)
+  updateStaff(userId: ID!, input: AdminUpdateUserInput!): User!
+
+  # Xóa/soft-delete nhân viên
+  deleteStaff(userId: ID!): Boolean!
+  rateStaff(userId: ID!, rating: Int!): User!
+  # Đổi trạng thái công việc (không phải status account)
+  setStaffEmploymentStatus(
+    userId: ID!
+    employmentStatus: EmploymentStatus!
   ): User!
 }

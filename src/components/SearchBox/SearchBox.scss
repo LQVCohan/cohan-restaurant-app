@@ -35,62 +35,82 @@ $gray-900: #0f172a;
 .search-box {
   position: relative;
   width: 100%;
-}
+  // Thêm-flex-để-căn-chỉnh-nội-bộ
+  display: flex;
+  align-items: center;
+  // Set-chiều-cao-trên-box-thay-vì-input
+  height: 44px;
+  background: $white;
+  border: 1px solid $gray-200;
+  border-radius: 10px; // Bo-tròn-viền
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease-in-out;
+  padding: 0 12px;
 
-.search-input {
-  width: 100%;
-  height: 42px;
-  padding: 0 3rem 0 2.5rem;
-  border: 2px solid $gray-200;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  background: $gray-50;
-  transition: all 0.2s ease;
-  color: $gray-800;
-  font-family: inherit;
-
-  &:focus {
-    outline: none;
-    border-color: $primary-blue;
-    background: $white;
+  // Hiệu-ứng-viền-xanh-nhạt-như-trong-ảnh
+  &:hover {
+    border-color: lighten($primary-blue, 30%);
     box-shadow: 0 0 0 3px rgba($primary-blue, 0.1);
   }
 
+  // Khi-focus-vào-ô-input
+  &:focus-within {
+    border-color: $primary-blue;
+    box-shadow: 0 0 0 3px rgba($primary-blue, 0.2);
+  }
+}
+
+.search-input {
+  flex: 1; // Chiếm-hết-không-gian-còn-lại
+  border: none;
+  outline: none;
+  background: none;
+  padding: 0; // Padding-đã-được-set-trên-.search-box
+  font-size: 0.9rem;
+  color: $gray-900;
+  width: 100%; // Đảm-bảo-chiếm-hết-chiều-rộng
+  font-family: inherit;
+  height: 100%; // Lấp-đầy-chiều-cao-của-box
+
   &::placeholder {
-    color: $gray-400;
+    color: $gray-500;
+    opacity: 1;
   }
 }
 
 .search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: $gray-400;
-  font-size: 1rem;
-  pointer-events: none;
+  // Bỏ-position-absolute, dùng-flex-từ-cha
+  font-size: 1.1rem;
+  color: $gray-500;
+  margin-right: 10px;
+  flex-shrink: 0; // Không-bị-bóp-méo
 }
 
 .search-shortcut {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+  // Bỏ-position-absolute, dùng-flex-từ-cha
   display: flex;
-  gap: 2px;
-  align-items: center;
-  pointer-events: none;
+  align-items: center; // Căn-chỉnh-kbd-và-span
+  gap: 4px; // Khoảng-cách-giữa-các-phím
+  color: $gray-500;
+  font-size: 0.8rem;
+  padding-left: 10px; // Tách-khỏi-input
+  flex-shrink: 0;
+  pointer-events: none; // Cho-phép-click-xuyên-qua
 
   kbd {
-    padding: 2px 6px;
-    background: $gray-200;
+    background: $gray-50;
+    border: 1px solid $gray-200;
     border-radius: 4px;
+    padding: 3px 6px;
     font-size: 0.75rem;
+    font-family: inherit; // Dùng-font-chung
+    color: $gray-700;
+    box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.05);
+  }
+
+  span {
     color: $gray-500;
-    font-family: inherit;
-    font-weight: 500;
-    border: 1px solid $gray-300;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    font-size: 0.75rem; // Căn-chỉnh-dấu-+
   }
 }
 
@@ -195,7 +215,8 @@ $gray-900: #0f172a;
 
   &.highlighted {
     background: rgba($primary-blue, 0.05);
-    border-left: 3px solid $primary-blue;
+    // Tắt-viền-xanh-để-trải-nghiệm-mượt-hơn
+    // border-left: 3px solid $primary-blue;
   }
 }
 
@@ -236,19 +257,9 @@ $gray-900: #0f172a;
   white-space: nowrap;
 }
 
-.search-result-category {
-  font-size: 0.625rem;
-  padding: 0.125rem 0.5rem;
-  background: $gray-200;
-  color: $gray-600;
-  border-radius: 12px;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
 .search-highlight {
   background: rgba($primary-blue, 0.2);
-  color: custom-darken($primary-blue, 10%);
+  color: darken($primary-blue, 10%); // <-- SỬA-LỖI-CÚ-PHÁP
   padding: 0 2px;
   border-radius: 2px;
   font-weight: 600;
@@ -306,7 +317,7 @@ $gray-900: #0f172a;
   }
 
   .search-input {
-    padding-right: 1rem;
+    padding-right: 0; // Không-cần-khoảng-trống-cho-shortcut
   }
 }
 
