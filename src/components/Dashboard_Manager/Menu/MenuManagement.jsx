@@ -362,7 +362,11 @@ const MenuManagement = () => {
     <div className="menu-management">
       {/* Header: chọn nhà hàng & timeslot */}
       <div className="menu-management__header">
-        <h1 className="menu-management__title">🍽️ Quản lý Menu</h1>
+        <h1 className="menu-management__title">
+          <span className="menu-management__title-icon">🍽️</span>
+          <span>Quản lý Menu</span>
+        </h1>
+
         <div className="menu-management__controls">
           <div className="control-group">
             <label className="control-group__label">Nhà hàng:</label>

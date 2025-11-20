@@ -15,8 +15,8 @@ const STAFF_FIELDS = gql`
     phone
     avatarUrl
 
-    userType # STAFF | MANAGER | CUSTOMER
-    status # active | inactive | blocked | pending
+    userType
+    status
     roleName
 
     role {
@@ -45,7 +45,6 @@ const STAFF_FIELDS = gql`
     dateJoined
     dateLeft
 
-    # ⭐ rating
     rate
     rateCount
 

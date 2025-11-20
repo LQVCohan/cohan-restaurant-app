@@ -93,7 +93,7 @@ const useAuth = () => {
   }, [error, navigate, showNotification]);
   const role = data?.me?.roleName || null;
   const emailVerified = data?.me?.emailVerified ?? false;
-
+  const status = data?.me?.status || "active";
   // Đồng bộ token khi tab khác thay đổi
   useEffect(() => {
     const handleStorageChange = () => {
@@ -124,7 +124,7 @@ const PrivateRoute = ({
   allowedRoles,
   requireVerifiedEmail = false,
 }) => {
-  const { token, role, emailVerified, loading } = useAuth();
+  const { token, role, emailVerified, status, loading } = useAuth();
   const location = useLocation();
 
   if (loading) return null;

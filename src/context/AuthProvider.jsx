@@ -169,8 +169,8 @@ export const AuthProvider = ({ children }) => {
         typeof roleOrUser === "string"
           ? roleOrUser
           : roleOrUser?.roleName || roleOrUser?.role?.slug || "customer";
-
-      const newUser = { ...(user || {}), roleName, avatar };
+      const status = roleOrUser?.status || "active";
+      const newUser = { ...(user || {}), roleName, avatar, status };
 
       setToken(newToken);
       setUser(newUser);

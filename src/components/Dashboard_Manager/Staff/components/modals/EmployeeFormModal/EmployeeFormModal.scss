@@ -1,651 +1,602 @@
+// src/pages/StaffManagement/components/modals/EmployeeFormModal.scss
 @use "../../../../../../styles/variables" as *;
 @use "../../../../../../styles/mixins" as *;
 
-// local theme cho employee modal
-$employee-primary: $info-500;
-$employee-accent: $success-green;
-$employee-header-gradient-start: rgba($employee-primary, 0.1);
-$employee-header-gradient-end: rgba($employee-primary, 0.05);
+// ==== PREMIUM COLOR PALETTE ====
+$c-primary: #2563eb; // Blue-600
+$c-primary-soft: #eff6ff; // Blue-50
+$c-text-main: #1e293b; // Slate-800
+$c-text-sub: #64748b; // Slate-500
+$c-border: #e2e8f0; // Slate-200
+$c-input-bg: #f8fafc; // Slate-50
+$c-danger: #ef4444;
+$c-success: #10b981;
+$radius: 10px;
 
 .employee-form-modal {
-  /* ==== NỀN MODAL ==== */
+  // 1. FIX LAYOUT MODAL CONTAINER (Dính footer đáy, body cuộn)
   .modal {
-    background: radial-gradient(
-        circle at top left,
-        rgba($employee-primary, 0.08),
-        transparent 55%
-      ),
-      radial-gradient(
-        circle at bottom right,
-        rgba($employee-primary, 0.06),
-        transparent 55%
-      ),
-      $bg-primary;
+    background: #fff;
     display: flex;
-    flex-direction: column;
-    max-height: 90vh;
+    flex-direction: column; /* Xếp dọc */
+    height: 85vh; /* Chiều cao cố định */
+    max-height: 800px;
+    border-radius: 16px;
+    overflow: hidden; /* Không cho container cha scroll */
+    border: 1px solid $c-border;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   }
 
-  /* ==== HEADER ==== */
+  // HEADER
   .modal-header-custom {
-    padding: 0.75rem 1.75rem;
-    border-bottom: 1px solid rgba($border-light, 0.7);
-    background: linear-gradient(
-      135deg,
-      $employee-header-gradient-start,
-      $employee-header-gradient-end
-    );
-    position: relative;
-    overflow: hidden;
+    flex-shrink: 0; /* Không co lại */
+    padding: 1rem 2rem;
+    background: #fff;
+    border-bottom: 1px solid $c-border;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 
-    &::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(
-        circle at top right,
-        rgba(#fff, 0.4),
-        transparent 60%
-      );
-      opacity: 0.5;
-      pointer-events: none;
+    .header-text {
+      h2 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: $c-text-main;
+        margin: 0;
+      }
+      p {
+        font-size: 0.875rem;
+        color: $c-text-sub;
+        margin: 4px 0 0;
+      }
     }
-
-    .modal-title-custom {
-      position: relative;
-      font-size: 1.2rem;
-      font-weight: 750;
-      color: $text-primary;
-      margin-bottom: 0.2rem;
+    .close-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid $c-border;
+      background: #fff;
+      color: $c-text-sub;
+      font-size: 1.5rem;
       display: flex;
       align-items: center;
-      gap: 0.6rem;
-
-      &::before {
-        content: "➕";
-        width: 32px;
-        height: 32px;
-        border-radius: 999px;
-        background: rgba(#fff, 0.9);
-        border: 1px solid rgba($employee-primary, 0.25);
-        @include flex-center;
-        font-size: 1.1rem;
-        box-shadow: 0 10px 25px rgba($employee-primary, 0.25);
-      }
-    }
-
-    .modal-subtitle-custom {
-      position: relative;
-      font-size: 0.9rem;
-      color: $text-secondary;
-    }
-  }
-
-  .modal-body-custom {
-    flex: 1; // 👈 dãn hết phần còn lại
-    padding: 1.25rem 1.75rem 1.5rem;
-    overflow-y: auto;
-  }
-
-  .modal-footer-custom {
-    @include flex-between;
-    padding: 0.9rem 1.75rem 1.1rem;
-    border-top: 1px solid rgba($border-light, 0.8);
-    background: rgba($bg-secondary, 0.8);
-    backdrop-filter: blur(8px);
-
-    .footer-left,
-    .footer-right {
-      display: flex;
-      gap: 0.75rem;
-    }
-
-    @include mobile {
-      flex-direction: column;
-      gap: 0.75rem;
-
-      .footer-left,
-      .footer-right {
-        justify-content: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: 0.2s;
+      &:hover {
+        background: #fee2e2;
+        color: #ef4444;
+        border-color: #ef4444;
       }
     }
   }
 
-  /* ==== STEP INDICATOR ==== */
+  // STEP INDICATOR
   .step-indicator {
-    margin-top: 1.1rem;
-    padding: 0.75rem 1.25rem 0.45rem;
-    border-radius: 999px;
-    background: rgba(#fff, 0.9);
-    box-shadow: 0 10px 30px rgba($employee-primary, 0.05);
+    flex-shrink: 0;
     display: flex;
-    justify-content: space-between;
-    gap: $spacing-md;
-    position: relative;
-
-    &::before {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 2.4rem;
-      right: 2.4rem;
-      height: 3px;
-      background: rgba($border-light, 0.9);
-      transform: translateY(-50%);
-      border-radius: 999px;
-      z-index: 0;
-    }
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem 3rem;
+    background: #fff;
+    border-bottom: 1px solid $c-border;
 
     .step-item {
-      position: relative;
-      z-index: 1;
       display: flex;
-      flex-direction: column;
       align-items: center;
-      gap: $spacing-xs;
-      flex: 1;
+      gap: 0.75rem;
+      position: relative;
       opacity: 0.5;
-      transition: all $transition-base;
-
+      transition: 0.3s;
+      &:not(:last-child) {
+        margin-right: 2rem;
+        &::after {
+          content: "";
+          position: absolute;
+          right: -1.5rem;
+          top: 50%;
+          width: 1rem;
+          height: 2px;
+          background: $c-border;
+          transform: translateY(-50%);
+        }
+      }
+      .step-dot {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: $c-input-bg;
+        border: 2px solid $c-border;
+        color: $c-text-sub;
+        font-weight: 700;
+        font-size: 0.8rem;
+        display: grid;
+        place-items: center;
+      }
+      .step-label {
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
       &.active,
       &.completed {
         opacity: 1;
-      }
-
-      .step-number {
-        width: 32px;
-        height: 32px;
-        border-radius: 999px;
-        @include flex-center;
-        font-weight: 700;
-        font-size: 0.8rem;
-        color: $text-secondary;
-        background: #fff;
-        border: 2px solid $border-light;
-        box-shadow: 0 0 0 2px #fff;
-        transition: all $transition-base;
-      }
-
-      &.active .step-number {
-        background: $employee-primary;
-        border-color: $employee-primary;
-        color: #fff;
-        transform: scale(1.05);
-        box-shadow: 0 10px 25px rgba($employee-primary, 0.35);
-      }
-
-      &.completed .step-number {
-        background: $employee-accent;
-        border-color: $employee-accent;
-        color: #fff;
-        box-shadow: 0 10px 24px rgba($employee-accent, 0.35);
-      }
-
-      .step-label {
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: $text-secondary;
-        text-align: center;
-        max-width: 120px;
-        line-height: 1.3;
-        white-space: nowrap;
-      }
-    }
-
-    @include mobile {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.6rem;
-      border-radius: $radius-lg;
-
-      &::before {
-        display: none;
-      }
-
-      .step-item {
-        flex-direction: row;
-        align-items: center;
-        justify-content: flex-start;
-
-        .step-label {
-          text-align: left;
-          white-space: normal;
-        }
-      }
-    }
-  }
-
-  /* ==== FORM WRAPPER ==== */
-  .employee-form {
-    // Password field + eye icon
-    .password-field {
-      position: relative;
-      display: flex;
-      align-items: center;
-
-      .form-input {
-        padding-right: 2.5rem; // chừa chỗ cho icon mắt
-      }
-
-      .password-toggle {
-        @include button-base;
-        position: absolute;
-        right: 0.6rem;
-        top: 50%;
-        transform: translateY(-50%);
-        border: none;
-        background: transparent;
-        font-size: 1.05rem;
-        line-height: 1;
-        color: $text-secondary;
-        padding: 0;
-        width: 1.8rem;
-        height: 1.8rem;
-        border-radius: 999px;
-
-        &:hover:not(:disabled) {
-          background: rgba($employee-primary, 0.06);
-          color: $employee-primary;
-        }
-
-        &:disabled {
-          opacity: 0.4;
-          cursor: default;
-        }
-      }
-    }
-
-    .form-step {
-      max-width: 920px;
-      margin: 0 auto;
-      background: #fff;
-      border-radius: 1.25rem;
-      box-shadow: 0 18px 40px rgba(#000, 0.06);
-      padding: 1.5rem 1.6rem 1.3rem;
-      border: 1px solid rgba($border-light, 0.9);
-      animation: employeeCardIn 0.35s ease-out;
-
-      .step-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: $text-primary;
-        margin-bottom: $spacing-md;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-
-        &::before {
-          content: "👤";
-          font-size: 1.15rem;
-        }
-      }
-
-      .section-title {
-        font-size: 1rem;
-        font-weight: 600;
-        color: $text-primary;
-        margin-bottom: 1rem;
-        padding-bottom: $spacing-sm;
-        border-bottom: 1px dashed $border-light;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-
-        &::before {
-          content: "🚨";
-          font-size: 1rem;
-        }
-      }
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: $spacing-lg;
-
-      @include mobile {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-      }
-    }
-
-    .form-group {
-      margin-bottom: $spacing-lg;
-
-      .form-label {
-        display: flex;
-        align-items: center;
-        gap: 0.3rem;
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: $text-primary;
-        margin-bottom: $spacing-xs;
-      }
-
-      .form-input,
-      .form-select,
-      .form-textarea {
-        @include form-input;
-        background-color: $bg-secondary;
-        border-radius: $radius-lg;
-        border-width: 1px;
-        transition: box-shadow 0.16s ease, border-color 0.16s ease,
-          background-color 0.16s ease;
-
-        &:focus {
-          border-color: $employee-primary;
-          box-shadow: 0 0 0 1px rgba($employee-primary, 0.4);
-          background-color: #fff;
-        }
-      }
-
-      .form-input.error,
-      .form-select.error {
-        border-color: $error-500;
-      }
-
-      .form-textarea {
-        resize: vertical;
-        min-height: 80px;
-        font-family: inherit;
-      }
-
-      .error-message {
-        color: $error-500;
-        font-size: 0.8rem;
-        margin-top: $spacing-xs;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: $spacing-xs;
-
-        &::before {
-          content: "⚠️";
-        }
-      }
-    }
-
-    .label-required {
-      color: $error-500;
-      font-weight: 600;
-    }
-
-    /* ==== DEPARTMENT ==== */
-    .department-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-      gap: 0.9rem;
-
-      .department-card {
-        padding: 0.85rem 0.9rem;
-        border: 1px solid $border-light;
-        border-radius: $radius-lg;
-        cursor: pointer;
-        transition: all $transition-base;
-        background: $bg-secondary;
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-
-        &:hover {
-          border-color: $employee-primary;
-          transform: translateY(-1px);
-          box-shadow: $shadow-sm;
-        }
-
-        &.selected {
-          border-color: $employee-primary;
-          background: rgba($employee-primary, 0.06);
-
-          .department-label {
-            color: $employee-primary;
-          }
-        }
-
-        .department-label {
-          font-weight: 600;
-          font-size: 0.9rem;
-          color: $text-primary;
-        }
-
-        .department-description {
-          font-size: 0.78rem;
-          color: $text-secondary;
-          line-height: 1.4;
-        }
-      }
-    }
-    .employee-close-btn {
-      @include button-base;
-      width: 32px;
-      height: 32px;
-      border-radius: 999px;
-      border: 1px solid rgba(0, 0, 0, 0.08);
-      background: rgba(#fff, 0.95);
-      font-size: 20px;
-      font-weight: 400;
-      color: $text-secondary;
-      flex-shrink: 0;
-
-      &:hover:not(:disabled) {
-        background: rgba(239, 68, 68, 0.08);
-        border-color: rgba(239, 68, 68, 0.25);
-        color: #ef4444;
-        transform: translateY(-1px);
-      }
-
-      &:active {
-        transform: translateY(0);
-      }
-    }
-    .step-indicator {
-      margin: 0.5rem 1.75rem 0.75rem; // 👈 sát hơn, bớt tốn chiều cao
-    }
-    /* ==== USER TYPE ==== */
-    .user-type-toggle {
-      display: inline-flex;
-      flex-wrap: wrap;
-      gap: $spacing-sm;
-      background: $bg-secondary;
-      padding: 0.35rem;
-      border-radius: 999px;
-
-      .user-type-chip {
-        @include button-base;
-        padding: 0.35rem 0.9rem;
-        font-size: 0.8rem;
-        border-radius: 999px;
-        background: transparent;
-        color: $text-secondary;
-        border: none;
-
-        &.selected {
-          background: $employee-primary;
+        .step-dot {
+          background: $c-primary;
+          border-color: $c-primary;
           color: #fff;
-          box-shadow: 0 8px 18px rgba($employee-primary, 0.35);
         }
+        .step-label {
+          color: $c-primary;
+        }
+      }
+      &.completed .step-dot {
+        background: $c-success;
+        border-color: $c-success;
+      }
+    }
+  }
 
-        &:hover:not(:disabled) {
-          background: rgba($employee-primary, 0.12);
-          color: $employee-primary;
-          transform: translateY(-1px);
-        }
+  // FORM BODY (Scrollable Area)
+  .modal-form-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+
+    .modal-body-scroll {
+      flex: 1;
+      overflow-y: auto; /* Chỉ vùng này cuộn */
+      padding: 1.5rem 2.5rem;
+      background: #ffffff;
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+      &::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+      }
+    }
+  }
+
+  .form-step {
+    max-width: 700px;
+    margin: 0 auto;
+    animation: fadeIn 0.3s ease;
+    .form-header {
+      margin-bottom: 1.5rem;
+      text-align: center;
+      h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: $c-text-main;
+      }
+      p {
+        color: $c-text-sub;
+      }
+    }
+    .mt-2 {
+      margin-top: 1rem;
+    }
+    .mt-3 {
+      margin-top: 1.5rem;
+    }
+  }
+
+  // INPUT STYLES
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .form-group {
+    margin-bottom: 1.25rem;
+    .form-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: $c-text-main;
+      margin-bottom: 0.5rem;
+      .req {
+        color: $c-danger;
       }
     }
 
-    /* ==== REF RESTAURANTS ==== */
-    .ref-restaurants-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-
-      .ref-restaurant-item {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.3rem 0.6rem;
-        border-radius: 999px;
-        border: 1px solid $border-light;
-        background: $bg-secondary;
-        font-size: 0.78rem;
-        cursor: pointer;
-
-        input {
-          margin: 0;
-        }
+    .form-input,
+    .form-select {
+      width: 100%;
+      height: 46px;
+      padding: 0 1rem;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: $c-input-bg;
+      color: $c-text-main;
+      font-weight: 500;
+      font-size: 0.95rem;
+      transition: 0.2s;
+      &:focus {
+        background: #fff;
+        border-color: $c-primary;
+        box-shadow: 0 0 0 4px rgba($c-primary, 0.1);
+        outline: none;
+      }
+      &.error {
+        background: #fef2f2;
+        border-color: $c-danger;
       }
     }
-
-    /* ==== SHIFT OPTIONS ==== */
-    .shift-options {
-      display: grid;
-      gap: $spacing-sm;
-
-      .shift-option {
-        display: flex;
-        align-items: center;
-        gap: $spacing-sm;
-        padding: 0.8rem 1rem;
-        border: 1px solid $border-light;
-        border-radius: $radius-lg;
-        cursor: pointer;
-        transition: all $transition-base;
-        background: $bg-secondary;
-
-        &:hover {
-          border-color: $employee-primary;
-          background: lighten($bg-secondary, 3%);
-        }
-
-        input[type="radio"] {
-          margin: 0;
-          accent-color: $employee-primary;
-        }
-
-        .shift-label {
-          font-weight: 500;
-          color: $text-primary;
-        }
-
-        &:has(input:checked) {
-          border-color: $employee-primary;
-          background: rgba($employee-primary, 0.08);
-
-          .shift-label {
-            color: $employee-primary;
-            font-weight: 600;
-          }
-        }
-      }
+    textarea.form-input {
+      height: auto;
+      padding: 0.75rem;
     }
-
-    /* ==== EMPLOYMENT TYPE ==== */
-    .employment-type-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: $spacing-sm;
-
-      .employment-chip {
-        @include button-base;
-        padding: 0.3rem 0.9rem;
-        font-size: 0.8rem;
-        border-radius: 999px;
-        background: $bg-secondary;
-        color: $text-secondary;
-        border: 1px dashed $border-light;
-
-        &.selected {
-          background: rgba($employee-accent, 0.1);
-          color: $employee-accent;
-          border-color: $employee-accent;
-          box-shadow: 0 8px 16px rgba($employee-accent, 0.3);
-        }
-      }
+    .error-msg {
+      color: $c-danger;
+      font-size: 0.8rem;
+      margin-top: 0.4rem;
+      font-weight: 500;
+      display: block;
     }
+  }
 
-    /* ==== SALARY ==== */
-    .salary-input-group {
-      position: relative;
+  // 2. FIX PASSWORD INPUT (Căn giữa icon)
+  .password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    input {
+      padding-right: 45px;
+    } // Chừa chỗ cho icon
+
+    .eye-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%); // Căn giữa tuyệt đối theo chiều dọc
+      border: none;
+      background: transparent;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
       display: flex;
       align-items: center;
-
-      .form-input {
-        padding-right: 60px;
+      justify-content: center;
+      opacity: 0.6;
+      &:hover {
+        opacity: 1;
       }
-
-      .salary-currency {
-        position: absolute;
-        right: 0.9rem;
-        font-weight: 600;
-        color: $text-secondary;
-        background: $bg-tertiary;
-        padding: $spacing-xs $spacing-sm;
-        border-radius: $radius-md;
-        font-size: 0.78rem;
-      }
-    }
-
-    .salary-note {
-      margin-top: $spacing-xs;
-      font-size: 0.78rem;
-      color: $text-secondary;
-      font-style: italic;
-    }
-
-    /* ==== EMERGENCY CONTACT ==== */
-    .emergency-contact {
-      background: $warning-light;
-      border: 1px solid rgba($warning-500, 0.3);
-      border-radius: $radius-lg;
-      padding: $spacing-lg;
-      margin-top: $spacing-md;
-    }
-
-    /* ==== SUBMIT ERROR ==== */
-    .submit-error {
-      background: $error-100;
-      color: $error-500;
-      padding: 1rem;
-      border-radius: $radius-md;
-      border: 1px solid $error-500;
-      font-weight: 500;
-      text-align: center;
-      margin-top: $spacing-md;
     }
   }
 
-  /* ==== BUTTONS ==== */
+  // SECTIONS
+  .section-box {
+    background: #f8fafc;
+    border: 1px solid $c-border;
+    border-radius: $radius;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    .box-title {
+      font-size: 0.95rem;
+      margin: 0 0 1rem;
+      color: $c-text-main;
+      font-weight: 700;
+    }
+    &.highlight-box {
+      background: #f0f9ff;
+      border-color: #bae6fd;
+      .box-title {
+        color: #0369a1;
+      }
+    }
+    &.warning-box {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      .box-title {
+        color: #c2410c;
+      }
+    }
+    &.salary-box {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+    .sub-label {
+      font-size: 0.85rem;
+      color: $c-text-sub;
+      margin-bottom: 0.3rem;
+      display: block;
+      font-weight: 500;
+    }
+  }
+
+  // USER TYPE & SHIFT CARDS
+  .user-type-group {
+    display: flex;
+    gap: 0.75rem;
+    .type-option {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      height: 46px;
+      background: #fff;
+      border: 1px solid $c-border;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+      &:hover {
+        border-color: $c-text-sub;
+      }
+      &.active {
+        border-color: $c-primary;
+        background: $c-primary-soft;
+        .type-label {
+          color: $c-primary;
+        }
+      }
+      .type-icon {
+        font-size: 1.1rem;
+      }
+      .type-label {
+        font-weight: 600;
+        color: $c-text-sub;
+        font-size: 0.9rem;
+      }
+    }
+  }
+
+  .department-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    .dept-card {
+      position: relative;
+      padding: 1rem;
+      background: #fff;
+      border: 1px solid $c-border;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      }
+      &.active {
+        border-color: $c-primary;
+        background: $c-primary-soft;
+        box-shadow: 0 0 0 1px $c-primary;
+        .dept-title {
+          color: $c-primary;
+        }
+        .check-mark {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      .dept-title {
+        display: block;
+        font-weight: 700;
+        color: $c-text-main;
+        font-size: 0.95rem;
+      }
+      .dept-desc {
+        font-size: 0.75rem;
+        color: $c-text-sub;
+      }
+      .check-mark {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 18px;
+        height: 18px;
+        background: $c-primary;
+        color: #fff;
+        border-radius: 50%;
+        font-size: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transform: scale(0.5);
+        transition: 0.2s;
+      }
+    }
+  }
+
+  .shift-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+    .shift-card {
+      padding: 0.75rem;
+      border: 1px solid $c-border;
+      border-radius: 8px;
+      background: #fff;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: 0.2s;
+      &.active {
+        border-color: $c-primary;
+        background: $c-primary-soft;
+        .shift-name,
+        .shift-time {
+          color: $c-primary;
+        }
+      }
+      .shift-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: $c-text-main;
+      }
+      .shift-time {
+        font-size: 0.75rem;
+        color: $c-text-sub;
+      }
+    }
+  }
+
+  .pills-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    .pill-item {
+      padding: 0.5rem 1rem;
+      border: 1px solid $c-border;
+      background: #fff;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: $c-text-sub;
+      cursor: pointer;
+      transition: 0.2s;
+      &:hover {
+        background: $c-input-bg;
+      }
+      &.active {
+        background: $c-primary;
+        color: #fff;
+        border-color: $c-primary;
+        font-weight: 600;
+      }
+    }
+  }
+
+  // TAGS & SALARY
+  .ref-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    .tag-item {
+      padding: 0.4rem 1rem;
+      background: $c-input-bg;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: $c-text-sub;
+      cursor: pointer;
+      transition: 0.2s;
+      &.active {
+        background: $c-primary;
+        color: #fff;
+        font-weight: 600;
+      }
+    }
+  }
+  .salary-input-row {
+    display: flex;
+    align-items: center;
+    position: relative;
+    .salary-input-field {
+      width: 100%;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #15803d;
+      border: none;
+      border-bottom: 2px solid $c-border;
+      background: transparent;
+      padding: 0.5rem 3rem 0.5rem 0.5rem;
+      outline: none;
+      &:focus {
+        border-color: #15803d;
+      }
+    }
+    .currency-badge {
+      position: absolute;
+      right: 0;
+      font-weight: 700;
+      color: #15803d;
+      opacity: 0.7;
+    }
+  }
+  .hint-text {
+    font-size: 0.8rem;
+    color: $c-text-sub;
+    margin-top: 0.5rem;
+    font-style: italic;
+  }
+  .submit-error-box {
+    background: #fef2f2;
+    color: $c-danger;
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    margin-top: 1.5rem;
+    font-weight: 500;
+    border: 1px solid #fecaca;
+  }
+
+  // FOOTER
+  .modal-footer-custom {
+    flex-shrink: 0;
+    padding: 1.25rem 2rem;
+    background: #fff;
+    border-top: 1px solid $c-border;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    .footer-right {
+      display: flex;
+      gap: 1rem;
+    }
+  }
+
+  // BUTTONS
   .btn {
-    @include button-base;
-
-    &--primary {
-      @include button-variant($employee-primary, $primary-hover);
+    height: 44px;
+    padding: 0 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    &.btn-text {
+      background: transparent;
+      border: none;
+      color: $c-text-sub;
+      &:hover {
+        color: $c-text-main;
+        background: $c-input-bg;
+      }
     }
-
-    &--success {
-      @include button-variant($employee-accent, $success-hover);
+    &.btn-outlined {
+      background: #fff;
+      border: 1px solid $c-border;
+      color: $c-text-main;
+      &:hover {
+        background: $c-input-bg;
+      }
     }
-
-    &--secondary {
-      background: $gray-100;
-      color: $text-secondary;
-      border: 1px solid $border-light;
-
+    &.btn-primary {
+      background: $c-primary;
+      color: #fff;
+      border: none;
+      box-shadow: 0 2px 4px rgba($c-primary, 0.3);
       &:hover:not(:disabled) {
-        background: $gray-200;
+        background: darken($c-primary, 5%);
         transform: translateY(-1px);
       }
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
     }
   }
 
-  @keyframes employeeCardIn {
+  @keyframes fadeIn {
     from {
       opacity: 0;
-      transform: translateY(10px) scale(0.98);
+      transform: translateY(10px);
     }
     to {
       opacity: 1;
-      transform: translateY(0) scale(1);
+      transform: translateY(0);
     }
   }
 }

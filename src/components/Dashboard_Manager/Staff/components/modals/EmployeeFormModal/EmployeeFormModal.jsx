@@ -26,10 +26,10 @@ const EmployeeFormModal = ({
     emergencyPhone: "",
     emergencyRelation: "",
     notes: "",
-    primaryRestaurantId: "",
+    primaryRestaurantId: defaultRestaurantId || "",
     refRestaurantIds: [],
-    userType: "STAFF", // STAFF | MANAGER
-    employmentType: "fulltime", // fulltime | parttime | seasonal | intern
+    userType: "STAFF",
+    employmentType: "full_time",
     password: "",
     confirmPassword: "",
   });
@@ -37,9 +37,8 @@ const EmployeeFormModal = ({
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [isDirty, setIsDirty] = useState(false); // 👈 đang có thay đổi hay chưa
+  const [isDirty, setIsDirty] = useState(false);
 
-  // show / hide password
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -47,45 +46,45 @@ const EmployeeFormModal = ({
     {
       value: "service",
       label: "🍽️ Phục vụ",
-      description: "Phục vụ khách hàng, nhận order",
+      description: "Phục vụ khách hàng",
     },
     { value: "kitchen", label: "👨‍🍳 Bếp", description: "Chế biến món ăn" },
     {
       value: "cashier",
       label: "💰 Thu ngân",
-      description: "Thanh toán, quản lý tiền",
+      description: "Thanh toán, thu chi",
     },
     {
       value: "management",
       label: "👔 Quản lý",
-      description: "Điều hành, giám sát",
+      description: "Điều hành chung",
     },
-    { value: "cleaning", label: "🧹 Vệ sinh", description: "Dọn dẹp, vệ sinh" },
+    { value: "cleaning", label: "🧹 Vệ sinh", description: "Giữ gìn vệ sinh" },
     {
       value: "delivery",
       label: "🚚 Giao hàng",
-      description: "Giao món ăn cho khách",
+      description: "Giao đơn cho khách",
     },
   ];
 
   const shiftOptions = [
-    { value: "morning", label: "🌅 Ca sáng (6:00 - 14:00)" },
-    { value: "afternoon", label: "☀️ Ca chiều (14:00 - 22:00)" },
-    { value: "night", label: "🌙 Ca đêm (22:00 - 6:00)" },
-    { value: "full", label: "⏰ Ca full (8:00 - 17:00)" },
-    { value: "part-time", label: "⏱️ Bán thời gian" },
+    { value: "morning", label: "🌅 Sáng (6:00 - 14:00)" },
+    { value: "afternoon", label: "☀️ Chiều (14:00 - 22:00)" },
+    { value: "night", label: "🌙 Đêm (22:00 - 6:00)" },
+    { value: "full", label: "⏰ Full (8:00 - 17:00)" },
+    { value: "part-time", label: "⏱️ Part-time" },
   ];
 
   const userTypeOptions = [
-    { value: "STAFF", label: "👥 Nhân viên" },
-    { value: "MANAGER", label: "👔 Quản lý" },
+    { value: "STAFF", label: "Nhân viên", icon: "👤" },
+    { value: "MANAGER", label: "Quản lý", icon: "👔" },
   ];
 
   const employmentTypeOptions = [
-    { value: "fulltime", label: "⏰ Toàn thời gian" },
-    { value: "parttime", label: "⏱️ Bán thời gian" },
-    { value: "seasonal", label: "🍂 Thời vụ" },
-    { value: "intern", label: "📚 Thực tập" },
+    { value: "full_time", label: "Toàn thời gian" },
+    { value: "part_time", label: "Bán thời gian" },
+    { value: "seasonal", label: "Thời vụ" },
+    { value: "intern", label: "Thực tập" },
   ];
 
   useEffect(() => {
@@ -113,7 +112,7 @@ const EmployeeFormModal = ({
       primaryRestaurantId: defaultRestaurantId || "",
       refRestaurantIds: [],
       userType: "STAFF",
-      employmentType: "fulltime",
+      employmentType: "full_time",
       password: "",
       confirmPassword: "",
     });
@@ -125,55 +124,41 @@ const EmployeeFormModal = ({
 
   const validateStep = (step) => {
     const newErrors = {};
-
     if (step === 1) {
       if (!formData.name.trim()) newErrors.name = "Vui lòng nhập họ tên";
       if (!formData.role.trim()) newErrors.role = "Vui lòng nhập chức vụ";
       if (!formData.department) newErrors.department = "Vui lòng chọn bộ phận";
       if (!formData.primaryRestaurantId)
-        newErrors.primaryRestaurantId = "Vui lòng chọn nhà hàng làm việc";
-      if (!formData.userType) newErrors.userType = "Vui lòng chọn loại nhân sự";
+        newErrors.primaryRestaurantId = "Chọn nhà hàng";
     }
-
     if (step === 2) {
-      if (!formData.phone.trim()) {
-        newErrors.phone = "Vui lòng nhập số điện thoại";
-      } else if (!/^[0-9]{9,11}$/.test(formData.phone.replace(/\s/g, ""))) {
-        newErrors.phone = "Số điện thoại không hợp lệ (9-11 số)";
-      }
+      if (!formData.phone.trim()) newErrors.phone = "Nhập số điện thoại";
+      else if (!/^[0-9]{9,11}$/.test(formData.phone.replace(/\s/g, "")))
+        newErrors.phone = "SĐT không hợp lệ";
 
-      if (!formData.email.trim()) {
-        newErrors.email = "Vui lòng nhập email";
-      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      if (!formData.email.trim()) newErrors.email = "Nhập email";
+      else if (!/\S+@\S+\.\S+/.test(formData.email))
         newErrors.email = "Email không hợp lệ";
-      }
 
       if (mode === "add") {
-        if (!formData.password.trim()) {
-          newErrors.password = "Vui lòng nhập mật khẩu ban đầu";
-        } else if (formData.password.length < 6) {
-          newErrors.password = "Mật khẩu phải từ 6 ký tự trở lên";
-        }
+        if (!formData.password.trim()) newErrors.password = "Nhập mật khẩu";
+        else if (formData.password.length < 6)
+          newErrors.password = "Tối thiểu 6 ký tự";
 
-        if (!formData.confirmPassword.trim()) {
-          newErrors.confirmPassword = "Vui lòng nhập lại mật khẩu";
-        } else if (formData.password !== formData.confirmPassword) {
-          newErrors.confirmPassword = "Mật khẩu nhập lại không khớp";
-        }
+        if (!formData.confirmPassword.trim())
+          newErrors.confirmPassword = "Nhập lại mật khẩu";
+        else if (formData.password !== formData.confirmPassword)
+          newErrors.confirmPassword = "Không khớp";
       }
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    setIsDirty(true); // có sửa form => đánh dấu bẩn
-
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-    }
+    setIsDirty(true);
+    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
   };
 
   const handleToggleRefRestaurant = (id) => {
@@ -188,38 +173,50 @@ const EmployeeFormModal = ({
   };
 
   const handleNextStep = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep((prev) => prev + 1);
-    }
+    if (validateStep(currentStep)) setCurrentStep((prev) => prev + 1);
   };
 
   const handlePrevStep = () => {
     setCurrentStep((prev) => prev - 1);
   };
 
-  // đóng modal có cảnh báo nếu đang nhập dở
   const handleRequestClose = () => {
     if (isSubmitting) return;
     if (!isDirty) {
       onClose?.();
       return;
     }
-
-    const ok = window.confirm(
-      "Bạn có muốn thoát không? Các thông tin chưa lưu sẽ bị mất."
-    );
-    if (ok) {
-      onClose?.();
-    }
+    if (window.confirm("Dữ liệu chưa lưu sẽ bị mất. Thoát?")) onClose?.();
   };
 
+  // === SUBMIT CHỈ Ở BƯỚC 3 ===
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
-    if (!validateStep(currentStep)) return;
+    // Validate step hiện tại
+    const isValidCurrent = validateStep(currentStep);
+    if (!isValidCurrent) return;
 
+    // Nếu chưa tới bước 3 => chỉ chuyển bước, KHÔNG submit
+    if (currentStep < 3) {
+      setCurrentStep((prev) => prev + 1);
+      return;
+    }
+
+    // Đảm bảo step 1 & 2 đều hợp lệ (phòng TH nhảy bước lạ)
+    const step1Ok = validateStep(1);
+    const step2Ok = validateStep(2);
+    if (!step1Ok) {
+      setCurrentStep(1);
+      return;
+    }
+    if (!step2Ok) {
+      setCurrentStep(2);
+      return;
+    }
+
+    // Tới đây mới thực sự submit
     setIsSubmitting(true);
-
     try {
       const baseSalary = formData.salary
         ? Number(formData.salary.toString().replace(/[^\d]/g, ""))
@@ -230,23 +227,16 @@ const EmployeeFormModal = ({
         email: formData.email.trim(),
         phone: formData.phone.trim(),
         password: formData.password || undefined,
-        userType: formData.userType, // STAFF | MANAGER
+        userType: formData.userType,
         positionTitle: formData.role.trim(),
         department: formData.department,
         primaryRestaurantId: formData.primaryRestaurantId || undefined,
-        refRestaurantIds:
-          formData.refRestaurantIds && formData.refRestaurantIds.length > 0
-            ? formData.refRestaurantIds
-            : undefined,
+        refRestaurantIds: formData.refRestaurantIds,
         employmentType: formData.employmentType,
         shiftType: formData.shift || undefined,
         dateJoined: formData.startDate || undefined,
         baseSalary,
-        address: formData.address
-          ? {
-              line1: formData.address,
-            }
-          : undefined,
+        address: formData.address ? { line1: formData.address } : undefined,
         emergencyContact: {
           name: formData.emergencyContact || undefined,
           phone: formData.emergencyPhone || undefined,
@@ -257,13 +247,10 @@ const EmployeeFormModal = ({
       };
 
       await onSubmit(staffPayload);
-      setIsDirty(false);
       onClose();
     } catch (error) {
       console.error("Error creating employee:", error);
-      setErrors({
-        submit: "Có lỗi xảy ra khi tạo nhân viên. Vui lòng thử lại.",
-      });
+      setErrors({ submit: "Có lỗi xảy ra. Vui lòng thử lại." });
     } finally {
       setIsSubmitting(false);
     }
@@ -278,143 +265,140 @@ const EmployeeFormModal = ({
             currentStep > step ? "completed" : ""
           }`}
         >
-          <div className="step-number">{currentStep > step ? "✓" : step}</div>
+          <div className="step-dot">{currentStep > step ? "✓" : step}</div>
           <div className="step-label">
-            {step === 1 && "Thông tin cơ bản"}
-            {step === 2 && "Liên hệ & tài khoản"}
-            {step === 3 && "Công việc & lương"}
+            {step === 1 && "Thông tin"}
+            {step === 2 && "Liên hệ"}
+            {step === 3 && "Công việc"}
           </div>
         </div>
       ))}
     </div>
   );
 
+  // --- STEP 1: THÔNG TIN CƠ BẢN ---
   const renderStep1 = () => (
     <div className="form-step">
-      <h3 className="step-title">Thông Tin Cơ Bản</h3>
-
-      <div className="form-row">
+      <div className="form-header">
+        <h3>Thông Tin Cơ Bản</h3>
+        <p>Nhập các thông tin định danh và vị trí làm việc</p>
+      </div>
+      <div className="form-grid">
         <div className="form-group">
           <label className="form-label">
-            Họ và tên <span className="label-required">*</span>
+            Họ và tên <span className="req">*</span>
           </label>
           <input
             type="text"
             className={`form-input ${errors.name ? "error" : ""}`}
             value={formData.name}
             onChange={(e) => handleInputChange("name", e.target.value)}
-            placeholder="Nhập họ và tên đầy đủ"
-            disabled={isSubmitting}
+            placeholder="Nguyễn Văn A"
           />
-          {errors.name && <div className="error-message">{errors.name}</div>}
+          {errors.name && <span className="error-msg">{errors.name}</span>}
         </div>
-
         <div className="form-group">
           <label className="form-label">
-            Chức vụ <span className="label-required">*</span>
+            Chức vụ <span className="req">*</span>
           </label>
           <input
             type="text"
             className={`form-input ${errors.role ? "error" : ""}`}
             value={formData.role}
             onChange={(e) => handleInputChange("role", e.target.value)}
-            placeholder="VD: Phục vụ, Bếp trưởng, Thu ngân..."
-            disabled={isSubmitting}
+            placeholder="VD: Quản lý kho"
           />
-          {errors.role && <div className="error-message">{errors.role}</div>}
+          {errors.role && <span className="error-msg">{errors.role}</span>}
         </div>
       </div>
-
-      <div className="form-row">
+      <div className="form-grid">
         <div className="form-group">
           <label className="form-label">
-            Nhà hàng làm việc <span className="label-required">*</span>
+            Nhà hàng chính <span className="req">*</span>
           </label>
           <select
-            className={`form-input ${
+            className={`form-input form-select ${
               errors.primaryRestaurantId ? "error" : ""
             }`}
             value={formData.primaryRestaurantId}
             onChange={(e) =>
               handleInputChange("primaryRestaurantId", e.target.value)
             }
-            disabled={isSubmitting}
           >
-            <option value="">— Chọn nhà hàng —</option>
+            <option value="">-- Chọn nhà hàng --</option>
             {restaurantList.map((r) => (
               <option key={r.id} value={r.id}>
-                {r.emoji ? `${r.emoji} ${r.name}` : `🏢 ${r.name}`}
+                {r.name}
               </option>
             ))}
           </select>
           {errors.primaryRestaurantId && (
-            <div className="error-message">{errors.primaryRestaurantId}</div>
+            <span className="error-msg">{errors.primaryRestaurantId}</span>
           )}
         </div>
-
         <div className="form-group">
           <label className="form-label">
-            Loại nhân sự <span className="label-required">*</span>
+            Phân loại <span className="req">*</span>
           </label>
-          <div className="user-type-toggle">
+          <div className="user-type-group">
             {userTypeOptions.map((opt) => (
-              <button
+              <div
                 key={opt.value}
-                type="button"
-                className={`user-type-chip ${
-                  formData.userType === opt.value ? "selected" : ""
+                className={`type-option ${
+                  formData.userType === opt.value ? "active" : ""
                 }`}
                 onClick={() => handleInputChange("userType", opt.value)}
-                disabled={isSubmitting}
               >
-                {opt.label}
-              </button>
+                <span className="type-icon">{opt.icon}</span>{" "}
+                <span className="type-label">{opt.label}</span>
+              </div>
             ))}
           </div>
-          {errors.userType && (
-            <div className="error-message">{errors.userType}</div>
-          )}
         </div>
       </div>
-
-      <div className="form-group">
+      <div className="form-group mt-2">
         <label className="form-label">
-          Bộ phận làm việc <span className="label-required">*</span>
+          Bộ phận <span className="req">*</span>
         </label>
         <div className="department-grid">
           {departmentOptions.map((option) => (
             <div
               key={option.value}
-              className={`department-card ${
-                formData.department === option.value ? "selected" : ""
+              className={`dept-card ${
+                formData.department === option.value ? "active" : ""
               }`}
               onClick={() => handleInputChange("department", option.value)}
             >
-              <div className="department-label">{option.label}</div>
-              <div className="department-description">{option.description}</div>
+              <span className="dept-title">{option.label}</span>
+              <span className="dept-desc">{option.description}</span>
+              {formData.department === option.value && (
+                <div className="check-mark">✓</div>
+              )}
             </div>
           ))}
         </div>
         {errors.department && (
-          <div className="error-message">{errors.department}</div>
+          <span className="error-msg">{errors.department}</span>
         )}
       </div>
-
       {restaurantList.length > 1 && (
-        <div className="form-group">
-          <label className="form-label">
-            Làm việc thêm tại nhà hàng (tuỳ chọn)
-          </label>
-          <div className="ref-restaurants-grid">
+        <div className="form-group mt-3">
+          <label className="form-label">Địa điểm làm thêm</label>
+          <div className="ref-tags">
             {restaurantList.map((r) => (
-              <label key={r.id} className="ref-restaurant-item">
+              <label
+                key={r.id}
+                className={`tag-item ${
+                  formData.refRestaurantIds.includes(r.id) ? "active" : ""
+                }`}
+              >
                 <input
                   type="checkbox"
                   checked={formData.refRestaurantIds.includes(r.id)}
                   onChange={() => handleToggleRefRestaurant(r.id)}
-                  disabled={isSubmitting}
+                  hidden
                 />
-                <span>{r.emoji ? `${r.emoji} ${r.name}` : `🏢 ${r.name}`}</span>
+                {r.name}
               </label>
             ))}
           </div>
@@ -423,119 +407,110 @@ const EmployeeFormModal = ({
     </div>
   );
 
+  // --- STEP 2: LIÊN HỆ & MẬT KHẨU ---
   const renderStep2 = () => (
     <div className="form-step">
-      <h3 className="step-title">📞 Liên Hệ & Tài Khoản</h3>
-
-      <div className="form-row">
+      <div className="form-header">
+        <h3>Liên Hệ & Bảo Mật</h3>
+        <p>Thông tin liên lạc và tài khoản đăng nhập</p>
+      </div>
+      <div className="form-grid">
         <div className="form-group">
           <label className="form-label">
-            Số điện thoại <span className="label-required">*</span>
+            Số điện thoại <span className="req">*</span>
           </label>
           <input
             type="tel"
             className={`form-input ${errors.phone ? "error" : ""}`}
             value={formData.phone}
             onChange={(e) => handleInputChange("phone", e.target.value)}
-            placeholder="0901234567"
-            disabled={isSubmitting}
+            placeholder="09..."
           />
-          {errors.phone && <div className="error-message">{errors.phone}</div>}
+          {errors.phone && <span className="error-msg">{errors.phone}</span>}
         </div>
-
         <div className="form-group">
           <label className="form-label">
-            Email <span className="label-required">*</span>
+            Email <span className="req">*</span>
           </label>
           <input
             type="email"
             className={`form-input ${errors.email ? "error" : ""}`}
             value={formData.email}
             onChange={(e) => handleInputChange("email", e.target.value)}
-            placeholder="email@foodhub.vn"
-            disabled={isSubmitting}
+            placeholder="example@mail.com"
           />
-          {errors.email && <div className="error-message">{errors.email}</div>}
+          {errors.email && <span className="error-msg">{errors.email}</span>}
         </div>
       </div>
-
       <div className="form-group">
         <label className="form-label">Địa chỉ</label>
         <textarea
-          className="form-textarea"
+          className="form-input"
           value={formData.address}
           onChange={(e) => handleInputChange("address", e.target.value)}
-          placeholder="Địa chỉ nơi ở hiện tại"
-          rows="3"
-          disabled={isSubmitting}
+          rows="2"
+          placeholder="Địa chỉ nơi ở..."
         />
       </div>
-
-      <div className="form-row">
-        <div className="form-group">
-          <label className="form-label">
-            Mật khẩu đăng nhập ban đầu{" "}
-            {mode === "add" && <span className="label-required">*</span>}
-          </label>
-          <div className="password-field">
-            <input
-              type={showPassword ? "text" : "password"}
-              className={`form-input ${errors.password ? "error" : ""}`}
-              value={formData.password}
-              onChange={(e) => handleInputChange("password", e.target.value)}
-              placeholder="Tối thiểu 6 ký tự"
-              disabled={isSubmitting || mode !== "add"}
-            />
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={() => setShowPassword((v) => !v)}
-              disabled={isSubmitting || mode !== "add"}
-            >
-              {showPassword ? "🙈" : "👁️"}
-            </button>
+      <div className="section-box highlight-box">
+        <h4 className="box-title">
+          🔐 Thiết lập mật khẩu{" "}
+          {mode === "add" && <span className="req">*</span>}
+        </h4>
+        <div className="form-grid">
+          <div className="form-group">
+            <div className="password-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                className={`form-input ${errors.password ? "error" : ""}`}
+                value={formData.password}
+                onChange={(e) => handleInputChange("password", e.target.value)}
+                placeholder="Mật khẩu mới"
+              />
+              <button
+                type="button"
+                className="eye-btn"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? "👁️" : "🙈"}
+              </button>
+            </div>
+            {errors.password && (
+              <span className="error-msg">{errors.password}</span>
+            )}
           </div>
-          {errors.password && (
-            <div className="error-message">{errors.password}</div>
-          )}
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">
-            Nhập lại mật khẩu{" "}
-            {mode === "add" && <span className="label-required">*</span>}
-          </label>
-          <div className="password-field">
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              className={`form-input ${errors.confirmPassword ? "error" : ""}`}
-              value={formData.confirmPassword}
-              onChange={(e) =>
-                handleInputChange("confirmPassword", e.target.value)
-              }
-              placeholder="Nhập lại mật khẩu"
-              disabled={isSubmitting || mode !== "add"}
-            />
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={() => setShowConfirmPassword((v) => !v)}
-              disabled={isSubmitting || mode !== "add"}
-            >
-              {showConfirmPassword ? "🙈" : "👁️"}
-            </button>
+          <div className="form-group">
+            <div className="password-wrapper">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                className={`form-input ${
+                  errors.confirmPassword ? "error" : ""
+                }`}
+                value={formData.confirmPassword}
+                onChange={(e) =>
+                  handleInputChange("confirmPassword", e.target.value)
+                }
+                placeholder="Xác nhận lại"
+              />
+              <button
+                type="button"
+                className="eye-btn"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? "👁️" : "🙈"}
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <span className="error-msg">{errors.confirmPassword}</span>
+            )}
           </div>
-          {errors.confirmPassword && (
-            <div className="error-message">{errors.confirmPassword}</div>
-          )}
         </div>
       </div>
-
-      <div className="emergency-contact">
-        <h4 className="section-title">🚨 Liên Hệ Khẩn Cấp</h4>
-        <div className="form-row">
+      <div className="section-box warning-box">
+        <h4 className="box-title">🚨 Liên hệ khẩn cấp</h4>
+        <div className="form-grid">
           <div className="form-group">
-            <label className="form-label">Tên người liên hệ</label>
+            <label className="sub-label">Tên người thân</label>
             <input
               type="text"
               className="form-input"
@@ -543,157 +518,126 @@ const EmployeeFormModal = ({
               onChange={(e) =>
                 handleInputChange("emergencyContact", e.target.value)
               }
-              placeholder="Tên người thân"
-              disabled={isSubmitting}
             />
           </div>
-
           <div className="form-group">
-            <label className="form-label">Mối quan hệ</label>
+            <label className="sub-label">Số điện thoại</label>
             <input
-              type="text"
+              type="tel"
               className="form-input"
-              value={formData.emergencyRelation}
+              value={formData.emergencyPhone}
               onChange={(e) =>
-                handleInputChange("emergencyRelation", e.target.value)
+                handleInputChange("emergencyPhone", e.target.value)
               }
-              placeholder="VD: Bố, Mẹ, Anh/Chị..."
-              disabled={isSubmitting}
             />
           </div>
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Số điện thoại khẩn cấp</label>
-          <input
-            type="tel"
-            className="form-input"
-            value={formData.emergencyPhone}
-            onChange={(e) =>
-              handleInputChange("emergencyPhone", e.target.value)
-            }
-            placeholder="0901234567"
-            disabled={isSubmitting}
-          />
         </div>
       </div>
     </div>
   );
 
+  // --- STEP 3: CÔNG VIỆC ---
   const renderStep3 = () => (
     <div className="form-step">
-      <h3 className="step-title">💼 Chi Tiết Công Việc & Lương</h3>
-
-      <div className="form-row">
+      <div className="form-header">
+        <h3>Công Việc & Chế Độ</h3>
+        <p>Thiết lập hợp đồng, ca làm việc và lương</p>
+      </div>
+      <div className="form-grid">
         <div className="form-group">
           <label className="form-label">Loại hợp đồng</label>
-          <div className="employment-type-chips">
+          <div className="pills-group">
             {employmentTypeOptions.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
-                className={`employment-chip ${
-                  formData.employmentType === opt.value ? "selected" : ""
+                className={`pill-item ${
+                  formData.employmentType === opt.value ? "active" : ""
                 }`}
                 onClick={() => handleInputChange("employmentType", opt.value)}
-                disabled={isSubmitting}
               >
                 {opt.label}
               </button>
             ))}
           </div>
         </div>
-
         <div className="form-group">
-          <label className="form-label">Ngày vào làm</label>
+          <label className="form-label">Ngày bắt đầu</label>
           <input
             type="date"
             className="form-input"
             value={formData.startDate}
             onChange={(e) => handleInputChange("startDate", e.target.value)}
-            disabled={isSubmitting}
           />
         </div>
       </div>
-
+      <div className="form-group section-box salary-box">
+        <label className="form-label">Mức lương cơ bản</label>
+        <div className="salary-input-row">
+          <input
+            type="text"
+            className="salary-input-field"
+            value={formData.salary}
+            onChange={(e) => handleInputChange("salary", e.target.value)}
+            placeholder="0"
+          />
+          <span className="currency-badge">VNĐ</span>
+        </div>
+        <p className="hint-text">Chưa bao gồm phụ cấp & thưởng.</p>
+      </div>
       <div className="form-group">
         <label className="form-label">Ca làm việc</label>
-        <div className="shift-options">
+        <div className="shift-grid">
           {shiftOptions.map((option) => (
-            <label key={option.value} className="shift-option">
-              <input
-                type="radio"
-                name="shift"
-                value={option.value}
-                checked={formData.shift === option.value}
-                onChange={(e) => handleInputChange("shift", e.target.value)}
-                disabled={isSubmitting}
-              />
-              <span className="shift-label">{option.label}</span>
-            </label>
+            <div
+              key={option.value}
+              className={`shift-card ${
+                formData.shift === option.value ? "active" : ""
+              }`}
+              onClick={() => handleInputChange("shift", option.value)}
+            >
+              <span className="shift-name">{option.label.split("(")[0]}</span>
+              <span className="shift-time">
+                {option.label.match(/\((.*?)\)/)?.[1]}
+              </span>
+            </div>
           ))}
         </div>
       </div>
-
       <div className="form-group">
-        <label className="form-label">Mức lương cơ bản</label>
-        <div className="salary-input-group">
-          <input
-            type="text"
-            className="form-input"
-            value={formData.salary}
-            onChange={(e) => handleInputChange("salary", e.target.value)}
-            placeholder="8000000"
-            disabled={isSubmitting}
-          />
-          <span className="salary-currency">VNĐ</span>
-        </div>
-        <div className="salary-note">
-          💡 Lương cơ bản chưa bao gồm thưởng và phụ cấp
-        </div>
-      </div>
-
-      <div className="form-group">
-        <label className="form-label">Ghi chú nội bộ</label>
+        <label className="form-label">Ghi chú</label>
         <textarea
-          className="form-textarea"
+          className="form-input"
           value={formData.notes}
           onChange={(e) => handleInputChange("notes", e.target.value)}
-          placeholder="Ghi chú về kỹ năng, kinh nghiệm, yêu cầu đặc biệt..."
-          rows="4"
-          disabled={isSubmitting}
+          rows="3"
         />
       </div>
-
-      {errors.submit && <div className="submit-error">⚠️ {errors.submit}</div>}
+      {errors.submit && <div className="submit-error-box">{errors.submit}</div>}
     </div>
   );
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleRequestClose} // 👈 dùng handler có confirm
+      onClose={handleRequestClose}
       size="lg"
       className="employee-form-modal"
-      showCloseButton={false} // tắt header mặc định
+      showCloseButton={false}
     >
       <div className="modal-header-custom">
-        <div>
-          <h2 className="modal-title-custom">
-            {mode === "add" ? "Thêm Nhân Viên Mới" : "✏️ Cập Nhật Nhân Viên"}
-          </h2>
-          <div className="modal-subtitle-custom">
+        <div className="header-text">
+          <h2>{mode === "add" ? "Thêm Nhân Viên Mới" : "Cập Nhật Hồ Sơ"}</h2>
+          <p>
             {mode === "add"
               ? "Tạo hồ sơ nhân viên cho FoodHub"
               : "Chỉnh sửa thông tin nhân viên"}
-          </div>
+          </p>
         </div>
-
         <button
           type="button"
-          className="employee-close-btn"
+          className="close-btn"
           onClick={handleRequestClose}
-          aria-label="Đóng"
         >
           ×
         </button>
@@ -701,61 +645,54 @@ const EmployeeFormModal = ({
 
       {renderStepIndicator()}
 
-      <form onSubmit={handleSubmit} className="employee-form">
-        <div className="modal-body-custom">
+      <form onSubmit={handleSubmit} className="modal-form-container">
+        <div className="modal-body-scroll">
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
           {currentStep === 3 && renderStep3()}
         </div>
 
         <div className="modal-footer-custom">
-          <div className="footer-left">
+          <button
+            type="button"
+            className="btn btn-text"
+            onClick={handleRequestClose}
+            disabled={isSubmitting}
+          >
+            Hủy bỏ
+          </button>
+          <div className="footer-right">
             {currentStep > 1 && (
               <button
                 type="button"
-                className="btn btn--secondary"
+                className="btn btn-outlined"
                 onClick={handlePrevStep}
                 disabled={isSubmitting}
               >
-                ← Quay lại
+                Quay lại
               </button>
             )}
-          </div>
-
-          <div className="footer-right">
-            <button
-              type="button"
-              className="btn btn--secondary"
-              onClick={handleRequestClose}
-              disabled={isSubmitting}
-            >
-              ❌ Hủy
-            </button>
 
             {currentStep < 3 ? (
               <button
                 type="button"
-                className="btn btn--primary"
+                className="btn btn-primary"
                 onClick={handleNextStep}
-                disabled={isSubmitting}
               >
-                Tiếp theo →
+                Tiếp theo
               </button>
             ) : (
               <button
                 type="submit"
-                className="btn btn--success"
+                className="btn btn-primary"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
-                  <>
-                    <LoadingSpinner size="small" color="white" />
-                    {mode === "add" ? "Đang tạo..." : "Đang lưu..."}
-                  </>
+                  <LoadingSpinner size="small" color="white" />
                 ) : mode === "add" ? (
-                  "✅ Tạo Nhân Viên"
+                  "Hoàn tất"
                 ) : (
-                  "💾 Lưu Thay Đổi"
+                  "Lưu thay đổi"
                 )}
               </button>
             )}

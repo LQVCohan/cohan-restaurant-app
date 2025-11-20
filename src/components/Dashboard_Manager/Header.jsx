@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import SearchBox from "../SearchBox/SearchBox";
 import {
   FiBell,
@@ -14,7 +14,7 @@ import {
   FiAlertTriangle,
 } from "react-icons/fi";
 import "./Styles/Header.scss";
-
+import { AuthContext } from "@/context/AuthContext";
 // Hàm-tiện-ích-để-lấy-icon-thông-báo
 const getNotificationIcon = (type) => {
   switch (type) {
@@ -35,12 +35,12 @@ const Header = ({
   onToggleSidebar,
   sidebarOpen = false,
   notifications = [], // Thêm-một-vài-thông-báo-mẫu-để-test
-  user = {
-    name: "Nguyễn Quản Lý",
-    role: "Quản lý cửa hàng",
-    email: "manager@restaurant.com",
-    avatar: "👨‍💼",
-  },
+  // user = {
+  //   name: "Nguyễn Quản Lý",
+  //   roleName: "Quản lý cửa hàng",
+  //   email: "manager@restaurant.com",
+  //   avatar: "👨‍💼",
+  // },
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
@@ -49,7 +49,15 @@ const Header = ({
   // Refs cho các container dropdown
   const notificationRef = useRef(null);
   const userMenuRef = useRef(null);
-
+  const { user } = useContext(AuthContext);
+  console.log("user: header ", user);
+  const normalizeUser = {
+    fullName: user.fullName,
+    roleName: user.role.name,
+    email: user.email,
+    avatar: user.avatarIcon || "👨‍💼",
+    status: user.status,
+  };
   // Update time every second
   useEffect(() => {
     const timer = setInterval(() => {
@@ -239,7 +247,7 @@ const Header = ({
               onClick={handleUserMenuClick}
             >
               <div className="user-avatar">
-                {user.avatar}
+                {normalizeUser.avatar}
                 <div className="user-status"></div>
               </div>
               <div
@@ -247,8 +255,8 @@ const Header = ({
                   sidebarOpen ? "hide-compact" : "hide-mobile"
                 }`}
               >
-                <span className="user-name">{user.name}</span>
-                <span className="user-role">{user.role}</span>
+                <span className="user-name">{normalizeUser.fullName}</span>
+                <span className="user-roleName">{normalizeUser.roleName}</span>
               </div>
               <span
                 className={`user-chevron ${sidebarOpen ? "hide-compact" : ""}`}
@@ -264,7 +272,7 @@ const Header = ({
                   <div className="user-details">
                     <h3>{user.name}</h3>
                     <p>{user.email}</p>
-                    <span className="user-badge">{user.role}</span>
+                    <span className="user-badge">{user.roleName}</span>
                   </div>
                 </div>
 

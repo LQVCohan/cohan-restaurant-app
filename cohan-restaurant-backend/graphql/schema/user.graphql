@@ -37,7 +37,14 @@ enum StaffWorkingDay {
   SAT
   SUN
 }
-
+enum DepartmentType {
+  service
+  kitchen
+  cashier
+  management
+  cleaning
+  delivery
+}
 enum CustomerType {
   VIP
   NEW
@@ -163,7 +170,7 @@ input CreateUserInput {
   # --- NEW: cho phép tạo nhân viên/owner/admin ---
   userType: UserType
   taxCode: String
-
+  department: DepartmentType
   employeeCode: String
   positionTitle: String
   employmentType: EmploymentType
