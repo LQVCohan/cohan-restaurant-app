@@ -4,28 +4,30 @@ const StatCard = ({
   icon,
   number,
   label,
-  trend,
-  trendValue,
-  change,
-  period,
-  changeType,
+  helper,
+  context,
+  badgeText,
+  badgeTone = "primary",
+  loading = false,
 }) => {
   return (
-    <div className="stat-card fade-in">
+    <div className={`stat-card fade-in tone-${badgeTone}`}>
       <div className="stat-header">
         <div className="stat-icon">{icon}</div>
-        <div className={`stat-trend trend-${trend}`}>{trendValue}</div>
+        {badgeText && <span className="stat-badge">{badgeText}</span>}
       </div>
 
       <div className="stat-main">
-        <div className="stat-number">{number}</div>
+        <div className="stat-number">
+          {loading ? <div className="skeleton skeleton-number" /> : number}
+        </div>
         <div className="stat-label">{label}</div>
+        <div className="stat-helper">
+          {loading ? <div className="skeleton skeleton-text" /> : helper}
+        </div>
       </div>
 
-      <div className="stat-footer">
-        <div className={`stat-change ${changeType}`}>{change}</div>
-        <div className="stat-period">{period}</div>
-      </div>
+      {context && <div className="stat-context">{context}</div>}
     </div>
   );
 };
