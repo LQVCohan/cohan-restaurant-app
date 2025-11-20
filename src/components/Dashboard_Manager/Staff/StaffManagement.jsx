@@ -1,7 +1,6 @@
 // src/pages/StaffManagement/index.jsx
 import React, { useState, useEffect, useMemo, useContext } from "react";
 import Header from "./components/Header";
-import StatsGrid from "./components/StatsGrid";
 import PageNavigation from "./components/PageNavigation";
 import EmployeeDashboard from "./components/EmployeeDashboard";
 import AttendancePage from "./components/Attendance";
@@ -235,9 +234,9 @@ const StaffManagement = () => {
         onAddEmployee={() => openModal("addEmployee")}
         onExportData={handleExportData}
         restaurantList={restaurantList}
+        stats={stats}
+        loading={anyLoading}
       />
-
-      <StatsGrid stats={stats} loading={anyLoading} />
 
       <PageNavigation
         currentPage={currentPage}

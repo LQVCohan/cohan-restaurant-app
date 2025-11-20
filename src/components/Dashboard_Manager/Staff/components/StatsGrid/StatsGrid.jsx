@@ -1,50 +1,62 @@
-import React from "react";
+import React, { useMemo } from "react";
 import StatCard from "./StatCard";
 import "./StatsGrid.scss";
 
-const StatsGrid = ({ stats }) => {
-  const statsData = [
-    {
-      icon: "👥",
-      number: stats.totalEmployees || 247,
-      label: "Tổng nhân viên",
-      trend: "up",
-      trendValue: "+12%",
-      change: "+28 người",
-      period: "Tháng này",
-      changeType: "positive",
-    },
-    {
-      icon: "✅",
-      number: stats.activeEmployees || 189,
-      label: "Đang làm việc",
-      trend: "up",
-      trendValue: "+5%",
-      change: "+9 người",
-      period: "Hôm nay",
-      changeType: "positive",
-    },
-    {
-      icon: "☕",
-      number: stats.onBreak || 32,
-      label: "Đang nghỉ giải lao",
-      trend: "stable",
-      trendValue: "0%",
-      change: "Không đổi",
-      period: "So với hôm qua",
-      changeType: "neutral",
-    },
-    {
-      icon: "❌",
-      number: stats.absent || 26,
-      label: "Vắng mặt",
-      trend: "down",
-      trendValue: "-3%",
-      change: "-2 người",
-      period: "Hôm nay",
-      changeType: "negative",
-    },
-  ];
+const formatNumber = (value) =>
+  typeof value === "number" ? value.toLocaleString("vi-VN") : value;
+
+const StatsGrid = ({ stats = {}, loading = false }) => {
+  const statsData = useMemo(
+    () => [
+      {
+        icon: "👥",
+        number: loading ? "--" : formatNumber(stats.totalStaff || 0),
+        label: "Tổng nhân viên",
+        trend: "up",
+        trendValue: "+12%",
+        change: loading ? "Đang tải..." : `${formatNumber(stats.totalStaff || 0)} người`,
+        period: "Toàn bộ hệ thống",
+        changeType: "positive",
+      },
+      {
+        icon: "✅",
+        number: loading ? "--" : formatNumber(stats.activeStaff || 0),
+        label: "Đang làm việc",
+        trend: "up",
+        trendValue: "+5%",
+        change: loading
+          ? "Đang tải..."
+          : `${formatNumber(stats.activeStaff || 0)} đang hoạt động`,
+        period: "Hiện tại",
+        changeType: "positive",
+      },
+      {
+        icon: "☕",
+        number: loading ? "--" : formatNumber(stats.onLeaveStaff || 0),
+        label: "Đang nghỉ phép",
+        trend: "stable",
+        trendValue: "0%",
+        change: loading
+          ? "Đang tải..."
+          : `${formatNumber(stats.onLeaveStaff || 0)} người nghỉ`,
+        period: "Hôm nay",
+        changeType: "neutral",
+      },
+      {
+        icon: "⭐",
+        number: loading
+          ? "--"
+          : `${Math.round((stats.avgRate || 0) * 10) / 10} / 5`,
+        label: "Đánh giá trung bình",
+        trend: "up",
+        trendValue: "+1%",
+        change: loading ? "Đang tải..." : "Cải thiện chất lượng",
+        period: "Trong tháng",
+        changeType: "positive",
+      },
+    ],
+    [loading, stats]
+  );
 
   return (
     <div className="stats-grid">

@@ -5,8 +5,15 @@
   padding: $spacing-xl;
   margin-bottom: $spacing-lg;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: $spacing-xl;
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    gap: $spacing-xl;
+    align-items: center;
+  }
 
   h1 {
     font-size: 1.5rem;
@@ -20,6 +27,10 @@
   font-size: 0.875rem;
   color: $text-secondary;
   margin-bottom: $spacing-sm;
+}
+
+.header-stats {
+  width: 100%;
 }
 
 .header-selectors {
@@ -43,10 +54,13 @@
 
 @media (max-width: $mobile) {
   .header-card {
-    flex-direction: column;
-    gap: $spacing-lg;
     text-align: center;
     padding: $spacing-lg;
+  }
+
+  .header-top {
+    flex-direction: column;
+    align-items: center;
   }
 
   .header-actions {
