@@ -1,9 +1,11 @@
+// src/graphql/resolvers/inventory/stockItem.mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 
 import { StockItem, StockMovement } from "../../../models/index.js";
 
 export default {
+  // Tạo / cập nhật 1 StockItem (admin cấu hình kho)
   upsertStockItem: async (
     _p,
     { restaurantId, warehouseId, ingredientId, onHand, reserved, batches }
@@ -13,7 +15,10 @@ export default {
     ) {
       throw new GraphQLError("Invalid ids");
     }
-    const update = { $set: { restaurantId, warehouseId, ingredientId } };
+
+    const update = {
+      $set: { restaurantId, warehouseId, ingredientId },
+    };
     if (typeof onHand === "number") update.$set.onHand = onHand;
     if (typeof reserved === "number") update.$set.reserved = reserved;
     if (Array.isArray(batches)) update.$set.batches = batches;
@@ -23,9 +28,11 @@ export default {
       update,
       { new: true, upsert: true, runValidators: true }
     ).lean({ virtuals: true });
+
     return doc;
   },
 
+  // Điều chỉnh kho (kiểm kê, nhập tay), có log movement
   adjustStock: async (
     _p,
     { restaurantId, warehouseId, ingredientId, qty, reason }
@@ -35,7 +42,13 @@ export default {
     ) {
       throw new GraphQLError("Invalid ids");
     }
-    const session = await StockItem.startSession();
+
+    if (typeof qty !== "number" || Number.isNaN(qty) || qty === 0) {
+      throw new GraphQLError("qty must be a non-zero number");
+    }
+
+    const session = await mongoose.startSession();
+
     try {
       await session.withTransaction(async () => {
         const item = await StockItem.findOneAndUpdate(
@@ -43,6 +56,7 @@ export default {
           { $inc: { onHand: qty } },
           { new: true, upsert: true, runValidators: true, session }
         );
+
         await StockMovement.create(
           [
             {
@@ -52,23 +66,30 @@ export default {
               type: qty >= 0 ? "inbound" : "outbound",
               qty,
               reason,
+              meta: {},
             },
           ],
           { session }
         );
+
+        // Có thể thêm check âm kho nếu muốn cứng hơn:
+        // if ((item.onHand ?? 0) < 0) throw new GraphQLError("Stock cannot be negative");
       });
-      session.endSession();
+
+      await session.endSession();
+
       return StockItem.findOne({
         restaurantId,
         warehouseId,
         ingredientId,
       }).lean({ virtuals: true });
     } catch (e) {
-      session.endSession();
+      await session.endSession();
       throw new GraphQLError(e.message || "adjustStock failed");
     }
   },
 
+  // Chuyển kho: bắt buộc kho nguồn đã có item và đủ onHand
   transferStock: async (
     _p,
     { restaurantId, fromWarehouseId, toWarehouseId, ingredientId, qty, reason }
@@ -80,25 +101,43 @@ export default {
     ) {
       throw new GraphQLError("Invalid ids");
     }
-    if (qty <= 0) throw new GraphQLError("qty must be > 0");
+    if (typeof qty !== "number" || qty <= 0) {
+      throw new GraphQLError("qty must be > 0");
+    }
 
-    const session = await StockItem.startSession();
+    const session = await mongoose.startSession();
+
     try {
       await session.withTransaction(async () => {
-        const src = await StockItem.findOneAndUpdate(
-          { restaurantId, warehouseId: fromWarehouseId, ingredientId },
-          { $inc: { onHand: -qty } },
-          { new: true, upsert: true, runValidators: true, session }
-        );
-        if ((src.onHand ?? 0) < 0)
-          throw new GraphQLError("Insufficient stock at source");
+        // 1) Lấy stock ở kho nguồn (KHÔNG upsert)
+        const src = await StockItem.findOne({
+          restaurantId,
+          warehouseId: fromWarehouseId,
+          ingredientId,
+        }).session(session);
 
+        if (!src) {
+          throw new GraphQLError(
+            "Source stock item not found (no stock in fromWarehouse)"
+          );
+        }
+
+        if ((src.onHand ?? 0) < qty) {
+          throw new GraphQLError("Insufficient stock at source warehouse");
+        }
+
+        // 2) Trừ kho nguồn
+        src.onHand -= qty;
+        await src.save({ session });
+
+        // 3) Cộng kho đích (cho phép upsert vì có thể lần đầu nhập về kho này)
         await StockItem.findOneAndUpdate(
           { restaurantId, warehouseId: toWarehouseId, ingredientId },
           { $inc: { onHand: qty } },
           { new: true, upsert: true, runValidators: true, session }
         );
 
+        // 4) Ghi movement cho cả 2 kho
         await StockMovement.create(
           [
             {
@@ -108,6 +147,7 @@ export default {
               type: "transfer",
               qty: -qty,
               reason,
+              meta: { toWarehouseId },
             },
             {
               restaurantId,
@@ -116,15 +156,17 @@ export default {
               type: "transfer",
               qty: qty,
               reason,
+              meta: { fromWarehouseId },
             },
           ],
           { session }
         );
       });
-      session.endSession();
+
+      await session.endSession();
       return true;
     } catch (e) {
-      session.endSession();
+      await session.endSession();
       throw new GraphQLError(e.message || "transferStock failed");
     }
   },

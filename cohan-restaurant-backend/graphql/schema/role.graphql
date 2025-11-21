@@ -3,10 +3,20 @@ type Role {
   name: String!
   slug: String!
   description: String
-  parent: String
   isSystem: Boolean
+  parentRole: ParentRole
   permissions: [Permission!]!
   users: [User!]!
+  createdAt: String
+  updatedAt: String
+}
+
+type ParentRole {
+  id: ID!
+  name: String!
+  slug: String!
+  description: String
+  permissions: [Permission!]!
   createdAt: String
   updatedAt: String
 }
@@ -15,7 +25,7 @@ input CreateRoleInput {
   name: String!
   slug: String!
   description: String
-  parent: String
+  parentRoleId: ID! # bắt buộc: liên kết tới ParentRole
   permissionIds: [ID!]
 }
 
@@ -23,17 +33,36 @@ input UpdateRoleInput {
   id: ID!
   name: String
   description: String
-  parent: String
+  parentRoleId: ID # optional: đổi parentRole
   permissionIds: [ID!]
 }
+
+input CreateParentRoleInput {
+  name: String!
+  slug: String!
+  description: String
+  permissionIds: [ID!]
+}
+
+input UpdateParentRoleInput {
+  id: ID!
+  name: String
+  slug: String
+  description: String
+  permissionIds: [ID!]
+}
+
 extend type Query {
-  role(search: String, parent: String): [Role!]!
+  role(search: String, parentRoleId: ID): [Role!]!
+  parentRoles(search: String): [ParentRole!]!
 }
 
 extend type Mutation {
   createRole(input: CreateRoleInput!): Role!
   updateRole(input: UpdateRoleInput!): Role!
   deleteRole(id: ID!): Boolean!
-  assignRolesToUser(userId: ID!, roleIds: [ID!]!): User!
-  revokeRolesFromUser(userId: ID!, roleIds: [ID!]!): User!
+
+  createParentRole(input: CreateParentRoleInput!): ParentRole!
+  updateParentRole(input: UpdateParentRoleInput!): ParentRole!
+  deleteParentRole(id: ID!): Boolean!
 }

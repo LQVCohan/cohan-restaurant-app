@@ -12,6 +12,8 @@ const EmployeeFormModal = ({
   restaurantList = [],
   defaultRestaurantId = "",
 }) => {
+  const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+
   const [formData, setFormData] = useState({
     name: "",
     role: "",
@@ -21,7 +23,7 @@ const EmployeeFormModal = ({
     address: "",
     salary: "",
     shift: "",
-    startDate: new Date().toISOString().split("T")[0],
+    startDate: todayStr,
     emergencyContact: "",
     emergencyPhone: "",
     emergencyRelation: "",
@@ -29,7 +31,7 @@ const EmployeeFormModal = ({
     primaryRestaurantId: defaultRestaurantId || "",
     refRestaurantIds: [],
     userType: "STAFF",
-    employmentType: "full_time",
+    employmentType: "FULL_TIME",
     password: "",
     confirmPassword: "",
   });
@@ -68,11 +70,11 @@ const EmployeeFormModal = ({
   ];
 
   const shiftOptions = [
-    { value: "morning", label: "🌅 Sáng (6:00 - 14:00)" },
-    { value: "afternoon", label: "☀️ Chiều (14:00 - 22:00)" },
-    { value: "night", label: "🌙 Đêm (22:00 - 6:00)" },
-    { value: "full", label: "⏰ Full (8:00 - 17:00)" },
-    { value: "part-time", label: "⏱️ Part-time" },
+    { value: "MORNING", label: "🌅 Sáng (6:00 - 14:00)" },
+    { value: "AFTERNOON", label: "☀️ Chiều (14:00 - 22:00)" },
+    { value: "NIGHT", label: "🌙 Đêm (22:00 - 6:00)" },
+    { value: "FULL", label: "⏰ Full (8:00 - 17:00)" },
+    { value: "PART_TIME", label: "⏱️ Part-time" },
   ];
 
   const userTypeOptions = [
@@ -81,10 +83,10 @@ const EmployeeFormModal = ({
   ];
 
   const employmentTypeOptions = [
-    { value: "full_time", label: "Toàn thời gian" },
-    { value: "part_time", label: "Bán thời gian" },
-    { value: "seasonal", label: "Thời vụ" },
-    { value: "intern", label: "Thực tập" },
+    { value: "FULL_TIME", label: "Toàn thời gian" },
+    { value: "PART_TIME", label: "Bán thời gian" },
+    { value: "SEASONAL", label: "Thời vụ" },
+    { value: "INTERN", label: "Thực tập" },
   ];
 
   useEffect(() => {
@@ -95,6 +97,7 @@ const EmployeeFormModal = ({
   }, [isOpen, mode]);
 
   const resetForm = () => {
+    const today = new Date().toISOString().split("T")[0];
     setFormData({
       name: "",
       role: "",
@@ -104,7 +107,7 @@ const EmployeeFormModal = ({
       address: "",
       salary: "",
       shift: "",
-      startDate: new Date().toISOString().split("T")[0],
+      startDate: today,
       emergencyContact: "",
       emergencyPhone: "",
       emergencyRelation: "",
@@ -112,7 +115,7 @@ const EmployeeFormModal = ({
       primaryRestaurantId: defaultRestaurantId || "",
       refRestaurantIds: [],
       userType: "STAFF",
-      employmentType: "full_time",
+      employmentType: "FULL_TIME",
       password: "",
       confirmPassword: "",
     });
@@ -124,6 +127,8 @@ const EmployeeFormModal = ({
 
   const validateStep = (step) => {
     const newErrors = {};
+
+    // --- STEP 1 ---
     if (step === 1) {
       if (!formData.name.trim()) newErrors.name = "Vui lòng nhập họ tên";
       if (!formData.role.trim()) newErrors.role = "Vui lòng nhập chức vụ";
@@ -131,26 +136,47 @@ const EmployeeFormModal = ({
       if (!formData.primaryRestaurantId)
         newErrors.primaryRestaurantId = "Chọn nhà hàng";
     }
+
+    // --- STEP 2 ---
     if (step === 2) {
-      if (!formData.phone.trim()) newErrors.phone = "Nhập số điện thoại";
-      else if (!/^[0-9]{9,11}$/.test(formData.phone.replace(/\s/g, "")))
-        newErrors.phone = "SĐT không hợp lệ";
+      const hasPhone = formData.phone.trim().length > 0;
+      const hasEmail = formData.email.trim().length > 0;
+      const hasPassword = formData.password.trim().length > 0;
 
-      if (!formData.email.trim()) newErrors.email = "Nhập email";
-      else if (!/\S+@\S+\.\S+/.test(formData.email))
+      // 1 trong 2: phone hoặc email là bắt buộc
+      if (!hasPhone && !hasEmail) {
+        newErrors.phone = "Nhập số điện thoại hoặc email liên hệ";
+        newErrors.email = "Nhập số điện thoại hoặc email liên hệ";
+      }
+
+      // Nếu nhập phone thì kiểm tra định dạng
+      if (hasPhone) {
+        const digits = formData.phone.replace(/\s/g, "");
+        if (!/^[0-9]{9,11}$/.test(digits)) {
+          newErrors.phone = "SĐT không hợp lệ";
+        }
+      }
+
+      // Nếu nhập email thì kiểm tra định dạng
+      if (hasEmail && !/\S+@\S+\.\S+/.test(formData.email)) {
         newErrors.email = "Email không hợp lệ";
+      }
 
-      if (mode === "add") {
-        if (!formData.password.trim()) newErrors.password = "Nhập mật khẩu";
-        else if (formData.password.length < 6)
-          newErrors.password = "Tối thiểu 6 ký tự";
-
-        if (!formData.confirmPassword.trim())
-          newErrors.confirmPassword = "Nhập lại mật khẩu";
-        else if (formData.password !== formData.confirmPassword)
-          newErrors.confirmPassword = "Không khớp";
+      // Mật khẩu: HOÀN TOÀN KHÔNG BẮT BUỘC
+      // Chỉ validate nếu user có nhập
+      if (hasPassword) {
+        if (formData.password.length < 6) {
+          newErrors.password = "Mật khẩu tối thiểu 6 ký tự";
+        }
+        if (
+          formData.confirmPassword.trim().length === 0 ||
+          formData.password !== formData.confirmPassword
+        ) {
+          newErrors.confirmPassword = "Mật khẩu xác nhận không khớp";
+        }
       }
     }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -189,21 +215,15 @@ const EmployeeFormModal = ({
     if (window.confirm("Dữ liệu chưa lưu sẽ bị mất. Thoát?")) onClose?.();
   };
 
-  // === SUBMIT CHỈ Ở BƯỚC 3 ===
-  const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
-
-    // Validate step hiện tại
+  const handleSubmit = async () => {
     const isValidCurrent = validateStep(currentStep);
     if (!isValidCurrent) return;
 
-    // Nếu chưa tới bước 3 => chỉ chuyển bước, KHÔNG submit
     if (currentStep < 3) {
       setCurrentStep((prev) => prev + 1);
       return;
     }
 
-    // Đảm bảo step 1 & 2 đều hợp lệ (phòng TH nhảy bước lạ)
     const step1Ok = validateStep(1);
     const step2Ok = validateStep(2);
     if (!step1Ok) {
@@ -215,18 +235,25 @@ const EmployeeFormModal = ({
       return;
     }
 
-    // Tới đây mới thực sự submit
     setIsSubmitting(true);
     try {
       const baseSalary = formData.salary
         ? Number(formData.salary.toString().replace(/[^\d]/g, ""))
         : undefined;
 
+      const dateJoined = formData.startDate
+        ? new Date(formData.startDate + "T00:00:00").toISOString()
+        : undefined;
+
+      const hasPhone = formData.phone.trim().length > 0;
+      const hasEmail = formData.email.trim().length > 0;
+      const hasPassword = formData.password.trim().length > 0;
+
       const staffPayload = {
         fullName: formData.name.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        password: formData.password || undefined,
+        phone: hasPhone ? formData.phone.trim() : undefined,
+        email: hasEmail ? formData.email.trim() : undefined,
+        password: hasPassword ? formData.password.trim() : undefined,
         userType: formData.userType,
         positionTitle: formData.role.trim(),
         department: formData.department,
@@ -234,7 +261,7 @@ const EmployeeFormModal = ({
         refRestaurantIds: formData.refRestaurantIds,
         employmentType: formData.employmentType,
         shiftType: formData.shift || undefined,
-        dateJoined: formData.startDate || undefined,
+        dateJoined,
         baseSalary,
         address: formData.address ? { line1: formData.address } : undefined,
         emergencyContact: {
@@ -276,7 +303,7 @@ const EmployeeFormModal = ({
     </div>
   );
 
-  // --- STEP 1: THÔNG TIN CƠ BẢN ---
+  // --- STEP 1 UI ---
   const renderStep1 = () => (
     <div className="form-step">
       <div className="form-header">
@@ -407,18 +434,18 @@ const EmployeeFormModal = ({
     </div>
   );
 
-  // --- STEP 2: LIÊN HỆ & MẬT KHẨU ---
+  // --- STEP 2 UI ---
   const renderStep2 = () => (
     <div className="form-step">
       <div className="form-header">
         <h3>Liên Hệ & Bảo Mật</h3>
-        <p>Thông tin liên lạc và tài khoản đăng nhập</p>
+        <p>
+          Chỉ cần nhập <b>1 trong 2</b>: Số điện thoại hoặc Email
+        </p>
       </div>
       <div className="form-grid">
         <div className="form-group">
-          <label className="form-label">
-            Số điện thoại <span className="req">*</span>
-          </label>
+          <label className="form-label">Số điện thoại</label>
           <input
             type="tel"
             className={`form-input ${errors.phone ? "error" : ""}`}
@@ -429,9 +456,7 @@ const EmployeeFormModal = ({
           {errors.phone && <span className="error-msg">{errors.phone}</span>}
         </div>
         <div className="form-group">
-          <label className="form-label">
-            Email <span className="req">*</span>
-          </label>
+          <label className="form-label">Email</label>
           <input
             type="email"
             className={`form-input ${errors.email ? "error" : ""}`}
@@ -455,7 +480,7 @@ const EmployeeFormModal = ({
       <div className="section-box highlight-box">
         <h4 className="box-title">
           🔐 Thiết lập mật khẩu{" "}
-          {mode === "add" && <span className="req">*</span>}
+          <span className="hint-inline">(không bắt buộc, có thể để trống)</span>
         </h4>
         <div className="form-grid">
           <div className="form-group">
@@ -465,7 +490,7 @@ const EmployeeFormModal = ({
                 className={`form-input ${errors.password ? "error" : ""}`}
                 value={formData.password}
                 onChange={(e) => handleInputChange("password", e.target.value)}
-                placeholder="Mật khẩu mới"
+                placeholder="Mật khẩu (không bắt buộc)"
               />
               <button
                 type="button"
@@ -490,7 +515,7 @@ const EmployeeFormModal = ({
                 onChange={(e) =>
                   handleInputChange("confirmPassword", e.target.value)
                 }
-                placeholder="Xác nhận lại"
+                placeholder="Xác nhận mật khẩu (nếu có)"
               />
               <button
                 type="button"
@@ -536,7 +561,7 @@ const EmployeeFormModal = ({
     </div>
   );
 
-  // --- STEP 3: CÔNG VIỆC ---
+  // --- STEP 3 UI ---
   const renderStep3 = () => (
     <div className="form-step">
       <div className="form-header">
@@ -586,25 +611,6 @@ const EmployeeFormModal = ({
         <p className="hint-text">Chưa bao gồm phụ cấp & thưởng.</p>
       </div>
       <div className="form-group">
-        <label className="form-label">Ca làm việc</label>
-        <div className="shift-grid">
-          {shiftOptions.map((option) => (
-            <div
-              key={option.value}
-              className={`shift-card ${
-                formData.shift === option.value ? "active" : ""
-              }`}
-              onClick={() => handleInputChange("shift", option.value)}
-            >
-              <span className="shift-name">{option.label.split("(")[0]}</span>
-              <span className="shift-time">
-                {option.label.match(/\((.*?)\)/)?.[1]}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="form-group">
         <label className="form-label">Ghi chú</label>
         <textarea
           className="form-input"
@@ -645,7 +651,10 @@ const EmployeeFormModal = ({
 
       {renderStepIndicator()}
 
-      <form onSubmit={handleSubmit} className="modal-form-container">
+      <form
+        className="modal-form-container"
+        onSubmit={(e) => e.preventDefault()}
+      >
         <div className="modal-body-scroll">
           {currentStep === 1 && renderStep1()}
           {currentStep === 2 && renderStep2()}
@@ -678,13 +687,15 @@ const EmployeeFormModal = ({
                 type="button"
                 className="btn btn-primary"
                 onClick={handleNextStep}
+                disabled={isSubmitting}
               >
                 Tiếp theo
               </button>
             ) : (
               <button
-                type="submit"
+                type="button"
                 className="btn btn-primary"
+                onClick={handleSubmit}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (

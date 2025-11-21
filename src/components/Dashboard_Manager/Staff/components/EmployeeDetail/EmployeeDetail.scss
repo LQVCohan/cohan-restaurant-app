@@ -1,102 +1,356 @@
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
+
+$primary: #3b82f6;
+$text-main: #1e293b;
+$text-sub: #64748b;
+$border: #e2e8f0;
+$bg-card: #ffffff;
+$bg-hover: #f8fafc;
+
 .employee-detail-card {
   @include card-base;
-  padding: $spacing-xl;
-}
-
-.no-selection {
-  text-align: center;
-  padding: $spacing-2xl * 2;
-  color: $text-secondary;
-}
-
-.no-selection-icon {
-  font-size: 4rem;
-  margin-bottom: $spacing-lg;
-  opacity: 0.5;
-}
-
-.no-selection-text {
-  font-size: 1.125rem;
-  font-weight: 500;
-}
-
-.detail-header {
-  text-align: center;
-  margin-bottom: $spacing-xl;
-  padding-bottom: $spacing-lg;
-  border-bottom: 2px solid $border-light;
-}
-
-.detail-avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: $primary-blue;
-  color: white;
-  @include flex-center;
-  font-weight: 700;
-  font-size: 2rem;
-  margin: 0 auto $spacing-lg;
-}
-
-.detail-name {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: $text-primary;
-  margin-bottom: $spacing-sm;
-}
-
-.detail-role {
-  font-size: 0.875rem;
-  color: $text-secondary;
-  margin-bottom: $spacing-sm;
-}
-
-.detail-info {
-  margin-bottom: $spacing-xl;
-}
-
-.info-item {
+  background: $bg-card;
+  border: 1px solid $border;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.05);
+  height: 100%;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 0;
-  border-bottom: 1px solid $border-light;
-
-  &:last-child {
-    border-bottom: none;
-  }
-}
-
-.info-label {
-  font-size: 0.875rem;
-  color: $text-secondary;
-  font-weight: 500;
-}
-
-.info-value {
-  font-size: 0.875rem;
-  color: $text-primary;
-  font-weight: 600;
-  text-align: right;
-}
-
-.detail-actions {
-  display: flex;
-  gap: $spacing-sm;
   flex-direction: column;
-}
+  overflow: hidden;
 
-@media (max-width: $mobile) {
-  .info-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: $spacing-xs;
+  // --- EMPTY STATE ---
+  &.empty {
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    border: 1px dashed $border;
+    .empty-content {
+      text-align: center;
+      padding: 2rem;
+      .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+        filter: grayscale(1);
+      }
+      h3 {
+        color: $text-main;
+        margin-bottom: 0.5rem;
+      }
+      p {
+        color: $text-sub;
+        font-size: 0.9rem;
+      }
+    }
   }
 
-  .info-value {
-    text-align: left;
+  // ==========================================
+  // 🔥 1. HEADER STYLE (MỚI - BỐ CỤC NGANG)
+  // ==========================================
+  .profile-header {
+    flex-shrink: 0;
+    border-bottom: 1px solid $border;
+    background: #fff;
+    position: relative;
+
+    // Ảnh bìa cao hơn, rõ hơn
+    .cover-bg {
+      height: 120px; // Tăng chiều cao
+      background: linear-gradient(
+        135deg,
+        #667eea 0%,
+        #764ba2 100%
+      ); // Gradient đậm hơn chút
+      opacity: 0.8;
+    }
+
+    .profile-wrapper {
+      // Bố cục ngang
+      display: flex;
+      align-items: flex-end; // Căn đáy để khớp với ảnh bìa
+      gap: 1.5rem; // Khoảng cách giữa Avatar và Info
+
+      padding: 0 2rem 1.5rem 2rem; // Padding xung quanh
+      margin-top: -40px; // Đẩy lên để Avatar đè lên cover
+      position: relative; // Để z-index hoạt động
+      z-index: 2;
+
+      .avatar-xl {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 4px solid #fff;
+        background-size: cover;
+        background-position: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 2.5rem;
+        font-weight: 700;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        flex-shrink: 0; // Không bị co
+        background-color: $primary;
+      }
+
+      .profile-info {
+        flex: 1; // Chiếm phần còn lại
+        padding-bottom: 0.5rem; // Căn chỉnh nhẹ
+
+        .name {
+          font-size: 1.5rem;
+          font-weight: 800;
+          color: $text-main;
+          margin-bottom: 0.5rem;
+        }
+
+        .meta {
+          display: flex;
+          gap: 0.75rem;
+          align-items: center;
+          flex-wrap: wrap;
+
+          .role-tag {
+            font-size: 0.85rem;
+            color: $text-sub;
+            background: $bg-hover;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          }
+
+          .status-badge {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            &.success {
+              background: #ecfdf5;
+              color: #059669;
+            }
+            &.warning {
+              background: #fffbeb;
+              color: #d97706;
+            }
+            &.danger {
+              background: #fef2f2;
+              color: #dc2626;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // --- BODY (SCROLLABLE) ---
+  .detail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem; // Tăng padding
+    &::-webkit-scrollbar {
+      width: 5px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+
+    .info-group {
+      margin-bottom: 2rem;
+      .group-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: $text-sub;
+        text-transform: uppercase;
+        margin-bottom: 1rem;
+        letter-spacing: 0.05em;
+      }
+
+      .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem; // Tăng gap
+        .info-item {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem;
+          background: #fff;
+          border: 1px solid $border;
+          border-radius: 12px;
+          transition: all 0.2s;
+          &.full {
+            grid-column: span 2;
+          }
+          &:hover {
+            border-color: $primary;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+          }
+          .icon-box {
+            font-size: 1.4rem;
+            opacity: 0.8;
+            color: $primary;
+          }
+          .content-box {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            .label {
+              font-size: 0.75rem;
+              color: $text-sub;
+              margin-bottom: 4px;
+              font-weight: 600;
+            }
+            .value {
+              font-size: 1rem;
+              font-weight: 600;
+              color: $text-main;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              &.highlight {
+                color: #059669;
+                font-size: 1.1rem;
+              }
+              &.link {
+                color: $primary;
+                text-decoration: none;
+              }
+            }
+          }
+        }
+      }
+    }
+    .divider {
+      height: 1px;
+      background: $border;
+      margin: 2rem 0;
+      opacity: 0.5;
+    }
+    .performance-card {
+      background: linear-gradient(to right, #f8fafc, #fff);
+      border: 1px solid $border;
+      border-radius: 12px;
+      padding: 1.5rem;
+      .perf-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        .score {
+          color: $primary;
+          font-size: 1.1rem;
+        }
+      }
+      .progress-track {
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+        .progress-fill {
+          height: 100%;
+          background: $primary;
+        }
+      }
+    }
+  }
+
+  // --- FOOTER ---
+  .detail-footer {
+    flex-shrink: 0;
+    padding: 1.5rem 2rem;
+    border-top: 1px solid $border;
+    background: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    .action-row {
+      display: flex;
+      gap: 0.75rem;
+      flex: 1;
+      .btn {
+        flex: 1;
+        padding: 0.8rem;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        &.btn-primary {
+          background: $primary;
+          color: #fff;
+          &:hover {
+            background: darken($primary, 5%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba($primary, 0.2);
+          }
+        }
+        &.btn-secondary {
+          background: #fff;
+          border-color: $border;
+          color: $text-main;
+          &:hover {
+            background: $bg-hover;
+            border-color: $text-sub;
+            color: $primary;
+          }
+        }
+      }
+    }
+    .btn-danger-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      border: 1px solid #fee2e2;
+      background: #fff;
+      color: #ef4444;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      transition: 0.2s;
+      &:hover {
+        background: #fef2f2;
+        border-color: #ef4444;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.15);
+      }
+    }
+  }
+}
+
+@media (max-width: 1200px) {
+  .employee-detail-card {
+    .profile-header .profile-wrapper {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.5rem;
+      .profile-info {
+        padding-bottom: 0;
+      }
+    }
+    .detail-body .info-grid {
+      grid-template-columns: 1fr;
+      .info-item.full {
+        grid-column: span 1;
+      }
+    }
   }
 }

@@ -4,6 +4,7 @@ enum TimeSlot {
   dinner
   late_night
 }
+
 enum PriceUpdateMode {
   PERCENT
   AMOUNT
@@ -13,6 +14,7 @@ input BulkPriceUpdateTarget {
   categoryId: ID
   menuItemIds: [ID!]
 }
+
 input BulkPriceUpdateInput {
   restaurantId: ID!
   timeSlot: TimeSlot
@@ -22,10 +24,12 @@ input BulkPriceUpdateInput {
   roundTo: Int
   floorZero: Boolean
 }
+
 type BulkPriceUpdateResult {
   updatedCount: Int!
   items: [MenuItem!]!
 }
+
 type Menu {
   id: ID!
   restaurantId: ID!
@@ -38,17 +42,11 @@ type Menu {
   updatedAt: DateTime
 }
 
-type PreparationMethod {
-  name: String!
-  price: Float!
-  isDefault: Boolean
-}
+# Nếu không còn dùng PreparationMethod, có thể xoá hẳn 2 type dưới.
+# Chị đã bỏ khỏi MenuItem nên chúng không còn được tham chiếu.
+# type PreparationMethod { ... }
+# input PreparationMethodInput { ... }
 
-input PreparationMethodInput {
-  name: String!
-  price: Float!
-  isDefault: Boolean
-}
 input MenuItemFilter {
   restaurantId: ID!
   timeSlot: TimeSlot
@@ -58,14 +56,17 @@ input MenuItemFilter {
   minPrice: Float
   maxPrice: Float
 }
+
 type MenuItemEdge {
   node: MenuItem!
   cursor: ID!
 }
+
 type MenuItemConnection {
   edges: [MenuItemEdge!]!
   pageInfo: PageInfo!
 }
+
 type MenuItem {
   id: ID!
   restaurantId: ID!
@@ -74,14 +75,13 @@ type MenuItem {
   name: String!
   description: String
   basePrice: Float
-  preparationMethods: [PreparationMethod!]!
+  byWeight: Boolean
   servingVariants: [ServingVariant]
   thumbImage: String
   mediaAssetIds: [ID!]
   modifierGroupIds: [ID!]
   status: String
   avgPrepTimeMin: Int
-  recipe: String
   notes: String
   point: Int
   createdAt: DateTime
@@ -95,6 +95,7 @@ input UpdateMenuItemBasicInput {
   description: String
   categoryId: ID
 }
+
 input EnsureMenuInput {
   restaurantId: ID!
   timeSlot: TimeSlot!
@@ -110,13 +111,12 @@ input CreateMenuItemInput {
   name: String!
   description: String
   basePrice: Float
-  preparationMethods: [PreparationMethodInput!]
+  byWeight: Boolean
   thumbImage: String
   mediaAssetIds: [ID!]
   modifierGroupIds: [ID!]
   status: String
   avgPrepTimeMin: Int
-  recipe: String
   notes: String
 }
 
@@ -124,15 +124,14 @@ input UpdateMenuItemInput {
   id: ID!
   name: String
   description: String
-  categoryId: String
+  categoryId: ID
   basePrice: Float
-  preparationMethods: [PreparationMethodInput!]
+  byWeight: Boolean
   thumbImage: String
   mediaAssetIds: [ID!]
   modifierGroupIds: [ID!]
   status: String
   avgPrepTimeMin: Int
-  recipe: String
   notes: String
 }
 

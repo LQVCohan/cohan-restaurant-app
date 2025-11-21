@@ -43,23 +43,52 @@ export default {
   // CREATE STAFF
   // =========================
   createStaff: async (_, { input }, ctx) => {
-    input.userType = "STAFF";
+    // Ép kiểu userType (HIỆN TẠI luôn là STAFF)
+    const normalizedUserType = (input.userType || "STAFF")
+      .toString()
+      .toUpperCase();
+    input.userType = normalizedUserType;
 
-    // xác định role cho staff
-    let roleId = input.roleId;
-    if (!roleId) {
-      let staffRole =
-        (await Role.findOne({ slug: "staff" })) ||
-        (await Role.findOne({ parent: "staff" }));
+    // =========================
+    // XÁC ĐỊNH ROLE CHO STAFF
+    // =========================
+    let roleDoc = null;
 
-      if (!staffRole) {
+    // Nếu FE truyền roleId vào
+    if (input.roleId) {
+      roleDoc = await Role.findById(input.roleId).populate("parentRole");
+
+      if (!roleDoc) {
+        throw new Error("Role not found");
+      }
+
+      // Nếu userType là STAFF thì role phải thuộc nhóm 'staff'
+      if (normalizedUserType === "STAFF") {
+        const parentSlug =
+          roleDoc.parentRole?.slug ||
+          (roleDoc.parent ? roleDoc.parent.toString().toLowerCase() : null);
+
+        if (parentSlug !== "staff" && roleDoc.slug !== "staff") {
+          throw new Error(
+            "Role không hợp lệ: nhân viên STAFF phải có role thuộc nhóm 'staff'"
+          );
+        }
+      }
+    } else {
+      // Không truyền roleId -> dùng default staff role
+      roleDoc =
+        (await Role.findOne({ slug: "staff" }).populate("parentRole")) ||
+        (await Role.findOne({ parent: "staff" }).populate("parentRole"));
+
+      if (!roleDoc) {
         throw new Error(
           "Default staff role not found (slug='staff' or parent='staff')"
         );
       }
-
-      roleId = staffRole._id;
+      // Với default này thì đương nhiên thuộc nhóm staff nên không cần check thêm
     }
+
+    const roleId = roleDoc._id;
 
     const { password, primaryRestaurantId, refRestaurantIds, ...rest } = input;
 
@@ -68,11 +97,42 @@ export default {
       role: roleId,
     };
 
+    // Chuẩn hoá enum để khớp Mongoose
+    // EmploymentType: FULL_TIME -> full_time
+    if (doc.employmentType) {
+      doc.employmentType = doc.employmentType.toString().toLowerCase();
+    }
+
+    // EmploymentStatus: ON_LEAVE -> on_leave
+    if (doc.employmentStatus) {
+      doc.employmentStatus = doc.employmentStatus.toString().toLowerCase();
+    }
+
+    // ShiftType: MORNING -> morning, FULL_DAY -> full_day
+    if (doc.shiftType) {
+      doc.shiftType = doc.shiftType.toString().toLowerCase();
+    }
+
+    // StaffWorkingDay: [MON, TUE] -> ["mon", "tue"]
+    if (doc.workingDays && Array.isArray(doc.workingDays)) {
+      doc.workingDays = doc.workingDays.map((d) =>
+        d != null ? d.toString().toLowerCase() : d
+      );
+    }
+
+    // DepartmentType đã là lowercase (service, kitchen, ...) -> không cần đổi
+
+    // Gán nhà hàng
     if (primaryRestaurantId) doc.primaryRestaurant = primaryRestaurantId;
     if (refRestaurantIds) doc.refRestaurants = refRestaurantIds;
 
     const staff = new User(doc);
-    if (password) await staff.setPassword(password);
+
+    // Nếu FE có truyền password → hash luôn
+    // Nếu không → hook pre('save') trong User.js sẽ tự generate (nếu em có thêm logic đó)
+    if (password && password.trim() !== "") {
+      await staff.setPassword(password.trim());
+    }
 
     await staff.save();
     await staff.populate(["role", "refRestaurants", "primaryRestaurant"]);
@@ -84,6 +144,7 @@ export default {
       meta: {
         roleId,
         userType: staff.userType,
+        department: staff.department || null,
       },
     });
 
@@ -101,6 +162,7 @@ export default {
 
     const before = staff.toObject();
 
+    // Map các field ID sang schema thực tế
     if (input.primaryRestaurantId) {
       input.primaryRestaurant = input.primaryRestaurantId;
       delete input.primaryRestaurantId;
@@ -109,6 +171,33 @@ export default {
     if (input.refRestaurantIds) {
       input.refRestaurants = input.refRestaurantIds;
       delete input.refRestaurantIds;
+    }
+
+    // Chuẩn hoá enum giống như createStaff
+    if (input.employmentType) {
+      input.employmentType = input.employmentType.toString().toLowerCase();
+    }
+
+    if (input.employmentStatus) {
+      input.employmentStatus = input.employmentStatus.toString().toLowerCase();
+    }
+
+    if (input.shiftType) {
+      input.shiftType = input.shiftType.toString().toLowerCase();
+    }
+
+    if (input.workingDays && Array.isArray(input.workingDays)) {
+      input.workingDays = input.workingDays.map((d) =>
+        d != null ? d.toString().toLowerCase() : d
+      );
+    }
+
+    // department từ GraphQL là DepartmentType (service, kitchen...) -> đã đúng format
+
+    // Hỗ trợ đổi mật khẩu nếu có truyền trong input
+    if (input.password && input.password.trim() !== "") {
+      await staff.setPassword(input.password.trim());
+      delete input.password;
     }
 
     Object.assign(staff, input);
@@ -124,6 +213,7 @@ export default {
           fullName: before.fullName,
           employeeCode: before.employeeCode,
           positionTitle: before.positionTitle,
+          department: before.department,
           employmentType: before.employmentType,
           employmentStatus: before.employmentStatus,
           primaryRestaurant: before.primaryRestaurant,
@@ -132,6 +222,7 @@ export default {
           fullName: staff.fullName,
           employeeCode: staff.employeeCode,
           positionTitle: staff.positionTitle,
+          department: staff.department,
           employmentType: staff.employmentType,
           employmentStatus: staff.employmentStatus,
           primaryRestaurant: staff.primaryRestaurant,
@@ -153,7 +244,8 @@ export default {
     }
 
     staff.status = "inactive";
-    staff.employmentStatus = "RESIGNED";
+    // Enum trong User.js: "working", "on_leave", "resigned", "suspended"
+    staff.employmentStatus = "resigned";
     await staff.save();
 
     await logStaffEvent({
@@ -167,7 +259,7 @@ export default {
   },
 
   // =========================
-  // SET STAFF EMPLOYMENT STATUS ("Tạm nghỉ")
+  // SET STAFF EMPLOYMENT STATUS
   // =========================
   setStaffEmploymentStatus: async (_, { userId, employmentStatus }, ctx) => {
     const staff = await User.findById(userId);
@@ -178,14 +270,19 @@ export default {
 
     const beforeStatus = staff.employmentStatus;
 
-    staff.employmentStatus = employmentStatus;
+    // GraphQL: WORKING, ON_LEAVE, RESIGNED, SUSPENDED
+    // Mongo: "working", "on_leave", "resigned", "suspended"
+    const normalizedStatus = employmentStatus
+      ? employmentStatus.toString().toLowerCase()
+      : "";
+
+    staff.employmentStatus = normalizedStatus;
     await staff.save();
     await staff.populate(["role", "refRestaurants", "primaryRestaurant"]);
 
-    // Nếu là TẠM NGHỈ thì log verb rõ ràng
     const verb =
-      employmentStatus === "ON_LEAVE"
-        ? "staff.setOnLeave" // nút "Tạm nghỉ"
+      normalizedStatus === "on_leave"
+        ? "staff.setOnLeave"
         : "staff.setEmploymentStatus";
 
     await logStaffEvent({

@@ -1,6 +1,3 @@
-scalar DateTime
-scalar JSON
-
 "Đơn vị tính chuẩn cho nguyên liệu"
 enum Unit {
   g
@@ -242,9 +239,13 @@ input OrderLineInput {
 }
 
 "Consumption (trừ kho theo order)"
+"""
+Nếu warehouseId không truyền, BE sẽ tự lấy warehouse đầu tiên (kho chính)
+của restaurantId để thực hiện consume / reserve / commit / cancel.
+"""
 input ConsumeForOrderInput {
   restaurantId: ID!
-  warehouseId: ID!
+  warehouseId: ID
   orderCode: String!
   lines: [OrderLineInput!]!
   allowNegative: Boolean = false

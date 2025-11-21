@@ -1,109 +1,126 @@
 // scripts/seedRoles.js
 import mongoose from "mongoose";
+import { Role, ParentRole } from "../models/index.js";
+import process from "process";
+import dotenv from "dotenv";
+dotenv.config();
 
-import { Role } from "../src/models/Role.js";
+await mongoose.connect(process.env.MONGO_URI, {
+  dbName: process.env.MONGO_DB,
+});
 
-const role = [
-  { name: "Admin", slug: "admin", isSystem: true, permissions: ["*"] },
+// ==========================
+// LIST ROLE TO SEED
+// ==========================
+const roles = [
+  // ====== BASE SYSTEM ROLES ======
+  {
+    name: "Admin",
+    slug: "admin",
+    parentRole: "admin",
+    isSystem: true,
+  },
   {
     name: "Manager",
     slug: "manager",
+    parentRole: "manager",
     isSystem: true,
-    permissions: [
-      "restaurant.read",
-      "restaurant.write",
-      "order.read",
-      "order.write",
-      "user.read",
-    ],
   },
   {
     name: "Customer",
     slug: "customer",
+    parentRole: "staff",
     isSystem: true,
-    permissions: [
-      "restaurant.read",
-      "menu.read",
-      "order.create",
-      "reservation.create",
-      "user.self",
-    ],
   },
   {
     name: "Staff",
     slug: "staff",
+    parentRole: "staff",
     isSystem: true,
-    permissions: ["restaurant.read", "order.read", "shift.read"],
   },
-  {
-    name: "Chef",
-    slug: "chef",
-    parent: "staff",
-    isSystem: true,
-    permissions: ["kitchen.read", "kitchen.write", "order.read", "menu.read"],
-  },
+
+  // ====== SERVICE department ======
   {
     name: "Server",
     slug: "server",
-    parent: "staff",
-    isSystem: true,
-    permissions: [
-      "table.read",
-      "order.read",
-      "order.update",
-      "reservation.read",
-    ],
-  },
-  {
-    name: "Cleaner",
-    slug: "cleaner",
-    parent: "staff",
-    isSystem: true,
-    permissions: ["cleaning.read", "shift.read"],
-  },
-  {
-    name: "Shipper",
-    slug: "shipper",
-    parent: "staff",
-    isSystem: true,
-    permissions: ["delivery.read", "delivery.update", "order.read"],
+    parentRole: "staff",
+    department: "service",
   },
   {
     name: "Supervisor",
     slug: "supervisor",
-    parent: "staff",
-    isSystem: true,
-    permissions: [
-      "staff.read",
-      "shift.manage",
-      "order.read",
-      "restaurant.read",
-    ],
+    parentRole: "staff",
+    department: "service",
   },
+
+  // ====== KITCHEN department ======
+  {
+    name: "Chef",
+    slug: "chef",
+    parentRole: "staff",
+    department: "kitchen",
+  },
+
+  // ====== CASHIER department ======
   {
     name: "Cashier",
     slug: "cashier",
-    parent: "staff",
-    isSystem: true,
-    permissions: ["payment.read", "payment.write", "order.read"],
+    parentRole: "staff",
+    department: "cashier",
+  },
+
+  // ====== CLEANING department ======
+  {
+    name: "Cleaner",
+    slug: "cleaner",
+    parentRole: "staff",
+    department: "cleaning",
+  },
+
+  // ====== DELIVERY department ======
+  {
+    name: "Shipper",
+    slug: "shipper",
+    parentRole: "staff",
+    department: "delivery",
   },
 ];
 
+// ==========================
+// SEEDER
+// ==========================
 async function run() {
-  for (const r of role) {
+  for (const r of roles) {
+    // skip if exists
     const exists = await Role.findOne({ slug: r.slug }).lean();
-    if (!exists) {
-      await Role.create(r);
-      console.log(`+ Created role: ${r.slug}`);
-    } else {
+    if (exists) {
       console.log(`= Skipped role (exists): ${r.slug}`);
+      continue;
     }
+
+    // find parentRole id
+    const parent = await ParentRole.findOne({ slug: r.parentRole }).lean();
+    if (!parent) {
+      console.log(`❌ ParentRole not found for: ${r.slug}`);
+      continue;
+    }
+
+    // create role WITHOUT PERMISSIONS
+    await Role.create({
+      name: r.name,
+      slug: r.slug,
+      description: r.description || "",
+      isSystem: r.isSystem || false,
+      parentRole: parent._id,
+      department: r.department || null,
+      permissions: [], // ← now always empty
+    });
+
+    console.log(`+ Created role: ${r.slug}`);
   }
 
   await mongoose.disconnect();
-  console.log("🏁 Done");
+  console.log("🏁 Done Role Seeding");
 }
 
-run().catch((e) => {
-  console.error(e);
-});
+run().catch(console.error);

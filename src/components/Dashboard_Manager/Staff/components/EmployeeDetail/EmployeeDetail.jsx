@@ -8,118 +8,169 @@ const EmployeeDetail = ({
   onCalculateSalary,
   onDelete,
 }) => {
+  // EMPTY STATE (Giữ nguyên)
   if (!employee) {
     return (
-      <div className="employee-detail-card">
-        <div className="no-selection">
-          <div className="no-selection-icon">👤</div>
-          <div className="no-selection-text">
-            Chọn một nhân viên để xem thông tin chi tiết
-          </div>
+      <div className="employee-detail-card empty">
+        <div className="empty-content">
+          <div className="empty-icon">👋</div>
+          <h3>Chưa chọn nhân viên</h3>
+          <p>
+            Vui lòng chọn một nhân sự từ danh sách bên trái để xem hồ sơ chi
+            tiết.
+          </p>
         </div>
       </div>
     );
   }
 
-  const getStatusClass = (status) => {
-    switch (status) {
-      case "active":
-        return "status-active";
-      case "break":
-        return "status-break";
-      case "inactive":
-        return "status-inactive";
-      default:
-        return "status-active";
-    }
+  // Helpers (Giữ nguyên)
+  const getAvatarColor = (name) => {
+    const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+    return colors[name?.length % colors.length] || "#3b82f6";
   };
 
-  const getStatusText = (status) => {
-    switch (status) {
-      case "active":
-        return "Đang làm việc";
-      case "break":
-        return "Nghỉ giải lao";
-      case "inactive":
-        return "Vắng mặt";
-      default:
-        return "Đang làm việc";
-    }
-  };
-
-  const handleDelete = () => {
-    if (
-      window.confirm(
-        "⚠️ Bạn có chắc chắn muốn xóa nhân viên này?\nHành động này không thể hoàn tác!"
-      )
-    ) {
-      onDelete(employee.id);
-    }
+  const getStatusBadge = (status) => {
+    const config = {
+      active: { label: "Đang làm việc", class: "success" },
+      break: { label: "Nghỉ giải lao", class: "warning" },
+      inactive: { label: "Vắng mặt", class: "danger" },
+    };
+    const curr = config[status] || config.active;
+    return <span className={`status-badge ${curr.class}`}>{curr.label}</span>;
   };
 
   return (
     <div className="employee-detail-card">
-      <div className="detail-header">
-        <div className="detail-avatar">
-          {employee.avatar || employee.name.charAt(0).toUpperCase()}
-        </div>
-        <div className="detail-name">{employee.name}</div>
-        <div className="detail-role">{employee.role}</div>
-        <span className={`employee-status ${getStatusClass(employee.status)}`}>
-          {getStatusText(employee.status)}
-        </span>
-      </div>
-
-      <div className="detail-info">
-        <div className="info-item">
-          <span className="info-label">📞 Số điện thoại</span>
-          <span className="info-value">{employee.phone}</span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">📧 Email</span>
-          <span className="info-value">{employee.email}</span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">🏠 Địa chỉ</span>
-          <span className="info-value">{employee.address}</span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">📅 Ngày vào làm</span>
-          <span className="info-value">{employee.startDate}</span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">💰 Lương cơ bản</span>
-          <span className="info-value">{employee.salary}</span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">⏰ Ca làm việc</span>
-          <span className="info-value">{employee.shift}</span>
-        </div>
-        <div className="info-item">
-          <span className="info-label">📊 Hiệu suất</span>
-          <span className="info-value">{employee.performance}</span>
+      {/* 1. HEADER MỚI (Căn trái, gọn hơn) */}
+      <div className="profile-header">
+        <div className="cover-bg"></div>
+        <div className="profile-wrapper">
+          <div
+            className="avatar-xl"
+            style={{
+              backgroundImage: employee.avatar
+                ? `url(${employee.avatar})`
+                : "none",
+              backgroundColor: !employee.avatar
+                ? getAvatarColor(employee.name)
+                : "transparent",
+            }}
+          >
+            {!employee.avatar && employee.name.charAt(0).toUpperCase()}
+          </div>
+          <div className="profile-info">
+            <h2 className="name">{employee.name}</h2>
+            <div className="meta">
+              <span className="role-tag">💼 {employee.role}</span>
+              {getStatusBadge(employee.status)}
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="detail-actions">
-        <button className="btn btn-primary btn-small" onClick={onEdit}>
-          ✏️ Chỉnh Sửa
-        </button>
-        <button className="btn btn-secondary btn-small" onClick={onViewHistory}>
-          📊 Lịch Sử Làm Việc
-        </button>
+      {/* 2. BODY (Scrollable) - Giữ nguyên */}
+      <div className="detail-body">
+        <div className="info-group">
+          <h4 className="group-title">Thông tin cá nhân</h4>
+          <div className="info-grid">
+            <InfoItem icon="🆔" label="Mã NV" value={employee.code || "---"} />
+            <InfoItem icon="📞" label="Điện thoại" value={employee.phone} />
+            <InfoItem icon="📧" label="Email" value={employee.email} isLink />
+            <InfoItem
+              icon="🏠"
+              label="Địa chỉ"
+              value={employee.address}
+              fullWidth
+            />
+          </div>
+        </div>
+        <div className="divider"></div>
+        <div className="info-group">
+          <h4 className="group-title">Công việc & Lương</h4>
+          <div className="info-grid">
+            <InfoItem
+              icon="🏢"
+              label="Bộ phận"
+              value={
+                employee.department === "kitchen"
+                  ? "Bếp"
+                  : employee.department === "service"
+                  ? "Phục vụ"
+                  : "Khác"
+              }
+            />
+            <InfoItem icon="📅" label="Ngày vào" value={employee.startDate} />
+            <InfoItem
+              icon="💰"
+              label="Lương cơ bản"
+              value={
+                employee.salary
+                  ? `${employee.salary.toLocaleString()} đ`
+                  : "---"
+              }
+              highlight
+            />
+            <InfoItem
+              icon="⏰"
+              label="Ca làm việc"
+              value={employee.shift || "Full-time"}
+            />
+          </div>
+        </div>
+        <div className="performance-card">
+          <div className="perf-row">
+            <span className="label">Hiệu suất tháng</span>
+            <span className="score">98/100</span>
+          </div>
+          <div className="progress-track">
+            <div className="progress-fill" style={{ width: "98%" }}></div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. FOOTER (Fixed) - Giữ nguyên */}
+      <div className="detail-footer">
+        <div className="action-row">
+          <button className="btn btn-primary" onClick={onEdit}>
+            ✏️ Sửa
+          </button>
+          <button className="btn btn-secondary" onClick={onViewHistory}>
+            📜 Lịch sử
+          </button>
+          <button className="btn btn-secondary" onClick={onCalculateSalary}>
+            💵 Lương
+          </button>
+        </div>
         <button
-          className="btn btn-secondary btn-small"
-          onClick={onCalculateSalary}
+          className="btn btn-danger-icon"
+          onClick={() => onDelete(employee.id)}
+          title="Xóa"
         >
-          💰 Tính Lương Tháng
-        </button>
-        <button className="btn btn-danger btn-small" onClick={handleDelete}>
-          🗑️ Xóa Nhân Viên
+          🗑️
         </button>
       </div>
     </div>
   );
 };
+
+// InfoItem Component (Giữ nguyên)
+const InfoItem = ({ icon, label, value, isLink, highlight, fullWidth }) => (
+  <div className={`info-item ${fullWidth ? "full" : ""}`}>
+    <div className="icon-box">{icon}</div>
+    <div className="content-box">
+      <span className="label">{label}</span>
+      {isLink ? (
+        <a href={`mailto:${value}`} className="value link">
+          {value}
+        </a>
+      ) : (
+        <span className={`value ${highlight ? "highlight" : ""}`}>
+          {value || "---"}
+        </span>
+      )}
+    </div>
+  </div>
+);
 
 export default EmployeeDetail;

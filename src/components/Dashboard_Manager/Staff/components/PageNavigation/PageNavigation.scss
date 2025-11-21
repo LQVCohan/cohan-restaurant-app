@@ -1,59 +1,144 @@
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
-.page-nav {
+
+// Đồng bộ biến màu với Header
+$nav-bg: #ffffff;
+$nav-border: #e2e8f0; // Slate-200
+$nav-text: #64748b; // Slate-500 (Inactive)
+$nav-text-active: #2563eb; // Blue-600 (Active Text)
+$nav-bg-active: #eff6ff; // Blue-50 (Active BG)
+$nav-bg-hover: #f8fafc; // Slate-50 (Hover)
+
+.page-nav-container {
+  // Style giống hệt Header-card
   @include card-base;
-  padding: $spacing-lg $spacing-xl;
-  margin-bottom: $spacing-lg;
-  display: flex;
-  gap: $spacing-lg;
-  align-items: center;
-  overflow-x: auto;
+  padding: 0.5rem; // Padding nhỏ cho container
+  margin-bottom: $spacing-xl;
+  background: $nav-bg;
+  border: 1px solid $nav-border;
+  border-radius: 16px; // Bo góc lớn đồng bộ Header
+  box-shadow: $shadow-sm;
+
+  // Wrapper để xử lý scroll trên mobile
+  .nav-scroll-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+
+    // Ẩn thanh cuộn nhưng vẫn scroll được
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
 }
 
 .nav-item {
-  padding: $spacing-sm $spacing-lg;
-  border-radius: $radius-md;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 2px solid transparent;
+  position: relative;
   display: flex;
   align-items: center;
-  gap: $spacing-sm;
+  gap: 0.6rem;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  background: transparent;
+  border-radius: 12px; // Bo góc item nhỏ hơn container một chút
+  cursor: pointer;
+  transition: all 0.2s ease;
   white-space: nowrap;
-  min-width: fit-content;
 
+  // Font Style
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: $nav-text;
+
+  .nav-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+    opacity: 0.7; // Icon hơi mờ khi chưa active
+    transition: 0.2s;
+  }
+
+  // --- HOVER STATE ---
   &:hover {
-    background: #f0f9ff;
-    border-color: $primary-blue;
+    background: $nav-bg-hover;
+    color: darken($nav-text, 10%);
+    .nav-icon {
+      opacity: 1;
+      transform: scale(1.1);
+    }
   }
 
+  // --- ACTIVE STATE (Premium Style) ---
   &.active {
-    background: $primary-blue;
-    color: white;
+    background: $nav-bg-active;
+    color: $nav-text-active;
+
+    .nav-icon {
+      opacity: 1;
+    }
+
+    // Dấu chấm xanh trang trí (Optional)
+    .active-dot {
+      display: block;
+      width: 6px;
+      height: 6px;
+      background: $nav-text-active;
+      border-radius: 50%;
+      margin-left: 0.2rem;
+      box-shadow: 0 0 0 2px rgba($nav-text-active, 0.2);
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
   }
 }
 
-.nav-icon {
-  font-size: 1rem;
-}
-
-.nav-label {
-  @media (max-width: $mobile) {
-    display: none;
+@keyframes popIn {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
-@media (max-width: $mobile) {
-  .page-nav {
-    padding: $spacing-sm $spacing-lg;
-    gap: $spacing-sm;
+// --- RESPONSIVE ---
+@media (max-width: 768px) {
+  // Tablet & Mobile
+  .page-nav-container {
+    border-radius: 0; // Full width trên mobile
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    margin-left: -1rem;
+    margin-right: -1rem; // Hack để full màn hình nếu cha có padding
+    padding: 0.5rem 1rem;
   }
 
   .nav-item {
-    padding: $spacing-sm;
-    min-width: 40px;
-    justify-content: center;
+    padding: 0.6rem 1rem;
+    flex-shrink: 0; // Không bị co lại
+
+    .nav-label {
+      display: block;
+    } // Vẫn hiện label trên tablet
+    .active-dot {
+      display: none;
+    } // Ẩn dot cho gọn
+  }
+}
+
+@media (max-width: 480px) {
+  // Mobile nhỏ
+  .nav-item {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+
+    // Nếu muốn gọn hơn nữa thì ẩn label, chỉ hiện icon
+    // .nav-label { display: none; }
+    // .nav-icon { font-size: 1.2rem; margin: 0; }
   }
 }

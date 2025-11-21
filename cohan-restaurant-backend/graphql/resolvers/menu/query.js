@@ -1,6 +1,7 @@
+// src/graphql/resolvers/menu/query.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Menu, MenuItem, Recipe } from "../../../models/index.js";
+import { Menu, MenuItem } from "../../../models/index.js";
 
 export const MenuQuery = {
   menus: (_, { restaurantId }) =>
@@ -16,6 +17,7 @@ export const MenuQuery = {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
 
     const q = { restaurantId };
+
     if (timeSlot) {
       const menu = await Menu.findOne({ restaurantId, timeSlot }).lean({
         virtuals: true,
@@ -37,15 +39,7 @@ export const MenuQuery = {
       .sort({ name: 1 })
       .lean({ virtuals: true });
 
-    // Get servingVariants and preparationMethods from Recipe
-    for (const item of menuItems) {
-      const recipe = await Recipe.findOne({ menuItemId: item._id }).lean();
-      if (recipe && recipe.servingVariants) {
-        // Add servingVariants and preparationMethods to MenuItem
-        item.servingVariants = recipe.servingVariants;
-      }
-    }
-
+    // recipe (và servingVariants) sẽ được autoPopulate từ model + types resolver
     return menuItems;
   },
 
@@ -91,34 +85,23 @@ export const MenuQuery = {
       ];
     }
 
-    // Price range: bao quát cả basePrice và preparationMethods.price
+    // Price range: hiện tại chỉ filter theo basePrice
     const hasMin = typeof filter.minPrice === "number";
     const hasMax = typeof filter.maxPrice === "number";
     if (hasMin || hasMax) {
       const basePriceCond = {};
-      const prepCond = {};
-      if (hasMin) {
-        basePriceCond.$gte = filter.minPrice;
-        prepCond.$gte = filter.minPrice;
-      }
-      if (hasMax) {
-        basePriceCond.$lte = filter.maxPrice;
-        prepCond.$lte = filter.maxPrice;
-      }
-      q.$and = (q.$and || []).concat([
-        {
-          $or: [
-            { basePrice: basePriceCond },
-            { preparationMethods: { $elemMatch: { price: prepCond } } },
-          ],
-        },
-      ]);
+      if (hasMin) basePriceCond.$gte = filter.minPrice;
+      if (hasMax) basePriceCond.$lte = filter.maxPrice;
+
+      q.$and = (q.$and || []).concat([{ basePrice: basePriceCond }]);
     }
 
     // Cursor
     const cId = cursor && toObj(cursor);
     if (cId) q._id = { ...(q._id || {}), $gt: cId };
+
     console.log("info: ", q);
+
     const docs = await MenuItem.find(q)
       .sort({ _id: 1 })
       .limit(limit + 1)

@@ -1,0 +1,183 @@
+@use "../../../styles/variables" as *;
+@use "../../../styles/mixins" as *;
+
+// ==== VARIABLES CỤC BỘ ====
+$layout-bg: #f8fafc;
+$layout-gap: 1rem; // giảm từ 1.5rem -> 1rem cho đỡ thưa
+$header-transition: 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+
+.staff-management-layout {
+  display: flex;
+  flex-direction: column;
+  gap: $layout-gap;
+  // giảm padding tổng thể để đỡ nhiều khoảng trắng
+  padding: 1rem 1.25rem 1.25rem;
+  background-color: $layout-bg;
+  min-height: 100vh;
+  position: relative;
+
+  // ==========================================
+  // 1. HEADER SECTION (COLLAPSIBLE)
+  // ==========================================
+  .header-section {
+    position: relative;
+    transition: height $header-transition;
+    z-index: 10;
+    margin-bottom: 0.25rem; // thêm margin nhỏ, tránh tạo khoảng trống lớn
+
+    // Tối ưu lại header-card khi dùng trong trang staff:
+    :global(.header-card) {
+      margin-bottom: 0; // không thêm khoảng cách dưới nữa
+      padding: 1rem 1.25rem; // padding gọn hơn
+      min-height: 140px; // thay vì cao quá
+    }
+
+    // NÚT TOGGLE (Góc trên phải)
+    .header-toggle-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #fff;
+      border: 1px solid $border-light;
+      color: $text-secondary;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s;
+      z-index: 20;
+
+      &:hover {
+        background: $primary-blue;
+        color: #fff;
+        border-color: $primary-blue;
+        transform: scale(1.05);
+      }
+    }
+
+    // --- TRẠNG THÁI THU GỌN ---
+    &.collapsed {
+      margin-bottom: 0; // khi thu gọn thì gần như dính sát nav
+
+      :global(.header-card) {
+        min-height: 64px; // header thấp hơn
+        height: 64px;
+        overflow: hidden;
+        padding: 0 1.25rem;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.75rem;
+
+        :global(.header-sidebar) {
+          flex: 1;
+          width: auto;
+          height: 100%;
+          border: none;
+          background: transparent;
+          padding: 0;
+          flex-direction: row;
+          align-items: center;
+          justify-content: flex-start;
+          gap: 0.75rem;
+
+          :global(.sidebar-top) {
+            display: flex;
+            align-items: center;
+            margin: 0;
+            padding: 0;
+
+            :global(.title-block) {
+              margin: 0;
+
+              :global(.eyebrow) {
+                display: none;
+              }
+
+              :global(h1) {
+                font-size: 1.1rem;
+                margin: 0;
+              }
+            }
+
+            :global(.time-widget) {
+              display: none;
+            }
+          }
+
+          :global(.sidebar-controls) {
+            display: none;
+          }
+        }
+
+        :global(.header-content) {
+          display: none;
+          opacity: 0;
+          pointer-events: none;
+        }
+      }
+    }
+  }
+
+  // ==========================================
+  // 2. NAVIGATION SECTION
+  // ==========================================
+  .nav-section {
+    position: sticky;
+    top: 0;
+    z-index: 99;
+    margin-top: 0; // bỏ -0.5rem để không tạo khoảng trắng lạ
+    padding-bottom: 0.25rem; // khoảng cách rất nhỏ với content
+
+    // nếu muốn nav dính sát header hơn nữa thì có thể bỏ luôn padding-bottom
+  }
+
+  // ==========================================
+  // 3. CONTENT SECTION
+  // ==========================================
+  .content-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-top: 0; // rely vào gap của layout, không cộng dồn
+
+    &.fade-in-up {
+      animation: fadeInUp 0.4s ease-out;
+    }
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ==========================================
+// RESPONSIVE
+// ==========================================
+@media (max-width: 768px) {
+  .staff-management-layout {
+    padding: 0.75rem 0.75rem 1rem;
+    gap: 0.75rem;
+
+    .header-section .header-toggle-btn {
+      top: 14px;
+      right: 14px;
+    }
+
+    .nav-section {
+      top: 0;
+      margin-top: 0;
+    }
+  }
+}

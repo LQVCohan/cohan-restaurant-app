@@ -40,6 +40,7 @@ const LOGIN_MUTATION = gql`
         username
         email
         phone
+
         address {
           line1
           line2
@@ -48,42 +49,72 @@ const LOGIN_MUTATION = gql`
           city
           country
         }
+
         role {
+          id
           slug
           name
         }
+
         status
-        userType
-        refRestaurants
-        taxCode
+        provider
+        avatarUrl
+
+        # restaurants
+        refRestaurants {
+          id
+          name
+        }
+
+        # customer info
         loyaltyPoints
         customerType
-        avatarUrl
         totalOrders
         totalSpending
         emailVerified
         isGuest
         guestExpiresAt
+
+        # staff info
+        userType
+        taxCode
         employeeCode
-        rate
-        rateCount
         positionTitle
+        baseSalary
+
         employmentType
         employmentStatus
-        primaryRestaurant
+
+        primaryRestaurant {
+          id
+          name
+        }
+
         shiftType
         workingDays
+
         dateJoined
         dateLeft
+
         lastLoginAt
         lastLoginIp
+
         forcePasswordChange
         noteInternal
+
         emergencyContact {
           name
           phone
           relation
         }
+
+        # rating
+        rate
+        rateCount
+
+        # audit fields
+        createdAt
+        updatedAt
       }
     }
   }

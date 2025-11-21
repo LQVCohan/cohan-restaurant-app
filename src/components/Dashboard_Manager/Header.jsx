@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useContext } from "react";
+// src/layout/Header.jsx (ví dụ đường dẫn)
+import React, { useState, useEffect, useRef, useContext, useMemo } from "react";
 import SearchBox from "../SearchBox/SearchBox";
 import {
   FiBell,
@@ -15,6 +16,7 @@ import {
 } from "react-icons/fi";
 import "./Styles/Header.scss";
 import { AuthContext } from "@/context/AuthContext";
+
 // Hàm-tiện-ích-để-lấy-icon-thông-báo
 const getNotificationIcon = (type) => {
   switch (type) {
@@ -34,49 +36,59 @@ const Header = ({
   pageTitle = "Tổng quan",
   onToggleSidebar,
   sidebarOpen = false,
-  notifications = [], // Thêm-một-vài-thông-báo-mẫu-để-test
-  // user = {
-  //   name: "Nguyễn Quản Lý",
-  //   roleName: "Quản lý cửa hàng",
-  //   email: "manager@restaurant.com",
-  //   avatar: "👨‍💼",
-  // },
+  notifications = [],
 }) => {
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(() => new Date());
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Refs cho các container dropdown
   const notificationRef = useRef(null);
   const userMenuRef = useRef(null);
+
   const { user } = useContext(AuthContext);
-  console.log("user: header ", user);
-  const normalizeUser = {
-    fullName: user.fullName,
-    roleName: user.role.name,
-    email: user.email,
-    avatar: user.avatarIcon || "👨‍💼",
-    status: user.status,
-  };
-  // Update time every second
+
+  // Chuẩn hoá user + fallback an toàn
+  const normalizeUser = useMemo(() => {
+    if (!user) {
+      return {
+        fullName: "Người dùng",
+        roleName: "Đang tải...",
+        email: "",
+        avatar: "👤",
+        status: "INACTIVE",
+      };
+    }
+
+    return {
+      fullName: user.fullName || user.name || "Người dùng",
+      roleName: user.role?.name || user.roleName || "Nhân viên",
+      email: user.email || "",
+      avatar: user.avatarIcon || user.avatar || "👨‍💼",
+      status: user.status || "ACTIVE",
+    };
+  }, [user]);
+
+  // Cập nhật thời gian mỗi giây
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
-  // Close dropdowns when clicking outside
+    return () => clearInterval(timer);
+  }, []); // chỉ chạy 1 lần -> không thể gây loop
+
+  // Đóng dropdown khi click ra ngoài
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Đóng-Notification-Dropdown
+      // Notification dropdown
       if (
         notificationRef.current &&
         !notificationRef.current.contains(event.target)
       ) {
         setShowNotifications(false);
       }
-      // Đóng-User-Menu-Dropdown
+      // User menu dropdown
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setShowUserMenu(false);
       }
@@ -84,50 +96,46 @@ const Header = ({
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []); // Thêm-dependency-array-rỗng
+  }, []); // cũng chỉ đăng ký 1 lần
 
-  const formatTime = (date) => {
-    return date.toLocaleTimeString("vi-VN", {
+  const formatTime = (date) =>
+    date.toLocaleTimeString("vi-VN", {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
 
-  const formatDate = (date) => {
-    return date.toLocaleDateString("vi-VN", {
+  const formatDate = (date) =>
+    date.toLocaleDateString("vi-VN", {
       weekday: "long",
       day: "numeric",
       month: "long",
       year: "numeric",
     });
-  };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleToggleSidebar = () => {
-    if (onToggleSidebar) {
-      onToggleSidebar();
-    }
+    if (onToggleSidebar) onToggleSidebar();
   };
 
   const handleNotificationClick = () => {
-    setShowNotifications(!showNotifications);
-    setShowUserMenu(false); // Đóng-menu-kia-khi-mở-menu-này
+    setShowNotifications((prev) => !prev);
+    setShowUserMenu(false);
   };
 
   const handleUserMenuClick = () => {
-    setShowUserMenu(!showUserMenu);
-    setShowNotifications(false); // Đóng-menu-kia-khi-mở-menu-này
+    setShowUserMenu((prev) => !prev);
+    setShowNotifications(false);
   };
 
   const markAllAsRead = () => {
     console.log("Mark all notifications as read");
-    // Thêm-logic-xử-lý-tại-đây
+    // TODO: thêm logic setState từ cha nếu cần
   };
 
   const handleLogout = () => {
     console.log("User logged out");
-    // Thêm-logic-đăng-xuất-tại-đây
+    // TODO: gọi hàm logout từ AuthContext hoặc hook
   };
 
   return (
@@ -188,7 +196,7 @@ const Header = ({
               }`}
               onClick={handleNotificationClick}
             >
-              <FiBell /> {/* Icon-thay-thế */}
+              <FiBell />
               {unreadCount > 0 && (
                 <span className="notification-badge">{unreadCount}</span>
               )}
@@ -261,18 +269,20 @@ const Header = ({
               <span
                 className={`user-chevron ${sidebarOpen ? "hide-compact" : ""}`}
               >
-                <FiChevronDown /> {/* Icon-thay-thế */}
+                <FiChevronDown />
               </span>
             </button>
 
             {showUserMenu && (
               <div className="user-dropdown">
                 <div className="user-dropdown-header">
-                  <div className="user-avatar-large">{user.avatar}</div>
+                  <div className="user-avatar-large">
+                    {normalizeUser.avatar}
+                  </div>
                   <div className="user-details">
-                    <h3>{user.name}</h3>
-                    <p>{user.email}</p>
-                    <span className="user-badge">{user.roleName}</span>
+                    <h3>{normalizeUser.fullName}</h3>
+                    <p>{normalizeUser.email}</p>
+                    <span className="user-badge">{normalizeUser.roleName}</span>
                   </div>
                 </div>
 

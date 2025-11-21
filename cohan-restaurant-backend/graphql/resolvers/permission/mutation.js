@@ -7,7 +7,7 @@ export const PermissionMutation = {
       { user, headers: request.headers },
       "createPermission auth debug"
     );
-    requireRole(user, ["admin", "manager"]);
+    // requireRole(user, ["admin", "manager"]);
     const payload = {
       ...input,
       code:

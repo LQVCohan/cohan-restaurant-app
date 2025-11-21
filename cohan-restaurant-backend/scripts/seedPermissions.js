@@ -1,153 +1,449 @@
-import "dotenv/config";
+// scripts/seedPermissions.js
+import mongoose from "mongoose";
+import { Permission } from "../models/index.js";
 import process from "process";
-const BASE_URL = process.env.GRAPHQL_URL || "http://localhost:4000/graphql";
-const TOKEN = process.env.ADMIN_TOKEN || ""; // Bearer <JWT_ADMIN_TOKEN>
+import dotenv from "dotenv";
 
-const headers = {
-  "Content-Type": "application/json",
-  ...(TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {}),
-};
+dotenv.config();
 
-// GraphQL mutation (dùng variables)
-const CREATE_PERMISSION_MUTATION = `
-  mutation CreatePermission($input: CreatePermissionInput!) {
-    createPermission(input: $input) {
-      id
-      code
-      name
-      group
-      createdAt
-    }
-  }
-`;
+await mongoose.connect(process.env.MONGO_URI, {
+  dbName: process.env.MONGO_DB,
+});
 
-// (Tuỳ chọn) Query kiểm tra lại danh sách
-const LIST_PERMISSIONS_QUERY = `
-  query Permissions($group: String, $search: String) {
-    permissions(group: $group, search: $search) {
-      id
-      code
-      name
-      group
-    }
-  }
-`;
+/**
+ * Danh sách permission gốc trong hệ thống
+ * code sẽ = `${resource}.${action}` (trừ khi ghi rõ code "*")
+ */
+const permissions = [
+  // =========================
+  // SYSTEM / ADMIN
+  // =========================
+  {
+    name: "Xem tổng quan hệ thống",
+    resource: "system",
+    action: "read",
+    group: "system",
+    description: "Xem trang tổng quan, dashboard hệ thống",
+  },
+  {
+    name: "Quản trị hệ thống",
+    resource: "system",
+    action: "manage",
+    group: "system",
+    description: "Thực hiện các thao tác quản trị cấp cao",
+  },
+  {
+    name: "Xem cấu hình",
+    resource: "config",
+    action: "read",
+    group: "system",
+    description: "Xem cấu hình hệ thống",
+  },
+  {
+    name: "Chỉnh sửa cấu hình",
+    resource: "config",
+    action: "write",
+    group: "system",
+    description: "Thay đổi cấu hình hệ thống",
+  },
+  {
+    name: "Xem danh sách role",
+    resource: "role",
+    action: "read",
+    group: "system",
+    description: "Xem danh sách và thông tin role",
+  },
+  {
+    name: "Quản lý role",
+    resource: "role",
+    action: "write",
+    group: "system",
+    description: "Tạo, sửa, xóa role",
+  },
+  {
+    name: "Gán role cho người dùng",
+    resource: "role",
+    action: "assign",
+    group: "system",
+    description: "Gán / thu hồi role của người dùng",
+  },
+  {
+    name: "Xem permission",
+    resource: "permission",
+    action: "read",
+    group: "system",
+    description: "Xem danh sách permission",
+  },
+  {
+    name: "Quản lý permission",
+    resource: "permission",
+    action: "write",
+    group: "system",
+    description: "Tạo, sửa, xóa permission",
+  },
+  {
+    name: "Xem nhật ký hệ thống",
+    resource: "log",
+    action: "read",
+    group: "system",
+    description: "Xem event log, audit log hệ thống",
+  },
+  {
+    name: "Xem báo cáo",
+    resource: "report",
+    action: "read",
+    group: "system",
+    description: "Xem báo cáo tổng hợp",
+  },
+  {
+    name: "Xuất báo cáo",
+    resource: "report",
+    action: "export",
+    group: "system",
+    description: "Xuất file báo cáo (Excel/PDF...)",
+  },
+  {
+    name: "Xem dashboard",
+    resource: "dashboard",
+    action: "read",
+    group: "system",
+    description: "Xem dashboard phân tích",
+  },
 
-async function gqlRequest(query, variables = {}, operationName = undefined) {
-  const res = await fetch(BASE_URL, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ query, variables, operationName }),
-  });
+  // =========================
+  // RESTAURANT
+  // =========================
+  {
+    name: "Xem nhà hàng",
+    resource: "restaurant",
+    action: "read",
+    group: "restaurant",
+    description: "Xem thông tin nhà hàng",
+  },
+  {
+    name: "Chỉnh sửa nhà hàng",
+    resource: "restaurant",
+    action: "write",
+    group: "restaurant",
+    description: "Tạo / sửa / xoá nhà hàng",
+  },
 
-  const json = await res.json();
-  if (!res.ok || json.errors) {
-    const errs = json.errors?.map((e) => e.message).join("; ");
-    throw new Error(`GraphQL error: ${errs || res.statusText}`);
-  }
-  return json.data;
-}
+  // =========================
+  // MENU
+  // =========================
+  {
+    name: "Xem menu",
+    resource: "menu",
+    action: "read",
+    group: "menu",
+    description: "Xem danh sách món",
+  },
+  {
+    name: "Quản lý menu",
+    resource: "menu",
+    action: "write",
+    group: "menu",
+    description: "Thêm / sửa / xóa món ăn và danh mục",
+  },
 
-async function seedPermissions() {
-  // 10 quyền cơ bản
-  const permissions = [
-    {
-      code: "restaurant.read",
-      name: "Xem thông tin nhà hàng",
-      group: "restaurant",
-      description: "Xem danh sách & chi tiết nhà hàng",
-    },
-    {
-      code: "restaurant.create",
-      name: "Tạo mới nhà hàng",
-      group: "restaurant",
-      description: "Tạo mới nhà hàng",
-    },
-    {
-      code: "restaurant.update",
-      name: "Cập nhật nhà hàng",
-      group: "restaurant",
-      description: "Sửa thông tin nhà hàng",
-    },
-    {
-      code: "restaurant.delete",
-      name: "Xoá nhà hàng",
-      group: "restaurant",
-      description: "Xoá nhà hàng",
-    },
-    {
-      code: "menu.read",
-      name: "Xem menu",
-      group: "menu",
-      description: "Xem danh sách món & danh mục",
-    },
-    {
-      code: "menu.update",
-      name: "Quản lý menu",
-      group: "menu",
-      description: "Thêm/sửa/xoá món",
-    },
-    {
-      code: "order.read",
-      name: "Xem đơn hàng",
-      group: "order",
-      description: "Xem đơn & chi tiết đơn",
-    },
-    {
-      code: "order.update",
-      name: "Xử lý đơn hàng",
-      group: "order",
-      description: "Cập nhật trạng thái đơn",
-    },
-    {
-      code: "reservation.manage",
-      name: "Quản lý đặt bàn",
-      group: "reservation",
-      description: "Xác nhận/chỉnh sửa/hủy đặt bàn",
-    },
-    {
-      code: "user.manage",
-      name: "Quản lý người dùng & phân quyền",
-      group: "user",
-      description: "Thêm/sửa/assign role",
-    },
-  ];
+  // =========================
+  // ORDER
+  // =========================
+  {
+    name: "Xem đơn hàng",
+    resource: "order",
+    action: "read",
+    group: "order",
+    description: "Xem danh sách đơn hàng",
+  },
+  {
+    name: "Tạo đơn hàng",
+    resource: "order",
+    action: "create",
+    group: "order",
+    description: "Tạo đơn hàng mới",
+  },
+  {
+    name: "Cập nhật đơn hàng",
+    resource: "order",
+    action: "update",
+    group: "order",
+    description: "Cập nhật trạng thái / nội dung đơn hàng",
+  },
+  {
+    name: "Quản lý đơn hàng",
+    resource: "order",
+    action: "write",
+    group: "order",
+    description: "Toàn quyền thao tác với đơn hàng",
+  },
+  {
+    name: "Hủy đơn hàng",
+    resource: "order",
+    action: "cancel",
+    group: "order",
+    description: "Hủy đơn hàng (theo quy định cho phép)",
+  },
 
+  // =========================
+  // USER / CUSTOMER PROFILE
+  // =========================
+  {
+    name: "Xem người dùng",
+    resource: "user",
+    action: "read",
+    group: "user",
+    description: "Xem thông tin người dùng",
+  },
+  {
+    name: "Quyền tự thao tác tài khoản",
+    resource: "user",
+    action: "self",
+    group: "user",
+    description: "Người dùng tự xem/sửa thông tin cá nhân",
+  },
+  {
+    name: "Cập nhật hồ sơ cá nhân",
+    resource: "profile",
+    action: "update",
+    group: "customer",
+    description: "Khách hàng cập nhật thông tin hồ sơ",
+  },
+  {
+    name: "Xem địa chỉ giao hàng",
+    resource: "address",
+    action: "read",
+    group: "customer",
+    description: "Xem danh sách địa chỉ giao hàng của khách",
+  },
+  {
+    name: "Quản lý địa chỉ giao hàng",
+    resource: "address",
+    action: "write",
+    group: "customer",
+    description: "Thêm / sửa / xóa địa chỉ giao hàng",
+  },
+  {
+    name: "Xem danh sách yêu thích",
+    resource: "favorite",
+    action: "read",
+    group: "customer",
+    description: "Xem món / nhà hàng yêu thích",
+  },
+  {
+    name: "Quản lý danh sách yêu thích",
+    resource: "favorite",
+    action: "write",
+    group: "customer",
+    description: "Thêm / xóa món / nhà hàng yêu thích",
+  },
+  {
+    name: "Xem giỏ hàng",
+    resource: "cart",
+    action: "read",
+    group: "customer",
+    description: "Xem nội dung giỏ hàng",
+  },
+  {
+    name: "Cập nhật giỏ hàng",
+    resource: "cart",
+    action: "write",
+    group: "customer",
+    description: "Thêm / xóa / sửa món trong giỏ hàng",
+  },
+  {
+    name: "Tạo đánh giá",
+    resource: "review",
+    action: "create",
+    group: "customer",
+    description: "Khách hàng tạo đánh giá cho món / nhà hàng",
+  },
+  {
+    name: "Xem đánh giá",
+    resource: "review",
+    action: "read",
+    group: "customer",
+    description: "Xem danh sách đánh giá",
+  },
+  {
+    name: "Xem điểm tích lũy",
+    resource: "loyalty",
+    action: "read",
+    group: "customer",
+    description: "Xem điểm thưởng và hạng thành viên",
+  },
+  {
+    name: "Xem thông báo",
+    resource: "notification",
+    action: "read",
+    group: "customer",
+    description: "Xem thông báo khuyến mãi, đơn hàng, hệ thống",
+  },
+
+  // =========================
+  // RESERVATION
+  // =========================
+  {
+    name: "Tạo đặt bàn",
+    resource: "reservation",
+    action: "create",
+    group: "reservation",
+    description: "Khách tạo đặt bàn",
+  },
+  {
+    name: "Xem đặt bàn",
+    resource: "reservation",
+    action: "read",
+    group: "reservation",
+    description: "Nhân viên xem / xử lý yêu cầu đặt bàn",
+  },
+
+  // =========================
+  // SHIFT / CA LÀM
+  // =========================
+  {
+    name: "Xem ca làm",
+    resource: "shift",
+    action: "read",
+    group: "shift",
+    description: "Xem lịch ca làm",
+  },
+  {
+    name: "Quản lý ca làm",
+    resource: "shift",
+    action: "manage",
+    group: "shift",
+    description: "Sắp xếp, điều chỉnh ca làm",
+  },
+
+  // =========================
+  // KITCHEN
+  // =========================
+  {
+    name: "Xem bếp",
+    resource: "kitchen",
+    action: "read",
+    group: "kitchen",
+    description: "Xem danh sách món đang chế biến",
+  },
+  {
+    name: "Quản lý bếp",
+    resource: "kitchen",
+    action: "write",
+    group: "kitchen",
+    description: "Cập nhật trạng thái món trong bếp",
+  },
+
+  // =========================
+  // TABLE
+  // =========================
+  {
+    name: "Xem bàn",
+    resource: "table",
+    action: "read",
+    group: "table",
+    description: "Xem sơ đồ / trạng thái bàn",
+  },
+
+  // =========================
+  // CLEANING
+  // =========================
+  {
+    name: "Xem công việc vệ sinh",
+    resource: "cleaning",
+    action: "read",
+    group: "cleaning",
+    description: "Xem nhiệm vụ và trạng thái dọn dẹp",
+  },
+
+  // =========================
+  // DELIVERY
+  // =========================
+  {
+    name: "Xem giao hàng",
+    resource: "delivery",
+    action: "read",
+    group: "delivery",
+    description: "Xem danh sách đơn giao hàng",
+  },
+  {
+    name: "Cập nhật giao hàng",
+    resource: "delivery",
+    action: "update",
+    group: "delivery",
+    description: "Cập nhật trạng thái giao hàng",
+  },
+
+  // =========================
+  // PAYMENT
+  // =========================
+  {
+    name: "Xem thanh toán",
+    resource: "payment",
+    action: "read",
+    group: "payment",
+    description: "Xem lịch sử thanh toán",
+  },
+  {
+    name: "Xử lý thanh toán",
+    resource: "payment",
+    action: "write",
+    group: "payment",
+    description: "Tạo / xác nhận thanh toán",
+  },
+
+  // =========================
+  // STAFF / HR
+  // =========================
+  {
+    name: "Xem nhân viên",
+    resource: "staff",
+    action: "read",
+    group: "staff",
+    description: "Xem danh sách nhân viên",
+  },
+  {
+    name: "Quản lý nhân viên",
+    resource: "staff",
+    action: "write",
+    group: "staff",
+    description: "Thêm / sửa / vô hiệu hóa nhân viên",
+  },
+];
+
+async function run() {
   for (const p of permissions) {
-    try {
-      const data = await gqlRequest(
-        CREATE_PERMISSION_MUTATION,
-        { input: p },
-        "CreatePermission"
-      );
-      console.log(
-        "✅ Created:",
-        data.createPermission.code,
-        "→ id:",
-        data.createPermission.id
-      );
-    } catch (err) {
-      console.log("ℹ️ Skip:", p.code, "|", err.message); // trùng code sẽ báo skip
+    // giống logic PermissionMutation: chuẩn hoá + auto code nếu cần
+    const payload = {
+      ...p,
+      code:
+        p.code ||
+        `${(p.resource || "").toLowerCase()}.${(p.action || "").toLowerCase()}`,
+      action: p.action?.toLowerCase(),
+      resource: p.resource?.toLowerCase(),
+      group: p.group?.toLowerCase(),
+    };
+
+    if (!payload.code) {
+      console.log(`⚠️  Skip permission without code/resource+action:`, p);
+      continue;
     }
+
+    const exists = await Permission.findOne({ code: payload.code }).lean();
+    if (exists) {
+      console.log(`= Skip (exists): ${payload.code}`);
+      continue;
+    }
+
+    await Permission.create(payload);
+    console.log(`+ Created permission: ${payload.code}`);
   }
 
-  // (Tuỳ chọn) Kiểm tra lại
-  try {
-    const out = await gqlRequest(
-      LIST_PERMISSIONS_QUERY,
-      { group: "restaurant" },
-      "Permissions"
-    );
-    console.log(
-      "🔎 Permissions (group=restaurant):",
-      out.permissions.map((x) => x.code)
-    );
-  } catch (e) {
-    console.log("⚠️ Verify list error:", e.message);
-  }
+  await mongoose.disconnect();
+  console.log("🏁 Done seeding permissions");
 }
 
-seedPermissions().catch((e) => {
-  console.error("❌ Seed failed:", e);
-  process.exit(1);
+run().catch((e) => {
+  console.error(e);
+  mongoose.disconnect();
 });

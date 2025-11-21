@@ -2,14 +2,14 @@
 import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
 
-const ComponentSchema = new mongoose.Schema(
+const IngredientSchema = new mongoose.Schema(
   {
     ingredientId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Ingredient",
       required: true,
     },
-
+    quantify: { type: Number, default: 1 },
     wastePct: { type: Number, default: 0 }, // % hao hụt 0..100
   },
   { _id: true }
@@ -23,7 +23,7 @@ const ServingVariantSchema = new mongoose.Schema(
     yieldQty: { type: Number, required: true, default: 1 },
     yieldUnit: { type: String, required: true, default: "portion" }, // "portion" | "100g" | "g"
     preparationMethodName: { type: String }, // optional: variant theo cách chế biến
-    components: { type: [ComponentSchema], default: [] },
+    Ingredients: { type: [IngredientSchema], default: [] },
   },
   { _id: true }
 );
@@ -43,7 +43,7 @@ const RecipeSchema = BaseSchemaModel({
   // Legacy baseline (giữ nguyên để không phá dữ liệu cũ)
   yieldQty: { type: Number, default: 1 },
   yieldUnit: { type: String, default: "portion" },
-  baseComponents: { type: [ComponentSchema], default: [] },
+  baseComponents: { type: [IngredientSchema], default: [] },
 
   // ✅ NEW
   servingVariants: { type: [ServingVariantSchema], default: [] },

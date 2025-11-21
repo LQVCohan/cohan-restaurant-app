@@ -16,6 +16,9 @@ import { useTime } from "../../../hooks/useTime";
 import { useRestaurant } from "../../../hooks/useRestaurant";
 import { AuthContext } from "@/context/AuthContext";
 
+// Import file SCSS layout chính
+import "./StaffManagement.scss";
+
 const StaffManagement = () => {
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [selectedRestaurant, setSelectedRestaurant] = useState("all");
@@ -26,22 +29,24 @@ const StaffManagement = () => {
     workHistory: false,
   });
 
-  // Lấy user hiện tại từ AuthContext để biết managerId
+  // 🔥 STATE HEADER COLLAPSE
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+
+  const toggleHeader = () => setIsHeaderCollapsed((prev) => !prev);
+
+  // --- LOGIC FETCH DATA & AUTH ---
   const { user } = useContext(AuthContext);
   const managerId = user?.id || user?._id || null;
 
-  // State local: danh sách nhà hàng & danh sách ID nhà hàng mà user quản lý
   const [restaurantList, setRestaurantList] = useState([]);
   const [managedRestaurantIds, setManagedRestaurantIds] = useState([]);
 
-  // Hook restaurant: dùng các helper để fetch theo manager
   const {
     getManagedRestaurants,
     getManagedRestaurantIds,
     loading: restaurantLoading,
   } = useRestaurant();
 
-  // Lấy danh sách nhà hàng mà manager hiện tại quản lý
   useEffect(() => {
     if (!managerId) return;
     let cancelled = false;
@@ -65,13 +70,11 @@ const StaffManagement = () => {
     return () => {
       cancelled = true;
     };
-    // 🔥 chỉ cần phụ thuộc managerId, không cần phụ thuộc 2 hàm kia
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [managerId]);
+  }, [user.id]);
 
   // Hook quản lý nhân viên
   const {
-    staffList, // toàn bộ nhân viên server trả về (theo quyền user)
+    staffList,
     createStaff,
     updateStaff,
     deleteStaff,
@@ -86,22 +89,18 @@ const StaffManagement = () => {
   } = useStaffManagement({
     page: 1,
     pageSize: 20,
-    // không truyền restaurantId ở đây – để FE tự lọc theo managedRestaurantIds
   });
 
   const { currentTime, currentDate } = useTime();
 
-  // Lọc nhân viên theo lựa chọn nhà hàng
+  // --- FILTERING LOGIC ---
   const filteredStaff = useMemo(() => {
     if (!staffList || staffList.length === 0) return [];
 
-    // Nếu chưa có managedRestaurantIds (hoặc user không phải manager), thì "All" = tất cả
     if (selectedRestaurant === "all") {
       if (!managedRestaurantIds || managedRestaurantIds.length === 0) {
         return staffList;
       }
-
-      // All = tất cả nhân viên thuộc những nhà hàng mà mình quản lý
       return staffList.filter((staff) => {
         if (!staff.refRestaurants || staff.refRestaurants.length === 0)
           return false;
@@ -112,7 +111,6 @@ const StaffManagement = () => {
       });
     }
 
-    // Chọn 1 nhà hàng cụ thể
     return staffList.filter((staff) => {
       if (!staff.refRestaurants || staff.refRestaurants.length === 0)
         return false;
@@ -120,7 +118,7 @@ const StaffManagement = () => {
     });
   }, [staffList, selectedRestaurant, managedRestaurantIds]);
 
-  // Pagination trên filteredStaff
+  // --- PAGINATION ---
   const totalItems = filteredStaff.length;
   const totalPages = useMemo(
     () => (pageSize > 0 ? Math.ceil(totalItems / pageSize) : 1),
@@ -140,7 +138,7 @@ const StaffManagement = () => {
     return filteredStaff.slice(start, start + pageSize);
   }, [filteredStaff, safePage, pageSize]);
 
-  // Stats từ filteredStaff (chỉ trên nhân viên mà manager có quyền)
+  // --- STATS CALCULATION ---
   const stats = useMemo(() => {
     const total = filteredStaff.length;
     const active = filteredStaff.filter((s) => s.status === "active").length;
@@ -160,7 +158,7 @@ const StaffManagement = () => {
     };
   }, [filteredStaff]);
 
-  // ====== Handlers ======
+  // --- HANDLERS ---
   const openModal = (modalName) => {
     setModals((prev) => ({ ...prev, [modalName]: true }));
   };
@@ -175,7 +173,7 @@ const StaffManagement = () => {
 
   const handleRestaurantChange = (restaurantId) => {
     setSelectedRestaurant(restaurantId);
-    setPage(1); // đổi nhà hàng thì reset trang
+    setPage(1);
   };
 
   const handleEmployeeSelect = (employee) => {
@@ -183,7 +181,6 @@ const StaffManagement = () => {
   };
 
   const handleAddEmployee = async (formValues) => {
-    // formValues có thể include primaryRestaurantId / refRestaurantIds
     await createStaff(formValues);
     closeModal("addEmployee");
   };
@@ -219,59 +216,71 @@ const StaffManagement = () => {
   };
 
   const handleExportData = () => {
-    // Bạn có thể dùng filteredStaff hoặc paginatedStaff để export
     console.log("Export staff data", filteredStaff);
   };
 
   const anyLoading = staffListLoading || restaurantLoading;
 
-  // ====== Render ======
   return (
-    <div className="app">
-      <Header
-        selectedRestaurant={selectedRestaurant}
-        onRestaurantChange={handleRestaurantChange}
-        onAddEmployee={() => openModal("addEmployee")}
-        onExportData={handleExportData}
-        restaurantList={restaurantList}
-        stats={stats}
-        loading={anyLoading}
-      />
-
-      <PageNavigation
-        currentPage={currentPage}
-        onPageChange={handlePageChangeTab}
-      />
-
-      {currentPage === "dashboard" && (
-        <EmployeeDashboard
-          employees={paginatedStaff}
-          selectedEmployee={selectedEmployee}
-          onEmployeeSelect={handleEmployeeSelect}
-          onEditEmployee={() => openModal("editEmployee")}
-          onViewHistory={() => openModal("workHistory")}
-          onDeleteEmployee={handleDeleteEmployee}
-          onSetOnLeave={handleSetOnLeave}
-          onSetWorking={handleSetWorking}
-          onLockAccount={handleLockAccount}
-          onUnlockAccount={handleUnlockAccount}
-          onRateStaff={handleRateStaff}
-          page={safePage}
-          pageSize={pageSize}
-          totalItems={totalItems}
-          totalPages={totalPages}
-          onChangePage={setPage}
-          onChangePageSize={setPageSize}
+    <div className="staff-management-layout">
+      {/* HEADER SECTION (COLLAPSIBLE) */}
+      <div className={`header-section ${isHeaderCollapsed ? "collapsed" : ""}`}>
+        <Header
+          selectedRestaurant={selectedRestaurant}
+          onRestaurantChange={handleRestaurantChange}
+          onAddEmployee={() => openModal("addEmployee")}
+          onExportData={handleExportData}
+          restaurantList={restaurantList}
+          stats={stats}
           loading={anyLoading}
+          onPageChange={handlePageChangeTab}
+          // 👇 Cần thêm dòng này
+          isCollapsed={isHeaderCollapsed}
+          onToggle={toggleHeader}
         />
-      )}
+      </div>
 
-      {currentPage === "attendance" && (
-        <AttendancePage currentTime={currentTime} currentDate={currentDate} />
-      )}
+      {/* NAVIGATION BAR */}
+      <div className="nav-section">
+        <PageNavigation
+          currentPage={currentPage}
+          onPageChange={handlePageChangeTab}
+        />
+      </div>
 
-      {currentPage === "leave" && <LeaveManagement />}
+      {/* CONTENT SECTION */}
+      <div className="content-section fade-in-up">
+        {currentPage === "dashboard" && (
+          <EmployeeDashboard
+            employees={paginatedStaff}
+            selectedEmployee={selectedEmployee}
+            onEmployeeSelect={handleEmployeeSelect}
+            onEditEmployee={() => openModal("editEmployee")}
+            onViewHistory={() => openModal("workHistory")}
+            onDeleteEmployee={handleDeleteEmployee}
+            onSetOnLeave={handleSetOnLeave}
+            onSetWorking={handleSetWorking}
+            onLockAccount={handleLockAccount}
+            onUnlockAccount={handleUnlockAccount}
+            onRateStaff={handleRateStaff}
+            page={safePage}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            totalPages={totalPages}
+            onChangePage={setPage}
+            onChangePageSize={setPageSize}
+            loading={anyLoading}
+          />
+        )}
 
+        {currentPage === "attendance" && (
+          <AttendancePage currentTime={currentTime} currentDate={currentDate} />
+        )}
+
+        {currentPage === "leave" && <LeaveManagement />}
+      </div>
+
+      {/* MODALS */}
       <AddEmployeeModal
         isOpen={modals.addEmployee}
         onClose={() => closeModal("addEmployee")}

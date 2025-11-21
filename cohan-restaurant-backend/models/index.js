@@ -1,4 +1,5 @@
 export { default as Role } from "./role.model.js";
+export { default as ParentRole } from "./parent-role.model.js";
 export { default as Permission } from "./permission.model.js";
 export { default as User } from "./user.model.js";
 export { default as Restaurant } from "./restaurant.model.js";

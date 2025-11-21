@@ -9,7 +9,7 @@ export const ModifierMutation = {
 
   createModifierGroup: async (_, { input }, { user }) => {
     try {
-      requireRole(user, ["admin", "manager"]);
+      // requireRole(user, ["admin", "manager"]);
       const doc = await ModifierGroup.create(input);
 
       const result = await ModifierGroup.findById(doc._id).lean({
@@ -21,6 +21,57 @@ export const ModifierMutation = {
       throw new GraphQLError(err.message || "Failed to create modifier group", {
         extensions: { code: "INTERNAL_SERVER_ERROR" },
       });
+    }
+  },
+
+  // ✅ NEW: tạo ModifierGroup cho một MenuItem & gắn luôn vào món
+  createModifierGroupForMenuItem: async (_, { input }, { user }) => {
+    try {
+      // requireRole(user, ["admin", "manager"]);
+      const {
+        menuItemId,
+        restaurantId,
+        name,
+        selectionType,
+        required,
+        appliesTo,
+        options,
+      } = input;
+
+      const menuItem = await MenuItem.findById(menuItemId);
+      if (!menuItem) throw new GraphQLError("MenuItem not found");
+
+      const restId = restaurantId || menuItem.restaurantId;
+      if (!restId) throw new GraphQLError("restaurantId is required");
+
+      const groupDoc = await ModifierGroup.create({
+        restaurantId: restId,
+        name: name || `Tuỳ chọn cho ${menuItem.name}`,
+        selectionType: selectionType || "multiple",
+        required: typeof required === "boolean" ? required : false,
+        appliesTo: appliesTo || "item",
+        options: options || [],
+        isActive: true,
+      });
+
+      // Gắn group vào món
+      await MenuItem.updateOne(
+        { _id: menuItem._id },
+        { $addToSet: { modifierGroupIds: groupDoc._id } }
+      );
+
+      const result = await ModifierGroup.findById(groupDoc._id).lean({
+        virtuals: true,
+      });
+      return result;
+    } catch (err) {
+      console.error("❌ createModifierGroupForMenuItem error:", err);
+      throw new GraphQLError(
+        err.message || "Failed to create modifier group for menu item",
+        {
+          extensions: { code: "INTERNAL_SERVER_ERROR" },
+        }
+      );
     }
   },
 
@@ -73,7 +124,7 @@ export const ModifierMutation = {
     }
 
     const target = g.options[idx];
-    ["name", "priceDelta", "isDefault"].forEach((k) => {
+    ["name", "priceDelta", "isDefault", "recipe"].forEach((k) => {
       if (option[k] !== undefined) target[k] = option[k];
     });
 

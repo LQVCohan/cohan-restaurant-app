@@ -1,9 +1,24 @@
 # ====== Types ======
+
+type ModifierIngredient {
+  ingredientId: ID!
+  quantify: Float
+  wastePct: Float
+}
+
+type ModifierOptionRecipe {
+  Ingredients: [ModifierIngredient!]!
+  yieldQty: Float
+  yieldUnit: String
+  notes: String
+}
+
 type ModifierOption {
   id: ID
   name: String!
   priceDelta: Float!
   isDefault: Boolean
+  recipe: ModifierOptionRecipe
 }
 
 type ModifierGroup {
@@ -20,15 +35,41 @@ type ModifierGroup {
 }
 
 # ====== Inputs ======
+
+input ModifierIngredientInput {
+  ingredientId: ID!
+  quantify: Float
+  wastePct: Float
+}
+
+input ModifierOptionRecipeInput {
+  Ingredients: [ModifierIngredientInput!]
+  yieldQty: Float
+  yieldUnit: String
+  notes: String
+}
+
 input ModifierOptionInput {
   name: String!
   priceDelta: Float!
   isDefault: Boolean
+  recipe: ModifierOptionRecipeInput
 }
 
 input CreateModifierGroupInput {
   restaurantId: ID!
   name: String!
+  selectionType: String = "multiple"
+  required: Boolean = false
+  appliesTo: String = "item"
+  options: [ModifierOptionInput!]
+  isActive: Boolean = true
+}
+
+input CreateModifierGroupForMenuItemInput {
+  menuItemId: ID!
+  restaurantId: ID
+  name: String
   selectionType: String = "multiple"
   required: Boolean = false
   appliesTo: String = "item"
@@ -46,6 +87,7 @@ input UpdateModifierGroupInput {
 }
 
 # ====== Link món ↔ nhóm tuỳ chọn ======
+
 input SetMenuItemModifierGroupsInput {
   menuItemId: ID!
   groupIds: [ID!]! # thay thế toàn bộ danh sách group của món
@@ -62,6 +104,7 @@ input DetachMenuItemModifierGroupsInput {
 }
 
 # ====== Queries / Mutations ======
+
 extend type Query {
   modifierGroups(restaurantId: ID!, search: String): [ModifierGroup!]!
   modifierGroup(id: ID!): ModifierGroup
@@ -70,6 +113,9 @@ extend type Query {
 extend type Mutation {
   # Group CRUD
   createModifierGroup(input: CreateModifierGroupInput!): ModifierGroup!
+  createModifierGroupForMenuItem(
+    input: CreateModifierGroupForMenuItemInput!
+  ): ModifierGroup!
   updateModifierGroup(input: UpdateModifierGroupInput!): ModifierGroup!
   deleteModifierGroup(id: ID!): Boolean!
 

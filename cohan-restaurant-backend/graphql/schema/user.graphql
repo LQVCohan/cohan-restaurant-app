@@ -1,3 +1,9 @@
+scalar DateTime
+
+# =========================
+# Enums
+# =========================
+
 enum UserType {
   CUSTOMER
   STAFF
@@ -37,6 +43,7 @@ enum StaffWorkingDay {
   SAT
   SUN
 }
+
 enum DepartmentType {
   service
   kitchen
@@ -45,6 +52,7 @@ enum DepartmentType {
   cleaning
   delivery
 }
+
 enum CustomerType {
   VIP
   NEW
@@ -95,7 +103,7 @@ type User {
   loyaltyPoints: Int
   roleName: String
 
-  customerType: String
+  customerType: CustomerType
   totalOrders: Int
   totalSpending: Float
   emailVerified: Boolean
@@ -106,14 +114,12 @@ type User {
   isGuest: Boolean
   guestExpiresAt: DateTime
 
-  # -------- NEW: phân loại & thuế ----------
   userType: UserType
   taxCode: String
 
-  # -------- NEW: thông tin nhân viên ----------
   employeeCode: String
   positionTitle: String
-
+  baseSalary: Int
   employmentType: EmploymentType
   employmentStatus: EmploymentStatus
 
@@ -130,7 +136,7 @@ type User {
 
   noteInternal: String
   emergencyContact: EmergencyContact
-  rate: Int
+  rate: Float
   rateCount: Int
 }
 
@@ -159,15 +165,14 @@ input CreateUserInput {
   email: String
   phone: String
   address: AddressInput
-  password: String!
+  password: String
   provider: String
   status: String
   roleId: ID
   refRestaurantIds: [ID!]
-  customerType: String
+  customerType: CustomerType
   captchaToken: String
 
-  # --- NEW: cho phép tạo nhân viên/owner/admin ---
   userType: UserType
   taxCode: String
   department: DepartmentType
@@ -181,6 +186,7 @@ input CreateUserInput {
   dateJoined: DateTime
   noteInternal: String
   emergencyContact: EmergencyContactInput
+  baseSalary: Int
 }
 
 input UpdateUserInput {
@@ -195,7 +201,6 @@ input UpdateUserInput {
 input UpdateAvatarInput {
   fileBase64: String
   fileUrl: String
-  # clear: Boolean  # nếu cần xoá avatar có thể mở rộng thêm trường này
 }
 
 input AssignRoleToUserInput {
@@ -210,7 +215,7 @@ input AdminUpdateUserInput {
   phone: String
   address: AddressInput
   avatarUrl: String
-  status: String # 'active' | 'inactive' | 'blocked' | 'pending'
+  status: String
   customerType: CustomerType
   loyaltyPoints: Int
   totalOrders: Int
@@ -220,7 +225,6 @@ input AdminUpdateUserInput {
   refRestaurantIds: [ID!]
   roleId: ID
 
-  # --- NEW: staff fields & taxCode ---
   userType: UserType
   taxCode: String
 
@@ -257,7 +261,6 @@ type Query {
   users(roleId: ID, search: String, isGuest: Boolean): [User!]!
   customers(search: String, includeGuests: Boolean): [User!]!
 
-  # --- NEW: staff queries ---
   staff(id: ID!): User
   staffList(
     restaurantId: ID
@@ -272,7 +275,6 @@ type Query {
 # =========================
 
 type Mutation {
-  # Auth
   createUser(input: CreateUserInput!): AuthPayload!
   login(
     email: String
@@ -283,42 +285,30 @@ type Mutation {
   ): AuthPayload!
   changeMyPassword(currentPassword: String!, newPassword: String!): Boolean!
 
-  # Profile
   updateUser(input: UpdateUserInput!): User!
   updateAvatar(input: UpdateAvatarInput!): User!
 
-  # Email verification
   requestEmailVerification(email: String!): Boolean!
   verifyEmail(token: String!): Boolean!
   resendVerification(email: String!): Boolean!
 
-  # Role & Admin ops
   assignRoleToUser(input: AssignRoleToUserInput!): User!
   adminUpdateUser(userId: ID!, input: AdminUpdateUserInput!): User!
   setUserStatus(userId: ID!, status: String!): User!
   softDeleteUser(userId: ID!): Boolean!
 
-  # Guests
   createGuestUser(fullName: String, phone: String, expiresInDays: Int): User!
 
-  # Loyalty/Metrics
   updateCustomerMetrics(
     id: ID!
     loyaltyPoints: Int!
     customerType: CustomerType!
   ): User!
 
-  # --- NEW: Staff management (CRUD nhân viên) ---
-  # Tạo nhân viên: dùng lại CreateUserInput, resolver gọi chung logic createUser
   createStaff(input: CreateUserInput!): User!
-
-  # Sửa thông tin nhân viên (dùng AdminUpdateUserInput)
   updateStaff(userId: ID!, input: AdminUpdateUserInput!): User!
-
-  # Xóa/soft-delete nhân viên
   deleteStaff(userId: ID!): Boolean!
   rateStaff(userId: ID!, rating: Int!): User!
-  # Đổi trạng thái công việc (không phải status account)
   setStaffEmploymentStatus(
     userId: ID!
     employmentStatus: EmploymentStatus!

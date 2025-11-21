@@ -154,6 +154,10 @@ input CustomerInput {
   email: String
 }
 
+"""
+Tạo / append order cho bàn.
+warehouseId optional: nếu không truyền, BE sẽ tự chọn warehouse đầu tiên của restaurant.
+"""
 input CreateOrAppendTableOrderInput {
   restaurantId: ID!
   tableId: ID
@@ -164,6 +168,7 @@ input CreateOrAppendTableOrderInput {
   customer: CustomerInput
   userId: ID
   clientMeta: JSON
+  warehouseId: ID
 }
 
 type CreateOrAppendTableOrderPayload {
@@ -174,12 +179,14 @@ type CreateOrAppendTableOrderPayload {
 """
 ✅ Cập nhật trạng thái Order theo ID, không dùng code nữa.
 Thêm restaurantId optional để BE có thể check nếu cần.
+warehouseId optional: nếu truyền, BE sẽ commit/cancel reservation ở kho tương ứng.
 """
 input UpdateOrderStatusInput {
   id: ID!
   restaurantId: ID
   status: OrderStatus!
   note: String
+  warehouseId: ID
 }
 
 input UpdateOrderItemStatusInput {
@@ -303,5 +310,6 @@ extend type Mutation {
     restaurantId: ID!
     orderId: ID!
     reason: String
+    warehouseId: ID
   ): CancelOrderPayload!
 }
