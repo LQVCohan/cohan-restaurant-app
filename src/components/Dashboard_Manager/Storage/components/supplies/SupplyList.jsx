@@ -34,7 +34,7 @@ const SupplyList = ({
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [unit, setUnit] = useState("");
-  const [current, setCurrent] = useState(null);
+  const [current, setCurrent] = useState(null); // { supply, stockItem }
   const [mode, setMode] = useState(null); // 'in' | 'out' | 'transfer'
   const [isModalOpen, setIsModalOpen] = useState(false); // SupplyModal
   const [editing, setEditing] = useState(null); // supply đang sửa
@@ -97,18 +97,18 @@ const SupplyList = ({
     return true;
   };
 
-  const openIn = (s) => {
+  const openIn = (s, stockItem) => {
     if (!requireWarehouse()) return;
-    setCurrent(s);
+    setCurrent({ supply: s, stockItem });
     setMode("in");
   };
-  const openOut = (s) => {
+  const openOut = (s, stockItem) => {
     if (!requireWarehouse()) return;
-    setCurrent(s);
+    setCurrent({ supply: s, stockItem });
     setMode("out");
   };
-  const openTransfer = (s) => {
-    setCurrent(s);
+  const openTransfer = (s, stockItem) => {
+    setCurrent({ supply: s, stockItem });
     setMode("transfer");
   };
   const closeStockModal = () => {
@@ -117,11 +117,11 @@ const SupplyList = ({
   };
 
   const submitInbound = async (values) => {
-    if (!current) return;
+    if (!current?.supply) return;
     await handleInbound({
       restaurantId,
       warehouseId, // nhập vào kho đang chọn
-      supplyId: current.id,
+      supplyId: current.supply.id,
       qty: values.qty,
       lot: values.lot,
       expiry: values.expiry,
@@ -133,11 +133,19 @@ const SupplyList = ({
   };
 
   const submitOutbound = async (values) => {
-    if (!current) return;
+    if (!current?.supply) return;
+
+    const parsedAvailable = Number(current.stockItem?.onHand);
+    const available = Number.isFinite(parsedAvailable) ? parsedAvailable : null;
+    if (available !== null && values.qty > available) {
+      alert("Số lượng xuất vượt quá tồn kho hiện tại.");
+      return;
+    }
+
     await handleOutbound({
       restaurantId,
       warehouseId, // xuất từ kho đang chọn
-      supplyId: current.id,
+      supplyId: current.supply.id,
       qty: values.qty,
       reason: values.reason,
     });
@@ -145,10 +153,10 @@ const SupplyList = ({
   };
 
   const submitTransfer = async (values) => {
-    if (!current) return;
+    if (!current?.supply) return;
     await handleTransfer({
       restaurantId,
-      supplyId: current.id,
+      supplyId: current.supply.id,
       fromWarehouseId: values.fromWarehouseId,
       toWarehouseId: values.toWarehouseId,
       qty: values.qty,
@@ -227,9 +235,9 @@ const SupplyList = ({
                 stockItem={stockItem}
                 onEdit={() => openEdit(supply)}
                 onDelete={async () => await handleDelete(supply.id)}
-                onStockClick={openIn}
-                onStockOutClick={openOut}
-                onTransferClick={openTransfer}
+                onStockClick={() => openIn(supply, stockItem)}
+                onStockOutClick={() => openOut(supply, stockItem)}
+                onTransferClick={() => openTransfer(supply, stockItem)}
               />
             );
           })}
@@ -247,29 +255,30 @@ const SupplyList = ({
       )}
 
       {/* Stock modals */}
-      {mode === "in" && current && (
+      {mode === "in" && current?.supply && (
         <StockInModal
           isOpen
           onClose={closeStockModal}
           onConfirm={submitInbound}
           mode="in"
-          supply={current}
+          supply={current.supply}
         />
       )}
-      {mode === "out" && current && (
+      {mode === "out" && current?.supply && (
         <StockOutModal
           isOpen
           onClose={closeStockModal}
           onConfirm={submitOutbound}
-          supply={current}
+          supply={current.supply}
+          availableOnHand={current.stockItem?.onHand}
         />
       )}
-      {mode === "transfer" && current && (
+      {mode === "transfer" && current?.supply && (
         <StockTransferModal
           isOpen
           onClose={closeStockModal}
           onConfirm={submitTransfer}
-          supply={current}
+          supply={current.supply}
           warehouses={warehouses || []}
           warehousesLoading={warehousesLoading}
           currentWarehouseId={warehouseId || ""}
