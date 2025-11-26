@@ -1,140 +1,520 @@
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
 
-.attendance-page {
-  .attendance-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: $spacing-xl;
+// --- CONFIG COLORS ---
+$primary: #3b82f6;
+$success: #10b981;
+$warning: #f59e0b;
+$danger: #ef4444;
+$text-main: #1e293b;
+$text-sub: #64748b;
+$bg-light: #f8fafc;
+$border: #e2e8f0;
 
-    @media (max-width: $tablet) {
-      grid-template-columns: 1fr;
-    }
-  }
-}
-
-.attendance-card {
-  @include card-base;
-  padding: $spacing-2xl;
-
-  .card-title {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: $text-primary;
-    margin-bottom: $spacing-2xl;
-    text-align: center;
-  }
-}
-
-.time-display-staff {
-  text-align: center;
-  margin-bottom: $spacing-2xl;
-
-  .current-time {
-    font-size: 3rem;
-    font-weight: 800;
-    color: $primary-blue;
-    margin-bottom: $spacing-sm;
-    font-family: "Courier New", monospace;
-  }
-
-  .current-date {
-    font-size: 1.125rem;
-    color: $text-secondary;
-    font-weight: 600;
-  }
-}
-
-.attendance-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: $spacing-lg;
-  margin-bottom: $spacing-2xl;
-}
-
-.attendance-btn {
-  padding: $spacing-xl;
-  border: none;
-  border-radius: $radius-md;
-  font-size: 1rem;
-  font-weight: 700;
-  font-family: "Inter", sans-serif;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.attendance-management-page {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: $spacing-sm;
+  gap: 1.5rem;
 
-  &.check-in {
-    background: linear-gradient(
-      135deg,
-      $success-green,
-      darken($success-green, 10%)
-    );
-    color: white;
-
-    &:hover:not(.disabled) {
-      transform: translateY(-2px);
-      box-shadow: $shadow-md;
-    }
-  }
-
-  &.check-out {
-    background: linear-gradient(135deg, $error-500, darken($error-500, 10%));
-    color: white;
-
-    &:hover:not(.disabled) {
-      transform: translateY(-2px);
-      box-shadow: $shadow-md;
-    }
-  }
-
-  &.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .attendance-icon {
-    font-size: 2rem;
-  }
-
-  .btn-subtitle {
-    font-size: 0.75rem;
-    opacity: 0.8;
-    font-weight: 500;
-  }
-}
-
-.today-info,
-.stats-info {
-  .info-item {
+  // 1. PAGE HEADER
+  .page-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 1rem 0;
-    border-bottom: 1px solid $border-light;
-
-    &:last-child {
-      border-bottom: none;
+    align-items: flex-end;
+    .header-left {
+      .page-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: $text-main;
+        margin: 0 0 0.25rem 0;
+      }
+      .page-subtitle {
+        color: $text-sub;
+        font-size: 0.9rem;
+        margin: 0;
+      }
+    }
+    .header-controls {
+      display: flex;
+      gap: 1rem;
+      .date-picker {
+        padding: 0.6rem 1rem;
+        border: 1px solid $border;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        color: $text-main;
+        cursor: pointer;
+        &:focus {
+          border-color: $primary;
+          outline: none;
+        }
+      }
+      .btn {
+        padding: 0.6rem 1.2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: 0.2s;
+        &.btn-primary {
+          background: $primary;
+          color: #fff;
+          &:hover {
+            background: darken($primary, 5%);
+            box-shadow: 0 4px 6px rgba($primary, 0.2);
+          }
+        }
+      }
     }
   }
 
-  .info-label {
-    font-size: 0.875rem;
-    color: $text-secondary;
-    font-weight: 500;
+  // 2. STATS GRID
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    .stat-card {
+      @include card-base;
+      background: #fff;
+      padding: 1.25rem;
+      border-radius: 12px;
+      border: 1px solid $border;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: 0.2s;
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      }
+      .icon-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+      }
+      .info {
+        display: flex;
+        flex-direction: column;
+        .label {
+          font-size: 0.85rem;
+          color: $text-sub;
+          font-weight: 500;
+        }
+        .value {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: $text-main;
+          line-height: 1.2;
+        }
+      }
+
+      &.total {
+        .icon-box {
+          background: #eff6ff;
+          color: $primary;
+        }
+      }
+      &.present {
+        .icon-box {
+          background: #ecfdf5;
+          color: $success;
+        }
+        .value {
+          color: $success;
+        }
+      }
+      &.warning {
+        .icon-box {
+          background: #fffbeb;
+          color: $warning;
+        }
+        .value {
+          color: $warning;
+        }
+      }
+      &.danger {
+        .icon-box {
+          background: #fef2f2;
+          color: $danger;
+        }
+        .value {
+          color: $danger;
+        }
+      }
+    }
   }
 
-  .info-value {
-    font-size: 0.875rem;
-    color: $text-primary;
-    font-weight: 600;
+  // 🔥 3. QUICK ACTION SECTION (NEW)
+  .quick-action-section {
+    @include card-base;
+    background: #fff;
+    border: 2px solid $border;
+    border-left: 5px solid $warning; // Điểm nhấn
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+
+    .quick-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex: 1;
+      .icon-flash {
+        width: 48px;
+        height: 48px;
+        background: #fff7ed;
+        color: $warning;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        border: 1px solid #ffedd5;
+      }
+      .text {
+        h4 {
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: $text-main;
+          margin: 0 0 4px 0;
+        }
+        p {
+          font-size: 0.85rem;
+          color: $text-sub;
+          margin: 0;
+        }
+      }
+    }
+
+    .quick-form {
+      flex: 2;
+      display: flex;
+      align-items: flex-end;
+      gap: 1rem;
+      .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+        label {
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: $text-main;
+        }
+        .quick-select,
+        input {
+          width: 100%;
+          padding: 0.6rem;
+          border: 1px solid $border;
+          border-radius: 8px;
+          font-size: 0.9rem;
+          &:focus {
+            border-color: $primary;
+            outline: none;
+          }
+        }
+      }
+      .note-group {
+        flex: 1.5;
+      }
+      .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        .btn-quick {
+          padding: 0.6rem 1.2rem;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 0.85rem;
+          cursor: pointer;
+          border: none;
+          transition: all 0.2s;
+          white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          &.in {
+            background: #ecfdf5;
+            color: $success;
+            border: 1px solid $success;
+            &:hover {
+              background: $success;
+              color: #fff;
+              box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+            }
+          }
+          &.out {
+            background: #fef2f2;
+            color: $danger;
+            border: 1px solid $danger;
+            &:hover {
+              background: $danger;
+              color: #fff;
+              box-shadow: 0 4px 6px rgba(239, 68, 68, 0.2);
+            }
+          }
+          &:active {
+            transform: scale(0.95);
+          }
+        }
+      }
+    }
+  }
+
+  // 4. TABLE SECTION
+  .table-section {
+    @include card-base;
+    background: #fff;
+    border: 1px solid $border;
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+
+    .table-toolbar {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid $border;
+      background: $bg-light;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      .tabs {
+        display: flex;
+        gap: 0.5rem;
+        .tab-btn {
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          border: none;
+          background: transparent;
+          color: $text-sub;
+          font-weight: 600;
+          cursor: pointer;
+          transition: 0.2s;
+          font-size: 0.9rem;
+          &:hover {
+            background: #e2e8f0;
+            color: $text-main;
+          }
+          &.active {
+            background: #fff;
+            color: $primary;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          }
+        }
+      }
+      .search-box input {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        border: 1px solid $border;
+        width: 250px;
+        font-size: 0.9rem;
+        &:focus {
+          outline: none;
+          border-color: $primary;
+        }
+      }
+    }
+
+    .table-container {
+      flex: 1;
+      overflow-y: auto;
+      .attendance-table {
+        width: 100%;
+        border-collapse: collapse;
+        thead th {
+          text-align: left;
+          padding: 1rem 1.5rem;
+          background: #fff;
+          border-bottom: 1px solid $border;
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: $text-sub;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          &.text-right {
+            text-align: right;
+          }
+        }
+        tbody tr {
+          border-bottom: 1px solid $border;
+          transition: 0.2s;
+          &:hover {
+            background: $bg-light;
+          }
+          td {
+            padding: 1rem 1.5rem;
+            vertical-align: middle;
+            color: $text-main;
+            font-size: 0.9rem;
+            &.text-right {
+              text-align: right;
+            }
+          }
+        }
+        // Cells
+        .employee-cell {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            background-size: cover;
+            flex-shrink: 0;
+          }
+          .info {
+            .name {
+              font-weight: 600;
+              font-size: 0.9rem;
+            }
+            .role {
+              font-size: 0.75rem;
+              color: $text-sub;
+            }
+          }
+        }
+        .shift-badge {
+          background: #f1f5f9;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 0.8rem;
+          color: $text-sub;
+          font-family: monospace;
+        }
+        .time-text {
+          font-family: monospace;
+          font-size: 0.95rem;
+          &.bold {
+            font-weight: 700;
+            color: $text-main;
+          }
+          &.placeholder {
+            color: #cbd5e1;
+          }
+        }
+        .status-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          &.success {
+            background: #ecfdf5;
+            color: #059669;
+            border: 1px solid #d1fae5;
+          }
+          &.warning {
+            background: #fffbeb;
+            color: #d97706;
+            border: 1px solid #fde68a;
+          }
+          &.danger {
+            background: #fef2f2;
+            color: #ef4444;
+            border: 1px solid #fecaca;
+          }
+          &.neutral {
+            background: #f3f4f6;
+            color: #6b7280;
+            border: 1px solid #e5e7eb;
+          }
+        }
+        .action-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 6px;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          transition: 0.2s;
+          font-size: 1rem;
+          margin-left: 4px;
+          &:hover {
+            background: #e2e8f0;
+            transform: scale(1.1);
+          }
+        }
+      }
+    }
   }
 }
 
-.stats-actions {
-  display: flex;
-  gap: $spacing-sm;
-  margin-top: $spacing-2xl;
+// Responsive
+@media (max-width: 1024px) {
+  .attendance-management-page {
+    .page-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+    }
+    .stats-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .quick-action-section {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1.5rem;
+      .quick-form {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .action-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        margin-top: 0.5rem;
+      }
+    }
+    .table-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+      .tabs {
+        overflow-x: auto;
+      }
+      .search-box input {
+        width: 100%;
+      }
+    }
+    .attendance-table {
+      thead {
+        display: none;
+      }
+      tr {
+        display: flex;
+        flex-direction: column;
+        padding: 1rem;
+        gap: 0.5rem;
+      }
+      td {
+        padding: 0.25rem 0 !important;
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        &.text-right {
+          justify-content: flex-start;
+        }
+      }
+    }
+  }
 }

@@ -10,11 +10,14 @@ import MenuManagement from "../components/Dashboard_Manager/Menu/MenuManagement"
 import TableManagement from "../components/Dashboard_Manager/Table/TableManagement";
 import CustomerManagement from "../components/Dashboard_Manager/Customer/CustomerManagement";
 import PromotionManagement from "../components/Dashboard_Manager/Promotion/PromotionManagement";
+import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/PayrollManagement";
 import "./ManagerLayout.scss";
 import StorageManagement from "../components/Dashboard_Manager/Storage/StorageManagement";
+import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManagement";
 const ManagerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
+
   const validPages = useMemo(
     () =>
       new Set([
@@ -34,7 +37,9 @@ const ManagerLayout = () => {
         "rates",
         "finance",
         "setting",
-        "backup", // thống nhất tên với Sidebar
+        "payroll",
+        "backup",
+        "reviews",
       ]),
     []
   );
@@ -135,6 +140,10 @@ const ManagerLayout = () => {
         return <ScheduleManagement />;
       case "promotions":
         return <PromotionManagement />;
+      case "payroll":
+        return <PayrollManagement />;
+      case "reviews":
+        return <ReviewManagement />;
       default:
         return <div>Content not found</div>;
     }

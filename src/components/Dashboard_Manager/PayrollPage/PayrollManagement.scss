@@ -1,0 +1,633 @@
+@use "../../../styles/variables" as *;
+@use "../../../styles/mixins" as *;
+
+$primary: #3b82f6;
+$success: #10b981;
+$danger: #ef4444;
+$warning: #f59e0b;
+$text-main: #0f172a;
+$text-sub: #64748b;
+$border: #e2e8f0;
+$bg-body: #f8fafc;
+
+.payroll-page-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  height: 100%;
+
+  // 1. HEADER TOOLBAR
+  .header-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    .left-section {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      .page-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: $text-main;
+        margin: 0;
+      }
+      .cycle-picker-compact {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        background: #fff;
+        padding: 6px 12px;
+        border: 1px solid $border;
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        input[type="date"] {
+          border: none;
+          font-family: inherit;
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: $text-main;
+          cursor: pointer;
+          outline: none;
+        }
+        .arrow {
+          color: $text-sub;
+          font-size: 1rem;
+        }
+      }
+    }
+    .right-actions {
+      display: flex;
+      gap: 0.8rem;
+      .btn {
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: 0.2s;
+      }
+      .btn-primary {
+        background: $primary;
+        color: #fff;
+        &:hover {
+          background: darken($primary, 5%);
+          box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2);
+        }
+      }
+      .btn-white {
+        background: #fff;
+        border-color: $border;
+        color: $text-main;
+        &:hover {
+          background: $bg-body;
+        }
+      }
+    }
+  }
+
+  // 2. METRICS STRIP (FIX LỖI CĂN CHỈNH)
+  .metrics-strip {
+    @include card-base;
+    background: #fff;
+    border: 1px solid $border;
+    border-radius: 12px;
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.05);
+    min-height: 80px; // Cố định chiều cao tối thiểu
+
+    .metric-group {
+      display: flex;
+      gap: 3rem;
+      align-items: center; // Căn giữa dọc
+      .metric-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        justify-content: center;
+        .label {
+          font-size: 0.75rem;
+          color: $text-sub;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .value {
+          font-size: 1.5rem;
+          font-weight: 800;
+          color: $text-main;
+          line-height: 1;
+        }
+        .value.highlight {
+          color: $primary;
+        }
+        .value.success {
+          color: $success;
+        }
+        .value.danger {
+          color: $danger;
+        }
+      }
+      .separator {
+        width: 1px;
+        height: 32px;
+        background: $border;
+      }
+    }
+
+    .progress-section {
+      flex: 0 0 300px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      .progress-info {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: $text-sub;
+        strong {
+          color: $success;
+        }
+      }
+      .progress-track {
+        height: 8px;
+        background: $bg-body;
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid $border;
+        .progress-fill {
+          height: 100%;
+          background: $success;
+          border-radius: 4px;
+          transition: width 1s ease;
+        }
+      }
+    }
+  }
+
+  // 3. TABLE CARD (FIX LỖI LỆCH CỘT)
+  .table-card {
+    @include card-base;
+    background: #fff;
+    border: 1px solid $border;
+    border-radius: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+
+    .table-controls {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid $border;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: $bg-body;
+      gap: 1rem;
+
+      .left-controls .workflow-tabs {
+        display: flex;
+        gap: 4px;
+        background: #e2e8f0;
+        padding: 4px;
+        border-radius: 8px;
+        .tab-btn {
+          padding: 6px 14px;
+          border: none;
+          background: transparent;
+          border-radius: 6px;
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: $text-sub;
+          cursor: pointer;
+          transition: 0.2s;
+          &.active {
+            background: #fff;
+            color: $text-main;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          }
+          &:hover:not(.active) {
+            color: $text-main;
+          }
+        }
+      }
+
+      .right-controls {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        .filter-select {
+          padding: 0.5rem;
+          border: 1px solid $border;
+          border-radius: 8px;
+          font-size: 0.9rem;
+          color: $text-main;
+          cursor: pointer;
+          outline: none;
+          &:focus {
+            border-color: $primary;
+          }
+        }
+        .search-box {
+          position: relative;
+          .icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: $text-sub;
+            font-size: 0.8rem;
+          }
+          input {
+            padding: 0.5rem 1rem 0.5rem 2.2rem;
+            border: 1px solid $border;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            width: 220px;
+            &:focus {
+              border-color: $primary;
+              outline: none;
+            }
+          }
+        }
+      }
+    }
+
+    .table-responsive {
+      flex: 1;
+      overflow: auto;
+
+      .payroll-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        table-layout: fixed; // QUAN TRỌNG: Cố định chiều rộng cột để không bị nhảy
+        min-width: 1200px;
+
+        thead th {
+          text-align: left;
+          padding: 1rem 1.2rem;
+          background: #fff;
+          border-bottom: 1px solid $border;
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: $text-sub;
+          text-transform: uppercase;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          white-space: nowrap; // Không xuống dòng tiêu đề
+
+          &.text-right {
+            text-align: right;
+          }
+          &.center {
+            text-align: center;
+          }
+          &.sticky-left {
+            left: 0;
+            z-index: 20;
+            border-right: 1px solid $border;
+          }
+        }
+
+        tbody tr {
+          border-bottom: 1px solid $border;
+          transition: 0.1s;
+          cursor: pointer;
+          &:hover {
+            background: $bg-body;
+            td.sticky-left {
+              background: $bg-body;
+            }
+          }
+          &.selected {
+            background: #eff6ff;
+            td {
+              background: #eff6ff;
+            }
+          }
+
+          td {
+            padding: 1rem 1.2rem;
+            font-size: 0.9rem;
+            color: $text-main;
+            vertical-align: middle;
+            border-bottom: 1px solid $bg-body;
+            white-space: nowrap; // Giữ nội dung trên 1 dòng
+            overflow: hidden;
+            text-overflow: ellipsis; // Cắt chữ nếu quá dài
+
+            &.text-right {
+              text-align: right;
+            }
+            &.center {
+              text-align: center;
+            }
+            &.sticky-left {
+              position: sticky;
+              left: 0;
+              background: #fff;
+              z-index: 5;
+              border-right: 1px solid $border;
+            }
+          }
+        }
+
+        // Cells Styles
+        .emp-cell {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: $primary;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 700;
+            flex-shrink: 0;
+          }
+          .name {
+            font-weight: 600;
+            font-size: 0.9rem;
+          }
+          .sub {
+            font-size: 0.75rem;
+            color: $text-sub;
+          }
+        }
+        .work-tag {
+          background: #fff;
+          padding: 2px 8px;
+          border-radius: 6px;
+          font-family: monospace;
+          border: 1px solid $border;
+          font-weight: 600;
+          font-size: 0.85rem;
+          display: inline-block;
+        }
+        .text-success {
+          color: $success;
+          font-weight: 600;
+        }
+        .text-danger {
+          color: $danger;
+          font-weight: 600;
+        }
+        .net-cell {
+          color: $primary;
+          font-size: 0.95rem;
+          font-weight: 700;
+        }
+
+        // FIX BADGE LỆCH
+        .status-badge-wrapper {
+          display: flex;
+          justify-content: center;
+        } // Wrapper để căn giữa badge
+        .status-dot {
+          display: inline-flex;
+          align-items: center;
+          padding: 4px 12px;
+          border-radius: 99px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          border: 1px solid transparent;
+          &::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-right: 6px;
+            background: currentColor;
+          }
+          &.draft {
+            background: $bg-body;
+            color: $text-sub;
+            border-color: $border;
+          }
+          &.warning {
+            background: #fffbeb;
+            color: $warning;
+            border-color: #fde68a;
+          }
+          &.info {
+            background: #eff6ff;
+            color: $primary;
+            border-color: #bfdbfe;
+          }
+          &.success {
+            background: #ecfdf5;
+            color: $success;
+            border-color: #a7f3d0;
+          }
+        }
+
+        .action-cell .btn-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 6px;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          font-size: 1.1rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: 0.2s;
+          &:hover {
+            background: #e2e8f0;
+          }
+        }
+      }
+    }
+  }
+}
+
+// --- MODAL FIX (Phiếu lương) ---
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+
+  .payslip-modal {
+    background: #fff;
+    width: 550px;
+    max-width: 95%;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+    .modal-header {
+      padding: 1.5rem;
+      background: $bg-body;
+      border-bottom: 1px solid $border;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      h3 {
+        margin: 0;
+        color: $primary;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+      }
+      .close-btn {
+        background: transparent;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: $text-sub;
+        &:hover {
+          color: $danger;
+        }
+      }
+    }
+
+    .modal-body {
+      padding: 2rem;
+      max-height: 70vh;
+      overflow-y: auto;
+      .emp-summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px dashed $border;
+        padding-bottom: 1.5rem;
+        h4 {
+          margin: 0;
+          font-size: 1.2rem;
+          color: $text-main;
+        }
+        p {
+          margin: 4px 0 0;
+          color: $text-sub;
+          font-size: 0.9rem;
+        }
+        .net-total {
+          text-align: right;
+          span {
+            font-size: 0.8rem;
+            color: $text-sub;
+            text-transform: uppercase;
+            font-weight: 600;
+          }
+          h2 {
+            margin: 0;
+            color: $primary;
+            font-size: 1.8rem;
+          }
+        }
+      }
+
+      .details-grid {
+        display: grid;
+        gap: 2rem;
+        grid-template-columns: 1fr; // 1 cột cho dễ nhìn
+        .section {
+          h5 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: $text-sub;
+            margin: 0 0 10px 0;
+            font-weight: 700;
+            border-bottom: 1px solid $border;
+            padding-bottom: 6px;
+          }
+          .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 0.9rem;
+            color: $text-main;
+            border-bottom: 1px dashed $bg-body;
+            span:last-child {
+              font-weight: 600;
+              font-family: monospace;
+              font-size: 0.95rem;
+            }
+            &:last-child {
+              border-bottom: none;
+            }
+            &.total {
+              margin-top: 0.5rem;
+              padding-top: 0.8rem;
+              border-top: 2px solid $border;
+              font-size: 1rem;
+              font-weight: 700;
+            }
+          }
+        }
+      }
+    }
+
+    .modal-footer {
+      padding: 1.2rem 2rem;
+      background: $bg-body;
+      border-top: 1px solid $border;
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+      .btn {
+        padding: 0.7rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        border: none;
+        font-weight: 600;
+        transition: 0.2s;
+        &.btn-primary {
+          background: $primary;
+          color: #fff;
+          &:hover {
+            opacity: 0.9;
+          }
+        }
+        &.btn-secondary {
+          background: #fff;
+          border: 1px solid $border;
+          color: $text-main;
+          &:hover {
+            background: #e2e8f0;
+          }
+        }
+      }
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

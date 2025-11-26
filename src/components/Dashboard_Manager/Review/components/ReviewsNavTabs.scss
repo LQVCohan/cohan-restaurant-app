@@ -1,0 +1,54 @@
+.reviews-nav-tabs {
+  background: var(--reviews-card-bg);
+  border: 2px solid var(--reviews-border-color);
+  border-radius: var(--reviews-radius-lg);
+  box-shadow: var(--reviews-shadow-sm);
+  margin-bottom: 16px;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &__list {
+    display: flex;
+    min-width: max-content;
+  }
+
+  &__tab {
+    background: none;
+    border: none;
+    padding: 14px 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--reviews-text-secondary);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    transition: var(--reviews-transition);
+
+    &:hover {
+      color: var(--reviews-primary-color);
+      background: var(--reviews-primary-light);
+    }
+
+    &--active {
+      color: var(--reviews-primary-color);
+      background: var(--reviews-primary-light);
+      border-bottom-color: var(--reviews-primary-color);
+    }
+
+    &-badge {
+      margin-left: 6px;
+      background: var(--reviews-danger-color);
+      color: #fff;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 0.65rem;
+      font-weight: 600;
+    }
+  }
+}

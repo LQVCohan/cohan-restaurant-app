@@ -89,9 +89,9 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
           </button>
           <button
             className={`header__nav-link${
-              location.pathname === "/menu" ? " is-active" : ""
+              location.pathname === "/cus-menu" ? " is-active" : ""
             }`}
-            onClick={() => goto("/menu")}
+            onClick={() => goto("/cus-menu")}
           >
             Thực đơn
           </button>

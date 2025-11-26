@@ -1,0 +1,106 @@
+# ============================
+# CART GRAPHQL SCHEMA
+# ============================
+
+"1 dòng trong giỏ hàng"
+type CartItem {
+  id: ID! # _id của subdocument (đã map ở resolver CartItemFieldResolvers.id)
+  restaurantId: ID!
+  menuItemId: ID!
+
+  name: String!
+  price: Float!
+  quantity: Int!
+
+  thumbImage: String
+  note: String
+  servingVariantKey: String
+
+  "Resolve từ CartItemFieldResolvers.restaurant"
+  restaurant: Restaurant
+
+  "Resolve từ CartItemFieldResolvers.menuItem"
+  menuItem: MenuItem
+}
+
+"Giỏ hàng hiện tại của 1 user"
+type Cart {
+  id: ID!
+  userId: ID!
+  restaurantId: ID
+  status: String! # 'active' | sau này có thể thêm 'checked_out', 'cancelled'
+  items: [CartItem!]!
+
+  "Tổng số lượng (sum quantity) – CartFieldResolvers.totalQuantity"
+  totalQuantity: Int!
+
+  "Tổng tiền lưu trong DB (cart.totalAmount) – được set trong mutation"
+  totalAmount: Float!
+
+  "Tổng tiền cho FE dùng – CartFieldResolvers.totalPrice (nếu totalPrice không có thì tự tính lại từ items)"
+  totalPrice: Float!
+
+  lastActivityAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+
+  "Resolve từ CartFieldResolvers.user"
+  user: User
+}
+
+# --------------------------
+# INPUT TYPES
+# --------------------------
+
+"Thêm 1 món vào giỏ"
+input AddCartItemInput {
+  userId: ID!
+  restaurantId: ID!
+  menuItemId: ID!
+
+  name: String!
+  price: Float!
+  quantity: Int = 1
+
+  thumbImage: String
+  note: String
+  servingVariantKey: String
+}
+
+"Cập nhật 1 item trong giỏ (theo cartId + itemId)"
+input UpdateCartItemInput {
+  cartId: ID!
+  itemId: ID!
+  quantity: Int!
+}
+
+"Xoá 1 item trong giỏ"
+input RemoveCartItemInput {
+  cartId: ID!
+  itemId: ID!
+}
+
+"Xoá sạch giỏ"
+input ClearCartInput {
+  cartId: ID!
+}
+
+# --------------------------
+# QUERY
+# --------------------------
+
+extend type Query {
+  "Lấy giỏ hàng active của user. Nếu userId không truyền thì BE có thể lấy từ ctx.user.id"
+  myCart(userId: ID): Cart
+}
+
+# --------------------------
+# MUTATION
+# --------------------------
+
+extend type Mutation {
+  addCartItem(input: AddCartItemInput!): Cart!
+  updateCartItem(input: UpdateCartItemInput!): Cart!
+  removeCartItem(input: RemoveCartItemInput!): Cart!
+  clearCart(input: ClearCartInput!): Boolean!
+}

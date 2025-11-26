@@ -1,0 +1,422 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+// Vars
+$primary: #3b82f6;
+$text-main: #1e293b;
+$text-sub: #64748b;
+$border: #e2e8f0;
+$bg-head: #f8fafc;
+$col-width-emp: 220px; // Chiều rộng cột tên nhân viên
+
+// Shift Colors
+$color-morning: #ecfdf5;
+$border-morning: #a7f3d0;
+$text-morning: #047857;
+$color-afternoon: #fffbeb;
+$border-afternoon: #fde68a;
+$text-afternoon: #b45309;
+$color-full: #eff6ff;
+$border-full: #bfdbfe;
+$text-full: #1d4ed8;
+$color-evening: #faf5ff;
+$border-evening: #e9d5ff;
+$text-evening: #7e22ce;
+$color-off: #f1f5f9;
+$text-off: #94a3b8;
+
+.schedule-page-container {
+  @include card-base;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 190px); // Full height container
+  min-height: 500px;
+  overflow: hidden;
+
+  // --- 1. HEADER ---
+  .schedule-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid $border;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    z-index: 10;
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      .page-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: $text-main;
+        margin: 0;
+      }
+
+      .date-nav {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: $bg-head;
+        padding: 4px;
+        border-radius: 8px;
+        border: 1px solid $border;
+
+        .nav-btn {
+          width: 28px;
+          height: 28px;
+          border: none;
+          background: #fff;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 700;
+          color: $text-sub;
+          font-size: 1.2rem; // Tăng size mũi tên lên xíu cho rõ
+
+          // 🔥 FIX LỆCH MŨI TÊN:
+          display: flex; // Biến nút thành flex box
+          align-items: center; // Căn giữa dọc
+          justify-content: center; // Căn giữa ngang
+          padding: 0; // Bỏ padding mặc định
+          line-height: 1; // Reset line-height
+          padding-bottom: 3px; // Hack nhẹ: Đẩy mũi tên lên một chút (vì font chữ thường bị lệch xuống dưới)
+
+          &:hover {
+            color: $primary;
+            background: #eff6ff;
+          }
+        }
+
+        .current-range {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: $text-main;
+          padding: 0 0.5rem;
+          min-width: 140px;
+          text-align: center;
+        }
+
+        .btn-today {
+          font-size: 0.8rem;
+          padding: 0 12px; // Dùng padding ngang thay vì fix height
+          height: 28px; // Chiều cao bằng nút mũi tên
+          display: flex; // Flex để căn chữ ở giữa
+          align-items: center;
+
+          margin-left: 0.5rem;
+          border: 1px solid $border;
+          background: #fff;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 600;
+          color: $text-sub;
+
+          &:hover {
+            border-color: $primary;
+            color: $primary;
+            background: #eff6ff;
+          }
+        }
+      }
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      .filter-select {
+        padding: 0.5rem;
+        border-radius: 6px;
+        border: 1px solid $border;
+        font-size: 0.85rem;
+        color: $text-main;
+        outline: none;
+        &:focus {
+          border-color: $primary;
+        }
+      }
+      .legend {
+        display: flex;
+        gap: 1rem;
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.8rem;
+          font-weight: 500;
+          color: $text-sub;
+          .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+          }
+          &.morning .dot {
+            background: $text-morning;
+          }
+          &.afternoon .dot {
+            background: $text-afternoon;
+          }
+          &.full .dot {
+            background: $text-full;
+          }
+        }
+      }
+    }
+  }
+
+  // --- 2. GRID WRAPPER (SCROLLABLE) ---
+  .schedule-grid-wrapper {
+    flex: 1;
+    overflow: auto; // Cho phép cuộn 2 chiều
+    position: relative;
+
+    .schedule-grid {
+      display: grid;
+      // Cột đầu cố định 220px, 7 cột sau chia đều
+      grid-template-columns: $col-width-emp repeat(7, minmax(140px, 1fr));
+      min-width: 1000px; // Đảm bảo không bị co quá nhỏ
+    }
+
+    // HEADER ROW
+    .grid-header-row {
+      display: contents; // Để con của nó tham gia vào grid cha
+
+      // Employee Header (Sticky Left & Top)
+      .col-employee-header {
+        position: sticky;
+        left: 0;
+        top: 0;
+        z-index: 20;
+        background: $bg-head;
+        border-bottom: 1px solid $border;
+        border-right: 1px solid $border;
+        padding: 1rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: $text-sub;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        &::after {
+          content: "";
+          position: absolute;
+          right: -4px;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: linear-gradient(
+            to right,
+            rgba(0, 0, 0, 0.05),
+            transparent
+          );
+          pointer-events: none;
+        }
+      }
+
+      // Day Headers (Sticky Top)
+      .col-day-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: $bg-head;
+        border-bottom: 1px solid $border;
+        border-right: 1px solid $border;
+        padding: 0.8rem;
+        text-align: center;
+
+        &.today {
+          background: #eff6ff;
+          color: $primary;
+          border-bottom-color: $primary;
+        }
+
+        .day-name {
+          font-size: 0.8rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          margin-bottom: 2px;
+        }
+        .day-date {
+          font-size: 1.2rem;
+          font-weight: 700;
+        }
+      }
+    }
+
+    // BODY ROWS
+    .grid-row {
+      display: contents;
+
+      // Employee Cell (Sticky Left)
+      .col-employee {
+        position: sticky;
+        left: 0;
+        z-index: 5;
+        background: #fff;
+        border-bottom: 1px solid $border;
+        border-right: 1px solid $border;
+        padding: 0.8rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+
+        &::after {
+          content: "";
+          position: absolute;
+          right: -4px;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: linear-gradient(
+            to right,
+            rgba(0, 0, 0, 0.05),
+            transparent
+          );
+          pointer-events: none;
+        }
+
+        .avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: #e2e8f0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          color: #64748b;
+          font-size: 0.9rem;
+          overflow: hidden;
+          img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+        }
+        .info {
+          .name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: $text-main;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 140px;
+          }
+          .role {
+            font-size: 0.75rem;
+            color: $text-sub;
+          }
+        }
+      }
+
+      // Shift Cells
+      .col-day-cell {
+        background: #fff;
+        border-bottom: 1px solid $border;
+        border-right: 1px solid #f1f5f9;
+        padding: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: 0.2s;
+
+        &:hover {
+          background: #f8fafc;
+        }
+        &.today {
+          background: #fbfdff;
+        }
+
+        .empty-slot {
+          width: 100%;
+          height: 100%;
+          min-height: 40px;
+        }
+
+        .shift-pill {
+          width: 100%;
+          padding: 0.5rem;
+          border-radius: 6px;
+          border-left: 3px solid transparent;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          cursor: default;
+          transition: transform 0.2s;
+
+          &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+          }
+
+          .time {
+            font-size: 0.85rem;
+            font-weight: 700;
+            font-family: monospace;
+          }
+          .label {
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+          }
+
+          // Color Variants
+          &.morning {
+            background: $color-morning;
+            border-left-color: $border-morning;
+            color: $text-morning;
+          }
+          &.afternoon {
+            background: $color-afternoon;
+            border-left-color: $border-afternoon;
+            color: $text-afternoon;
+          }
+          &.full {
+            background: $color-full;
+            border-left-color: $border-full;
+            color: $text-full;
+          }
+          &.evening {
+            background: $color-evening;
+            border-left-color: $border-evening;
+            color: $text-evening;
+          }
+
+          &.off {
+            background: $color-off;
+            color: $text-off;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            letter-spacing: 1px;
+            opacity: 0.6;
+            min-height: 44px;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Responsive Adjustments
+@media (max-width: 1024px) {
+  .schedule-page-container {
+    .schedule-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+      .header-left {
+        justify-content: space-between;
+      }
+      .header-right {
+        justify-content: space-between;
+      }
+    }
+  }
+}

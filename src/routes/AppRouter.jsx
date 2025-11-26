@@ -39,6 +39,7 @@ import StaffOrder from "../components/StaffOrder";
 import MainLayout from "../layouts/MainLayout";
 import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayout";
 import { useNotification } from "@/hooks/useNotification";
+import RestaurantMenu from "@/components/Customer/RestaurantMenu/RestaurantMenu";
 // =========================
 // 🔐 GraphQL Query: me
 // =========================
@@ -53,7 +54,9 @@ const ME_QUERY = gql`
         name
         slug
         description
-        parent
+        parentRole {
+          id
+        }
         isSystem
         permissions {
           id
@@ -269,7 +272,7 @@ const AppRouter = () => {
             </PrivateRoute>
           }
         />
-
+        <Route path="/cus-menu" element={<RestaurantMenu />} />
         {/* ===== ADMIN ===== */}
         <Route
           path="/admin/dashboard"

@@ -9,6 +9,7 @@ const IngredientSchema = new mongoose.Schema(
       ref: "Ingredient",
       required: true,
     },
+    name: { type: String },
     quantify: { type: Number, default: 1 },
     wastePct: { type: Number, default: 0 }, // % hao hụt 0..100
   },
@@ -22,7 +23,7 @@ const ServingVariantSchema = new mongoose.Schema(
     mode: { type: String, enum: ["PORTION", "BY_WEIGHT"], required: true },
     yieldQty: { type: Number, required: true, default: 1 },
     yieldUnit: { type: String, required: true, default: "portion" }, // "portion" | "100g" | "g"
-    preparationMethodName: { type: String }, // optional: variant theo cách chế biến
+    name: { type: String }, // optional: variant theo cách chế biến
     Ingredients: { type: [IngredientSchema], default: [] },
   },
   { _id: true }
@@ -39,11 +40,6 @@ const RecipeSchema = BaseSchemaModel({
     ref: "MenuItem",
     required: true,
   },
-
-  // Legacy baseline (giữ nguyên để không phá dữ liệu cũ)
-  yieldQty: { type: Number, default: 1 },
-  yieldUnit: { type: String, default: "portion" },
-  baseComponents: { type: [IngredientSchema], default: [] },
 
   // ✅ NEW
   servingVariants: { type: [ServingVariantSchema], default: [] },

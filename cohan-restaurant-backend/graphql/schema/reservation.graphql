@@ -17,9 +17,9 @@ type Reservation {
   depositStatus: String!
   status: String!
   pendingPaymentExpiresAt: DateTime
+  durationMinutes: Int
   createdAt: DateTime!
   updatedAt: DateTime!
-  durationMinutes: Int
 }
 
 input CreateReservationInput {
@@ -35,21 +35,25 @@ input CreateReservationInput {
   depositAmount: Int
   durationMinutes: Int
 }
+
 input UpdateReservationInput {
   id: ID!
-  timeTo: DateTime!
-  partySize: Int = 2
+  timeTo: DateTime
+  durationMinutes: Int
+  partySize: Int
   note: String
-  customerName: String!
+  customerName: String
   customerPhone: String
   customerEmail: String
 }
+
 input UpdateReservationStatusInput {
   id: ID!
   status: String!
   depositStatus: String
   depositTxnId: ID
 }
+
 input changeReservationTableInput {
   id: ID!
   newRestaurantId: ID
@@ -57,16 +61,17 @@ input changeReservationTableInput {
   acceptPenalty: Boolean
   note: String
 }
-type Query {
+
+extend type Query {
   reservation(id: ID, orderCode: String): Reservation
   myReservations(limit: Int = 20, cursor: ID): [Reservation!]!
   confirmedReservationByTable(restaurantId: ID!, tableId: ID!): Reservation
 }
 
-type Mutation {
+extend type Mutation {
   changeReservationTable(input: changeReservationTableInput!): Reservation!
   createReservation(input: CreateReservationInput!): Reservation!
-  updateReservation(input: CreateReservationInput!): Reservation!
+  updateReservation(input: UpdateReservationInput!): Reservation!
   updateReservationStatus(input: UpdateReservationStatusInput!): Reservation!
   cancelReservation(id: ID!): Reservation!
 }

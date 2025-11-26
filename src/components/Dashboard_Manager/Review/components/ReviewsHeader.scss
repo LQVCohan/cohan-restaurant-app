@@ -1,0 +1,162 @@
+/* src/pages/Reviews/components/ReviewsHeader.scss */
+
+/* Card header nằm TRONG .reviews-container nên auto cùng độ dài */
+.reviews-header-card {
+  position: relative;
+  background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 35%, #f8fafc 100%);
+  border-radius: var(--reviews-radius-lg);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+/* Accent bar trên đỉnh cho nổi hơn */
+.reviews-header-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--reviews-primary-color),
+    #38bdf8,
+    #22c55e
+  );
+  opacity: 0.9;
+}
+
+/* BÊN TRÁI: TEXT */
+.reviews-header-card__left {
+  flex: 1.3;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+/* Eyebrow + chấm tròn màu */
+.reviews-header-card__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--reviews-primary-color);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+
+.reviews-header-card__eyebrow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0ea5e9, #22c55e);
+}
+
+/* Title + subtitle */
+.reviews-header-card__title {
+  font-size: 1.28rem;
+  font-weight: 700;
+  color: var(--reviews-text-main);
+  margin-bottom: 4px;
+}
+
+.reviews-header-card__subtitle {
+  font-size: 0.85rem;
+  color: var(--reviews-text-secondary);
+  max-width: 520px;
+}
+
+/* BÊN PHẢI: STAT SUMMARY */
+.reviews-header-card__right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Mỗi stat là 1 "pill" màu xanh nhạt có icon */
+.reviews-header-card__stat {
+  min-width: 150px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 10px rgba(148, 163, 184, 0.25);
+  transition: var(--reviews-transition);
+}
+
+.reviews-header-card__stat:hover {
+  background: #ffffff;
+  border-color: var(--reviews-primary-color);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(59, 130, 246, 0.25);
+}
+
+/* Icon tròn */
+.reviews-header-card__stat-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0ea5e9, #38bdf8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+/* Text trong pill */
+.reviews-header-card__stat-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.reviews-header-card__stat-label {
+  font-size: 0.72rem;
+  color: var(--reviews-text-secondary);
+}
+
+.reviews-header-card__stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--reviews-text-main);
+}
+
+/* RESPONSIVE */
+@media (max-width: 992px) {
+  .reviews-header-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .reviews-header-card__right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .reviews-header-card {
+    padding: 12px 14px;
+  }
+
+  .reviews-header-card__title {
+    font-size: 1.1rem;
+  }
+
+  .reviews-header-card__stat {
+    min-width: 140px;
+  }
+}

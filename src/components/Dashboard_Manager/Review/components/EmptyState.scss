@@ -1,0 +1,27 @@
+.reviews-empty {
+  width: 100%;
+  padding: 60px 20px;
+  text-align: center;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  box-shadow: 0 4px 12px rgba(148, 163, 184, 0.12);
+}
+
+.reviews-empty__icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.85;
+}
+
+.reviews-empty__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.reviews-empty__desc {
+  font-size: 0.9rem;
+  color: #64748b;
+}

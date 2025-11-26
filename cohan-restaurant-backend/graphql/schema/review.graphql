@@ -1,0 +1,216 @@
+# ============================================================================
+#  REACTION SUMMARY (DÙNG CHUNG)
+# ============================================================================
+"""
+Tổng hợp reaction kiểu Facebook
+"""
+type ReactionSummary {
+  like: Int
+  love: Int
+  care: Int
+  haha: Int
+  wow: Int
+  sad: Int
+  angry: Int
+  total: Int
+}
+
+# ============================================================================
+#  REVIEW
+# ============================================================================
+type Review {
+  id: ID!
+
+  targetType: String!
+  targetId: ID!
+  targetName: String
+
+  restaurantId: ID!
+  restaurantName: String
+
+  customerId: ID
+  customerName: String!
+  customerAvatar: String
+
+  rating: Int!
+  title: String
+  content: String!
+  images: [String]
+
+  location: String
+  verifiedPurchase: Boolean
+  tags: [String]
+
+  status: String!
+
+  likesCount: Int
+  commentsCount: Int
+  sharesCount: Int
+  helpfulCount: Int
+  reportsCount: Int
+
+  reactions: ReactionSummary
+
+  createdAt: String
+  updatedAt: String
+}
+
+# ============================================================================
+#  REVIEW INPUT
+# ============================================================================
+input ReviewInput {
+  targetType: String!
+  targetId: ID!
+  targetName: String
+
+  restaurantId: ID!
+  restaurantName: String
+
+  customerId: ID
+  customerName: String!
+  customerAvatar: String
+
+  rating: Int!
+  title: String
+  content: String!
+  images: [String]
+
+  location: String
+  verifiedPurchase: Boolean
+  tags: [String]
+}
+
+input ReviewUpdateInput {
+  rating: Int
+  title: String
+  content: String
+  images: [String]
+  location: String
+  tags: [String]
+  status: String
+}
+
+# ============================================================================
+#  REVIEW CONNECTION (PAGINATION)
+# ============================================================================
+type ReviewsConnection {
+  total: Int!
+  items: [Review!]!
+}
+
+# ============================================================================
+#  REVIEW STATS
+# ============================================================================
+type ReviewStats {
+  total: Int!
+  avgRating: Float!
+  pending: Int!
+  ratingBreakdown: JSON
+}
+
+# ============================================================================
+#  COMMENT + REPLY
+# ============================================================================
+type ReviewComment {
+  id: ID!
+
+  reviewId: ID!
+  restaurantId: ID!
+  parentId: ID
+
+  authorUserId: ID
+  authorName: String!
+  authorAvatar: String
+
+  content: String!
+  status: String!
+
+  likesCount: Int
+  repliesCount: Int
+
+  reactions: ReactionSummary
+
+  isEdited: Boolean
+
+  createdAt: String
+  updatedAt: String
+}
+
+input ReviewCommentInput {
+  reviewId: ID!
+  restaurantId: ID!
+  parentId: ID
+  authorUserId: ID
+  authorName: String!
+  authorAvatar: String
+  content: String!
+}
+
+input ReviewCommentUpdateInput {
+  content: String
+  status: String
+}
+
+# ============================================================================
+#  COMMENT CONNECTION (PAGINATION)
+# ============================================================================
+type ReviewCommentsConnection {
+  total: Int!
+  items: [ReviewComment!]!
+}
+
+# ============================================================================
+#  QUERIES
+# ============================================================================
+extend type Query {
+  # Danh sách review (có phân trang)
+  reviews(
+    restaurantId: ID
+    targetType: String
+    targetId: ID
+    status: String
+    minRating: Int
+    maxRating: Int
+    limit: Int = 20
+    skip: Int = 0
+  ): ReviewsConnection!
+
+  # Chi tiết review
+  review(id: ID!): Review
+
+  # Comment + Reply (có phân trang)
+  reviewComments(
+    reviewId: ID!
+    parentId: ID
+    limit: Int = 20
+    skip: Int = 0
+  ): ReviewCommentsConnection!
+
+  # Thống kê review (cho header trang review/admin)
+  reviewStats(restaurantId: ID, targetType: String, targetId: ID): ReviewStats!
+}
+
+# ============================================================================
+#  MUTATIONS
+# ============================================================================
+extend type Mutation {
+  # Review CRUD
+  createReview(input: ReviewInput!): Review
+  updateReview(id: ID!, input: ReviewUpdateInput!): Review
+  deleteReview(id: ID!): Boolean
+
+  setReviewStatus(id: ID!, status: String!): Review
+  incrementReviewHelpful(id: ID!): Review
+
+  # Reaction vào review
+  reactReview(id: ID!, reaction: String!): Review
+
+  # Comment CRUD
+  createReviewComment(input: ReviewCommentInput!): ReviewComment
+  updateReviewComment(id: ID!, input: ReviewCommentUpdateInput!): ReviewComment
+  deleteReviewComment(id: ID!): Boolean
+  setReviewCommentStatus(id: ID!, status: String!): ReviewComment
+
+  # Reaction vào comment
+  reactReviewComment(id: ID!, reaction: String!): ReviewComment
+}

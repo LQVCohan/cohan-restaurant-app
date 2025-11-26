@@ -9,7 +9,6 @@ const __dirname = path.dirname(__filename);
 const schemaDir = __dirname;
 const files = [
   "base.graphql",
-  "scalars.graphql",
   "user.graphql",
   "restaurant.graphql",
   "role.graphql",
@@ -25,6 +24,8 @@ const files = [
   "event_log.graphql",
   "payments.graphql",
   "tableCustomer.graphql",
+  "review.graphql",
+  "cart.graphql",
 ].map((f) => fs.readFileSync(path.join(schemaDir, f), "utf8"));
 
 const typeDefs = mergeTypeDefs(files, { useSchemaDefinition: true });

@@ -21,10 +21,18 @@ const GET_TOP_MENU_ITEMS = gql`
       menuId
       categoryId
       restaurantId
-      preparationMethods {
+      servingVariants {
+        key
+        mode
+        yieldQty
+        yieldUnit
         name
-        price
-        isDefault
+        Ingredients {
+          ingredientId
+          name
+          quantify
+          wastePct
+        }
       }
     }
   }
@@ -146,8 +154,8 @@ const DishGrid = ({ onAddToCart }) => {
                   <h5 className="dish-card__name">{dish.name}</h5>
 
                   {/* Chọn cách chế biến (nếu có) */}
-                  {Array.isArray(dish.preparationMethods) &&
-                    dish.preparationMethods.length > 0 && (
+                  {Array.isArray(dish.servingVariants) &&
+                    dish.servingVariants.length > 0 && (
                       <div className="dish-card__method">
                         <select
                           className="dish-card__method-select"
@@ -156,7 +164,7 @@ const DishGrid = ({ onAddToCart }) => {
                             handleMethodChange(dish.id, e.target.value)
                           }
                         >
-                          {dish.preparationMethods.map((m, idx) => (
+                          {dish.servingVariants.map((m, idx) => (
                             <option key={`${dish.id}-m-${idx}`} value={m.name}>
                               {getMethodIcon(m.name)} {m.name}
                               {Number(m.price) > 0

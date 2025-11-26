@@ -32,7 +32,7 @@ export const UserQuery = {
       }
 
       const fullUser = await User.findById(toObjectId(user.id))
-        .populate({ path: "role", select: "name slug" })
+        .populate({ path: "role" })
         .lean();
 
       if (!fullUser) {
@@ -70,7 +70,6 @@ export const UserQuery = {
 
   async users(_, { roleId, isGuest, search }, { user: authUser }) {
     try {
-     
       requireRole(authUser, ["admin", "manager"]);
 
       const cond = {};

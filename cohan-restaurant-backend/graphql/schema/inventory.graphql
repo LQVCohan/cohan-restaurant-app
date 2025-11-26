@@ -153,19 +153,17 @@ type StockMovement {
   updatedAt: DateTime
 }
 
-"Thành phần công thức"
-type RecipeComponent {
+type IngredientsComponent {
   ingredientId: ID!
-  qty: Float!
-  unit: String
+  quantify: Float!
   wastePct: Float
-  ingredientName: String
+  name: String
 }
 
-input RecipeComponentInput {
+input IngredientsComponentInput {
   ingredientId: ID!
   qty: Float!
-  unit: String
+  name: String
   wastePct: Float
 }
 
@@ -180,8 +178,8 @@ type ServingVariant {
   mode: ServingMode!
   yieldQty: Float!
   yieldUnit: String! # "portion" | "100g" | "g"
-  preparationMethodName: String
-  components: [RecipeComponent!]!
+  name: String
+  Ingredients: [IngredientsComponent!]!
 }
 
 input ServingVariantInput {
@@ -190,10 +188,9 @@ input ServingVariantInput {
   yieldQty: Float!
   yieldUnit: String!
   preparationMethodName: String
-  components: [RecipeComponentInput!]!
+  ingredients: [IngredientsComponentInput!]!
 }
 
-"Recipe: chỉ còn servingVariants, không có baseComponents"
 type Recipe {
   id: ID!
   restaurantId: ID!
@@ -238,11 +235,6 @@ input OrderLineInput {
   servingMode: ServingMode
 }
 
-"Consumption (trừ kho theo order)"
-"""
-Nếu warehouseId không truyền, BE sẽ tự lấy warehouse đầu tiên (kho chính)
-của restaurantId để thực hiện consume / reserve / commit / cancel.
-"""
 input ConsumeForOrderInput {
   restaurantId: ID!
   warehouseId: ID
@@ -251,7 +243,6 @@ input ConsumeForOrderInput {
   allowNegative: Boolean = false
 }
 
-"Trả kết quả khi trừ kho"
 type ConsumptionResult {
   success: Boolean!
   totalConsumed: Float!

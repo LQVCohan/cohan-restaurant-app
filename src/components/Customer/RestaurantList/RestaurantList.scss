@@ -2,20 +2,34 @@
 @use "../../../styles/variables" as *;
 @use "../../../styles/mixins" as *;
 
+/* =========================================
+   ANIMATIONS
+   ========================================= */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .restaurant-list-search {
   min-height: 100vh;
   background-color: $gray-50;
   margin-top: 70px;
 
   .container {
-    max-width: $desktop;
+    max-width: 100%;
     margin: 0 auto;
-    padding: $spacing-xl 1rem;
+    padding: 2rem 2.5rem;
 
     .content-layout {
       display: grid;
       grid-template-columns: 300px 1fr;
-      gap: $spacing-xl;
+      gap: 2rem;
 
       @include r-desktop {
         grid-template-columns: 250px 1fr;
@@ -24,11 +38,16 @@
       @include r-tablet {
         grid-template-columns: 1fr;
       }
-
+      @include r-mobile {
+        padding: 1rem;
+      }
       .results {
         display: flex;
         flex-direction: column;
         gap: $spacing-lg;
+
+        // Áp dụng animation nhẹ cho cả khối results
+        animation: fadeInUp 0.6s ease-out forwards;
 
         @include r-tablet {
           order: 1;
@@ -42,6 +61,10 @@
           padding: $spacing-lg;
           border-radius: 1rem;
           @include card-shadow;
+
+          // Animation header
+          opacity: 0;
+          animation: fadeInUp 0.5s ease-out forwards;
 
           @include r-tablet {
             flex-direction: column;
@@ -140,7 +163,9 @@
   }
 }
 
-/* Results grid container */
+/* =========================================
+   RESULTS GRID CONTAINER & STAGGER ANIMATION
+   ========================================= */
 .restaurants-grid-search {
   display: grid;
   gap: $spacing-lg;
@@ -161,13 +186,30 @@
   &--list {
     grid-template-columns: 1fr;
   }
+
+  // --- QUAN TRỌNG: Hiệu ứng xuất hiện từng món ---
+  > * {
+    // Chọn tất cả con trực tiếp (các thẻ restaurant-card)
+    opacity: 0; // Ẩn mặc định
+    // Cubic-bezier tạo cảm giác mượt mà "đàn hồi" nhẹ
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+    // Vòng lặp tạo độ trễ (Stagger effect) cho 20 phần tử đầu tiên
+    @for $i from 1 through 20 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{$i * 0.06}s; // Mỗi thẻ hiện chậm hơn thẻ trước 0.06s
+      }
+    }
+  }
 }
 
 /* ================================
    Biến thể thẻ ở chế độ LIST
-   (nếu RestaurantCard có SCSS riêng, bạn có thể chuyển block này sang file đó)
    ================================= */
 .restaurant-card {
+  // Thêm transition chung để mượt khi hover hoặc đổi view
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+
   &--list {
     display: flex !important;
     align-items: stretch;
@@ -191,6 +233,17 @@
         height: 100%;
         object-fit: cover;
         display: block;
+        transition: transform 0.5s ease; // Zoom ảnh mượt
+      }
+    }
+
+    &:hover {
+      transform: translateY(-3px); // Nổi lên nhẹ khi hover
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
+        0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+      .restaurant-card__image img {
+        transform: scale(1.05); // Zoom ảnh khi hover thẻ
       }
     }
 
@@ -265,6 +318,9 @@
   background: $white;
   border-radius: 1rem;
   @include card-shadow;
+
+  // Animation cho loading state
+  animation: fadeInUp 0.4s ease-out;
 }
 
 /* Responsive tweaks */

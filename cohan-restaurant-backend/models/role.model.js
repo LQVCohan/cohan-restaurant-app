@@ -13,7 +13,7 @@ const roleSchema = BaseSchemaModel({
   description: { type: String },
 
   permissions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Permission" }],
-  parent: { type: String, trim: true, lowercase: true },
+  parentRole: { type: mongoose.Schema.Types.ObjectId, ref: "ParentRole" },
   isSystem: { type: Boolean, default: false },
 });
 

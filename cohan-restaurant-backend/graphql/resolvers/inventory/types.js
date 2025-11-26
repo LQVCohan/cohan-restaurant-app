@@ -1,11 +1,11 @@
 // src/graphql/resolvers/types.js
 import mongoose from "mongoose";
-import Recipe from "../../models/recipe.model.js";
+import { Recipe } from "../../../models/index.js";
 
 export default {
-  // ====== TYPE: RecipeComponent ======
-  RecipeComponent: {
-    ingredientName: async (parent, _args, ctx) => {
+  // ====== TYPE: IngredientsComponent ======
+  IngredientsComponent: {
+    name: async (parent, _args, ctx) => {
       console.log(
         "--------------------------------------------------------------"
       );

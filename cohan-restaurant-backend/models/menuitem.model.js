@@ -69,7 +69,7 @@ menuItemSchema.virtual("recipe", {
 function autoPopulateRecipe(next) {
   this.populate({
     path: "recipe",
-    select: "servingVariants yieldQty yieldUnit isActive notes",
+    select: "servingVariants isActive notes",
   });
   next();
 }

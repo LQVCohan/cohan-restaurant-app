@@ -6,7 +6,7 @@ import { gql } from "@apollo/client";
    =========================================================== */
 
 export const FR_RECIPE_COMPONENT_FIELDS = gql`
-  fragment RecipeComponentFields on RecipeComponent {
+  fragment RecipeComponentFields on IngredientsComponent {
     ingredientId
     ingredientName
     qty

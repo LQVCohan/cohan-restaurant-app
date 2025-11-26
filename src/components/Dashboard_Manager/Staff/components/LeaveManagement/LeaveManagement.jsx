@@ -10,7 +10,7 @@ const LeaveManagement = () => {
 
   return (
     <div className="leave-management-page">
-      <LeaveRequestForm onSubmit={submitLeaveRequest} />
+      {/* <LeaveRequestForm onSubmit={submitLeaveRequest} /> */}
       <LeaveRequestsList
         requests={leaveRequests}
         onApprove={approveLeave}

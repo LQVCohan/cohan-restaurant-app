@@ -42,11 +42,6 @@ type Menu {
   updatedAt: DateTime
 }
 
-# Nếu không còn dùng PreparationMethod, có thể xoá hẳn 2 type dưới.
-# Chị đã bỏ khỏi MenuItem nên chúng không còn được tham chiếu.
-# type PreparationMethod { ... }
-# input PreparationMethodInput { ... }
-
 input MenuItemFilter {
   restaurantId: ID!
   timeSlot: TimeSlot

@@ -1,28 +1,33 @@
+// src/models/Shift.js
 import mongoose from "mongoose";
-const { Schema, model, Types } = mongoose;
 
-const baseOptions = { timestamps: true };
-
-const ShiftSchema = new Schema(
+const shiftSchema = new mongoose.Schema(
   {
-    restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true },
-    userId: { type: Types.ObjectId, ref: "User", required: true },
-    roleAtShift: {
-      type: String,
-      enum: ["manager", "cashier", "waiter", "chef", "barista", "other"],
-      default: "other",
+    employeeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
-    start: { type: Date, required: true },
-    end: { type: Date, required: true },
+    restaurantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Restaurant",
+      required: true,
+    },
+    shiftType: {
+      type: String,
+      enum: ["morning", "afternoon", "evening", "full_day", "rotating"],
+      required: true,
+    },
+    startTime: { type: Date, required: true },
+    endTime: { type: Date, required: true },
     status: {
       type: String,
-      enum: ["scheduled", "checked_in", "checked_out", "cancelled"],
+      enum: ["scheduled", "completed", "cancelled", "pending"],
       default: "scheduled",
     },
+    notes: { type: String },
   },
-  baseOptions
+  { timestamps: true }
 );
 
-ShiftSchema.index({ restaurantId: 1, start: -1 });
-
-export default mongoose.model("Shift", ShiftSchema);
+export default mongoose.model("Shift", shiftSchema);

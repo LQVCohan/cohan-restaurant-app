@@ -1,0 +1,249 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+// Vars
+$primary: #3b82f6;
+$danger: #ef4444;
+$border: #e2e8f0;
+$text-main: #1e293b;
+$text-sub: #64748b;
+$bg-input: #f8fafc;
+
+.leave-form-container {
+  @include card-base;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  padding: 0;
+  overflow: hidden;
+  max-width: 800px; // Giới hạn chiều rộng form cho đẹp
+  margin: 0 auto; // Căn giữa trang
+
+  .form-header-section {
+    padding: 1.5rem 2rem;
+    background: linear-gradient(to right, #f8fafc, #fff);
+    border-bottom: 1px solid $border;
+    .title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: $text-main;
+      margin-bottom: 0.25rem;
+    }
+    .subtitle {
+      font-size: 0.9rem;
+      color: $text-sub;
+    }
+  }
+
+  .main-form {
+    padding: 2rem;
+  }
+
+  .form-section {
+    margin-bottom: 2rem;
+    .section-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: $text-sub;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px dashed $border;
+    }
+  }
+
+  .form-group {
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+
+    label {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: $text-main;
+      .req {
+        color: $danger;
+        margin-left: 2px;
+      }
+    }
+
+    select,
+    input[type="date"],
+    textarea {
+      padding: 0.6rem 0.8rem;
+      border: 1px solid $border;
+      border-radius: 8px;
+      background: $bg-input;
+      font-size: 0.9rem;
+      color: $text-main;
+      transition: 0.2s;
+      &:focus {
+        border-color: $primary;
+        background: #fff;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba($primary, 0.1);
+      }
+      &.error {
+        border-color: $danger;
+        background: #fef2f2;
+      }
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: $text-sub;
+      font-style: italic;
+    }
+    .err-msg {
+      font-size: 0.8rem;
+      color: $danger;
+      margin-top: 2px;
+    }
+  }
+
+  .form-row {
+    display: flex;
+    gap: 1.5rem;
+    &.two-col > .form-group {
+      flex: 1;
+    }
+  }
+
+  // --- Custom UI Components ---
+
+  // 1. Leave Type Grid (Radio Cards)
+  .leave-types-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.8rem;
+
+    .radio-card {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      border: 1px solid $border;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+      input {
+        display: none;
+      }
+      .icon {
+        font-size: 1.2rem;
+      }
+      .label {
+        font-size: 0.9rem;
+        font-weight: 500;
+      }
+
+      &:hover {
+        background: $bg-input;
+        border-color: darken($border, 10%);
+      }
+      &.selected {
+        border-color: $primary;
+        background: #eff6ff;
+        color: $primary;
+        box-shadow: 0 2px 4px rgba($primary, 0.1);
+      }
+    }
+  }
+
+  // 2. Date Input Group (Date + Session Select)
+  .date-input-group {
+    display: flex;
+    gap: 0.5rem;
+    input[type="date"] {
+      flex: 2;
+    }
+    .session-select {
+      flex: 1;
+      min-width: 90px;
+    }
+  }
+
+  // 3. Total Days Bar
+  .total-days-bar {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    .days-count {
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+  }
+
+  // 4. File Upload
+  .file-upload-label {
+    display: block;
+    padding: 0.8rem;
+    border: 1px dashed $border;
+    border-radius: 8px;
+    text-align: center;
+    color: $text-sub;
+    cursor: pointer;
+    transition: 0.2s;
+    &:hover {
+      border-color: $primary;
+      color: $primary;
+      background: #eff6ff;
+    }
+  }
+
+  // 5. Footer
+  .form-footer {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid $border;
+    background: $bg-input;
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: 0.2s;
+      &.btn-secondary {
+        background: #fff;
+        border: 1px solid $border;
+        color: $text-main;
+        &:hover {
+          background: darken($bg-input, 5%);
+        }
+      }
+      &.btn-primary {
+        background: $primary;
+        color: #fff;
+        box-shadow: 0 2px 4px rgba($primary, 0.2);
+        &:hover {
+          background: darken($primary, 5%);
+          transform: translateY(-1px);
+        }
+      }
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .leave-form-container {
+    .form-row {
+      flex-direction: column;
+      gap: 0;
+    }
+    .leave-types-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+}

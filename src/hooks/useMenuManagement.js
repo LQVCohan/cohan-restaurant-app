@@ -18,6 +18,8 @@ const FRAG_MENU = gql`
   }
 `;
 
+// ✅ Cập nhật theo schema mới: không còn preparationMethods, recipe
+// ✅ Thêm servingVariants + Ingredients (tên field đúng với backend)
 const FRAG_MENU_ITEM = gql`
   fragment MenuItemFields on MenuItem {
     id
@@ -27,21 +29,29 @@ const FRAG_MENU_ITEM = gql`
     name
     description
     basePrice
-    preparationMethods {
-      name
-      price
-      isDefault
-    }
+    byWeight
     thumbImage
     mediaAssetIds
     modifierGroupIds
     status
     avgPrepTimeMin
-    recipe
     notes
     point
     createdAt
     updatedAt
+    servingVariants {
+      key
+      mode
+      yieldQty
+      yieldUnit
+      name
+      Ingredients {
+        ingredientId
+        name
+        quantify
+        wastePct
+      }
+    }
   }
 `;
 
@@ -56,6 +66,7 @@ const Q_MENUS = gql`
   ${FRAG_MENU}
 `;
 
+// ✅ Không lặp servingVariants, đã nằm trong fragment
 const Q_MENU_ITEMS = gql`
   query MenuItems(
     $restaurantId: ID!
@@ -72,20 +83,6 @@ const Q_MENU_ITEMS = gql`
       limit: $limit
     ) {
       ...MenuItemFields
-      servingVariants {
-        # Thêm vào đây
-        key
-        mode
-        yieldQty
-        yieldUnit
-        preparationMethodName
-        components {
-          ingredientId
-          qty
-          unit
-          wastePct
-        }
-      }
     }
   }
   ${FRAG_MENU_ITEM}
@@ -102,19 +99,6 @@ const Q_MENU_ITEMS_CONNECTION = gql`
         cursor
         node {
           ...MenuItemFields
-          servingVariants {
-            key
-            mode
-            yieldQty
-            yieldUnit
-            preparationMethodName
-            components {
-              ingredientId
-              qty
-              unit
-              wastePct
-            }
-          }
         }
       }
       pageInfo {
@@ -218,32 +202,17 @@ function coalesceNumber(n, fallback = 0) {
   return Number.isFinite(v) ? v : fallback;
 }
 
-/** Lấy preparation default (nếu có) */
-function getDefaultPreparation(item) {
-  const list = Array.isArray(item?.preparationMethods)
-    ? item.preparationMethods
-    : [];
-  if (!list.length) return null;
-  return list.find((p) => p?.isDefault) || list[0];
-}
-
-/** Tính giá để hiển thị (ưu tiên basePrice nếu > 0; nếu không thì lấy giá của prep default) */
+/**
+ * Tính giá để hiển thị
+ * ✅ Schema mới: chỉ dùng basePrice (các biến thể giá chi tiết nằm ở Recipe/servingVariants, hiện chưa có price)
+ */
 function computeItemPrice(item) {
   const base = coalesceNumber(item?.basePrice, 0);
-  if (base > 0) return base;
-  const prep = getDefaultPreparation(item);
-  return coalesceNumber(prep?.price, 0);
+  return base;
 }
 
 /* ======================= Hook ======================= */
-/**
- * useMenuManagement
- * @param {object} opts
- * @param {string} opts.restaurantId
- * @param {string|null} [opts.defaultTimeSlot]  - vd 'lunch'; nếu không truyền, tự pick từ menus
- * @param {number} [opts.pageSize=50]          - số item trả về mỗi query (list)
- * @param {boolean} [opts.useConnection=false] - nếu true, dùng cursor pagination
- */
+
 export default function useMenuManagement({
   restaurantId,
   defaultTimeSlot = null,
@@ -266,7 +235,6 @@ export default function useMenuManagement({
 
   const [selectedTimeSlot, setSelectedTimeSlot] = useState(defaultTimeSlot);
 
-  // Auto chọn timeslot: ưu tiên default, nếu không có thì theo thứ tự Sáng -> Trưa -> Tối -> Đêm (nếu menu tồn tại)
   useEffect(() => {
     if (!menus.length) return;
     if (
@@ -301,7 +269,7 @@ export default function useMenuManagement({
     [restaurantId, selectedTimeSlot, categoryId, search, pageSize]
   );
 
-  /* ----------- Query Items (list hoặc connection) ----------- */
+  /* ----------- Query Items ----------- */
   const {
     data: itemsData,
     loading: itemsLoading,
@@ -334,10 +302,9 @@ export default function useMenuManagement({
     return itemsData?.menuItems || [];
   }, [itemsData, useConnection]);
 
-  // categories động từ items
   const categories = useMemo(() => {
     const set = new Set((items || []).map((i) => i.categoryId).filter(Boolean));
-    return Array.from(set); // nếu cần tên category, thay bằng join với collection Category
+    return Array.from(set);
   }, [items]);
 
   // Helpers giá hiển thị
@@ -346,7 +313,6 @@ export default function useMenuManagement({
       (items || []).map((it) => ({
         ...it,
         _displayPrice: computeItemPrice(it),
-        _defaultPreparation: getDefaultPreparation(it),
       })),
     [items]
   );
@@ -354,7 +320,6 @@ export default function useMenuManagement({
   /* ----------- Mutations ----------- */
 
   const [ensureMenuMut] = useMutation(M_ENSURE_MENU, {
-    // Khi đảm bảo menu theo timeslot, thêm vào cache danh sách menus
     update(cache, { data }) {
       const created = data?.ensureMenu;
       if (!created) return;
@@ -371,7 +336,6 @@ export default function useMenuManagement({
     update(cache, { data }) {
       const created = data?.createMenuItem;
       if (!created) return;
-      // ghép vào list hiện tại nếu khớp filter
       if (useConnection) {
         const qVars = {
           limit: pageSize,
@@ -420,7 +384,6 @@ export default function useMenuManagement({
         ),
       },
     }),
-    // Apollo tự merge dựa vào id; có thể bơ qua update
   });
 
   const [deleteItemMut] = useMutation(M_DELETE_ITEM, {
@@ -463,7 +426,6 @@ export default function useMenuManagement({
           }
         );
       }
-      // Evict cache record
       cache.evict({ id: cache.identify({ __typename: "MenuItem", id }) });
       cache.gc();
     },
@@ -483,13 +445,10 @@ export default function useMenuManagement({
     },
   });
 
-  const [updateBasicMut] = useMutation(M_UPDATE_BASIC, {
-    // thường không cần update, Apollo merge theo id
-  });
+  const [updateBasicMut] = useMutation(M_UPDATE_BASIC);
 
   const [bulkPriceMut] = useMutation(M_BULK_PRICE);
 
-  // Lazy query top items (tuỳ nhu cầu dùng)
   const [
     loadTopItems,
     { data: topData, loading: topLoading, error: topError },
@@ -514,7 +473,7 @@ export default function useMenuManagement({
       const payload = {
         ...input,
         restaurantId,
-        timeSlot: input.timeSlot || selectedTimeSlot, // server sẽ ensure menu cho timeslot nếu thiếu
+        timeSlot: input.timeSlot || selectedTimeSlot,
       };
       const { data } = await createItemMut({ variables: { input: payload } });
       return data?.createMenuItem || null;
@@ -573,7 +532,6 @@ export default function useMenuManagement({
   const bulkUpdateMenuItemPrices = useCallback(
     async (input) => {
       const { data } = await bulkPriceMut({ variables: { input } });
-      // Bạn có thể merge data.bulkUpdateMenuItemPrices.items vào cache nếu muốn “live”
       return data?.bulkUpdateMenuItemPrices || { updatedCount: 0, items: [] };
     },
     [bulkPriceMut]
@@ -656,7 +614,6 @@ export default function useMenuManagement({
 
     // price/helpers
     computeItemPrice,
-    getDefaultPreparation,
     findItemByName,
 
     // mutations

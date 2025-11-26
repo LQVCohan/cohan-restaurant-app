@@ -1,259 +1,220 @@
-// seed-menu-items.js
-// Seed 10 món cho mỗi menu (breakfast, lunch, dinner, late_night)
-// cho 1 nhà hàng (id: 68e3fc0486dc90d60c7101dc), 2 category cố định,
-// và GÁN modifierGroupIds = ["68e4d89bca13bb3391858677"] cho tất cả món.
-
-import { GraphQLClient, gql } from "graphql-request";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import { MenuItem } from "../models/index.js";
 import process from "process";
-// ===== CẤU HÌNH =====
-const endpoint = process.env.GRAPHQL_URL || "http://localhost:4000/graphql";
-const token = process.env.AUTH_TOKEN || ""; // "Bearer <token>" nếu có
-const restaurantId = "68e3fc0486dc90d60c7101dc";
 
-// 2 category cố định
-const CATEGORY_APPETIZER = "68e3ff9cd433d2c81f8803c6"; // món khai vị
-const CATEGORY_MAIN = "68e41860dfc9c2a967e29701"; // món chính
+dotenv.config();
 
-// Modifier group gán vào mọi món
+// ====== CONFIG ======
+const MONGO_URI =
+  process.env.MONGO_URI || "mongodb://127.0.0.1:27017/RestaurantDB"; // fallback local
+
+const MONGO_DB = process.env.MONGO_DB || "RestaurantDB";
+
+// Nhà hàng
+const RESTAURANT_ID = "68e3fc0486dc90d60c7101dc";
+
+// Menu theo timeslot (em đã cung cấp)
+const MENUS = {
+  breakfast: "68e4174004521aa428f95d23",
+  dinner: "68e4174b04521aa428f95d24",
+  lunch: "68e5417804521aa428f95d28",
+  late_night: "68e54d8604521aa428f95d29",
+};
+
+// Category (giữ giống trước)
+const CATEGORY_APPETIZER = "68e3ff9cd433d2c81f8803c6"; // Khai vị
+const CATEGORY_MAIN = "68e41860dfc9c2a967e29701"; // Món chính
+
+// Modifier group cho tất cả món
 const DEFAULT_MODIFIER_GROUP_IDS = ["68e4d89bca13bb3391858677"];
 
-const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
-const ITEMS_PER_MENU = 10;
+// ====== HELPERS ======
+function oid(id) {
+  return new mongoose.Types.ObjectId(id);
+}
 
-// ===== TẠO CLIENT =====
-const client = new GraphQLClient(endpoint, {
-  headers: {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: token } : {}),
-  },
-});
-
-// ===== GQL =====
-const ENSURE_MENU = gql`
-  mutation Ensure($input: EnsureMenuInput!) {
-    ensureMenu(input: $input) {
-      id
-      restaurantId
-      timeSlot
-      name
-      isActive
-    }
-  }
-`;
-
-const CREATE_MENU_ITEM = gql`
-  mutation Create($input: CreateMenuItemInput!) {
-    createMenuItem(input: $input) {
-      id
-      restaurantId
-      menuId
-      categoryId
-      name
-      basePrice
-      preparationMethods {
-        name
-        price
-        isDefault
-      }
-      modifierGroupIds
-      status
-      createdAt
-    }
-  }
-`;
-
-// ===== HELPERS =====
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function basePayload({ name, categoryId, timeSlot }) {
+// Danh sách tên món theo menu
+const NAMES_BY_SLOT = {
+  breakfast: [
+    "Bánh mì ốp la",
+    "Phở bò tái",
+    "Bún riêu",
+    "Xôi gà",
+    "Bánh cuốn",
+    "Cháo cá",
+    "Mì Quảng",
+    "Bún bò Huế",
+    "Bánh canh giò",
+    "Bánh mì thịt nướng",
+  ],
+  lunch: [
+    "Cơm gà xối mỡ",
+    "Canh chua cá lóc",
+    "Thịt kho tàu",
+    "Gà kho gừng",
+    "Rau muống xào tỏi",
+    "Mực ống xào chua ngọt",
+    "Tôm sú rang me",
+    "Cá hồi áp chảo",
+    "Bò xào lá lốt",
+    "Đậu hũ sốt cà",
+  ],
+  dinner: [
+    "Lẩu hải sản",
+    "Cơm chiên Dương Châu",
+    "Gỏi cuốn tôm thịt",
+    "Lẩu kim chi",
+    "Sườn nướng BBQ",
+    "Cá tầm nướng",
+    "Gà quay",
+    "Mì xào hải sản",
+    "Nghêu hấp sả",
+    "Sườn xào chua ngọt",
+  ],
+  late_night: [
+    "Cháo sườn",
+    "Miến gà",
+    "Bánh mì bít tết",
+    "Mì trứng",
+    "Hủ tiếu xương",
+    "Bạch tuộc nướng",
+    "Cánh gà chiên mắm",
+    "Mì hải sản",
+    "Khoai tây chiên",
+    "Mì xào bò",
+  ],
+};
+
+// Payload cơ bản cho MenuItem
+function baseMenuItemPayload({
+  name,
+  description,
+  restaurantId,
+  menuId,
+  categoryId,
+  byWeight = false,
+  basePrice = 0,
+}) {
   return {
-    restaurantId,
-    timeSlot,
-    categoryId,
+    restaurantId: oid(restaurantId),
+    menuId: oid(menuId),
+    categoryId: oid(categoryId),
     name,
+    description,
+    basePrice,
+    byWeight,
+    thumbImage: null,
+    mediaAssetIds: [],
+    modifierGroupIds: DEFAULT_MODIFIER_GROUP_IDS.map(oid),
     status: "available",
-    avgPrepTimeMin: 10,
-    // GÁN MODIFIER GROUP Ở ĐÂY
-    modifierGroupIds: DEFAULT_MODIFIER_GROUP_IDS,
+    avgPrepTimeMin: randomInt(8, 20),
+    point: randomInt(0, 5),
+    notes: "",
   };
 }
 
-// Món giá cố định
-function fixedPriceDish(name, categoryId, timeSlot, base = 25000) {
-  return {
-    ...basePayload({ name, categoryId, timeSlot }),
-    description: "Món giá cố định.",
-    basePrice: base,
-    preparationMethods: [], // non-null list
-  };
-}
+// Tạo danh sách món cho 1 slot
+function buildItemsForSlot(slot) {
+  const names = NAMES_BY_SLOT[slot] || [];
+  const menuId = MENUS[slot];
 
-// Món theo “cách chế biến” (per-portion)
-function perMethodDish(name, categoryId, timeSlot) {
-  const methods = [
-    { name: "Chiên bơ tỏi", price: 15000, isDefault: true },
-    { name: "Xào sả ớt", price: 12000 },
-    { name: "Nướng muối ớt", price: 18000 },
-  ];
-  return {
-    ...basePayload({ name, categoryId, timeSlot }),
-    description: "Giá theo cách chế biến (tính theo phần).",
-    basePrice: 0,
-    preparationMethods: methods,
-    avgPrepTimeMin: 12,
-  };
-}
+  if (!menuId) return [];
 
-// Món theo kg (mô phỏng giá/100g)
-function byWeightDish(name, categoryId, timeSlot) {
-  const methods = [
-    { name: "Nướng", price: 12000, isDefault: true },
-    { name: "Hấp sả", price: 10000 },
-    { name: "Áp chảo", price: 14000 },
-  ];
-  return {
-    ...basePayload({ name, categoryId, timeSlot }),
-    description: "Giá theo 100g. Tổng tiền = (gram/100) × giá chế biến.",
-    basePrice: 0,
-    preparationMethods: methods,
-    avgPrepTimeMin: 15,
-  };
-}
+  const items = [];
 
-function sampleNamesFor(slot) {
-  const base = {
-    breakfast: [
-      "Bánh mì ốp la",
-      "Phở bò tái",
-      "Bún riêu",
-      "Xôi gà",
-      "Bánh cuốn",
-      "Cháo cá",
-      "Mì Quảng",
-      "Bún bò Huế",
-      "Bánh canh giò",
-      "Bánh mì thịt nướng",
-    ],
-    lunch: [
-      "Cơm gà xối mỡ",
-      "Canh chua cá lóc",
-      "Thịt kho tàu",
-      "Gà kho gừng",
-      "Rau muống xào tỏi",
-      "Mực ống",
-      "Tôm sú",
-      "Cá hồi áp chảo",
-      "Bò xào lá lốt",
-      "Đậu hũ sốt cà",
-    ],
-    dinner: [
-      "Lẩu hải sản",
-      "Cơm chiên Dương Châu",
-      "Gỏi cuốn tôm thịt",
-      "Lẩu kim chi",
-      "Sườn nướng BBQ",
-      "Cá tầm nướng",
-      "Gà quay",
-      "Mì xào hải sản",
-      "Nghêu hấp sả",
-      "Sườn xào chua ngọt",
-    ],
-    late_night: [
-      "Cháo sườn",
-      "Miến gà",
-      "Bánh mì bít tết",
-      "Mì trứng",
-      "Hủ tiếu xương",
-      "Bạch tuộc nướng",
-      "Cánh gà chiên mắm",
-      "Mì hải sản",
-      "Khoai tây chiên",
-      "Mì xào bò",
-    ],
-  };
-  return base[slot].slice(0, ITEMS_PER_MENU);
-}
+  // Quy ước:
+  // - index 0..4: khai vị (CATEGORY_APPETIZER, byWeight=false)
+  // - index 5..8: món chính (CATEGORY_MAIN, byWeight=false)
+  // - index 9: món chính bán theo 100g (byWeight=true)
+  names.forEach((name, index) => {
+    const isAppetizer = index < 5;
+    const isByWeight = index === 9; // món cuối bán theo 100g
 
-// 10 món/slot: 5 khai vị + 5 món chính
-function buildMenuItemsPayloads(slot) {
-  const names = sampleNamesFor(slot);
-  const payloads = [];
+    const categoryId = isAppetizer ? CATEGORY_APPETIZER : CATEGORY_MAIN;
+    const description = isByWeight
+      ? "Giá theo 100g. Tổng tiền = (gram/100) × giá chế biến."
+      : "Món giá cố định theo phần.";
 
-  // 5 khai vị (0..4): 3 fixed + 2 perMethod
-  for (let i = 0; i < 5; i++) {
-    if (i < 3) {
-      payloads.push(
-        fixedPriceDish(
-          names[i],
-          CATEGORY_APPETIZER,
-          slot,
-          randomInt(20000, 50000)
-        )
-      );
-    } else {
-      payloads.push(perMethodDish(names[i], CATEGORY_APPETIZER, slot));
-    }
-  }
+    const basePrice = isByWeight
+      ? 0
+      : isAppetizer
+      ? randomInt(20000, 50000)
+      : randomInt(40000, 90000);
 
-  // 5 món chính (5..9): 2 perMethod + 2 byWeight + 1 fixed
-  payloads.push(perMethodDish(names[5], CATEGORY_MAIN, slot));
-  payloads.push(perMethodDish(names[6], CATEGORY_MAIN, slot));
-  payloads.push(byWeightDish(names[7], CATEGORY_MAIN, slot));
-  payloads.push(byWeightDish(names[8], CATEGORY_MAIN, slot));
-  payloads.push(
-    fixedPriceDish(names[9], CATEGORY_MAIN, slot, randomInt(30000, 70000))
-  );
-
-  return payloads;
-}
-
-// ===== MAIN =====
-async function main() {
-  console.log(`Seeding for restaurant: ${restaurantId}`);
-  console.log(`GraphQL endpoint: ${endpoint}`);
-  if (token) console.log(`Using Authorization header`);
-  console.log("────────────────────────────");
-
-  for (const slot of ["breakfast", "lunch", "dinner", "late_night"]) {
-    console.log(`\n[${slot}] ensureMenu...`);
-    await client.request(ENSURE_MENU, {
-      input: {
-        restaurantId,
-        timeSlot: slot,
-        name: `Menu ${slot}`,
-        description: `Menu cho khung giờ ${slot}`,
-        coverImage: null,
-      },
-    });
-
-    console.log(
-      `[${slot}] creating ${ITEMS_PER_MENU} items (with modifierGroupIds)...`
+    items.push(
+      baseMenuItemPayload({
+        name,
+        description,
+        restaurantId: RESTAURANT_ID,
+        menuId,
+        categoryId,
+        byWeight: isByWeight,
+        basePrice,
+      })
     );
-    const payloads = buildMenuItemsPayloads(slot);
+  });
 
-    for (const item of payloads) {
+  return items;
+}
+
+// ====== MAIN ======
+async function main() {
+  console.log("Connecting Mongo:", MONGO_URI, "| DB:", MONGO_DB);
+  await mongoose.connect(MONGO_URI, { dbName: MONGO_DB });
+  console.log("✅ Connected");
+
+  // ❗ Nếu muốn xóa hết món cũ của nhà hàng trước khi seed, mở comment dòng dưới:
+  // await MenuItem.deleteMany({ restaurantId: oid(RESTAURANT_ID) });
+
+  const slots = ["breakfast", "lunch", "dinner", "late_night"];
+
+  for (const slot of slots) {
+    const menuId = MENUS[slot];
+    if (!menuId) {
+      console.log(`⚠️  Không có menuId cho slot=${slot}, skip.`);
+      continue;
+    }
+
+    const items = buildItemsForSlot(slot);
+    console.log(
+      `\n[${slot}] Seeding ${items.length} items vào menuId=${menuId}...`
+    );
+
+    for (const item of items) {
       try {
-        const res = await client.request(CREATE_MENU_ITEM, { input: item });
-        const created = res.createMenuItem;
+        // Tránh trùng: check theo (restaurantId, menuId, categoryId, name)
+        const exists = await MenuItem.findOne({
+          restaurantId: item.restaurantId,
+          menuId: item.menuId,
+          categoryId: item.categoryId,
+          name: item.name,
+        }).lean();
+
+        if (exists) {
+          console.log(`⏭  Skip (đã tồn tại): ${item.name}`);
+          continue;
+        }
+
+        const created = await MenuItem.create(item);
         console.log(
-          `  ✓ ${created.name} | cat=${created.categoryId} | base=${
-            created.basePrice
-          } | PM=${created.preparationMethods?.length || 0} | mods=${
-            created.modifierGroupIds?.length || 0
-          }`
+          `✓ ${created.name} | menu=${slot} | cat=${created.categoryId} | byWeight=${created.byWeight} | basePrice=${created.basePrice}`
         );
       } catch (err) {
-        console.error(`  ✗ ${item.name} → ${err.message}`);
+        console.error(`✗ Lỗi tạo món "${item.name}":`, err.message);
       }
     }
   }
 
-  console.log("\n✅ Done seeding all menus.");
+  console.log("\n🎉 DONE – Seed MenuItem xong cho nhà hàng", RESTAURANT_ID);
+  await mongoose.disconnect();
 }
 
-main().catch((e) => {
-  console.error("❌ Error:", e);
+main().catch((err) => {
+  console.error("❌ Fatal error:", err);
   process.exit(1);
 });

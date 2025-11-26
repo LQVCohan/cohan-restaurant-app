@@ -1,0 +1,189 @@
+/* src/pages/Reviews/ReviewManagement.scss */
+
+/* ========== DESIGN TOKENS CHUNG ========== */
+.reviews-page {
+  /* Kích thước tổng thể */
+  --reviews-max-width: 1400px;
+
+  /* Màu sắc chủ đạo */
+  --reviews-primary-color: #0284c7;
+  --reviews-primary-hover: #0369a1;
+  --reviews-primary-light: #e0f2fe;
+
+  /* Nền & khung */
+  --reviews-bg: #f3f4f6;
+  --reviews-card-bg: #ffffff;
+  --reviews-border-color: #e2e8f0;
+
+  /* Text */
+  --reviews-text-main: #0f172a;
+  --reviews-text-secondary: #64748b;
+  --reviews-text-muted: #9ca3af;
+
+  /* Bo góc & bóng */
+  --reviews-radius-lg: 16px;
+  --reviews-radius-md: 12px;
+  --reviews-radius-sm: 8px;
+
+  --reviews-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --reviews-shadow-md: 0 4px 8px rgba(15, 23, 42, 0.08);
+  --reviews-shadow-lg: 0 10px 20px rgba(15, 23, 42, 0.09);
+
+  --reviews-transition: all 0.2s ease-out;
+
+  width: 100%;
+  min-height: 100vh;
+  background: var(--reviews-bg);
+  color: var(--reviews-text-main);
+}
+
+/* ========== HEADER FULL-WIDTH ========== */
+/* Wrapper của header trong page, để header xanh full width giống container */
+.reviews-header {
+  width: 100%;
+  max-width: var(--reviews-max-width);
+  margin: 0 auto 16px;
+  padding: 0 16px;
+}
+
+/* ========== CONTAINER NỘI DUNG ========== */
+.reviews-container {
+  width: 100%;
+  max-width: var(--reviews-max-width);
+  margin: 0 auto;
+  padding: 0 16px 20px;
+}
+
+/* ========== MAIN CONTENT ========== */
+.reviews-main-content {
+  padding-top: 8px;
+}
+
+/* Grid: sidebar + content */
+.reviews-content-grid {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 20px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 992px) {
+  .reviews-content-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========== NÚT DÙNG CHUNG (Xuất báo cáo, Thêm đánh giá, nút modal) ========== */
+.reviews-btn {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--reviews-transition);
+  white-space: nowrap;
+}
+
+.reviews-btn-primary {
+  background: var(--reviews-primary-color);
+  color: #ffffff;
+  border-color: var(--reviews-primary-color);
+
+  &:hover {
+    background: var(--reviews-primary-hover);
+    border-color: var(--reviews-primary-hover);
+    box-shadow: var(--reviews-shadow-md);
+    transform: translateY(-1px);
+  }
+}
+
+.reviews-btn-secondary {
+  background: #ffffff;
+  color: var(--reviews-text-main);
+  border-color: var(--reviews-border-color);
+
+  &:hover {
+    background: #f8fafc;
+    box-shadow: var(--reviews-shadow-sm);
+  }
+}
+
+/* ========== HEADER NỘI DUNG (title + search + buttons) ========== */
+.reviews-content-area {
+  background: var(--reviews-card-bg);
+  border-radius: var(--reviews-radius-lg);
+  border: 1px solid var(--reviews-border-color);
+  box-shadow: var(--reviews-shadow-sm);
+  overflow: hidden;
+}
+
+.reviews-content-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--reviews-border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.reviews-content-header__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.reviews-content-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Ô search */
+.reviews-content-header__search-box {
+  position: relative;
+}
+
+.reviews-content-header__search-box-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8rem;
+  color: var(--reviews-text-muted);
+}
+
+.reviews-content-header__search-box-input {
+  padding: 6px 12px 6px 28px;
+  border-radius: 999px;
+  border: 1px solid var(--reviews-border-color);
+  font-size: 0.85rem;
+  min-width: 230px;
+  outline: none;
+  transition: var(--reviews-transition);
+  background: #ffffff;
+
+  &:focus {
+    border-color: var(--reviews-primary-color);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+  }
+}
+
+@media (max-width: 768px) {
+  .reviews-content-header {
+    align-items: flex-start;
+  }
+
+  .reviews-content-header__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .reviews-content-header__search-box-input {
+    width: 100%;
+  }
+}

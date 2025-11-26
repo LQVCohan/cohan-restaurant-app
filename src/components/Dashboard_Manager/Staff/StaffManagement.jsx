@@ -5,6 +5,7 @@ import PageNavigation from "./components/PageNavigation";
 import EmployeeDashboard from "./components/EmployeeDashboard";
 import AttendancePage from "./components/Attendance";
 import LeaveManagement from "./components/LeaveManagement";
+import SchedulePage from "./components/Schedule";
 import {
   AddEmployeeModal,
   EditEmployeeModal,
@@ -278,6 +279,8 @@ const StaffManagement = () => {
         )}
 
         {currentPage === "leave" && <LeaveManagement />}
+
+        {currentPage === "schedule" && <SchedulePage />}
       </div>
 
       {/* MODALS */}
