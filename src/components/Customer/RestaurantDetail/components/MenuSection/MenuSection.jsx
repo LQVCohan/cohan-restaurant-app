@@ -1,16 +1,20 @@
-// ✅ src/components/Customer/RestaurantDetail/MenuSection.jsx
+// src/components/Customer/RestaurantDetail/MenuSection.jsx
 import React, { useState, useEffect } from "react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import "./MenuSection.scss";
 
-// 🧺 Giỏ hàng/images/food/placeholder.jpg
+// Components
 import Cart from "../../../../Customer/Homepage_Client/components/Cart";
 import { useCart } from "../../../../../hooks/useCart";
 
-/* ──────────────────────────────────────────────
-   GraphQL Query
-────────────────────────────────────────────── */
+// Utils (Giả lập hoặc import từ utils của bạn)
+const formatPrice = (value) =>
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+    value
+  );
+
+/* ──────────────── GraphQL Queries (Giữ nguyên) ──────────────── */
 const GET_CATEGORIES = gql`
   query GetCategories($restaurantId: ID!, $timeSlot: TimeSlot!) {
     categories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
@@ -65,27 +69,23 @@ const GET_MENU_ITEMS_BY_CATEGORY = gql`
 
 const MenuSection = ({ restaurantId }) => {
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("breakfast");
-
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState(null);
-
   const [menuItems, setMenuItems] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [hasNextPage, setHasNextPage] = useState(false);
-
-  // Map method được chọn cho từng item: { [itemId]: methodName }
   const [selectedMethods, setSelectedMethods] = useState({});
-
-  // 🛒 Giỏ hàng
-  const { cart, addToCart, updateQuantity, getTotalItems, getTotalPrice } =
-    useCart();
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  /* ──────────────── Categories ──────────────── */
+  const { cart, addToCart, updateQuantity, getTotalItems, getTotalPrice } =
+    useCart();
+
+  /* ──────────────── Logic (Giữ nguyên logic cũ, chỉ clean code) ──────────────── */
+  // ... (Code Categories Query giữ nguyên)
   const {
     data: categoriesData,
-    loading: categoriesLoading,
-    error: categoriesError,
+    loading: catLoading,
+    error: catError,
   } = useQuery(GET_CATEGORIES, {
     variables: { restaurantId, timeSlot: selectedTimeSlot },
     skip: !restaurantId,
@@ -99,13 +99,13 @@ const MenuSection = ({ restaurantId }) => {
     }
   }, [categoriesData]);
 
-  /* ──────────────── Menu Items ──────────────── */
+  // ... (Code Menu Items Query giữ nguyên)
   const {
-    data: menuItemsData,
-    loading: menuItemsLoading,
-    error: menuItemsError,
+    data: menuData,
+    loading: menuLoading,
+    error: menuError,
     fetchMore,
-    refetch: refetchItems,
+    refetch,
   } = useQuery(GET_MENU_ITEMS_BY_CATEGORY, {
     variables: activeCategory
       ? {
@@ -120,29 +120,21 @@ const MenuSection = ({ restaurantId }) => {
     fetchPolicy: "network-only",
   });
 
-  // Khi có items mới:
   useEffect(() => {
-    if (!menuItemsData?.menuItemsConnection) return;
-
-    const edges = menuItemsData.menuItemsConnection.edges || [];
+    if (!menuData?.menuItemsConnection) return;
+    const edges = menuData.menuItemsConnection.edges || [];
     const newNodes = edges.map((e) => e.node);
 
-    // Gộp tránh trùng
     setMenuItems((prev) => {
       const existing = new Map(prev.map((i) => [i.id, i]));
       newNodes.forEach((n) => existing.set(n.id, n));
       return Array.from(existing.values());
     });
 
-    // Set default method cho item chưa có
     setSelectedMethods((prev) => {
       const next = { ...prev };
       for (const it of newNodes) {
-        if (
-          !next[it.id] &&
-          Array.isArray(it.preparationMethods) &&
-          it.preparationMethods.length
-        ) {
+        if (!next[it.id] && it.preparationMethods?.length) {
           const def =
             it.preparationMethods.find((m) => m.isDefault) ||
             it.preparationMethods[0];
@@ -152,53 +144,31 @@ const MenuSection = ({ restaurantId }) => {
       return next;
     });
 
-    setCursor(menuItemsData.menuItemsConnection.pageInfo?.endCursor || null);
-    setHasNextPage(!!menuItemsData.menuItemsConnection.pageInfo?.hasNextPage);
-  }, [menuItemsData]);
+    setCursor(menuData.menuItemsConnection.pageInfo?.endCursor || null);
+    setHasNextPage(!!menuData.menuItemsConnection.pageInfo?.hasNextPage);
+  }, [menuData]);
 
-  /* ──────────────── Helpers ──────────────── */
-  const getSelectedMethod = (item) => {
-    const selName = selectedMethods[item.id];
-    if (!selName) return null;
-    return (
-      (item.preparationMethods || []).find((m) => m.name === selName) || null
-    );
-  };
-
-  // Thay thế getDisplayPriceK hiện tại
-  const getDisplayPriceK = (item) => {
-    const sel = getSelectedMethod(item);
-    if (sel && typeof sel.price === "number") {
-      return sel.price; // ✅ giá tuyệt đối của method (đơn vị k)
-    }
-    if (typeof item.basePrice === "number") {
-      return item.basePrice; // fallback nếu item không có method
-    }
-    return null;
-  };
-
-  /* ──────────────── Handlers ──────────────── */
-  const handleTimeSlotChange = (timeSlot) => {
-    if (timeSlot === selectedTimeSlot) return;
-    setSelectedTimeSlot(timeSlot);
+  // Handlers
+  const handleTimeSlotChange = (slot) => {
+    if (slot === selectedTimeSlot) return;
+    setSelectedTimeSlot(slot);
     setCategories([]);
     setActiveCategory(null);
     setMenuItems([]);
     setCursor(null);
-    setHasNextPage(false);
     setSelectedMethods({});
   };
 
-  const handleCategoryChange = (categoryId) => {
-    if (categoryId === activeCategory) return;
-    setActiveCategory(categoryId);
+  const handleCategoryChange = (catId) => {
+    if (catId === activeCategory) return;
+    setActiveCategory(catId);
     setMenuItems([]);
     setCursor(null);
     setSelectedMethods({});
-    refetchItems?.({
+    refetch?.({
       restaurantId,
       timeSlot: selectedTimeSlot,
-      categoryId,
+      categoryId: catId,
       cursor: null,
       limit: 20,
     });
@@ -208,27 +178,24 @@ const MenuSection = ({ restaurantId }) => {
     setSelectedMethods((prev) => ({ ...prev, [itemId]: methodName }));
   };
 
-  // Thay thế handleAddToCart hiện tại
-  const handleAddToCart = (item) => {
-    const imgUrl = item.thumbImage || "/public/default-dishes.jpg";
-    const method = getSelectedMethod(item);
+  const getSelectedMethod = (item) => {
+    const selName = selectedMethods[item.id];
+    return (
+      (item.preparationMethods || []).find((m) => m.name === selName) || null
+    );
+  };
 
-    // ✅ Nếu có method → dùng method.price; nếu không → dùng basePrice
-    const priceK =
-      method && typeof method.price === "number"
-        ? method.price
-        : typeof item.basePrice === "number"
-        ? item.basePrice
-        : 0;
+  const handleAddToCart = (item) => {
+    const method = getSelectedMethod(item);
+    const price = method?.price ?? item.basePrice ?? 0;
 
     addToCart({
-      id: method ? `${item.id}_${method.name}` : item.id, // phân biệt theo method
+      id: method ? `${item.id}_${method.name}` : item.id,
       name: item.name,
-      price: priceK, // VND cho giỏ
-      image: <img src={imgUrl} alt={item.name} />,
+      price: price,
+      image: item.thumbImage || "/default-dishes.jpg",
       method: method?.name || null,
     });
-
     setIsCartOpen(true);
   };
 
@@ -250,177 +217,170 @@ const MenuSection = ({ restaurantId }) => {
               ...(prev?.menuItemsConnection?.edges || []),
               ...(fetchMoreResult.menuItemsConnection?.edges || []),
             ],
-            pageInfo:
-              fetchMoreResult.menuItemsConnection?.pageInfo ||
-              prev?.menuItemsConnection?.pageInfo,
-            __typename:
-              prev?.menuItemsConnection?.__typename || "MenuItemConnection",
+            pageInfo: fetchMoreResult.menuItemsConnection?.pageInfo,
+            __typename: prev?.menuItemsConnection?.__typename,
           },
         };
       },
     });
   };
 
-  /* ──────────────── UI Loading/Error ──────────────── */
-  if (categoriesLoading || (!activeCategory && menuItemsLoading)) {
+  // Time Slots Config
+  const timeSlots = [
+    { id: "breakfast", label: "🍳 Bữa Sáng" },
+    { id: "lunch", label: "🍱 Bữa Trưa" },
+    { id: "dinner", label: "🍷 Bữa Tối" },
+    { id: "late_night", label: "🌙 Ăn Khuya" },
+  ];
+
+  /* ──────────────── Render UI ──────────────── */
+  if (catLoading || (!activeCategory && menuLoading)) {
     return (
-      <div className="menu-section-restaurant-detail">
-        <div className="menu-loading">
-          <div className="spinner" />
-          <p>Đang tải dữ liệu...</p>
+      <div className="menu-loading">
+        <div className="spinner" />
+        <span>Đang tải thực đơn...</span>
+      </div>
+    );
+  }
+
+  if (catError) return <div className="menu-error">⚠️ {catError.message}</div>;
+
+  return (
+    <div className="menu-section-container">
+      {/* 1. Time Slot Segmented Control */}
+      <div className="time-slot-wrapper">
+        <div className="time-slot-control">
+          {timeSlots.map((slot) => (
+            <button
+              key={slot.id}
+              className={`slot-item ${
+                selectedTimeSlot === slot.id ? "active" : ""
+              }`}
+              onClick={() => handleTimeSlotChange(slot.id)}
+            >
+              {slot.label}
+            </button>
+          ))}
         </div>
       </div>
-    );
-  }
 
-  if (categoriesError) {
-    return (
-      <div className="menu-section-restaurant-detail">
-        <p className="error-text">
-          ⚠️ Lỗi tải danh mục: {categoriesError.message}
-        </p>
-      </div>
-    );
-  }
-
-  /* ──────────────── Render ──────────────── */
-  return (
-    <div className="menu-section-restaurant-detail">
-      {/* TimeSlot Selector */}
-      <div className="time-slot-selector">
-        {["breakfast", "lunch", "dinner", "late_night"].map((slot) => (
-          <button
-            key={slot}
-            className={`time-slot-btn ${
-              selectedTimeSlot === slot ? "selected" : ""
-            }`}
-            onClick={() => handleTimeSlotChange(slot)}
-          >
-            {slot === "late_night"
-              ? "Late Night"
-              : slot.charAt(0).toUpperCase() + slot.slice(1)}
-          </button>
-        ))}
-      </div>
-
-      <div className="menu-layout">
-        {/* Danh mục */}
-        <nav className="menu-nav">
-          <div className="menu-categories">
-            {categories.map((category) => (
+      <div className="menu-layout-grid">
+        {/* 2. Sidebar Categories */}
+        <aside className="menu-sidebar">
+          <h3 className="sidebar-title">Danh mục</h3>
+          <div className="categories-list">
+            {categories.map((cat) => (
               <button
-                key={category.id}
-                className={`menu-category ${
-                  activeCategory === category.id ? "menu-category--active" : ""
+                key={cat.id}
+                className={`category-pill ${
+                  activeCategory === cat.id ? "active" : ""
                 }`}
-                onClick={() => handleCategoryChange(category.id)}
+                onClick={() => handleCategoryChange(cat.id)}
               >
-                {category.name}
+                {cat.name}
               </button>
             ))}
           </div>
-        </nav>
+        </aside>
 
-        {/* Món ăn */}
-        <div className="menu-content">
+        {/* 3. Main Content */}
+        <main className="menu-main-content">
           {!activeCategory ? (
-            <div className="menu-empty">
-              Hãy chọn một danh mục để xem món ăn
-            </div>
-          ) : menuItemsError ? (
-            <div className="menu-error">
-              ⚠️ Lỗi tải món ăn: {menuItemsError.message}
-            </div>
-          ) : menuItems.length === 0 && !menuItemsLoading ? (
-            <div className="menu-empty">Chưa có món trong danh mục này</div>
+            <div className="empty-state">Vui lòng chọn danh mục món ăn</div>
+          ) : menuError ? (
+            <div className="error-state">Có lỗi xảy ra khi tải món ăn.</div>
+          ) : menuItems.length === 0 && !menuLoading ? (
+            <div className="empty-state">Danh mục này chưa có món nào.</div>
           ) : (
             <>
-              <div className="menu-items menu-items--two-cols-wide">
+              <div className="menu-items-grid">
                 {menuItems.map((item) => {
-                  const img = item.thumbImage || "/public/default-dishes.jpg";
+                  const img = item.thumbImage || "/images/food/placeholder.jpg";
                   const methods = item.preparationMethods || [];
                   const selectedName = selectedMethods[item.id] || "";
-                  // const displayPriceK = getDisplayPriceK(item);
+                  const currentMethod = getSelectedMethod(item);
+                  const displayPrice = currentMethod
+                    ? currentMethod.price
+                    : item.basePrice;
 
                   return (
-                    <div key={item.id} className="menu-item menu-item--rect">
-                      <div className="menu-item__image-frame">
+                    <article key={item.id} className="menu-card">
+                      {/* Ảnh Card */}
+                      <div className="card-image-wrapper">
                         <img src={img} alt={item.name} loading="lazy" />
                       </div>
 
-                      <div className="menu-item__content">
-                        <div className="menu-item__header">
-                          <h4 className="menu-item__name">{item.name}</h4>
+                      {/* Nội dung Card */}
+                      <div className="card-content">
+                        <div className="card-header">
+                          <h4 className="item-name">{item.name}</h4>
+                          <span className="item-price">
+                            {formatPrice(displayPrice)}
+                          </span>
                         </div>
-
-                        {/* Select cách chế biến (nếu có) */}
-                        {methods.length > 0 && (
-                          <div className="menu-item__method-select">
-                            <select
-                              value={selectedName}
-                              onChange={(e) =>
-                                handleMethodChange(item.id, e.target.value)
-                              }
-                            >
-                              {methods.map((m) => (
-                                <option key={m.name} value={m.name}>
-                                  {m.name}{" "}
-                                  {typeof m.price === "number"
-                                    ? `- ${m.price} đ`
-                                    : ""}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
 
                         {item.description && (
-                          <p className="menu-item__description menu-item__description--clamp">
-                            {item.description}
-                          </p>
+                          <p className="item-desc">{item.description}</p>
                         )}
 
-                        <div className="menu-item__actions">
-                          <button className="btn btn--secondary btn--small">
-                            👁️ Xem chi tiết
-                          </button>
-                          <button
-                            className="btn btn--primary btn--small"
-                            onClick={() => handleAddToCart(item)}
-                          >
-                            🛒 Thêm vào giỏ
-                          </button>
+                        <div className="card-footer">
+                          {methods.length > 0 && (
+                            <div className="method-selector">
+                              <select
+                                value={selectedName}
+                                onChange={(e) =>
+                                  handleMethodChange(item.id, e.target.value)
+                                }
+                              >
+                                {methods.map((m) => (
+                                  <option key={m.name} value={m.name}>
+                                    {m.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
+                          <div className="action-buttons">
+                            {/* Nút Xem (Optional) */}
+                            {/* <button className="btn-icon">👁️</button> */}
+                            <button
+                              className="btn-add-cart"
+                              onClick={() => handleAddToCart(item)}
+                            >
+                              + Thêm
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </article>
                   );
                 })}
               </div>
 
               {hasNextPage && (
-                <button
-                  className="btn btn--primary btn--small load-more-btn"
-                  onClick={loadMoreItems}
-                  disabled={menuItemsLoading}
-                >
-                  {menuItemsLoading ? "Đang tải..." : "Tải thêm món"}
-                </button>
+                <div className="load-more-wrapper">
+                  <button
+                    className="btn-load-more"
+                    onClick={loadMoreItems}
+                    disabled={menuLoading}
+                  >
+                    {menuLoading ? "Đang tải..." : "Xem thêm món"}
+                  </button>
+                </div>
               )}
             </>
           )}
-        </div>
+        </main>
       </div>
 
-      {/* 🔘 Nút nổi mở giỏ */}
-      <button
-        className="cart-fab"
-        onClick={() => setIsCartOpen(true)}
-        aria-label="Mở giỏ hàng"
-      >
-        🧺 <span className="cart-fab__count">{getTotalItems()}</span>
+      {/* Floating Cart Button */}
+      <button className="cart-fab" onClick={() => setIsCartOpen(true)}>
+        <span className="icon">🛒</span>
+        <span className="count">{getTotalItems()}</span>
       </button>
 
-      {/* 🧺 Panel giỏ hàng */}
+      {/* Cart Modal */}
       <Cart
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}

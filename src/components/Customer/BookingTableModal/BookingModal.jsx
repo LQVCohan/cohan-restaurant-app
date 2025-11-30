@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo } from "react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
-import Modal, { ModalFooter } from "@/components/common/Modal";
 import { AuthContext } from "../../../context/AuthContext";
 import { useBookingTable } from "../../../hooks/useBookingTable";
 import { useNotification } from "../../../hooks/useNotification";
@@ -14,6 +13,8 @@ const GET_RESTAURANT = gql`
     restaurant(id: $id) {
       id
       name
+      openingHours
+      closingHours
       address {
         line1
         line2
@@ -43,27 +44,12 @@ const GET_TABLES_BY_RESTAURANT = gql`
   }
 `;
 
-/* ─────────────── Utils ─────────────── */
-const phoneRegex = /^(\+?\d{7,15})$/i;
-const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
-
-function requirePhoneOrEmail({ phone, email }) {
-  const phoneOk = phone ? phoneRegex.test(String(phone).trim()) : false;
-  const emailOk = email ? emailRegex.test(String(email).trim()) : false;
-  return phoneOk || emailOk;
-}
-
+/* ───────────────── Utils Helpers ───────────────── */
 function addressToText(addr) {
   if (!addr) return "—";
-  const parts = [
-    addr.line1,
-    addr.line2,
-    addr.ward,
-    addr.district,
-    addr.city,
-    addr.country,
-  ].filter(Boolean);
-  return parts.join(", ");
+  return [addr.line1, addr.line2, addr.ward, addr.district, addr.city]
+    .filter(Boolean)
+    .join(", ");
 }
 
 function getDepositFromTable(table, partySize) {
@@ -77,26 +63,54 @@ function getDepositFromTable(table, partySize) {
 function localDateTimeToISO(d, t) {
   if (!d || !t) return null;
   const iso = new Date(`${d}T${t}:00`);
-  if (isNaN(iso.getTime())) return null;
-  return iso.toISOString();
+  return isNaN(iso.getTime()) ? null : iso.toISOString();
 }
 
-/* ───────────────── BookingModal ───────────────── */
+function calculateDurationMinutes(date, timeIn, timeOut) {
+  if (!date || !timeIn || !timeOut) return 0;
+  const start = new Date(`${date}T${timeIn}:00`);
+  const end = new Date(`${date}T${timeOut}:00`);
+  const diffMs = end - start;
+  return Math.floor(diffMs / 60000);
+}
+
+const parseTimeStr = (timeStr) => {
+  if (!timeStr) return null;
+  const t = timeStr.trim().toLowerCase();
+  const [timePart] = t.split(" ");
+  let [h, m] = timePart.replace(/[a-z]/g, "").split(":").map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  if (t.includes("pm") && h !== 12) h += 12;
+  if (t.includes("am") && h === 12) h = 0;
+  return { h, m, totalMinutes: h * 60 + m };
+};
+
+/* ───────────────── Main Component ───────────────── */
 const BookingModal = ({
   isOpen,
   onClose,
   restaurantId,
   tableCode,
-  tableId, // optional
-  tableCapacity, // optional
-  tableFloor, // optional
-  onBookingConfirmed, // (reservation) => void
+  tableId,
+  tableCapacity,
+  tableFloor,
+  onBookingConfirmed,
 }) => {
+  // Lấy thông tin user từ Context
   const { user } = useContext(AuthContext) || {};
+
   const { createBooking, isLoading } = useBookingTable();
   const { showNotification } = useNotification();
-  console.log("tableCode", tableCode);
-  /* Lấy dữ liệu nhà hàng */
+
+  // Khóa scroll body
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? "hidden" : "unset";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
+  // --- Data Fetching ---
   const { data: rData } = useQuery(GET_RESTAURANT, {
     variables: { id: restaurantId },
     skip: !restaurantId,
@@ -104,7 +118,6 @@ const BookingModal = ({
   });
   const restaurant = rData?.restaurant;
 
-  /* useMemo để ổn định deps */
   const needPickTable = useMemo(() => !tableId, [tableId]);
 
   const { data: tablesData, loading: tablesLoading } = useQuery(
@@ -115,10 +128,9 @@ const BookingModal = ({
       fetchPolicy: "network-only",
     }
   );
-
   const tables = useMemo(() => tablesData?.tables ?? [], [tablesData]);
 
-  /* State quản lý form */
+  // --- State ---
   const [pickedTable, setPickedTable] = useState(null);
   const [formData, setFormData] = useState({
     customerName: "",
@@ -127,44 +139,49 @@ const BookingModal = ({
     partySize: 2,
     date: "",
     time: "",
+    timeOut: "",
     notes: "",
   });
   const [errors, setErrors] = useState({});
   const [showSummary, setShowSummary] = useState(false);
+  const [timeWarning, setTimeWarning] = useState(null);
 
-  /* Prefill khi mở modal */
+  // --- PREFILL DATA & AUTO-FILL USER ---
   useEffect(() => {
     if (!isOpen) return;
-
     setErrors({});
     setShowSummary(false);
+    setTimeWarning(null);
+    const today = new Date().toLocaleDateString("en-CA");
 
-    const today = new Date().toISOString().split("T")[0];
     const preTable = needPickTable
       ? null
       : {
           id: tableId,
-          code: tableId,
+          code: tableCode || tableId,
           capacity: tableCapacity || 4,
         };
     setPickedTable(preTable);
 
-    const customerName = user?.fullName || user?.name || "";
-    const customerPhone = user?.phone || "";
-    const customerEmail = user?.email || "";
+    // ✅ LOGIC AUTO-FILL TỪ USER ĐĂNG NHẬP
+    // Ưu tiên lấy từ user context, nếu không có thì để rỗng
+    const autoName = user?.fullName || user?.name || "";
+    const autoPhone = user?.phone || user?.phoneNumber || "";
+    const autoEmail = user?.email || "";
 
     setFormData((prev) => ({
       ...prev,
       date: today,
       partySize: Math.min(2, preTable?.capacity || 4),
-      customerName,
-      customerPhone,
-      customerEmail,
-      time: prev.time || "",
+      time: "",
+      timeOut: "",
+      // Fill thông tin khách hàng
+      customerName: autoName,
+      customerPhone: autoPhone,
+      customerEmail: autoEmail,
     }));
-  }, [isOpen, needPickTable, tableId, tableCapacity, user]);
+  }, [isOpen, needPickTable, tableId, tableCapacity, user]); // Thêm 'user' vào dependency
 
-  /* Tự động chọn bàn đầu tiên nếu cần */
   useEffect(() => {
     if (!isOpen) return;
     if (needPickTable && tables.length > 0 && !pickedTable?.id) {
@@ -178,105 +195,67 @@ const BookingModal = ({
     [pickedTable, formData.partySize]
   );
 
-  /* Handlers */
-  const onChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  // --- Handlers ---
+  const checkTimeWarning = (dateStr, timeStr) => {
+    if (!dateStr || !timeStr) {
+      setTimeWarning(null);
+      return;
+    }
+    const now = new Date();
+    const selected = new Date(`${dateStr}T${timeStr}:00`);
+    const diffMinutes = Math.floor((selected - now) / 60000);
+
+    if (diffMinutes < 0) setTimeWarning("Đã qua.");
+    else if (diffMinutes < 30) setTimeWarning("Sát giờ!");
+    else setTimeWarning(null);
+  };
+
+  const handleChange = (field, value) => {
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+      if (field === "date") {
+        newData.time = "";
+        newData.timeOut = "";
+      }
+      if (field === "time") {
+        checkTimeWarning(newData.date, value);
+        newData.timeOut = "";
+      }
+      return newData;
+    });
     if (errors[field]) setErrors((e) => ({ ...e, [field]: null }));
   };
 
   const handlePartyBtn = (delta) => {
-    const next = Math.max(1, Math.min(12, Number(formData.partySize) + delta));
+    const next = Math.max(1, Math.min(20, Number(formData.partySize) + delta));
     setFormData((prev) => ({ ...prev, partySize: next }));
-    if (next > capacity) {
-      showNotification(
-        `Bàn hiện chọn chỉ chứa tối đa ${capacity} người.`,
-        "error"
-      );
-    }
-  };
-
-  const handlePartyInput = (e) => {
-    const val = Math.max(1, parseInt(e.target.value || "1", 10));
-    setFormData((prev) => ({ ...prev, partySize: val }));
-    if (val > capacity) {
-      showNotification(
-        `Bàn hiện chọn chỉ chứa tối đa ${capacity} người.`,
-        "error"
-      );
-    }
   };
 
   const validate = () => {
     const errs = {};
-    if (!formData.customerName?.trim())
-      errs.customerName = "Vui lòng nhập họ tên.";
-    if (
-      !requirePhoneOrEmail({
-        phone: formData.customerPhone,
-        email: formData.customerEmail,
-      })
-    ) {
-      errs.customerPhone = "Cần ít nhất 1 trong 2: SĐT hoặc Email.";
-      errs.customerEmail = "Cần ít nhất 1 trong 2: SĐT hoặc Email.";
-    } else {
-      if (
-        formData.customerPhone &&
-        !phoneRegex.test(formData.customerPhone.trim())
-      ) {
-        errs.customerPhone = "Số điện thoại không hợp lệ.";
-      }
-      if (
-        formData.customerEmail &&
-        !emailRegex.test(formData.customerEmail.trim())
-      ) {
-        errs.customerEmail = "Email không hợp lệ.";
-      }
-    }
-    if (!pickedTable?.id) errs.table = "Vui lòng chọn bàn.";
-    if (!formData.date) errs.date = "Chọn ngày.";
-    if (!formData.time) errs.time = "Chọn giờ.";
-    if (Number(formData.partySize) > capacity)
-      errs.partySize = `Tối đa ${capacity} người.`;
-
+    if (!formData.customerName?.trim()) errs.customerName = "Nhập tên";
+    if (!formData.customerPhone?.trim() && !formData.customerEmail?.trim())
+      errs.contact = "Cần SĐT hoặc Email";
+    if (!pickedTable?.id) errs.table = "Chọn bàn";
+    if (!formData.date) errs.date = "Chọn ngày";
+    if (!formData.time) errs.time = "Chọn giờ vào";
+    if (!formData.timeOut) errs.timeOut = "Chọn giờ ra";
+    if (timeWarning === "Đã qua.") errs.time = "Giờ sai";
     setErrors(errs);
-
-    if (errs.table) {
-      setTimeout(() => {
-        const el = document.getElementById("tablePickerSection");
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 50);
-    }
-
     return Object.keys(errs).length === 0;
   };
 
-  const handlePreview = () => {
-    if (!validate()) {
-      showNotification("Vui lòng kiểm tra thông tin.", "error");
-      return;
-    }
-    setShowSummary(true);
-    showNotification("Vui lòng kiểm tra thông tin và xác nhận.", "info");
-    setTimeout(() => {
-      const el = document.getElementById("bookingSummary");
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 80);
-  };
-
   const handleConfirm = async () => {
-    if (!validate()) {
-      showNotification("Vui lòng kiểm tra thông tin.", "error");
-      return;
-    }
-    if (!pickedTable?.id) {
-      setErrors((e) => ({ ...e, table: "Vui lòng chọn bàn." }));
-      showNotification("Vui lòng chọn bàn.", "error");
-      return;
-    }
-
+    if (!validate()) return;
+    const durationMinutes = calculateDurationMinutes(
+      formData.date,
+      formData.time,
+      formData.timeOut
+    );
     const timeToISO = localDateTimeToISO(formData.date, formData.time);
-    if (!timeToISO) {
-      showNotification("Thời gian không hợp lệ.", "error");
+
+    if (durationMinutes < 30) {
+      showNotification("Thời gian dùng bữa tối thiểu 30 phút.", "error");
       return;
     }
 
@@ -285,8 +264,8 @@ const BookingModal = ({
         restaurantId,
         tableId: pickedTable.id,
         timeTo: timeToISO,
-        durationMinutes: 90,
-        partySize: Number(formData.partySize) || 2,
+        durationMinutes: durationMinutes,
+        partySize: Number(formData.partySize),
         note: formData.notes || "",
         customerName: formData.customerName?.trim(),
         customerPhone: formData.customerPhone?.trim() || null,
@@ -295,35 +274,68 @@ const BookingModal = ({
       };
 
       const reservation = await createBooking(input);
-      if (!reservation) throw new Error("Không nhận được dữ liệu đặt bàn.");
-      console.log("Reservation created:", reservation);
-      onBookingConfirmed?.(reservation);
-      onClose?.();
+      if (reservation) {
+        onBookingConfirmed?.(reservation);
+        onClose?.();
+      }
     } catch (e) {
-      showNotification(e?.message || "Đặt bàn thất bại.", "error");
+      showNotification(e?.message || "Lỗi đặt bàn.", "error");
     }
   };
 
-  /* Render */
+  if (!isOpen) return null;
+  const durationPreview = calculateDurationMinutes(
+    formData.date,
+    formData.time,
+    formData.timeOut
+  );
+
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="🍽️ Đặt Bàn Nhà Hàng"
-      size="lg"
-      closeOnOverlayClick
-      closeOnEscape
-      showCloseButton={false}
-    >
-      <div className="booking-modal-wrapper">
-        <div className="booking-modal-content">
+    <div className="bkm-backdrop" onClick={onClose}>
+      <div className="bkm-container" onClick={(e) => e.stopPropagation()}>
+        <div className="bkm-header">
+          <h2 className="bkm-title">Đặt Bàn</h2>
+          <button className="bkm-close-btn" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <div className="bkm-body">
           <RestaurantInfo restaurant={restaurant} />
 
-          <CustomerForm
-            formData={formData}
-            errors={errors}
-            onChange={onChange}
-          />
+          <div className="bkm-compact-form">
+            <div className="bkm-row">
+              <InputGroup label="Họ tên *" error={errors.customerName}>
+                <input
+                  type="text"
+                  value={formData.customerName}
+                  onChange={(e) => handleChange("customerName", e.target.value)}
+                />
+              </InputGroup>
+              <InputGroup label="SĐT *" error={errors.contact}>
+                <input
+                  type="tel"
+                  value={formData.customerPhone}
+                  onChange={(e) =>
+                    handleChange("customerPhone", e.target.value)
+                  }
+                />
+              </InputGroup>
+            </div>
+            <div className="bkm-row">
+              <InputGroup label="Email (Nhận vé)" className="flex-grow">
+                <input
+                  type="email"
+                  value={formData.customerEmail}
+                  onChange={(e) =>
+                    handleChange("customerEmail", e.target.value)
+                  }
+                />
+              </InputGroup>
+            </div>
+          </div>
+
+          <div className="bkm-divider"></div>
 
           {needPickTable ? (
             <TablePicker
@@ -335,329 +347,310 @@ const BookingModal = ({
             />
           ) : (
             <SelectedTable
-              tableCode={tableCode || pickedTable?.label || pickedTable?.label}
+              tableCode={tableCode || pickedTable?.code}
               capacity={capacity}
               floor={tableFloor}
             />
           )}
 
-          <PartySize
-            value={formData.partySize}
-            maxCapacity={capacity}
-            onButtonChange={handlePartyBtn}
-            onInput={handlePartyInput}
-            error={errors.partySize}
-          />
+          <div className="bkm-row-4">
+            <PartySize
+              value={formData.partySize}
+              onButtonChange={handlePartyBtn}
+            />
+            <TimeLogicSelection
+              date={formData.date}
+              time={formData.time}
+              timeOut={formData.timeOut}
+              openingHours={restaurant?.openingHours}
+              closingHours={restaurant?.closingHours}
+              onChange={handleChange}
+              errors={errors}
+              warning={timeWarning}
+            />
+          </div>
 
-          <DateTimeSelection
-            date={formData.date}
-            time={formData.time}
-            onChange={onChange}
-            errors={errors}
-          />
-
-          <NotesSection value={formData.notes} onChange={onChange} />
+          <div className="bkm-note-area">
+            <textarea
+              rows="1"
+              value={formData.notes}
+              onChange={(e) => handleChange("notes", e.target.value)}
+              placeholder="Ghi chú thêm..."
+            />
+          </div>
 
           {showSummary && (
-            <BookingSummary
+            <BookingSummaryPreview
               formData={formData}
               tableCode={pickedTable?.code || pickedTable?.id}
               deposit={deposit}
+              duration={durationPreview}
             />
           )}
         </div>
 
-        <ModalFooter className="booking-modal-footer">
+        <div className="bkm-footer">
           {!showSummary ? (
-            <button className="btn btn--primary" onClick={handlePreview}>
-              👁️ Xem trước
+            <button
+              className="bkm-btn bkm-btn-primary full-width"
+              onClick={() => {
+                if (validate()) setShowSummary(true);
+              }}
+            >
+              Tiếp tục & Xem lại
             </button>
           ) : (
-            <button
-              className="btn btn--success"
-              onClick={handleConfirm}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <span className="loading-spinner" />
-                  Đang xử lý...
-                </>
-              ) : (
-                "✅ Xác nhận đặt bàn"
-              )}
-            </button>
+            <div className="bkm-footer-actions">
+              <button
+                className="bkm-btn bkm-btn-text"
+                onClick={() => setShowSummary(false)}
+              >
+                Quay lại
+              </button>
+              <button
+                className="bkm-btn bkm-btn-success flex-grow"
+                onClick={handleConfirm}
+                disabled={isLoading}
+              >
+                {isLoading ? "Đang xử lý..." : "✅ Xác nhận"}
+              </button>
+            </div>
           )}
-          <button className="btn btn--secondary" onClick={onClose}>
-            Hủy
-          </button>
-        </ModalFooter>
-      </div>
-    </Modal>
-  );
-};
-
-/* ───────────── Sub-components ───────────── */
-const RestaurantInfo = ({ restaurant }) => {
-  const name = restaurant?.name || "—";
-  const addr = addressToText(restaurant?.address);
-  return (
-    <div className="booking-section">
-      <div className="restaurant-info">
-        <h3 className="restaurant-name">🏪 {name}</h3>
-        <p className="restaurant-address">📍 {addr}</p>
-      </div>
-    </div>
-  );
-};
-
-const CustomerForm = ({ formData, errors, onChange }) => (
-  <div className="booking-section">
-    <h3 className="section-title">👤 Thông tin khách hàng</h3>
-    <div className="form-grid">
-      <div className="form-group">
-        <label className="form-label">Họ và tên *</label>
-        <input
-          type="text"
-          className={`form-input ${
-            errors.customerName ? "form-input--error" : ""
-          }`}
-          value={formData.customerName}
-          onChange={(e) => onChange("customerName", e.target.value)}
-          placeholder="Nhập họ và tên"
-          required
-        />
-        {errors.customerName && (
-          <span className="form-error">{errors.customerName}</span>
-        )}
-      </div>
-
-      <div className="form-group">
-        <label className="form-label">Số điện thoại</label>
-        <input
-          type="tel"
-          className={`form-input ${
-            errors.customerPhone ? "form-input--error" : ""
-          }`}
-          value={formData.customerPhone}
-          onChange={(e) => onChange("customerPhone", e.target.value)}
-          placeholder="0901234567"
-        />
-        {errors.customerPhone && (
-          <span className="form-error">{errors.customerPhone}</span>
-        )}
-      </div>
-
-      <div className="form-group form-group--full">
-        <label className="form-label">Email</label>
-        <input
-          type="email"
-          className={`form-input ${
-            errors.customerEmail ? "form-input--error" : ""
-          }`}
-          value={formData.customerEmail}
-          onChange={(e) => onChange("customerEmail", e.target.value)}
-          placeholder="email@example.com"
-        />
-        {errors.customerEmail && (
-          <span className="form-error">{errors.customerEmail}</span>
-        )}
-        <div className="hint">
-          * Cần ít nhất 1 trong 2: số điện thoại hoặc email.
         </div>
       </div>
     </div>
+  );
+};
+
+/* ──────── Sub-Components & Logic Generators ──────── */
+
+const generateSlots = (
+  startStr,
+  endStr,
+  selectedDate = null,
+  includeEnd = false
+) => {
+  // Helper parse giờ
+  const parse = (str) => {
+    if (!str) return null;
+    const t = str.trim().toLowerCase();
+    const [timePart] = t.split(" ");
+    let [h, m] = timePart.replace(/[a-z]/g, "").split(":").map(Number);
+    if (isNaN(h) || isNaN(m)) return null;
+    if (t.includes("pm") && h !== 12) h += 12;
+    if (t.includes("am") && h === 12) h = 0;
+    return { h, m, total: h * 60 + m };
+  };
+
+  const startObj = parse(startStr) || { h: 7, m: 0, total: 420 };
+  const endObj = parse(endStr) || { h: 22, m: 0, total: 1320 };
+
+  let curTotal = startObj.total;
+  const endTotal = endObj.total;
+  let slots = [];
+
+  while (curTotal < endTotal) {
+    const h = Math.floor(curTotal / 60);
+    const m = curTotal % 60;
+    slots.push(
+      `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`
+    );
+    curTotal += 30;
+  }
+  if (includeEnd) {
+    const h = Math.floor(endTotal / 60);
+    const m = endTotal % 60;
+    slots.push(
+      `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`
+    );
+  }
+
+  if (selectedDate) {
+    const now = new Date();
+    const todayStr = now.toLocaleDateString("en-CA");
+
+    if (selectedDate === todayStr) {
+      const nowTotal = now.getHours() * 60 + now.getMinutes();
+      slots = slots.filter((s) => {
+        const [h, m] = s.split(":").map(Number);
+        return h * 60 + m > nowTotal;
+      });
+    }
+  }
+  return slots;
+};
+
+const TimeLogicSelection = ({
+  date,
+  time,
+  timeOut,
+  openingHours,
+  closingHours,
+  onChange,
+  errors,
+  warning,
+}) => {
+  const timeSlots = useMemo(() => {
+    return generateSlots(openingHours, closingHours, date);
+  }, [date, openingHours, closingHours]);
+
+  const timeOutSlots = useMemo(() => {
+    if (!time) return [];
+    const [h, m] = time.split(":").map(Number);
+    let nextTotal = h * 60 + m + 30;
+
+    const nextH = Math.floor(nextTotal / 60);
+    const nextM = nextTotal % 60;
+    const nextStartStr = `${nextH.toString().padStart(2, "0")}:${nextM
+      .toString()
+      .padStart(2, "0")}`;
+
+    return generateSlots(nextStartStr, closingHours, null, true);
+  }, [time, closingHours]);
+
+  return (
+    <>
+      <div className="bkm-control-box">
+        <label>Ngày</label>
+        <input
+          type="date"
+          className={errors.date ? "err-border" : ""}
+          value={date}
+          onChange={(e) => onChange("date", e.target.value)}
+          min={new Date().toLocaleDateString("en-CA")}
+        />
+      </div>
+      <div className="bkm-control-box">
+        <label>
+          Giờ vào {warning && <span className="warn-badge">!</span>}
+        </label>
+        <select
+          className={errors.time ? "err-border" : ""}
+          value={time}
+          onChange={(e) => onChange("time", e.target.value)}
+          disabled={!date}
+        >
+          <option value="">--:--</option>
+          {timeSlots.length > 0 ? (
+            timeSlots.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))
+          ) : (
+            <option disabled>Hết giờ</option>
+          )}
+        </select>
+      </div>
+      <div className="bkm-control-box">
+        <label>Giờ ra</label>
+        <select
+          className={errors.timeOut ? "err-border" : ""}
+          value={timeOut}
+          onChange={(e) => onChange("timeOut", e.target.value)}
+          disabled={!time}
+        >
+          <option value="">--:--</option>
+          {timeOutSlots.length > 0 ? (
+            timeOutSlots.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))
+          ) : (
+            <option disabled>N/A</option>
+          )}
+        </select>
+      </div>
+      {warning && <div className="bkm-full-width-warn">{warning}</div>}
+    </>
+  );
+};
+
+const InputGroup = ({ label, children, error, className = "" }) => (
+  <div className={`bkm-input-wrap ${className} ${error ? "has-error" : ""}`}>
+    <label>{label}</label>
+    {children}
   </div>
 );
-
+const RestaurantInfo = ({ restaurant }) => (
+  <div className="bkm-res-header">
+    <div className="icon">🏪</div>
+    <div className="text">
+      <h3 className="name">{restaurant?.name || "Đang tải..."}</h3>
+      <p className="addr">{addressToText(restaurant?.address)}</p>
+    </div>
+  </div>
+);
+const SelectedTable = ({ tableCode, capacity, floor }) => (
+  <div className="bkm-selected-table">
+    <div className="icon">🪑</div>
+    <div className="info">
+      <span className="code">Bàn {tableCode}</span>
+      <span className="meta">
+        {capacity} ghế {floor && `• Tầng ${floor}`}
+      </span>
+    </div>
+    <div className="badge-check">✔</div>
+  </div>
+);
 const TablePicker = ({ loading, tables, pickedTable, onPick, error }) => (
-  <div className="booking-section" id="tablePickerSection">
-    <h3 className="section-title">🪑 Chọn bàn</h3>
+  <div className="bkm-table-picker">
+    <label>Chọn bàn:</label>
     {loading ? (
-      <p>Đang tải bàn...</p>
-    ) : tables.length === 0 ? (
-      <p>Chưa có bàn khả dụng.</p>
+      <span>Loading...</span>
     ) : (
-      <div className="table-picker-grid">
-        {tables.map((t) => {
-          const selected = pickedTable?.id === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              className={`table-chip ${selected ? "selected" : ""}`}
-              onClick={() => onPick(t)}
-              disabled={t.status !== "available"}
-              title={
-                t.status !== "available"
-                  ? "Bàn không khả dụng"
-                  : `Sức chứa: ${t.capacity}`
-              }
-            >
-              <span>#{t.code || t.id}</span>
-              <span className="dot" />
-              <span>{t.capacity} người</span>
-            </button>
-          );
-        })}
+      <div className="chips">
+        {tables.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={pickedTable?.id === t.id ? "active" : ""}
+            onClick={() => onPick(t)}
+            disabled={t.status !== "available"}
+          >
+            {t.code}
+          </button>
+        ))}
       </div>
     )}
-    {error && <span className="form-error">{error}</span>}
+    {error && <span className="err-text">{error}</span>}
   </div>
 );
-
-const SelectedTable = ({ tableCode, capacity, floor }) => (
-  <div className="booking-section">
-    <h3 className="section-title">🪑 Bàn đã chọn</h3>
-    <div className="selected-table-display">
-      <div className="table-card-large">
-        <div className="table-icon">🪑</div>
-        <div className="table-info">
-          <div className="table-id-large">{tableCode || "—"}</div>
-          <div className="table-details">
-            <div className="table-capacity-large">
-              Sức chứa: {capacity || 4} người
-            </div>
-            {floor != null && <div className="table-floor">Tầng {floor}</div>}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const PartySize = ({ value, maxCapacity, onButtonChange, onInput, error }) => (
-  <div className="booking-section">
-    <h3 className="section-title">👥 Số người</h3>
-    <div className="party-size-selector">
+const PartySize = ({ value, onButtonChange }) => (
+  <div className="bkm-control-box">
+    <label>Khách</label>
+    <div className="stepper">
       <button
         type="button"
-        className="party-btn"
         onClick={() => onButtonChange(-1)}
         disabled={value <= 1}
       >
-        -
+        −
       </button>
-      <input
-        type="number"
-        className="party-input"
-        value={value}
-        min="1"
-        max={maxCapacity || 12}
-        onChange={onInput}
-      />
+      <span>{value}</span>
       <button
         type="button"
-        className="party-btn"
         onClick={() => onButtonChange(1)}
-        disabled={value >= (maxCapacity || 12)}
+        disabled={value >= 20}
       >
         +
       </button>
     </div>
-    {error && <span className="form-error">{error}</span>}
   </div>
 );
-
-const DateTimeSelection = ({ date, time, onChange, errors }) => {
-  const timeSlots = [
-    "11:00",
-    "11:30",
-    "12:00",
-    "12:30",
-    "13:00",
-    "17:00",
-    "17:30",
-    "18:00",
-    "18:30",
-    "19:00",
-    "19:30",
-    "20:00",
-    "20:30",
-  ];
-  return (
-    <div className="booking-section">
-      <h3 className="section-title">📅 Chọn ngày và giờ đến</h3>
-      <div className="datetime-selection">
-        <div className="form-group">
-          <label className="form-label">Ngày đến *</label>
-          <input
-            type="date"
-            className={`form-input ${errors.date ? "form-input--error" : ""}`}
-            value={date}
-            onChange={(e) => onChange("date", e.target.value)}
-            min={new Date().toISOString().split("T")[0]}
-            required
-          />
-          {errors.date && <span className="form-error">{errors.date}</span>}
-        </div>
-
-        <div className="form-group">
-          <label className="form-label">Giờ đến *</label>
-          <select
-            className={`form-input ${errors.time ? "form-input--error" : ""}`}
-            value={time}
-            onChange={(e) => onChange("time", e.target.value)}
-            required
-          >
-            <option value="">Chọn giờ...</option>
-            {timeSlots.map((slot) => (
-              <option key={slot} value={slot}>
-                {slot}
-              </option>
-            ))}
-          </select>
-          {errors.time && <span className="form-error">{errors.time}</span>}
-        </div>
-      </div>
+const BookingSummaryPreview = ({ formData, tableCode, deposit, duration }) => (
+  <div className="bkm-mini-summary">
+    <div className="line">
+      <span>👤 {formData.customerName}</span>
+      <span>🪑 Bàn {tableCode}</span>
     </div>
-  );
-};
-
-const NotesSection = ({ value, onChange }) => (
-  <div className="booking-section">
-    <h3 className="section-title">📝 Ghi chú đặc biệt</h3>
-    <div className="form-group form-group--full">
-      <textarea
-        className="form-textarea"
-        value={value}
-        onChange={(e) => onChange("notes", e.target.value)}
-        placeholder="Yêu cầu đặc biệt (nếu có)..."
-        rows="4"
-      />
+    <div className="line">
+      <span>
+        📅 {formatDateTime(formData.date, formData.time)} ({duration}p)
+      </span>
+      <span className="money">Cọc: {formatCurrency(deposit)}</span>
     </div>
-  </div>
-);
-
-const BookingSummary = ({ formData, tableCode, deposit }) => (
-  <div className="booking-section" id="bookingSummary">
-    <h3 className="section-title">📋 Tóm tắt đặt bàn</h3>
-    <div className="summary-box">
-      <SummaryItem label="👤 Người đặt" value={formData.customerName || "-"} />
-      <SummaryItem label="🪑 Bàn" value={tableCode || "-"} />
-      <SummaryItem label="👥 Số người" value={`${formData.partySize} người`} />
-      <SummaryItem
-        label="📅 Ngày giờ"
-        value={
-          formData.date && formData.time
-            ? formatDateTime(formData.date, formData.time)
-            : "-"
-        }
-      />
-      <SummaryItem label="📝 Ghi chú" value={formData.notes || "Không có"} />
-      <SummaryItem
-        label="💰 Tiền cọc"
-        value={formatCurrency(deposit)}
-        highlight
-      />
-    </div>
-  </div>
-);
-
-const SummaryItem = ({ label, value, highlight = false }) => (
-  <div className={`summary-item ${highlight ? "summary-item--highlight" : ""}`}>
-    <span className="summary-label">{label}:</span>
-    <span className="summary-value">{value}</span>
   </div>
 );
 

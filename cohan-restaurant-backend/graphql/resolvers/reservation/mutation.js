@@ -156,7 +156,6 @@ async function resolveUserIdFromContact({
   if (customerPhone) {
     const foundByPhone = await User.findOne({
       phone: customerPhone?.trim(),
-      isGuest: true,
     }).select({ _id: 1 });
     if (foundByPhone) return foundByPhone._id;
   }
@@ -164,7 +163,6 @@ async function resolveUserIdFromContact({
   if (customerEmail) {
     const foundByEmail = await User.findOne({
       email: customerEmail?.trim(),
-      isGuest: true,
     }).select({ _id: 1 });
     if (foundByEmail) return foundByEmail._id;
   }

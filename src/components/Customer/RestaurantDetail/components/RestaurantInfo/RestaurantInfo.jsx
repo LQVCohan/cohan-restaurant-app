@@ -1,6 +1,7 @@
 import React from "react";
 import "./RestaurantInfo.scss";
-import { formatAddress } from "../../../../../utils/formatters";
+import { formatAddress } from "../../../../../utils/formatters"; // Giả sử path này đúng
+
 const RestaurantInfo = ({ restaurant }) => {
   const amenities = [
     {
@@ -65,118 +66,106 @@ const RestaurantInfo = ({ restaurant }) => {
 
   return (
     <div className="restaurant-info">
-      <div className="restaurant-info__grid">
-        {/* About Section */}
-        <section className="info-section">
-          <h2 className="info-section__title">📖 Giới thiệu</h2>
-          <div className="info-section__content">
-            <p className="restaurant-info__about">{restaurant.about}</p>
+      {/* 1. About & Highlights */}
+      <section className="info-section">
+        <h2 className="section-title">📖 Giới thiệu</h2>
+        <div className="about-content">
+          <p className="description">{restaurant.about}</p>
 
-            <div className="restaurant-info__highlights">
-              <h3>✨ Điểm nổi bật</h3>
-              <ul className="highlights-list">
-                {restaurant.highlights?.map((highlight, index) => (
-                  <li key={index} className="highlights-item">
-                    <span className="highlights-icon">✓</span>
-                    {highlight}
-                  </li>
+          {restaurant.highlights && restaurant.highlights.length > 0 && (
+            <div className="highlights-wrapper">
+              <span className="sub-label">Điểm nổi bật:</span>
+              <div className="tags-container">
+                {restaurant.highlights.map((highlight, index) => (
+                  <span key={index} className="highlight-tag">
+                    ✨ {highlight}
+                  </span>
                 ))}
-              </ul>
+              </div>
             </div>
+          )}
+        </div>
+      </section>
+
+      <div className="divider" />
+
+      {/* 2. Amenities */}
+      <section className="info-section">
+        <h2 className="section-title">🏪 Tiện ích</h2>
+        <div className="amenities-grid">
+          {amenities.map((amenity) => (
+            <div
+              key={amenity.id}
+              className={`amenity-card ${
+                amenity.available ? "active" : "inactive"
+              }`}
+            >
+              <span className="icon">{amenity.icon}</span>
+              <span className="label">{amenity.label}</span>
+              {/* Chỉ hiện dấu check nếu có, ẩn dấu x cho đỡ rối mắt */}
+              {amenity.available && <span className="check">✓</span>}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="divider" />
+
+      {/* 3. Info Grid (Hours & Contact) */}
+      <div className="info-grid-row">
+        {/* Working Hours */}
+        <section className="info-section">
+          <h2 className="section-title">🕒 Giờ hoạt động</h2>
+          <div className="working-hours-list">
+            {workingHours.map((schedule, index) => (
+              <div key={index} className="hour-row">
+                <span className="day">{schedule.day}</span>
+                <span className="time">{schedule.hours}</span>
+              </div>
+            ))}
           </div>
         </section>
-        <div className="restaurant-info__row">
-          <section className="info-section">
-            <h2 className="info-section__title">🏪 Tiện ích</h2>
-            <div className="info-section__content">
-              <div className="amenities-grid">
-                {amenities.map((amenity) => (
-                  <div
-                    key={amenity.id}
-                    className={`amenity-item ${
-                      amenity.available
-                        ? "amenity-item--available"
-                        : "amenity-item--unavailable"
-                    }`}
-                  >
-                    <span className="amenity-icon">{amenity.icon}</span>
-                    <span className="amenity-label">{amenity.label}</span>
-                    <span className="amenity-status">
-                      {amenity.available ? "✅" : "❌"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
 
-          {/* Working Hours */}
-          <section className="info-section">
-            <h2 className="info-section__title">🕒 Giờ hoạt động</h2>
-            <div className="info-section__content">
-              <div className="working-hours">
-                {workingHours.map((schedule, index) => (
-                  <div key={index} className="working-hours__item">
-                    <span className="working-hours__day">{schedule.day}</span>
-                    <span className="working-hours__time">
-                      {schedule.hours}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        </div>
-        {/* Amenities Section */}
-
-        {/* Location & Contact */}
+        {/* Contact & Map */}
         <section className="info-section">
-          <h2 className="info-section__title">📍 Vị trí & Liên hệ</h2>
-          <div className="info-section__content">
-            <div className="contact-info">
-              <div className="contact-item">
-                <span className="contact-icon">📍</span>
-                <div className="contact-details">
-                  <strong>Địa chỉ:</strong>
-                  <p>{formatAddress(restaurant.address)}</p>
-                </div>
-              </div>
-
-              <div className="contact-item">
-                <span className="contact-icon">📞</span>
-                <div className="contact-details">
-                  <strong>Điện thoại:</strong>
-                  <p>{restaurant.phone}</p>
-                </div>
-              </div>
-
-              <div className="contact-item">
-                <span className="contact-icon">✉️</span>
-                <div className="contact-details">
-                  <strong>Email:</strong>
-                  <p>{restaurant.email || "Chưa cập nhật"}</p>
-                </div>
-              </div>
-
-              <div className="contact-item">
-                <span className="contact-icon">🌐</span>
-                <div className="contact-details">
-                  <strong>Website:</strong>
-                  <p>{restaurant.website || "Chưa cập nhật"}</p>
-                </div>
+          <h2 className="section-title">📍 Liên hệ & Vị trí</h2>
+          <div className="contact-list">
+            <div className="contact-row">
+              <div className="icon-box">📍</div>
+              <div className="info-text">
+                <span className="label">Địa chỉ</span>
+                <p className="value">{formatAddress(restaurant.address)}</p>
               </div>
             </div>
 
-            {/* Map placeholder */}
-            <div className="map-container">
-              <div className="map-placeholder">
-                <span className="map-icon">🗺️</span>
-                <p>Bản đồ sẽ được hiển thị tại đây</p>
-                <button className="btn btn--secondary">
-                  📍 Xem trên Google Maps
-                </button>
+            <div className="contact-row">
+              <div className="icon-box">📞</div>
+              <div className="info-text">
+                <span className="label">Điện thoại</span>
+                <p className="value link">{restaurant.phone}</p>
               </div>
             </div>
+
+            <div className="contact-row">
+              <div className="icon-box">✉️</div>
+              <div className="info-text">
+                <span className="label">Email</span>
+                <p className="value link">{restaurant.email || "--"}</p>
+              </div>
+            </div>
+
+            <div className="contact-row">
+              <div className="icon-box">🌐</div>
+              <div className="info-text">
+                <span className="label">Website</span>
+                <p className="value link">{restaurant.website || "--"}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mini-map-trigger">
+            <span className="map-icon">🗺️</span>
+            <span>Xem vị trí trên bản đồ</span>
           </div>
         </section>
       </div>

@@ -1,269 +1,256 @@
+// Import variables từ file gốc của bạn (đảm bảo đường dẫn đúng)
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
+
+// Định nghĩa lại biến local nếu cần thiết để đồng bộ với trang chi tiết
+$primary-blue: #3b82f6;
+$bg-soft: #f9fafb;
+$border-light: #e5e7eb;
+$text-dark: #1f2937;
+$text-gray: #6b7280;
+
 .restaurant-info {
-  &__grid {
-    display: grid;
-    gap: $spacing-xl;
+  display: flex;
+  flex-direction: column;
+  gap: 32px; // Tăng khoảng cách giữa các phần lớn
+
+  .divider {
+    height: 1px;
+    background-color: $border-light;
+    width: 100%;
   }
 
-  &__about {
-    font-size: 1rem;
-    line-height: 1.7;
-    color: $text-muted;
-    margin-bottom: $spacing-lg;
-  }
-  &__row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: $spacing-xl;
-    align-items: stretch;
-
-    @include r-mobile {
-      grid-template-columns: 1fr;
-    }
-  }
-  &__highlights {
-    h3 {
-      font-size: 1.125rem;
-      font-weight: 600;
-      color: $gray-800;
-      margin-bottom: 1rem;
+  // --- Common Section Styles ---
+  .info-section {
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: $text-dark;
+      margin-bottom: 20px;
       display: flex;
       align-items: center;
-      gap: $spacing-sm;
-    }
-  }
-}
-
-.info-section {
-  &__title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: $gray-800;
-    margin-bottom: $spacing-lg;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid $border-color;
-    display: flex;
-    align-items: center;
-    gap: $spacing-sm;
-  }
-
-  &__content {
-    display: grid;
-    flex-direction: column;
-    gap: $spacing-lg;
-  }
-}
-
-.highlights-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 1rem;
-}
-
-.highlights-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: $gray-50;
-  border-radius: 0.5rem;
-  font-size: 1rem;
-  color: $gray-800;
-}
-
-.highlights-icon {
-  width: 24px;
-  height: 24px;
-  background: #10b981;
-  color: $white;
-  border-radius: 50%;
-  @include flex-center;
-  font-size: 0.875rem;
-  font-weight: bold;
-  flex-shrink: 0;
-}
-
-.amenities-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-
-  @include r-mobile {
-    grid-template-columns: 1fr;
-  }
-}
-
-.amenity-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid $border-color;
-  transition: all 0.3s ease;
-
-  &--available {
-    background: rgba(#10b981, 0.05);
-    border-color: rgba(#10b981, 0.2);
-
-    .amenity-label {
-      color: $gray-800;
+      gap: 8px;
     }
   }
 
-  &--unavailable {
-    background: rgba($text-muted, 0.05);
-    border-color: rgba($text-muted, 0.2);
+  // --- 1. About Section ---
+  .about-content {
+    .description {
+      font-size: 1rem;
+      line-height: 1.7;
+      color: $text-dark; // Đậm hơn chút để dễ đọc
+      margin-bottom: 24px;
+    }
 
-    .amenity-label {
-      color: $text-muted;
+    .highlights-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+
+      .sub-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: $text-gray;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .tags-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+
+        .highlight-tag {
+          display: inline-flex;
+          align-items: center;
+          padding: 8px 16px;
+          background-color: #eff6ff; // Blue 50
+          color: $primary-blue;
+          border: 1px solid rgba($primary-blue, 0.2);
+          border-radius: 20px; // Dạng viên thuốc
+          font-size: 0.9rem;
+          font-weight: 500;
+          transition: transform 0.2s;
+
+          &:hover {
+            transform: translateY(-2px);
+            background-color: #dbeafe;
+          }
+        }
+      }
     }
   }
-}
 
-.amenity-icon {
-  font-size: 1.25rem;
-  flex-shrink: 0;
-}
-
-.amenity-label {
-  flex: 1;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.amenity-status {
-  font-size: 1rem;
-}
-
-.working-hours {
-  background: $gray-50;
-  border-radius: 0.75rem;
-  padding: $spacing-lg;
-
-  &__item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: $spacing-sm 0;
-    border-bottom: 1px solid rgba($border-color, 0.5);
-
-    &:last-child {
-      border-bottom: none;
-    }
-  }
-
-  &__day {
-    font-weight: 500;
-    color: $gray-800;
-    font-size: 1rem;
-  }
-
-  &__time {
-    font-weight: 600;
-    color: #3b82f6;
-    font-size: 1rem;
-  }
-}
-
-.contact-info {
-  display: grid;
-  gap: $spacing-lg;
-}
-
-.contact-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  padding: 1rem;
-  background: $gray-50;
-  border-radius: 0.75rem;
-}
-
-.contact-icon {
-  font-size: 1.25rem;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.contact-details {
-  flex: 1;
-
-  strong {
-    display: block;
-    font-weight: 600;
-    color: $gray-800;
-    margin-bottom: 0.25rem;
-    font-size: 0.875rem;
-  }
-
-  p {
-    margin: 0;
-    color: $text-muted;
-    font-size: 1rem;
-    line-height: 1.5;
-  }
-}
-
-.map-container {
-  margin-top: $spacing-lg;
-}
-
-.map-placeholder {
-  background: $gray-50;
-  border: 2px dashed $border-color;
-  border-radius: 0.75rem;
-  padding: $spacing-2xl;
-  text-align: center;
-  color: $text-muted;
-
-  .map-icon {
-    font-size: 3rem;
-    display: block;
-    margin-bottom: 1rem;
-  }
-
-  p {
-    margin-bottom: $spacing-lg;
-    font-size: 1rem;
-  }
-}
-
-// Responsive adjustments
-@include r-tablet {
+  // --- 2. Amenities Section ---
   .amenities-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
 
-@include r-mobile {
-  .restaurant-info__grid {
-    gap: $spacing-lg;
+    .amenity-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid $border-light;
+      background: white;
+      transition: all 0.2s;
+
+      .icon {
+        font-size: 1.2rem;
+      }
+
+      .label {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: $text-dark;
+        flex: 1;
+      }
+
+      .check {
+        color: #10b981; // Green 500
+        font-weight: bold;
+        font-size: 0.9rem;
+      }
+
+      // Trạng thái Active
+      &.active {
+        border-color: rgba($primary-blue, 0.3);
+        background: rgba($primary-blue, 0.02);
+      }
+
+      // Trạng thái Inactive (Làm mờ đi)
+      &.inactive {
+        opacity: 0.6;
+        background: $bg-soft;
+        border-style: dashed;
+
+        .label,
+        .icon {
+          color: $text-gray;
+          filter: grayscale(100%);
+        }
+      }
+    }
   }
 
-  .info-section__title {
-    font-size: 1.125rem;
+  // --- 3. Hours & Contact Grid ---
+  .info-grid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr; // Chia đôi trên desktop
+    gap: 40px;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr; // Mobile 1 cột
+      gap: 32px;
+    }
   }
 
-  .working-hours__item {
+  // Working Hours Styling
+  .working-hours-list {
+    background: $bg-soft;
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid $border-light;
+
+    .hour-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px dashed rgba($border-light, 0.8);
+      font-size: 0.95rem;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .day {
+        color: $text-gray;
+        font-weight: 500;
+      }
+
+      .time {
+        color: $text-dark;
+        font-weight: 600;
+      }
+    }
+  }
+
+  // Contact List Styling
+  .contact-list {
+    display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
+    gap: 16px;
+
+    .contact-row {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+
+      .icon-box {
+        width: 40px;
+        height: 40px;
+        background: $bg-soft;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+      }
+
+      .info-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        .label {
+          font-size: 0.8rem;
+          color: $text-gray;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
+
+        .value {
+          margin: 0;
+          font-size: 1rem;
+          color: $text-dark;
+          line-height: 1.4;
+
+          &.link {
+            color: $primary-blue;
+            cursor: pointer;
+            &:hover {
+              text-decoration: underline;
+            }
+          }
+        }
+      }
+    }
   }
 
-  .contact-item {
-    flex-direction: column;
-    text-align: center;
-  }
+  // Mini Map Trigger Button
+  .mini-map-trigger {
+    margin-top: 24px;
+    width: 100%;
+    height: 60px;
+    border: 2px dashed $primary-blue;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: $primary-blue;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
 
-  .map-placeholder {
-    padding: $spacing-xl;
-
-    .map-icon {
-      font-size: 2rem;
+    &:hover {
+      background: $primary-blue;
+      color: white;
+      border-style: solid;
     }
   }
 }

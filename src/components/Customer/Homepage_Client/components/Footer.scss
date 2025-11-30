@@ -10,14 +10,27 @@
 }
 
 .footer-saas {
+  // =============================================
+  // KỸ THUẬT "BREAKOUT" (PHÁ KHUNG)
+  // Giúp footer luôn full màn hình kể cả khi nằm trong container giới hạn
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  transform: translateX(-50%);
+  margin-left: 0;
+  margin-right: 0;
+  box-sizing: border-box;
+  // =============================================
+
   background-color: var(--ft-bg);
   color: var(--ft-text-muted);
   font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   padding: 5rem 0 2rem;
-  position: relative;
-  overflow: hidden;
+  overflow: hidden; // Che đi phần hiệu ứng glow bị tràn
   font-size: 0.925rem;
   border-top: 1px solid var(--ft-border);
+  margin-top: auto; // Đẩy xuống đáy nếu content trang ngắn
 
   // Background Ambient Glow
   .footer-glow {
@@ -37,12 +50,15 @@
     pointer-events: none;
   }
 
+  // Container nội dung (Giữ content ở giữa màn hình)
   .footer-container {
     max-width: 1280px;
+    width: 100%;
     margin: 0 auto;
     padding: 0 1.5rem;
     position: relative;
     z-index: 1;
+    box-sizing: border-box;
   }
 
   // --- Top Section Grid ---

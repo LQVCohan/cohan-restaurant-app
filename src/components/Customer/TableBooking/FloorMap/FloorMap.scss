@@ -1,230 +1,482 @@
 @use "../../../../styles/variables.scss" as *;
-@use "../../../../styles/mixins.scss" as *;
 
-.floor-map {
-  @include card;
+// --- Colors ---
+$wall-color: #cbd5e1;
+$floor-bg: #f8fafc;
+$grid-line: #e2e8f0;
+$wood-color: #d97706; // Màu gỗ cho Bar/Cửa
+$plant-color: #16a34a; // Màu xanh cây
+$glass-color: #93c5fd; // Màu kính
+$rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
+
+.floor-map-viz {
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  position: relative;
+  border-radius: 16px;
   overflow: hidden;
-  width: 100vw;
-  &__header {
-    padding: $spacing-6;
-    background: $gray-50;
-    border-bottom: 1px solid $gray-200;
-  }
+  border: 4px solid $wall-color; // Viền ngoài đậm làm tường bao
+  background-color: $white;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
 
-  &__title {
-    @include flex-center;
-    gap: $spacing-4;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: $gray-900;
-    margin: 0 0 $spacing-2 0;
-  }
-
-  &__icon {
-    font-size: 1.5rem;
-  }
-
-  &__description {
-    color: $gray-600;
-    margin: 0;
-    font-size: 0.9rem;
-  }
-
-  &__container {
+  .map-container-realistic {
+    width: 100%;
+    height: 100%;
     position: relative;
-    min-height: 600px;
-    background: linear-gradient(135deg, $gray-50 0%, $gray-200 100%);
-    border: 3px solid $gray-300;
-    border-radius: $radius-xl;
-    margin: $spacing-6;
-    overflow: hidden;
+    background-color: $floor-bg;
+    // Grid nền gạch
+    background-image: linear-gradient($grid-line 1px, transparent 1px),
+      linear-gradient(90deg, $grid-line 1px, transparent 1px);
+    background-size: 50px 50px;
   }
 
-  &__wall {
-    background: linear-gradient(135deg, $gray-600 0%, $gray-700 100%);
+  // --- 1. KIẾN TRÚC ---
+  .architectural-walls {
     position: absolute;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-
-    &--top {
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 20px;
-    }
-    &--bottom {
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 20px;
-    }
-    &--left {
-      top: 0;
-      bottom: 0;
-      left: 0;
-      width: 20px;
-    }
-    &--right {
-      top: 0;
-      bottom: 0;
-      right: 0;
-      width: 20px;
-    }
-  }
-
-  &__door {
-    background: linear-gradient(135deg, $warning-400 0%, $warning-500 100%);
-    position: absolute;
-    border-radius: $radius-sm;
-    box-shadow: $shadow-md;
-
-    &::before {
-      content: "🚪";
+    inset: 0;
+    pointer-events: none;
+    .wall {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 1.2rem;
-    }
-  }
-
-  &__window {
-    background: linear-gradient(135deg, $info-400 0%, $info-500 100%);
-    position: absolute;
-    border-radius: $radius-sm;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-
-    &::before {
-      content: "🪟";
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 1rem;
-    }
-  }
-
-  &__feature {
-    position: absolute;
-    border-radius: $radius-md;
-
-    &--bar {
-      background: linear-gradient(
-        135deg,
-        $secondary-400 0%,
-        $secondary-600 100%
-      );
-      box-shadow: 0 4px 8px rgba($secondary-500, 0.3);
-
-      &::before {
-        content: "🍸";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 1.5rem;
+      background: $wall-color;
+      z-index: 5;
+      &--top,
+      &--bottom {
+        height: 12px;
+        left: 0;
+        right: 0;
+      }
+      &--top {
+        top: 0;
+      }
+      &--bottom {
+        bottom: 0;
+      }
+      &--left,
+      &--right {
+        width: 12px;
+        top: 0;
+        bottom: 0;
+      }
+      &--left {
+        left: 0;
+      }
+      &--right {
+        right: 0;
       }
     }
 
-    &--stage {
-      background: linear-gradient(135deg, $error-400 0%, $error-600 100%);
-      box-shadow: 0 4px 8px rgba($error-400, 0.3);
+    // Cửa chính
+    .door {
+      position: absolute;
+      height: 12px;
+      width: 100px;
+      background: $wood-color;
+      z-index: 6;
+      transform: translateX(-50%);
+      border-radius: 2px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 
-      &::before {
-        content: "🎤";
+      .door-label {
         position: absolute;
-        top: 50%;
+        top: 18px;
         left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 1.5rem;
+        transform: translateX(-50%);
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: darken($wood-color, 15%);
+        white-space: nowrap;
+        text-transform: uppercase;
+      }
+
+      // Vòng cung mở cửa
+      .door-swing {
+        position: absolute;
+        top: 12px;
+        left: 0;
+        width: 100px;
+        height: 100px;
+        border-left: 2px dashed rgba($wood-color, 0.3);
+        border-bottom: 2px dashed rgba($wood-color, 0.3);
+        border-radius: 0 0 0 100%;
+        pointer-events: none;
       }
     }
   }
 
-  &__table {
+  // --- 2. DECOR ITEMS ---
+  .decor-layer {
     position: absolute;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    @include flex-center;
-    font-weight: 700;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all $transition-base;
-    border: 3px solid transparent;
-    box-shadow: $shadow-md;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
 
-    &:hover {
-      transform: scale(1.1);
-      z-index: 10;
+  .decor-item {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .decor-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    &--available {
-      background: linear-gradient(135deg, $success-500 0%, $success-hover 100%);
-      color: $white;
+    // -- Cửa sổ --
+    &.decor-window {
+      background: rgba($glass-color, 0.3);
+      border-left: 4px solid $glass-color;
+      width: 12px; // Gắn vào tường phải
+      box-shadow: -2px 0 10px rgba($glass-color, 0.2);
+    }
 
-      &:hover {
-        background: linear-gradient(
-          135deg,
-          $success-hover 0%,
-          $success-700 100%
+    // -- Cây cảnh --
+    &.decor-plant {
+      width: 40px;
+      height: 40px;
+      background: rgba($plant-color, 0.2);
+      border-radius: 50%;
+      border: 2px solid $plant-color;
+      // Giả lập lá cây
+      &::after {
+        content: "🌿";
+        font-size: 1.2rem;
+        display: block;
+      }
+    }
+
+    // -- Cột nhà --
+    &.decor-pillar {
+      width: 30px;
+      height: 30px;
+      background: #94a3b8;
+      border-radius: 4px;
+      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    // -- Quầy Bar --
+    &.decor-bar {
+      background: #fde68a;
+      border-bottom: 4px solid $wood-color;
+      border-left: 4px solid $wood-color;
+      border-radius: 0 0 0 12px;
+      .decor-label {
+        color: $wood-color;
+        margin-top: -10px;
+      }
+      // Ghế quầy bar
+      .bar-stools {
+        position: absolute;
+        bottom: -12px;
+        left: 10px;
+        right: 10px;
+        height: 10px;
+        background-image: radial-gradient(
+          circle,
+          $wood-color 4px,
+          transparent 5px
         );
-        box-shadow: 0 4px 12px rgba($success-500, 0.4);
+        background-size: 20px 20px;
+        background-repeat: repeat-x;
       }
     }
 
-    &--occupied {
-      background: linear-gradient(135deg, $error-500 0%, $error-600 100%);
-      color: $white;
-      cursor: not-allowed;
-      opacity: 0.7;
+    // -- Bếp --
+    &.decor-kitchen {
+      border-top: 2px dashed #94a3b8;
+      background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 5px,
+        rgba(0, 0, 0, 0.05) 5px,
+        rgba(0, 0, 0, 0.05) 10px
+      );
     }
 
-    &--reserved {
-      background: linear-gradient(135deg, $warning-500 0%, $warning-600 100%);
-      color: $white;
-      cursor: not-allowed;
-      opacity: 0.8;
+    // -- WC --
+    &.decor-wc {
+      background: #e2e8f0;
+      border-top: 2px solid #94a3b8;
+      border-left: 2px solid #94a3b8;
+      &::after {
+        content: "🚻";
+        font-size: 1.5rem;
+        opacity: 0.5;
+      }
     }
 
-    &--selected {
-      background: linear-gradient(135deg, $info-500 0%, $info-600 100%);
-      color: $white;
-      border-color: $info-700;
-      box-shadow: 0 0 0 3px rgba($info-500, 0.3);
-      transform: scale(1.15);
+    // -- Thảm --
+    &.decor-rug {
+      background: darken($floor-bg, 3%);
+      border-radius: 20px;
+      border: 2px dashed #e2e8f0;
     }
   }
 
-  &__table-capacity {
+  // --- 3. BÀN GHẾ (TABLES) ---
+  .tables-layer {
     position: absolute;
-    bottom: -8px;
-    right: -8px;
-    background: $white;
-    border: 2px solid currentColor;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    @include flex-center;
-    font-size: 0.7rem;
-    font-weight: 700;
+    inset: 0;
+    z-index: 10;
+  }
+
+  .table-node {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    .table-shape {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 2px solid #22c55e;
+      color: #15803d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      position: relative;
+      z-index: 2;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .chairs-decoration {
+      position: absolute;
+      inset: -8px;
+      pointer-events: none;
+      .chair {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        background: #94a3b8;
+        border-radius: 4px;
+        box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+        &.chair-n {
+          top: 0;
+          left: 50%;
+          transform: translateX(-50%);
+        }
+        &.chair-s {
+          bottom: 0;
+          left: 50%;
+          transform: translateX(-50%);
+        }
+        &.chair-e {
+          right: 0;
+          top: 50%;
+          transform: translateY(-50%);
+        }
+        &.chair-w {
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+        }
+      }
+    }
+
+    .capacity-badge {
+      position: absolute;
+      bottom: -4px;
+      right: -4px;
+      background: white;
+      border: 1px solid #cbd5e1;
+      color: #475569;
+      font-size: 0.65rem;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      z-index: 3;
+    }
+
+    // Bell Icon
+    .notify-bell {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      border: 1px solid #f59e0b;
+      color: #f59e0b;
+      border-radius: 50%;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: bellShake 2s infinite;
+      display: none;
+    }
+
+    // States
+    &.selected {
+      z-index: 20;
+      transform: scale(1.15);
+      .table-shape {
+        background: #3b82f6;
+        border-color: #1d4ed8;
+        color: white;
+      }
+      .capacity-badge {
+        color: #3b82f6;
+        border-color: #3b82f6;
+      }
+      .chair {
+        background: #93c5fd;
+      }
+    }
+
+    &.occupied,
+    &.reserved {
+      .table-shape {
+        background: #e2e8f0;
+        border-color: #94a3b8;
+        color: #64748b;
+        box-shadow: none;
+      }
+      .chairs-decoration {
+        opacity: 0.5;
+      }
+      &:hover {
+        transform: scale(1.05);
+        .notify-bell {
+          display: flex;
+        }
+      }
+    }
+  }
+
+  // --- LEGEND ---
+  .map-legend-smart {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    left: auto;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+    z-index: 50;
+    transition: 0.3s;
+    overflow: hidden;
+
+    &.closed {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      .legend-header {
+        border: none;
+        justify-content: center;
+        .title,
+        .toggle-arrow {
+          display: none;
+        }
+      }
+    }
+    &.open {
+      min-width: 180px;
+    }
+
+    .legend-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .legend-content {
+      padding-top: 8px;
+      .legend-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        color: #334155;
+        font-weight: 500;
+      }
+
+      .symbol {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        display: inline-block;
+        flex-shrink: 0;
+      }
+      .table-available {
+        border-radius: 50%;
+        border: 2px solid #22c55e;
+      }
+      .table-selected {
+        border-radius: 50%;
+        background: #3b82f6;
+      }
+      .table-occupied-legend {
+        border-radius: 50%;
+        background: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        border: 1px solid #cbd5e1;
+      }
+
+      .symbol-bar {
+        background: #fde68a;
+        border: 1px solid $wood-color;
+      }
+      .symbol-wc {
+        background: #e2e8f0;
+        border: 1px solid #94a3b8;
+      }
+      .symbol-entry {
+        background: $wood-color;
+        height: 6px;
+      }
+
+      .legend-divider {
+        height: 1px;
+        background: #e2e8f0;
+        margin: 4px 0;
+      }
+    }
   }
 }
 
-@include r-mobile {
-  .floor-map {
-    &__container {
-      min-height: 400px;
-      margin: $spacing-4;
-    }
-    &__table {
-      width: 40px;
-      height: 40px;
-      font-size: 0.8rem;
-    }
-    &__table-capacity {
-      width: 16px;
-      height: 16px;
-      font-size: 0.6rem;
-    }
+@keyframes bellShake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  10%,
+  30% {
+    transform: rotate(15deg);
+  }
+  20%,
+  40% {
+    transform: rotate(-15deg);
   }
 }

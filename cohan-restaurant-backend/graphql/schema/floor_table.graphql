@@ -4,6 +4,7 @@ enum TableStatus {
   reserved
   cleaning
   offline
+  payment_pending
 }
 
 enum TableType {

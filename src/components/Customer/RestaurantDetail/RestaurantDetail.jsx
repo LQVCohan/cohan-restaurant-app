@@ -1,162 +1,168 @@
 // src/components/RestaurantDetail/index.jsx
 import React, { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom"; // Thêm useNavigate
 import { useRestaurant } from "../../../hooks/useRestaurant";
-import RestaurantHeader from "./components/RestaurantHeader/RestaurantHeader";
 import RestaurantInfo from "./components/RestaurantInfo/RestaurantInfo";
 import MenuSection from "./components/MenuSection/MenuSection";
 import ReviewsSection from "./components/ReviewsSection/ReviewsSection";
 import PhotoGallery from "./components/PhotoGallery/PhotoGallery";
 import SimilarRestaurants from "./components/SimilarRestaurants/SimilarRestaurants";
-import BookingModal from "../BookingTableModal/BookingModal";
+
 import "./RestaurantDetail.scss";
+
+// Icon components (để code gọn hơn, có thể tách ra file riêng)
+const BackIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <path d="M19 12H5M12 19l-7-7 7-7" />
+  </svg>
+);
 
 const RestaurantDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { restaurant, loading, error } = useRestaurant(id);
-  const [showBookingModal, setShowBookingModal] = useState(false);
-  // const [showPaymentModal, setShowPaymentModal] = useState(false);
+  //  const [showBookingModal, handleTableLayout] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   if (loading) {
     return (
-      <div className="restaurant-detail">
-        <div className="loading-container">
-          <div className="spinner" />
-          <p>Đang tải thông tin nhà hàng...</p>
-        </div>
+      <div className="restaurant-detail-loading">
+        <div className="spinner" />
       </div>
     );
   }
 
   if (error || !restaurant) {
     return (
-      <div className="restaurant-detail">
-        <div className="error-container">
-          <span className="error-icon">😔</span>
-          <h2>Không tìm thấy nhà hàng</h2>
-          <p>{error || "Nhà hàng không tồn tại hoặc đã bị xóa."}</p>
-          <button
-            onClick={() => window.history.back()}
-            className="btn btn--primary"
-          >
-            ← Quay lại
-          </button>
-        </div>
+      <div className="restaurant-detail-error">
+        <h2>Không tìm thấy nhà hàng</h2>
+        <button onClick={() => navigate(-1)} className="btn-back">
+          Quay lại
+        </button>
       </div>
     );
   }
 
   const tabs = [
-    { id: "overview", label: "📋 Tổng quan", icon: "📋" },
-    { id: "menu", label: "🍽️ Thực đơn", icon: "🍽️" },
-    { id: "reviews", label: "⭐ Đánh giá", icon: "⭐" },
-    { id: "photos", label: "📸 Hình ảnh", icon: "📸" },
+    { id: "overview", label: "Tổng quan" },
+    { id: "menu", label: "Thực đơn" },
+    { id: "reviews", label: "Đánh giá" },
+    { id: "photos", label: "Hình ảnh" },
   ];
+
   const imgAvaUrl = restaurant.avatar || restaurant.imgAvaUrl;
   const imgThumbUrl = restaurant?.coverImage || restaurant.imgThumbUrl;
+  const handleTableLayout = () => {
+    navigate(`/restaurant/${restaurant.id}/table`);
+  };
   return (
-    <div className="restaurant-detail">
-      <RestaurantHeader
-        restaurant={{
-          id: restaurant.id,
-          name: restaurant.name,
-          avatar: imgAvaUrl,
-          coverImage: imgThumbUrl,
-          rating: restaurant.rating,
-          status: restaurant.status,
-          cuisine: restaurant.cuisine,
-          addressText: restaurant.addressText,
-        }}
-        onReservationClick={() => setShowBookingModal(true)}
-      />
+    <div className="restaurant-detail-page">
+      {/* Nút Back nằm góc trái màn hình */}
+      <button className="back-button-floating" onClick={() => navigate(-1)}>
+        <BackIcon />
+      </button>
 
-      <div className="restaurant-content">
-        <div className="content-navigation">
-          <div className="nav-tabs">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                className={`nav-tab ${
-                  activeTab === tab.id ? "nav-tab--active" : ""
-                }`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {/* <span className="tab-icon">{tab.icon}</span> */}
-                <span className="tab-label">{tab.label}</span>
-              </button>
-            ))}
+      <div className="main-container">
+        {/* HERO SECTION: Cover & Avatar */}
+        <div className="hero-section">
+          <div className="cover-wrapper">
+            <img src={imgThumbUrl} alt="Cover" className="cover-image" />
+            <div className="cover-overlay"></div>
+          </div>
+
+          <div className="header-info">
+            <div className="avatar-wrapper">
+              <img
+                src={imgAvaUrl}
+                alt={restaurant.name}
+                className="avatar-image"
+              />
+            </div>
+            <div className="text-info">
+              <h1 className="restaurant-name">{restaurant.name}</h1>
+              <div className="restaurant-meta">
+                <span className="cuisine-tag">{restaurant.cuisine}</span>
+                <span className="rating">⭐ {restaurant.rating}</span>
+                <span
+                  className={`status-badge ${
+                    restaurant.status === "open" ? "open" : "closed"
+                  }`}
+                >
+                  {restaurant.status === "open" ? "Đang mở cửa" : "Đóng cửa"}
+                </span>
+              </div>
+              <p className="address">{restaurant.addressText}</p>
+            </div>
+
+            {/* Nút đặt bàn trên Desktop nằm ngay header */}
+            <button
+              className="btn-book-header desktop-only"
+              onClick={handleTableLayout}
+            >
+              Đặt bàn ngay
+            </button>
           </div>
         </div>
 
-        <div className="content-sections">
-          {activeTab === "overview" && (
-            <div className="section-content">
-              <RestaurantInfo restaurant={restaurant} />
-            </div>
-          )}
-
-          {activeTab === "menu" && (
-            <div className="section-content">
-              <MenuSection restaurantId={restaurant.id} />
-            </div>
-          )}
-
-          {activeTab === "reviews" && (
-            <div className="section-content">
-              <ReviewsSection restaurantId={restaurant.id} />
-            </div>
-          )}
-
-          {activeTab === "photos" && (
-            <div className="section-content">
-              <PhotoGallery photos={restaurant.photos} />
-            </div>
-          )}
+        {/* NAVIGATION TABS (Sticky) */}
+        <div className="sticky-tabs">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              className={`tab-item ${activeTab === tab.id ? "active" : ""}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        <div className="similar-section">
-          <SimilarRestaurants
-            currentRestaurantId={restaurant.id}
-            cuisine={restaurant.cuisine}
-            district={restaurant.district}
-          />
+        {/* CONTENT SECTIONS */}
+        <div className="content-body">
+          <div className="left-content">
+            {activeTab === "overview" && (
+              <RestaurantInfo restaurant={restaurant} />
+            )}
+            {activeTab === "menu" && (
+              <MenuSection restaurantId={restaurant.id} />
+            )}
+            {activeTab === "reviews" && (
+              <ReviewsSection restaurantId={restaurant.id} />
+            )}
+            {activeTab === "photos" && (
+              <PhotoGallery photos={restaurant.photos} />
+            )}
+          </div>
+
+          {/* Sidebar gợi ý (Desktop) */}
+          <div className="right-sidebar">
+            <SimilarRestaurants
+              currentRestaurantId={restaurant.id}
+              cuisine={restaurant.cuisine}
+              district={restaurant.district}
+            />
+          </div>
         </div>
       </div>
 
-      <BookingModal
+      {/* Floating Button cho Mobile */}
+      <div className="mobile-action-bar mobile-only">
+        <button className="btn-book-mobile" onClick={handleTableLayout}>
+          Đặt bàn ngay
+        </button>
+      </div>
+
+      {/* <BookingModal
         isOpen={showBookingModal}
-        onClose={() => setShowBookingModal(false)}
-        // tableId={selectedTable?.tableId}
-        // tableCapacity={selectedTable?.capacity}
-        // tableFloor={selectedTable?.floor}
-        // onBookingConfirmed={handleBookingConfirmed}
-      />
-
-      {/* <QRPaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        booking={currentBooking}
-        onPaymentConfirmed={handlePaymentConfirmed}
-      />
-
-      <SuccessModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        booking={currentBooking}
+        onClose={() => handleTableLayout(false)}
       /> */}
-
-      {/* Notifications */}
-      {/* <div className="notifications">
-        {notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className={`notification notification--${notification.type}`}
-          >
-            {notification.message}
-          </div>
-        ))}
-      </div> */}
     </div>
   );
 };

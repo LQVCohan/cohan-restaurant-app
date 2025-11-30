@@ -85,7 +85,7 @@ const RestaurantGrid = ({
   const goOrder = (e, id) => {
     e.stopPropagation();
     // Nếu có route đặt món riêng, thay bằng `/restaurants/${id}/order`
-    navigate(`/restaurants/${id}`);
+    navigate(`/restaurant/${id}`);
   };
 
   const viewAll = () => navigate("/restaurants");

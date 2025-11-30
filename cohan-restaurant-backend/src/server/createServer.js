@@ -12,7 +12,8 @@ import resolvers from "../../graphql/resolvers/index.js";
 import buildContext from "../../graphql/context.js";
 import uploadRoutes from "./plugins/upload.route.js";
 import { createLoaders } from "../../graphql/loaders/index.js";
-
+import cron from "node-cron";
+import { autoCancelExpiredReservations } from "../services/reservationAutoCancel.service.js";
 export async function createServer() {
   const app = Fastify({
     logger: { level: process.env.LOG_LEVEL || "debug" },
@@ -140,6 +141,23 @@ export async function createServer() {
     app.log.info("=== ROUTES ===");
     app.log.info("\n" + app.printRoutes());
   });
+  // ---------------- Background jobs ----------------
+  // Auto-cancel reservation quá hạn pending_payment
+  cron.schedule("* * * * *", async () => {
+    try {
+      const result = await autoCancelExpiredReservations();
 
+      if (result?.modifiedCount) {
+        app.log.info(
+          `[Reservation AutoCancel] Cancelled ${result.modifiedCount} expired reservations`
+        );
+      }
+    } catch (err) {
+      app.log.error(
+        { err },
+        "[Reservation AutoCancel] Error while cancelling expired reservations"
+      );
+    }
+  });
   return app;
 }

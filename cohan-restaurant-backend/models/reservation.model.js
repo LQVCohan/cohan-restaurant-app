@@ -68,7 +68,6 @@ const ReservationSchema = BaseSchemaModel(
     // --- Tự động hủy nếu quá hạn ---
     pendingPaymentExpiresAt: {
       type: Date,
-      index: { expireAfterSeconds: 0 },
     },
 
     // --- Mã đặt bàn, sinh tự động ---
@@ -110,7 +109,7 @@ ReservationSchema.pre("save", function (next) {
 ReservationSchema.index({ restaurantId: 1, timeTo: 1 });
 ReservationSchema.index({ userId: 1 });
 ReservationSchema.index({ status: 1 });
-
+ReservationSchema.index({ pendingPaymentExpiresAt: 1, status: 1 });
 // Khi reservation hết TTL, MongoDB tự xóa document → FE có thể query thất bại = đã hết hạn
 // hoặc BE có cron check trước khi xóa để cập nhật status = "cancelled"
 

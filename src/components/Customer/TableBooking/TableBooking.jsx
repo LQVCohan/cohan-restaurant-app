@@ -1,17 +1,15 @@
 // src/components/Customer/TableBooking/TableBooking.jsx
 import React, { useEffect, useState } from "react";
-import { gql } from "@apollo/client";
-import { useQuery } from "@apollo/client/react";
+import { gql, useQuery } from "@apollo/client";
+import { useParams, useNavigate } from "react-router-dom"; // Thêm useNavigate
 import FloorMap from "./FloorMap/FloorMap";
 import FloorSelector from "./FloorSelector/FloorSelector";
 import BookingSummary from "./BookingSummary/BookingSummary";
-
-import "./TableBooking.scss";
-import { useParams } from "react-router-dom";
 import BookingModal from "../BookingTableModal/BookingModal";
 import QRPaymentModal from "../QRPaymentModal/QRPaymentModal";
 import SuccessModal from "../SuccessModal/SuccessModal";
-import { useNotification } from "../../../hooks/useNotification";
+
+import "./TableBooking.scss";
 
 /* ───────────────── GraphQL ───────────────── */
 const GET_FLOORS = gql`
@@ -50,45 +48,50 @@ const GET_TABLES = gql`
   }
 `;
 
+// Icon Back
+const BackIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M19 12H5M12 19l-7-7 7-7" />
+  </svg>
+);
+
 const TableBooking = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const restaurantId = id;
-  const { notifications } = useNotification();
 
   const [selectedFloor, setSelectedFloor] = useState(null);
   const [selectedTable, setSelectedTable] = useState(null);
-
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
   const [bookingData, setBookingData] = useState(null);
 
-  // Floors
-  const {
-    data: floorData,
-    loading: floorsLoading,
-    error: floorsError,
-  } = useQuery(GET_FLOORS, {
+  // Queries
+  const { data: floorData, loading: floorsLoading } = useQuery(GET_FLOORS, {
     variables: { restaurantId },
   });
 
   useEffect(() => {
-    if (floorData?.floors?.length > 0) {
+    if (floorData?.floors?.length > 0 && !selectedFloor) {
       setSelectedFloor(floorData.floors[0]);
     }
-  }, [floorData]);
+  }, [floorData, selectedFloor]);
 
-  // Tables
-  const {
-    data: tableData,
-    loading: tablesLoading,
-    error: tablesError,
-  } = useQuery(GET_TABLES, {
+  const { data: tableData, loading: tablesLoading } = useQuery(GET_TABLES, {
     variables: {
       restaurantId,
       floorId: selectedFloor?.id,
-      status: "available",
+
       limit: 200,
     },
     skip: !selectedFloor,
@@ -97,17 +100,11 @@ const TableBooking = () => {
 
   const handleSelectTable = (table) => setSelectedTable(table);
 
-  // ✅ nhận reservation và quyết định mở QR hay Success
   const handleBookingConfirmed = (reservation) => {
     setBookingData(reservation);
     setShowBookingModal(false);
-
     const needDeposit = Number(reservation?.depositAmount || 0) > 0;
-    if (needDeposit) {
-      setShowPaymentModal(true);
-    } else {
-      setShowSuccessModal(true);
-    }
+    needDeposit ? setShowPaymentModal(true) : setShowSuccessModal(true);
   };
 
   const handlePaymentConfirmed = () => {
@@ -115,48 +112,85 @@ const TableBooking = () => {
     setShowSuccessModal(true);
   };
 
-  const handleConfirmBooking = () => {
-    if (selectedTable) {
-      setShowBookingModal(true);
-    }
-  };
-
-  if (floorsLoading || tablesLoading) return <p>Loading...</p>;
-  if (floorsError || tablesError)
-    return <p>Error: {floorsError?.message || tablesError?.message}</p>;
+  if (floorsLoading)
+    return (
+      <div className="booking-loading">
+        <div className="spinner"></div>
+        <p>Đang tải sơ đồ...</p>
+      </div>
+    );
 
   return (
-    <div className="table-booking-customer">
-      <header className="table-booking-customer__header">
-        <h1 className="table-booking-customer__title">Đặt bàn nhà hàng</h1>
-        <p className="table-booking-customer__subtitle">
-          Chọn tầng, chọn bàn và xác nhận đặt chỗ
-        </p>
+    <div className="table-booking-page">
+      {/* Header Section */}
+      <header className="booking-header">
+        <div className="header-container">
+          <button className="btn-back" onClick={() => navigate(-1)}>
+            <BackIcon /> Quay lại
+          </button>
+          <div className="header-content">
+            <h1 className="page-title">Chọn vị trí ngồi</h1>
+            <p className="page-subtitle">
+              Vui lòng chọn tầng và bàn phù hợp với bạn
+            </p>
+          </div>
+          <div className="header-spacer"></div> {/* Để cân bằng layout */}
+        </div>
       </header>
 
-      <div className="table-booking-customer__content">
-        <div className="table-booking-customer__map-section">
-          <FloorSelector
-            floors={floorData?.floors || []}
-            selectedFloor={selectedFloor}
-            onSelect={setSelectedFloor}
-          />
-          <FloorMap
-            tables={tableData?.tables || []}
-            selectedTable={selectedTable}
-            onSelectTable={handleSelectTable}
-          />
+      <div className="booking-container">
+        {/* LEFT COLUMN: Map & Floor Selector */}
+        <div className="booking-main-area">
+          {/* Floor Selector (Tabs Style) */}
+          <div className="floor-tabs-wrapper">
+            <FloorSelector
+              floors={floorData?.floors || []}
+              selectedFloor={selectedFloor}
+              onSelect={setSelectedFloor}
+            />
+          </div>
+
+          {/* Map Area */}
+          <div className="map-viewport">
+            {tablesLoading ? (
+              <div className="map-loading">Đang tải bàn...</div>
+            ) : (
+              <>
+                <FloorMap
+                  tables={tableData?.tables || []}
+                  selectedTable={selectedTable}
+                  onSelectTable={handleSelectTable}
+                />
+
+                {/* Legend (Chú thích) nằm góc bản đồ */}
+                <div className="map-legend">
+                  <div className="legend-item">
+                    <span className="dot available"></span> Trống
+                  </div>
+                  <div className="legend-item">
+                    <span className="dot selected"></span> Đang chọn
+                  </div>
+                  <div className="legend-item">
+                    <span className="dot occupied"></span> Đã đặt
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="table-booking-customer__sidebar">
+        {/* RIGHT COLUMN: Sidebar Summary */}
+        <aside className="booking-sidebar">
           <BookingSummary
             selectedTable={selectedTable}
-            onConfirm={handleConfirmBooking}
+            selectedFloorName={selectedFloor?.name}
+            onConfirm={() => selectedTable && setShowBookingModal(true)}
             onCancel={() => setSelectedTable(null)}
           />
-        </div>
+        </aside>
       </div>
 
+      {/* Modals */}
       <BookingModal
         isOpen={showBookingModal}
         onClose={() => setShowBookingModal(false)}
@@ -182,13 +216,7 @@ const TableBooking = () => {
         type="reservation"
       />
 
-      <div className="notifications">
-        {notifications.map((n) => (
-          <div key={n.id} className={`notification notification--${n.type}`}>
-            {n.message}
-          </div>
-        ))}
-      </div>
+      {/* Notifications */}
     </div>
   );
 };

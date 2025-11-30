@@ -8,6 +8,7 @@ export const TableStatus = [
   "reserved",
   "cleaning",
   "offline",
+  "payment_pending",
 ];
 export const TableType = [
   "standard",

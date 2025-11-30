@@ -48,7 +48,6 @@ const LIMIT = 12;
 const RestaurantList = () => {
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState("grid"); // "grid" | "list"
-  const [showFilters, setShowFilters] = useState(false);
 
   // 👉 State tích luỹ dữ liệu đã tải theo cursor
   const [accumulated, setAccumulated] = useState([]);
@@ -173,10 +172,10 @@ const RestaurantList = () => {
   const handleSearch = () => {};
   const handleMakeReservation = (event, restaurantId) => {
     event.stopPropagation();
-    navigate(`/restaurants/${restaurantId}/layout`);
+    navigate(`/restaurant/${restaurantId}/layout`);
   };
   const handleViewDetails = (restaurantId) => {
-    navigate(`/restaurants/${restaurantId}`);
+    navigate(`/restaurant/${restaurantId}`);
   };
 
   return (
@@ -196,7 +195,6 @@ const RestaurantList = () => {
               handleClearFilters();
               setAddressFilter(undefined);
             }}
-            showFilters={showFilters}
           />
 
           <main className="results">
