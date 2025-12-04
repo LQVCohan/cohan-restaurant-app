@@ -1,10 +1,19 @@
 import React, { useMemo } from "react";
-import { Clock, User, ChefHat, CheckCircle, Eye, Check, X } from "lucide-react";
+import {
+  Clock,
+  User,
+  ChefHat,
+  CheckCircle,
+  X,
+  Check,
+  MoreHorizontal,
+} from "lucide-react";
 import "./OrderCard.scss";
 
-/* =======================================================
-   1. Gộp món trùng (cộng dồn số lượng) – dùng cho normal mode
-   ======================================================= */
+/* =================================================================================
+   1. HELPERS
+   ================================================================================= */
+
 const mergeDuplicateItems = (items = []) => {
   const merged = new Map();
   for (const it of items) {
@@ -22,9 +31,6 @@ const mergeDuplicateItems = (items = []) => {
   return [...merged.values()];
 };
 
-/* =======================================================
-   2. Helpers
-   ======================================================= */
 const formatCurrency = (v) =>
   (Number(v) || 0).toLocaleString("vi-VN", {
     style: "currency",
@@ -49,398 +55,203 @@ const minutesSince = (createdAt) => {
   return Math.floor((Date.now() - dt.getTime()) / 60000);
 };
 
-// default thresholds nếu không truyền gì từ ngoài
-const DEFAULT_THRESHOLDS = {
-  warn: 10,
-  danger: 20,
-  critical: 30,
-};
+/* =================================================================================
+   2. SUB-COMPONENTS
+   ================================================================================= */
 
-// default colors nếu setting không truyền
-const DEFAULT_TIME_COLORS = {
-  ok: "#16a34a", // xanh lá
-  warn: "#eab308", // vàng
-  danger: "#f97316", // cam/đỏ nhạt
-  critical: "#b91c1c", // đỏ đậm
-};
+const TimeBadge = ({ minutes }) => {
+  if (minutes == null) return null;
 
-/* =======================================================
-   3. Thành phần hiển thị cho NORMAL MODE
-   ======================================================= */
-const TimeWarningBadge = ({ createdAt, thresholds, colors }) => {
-  const m = minutesSince(createdAt);
-  if (m == null) return null;
+  let statusClass = "normal";
+  if (minutes >= 30) statusClass = "critical";
+  else if (minutes >= 20) statusClass = "danger";
+  else if (minutes >= 10) statusClass = "warning";
 
-  const { warn, danger, critical } = thresholds;
-  const palette = { ...DEFAULT_TIME_COLORS, ...(colors || {}) };
-
-  // style chung – chỉ override background để vẫn giữ style pill trong SCSS
-  let style = {};
-
-  if (m >= critical) {
-    // 🔴🔴 Khẩn cấp: đỏ đậm + icon rõ ràng
-    style = { backgroundColor: palette.critical };
-    return (
-      <span className="timeWarning critical" style={style}>
-        🚨 {m} phút
-      </span>
-    );
-  }
-
-  if (m >= danger) {
-    // 🔴 Nguy hiểm
-    style = { backgroundColor: palette.danger };
-    return (
-      <span className="timeWarning danger" style={style}>
-        {m} phút
-      </span>
-    );
-  }
-
-  if (m >= warn) {
-    // 🟡 Cảnh báo
-    style = { backgroundColor: palette.warn };
-    return (
-      <span className="timeWarning warning" style={style}>
-        {m} phút
-      </span>
-    );
-  }
-
-  // 🟢 Mặc định: xanh lá
-  style = { backgroundColor: palette.ok };
   return (
-    <span className="orderTime ok" style={style}>
-      {m} phút
-    </span>
+    <div className={`saas-badge time-badge ${statusClass}`}>
+      <Clock size={12} strokeWidth={2.5} />
+      <span>{minutes}p</span>
+    </div>
   );
 };
 
-const StatusBadge = ({ status }) => {
-  const labelMap = {
-    pending: "Chờ xác nhận",
-    preparing: "Đang chuẩn bị",
-    ready: "Sẵn sàng",
-    served: "Đã phục vụ",
-    completed: "Hoàn thành",
-    cancelled: "Đã hủy",
-  };
-  const key = status || "pending";
-  return <span className={`statusBadge ${key}`}>{labelMap[key]}</span>;
-};
-
-const getOrderTypeIcon = (type) =>
-  type === "takeaway" ? "🛍️" : type === "delivery" ? "🏍️" : "🪑";
-const getCustomerDisplay = (order) => {
-  const user = order?.user || {};
-  const customer = order?.customerInfo || {};
-
-  const name = customer.name || user.fullName || "Khách lẻ";
-
-  const phone = customer.phone || user.phone || "";
-  const email = customer.email || user.email || "";
-
-  const contact = phone || email || "";
-
-  return { name, contact };
-};
-/* =======================================================
-   4. Main Component
-   ======================================================= */
+/* =================================================================================
+   3. MAIN COMPONENT
+   ================================================================================= */
 const OrderCard = ({
   order,
-  onUpdateStatus,
+  onUpdateStatus, // (orderId, newStatus) => void
   onViewOrder,
-  onViewItem,
   isFocusMode = false,
-  onQuickItemDone, // dùng cho nút Xong trong focus mode
-  timeThresholds = DEFAULT_THRESHOLDS, // ✅ nhận config ngưỡng thời gian từ ngoài
-  timeColors = {}, // ✅ nhận config màu từ setting
 }) => {
-  // chuẩn hoá thresholds (fallback sang default nếu thiếu)
-  const thresholds = {
-    warn:
-      Number(timeThresholds.warn ?? DEFAULT_THRESHOLDS.warn) ||
-      DEFAULT_THRESHOLDS.warn,
-    danger:
-      Number(timeThresholds.danger ?? DEFAULT_THRESHOLDS.danger) ||
-      DEFAULT_THRESHOLDS.danger,
-    critical:
-      Number(timeThresholds.critical ?? DEFAULT_THRESHOLDS.critical) ||
-      DEFAULT_THRESHOLDS.critical,
-  };
-
-  const ageMinutes = minutesSince(order?.createdAt);
-  let timeClass = "";
-  if (ageMinutes != null) {
-    const { warn, danger, critical } = thresholds;
-    if (ageMinutes >= critical) timeClass = "time-high";
-    else if (ageMinutes >= danger) timeClass = "time-mid";
-    else if (ageMinutes >= warn) timeClass = "time-warn";
-    else timeClass = "time-ok";
-  }
-
-  // normal mode: gộp món
   const mergedItems = useMemo(
     () => mergeDuplicateItems(order?.items || []),
     [order?.items]
   );
+  const ageMinutes = minutesSince(order?.createdAt);
 
-  const totalItems = mergedItems.length;
-  const pendingCount = mergedItems.filter(
-    (it) => it.status === "pending"
-  ).length;
+  const MAX_ITEMS = isFocusMode ? 999 : 3;
+  const visibleItems = mergedItems.slice(0, MAX_ITEMS);
+  const remainCount = Math.max(0, mergedItems.length - MAX_ITEMS);
 
-  const callUpdateStatus = (status) => {
-    if (typeof onUpdateStatus !== "function") return;
-    // GIỮ NGUYÊN API CŨ: (orderId, status)
-    onUpdateStatus(order.id, status);
+  const customerName =
+    order?.customerInfo?.name || order?.user?.fullName || "Khách lẻ";
+
+  // --- HÀM XỬ LÝ SỰ KIỆN QUAN TRỌNG ---
+  const handleAction = (e, status) => {
+    e.stopPropagation(); // Ngăn click xuyên qua card
+    if (onUpdateStatus) {
+      // Gọi hàm update được truyền từ cha
+      onUpdateStatus(order.id, status);
+    }
   };
 
-  /* ----------------- Action buttons (normal mode) ----------------- */
-  const renderActionButtons = () => {
-    if (isFocusMode) return null;
+  // --- RENDER NÚT BẤM THEO TRẠNG THÁI ---
+  const renderActions = () => {
+    const status = order?.currentStatus;
 
-    const s = order?.currentStatus;
-    switch (s) {
-      case "pending":
+    switch (status) {
+      case "pending": // KHÁCH MỚI ĐẶT -> CẦN XÁC NHẬN
         return (
-          <>
+          <div className="card-actions two-btn">
+            {/* Nút Hủy */}
             <button
-              className="confirmButton"
-              onClick={() => callUpdateStatus("preparing")}
+              className="btn-secondary btn-cancel"
+              onClick={(e) => handleAction(e, "cancelled")}
             >
-              <Check size={14} /> Bắt đầu
+              Hủy
             </button>
+
+            {/* Nút Xác nhận đơn hàng -> Chuyển sang preparing */}
             <button
-              className="cancelButton"
-              onClick={() => callUpdateStatus("cancelled")}
+              className="btn-primary"
+              onClick={(e) => handleAction(e, "preparing")}
             >
-              <X size={14} /> Hủy
+              <Check size={16} /> Xác nhận đơn hàng
             </button>
-          </>
+          </div>
         );
-      case "preparing":
+
+      case "preparing": // ĐANG CHẾ BIẾN -> CẦN BÁO XONG
         return (
-          <button
-            className="readyButton"
-            onClick={() => callUpdateStatus("ready")}
-          >
-            <ChefHat size={14} /> Hoàn tất chế biến
-          </button>
+          <div className="card-actions">
+            <button
+              className="btn-success"
+              onClick={(e) => handleAction(e, "ready")}
+            >
+              <ChefHat size={16} /> Báo xong món
+            </button>
+          </div>
         );
-      case "ready":
+
+      case "ready": // ĐÃ XONG -> CHỜ PHỤC VỤ / KHÁCH LẤY
         return (
-          <button
-            className="confirmButton"
-            onClick={() => callUpdateStatus("served")}
-          >
-            <CheckCircle size={14} /> Hoàn thành
-          </button>
+          <div className="card-actions">
+            <button
+              className="btn-primary"
+              onClick={(e) => handleAction(e, "served")}
+            >
+              <CheckCircle size={16} /> Đã phục vụ
+            </button>
+          </div>
         );
+
+      case "served":
+        return (
+          <div className="card-status-text text-blue">
+            <CheckCircle size={14} /> Đã phục vụ
+          </div>
+        );
+
+      case "cancelled":
+        return (
+          <div className="card-status-text text-red">
+            <X size={14} /> Đã hủy
+          </div>
+        );
+
       default:
         return null;
     }
   };
 
-  /* ----------------- Items ----------------- */
-  const baseItems = isFocusMode ? order?.items || [] : mergedItems;
-
-  // Normal mode: cố định 3 dòng món + 1 dòng "còn X món"
-  let visibleItems = baseItems;
-  let extraCount = 0;
-  let placeholderCount = 0;
-
-  if (!isFocusMode) {
-    const MAX = 3;
-    visibleItems = baseItems.slice(0, MAX);
-    extraCount = Math.max(0, baseItems.length - MAX);
-    placeholderCount = Math.max(0, MAX - visibleItems.length);
-  }
-
-  const handleQuickDone = (e, item, idx) => {
-    e.stopPropagation(); // không mở modal món
-    if (typeof onQuickItemDone !== "function") return;
-    const itemKey = item._lineId || item.dishId || item.id || idx;
-    onQuickItemDone(order.id, itemKey, "ready");
-  };
-
-  /* ----------------- RENDER ----------------- */
   return (
     <div
-      className={[
-        "orderCard",
-        order?.currentStatus || "",
-        isFocusMode ? "focus" : "",
-        isFocusMode && timeClass ? timeClass : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={`saas-card ${isFocusMode ? "focus-mode" : ""} ${
+        order?.currentStatus || ""
+      }`}
+      onClick={() => onViewOrder?.(order)}
     >
-      {/* Header */}
-      <div className="orderHeader">
-        <div>
-          <div className="orderTitle">
-            {isFocusMode ? (
-              <span className="orderTableOnly">{order?.tableCode || "—"}</span>
+      {/* HEADER */}
+      <div className="card-header">
+        <div className="header-left">
+          <div
+            className={`table-badge ${
+              order?.orderType === "takeaway" ? "takeaway" : ""
+            }`}
+          >
+            {order?.orderType === "takeaway" ? (
+              <>🥡 Mang về</>
             ) : (
-              <>
-                {getOrderTypeIcon(order?.orderType)}{" "}
-                {order?.tableCode || "Mang về"}{" "}
-                <span className="orderId">
-                  #{String(order?.id || "").slice(-6)}
-                </span>
-              </>
+              <>{order?.tableCode || "—"}</>
             )}
           </div>
-
-          {!isFocusMode &&
-            (() => {
-              const { name, contact } = getCustomerDisplay(order);
-              return (
-                <div className="orderUser">
-                  <User size={14} />
-                  <span className="orderUser__name">{name}</span>
-                  {contact && (
-                    <span className="orderUser__contact">· {contact}</span>
-                  )}
-                </div>
-              );
-            })()}
+          <div className="order-id">#{String(order?.id || "").slice(-5)}</div>
         </div>
-
-        {!isFocusMode ? (
-          <TimeWarningBadge
-            createdAt={order?.createdAt}
-            thresholds={thresholds}
-            colors={timeColors}
-          />
-        ) : ageMinutes != null ? (
-          <span className="orderTimeMini">{ageMinutes} phút</span>
-        ) : null}
+        <TimeBadge minutes={ageMinutes} />
       </div>
 
-      {/* Status (normal mode) */}
-      {!isFocusMode && (
-        <div className="totalSection mb-2">
-          <div className="totalLabel">
-            {totalItems} món ({pendingCount} chờ)
-          </div>
-          <StatusBadge status={order?.currentStatus} />
+      {/* GUEST INFO */}
+      <div className="guest-info">
+        <div className="guest-row">
+          <User size={14} className="icon" />
+          <span className="guest-name truncate">{customerName}</span>
         </div>
-      )}
+      </div>
 
-      {/* Items */}
-      <div className={`itemsSection ${isFocusMode ? "focus" : ""}`}>
-        {!isFocusMode && (
-          <div className="sectionTitle">
-            <Clock size={16} />
-            <span>Món</span>
-          </div>
-        )}
-
-        <div className="itemsList">
-          {visibleItems.map((item, idx) => {
-            const key = item._lineId || item.dishId || idx;
-            const isDone = ["ready", "served", "cancelled"].includes(
-              item.status
-            );
-
-            return (
-              <div
-                key={key}
-                className={`itemCard ${isFocusMode ? "focus" : ""}`}
-                onClick={() =>
-                  !isFocusMode &&
-                  onViewItem?.({
-                    item,
-                    orderInfo: { id: order.id, table: order.tableCode },
-                  })
-                }
-              >
-                <div className="itemInfo">
-                  <div className="itemName">
-                    <span className="quantity">{item.quantity}x</span>
-                    <span>{item.name}</span>
-                    {item.method && (
-                      <span className="itemMethod"> ({item.method})</span>
-                    )}
-                  </div>
-                  {!isFocusMode && (
-                    <div className="itemStatus">{item.status}</div>
-                  )}
-                </div>
-
-                {/* Nút Xong luôn hiện trong focus mode */}
-                {isFocusMode && (
-                  <button
-                    type="button"
-                    className="itemDoneBtn"
-                    disabled={isDone}
-                    onClick={(e) => !isDone && handleQuickDone(e, item, idx)}
-                  >
-                    Xong
-                  </button>
+      {/* ITEM LIST */}
+      <div className="items-container">
+        {visibleItems.map((item, idx) => {
+          const isItemDone =
+            item.status === "ready" || item.status === "served";
+          return (
+            <div
+              key={`${item.dishId}_${idx}`}
+              className={`item-row ${isItemDone ? "done" : ""}`}
+            >
+              <div className="item-qty">{item.quantity}</div>
+              <div className="item-details">
+                <span className="item-name">{item.name}</span>
+                {item.method && (
+                  <span className="item-method">({item.method})</span>
                 )}
               </div>
-            );
-          })}
-
-          {/* slot rỗng để đủ 3 dòng món */}
-          {!isFocusMode &&
-            Array.from({ length: placeholderCount }).map((_, i) => (
-              <div
-                key={`placeholder-${i}`}
-                className="itemCard itemCard--placeholder"
-                aria-hidden="true"
-              />
-            ))}
-
-          {/* dòng "còn X món" (hoặc placeholder) */}
-          {!isFocusMode &&
-            (extraCount > 0 ? (
-              <div className="itemMore">... còn {extraCount} món</div>
-            ) : (
-              <div
-                className="itemMore itemMore--placeholder"
-                aria-hidden="true"
-              >
-                &nbsp;
-              </div>
-            ))}
-        </div>
+            </div>
+          );
+        })}
+        {remainCount > 0 && (
+          <div className="more-items">
+            <MoreHorizontal size={14} />
+            <span>còn {remainCount} món khác...</span>
+          </div>
+        )}
+        {mergedItems.length === 0 && (
+          <div className="empty-items">Chưa có món</div>
+        )}
       </div>
 
-      {/* Tổng tiền & actions: chỉ ở normal mode */}
-      {!isFocusMode && (
-        <>
-          <div className="totalSection">
-            <div className="totalLabel">Tổng cộng</div>
-            <div className="totalAmount">
-              {formatCurrency(order?.totals?.grandTotal)}
-            </div>
-          </div>
-
-          <div className="actions">
-            {renderActionButtons()}
-            <button className="viewButton" onClick={() => onViewOrder?.(order)}>
-              <Eye size={14} /> Xem chi tiết
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* Focus mode: chỉ còn nút xem chi tiết nhỏ */}
-      {isFocusMode && (
-        <div className="actions focusActions">
-          <button
-            className="viewButton slim"
-            onClick={() => onViewOrder?.(order)}
-          >
-            <Eye size={14} /> Xem chi tiết
-          </button>
+      {/* FOOTER & ACTIONS */}
+      <div className="card-footer-wrapper">
+        <div className="card-total-row">
+          <span className="label">Tổng cộng</span>
+          <span className="value">
+            {formatCurrency(order?.totals?.grandTotal)}
+          </span>
         </div>
-      )}
+
+        {/* Khu vực hiển thị nút Xác nhận / Hoàn thành */}
+        {renderActions()}
+      </div>
     </div>
   );
 };

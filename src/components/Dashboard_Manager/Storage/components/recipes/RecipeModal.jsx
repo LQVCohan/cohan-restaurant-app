@@ -1,3 +1,4 @@
+// src/components/Dashboard_Manager/Storage/components/recipes/RecipeModal.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import Modal from "../../../../common/Modal";
 import FormGroup from "../Form/FormGroup";
@@ -9,12 +10,8 @@ import Button from "../../../../common/Button";
 import Card from "../../../../common/Card";
 import { RECIPE_CATEGORIES, UNITS } from "../../../../../utils/constants";
 import { formatPrice } from "../../../../../utils/formatters";
+import { toBaseQty, fromBaseQty } from "../../../../../utils/unitConversion";
 
-/**
- * RecipeModal (đồng bộ tên với BE)
- * - Không có baseIngredients
- * - Dùng servingVariants[] (mode, key, yieldQty, yieldUnit, preparationMethodName, components[])
- */
 const RecipeModal = ({
   isOpen,
   onClose,
@@ -36,7 +33,7 @@ const RecipeModal = ({
         yieldQty: 1,
         yieldUnit: "portion",
         preparationMethodName: "Phương pháp cơ bản",
-        components: [], // [{ ingredientId, qty, unit }]
+        components: [], // [{ ingredientId, qty, unit, baseUnit }]
       },
     ],
   });
@@ -45,7 +42,6 @@ const RecipeModal = ({
   const [activeVariantIndex, setActiveVariantIndex] = useState(0);
   const [previewWeight, setPreviewWeight] = useState(100); // gram
 
-  // trạng thái thao tác trong modal
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
@@ -53,18 +49,29 @@ const RecipeModal = ({
 
   const isEditing = !!recipe;
 
-  // ===== Helpers =====
-  const getIngredientCost = (ingredientId) => {
-    const i = ingredients.find((x) => String(x.id) === String(ingredientId));
-    return i?.costPerBaseUnit || 0;
+  // Helpers ingredient
+  const findIngredient = (ingredientId) =>
+    ingredients.find((x) => String(x.id) === String(ingredientId));
+
+  const getIngredientCost = (ingredientId) =>
+    findIngredient(ingredientId)?.costPerBaseUnit || 0;
+
+  const getIngredientBaseUnit = (ingredientId) =>
+    findIngredient(ingredientId)?.baseUnit || null;
+
+  // Lấy qty theo baseUnit cho 1 component trong form
+  const getComponentQtyInBase = (comp) => {
+    const baseUnit = comp.baseUnit || getIngredientBaseUnit(comp.ingredientId);
+    const displayUnit = comp.unit || baseUnit;
+    return toBaseQty(comp.qty, displayUnit, baseUnit);
   };
 
   const calcVariantCostPortion = (variant) => {
     const list = variant?.components || [];
     return list.reduce((sum, c) => {
       const unitCost = getIngredientCost(c.ingredientId);
-      const qty = Number(c.qty) || 0;
-      return sum + qty * unitCost;
+      const qtyBase = getComponentQtyInBase(c); // qty theo baseUnit
+      return sum + qtyBase * unitCost;
     }, 0);
   };
 
@@ -73,8 +80,8 @@ const RecipeModal = ({
     const list = variant?.components || [];
     return list.reduce((sum, c) => {
       const unitCost = getIngredientCost(c.ingredientId);
-      const qtyPer100g = Number(c.qty) || 0;
-      return sum + qtyPer100g * ratio * unitCost;
+      const qtyBasePer100g = getComponentQtyInBase(c);
+      return sum + qtyBasePer100g * ratio * unitCost;
     }, 0);
   };
 
@@ -97,23 +104,44 @@ const RecipeModal = ({
                 ingredientId: ing.ingredientId,
                 qty: ing.amount,
                 unit: ing.unit || "g",
+                baseUnit: null,
               })),
             }));
 
-      const normalized = variants.map((v, i) => ({
-        id: v.id || i + 1,
-        mode: v.mode || "PORTION",
-        key: v.key || (v.mode === "BY_WEIGHT" ? "by-weight" : "portion"),
-        yieldQty: v.yieldQty || 1,
-        yieldUnit: v.yieldUnit || (v.mode === "BY_WEIGHT" ? "100g" : "portion"),
-        preparationMethodName:
-          v.preparationMethodName || `Phương pháp ${i + 1}`,
-        components: (v.components || []).map((c) => ({
-          ingredientId: c.ingredientId,
-          qty: c.qty,
-          unit: c.unit || "g",
-        })),
-      }));
+      const normalized = variants.map((v, i) => {
+        // Ưu tiên dùng v.components từ useRecipes (đã chứa baseUnit, costPerBaseUnit)
+        const comps = Array.isArray(v.components)
+          ? v.components
+          : v.Ingredients || [];
+
+        return {
+          id: v.id || i + 1,
+          mode: v.mode || "PORTION",
+          key: v.key || (v.mode === "BY_WEIGHT" ? "by-weight" : "portion"),
+          yieldQty: v.yieldQty || 1,
+          yieldUnit:
+            v.yieldUnit || (v.mode === "BY_WEIGHT" ? "100g" : "portion"),
+          preparationMethodName:
+            v.preparationMethodName || v.name || `Phương pháp ${i + 1}`,
+          components: comps.map((c) => {
+            const baseUnit =
+              c.baseUnit || getIngredientBaseUnit(c.ingredientId) || "g";
+
+            // Khi load lần đầu, hiển thị theo baseUnit (kg/l/...)
+            const unit = c.unit || baseUnit;
+            // c.qty trong FE (useRecipes) đang nghĩ là baseUnit, nên nếu unit khác baseUnit thì convert
+            const qtyDisplay =
+              unit === baseUnit ? c.qty : fromBaseQty(c.qty, unit, baseUnit);
+
+            return {
+              ingredientId: c.ingredientId,
+              qty: qtyDisplay,
+              unit,
+              baseUnit,
+            };
+          }),
+        };
+      });
 
       setFormData({
         name: recipe.name || "",
@@ -210,17 +238,55 @@ const RecipeModal = ({
     next[variantIndex].components.push({
       ingredientId: "",
       qty: "",
-      unit: "g",
+      unit: "",
+      baseUnit: null,
     });
     setFormData((prev) => ({ ...prev, servingVariants: next }));
   };
 
   const handleComponentChange = (variantIndex, compIndex, field, value) => {
     const next = [...formData.servingVariants];
-    next[variantIndex].components[compIndex] = {
-      ...next[variantIndex].components[compIndex],
-      [field]: value,
-    };
+    const comp = next[variantIndex].components[compIndex] || {};
+
+    if (field === "ingredientId") {
+      const ing = findIngredient(value);
+      const baseUnit = ing?.baseUnit || "g";
+      const unit = comp.unit || baseUnit;
+
+      next[variantIndex].components[compIndex] = {
+        ...comp,
+        ingredientId: value,
+        baseUnit,
+        unit,
+      };
+    } else if (field === "unit") {
+      const baseUnit =
+        comp.baseUnit || getIngredientBaseUnit(comp.ingredientId) || "g";
+      const oldUnit = comp.unit || baseUnit;
+      const newUnit = value;
+
+      // giữ nguyên ý nghĩa số lượng: convert qty cũ qua baseUnit rồi qua đơn vị mới
+      const qtyBase = toBaseQty(comp.qty, oldUnit, baseUnit);
+      const newQty = fromBaseQty(qtyBase, newUnit, baseUnit);
+
+      next[variantIndex].components[compIndex] = {
+        ...comp,
+        unit: newUnit,
+        qty: newQty,
+        baseUnit,
+      };
+    } else if (field === "qty") {
+      next[variantIndex].components[compIndex] = {
+        ...comp,
+        qty: value,
+      };
+    } else {
+      next[variantIndex].components[compIndex] = {
+        ...comp,
+        [field]: value,
+      };
+    }
+
     setFormData((prev) => ({ ...prev, servingVariants: next }));
   };
 
@@ -255,21 +321,35 @@ const RecipeModal = ({
     return Object.keys(e).length === 0;
   };
 
-  // ===== Submit / Delete (thực thi ngay trong modal) =====
+  // ===== Build payload gửi ra ngoài =====
   const buildPayload = () => {
-    const servingVariants = formData.servingVariants.map((v) => ({
-      key: v.mode === "BY_WEIGHT" ? "by-weight" : "portion",
-      mode: v.mode,
-      yieldQty: 1,
-      yieldUnit: v.mode === "BY_WEIGHT" ? "100g" : "portion",
-      preparationMethodName: v.preparationMethodName?.trim(),
-      components: (v.components || []).map((c) => ({
-        ingredientId: c.ingredientId,
-        qty: Number(c.qty) || 0,
-        unit: c.unit || undefined,
-        wastePct: 0,
-      })),
-    }));
+    const servingVariants = formData.servingVariants.map((v) => {
+      const mode = v.mode || "PORTION";
+      const isByWeight = mode === "BY_WEIGHT";
+
+      const ingredients = (v.components || []).map((c) => {
+        const baseUnit =
+          c.baseUnit || getIngredientBaseUnit(c.ingredientId) || null;
+        const displayUnit = c.unit || baseUnit;
+        const qtyBase = toBaseQty(c.qty, displayUnit, baseUnit);
+
+        return {
+          ingredientId: c.ingredientId,
+          qty: qtyBase, // gửi theo baseUnit
+          name: undefined,
+          wastePct: 0,
+        };
+      });
+
+      return {
+        key: isByWeight ? "by-weight" : "portion",
+        mode,
+        yieldQty: 1,
+        yieldUnit: isByWeight ? "100g" : "portion",
+        preparationMethodName: v.preparationMethodName?.trim(),
+        ingredients,
+      };
+    });
 
     // Map ra "methods" cho FE nếu những nơi khác vẫn đọc trường này
     const methods = servingVariants.map((v, idx) => ({
@@ -279,21 +359,21 @@ const RecipeModal = ({
         v.mode === "BY_WEIGHT"
           ? "Định mức cho 100g thành phẩm."
           : "Định mức cho 1 phần.",
-      ingredients: (v.components || []).map((c) => ({
+      ingredients: (v.ingredients || []).map((c) => ({
         ingredientId: c.ingredientId,
         amount: c.qty,
-        unit: c.unit || "g",
+        unit: undefined,
       })),
       _mode: v.mode,
     }));
 
     return {
-      id: recipe?.id ?? undefined, // menuItemId để BE biết upsert cho món nào (handler parent sẽ dùng)
+      id: recipe?.id ?? undefined, // menuItemId để handler parent dùng
       name: formData.name,
       category: formData.category,
       description: formData.description,
-      servingVariants, // BE dùng
-      methods, // FE hiển thị ở nơi khác (nếu còn)
+      servingVariants, // cho BE
+      methods, // phòng khi FE chỗ khác còn xài
       icon:
         formData.category === "appetizer"
           ? "🥗"
@@ -305,6 +385,7 @@ const RecipeModal = ({
     };
   };
 
+  // ===== Submit / Delete =====
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccessMsg("");
@@ -552,109 +633,115 @@ const RecipeModal = ({
                   </Button>
                 </div>
 
-                {(activeVariant.components || []).map((c, ci) => (
-                  <div key={ci} className="method-ingredient-row">
-                    <div className="form-row-3">
-                      <FormGroup>
-                        <FormLabel>Nguyên liệu</FormLabel>
-                        <FormSelect
-                          options={ingredients.map((ing) => ({
-                            value: String(ing.id),
-                            label: ing.name,
-                          }))}
-                          value={c.ingredientId ? String(c.ingredientId) : ""}
-                          onChange={(e) =>
-                            handleComponentChange(
-                              activeVariantIndex,
-                              ci,
-                              "ingredientId",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Chọn nguyên liệu"
-                          disabled={saving || deleting}
-                        />
-                        {errors[
-                          `variant_${activeVariantIndex}_comp_${ci}_id`
-                        ] && (
-                          <div className="error-message">
-                            {
-                              errors[
-                                `variant_${activeVariantIndex}_comp_${ci}_id`
-                              ]
-                            }
-                          </div>
-                        )}
-                      </FormGroup>
+                {(activeVariant.components || []).map((c, ci) => {
+                  const ing = findIngredient(c.ingredientId);
+                  const baseUnit = c.baseUnit || ing?.baseUnit || "g";
+                  const selectValue = c.unit || baseUnit || "g";
 
-                      <FormGroup>
-                        <FormLabel>
-                          Số lượng
-                          {activeVariant.mode === "BY_WEIGHT"
-                            ? " /100g"
-                            : " /phần"}
-                        </FormLabel>
-                        <FormInput
-                          type="number"
-                          placeholder="0"
-                          min="0"
-                          step="0.1"
-                          value={c.qty}
-                          onChange={(e) =>
-                            handleComponentChange(
-                              activeVariantIndex,
-                              ci,
-                              "qty",
-                              e.target.value
-                            )
-                          }
-                          disabled={saving || deleting}
-                        />
-                        {errors[
-                          `variant_${activeVariantIndex}_comp_${ci}_qty`
-                        ] && (
-                          <div className="error-message">
-                            {
-                              errors[
-                                `variant_${activeVariantIndex}_comp_${ci}_qty`
-                              ]
-                            }
-                          </div>
-                        )}
-                      </FormGroup>
-
-                      <FormGroup>
-                        <FormLabel>Đơn vị</FormLabel>
-                        <div className="input-with-action">
+                  return (
+                    <div key={ci} className="method-ingredient-row">
+                      <div className="form-row-3">
+                        <FormGroup>
+                          <FormLabel>Nguyên liệu</FormLabel>
                           <FormSelect
-                            options={UNITS}
-                            value={c.unit || "g"}
+                            options={ingredients.map((ingItem) => ({
+                              value: String(ingItem.id),
+                              label: ingItem.name,
+                            }))}
+                            value={c.ingredientId ? String(c.ingredientId) : ""}
                             onChange={(e) =>
                               handleComponentChange(
                                 activeVariantIndex,
                                 ci,
-                                "unit",
+                                "ingredientId",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Chọn nguyên liệu"
+                            disabled={saving || deleting}
+                          />
+                          {errors[
+                            `variant_${activeVariantIndex}_comp_${ci}_id`
+                          ] && (
+                            <div className="error-message">
+                              {
+                                errors[
+                                  `variant_${activeVariantIndex}_comp_${ci}_id`
+                                ]
+                              }
+                            </div>
+                          )}
+                        </FormGroup>
+
+                        <FormGroup>
+                          <FormLabel>
+                            Số lượng
+                            {activeVariant.mode === "BY_WEIGHT"
+                              ? " /100g"
+                              : " /phần"}
+                          </FormLabel>
+                          <FormInput
+                            type="number"
+                            placeholder="0"
+                            min="0"
+                            step="0.1"
+                            value={c.qty}
+                            onChange={(e) =>
+                              handleComponentChange(
+                                activeVariantIndex,
+                                ci,
+                                "qty",
                                 e.target.value
                               )
                             }
                             disabled={saving || deleting}
                           />
-                          <Button
-                            type="button"
-                            variant="danger"
-                            size="sm"
-                            onClick={() =>
-                              handleComponentRemove(activeVariantIndex, ci)
-                            }
-                            disabled={saving || deleting}
-                          >
-                            🗑️
-                          </Button>
-                        </div>
-                      </FormGroup>
+                          {errors[
+                            `variant_${activeVariantIndex}_comp_${ci}_qty`
+                          ] && (
+                            <div className="error-message">
+                              {
+                                errors[
+                                  `variant_${activeVariantIndex}_comp_${ci}_qty`
+                                ]
+                              }
+                            </div>
+                          )}
+                        </FormGroup>
+
+                        <FormGroup>
+                          <FormLabel>Đơn vị</FormLabel>
+                          <div className="input-with-action">
+                            <FormSelect
+                              options={UNITS}
+                              value={selectValue}
+                              onChange={(e) =>
+                                handleComponentChange(
+                                  activeVariantIndex,
+                                  ci,
+                                  "unit",
+                                  e.target.value
+                                )
+                              }
+                              disabled={saving || deleting}
+                            />
+                            <Button
+                              type="button"
+                              variant="danger"
+                              size="sm"
+                              onClick={() =>
+                                handleComponentRemove(activeVariantIndex, ci)
+                              }
+                              disabled={saving || deleting}
+                            >
+                              🗑️
+                            </Button>
+                          </div>
+                        </FormGroup>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {/* Cost summary */}
                 <div className="method-cost">
@@ -670,7 +757,6 @@ const RecipeModal = ({
           )}
         </div>
 
-        {/* Alert zone */}
         {(successMsg || errorMsg) && (
           <div style={{ margin: "8px 0" }}>
             {successMsg && (
@@ -686,7 +772,6 @@ const RecipeModal = ({
           </div>
         )}
 
-        {/* Actions */}
         <div className="form-actions">
           <Button
             type="button"

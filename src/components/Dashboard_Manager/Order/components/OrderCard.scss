@@ -1,343 +1,380 @@
-@use "../../../../styles/variables" as *;
-@use "../../../../styles/mixins" as *;
+/* =================================================================================
+   VARIABLES (SaaS Modern Palette)
+   ================================================================================= */
+$c-bg: #ffffff;
+$c-border: #e2e8f0; // Slate 200
+$c-text-main: #1e293b; // Slate 800
+$c-text-sub: #64748b; // Slate 500
 
-.orderCard {
-  @include card;
-  padding: $spacing-6;
-  transition: all 0.2s ease;
-  @include fade-in;
+// Colors
+$c-primary: #3b82f6; // Blue 500
+$c-primary-dark: #2563eb; // Blue 600
+$c-success: #10b981; // Emerald 500
+$c-success-dark: #059669; // Emerald 600
+$c-danger: #ef4444; // Red 500
+$c-danger-bg: #fef2f2; // Red 50
+$c-warning: #f59e0b; // Amber 500
+
+// Shadows & Radius
+$shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+$shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+$shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+$radius: 12px;
+
+/* =================================================================================
+   MAIN CARD STYLE
+   ================================================================================= */
+.saas-card {
+  background: $c-bg;
+  border: 1px solid $c-border;
+  border-radius: $radius;
+  box-shadow: $shadow-sm;
   display: flex;
   flex-direction: column;
-  &.ready {
-    border-color: $green-400;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  height: 100%; // Để các card bằng nhau trong grid
+  min-height: 280px;
+
+  // Hover effect: Nổi lên nhẹ
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: $shadow-lg;
+    border-color: darken($c-border, 10%);
   }
 
+  // Active state (khi nhấn xuống)
+  &:active {
+    transform: translateY(-2px);
+  }
+
+  // --- Focus Mode (khi được chọn hoặc mode tập trung) ---
+  &.focus-mode {
+    border: 2px solid $c-primary;
+    box-shadow: $shadow-md;
+
+    .card-header {
+      background-color: #eff6ff; // Blue 50
+    }
+  }
+
+  // --- Status Modifiers (Optional borders) ---
   &.served {
-    border-color: $primary-400;
+    opacity: 0.85;
+    background-color: #fafafa;
   }
-
-  &.completed {
-    opacity: 0.8;
-    background-color: #f9fafb;
-  }
-
-  @include mobile {
-    padding: $spacing-4;
-  }
-
-  /* FOCUS MODE */
-  &.focus {
-    padding: $spacing-3;
-    // để màu theo thời gian dễ thấy hơn
-    transition: border-color 0.15s ease, background-color 0.15s ease,
-      box-shadow 0.15s ease;
-
-    &.time-ok {
-      // 🟢 bình thường
-      border-color: #16a34a;
-      background-color: #f0fdf4;
-    }
-
-    &.time-warn {
-      // 🟡 cảnh báo
-      border-color: #eab308;
-      background-color: #fefce8;
-    }
-
-    &.time-mid {
-      // 🔴 nguy hiểm
-      border-color: #f97316;
-      background-color: #fff7ed;
-    }
-
-    &.time-high {
-      // 🔴🔴 khẩn cấp
-      border-color: #b91c1c;
-      background-color: #fef2f2;
-      box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.6);
-    }
+  &.cancelled {
+    opacity: 0.6;
+    filter: grayscale(1);
   }
 }
 
-/* Header */
-.orderHeader {
-  @include flex-between;
-  margin-bottom: $spacing-4;
-  gap: $spacing-3;
+/* =================================================================================
+   SECTIONS
+   ================================================================================= */
 
-  @include mobile {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: $spacing-2;
+/* --- HEADER --- */
+.card-header {
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid transparent; // Spacer
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  // Badge hiển thị Bàn / Mang về
+  .table-badge {
+    background: #f1f5f9; // Slate 100
+    color: $c-text-main;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 4px 10px;
+    border-radius: 8px;
+
+    &.takeaway {
+      background: #fff7ed; // Orange 50
+      color: #c2410c; // Orange 700
+    }
+  }
+
+  // Mã đơn hàng (#1234)
+  .order-id {
+    font-family: "Courier New", monospace;
+    color: $c-text-sub;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
   }
 }
 
-.orderTitle {
-  font-size: $text-lg;
-  font-weight: 600;
-  color: $gray-900;
-  margin: 0 0 $spacing-1 0;
-}
-
-.orderTableOnly {
-  font-size: $text-xl;
+/* --- TIME BADGE (Pill Style) --- */
+.saas-badge.time-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
   font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
+
+  // Normal (Xanh lá)
+  &.normal {
+    background: #ecfdf5;
+    color: #059669;
+  }
+
+  // Warning (Vàng)
+  &.warning {
+    background: #fffbeb;
+    color: #b45309;
+  }
+
+  // Danger (Cam)
+  &.danger {
+    background: #fff7ed;
+    color: #c2410c;
+  }
+
+  // Critical (Đỏ + Hiệu ứng)
+  &.critical {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    animation: pulse-border 2s infinite;
+  }
 }
 
-.orderUser {
-  @include flex-start;
-  gap: $spacing-2;
-  font-size: $text-sm;
-  color: $gray-600;
+@keyframes pulse-border {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
 
-  &__name {
+/* --- GUEST INFO --- */
+.guest-info {
+  padding: 0 16px;
+  margin-bottom: 12px;
+
+  .guest-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: $c-text-sub;
+    font-size: 13px;
+  }
+
+  .icon {
+    opacity: 0.6;
+  }
+  .guest-name {
     font-weight: 500;
-    color: $gray-800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* --- ITEMS LIST --- */
+.items-container {
+  padding: 0 16px 16px 16px;
+  flex: 1; // Quan trọng: Đẩy footer xuống đáy card
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .item-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: $c-text-main;
+
+    // Nếu món đã xong thì làm mờ đi chút
+    &.done {
+      opacity: 0.5;
+      text-decoration: line-through;
+    }
   }
 
-  &__contact {
-    font-size: $text-xs;
-    color: $gray-500;
-  }
-
-  svg {
+  // Số lượng (ô vuông xám)
+  .item-qty {
+    background: #f1f5f9;
+    color: $c-text-main;
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
     flex-shrink: 0;
   }
-}
 
-/* thời gian (normal) – mặc định xám, khi .ok thì xanh lá */
-.orderTime {
-  @include flex-start;
-  gap: $spacing-2;
-  font-size: $text-sm;
-  color: $gray-600;
+  .item-details {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 26px; // Căn giữa theo qty
+  }
 
-  &.ok {
-    // 🟢 trạng thái bình thường
-    display: inline-flex;
+  .item-name {
+    line-height: 1.3;
+    font-weight: 500;
+  }
+
+  .item-method {
+    font-size: 12px;
+    color: $c-text-sub;
+    font-style: italic;
+  }
+
+  .more-items {
+    font-size: 12px;
+    color: $c-text-sub;
+    background-color: #f8fafc;
+    padding: 6px 10px;
+    border-radius: 6px;
+    display: flex;
     align-items: center;
-    padding: 0.15rem 0.6rem;
-    border-radius: 999px;
-    background-color: #dcfce7; // nền xanh lá nhạt
-    color: #166534; // chữ xanh đậm
-    font-weight: 600;
-    font-size: $text-xs;
-  }
-}
-
-/* Focus mode – time text nhỏ */
-.orderTimeMini {
-  font-size: $text-xs;
-  font-weight: 600;
-  color: $gray-700;
-}
-
-/* Time warning (normal mode) – vàng / đỏ / đỏ đậm */
-.timeWarning {
-  // dùng mixin để có pill đẹp sẵn, sau đó override màu
-  @include status-badge(#dcfce7, #166534);
-  font-weight: 600;
-
-  &.warning {
-    // 🟡 cảnh báo
-    background-color: #fef9c3;
-    color: #92400e;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 4px;
   }
 
-  &.danger {
-    // 🔴 nguy hiểm
-    background-color: #fee2e2;
-    color: #b91c1c;
-  }
-
-  &.critical {
-    // 🔴🔴 khẩn cấp (icon 🚨 render từ JSX)
-    background-color: #b91c1c;
-    color: #fef2f2;
-    box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.6);
-    @include pulse;
-  }
-}
-
-/* Status badge */
-.statusBadge {
-  &.pending {
-    @include status-badge(#fff3cd, #ffc107);
-  }
-
-  &.preparing {
-    @include status-badge(#f2f6ff, #3356cc);
-  }
-
-  &.ready {
-    @include status-badge(#d1e7dd, #198754);
-  }
-
-  &.served {
-    @include status-badge(#cfe2ff, #084298);
-  }
-
-  &.completed {
-    @include status-badge(#e2e3e5, #495057);
-  }
-
-  &.cancelled {
-    @include status-badge($red-100, $red-600);
-  }
-}
-
-/* Items */
-.itemsSection {
-  margin-bottom: $spacing-4;
-  flex: 1;
-  &.focus {
-    margin-bottom: $spacing-2;
-  }
-}
-
-.sectionTitle {
-  @include flex-start;
-  gap: $spacing-2;
-  color: $gray-700;
-  font-weight: 500;
-  margin-bottom: $spacing-3;
-}
-
-.itemsList {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-2;
-  height: 100%;
-}
-
-.itemCard {
-  @include flex-between;
-  padding: $spacing-3;
-  background: white;
-  border: 1px solid $gray-200;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background-color: $gray-50;
-    transform: translateY(-1px);
-  }
-
-  &.focus {
-    padding: $spacing-2 $spacing-3;
-  }
-  &.itemCard--placeholder {
-    visibility: hidden; // 👈 chiếm chỗ, không hiển thị
-    pointer-events: none;
-  }
-}
-
-.itemInfo {
-  flex: 1;
-}
-
-.itemName {
-  @include flex-start;
-  gap: $spacing-2;
-  font-weight: 500;
-  color: $gray-900;
-  margin-bottom: $spacing-1;
-
-  .quantity {
-    @include status-badge($primary-600, white);
-    font-weight: 600;
-  }
-
-  .itemMethod {
-    color: $gray-500;
+  .empty-items {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 13px;
+    padding: 10px 0;
     font-style: italic;
   }
 }
 
-.itemStatus {
-  font-size: $text-xs;
-  color: $gray-500;
+/* --- FOOTER & ACTIONS --- */
+.card-footer-wrapper {
+  margin-top: auto; // Đẩy xuống đáy
+  border-top: 1px solid $c-border;
+  background: #fafafa; // Nền xám rất nhạt phân vùng
+  padding: 12px 16px;
 }
 
-.itemMore {
-  text-align: center;
-  font-size: $text-sm;
-  color: $gray-600;
-  font-style: italic;
-  &.itemMore--placeholder {
-    visibility: hidden; // vẫn giữ chiều cao dòng
-  }
-}
-
-/* Nút Xong cho focus mode */
-.itemDoneBtn {
-  @include button-success;
-  padding: 0.25rem 0.75rem;
-  font-size: $text-xs;
-  white-space: nowrap;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-}
-
-/* Totals (normal mode) */
-.totalSection {
-  @include flex-between;
-  padding: $spacing-4;
-  background-color: $gray-50;
-  border-radius: 0.5rem;
-  margin-bottom: $spacing-4;
-}
-
-.totalLabel {
-  font-weight: 600;
-  color: $gray-700;
-}
-
-.totalAmount {
-  font-size: $text-lg;
-  font-weight: 700;
-  color: $gray-900;
-}
-
-/* Actions */
-.actions {
+.card-total-row {
   display: flex;
-  gap: $spacing-2;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 
-  @include mobile {
-    flex-direction: column;
+  .label {
+    font-size: 11px;
+    color: $c-text-sub;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
   }
 
-  &.focusActions {
-    margin-top: $spacing-2;
+  .value {
+    font-size: 16px;
+    font-weight: 700;
+    color: $c-text-main;
   }
 }
 
-.confirmButton {
-  @include button-primary;
-  flex: 1;
+.card-status-text {
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 0;
+
+  &.text-blue {
+    color: $c-primary;
+  }
+  &.text-red {
+    color: $c-danger;
+  }
 }
 
-.cancelButton {
-  @include button-danger;
-  flex: 1;
-}
+/* --- BUTTONS --- */
+.card-actions {
+  display: flex;
+  gap: 10px;
 
-.readyButton {
-  @include button-success;
-  flex: 1;
-}
+  &.two-btn {
+    button {
+      flex: 1;
+    }
+    .btn-cancel {
+      flex: 0 0 35%;
+    } // Nút Hủy nhỏ hơn nút Confirm
+  }
 
-.viewButton {
-  @include button-secondary;
-  flex: 1;
+  button {
+    width: 100%;
+    border: none;
+    border-radius: 8px; // Bo góc mềm hơn
+    padding: 10px 12px; // Nút cao hơn cho dễ bấm
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
 
-  &.slim {
-    padding: 0.25rem 0.75rem;
-    font-size: $text-xs;
+    // Icon trong nút
+    svg {
+      flex-shrink: 0;
+    }
+
+    &:active {
+      transform: scale(0.97);
+    }
+  }
+
+  // Styles
+  .btn-primary {
+    background: $c-primary;
+    color: white;
+    box-shadow: 0 1px 2px rgba($c-primary, 0.3);
+    &:hover {
+      background: $c-primary-dark;
+    }
+  }
+
+  .btn-secondary {
+    background: white;
+    border: 1px solid $c-border;
+    color: $c-text-sub;
+    &:hover {
+      background: #f1f5f9;
+      color: $c-danger; // Hover vào nút hủy thì chữ đỏ
+      border-color: #fecaca;
+    }
+  }
+
+  .btn-success {
+    background: $c-success;
+    color: white;
+    box-shadow: 0 1px 2px rgba($c-success, 0.3);
+    &:hover {
+      background: $c-success-dark;
+    }
   }
 }

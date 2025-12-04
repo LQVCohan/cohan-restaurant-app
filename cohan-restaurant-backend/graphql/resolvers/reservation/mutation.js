@@ -59,7 +59,7 @@ async function getTableOrThrow(tableId, restaurantId) {
  * Kiểm tra bàn có bị trùng khoảng thời gian với các Reservation active khác không.
  * Khoảng thời gian = [timeTo, timeTo + durationMinutes].
  * Các status gây xung đột: pending_payment, confirmed, seated
- * (bỏ qua cancelled, completed, no_show).
+ * (bỏ qua cancelled, completed, no_show, deleted).
  */
 async function ensureTableAvailableForTime(
   tableId,
@@ -179,11 +179,11 @@ async function resolveUserIdFromContact({
   return guest.id;
 }
 
-/** Đánh dấu bàn đã được đặt (reserved) */
-async function markTableReserved(tableId) {
+/** Đánh dấu bàn đã được đặt (reserved hoặc payment_pending) */
+async function markTableReserved(tableId, status = "payment_pending") {
   await Table.findByIdAndUpdate(
     toObjectId(tableId),
-    { status: "reserved" },
+    { status }, // "payment_pending" hoặc "reserved"
     { new: true }
   );
 }
@@ -212,13 +212,14 @@ export const ReservationMutation = {
         restaurantId,
         tableId,
         timeTo, // bắt buộc
-        durationMinutes, // mới: thời lượng (phút)
+        durationMinutes, // thời lượng (phút)
         partySize = 2,
         note,
         customerName,
         customerPhone,
         customerEmail,
         depositAmount = 0,
+        paid = false, // <<< NEW: flag đã thanh toán
       } = input || {};
 
       if (!restaurantId || !tableId) {
@@ -273,6 +274,24 @@ export const ReservationMutation = {
         customerEmail,
       });
 
+      // Xác định trạng thái đơn & cọc dựa trên paid + depositAmount
+      let depositStatus;
+      let reservationStatus;
+
+      if (paid === true) {
+        // Đã thanh toán
+        depositStatus = "paid";
+        reservationStatus = "confirmed";
+      } else if (depositAmount > 0) {
+        // Có cọc nhưng chưa thanh toán
+        depositStatus = "pending";
+        reservationStatus = "pending_payment";
+      } else {
+        // Không cọc
+        depositStatus = "unpaid";
+        reservationStatus = "confirmed";
+      }
+
       const doc = new Reservation({
         restaurantId: toObjectId(restaurantId),
         restaurantName: restaurant.name || "",
@@ -289,15 +308,17 @@ export const ReservationMutation = {
         customerEmail: customerEmail?.trim() || null,
 
         depositAmount,
-        depositStatus: depositAmount > 0 ? "pending" : "unpaid",
-        status: depositAmount > 0 ? "pending_payment" : "confirmed",
+        depositStatus,
+        status: reservationStatus,
         // orderCode, pendingPaymentExpiresAt sẽ do pre-save trong model tự xử lý
       });
 
       const saved = await doc.save();
 
-      // Đánh dấu bàn đã được đặt
-      await markTableReserved(tableId);
+      // Đánh dấu bàn đã được đặt:
+      // - Nếu đã paid => "reserved"
+      // - Nếu chưa paid => "payment_pending" (hành vi cũ)
+      await markTableReserved(tableId, paid ? "reserved" : "payment_pending");
 
       if (isLateBooking) {
         saved._warning =
@@ -494,7 +515,7 @@ export const ReservationMutation = {
         runValidators: true,
       });
 
-      // Đánh dấu bàn mới reserved, thử giải phóng bàn cũ
+      // Đánh dấu bàn mới reserved (mặc định vẫn payment_pending)
       await markTableReserved(newTableId);
       await tryReleaseTable(oldTableId);
 
@@ -572,6 +593,38 @@ export const ReservationMutation = {
     } catch (err) {
       if (err instanceof GraphQLError) throw err;
       throw new GraphQLError(err.message || "Failed to cancel reservation", {
+        extensions: { code: "INTERNAL_SERVER_ERROR" },
+      });
+    }
+  },
+
+  /* ───────────────── deleteReservation ───────────────── */
+  async deleteReservation(_, { id }, _ctx) {
+    try {
+      if (!id) {
+        throw new GraphQLError("Missing reservation id", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+
+      const current = await Reservation.findById(toObjectId(id));
+      if (!current) {
+        throw new GraphQLError("Reservation not found", {
+          extensions: { code: "NOT_FOUND" },
+        });
+      }
+
+      // Change status to 'deleted'
+      current.status = "no_show";
+      const saved = await current.save();
+
+      // Try to release the table if no other active reservations exist
+      await tryReleaseTable(current.tableId);
+
+      return saved;
+    } catch (err) {
+      if (err instanceof GraphQLError) throw err;
+      throw new GraphQLError(err.message || "Failed to delete reservation", {
         extensions: { code: "INTERNAL_SERVER_ERROR" },
       });
     }

@@ -11,7 +11,7 @@ function TableActionsModalCore({
   table,
   onClose,
   onUpdated,
-  // giữ lại để tương thích cũ (không bắt buộc)
+  onSave, // ✅ nhận hàm đã test từ LeftPanel (handleSaveCustomerFromModal)
 }) {
   const reallyOpen = open ?? isOpen;
 
@@ -29,15 +29,14 @@ function TableActionsModalCore({
     deleteTable,
     fetchTableByCode,
 
-    // NEW: từ PosContext, đã export
-    attachCustomerToOrder,
-    saveTableCustomer, // local-only để đồng bộ UI
+    // ❌ bỏ attachCustomerToOrder & saveTableCustomer
     fetchOrderByTable,
   } = usePos();
 
-  const { changeOrderStatusByCode } = useOrderManagement();
-  const { createReservationForTable, findConfirmedByTable } = useReservation();
-
+  const { changeOrderStatusByCode, updateOrderCustomerByCode } =
+    useOrderManagement();
+  const { findConfirmedByTable } = useReservation();
+  const [orderCodeForTable, setOrderCodeForTable] = useState(null);
   // ----- local states -----
   const [code, setCode] = useState("");
   const [capacity, setCapacity] = useState(0);
@@ -72,10 +71,10 @@ function TableActionsModalCore({
 
   const [todayStr, setTodayStr] = useState(getTodayLocal());
 
-  // Toggle: Đặt theo khung giờ (bật = tạo reservation; tắt = chỉ lưu thông tin vào bàn)
+  // Toggle: Đặt theo khung giờ
   const [useTimeslot, setUseTimeslot] = useState(true);
 
-  // thông tin khách (chỉ cho UI)
+  // thông tin khách (chỉ cho UI, sẽ map sang cust + checkin khi gọi onSave)
   const [cust, setCust] = useState({
     name: "",
     phone: "",
@@ -132,7 +131,7 @@ function TableActionsModalCore({
       setMergeCodes("");
       setTodayStr(getTodayLocal());
       setUseTimeslot(true);
-
+      setOrderCodeForTable(null);
       hydratedReservationFor.current = null;
       hydratedOrderFor.current = null;
 
@@ -207,6 +206,8 @@ function TableActionsModalCore({
       }
 
       // Luôn thử lấy order hiện tại, nhưng chỉ 1 lần cho table.code
+
+      // Luôn thử lấy order hiện tại, nhưng chỉ 1 lần cho table.code
       if (hydratedOrderFor.current !== table?.code) {
         try {
           const ores = await fetchOrderByTableRef.current?.(
@@ -214,18 +215,28 @@ function TableActionsModalCore({
             table.code
           );
           console.log("ores: ", ores);
-          const activeOrder = ores?.data?.[0] || null;
-          const u = activeOrder?.user || activeOrder?.customer || null;
-          if (u && !cancelled) {
-            setCustIfChanged({
-              name: u.name || u.fullName || "",
-              phone: u.phone || "",
-              email: u.email || "",
-              guests:
-                (Number.isFinite(Number(activeOrder?.partySize))
-                  ? Number(activeOrder?.partySize)
-                  : undefined) ?? undefined,
-            });
+
+          // fetchOrderByTable trả về list group đã gộp
+          const groups = Array.isArray(ores?.data) ? ores.data : [];
+          const firstGroup = groups[0] || null;
+
+          if (firstGroup && !cancelled) {
+            // NEW: lưu orderCode để dùng khi updateOrderCustomerByCode
+            setOrderCodeForTable(firstGroup.orderCode || null);
+
+            const u = firstGroup.user || firstGroup.customer || null;
+            if (u) {
+              setCustIfChanged({
+                name: u.fullName || u.name || "",
+                phone: u.phone || "",
+                email: u.email || "",
+                // partySize nếu BE có, còn không thì bỏ qua
+                guests:
+                  (Number.isFinite(Number(firstGroup.partySize))
+                    ? Number(firstGroup.partySize)
+                    : undefined) ?? undefined,
+              });
+            }
           }
         } catch (e) {
           console.warn("fetchOrderByTable failed:", e);
@@ -239,7 +250,7 @@ function TableActionsModalCore({
     return () => {
       cancelled = true;
     };
-    // CHÚ Ý: không đưa các hàm vào deps để tránh identity thay đổi gây lặp
+    // không đưa các hàm vào deps để tránh identity thay đổi gây lặp
   }, [reallyOpen, restaurantId, table?.id, table?.code, table?.status]);
 
   const floorsSorted = useMemo(
@@ -530,84 +541,71 @@ function TableActionsModalCore({
     });
   };
 
-  // ✅ Lưu thông tin khách
+  // ✅ Lưu thông tin khách: gọi ra handleSaveCustomerFromModal ở LeftPanel
   const saveCustomerInfo = async () => {
-    const customer = {
-      fullName: (cust.name || "").trim(),
-      phone: (cust.phone || "").trim(),
-      email: (cust.email || "").trim(),
-      note: cust.note || "",
+    // CASE 1: Bàn đang CÓ KHÁCH, đã có order sẵn → updateOrderCustomerByCode
+    if (status === "occupied" && orderCodeForTable && restaurantId) {
+      const customer = {
+        fullName: (cust.name || "").trim(),
+        phone: (cust.phone || "").trim(),
+        email: (cust.email || "").trim(),
+      };
+
+      // nếu không có gì để cập nhật thì thôi
+      if (!customer.fullName && !customer.phone && !customer.email) {
+        alert("Vui lòng nhập ít nhất tên, SĐT hoặc email của khách.");
+        return;
+      }
+
+      try {
+        setBusyKey("saveCustomer", true);
+        const res = await updateOrderCustomerByCode({
+          restaurantId,
+          orderCode: orderCodeForTable,
+          customer,
+        });
+
+        if (!res || !res.success) {
+          alert(res?.message || "Cập nhật thông tin khách thất bại.");
+        } else {
+          alert("Đã cập nhật thông tin khách cho đơn hiện tại.");
+          onUpdated?.();
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Lưu thông tin khách thất bại.");
+      } finally {
+        setBusyKey("saveCustomer", false);
+      }
+      return; // ⛔ kết thúc tại đây, không đi vào onSave nữa
+    }
+
+    // CASE 2: Các trạng thái khác (Trống / Đã đặt ...) → giữ nguyên luồng cũ dùng onSave
+    if (!onSave) return;
+
+    // Nếu đang dùng timeslot thì validate form đặt bàn
+    if (useTimeslot && !validateCustomerForReservation()) return;
+
+    let checkin = null;
+    if (useTimeslot && cust.checkinDate && cust.checkinTime) {
+      checkin = combineDateTimeToISO(cust.checkinDate, cust.checkinTime);
+    }
+
+    const payload = {
+      ...cust,
+      guests: Number(cust.guests || 0),
+      checkin, // field mà handleSaveCustomerFromModal đã dùng
     };
 
     try {
-      // Đồng bộ local để UI hiển thị ngay
-      await saveTableCustomer(table.code, {
-        ...customer,
-        guests: Number(cust.guests || 0),
-        checkinDate: useTimeslot ? cust.checkinDate || todayStr : "",
-        checkinTime: useTimeslot ? cust.checkinTime || "" : "",
-      });
-
-      // --- LUỒNG CHÍNH ---
-      if (status === "available") {
-        if (useTimeslot) {
-          if (!validateCustomerForReservation()) return;
-
-          const iso = combineDateTimeToISO(
-            cust.checkinDate || todayStr,
-            cust.checkinTime
-          );
-
-          setBusyKey("saveCustomer", true);
-          const res = await createReservationForTable({
-            restaurantId,
-            tableId: table.id,
-            customer,
-            partySize: Number(cust.guests || 0),
-            timeTo: iso || new Date().toISOString(),
-            durationMinutes: 90,
-            note: cust.note || "",
-            restaurantName: "",
-            maxCapacity: table.capacity,
-          });
-          setBusyKey("saveCustomer", false);
-
-          if (!res?.success) {
-            alert(res?.message || "Tạo đặt bàn thất bại.");
-            return;
-          }
-          alert("Đã tạo đặt bàn và chuyển bàn sang trạng thái ĐÃ ĐẶT.");
-          onUpdated?.();
-          return;
-        } else {
-          alert("Đã lưu thông tin khách cho bàn (không đặt theo khung giờ).");
-          onUpdated?.();
-          return;
-        }
-      }
-
-      if (status === "occupied") {
-        const r = await attachCustomerToOrder(table.code, customer);
-        if (!r?.success) {
-          alert(r?.message || "Cập nhật khách vào đơn thất bại.");
-          return;
-        }
-        alert("Đã lưu thông tin khách vào đơn hiện tại.");
-        onUpdated?.();
-        return;
-      }
-
-      if (status === "reserved") {
-        alert(
-          "Bàn đang ở trạng thái ĐÃ ĐẶT. Nếu khách đã tới, hãy đổi trạng thái sang CÓ KHÁCH rồi cập nhật thông tin đơn."
-        );
-        return;
-      }
-
-      alert("Đã lưu thông tin khách.");
+      setBusyKey("saveCustomer", true);
+      await onSave(table.code, payload);
+      // toast/alert do handleSaveCustomerFromModal xử lý
     } catch (e) {
       console.error(e);
       alert("Lưu thông tin khách thất bại.");
+    } finally {
+      setBusyKey("saveCustomer", false);
     }
   };
 
@@ -912,7 +910,6 @@ function TableActionsModalCore({
                     type="checkbox"
                     checked={useTimeslot}
                     onChange={(e) => setUseTimeslot(e.target.checked)}
-                    // Ẩn chọn khung giờ nếu bàn KHÔNG phải available hoặc reserved
                     disabled={
                       !(status === "available" || status === "reserved")
                     }
@@ -924,11 +921,10 @@ function TableActionsModalCore({
                 </div>
               </div>
 
-              {/* Ngày & Giờ: chỉ render khi bật toggle và trạng thái cho phép */}
+              {/* Ngày & Giờ khi bật timeslot */}
               {useTimeslot &&
                 (status === "available" || status === "reserved") && (
                   <>
-                    {/* Ngày: chỉ hôm nay -> tương lai */}
                     <div>
                       <label className={s.label}>Ngày</label>
                       <input
@@ -942,7 +938,6 @@ function TableActionsModalCore({
                       />
                     </div>
 
-                    {/* Giờ: slot 30 phút & ẩn slot đã qua trong ngày hiện tại */}
                     <div>
                       <label className={s.label}>Giờ (khung 30 phút)</label>
                       <select

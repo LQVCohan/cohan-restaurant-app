@@ -191,8 +191,8 @@ export default function PosProvider({
     totals,
     orderNote,
     setOrderNote,
-    attachCustomerToOrder,
     updateOrderCustomerByCode,
+    loadGroupsForTable, // dùng để lấy/gộp order theo bàn
   } = useOrderManagement({
     currentOrder,
     setCurrentOrder,
@@ -202,7 +202,7 @@ export default function PosProvider({
     restaurantId,
   });
 
-  // chọn bàn => load order của bàn (nếu có)
+  // chọn bàn => load order gộp theo bàn (theo tableCode)
   const selectTableForOrder = useCallback(
     async (code, capacity) => {
       const table =
@@ -216,15 +216,6 @@ export default function PosProvider({
       }
 
       const statusTable = table?.status || "available";
-
-      // Dò order hoạt động từ DB (theo bàn)
-      let activeOrderDoc = null;
-      try {
-        const res = await fetchOrderByTable(restaurantId, code);
-        activeOrderDoc = res?.data?.[0] || null;
-      } catch (e) {
-        console.warn("fetchOrderByTable failed:", e);
-      }
 
       if (statusTable === "offline") {
         showNotification(
@@ -241,8 +232,23 @@ export default function PosProvider({
         return;
       }
 
+      // Lấy danh sách group theo bàn & gộp món ở FE
+      let groupsForTable = [];
+      try {
+        groupsForTable =
+          (await loadGroupsForTable({
+            restaurantId,
+            tableCode: code,
+          })) || [];
+      } catch (e) {
+        console.warn("loadGroupsForTable failed:", e);
+      }
+
+      const hasOrders =
+        Array.isArray(groupsForTable) && groupsForTable.length > 0;
+
       // Bàn trống, chưa có order
-      if (!activeOrderDoc && statusTable === "available") {
+      if (!hasOrders && statusTable === "available") {
         showNotification(`Đã chọn bàn ${code}.`, "success");
         setCurrentTable({
           id: table?.id,
@@ -257,24 +263,16 @@ export default function PosProvider({
         return;
       }
 
-      // Bàn có order đang hoạt động
-      if (activeOrderDoc) {
+      // Bàn có order đang hoạt động (đã gộp món trong loadGroupsForTable)
+      if (hasOrders) {
         showNotification(`Đã chọn bàn ${code} có khách.`, "info");
-        const restored = (activeOrderDoc.items || []).map((i) => ({
-          ...i,
-          orderCode: activeOrderDoc.orderCode,
-          isExisting: true,
-          isNew: false,
-          _lineId: `${i.dishId || i.id}-${Date.now()}-${Math.random()}`,
-        }));
-        setCurrentOrder(restored);
         setCurrentTable({
           id: table?.id,
           code,
           capacity,
           status: "occupied",
           restaurantId,
-          orderCode: activeOrderDoc.orderCode || null,
+          orderCode: groupsForTable[0]?.orderCode || null,
         });
         setCurrentOrderType("dine_in");
 
@@ -290,25 +288,26 @@ export default function PosProvider({
             console.warn("setTableStatus (occupied) failed:", e);
           }
         }
-      } else {
-        // reserved nhưng chưa có order
-        showNotification(`Bàn ${code} đang được đặt.`, "info");
-        setCurrentOrder([]);
-        setCurrentTable({
-          id: table?.id,
-          code,
-          capacity,
-          status: "reserved",
-          restaurantId,
-          orderCode: null,
-        });
-        setCurrentOrderType("dine_in");
+        return;
       }
+
+      // reserved nhưng chưa có order
+      showNotification(`Bàn ${code} đang được đặt.`, "info");
+      setCurrentOrder([]);
+      setCurrentTable({
+        id: table?.id,
+        code,
+        capacity,
+        status: "reserved",
+        restaurantId,
+        orderCode: null,
+      });
+      setCurrentOrderType("dine_in");
     },
     [
       allTables,
-      fetchOrderByTable,
       restaurantId,
+      loadGroupsForTable,
       setCurrentOrder,
       setCurrentTable,
       setCurrentOrderType,
@@ -512,7 +511,6 @@ export default function PosProvider({
       ordersLoading,
       ordersError,
       orderById,
-      attachCustomerToOrder,
       updateOrderCustomerByCode,
 
       // menu filter
@@ -605,7 +603,6 @@ export default function PosProvider({
       clearOrder,
       orderNote,
       setOrderNote,
-      attachCustomerToOrder,
       updateOrderCustomerByCode,
     ]
   );

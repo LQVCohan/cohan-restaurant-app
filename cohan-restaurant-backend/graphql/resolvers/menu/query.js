@@ -38,7 +38,7 @@ export const MenuQuery = {
       .limit(Math.min(limit ?? 50, 500))
       .sort({ name: 1 })
       .lean({ virtuals: true });
-    console.log("menuItems[0] from Mongo:", menuItems[0]);
+
     // recipe (và servingVariants) sẽ được autoPopulate từ model + types resolver
     return menuItems;
   },

@@ -287,11 +287,11 @@ export const OrderMutation = {
               items: normalizedItems,
               totals,
               note,
-              currentStatus: "confirmed",
+              currentStatus: "pending",
               payment: { method: "cash", status: "pending" },
               statusTimeline: [
                 {
-                  status: "confirmed",
+                  status: "pending",
                   at: new Date(),
                   byUserId: finalUserId ? toId(finalUserId) : undefined,
                   note: "Created new batch order",
@@ -364,19 +364,6 @@ export const OrderMutation = {
     }
   },
 
-  /**
-   * ============================================================
-   * UPDATE ORDER STATUS (by ID)
-   * - Không dùng orderCode, chỉ dùng id.
-   * - Logic inventory:
-   *   + Nếu từ trạng thái RESERVABLE → COMMIT_STATUSES:
-   *       - Commit reservation (commitReservationForOrderTx)
-   *       - Nếu commit thành công, mới update status order.
-   *   + Nếu từ RESERVABLE → cancelled:
-   *       - Cancel reservation
-   *       - Nếu thành công, mới update status.
-   * ============================================================
-   */
   async updateOrderStatus(_, { input }, ctx) {
     const { id, restaurantId, status, note, warehouseId } = input || {};
 
@@ -453,12 +440,6 @@ export const OrderMutation = {
     return order.toJSON();
   },
 
-  /**
-   * ============================================================
-   * UPDATE SINGLE ITEM STATUS (by orderId + itemKey)
-   * - Không đụng inventory (inventory theo toàn order).
-   * ============================================================
-   */
   async updateOrderItemStatus(_, { input }, ctx) {
     const { restaurantId, orderId, itemKey, status, note } = input || {};
     if (!orderId || !itemKey || !status)
@@ -499,15 +480,6 @@ export const OrderMutation = {
 
     return { order: order.toJSON() };
   },
-
-  /**
-   * ============================================================
-   * ATTACH/UPDATE CUSTOMER BY ORDER CODE
-   * - Gán user (guest) cho toàn bộ order cùng code
-   * - Đồng thời upsert TableCustomer theo orderCode
-   * ============================================================
-   */
-  // eslint-disable-next-line no-unused-vars
   async updateOrderCustomerByCode(_, { input }, ctx) {
     const { restaurantId, orderCode, userId, customer } = input || {};
     if (!restaurantId || !orderCode) throw new Error("Missing fields");
@@ -544,12 +516,6 @@ export const OrderMutation = {
     return { success: true, modifiedCount: res.modifiedCount };
   },
 
-  /**
-   * ============================================================
-   * CANCEL SINGLE ORDER BY ID
-   * - Nếu đang ở trạng thái “reservable” → cancel reservation trong kho.
-   * ============================================================
-   */
   async cancelOrder(_, { restaurantId, orderId, reason, warehouseId }, ctx) {
     if (!restaurantId || !orderId) throw new Error("Missing fields");
 

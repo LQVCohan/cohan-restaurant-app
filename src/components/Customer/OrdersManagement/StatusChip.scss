@@ -1,0 +1,72 @@
+@use "../../../styles/variables.scss" as *; // Import nếu bạn có file biến chung
+
+// --- Local Variables (nếu không dùng chung) ---
+$bg-warning: #fff7ed;
+$text-warning: #c2410c;
+$border-warning: #ffedd5;
+$bg-info: #eff6ff;
+$text-info: #1d4ed8;
+$border-info: #dbeafe;
+$bg-success: #f0fdf4;
+$text-success: #15803d;
+$border-success: #bbf7d0;
+$bg-danger: #fef2f2;
+$text-danger: #b91c1c;
+$border-danger: #fecaca;
+$bg-default: #f3f4f6;
+$text-default: #374151;
+$border-default: #e5e7eb;
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px; // Bo tròn dạng viên thuốc
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  white-space: nowrap;
+
+  .chip-icon {
+    font-size: 1em; // Icon to bằng chữ
+  }
+
+  // --- Các biến thể màu sắc ---
+
+  // 1. Warning (Chờ xử lý, Chờ thanh toán)
+  &.status-warning {
+    background-color: $bg-warning;
+    color: $text-warning;
+    border-color: $border-warning;
+  }
+
+  // 2. Info (Đã đặt, Đang giao, Đang nấu)
+  &.status-info {
+    background-color: $bg-info;
+    color: $text-info;
+    border-color: $border-info;
+  }
+
+  // 3. Success (Hoàn thành, Đã đến)
+  &.status-success {
+    background-color: $bg-success;
+    color: $text-success;
+    border-color: $border-success;
+  }
+
+  // 4. Danger (Hủy, Từ chối)
+  &.status-danger {
+    background-color: $bg-danger;
+    color: $text-danger;
+    border-color: $border-danger;
+  }
+
+  // 5. Default
+  &.status-default {
+    background-color: $bg-default;
+    color: $text-default;
+    border-color: $border-default;
+  }
+}

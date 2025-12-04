@@ -40,6 +40,8 @@ import MainLayout from "../layouts/MainLayout";
 import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayout";
 import { useNotification } from "@/hooks/useNotification";
 import RestaurantMenu from "@/components/Customer/RestaurantMenu/RestaurantMenu";
+import FloorMap from "@/components/Customer/TableBooking/FloorMap/FloorMap";
+import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDesigner";
 // =========================
 // 🔐 GraphQL Query: me
 // =========================
@@ -247,15 +249,10 @@ const AppRouter = () => {
           }
         />
         <Route
-          path="/manager/staff"
+          path="/manager/dashboard/floor-map/:restaurantId"
           element={
-            <PrivateRoute
-              allowedRoles={["manager", "admin"]}
-              requireVerifiedEmail
-            >
-              <ManagerLayout>
-                <StaffManagement />
-              </ManagerLayout>
+            <PrivateRoute allowedRoles={["manager", "admin"]}>
+              <FloorPlanDesigner />
             </PrivateRoute>
           }
         />

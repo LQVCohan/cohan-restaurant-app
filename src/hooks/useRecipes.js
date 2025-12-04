@@ -20,20 +20,77 @@ const initialRecipes = [
   },
 ];
 
-// Map BE -> FE (card/list/detail)
+/**
+ * Map BE -> FE (card/list/detail)
+ * items: [{ menuItem, recipe }]
+ */
 const mapToFeRecipes = (items = []) =>
-  items.map(({ menuItem: mi, recipe: r }) => ({
-    id: mi.id,
-    name: mi.name,
-    description: mi.description || "",
-    category: "main",
-    icon: "🍽️",
-    servingVariants: Array.isArray(r?.servingVariants) ? r.servingVariants : [],
-  }));
+  items.map(({ menuItem: mi, recipe: r }) => {
+    const servingVariants = Array.isArray(r?.servingVariants)
+      ? r.servingVariants.map((sv) => {
+          // BE field: sv.Ingredients = [
+          //   { ingredientId, quantify, wastePct, name, baseUnit, costPerBaseUnit }
+          // ]
+          const rawIngredients = Array.isArray(sv.Ingredients)
+            ? sv.Ingredients
+            : [];
+
+          // components: chuẩn hóa cho RecipeModal (UI edit)
+          const components = rawIngredients.map((ic) => ({
+            ingredientId: ic.ingredientId,
+            // coi quantify đang là quantity theo baseUnit
+            qty:
+              typeof ic.quantify === "number"
+                ? ic.quantify
+                : typeof ic.qty === "number"
+                ? ic.qty
+                : 0,
+            unit: ic.baseUnit || "g", // hiển thị mặc định theo baseUnit
+            baseUnit: ic.baseUnit || "g",
+            name: ic.name || "",
+            wastePct: typeof ic.wastePct === "number" ? ic.wastePct : 0,
+            costPerBaseUnit:
+              typeof ic.costPerBaseUnit === "number"
+                ? ic.costPerBaseUnit
+                : null,
+          }));
+
+          return {
+            key: sv.key,
+            mode: sv.mode, // "PORTION" | "BY_WEIGHT"
+            yieldQty: sv.yieldQty,
+            yieldUnit: sv.yieldUnit,
+            // FE form đang dùng preparationMethodName; BE type dùng name
+            preparationMethodName: sv.preparationMethodName || sv.name || "",
+            // Để RecipeModal edit: dùng components
+            components,
+            // Để RecipeCard / Detail đọc nhanh:
+            Ingredients: rawIngredients,
+          };
+        })
+      : [];
+
+    return {
+      // ⚠️ id FE = menuItem.id (để CRUD theo menuItemId)
+      id: mi.id,
+      name: mi.name,
+      description: mi.description || "",
+      // tạm dùng category fake, nếu sau này có categoryId thì map thêm
+      category: "main",
+      icon: "🍽️",
+      servingVariants,
+      // nếu cần giữ lại info thô:
+      _rawRecipeId: r?.id,
+      _rawRecipe: r || null,
+    };
+  });
 
 /**
  * Chuẩn hóa dữ liệu để gửi đúng định dạng UpsertRecipeInput
  * (không gửi name, category, description, methods, icon...)
+ *
+ * form nhận từ RecipeModal.buildPayload()
+ * -> form.servingVariants[*].ingredients (đã được convert về baseUnit)
  */
 function buildUpsertInput({
   restaurantId,
@@ -47,10 +104,19 @@ function buildUpsertInput({
 
   const servingVariants = (form?.servingVariants || []).map((v) => {
     const isByWeight = v.mode === "BY_WEIGHT";
-    const components = (v.components || []).map((c) => ({
+
+    // Ưu tiên dùng v.ingredients (do RecipeModal build payload)
+    // Nếu chưa có, fallback từ v.components (trường hợp cũ)
+    const srcList = Array.isArray(v.ingredients)
+      ? v.ingredients
+      : Array.isArray(v.components)
+      ? v.components
+      : [];
+
+    const ingredients = srcList.map((c) => ({
       ingredientId: c.ingredientId,
-      qty: Number(c.qty) || 0,
-      unit: c.unit || undefined,
+      qty: Number(c.qty) || 0, // qty đã là "theo baseUnit" nếu build từ RecipeModal mới
+      name: c.name || undefined,
       wastePct: Number(c.wastePct || 0) || 0,
     }));
 
@@ -60,7 +126,8 @@ function buildUpsertInput({
       yieldQty: Number(v.yieldQty || 1),
       yieldUnit: v.yieldUnit || (isByWeight ? "100g" : "portion"),
       preparationMethodName: v.preparationMethodName || "",
-      components,
+      // 🔥 ĐÚNG field theo schema: ServingVariantInput.ingredients
+      ingredients,
     };
   });
 

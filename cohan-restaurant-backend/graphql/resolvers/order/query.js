@@ -1,6 +1,6 @@
 // cohan-restaurant-backend/graphql/resolvers/order/query.js
 import mongoose from "mongoose";
-import { Order } from "../../../models/index.js";
+import { Order, User } from "../../../models/index.js";
 import { toId } from "../order/helper/orderUtils.js";
 import { resolveTableSafe } from "../order/helper/tableUtils.js";
 import TableCustomer from "../../../models/tableCustomer.model.js";
@@ -227,7 +227,167 @@ export const OrderQuery = {
       .lean({ virtuals: true });
 
     if (!docs.length) return [];
-    return groupOrdersByCode(docs);
+
+    // ====== Gắn thông tin user cho từng order ======
+    const userIds = [
+      ...new Set(
+        docs.map((o) => (o.userId ? String(o.userId) : null)).filter(Boolean)
+      ),
+    ];
+
+    let userMap = new Map();
+    if (userIds.length) {
+      const users = await User.find({ _id: { $in: userIds } })
+        .select({ _id: 1, fullName: 1, email: 1, phone: 1 })
+        .lean();
+
+      userMap = new Map(
+        users.map((u) => [
+          String(u._id),
+          {
+            id: String(u._id),
+            fullName: u.fullName || null,
+            email: u.email || null,
+            phone: u.phone || null,
+          },
+        ])
+      );
+    }
+
+    const docsWithUser = docs.map((o) => {
+      const u =
+        (o.user && o.user.id && o.user) || // phòng trường hợp đã có virtual user
+        (o.userId && userMap.get(String(o.userId))) ||
+        null;
+
+      return {
+        ...o,
+        user: u,
+      };
+    });
+
+    return groupOrdersByCode(docsWithUser);
+  },
+
+  /**
+   * Danh sách orders của một user (theo userId) — cursor connection
+   * Schema: ordersByUser(userId: ID!, limit: Int = 20, cursor: ID): OrdersConnection!
+   */
+  async ordersByUser(_, { userId, limit = 20, cursor }) {
+    if (!mongoose.isValidObjectId(userId)) {
+      throw new Error("Invalid userId");
+    }
+
+    const uid = toId(userId);
+
+    const baseFilter = {
+      userId: uid,
+      // KHÔNG lọc theo currentStatus => lấy tất cả đơn của user đó
+    };
+
+    // Pagination kiểu "cursor = _id"
+    const q = Order.find(baseFilter).sort({ _id: 1 });
+    if (cursor) {
+      q.where("_id").gt(cursor);
+    }
+    if (limit) {
+      q.limit(limit + 1); // lấy dư 1 để biết còn next hay không
+    }
+
+    const rows = await q.lean();
+
+    const hasNextPage = rows.length > limit;
+    const slice = hasNextPage ? rows.slice(0, limit) : rows;
+
+    const lastCursor = slice.length
+      ? String(slice[slice.length - 1]._id)
+      : null;
+
+    // === Map sang TableCustomer (tương tự ordersByRestaurantNow) ===
+    const tableCodes = [
+      ...new Set(slice.map((o) => o.tableCode).filter(Boolean)),
+    ];
+    const orderCodes = [
+      ...new Set(slice.map((o) => o.orderCode).filter(Boolean)),
+    ];
+    const restaurantIds = [
+      ...new Set(
+        slice
+          .map((o) => (o.restaurantId ? String(o.restaurantId) : null))
+          .filter(Boolean)
+      ),
+    ];
+
+    let customerDocs = [];
+    if (tableCodes.length || orderCodes.length) {
+      const customerFilter = {
+        $or: [
+          ...(tableCodes.length ? [{ tableCode: { $in: tableCodes } }] : []),
+          ...(orderCodes.length ? [{ orderCode: { $in: orderCodes } }] : []),
+        ],
+      };
+
+      if (restaurantIds.length) {
+        customerFilter.restaurantId = {
+          $in: restaurantIds.map((id) => toId(id)),
+        };
+      }
+
+      customerDocs = await TableCustomer.find(customerFilter)
+        .select({
+          tableCode: 1,
+          orderCode: 1,
+          customerName: 1,
+          customerPhone: 1,
+          customerEmail: 1,
+          note: 1,
+          partySize: 1,
+          timeTo: 1,
+        })
+        .lean();
+    }
+
+    const byTableCode = new Map();
+    const byOrderCode = new Map();
+    for (const c of customerDocs) {
+      if (c.tableCode) byTableCode.set(String(c.tableCode), c);
+      if (c.orderCode) byOrderCode.set(String(c.orderCode), c);
+    }
+
+    const edges = slice.map((o) => {
+      const tc =
+        (o.orderCode && byOrderCode.get(String(o.orderCode))) ||
+        (o.tableCode && byTableCode.get(String(o.tableCode))) ||
+        null;
+
+      const customerInfo = tc
+        ? {
+            name: tc.customerName || null,
+            phone: tc.customerPhone || null,
+            email: tc.customerEmail || null,
+            note: tc.note || null,
+            partySize: tc.partySize || null,
+            timeTo: tc.timeTo || null,
+          }
+        : null;
+
+      return {
+        cursor: String(o._id),
+        node: {
+          id: String(o._id),
+          ...o,
+          customerInfo,
+        },
+      };
+    });
+
+    return {
+      edges,
+      pageInfo: {
+        endCursor: lastCursor,
+        hasNextPage,
+      },
+    };
   },
 };
 

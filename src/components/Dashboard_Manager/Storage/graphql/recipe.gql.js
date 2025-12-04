@@ -1,17 +1,13 @@
-// src/components/Dashboard_Manager/Storage/graphql/recipe.gql.js
 import { gql } from "@apollo/client";
-
-/* ===========================================================
-   🔹 FRAGMENTS (dùng lại nhiều nơi)
-   =========================================================== */
 
 export const FR_RECIPE_COMPONENT_FIELDS = gql`
   fragment RecipeComponentFields on IngredientsComponent {
     ingredientId
-    ingredientName
-    qty
-    unit
+    quantify
     wastePct
+    name
+    baseUnit
+    costPerBaseUnit
   }
 `;
 
@@ -21,8 +17,8 @@ export const FR_SERVING_VARIANT_FIELDS = gql`
     mode
     yieldQty
     yieldUnit
-    preparationMethodName
-    components {
+    name
+    Ingredients {
       ...RecipeComponentFields
     }
   }
@@ -44,10 +40,6 @@ export const FR_RECIPE_FIELDS = gql`
   }
   ${FR_SERVING_VARIANT_FIELDS}
 `;
-
-/* ===========================================================
-   🔹 QUERY: Danh sách món + công thức (phân trang)
-   =========================================================== */
 
 export const Q_MENU_ITEMS_WITH_RECIPES_PAGED = gql`
   query MenuItemsWithRecipes(
@@ -86,9 +78,6 @@ export const Q_MENU_ITEMS_WITH_RECIPES_PAGED = gql`
   ${FR_RECIPE_FIELDS}
 `;
 
-/* ===========================================================
-   🔹 QUERY: Lấy 1 công thức cụ thể theo menuItem
-   =========================================================== */
 export const Q_RECIPE = gql`
   query Recipe($restaurantId: ID!, $menuItemId: ID!) {
     recipe(restaurantId: $restaurantId, menuItemId: $menuItemId) {
@@ -98,9 +87,6 @@ export const Q_RECIPE = gql`
   ${FR_RECIPE_FIELDS}
 `;
 
-/* ===========================================================
-   🔹 MUTATION: Tạo / Cập nhật Recipe (Upsert)
-   =========================================================== */
 export const M_UPSERT_RECIPE = gql`
   mutation UpsertRecipe($input: UpsertRecipeInput!) {
     upsertRecipe(input: $input) {
@@ -110,18 +96,12 @@ export const M_UPSERT_RECIPE = gql`
   ${FR_RECIPE_FIELDS}
 `;
 
-/* ===========================================================
-   🔹 MUTATION: Xoá Recipe
-   =========================================================== */
 export const M_DELETE_RECIPE = gql`
   mutation DeleteRecipe($restaurantId: ID!, $menuItemId: ID!) {
     deleteRecipe(restaurantId: $restaurantId, menuItemId: $menuItemId)
   }
 `;
 
-/* ===========================================================
-   🔹 QUERY: Lấy danh sách menu items để gán công thức
-   =========================================================== */
 export const Q_MENU_ITEMS_FOR_RECIPE = gql`
   query MenuItemsForRecipe(
     $restaurantId: ID!
@@ -145,9 +125,6 @@ export const Q_MENU_ITEMS_FOR_RECIPE = gql`
   }
 `;
 
-/* ===========================================================
-   🔹 QUERY: Recipes theo nhiều MenuItem (nếu cần batch)
-   =========================================================== */
 export const Q_RECIPES_BY_MENUITEMS = gql`
   query RecipesByMenuItems($restaurantId: ID!, $menuItemIds: [ID!]!) {
     recipesByMenuItems(restaurantId: $restaurantId, menuItemIds: $menuItemIds) {
@@ -156,6 +133,7 @@ export const Q_RECIPES_BY_MENUITEMS = gql`
   }
   ${FR_RECIPE_FIELDS}
 `;
+
 export const M_UPDATE_MENU_ITEM_BASIC = gql`
   mutation UpdateMenuItemBasic($input: UpdateMenuItemBasicInput!) {
     updateMenuItemBasic(input: $input) {

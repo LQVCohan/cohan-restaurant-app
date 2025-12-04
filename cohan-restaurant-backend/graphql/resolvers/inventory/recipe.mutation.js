@@ -1,25 +1,67 @@
-// src/graphql/resolvers/inventory/recipe.mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Recipe } from "../../../models/index.js";
 
 export default {
   upsertRecipe: async (_p, { input }) => {
-    const { restaurantId, menuItemId, servingVariants, ...rest } = input;
+    const {
+      restaurantId,
+      menuItemId,
+      servingVariants: inputServingVariants,
+      ...rest
+    } = input;
+
     if (![restaurantId, menuItemId].every(mongoose.isValidObjectId)) {
       throw new GraphQLError("Invalid ids");
     }
 
-    // Lấy doc hiện tại để merge servingVariants by key
     const existing = await Recipe.findOne({ restaurantId, menuItemId });
 
     let patch = { ...rest };
-    if (Array.isArray(servingVariants)) {
+
+    if (Array.isArray(inputServingVariants)) {
+      const normalizedVariants = inputServingVariants
+        .map((v) => {
+          if (!v) return null;
+          const {
+            key,
+            mode,
+            yieldQty,
+            yieldUnit,
+            preparationMethodName,
+            ingredients,
+            name,
+            ...vRest
+          } = v;
+
+          const normalizedIngredients = Array.isArray(ingredients)
+            ? ingredients.map((c) => ({
+                ingredientId: c.ingredientId,
+                quantify: Number(c.qty) || 0,
+                wastePct: Number(c.wastePct || 0) || 0,
+              }))
+            : [];
+
+          return {
+            ...vRest,
+            key,
+            mode,
+            yieldQty,
+            yieldUnit,
+            name: preparationMethodName || name || undefined,
+            Ingredients: normalizedIngredients,
+          };
+        })
+        .filter(Boolean);
+
       const current = existing?.servingVariants || [];
       const map = new Map(current.map((v) => [v.key, v]));
-      for (const v of servingVariants) {
-        map.set(v.key, v); // override theo key
+
+      for (const v of normalizedVariants) {
+        if (!v?.key) continue;
+        map.set(v.key, v);
       }
+
       patch.servingVariants = Array.from(map.values());
     }
 

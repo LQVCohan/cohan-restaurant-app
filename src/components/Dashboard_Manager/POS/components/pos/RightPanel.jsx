@@ -7,7 +7,6 @@ import { useNotification } from "../../../../../hooks/useNotification";
 import { formatPrice } from "@/utils/formatters";
 import PaymentModal from "../modals/PaymentModal";
 import ConfirmDeleteModal from "../modals/ConfirmDeleteModal";
-import useOrderManagement from "@/hooks/useOrderManagement";
 
 export default function RightPanel() {
   const navigate = useNavigate();
@@ -21,10 +20,8 @@ export default function RightPanel() {
     saveOrder,
     setTableStatus,
     setCurrentTable,
+    preparePayment, // lấy từ context POS
   } = usePos();
-
-  const pos = usePos();
-  const { preparePayment } = useOrderManagement(pos);
 
   const { showNotification } = useNotification?.() || {
     showNotification: (msg, type) => console.log(type || "info", msg),
@@ -48,7 +45,7 @@ export default function RightPanel() {
 
   const closePaymentModal = useCallback(() => setPaymentModalOpen(false), []);
 
-  // Mở modal: LƯU trước, lỗi thì báo ngay – không mở modal
+  // Mở modal: LƯU/PREPARE trước, lỗi thì báo ngay – không mở modal
   const openPaymentModal = useCallback(async () => {
     if (!hasItems) return;
     if (!currentTable?.restaurantId) {
@@ -167,6 +164,7 @@ export default function RightPanel() {
         "info"
       );
     } catch (e) {
+      console.error("Print failed:", e);
       showNotification("Không thể in. Vui lòng thử lại.", "error");
     }
   };

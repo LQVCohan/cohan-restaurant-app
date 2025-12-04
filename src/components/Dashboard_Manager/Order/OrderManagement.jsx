@@ -405,6 +405,7 @@ const OrderManagement = () => {
           variables: {
             input: {
               id: orderId,
+              restaurantId: selectedRestaurantId,
               status,
             },
           },

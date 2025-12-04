@@ -4,10 +4,25 @@
 $wall-color: #cbd5e1;
 $floor-bg: #f8fafc;
 $grid-line: #e2e8f0;
-$wood-color: #d97706; // Màu gỗ cho Bar/Cửa
-$plant-color: #16a34a; // Màu xanh cây
-$glass-color: #93c5fd; // Màu kính
-$rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
+$wood-color: #d97706;
+$plant-color: #16a34a;
+$glass-color: #93c5fd;
+$chair-color: #94a3b8;
+$bell-color: #f59e0b;
+
+// Status Colors
+$st-available-bg: #ffffff;
+$st-available-bd: #22c55e;
+$st-selected-bg: #3b82f6;
+$st-selected-bd: #1d4ed8;
+$st-occupied-bg: #e2e8f0;
+$st-occupied-bd: #94a3b8;
+$st-reserved-bg: #ffedd5;
+$st-reserved-bd: #f97316; // Cam nhạt
+$st-payment-bg: #fef9c3;
+$st-payment-bd: #eab308; // Vàng
+$st-cleaning-bg: #ecfeff;
+$st-cleaning-bd: #06b6d4; // Cyan
 
 .floor-map-viz {
   width: 100%;
@@ -16,30 +31,209 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
   position: relative;
   border-radius: 16px;
   overflow: hidden;
-  border: 4px solid $wall-color; // Viền ngoài đậm làm tường bao
-  background-color: $white;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border: 4px solid $wall-color;
+  background-color: $st-available-bg;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 
-  .map-container-realistic {
+  // Viewport
+  .viewport {
     width: 100%;
     height: 100%;
+    overflow: hidden;
     position: relative;
     background-color: $floor-bg;
-    // Grid nền gạch
     background-image: linear-gradient($grid-line 1px, transparent 1px),
       linear-gradient(90deg, $grid-line 1px, transparent 1px);
     background-size: 50px 50px;
+    &.grab {
+      cursor: grab;
+    }
+    &.grabbing {
+      cursor: grabbing;
+    }
   }
 
-  // --- 1. KIẾN TRÚC ---
+  .map-transform-layer {
+    position: absolute;
+    inset: 0; // bám full theo viewport
+    transform-origin: center center;
+    transition: transform 0.1s linear;
+    will-change: transform;
+  }
+  .map-container-realistic {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    // để transparent, chỉ chứa layout + bàn thôi
+    background-color: transparent;
+  }
+
+  // --- EMPTY STATE (khi chưa có layout) ---
+
+  .empty-map-state {
+    position: absolute;
+    left: 50%;
+    bottom: 16px;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+    border: 1px solid #e2e8f0;
+    pointer-events: none; // không chặn click bàn
+    z-index: 2; // thấp hơn tables-layer (z-index:10)
+
+    .empty-icon {
+      font-size: 1.3rem;
+    }
+
+    .empty-text {
+      h3 {
+        margin: 0;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #0f172a;
+      }
+
+      p {
+        margin: 2px 0 0;
+        font-size: 0.7rem;
+        color: #64748b;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  // --- LAYOUT LAYER (map thật từ Designer) ---
+  .layout-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .layout-node {
+    position: absolute;
+    box-sizing: border-box;
+    pointer-events: none;
+
+    &.wall {
+      background: #1d4ed8;
+      border-radius: 999px;
+    }
+
+    &.half-wall {
+      background: #e0f2fe;
+      border-radius: 999px;
+      border: 2px dashed #0ea5e9;
+    }
+
+    &.door,
+    &.door-double {
+      background: #fed7aa;
+      border-radius: 6px;
+      border: 2px solid #ea580c;
+    }
+
+    &.window {
+      background: #bfdbfe;
+      border-radius: 4px;
+      border: 1px solid #1d4ed8;
+    }
+
+    &.corridor,
+    &.staff-corridor {
+      border-radius: 999px;
+      background: #fee2e2;
+      border: 1px solid #f97316;
+    }
+
+    &.pillar {
+      background: #e5e7eb;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
+    }
+
+    &.bar,
+    &.buffet,
+    &.kitchen,
+    &.cashier,
+    &.wc,
+    &.sofa,
+    &.rug,
+    &.plant {
+      border-radius: 10px;
+      background: rgba(148, 163, 184, 0.1);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      backdrop-filter: blur(2px);
+    }
+  }
+
+  .layout-label {
+    position: absolute;
+    bottom: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  // --- CONTROLS ---
+  .map-controls {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100;
+
+    button {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: white;
+      border: 1px solid #e2e8f0;
+      color: #1e293b;
+      font-size: 1.2rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s;
+
+      &:hover {
+        background: #f1f5f9;
+        transform: translateY(-1px);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+    }
+  }
+
+  // --- (các class decor cũ vẫn giữ, phòng khi còn dùng ở nơi khác) ---
   .architectural-walls {
     position: absolute;
     inset: 0;
     pointer-events: none;
+
     .wall {
       position: absolute;
       background: $wall-color;
       z-index: 5;
+
       &--top,
       &--bottom {
         height: 12px;
@@ -52,6 +246,7 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
       &--bottom {
         bottom: 0;
       }
+
       &--left,
       &--right {
         width: 12px;
@@ -66,7 +261,6 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
       }
     }
 
-    // Cửa chính
     .door {
       position: absolute;
       height: 12px;
@@ -75,21 +269,19 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
       z-index: 6;
       transform: translateX(-50%);
       border-radius: 2px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 
       .door-label {
         position: absolute;
         top: 18px;
         left: 50%;
         transform: translateX(-50%);
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 800;
         color: darken($wood-color, 15%);
         white-space: nowrap;
         text-transform: uppercase;
       }
 
-      // Vòng cung mở cửa
       .door-swing {
         position: absolute;
         top: 12px;
@@ -99,12 +291,10 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
         border-left: 2px dashed rgba($wood-color, 0.3);
         border-bottom: 2px dashed rgba($wood-color, 0.3);
         border-radius: 0 0 0 100%;
-        pointer-events: none;
       }
     }
   }
 
-  // --- 2. DECOR ITEMS ---
   .decor-layer {
     position: absolute;
     inset: 0;
@@ -122,35 +312,29 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
       font-size: 0.65rem;
       font-weight: 700;
       color: #64748b;
-      text-align: center;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
 
-    // -- Cửa sổ --
     &.decor-window {
       background: rgba($glass-color, 0.3);
       border-left: 4px solid $glass-color;
-      width: 12px; // Gắn vào tường phải
+      width: 12px;
       box-shadow: -2px 0 10px rgba($glass-color, 0.2);
     }
 
-    // -- Cây cảnh --
     &.decor-plant {
       width: 40px;
       height: 40px;
       background: rgba($plant-color, 0.2);
       border-radius: 50%;
       border: 2px solid $plant-color;
-      // Giả lập lá cây
+
       &::after {
         content: "🌿";
         font-size: 1.2rem;
-        display: block;
       }
     }
 
-    // -- Cột nhà --
     &.decor-pillar {
       width: 30px;
       height: 30px;
@@ -159,17 +343,12 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
       box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
     }
 
-    // -- Quầy Bar --
     &.decor-bar {
       background: #fde68a;
       border-bottom: 4px solid $wood-color;
       border-left: 4px solid $wood-color;
       border-radius: 0 0 0 12px;
-      .decor-label {
-        color: $wood-color;
-        margin-top: -10px;
-      }
-      // Ghế quầy bar
+
       .bar-stools {
         position: absolute;
         bottom: -12px;
@@ -182,27 +361,14 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
           transparent 5px
         );
         background-size: 20px 20px;
-        background-repeat: repeat-x;
       }
     }
 
-    // -- Bếp --
-    &.decor-kitchen {
-      border-top: 2px dashed #94a3b8;
-      background: repeating-linear-gradient(
-        45deg,
-        transparent,
-        transparent 5px,
-        rgba(0, 0, 0, 0.05) 5px,
-        rgba(0, 0, 0, 0.05) 10px
-      );
-    }
-
-    // -- WC --
     &.decor-wc {
       background: #e2e8f0;
       border-top: 2px solid #94a3b8;
       border-left: 2px solid #94a3b8;
+
       &::after {
         content: "🚻";
         font-size: 1.5rem;
@@ -210,7 +376,6 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
       }
     }
 
-    // -- Thảm --
     &.decor-rug {
       background: darken($floor-bg, 3%);
       border-radius: 20px;
@@ -218,7 +383,7 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
     }
   }
 
-  // --- 3. BÀN GHẾ (TABLES) ---
+  // --- TABLES ---
   .tables-layer {
     position: absolute;
     inset: 0;
@@ -233,51 +398,69 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    &:hover {
+      transform: scale(1.1);
+      z-index: 20;
+
+      .table-shape {
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+      }
+    }
 
     .table-shape {
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      background: #ffffff;
-      border: 2px solid #22c55e;
-      color: #15803d;
+      background: $st-available-bg;
+      border: 2px solid darken($st-available-bg, 10%);
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 700;
       font-size: 0.85rem;
+      color: #334155;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
       position: relative;
       z-index: 2;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .table-label {
+      padding: 0 4px;
     }
 
     .chairs-decoration {
       position: absolute;
       inset: -8px;
       pointer-events: none;
+
       .chair {
         position: absolute;
         width: 14px;
         height: 14px;
-        background: #94a3b8;
+        background: $chair-color;
         border-radius: 4px;
         box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+
         &.chair-n {
           top: 0;
           left: 50%;
           transform: translateX(-50%);
         }
+
         &.chair-s {
           bottom: 0;
           left: 50%;
           transform: translateX(-50%);
         }
+
         &.chair-e {
           right: 0;
           top: 50%;
           transform: translateY(-50%);
         }
+
         &.chair-w {
           left: 0;
           top: 50%;
@@ -304,56 +487,135 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
       z-index: 3;
     }
 
-    // Bell Icon
-    .notify-bell {
+    .notify-bell,
+    .status-icon {
       position: absolute;
       top: -8px;
       right: -8px;
-      width: 20px;
-      height: 20px;
-      background: #fff;
-      border: 1px solid #f59e0b;
-      color: #f59e0b;
+      width: 22px;
+      height: 22px;
+      background: white;
       border-radius: 50%;
-      font-size: 0.75rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      animation: bellShake 2s infinite;
-      display: none;
+      font-size: 0.85rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+      z-index: 4;
     }
 
-    // States
-    &.selected {
-      z-index: 20;
-      transform: scale(1.15);
+    .notify-bell {
+      color: $bell-color;
+      border: 1px solid $bell-color;
+      display: none;
+      animation: bellShake 2s infinite;
+    }
+
+    .status-icon {
+      border: 1px solid #e5e7eb;
+    }
+
+    // STATES
+    &.available {
       .table-shape {
-        background: #3b82f6;
-        border-color: #1d4ed8;
+        background: $st-available-bg;
+        border-color: $st-available-bd;
+        color: #15803d;
+      }
+    }
+
+    &.selected {
+      z-index: 30;
+      transform: scale(1.15);
+
+      .table-shape {
+        background: $st-selected-bg;
+        border-color: $st-selected-bd;
         color: white;
       }
+
       .capacity-badge {
-        color: #3b82f6;
-        border-color: #3b82f6;
+        color: $st-selected-bg;
+        border-color: $st-selected-bg;
       }
+
       .chair {
-        background: #93c5fd;
+        background: lighten($st-selected-bg, 20%);
       }
     }
 
     &.occupied,
     &.reserved {
       .table-shape {
-        background: #e2e8f0;
-        border-color: #94a3b8;
+        background: $st-occupied-bg;
+        border-color: $st-occupied-bd;
         color: #64748b;
         box-shadow: none;
+        background-image: repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 5px,
+          rgba(0, 0, 0, 0.03) 5px,
+          rgba(0, 0, 0, 0.03) 10px
+        );
       }
+
       .chairs-decoration {
         opacity: 0.5;
       }
+
       &:hover {
         transform: scale(1.05);
+
+        .notify-bell {
+          display: flex;
+        }
+      }
+    }
+
+    &.reserved .table-shape {
+      background: $st-reserved-bg;
+      border-color: $st-reserved-bd;
+      color: #9a3412;
+    }
+
+    &.payment_pending {
+      .table-shape {
+        background: repeating-linear-gradient(
+          45deg,
+          $st-payment-bg,
+          $st-payment-bg 5px,
+          darken($st-payment-bg, 5%) 5px,
+          darken($st-payment-bg, 5%) 10px
+        );
+        border-color: $st-payment-bd;
+        color: #854d0e;
+      }
+
+      &:hover {
+        transform: scale(1.05);
+
+        .notify-bell {
+          display: flex;
+        }
+      }
+    }
+
+    &.cleaning {
+      .table-shape {
+        background: $st-cleaning-bg;
+        border-color: $st-cleaning-bd;
+        color: #0e7490;
+        border-style: dashed;
+      }
+
+      .chairs-decoration {
+        opacity: 0.4;
+      }
+
+      &:hover {
+        transform: scale(1.05);
+
         .notify-bell {
           display: flex;
         }
@@ -380,16 +642,27 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
     &.closed {
       width: 40px;
       height: 40px;
+      border-radius: 50%;
       padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+
       .legend-header {
         border: none;
-        justify-content: center;
+
         .title,
         .toggle-arrow {
           display: none;
         }
       }
+
+      .legend-content {
+        display: none;
+      }
     }
+
     &.open {
       min-width: 180px;
     }
@@ -401,66 +674,83 @@ $rug-color: #f1f5f9; // Màu thảm (đậm hơn sàn chút)
       cursor: pointer;
       padding-bottom: 8px;
       border-bottom: 1px solid #f1f5f9;
+
+      .title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        flex: 1;
+      }
     }
 
     .legend-content {
       padding-top: 8px;
+
       .legend-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
       }
+
       .legend-item {
         display: flex;
         align-items: center;
         gap: 8px;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: #334155;
         font-weight: 500;
       }
 
       .symbol {
-        width: 16px;
-        height: 16px;
-        border-radius: 4px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
         display: inline-block;
         flex-shrink: 0;
       }
+
       .table-available {
-        border-radius: 50%;
-        border: 2px solid #22c55e;
-      }
-      .table-selected {
-        border-radius: 50%;
-        background: #3b82f6;
-      }
-      .table-occupied-legend {
-        border-radius: 50%;
-        background: #f1f5f9;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        border: 1px solid #cbd5e1;
+        background: $st-available-bg;
+        border: 2px solid $st-available-bd;
       }
 
-      .symbol-bar {
-        background: #fde68a;
-        border: 1px solid $wood-color;
+      .table-selected {
+        background: $st-selected-bg;
+        border: 2px solid $st-selected-bd;
       }
-      .symbol-wc {
-        background: #e2e8f0;
-        border: 1px solid #94a3b8;
+
+      .table-payment-pending {
+        background: repeating-linear-gradient(
+          45deg,
+          $st-payment-bg,
+          $st-payment-bg 3px,
+          darken($st-payment-bg, 10%) 3px,
+          darken($st-payment-bg, 10%) 6px
+        );
+        border: 1px solid $st-payment-bd;
       }
-      .symbol-entry {
-        background: $wood-color;
-        height: 6px;
+
+      .table-cleaning {
+        background: $st-cleaning-bg;
+        border: 1px dashed $st-cleaning-bd;
+      }
+
+      .table-reserved {
+        background: $st-reserved-bg;
+        border: 1px solid $st-reserved-bd;
+      }
+
+      .table-occupied {
+        background: $st-occupied-bg;
+        border: 1px solid $st-occupied-bd;
       }
 
       .legend-divider {
+        grid-column: span 2;
         height: 1px;
         background: #e2e8f0;
-        margin: 4px 0;
+        margin: 2px 0;
       }
     }
   }

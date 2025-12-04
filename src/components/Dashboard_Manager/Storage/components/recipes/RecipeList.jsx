@@ -9,13 +9,15 @@ import "./recipes.scss";
 /**
  * Props:
  * - restaurantId: ID nhà hàng
- * - recipes: [{ id, name, menuItemId, servingVariants, ... }]
+ * - recipes: [{ id, name, description, servingVariants, ... }]
+ *   (id ở đây chính là menuItemId đã được flatten từ useRecipes)
  * - loading, error, pageInfo, total
  * - onSearchChange, onCategoryChange, onTimeSlotChange
  * - loadMore()
  * - onAddRecipe(recipeForm)
- * - onUpdateRecipe(id, recipeForm)
- * - onDeleteRecipe(id)
+ * - onUpdateRecipe(id, recipeForm)   // id = menuItemId
+ * - onDeleteRecipe(id)               // id = menuItemId
+ * - ingredients: danh sách nguyên liệu (dùng cho modal)
  */
 const RecipeList = ({
   restaurantId,
@@ -87,7 +89,7 @@ const RecipeList = ({
 
   const handleSave = async (formData) => {
     if (editingRecipe) {
-      // update
+      // update: id ở đây chính là menuItemId (đã flatten từ useRecipes)
       await onUpdateRecipe?.(editingRecipe.id, formData);
     } else {
       // add
@@ -151,7 +153,9 @@ const RecipeList = ({
         </div>
 
         <div className="toolbar-right">
-          <Button onClick={handleAdd}>➕ Thêm công thức</Button>
+          <Button onClick={handleAdd} disabled={!restaurantId}>
+            ➕ Thêm công thức
+          </Button>
         </div>
       </div>
 
@@ -198,7 +202,8 @@ const RecipeList = ({
         onSave={handleSave}
         onDelete={handleDelete}
         recipe={editingRecipe}
-        menuItemName={editingRecipe?.menuItem?.name}
+        // Dữ liệu đã được flatten: dùng name trực tiếp
+        menuItemName={editingRecipe?.name}
         restaurantId={restaurantId}
         ingredients={ingredients}
       />

@@ -74,4 +74,5 @@ extend type Mutation {
   updateReservation(input: UpdateReservationInput!): Reservation!
   updateReservationStatus(input: UpdateReservationStatusInput!): Reservation!
   cancelReservation(id: ID!): Reservation!
+  deleteReservation(id: ID!): Reservation!
 }

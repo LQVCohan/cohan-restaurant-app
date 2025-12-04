@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import Modal from "../../../components/common/Modal"; // Adjust path as needed
+import "./ScheduleManagement.scss"; // Import file SCSS
 
 const ScheduleManagement = () => {
-  // ===================== State =====================
+  // ===================== State (Giữ nguyên) =====================
   const [staff, setStaff] = useState([
     {
       id: 1,
@@ -225,12 +226,6 @@ const ScheduleManagement = () => {
   };
 
   // ===================== Actions =====================
-  const resetStaffFiltersCommon = () => {
-    resetAddStaffFilters();
-    resetEditStaffFilters();
-  };
-
-  // Open add shift modal with pre-selected date and shift type
   const openAddShiftModal = (day, shiftType) => {
     const today = new Date();
     const dayIndex = [
@@ -259,7 +254,6 @@ const ScheduleManagement = () => {
     setIsAddShiftModalOpen(true);
   };
 
-  // Open shift detail modal (EDIT)
   const openShiftDetailModal = (shift) => {
     setSelectedShift(shift);
     resetEditStaffFilters();
@@ -347,7 +341,6 @@ const ScheduleManagement = () => {
     }
   };
 
-  // Initialize week selector
   useEffect(() => {
     const today = new Date();
     const year = today.getFullYear();
@@ -373,17 +366,13 @@ const ScheduleManagement = () => {
 
     return (
       <div
-        className={`mb-2 p-3 rounded-lg cursor-pointer hover:shadow-md transition-all text-xs border-l-4 ${
-          isIncomplete
-            ? "bg-red-50 border-red-400 hover:bg-red-100"
-            : "bg-green-50 border-green-400 hover:bg-green-100"
-        }`}
+        className={`shift-card ${isIncomplete ? "incomplete" : "complete"}`}
         onClick={() => openShiftDetailModal(shift)}
       >
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center space-x-2">
-            <span className="text-lg">{shiftTypes[shift.shiftType]?.icon}</span>
-            <span className="font-medium text-gray-800">
+        <div className="card-header">
+          <div className="time-info">
+            <span>{shiftTypes[shift.shiftType]?.icon}</span>
+            <span>
               {shift.startTime}-{shift.endTime}
             </span>
           </div>
@@ -392,54 +381,43 @@ const ScheduleManagement = () => {
               e.stopPropagation();
               toggleShiftExpand(shift.id);
             }}
-            className="text-gray-400 hover:text-gray-600 p-1"
+            className="toggle-btn"
           >
             {isExpanded ? "🔽" : "👁️"}
           </button>
         </div>
 
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex space-x-1">
+        <div className="card-body">
+          <div className="jobs">
             {shift.essentialJobs.slice(0, 4).map((job, index) => (
-              <span key={index} className="text-sm" title={getJobName(job)}>
+              <span key={index} title={getJobName(job)}>
                 {getJobEmoji(job)}
               </span>
             ))}
             {shift.essentialJobs.length > 4 && (
-              <span className="text-gray-400 text-xs">
+              <span className="text-gray-400">
                 +{shift.essentialJobs.length - 4}
               </span>
             )}
           </div>
-          <div className="flex items-center space-x-2">
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                isIncomplete
-                  ? "bg-red-100 text-red-700"
-                  : "bg-green-100 text-green-700"
-              }`}
-            >
+          <div>
+            <span className="status-badge">
               {shift.staffIds.length}/{shift.essentialJobs.length}
             </span>
           </div>
         </div>
 
         {isExpanded && (
-          <div className="mt-2 pt-2 border-t border-gray-200">
+          <div className="card-details">
             <div className="space-y-1">
               {shift.staffIds.length > 0 ? (
                 shift.staffIds.map((staffId) => {
                   const person = staff.find((s) => s.id === staffId);
                   return person ? (
-                    <div
-                      key={staffId}
-                      className="flex items-center space-x-2 text-xs bg-white p-2 rounded"
-                    >
+                    <div key={staffId} className="staff-row">
                       <span>{getJobEmoji(person.job)}</span>
-                      <span className="flex-1 font-medium">{person.name}</span>
-                      <span className="text-gray-500">
-                        {getJobName(person.job)}
-                      </span>
+                      <span className="name">{person.name}</span>
+                      <span className="job">{getJobName(person.job)}</span>
                     </div>
                   ) : null;
                 })
@@ -449,7 +427,7 @@ const ScheduleManagement = () => {
                 </div>
               )}
               {missingJobs.length > 0 && (
-                <div className="bg-red-50 p-2 rounded text-red-600 text-xs">
+                <div className="missing-alert">
                   <strong>Thiếu:</strong>{" "}
                   {missingJobs.map((job) => getJobName(job)).join(", ")}
                 </div>
@@ -463,25 +441,19 @@ const ScheduleManagement = () => {
 
   // ===================== Render =====================
   return (
-    <div className="bg-gray-50 h-full">
+    <div className="schedule-container">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex justify-between items-center">
+      <header className="schedule-header">
+        <div className="header-content">
           <div>
-            <h1 className="text-xl font-bold text-blue-900">
-              📅 Quản Lý Lịch Làm Việc
-            </h1>
-            <p className="text-sm text-gray-600">
-              Phân ca và theo dõi nhân viên
-            </p>
+            <h1>📅 Quản Lý Lịch Làm Việc</h1>
+            <p>Phân ca và theo dõi nhân viên</p>
           </div>
-          <div className="flex items-center space-x-2">
+          <div>
             <button
               onClick={handleAutoSchedule}
               disabled={isAutoScheduling}
-              className={`bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2 ${
-                isAutoScheduling ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+              className="btn-auto-schedule"
             >
               <span>{isAutoScheduling ? "⏳" : "🤖"}</span>
               <span>
@@ -492,18 +464,17 @@ const ScheduleManagement = () => {
         </div>
       </header>
 
-      <main className="h-full overflow-y-auto">
+      <main className="schedule-main">
         {/* Top Filters */}
-        <div className="bg-white border-b border-gray-200 px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+        <div className="filter-bar">
+          <div className="filter-content">
+            <div className="controls">
               <input
                 type="week"
                 value={filters.week}
                 onChange={(e) =>
                   setFilters((prev) => ({ ...prev, week: e.target.value }))
                 }
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <select
                 value={filters.department}
@@ -513,7 +484,6 @@ const ScheduleManagement = () => {
                     department: e.target.value,
                   }))
                 }
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Tất cả bộ phận</option>
                 <option value="kitchen">Bếp</option>
@@ -522,10 +492,10 @@ const ScheduleManagement = () => {
                 <option value="cleaning">Vệ sinh</option>
               </select>
             </div>
-            <div className="flex items-center space-x-4 text-sm">
-              <div className="flex items-center space-x-2">
-                <span className="text-gray-600">Ca thiếu người:</span>
-                <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full font-medium">
+            <div className="stats">
+              <div className="stat-item">
+                <span>Ca thiếu người:</span>
+                <span className="badge red">
                   {
                     shifts.filter(
                       (s) => s.staffIds.length < s.essentialJobs.length
@@ -533,35 +503,26 @@ const ScheduleManagement = () => {
                   }
                 </span>
               </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-gray-600">Tổng ca:</span>
-                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-medium">
-                  {shifts.length}
-                </span>
+              <div className="stat-item">
+                <span>Tổng ca:</span>
+                <span className="badge blue">{shifts.length}</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Weekly calendar */}
-        <div className="bg-white">
-          <div className="px-4 py-3 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-blue-900">
-              Lịch Làm Việc Tuần
-            </h3>
+        <div className="calendar-wrapper">
+          <div className="">
+            <h3>Lịch Làm Việc Tuần</h3>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
+          <div className="table-responsive">
+            <table>
+              <thead>
                 <tr>
-                  <th className="px-3 py-3 text-left text-blue-900 font-medium w-24">
-                    Ca Làm
-                  </th>
+                  <th>Ca Làm</th>
                   {"t234567cn".split("").map((_, idx) => (
-                    <th
-                      key={idx}
-                      className="px-2 py-3 text-center text-blue-900 font-medium"
-                    >
+                    <th key={idx}>
                       {idx === 0
                         ? "T2"
                         : idx === 1
@@ -581,17 +542,13 @@ const ScheduleManagement = () => {
               </thead>
               <tbody>
                 {Object.entries(shiftTypes).map(([shiftType, shiftData]) => (
-                  <tr key={shiftType} className="border-b border-gray-100">
-                    <td className="px-3 py-4 border-r border-gray-100">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">{shiftData.icon}</span>
+                  <tr key={shiftType}>
+                    <td>
+                      <div className="shift-type-header">
+                        <span className="icon">{shiftData.icon}</span>
                         <div>
-                          <div className="text-sm font-medium text-blue-900">
-                            {shiftData.label}
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            {shiftData.time}
-                          </div>
+                          <div className="label">{shiftData.label}</div>
+                          <div className="time">{shiftData.time}</div>
                         </div>
                       </div>
                     </td>
@@ -609,26 +566,19 @@ const ScheduleManagement = () => {
                           shift.day === day && shift.shiftType === shiftType
                       );
                       return (
-                        <td
-                          key={day}
-                          className="px-2 py-2 border-r border-gray-100 relative min-h-[120px] align-top"
-                        >
+                        <td key={day}>
                           {dayShifts.length > 0 ? (
                             dayShifts.map((shift) => (
                               <ShiftCard key={shift.id} shift={shift} />
                             ))
                           ) : (
                             <div
-                              className="h-20 flex items-center justify-center border-2 border-dashed border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors group"
+                              className="add-slot-btn"
                               onClick={() => openAddShiftModal(day, shiftType)}
                             >
                               <div className="text-center">
-                                <div className="text-2xl text-gray-300 group-hover:text-blue-400 mb-1">
-                                  +
-                                </div>
-                                <span className="text-xs text-gray-400 group-hover:text-blue-600">
-                                  Tạo ca
-                                </span>
+                                <div className="plus">+</div>
+                                <span className="text">Tạo ca</span>
                               </div>
                             </div>
                           )}
@@ -651,34 +601,28 @@ const ScheduleManagement = () => {
           selectedDate ? formatDate(selectedDate) : ""
         }`}
       >
-        <form onSubmit={handleAddShift} className="space-y-6">
+        <form onSubmit={handleAddShift}>
           {/* Shift Info */}
-          <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-            <div className="flex items-center space-x-3 mb-3">
-              <span className="text-2xl">
+          <div className="shift-summary-box">
+            <div className="header">
+              <span className="icon">
                 {shiftTypes[selectedShiftType]?.icon}
               </span>
               <div>
-                <h4 className="font-semibold text-blue-900">
-                  {shiftTypes[selectedShiftType]?.label}
-                </h4>
-                <p className="text-sm text-blue-700">
-                  {shiftTypes[selectedShiftType]?.time}
-                </p>
+                <h4>{shiftTypes[selectedShiftType]?.label}</h4>
+                <p>{shiftTypes[selectedShiftType]?.time}</p>
               </div>
             </div>
-            <div className="text-sm text-blue-800">
+            <div className="date">
               <strong>Ngày:</strong>{" "}
               {selectedDate ? formatDate(selectedDate) : ""}
             </div>
           </div>
 
           {/* Essential Jobs Selection */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-3">
-              Vị trí cần thiết cho ca này
-            </label>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="form-section">
+            <label>Vị trí cần thiết cho ca này</label>
+            <div className="job-selection-grid">
               {[
                 { value: "chef", label: "Đầu bếp", emoji: "👨‍🍳" },
                 { value: "cook", label: "Phụ bếp", emoji: "🍳" },
@@ -690,10 +634,8 @@ const ScheduleManagement = () => {
               ].map((job) => (
                 <label
                   key={job.value}
-                  className={`flex items-center space-x-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                    newShift.essentialJobs.includes(job.value)
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300"
+                  className={`job-checkbox ${
+                    newShift.essentialJobs.includes(job.value) ? "selected" : ""
                   }`}
                 >
                   <input
@@ -717,47 +659,42 @@ const ScheduleManagement = () => {
                     }}
                     className="sr-only"
                   />
-                  <span className="text-xl">{job.emoji}</span>
-                  <span className="text-sm font-medium">{job.label}</span>
+                  <span className="emoji">{job.emoji}</span>
+                  <span className="label">{job.label}</span>
                 </label>
               ))}
             </div>
           </div>
 
           {/* Staff Selection with Search & Filters (ADD) */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-3">
-              Chọn nhân viên cho ca này
-            </label>
+          <div className="form-section">
+            <label>Chọn nhân viên cho ca này</label>
 
             {/* Search & Filters */}
-            <div className="space-y-3 mb-4 p-3 bg-gray-50 rounded-lg">
-              {/* Search */}
-              <div className="relative">
+            <div className="search-filter-box">
+              <div className="search-input-wrapper">
                 <input
                   type="text"
                   placeholder="Tìm kiếm theo tên hoặc vị trí..."
                   value={addStaffSearch}
                   onChange={(e) => setAddStaffSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
-                <div className="absolute left-3 top-2.5 text-gray-400">🔍</div>
+                <div className="icon-search">🔍</div>
                 {addStaffSearch && (
                   <button
                     onClick={() => setAddStaffSearch("")}
-                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                    className="btn-clear"
+                    type="button"
                   >
                     ✕
                   </button>
                 )}
               </div>
 
-              {/* Filter Controls */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="filters-row">
                 <select
                   value={addStaffJobFilter}
                   onChange={(e) => setAddStaffJobFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Tất cả vị trí</option>
                   <option value="chef">👨‍🍳 Đầu bếp</option>
@@ -771,7 +708,6 @@ const ScheduleManagement = () => {
                 <select
                   value={addStaffStatusFilter}
                   onChange={(e) => setAddStaffStatusFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Tất cả trạng thái</option>
                   <option value="active">✅ Hoạt động</option>
@@ -780,8 +716,7 @@ const ScheduleManagement = () => {
                 </select>
               </div>
 
-              {/* Quick buttons */}
-              <div className="flex flex-wrap gap-2">
+              <div className="tags-row">
                 <button
                   onClick={() => {
                     setAddStaffJobFilter("");
@@ -789,7 +724,7 @@ const ScheduleManagement = () => {
                     setAddStaffSearch("");
                   }}
                   type="button"
-                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs hover:bg-blue-200 transition-colors"
+                  className="tag-blue"
                 >
                   Tất cả nhân viên
                 </button>
@@ -801,7 +736,7 @@ const ScheduleManagement = () => {
                       setAddStaffJobFilter(job);
                       setAddStaffStatusFilter("active");
                     }}
-                    className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs hover:bg-green-200 transition-colors flex items-center space-x-1"
+                    className="tag-green"
                   >
                     <span>{getJobEmoji(job)}</span>
                     <span>{getJobName(job)}</span>
@@ -811,7 +746,7 @@ const ScheduleManagement = () => {
             </div>
 
             {/* Filtered list with checkboxes */}
-            <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
+            <div className="staff-list-container">
               {(() => {
                 const filtered = filterStaffByControls(staff, {
                   search: addStaffSearch,
@@ -821,9 +756,9 @@ const ScheduleManagement = () => {
 
                 if (filtered.length === 0) {
                   return (
-                    <div className="text-center py-8 text-gray-400">
-                      <div className="text-2xl mb-2">🔍</div>
-                      <p className="text-sm">
+                    <div className="empty-state">
+                      <div className="icon">🔍</div>
+                      <p>
                         {addStaffSearch ||
                         addStaffJobFilter ||
                         (addStaffStatusFilter &&
@@ -838,7 +773,7 @@ const ScheduleManagement = () => {
                         <button
                           onClick={resetAddStaffFilters}
                           type="button"
-                          className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+                          className="reset-link"
                         >
                           Xóa bộ lọc
                         </button>
@@ -850,11 +785,11 @@ const ScheduleManagement = () => {
                 return filtered.map((person) => (
                   <label
                     key={person.id}
-                    className={`flex items-center justify-between p-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 ${
-                      newShift.staffIds.includes(person.id) ? "bg-blue-50" : ""
+                    className={`staff-item ${
+                      newShift.staffIds.includes(person.id) ? "selected" : ""
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
+                    <div className="info-left">
                       <input
                         type="checkbox"
                         value={person.id}
@@ -874,7 +809,6 @@ const ScheduleManagement = () => {
                             }));
                           }
                         }}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                       <span className="text-lg">{getJobEmoji(person.job)}</span>
                       <div>
@@ -886,19 +820,11 @@ const ScheduleManagement = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium text-gray-900">
+                    <div className="info-right">
+                      <div className="salary">
                         {person.salary?.toLocaleString()}đ/h
                       </div>
-                      <span
-                        className={`inline-block px-2 py-1 rounded-full text-xs ${
-                          person.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : person.status === "off"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
+                      <span className={`status ${person.status}`}>
                         {getStatusText(person.status)}
                       </span>
                     </div>
@@ -932,34 +858,32 @@ const ScheduleManagement = () => {
           </div>
 
           {/* Notes */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              Ghi chú (tùy chọn)
-            </label>
+          <div className="form-section">
+            <label>Ghi chú (tùy chọn)</label>
             <textarea
               value={newShift.notes}
               onChange={(e) =>
                 setNewShift((prev) => ({ ...prev, notes: e.target.value }))
               }
               rows={3}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="notes-textarea"
               placeholder="Thêm ghi chú về ca làm việc này..."
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex space-x-3 pt-4 border-t border-gray-200">
+          <div className="modal-actions">
             <button
               type="button"
               onClick={() => setIsAddShiftModalOpen(false)}
-              className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+              className="btn-cancel"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={newShift.essentialJobs.length === 0}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 rounded-xl transition-colors font-medium"
+              className="btn-confirm"
             >
               Tạo Ca Làm Việc
             </button>
@@ -980,18 +904,21 @@ const ScheduleManagement = () => {
         }
       >
         {selectedShift && (
-          <div className="space-y-6">
+          <div>
             {/* Shift Overview */}
-            <div className="bg-gray-50 rounded-xl p-4">
-              <div className="flex items-center space-x-3 mb-3">
-                <span className="text-2xl">
+            <div
+              className="shift-summary-box"
+              style={{ background: "#f9fafb", borderColor: "#e5e7eb" }}
+            >
+              <div className="header">
+                <span className="icon">
                   {shiftTypes[selectedShift.shiftType]?.icon}
                 </span>
                 <div>
-                  <h4 className="font-semibold text-gray-900">
+                  <h4 style={{ color: "#111827" }}>
                     {shiftTypes[selectedShift.shiftType]?.label}
                   </h4>
-                  <p className="text-sm text-gray-600">
+                  <p style={{ color: "#4b5563" }}>
                     {selectedShift.startTime} - {selectedShift.endTime}
                   </p>
                 </div>
@@ -1024,7 +951,7 @@ const ScheduleManagement = () => {
             </div>
 
             {/* Current Staff */}
-            <div>
+            <div className="form-section">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="font-semibold text-gray-900">
                   Nhân viên trong ca ({selectedShift.staffIds.length}/
@@ -1037,11 +964,8 @@ const ScheduleManagement = () => {
                   selectedShift.staffIds.map((staffId) => {
                     const person = staff.find((s) => s.id === staffId);
                     return person ? (
-                      <div
-                        key={staffId}
-                        className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg"
-                      >
-                        <div className="flex items-center space-x-3">
+                      <div key={staffId} className="edit-staff-row">
+                        <div className="info-left">
                           <span className="text-lg">
                             {getJobEmoji(person.job)}
                           </span>
@@ -1058,7 +982,7 @@ const ScheduleManagement = () => {
                           onClick={() =>
                             removeStaffFromShift(selectedShift.id, staffId)
                           }
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                          className="btn-remove"
                           title="Xóa khỏi ca"
                         >
                           🗑️
@@ -1083,41 +1007,40 @@ const ScheduleManagement = () => {
                   <button
                     onClick={resetEditStaffFilters}
                     className="text-sm text-blue-600 hover:text-blue-800"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
                   >
                     Xóa bộ lọc
                   </button>
                 </div>
 
                 {/* Search & Filter Controls */}
-                <div className="space-y-3 mb-4 p-3 bg-gray-50 rounded-lg">
-                  {/* Search */}
-                  <div className="relative">
+                <div className="search-filter-box">
+                  <div className="search-input-wrapper">
                     <input
                       type="text"
                       placeholder="Tìm kiếm theo tên hoặc vị trí..."
                       value={editStaffSearch}
                       onChange={(e) => setEditStaffSearch(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                     />
-                    <div className="absolute left-3 top-2.5 text-gray-400">
-                      🔍
-                    </div>
+                    <div className="icon-search">🔍</div>
                     {editStaffSearch && (
                       <button
                         onClick={() => setEditStaffSearch("")}
-                        className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                        className="btn-clear"
                       >
                         ✕
                       </button>
                     )}
                   </div>
 
-                  {/* Filters */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="filters-row">
                     <select
                       value={editStaffJobFilter}
                       onChange={(e) => setEditStaffJobFilter(e.target.value)}
-                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Tất cả vị trí</option>
                       <option value="chef">👨‍🍳 Đầu bếp</option>
@@ -1132,7 +1055,6 @@ const ScheduleManagement = () => {
                     <select
                       value={editStaffStatusFilter}
                       onChange={(e) => setEditStaffStatusFilter(e.target.value)}
-                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Tất cả trạng thái</option>
                       <option value="active">✅ Hoạt động</option>
@@ -1141,15 +1063,14 @@ const ScheduleManagement = () => {
                     </select>
                   </div>
 
-                  {/* Quick buttons */}
-                  <div className="flex flex-wrap gap-2">
+                  <div className="tags-row">
                     <button
                       onClick={() => {
                         setEditStaffJobFilter("");
                         setEditStaffStatusFilter("active");
                         setEditStaffSearch("");
                       }}
-                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs hover:bg-blue-200 transition-colors"
+                      className="tag-blue"
                     >
                       Tất cả nhân viên
                     </button>
@@ -1160,7 +1081,7 @@ const ScheduleManagement = () => {
                           setEditStaffJobFilter(job);
                           setEditStaffStatusFilter("active");
                         }}
-                        className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs hover:bg-green-200 transition-colors flex items-center space-x-1"
+                        className="tag-green"
                       >
                         <span>{getJobEmoji(job)}</span>
                         <span>{getJobName(job)}</span>
@@ -1170,7 +1091,7 @@ const ScheduleManagement = () => {
                 </div>
 
                 {/* Filtered Staff List */}
-                <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg">
+                <div className="staff-list-container">
                   {(() => {
                     const candidates = staff.filter(
                       (s) => !selectedShift.staffIds.includes(s.id)
@@ -1183,9 +1104,9 @@ const ScheduleManagement = () => {
 
                     if (filtered.length === 0) {
                       return (
-                        <div className="text-center py-8 text-gray-400">
-                          <div className="text-2xl mb-2">🔍</div>
-                          <p className="text-sm">
+                        <div className="empty-state">
+                          <div className="icon">🔍</div>
+                          <p>
                             {editStaffSearch ||
                             editStaffJobFilter ||
                             (editStaffStatusFilter &&
@@ -1199,7 +1120,7 @@ const ScheduleManagement = () => {
                               editStaffStatusFilter !== "active")) && (
                             <button
                               onClick={resetEditStaffFilters}
-                              className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+                              className="reset-link"
                             >
                               Xóa bộ lọc
                             </button>
@@ -1211,9 +1132,9 @@ const ScheduleManagement = () => {
                     return filtered.map((person) => (
                       <div
                         key={person.id}
-                        className="flex items-center justify-between p-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors"
+                        className="edit-staff-row hover:bg-gray-50"
                       >
-                        <div className="flex items-center space-x-3">
+                        <div className="info-left">
                           <span className="text-lg">
                             {getJobEmoji(person.job)}
                           </span>
@@ -1221,18 +1142,10 @@ const ScheduleManagement = () => {
                             <div className="font-medium text-gray-900">
                               {person.name}
                             </div>
-                            <div className="text-sm text-gray-500 flex items-center space-x-2">
+                            <div className="text-sm text-gray-500 flex items-center gap-2">
                               <span>{getJobName(person.job)}</span>
                               <span className="text-gray-300">•</span>
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-xs ${
-                                  person.status === "active"
-                                    ? "bg-green-100 text-green-700"
-                                    : person.status === "off"
-                                    ? "bg-yellow-100 text-yellow-700"
-                                    : "bg-red-100 text-red-700"
-                                }`}
-                              >
+                              <span className={`status ${person.status}`}>
                                 {getStatusText(person.status)}
                               </span>
                             </div>
@@ -1254,7 +1167,7 @@ const ScheduleManagement = () => {
                           onClick={() =>
                             addStaffToShift(selectedShift.id, person.id)
                           }
-                          className="ml-3 text-green-600 hover:text-green-800 hover:bg-green-50 p-2 rounded-lg transition-colors flex-shrink-0"
+                          className="btn-add"
                           title="Thêm vào ca"
                         >
                           ➕
@@ -1264,7 +1177,6 @@ const ScheduleManagement = () => {
                   })()}
                 </div>
 
-                {/* Summary */}
                 <div className="mt-3 text-xs text-gray-500 flex items-center justify-between">
                   <span>
                     Hiển thị{" "}
@@ -1296,29 +1208,43 @@ const ScheduleManagement = () => {
 
             {/* Notes */}
             {selectedShift.notes && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h5 className="font-medium text-blue-900 mb-2">Ghi chú</h5>
-                <p className="text-sm text-blue-800">{selectedShift.notes}</p>
+              <div className="shift-summary-box mt-4">
+                <h5
+                  style={{
+                    fontWeight: 500,
+                    color: "#1e3a8a",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  Ghi chú
+                </h5>
+                <p
+                  style={{ fontSize: "0.875rem", color: "#1e40af", margin: 0 }}
+                >
+                  {selectedShift.notes}
+                </p>
               </div>
             )}
 
             {/* Action Buttons */}
-            <div className="flex space-x-3 pt-4 border-t border-gray-200">
+            <div className="modal-actions">
               <button
                 onClick={() => setIsShiftDetailModalOpen(false)}
-                className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors font-medium"
+                className="btn-cancel"
               >
                 Đóng
               </button>
               <button
                 onClick={() => {
-                  if (confirm("Bạn có chắc chắn muốn xóa ca làm việc này?")) {
+                  if (
+                    window.confirm("Bạn có chắc chắn muốn xóa ca làm việc này?")
+                  ) {
                     setShifts(shifts.filter((s) => s.id !== selectedShift.id));
                     setIsShiftDetailModalOpen(false);
                     alert("Đã xóa ca làm việc!");
                   }
                 }}
-                className="px-6 bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl transition-colors font-medium"
+                className="btn-delete"
               >
                 Xóa Ca
               </button>

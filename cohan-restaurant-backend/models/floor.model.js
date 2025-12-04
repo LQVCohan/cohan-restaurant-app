@@ -1,4 +1,3 @@
-// src/models/floor.model.js
 import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
 
@@ -11,11 +10,17 @@ const FloorSchema = BaseSchemaModel({
   name: { type: String, required: true, trim: true },
   level: { type: Number, required: true }, // tầng 1,2,3...
   description: { type: String },
-  planImage: { type: String }, // ảnh sơ đồ tầng (PNG/JPG/SVG)
+  planImage: { type: String }, // ảnh sơ đồ tầng (nếu dùng ảnh nền tĩnh)
   isActive: { type: Boolean, default: true },
+
+  layout: {
+    type: [mongoose.Schema.Types.Mixed],
+    default: [],
+  },
+
   meta: {
-    width: { type: Number, default: 1920 }, // kích thước canvas FE để quy đổi tọa độ
-    height: { type: Number, default: 1080 },
+    width: { type: Number, default: 2000 }, // Kích thước canvas mặc định
+    height: { type: Number, default: 2000 },
   },
 });
 

@@ -261,7 +261,6 @@ export default function LeftPanel({ className = "" }) {
 
   const handleClickTable = (t) => {
     if (multiSelect) return toggleSelect(t);
-    // với nhóm: lấy anchor theo code hiện tại (t.code là anchor)
     const anchor = fetchTableByCode?.(t.code, t.restaurantId) || t;
     selectTableForOrder(anchor.code, anchor.capacity || 0);
   };
@@ -312,7 +311,9 @@ export default function LeftPanel({ className = "" }) {
   };
 
   /**
-   * Lưu thông tin khách (giữ nguyên như trước)
+   * Lưu thông tin khách – giữ nguyên logic:
+   * - Nếu bàn đã có order hoạt động: cập nhật khách vào orderCode (updateOrderCustomerByCode)
+   * - Nếu bàn đang "trống": tạo reservation riêng (createReservation) + setTableStatus "reserved"
    */
   const handleSaveCustomerFromModal = useCallback(
     async (tableCode, cust) => {
@@ -460,7 +461,6 @@ export default function LeftPanel({ className = "" }) {
       ? levelFiltered.filter((t) => {
           const display = String(t.displayCode || t.code || "").toLowerCase();
           if (endsWithSpace) {
-            // exact mode: khớp đúng mã hiển thị hoặc bất kỳ mã thành viên
             const exactCodes = new Set([
               display,
               ...(t.memberCodes || []).map((x) => String(x).toLowerCase()),
@@ -468,7 +468,6 @@ export default function LeftPanel({ className = "" }) {
             ]);
             return exactCodes.has(q);
           }
-          // contains mode: tìm trong displayCode hoặc code của anchor
           const pool = [display, String(t.code || "").toLowerCase()];
           return pool.some((s) => s.includes(q));
         })

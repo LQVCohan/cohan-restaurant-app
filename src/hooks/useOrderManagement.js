@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   useMutation,
   useLazyQuery,
@@ -439,12 +439,23 @@ export default function useOrderManagement(pos = null) {
       const { data } = await loadGroupsQuery({
         variables: { restaurantId, tableCode },
       });
-      const gs = data?.ordersGroupedByTable || [];
+
+      const rawGroups = data?.ordersGroupedByTable || [];
+
+      // Chỉ giữ các group còn active (không phải đã hoàn tất/hủy)
+      const gs = rawGroups.filter((g) => {
+        const st = (g.latestStatus || "").toUpperCase();
+        return !["ORDER_COMPLETED", "ORDER_CANCELLED"].includes(st);
+      });
+
       setGroups(gs);
 
-      // chọn đợt mới nhất
+      // chọn đợt mới nhất trong các group còn active,
+      // nếu không có thì fallback sang rawGroups (lịch sử) để vẫn hiển thị được nếu cần
+      const sourceForLatest = gs.length ? gs : rawGroups;
+
       const latest =
-        [...gs].sort((a, b) => {
+        [...sourceForLatest].sort((a, b) => {
           const ta = new Date(
             a.orders?.[a.orders.length - 1]?.createdAt || 0
           ).getTime();
@@ -454,7 +465,7 @@ export default function useOrderManagement(pos = null) {
           return tb - ta;
         })[0] || null;
 
-      setActiveGroup(latest);
+      setActiveGroup(latest || null);
 
       // Hydrate currentOrder ở UI bằng gộp món
       if (latest) {
@@ -464,7 +475,10 @@ export default function useOrderManagement(pos = null) {
           lineSubtotal:
             (Number(i.price || 0) + Number(i.modifiersPrice || 0)) *
             Number(i.quantity || 0),
-          isNew: !i.isExisting,
+          // ✅ Món load từ BE luôn là món đã tồn tại
+          isExisting: true,
+          isNew: false,
+          _edited: false,
           _lineId: `grp_${latest.orderCode}_${(i.dishId || i.name || "x")
             .toString()
             .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
@@ -746,21 +760,22 @@ export default function useOrderManagement(pos = null) {
     return `${it.dishId || it.id || it.name}-${unit}-${method}-${mods}`;
   };
 
-  /**
-   * Gộp items từ nhiều orders (cùng orderCode)
-   * - Mark isExisting = true nếu món xuất hiện ở các order TRƯỚC order mới nhất
-   */
-  const mergeGroupItems = (group) => {
+  const mergeGroupItems = useCallback((group) => {
     if (!group?.orders?.length)
       return {
         items: [],
-        totals: { subtotal: 0, discount: 0, tax: 0, service: 0, grandTotal: 0 },
+        totals: {
+          subtotal: 0,
+          discount: 0,
+          tax: 0,
+          service: 0,
+          grandTotal: 0,
+        },
       };
 
     const orders = [...group.orders].sort(
       (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
     );
-    const latestOrderId = orders[orders.length - 1].id;
 
     const map = new Map();
     const totals = {
@@ -785,24 +800,36 @@ export default function useOrderManagement(pos = null) {
           ...it,
           quantity: 0,
           isExisting: true,
+          isNew: false,
+          _edited: false,
         };
         prev.quantity = Number(prev.quantity || 0) + Number(it.quantity || 0);
-        if (ord.id === latestOrderId) prev.isExisting = false;
         map.set(key, prev);
       }
     }
 
     for (const k of Object.keys(totals)) totals[k] = Math.round(totals[k]);
     return { items: Array.from(map.values()), totals };
-  };
+  }, []);
 
   /** Tổng gộp của group đang active (dùng cho thanh toán theo đợt) */
-  const mergedCurrent = activeGroup
-    ? mergeGroupItems(activeGroup)
-    : {
-        items: [],
-        totals: { subtotal: 0, discount: 0, tax: 0, service: 0, grandTotal: 0 },
-      };
+  /** Tổng gộp của group đang active (dùng cho thanh toán theo đợt) */
+  const mergedCurrent = useMemo(
+    () =>
+      activeGroup
+        ? mergeGroupItems(activeGroup)
+        : {
+            items: [],
+            totals: {
+              subtotal: 0,
+              discount: 0,
+              tax: 0,
+              service: 0,
+              grandTotal: 0,
+            },
+          },
+    [activeGroup, mergeGroupItems]
+  );
 
   /* ============================================================
      7) STATUS HELPERS (ID-based)
@@ -1107,13 +1134,6 @@ export default function useOrderManagement(pos = null) {
 
         const byLine = prev.findIndex((it) => it._lineId === key);
         if (byLine !== -1) {
-          const removed = prev[byLine];
-          if (removed.isExisting) {
-            setRemovedExistingItems((s) => [
-              ...s,
-              removed._lineId || removed.dishId || removed.id,
-            ]);
-          }
           return prev.filter((_, i) => i !== byLine);
         }
 
@@ -1130,19 +1150,11 @@ export default function useOrderManagement(pos = null) {
   );
 
   const clearAll = useCallback(() => {
-    const existingIds = (currentOrder || [])
-      .filter((it) => it.isExisting)
-      .map((it) => it._lineId || it.dishId || it.id);
-
-    if (existingIds.length > 0) {
-      setRemovedExistingItems((s) => [...s, ...existingIds]);
-    }
-
     setCurrentOrder([]);
     if (setTableOrders && currentTable?.code) {
       setTableOrders((prev) => ({ ...prev, [currentTable.code]: [] }));
     }
-  }, [currentOrder, setCurrentOrder, setTableOrders, currentTable]);
+  }, [setCurrentOrder, setTableOrders, currentTable]);
 
   /* ============================================================
      9) SAVE / UPSERT (tạo đợt mới, chỉ gửi món mới/đã sửa)
@@ -1463,42 +1475,60 @@ export default function useOrderManagement(pos = null) {
      11) FETCH tiện ích (giữ lại cho tương thích)
      ============================================================ */
 
+  /**
+   * FETCH theo bàn nhưng trả về MỖI ĐỢT (orderCode) đã được GỘP món ở FE.
+   * Dùng cho các luồng phụ (gắn khách theo bàn, modal bàn…) chứ không dùng hiển thị chính.
+   */
   const fetchOrderByTable = useCallback(
-    async (restaurantId, tableCode, limit = 10, cursor = null) => {
+    async (restaurantId, tableCode) => {
       if (!restaurantId || !tableCode) {
         return { success: false, message: "missing restaurantId/tableCode" };
       }
-      const res = await loadOrdersNow({
-        variables: { restaurantId, limit, cursor },
-      });
-      const edges = res?.data?.ordersByRestaurantNow?.edges || [];
-      const matched = edges
-        .map((e) => e.node)
-        .filter(
-          (o) => (o.tableCode || "").toLowerCase() === tableCode.toLowerCase()
-        );
 
-      const normalized = matched.map((ord) => ({
-        ...ord,
-        items: (ord.items || []).map((it) => ({
+      const { data } = await loadGroupsQuery({
+        variables: { restaurantId, tableCode },
+      });
+
+      const rawGroups = data?.ordersGroupedByTable || [];
+
+      const activeGroups = rawGroups.filter((g) => {
+        const st = (g.latestStatus || "").toUpperCase();
+        return !["ORDER_COMPLETED", "ORDER_CANCELLED"].includes(st);
+      });
+
+      const normalized = activeGroups.map((group) => {
+        const merged = mergeGroupItems(group);
+        const items = merged.items.map((it) => ({
           ...it,
           lineSubtotal:
             (Number(it.price || 0) + Number(it.modifiersPrice || 0)) *
             Number(it.quantity || 0),
           isExisting: true,
           isNew: false,
-          _lineId: `srv_${ord.id}_${(it.dishId || it.name || "x")
+          _lineId: `grp_${group.orderCode}_${(it.dishId || it.name || "x")
             .toString()
             .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
-        })),
-      }));
-      return {
-        success: true,
-        data: normalized,
-        pageInfo: res?.data?.ordersByRestaurantNow?.pageInfo,
-      };
+        }));
+
+        // 💡 lấy order mới nhất trong group để map user
+        const ordersArr = Array.isArray(group.orders) ? group.orders : [];
+        const lastOrder =
+          ordersArr.length > 0 ? ordersArr[ordersArr.length - 1] : null;
+        const user = lastOrder && lastOrder.user ? lastOrder.user : null;
+
+        return {
+          orderCode: group.orderCode,
+          tableCode: group.tableCode,
+          latestStatus: group.latestStatus,
+          items,
+          totals: merged.totals,
+          user, // ✅ thêm user để TableActionsModal đọc
+        };
+      });
+
+      return { success: true, data: normalized };
     },
-    [loadOrdersNow]
+    [loadGroupsQuery]
   );
 
   const fetchOrderById = useCallback(
@@ -1556,65 +1586,6 @@ export default function useOrderManagement(pos = null) {
   );
 
   // Dùng khi chưa biết orderCode → thử tìm theo bàn
-  const attachCustomerToOrder = useCallback(
-    async (...args) => {
-      let tableCode = null;
-      let customer = null;
-
-      if (args.length === 2) {
-        tableCode = args[0];
-        customer = args[1];
-      } else {
-        customer = args[0];
-        tableCode = currentTable?.code || null;
-      }
-
-      const clean = {
-        fullName: (customer?.fullName || customer?.name || "").trim(),
-        phone: (customer?.phone || "").trim(),
-        email: (customer?.email || "").trim().toLowerCase(),
-      };
-
-      if (tableCode && setTableOrders) {
-        setTableOrders((prev) => ({
-          ...prev,
-          [tableCode]: { ...(prev?.[tableCode] || {}), customer: clean },
-        }));
-      }
-
-      let orderCode = activeGroup?.orderCode || currentTable?.orderCode || null;
-
-      if (!orderCode && tableCode && restaurantId && fetchOrderByTable) {
-        try {
-          const r = await fetchOrderByTable(restaurantId, tableCode);
-          orderCode = r?.data?.[0]?.orderCode || null;
-        } catch {}
-      }
-
-      if (orderCode && restaurantId) {
-        return updateOrderCustomerByCode({
-          restaurantId,
-          orderCode,
-          customer: clean,
-        });
-      }
-
-      return {
-        success: true,
-        message:
-          "Đã lưu thông tin khách tạm thời, sẽ đẩy lên server khi có order.",
-      };
-    },
-    [
-      currentTable?.orderCode,
-      currentTable?.code,
-      restaurantId,
-      setTableOrders,
-      fetchOrderByTable,
-      updateOrderCustomerByCode,
-      activeGroup?.orderCode,
-    ]
-  );
 
   /* ============================================================
      13) RETURN
@@ -1687,6 +1658,5 @@ export default function useOrderManagement(pos = null) {
 
     // customer
     updateOrderCustomerByCode,
-    attachCustomerToOrder,
   };
 }

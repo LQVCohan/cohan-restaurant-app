@@ -24,6 +24,8 @@ type Floor {
   description: String
   planImage: String
   isActive: Boolean
+  # Dữ liệu layout (decor items) cho Floor Plan Designer
+  layout: JSON
   meta: FloorMeta
   createdAt: DateTime
   updatedAt: DateTime
@@ -46,6 +48,8 @@ input CreateFloorInput {
   description: String
   planImage: String
   isActive: Boolean
+  # Cho phép gửi layout ngay khi tạo
+  layout: JSON
   meta: FloorMetaInput
 }
 
@@ -56,6 +60,8 @@ input UpdateFloorInput {
   description: String
   planImage: String
   isActive: Boolean
+  # Cập nhật layout khi save từ Designer
+  layout: JSON
   meta: FloorMetaInput
 }
 
@@ -171,6 +177,7 @@ input BulkTableItemInput {
   isJoinable: Boolean
   joinGroupId: String
 }
+
 input MergeTablesInput {
   restaurantId: ID!
   tableIds: [ID!]! # các bàn sẽ vào 1 nhóm
@@ -183,6 +190,7 @@ type MergeResult {
   anchorId: ID!
   tableIds: [ID!]!
 }
+
 input SplitTablesInput {
   restaurantId: ID!
   joinGroupId: String!
@@ -203,9 +211,13 @@ type SplitResult {
   ok: Boolean!
   unmergedTableIds: [ID!]!
 }
+
 extend type Query {
   floors(restaurantId: ID!): [Floor!]!
   floorByLevel(restaurantId: ID!, level: Int!): Floor
+  # Lấy chi tiết 1 tầng (bao gồm layout)
+  floor(id: ID!): Floor
+
   tables(
     restaurantId: ID!
     floorId: ID
@@ -220,6 +232,7 @@ extend type Query {
 extend type Mutation {
   mergeTables(input: MergeTablesInput!): MergeResult!
   splitTables(input: SplitTablesInput!): SplitResult!
+
   createFloor(input: CreateFloorInput!): Floor!
   updateFloor(input: UpdateFloorInput!): Floor!
   deleteFloor(id: ID!): Boolean! # hard delete; nếu muốn soft → đổi bool/flag

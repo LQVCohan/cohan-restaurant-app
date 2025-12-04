@@ -8,91 +8,94 @@ const OrderItem = ({
   status,
   orderId,
   header,
-  summary = [],
-  details = [],
+  restaurantName,
+  itemsPreview = [],
+  mainInfo = [],
   actions = [],
   onClick,
 }) => {
-  const kindIcon =
-    kind === "reservation" ? (
-      <Icon name="restaurant" size={18} />
-    ) : kind === "delivery" ? (
-      <Icon name="truck" size={18} />
-    ) : (
-      <Icon name="receipt" size={18} />
-    );
+  const kindConfig = {
+    reservation: { icon: "restaurant", color: "blue", label: "Đặt bàn" },
+    delivery: { icon: "truck", color: "orange", label: "Giao hàng" },
+    dinein: { icon: "receipt", color: "green", label: "Tại quán" },
+  };
+  const currentKind = kindConfig[kind] || kindConfig.dinein;
 
   return (
     <article
       className={`order-card status-${status || "unknown"}`}
       onClick={onClick}
     >
-      {/* Header: 2 cột (title-left / status-right) + 2 dòng nội dung */}
-      <header className="order-header">
-        <div className="order-title">
-          <span className="order-kind">{kindIcon}</span>
+      {/* HEADER */}
+      <div className="card-header">
+        <div className="header-left">
+          <div className={`kind-badge ${currentKind.color}`}>
+            <Icon name={currentKind.icon} size={14} />
+            <span>{currentKind.label}</span>
+          </div>
           <span className="order-id">{header?.id}</span>
+          <span className="dot-separator">•</span>
+          <span className="order-time">{header?.timeText}</span>
         </div>
-
-        {/* chip trạng thái vào luồng layout nên không đè nội dung */}
-        <div className="order-status-slot">
+        <div className="header-right">
           <StatusChip status={status} />
         </div>
+      </div>
 
-        {/* restaurant chiếm toàn hàng, có ellipsis */}
-        <div className="order-restaurant" title={header?.restaurant}>
-          {header?.restaurant || "—"}
+      {/* BODY */}
+      <div className="card-body">
+        {/* Tên nhà hàng - Hiển thị đúng dữ liệu từ props */}
+        <h3 className="restaurant-name" title={restaurantName}>
+          {restaurantName || "Thông tin nhà hàng chưa cập nhật"}
+        </h3>
+
+        {/* List món ăn */}
+        {itemsPreview.length > 0 && (
+          <div className="items-preview">
+            {itemsPreview.map((item, idx) => (
+              <div key={idx} className="item-row">
+                <span className="qty">{item.quantity}x</span>
+                <span className="name">{item.name}</span>
+              </div>
+            ))}
+            {header.moreItemsCount > 0 && (
+              <div className="more-items">
+                ...và {header.moreItemsCount} món khác
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Grid Info */}
+        <div className="info-grid">
+          {mainInfo.map((info, idx) => (
+            <div key={idx} className="info-item">
+              <span className="label">{info.label}</span>
+              <span className={`value ${info.highlight ? "highlight" : ""}`}>
+                {info.value}
+              </span>
+            </div>
+          ))}
         </div>
+      </div>
 
-        {/* time line */}
-        <div className="order-time">{header?.timeText}</div>
-      </header>
-
-      {/* Summary block (optional) */}
-      {summary?.length > 0 && (
-        <section className="order-summary">
-          {summary.map((s, i) => (
-            <div key={i} className="order-summary-item">
-              <span className="label">{s.label}</span>
-              <strong className="value">{s.value}</strong>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {/* Details block (optional) */}
-      {details?.length > 0 && (
-        <section className="order-details">
-          {details.map((d, i) => (
-            <div key={i} className="detail-row">
-              <span className="detail-label">{d.label}</span>
-              <span className="detail-value">{d.value}</span>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {/* Action bar: luôn neo góc phải dưới, sắp xếp gọn */}
-      {actions?.length > 0 && (
-        <footer
-          className="order-actions"
-          onClick={(e) => e.stopPropagation()}
-          aria-label="Thao tác đơn hàng"
-        >
-          {actions.map((a, i) => (
-            <button
-              key={i}
-              className={`btn btn-${a.variant || "primary"}`}
-              onClick={a.onClick}
-              type="button"
-            >
-              {a.icon && (
-                <Icon name={a.icon} size={16} style={{ marginRight: 6 }} />
-              )}
-              {a.label}
-            </button>
-          ))}
-        </footer>
+      {/* FOOTER ACTIONS */}
+      {actions.length > 0 && (
+        <div className="card-footer" onClick={(e) => e.stopPropagation()}>
+          <div className="divider"></div>
+          <div className="action-buttons">
+            {actions.map((action, idx) => (
+              <button
+                key={idx}
+                className={`btn-action btn-${action.variant || "default"}`}
+                onClick={action.onClick}
+              >
+                {action.icon && <Icon name={action.icon} size={14} />}
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </article>
   );

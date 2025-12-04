@@ -1,67 +1,80 @@
 // src/components/Dashboard_Manager/Storage/components/recipes/RecipeCard.jsx
-import React, { useMemo } from "react";
+import React from "react";
 import Card from "../../../../common/Card";
 import Button from "../../../../common/Button";
 import { formatPrice } from "../../../../../utils/formatters";
 
-/**
- * RecipeCard hiển thị thông tin công thức (Recipe)
- * BE fields dùng trực tiếp:
- * - id, name, description, category, icon
- * - servingVariants: [
- *     {
- *       key, mode, preparationMethodName,
- *       components: [{ ingredientId, qty, unit, ingredientName?, ingredient? }]
- *     }
- *   ]
- */
 const RecipeCard = ({ recipe, onEdit, onDelete, onViewDetails }) => {
-  // Tổng số nguyên liệu (unique theo ingredientId) từ tất cả servingVariants
+  const safeRecipe = recipe || {};
+  const variants = Array.isArray(safeRecipe.servingVariants)
+    ? safeRecipe.servingVariants
+    : [];
 
-  const totalIngredients = useMemo(() => {
-    const sv = recipe?.servingVariants || [];
+  const getComponents = (variant) => {
+    if (!variant) return [];
+    if (Array.isArray(variant.Ingredients)) return variant.Ingredients;
+    if (Array.isArray(variant.ingredients)) return variant.ingredients;
+    return [];
+  };
+
+  // Đếm số nguyên liệu UNIQUE theo ingredientId
+  const calcTotalIngredients = () => {
     const ids = new Set();
-    sv.forEach((v) =>
-      (v.components || []).forEach((c) => ids.add(String(c.ingredientId)))
-    );
+    variants.forEach((v) => {
+      const comps = getComponents(v);
+      comps.forEach((c) => {
+        if (c && c.ingredientId) {
+          ids.add(String(c.ingredientId));
+        }
+      });
+    });
     return ids.size;
-  }, [recipe]);
+  };
 
-  // Số phương pháp = số servingVariants
-  const totalVariants = recipe?.servingVariants?.length || 0;
+  const totalIngredients = calcTotalIngredients();
+  const totalVariants = variants.length;
 
-  // Chi phí thấp nhất (nếu BE đã hydrate giá qua component.ingredient?.costPerBaseUnit)
-  const minCost = useMemo(() => {
-    const sv = recipe?.servingVariants || [];
-    if (!sv.length) return 0;
+  // Tính chi phí thấp nhất giữa các phương pháp
+  const calcMinCost = () => {
+    if (!variants.length) return { minCost: 0, hasAnyCost: false };
 
-    const costs = sv.map((v) =>
-      (v.components || []).reduce((sum, c) => {
-        const qty = Number(c.qty) || 0;
-        const unitCost =
-          (c.ingredient && Number(c.ingredient.costPerBaseUnit)) || 0;
+    const costs = variants.map((v) => {
+      const comps = getComponents(v);
+      return comps.reduce((sum, c) => {
+        const qty = Number(c?.quantify) || 0;
+        const unitCost = Number(c?.costPerBaseUnit);
+        if (!Number.isFinite(unitCost) || unitCost <= 0) return sum;
         return sum + qty * unitCost;
-      }, 0)
-    );
+      }, 0);
+    });
 
-    return costs.length ? Math.min(...costs) : 0;
-  }, [recipe]);
+    const filtered = costs.filter((v) => Number.isFinite(v) && v > 0);
+    if (!filtered.length) return { minCost: 0, hasAnyCost: false };
+
+    return { minCost: Math.min(...filtered), hasAnyCost: true };
+  };
+
+  const { minCost, hasAnyCost } = calcMinCost();
+
+  const handleCardClick = () => {
+    if (onEdit && safeRecipe.id) onEdit(safeRecipe.id);
+  };
 
   return (
-    <Card className="recipe-card" hover onClick={() => onEdit?.(recipe.id)}>
+    <Card className="recipe-card" hover onClick={handleCardClick}>
       <div className="recipe-header">
-        <div className="recipe-icon">{recipe?.icon || "🍽️"}</div>
+        <div className="recipe-icon">{safeRecipe.icon || "🍽️"}</div>
         <div className="recipe-info">
-          <h3 className="recipe-name">{recipe?.name || "Không có tên"}</h3>
-          {recipe?.category ? (
-            <span className="recipe-category">{recipe.category}</span>
-          ) : null}
+          <h3 className="recipe-name">{safeRecipe.name || "Không có tên"}</h3>
+          {safeRecipe.category && (
+            <span className="recipe-category">{safeRecipe.category}</span>
+          )}
         </div>
       </div>
 
       <div className="recipe-content">
         <p className="recipe-description">
-          {recipe?.description || "Chưa có mô tả cho công thức này."}
+          {safeRecipe.description || "Chưa có mô tả cho công thức này."}
         </p>
 
         <div className="recipe-stats">
@@ -75,7 +88,7 @@ const RecipeCard = ({ recipe, onEdit, onDelete, onViewDetails }) => {
           </div>
           <div className="stat-item">
             <div className="stat-value">
-              {minCost > 0 ? formatPrice(minCost) : "—"}
+              {hasAnyCost ? formatPrice(minCost) : "—"}
             </div>
             <div className="stat-label">Chi phí thấp nhất</div>
           </div>
@@ -88,7 +101,7 @@ const RecipeCard = ({ recipe, onEdit, onDelete, onViewDetails }) => {
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
-                onEdit(recipe.id);
+                if (safeRecipe.id) onEdit(safeRecipe.id);
               }}
             >
               ✏️ Sửa
@@ -101,7 +114,7 @@ const RecipeCard = ({ recipe, onEdit, onDelete, onViewDetails }) => {
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
-                onViewDetails(recipe.id);
+                if (safeRecipe.id) onViewDetails(safeRecipe.id);
               }}
             >
               👁️ Xem chi tiết
@@ -114,7 +127,7 @@ const RecipeCard = ({ recipe, onEdit, onDelete, onViewDetails }) => {
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete(recipe.id);
+                if (safeRecipe.id) onDelete(safeRecipe.id);
               }}
             >
               🗑️ Xóa

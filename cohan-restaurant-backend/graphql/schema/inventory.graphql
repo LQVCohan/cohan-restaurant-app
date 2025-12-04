@@ -1,4 +1,7 @@
-"Đơn vị tính chuẩn cho nguyên liệu"
+# ================================
+# ENUMS
+# ================================
+
 enum Unit {
   g
   kg
@@ -13,7 +16,6 @@ enum Unit {
   can
 }
 
-"Loại dịch chuyển kho"
 enum MovementType {
   inbound
   outbound
@@ -21,7 +23,15 @@ enum MovementType {
   transfer
 }
 
-"Chuyển đổi giữa các đơn vị (1 from = ratio to)"
+enum ServingMode {
+  PORTION
+  BY_WEIGHT
+}
+
+# ================================
+# SHARED TYPES
+# ================================
+
 type UnitConversion {
   from: Unit!
   to: Unit!
@@ -34,7 +44,10 @@ input UnitConversionInput {
   ratio: Float!
 }
 
-"Nguyên liệu (Ingredient)"
+# ================================
+# INGREDIENT
+# ================================
+
 type Ingredient {
   id: ID!
   restaurantId: ID!
@@ -47,18 +60,6 @@ type Ingredient {
   photos: [String!]!
   minStock: Float
   notes: String
-  isActive: Boolean
-  createdAt: DateTime
-  updatedAt: DateTime
-}
-
-"Kho (Warehouse)"
-type Warehouse {
-  id: ID!
-  restaurantId: ID!
-  name: String!
-  code: String
-  address: String
   isActive: Boolean
   createdAt: DateTime
   updatedAt: DateTime
@@ -92,6 +93,21 @@ input UpdateIngredientInput {
   isActive: Boolean
 }
 
+# ================================
+# WAREHOUSE
+# ================================
+
+type Warehouse {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  code: String
+  address: String
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
 input CreateWarehouseInput {
   restaurantId: ID!
   name: String!
@@ -108,7 +124,10 @@ input UpdateWarehouseInput {
   isActive: Boolean
 }
 
-"Chi tiết batch trong kho"
+# ================================
+# STOCK
+# ================================
+
 type StockBatch {
   id: ID!
   lot: String
@@ -126,7 +145,6 @@ input StockBatchInput {
   costPerBaseUnit: Float
 }
 
-"Item trong kho (StockItem)"
 type StockItem {
   id: ID!
   restaurantId: ID!
@@ -139,7 +157,6 @@ type StockItem {
   updatedAt: DateTime
 }
 
-"Movement ghi nhận mỗi lần nhập/xuất/điều chỉnh kho"
 type StockMovement {
   id: ID!
   restaurantId: ID!
@@ -153,11 +170,17 @@ type StockMovement {
   updatedAt: DateTime
 }
 
+# ================================
+# RECIPE
+# ================================
+
 type IngredientsComponent {
   ingredientId: ID!
   quantify: Float!
   wastePct: Float
   name: String
+  costPerBaseUnit: Float
+  baseUnit: Unit
 }
 
 input IngredientsComponentInput {
@@ -167,17 +190,11 @@ input IngredientsComponentInput {
   wastePct: Float
 }
 
-"Phương pháp chế biến (variant) trong công thức"
-enum ServingMode {
-  PORTION
-  BY_WEIGHT
-}
-
 type ServingVariant {
-  key: String! # "portion" | "byWeight"
+  key: String!
   mode: ServingMode!
   yieldQty: Float!
-  yieldUnit: String! # "portion" | "100g" | "g"
+  yieldUnit: String!
   name: String
   Ingredients: [IngredientsComponent!]!
 }
@@ -202,7 +219,6 @@ type Recipe {
   updatedAt: DateTime
 }
 
-"Input UpsertRecipe chỉ dùng servingVariants, bỏ baseComponents"
 input UpsertRecipeInput {
   restaurantId: ID!
   menuItemId: ID!
@@ -213,7 +229,6 @@ input UpsertRecipeInput {
   servingVariants: [ServingVariantInput!]
 }
 
-"MenuItem kèm Recipe để hiển thị danh sách"
 type MenuItemWithRecipe {
   menuItem: MenuItem!
   recipe: Recipe
@@ -225,7 +240,10 @@ type MenuItemsWithRecipes {
   pageInfo: PageInfo!
 }
 
-"OrderLine: cho phép định nghĩa cách phục vụ"
+# ================================
+# ORDERING / CONSUMPTION
+# ================================
+
 input OrderLineInput {
   menuItemId: ID!
   quantity: Float
@@ -250,7 +268,6 @@ type ConsumptionResult {
   lowStocks: [Ingredient!]!
 }
 
-"Thống kê movement trong thời gian"
 type MovementSummary {
   inbound: Float!
   outbound: Float!
@@ -261,19 +278,21 @@ type MovementSummary {
   count: Int!
 }
 
+# ================================
+# QUERY
+# ================================
+
 extend type Query {
-  # Ingredient
   ingredients(
     restaurantId: ID!
     search: String
     limit: Int = 100
   ): [Ingredient!]!
+
   ingredient(id: ID!): Ingredient
 
-  # Warehouse
   warehouses(restaurantId: ID!): [Warehouse!]!
 
-  # Stock
   stockItems(
     restaurantId: ID!
     warehouseId: ID
@@ -282,7 +301,6 @@ extend type Query {
     limit: Int = 200
   ): [StockItem!]!
 
-  # Recipe
   menuItemsWithRecipes(
     restaurantId: ID!
     timeSlot: TimeSlot
@@ -293,9 +311,9 @@ extend type Query {
   ): MenuItemsWithRecipes!
 
   recipe(restaurantId: ID!, menuItemId: ID!): Recipe
+
   recipesByMenuItems(restaurantId: ID!, menuItemIds: [ID!]!): [Recipe!]!
 
-  # Movement
   stockMovements(
     restaurantId: ID!
     warehouseId: ID
@@ -317,18 +335,19 @@ extend type Query {
   ): MovementSummary!
 }
 
+# ================================
+# MUTATION
+# ================================
+
 extend type Mutation {
-  # Ingredient
   createIngredient(input: CreateIngredientInput!): Ingredient!
   updateIngredient(input: UpdateIngredientInput!): Ingredient!
   deleteIngredient(id: ID!): Boolean!
 
-  # Warehouse
   createWarehouse(input: CreateWarehouseInput!): Warehouse!
   updateWarehouse(input: UpdateWarehouseInput!): Warehouse!
   deleteWarehouse(id: ID!): Boolean!
 
-  # Stock
   upsertStockItem(
     restaurantId: ID!
     warehouseId: ID!
@@ -355,11 +374,9 @@ extend type Mutation {
     reason: String
   ): Boolean!
 
-  # Recipe
   upsertRecipe(input: UpsertRecipeInput!): Recipe!
   deleteRecipe(restaurantId: ID!, menuItemId: ID!): Boolean!
 
-  # Consumption
   consumeForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
   reserveForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
   commitReservationForOrder(input: ConsumeForOrderInput!): ConsumptionResult!
