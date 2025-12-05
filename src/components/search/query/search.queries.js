@@ -1,0 +1,86 @@
+import { gql } from "@apollo/client";
+
+export const SEARCH_SUGGESTIONS = gql`
+  query SearchSuggestions($query: String!, $limitPerType: Int) {
+    searchSuggestions(query: $query, limitPerType: $limitPerType) {
+      restaurants {
+        id
+        name
+        shortAddress
+        avgRating
+        cuisineType
+        phone
+      }
+      menuItems {
+        id
+        name
+        restaurantId
+        restaurantName
+        timeSlot
+        thumbImage
+        basePrice
+      }
+      owners {
+        id
+        fullName
+        phone
+        email
+        managedRestaurantCount
+      }
+      locations {
+        label
+        district
+        city
+      }
+    }
+  }
+`;
+
+export const SEARCH = gql`
+  query Search(
+    $query: String!
+    $filter: SearchFilterInput
+    $limit: Int
+    $offset: Int
+  ) {
+    search(query: $query, filter: $filter, limit: $limit, offset: $offset) {
+      totalCount
+      items {
+        type
+        score
+        timeSlot
+
+        restaurant {
+          id
+          name
+          coverImage
+          avatar
+          avgRating
+          cuisineType
+          address {
+            district
+            city
+          }
+        }
+
+        menuItem {
+          id
+          name
+          basePrice
+          thumbImage
+        }
+
+        owner {
+          id
+          fullName
+          email
+          phone
+        }
+
+        locationLabel
+        locationCity
+        locationDistrict
+      }
+    }
+  }
+`;

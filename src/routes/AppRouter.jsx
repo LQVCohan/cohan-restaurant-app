@@ -24,12 +24,11 @@ import RestaurantsList from "../components/Customer/RestaurantList/RestaurantLis
 import RestaurantDetail from "../components/Customer/RestaurantDetail/RestaurantDetail";
 import TableBooking from "../components/Customer/TableBooking/TableBooking";
 import OrdersPage from "../components/Customer/OrdersManagement/OrdersPage";
-// ✅ Profile Page (vừa tạo)
 import ProfilePage from "../components/Customer/Profile/ProfilePage";
 
 // ==== Manager/Admin ====
 import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
-import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
+
 import MenuManagement from "../components/admin/MenuManagement";
 import ManagerLayout from "../layouts/ManagerLayout";
 
@@ -40,8 +39,13 @@ import MainLayout from "../layouts/MainLayout";
 import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayout";
 import { useNotification } from "@/hooks/useNotification";
 import RestaurantMenu from "@/components/Customer/RestaurantMenu/RestaurantMenu";
-import FloorMap from "@/components/Customer/TableBooking/FloorMap/FloorMap";
+
 import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDesigner";
+
+// ==== Search / Owner pages ====
+import SearchPage from "../pages/SearchPage.jsx";
+import OwnerProfilePage from "../components/Customer/OwnerProfilePage/OwnerProfilePage.jsx";
+
 // =========================
 // 🔐 GraphQL Query: me
 // =========================
@@ -162,6 +166,32 @@ const AppRouter = () => {
         <Route path="/verify-email" element={<VerifyEmailPending />} />
         <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
         <Route path="/403" element={<ForbiddenPage />} />
+
+        {/* Search page */}
+        <Route
+          path="/search"
+          element={
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "staff", "admin"]}
+              requireVerifiedEmail
+            >
+              <SearchPage />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Owner profile page */}
+        <Route
+          path="/owner/:id"
+          element={
+            <PrivateRoute
+              allowedRoles={["manager", "admin"]}
+              requireVerifiedEmail
+            >
+              <OwnerProfilePage />
+            </PrivateRoute>
+          }
+        />
 
         {/* ===== CUSTOMER ===== */}
         <Route

@@ -1,0 +1,386 @@
+@use "../styles/variables.scss" as *; // Import biến màu nếu có
+
+// --- Variables ---
+$sp-bg: #f8fafc;
+$sp-white: #ffffff;
+$sp-primary: #3b82f6; // Blue
+$sp-text: #0f172a;
+$sp-text-light: #64748b;
+$sp-border: #e2e8f0;
+$sp-radius: 12px;
+$sp-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+$sp-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+.sp-container {
+  min-height: 100vh;
+  background-color: $sp-bg;
+  font-family: "Inter", sans-serif;
+  color: $sp-text;
+  padding-bottom: 60px;
+  padding-top: 60px;
+  // --- HEADER ---
+  .sp-header {
+    background: $sp-white;
+    padding: 40px 20px 20px;
+    border-bottom: 1px solid $sp-border;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+
+    .sp-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin: 0;
+      color: $sp-text;
+    }
+
+    // Search Bar
+    .sp-search-bar {
+      display: flex;
+      align-items: center;
+      background: $sp-bg;
+      border: 2px solid $sp-border;
+      border-radius: 50px;
+      padding: 6px 6px 6px 20px;
+      width: 100%;
+      max-width: 600px;
+      transition: all 0.2s;
+
+      &:focus-within {
+        border-color: $sp-primary;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        background: $sp-white;
+      }
+
+      .icon {
+        color: $sp-text-light;
+      }
+
+      input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        padding: 8px 12px;
+        font-size: 1rem;
+        color: $sp-text;
+        &:focus {
+          outline: none;
+        }
+      }
+
+      .btn-search {
+        background: $sp-primary;
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 50px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+        &:hover {
+          background: darken($sp-primary, 5%);
+        }
+      }
+    }
+
+    // Tabs
+    .sp-tabs {
+      display: flex;
+      gap: 8px;
+      .tab {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: 1px solid $sp-border;
+        background: $sp-white;
+        color: $sp-text-light;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          background: #f1f5f9;
+          color: $sp-text;
+        }
+        &.active {
+          background: #eff6ff;
+          color: $sp-primary;
+          border-color: $sp-primary;
+        }
+      }
+    }
+  }
+
+  // --- CONTENT ---
+  .sp-content {
+    max-width: 1200px;
+    margin: 40px auto 0;
+    padding: 0 20px;
+  }
+
+  // Grid
+  .sp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+  }
+
+  // --- CARD ---
+  .sp-card {
+    background: $sp-white;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid $sp-border;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+
+    &:hover {
+      transform: translateY(-6px);
+      box-shadow: $sp-shadow-hover;
+      .card-media img {
+        transform: scale(1.05);
+      }
+      .card-action {
+        color: $sp-primary;
+      }
+    }
+
+    .card-media {
+      height: 180px;
+      overflow: hidden;
+      position: relative;
+      background: #f1f5f9;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+      }
+      .badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+        &.badge-res {
+          background: $sp-white;
+          color: $sp-primary;
+        }
+        &.badge-food {
+          background: $sp-white;
+          color: #f59e0b;
+        }
+      }
+    }
+
+    .card-info {
+      padding: 16px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+
+      .top-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        .name {
+          font-size: 1.1rem;
+          font-weight: 700;
+          margin: 0;
+          line-height: 1.3;
+          color: $sp-text;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .rating {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 0.85rem;
+          font-weight: 700;
+          background: #fffbeb;
+          padding: 2px 6px;
+          border-radius: 6px;
+          color: #b45309;
+        }
+      }
+
+      .meta {
+        margin-top: auto;
+        .row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: $sp-text-light;
+          font-size: 0.9rem;
+          margin-bottom: 6px;
+        }
+        .cuisine-tag {
+          display: inline-block;
+          font-size: 0.75rem;
+          background: #f1f5f9;
+          padding: 2px 8px;
+          border-radius: 4px;
+          color: $sp-text-light;
+        }
+
+        .price {
+          color: #059669;
+          font-weight: 700;
+          font-size: 1.1rem;
+        }
+        .restaurant-ref {
+          font-size: 0.85rem;
+          color: $sp-text-light;
+          strong {
+            color: $sp-text;
+          }
+        }
+      }
+    }
+
+    .card-action {
+      padding: 12px 16px;
+      border-top: 1px solid $sp-border;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: $sp-text-light;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: color 0.2s;
+    }
+  }
+
+  // --- EMPTY STATE ---
+  .sp-empty {
+    text-align: center;
+    padding: 60px 20px;
+    background: $sp-white;
+    border-radius: 24px;
+    box-shadow: $sp-shadow;
+    max-width: 600px;
+    margin: 0 auto;
+
+    .empty-img {
+      font-size: 4rem;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    h3 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    p {
+      color: $sp-text-light;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .suggestions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      span {
+        font-size: 0.9rem;
+        color: $sp-text-light;
+      }
+      button {
+        background: #f1f5f9;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        color: $sp-primary;
+        font-weight: 600;
+        cursor: pointer;
+        &:hover {
+          background: #eff6ff;
+        }
+      }
+    }
+  }
+
+  // --- SKELETON ---
+  .skeleton {
+    pointer-events: none;
+    .skeleton-img {
+      width: 100%;
+      height: 180px;
+      background: #e2e8f0;
+      animation: pulse 1.5s infinite;
+    }
+    .skeleton-content {
+      padding: 16px;
+    }
+    .skeleton-line {
+      height: 16px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      animation: pulse 1.5s infinite;
+    }
+    .w-3\/4 {
+      width: 75%;
+    }
+    .w-1\/2 {
+      width: 50%;
+    }
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+// Mobile
+@media (max-width: 640px) {
+  .sp-container {
+    .sp-header {
+      padding: 20px;
+    }
+    .sp-search-bar {
+      flex-direction: row;
+      .btn-search {
+        display: none;
+      }
+    } // Ẩn nút tìm trên mobile cho gọn
+    .sp-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  .sp-container {
+    .sp-grid {
+      grid-template-columns: repeat(auto-fill, minmax(45%, 1fr));
+    }
+  }
+}

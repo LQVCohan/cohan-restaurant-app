@@ -1,0 +1,88 @@
+enum SearchEntityType {
+  RESTAURANT
+  MENU_ITEM
+  OWNER
+  LOCATION
+}
+
+type RestaurantSearchSuggestion {
+  id: ID!
+  name: String!
+  shortAddress: String
+  phone: String
+  avgRating: Float
+  cuisineType: String
+}
+
+type MenuItemSearchSuggestion {
+  id: ID!
+  name: String!
+  restaurantId: ID!
+  restaurantName: String!
+  timeSlot: TimeSlot
+  thumbImage: String
+  basePrice: Float
+}
+
+type OwnerSearchSuggestion {
+  id: ID!
+  fullName: String
+  phone: String
+  email: String
+  managedRestaurantCount: Int!
+}
+
+type LocationSearchSuggestion {
+  label: String!
+  district: String
+  city: String
+}
+
+type SearchSuggestions {
+  restaurants: [RestaurantSearchSuggestion!]!
+  menuItems: [MenuItemSearchSuggestion!]!
+  owners: [OwnerSearchSuggestion!]!
+  locations: [LocationSearchSuggestion!]!
+}
+
+input SearchFilterInput {
+  types: [SearchEntityType!]
+  timeSlot: TimeSlot
+  city: String
+  district: String
+  minRating: Float
+}
+
+type SearchResult {
+  type: SearchEntityType!
+  score: Float
+  timeSlot: TimeSlot
+
+  restaurant: Restaurant
+  menuItem: MenuItem
+  owner: User
+
+  locationLabel: String
+  locationCity: String
+  locationDistrict: String
+}
+
+type SearchResultConnection {
+  items: [SearchResult!]!
+  totalCount: Int!
+}
+
+extend type Query {
+  searchSuggestions(
+    query: String!
+    timeSlot: TimeSlot
+    limitPerType: Int = 5
+  ): SearchSuggestions
+
+  search(
+    query: String!
+    filter: SearchFilterInput
+    limit: Int = 20
+    offset: Int = 0
+  ): SearchResultConnection
+}

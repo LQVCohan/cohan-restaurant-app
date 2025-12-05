@@ -1,5 +1,6 @@
 // src/graphql/resolvers/index.js
 import baseResolvers from "./base.js";
+
 import role from "./role/index.js";
 import restaurant from "./restaurant/index.js";
 import user from "./user/index.js";
@@ -21,6 +22,9 @@ import review from "./review/index.js";
 import reviewComment from "./review_comment/index.js";
 import cart from "./cart/index.js";
 
+// 🆕 Thêm search module
+import search from "./search/index.js";
+
 export default {
   ...baseResolvers,
 
@@ -36,14 +40,16 @@ export default {
     ...(floor.Query || {}),
     ...(order.Query || {}),
     ...(inventory.Query || {}),
-    ...(supply.Query || {}), // 🆕 Thêm Query supply
+    ...(supply.Query || {}),
     ...(reservation.Query || {}),
     ...(eventLogResolvers.Query || {}),
     ...(payment.Query || {}),
     ...(staff.Query || {}),
     ...(review.Query || {}),
     ...(reviewComment.Query || {}),
-    ...(cart.Query || {}), // 🆕 Thêm Query cart
+    ...(cart.Query || {}),
+
+    ...(search.Query || {}),
   },
 
   Mutation: {
@@ -57,7 +63,7 @@ export default {
     ...(table.Mutation || {}),
     ...(floor.Mutation || {}),
     ...(inventory.Mutation || {}),
-    ...(supply.Mutation || {}), // 🆕 Thêm Mutation supply
+    ...(supply.Mutation || {}),
     ...(auth.Mutation || {}),
     ...(order.Mutation || {}),
     ...(reservation.Mutation || {}),
@@ -66,10 +72,13 @@ export default {
     ...(staff.Mutation || {}),
     ...(review.Mutation || {}),
     ...(reviewComment.Mutation || {}),
-    ...(cart.Mutation || {}), // 🆕 Thêm Mutation cart
+    ...(cart.Mutation || {}),
   },
 
-  // Nếu có type-level resolvers
+  // ============================
+  // TYPE-LEVEL RESOLVERS
+  // ============================
+
   ...(role.Role ? { Role: role.Role } : {}),
   ...(restaurant.Restaurant ? { Restaurant: restaurant.Restaurant } : {}),
   ...(user.User ? { User: user.User } : {}),
@@ -84,7 +93,8 @@ export default {
   ...(order.Order ? { Order: order.Order } : {}),
 
   ...(menu.MenuItem ? { MenuItem: menu.MenuItem } : {}),
-
   ...(cart.Cart ? { Cart: cart.Cart } : {}),
   ...(cart.CartItem ? { CartItem: cart.CartItem } : {}),
+
+  ...(search.SearchResult ? { SearchResult: search.SearchResult } : {}),
 };

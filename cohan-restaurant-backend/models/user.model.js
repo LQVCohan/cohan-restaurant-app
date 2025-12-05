@@ -299,6 +299,6 @@ userSchema.index(
 userSchema.index({ employeeCode: 1 });
 
 userSchema.index({ userType: 1, employmentStatus: 1, primaryRestaurant: 1 });
-
+userSchema.index({ phone: 1 });
 export const User = mongoose.models.User || mongoose.model("User", userSchema);
 export default User;

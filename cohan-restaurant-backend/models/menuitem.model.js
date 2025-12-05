@@ -22,11 +22,8 @@ const menuItemSchema = BaseSchemaModel({
   name: { type: String, required: true, trim: true },
   description: { type: String, trim: true },
 
-  // Giá cơ bản (có thể = 0 nếu dùng hoàn toàn theo servingVariants)
   basePrice: { type: Number, default: 0, min: 0 },
 
-  // ❌ ĐÃ XOÁ: preparationMethods + PreparationSchema
-  // byWeight vẫn giữ để FE biết kiểu bán
   byWeight: { type: Boolean, default: false },
 
   thumbImage: { type: String, trim: true },
@@ -52,10 +49,16 @@ menuItemSchema.index(
   { unique: true }
 );
 
+/** 🔍 TEXT INDEX cho search món ăn */
+menuItemSchema.index({
+  name: "text",
+  description: "text",
+  notes: "text",
+});
+
 /* ============================
  * VIRTUAL: recipe (map sang Recipe)
  * ============================ */
-// Mỗi MenuItem có 1 Recipe
 menuItemSchema.virtual("recipe", {
   ref: "Recipe",
   localField: "_id",
@@ -63,9 +66,6 @@ menuItemSchema.virtual("recipe", {
   justOne: true,
 });
 
-/* =====================================
- * AUTO POPULATE recipe cho mọi query
- * ===================================== */
 function autoPopulateRecipe(next) {
   this.populate({
     path: "recipe",
@@ -74,7 +74,6 @@ function autoPopulateRecipe(next) {
   next();
 }
 
-// Tự populate cho find / findOne / findOneAndUpdate
 menuItemSchema.pre("find", autoPopulateRecipe);
 menuItemSchema.pre("findOne", autoPopulateRecipe);
 menuItemSchema.pre("findOneAndUpdate", autoPopulateRecipe);

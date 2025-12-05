@@ -2,7 +2,7 @@ import React, { useContext, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import "../../../../styles/Homepage/Header.scss";
-
+import HeaderSearch from "./HeaderSearch.jsx";
 const Header = ({ onCartToggle, cartItemCount = 0 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -108,17 +108,7 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
         {/* Actions */}
         <div className="header__actions">
           {/* search (placeholder) */}
-          <div className="header__search">
-            <input
-              type="text"
-              placeholder="Tìm món, nhà hàng…"
-              className="header__search-input"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") goto("/restaurants");
-              }}
-            />
-            <span className="header__search-icon">🔍</span>
-          </div>
+          <HeaderSearch />
 
           {/* Language switcher */}
           <div className="header__lang">
