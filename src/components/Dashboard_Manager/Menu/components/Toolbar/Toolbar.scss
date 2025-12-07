@@ -1,419 +1,415 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+// --- Variables ---
+$primary: #3b82f6; // Blue 500
+$primary-hover: #2563eb; // Blue 600
+$secondary-bg: #f1f5f9; // Slate 100
+$surface: #ffffff;
+$border: #e2e8f0; // Slate 200
+$text-main: #1e293b; // Slate 800
+$text-muted: #64748b; // Slate 500
+$danger: #ef4444;
+$radius: 10px;
+$shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+$transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
-.toolbar {
-  background: white;
-  border-radius: 1rem;
-  box-shadow: $shadow-md;
-  margin-bottom: $spacing-lg;
-  overflow: hidden;
+// --- Main Container ---
+.toolbar-container {
+  background: $surface;
+  border-radius: $radius;
+  box-shadow: $shadow;
+  border: 1px solid $border;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  font-family: "Inter", sans-serif; // Đảm bảo font chữ đẹp
+}
 
-  &__main {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: $spacing-lg;
-    flex-wrap: wrap;
+// --- 1. Top Bar ---
+.toolbar-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
 
-    @media (max-width: 1024px) {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 1rem;
-    }
-  }
+  .search-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 280px;
+    max-width: 450px;
 
-  &__search {
-    /* Không chiếm full, cho phép co giãn trong khoảng mong muốn */
-    flex: 0 1 clamp(220px, 32vw, 360px);
-    max-width: 420px;
-    min-width: 220px;
-
-    @media (max-width: 768px) {
-      /* Mobile vẫn để tự co giãn theo layout cột */
-      flex: 1 1 auto;
-      min-width: auto;
-      max-width: 100%;
-    }
-  }
-
-  &__quick-filters {
-    display: flex;
-    gap: $spacing-sm;
-    align-items: center;
-
-    @media (max-width: 768px) {
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-  }
-
-  &__view-controls {
-    display: flex;
-    align-items: center;
-  }
-
-  &__actions {
-    display: flex;
-    flex: 1; /* Cho phép cụm nút chiếm phần còn lại của dòng */
-    gap: $spacing-sm;
-    justify-content: flex-end;
-    min-width: 260px;
-
-    .action-btn {
-      flex: 1 1 0; /* Mỗi nút tự chia đều phần còn lại */
-      text-align: center;
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: $text-muted;
+      font-size: 1.1rem;
+      pointer-events: none;
     }
 
-    @media (max-width: 1024px) {
-      flex-wrap: wrap;
-      justify-content: stretch;
+    .search-input {
+      width: 100%;
+      padding: 0.65rem 2.5rem 0.65rem 2.4rem;
+      border: 1px solid $border;
+      border-radius: $radius;
+      font-size: 0.95rem;
+      outline: none;
+      transition: $transition;
+      color: $text-main;
 
-      .action-btn {
-        flex: 1 1 100%; /* Mỗi nút full chiều rộng khi xuống dòng */
+      &:focus {
+        border-color: $primary;
+        box-shadow: 0 0 0 3px rgba($primary, 0.15);
+      }
+      &::placeholder {
+        color: #94a3b8;
+      }
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: $text-muted;
+      cursor: pointer;
+      display: flex;
+      padding: 4px;
+      border-radius: 50%;
+      &:hover {
+        background: #fee2e2;
+        color: $danger;
       }
     }
   }
 
-  &__advanced-filters {
-    border-top: 2px solid $border-color;
-    background: #f8fafc;
-    padding: $spacing-lg;
-  }
-
-  &__summary {
-    border-top: 1px solid $border-color;
-    padding: 1rem $spacing-lg;
-    background: #f1f5f9;
+  .actions-group {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
+    gap: 0.75rem;
 
-    @media (max-width: 768px) {
-      flex-direction: column;
-      align-items: stretch;
+    @media (max-width: 640px) {
+      width: 100%;
+      justify-content: space-between;
+      .btn {
+        flex: 1;
+        justify-content: center;
+      }
     }
   }
 }
 
-// Search Box
-.search-box {
-  position: relative;
-  display: flex;
+// --- Buttons & Toggles ---
+.btn {
+  display: inline-flex;
   align-items: center;
-
-  .search-icon {
-    position: absolute;
-    left: 1rem;
-    color: $text-gray;
-    font-size: 1rem;
-    z-index: 1;
-  }
-
-  .search-input {
-    @include form-input;
-    padding-left: 2.5rem;
-    padding-right: 2.5rem;
-    width: 100%;
-    font-size: 0.875rem;
-
-    &:focus {
-      border-color: $primary;
-      box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
-    }
-  }
-
-  .search-clear {
-    position: absolute;
-    right: 1rem;
-    background: none;
-    border: none;
-    color: $text-gray;
-    cursor: pointer;
-    font-size: 0.875rem;
-    padding: 0.25rem;
-    border-radius: 50%;
-    transition: all 0.3s ease;
-
-    &:hover {
-      background: $error-600;
-      color: white;
-    }
-  }
-}
-
-// Filter Controls
-.filter-select {
-  @include form-input;
-  min-width: 150px;
-  font-size: 0.875rem;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: $radius;
+  font-weight: 500;
+  font-size: 0.9rem;
   cursor: pointer;
-
-  @media (max-width: 768px) {
-    min-width: 120px;
-  }
-}
-
-.filter-toggle {
-  @include button-base;
-  background: $text-gray;
-  color: white;
-  font-size: 0.875rem;
-  padding: $spacing-sm 1rem;
-
-  &:hover {
-    background: #4b5563;
-  }
-
-  &--active {
-    background: $primary;
-
-    &:hover {
-      background: $primary-hover;
-    }
-  }
-}
-
-// View Switcher
-.view-switcher {
-  display: flex;
-  border: 2px solid $border-color;
-  border-radius: $border-radius-sm;
-  overflow: hidden;
-}
-
-.view-btn {
-  @include button-base;
-  background: white;
-  color: $text-gray;
-  border: none;
-  padding: $spacing-sm 1rem;
-  font-size: 1rem;
-  border-radius: 0;
-  margin: 0;
-
-  &:hover {
-    background: $primary-light;
-    color: $primary;
-  }
-
-  &--active {
-    background: $primary;
-    color: white;
-
-    &:hover {
-      background: $primary-hover;
-    }
-  }
-}
-
-// Action Buttons
-.action-btn {
-  @include button-base;
-  font-size: 0.875rem;
-  padding: $spacing-sm 1rem;
+  transition: $transition;
   white-space: nowrap;
+  border: 1px solid transparent;
 
-  &--primary {
+  &.btn-primary {
     background: $primary;
     color: white;
-
+    box-shadow: 0 2px 4px rgba($primary, 0.3);
     &:hover {
       background: $primary-hover;
+      transform: translateY(-1px);
     }
   }
 
-  &--secondary {
+  &.btn-secondary {
     background: white;
-    color: $primary;
-    border: 2px solid $primary;
-
+    border-color: $border;
+    color: $text-main;
     &:hover {
-      background: $primary-light;
+      background: $secondary-bg;
+      border-color: darken($border, 10%);
     }
   }
 
   @media (max-width: 768px) {
-    flex: 1;
-    justify-content: center;
+    .hide-mobile {
+      display: none;
+    }
+    padding: 0.6rem; // icon only
   }
 }
 
-// Advanced Filters
-.advanced-filters {
+.view-toggle {
+  display: flex;
+  background: $secondary-bg;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid $border;
+  margin-right: 0.5rem;
+
+  .toggle-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: $text-muted;
+    cursor: pointer;
+    transition: $transition;
+    display: flex;
+    align-items: center;
+
+    &:hover {
+      color: $text-main;
+    }
+    &.active {
+      background: white;
+      color: $primary;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+
+// --- 2. Filters Row ---
+.toolbar-filters {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: $spacing-lg;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-.filter-group {
-  display: flex;
-  align-items: center;
   gap: 1rem;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-.filter-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: $text-primary;
-  white-space: nowrap;
-}
-
-.price-range {
-  display: flex;
-  align-items: center;
-  gap: $spacing-sm;
-
-  @media (max-width: 768px) {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-}
-
-.price-input {
-  @include form-input;
-  width: 120px;
-  font-size: 0.875rem;
-  text-align: center;
-
-  @media (max-width: 768px) {
-    width: 100px;
-  }
-}
-
-.price-separator {
-  color: $text-gray;
-  font-weight: 600;
-}
-
-.price-apply-btn {
-  @include button-base;
-  background: $primary;
-  color: white;
-  font-size: 0.875rem;
-  padding: $spacing-xs 1rem;
-
-  &:hover {
-    background: $primary-hover;
-  }
-}
-
-.clear-filters-btn {
-  @include button-base;
-  background: $error-600;
-  color: white;
-  font-size: 0.875rem;
-  padding: $spacing-xs 1rem;
-
-  &:hover {
-    background: #dc2626;
-  }
-}
-
-// Summary
-.summary-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-
-  @media (max-width: 768px) {
-    justify-content: center;
-  }
-}
-
-.item-count {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: $text-primary;
-}
-
-.filter-indicator {
-  font-size: 0.75rem;
-  color: $primary;
-  background: $primary-light;
-  padding: 0.25rem $spacing-sm;
-  border-radius: 0.25rem;
-}
-
-// Active Filters
-.active-filters {
-  display: flex;
-  gap: $spacing-sm;
   flex-wrap: wrap;
+  padding-top: 0.5rem;
+  border-top: 1px solid lighten($border, 5%);
 
-  @media (max-width: 768px) {
-    justify-content: center;
+  .filter-row {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    flex: 1;
   }
-}
 
-.filter-tag {
-  display: flex;
-  align-items: center;
-  gap: $spacing-xs;
-  background: $warning-600;
-  color: white;
-  padding: 0.25rem $spacing-sm;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 500;
+  .select-wrapper {
+    position: relative;
 
-  button {
+    .custom-select {
+      appearance: none;
+      background: white;
+      border: 1px solid $border;
+      padding: 0.5rem 2.2rem 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      color: $text-main;
+      cursor: pointer;
+      min-width: 160px;
+      transition: $transition;
+
+      &:focus {
+        border-color: $primary;
+        outline: none;
+      }
+      &.active {
+        border-color: $primary;
+        background: rgba($primary, 0.05);
+        color: $primary;
+        font-weight: 500;
+      }
+    }
+
+    .select-arrow {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: $text-muted;
+      pointer-events: none;
+    }
+  }
+
+  .btn-filter-toggle {
     background: none;
-    border: none;
-    color: white;
+    border: 1px dashed $border;
+    color: $text-muted;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
     cursor: pointer;
-    font-size: 0.75rem;
-    padding: 0;
-    margin-left: 0.25rem;
-    border-radius: 50%;
-    width: 16px;
-    height: 16px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    transition: background-color 0.3s ease;
+    gap: 0.5rem;
+    transition: $transition;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.2);
+      border-color: $primary;
+      color: $primary;
+    }
+    &.active {
+      background: $secondary-bg;
+      border-style: solid;
+      color: $primary;
+      font-weight: 500;
+    }
+  }
+
+  .result-count {
+    font-size: 0.9rem;
+    color: $text-muted;
+    white-space: nowrap;
+    strong {
+      color: $text-main;
     }
   }
 }
 
-// Responsive adjustments
-@media (max-width: 480px) {
-  .toolbar {
-    &__main {
-      padding: 1rem;
+// --- 3. Advanced Panel ---
+.advanced-panel {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+  background: $secondary-bg;
+  border-radius: 8px;
+
+  &.open {
+    max-height: 100px;
+    padding: 1rem;
+    border: 1px solid $border;
+  }
+
+  .price-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    label {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: $text-main;
+      margin-right: 0.5rem;
     }
 
-    &__advanced-filters {
-      padding: 1rem;
+    input {
+      width: 120px;
+      padding: 0.5rem;
+      border: 1px solid $border;
+      border-radius: 6px;
+      outline: none;
+      &:focus {
+        border-color: $primary;
+      }
     }
 
-    &__summary {
-      padding: $spacing-sm 1rem;
+    .separator {
+      color: $text-muted;
+    }
+
+    .btn-apply {
+      padding: 0.5rem 1rem;
+      background: $text-main;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      margin-left: auto;
+      &:hover {
+        background: lighten($text-main, 10%);
+      }
+    }
+  }
+}
+
+// --- 4. Active Chips ---
+.active-chips-area {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+
+  .label {
+    color: $text-muted;
+    margin-right: 0.25rem;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba($primary, 0.1);
+    color: $primary-hover;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+    border: 1px solid rgba($primary, 0.2);
+
+    svg {
+      cursor: pointer;
+      &:hover {
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+      }
     }
   }
 
-  .action-btn,
-  .filter-select {
-    font-size: 0.75rem;
-    padding: $spacing-xs $spacing-sm;
+  .clear-all-text {
+    background: none;
+    border: none;
+    color: $text-muted;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-left: 0.5rem;
+    &:hover {
+      color: $danger;
+    }
+  }
+}
+
+// --- Responsive Adjustments ---
+@media (max-width: 768px) {
+  .toolbar-container {
+    padding: 1rem;
+    gap: 0.75rem;
   }
 
-  .search-input {
-    font-size: 0.75rem;
+  .toolbar-filters {
+    flex-direction: column;
+    align-items: flex-start;
+
+    .filter-row {
+      width: 100%;
+      .select-wrapper,
+      .custom-select {
+        width: 100%;
+        flex: 1;
+      }
+    }
+    .result-count {
+      width: 100%;
+      text-align: right;
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+    }
+  }
+
+  .advanced-panel {
+    &.open {
+      max-height: 200px;
+    } // Tăng chiều cao vì có thể bị wrap trên mobile
+    .price-inputs {
+      flex-wrap: wrap;
+      input {
+        width: 45%;
+      }
+      .btn-apply {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 0.5rem;
+      }
+    }
   }
 }

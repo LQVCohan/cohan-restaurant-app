@@ -8,13 +8,13 @@ import "./MenuSection.scss";
 import Cart from "../../../../Customer/Homepage_Client/components/Cart";
 import { useCart } from "../../../../../hooks/useCart";
 
-// Utils (Giả lập hoặc import từ utils của bạn)
+// Utils
 const formatPrice = (value) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
     value
   );
 
-/* ──────────────── GraphQL Queries (Giữ nguyên) ──────────────── */
+/* ──────────────── GraphQL Queries ──────────────── */
 const GET_CATEGORIES = gql`
   query GetCategories($restaurantId: ID!, $timeSlot: TimeSlot!) {
     categories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
@@ -46,15 +46,23 @@ const GET_MENU_ITEMS_BY_CATEGORY = gql`
       edges {
         node {
           id
+          restaurantId
+          menuId
+          categoryId
           name
           description
           basePrice
-          status
+          byWeight
           thumbImage
-          preparationMethods {
+          status
+          avgPrepTimeMin
+          servingVariants {
+            key
+            mode
+            yieldQty
+            yieldUnit
             name
-            price
-            isDefault
+            price # 👈 GIÁ THEO VARIANT
           }
         }
         cursor
@@ -74,14 +82,15 @@ const MenuSection = ({ restaurantId }) => {
   const [menuItems, setMenuItems] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [hasNextPage, setHasNextPage] = useState(false);
-  const [selectedMethods, setSelectedMethods] = useState({});
+
+  // map: menuItemId -> servingVariantKey
+  const [selectedVariants, setSelectedVariants] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   const { cart, addToCart, updateQuantity, getTotalItems, getTotalPrice } =
     useCart();
 
-  /* ──────────────── Logic (Giữ nguyên logic cũ, chỉ clean code) ──────────────── */
-  // ... (Code Categories Query giữ nguyên)
+  /* ──────────────── Categories ──────────────── */
   const {
     data: categoriesData,
     loading: catLoading,
@@ -99,7 +108,7 @@ const MenuSection = ({ restaurantId }) => {
     }
   }, [categoriesData]);
 
-  // ... (Code Menu Items Query giữ nguyên)
+  /* ──────────────── Menu Items ──────────────── */
   const {
     data: menuData,
     loading: menuLoading,
@@ -131,14 +140,12 @@ const MenuSection = ({ restaurantId }) => {
       return Array.from(existing.values());
     });
 
-    setSelectedMethods((prev) => {
+    // set default servingVariant cho từng item (lấy variant đầu tiên)
+    setSelectedVariants((prev) => {
       const next = { ...prev };
       for (const it of newNodes) {
-        if (!next[it.id] && it.preparationMethods?.length) {
-          const def =
-            it.preparationMethods.find((m) => m.isDefault) ||
-            it.preparationMethods[0];
-          next[it.id] = def?.name;
+        if (!next[it.id] && it.servingVariants?.length) {
+          next[it.id] = it.servingVariants[0].key;
         }
       }
       return next;
@@ -148,7 +155,7 @@ const MenuSection = ({ restaurantId }) => {
     setHasNextPage(!!menuData.menuItemsConnection.pageInfo?.hasNextPage);
   }, [menuData]);
 
-  // Handlers
+  /* ──────────────── Helpers ──────────────── */
   const handleTimeSlotChange = (slot) => {
     if (slot === selectedTimeSlot) return;
     setSelectedTimeSlot(slot);
@@ -156,7 +163,7 @@ const MenuSection = ({ restaurantId }) => {
     setActiveCategory(null);
     setMenuItems([]);
     setCursor(null);
-    setSelectedMethods({});
+    setSelectedVariants({});
   };
 
   const handleCategoryChange = (catId) => {
@@ -164,7 +171,7 @@ const MenuSection = ({ restaurantId }) => {
     setActiveCategory(catId);
     setMenuItems([]);
     setCursor(null);
-    setSelectedMethods({});
+    setSelectedVariants({});
     refetch?.({
       restaurantId,
       timeSlot: selectedTimeSlot,
@@ -174,27 +181,29 @@ const MenuSection = ({ restaurantId }) => {
     });
   };
 
-  const handleMethodChange = (itemId, methodName) => {
-    setSelectedMethods((prev) => ({ ...prev, [itemId]: methodName }));
+  const handleVariantChange = (itemId, variantKey) => {
+    setSelectedVariants((prev) => ({ ...prev, [itemId]: variantKey }));
   };
 
-  const getSelectedMethod = (item) => {
-    const selName = selectedMethods[item.id];
-    return (
-      (item.preparationMethods || []).find((m) => m.name === selName) || null
-    );
+  const getSelectedVariant = (item) => {
+    const selKey = selectedVariants[item.id];
+    const variants = item.servingVariants || [];
+    if (!variants.length) return null;
+    return variants.find((v) => v.key === selKey) || variants[0] || null;
   };
 
   const handleAddToCart = (item) => {
-    const method = getSelectedMethod(item);
-    const price = method?.price ?? item.basePrice ?? 0;
+    const variant = getSelectedVariant(item);
+
+    const price =
+      variant && variant.price != null ? variant.price : item.basePrice ?? 0; // fallback nếu chưa có giá variant
 
     addToCart({
-      id: method ? `${item.id}_${method.name}` : item.id,
+      id: variant ? `${item.id}_${variant.key}` : item.id,
       name: item.name,
-      price: price,
+      price,
       image: item.thumbImage || "/default-dishes.jpg",
-      method: method?.name || null,
+      method: variant?.name || variant?.key || null, // vẫn reuse field method cho dễ
     });
     setIsCartOpen(true);
   };
@@ -296,12 +305,19 @@ const MenuSection = ({ restaurantId }) => {
               <div className="menu-items-grid">
                 {menuItems.map((item) => {
                   const img = item.thumbImage || "/images/food/placeholder.jpg";
-                  const methods = item.preparationMethods || [];
-                  const selectedName = selectedMethods[item.id] || "";
-                  const currentMethod = getSelectedMethod(item);
-                  const displayPrice = currentMethod
-                    ? currentMethod.price
-                    : item.basePrice;
+                  const variants = item.servingVariants || [];
+                  const selectedKey =
+                    selectedVariants[item.id] ||
+                    (variants[0] ? variants[0].key : "");
+                  const currentVariant =
+                    variants.find((v) => v.key === selectedKey) ||
+                    variants[0] ||
+                    null;
+
+                  const displayPrice =
+                    currentVariant && currentVariant.price != null
+                      ? currentVariant.price
+                      : item.basePrice;
 
                   return (
                     <article key={item.id} className="menu-card">
@@ -315,7 +331,9 @@ const MenuSection = ({ restaurantId }) => {
                         <div className="card-header">
                           <h4 className="item-name">{item.name}</h4>
                           <span className="item-price">
-                            {formatPrice(displayPrice)}
+                            {displayPrice != null
+                              ? formatPrice(displayPrice)
+                              : "—"}
                           </span>
                         </div>
 
@@ -324,17 +342,17 @@ const MenuSection = ({ restaurantId }) => {
                         )}
 
                         <div className="card-footer">
-                          {methods.length > 0 && (
+                          {variants.length > 0 && (
                             <div className="method-selector">
                               <select
-                                value={selectedName}
+                                value={selectedKey}
                                 onChange={(e) =>
-                                  handleMethodChange(item.id, e.target.value)
+                                  handleVariantChange(item.id, e.target.value)
                                 }
                               >
-                                {methods.map((m) => (
-                                  <option key={m.name} value={m.name}>
-                                    {m.name}
+                                {variants.map((v) => (
+                                  <option key={v.key} value={v.key}>
+                                    {v.name || v.key}
                                   </option>
                                 ))}
                               </select>
@@ -342,8 +360,6 @@ const MenuSection = ({ restaurantId }) => {
                           )}
 
                           <div className="action-buttons">
-                            {/* Nút Xem (Optional) */}
-                            {/* <button className="btn-icon">👁️</button> */}
                             <button
                               className="btn-add-cart"
                               onClick={() => handleAddToCart(item)}

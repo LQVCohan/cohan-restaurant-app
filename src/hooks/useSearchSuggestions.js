@@ -19,6 +19,7 @@ export function useSearchSuggestions() {
     if (abortRef.current) {
       abortRef.current.abort();
     }
+
     const controller = new AbortController();
     abortRef.current = controller;
 

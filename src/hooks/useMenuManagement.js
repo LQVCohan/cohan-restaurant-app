@@ -18,8 +18,6 @@ const FRAG_MENU = gql`
   }
 `;
 
-// ✅ Cập nhật theo schema mới: không còn preparationMethods, recipe
-// ✅ Thêm servingVariants + Ingredients (tên field đúng với backend)
 const FRAG_MENU_ITEM = gql`
   fragment MenuItemFields on MenuItem {
     id
@@ -66,7 +64,6 @@ const Q_MENUS = gql`
   ${FRAG_MENU}
 `;
 
-// ✅ Không lặp servingVariants, đã nằm trong fragment
 const Q_MENU_ITEMS = gql`
   query MenuItems(
     $restaurantId: ID!
@@ -188,7 +185,7 @@ const M_BULK_PRICE = gql`
   ${FRAG_MENU_ITEM}
 `;
 
-/* ======================= Helpers (UI & Price) ======================= */
+/* ======================= Helpers ======================= */
 
 const TIME_SLOT_OPTIONS = [
   { value: "breakfast", label: "Sáng" },
@@ -202,10 +199,6 @@ function coalesceNumber(n, fallback = 0) {
   return Number.isFinite(v) ? v : fallback;
 }
 
-/**
- * Tính giá để hiển thị
- * ✅ Schema mới: chỉ dùng basePrice (các biến thể giá chi tiết nằm ở Recipe/servingVariants, hiện chưa có price)
- */
 function computeItemPrice(item) {
   const base = coalesceNumber(item?.basePrice, 0);
   return base;
@@ -219,7 +212,7 @@ export default function useMenuManagement({
   pageSize = 50,
   useConnection = false,
 } = {}) {
-  /* ----------- Menus & chọn timeslot ----------- */
+  /* ---- Menus & timeSlot ---- */
   const {
     data: menusData,
     loading: menusLoading,
@@ -254,9 +247,14 @@ export default function useMenuManagement({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menus, defaultTimeSlot]);
 
-  /* ----------- Filter state cho items ----------- */
+  /* ---- Filters ---- */
   const [categoryId, setCategoryId] = useState(null);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState(null);
+  const [priceRange, setPriceRange] = useState({
+    minPrice: null,
+    maxPrice: null,
+  });
 
   const itemsVariables = useMemo(
     () => ({
@@ -269,7 +267,34 @@ export default function useMenuManagement({
     [restaurantId, selectedTimeSlot, categoryId, search, pageSize]
   );
 
-  /* ----------- Query Items ----------- */
+  const filterForConnection = useMemo(
+    () => ({
+      restaurantId,
+      timeSlot: selectedTimeSlot || null,
+      categoryId: categoryId || null,
+      search: search?.trim() || null,
+      status: statusFilter || null,
+      minPrice:
+        priceRange.minPrice !== null && priceRange.minPrice !== ""
+          ? Number(priceRange.minPrice)
+          : null,
+      maxPrice:
+        priceRange.maxPrice !== null && priceRange.maxPrice !== ""
+          ? Number(priceRange.maxPrice)
+          : null,
+    }),
+    [
+      restaurantId,
+      selectedTimeSlot,
+      categoryId,
+      search,
+      statusFilter,
+      priceRange.minPrice,
+      priceRange.maxPrice,
+    ]
+  );
+
+  /* ---- Query items ---- */
   const {
     data: itemsData,
     loading: itemsLoading,
@@ -281,12 +306,7 @@ export default function useMenuManagement({
       ? {
           limit: pageSize,
           cursor: null,
-          filter: {
-            restaurantId,
-            timeSlot: selectedTimeSlot || null,
-            categoryId: categoryId || null,
-            search: search?.trim() || null,
-          },
+          filter: filterForConnection,
         }
       : itemsVariables,
     skip: !restaurantId,
@@ -302,12 +322,22 @@ export default function useMenuManagement({
     return itemsData?.menuItems || [];
   }, [itemsData, useConnection]);
 
+  const pageInfo = useMemo(
+    () =>
+      useConnection
+        ? itemsData?.menuItemsConnection?.pageInfo || {
+            hasNextPage: false,
+            endCursor: null,
+          }
+        : null,
+    [itemsData, useConnection]
+  );
+
   const categories = useMemo(() => {
     const set = new Set((items || []).map((i) => i.categoryId).filter(Boolean));
     return Array.from(set);
   }, [items]);
 
-  // Helpers giá hiển thị
   const itemsWithPrice = useMemo(
     () =>
       (items || []).map((it) => ({
@@ -317,7 +347,7 @@ export default function useMenuManagement({
     [items]
   );
 
-  /* ----------- Mutations ----------- */
+  /* ---- Mutations ---- */
 
   const [ensureMenuMut] = useMutation(M_ENSURE_MENU, {
     update(cache, { data }) {
@@ -340,12 +370,7 @@ export default function useMenuManagement({
         const qVars = {
           limit: pageSize,
           cursor: null,
-          filter: {
-            restaurantId,
-            timeSlot: selectedTimeSlot || null,
-            categoryId: categoryId || null,
-            search: search?.trim() || null,
-          },
+          filter: filterForConnection,
         };
         cache.updateQuery(
           { query: Q_MENU_ITEMS_CONNECTION, variables: qVars },
@@ -395,12 +420,7 @@ export default function useMenuManagement({
         const qVars = {
           limit: pageSize,
           cursor: null,
-          filter: {
-            restaurantId,
-            timeSlot: selectedTimeSlot || null,
-            categoryId: categoryId || null,
-            search: search?.trim() || null,
-          },
+          filter: filterForConnection,
         };
         cache.updateQuery(
           { query: Q_MENU_ITEMS_CONNECTION, variables: qVars },
@@ -446,7 +466,6 @@ export default function useMenuManagement({
   });
 
   const [updateBasicMut] = useMutation(M_UPDATE_BASIC);
-
   const [bulkPriceMut] = useMutation(M_BULK_PRICE);
 
   const [
@@ -454,7 +473,7 @@ export default function useMenuManagement({
     { data: topData, loading: topLoading, error: topError },
   ] = useLazyQuery(Q_TOP_ITEMS);
 
-  /* ----------- Public API ----------- */
+  /* ---- Public API ---- */
 
   const ensureMenu = useCallback(
     async ({ timeSlot, name, description, coverImage }) => {
@@ -539,18 +558,12 @@ export default function useMenuManagement({
 
   const fetchMoreItems = useCallback(async () => {
     if (!useConnection) return null;
-    const pageInfo = itemsData?.menuItemsConnection?.pageInfo;
     if (!pageInfo?.hasNextPage) return null;
     return fetchMore({
       variables: {
         cursor: pageInfo.endCursor,
         limit: pageSize,
-        filter: {
-          restaurantId,
-          timeSlot: selectedTimeSlot || null,
-          categoryId: categoryId || null,
-          search: search?.trim() || null,
-        },
+        filter: filterForConnection,
       },
       updateQuery: (prev, { fetchMoreResult }) => {
         if (!fetchMoreResult) return prev;
@@ -565,16 +578,7 @@ export default function useMenuManagement({
         };
       },
     });
-  }, [
-    useConnection,
-    itemsData,
-    fetchMore,
-    pageSize,
-    restaurantId,
-    selectedTimeSlot,
-    categoryId,
-    search,
-  ]);
+  }, [useConnection, pageInfo, fetchMore, pageSize, filterForConnection]);
 
   const findItemByName = useCallback(
     (name) =>
@@ -591,6 +595,7 @@ export default function useMenuManagement({
     itemsWithPrice,
     categories,
     timeSlotOptions: TIME_SLOT_OPTIONS,
+    pageInfo,
 
     // selection/filter
     selectedTimeSlot,
@@ -599,6 +604,10 @@ export default function useMenuManagement({
     setCategoryId,
     search,
     setSearch,
+    statusFilter,
+    setStatusFilter,
+    priceRange,
+    setPriceRange,
 
     // loading & errors
     menusLoading,
@@ -612,7 +621,7 @@ export default function useMenuManagement({
     useConnection,
     fetchMoreItems,
 
-    // price/helpers
+    // helpers
     computeItemPrice,
     findItemByName,
 
@@ -625,7 +634,7 @@ export default function useMenuManagement({
     updateMenuItemBasic,
     bulkUpdateMenuItemPrices,
 
-    // top items (lazy)
+    // top items
     loadTopItems,
     topItems: topData?.topMenuItems || [],
     topLoading,

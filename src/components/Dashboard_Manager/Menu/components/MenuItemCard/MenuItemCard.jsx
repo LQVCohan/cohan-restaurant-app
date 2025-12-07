@@ -6,11 +6,24 @@ const MenuItemCard = ({ item, onEdit, onDelete, viewMode = "grid" }) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
-    }).format(price);
+    }).format(Number(price || 0));
   };
 
+  // Dùng methods (đã normalize từ servingVariants) để tính min/max
   const getMinMaxPrice = () => {
-    const prices = item.preparationMethods.map((m) => m.price);
+    const methods = Array.isArray(item.methods) ? item.methods : [];
+
+    let prices = methods
+      .map((m) => (typeof m.price === "number" ? m.price : null))
+      .filter((p) => p != null);
+
+    // Nếu không có giá theo method → fallback basePrice
+    if (prices.length === 0 && typeof item.basePrice === "number") {
+      prices = [item.basePrice];
+    }
+
+    if (prices.length === 0) return "—";
+
     const minPrice = Math.min(...prices);
     const maxPrice = Math.max(...prices);
 
@@ -24,7 +37,22 @@ const MenuItemCard = ({ item, onEdit, onDelete, viewMode = "grid" }) => {
     if (e.target.closest(".menu-item-card__actions")) {
       return;
     }
-    onEdit();
+    onEdit && onEdit();
+  };
+
+  const renderMethods = () => {
+    const methods = Array.isArray(item.methods) ? item.methods : [];
+    if (!methods.length) return null;
+
+    return (
+      <div className="menu-item-card__methods">
+        {methods.map((method, index) => (
+          <span key={index} className="method-tag">
+            {method.name}
+          </span>
+        ))}
+      </div>
+    );
   };
 
   if (viewMode === "list") {
@@ -39,7 +67,7 @@ const MenuItemCard = ({ item, onEdit, onDelete, viewMode = "grid" }) => {
           <div className="menu-item-card__header">
             <div className="menu-item-card__info">
               <h3 className="menu-item-card__name">{item.name}</h3>
-              <p className="menu-item-card__category">{item.category}</p>
+              <p className="menu-item-card__category">{item.category || ""}</p>
             </div>
 
             <div className="menu-item-card__status-price">
@@ -58,13 +86,7 @@ const MenuItemCard = ({ item, onEdit, onDelete, viewMode = "grid" }) => {
 
           <div className="menu-item-card__description">{item.description}</div>
 
-          <div className="menu-item-card__methods">
-            {item.methods.map((method, index) => (
-              <span key={index} className="method-tag">
-                {method.name}
-              </span>
-            ))}
-          </div>
+          {renderMethods()}
         </div>
 
         <div className="menu-item-card__actions">
@@ -72,7 +94,7 @@ const MenuItemCard = ({ item, onEdit, onDelete, viewMode = "grid" }) => {
             className="action-btn action-btn--edit"
             onClick={(e) => {
               e.stopPropagation();
-              onEdit();
+              onEdit && onEdit();
             }}
             title="Chỉnh sửa"
           >
@@ -82,7 +104,7 @@ const MenuItemCard = ({ item, onEdit, onDelete, viewMode = "grid" }) => {
             className="action-btn action-btn--delete"
             onClick={(e) => {
               e.stopPropagation();
-              onDelete();
+              onDelete && onDelete();
             }}
             title="Xóa"
           >
@@ -93,6 +115,7 @@ const MenuItemCard = ({ item, onEdit, onDelete, viewMode = "grid" }) => {
     );
   }
 
+  // GRID MODE
   return (
     <div
       className="menu-item-card menu-item-card--grid"
@@ -104,7 +127,7 @@ const MenuItemCard = ({ item, onEdit, onDelete, viewMode = "grid" }) => {
         <div className="menu-item-card__header">
           <div className="menu-item-card__info">
             <h3 className="menu-item-card__name">{item.name}</h3>
-            <p className="menu-item-card__category">{item.category}</p>
+            <p className="menu-item-card__category">{item.category || ""}</p>
           </div>
 
           <div
@@ -120,13 +143,7 @@ const MenuItemCard = ({ item, onEdit, onDelete, viewMode = "grid" }) => {
 
         <div className="menu-item-card__price">{getMinMaxPrice()}</div>
 
-        <div className="menu-item-card__methods">
-          {item.preparationMethods.map((method, index) => (
-            <span key={index} className="method-tag">
-              {method.name}
-            </span>
-          ))}
-        </div>
+        {renderMethods()}
       </div>
 
       <div className="menu-item-card__actions">
@@ -134,7 +151,7 @@ const MenuItemCard = ({ item, onEdit, onDelete, viewMode = "grid" }) => {
           className="action-btn action-btn--edit"
           onClick={(e) => {
             e.stopPropagation();
-            onEdit();
+            onEdit && onEdit();
           }}
           title="Chỉnh sửa"
         >
@@ -144,7 +161,7 @@ const MenuItemCard = ({ item, onEdit, onDelete, viewMode = "grid" }) => {
           className="action-btn action-btn--delete"
           onClick={(e) => {
             e.stopPropagation();
-            onDelete();
+            onDelete && onDelete();
           }}
           title="Xóa"
         >

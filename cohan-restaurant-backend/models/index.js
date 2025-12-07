@@ -41,3 +41,4 @@ export { default as ReviewComment } from "./review-comment.model.js";
 export { default as ReviewReaction } from "./review-reaction.model.js";
 export { default as ReviewCommentReaction } from "./review-comment-reaction.model.js";
 export { default as Cart } from "./cart.model.js";
+export { default as CategoryMenu } from "./category-menu.model.js";

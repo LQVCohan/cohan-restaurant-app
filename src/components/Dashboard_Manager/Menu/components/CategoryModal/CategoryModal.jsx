@@ -1,8 +1,10 @@
+// src/pages/Restaurant/MenuManagement/components/CategoryModal/CategoryModal.jsx
 import React, { useState } from "react";
 import Modal from "../../../../common/Modal";
 import "./CategoryModal.scss";
+import { useCategoryManagement } from "../../../../../hooks/useCategoryManagement";
 
-const CategoryModal = ({ isOpen, onSave, onClose }) => {
+const CategoryModal = ({ isOpen, restaurantId, timeSlot, onSave, onClose }) => {
   const [formData, setFormData] = useState({
     name: "",
     icon: "",
@@ -10,6 +12,13 @@ const CategoryModal = ({ isOpen, onSave, onClose }) => {
   });
 
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+
+  // dùng hook mới: quản lý Category
+  const { createCategory } = useCategoryManagement({
+    restaurantId,
+    timeSlot,
+  });
 
   const commonIcons = [
     "🥗",
@@ -44,7 +53,7 @@ const CategoryModal = ({ isOpen, onSave, onClose }) => {
       [field]: value,
     }));
 
-    // Clear error when user starts typing
+    // Clear error khi user sửa
     if (errors[field]) {
       setErrors((prev) => ({
         ...prev,
@@ -64,40 +73,65 @@ const CategoryModal = ({ isOpen, onSave, onClose }) => {
       newErrors.icon = "Vui lòng chọn icon";
     }
 
+    if (!restaurantId) {
+      newErrors.restaurantId = "Thiếu thông tin nhà hàng";
+    }
+
+    if (!timeSlot) {
+      newErrors.timeSlot = "Thiếu khung giờ áp dụng";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
-    onSave({
-      name: formData.name.trim(),
-      icon: formData.icon,
-      description: formData.description.trim(),
-    });
-
-    // Reset form
+  const resetForm = () => {
     setFormData({
       name: "",
       icon: "",
       description: "",
     });
     setErrors({});
+    setSubmitting(false);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+
+    try {
+      setSubmitting(true);
+
+      // ⚠️ BE KHÔNG LƯU ICON / DESCRIPTION
+      // -> chỉ gửi đúng schema CreateCategoryInput
+      const created = await createCategory({
+        restaurantId,
+        timeSlot,
+        name: formData.name.trim(),
+        // nếu cần thứ tự thì sau này có UI sort -> sửa order
+        order: 0,
+      });
+
+      // FE giữ icon & description để map hiển thị
+      onSave?.(created, {
+        icon: formData.icon,
+        description: formData.description.trim(),
+      });
+
+      resetForm();
+    } catch (err) {
+      console.error("Create category error:", err);
+      setErrors((prev) => ({
+        ...prev,
+        submit: err.message || "Có lỗi xảy ra khi tạo danh mục",
+      }));
+      setSubmitting(false);
+    }
   };
 
   const handleClose = () => {
-    setFormData({
-      name: "",
-      icon: "",
-      description: "",
-    });
-    setErrors({});
-    onClose();
+    resetForm();
+    onClose?.();
   };
 
   return (
@@ -109,6 +143,7 @@ const CategoryModal = ({ isOpen, onSave, onClose }) => {
       className="category-modal"
     >
       <form onSubmit={handleSubmit} className="category-form">
+        {/* Tên danh mục */}
         <div className="form-group">
           <label className="form-label">Tên danh mục *</label>
           <input
@@ -121,6 +156,7 @@ const CategoryModal = ({ isOpen, onSave, onClose }) => {
           {errors.name && <span className="form-error">{errors.name}</span>}
         </div>
 
+        {/* Icon danh mục - chỉ dùng trên FE */}
         <div className="form-group">
           <label className="form-label">Icon danh mục *</label>
           <div className="icon-selector">
@@ -151,8 +187,9 @@ const CategoryModal = ({ isOpen, onSave, onClose }) => {
           {errors.icon && <span className="form-error">{errors.icon}</span>}
         </div>
 
+        {/* Mô tả chỉ giữ FE */}
         <div className="form-group">
-          <label className="form-label">Mô tả</label>
+          <label className="form-label">Mô tả (chỉ dùng hiển thị FE)</label>
           <textarea
             className="form-textarea"
             value={formData.description}
@@ -162,16 +199,35 @@ const CategoryModal = ({ isOpen, onSave, onClose }) => {
           />
         </div>
 
+        {/* Error chung */}
+        {errors.restaurantId && (
+          <div className="form-error form-error--global">
+            {errors.restaurantId}
+          </div>
+        )}
+        {errors.timeSlot && (
+          <div className="form-error form-error--global">{errors.timeSlot}</div>
+        )}
+        {errors.submit && (
+          <div className="form-error form-error--global">{errors.submit}</div>
+        )}
+
+        {/* Actions */}
         <div className="form-actions">
           <button
             type="button"
             className="btn btn--secondary"
             onClick={handleClose}
+            disabled={submitting}
           >
             Hủy
           </button>
-          <button type="submit" className="btn btn--primary">
-            Tạo danh mục
+          <button
+            type="submit"
+            className="btn btn--primary"
+            disabled={submitting}
+          >
+            {submitting ? "Đang tạo..." : "Tạo danh mục"}
           </button>
         </div>
       </form>

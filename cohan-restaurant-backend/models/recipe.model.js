@@ -22,6 +22,7 @@ const ServingVariantSchema = new mongoose.Schema(
     yieldUnit: { type: String, required: true, default: "portion" },
     name: { type: String },
     Ingredients: { type: [IngredientSchema], default: [] },
+    price: { type: Number, default: 0 },
   },
   { _id: true }
 );

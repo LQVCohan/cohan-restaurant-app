@@ -18,6 +18,7 @@ export const FR_SERVING_VARIANT_FIELDS = gql`
     yieldQty
     yieldUnit
     name
+    price
     Ingredients {
       ...RecipeComponentFields
     }

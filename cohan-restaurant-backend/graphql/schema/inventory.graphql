@@ -197,6 +197,7 @@ type ServingVariant {
   yieldUnit: String!
   name: String
   Ingredients: [IngredientsComponent!]!
+  price: Float
 }
 
 input ServingVariantInput {
@@ -206,6 +207,7 @@ input ServingVariantInput {
   yieldUnit: String!
   preparationMethodName: String
   ingredients: [IngredientsComponentInput!]!
+  price: Float
 }
 
 type Recipe {

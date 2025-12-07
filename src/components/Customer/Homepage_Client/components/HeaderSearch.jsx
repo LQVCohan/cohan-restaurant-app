@@ -1,3 +1,4 @@
+// src/components/Customer/Homepage_Client/HeaderSearch.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSearchSuggestions } from "../../../../hooks/useSearchSuggestions";
@@ -24,9 +25,23 @@ function saveHistory(list) {
       HISTORY_KEY,
       JSON.stringify(list.slice(0, HISTORY_LIMIT))
     );
-  } catch {
-    // ignore
+  } catch {}
+}
+
+function getTypeInfo(type) {
+  if (type === "RESTAURANT") {
+    return { label: "Nhà hàng", icon: "🏠" };
   }
+  if (type === "MENU_ITEM") {
+    return { label: "Món ăn", icon: "🍽️" };
+  }
+  if (type === "OWNER") {
+    return { label: "Chủ/QL", icon: "👤" };
+  }
+  if (type === "LOCATION") {
+    return { label: "Khu vực", icon: "📍" };
+  }
+  return { label: "", icon: "" };
 }
 
 export default function HeaderSearch() {
@@ -53,10 +68,9 @@ export default function HeaderSearch() {
   const resetIdleTimer = () => {
     if (idleTimer.current) clearTimeout(idleTimer.current);
     idleTimer.current = setTimeout(() => {
-      setIsFocused(false);
-      setIsOpen(false);
-      setActiveIndex(-1);
       cancel();
+      setIsFocused(false);
+      setActiveIndex(-1);
     }, 3000);
   };
 
@@ -68,8 +82,6 @@ export default function HeaderSearch() {
 
     const trimmed = value.trim();
     if (!trimmed || trimmed.length < 2) {
-      setIsOpen(false);
-      setActiveIndex(-1);
       cancel();
       return;
     }
@@ -81,8 +93,11 @@ export default function HeaderSearch() {
   const handleFocus = () => {
     setIsFocused(true);
     resetIdleTimer();
+
     if (query.trim().length >= 2) {
       debouncedSearch(query.trim());
+      setIsOpen(true);
+    } else if (history.length > 0) {
       setIsOpen(true);
     }
   };
@@ -92,7 +107,6 @@ export default function HeaderSearch() {
       if (!wrapperRef.current) return;
       if (!wrapperRef.current.contains(e.target)) {
         setIsFocused(false);
-        setIsOpen(false);
         setActiveIndex(-1);
         cancel();
       }
@@ -224,8 +238,31 @@ export default function HeaderSearch() {
     }
   };
 
+  const clearInput = () => {
+    setQuery("");
+    setActiveIndex(-1);
+    if (history.length > 0) {
+      setIsOpen(true);
+    }
+    cancel();
+  };
+
+  const clearHistoryAll = () => {
+    setHistory([]);
+    saveHistory([]);
+  };
+
+  const removeHistoryItem = (text) => {
+    const next = history.filter((x) => x !== text);
+    setHistory(next);
+    saveHistory(next);
+  };
+
   const showHistory =
-    isFocused && query.trim().length === 0 && history.length > 0;
+    isOpen && isFocused && query.trim().length === 0 && history.length > 0;
+
+  const shouldShowDropdown =
+    showHistory || (isOpen && (flatItems.length > 0 || loading));
 
   return (
     <div className="header-search" ref={wrapperRef}>
@@ -240,29 +277,69 @@ export default function HeaderSearch() {
       />
       <span className="header__search-icon">🔍</span>
 
-      {(isOpen && flatItems.length > 0) || showHistory ? (
+      {query.length > 0 && (
+        <button
+          type="button"
+          className="header-search__clear-input"
+          onClick={clearInput}
+        >
+          ✕
+        </button>
+      )}
+
+      {shouldShowDropdown && (
         <div className="header-search__dropdown header-search__dropdown--fade">
           {showHistory && (
             <div className="header-search__group header-search__group--history">
-              <div className="header-search__group-title">Tìm kiếm gần đây</div>
-              {history.map((h) => (
+              <div className="header-search__group-title-row">
+                <div className="header-search__group-title">
+                  Tìm kiếm gần đây
+                </div>
                 <button
-                  key={h}
                   type="button"
-                  className="header-search__item header-search__item--history"
+                  className="header-search__clear-history"
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    handleSelect(h, true);
+                    clearHistoryAll();
                   }}
                 >
-                  <div className="header-search__item-main">{h}</div>
+                  Xóa lịch sử
                 </button>
+              </div>
+
+              {history.map((h) => (
+                <div
+                  key={h}
+                  className="header-search__item header-search__item--history"
+                >
+                  <button
+                    type="button"
+                    className="header-search__item-main-btn"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleSelect(h, true);
+                    }}
+                  >
+                    <span className="header-search__item-main">{h}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="header-search__remove-history-item"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      removeHistoryItem(h);
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
               ))}
             </div>
           )}
 
           {isOpen && flatItems.length > 0 && (
             <div className="header-search__group">
+              <div className="header-search__group-title">Gợi ý phù hợp</div>
               {flatItems.map((item, idx) => {
                 const active = idx === activeIndex;
                 const main =
@@ -273,6 +350,7 @@ export default function HeaderSearch() {
                   item.data.email ||
                   item.data.city ||
                   "";
+                const typeInfo = getTypeInfo(item.type);
 
                 return (
                   <button
@@ -287,9 +365,19 @@ export default function HeaderSearch() {
                       handleSelect(item);
                     }}
                   >
-                    <div className="header-search__item-main">{main}</div>
-                    {sub && (
-                      <div className="header-search__item-sub">{sub}</div>
+                    <div className="header-search__item-content">
+                      <div className="header-search__item-main">{main}</div>
+                      {sub && (
+                        <div className="header-search__item-sub">{sub}</div>
+                      )}
+                    </div>
+                    {typeInfo.label && (
+                      <div className="header-search__item-type">
+                        <span className="header-search__item-type-icon">
+                          {typeInfo.icon}
+                        </span>
+                        <span>{typeInfo.label}</span>
+                      </div>
                     )}
                   </button>
                 );
@@ -301,7 +389,7 @@ export default function HeaderSearch() {
             <div className="header-search__loading">Đang tìm kiếm...</div>
           )}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

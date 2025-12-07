@@ -1,43 +1,26 @@
 // src/pages/Restaurant/MenuManagement/components/MenuItemModal/MenuItemModal.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Modal from "../../../../common/Modal";
 import "./MenuItemModal.scss";
-import { gql } from "@apollo/client";
-import { useMutation } from "@apollo/client/react";
 
-const UPDATE_MENUITEM = gql`
-  mutation UpdateMenuItem($input: UpdateMenuItemInput!) {
-    updateMenuItem(input: $input) {
-      id
-      restaurantId
-      menuId
-      categoryId
-      name
-      description
-      basePrice
-      preparationMethods {
-        name
-        price
-      }
-      thumbImage
-      mediaAssetIds
-      modifierGroupIds
-      status
-      avgPrepTimeMin
-      recipe
-      notes
-      point
-      createdAt
-      updatedAt
-    }
-  }
-`;
+import useMenuManagement from "../../../../../hooks/useMenuManagement";
+import useRecipes from "../../../../../hooks/useRecipes";
 
+/**
+ * MenuItemModal
+ * - Chỉnh sửa thông tin 1 món ăn (MenuItem)
+ * - Chỉnh sửa danh sách cách chế biến (servingVariants / preparation methods)
+ * - Lưu bằng hooks:
+ *    + useMenuManagement.updateMenuItem   -> update MenuItem
+ *    + useRecipes.updateRecipe           -> upsert Recipe (servingVariants + price)
+ */
 const MenuItemModal = ({
   isOpen,
   editId,
   categories,
   menuItems,
+  restaurantId,
+  timeSlot,
   onSave,
   onClose,
 }) => {
@@ -48,9 +31,19 @@ const MenuItemModal = ({
     thumbImage: "",
     description: "",
     preparationMethods: [
-      { name: "", price: "", cookTime: "", unit: "portion" },
+      {
+        key: "",
+        name: "",
+        price: "",
+        cookTime: "",
+        unit: "portion",
+        mode: "PORTION",
+        yieldQty: 1,
+        yieldUnit: "portion",
+      },
     ],
   });
+
   const [toasts, setToasts] = useState([]);
 
   const pushToast = (text, type = "success") =>
@@ -59,47 +52,88 @@ const MenuItemModal = ({
       { id: crypto?.randomUUID?.() || String(Math.random()), text, type },
     ]);
 
-  const [updateMenuItemMutation] = useMutation(UPDATE_MENUITEM, {
-    onError: (e) => {
-      pushToast(`Lỗi cập nhật món: ${e.message}`, "error");
-      onSave?.();
-    },
-    onCompleted: () => {
-      pushToast("Cập nhật món thành công", "success");
-      onSave?.();
-    },
+  // Lấy item hiện tại từ list menuItems mà parent pass xuống
+  const currentItem = useMemo(
+    () =>
+      Array.isArray(menuItems) && editId
+        ? menuItems.find((i) => i.id === editId)
+        : null,
+    [menuItems, editId]
+  );
+
+  // Hook menu management (chỉ dùng mutation)
+  const { updateMenuItem } = useMenuManagement({
+    restaurantId,
+    defaultTimeSlot: timeSlot,
+    pageSize: 1,
+    useConnection: false,
   });
 
-  // Load data khi edit
-  useEffect(() => {
-    if (editId && Array.isArray(menuItems)) {
-      const item = menuItems.find((i) => i.id === editId);
-      if (item) {
-        // Ưu tiên dùng item.preparationMethods (chuẩn BE)
-        let pm = Array.isArray(item.preparationMethods)
-          ? item.preparationMethods.map((m) => ({
-              name: m.name,
-              price: m.price,
-              // UI có cookTime để tính avg; nếu không có thì mượn avgPrepTimeMin
-              cookTime: item.avgPrepTimeMin || "",
-              unit: "portion",
-            }))
-          : [];
+  // Hook recipes (dùng để upsert servingVariants)
+  const { updateRecipe, loading: recipeLoading } = useRecipes(
+    restaurantId,
+    timeSlot,
+    { search: null, categoryId: null }
+  );
 
-        setFormData({
-          name: item.name || "",
-          categoryId:
-            item.categoryId || item.category?.id || item.category || "",
-          status: item.status || "available",
-          thumbImage: item.thumbImage || "",
-          description: item.description || "",
-          preparationMethods: pm.length
-            ? pm
-            : [{ name: "", price: "", cookTime: "", unit: "portion" }],
-        });
-      }
-    } else {
-      // Reset form
+  /* ===========================
+     Load dữ liệu khi mở modal
+     =========================== */
+
+  useEffect(() => {
+    if (editId && currentItem) {
+      const svList = Array.isArray(currentItem.servingVariants)
+        ? currentItem.servingVariants
+        : [];
+
+      const methods =
+        svList.length > 0
+          ? svList.map((sv) => ({
+              key: sv.key || "",
+              name: sv.name || "",
+              price:
+                typeof sv.price === "number" && !Number.isNaN(sv.price)
+                  ? sv.price
+                  : "",
+              cookTime:
+                typeof currentItem.avgPrepTimeMin === "number"
+                  ? currentItem.avgPrepTimeMin
+                  : "",
+              unit: sv.yieldUnit || "portion",
+              mode: sv.mode || "PORTION",
+              yieldQty:
+                typeof sv.yieldQty === "number" && sv.yieldQty > 0
+                  ? sv.yieldQty
+                  : 1,
+              yieldUnit: sv.yieldUnit || "portion",
+            }))
+          : [
+              {
+                key: "",
+                name: "",
+                price: "",
+                cookTime: "",
+                unit: "portion",
+                mode: "PORTION",
+                yieldQty: 1,
+                yieldUnit: "portion",
+              },
+            ];
+
+      setFormData({
+        name: currentItem.name || "",
+        categoryId:
+          currentItem.categoryId ||
+          currentItem.category?.id ||
+          currentItem.category ||
+          "",
+        status: currentItem.status || "available",
+        thumbImage: currentItem.thumbImage || "",
+        description: currentItem.description || "",
+        preparationMethods: methods,
+      });
+    } else if (!editId) {
+      // Flow tạo mới nếu sau này bạn muốn dùng:
       setFormData({
         name: "",
         categoryId: "",
@@ -107,11 +141,24 @@ const MenuItemModal = ({
         thumbImage: "",
         description: "",
         preparationMethods: [
-          { name: "", price: "", cookTime: "", unit: "portion" },
+          {
+            key: "",
+            name: "",
+            price: "",
+            cookTime: "",
+            unit: "portion",
+            mode: "PORTION",
+            yieldQty: 1,
+            yieldUnit: "portion",
+          },
         ],
       });
     }
-  }, [editId, menuItems, isOpen]);
+  }, [editId, currentItem, isOpen]);
+
+  /* ===========================
+     Handlers
+     =========================== */
 
   const handleInputChange = (field, value) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -129,7 +176,16 @@ const MenuItemModal = ({
       ...prev,
       preparationMethods: [
         ...prev.preparationMethods,
-        { name: "", price: "", cookTime: "", unit: "portion" },
+        {
+          key: "",
+          name: "",
+          price: "",
+          cookTime: "",
+          unit: "portion",
+          mode: "PORTION",
+          yieldQty: 1,
+          yieldUnit: "portion",
+        },
       ],
     }));
 
@@ -144,23 +200,27 @@ const MenuItemModal = ({
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!restaurantId || !editId) {
+      alert("Thiếu restaurantId hoặc editId.");
+      return;
+    }
+
     if (!formData.name.trim() || !formData.categoryId) {
-      alert("Vui lòng điền đầy đủ thông tin bắt buộc");
+      alert("Vui lòng điền đầy đủ tên món và danh mục");
       return;
     }
 
     const validPM = formData.preparationMethods.filter(
-      (m) => m.name.trim() && m.price !== "" && m.cookTime !== ""
+      (m) => m.name.trim() && m.price !== ""
     );
     if (!validPM.length) {
-      alert("Vui lòng thêm ít nhất một cách chế biến");
+      alert("Vui lòng thêm ít nhất một cách chế biến (tên + giá).");
       return;
     }
 
-    // Tính avgPrepTimeMin từ cookTime của các preparationMethods (số nguyên phút)
     const cookTimes = validPM
       .map((m) => parseInt(m.cookTime, 10))
       .filter((n) => Number.isFinite(n) && n >= 0);
@@ -170,29 +230,64 @@ const MenuItemModal = ({
         ? Math.round(cookTimes.reduce((a, b) => a + b, 0) / cookTimes.length)
         : undefined;
 
-    // XÂY DỰNG INPUT ĐÚNG SCHEMA: dùng preparationMethods, KHÔNG dùng image
-    const inputPayload = {
-      id: editId,
-      name: formData.name,
-      categoryId: formData.categoryId,
-      status: formData.status,
-      description: formData.description,
-      preparationMethods: validPM.map((m) => ({
-        name: m.name,
-        price: parseFloat(m.price),
-      })),
-      ...(Number.isFinite(avgPrepTimeMin) ? { avgPrepTimeMin } : {}),
-      ...(formData.thumbImage?.trim()
-        ? { thumbImage: formData.thumbImage.trim() }
-        : {}),
-    };
+    try {
+      // 1) Update MenuItem bằng hook useMenuManagement
+      const menuItemPayload = {
+        id: editId,
+        name: formData.name,
+        categoryId: formData.categoryId,
+        status: formData.status,
+        description: formData.description,
+        ...(Number.isFinite(avgPrepTimeMin) ? { avgPrepTimeMin } : {}),
+        ...(formData.thumbImage?.trim()
+          ? { thumbImage: formData.thumbImage.trim() }
+          : {}),
+      };
 
-    updateMenuItemMutation({
-      variables: {
-        input: inputPayload,
-      },
-    });
+      await updateMenuItem(menuItemPayload);
+
+      // 2) Chuẩn hóa form -> form cho useRecipes.updateRecipe
+      const recipeForm = {
+        description: formData.description,
+        servingVariants: formData.preparationMethods.map((m, idx) => {
+          const isByWeight = m.mode === "BY_WEIGHT";
+
+          // Giữ key cũ nếu đã có, tránh tạo bản mới
+          const fallbackKey =
+            (m.name || "").toLowerCase().replace(/\s+/g, "_") || `sv_${idx}`;
+
+          return {
+            key: m.key || fallbackKey,
+            mode: m.mode || "PORTION",
+            yieldQty:
+              typeof m.yieldQty === "number" && m.yieldQty > 0 ? m.yieldQty : 1,
+            yieldUnit: m.yieldUnit || (isByWeight ? "100g" : "portion"),
+            preparationMethodName: m.name,
+            ingredients: [], // chưa edit nguyên liệu ở modal này
+            price:
+              m.price !== "" && !Number.isNaN(Number(m.price))
+                ? Number(m.price)
+                : 0,
+          };
+        }),
+      };
+
+      // 3) Upsert recipe bằng hook useRecipes
+      await updateRecipe(editId, recipeForm);
+
+      pushToast("Cập nhật món ăn thành công", "success");
+      onSave?.();
+    } catch (err) {
+      console.error("Update menu item / recipe error:", err);
+      pushToast(`Lỗi cập nhật món: ${err.message}`, "error");
+    }
   };
+
+  const isSaving = recipeLoading; // có thể kết hợp thêm state loading riêng nếu muốn
+
+  /* ===========================
+     Render
+     =========================== */
 
   return (
     <Modal
@@ -368,11 +463,30 @@ const MenuItemModal = ({
           >
             Hủy
           </button>
-          <button type="submit" className="btn btn--primary">
-            {editId ? "Cập nhật món ăn" : "Lưu món ăn"}
+          <button
+            type="submit"
+            className="btn btn--primary"
+            disabled={isSaving}
+          >
+            {isSaving
+              ? "Đang lưu..."
+              : editId
+              ? "Cập nhật món ăn"
+              : "Lưu món ăn"}
           </button>
         </div>
       </form>
+
+      {/* Toasts đơn giản */}
+      {toasts.length > 0 && (
+        <div className="toast-container">
+          {toasts.map((t) => (
+            <div key={t.id} className={`toast toast--${t.type || "success"}`}>
+              {t.text}
+            </div>
+          ))}
+        </div>
+      )}
     </Modal>
   );
 };

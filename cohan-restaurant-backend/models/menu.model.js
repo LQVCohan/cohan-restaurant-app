@@ -17,6 +17,7 @@ const menuSchema = BaseSchemaModel({
   description: { type: String, trim: true },
   coverImage: { type: String, trim: true },
   isActive: { type: Boolean, default: true },
+  categoryMenuId: { type: mongoose.Schema.Types.ObjectId, ref: "CategoryMenu" },
 });
 
 // Mỗi (restaurantId, timeSlot) duy nhất

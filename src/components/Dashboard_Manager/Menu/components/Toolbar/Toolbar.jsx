@@ -1,4 +1,18 @@
 import React, { useState } from "react";
+import {
+  FiSearch,
+  FiX,
+  FiFilter,
+  FiGrid,
+  FiList,
+  FiPlus,
+  FiTag,
+  FiDollarSign,
+  FiGift,
+  FiCheck,
+  FiEyeOff,
+  FiAlertCircle,
+} from "react-icons/fi";
 import "./Toolbar.scss";
 
 const Toolbar = ({
@@ -14,8 +28,8 @@ const Toolbar = ({
   onBulkPriceEdit,
   onCreatePromotion,
   onAddCategory,
-  categories,
-  itemCount,
+  categories = [],
+  itemCount = 0,
   minPrice,
   maxPrice,
 }) => {
@@ -43,219 +57,199 @@ const Toolbar = ({
   const hasActiveFilters =
     searchTerm || currentCategory || statusFilter || minPrice || maxPrice;
 
+  // Helper để format giá tiền
+  const formatCurrency = (val) =>
+    val ? parseInt(val).toLocaleString("vi-VN") + "đ" : "";
+
   return (
-    <div className="toolbar">
-      {/* Main Toolbar */}
-      <div className="toolbar__main">
-        {/* Search Section */}
-        <div className="toolbar__search">
-          <div className="search-box">
-            <span className="search-icon">🔍</span>
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Tìm kiếm món ăn, danh mục..."
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-            />
-            {searchTerm && (
-              <button
-                className="search-clear"
-                onClick={() => onSearchChange("")}
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Quick Filters */}
-        <div className="toolbar__quick-filters">
-          <select
-            className="filter-select"
-            value={currentCategory}
-            onChange={(e) => onCategoryChange(e.target.value)}
-          >
-            <option value="">Tất cả danh mục</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.name}>
-                {category.icon} {category.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="filter-select"
-            value={statusFilter}
-            onChange={(e) => onStatusFilterChange(e.target.value)}
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="available">✅ Có sẵn</option>
-            <option value="out_of_stock">❌ Hết hàng</option>
-            <option value="hidden">👁️ Ẩn</option>
-          </select>
-
-          <button
-            className={`filter-toggle ${
-              showFilters ? "filter-toggle--active" : ""
-            }`}
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            🎛️ Bộ lọc
-          </button>
-        </div>
-
-        {/* View Controls */}
-        <div className="toolbar__view-controls">
-          <div className="view-switcher">
-            <button
-              className={`view-btn ${
-                currentView === "grid" ? "view-btn--active" : ""
-              }`}
-              onClick={() => onViewChange("grid")}
-              title="Xem dạng lưới"
-            >
-              ⊞
+    <div className="toolbar-container">
+      {/* --- Top Bar: Search & Main Actions --- */}
+      <div className="toolbar-top">
+        {/* Search Input */}
+        <div className="search-wrapper">
+          <FiSearch className="search-icon" />
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Tìm kiếm món ăn..."
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
+          {searchTerm && (
+            <button className="clear-btn" onClick={() => onSearchChange("")}>
+              <FiX />
             </button>
-            <button
-              className={`view-btn ${
-                currentView === "list" ? "view-btn--active" : ""
-              }`}
-              onClick={() => onViewChange("list")}
-              title="Xem dạng danh sách"
-            >
-              ☰
-            </button>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="toolbar__actions">
-          <button
-            className="action-btn action-btn--secondary"
-            onClick={onBulkPriceEdit}
-          >
-            💰 Chỉnh sửa giá
-          </button>
-          <button
-            className="action-btn action-btn--secondary"
-            onClick={onCreatePromotion}
-          >
-            🎁 Tạo khuyến mãi
-          </button>
-          <button
-            className="action-btn action-btn--primary"
-            onClick={onAddCategory}
-          >
-            ➕ Thêm danh mục
-          </button>
-        </div>
-      </div>
-
-      {/* Advanced Filters */}
-      {showFilters && (
-        <div className="toolbar__advanced-filters">
-          <div className="advanced-filters">
-            <div className="filter-group">
-              <label className="filter-label">Khoảng giá (VNĐ):</label>
-              <div className="price-range">
-                <input
-                  type="number"
-                  className="price-input"
-                  placeholder="Từ"
-                  value={priceRange.min}
-                  onChange={(e) =>
-                    setPriceRange((prev) => ({ ...prev, min: e.target.value }))
-                  }
-                />
-                <span className="price-separator">-</span>
-                <input
-                  type="number"
-                  className="price-input"
-                  placeholder="Đến"
-                  value={priceRange.max}
-                  onChange={(e) =>
-                    setPriceRange((prev) => ({ ...prev, max: e.target.value }))
-                  }
-                />
-                <button
-                  className="price-apply-btn"
-                  onClick={handlePriceRangeSubmit}
-                >
-                  Áp dụng
-                </button>
-              </div>
-            </div>
-
-            <div className="filter-actions">
-              {hasActiveFilters && (
-                <button className="clear-filters-btn" onClick={clearFilters}>
-                  🗑️ Xóa bộ lọc
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Results Summary */}
-      <div className="toolbar__summary">
-        <div className="summary-info">
-          <span className="item-count">📊 Hiển thị {itemCount} món ăn</span>
-          {hasActiveFilters && (
-            <span className="filter-indicator">🎯 Đang áp dụng bộ lọc</span>
           )}
         </div>
 
-        {/* Active Filters Display */}
-        {hasActiveFilters && (
-          <div className="active-filters">
-            {searchTerm && (
-              <span className="filter-tag">
-                Tìm kiếm: "{searchTerm}"
-                <button onClick={() => onSearchChange("")}>✕</button>
-              </span>
-            )}
-            {currentCategory && (
-              <span className="filter-tag">
-                Danh mục: {currentCategory}
-                <button onClick={() => onCategoryChange("")}>✕</button>
-              </span>
-            )}
-            {statusFilter && (
-              <span className="filter-tag">
-                Trạng thái:{" "}
-                {statusFilter === "available"
-                  ? "Có sẵn"
-                  : statusFilter === "out_of_stock"
-                  ? "Hết hàng"
-                  : "Ẩn"}
-                <button onClick={() => onStatusFilterChange("")}>✕</button>
-              </span>
-            )}
-            {(minPrice || maxPrice) && (
-              <span className="filter-tag">
-                Giá:{" "}
-                {minPrice
-                  ? `${parseInt(minPrice).toLocaleString("vi-VN")}đ`
-                  : "0đ"}{" "}
-                -{" "}
-                {maxPrice
-                  ? `${parseInt(maxPrice).toLocaleString("vi-VN")}đ`
-                  : "∞"}
-                <button
-                  onClick={() => {
-                    setPriceRange({ min: "", max: "" });
-                    onPriceRangeChange({ minPrice: "", maxPrice: "" });
-                  }}
-                >
-                  ✕
-                </button>
-              </span>
-            )}
+        {/* Action Group Right */}
+        <div className="actions-group">
+          {/* View Toggle */}
+          <div className="view-toggle">
+            <button
+              className={`toggle-btn ${currentView === "grid" ? "active" : ""}`}
+              onClick={() => onViewChange("grid")}
+              title="Lưới"
+            >
+              <FiGrid />
+            </button>
+            <button
+              className={`toggle-btn ${currentView === "list" ? "active" : ""}`}
+              onClick={() => onViewChange("list")}
+              title="Danh sách"
+            >
+              <FiList />
+            </button>
           </div>
-        )}
+
+          {/* Primary Actions */}
+          <button className="btn btn-secondary" onClick={onBulkPriceEdit}>
+            <FiDollarSign /> <span className="hide-mobile">Sửa giá</span>
+          </button>
+          <button className="btn btn-secondary" onClick={onCreatePromotion}>
+            <FiGift /> <span className="hide-mobile">Khuyến mãi</span>
+          </button>
+          <button className="btn btn-primary" onClick={onAddCategory}>
+            <FiPlus /> <span className="hide-mobile">Thêm mới</span>
+          </button>
+        </div>
       </div>
+
+      {/* --- Middle Bar: Filters --- */}
+      <div className="toolbar-filters">
+        <div className="filter-row">
+          {/* Category Select */}
+          <div className="select-wrapper">
+            <select
+              className={`custom-select ${currentCategory ? "active" : ""}`}
+              value={currentCategory}
+              onChange={(e) => onCategoryChange(e.target.value)}
+            >
+              <option value="">Tất cả danh mục</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.name}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+            <div className="select-arrow">
+              <FiTag size={14} />
+            </div>
+          </div>
+
+          {/* Status Select */}
+          <div className="select-wrapper">
+            <select
+              className={`custom-select ${statusFilter ? "active" : ""}`}
+              value={statusFilter}
+              onChange={(e) => onStatusFilterChange(e.target.value)}
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="available">Có sẵn</option>
+              <option value="out_of_stock">Hết hàng</option>
+              <option value="hidden">Đang ẩn</option>
+            </select>
+            <div className="select-arrow">
+              {statusFilter === "available" ? (
+                <FiCheck size={14} />
+              ) : statusFilter === "hidden" ? (
+                <FiEyeOff size={14} />
+              ) : (
+                <FiAlertCircle size={14} />
+              )}
+            </div>
+          </div>
+
+          {/* Advanced Filter Toggle */}
+          <button
+            className={`btn-filter-toggle ${
+              showFilters || minPrice || maxPrice ? "active" : ""
+            }`}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <FiFilter /> Bộ lọc giá
+          </button>
+        </div>
+
+        <div className="result-count">
+          Hiển thị <strong>{itemCount}</strong> món
+        </div>
+      </div>
+
+      {/* --- Advanced Price Filter Slide --- */}
+      <div className={`advanced-panel ${showFilters ? "open" : ""}`}>
+        <div className="price-inputs">
+          <label>Khoảng giá:</label>
+          <input
+            type="number"
+            placeholder="0"
+            value={priceRange.min}
+            onChange={(e) =>
+              setPriceRange((p) => ({ ...p, min: e.target.value }))
+            }
+          />
+          <span className="separator">-</span>
+          <input
+            type="number"
+            placeholder="∞"
+            value={priceRange.max}
+            onChange={(e) =>
+              setPriceRange((p) => ({ ...p, max: e.target.value }))
+            }
+          />
+          <button className="btn-apply" onClick={handlePriceRangeSubmit}>
+            Áp dụng
+          </button>
+        </div>
+      </div>
+
+      {/* --- Active Filters Chips --- */}
+      {hasActiveFilters && (
+        <div className="active-chips-area">
+          <span className="label">Đang lọc:</span>
+
+          {searchTerm && (
+            <span className="chip">
+              Tìm: "{searchTerm}" <FiX onClick={() => onSearchChange("")} />
+            </span>
+          )}
+
+          {currentCategory && (
+            <span className="chip">
+              Danh mục: {currentCategory}{" "}
+              <FiX onClick={() => onCategoryChange("")} />
+            </span>
+          )}
+
+          {statusFilter && (
+            <span className="chip">
+              {statusFilter === "available"
+                ? "Có sẵn"
+                : statusFilter === "out_of_stock"
+                ? "Hết hàng"
+                : "Ẩn"}
+              <FiX onClick={() => onStatusFilterChange("")} />
+            </span>
+          )}
+
+          {(minPrice || maxPrice) && (
+            <span className="chip">
+              Giá: {formatCurrency(minPrice) || "0"} -{" "}
+              {formatCurrency(maxPrice) || "∞"}
+              <FiX
+                onClick={() => {
+                  setPriceRange({ min: "", max: "" });
+                  onPriceRangeChange({ minPrice: "", maxPrice: "" });
+                }}
+              />
+            </span>
+          )}
+
+          <button className="clear-all-text" onClick={clearFilters}>
+            Xóa tất cả
+          </button>
+        </div>
+      )}
     </div>
   );
 };

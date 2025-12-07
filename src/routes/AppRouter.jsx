@@ -29,7 +29,6 @@ import ProfilePage from "../components/Customer/Profile/ProfilePage";
 // ==== Manager/Admin ====
 import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
 
-import MenuManagement from "../components/admin/MenuManagement";
 import ManagerLayout from "../layouts/ManagerLayout";
 
 // ==== Staff ====
@@ -286,19 +285,7 @@ const AppRouter = () => {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/menu"
-          element={
-            <PrivateRoute
-              allowedRoles={["admin", "manager"]}
-              requireVerifiedEmail
-            >
-              <ManagerLayout>
-                <MenuManagement />
-              </ManagerLayout>
-            </PrivateRoute>
-          }
-        />
+
         <Route path="/cus-menu" element={<RestaurantMenu />} />
         {/* ===== ADMIN ===== */}
         <Route

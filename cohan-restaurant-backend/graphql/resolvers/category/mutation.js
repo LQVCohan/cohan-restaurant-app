@@ -1,8 +1,12 @@
 // src/graphql/resolvers/category/mutation.js
 import { GraphQLError } from "graphql";
-import { Category, MenuItem } from "../../../models/index.js";
+import { Category, MenuItem, CategoryMenu } from "../../../models/index.js";
 
 export const CategoryMutation = {
+  /* ──────────────────────────────
+   * CATEGORY (THEO TIME SLOT)
+   * ────────────────────────────── */
+
   createCategory: async (_, { input }) => {
     const { restaurantId, timeSlot, name, order = 0 } = input;
     const doc = await Category.create({
@@ -18,9 +22,11 @@ export const CategoryMutation = {
   updateCategory: async (_, { input }) => {
     const c = await Category.findById(input.id);
     if (!c) throw new GraphQLError("Category not found");
+
     if (input.name !== undefined) c.name = input.name;
     if (input.order !== undefined) c.order = input.order;
     if (input.isActive !== undefined) c.isActive = !!input.isActive;
+
     await c.save();
     return c.toObject();
   },
@@ -29,7 +35,51 @@ export const CategoryMutation = {
     const used = await MenuItem.exists({ categoryId: id });
     if (used)
       throw new GraphQLError("Cannot delete: category is in use by menu items");
+
     await Category.findByIdAndDelete(id);
+    return true;
+  },
+
+  /* ──────────────────────────────
+   * CATEGORY MENU (MENU GROUPS)
+   * ────────────────────────────── */
+
+  createCategoryMenu: async (_, { input }) => {
+    const {
+      restaurantId,
+      name,
+      description,
+      coverImage,
+      isActive = true,
+    } = input;
+
+    const doc = await CategoryMenu.create({
+      restaurantId,
+      name,
+      description,
+      coverImage,
+      isActive,
+    });
+
+    return doc.toObject();
+  },
+
+  updateCategoryMenu: async (_, { input }) => {
+    const cm = await CategoryMenu.findById(input.id);
+    if (!cm) throw new GraphQLError("CategoryMenu not found");
+
+    if (input.name !== undefined) cm.name = input.name;
+    if (input.description !== undefined) cm.description = input.description;
+    if (input.coverImage !== undefined) cm.coverImage = input.coverImage;
+    if (input.isActive !== undefined) cm.isActive = !!input.isActive;
+
+    await cm.save();
+    return cm.toObject();
+  },
+
+  deleteCategoryMenu: async (_, { id }) => {
+    // Nếu sau này categoryMenu được gắn với MenuItem thì thêm check tại đây
+    await CategoryMenu.findByIdAndDelete(id);
     return true;
   },
 };
