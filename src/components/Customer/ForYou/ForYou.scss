@@ -1,0 +1,327 @@
+// --- VARIABLES ---
+$primary-color: #ff6b00; // Màu cam F&B đặc trưng
+$primary-light: #fff0e5;
+$bg-color: #f9fafb;
+$text-dark: #1f2937;
+$text-gray: #6b7280;
+$white: #ffffff;
+$border-radius: 12px;
+$shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+// --- MIXINS ---
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// --- STYLES ---
+.foryou-container {
+  background-color: $bg-color;
+  min-height: 100vh;
+  font-family: "Inter", sans-serif;
+  color: $text-dark;
+  padding-bottom: 80px; // Chừa chỗ cho footer
+  position: relative;
+
+  // HEADER
+  .header {
+    background: $white;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+
+    h1 {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    button {
+      background: none;
+      border: none;
+      padding: 4px;
+      cursor: pointer;
+      color: $text-dark;
+    }
+  }
+
+  .content-scroll {
+    padding: 20px;
+  }
+
+  // SECTIONS COMMON
+  .section {
+    margin-bottom: 24px;
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-desc {
+      font-size: 13px;
+      color: $text-gray;
+      margin-bottom: 12px;
+    }
+  }
+
+  // DIET GRID
+  .diet-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+
+    .diet-card {
+      background: $white;
+      padding: 16px;
+      border-radius: $border-radius;
+      border: 2px solid transparent;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s ease;
+      box-shadow: $shadow;
+
+      &.active {
+        border-color: $primary-color;
+        background-color: $primary-light;
+
+        .diet-icon {
+          transform: scale(1.1);
+        }
+      }
+
+      .diet-icon {
+        font-size: 24px;
+        display: block;
+        margin-bottom: 8px;
+        transition: transform 0.2s;
+      }
+
+      .diet-info {
+        h3 {
+          font-size: 14px;
+          margin: 0 0 4px 0;
+        }
+        span {
+          font-size: 11px;
+          color: $text-gray;
+        }
+      }
+
+      .check-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: $primary-color;
+        color: white;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        @include flex-center;
+      }
+    }
+  }
+
+  // ALLERGY CHIPS
+  .allergy-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    .chip {
+      background: $white;
+      border: 1px solid #e5e7eb;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      color: $text-dark;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &.active {
+        background: $text-dark; // Dị ứng thì nên dùng màu đậm/cảnh báo hoặc đen
+        color: $white;
+        border-color: $text-dark;
+      }
+    }
+  }
+
+  // HABITS
+  .habit-row {
+    background: $white;
+    padding: 16px;
+    border-radius: $border-radius;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: $shadow;
+
+    .habit-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+    }
+  }
+
+  // TOGGLE SWITCH (Pure CSS)
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+
+    input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: 0.4s;
+      border-radius: 24px;
+
+      &:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+      }
+    }
+
+    input:checked + .slider {
+      background-color: $primary-color;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+  }
+
+  .divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 16px 0;
+  }
+
+  // SEGMENT CONTROL
+  .habit-control {
+    margin-bottom: 16px;
+
+    .control-label {
+      font-size: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: $text-gray;
+    }
+
+    .segment-control {
+      display: flex;
+      background: #e5e7eb;
+      padding: 4px;
+      border-radius: 8px;
+
+      button {
+        flex: 1;
+        border: none;
+        background: transparent;
+        padding: 8px 0;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        color: $text-gray;
+        cursor: pointer;
+
+        &.active {
+          background: $white;
+          color: $text-dark;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+      }
+    }
+  }
+
+  // PREVIEW BOX
+  .preview-section {
+    margin-top: 30px;
+
+    h3 {
+      font-size: 14px;
+      color: $text-gray;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .preview-box {
+      background: #fff8f3; // Màu cam rất nhạt
+      border: 1px dashed $primary-color;
+      padding: 16px;
+      border-radius: $border-radius;
+
+      .label {
+        font-weight: 700;
+        margin-right: 6px;
+        color: $primary-color;
+      }
+
+      .text {
+        color: $text-dark;
+        font-style: italic;
+      }
+    }
+  }
+
+  // FOOTER
+  .footer-action {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: $white;
+    padding: 16px 20px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+    z-index: 10;
+
+    .btn-save {
+      width: 100%;
+      background: $primary-color;
+      color: $white;
+      border: none;
+      padding: 16px;
+      border-radius: $border-radius;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+
+      &:active {
+        background: darken($primary-color, 5%);
+      }
+    }
+  }
+}

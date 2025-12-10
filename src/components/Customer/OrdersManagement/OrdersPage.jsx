@@ -461,7 +461,6 @@ export default function OrdersPage() {
       {toasts.map((t) => (
         <Toast key={t.id} {...t} onClose={closeToast} />
       ))}
-
       <div className="page-header">
         <h1 className="page-title">
           <Icon name="receipt" size={28} style={{ marginRight: 8 }} /> Đơn hàng
@@ -483,19 +482,19 @@ export default function OrdersPage() {
           }`}
           onClick={() => setActiveTab("reservation")}
         >
-          🍽️ Đặt bàn ({counts.reservation})
+          <span className="tab-icon">🍽️</span> Đặt bàn ({counts.reservation})
         </button>
         <button
           className={`filter-tab ${activeTab === "dinein" ? "active" : ""}`}
           onClick={() => setActiveTab("dinein")}
         >
-          🏬 Tại quán ({counts.dinein})
+          <span className="tab-icon">🏬</span> Tại quán ({counts.dinein})
         </button>
         <button
           className={`filter-tab ${activeTab === "delivery" ? "active" : ""}`}
           onClick={() => setActiveTab("delivery")}
         >
-          🚚 Giao hàng ({counts.delivery})
+          <span className="tab-icon">🚚</span> Giao hàng ({counts.delivery})
         </button>
         <button
           className={`filter-tab ${
@@ -503,24 +502,38 @@ export default function OrdersPage() {
           }`}
           onClick={() => setActiveTab("done_cancel")}
         >
-          Lịch sử
+          <span className="tab-icon">📜</span> Lịch sử
         </button>
       </div>
-
       <div id="ordersList">
         {ordersLoading || resvLoading ? (
           <Skeleton rows={3} />
         ) : (
-          visible.map((item) => (
-            <OrderItem
-              key={item.key}
-              {...item} // Truyền toàn bộ props đã chuẩn hóa
-              onClick={() => openOrderDetails(item.key, item.raw)}
-            />
-          ))
+          visible.map((item) => {
+            // Logic kiểm tra xem đây có phải là đơn hàng cũ/đã xong không
+            const isHistory = [
+              "cancelled",
+              "completed",
+              "rejected",
+              "expired",
+              "no_show",
+              "checked_in",
+            ].includes(item.status);
+
+            return (
+              <div
+                key={item.key}
+                className={`order-item-wrapper ${isHistory ? "is-muted" : ""}`}
+              >
+                <OrderItem
+                  {...item}
+                  onClick={() => openOrderDetails(item.key, item.raw)}
+                />
+              </div>
+            );
+          })
         )}
       </div>
-
       {/* --- Modals --- */}
       <QRPaymentModal
         isOpen={!!qrBooking}
@@ -559,7 +572,6 @@ export default function OrdersPage() {
           }).finally(() => setChangeTimeTarget(null));
         }}
       />
-
       {/* Modal Hủy (Có lý do) */}
       <CancelOrderModal
         isOpen={!!cancelTarget}
@@ -580,7 +592,6 @@ export default function OrdersPage() {
             }).finally(() => setCancelTarget(null));
         }}
       />
-
       {/* ✅ Modal Xóa (Confirm đơn giản) */}
       <ConfirmationModal
         visible={!!deleteTarget}
@@ -597,7 +608,6 @@ export default function OrdersPage() {
           setDeleteTarget(null);
         }}
       />
-
       <TrackingModal
         isOpen={!!trackingOrder}
         onClose={() => setTrackingOrder(null)}

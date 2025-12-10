@@ -1,72 +1,108 @@
-@use "../../../styles/variables.scss" as *; // Import nếu bạn có file biến chung
+/* --- VARIABLES --- */
+// Đồng bộ với Template POS màu Cam
 
-// --- Local Variables (nếu không dùng chung) ---
-$bg-warning: #fff7ed;
-$text-warning: #c2410c;
-$border-warning: #ffedd5;
-$bg-info: #eff6ff;
-$text-info: #1d4ed8;
-$border-info: #dbeafe;
-$bg-success: #f0fdf4;
-$text-success: #15803d;
-$border-success: #bbf7d0;
-$bg-danger: #fef2f2;
-$text-danger: #b91c1c;
-$border-danger: #fecaca;
-$bg-default: #f3f4f6;
-$text-default: #374151;
-$border-default: #e5e7eb;
+// Tông Cam Chủ đạo (Primary - Trạng thái Active)
+$orange-main: #f97316;
+$orange-text: #ea580c;
+$orange-bg: #fff7ed;
+$orange-border: #ffedd5;
 
+// Tông Hổ phách (Warning - Trạng thái Chờ)
+$amber-main: #f59e0b;
+$amber-text: #b45309;
+$amber-bg: #fffbeb;
+$amber-border: #fef3c7;
+
+// Tông Xanh lá (Success - Hoàn thành)
+$green-main: #10b981;
+$green-text: #047857;
+$green-bg: #f0fdf4;
+$green-border: #d1fae5;
+
+// Tông Đỏ (Danger - Hủy/Từ chối)
+$red-main: #ef4444;
+$red-text: #b91c1c;
+$red-bg: #fef2f2;
+$red-border: #fee2e2;
+
+// Tông Xám (Default)
+$gray-text: #64748b;
+$gray-bg: #f8fafc;
+$gray-border: #e2e8f0;
+
+/* --- KEYFRAMES --- */
+@keyframes statusPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba($orange-main, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba($orange-main, 0.05);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba($orange-main, 0.15);
+  }
+}
+
+/* --- MAIN STYLE --- */
 .status-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 20px; // Bo tròn dạng viên thuốc
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1.2;
+  padding: 6px 14px;
+  border-radius: 99px; // Dạng viên thuốc chuyên nghiệp
+  font-size: 0.75rem;
+  font-weight: 700; // Font đậm đồng bộ Template POS
+  line-height: 1;
   border: 1px solid transparent;
   white-space: nowrap;
+  transition: all 0.25s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 
   .chip-icon {
-    font-size: 1em; // Icon to bằng chữ
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
   }
 
-  // --- Các biến thể màu sắc ---
+  .chip-text {
+    display: inline-block;
+  }
 
-  // 1. Warning (Chờ xử lý, Chờ thanh toán)
+  /* --- MODIFIERS --- */
+
+  // 1. Trạng thái Cam (Primary - Đang thực hiện/Sẵn sàng)
+  &.status-primary {
+    background-color: $orange-bg;
+    color: $orange-text;
+    border-color: $orange-border;
+    animation: statusPulse 2s infinite; // Hiệu ứng thu hút khách hàng
+  }
+
+  // 2. Trạng thái Vàng cam (Warning - Chờ xác nhận/Chờ thanh toán)
   &.status-warning {
-    background-color: $bg-warning;
-    color: $text-warning;
-    border-color: $border-warning;
+    background-color: $amber-bg;
+    color: $amber-text;
+    border-color: $amber-border;
   }
 
-  // 2. Info (Đã đặt, Đang giao, Đang nấu)
-  &.status-info {
-    background-color: $bg-info;
-    color: $text-info;
-    border-color: $border-info;
-  }
-
-  // 3. Success (Hoàn thành, Đã đến)
+  // 3. Trạng thái Xanh (Success - Đã đến/Hoàn thành)
   &.status-success {
-    background-color: $bg-success;
-    color: $text-success;
-    border-color: $border-success;
+    background-color: $green-bg;
+    color: $green-text;
+    border-color: $green-border;
   }
 
-  // 4. Danger (Hủy, Từ chối)
+  // 4. Trạng thái Đỏ (Danger - Hết hạn/Hủy/Từ chối)
   &.status-danger {
-    background-color: $bg-danger;
-    color: $text-danger;
-    border-color: $border-danger;
+    background-color: $red-bg;
+    color: $red-text;
+    border-color: $red-border;
   }
 
-  // 5. Default
+  // 5. Trạng thái mặc định
   &.status-default {
-    background-color: $bg-default;
-    color: $text-default;
-    border-color: $border-default;
+    background-color: $gray-bg;
+    color: $gray-text;
+    border-color: $gray-border;
   }
 }

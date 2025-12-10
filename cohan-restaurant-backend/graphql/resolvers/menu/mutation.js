@@ -9,29 +9,80 @@ function toNumberOrNull(v) {
 }
 
 export const MenuMutation = {
+  // ================================
+  // ENSURE MENU (CREATE / UPDATE)
+  // ================================
   ensureMenu: async (_, { input }) => {
-    const { restaurantId, timeSlot, name, description, coverImage } = input;
+    const {
+      restaurantId,
+      timeSlot,
+      name,
+      description,
+      coverImage,
+      isActive,
+      categoryMenuId,
+    } = input;
+    console.log(
+      "🔥 [ensureMenu] restaurantId=",
+      restaurantId,
+      "timeSlot=",
+      timeSlot,
+      "name=",
+      name,
+      "description=",
+      description,
+      "coverImage=",
+      coverImage,
+      "isActive=",
+      isActive,
+      "categoryMenuId=",
+      categoryMenuId
+    );
+    // check restaurant tồn tại
     const rest = await Restaurant.findById(restaurantId).lean();
     if (!rest) throw new GraphQLError("Restaurant not found");
 
-    const doc = await Menu.findOneAndUpdate(
-      { restaurantId, timeSlot },
-      {
-        $setOnInsert: {
-          restaurantId,
-          timeSlot,
-          name: name || "Menu",
-          description,
-          coverImage,
-          isActive: true,
-        },
-      },
-      { new: true, upsert: true }
-    ).lean({ virtuals: true });
+    // validate categoryMenuId nếu được truyền
+    if (categoryMenuId && !mongoose.isValidObjectId(categoryMenuId)) {
+      throw new GraphQLError("Invalid categoryMenuId");
+    }
 
-    return doc;
+    // tìm menu hiện có cho (restaurantId, timeSlot)
+    let menu = await Menu.findOne({ restaurantId, timeSlot });
+
+    if (menu) {
+      // ✅ UPDATE: chỉ ghi đè field nào được truyền vào input
+      if (name !== undefined && name !== null) menu.name = name;
+      if (description !== undefined) menu.description = description;
+      if (coverImage !== undefined) menu.coverImage = coverImage;
+      if (typeof isActive === "boolean") menu.isActive = isActive;
+      if (categoryMenuId !== undefined) menu.categoryMenuId = categoryMenuId;
+
+      await menu.save();
+      return menu.toObject();
+    }
+
+    // ✅ CREATE mới nếu chưa có
+    const docToCreate = {
+      restaurantId,
+      timeSlot,
+      name: name || "Menu",
+      description,
+      coverImage,
+      isActive: typeof isActive === "boolean" ? isActive : true,
+    };
+
+    if (categoryMenuId) {
+      docToCreate.categoryMenuId = categoryMenuId;
+    }
+
+    const created = await Menu.create(docToCreate);
+    return created.toObject();
   },
 
+  // ================================
+  // MENU ITEM CRUD
+  // ================================
   createMenuItem: async (_, { input }) => {
     const { restaurantId, timeSlot, categoryId, basePrice, avgPrepTimeMin } =
       input;
@@ -46,7 +97,12 @@ export const MenuMutation = {
     const menu = await Menu.findOneAndUpdate(
       { restaurantId, timeSlot },
       {
-        $setOnInsert: { restaurantId, timeSlot, name: "Menu", isActive: true },
+        $setOnInsert: {
+          restaurantId,
+          timeSlot,
+          name: "Menu",
+          isActive: true,
+        },
       },
       { new: true, upsert: true }
     ).lean();
@@ -70,7 +126,6 @@ export const MenuMutation = {
 
     const created = await MenuItem.create(docToCreate);
 
-    // đọc lại dạng plain object kèm virtuals (recipe, ...)
     const doc = await MenuItem.findById(created._id).lean({
       virtuals: true,
       getters: true,
@@ -127,14 +182,12 @@ export const MenuMutation = {
       throw new GraphQLError("Invalid categoryId");
     }
 
-    // Xây patch theo trường có truyền
     const patch = {};
     if (typeof name === "string") patch.name = name;
     if (typeof description === "string") patch.description = description;
     if (categoryId) patch.categoryId = categoryId;
 
     if (!Object.keys(patch).length) {
-      // Không có gì để cập nhật → trả về bản ghi hiện tại
       const doc = await MenuItem.findOne({
         _id: menuItemId,
         restaurantId,

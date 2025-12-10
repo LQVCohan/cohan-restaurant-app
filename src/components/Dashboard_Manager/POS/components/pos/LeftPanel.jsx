@@ -1,147 +1,113 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useState, useMemo } from "react";
 import cls from "./LeftPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
-import {
-  DndContext,
-  useDroppable,
-  useDraggable,
-  useSensor,
-  useSensors,
-  MouseSensor,
-  TouchSensor,
-  KeyboardSensor,
-  closestCenter,
-} from "@dnd-kit/core";
 import { TableActionsModal } from "../modals/TableActionsModal";
-import { useReservation } from "../../../../../hooks/useReservation";
-import { useNotification } from "../../../../../hooks/useNotification";
+import RegularCustomerModal from "../modals/RegularCustomerModal";
 
-/* -------------------------------- UI bits -------------------------------- */
+// --- ICONS (SVG) ---
+const IconMulti = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M9 7H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"></path>
+    <rect x="9" y="3" width="12" height="12" rx="2"></rect>
+  </svg>
+);
+const IconDots = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="1"></circle>
+    <circle cx="12" cy="5" r="1"></circle>
+    <circle cx="12" cy="19" r="1"></circle>
+  </svg>
+);
+const IconCheck = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="3"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+);
+const IconUser = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+    <circle cx="12" cy="7" r="4"></circle>
+  </svg>
+);
 
-function StatusDot({ status }) {
-  return (
-    <span
-      className={`${cls.dot} ${
-        status === "occupied"
-          ? cls.dotOccupied
-          : status === "reserved"
-          ? cls.dotReserved
-          : status === "cleaning"
-          ? cls.dotCleaning
-          : status === "offline"
-          ? cls.dotOffline
-          : cls.dotAvailable
-      }`}
-    />
-  );
-}
-
-function TableCard({ t, active, selected, onClick, onOpenTableActions }) {
-  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: t.id });
+export default function LeftPanel() {
   const {
-    attributes,
-    listeners,
-    setNodeRef: setDragRef,
-    transform,
-    isDragging,
-  } = useDraggable({ id: t.id, data: { table: t } });
-
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px,0)` }
-    : undefined;
-
-  return (
-    <div
-      ref={(n) => {
-        setDropRef(n);
-        setDragRef(n);
-      }}
-      className={`${cls.tableItem} ${active ? cls.selected : ""} ${
-        selected ? cls.checked : ""
-      } ${isDragging ? cls.dragging : ""} ${isOver ? cls.over : ""}`}
-      data-status={t.status}
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && onClick()}
-      style={style}
-      {...attributes}
-      {...listeners}
-      title={`Bàn ${t.displayCode || t.code} • ${t.capacity ?? 0} chỗ • ${
-        t.status
-      }${t.isGroup ? " • (Nhóm bàn)" : ""}`}
-    >
-      <div className={cls.tableTop}>
-        <StatusDot status={t.status} />
-        {t.type && <span className={cls.badge}>{t.type}</span>}
-        {t.isGroup && <span className={cls.badge}>Nhóm</span>}
-      </div>
-
-      <div className={cls.tableCode}>Bàn {t.displayCode || t.code}</div>
-
-      <div className={`${cls.tableMeta} ${cls.metaRow}`}>
-        <span className={cls.kv}>{t.capacity ?? 0} chỗ</span>
-        <span className={cls.kv}>{t.status}</span>
-      </div>
-
-      <button
-        type="button"
-        className={cls.kebab}
-        onClick={(e) => {
-          e.stopPropagation();
-          onOpenTableActions?.(t);
-        }}
-        aria-label="Hành động bàn"
-        title="Hành động bàn"
-      >
-        •••
-      </button>
-
-      {Array.isArray(t.tags) && t.tags.length > 0 && (
-        <div className={`${cls.tableMeta} ${cls.metaRow}`}>
-          {t.tags.map((tag, i) => (
-            <span key={i} className={cls.kv}>
-              #{tag}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* -------------------------------- Main -------------------------------- */
-
-export default function LeftPanel({ className = "" }) {
-  const {
-    restaurantId,
     floors,
-    activeLevel,
-    setActiveLevel,
     tables,
-    tableSearch,
-    setTableSearch,
-    statusFilter,
-    setStatusFilter,
+
+    currentTable,
+    refreshTables,
+    mergeTables,
     currentOrderType,
     setCurrentOrderType,
+    startDeliveryOrder,
+    startTakeawayOrder,
+
     selectTableForOrder,
-    mergeTables,
-    splitTables,
-    refetchTables,
 
-    // helpers
-    fetchOrderByTable,
-    fetchTableByCode,
-    setTableStatus,
-
-    // NEW from context (hook order)
-    updateOrderCustomerByCode,
+    // 🔹 Off-premise customer & shipping
+    deliveryCustomer,
+    setDeliveryCustomer,
+    shippingInfo,
+    setShippingInfo,
   } = usePos();
 
-  const { showNotification } = useNotification();
-  const { createReservation } = useReservation();
+  // --- Local State ---
+  const [currentFloorId, setCurrentFloorId] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
 
+  // Multi-select State
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  // Modal States
+  const [actionModalOpen, setActionModalOpen] = useState(false);
+  const [actionTable, setActionTable] = useState(null);
+
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
+
+  // Drag & Drop State
+  const [dragOverId, setDragOverId] = useState(null);
+  const [draggingId, setDraggingId] = useState(null);
+
+  // --- Tabs Configuration ---
   const tabs = useMemo(
     () => [
       { key: "dine_in", label: "Bàn ăn" },
@@ -150,341 +116,134 @@ export default function LeftPanel({ className = "" }) {
     ],
     []
   );
-  const setTab = (key) => setCurrentOrderType(key);
 
-  const [multiSelect, setMultiSelect] = useState(false);
-  const [selectedIds, setSelectedIds] = useState([]);
+  // --- Helpers ---
+  const getLastName = (fullName) => {
+    if (!fullName) return "";
+    const parts = fullName.trim().split(" ");
+    return parts[parts.length - 1];
+  };
 
-  const [actionsOpen, setActionsOpen] = useState(false);
-  const [activeTableForActions, setActiveTableForActions] = useState(null);
-  const onOpenTableActions = useCallback((t) => {
-    setActiveTableForActions(t);
-    setActionsOpen(true);
-  }, []);
+  const selectedCustomer = deliveryCustomer;
 
-  // ---------- Gom nhóm bàn để hiển thị một thẻ duy nhất cho nhóm ----------
-  const uiTables = useMemo(() => {
-    if (!Array.isArray(tables) || tables.length === 0) return [];
+  // --- Filter Logic ---
+  const filteredTables = useMemo(() => {
+    let res = tables || [];
+    if (currentFloorId !== "all") {
+      res = res.filter((t) => String(t.floorId) === String(currentFloorId));
+    }
+    if (statusFilter !== "all") {
+      res = res.filter((t) => t.status === statusFilter);
+    }
+    if (searchTerm.trim()) {
+      const lower = searchTerm.toLowerCase();
+      res = res.filter((t) => t.code.toLowerCase().includes(lower));
+    }
+    return res;
+  }, [tables, currentFloorId, statusFilter, searchTerm]);
 
-    const groups = new Map();
-    const singles = [];
+  // --- Handlers ---
 
-    tables.forEach((t) => {
-      if (t.joinGroupId) {
-        if (!groups.has(t.joinGroupId)) groups.set(t.joinGroupId, []);
-        groups.get(t.joinGroupId).push(t);
-      } else {
-        singles.push({
-          ...t,
-          isGroup: false,
-          memberIds: [t.id],
-          displayCode: t.code,
-        });
-      }
-    });
-
-    const precedence = [
-      "occupied",
-      "reserved",
-      "cleaning",
-      "offline",
-      "available",
-    ];
-
-    const groupCards = Array.from(groups.values()).map((arr) => {
-      const sortedByCode = [...arr].sort((a, b) =>
-        String(a.code).localeCompare(String(b.code), undefined, {
-          numeric: true,
-        })
+  const handleTableClick = (table) => {
+    if (isMultiSelectMode) {
+      setSelectedIds((prev) =>
+        prev.includes(table.id)
+          ? prev.filter((id) => id !== table.id)
+          : [...prev, table.id]
       );
-      const displayCode = sortedByCode.map((x) => x.code).join("+");
-      const anchor = sortedByCode[0];
-      const groupStatus =
-        precedence.find((s) => arr.some((x) => x.status === s)) || "available";
-      const totalCapacity =
-        arr.reduce((sum, x) => sum + (Number(x.capacity) || 0), 0) ||
-        anchor.capacity;
-
-      const tags = Array.from(new Set(arr.flatMap((x) => x.tags || [])));
-      const memberIds = arr.map((x) => x.id);
-      const memberCodes = sortedByCode.map((x) => x.code);
-
-      return {
-        ...anchor,
-        isGroup: true,
-        memberIds,
-        memberCodes,
-        displayCode,
-        status: groupStatus,
-        capacity: totalCapacity,
-        tags,
-      };
-    });
-
-    return [...singles, ...groupCards];
-  }, [tables]);
-
-  const counts = useMemo(() => {
-    const base = {
-      all: tables?.length || 0,
-      available: 0,
-      occupied: 0,
-      reserved: 0,
-      cleaning: 0,
-      offline: 0,
-    };
-    (tables || []).forEach((t) => {
-      if (base[t.status] != null) base[t.status] += 1;
-    });
-    return base;
-  }, [tables]);
-
-  const selectedEntities = useMemo(
-    () => (tables || []).filter((t) => selectedIds.includes(t.id)),
-    [tables, selectedIds]
-  );
-
-  const sameGroupSelected = useMemo(() => {
-    if (!selectedEntities.length) return null;
-    const gid = selectedEntities[0]?.joinGroupId || null;
-    return selectedEntities.every((t) => t.joinGroupId === gid) ? gid : null;
-  }, [selectedEntities]);
-
-  const toggleSelect = (entity) => {
-    const ids = entity?.memberIds || [entity?.id];
-    setSelectedIds((s) => {
-      const allIncluded = ids.every((id) => s.includes(id));
-      if (allIncluded) return s.filter((x) => !ids.includes(x));
-      return Array.from(new Set([...s, ...ids]));
-    });
-  };
-
-  const handleClickTable = (t) => {
-    if (multiSelect) return toggleSelect(t);
-    const anchor = fetchTableByCode?.(t.code, t.restaurantId) || t;
-    selectTableForOrder(anchor.code, anchor.capacity || 0);
-  };
-
-  // ---------- Kéo thả: gộp bàn thay vì đổi code ----------
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 120, tolerance: 5 },
-    }),
-    useSensor(KeyboardSensor)
-  );
-
-  const onDragEnd = async ({ active, over }) => {
-    if (!active?.id || !over?.id || active.id === over.id) return;
-
-    const a = tables.find((t) => t.id === active.id);
-    const b = tables.find((t) => t.id === over.id);
-    if (!a || !b) return;
-    if (String(a.floorId) !== String(b.floorId)) return;
-
-    const ok = window.confirm(
-      `Bạn có chắc muốn gộp bàn ${a.code} vào bàn ${
-        b.code
-      }?\nSau khi gộp, giao diện sẽ hiển thị dạng "${[a.code, b.code]
-        .sort((x, y) =>
-          String(x).localeCompare(String(y), undefined, { numeric: true })
-        )
-        .join("+")}".`
-    );
-    if (!ok) return;
-
-    try {
-      await mergeTables({ tableIds: [a.id, b.id], anchorId: b.id });
-      await refetchTables?.();
-      const name = [a.code, b.code]
-        .sort((x, y) =>
-          String(x).localeCompare(String(y), undefined, { numeric: true })
-        )
-        .join("+");
-      showNotification?.(`Đã gộp bàn thành công: ${name}`, "success");
-      setSelectedIds([]);
-      setMultiSelect(false);
-    } catch (e) {
-      console.error(e);
-      showNotification?.("Gộp bàn thất bại. Vui lòng thử lại.", "error");
+    } else {
+      selectTableForOrder(table.code, table.capacity);
     }
   };
 
-  /**
-   * Lưu thông tin khách – giữ nguyên logic:
-   * - Nếu bàn đã có order hoạt động: cập nhật khách vào orderCode (updateOrderCustomerByCode)
-   * - Nếu bàn đang "trống": tạo reservation riêng (createReservation) + setTableStatus "reserved"
-   */
-  const handleSaveCustomerFromModal = useCallback(
-    async (tableCode, cust) => {
+  const openActionModal = (e, table) => {
+    e.stopPropagation();
+    setActionTable(table);
+    setActionModalOpen(true);
+  };
+
+  const handleSelectRegularCustomer = (customer) => {
+    if (!customer) return;
+
+    const { id, name, phone, isNew, shippingInfo } = customer;
+
+    // 1) Lưu khách hàng vào context
+    setDeliveryCustomer({
+      id: id || null,
+      name: name,
+      phone: phone,
+      isNew: !!isNew,
+    });
+
+    // 2) Lưu thông tin shipping vào context
+    setShippingInfo({
+      ...shippingInfo,
+    });
+
+    // 3) Đóng modal
+    setCustomerModalOpen(false);
+  };
+
+  // --- Drag & Drop Handlers ---
+  const handleDragStart = (e, table) => {
+    e.dataTransfer.setData("text/plain", table.id);
+    e.dataTransfer.effectAllowed = "move";
+    setDraggingId(table.id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingId(null);
+    setDragOverId(null);
+  };
+
+  const handleDragOver = (e, targetTable) => {
+    e.preventDefault();
+    if (draggingId && draggingId !== targetTable.id) {
+      setDragOverId(targetTable.id);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverId(null);
+  };
+
+  const handleDrop = async (e, targetTable) => {
+    e.preventDefault();
+    const sourceId = e.dataTransfer.getData("text/plain");
+    setDragOverId(null);
+    setDraggingId(null);
+
+    if (!sourceId || sourceId === targetTable.id) return;
+
+    if (
+      window.confirm(
+        `Bạn có chắc muốn gộp bàn đang kéo vào bàn ${targetTable.code}?`
+      )
+    ) {
       try {
-        const code = (tableCode || "").trim();
-        const table =
-          fetchTableByCode?.(code, restaurantId) ||
-          (tables || []).find(
-            (t) => (t.code || "").toLowerCase() === code.toLowerCase()
-          );
-        if (!table) {
-          showNotification?.("Không tìm thấy bàn để lưu khách.", "error");
-          return;
-        }
-
-        const res = await fetchOrderByTable?.(restaurantId, code, 1, 0);
-        const activeOrder = res?.data?.[0] || null;
-
-        if (activeOrder) {
-          await updateOrderCustomerByCode({
-            restaurantId,
-            orderCode: activeOrder.orderCode,
-            customer: {
-              fullName: (cust?.fullName || cust?.name || "").trim(),
-              phone: (cust?.phone || "").trim(),
-              email: (cust?.email || "").trim().toLowerCase(),
-            },
-          });
-          showNotification?.(
-            `Đã cập nhật thông tin khách cho đơn #${activeOrder.orderCode}.`,
-            "success"
-          );
-
-          try {
-            if (table.status === "reserved") {
-              await setTableStatus?.({ id: table.id, status: "occupied" });
-            }
-          } catch {}
-          await refetchTables?.();
-          return;
-        }
-
-        if (table.status === "available") {
-          const isoTime = cust?.checkin
-            ? new Date(cust.checkin).toISOString()
-            : new Date().toISOString();
-
-          await createReservation({
-            restaurantId,
-            tableId: table.id,
-            timeTo: isoTime,
-            partySize:
-              Number.isFinite(Number(cust?.guests)) && Number(cust?.guests) > 0
-                ? Number(cust?.guests)
-                : Number(table.capacity || 2),
-            note: cust?.note || "",
-            customerName: (cust?.name || cust?.fullName || "Guest").trim(),
-            customerPhone: (cust?.phone || "").trim(),
-            customerEmail: (cust?.email || "").trim().toLowerCase(),
-            depositAmount: 0,
-            durationMinutes: 90,
-          });
-
-          try {
-            await setTableStatus?.({ id: table.id, status: "reserved" });
-          } catch {}
-
-          showNotification?.(
-            `Đã tạo đặt bàn cho ${code} và chuyển trạng thái sang "Đã đặt".`,
-            "success"
-          );
-          await refetchTables?.();
-        } else {
-          await refetchTables?.();
-        }
-      } catch (e) {
-        console.error(e);
-        showNotification?.("Lưu thông tin khách thất bại.", "error");
+        await mergeTables({
+          tableIds: [sourceId, targetTable.id],
+          anchorId: targetTable.id,
+        });
+        refreshTables();
+      } catch (err) {
+        console.error("Lỗi gộp bàn:", err);
+        alert("Gộp bàn thất bại, vui lòng thử lại.");
       }
-    },
-    [
-      restaurantId,
-      tables,
-      fetchTableByCode,
-      fetchOrderByTable,
-      updateOrderCustomerByCode,
-      setTableStatus,
-      refetchTables,
-      createReservation,
-      showNotification,
-    ]
-  );
-
-  /* ---------- Reset toàn bộ bàn về TRỐNG (bulk) ---------- */
-  const [isResetting, setIsResetting] = useState(false);
-
-  const handleResetAllTables = useCallback(async () => {
-    if (!restaurantId) {
-      showNotification?.("Không xác định được nhà hàng.", "error");
-      return;
     }
-    const ok = window.confirm(
-      "Bạn có muốn reset toàn bộ bàn về TRỐNG?\nHành động này chỉ đổi trạng thái bàn, không ảnh hưởng đến order hay hóa đơn."
-    );
-    if (!ok) return;
+  };
 
-    try {
-      setIsResetting(true);
-      const list = (tables || []).filter((t) => t.status !== "available");
-      if (list.length === 0) {
-        showNotification?.("Tất cả bàn đang ở trạng thái trống.", "info");
-        return;
-      }
-
-      const chunkSize = 10;
-      for (let i = 0; i < list.length; i += chunkSize) {
-        const chunk = list.slice(i, i + chunkSize);
-        // eslint-disable-next-line no-await-in-loop
-        await Promise.all(
-          chunk.map((t) => setTableStatus?.({ id: t.id, status: "available" }))
-        );
-      }
-
-      await refetchTables?.();
-      showNotification?.(`Đã reset ${list.length} bàn về TRỐNG.`, "success");
-    } catch (e) {
-      console.error(e);
-      showNotification?.("Reset bàn thất bại. Vui lòng thử lại.", "error");
-    } finally {
-      setIsResetting(false);
-    }
-  }, [restaurantId, tables, setTableStatus, refetchTables, showNotification]);
-
-  /* --------- Lọc theo tầng + Tìm kiếm (contains & exact) + Trạng thái --------- */
-  const filteredUiTables = useMemo(() => {
-    const levelFiltered = (uiTables || []).filter((t) =>
-      activeLevel == null ? true : String(t.floorLevel) === String(activeLevel)
-    );
-
-    const raw = tableSearch || "";
-    const endsWithSpace = /\s$/.test(raw);
-    const q = raw.trim().toLowerCase();
-
-    const searchFiltered = q
-      ? levelFiltered.filter((t) => {
-          const display = String(t.displayCode || t.code || "").toLowerCase();
-          if (endsWithSpace) {
-            const exactCodes = new Set([
-              display,
-              ...(t.memberCodes || []).map((x) => String(x).toLowerCase()),
-              String(t.code || "").toLowerCase(),
-            ]);
-            return exactCodes.has(q);
-          }
-          const pool = [display, String(t.code || "").toLowerCase()];
-          return pool.some((s) => s.includes(q));
-        })
-      : levelFiltered;
-
-    const status = statusFilter || "all";
-    const statusFiltered =
-      status === "all"
-        ? searchFiltered
-        : searchFiltered.filter((t) => t.status === status);
-
-    return statusFiltered;
-  }, [uiTables, activeLevel, tableSearch, statusFilter]);
+  // --- Counts ---
+  const counts = useMemo(() => {
+    const all = tables.length;
+    const available = tables.filter((t) => t.status === "available").length;
+    const occupied = tables.filter((t) => t.status === "occupied").length;
+    return { all, available, occupied };
+  }, [tables]);
 
   return (
-    <div className={`${cls.wrapper} ${className}`}>
-      {/* Tabs */}
+    <div className={cls.wrapper}>
+      {/* 1. Header Tabs */}
       <div className={cls.header}>
         <div className={cls.navTabs}>
           {tabs.map((t) => (
@@ -493,245 +252,271 @@ export default function LeftPanel({ className = "" }) {
               className={`${cls.tab} ${
                 currentOrderType === t.key ? cls.active : ""
               }`}
-              onClick={() => setTab(t.key)}
-              aria-selected={currentOrderType === t.key}
+              onClick={() => setCurrentOrderType(t.key)}
             >
               {t.label}
             </button>
           ))}
         </div>
+      </div>
 
-        {/* New order boxes by tab */}
+      {/* 2. Controls & Context Boxes */}
+      <div className={cls.controls}>
+        {/* DINE IN BOX */}
         {currentOrderType === "dine_in" && (
           <div className={cls.newOrderBox}>
             <h4>Tạo đơn mới (Bàn ăn)</h4>
             <div className={cls.newOrderActions}>
               <button
                 className={`${cls.btn} ${cls.primary}`}
-                onClick={() => {
-                  const el = document.querySelector(`.${cls.search}`);
-                  el?.focus();
-                }}
+                onClick={() =>
+                  document.querySelector(`.${cls.search}`)?.focus()
+                }
               >
                 Chọn bàn
               </button>
-              <button className={cls.btn} onClick={() => {}}>
+              <button
+                className={cls.btn}
+                onClick={() => alert("Tính năng đặt bàn")}
+              >
                 + Đặt bàn
               </button>
             </div>
           </div>
         )}
 
+        {/* DELIVERY BOX */}
         {currentOrderType === "delivery" && (
           <div className={cls.newOrderBox}>
             <h4>Tạo đơn mới (Giao hàng)</h4>
             <div className={cls.newOrderActions}>
               <button
                 className={`${cls.btn} ${cls.primary}`}
-                onClick={() => {}}
+                onClick={startDeliveryOrder}
               >
                 + Đơn giao
               </button>
-              <button className={cls.btn} onClick={() => {}}>
-                Chọn khách cũ
+              <button
+                className={`${cls.btn} ${selectedCustomer ? cls.ghost : ""}`}
+                onClick={() => setCustomerModalOpen(true)}
+                title={
+                  selectedCustomer
+                    ? selectedCustomer.name
+                    : "Chọn khách quen / thêm khách mới"
+                }
+              >
+                {selectedCustomer ? (
+                  <>
+                    <IconUser />
+                    <span style={{ marginLeft: 4 }}>
+                      {getLastName(selectedCustomer.name)}
+                    </span>
+                  </>
+                ) : (
+                  "Khách quen"
+                )}
               </button>
             </div>
           </div>
         )}
 
+        {/* TAKEAWAY BOX */}
         {currentOrderType === "takeaway" && (
           <div className={cls.newOrderBox}>
             <h4>Tạo đơn mới (Mang về)</h4>
             <div className={cls.newOrderActions}>
               <button
                 className={`${cls.btn} ${cls.primary}`}
-                onClick={() => {}}
+                onClick={startTakeawayOrder}
               >
                 + Đơn mang về
               </button>
-              <button className={cls.btn} onClick={() => {}}>
-                Chọn combo
+              <button
+                className={`${cls.btn} ${selectedCustomer ? cls.ghost : ""}`}
+                onClick={() => setCustomerModalOpen(true)}
+                title={
+                  selectedCustomer
+                    ? selectedCustomer.name
+                    : "Chọn khách / thêm khách mới"
+                }
+              >
+                {selectedCustomer ? (
+                  <>
+                    <IconUser />
+                    <span style={{ marginLeft: 4 }}>
+                      {getLastName(selectedCustomer.name)}
+                    </span>
+                  </>
+                ) : (
+                  "Khách quen"
+                )}
               </button>
             </div>
           </div>
         )}
 
-        {/* Select tầng + tìm kiếm */}
-        <div className={cls.filterRow}>
+        {/* Filters */}
+        <div className={cls.searchGroup}>
           <select
             className={cls.select}
-            value={activeLevel ?? ""}
-            onChange={(e) =>
-              setActiveLevel(e.target.value ? Number(e.target.value) : null)
-            }
+            value={currentFloorId}
+            onChange={(e) => setCurrentFloorId(e.target.value)}
           >
-            <option value="">Tất cả tầng</option>
-            {[...floors]
-              .sort((a, b) => a.level - b.level)
-              .map((f) => (
-                <option key={f.id} value={f.level}>
-                  Tầng {f.level}
-                  {f.name ? ` — ${f.name}` : ""}
-                </option>
-              ))}
+            <option value="all">Tất cả tầng</option>
+            {floors.map((f) => (
+              <option key={f.id} value={f.id}>
+                Tầng {f.level} - {f.name}
+              </option>
+            ))}
           </select>
-
           <input
             className={cls.search}
-            placeholder='Tìm bàn… ví dụ "A1" (tiền tố), "A1 " (chính xác)'
-            value={tableSearch || ""}
-            onChange={(e) => setTableSearch(e.target.value)}
+            placeholder="Tìm bàn..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        {/* Chips trạng thái */}
+        {/* Status Chips */}
         <div className={cls.statusChips}>
-          {[
-            { key: "all", label: `Tất cả (${counts.all})` },
-            { key: "available", label: `Trống (${counts.available})` },
-            { key: "occupied", label: `Có khách (${counts.occupied})` },
-            { key: "reserved", label: `Đã đặt (${counts.reserved})` },
-            { key: "cleaning", label: `Đang dọn (${counts.cleaning})` },
-            { key: "offline", label: `Ngưng (${counts.offline})` },
-          ].map((chip) => (
+          <button
+            className={`${cls.chip} ${
+              statusFilter === "all" ? cls.chipActive : ""
+            }`}
+            onClick={() => setStatusFilter("all")}
+          >
+            Tất cả ({counts.all})
+          </button>
+          <button
+            className={`${cls.chip} ${
+              statusFilter === "available" ? cls.chipActive : ""
+            }`}
+            onClick={() => setStatusFilter("available")}
+          >
+            Trống ({counts.available})
+          </button>
+          <button
+            className={`${cls.chip} ${
+              statusFilter === "occupied" ? cls.chipActive : ""
+            }`}
+            onClick={() => setStatusFilter("occupied")}
+          >
+            Có khách ({counts.occupied})
+          </button>
+        </div>
+
+        {/* Toolbar */}
+        <div className={cls.toolbar}>
+          <button
+            className={`${cls.btn} ${
+              isMultiSelectMode ? cls.primary : cls.ghost
+            }`}
+            onClick={() => {
+              setIsMultiSelectMode(!isMultiSelectMode);
+              setSelectedIds([]);
+            }}
+          >
+            <IconMulti />
+            {isMultiSelectMode
+              ? `Đang chọn (${selectedIds.length})`
+              : "Chọn nhiều"}
+          </button>
+
+          {isMultiSelectMode && selectedIds.length > 0 && (
             <button
-              key={chip.key}
-              className={`${cls.chip} ${
-                statusFilter === chip.key ? cls.chipActive : ""
-              }`}
-              onClick={() => setStatusFilter(chip.key)}
+              className={`${cls.btn} ${cls.primary}`}
+              onClick={() => alert("Xử lý hàng loạt")}
             >
-              {chip.label}
+              Xử lý ({selectedIds.length})
             </button>
-          ))}
+          )}
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className={cls.toolbar}>
-        <div className={cls.left}>
-          <button
-            className={`${cls.btn} ${multiSelect ? cls.primary : ""}`}
-            onClick={() => setMultiSelect((v) => !v)}
-            title="Chọn nhiều bàn để thao tác"
-          >
-            {multiSelect ? "Đang chọn nhiều" : "Chọn nhiều"}
-          </button>
+      {/* 3. Tables Grid */}
+      <div className={cls.tablesGrid}>
+        {filteredTables.map((table) => {
+          const isSelected = isMultiSelectMode
+            ? selectedIds.includes(table.id)
+            : currentTable?.id === table.id;
 
-          {multiSelect && (
-            <>
-              <button
-                className={`${cls.btn} ${
-                  selectedIds.length >= 2 ? cls.success : cls.disabled
-                }`}
-                onClick={async () => {
-                  if (selectedIds.length < 2) return;
-                  try {
-                    await mergeTables({
-                      tableIds: selectedIds,
-                      anchorId: selectedIds[0],
-                    });
-                    await refetchTables?.();
-                    setSelectedIds([]);
-                    setMultiSelect(false);
-                    showNotification?.("Đã gộp bàn đã chọn.", "success");
-                  } catch (e) {
-                    console.error(e);
-                    showNotification?.("Gộp bàn thất bại.", "error");
-                  }
-                }}
-                disabled={selectedIds.length < 2}
-                title="Gộp nhóm các bàn đã chọn"
-              >
-                Gộp bàn
-              </button>
+          const isDragOver = dragOverId === table.id;
+          const isDraggingThis = draggingId === table.id;
 
-              <button
-                className={`${cls.btn} ${
-                  sameGroupSelected ? cls.violet : cls.disabled
-                }`}
-                onClick={async () => {
-                  if (!sameGroupSelected) return;
-                  try {
-                    await splitTables({
-                      joinGroupId: sameGroupSelected,
-                      mode: "PARTIAL",
-                      tableIds: selectedIds,
-                    });
-                    await refetchTables?.();
-                    setSelectedIds([]);
-                    setMultiSelect(false);
-                    showNotification?.("Đã tách bàn.", "success");
-                  } catch (e) {
-                    console.error(e);
-                    showNotification?.("Tách bàn thất bại.", "error");
-                  }
-                }}
-                disabled={!sameGroupSelected}
-                title="Tách các bàn đã chọn khỏi nhóm"
-              >
-                Tách bàn
-              </button>
+          return (
+            <div
+              key={table.id}
+              className={`
+                 ${cls.tableItem} 
+                 ${isSelected ? cls.selected : ""}
+                 ${isDraggingThis ? cls.dragging : ""}
+                 ${isDragOver ? cls.dragOver : ""}
+               `}
+              data-status={table.status || "available"}
+              onClick={() => handleTableClick(table)}
+              draggable={!isMultiSelectMode}
+              onDragStart={(e) => handleDragStart(e, table)}
+              onDragEnd={handleDragEnd}
+              onDragOver={(e) => handleDragOver(e, table)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, table)}
+              title={!isMultiSelectMode ? "Kéo thả để gộp bàn" : ""}
+            >
+              <div className={cls.tableTop}>
+                <span className={cls.tableCode}>{table.code}</span>
+                <button
+                  className={cls.kebab}
+                  onClick={(e) => openActionModal(e, table)}
+                >
+                  <IconDots />
+                </button>
+              </div>
 
-              <button
-                className={cls.btn}
-                onClick={() => {
-                  setSelectedIds([]);
-                  setMultiSelect(false);
-                }}
-              >
-                Bỏ chọn
-              </button>
-            </>
-          )}
-        </div>
+              <div className={cls.tableMeta}>
+                <span className={cls.capacity}>{table.capacity || 4} chỗ</span>
+                <span className={cls.statusText}>
+                  {table.status === "occupied"
+                    ? "Có khách"
+                    : table.status === "reserved"
+                    ? "Đã đặt"
+                    : table.status === "cleaning"
+                    ? "Đang dọn"
+                    : "Trống"}
+                </span>
+              </div>
 
-        {/* Reset toàn bộ bàn về TRỐNG */}
-        <div className={cls.right}>
-          <button
-            type="button"
-            className={`${cls.btn} ${cls.violet}`}
-            onClick={handleResetAllTables}
-            disabled={isResetting || (tables?.length ?? 0) === 0}
-            title="Đặt tất cả bàn về TRỐNG"
-          >
-            {isResetting ? "Đang reset..." : "Reset toàn bộ bàn"}
-          </button>
-        </div>
+              {isSelected && isMultiSelectMode && (
+                <div className={cls.checkOverlay}>
+                  <IconCheck />
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {filteredTables.length === 0 && (
+          <div className={cls.emptyState}>Không tìm thấy bàn nào</div>
+        )}
       </div>
 
-      {/* Danh sách bàn + DnD */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={onDragEnd}
-      >
-        <div className={cls.tablesGrid}>
-          {filteredUiTables?.length ? (
-            filteredUiTables.map((t) => (
-              <TableCard
-                key={t.id}
-                t={t}
-                active={false}
-                selected={(t.memberIds || [t.id]).every((id) =>
-                  selectedIds.includes(id)
-                )}
-                onClick={() => handleClickTable(t)}
-                onOpenTableActions={onOpenTableActions}
-              />
-            ))
-          ) : (
-            <div className={cls.empty}>Không có bàn phù hợp bộ lọc.</div>
-          )}
-        </div>
-      </DndContext>
+      {/* Modal Actions */}
+      {actionTable && (
+        <TableActionsModal
+          isOpen={actionModalOpen}
+          table={actionTable}
+          onClose={() => {
+            setActionModalOpen(false);
+            setActionTable(null);
+          }}
+          onUpdated={refreshTables}
+        />
+      )}
 
-      <TableActionsModal
-        open={actionsOpen}
-        table={activeTableForActions}
-        onClose={() => setActionsOpen(false)}
-        onUpdated={() => refetchTables?.()}
-        onSave={handleSaveCustomerFromModal}
+      {/* Modal Regular Customer */}
+      <RegularCustomerModal
+        isOpen={customerModalOpen}
+        onClose={() => setCustomerModalOpen(false)}
+        onSelectCustomer={handleSelectRegularCustomer}
       />
     </div>
   );

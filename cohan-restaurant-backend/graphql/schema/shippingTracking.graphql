@@ -1,0 +1,90 @@
+type TrackingLocation {
+  lat: Float
+  lng: Float
+  accuracy: Float
+  speed: Float
+  bearing: Float
+  address: String
+  updatedAt: String
+}
+
+# Each shipping event
+type ShippingTrackingEvent {
+  id: ID!
+  orderId: ID!
+  restaurantId: ID!
+  type: String! # status_changed | driver_location | pickup | delivered...
+  message: String
+  data: JSON
+  createdAt: String!
+}
+
+type DeliveryStatus {
+  status: String!
+  updatedAt: String!
+}
+
+# Query trả về thông tin realtime của đơn giao hàng
+type OrderDeliveryTracking {
+  orderId: ID!
+  orderCode: String
+  deliveryStatus: String
+  driverLocation: TrackingLocation
+  customerLocation: TrackingLocation
+  restaurantLocation: TrackingLocation
+  eta: String
+  distance: Float
+  duration: Float
+  events: [ShippingTrackingEvent!]!
+}
+
+# INPUTS
+input UpdateDriverLocationInput {
+  orderId: ID!
+  restaurantId: ID!
+  lat: Float!
+  lng: Float!
+  accuracy: Float
+  speed: Float
+  bearing: Float
+  address: String
+}
+
+input UpdateDeliveryStatusInput {
+  orderId: ID!
+  restaurantId: ID!
+  status: String! # pending | driver_assigned | picked_up | on_the_way | arriving | delivered | cancelled
+  message: String
+}
+
+input UpdateDeliveryETAInput {
+  orderId: ID!
+  restaurantId: ID!
+  eta: String
+  distance: Float
+  duration: Float
+}
+input AssignDriverToOrderInput {
+  orderId: ID!
+  restaurantId: ID!
+  driverId: ID
+  driverName: String
+  driverPhone: String
+  driverAvatar: String
+  driverVehiclePlate: String
+  # optional: cho OrderTracking
+  channel: OrderTrackingChannel
+}
+# Root Query
+extend type Query {
+  getOrderTracking(orderId: ID!, restaurantId: ID!): OrderDeliveryTracking!
+  getOrderTrackingEvents(orderId: ID!): [ShippingTrackingEvent!]!
+}
+
+# Root Mutations
+extend type Mutation {
+  assignDriverToOrder(input: AssignDriverToOrderInput!): Boolean!
+  updateDriverLocation(input: UpdateDriverLocationInput!): Boolean!
+  updateDeliveryStatus(input: UpdateDeliveryStatusInput!): Boolean!
+  updateDeliveryETA(input: UpdateDeliveryETAInput!): Boolean!
+}

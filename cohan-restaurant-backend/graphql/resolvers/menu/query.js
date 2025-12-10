@@ -37,6 +37,7 @@ export const MenuQuery = {
     const menuItems = await MenuItem.find(q)
       .limit(Math.min(limit ?? 50, 500))
       .sort({ name: 1 })
+      .populate("recipe")
       .lean({ virtuals: true });
 
     // recipe (và servingVariants) sẽ được autoPopulate từ model + types resolver

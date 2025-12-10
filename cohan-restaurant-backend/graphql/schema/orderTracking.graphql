@@ -1,0 +1,155 @@
+enum OrderTrackingEventType {
+  status_changed
+  item_status_changed
+  items_updated
+  payment_updated
+  shipping_updated
+  print
+  note_added
+  refund
+  system_adjustment
+  other
+}
+
+enum OrderTrackingActorType {
+  user
+  customer
+  system
+  third_party
+}
+
+enum OrderTrackingChannel {
+  pos
+  waiter_app
+  kitchen_display
+  customer_app
+  web_portal
+  integration
+  system
+  other
+}
+
+# ENUM mới cho status code chuẩn hoá
+enum PaymentStatusCode {
+  SUCCESS
+  PENDING
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+  CANCELED
+}
+
+type OrderTrackingActor {
+  type: OrderTrackingActorType!
+  userId: ID
+  customerId: ID
+  name: String
+}
+
+type OrderTrackingClientMeta {
+  ip: String
+  userAgent: String
+  deviceId: String
+  appVersion: String
+}
+
+type OrderTrackingShippingCheckpointLocation {
+  lat: Float
+  lng: Float
+  address: String
+}
+
+type OrderTrackingShippingCheckpoint {
+  status: String
+  description: String
+  location: OrderTrackingShippingCheckpointLocation
+  externalRef: String
+  eta: DateTime
+}
+
+type OrderTrackingSnapshotTotals {
+  subtotal: Float
+  discount: Float
+  tax: Float
+  service: Float
+  shippingFee: Float
+  grandTotal: Float
+}
+
+type OrderTrackingSnapshotPayment {
+  method: String
+  rawStatus: String
+  statusCode: PaymentStatusCode
+  paidAmount: Float
+  changeAmount: Float
+  currency: String
+}
+
+type OrderTrackingSnapshotShipping {
+  fullName: String
+  phone: String
+  address: String
+  distance: Float
+  deliveryMethod: String
+  deliveryTime: String
+  scheduleDate: String
+  scheduleTime: String
+}
+
+type OrderTrackingSnapshot {
+  currentStatus: String
+  orderType: String
+  tableCode: String
+  guestCount: Int
+  totals: OrderTrackingSnapshotTotals
+  payment: OrderTrackingSnapshotPayment
+  shipping: OrderTrackingSnapshotShipping
+}
+
+type OrderTracking {
+  id: ID!
+  orderId: ID!
+  orderCode: String!
+  restaurantId: ID!
+  eventType: OrderTrackingEventType!
+
+  statusFrom: String
+  statusTo: String
+
+  itemId: ID
+  itemName: String
+  itemStatusFrom: String
+  itemStatusTo: String
+
+  paymentStatusRawFrom: String
+  paymentStatusRawTo: String
+
+  paymentStatusCodeFrom: PaymentStatusCode
+  paymentStatusCodeTo: PaymentStatusCode
+
+  paymentChange: JSON
+
+  shippingStatusFrom: String
+  shippingStatusTo: String
+  shippingCheckpoint: OrderTrackingShippingCheckpoint
+
+  actor: OrderTrackingActor
+  channel: OrderTrackingChannel!
+  clientMeta: OrderTrackingClientMeta
+
+  snapshot: OrderTrackingSnapshot
+
+  note: String
+  meta: JSON
+
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+extend type Query {
+  orderTrackingByOrderId(orderId: ID!): [OrderTracking!]!
+  orderTrackingByOrderCode(
+    restaurantId: ID!
+    orderCode: String!
+  ): [OrderTracking!]!
+}

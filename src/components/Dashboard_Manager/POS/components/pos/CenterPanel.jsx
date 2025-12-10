@@ -4,7 +4,24 @@ import cls from "./CenterPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { formatPrice } from "../../utils/format";
 import MenuItemModal from "../modals/MenuItemModal";
-import { flyToOrder } from "../../../../../utils/flyToOrder";
+
+// Icon Search SVG
+const SearchIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{ opacity: 0.5 }}
+  >
+    <circle cx="11" cy="11" r="8"></circle>
+    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+  </svg>
+);
 
 export default function CenterPanel() {
   const {
@@ -13,13 +30,11 @@ export default function CenterPanel() {
     setCurrentCategory,
     setSearchTerm,
     addToOrder,
-
     timeSlotOptions,
     selectedTimeSlot,
     setSelectedTimeSlot,
   } = usePos();
 
-  // Tabs danh mục
   const categoryTabs = useMemo(
     () => [
       { key: "all", label: "Tất cả" },
@@ -35,7 +50,6 @@ export default function CenterPanel() {
 
   const onSelectCategory = (cat) => setCurrentCategory?.(cat);
 
-  // chuẩn hóa để hiển thị giá
   const withDisplay = useMemo(() => {
     return (filteredMenu || []).map((it) => {
       const base = Number(it.basePrice ?? 0);
@@ -65,7 +79,7 @@ export default function CenterPanel() {
     });
   }, [filteredMenu]);
 
-  // Modal state
+  // Modal logic
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
 
@@ -79,7 +93,6 @@ export default function CenterPanel() {
     setSelectedItem(null);
   }, []);
 
-  // khi bấm "thêm" từ modal
   const handleModalAdd = useCallback(
     (payload) => {
       const {
@@ -89,14 +102,15 @@ export default function CenterPanel() {
         unit,
         note,
         price,
+        proofImages,
       } = payload || {};
-      // giữ lại đủ thông tin id, menuId, categoryId để server ko la
       const core = {
         id: menuItem?.id,
         dishId: menuItem?.id,
         menuId: menuItem?.menuId,
         categoryId: menuItem?.categoryId,
         name: menuItem?.name,
+        image: menuItem?.thumbImage,
         price: Number(price ?? menuItem?._displayPrice ?? menuItem?.price ?? 0),
       };
 
@@ -107,6 +121,7 @@ export default function CenterPanel() {
         note,
         quantity,
         price: core.price,
+        proofImages: proofImages || [],
       });
       closeModal();
     },
@@ -115,22 +130,20 @@ export default function CenterPanel() {
 
   return (
     <div className={cls.wrapper}>
-      {/* Header: tiêu đề + (tuỳ chọn) select khung giờ + ô tìm kiếm */}
+      {/* HEADER AREA */}
       <div className={cls.header}>
-        <h2 style={{ color: "#0c4a6e", fontWeight: 700, margin: 0 }}>
-          Thực đơn
-        </h2>
+        <div className={cls.headerLeft}>
+          <h2 className={cls.title}>Thực đơn</h2>
+        </div>
 
-        <div className={cls.search}>
-          {Array.isArray(timeSlotOptions) &&
-            timeSlotOptions.length > 0 &&
-            typeof setSelectedTimeSlot === "function" && (
+        <div className={cls.actions}>
+          {/* Time Slot Select */}
+          {Array.isArray(timeSlotOptions) && timeSlotOptions.length > 0 && (
+            <div className={cls.selectWrapper}>
               <select
-                className={cls.input}
-                style={{ width: 180 }}
+                className={cls.selectInput}
                 value={selectedTimeSlot || ""}
                 onChange={(e) => setSelectedTimeSlot(e.target.value || null)}
-                title="Chọn khung giờ hiển thị menu"
               >
                 {timeSlotOptions.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -138,89 +151,99 @@ export default function CenterPanel() {
                   </option>
                 ))}
               </select>
-            )}
+            </div>
+          )}
 
-          <input
-            className={cls.input}
-            placeholder="Tìm kiếm món ăn..."
-            onChange={(e) => setSearchTerm?.(e.target.value)}
-          />
+          {/* Search Box */}
+          <div className={cls.searchBox}>
+            <span className={cls.searchIcon}>
+              <SearchIcon />
+            </span>
+            <input
+              className={cls.searchInput}
+              placeholder="Tìm kiếm món ăn..."
+              onChange={(e) => setSearchTerm?.(e.target.value)}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Tabs danh mục */}
-      <div className={cls.tabs}>
-        {categoryTabs.map((c) => (
-          <button
-            key={c.key}
-            className={`${cls.tab} ${
-              currentCategory === c.key ? cls.tabActive : ""
-            }`}
-            onClick={() => onSelectCategory(c.key)}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Lưới món ăn – cho cuộn riêng */}
-      <div className={cls.grid} style={{ overflowY: "auto" }}>
-        {withDisplay.map((item) => {
-          const price = Number(item._displayPrice || 0);
-          const thumb = item.thumbImage;
-          const emoji = item.emoji || "🍽️";
-
-          return (
-            <div
-              key={item.id}
-              className={cls.card}
-              data-menu-id={item.id}
-              onClick={() => openModal(item)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === "Enter" && openModal(item)}
-              title={`${item.name} — ${formatPrice(price)}`}
+      {/* TABS AREA */}
+      <div className={cls.tabsScroll}>
+        <div className={cls.tabs}>
+          {categoryTabs.map((c) => (
+            <button
+              key={c.key}
+              className={`${cls.tab} ${
+                currentCategory === c.key ? cls.tabActive : ""
+              }`}
+              onClick={() => onSelectCategory(c.key)}
             >
-              <div className={cls.image}>
-                {thumb ? (
-                  <img
-                    src={thumb}
-                    alt={item.name}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                    loading="lazy"
-                  />
-                ) : (
-                  <span aria-hidden="true">{emoji}</span>
-                )}
-              </div>
-
-              <div className={cls.info}>
-                <div className={cls.name}>{item.name}</div>
-                <div className={cls.price}>
-                  {formatPrice(price)}
-                  {item.byWeight ? (
-                    <span
-                      style={{ marginLeft: 6, fontSize: 12, color: "#6b7280" }}
-                    >
-                      /kg
-                    </span>
-                  ) : null}
-                </div>
-                {item.description ? (
-                  <div className={cls.desc}>{item.description}</div>
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
+              {c.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Modal cho item */}
+      {/* MENU GRID */}
+      <div className={cls.gridContainer}>
+        <div className={cls.grid}>
+          {withDisplay.map((item) => {
+            const price = Number(item._displayPrice || 0);
+            const thumb = item.thumbImage;
+            const emoji = item.emoji || "🍽️";
+
+            return (
+              <div
+                key={item.id}
+                className={cls.card}
+                data-menu-id={item.id}
+                onClick={() => openModal(item)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && openModal(item)}
+              >
+                {/* Image Area */}
+                <div className={cls.cardImageWrapper}>
+                  {thumb ? (
+                    <img
+                      src={thumb}
+                      alt={item.name}
+                      className={cls.cardImg}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className={cls.cardPlaceholder}>{emoji}</div>
+                  )}
+                  {/* Quick Add Overlay Button (Visual only) */}
+                  <div className={cls.overlayAdd}>
+                    <span>+</span>
+                  </div>
+                </div>
+
+                {/* Content Area */}
+                <div className={cls.cardContent}>
+                  <h3 className={cls.cardName} title={item.name}>
+                    {item.name}
+                  </h3>
+
+                  {item.description && (
+                    <p className={cls.cardDesc}>{item.description}</p>
+                  )}
+
+                  <div className={cls.cardFooter}>
+                    <div className={cls.priceTag}>
+                      {formatPrice(price)}
+                      {item.byWeight && <span className={cls.unit}> /kg</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <MenuItemModal
         isOpen={modalOpen}
         item={selectedItem}

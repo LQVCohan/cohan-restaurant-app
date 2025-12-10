@@ -5,13 +5,41 @@ import { usePos } from "../../../../../context/PosContext";
 import useOrderManagement from "../../../../../hooks/useOrderManagement";
 import { useReservation } from "../../../../../hooks/useReservation";
 
+// --- ICONS SVG ---
+const IconX = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+const IconTrash = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <polyline points="3 6 5 6 21 6"></polyline>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+  </svg>
+);
+
 function TableActionsModalCore({
   open,
   isOpen,
   table,
   onClose,
   onUpdated,
-  onSave, // ✅ nhận hàm đã test từ LeftPanel (handleSaveCustomerFromModal)
+  onSave,
 }) {
   const reallyOpen = open ?? isOpen;
 
@@ -28,16 +56,16 @@ function TableActionsModalCore({
     splitTables,
     deleteTable,
     fetchTableByCode,
-
-    // ❌ bỏ attachCustomerToOrder & saveTableCustomer
     fetchOrderByTable,
   } = usePos();
 
   const { changeOrderStatusByCode, updateOrderCustomerByCode } =
     useOrderManagement();
   const { findConfirmedByTable } = useReservation();
+
   const [orderCodeForTable, setOrderCodeForTable] = useState(null);
-  // ----- local states -----
+
+  // Local states
   const [code, setCode] = useState("");
   const [capacity, setCapacity] = useState(0);
   const [type, setType] = useState("standard");
@@ -48,7 +76,6 @@ function TableActionsModalCore({
   const [swapWithCode, setSwapWithCode] = useState("");
   const [mergeCodes, setMergeCodes] = useState("");
 
-  // Helpers ngày/giờ
   const getTodayLocal = () => {
     const d = new Date();
     const yyyy = d.getFullYear();
@@ -70,25 +97,21 @@ function TableActionsModalCore({
   }, []);
 
   const [todayStr, setTodayStr] = useState(getTodayLocal());
-
-  // Toggle: Đặt theo khung giờ
   const [useTimeslot, setUseTimeslot] = useState(true);
 
-  // thông tin khách (chỉ cho UI, sẽ map sang cust + checkin khi gọi onSave)
   const [cust, setCust] = useState({
     name: "",
     phone: "",
     email: "",
     guests: 0,
-    checkinDate: "", // YYYY-MM-DD
-    checkinTime: "", // HH:mm
+    checkinDate: "",
+    checkinTime: "",
     note: "",
   });
 
   const [busy, setBusy] = useState({});
   const setBusyKey = (k, v) => setBusy((b) => ({ ...b, [k]: v }));
 
-  // ===== Helpers so sánh trước khi set =====
   const setCustIfChanged = (patch) => {
     let changed = false;
     setCust((prev) => {
@@ -104,7 +127,6 @@ function TableActionsModalCore({
     return changed;
   };
 
-  // ===== Refs để tránh deps gây lặp =====
   const findConfirmedByTableRef = useRef(findConfirmedByTable);
   const fetchOrderByTableRef = useRef(fetchOrderByTable);
   useEffect(() => {
@@ -114,11 +136,9 @@ function TableActionsModalCore({
     fetchOrderByTableRef.current = fetchOrderByTable;
   }, [fetchOrderByTable]);
 
-  // Đã hydrate cho bàn nào (tránh lặp)
-  const hydratedReservationFor = useRef(null); // table.id
-  const hydratedOrderFor = useRef(null); // table.code
+  const hydratedReservationFor = useRef(null);
+  const hydratedOrderFor = useRef(null);
 
-  // khi mở modal -> fill dữ liệu cơ bản + reset flags hydrate
   useEffect(() => {
     if (table && reallyOpen) {
       setCode(table.code || "");
@@ -135,7 +155,6 @@ function TableActionsModalCore({
       hydratedReservationFor.current = null;
       hydratedOrderFor.current = null;
 
-      // reset form khách khi mở modal
       setCust({
         name: "",
         phone: "",
@@ -148,7 +167,6 @@ function TableActionsModalCore({
     }
   }, [table, reallyOpen]);
 
-  // Helper tách ISO -> {date, time}
   const isoToDateTimeParts = (iso) => {
     if (!iso) return { date: "", time: "" };
     const d = new Date(iso);
@@ -161,14 +179,11 @@ function TableActionsModalCore({
     return { date: `${yyyy}-${mm}-${dd}`, time: `${HH}:${MM}` };
   };
 
-  // Sau khi mở modal, nếu bàn đang reserved → load reservation; nếu có order → load user
   useEffect(() => {
     let cancelled = false;
-
     async function hydrate() {
       if (!reallyOpen || !table?.id || !restaurantId) return;
 
-      // Ưu tiên reservation khi status = reserved (chỉ chạy 1 lần cho table.id)
       if (
         table.status === "reserved" &&
         hydratedReservationFor.current !== table.id
@@ -179,78 +194,57 @@ function TableActionsModalCore({
             tableId: table.id,
           });
           const r = res?.data ?? res?.reservation ?? res?.result ?? res ?? null;
-
           if (r && !cancelled) {
-            const name = r.customerName ?? r.customerFullName ?? r.name ?? "";
-            const phone = r.customerPhone ?? r.phone ?? "";
-            const email = r.customerEmail ?? r.email ?? "";
-            const partySize = Number(r.partySize || 0);
-            const note = r.note ?? "";
             const { date, time } = isoToDateTimeParts(r.timeTo);
-
             setCustIfChanged({
-              name,
-              phone,
-              email,
-              guests: Number.isFinite(partySize) ? partySize : 0,
+              name: r.customerName ?? r.name ?? "",
+              phone: r.customerPhone ?? r.phone ?? "",
+              email: r.customerEmail ?? r.email ?? "",
+              guests: Number(r.partySize || 0),
               checkinDate: date || getTodayLocal(),
               checkinTime: time || "",
-              note,
+              note: r.note ?? "",
             });
           }
         } catch (e) {
-          console.warn("findConfirmedByTable failed:", e);
+          console.warn(e);
         } finally {
           hydratedReservationFor.current = table.id;
         }
       }
 
-      // Luôn thử lấy order hiện tại, nhưng chỉ 1 lần cho table.code
-
-      // Luôn thử lấy order hiện tại, nhưng chỉ 1 lần cho table.code
       if (hydratedOrderFor.current !== table?.code) {
         try {
           const ores = await fetchOrderByTableRef.current?.(
             restaurantId,
             table.code
           );
-          console.log("ores: ", ores);
-
-          // fetchOrderByTable trả về list group đã gộp
           const groups = Array.isArray(ores?.data) ? ores.data : [];
           const firstGroup = groups[0] || null;
 
           if (firstGroup && !cancelled) {
-            // NEW: lưu orderCode để dùng khi updateOrderCustomerByCode
             setOrderCodeForTable(firstGroup.orderCode || null);
-
             const u = firstGroup.user || firstGroup.customer || null;
             if (u) {
               setCustIfChanged({
                 name: u.fullName || u.name || "",
                 phone: u.phone || "",
                 email: u.email || "",
-                // partySize nếu BE có, còn không thì bỏ qua
-                guests:
-                  (Number.isFinite(Number(firstGroup.partySize))
-                    ? Number(firstGroup.partySize)
-                    : undefined) ?? undefined,
+                guests: Number(firstGroup.partySize || 0),
               });
             }
           }
         } catch (e) {
-          console.warn("fetchOrderByTable failed:", e);
+          console.warn(e);
         } finally {
           hydratedOrderFor.current = table?.code || null;
         }
       }
     }
-
     hydrate();
     return () => {
       cancelled = true;
     };
-    // không đưa các hàm vào deps để tránh identity thay đổi gây lặp
   }, [reallyOpen, restaurantId, table?.id, table?.code, table?.status]);
 
   const floorsSorted = useMemo(
@@ -259,7 +253,6 @@ function TableActionsModalCore({
   );
   const canSplit = !!table?.joinGroupId;
 
-  // Ẩn slot đã qua trong ngày hiện tại
   const visibleTimeSlots = useMemo(() => {
     return (dateStr) => {
       if (!dateStr || dateStr !== todayStr) return buildTimeSlots;
@@ -274,7 +267,7 @@ function TableActionsModalCore({
     };
   }, [buildTimeSlots, todayStr]);
 
-  // lock scroll + ESC
+  // Lock Scroll
   useEffect(() => {
     if (!reallyOpen) return;
     const prev = document.body.style.overflow;
@@ -291,22 +284,24 @@ function TableActionsModalCore({
 
   if (!reallyOpen || !table) return null;
 
-  /* ================== helpers ================== */
-
+  /* ================== HELPERS ================== */
   const isEmail = (s) =>
     !!String(s || "")
       .toLowerCase()
       .match(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/);
-
   const isPhoneVN = (s) => /^(0|\+84)\d{9,10}$/.test(String(s || ""));
-
   const combineDateTimeToISO = (dateStr, timeStr) => {
     if (!dateStr || !timeStr) return null;
     const [y, m, d] = dateStr.split("-").map((n) => Number(n));
     const [hh, mm] = timeStr.split(":").map((n) => Number(n));
-    const dt = new Date(y, m - 1, d, hh, mm, 0, 0);
-    return dt.toISOString();
+    return new Date(y, m - 1, d, hh, mm, 0, 0).toISOString();
   };
+  const clampGuests = (val) => Math.max(0, Number.isFinite(val) ? val : 0);
+  const incGuests = (delta) =>
+    setCust((prev) => ({
+      ...prev,
+      guests: clampGuests((prev.guests || 0) + delta),
+    }));
 
   const validateCustomerForReservation = () => {
     const size = Number(cust.guests || 0);
@@ -318,69 +313,59 @@ function TableActionsModalCore({
       Number.isFinite(Number(table.capacity)) &&
       size > Number(table.capacity)
     ) {
-      alert(
-        `Số khách (${size}) vượt quá sức chứa của bàn (${table.capacity}).`
-      );
+      alert(`Số khách (${size}) vượt quá sức chứa (${table.capacity}).`);
       return false;
     }
     const phone = (cust.phone || "").trim();
     const email = (cust.email || "").trim();
     if (!phone && !email) {
-      alert("Cần ít nhất SĐT hoặc Email của khách.");
+      alert("Cần SĐT hoặc Email.");
       return false;
     }
     if (phone && !isPhoneVN(phone)) {
-      alert("Số điện thoại không hợp lệ.");
+      alert("SĐT không hợp lệ.");
       return false;
     }
     if (email && !isEmail(email)) {
       alert("Email không hợp lệ.");
       return false;
     }
-
     if (useTimeslot) {
       if (!cust.checkinDate) {
         alert("Vui lòng chọn ngày.");
         return false;
       }
       if (!cust.checkinTime) {
-        alert("Vui lòng chọn giờ (khung 30 phút).");
+        alert("Vui lòng chọn giờ.");
         return false;
       }
       if (cust.checkinDate < todayStr) {
-        alert("Ngày phải từ hôm nay trở đi.");
+        alert("Ngày không hợp lệ.");
         return false;
       }
     }
     return true;
   };
 
-  const clampGuests = (val) => {
-    const n = Math.max(0, Number.isFinite(val) ? val : 0);
-    return n;
-  };
-
-  /* ================== ACTIONS ================== */
-
+  /* ================== HANDLERS ================== */
   const handleSaveBasics = async () => {
     if (!table?.id) return;
     setBusyKey("save", true);
     try {
-      const patch = {
+      await updateTable({
         id: table.id,
         code: code?.trim(),
-        capacity: Number.isFinite(capacity) ? Number(capacity) : 0,
+        capacity: Number(capacity) || 0,
         type: (type || "standard").trim(),
         tags: tags
           .split(",")
           .map((t) => t.trim())
           .filter(Boolean),
-      };
-      await updateTable(patch);
+      });
       onUpdated?.();
     } catch (e) {
       console.error(e);
-      alert("Cập nhật thông tin bàn thất bại.");
+      alert("Lỗi cập nhật.");
     } finally {
       setBusyKey("save", false);
     }
@@ -397,23 +382,22 @@ function TableActionsModalCore({
           0
         );
         const activeOrder = res?.data?.[0] || null;
-
         if (activeOrder) {
-          const ok = window.confirm(
-            `Bàn ${table.code} đang có đơn #${activeOrder.orderCode}. Chuyển về Trống sẽ hủy đơn này. Bạn có chắc muốn tiếp tục?`
-          );
-          if (!ok) return;
-
+          if (
+            !window.confirm(
+              `Bàn có đơn #${activeOrder.orderCode}. Hủy đơn này?`
+            )
+          )
+            return;
           await changeOrderStatusByCode({
             restaurantId,
             orderCode: activeOrder.orderCode,
             status: "cancelled",
-            note: "Cancelled via TableActionsModal when freeing table",
+            note: "Cancelled via TableActionsModal",
           });
         }
       } catch (e) {
-        console.error("Check/cancel active order failed:", e);
-        alert("Không thể kiểm tra/hủy đơn đang hoạt động. Vui lòng thử lại.");
+        console.error(e);
         return;
       }
     }
@@ -424,23 +408,22 @@ function TableActionsModalCore({
       onUpdated?.();
     } catch (e) {
       console.error(e);
-      alert("Đổi trạng thái thất bại.");
+      alert("Lỗi trạng thái.");
     } finally {
       setBusyKey("status", false);
     }
   };
 
   const handleMove = async () => {
-    if (!table?.id || moveLevel == null) return;
+    if (!moveLevel) return;
     const floorId = getIdFromLevel(moveLevel);
-    if (!floorId) return alert("Không tìm thấy tầng đích.");
+    if (!floorId) return alert("Lỗi tầng.");
     setBusyKey("move", true);
     try {
       await moveTable({ id: table.id, floorId });
       onUpdated?.();
     } catch (e) {
       console.error(e);
-      alert("Chuyển tầng thất bại.");
     } finally {
       setBusyKey("move", false);
     }
@@ -450,10 +433,8 @@ function TableActionsModalCore({
     const codeB = (swapWithCode || "").trim();
     if (!codeB) return;
     const b = fetchTableByCode(codeB);
-    if (!b) return alert("Không tìm thấy bàn có mã: " + codeB);
-    if (String(b.floorId) !== String(table.floorId)) {
-      return alert("Đổi chỗ chỉ áp dụng cho 2 bàn cùng tầng.");
-    }
+    if (!b || String(b.floorId) !== String(table.floorId))
+      return alert("Không tìm thấy hoặc khác tầng.");
     setBusyKey("swap", true);
     try {
       await swapTableCodes({
@@ -466,7 +447,6 @@ function TableActionsModalCore({
       setSwapWithCode("");
     } catch (e) {
       console.error(e);
-      alert("Đổi chỗ (swap code) thất bại.");
     } finally {
       setBusyKey("swap", false);
     }
@@ -485,7 +465,7 @@ function TableActionsModalCore({
           .map((t) => t.id)
       )
     );
-    if (ids.length < 2) return alert("Cần ít nhất 2 bàn để gộp.");
+    if (ids.length < 2) return alert("Cần > 1 bàn.");
     setBusyKey("merge", true);
     try {
       await mergeTables({ tableIds: ids, anchorId: table.id });
@@ -493,7 +473,6 @@ function TableActionsModalCore({
       setMergeCodes("");
     } catch (e) {
       console.error(e);
-      alert("Gộp bàn thất bại.");
     } finally {
       setBusyKey("merge", false);
     }
@@ -511,14 +490,12 @@ function TableActionsModalCore({
       onUpdated?.();
     } catch (e) {
       console.error(e);
-      alert("Tách bàn thất bại.");
     } finally {
       setBusyKey("split", false);
     }
   };
 
   const handleDelete = async () => {
-    if (!table?.id) return;
     if (!window.confirm(`Xoá bàn ${table.code}?`)) return;
     setBusyKey("delete", true);
     try {
@@ -527,36 +504,20 @@ function TableActionsModalCore({
       onClose?.();
     } catch (e) {
       console.error(e);
-      alert("Xoá bàn thất bại.");
     } finally {
       setBusyKey("delete", false);
     }
   };
 
-  // tăng/giảm số khách
-  const incGuests = (delta) => {
-    setCust((prev) => {
-      const next = clampGuests((prev.guests || 0) + delta);
-      return { ...prev, guests: next };
-    });
-  };
-
-  // ✅ Lưu thông tin khách: gọi ra handleSaveCustomerFromModal ở LeftPanel
   const saveCustomerInfo = async () => {
-    // CASE 1: Bàn đang CÓ KHÁCH, đã có order sẵn → updateOrderCustomerByCode
     if (status === "occupied" && orderCodeForTable && restaurantId) {
       const customer = {
-        fullName: (cust.name || "").trim(),
-        phone: (cust.phone || "").trim(),
-        email: (cust.email || "").trim(),
+        fullName: cust.name,
+        phone: cust.phone,
+        email: cust.email,
       };
-
-      // nếu không có gì để cập nhật thì thôi
-      if (!customer.fullName && !customer.phone && !customer.email) {
-        alert("Vui lòng nhập ít nhất tên, SĐT hoặc email của khách.");
-        return;
-      }
-
+      if (!customer.fullName && !customer.phone)
+        return alert("Cần tên hoặc SĐT.");
       try {
         setBusyKey("saveCustomer", true);
         const res = await updateOrderCustomerByCode({
@@ -564,46 +525,33 @@ function TableActionsModalCore({
           orderCode: orderCodeForTable,
           customer,
         });
-
-        if (!res || !res.success) {
-          alert(res?.message || "Cập nhật thông tin khách thất bại.");
-        } else {
-          alert("Đã cập nhật thông tin khách cho đơn hiện tại.");
+        if (res?.success) {
+          alert("Đã cập nhật đơn hàng.");
           onUpdated?.();
-        }
+        } else alert("Lỗi cập nhật.");
       } catch (e) {
         console.error(e);
-        alert("Lưu thông tin khách thất bại.");
       } finally {
         setBusyKey("saveCustomer", false);
       }
-      return; // ⛔ kết thúc tại đây, không đi vào onSave nữa
+      return;
     }
-
-    // CASE 2: Các trạng thái khác (Trống / Đã đặt ...) → giữ nguyên luồng cũ dùng onSave
     if (!onSave) return;
-
-    // Nếu đang dùng timeslot thì validate form đặt bàn
     if (useTimeslot && !validateCustomerForReservation()) return;
 
-    let checkin = null;
-    if (useTimeslot && cust.checkinDate && cust.checkinTime) {
-      checkin = combineDateTimeToISO(cust.checkinDate, cust.checkinTime);
-    }
-
-    const payload = {
-      ...cust,
-      guests: Number(cust.guests || 0),
-      checkin, // field mà handleSaveCustomerFromModal đã dùng
-    };
-
+    const checkin =
+      useTimeslot && cust.checkinDate && cust.checkinTime
+        ? combineDateTimeToISO(cust.checkinDate, cust.checkinTime)
+        : null;
     try {
       setBusyKey("saveCustomer", true);
-      await onSave(table.code, payload);
-      // toast/alert do handleSaveCustomerFromModal xử lý
+      await onSave(table.code, {
+        ...cust,
+        guests: Number(cust.guests || 0),
+        checkin,
+      });
     } catch (e) {
       console.error(e);
-      alert("Lưu thông tin khách thất bại.");
     } finally {
       setBusyKey("saveCustomer", false);
     }
@@ -613,363 +561,281 @@ function TableActionsModalCore({
   return createPortal(
     <div className={s.backdrop} onClick={onClose}>
       {/* Ẩn mũi tên input number cho stepper */}
-      <style>{`
-        input[type=number]::-webkit-outer-spin-button,
-        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        input[type=number] { -moz-appearance: textfield; }
-      `}</style>
+      <style>{`input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; } input[type=number] { -moz-appearance: textfield; }`}</style>
 
-      <div
-        className={s.modal}
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className={s.modal} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className={s.header}>
-          <h3 className={s.title}>
-            Hành động bàn <b>{table.code}</b>
-          </h3>
-          <button className={s.close} onClick={onClose} aria-label="Đóng">
-            ×
+          <div className={s.headerLeft}>
+            <h3 className={s.title}>
+              Hành động bàn <b>{table.code}</b>
+            </h3>
+            <span className={s.floorBadge}>Tầng {table.floorLevel}</span>
+          </div>
+          <button className={s.close} onClick={onClose}>
+            <IconX />
           </button>
         </div>
 
         {/* Body */}
         <div className={s.body}>
-          {/* Info */}
           <div className={s.tableInfo}>
             <div className={s.kv}>
-              <span className={s.k}>Mã bàn:</span>
+              <span className={s.k}>Mã bàn</span>
               <span className={s.v}>{table.code}</span>
             </div>
             <div className={s.kv}>
-              <span className={s.k}>Tầng:</span>
-              <span className={s.v}>Tầng {table.floorLevel ?? "?"}</span>
+              <span className={s.k}>Sức chứa</span>
+              <span className={s.v}>{table.capacity}</span>
             </div>
             <div className={s.kv}>
-              <span className={s.k}>Trạng thái:</span>
+              <span className={s.k}>Trạng thái</span>
               <span className={s.v}>{table.status}</span>
             </div>
           </div>
 
-          {/* 1) Cơ bản */}
           <div className={s.group}>
-            <div className={s.label}>Thông tin cơ bản</div>
+            <div className={s.label}>Thông tin chung</div>
             <div className={s.twoCols}>
-              <div>
-                <label className={s.label}>Mã bàn</label>
-                <input
-                  className={s.input}
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className={s.label}>Sức chứa</label>
-                <input
-                  className={s.input}
-                  type="number"
-                  min={0}
-                  value={capacity}
-                  onChange={(e) => setCapacity(Number(e.target.value) || 0)}
-                />
-              </div>
-              <div>
-                <label className={s.label}>Loại</label>
-                <select
-                  className={`${s.input} ${s.select || ""}`}
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                >
-                  <option value="standard">Standard</option>
-                  <option value="vip">VIP</option>
-                  <option value="outdoor">Outdoor</option>
-                </select>
-              </div>
-              <div>
-                <label className={s.label}>Tags (phân tách dấu phẩy)</label>
-                <input
-                  className={s.input}
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                  placeholder="VIP, sân vườn…"
-                />
-              </div>
+              <input
+                className={s.input}
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Mã bàn"
+              />
+              <input
+                className={s.input}
+                type="number"
+                value={capacity}
+                onChange={(e) => setCapacity(Number(e.target.value))}
+                placeholder="Sức chứa"
+              />
+              <select
+                className={s.select}
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+              >
+                <option value="standard">Standard</option>
+                <option value="vip">VIP</option>
+                <option value="outdoor">Outdoor</option>
+              </select>
+              <input
+                className={s.input}
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder="Tags..."
+              />
             </div>
             <div className={s.actionsEnd}>
               <button
                 className={`${s.btn} ${s.primary}`}
-                disabled={busy.save}
                 onClick={handleSaveBasics}
+                disabled={busy.save}
               >
-                {busy.save ? "Đang lưu…" : "Lưu thay đổi"}
+                Lưu thay đổi
               </button>
             </div>
           </div>
 
-          {/* 2) Trạng thái */}
           <div className={s.group}>
             <div className={s.label}>Trạng thái</div>
             <div className={s.chips}>
               {["available", "occupied", "reserved", "cleaning", "offline"].map(
                 (st) => (
                   <button
-                    type="button"
                     key={st}
                     className={`${s.chip} ${status === st ? s.active : ""}`}
+                    data-variant={st}
                     onClick={() => handleChangeStatus(st)}
                     disabled={busy.status}
                   >
-                    {st === "available" && "Trống"}
-                    {st === "occupied" && "Có khách"}
-                    {st === "reserved" && "Đã đặt"}
-                    {st === "cleaning" && "Đang dọn"}
-                    {st === "offline" && "Ngưng"}
+                    {st}
                   </button>
                 )
               )}
             </div>
           </div>
 
-          {/* 3) Chuyển tầng */}
           <div className={s.group}>
-            <div className={s.label}>Chuyển tầng</div>
+            <div className={s.label}>Thao tác nhanh</div>
             <div className={s.twoCols}>
+              {/* Move & Swap */}
               <div>
-                <label className={s.label}>Tầng đích</label>
-                <select
-                  className={`${s.input} ${s.select || ""}`}
-                  value={moveLevel ?? ""}
-                  onChange={(e) =>
-                    setMoveLevel(e.target.value ? Number(e.target.value) : null)
-                  }
-                >
-                  {floorsSorted.map((f) => (
-                    <option key={f.id} value={f.level}>
-                      Tầng {f.level}
-                      {f.name ? ` — ${f.name}` : ""}
-                    </option>
-                  ))}
-                </select>
+                <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
+                  Chuyển tầng
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <select
+                    className={s.select}
+                    value={moveLevel ?? ""}
+                    onChange={(e) => setMoveLevel(e.target.value)}
+                  >
+                    {floorsSorted.map((f) => (
+                      <option key={f.id} value={f.level}>
+                        Tầng {f.level}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className={`${s.btn} ${s.ghost}`}
+                    onClick={handleMove}
+                    disabled={busy.move}
+                  >
+                    Chuyển
+                  </button>
+                </div>
               </div>
-              <div className={s.actionsEnd} style={{ alignItems: "end" }}>
-                <button
-                  className={`${s.btn} ${s.ghost}`}
-                  disabled={busy.move}
-                  onClick={handleMove}
-                >
-                  {busy.move ? "Đang chuyển…" : "Chuyển"}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* 4) Đổi chỗ */}
-          <div className={s.group}>
-            <div className={s.label}>Đổi chỗ với bàn khác (swap code)</div>
-            <div className={s.twoCols}>
               <div>
-                <label className={s.label}>Mã bàn muốn đổi</label>
-                <input
-                  className={s.input}
-                  placeholder="Ví dụ: A10"
-                  value={swapWithCode}
-                  onChange={(e) => setSwapWithCode(e.target.value)}
-                />
-                <div className={s.hint}>Chỉ đổi giữa 2 bàn cùng tầng.</div>
+                <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
+                  Đổi vị trí (cùng tầng)
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <input
+                    className={s.input}
+                    placeholder="Mã đích"
+                    value={swapWithCode}
+                    onChange={(e) => setSwapWithCode(e.target.value)}
+                  />
+                  <button
+                    className={`${s.btn} ${s.ghost}`}
+                    onClick={handleSwap}
+                    disabled={busy.swap}
+                  >
+                    Đổi
+                  </button>
+                </div>
               </div>
-              <div className={s.actionsEnd} style={{ alignItems: "end" }}>
-                <button
-                  className={`${s.btn} ${s.ghost}`}
-                  disabled={busy.swap}
-                  onClick={handleSwap}
-                >
-                  {busy.swap ? "Đang đổi…" : "Đổi chỗ"}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* 5) Gộp / Tách */}
-          <div className={s.group}>
-            <div className={s.label}>Gộp / Tách</div>
-            <div className={s.twoCols}>
+              {/* Merge & Split */}
               <div>
-                <label className={s.label}>
-                  Gộp với các bàn (mã cách nhau bởi dấu phẩy hoặc khoảng trắng)
-                </label>
-                <input
-                  className={s.input}
-                  placeholder="Ví dụ: A2, A3"
-                  value={mergeCodes}
-                  onChange={(e) => setMergeCodes(e.target.value)}
-                />
+                <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
+                  Gộp bàn
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <input
+                    className={s.input}
+                    placeholder="A1, A2..."
+                    value={mergeCodes}
+                    onChange={(e) => setMergeCodes(e.target.value)}
+                  />
+                  <button
+                    className={`${s.btn} ${s.ghost}`}
+                    onClick={handleMerge}
+                    disabled={busy.merge}
+                  >
+                    Gộp
+                  </button>
+                </div>
               </div>
-              <div
-                className={s.actionsEnd}
-                style={{ alignItems: "end", gap: ".5rem" }}
-              >
-                <button
-                  className={`${s.btn} ${s.ghost}`}
-                  disabled={busy.merge}
-                  onClick={handleMerge}
-                >
-                  {busy.merge ? "Đang gộp…" : "Gộp bàn"}
-                </button>
+              <div>
+                <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
+                  Tách bàn
+                </div>
                 <button
                   className={`${s.btn} ${canSplit ? s.ghost : s.isDisabled}`}
-                  disabled={!canSplit || busy.split}
                   onClick={handleSplitOut}
+                  disabled={!canSplit || busy.split}
+                  style={{ width: "100%" }}
                 >
-                  {busy.split ? "Đang tách…" : "Tách bàn này"}
+                  Tách khỏi nhóm
                 </button>
               </div>
             </div>
           </div>
 
-          {/* 6) Thông tin khách */}
           <div className={s.group}>
-            <div className={s.label}>Thông tin khách</div>
+            <div className={s.label}>Khách hàng & Đặt bàn</div>
             <div className={s.twoCols}>
-              <div>
-                <label className={s.label}>Tên khách</label>
-                <input
-                  className={s.input}
-                  value={cust.name}
-                  onChange={(e) => setCust({ ...cust, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className={s.label}>Số điện thoại</label>
-                <input
-                  className={s.input}
-                  value={cust.phone}
-                  onChange={(e) => setCust({ ...cust, phone: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className={s.label}>Email</label>
-                <input
-                  className={s.input}
-                  value={cust.email}
-                  onChange={(e) => setCust({ ...cust, email: e.target.value })}
-                />
-              </div>
+              <input
+                className={s.input}
+                value={cust.name}
+                onChange={(e) => setCust({ ...cust, name: e.target.value })}
+                placeholder="Tên khách"
+              />
+              <input
+                className={s.input}
+                value={cust.phone}
+                onChange={(e) => setCust({ ...cust, phone: e.target.value })}
+                placeholder="Số điện thoại"
+              />
 
-              {/* Số khách với stepper + / - */}
-              <div>
-                <label className={s.label}>Số khách</label>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+              >
                 <div className={s.stepper}>
-                  <button
-                    type="button"
-                    className={`${s.btnIcon}`}
-                    aria-label="Giảm"
-                    onClick={() => incGuests(-1)}
-                  >
+                  <button className={s.btnIcon} onClick={() => incGuests(-1)}>
                     −
                   </button>
                   <input
-                    className={`${s.input} ${s.inputCenter}`}
+                    className={s.inputCenter}
                     type="number"
-                    min={0}
                     value={cust.guests}
                     onChange={(e) =>
-                      setCust({
-                        ...cust,
-                        guests: clampGuests(Number(e.target.value) || 0),
-                      })
+                      setCust({ ...cust, guests: Number(e.target.value) })
                     }
                   />
-                  <button
-                    type="button"
-                    className={`${s.btnIcon}`}
-                    aria-label="Tăng"
-                    onClick={() => incGuests(1)}
-                  >
+                  <button className={s.btnIcon} onClick={() => incGuests(1)}>
                     +
                   </button>
                 </div>
-                <div className={s.hint}>
-                  Tối đa gợi ý: {Number(table.capacity || 0)}
-                </div>
-              </div>
-
-              {/* Toggle: Đặt theo khung giờ */}
-              <div>
-                <label className={s.label}>Đặt theo khung giờ</label>
-                <div
+                <label
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: ".5rem",
+                    gap: "0.5rem",
+                    fontSize: "0.9rem",
                   }}
                 >
                   <input
-                    id="useTimeslot"
                     type="checkbox"
                     checked={useTimeslot}
                     onChange={(e) => setUseTimeslot(e.target.checked)}
                     disabled={
                       !(status === "available" || status === "reserved")
                     }
-                  />
-                  <label htmlFor="useTimeslot" className={s.hint}>
-                    Bật để chọn ngày/giờ và tạo đặt bàn; tắt để chỉ lưu thông
-                    tin vào bàn.
-                  </label>
-                </div>
+                  />{" "}
+                  Đặt lịch
+                </label>
               </div>
 
-              {/* Ngày & Giờ khi bật timeslot */}
               {useTimeslot &&
                 (status === "available" || status === "reserved") && (
                   <>
-                    <div>
-                      <label className={s.label}>Ngày</label>
-                      <input
-                        className={s.input}
-                        type="date"
-                        min={todayStr}
-                        value={cust.checkinDate}
-                        onChange={(e) =>
-                          setCust({ ...cust, checkinDate: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <label className={s.label}>Giờ (khung 30 phút)</label>
-                      <select
-                        className={`${s.input} ${s.select || ""}`}
-                        value={cust.checkinTime}
-                        onChange={(e) =>
-                          setCust({ ...cust, checkinTime: e.target.value })
-                        }
-                      >
-                        <option value="" disabled>
-                          Chọn giờ
+                    <input
+                      className={s.input}
+                      type="date"
+                      min={todayStr}
+                      value={cust.checkinDate}
+                      onChange={(e) =>
+                        setCust({ ...cust, checkinDate: e.target.value })
+                      }
+                    />
+                    <select
+                      className={s.select}
+                      value={cust.checkinTime}
+                      onChange={(e) =>
+                        setCust({ ...cust, checkinTime: e.target.value })
+                      }
+                    >
+                      <option value="" disabled>
+                        --:--
+                      </option>
+                      {(cust.checkinDate
+                        ? visibleTimeSlots(cust.checkinDate)
+                        : buildTimeSlots
+                      ).map((t) => (
+                        <option key={t} value={t}>
+                          {t}
                         </option>
-                        {(cust.checkinDate
-                          ? visibleTimeSlots(cust.checkinDate)
-                          : buildTimeSlots
-                        ).map((t) => (
-                          <option key={t} value={t}>
-                            {t}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                      ))}
+                    </select>
                   </>
                 )}
-
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label className={s.label}>Ghi chú</label>
+              <div style={{ gridColumn: "1/-1" }}>
                 <textarea
-                  className={`${s.input} ${s.textarea || ""}`}
-                  rows={3}
+                  className={`${s.input} ${s.textarea}`}
                   value={cust.note}
                   onChange={(e) => setCust({ ...cust, note: e.target.value })}
+                  placeholder="Ghi chú..."
                 />
               </div>
             </div>
@@ -979,25 +845,21 @@ function TableActionsModalCore({
                 onClick={saveCustomerInfo}
                 disabled={busy.saveCustomer}
               >
-                {busy.saveCustomer ? "Đang lưu…" : "Lưu thông tin khách"}
+                Lưu thông tin khách
               </button>
             </div>
-          </div>
-
-          {/* Delete */}
-          <div className={s.actionsEnd}>
-            <button
-              className={`${s.btn} ${s.danger}`}
-              disabled={busy.delete}
-              onClick={handleDelete}
-            >
-              {busy.delete ? "Đang xoá…" : "Xoá bàn"}
-            </button>
           </div>
         </div>
 
         {/* Footer */}
         <div className={s.footer}>
+          <button
+            className={`${s.btn} ${s.danger}`}
+            onClick={handleDelete}
+            disabled={busy.delete}
+          >
+            <IconTrash /> Xoá bàn
+          </button>
           <div className={s.actions}>
             <button className={s.btn} onClick={onClose}>
               Đóng
@@ -1007,7 +869,7 @@ function TableActionsModalCore({
               onClick={handleSaveBasics}
               disabled={busy.save}
             >
-              {busy.save ? "Đang lưu…" : "Lưu thay đổi"}
+              Lưu thay đổi
             </button>
           </div>
         </div>
@@ -1020,5 +882,4 @@ function TableActionsModalCore({
 export default function TableActionsModal(props) {
   return <TableActionsModalCore {...props} />;
 }
-
 export { TableActionsModalCore as TableActionsModal };

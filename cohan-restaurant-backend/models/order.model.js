@@ -1,109 +1,120 @@
 import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
-
-// OrderItem Schema: Chứa thông tin chi tiết của từng món ăn
-const OrderItemSchema = new mongoose.Schema(
-  {
-    dishId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "MenuItem",
-      required: true, // ID của món ăn
-    },
-    menuId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Menu",
-      required: true, // ID của menu mà món ăn thuộc về
-    },
-    categoryId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
-      required: true, // ID của danh mục món ăn
-    },
-    name: { type: String, required: true }, // Tên món ăn
-    unit: { type: String, default: "phần" }, // Đơn vị tính (Phần, Kg, v.v.)
-    image: { type: String }, // Hình ảnh món ăn
-    price: { type: Number, required: true }, // Giá món ăn
-    modifiersPrice: { type: Number, default: 0 }, // Giá của các tùy chọn bổ sung (modifiers)
-    method: { type: String }, // Phương thức chế biến (nếu có)
-    methodDelta: { type: Number, default: 0 }, // Biến động giá do phương thức chế biến
-    description: { type: String }, // Mô tả món ăn
-    quantity: { type: Number, required: true }, // Số lượng món ăn
-    modifiers: [
-      {
-        optionId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "ModifierOption",
-        },
-        optionName: { type: String },
-        price: { type: Number, default: 0 }, // Giá của tùy chọn (modifier)
-      },
-    ],
-    lineSubtotal: { type: Number, default: 0 },
-    status: {
-      type: String,
-      default: "pending",
-      enum: ["pending", "preparing", "ready", "served", "cancelled"],
-    },
-    recipeId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Recipe",
-    },
-    note: { type: String },
+import ShippingSchema from "./order-shipping.model.js";
+const OrderItemSchema = new mongoose.Schema({
+  dishId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "MenuItem",
+    required: true,
   },
-  { _id: false }
-);
+  menuId: { type: mongoose.Schema.Types.ObjectId, ref: "Menu", required: true },
+  categoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Category",
+    required: true,
+  },
 
-// Order Schema: Chứa thông tin đơn hàng
+  name: { type: String, required: true },
+  unit: { type: String, default: "phần" },
+  image: { type: String },
+  proofImages: [{ type: String }],
+  price: { type: Number, required: true, min: 0 },
+  modifiersPrice: { type: Number, default: 0, min: 0 },
+
+  method: { type: String },
+  methodDelta: { type: Number, default: 0 },
+  description: { type: String },
+
+  quantity: { type: Number, required: true, min: 0.01 },
+
+  modifiers: [
+    {
+      optionId: { type: mongoose.Schema.Types.ObjectId, ref: "ModifierOption" },
+      optionName: { type: String },
+      price: { type: Number, default: 0, min: 0 },
+    },
+  ],
+
+  lineSubtotal: { type: Number, default: 0 },
+  cancelReason: { type: String },
+
+  status: {
+    type: String,
+    default: "pending",
+    enum: ["pending", "preparing", "ready", "served", "cancelled", "returned"],
+  },
+
+  recipeId: { type: mongoose.Schema.Types.ObjectId, ref: "Recipe" },
+  note: { type: String },
+});
+
 const OrderSchema = BaseSchemaModel({
-  orderCode: { type: String },
+  orderCode: { type: String, required: true },
+  dailySequence: { type: Number },
+
   tableCode: { type: String },
+  tableName: { type: String },
+  guestCount: { type: Number, default: 1 },
+
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+
   restaurantId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
   },
   reservationId: { type: mongoose.Schema.Types.ObjectId, ref: "Reservation" },
+  parentOrderId: { type: mongoose.Schema.Types.ObjectId, ref: "Order" },
+
   orderType: {
     type: String,
     required: true,
-    enum: [
-      "dine_in", // <-- Giá trị chuẩn cho "Tại bàn"
-      "takeaway", // Mang về (Khách tự lấy)
-      "delivery", // Giao hàng (Nhà hàng đi giao)
-    ],
+    enum: ["dine_in", "takeaway", "delivery"],
     default: "dine_in",
   },
-  shipping: {
-    fullName: String,
-    phone: String,
-    email: String,
-    address: String,
-    note: String,
-    deliveryMethod: String,
-    deliveryTime: String,
-    scheduleDate: String,
-    scheduleTime: String,
-  },
-  items: [OrderItemSchema], // Các món ăn trong đơn hàng
+
+  shipping: ShippingSchema,
+  items: [OrderItemSchema],
+
   totals: {
-    subtotal: { type: Number, required: true },
-    discount: { type: Number, required: true },
-    tax: { type: Number, required: true },
-    service: { type: Number, required: true },
-    grandTotal: { type: Number, required: true },
+    subtotal: { type: Number, required: true, min: 0 },
+
+    discount: { type: Number, default: 0, min: 0 },
+    discountReason: { type: String },
+    voucherCode: { type: String },
+    promotionId: { type: mongoose.Schema.Types.ObjectId, ref: "Promotion" },
+
+    tax: { type: Number, required: true, min: 0 },
+    taxRate: { type: Number, default: 0 },
+
+    service: { type: Number, required: true, min: 0 },
+    serviceRate: { type: Number, default: 0 },
+
+    shippingFee: { type: Number, default: 0 },
+    grandTotal: { type: Number, required: true, min: 0 },
   },
+
   payment: {
-    method: { type: String },
+    method: { type: String, default: "cash" },
+    provider: { type: String },
+    transactionId: { type: String },
     status: {
       type: String,
-      enum: ["paid", "pending", "failed"],
+      enum: ["paid", "pending", "failed", "refunded", "partially_refunded"],
       default: "pending",
     },
     paidAmount: { type: Number, default: 0 },
+    changeAmount: { type: Number, default: 0 },
     currency: { type: String, default: "VND" },
     paidAt: { type: Date },
   },
+
+  printStatus: {
+    isPrinted: { type: Boolean, default: false },
+    chefPrinted: { type: Boolean, default: false },
+    printedAt: Date,
+  },
+
   statusTimeline: [
     {
       status: {
@@ -118,21 +129,72 @@ const OrderSchema = BaseSchemaModel({
           "served",
           "completed",
           "cancelled",
+          "failed",
         ],
       },
-      at: { type: Date },
+      at: { type: Date, default: Date.now },
       byUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       note: { type: String },
     },
   ],
+
   currentStatus: { type: String, default: "confirmed" },
   note: { type: String },
 });
-OrderSchema.index({
-  restaurantId: 1,
-  tableCode: 1,
-  currentStatus: 1,
-  createdAt: -1,
+OrderSchema.methods.calculateTotals = function () {
+  let subtotal = 0;
+
+  this.items.forEach((item) => {
+    const modifiersPrice = item.modifiers.reduce(
+      (acc, mod) => acc + (mod.price || 0),
+      0
+    );
+    item.modifiersPrice = modifiersPrice;
+
+    const unitPrice = item.price + modifiersPrice + (item.methodDelta || 0);
+    item.lineSubtotal = unitPrice * item.quantity;
+
+    if (!["cancelled", "returned"].includes(item.status)) {
+      subtotal += item.lineSubtotal;
+    }
+  });
+
+  this.totals.subtotal = subtotal;
+
+  const serviceRate = this.totals.serviceRate || 0;
+  const taxRate = this.totals.taxRate || 0;
+  const discount = this.totals.discount || 0;
+  const shippingFee = this.totals.shippingFee || this.shipping.shippingFee || 0;
+
+  this.totals.service = Math.round(subtotal * serviceRate);
+
+  const amountBeforeTax = Math.max(
+    0,
+    this.totals.subtotal + this.totals.service - discount
+  );
+
+  this.totals.tax = Math.round(amountBeforeTax * taxRate);
+
+  this.totals.grandTotal = Math.round(
+    amountBeforeTax + this.totals.tax + shippingFee
+  );
+
+  return this;
+};
+
+OrderSchema.pre("save", function (next) {
+  if (
+    this.isModified("items") ||
+    this.isModified("totals") ||
+    this.isModified("shipping")
+  ) {
+    this.calculateTotals();
+  }
+  next();
 });
+OrderSchema.index({ restaurantId: 1, orderCode: 1 }, { unique: true });
+OrderSchema.index({ restaurantId: 1, currentStatus: 1, createdAt: -1 });
+OrderSchema.index({ "payment.transactionId": 1 });
+OrderSchema.index({ "shipping.phone": 1 });
 
 export default mongoose.model("Order", OrderSchema);

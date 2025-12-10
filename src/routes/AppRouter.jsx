@@ -25,7 +25,7 @@ import RestaurantDetail from "../components/Customer/RestaurantDetail/Restaurant
 import TableBooking from "../components/Customer/TableBooking/TableBooking";
 import OrdersPage from "../components/Customer/OrdersManagement/OrdersPage";
 import ProfilePage from "../components/Customer/Profile/ProfilePage";
-
+import OrderTrackingPage from "../components/Customer/OrderTracking/OrderTrackingPage";
 // ==== Manager/Admin ====
 import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
 
@@ -44,7 +44,7 @@ import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDes
 // ==== Search / Owner pages ====
 import SearchPage from "../pages/SearchPage.jsx";
 import OwnerProfilePage from "../components/Customer/OwnerProfilePage/OwnerProfilePage.jsx";
-
+import ForYou from "@/components/Customer/ForYou/ForYou";
 // =========================
 // 🔐 GraphQL Query: me
 // =========================
@@ -193,6 +193,7 @@ const AppRouter = () => {
         />
 
         {/* ===== CUSTOMER ===== */}
+        <Route path="/for-you" element={<ForYou />} />
         <Route
           path="/orders"
           element={
@@ -204,6 +205,7 @@ const AppRouter = () => {
             </PrivateRoute>
           }
         />
+        <Route path="/track-order/:orderId" element={<OrderTrackingPage />} />
         <Route
           path="/restaurants"
           element={
@@ -249,12 +251,9 @@ const AppRouter = () => {
         />
 
         {/* ===== MANAGER / ADMIN ===== */}
+
         <Route
           path="/manager"
-          element={<Navigate to="/manager/dashboard" replace />}
-        />
-        <Route
-          path="/manager/dashboard"
           element={
             <PrivateRoute
               allowedRoles={["manager", "admin"]}
@@ -278,7 +277,7 @@ const AppRouter = () => {
           }
         />
         <Route
-          path="/manager/dashboard/floor-map/:restaurantId"
+          path="/manager/floor-map/:restaurantId"
           element={
             <PrivateRoute allowedRoles={["manager", "admin"]}>
               <FloorPlanDesigner />

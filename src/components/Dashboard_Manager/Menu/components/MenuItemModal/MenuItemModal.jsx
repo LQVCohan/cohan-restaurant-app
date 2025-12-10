@@ -6,14 +6,6 @@ import "./MenuItemModal.scss";
 import useMenuManagement from "../../../../../hooks/useMenuManagement";
 import useRecipes from "../../../../../hooks/useRecipes";
 
-/**
- * MenuItemModal
- * - Chỉnh sửa thông tin 1 món ăn (MenuItem)
- * - Chỉnh sửa danh sách cách chế biến (servingVariants / preparation methods)
- * - Lưu bằng hooks:
- *    + useMenuManagement.updateMenuItem   -> update MenuItem
- *    + useRecipes.updateRecipe           -> upsert Recipe (servingVariants + price)
- */
 const MenuItemModal = ({
   isOpen,
   editId,

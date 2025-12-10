@@ -1,5 +1,3 @@
-// src/graphql/resolvers/order/mutation.js
-
 import mongoose from "mongoose";
 
 import {
@@ -8,7 +6,9 @@ import {
   Reservation,
   TableCustomer,
   Warehouse,
+  MenuItem,
 } from "../../../models/index.js";
+
 import {
   normalizeItem,
   computeTotals,
@@ -18,6 +18,8 @@ import {
   emitOrderEvent,
   toId,
 } from "../order/helper/index.js";
+import { createOrderTrackingEvent } from "../order/helper/tracking.js";
+
 import generateOrderCode from "../../../utils/generateOrderCode.js";
 
 import {
@@ -41,10 +43,10 @@ function buildInventoryLinesFromItems(items = []) {
     .map((it) => ({
       menuItemId: it.dishId, // dishId = MenuItem._id
       quantity: it.quantity ?? 1,
-      weightGrams: it.weightGrams ?? null, // nếu sau này có bán theo kg
+      weightGrams: it.weightGrams ?? null,
       servingKey: it.servingKey ?? null,
       servingMode: it.servingMode ?? null,
-      preparationMethodName: it.method ?? null, // map method -> preparationMethodName
+      preparationMethodName: it.method ?? null,
     }))
     .filter((l) => l.menuItemId);
 }
@@ -57,12 +59,10 @@ async function findOrCreateOrderCode({
   requestedOrderCode,
   session,
 }) {
-  // 1) Ưu tiên orderCode được truyền vào (FE biết trước)
   if (requestedOrderCode && String(requestedOrderCode).trim()) {
     return String(requestedOrderCode).trim();
   }
 
-  // 2) Nếu có Reservation còn hiệu lực => dùng reservation.orderCode
   const activeRes = await Reservation.findOne(
     {
       restaurantId: toId(restaurantId),
@@ -76,11 +76,11 @@ async function findOrCreateOrderCode({
 
   if (activeRes?.orderCode) return activeRes.orderCode;
 
-  // 3) Nếu bàn đã có order trước đó => lấy orderCode của order ĐẦU TIÊN
   const firstOrder = await Order.findOne(
     {
       restaurantId: toId(restaurantId),
       tableCode,
+      currentStatus: { $nin: ["completed", "cancelled", "failed"] },
     },
     { orderCode: 1, createdAt: 1 }
   )
@@ -89,11 +89,10 @@ async function findOrCreateOrderCode({
 
   if (firstOrder?.orderCode) return firstOrder.orderCode;
 
-  // 4) Không có gì => sinh mới
   return generateOrderCode("POS", new Date(), tableCode || null);
 }
 
-/** Helper: upsert TableCustomer theo bàn + orderCode (cho phép nhận session) */
+/** Helper: upsert TableCustomer theo bàn + orderCode */
 async function upsertTableCustomerFromOrder({
   restaurantId,
   tableId,
@@ -145,7 +144,7 @@ async function upsertTableCustomerFromOrder({
   }).lean();
 }
 
-/** Helper: chọn warehouseId (FE truyền hoặc default) */
+/** Helper: chọn warehouseId */
 async function resolveWarehouseIdOrDefault(restaurantId, warehouseIdInput) {
   const rid = toId(restaurantId);
   if (!rid || !mongoose.isValidObjectId(rid)) {
@@ -173,17 +172,91 @@ async function resolveWarehouseIdOrDefault(restaurantId, warehouseIdInput) {
   return wh._id;
 }
 
+/**
+ * Helper: build shipping object cho đơn mang đi / giao hàng
+ * Tương ứng với ShippingSchema mới (order-shipping.model.js)
+ */
+function buildShippingForOffPremise(orderType, shipping = {}, customer = {}) {
+  const s = shipping || {};
+  const c = customer || {};
+
+  // Location cơ bản (địa chỉ giao)
+  const baseLocation = s.location || s.customerLocation || null; // nếu đã có LocationInput thì gán thẳng
+
+  return {
+    fullName: s.fullName || c.fullName || c.name || null,
+    phone: s.phone || c.phone || null,
+    email: s.email || c.email || null,
+    address: s.address || null,
+    note: s.note || null,
+
+    // location cũ: giữ cho backward-compat, thường = địa chỉ giao hàng
+    location: baseLocation
+      ? {
+          lat: baseLocation.lat ?? null,
+          lng: baseLocation.lng ?? null,
+          address: baseLocation.address ?? s.address ?? null,
+        }
+      : undefined,
+
+    // khoảng cách, phí ship (nếu có)
+    distance: s.distance ?? null,
+    shippingFee: s.shippingFee ?? 0,
+
+    deliveryMethod: s.deliveryMethod || null,
+    deliveryTime: s.deliveryTime || null,
+    scheduleDate: s.scheduleDate || null,
+    scheduleTime: s.scheduleTime || null,
+
+    // Vị trí khách / nhà hàng / tài xế
+    customerLocation: s.customerLocation
+      ? {
+          lat: s.customerLocation.lat ?? null,
+          lng: s.customerLocation.lng ?? null,
+          address: s.customerLocation.address ?? null,
+        }
+      : undefined,
+
+    restaurantLocation: s.restaurantLocation
+      ? {
+          lat: s.restaurantLocation.lat ?? null,
+          lng: s.restaurantLocation.lng ?? null,
+          address: s.restaurantLocation.address ?? null,
+        }
+      : undefined,
+
+    driverLocation: s.driverLocation
+      ? {
+          lat: s.driverLocation.lat ?? null,
+          lng: s.driverLocation.lng ?? null,
+          address: s.driverLocation.address ?? null,
+          accuracy: s.driverLocation.accuracy ?? null,
+          speed: s.driverLocation.speed ?? null,
+          bearing: s.driverLocation.bearing ?? null,
+          updatedAt: s.driverLocation.updatedAt || new Date(),
+        }
+      : undefined,
+
+    // Thông tin tài xế
+    driverName: s.driverName || null,
+    driverPhone: s.driverPhone || null,
+    driverAvatar: s.driverAvatar || null,
+    driverVehiclePlate: s.driverVehiclePlate || null,
+
+    // Trạng thái giao hàng
+    deliveryStatus: s.deliveryStatus || "pending",
+
+    duration: s.duration ?? null,
+    eta: s.eta ? new Date(s.eta) : null,
+
+    externalTrackingCode: s.externalTrackingCode || null,
+  };
+}
+
 export const OrderMutation = {
   /**
-   * ============================================================
-   * CREATE OR APPEND TABLE ORDER (Batch-based) + RESERVE INVENTORY
-   * - Mỗi lần gọi món tạo 1 order mới, nhưng giữ orderCode đầu tiên
-   * - Sử dụng transaction:
-   *    + Tạo Order
-   *    + (tùy chọn) Upsert TableCustomer
-   *    + Reserve inventory (reserveForOrderTx – transaction riêng)
-   *   Nếu reserve thất bại → rollback Order.
-   * ============================================================
+   * CREATE OR APPEND TABLE ORDER (Batch-based)
+   * (dine_in, không log tracking vì tracking chỉ cho delivery)
    */
   async createOrAppendTableOrder(_, { input }, ctx) {
     const {
@@ -196,7 +269,7 @@ export const OrderMutation = {
       customer,
       userId,
       clientMeta,
-      warehouseId, // optional (nếu không có → default warehouse)
+      warehouseId,
     } = input || {};
 
     if (!restaurantId) throw new Error("restaurantId is required");
@@ -204,11 +277,9 @@ export const OrderMutation = {
       throw new Error("items is required");
     }
 
-    // 1) Resolve bàn (ngoài transaction cũng được)
     const tableInfo = await resolveTable(restaurantId, { tableId, tableCode });
     if (!tableInfo) throw new Error("Table not found");
 
-    // 2) Tìm Reservation active cho bàn này (nếu có)
     const activeReservation = await Reservation.findOne({
       restaurantId: toId(restaurantId),
       tableId: toId(tableInfo.tableId),
@@ -231,24 +302,56 @@ export const OrderMutation = {
 
     const effectiveCustomer = reservationCustomer || customer || null;
 
-    // 3) Chuẩn hóa items & gắn recipeId (không cần session)
+    const dishIds = items
+      .map((i) => i.dishId || i.id)
+      .filter((id) => mongoose.isValidObjectId(id));
+
+    const menuItemsMap = new Map();
+    if (dishIds.length > 0) {
+      const foundMenuItems = await MenuItem.find(
+        { _id: { $in: dishIds } },
+        { thumbImage: 1 }
+      ).lean();
+      foundMenuItems.forEach((m) =>
+        menuItemsMap.set(String(m._id), m.thumbImage)
+      );
+    }
+
+    const recipeMap = new Map();
+    if (dishIds.length > 0) {
+      const foundRecipes = await Recipe.find(
+        { menuItemId: { $in: dishIds } },
+        { _id: 1, menuItemId: 1 }
+      ).lean();
+      foundRecipes.forEach((r) => recipeMap.set(String(r.menuItemId), r._id));
+    }
+
     const normalizedItems = [];
     for (const i of items) {
-      const n = normalizeItem(i); // dùng dishId, quantity, method, ...
-      if (n.dishId) {
-        const recipe = await Recipe.findOne(
-          { menuItemId: n.dishId },
-          { _id: 1 }
-        ).lean();
-        if (recipe) n.recipeId = recipe._id;
+      const n = normalizeItem(i);
+
+      if (Array.isArray(i.proofImages)) {
+        n.proofImages = i.proofImages.filter((img) => typeof img === "string");
+      } else {
+        n.proofImages = [];
       }
+
+      if (i.image && typeof i.image === "string") {
+        n.image = i.image;
+      } else if (n.dishId && menuItemsMap.has(String(n.dishId))) {
+        const thumb = menuItemsMap.get(String(n.dishId));
+        if (thumb) n.image = thumb;
+      }
+
+      if (n.dishId && recipeMap.has(String(n.dishId))) {
+        n.recipeId = recipeMap.get(String(n.dishId));
+      }
+
       normalizedItems.push(n);
     }
 
-    // 4) Tính totals
     const totals = computeTotals(normalizedItems);
 
-    // 5) userId
     let finalUserId = null;
     if (activeReservation?.userId) {
       finalUserId = activeReservation.userId;
@@ -256,7 +359,6 @@ export const OrderMutation = {
       finalUserId = await ensureUserForOrder(userId, effectiveCustomer);
     }
 
-    // 6) Tìm/sinh orderCode
     const effectiveOrderCode =
       activeReservation?.orderCode ||
       (orderCode && String(orderCode).trim()) ||
@@ -273,7 +375,6 @@ export const OrderMutation = {
       let createdOrderDoc = null;
 
       await session.withTransaction(async () => {
-        // 7) Tạo Order trong transaction
         const [newOrder] = await Order.create(
           [
             {
@@ -281,7 +382,9 @@ export const OrderMutation = {
               tableId: toId(tableInfo.tableId),
               tableCode: tableInfo.tableCode,
               userId: finalUserId ? toId(finalUserId) : undefined,
+
               orderCode: effectiveOrderCode,
+
               orderType: "dine_in",
               shipping: { address: tableInfo.tableCode },
               items: normalizedItems,
@@ -294,7 +397,7 @@ export const OrderMutation = {
                   status: "pending",
                   at: new Date(),
                   byUserId: finalUserId ? toId(finalUserId) : undefined,
-                  note: "Created new batch order",
+                  note: "New batch created via POS",
                 },
               ],
               clientMeta,
@@ -305,14 +408,7 @@ export const OrderMutation = {
 
         createdOrderDoc = newOrder;
 
-        // 8) Lưu / cập nhật TableCustomer trong cùng transaction
-        if (
-          effectiveCustomer &&
-          (effectiveCustomer.fullName ||
-            effectiveCustomer.name ||
-            effectiveCustomer.phone ||
-            effectiveCustomer.email)
-        ) {
+        if (effectiveCustomer) {
           await upsertTableCustomerFromOrder({
             restaurantId,
             tableId: tableInfo.tableId,
@@ -324,16 +420,13 @@ export const OrderMutation = {
           });
         }
 
-        // 9) Reserve inventory (transaction riêng bên trong service)
         const linesForInventory = buildInventoryLinesFromItems(normalizedItems);
-
         if (linesForInventory.length) {
           const effectiveWarehouseId = await resolveWarehouseIdOrDefault(
             restaurantId,
             warehouseId
           );
 
-          // Nếu reserveForOrderTx throw → rollback Order (transaction bên ngoài)
           await reserveForOrderTx({
             restaurantId,
             warehouseId: effectiveWarehouseId,
@@ -345,7 +438,6 @@ export const OrderMutation = {
 
       await session.endSession();
 
-      // 10) Ngoài transaction: set trạng thái bàn + realtime
       if (createdOrderDoc) {
         await markTableStatus(restaurantId, tableInfo.tableCode, "occupied");
         await emitOrderEvent(
@@ -364,16 +456,196 @@ export const OrderMutation = {
     }
   },
 
+  /**
+   * CREATE OFF-PREMISE ORDER (TAKEAWAY / DELIVERY)
+   * dùng ShippingSchema mới, có vị trí & driver
+   */
+  async createOffPremiseOrder(_, { input }, ctx) {
+    const {
+      restaurantId,
+      orderType, // "takeaway" | "delivery"
+      items,
+      note,
+      customer,
+      shipping,
+      userId,
+      warehouseId,
+      clientMeta,
+    } = input || {};
+
+    if (!restaurantId) throw new Error("restaurantId is required");
+    if (!orderType || !["takeaway", "delivery"].includes(orderType)) {
+      throw new Error("orderType must be 'takeaway' or 'delivery'");
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error("items is required");
+    }
+
+    const dishIds = items
+      .map((i) => i.dishId || i.id)
+      .filter((id) => mongoose.isValidObjectId(id));
+
+    const menuItemsMap = new Map();
+    if (dishIds.length > 0) {
+      const foundMenuItems = await MenuItem.find(
+        { _id: { $in: dishIds } },
+        { thumbImage: 1 }
+      ).lean();
+      foundMenuItems.forEach((m) =>
+        menuItemsMap.set(String(m._id), m.thumbImage)
+      );
+    }
+
+    const recipeMap = new Map();
+    if (dishIds.length > 0) {
+      const foundRecipes = await Recipe.find(
+        { menuItemId: { $in: dishIds } },
+        { _id: 1, menuItemId: 1 }
+      ).lean();
+      foundRecipes.forEach((r) => recipeMap.set(String(r.menuItemId), r._id));
+    }
+
+    const normalizedItems = [];
+    for (const i of items) {
+      const n = normalizeItem(i);
+
+      if (Array.isArray(i.proofImages)) {
+        n.proofImages = i.proofImages.filter((img) => typeof img === "string");
+      } else {
+        n.proofImages = [];
+      }
+
+      if (i.image && typeof i.image === "string") {
+        n.image = i.image;
+      } else if (n.dishId && menuItemsMap.has(String(n.dishId))) {
+        const thumb = menuItemsMap.get(String(n.dishId));
+        if (thumb) n.image = thumb;
+      }
+
+      if (n.dishId && recipeMap.has(String(n.dishId))) {
+        n.recipeId = recipeMap.get(String(n.dishId));
+      }
+
+      normalizedItems.push(n);
+    }
+
+    const totals = computeTotals(normalizedItems);
+
+    const finalUserId = await ensureUserForOrder(userId, customer);
+
+    const prefix = orderType === "delivery" ? "DEL" : "TAKE";
+    const effectiveOrderCode = generateOrderCode(prefix, new Date(), null);
+
+    const shippingObj = buildShippingForOffPremise(
+      orderType,
+      shipping,
+      customer
+    );
+
+    const session = await mongoose.startSession();
+    try {
+      let createdOrderDoc = null;
+
+      await session.withTransaction(async () => {
+        const [newOrder] = await Order.create(
+          [
+            {
+              restaurantId: toId(restaurantId),
+              userId: finalUserId ? toId(finalUserId) : undefined,
+              orderCode: effectiveOrderCode,
+
+              orderType, // "takeaway" | "delivery"
+              shipping: shippingObj,
+              items: normalizedItems,
+              totals,
+              note,
+              currentStatus: "pending",
+              payment: {
+                method: "cash",
+                status: "pending",
+              },
+              statusTimeline: [
+                {
+                  status: "pending",
+                  at: new Date(),
+                  byUserId: finalUserId ? toId(finalUserId) : undefined,
+                  note: "Off-premise order created",
+                },
+              ],
+              clientMeta,
+            },
+          ],
+          { session }
+        );
+
+        createdOrderDoc = newOrder;
+
+        if (customer) {
+          await upsertTableCustomerFromOrder({
+            restaurantId,
+            orderCode: effectiveOrderCode,
+            customer,
+            note,
+            session,
+          });
+        }
+
+        const linesForInventory = buildInventoryLinesFromItems(normalizedItems);
+        if (linesForInventory.length) {
+          const effectiveWarehouseId = await resolveWarehouseIdOrDefault(
+            restaurantId,
+            warehouseId
+          );
+
+          await reserveForOrderTx({
+            restaurantId,
+            warehouseId: effectiveWarehouseId,
+            orderCode: effectiveOrderCode,
+            lines: linesForInventory,
+          });
+        }
+      });
+
+      await session.endSession();
+
+      if (createdOrderDoc && createdOrderDoc.orderType === "delivery") {
+        await createOrderTrackingEvent({
+          order: createdOrderDoc,
+          restaurantId,
+          eventType: "status_changed",
+          ctx,
+          payload: {
+            statusFrom: null,
+            statusTo: "pending",
+            note: "Delivery order created",
+          },
+        });
+      }
+
+      if (createdOrderDoc) {
+        await emitOrderEvent(
+          ctx,
+          restaurantId,
+          "ORDER_CREATED",
+          createdOrderDoc
+        );
+        return { order: createdOrderDoc.toJSON() };
+      }
+
+      throw new Error("Failed to create off-premise order");
+    } catch (err) {
+      await session.endSession();
+      throw new Error(err.message || "Failed to create off-premise order");
+    }
+  },
+
   async updateOrderStatus(_, { input }, ctx) {
     const { id, restaurantId, status, note, warehouseId } = input || {};
-
     if (!id) throw new Error("Missing order id");
     if (!status) throw new Error("Missing status");
 
     const filter = { _id: toId(id) };
-    if (restaurantId) {
-      filter.restaurantId = toId(restaurantId);
-    }
+    if (restaurantId) filter.restaurantId = toId(restaurantId);
 
     const order = await Order.findOne(filter);
     if (!order) throw new Error("Order not found");
@@ -381,112 +653,134 @@ export const OrderMutation = {
     const prevStatus = order.currentStatus;
     const linesForInventory = buildInventoryLinesFromItems(order.items);
 
-    // INVENTORY: xử lý trước khi ghi status order
     if (linesForInventory.length) {
       const wasReservable = RESERVABLE_STATUSES.includes(prevStatus);
 
-      // COMMIT reservation
       if (wasReservable && COMMIT_STATUSES.includes(status)) {
-        const effectiveWarehouseId = await resolveWarehouseIdOrDefault(
-          order.restaurantId || restaurantId,
+        const whId = await resolveWarehouseIdOrDefault(
+          order.restaurantId,
           warehouseId
         );
-
         await commitReservationForOrderTx({
           restaurantId: order.restaurantId,
-          warehouseId: effectiveWarehouseId,
+          warehouseId: whId,
           orderCode: order.orderCode,
           lines: linesForInventory,
         });
       }
 
-      // CANCEL reservation
       if (wasReservable && status === "cancelled") {
-        const effectiveWarehouseId = await resolveWarehouseIdOrDefault(
-          order.restaurantId || restaurantId,
+        const whId = await resolveWarehouseIdOrDefault(
+          order.restaurantId,
           warehouseId
         );
-
         await cancelReservationForOrderTx({
           restaurantId: order.restaurantId,
-          warehouseId: effectiveWarehouseId,
+          warehouseId: whId,
           orderCode: order.orderCode,
           lines: linesForInventory,
         });
       }
     }
 
-    // Nếu tới đây mà không lỗi → inventory OK → cập nhật status
     order.currentStatus = status;
-    order.statusTimeline = [
-      ...(order.statusTimeline || []),
-      {
-        status,
-        at: new Date(),
-        note,
-        byUserId: ctx?.user?.id,
-      },
-    ];
+    order.statusTimeline.push({
+      status,
+      at: new Date(),
+      note,
+      byUserId: ctx?.user?.id,
+    });
 
     await order.save();
 
-    await emitOrderEvent(
+    await createOrderTrackingEvent({
+      order,
+      restaurantId: order.restaurantId,
+      eventType: "status_changed",
       ctx,
-      order.restaurantId || restaurantId,
-      "ORDER_STATUS_CHANGED",
-      order
-    );
+      payload: {
+        statusFrom: prevStatus,
+        statusTo: status,
+        note,
+      },
+    });
 
+    await emitOrderEvent(ctx, order.restaurantId, "ORDER_STATUS_CHANGED", {
+      order,
+      meta: {
+        statusFrom: prevStatus,
+        statusTo: status,
+        note,
+      },
+    });
     return order.toJSON();
   },
 
   async updateOrderItemStatus(_, { input }, ctx) {
     const { restaurantId, orderId, itemKey, status, note } = input || {};
-    if (!orderId || !itemKey || !status)
-      throw new Error("Missing fields (orderId, itemKey, status)");
+    if (!orderId || !itemKey || !status) throw new Error("Missing fields");
 
     const filter = { _id: toId(orderId) };
-    if (restaurantId) {
-      filter.restaurantId = toId(restaurantId);
-    }
+    if (restaurantId) filter.restaurantId = toId(restaurantId);
 
     const order = await Order.findOne(filter);
     if (!order) throw new Error("Order not found");
 
-    const idx = order.items.findIndex((it, index) => {
-      const dk1 = it?._id && String(it._id) === String(itemKey);
-      const dk2 = it?.dishId && String(it.dishId) === String(itemKey);
-      const dk3 = it?.clientKey && String(it.clientKey) === String(itemKey);
-      const dk4 = String(index) === String(itemKey);
-      return dk1 || dk2 || dk3 || dk4;
-    });
+    const idx = order.items.findIndex(
+      (it, i) =>
+        String(it._id) === itemKey ||
+        String(it.dishId) === itemKey ||
+        String(i) === itemKey
+    );
+    if (idx === -1) throw new Error("Item not found");
 
-    if (idx === -1) throw new Error("Item not found in order");
+    const item = order.items[idx];
+    const prevItemStatus = item.status;
 
-    order.items[idx].status = status;
-    order.items[idx].statusTimeline = [
-      ...(order.items[idx].statusTimeline || []),
-      { status, at: new Date(), note, byUserId: ctx?.user?.id },
-    ];
+    item.status = status;
+
+    if (Array.isArray(item.statusTimeline)) {
+      item.statusTimeline.push({
+        status,
+        at: new Date(),
+        note,
+        byUserId: ctx?.user?.id,
+      });
+    }
 
     await order.save();
 
-    await emitOrderEvent(
+    await createOrderTrackingEvent({
+      order,
+      restaurantId: order.restaurantId,
+      eventType: "item_status_changed",
       ctx,
-      order.restaurantId || restaurantId,
-      "ORDER_ITEM_STATUS_CHANGED",
-      order
-    );
+      payload: {
+        itemId: item._id,
+        itemName: item.name,
+        itemStatusFrom: prevItemStatus,
+        itemStatusTo: status,
+        note,
+      },
+    });
 
+    await emitOrderEvent(ctx, order.restaurantId, "ORDER_ITEM_STATUS_CHANGED", {
+      order,
+      meta: {
+        itemId: item._id,
+        itemName: item.name,
+        statusFrom: prevItemStatus,
+        statusTo: status,
+        note,
+      },
+    });
     return { order: order.toJSON() };
   },
+
   async updateOrderCustomerByCode(_, { input }, ctx) {
     const { restaurantId, orderCode, userId, customer } = input || {};
-    if (!restaurantId || !orderCode) throw new Error("Missing fields");
-
     const finalUserId = await ensureUserForOrder(userId, customer);
 
-    // 1) Cập nhật Orders
     const res = await Order.updateMany(
       {
         restaurantId: toId(restaurantId),
@@ -496,21 +790,11 @@ export const OrderMutation = {
       { $set: { userId: finalUserId ? toId(finalUserId) : undefined } }
     );
 
-    // 2) Upsert TableCustomer theo orderCode
-    const anyOrder = await Order.findOne({
-      restaurantId: toId(restaurantId),
-      orderCode,
-    })
-      .select({ tableId: 1, tableCode: 1 })
-      .lean();
-
     await upsertTableCustomerFromOrder({
       restaurantId,
-      tableId: anyOrder?.tableId,
-      tableCode: anyOrder?.tableCode,
       orderCode,
       customer,
-      note: undefined,
+      session: null,
     });
 
     return { success: true, modifiedCount: res.modifiedCount };
@@ -526,35 +810,39 @@ export const OrderMutation = {
     if (!order) throw new Error("Order not found");
 
     const prevStatus = order.currentStatus;
-    const linesForInventory = buildInventoryLinesFromItems(order.items);
+    const lines = buildInventoryLinesFromItems(order.items);
 
-    // INVENTORY: nếu trước đó còn ở trạng thái reservable → trả lại kho (cancel reservation)
-    if (RESERVABLE_STATUSES.includes(prevStatus) && linesForInventory.length) {
-      const effectiveWarehouseId = await resolveWarehouseIdOrDefault(
-        restaurantId,
-        warehouseId
-      );
-
+    if (RESERVABLE_STATUSES.includes(prevStatus) && lines.length) {
+      const whId = await resolveWarehouseIdOrDefault(restaurantId, warehouseId);
       await cancelReservationForOrderTx({
         restaurantId,
-        warehouseId: effectiveWarehouseId,
+        warehouseId: whId,
         orderCode: order.orderCode,
-        lines: linesForInventory,
+        lines,
       });
     }
 
-    // Sau khi inventory OK → cập nhật order
     order.currentStatus = "cancelled";
-    order.statusTimeline = [
-      ...(order.statusTimeline || []),
-      {
-        status: "cancelled",
-        at: new Date(),
-        note: reason || "Cancelled by user",
-        byUserId: ctx?.user?.id,
-      },
-    ];
+    order.statusTimeline.push({
+      status: "cancelled",
+      at: new Date(),
+      note: reason || "Cancelled",
+      byUserId: ctx?.user?.id,
+    });
+
     await order.save();
+
+    await createOrderTrackingEvent({
+      order,
+      restaurantId,
+      eventType: "status_changed",
+      ctx,
+      payload: {
+        statusFrom: prevStatus,
+        statusTo: "cancelled",
+        note: reason || "Cancelled",
+      },
+    });
 
     await emitOrderEvent(ctx, restaurantId, "ORDER_CANCELLED", order);
     await markTableStatus(restaurantId, order.tableCode, "available");

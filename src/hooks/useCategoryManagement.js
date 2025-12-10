@@ -1,6 +1,7 @@
 // src/hooks/useCategoryManagement.js
 import { useQuery, useMutation, gql } from "@apollo/client";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import { useNotification } from "../hooks/useNotification";
 
 /* ===========================================
    CATEGORY (theo timeSlot)
@@ -48,6 +49,10 @@ const DELETE_CATEGORY = gql`
   }
 `;
 
+/* ===========================================
+   TOP CATEGORIES
+=========================================== */
+
 const TOP_CATEGORIES_BY_RESTAURANT = gql`
   query TopCategoriesByRestaurant(
     $restaurantId: ID!
@@ -77,7 +82,7 @@ const TOP_GLOBAL_CATEGORIES = gql`
 `;
 
 /* ===========================================
-   CATEGORY MENU (không phụ thuộc timeSlot)
+   CATEGORY MENU
 =========================================== */
 
 const GET_CATEGORY_MENUS = gql`
@@ -125,35 +130,43 @@ const DELETE_CATEGORY_MENU = gql`
 `;
 
 /* ===========================================
-   HOOK CHÍNH
+   MAIN HOOK
 =========================================== */
 
 export const useCategoryManagement = ({
   restaurantId,
   timeSlot,
   limit = 6,
+  loadCategories = true,
+  loadTopCategories = true,
+  loadCategoryMenus = true,
 }) => {
+  const { showNotification } = useNotification();
   const isGlobal = !restaurantId;
 
-  /* -------------------------
-        1) CATEGORY LIST
-  ------------------------- */
+  /* ---------------------------------------
+      1) CATEGORY LIST
+  ---------------------------------------- */
+
+  const skipCategories = !restaurantId || !timeSlot || !loadCategories;
+
   const {
-    data: categoriesData,
-    loading: categoriesLoading,
-    error: categoriesError,
+    data: catData,
+    loading: catLoading,
+    error: catError,
     refetch: refetchCategories,
   } = useQuery(GET_CATEGORIES, {
+    skip: skipCategories,
     variables: { restaurantId, timeSlot },
-    skip: !restaurantId || !timeSlot,
     fetchPolicy: "cache-and-network",
   });
 
-  const categories = categoriesData?.categories || [];
+  const categories = useMemo(() => catData?.categories || [], [catData]);
 
-  /* -------------------------
-        2) TOP CATEGORY LIST
-  ------------------------- */
+  /* ---------------------------------------
+      2) TOP CATEGORIES
+  ---------------------------------------- */
+
   const topQuery = isGlobal
     ? TOP_GLOBAL_CATEGORIES
     : TOP_CATEGORIES_BY_RESTAURANT;
@@ -162,27 +175,27 @@ export const useCategoryManagement = ({
     ? { timeSlot, limit }
     : { restaurantId, timeSlot, limit };
 
-  const skipTop = isGlobal ? false : !restaurantId || !timeSlot;
+  const skipTop = !loadTopCategories || !timeSlot;
 
   const {
-    data: topCatData,
-    loading: topCatLoading,
-    error: topCatError,
+    data: topData,
+    loading: topLoading,
+    error: topError,
     refetch: refetchTopCategories,
   } = useQuery(topQuery, {
-    variables: topVariables,
     skip: skipTop,
+    variables: topVariables,
     fetchPolicy: "cache-and-network",
   });
 
-  const topCategories =
-    (isGlobal
-      ? topCatData?.topGlobalCategoriesByMenuItemCount
-      : topCatData?.topCategoriesByMenuItemCount) || [];
+  const topCategories = useMemo(() => {
+    if (isGlobal) return topData?.topGlobalCategoriesByMenuItemCount || [];
+    return topData?.topCategoriesByMenuItemCount || [];
+  }, [topData, isGlobal]);
 
-  /* -------------------------
-        3) CATEGORY MUTATIONS
-  ------------------------- */
+  /* ---------------------------------------
+      3) CATEGORY MUTATIONS
+  ---------------------------------------- */
 
   const [createCategoryMut] = useMutation(CREATE_CATEGORY);
   const [updateCategoryMut] = useMutation(UPDATE_CATEGORY);
@@ -190,121 +203,215 @@ export const useCategoryManagement = ({
 
   const createCategory = useCallback(
     async (input) => {
-      const { data } = await createCategoryMut({
-        variables: { input },
-      });
-      refetchCategories?.();
-      refetchTopCategories?.();
-      return data?.createCategory;
+      try {
+        const { data } = await createCategoryMut({ variables: { input } });
+
+        showNotification("Tạo danh mục thành công", "success");
+
+        refetchCategories?.();
+        refetchTopCategories?.();
+
+        return data?.createCategory;
+      } catch (err) {
+        showNotification(err?.message || "Lỗi tạo danh mục", "error");
+        return null;
+      }
     },
     [createCategoryMut, refetchCategories, refetchTopCategories]
   );
 
   const updateCategory = useCallback(
     async (input) => {
-      const { data } = await updateCategoryMut({
-        variables: { input },
-      });
-      refetchCategories?.();
-      refetchTopCategories?.();
-      return data?.updateCategory;
+      try {
+        const { data } = await updateCategoryMut({ variables: { input } });
+
+        showNotification("Cập nhật danh mục thành công", "success");
+
+        refetchCategories?.();
+        refetchTopCategories?.();
+
+        return data?.updateCategory;
+      } catch (err) {
+        showNotification(err?.message || "Lỗi cập nhật danh mục", "error");
+        return null;
+      }
     },
     [updateCategoryMut, refetchCategories, refetchTopCategories]
   );
 
   const deleteCategory = useCallback(
     async (id) => {
-      await deleteCategoryMut({ variables: { id } });
-      refetchCategories?.();
-      refetchTopCategories?.();
-      return true;
+      try {
+        await deleteCategoryMut({ variables: { id } });
+
+        showNotification("Đã xóa danh mục", "success");
+
+        refetchCategories?.();
+        refetchTopCategories?.();
+
+        return true;
+      } catch (err) {
+        showNotification(err?.message || "Lỗi xóa danh mục", "error");
+        return false;
+      }
     },
     [deleteCategoryMut, refetchCategories, refetchTopCategories]
   );
 
-  /* -------------------------
-        4) CATEGORY MENU LIST
-  ------------------------- */
+  /* ---------------------------------------
+      4) CATEGORY MENUS
+  ---------------------------------------- */
+
+  const skipMenu = !restaurantId || !loadCategoryMenus;
 
   const {
-    data: categoryMenuData,
-    loading: categoryMenuLoading,
-    error: categoryMenuError,
-    refetch: refetchCategoryMenu,
+    data: catMenuData,
+    loading: catMenuLoading,
+    error: catMenuError,
+    refetch: refetchCategoryMenus,
   } = useQuery(GET_CATEGORY_MENUS, {
+    skip: skipMenu,
     variables: { restaurantId },
-    skip: !restaurantId,
     fetchPolicy: "cache-and-network",
   });
 
-  const categoryMenus = categoryMenuData?.categoryMenus || [];
+  const categoryMenus = useMemo(
+    () => catMenuData?.categoryMenus || [],
+    [catMenuData]
+  );
 
-  /* -------------------------
-        5) CATEGORY MENU MUTATIONS
-  ------------------------- */
+  /* ---------------------------------------
+      5) CATEGORY MENU MUTATIONS (Optimized)
+  ---------------------------------------- */
 
-  const [createCategoryMenuMut] = useMutation(CREATE_CATEGORY_MENU);
-  const [updateCategoryMenuMut] = useMutation(UPDATE_CATEGORY_MENU);
-  const [deleteCategoryMenuMut] = useMutation(DELETE_CATEGORY_MENU);
+  const [createCategoryMenuMut] = useMutation(CREATE_CATEGORY_MENU, {
+    optimisticResponse: ({ input }) => ({
+      createCategoryMenu: {
+        __typename: "CategoryMenu",
+        id: "optimistic-" + Math.random().toString(36).slice(2),
+        name: input.name,
+        description: input.description || null,
+        coverImage: input.coverImage || null,
+        isActive: true,
+      },
+    }),
+
+    update(cache, { data }) {
+      const newItem = data?.createCategoryMenu;
+      if (!newItem) return;
+
+      try {
+        const existing = cache.readQuery({
+          query: GET_CATEGORY_MENUS,
+          variables: { restaurantId },
+        });
+
+        cache.writeQuery({
+          query: GET_CATEGORY_MENUS,
+          variables: { restaurantId },
+          data: {
+            categoryMenus: [newItem, ...(existing?.categoryMenus || [])],
+          },
+        });
+      } catch {}
+    },
+  });
 
   const createCategoryMenu = useCallback(
     async (input) => {
-      const { data } = await createCategoryMenuMut({ variables: { input } });
-      refetchCategoryMenu?.();
-      return data?.createCategoryMenu;
+      try {
+        const { data } = await createCategoryMenuMut({
+          variables: { input },
+        });
+
+        showNotification("Tạo danh mục gốc thành công", "success");
+
+        refetchCategoryMenus?.(); // chạy nền
+
+        return data?.createCategoryMenu;
+      } catch (err) {
+        showNotification(err?.message || "Lỗi tạo danh mục gốc", "error");
+        return null;
+      }
     },
-    [createCategoryMenuMut, refetchCategoryMenu]
+    [createCategoryMenuMut, refetchCategoryMenus]
   );
+
+  const [updateCategoryMenuMut] = useMutation(UPDATE_CATEGORY_MENU);
 
   const updateCategoryMenu = useCallback(
     async (input) => {
-      const { data } = await updateCategoryMenuMut({ variables: { input } });
-      refetchCategoryMenu?.();
-      return data?.updateCategoryMenu;
+      try {
+        const { data } = await updateCategoryMenuMut({
+          variables: { input },
+        });
+
+        showNotification("Cập nhật danh mục gốc thành công", "success");
+
+        refetchCategoryMenus?.();
+        return data?.updateCategoryMenu;
+      } catch (err) {
+        showNotification(err?.message || "Lỗi cập nhật danh mục gốc", "error");
+        return null;
+      }
     },
-    [updateCategoryMenuMut, refetchCategoryMenu]
+    [updateCategoryMenuMut, refetchCategoryMenus]
   );
+
+  const [deleteCategoryMenuMut] = useMutation(DELETE_CATEGORY_MENU);
 
   const deleteCategoryMenu = useCallback(
     async (id) => {
-      await deleteCategoryMenuMut({ variables: { id } });
-      refetchCategoryMenu?.();
-      return true;
+      try {
+        await deleteCategoryMenuMut({ variables: { id } });
+
+        showNotification("Đã xóa danh mục gốc", "success");
+
+        refetchCategoryMenus?.();
+        return true;
+      } catch (err) {
+        showNotification(err?.message || "Lỗi xóa danh mục gốc", "error");
+        return false;
+      }
     },
-    [deleteCategoryMenuMut, refetchCategoryMenu]
+    [deleteCategoryMenuMut, refetchCategoryMenus]
   );
 
-  /* -------------------------
-        6) COMBINED RETURN
-  ------------------------- */
+  /* ---------------------------------------
+      RETURN OBJECT
+  ---------------------------------------- */
 
   return {
     // CATEGORY
     categories,
-    topCategories,
-    categoriesLoading,
-    categoriesError,
-    topCategoriesLoading: topCatLoading,
-    topCategoriesError: topCatError,
+    categoriesLoading: !skipCategories && catLoading,
+    categoriesError: !skipCategories && catError,
 
+    // TOP CATEGORY
+    topCategories,
+    topCategoriesLoading: !skipTop && topLoading,
+    topCategoriesError: !skipTop && topError,
+
+    // CATEGORY MUTATIONS
     createCategory,
     updateCategory,
     deleteCategory,
 
-    // CATEGORY MENU
+    // CATEGORY MENUS
     categoryMenus,
-    categoryMenuLoading,
-    categoryMenuError,
+    categoryMenuLoading: catMenuLoading,
+    categoryMenuError: catMenuError,
 
+    // CATEGORY MENU MUTATIONS
     createCategoryMenu,
     updateCategoryMenu,
     deleteCategoryMenu,
 
-    // UTILITIES
+    // REFRESH ALL
     refetchAll: () => {
       refetchCategories?.();
       refetchTopCategories?.();
-      refetchCategoryMenu?.();
+      refetchCategoryMenus?.();
     },
 
     isGlobal,

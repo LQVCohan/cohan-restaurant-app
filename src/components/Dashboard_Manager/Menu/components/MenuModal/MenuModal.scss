@@ -1,0 +1,525 @@
+// src/pages/Restaurant/MenuManagement/components/MenuModal/MenuModal.scss
+
+$primary: #3b82f6;
+$primary-hover: #2563eb;
+$dark: #1e293b;
+$gray: #64748b;
+$border: #e2e8f0;
+$white: #ffffff;
+$overlay-bg: rgba(15, 23, 42, 0.6);
+
+/* ... Giữ nguyên các class overlay, container, header cũ ... */
+.menu-modal__overlay {
+  position: fixed;
+  inset: 0;
+  background-color: $overlay-bg;
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: menuModal-fadeIn 0.2s ease-out;
+}
+
+.menu-modal__container {
+  background: $white;
+  width: 100%;
+  max-width: 550px;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: menuModal-slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.menu-modal__header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid $border;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+
+  h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: $dark;
+  }
+}
+
+.menu-modal__close-btn {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  color: $gray;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #fee2e2;
+    color: #ef4444;
+  }
+}
+
+/* Form Styles */
+.menu-modal__form {
+  display: flex;
+  flex-direction: column;
+  // Quan trọng: để dropdown hiển thị đè lên footer nếu cần
+  position: relative;
+}
+
+.menu-modal__content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  // Chỉnh lại chiều cao nếu cần
+  max-height: calc(85vh - 130px);
+  overflow-y: visible; /* Để dropdown không bị cắt */
+
+  @media (max-height: 700px) {
+    overflow-y: auto;
+  }
+}
+
+.menu-modal__form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.menu-modal__label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: $dark;
+}
+
+.menu-modal__req {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+.menu-modal__input,
+.menu-modal__textarea,
+.menu-modal__select-wrapper select {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid $border;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: $dark;
+  outline: none;
+  background: $white;
+  transition: border 0.2s, box-shadow 0.2s;
+
+  &::placeholder {
+    color: #cbd5e1;
+  }
+
+  &:focus {
+    border-color: $primary;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+}
+
+.menu-modal__input--error {
+  border-color: #ef4444 !important;
+}
+
+.menu-modal__error-text {
+  font-size: 0.78rem;
+  color: #ef4444;
+  margin: 0;
+}
+
+.menu-modal__row {
+  display: flex;
+  gap: 1rem;
+  @media (max-width: 500px) {
+    flex-direction: column;
+  }
+}
+
+.menu-modal__col {
+  flex: 1;
+}
+
+/* === CUSTOM DROPDOWN STYLES (MỚI) === */
+.menu-modal__category-select {
+  position: relative;
+  width: 100%;
+}
+
+.menu-modal__category-display {
+  width: 100%;
+  min-height: 42px; /* Đồng bộ chiều cao với input */
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid $border;
+  background: $white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s;
+  user-select: none;
+
+  &:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+  }
+}
+
+.menu-modal__category-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 50; /* Cao hơn các thành phần khác */
+  background: $white;
+  border-radius: 8px;
+  border: 1px solid $border;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  animation: menuModal-fadeIn 0.15s ease-out;
+}
+
+.menu-modal__category-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+
+  /* Scrollbar mỏng */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+}
+
+.menu-modal__category-empty {
+  padding: 1rem;
+  text-align: center;
+  color: $gray;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.menu-modal__category-option {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: $dark;
+  border-bottom: 1px solid #f1f5f9;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: #f1f5f9;
+  }
+
+  &.is-selected {
+    background: #eff6ff;
+    color: $primary;
+    font-weight: 600;
+  }
+}
+
+.menu-modal__category-add {
+  border-top: 1px solid $border;
+  padding: 0.5rem;
+  background: #f8fafc;
+}
+
+.menu-modal__category-add-btn {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px dashed #cbd5e1;
+  background: $white;
+  color: $primary;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: $primary;
+    background: #eff6ff;
+  }
+}
+
+.menu-modal__category-add-inline {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+
+  .menu-modal__input--sm {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    height: 34px;
+  }
+}
+
+.menu-modal__btn--sm {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 18px; /* Đảm bảo icon nhìn thấy */
+  line-height: 1;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: #fff; /* hoặc #0f172a tùy theme */
+  }
+}
+.menu-modal__btn--sm.primary {
+  background: #3b82f6;
+  border: none;
+}
+
+.menu-modal__btn--sm.ghost {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+
+  svg {
+    color: #0f172a;
+  }
+}
+/* ... Giữ nguyên phần Image Row, Toggle, Footer ... */
+.menu-modal__select-wrapper select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #94a3b8 50%),
+    linear-gradient(135deg, #94a3b8 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.menu-modal__image-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.menu-modal__input-with-icon {
+  position: relative;
+  flex: 1;
+}
+
+.menu-modal__field-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: $gray;
+}
+
+.menu-modal__input-with-icon .menu-modal__input {
+  padding-left: 2.2rem;
+}
+
+.menu-modal__img-preview {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid $border;
+  overflow: hidden;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.menu-modal__img-placeholder {
+  color: #cbd5e1;
+  font-size: 1.2rem;
+}
+
+.menu-modal__textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.menu-modal__toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: #f8fafc;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid $border;
+}
+
+.menu-modal__switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+}
+
+.menu-modal__slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #cbd5e1;
+  transition: 0.4s;
+}
+
+.menu-modal__slider--round {
+  border-radius: 34px;
+
+  &::before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: $white;
+    transition: 0.4s;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.menu-modal__switch input:checked + .menu-modal__slider {
+  background-color: $primary;
+}
+
+.menu-modal__switch input:checked + .menu-modal__slider--round::before {
+  transform: translateX(20px);
+}
+
+.menu-modal__toggle-text {
+  display: flex;
+  flex-direction: column;
+
+  span {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: $dark;
+  }
+
+  small {
+    color: $gray;
+    font-size: 0.75rem;
+  }
+}
+
+.menu-modal__footer {
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid $border;
+  background: #f8fafc;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.menu-modal__btn {
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s;
+}
+
+.menu-modal__btn--ghost {
+  border: 1px solid $border;
+  background: $white;
+  color: $gray;
+
+  &:hover {
+    background: #f1f5f9;
+    color: $dark;
+  }
+}
+
+.menu-modal__btn--primary {
+  border: none;
+  background: $primary;
+  color: $white;
+  font-weight: 600;
+
+  &:hover {
+    background: $primary-hover;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: default;
+    box-shadow: none;
+  }
+}
+
+@keyframes menuModal-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes menuModal-slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

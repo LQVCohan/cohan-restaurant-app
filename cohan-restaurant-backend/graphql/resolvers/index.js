@@ -21,7 +21,7 @@ import staff from "./staff/index.js";
 import review from "./review/index.js";
 import reviewComment from "./review_comment/index.js";
 import cart from "./cart/index.js";
-
+import shippingTracking from "./shippingTracking/index.js";
 // 🆕 Thêm search module
 import search from "./search/index.js";
 
@@ -48,7 +48,7 @@ export default {
     ...(review.Query || {}),
     ...(reviewComment.Query || {}),
     ...(cart.Query || {}),
-
+    ...(shippingTracking.Query || {}),
     ...(search.Query || {}),
   },
 
@@ -73,6 +73,7 @@ export default {
     ...(review.Mutation || {}),
     ...(reviewComment.Mutation || {}),
     ...(cart.Mutation || {}),
+    ...(shippingTracking.Mutation || {}),
   },
 
   // ============================
@@ -93,6 +94,7 @@ export default {
   ...(order.Order ? { Order: order.Order } : {}),
 
   ...(menu.MenuItem ? { MenuItem: menu.MenuItem } : {}),
+  ...(menu.Menu ? { Menu: menu.Menu } : {}),
   ...(cart.Cart ? { Cart: cart.Cart } : {}),
   ...(cart.CartItem ? { CartItem: cart.CartItem } : {}),
 

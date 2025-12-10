@@ -205,9 +205,7 @@ const TableManagement = () => {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() =>
-              navigate(`/manager/dashboard/floor-map/${restaurantId}`)
-            }
+            onClick={() => navigate(`/manager/floor-map/${restaurantId}`)}
           >
             🗺️ Thiết kế Sơ đồ
           </Button>

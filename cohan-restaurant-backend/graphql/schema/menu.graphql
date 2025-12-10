@@ -37,7 +37,7 @@ type Menu {
   name: String
   description: String
   coverImage: String
-  isActive: Boolean
+  isActive: Boolean!
   createdAt: DateTime
   updatedAt: DateTime
   categoryMenu: CategoryMenu
@@ -91,13 +91,14 @@ input UpdateMenuItemBasicInput {
   description: String
   categoryId: ID
 }
-
 input EnsureMenuInput {
   restaurantId: ID!
   timeSlot: TimeSlot!
-  name: String
+  name: String!
   description: String
   coverImage: String
+  isActive: Boolean
+  categoryMenuId: ID
 }
 
 input CreateMenuItemInput {

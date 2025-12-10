@@ -15,6 +15,12 @@ const FRAG_MENU = gql`
     isActive
     createdAt
     updatedAt
+    categoryMenu {
+      id
+      name
+      description
+      isActive
+    }
   }
 `;
 
@@ -476,10 +482,25 @@ export default function useMenuManagement({
   /* ---- Public API ---- */
 
   const ensureMenu = useCallback(
-    async ({ timeSlot, name, description, coverImage }) => {
+    async ({
+      timeSlot,
+      name,
+      description,
+      coverImage,
+      isActive,
+      categoryMenuId,
+    }) => {
       const { data } = await ensureMenuMut({
         variables: {
-          input: { restaurantId, timeSlot, name, description, coverImage },
+          input: {
+            restaurantId,
+            timeSlot,
+            name,
+            description,
+            coverImage,
+            isActive,
+            categoryMenuId,
+          },
         },
       });
       return data?.ensureMenu || null;

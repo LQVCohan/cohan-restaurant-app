@@ -1,28 +1,36 @@
+// src/pages/Restaurant/MenuManagement/components/CompactMenuStrip/CompactMenuStrip.scss
+
 // --- Variables ---
 $primary: #3b82f6;
-$dark: #1e293b;
+$primary-hover: #2563eb;
+$dark: #0f172a;
 $gray: #64748b;
 $white: #ffffff;
-$border: #e2e8f0;
+$border: #cbd5e1; // Đậm hơn một chút để viền nút rõ hơn
+$danger: #ef4444;
+$bg-soft: #f8fafc;
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
 $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
   0 4px 6px -4px rgba(0, 0, 0, 0.05);
 
 .compact-menu-strip {
   background: $white;
-  border-radius: 12px;
+  border-radius: 16px;
   border: 1px solid $border;
-  padding: 1.25rem;
+  padding: 1.5rem;
   font-family: "Inter", sans-serif;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   transition: all 0.3s ease;
-  overflow: hidden;
 
-  // Trạng thái thu gọn: giảm padding, bỏ gap thừa
+  // QUAN TRỌNG: Xóa overflow: hidden để không bị cắt nút/shadow
+  // overflow: hidden;
+  box-shadow: $shadow-sm;
+
   &.collapsed {
     gap: 0;
-    padding-bottom: 1rem;
+    padding-bottom: 1.25rem;
     .strip-header {
       margin-bottom: 0;
     }
@@ -33,35 +41,37 @@ $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap; // Đề phòng màn hình nhỏ bị vỡ layout
+    gap: 1rem;
 
     .header-info {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 1rem;
+
       .icon-wrapper {
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         background: #eff6ff;
         color: $primary;
-        border-radius: 10px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0; // Không bị co lại
       }
+
       .text-wrapper {
         h3 {
           margin: 0;
-          font-size: 1.1rem;
+          font-size: 1.15rem;
           font-weight: 700;
           color: $dark;
         }
         p {
-          margin: 0;
-          font-size: 0.8rem;
+          margin: 2px 0 0 0;
+          font-size: 0.85rem;
           color: $gray;
-          strong {
-            color: $primary;
-          }
         }
       }
     }
@@ -69,20 +79,23 @@ $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.75rem;
 
       .nav-group {
         display: flex;
-        gap: 0.25rem;
+        gap: 0.5rem;
         margin-right: 0.5rem;
+        padding-right: 0.75rem;
+        border-right: 1px solid $border;
       }
 
+      // Nút điều hướng & Nút collapse
       .nav-btn,
       .toggle-collapse-btn {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        border: 1px solid $border;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: 1px solid $border; // Viền đậm hơn để dễ nhìn
         background: $white;
         color: $gray;
         cursor: pointer;
@@ -90,6 +103,13 @@ $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
         align-items: center;
         justify-content: center;
         transition: all 0.2s;
+
+        // Đảm bảo icon bên trong hiển thị
+        svg {
+          display: block;
+          font-size: 1.2rem;
+        }
+
         &:hover {
           border-color: $primary;
           color: $primary;
@@ -97,23 +117,27 @@ $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
         }
       }
 
+      // Nút Thêm Mới (Primary)
       .btn-primary-add {
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0 1rem;
-        height: 32px;
+        padding: 0 1.2rem;
+        height: 36px;
         background: $primary;
         color: $white;
         border: none;
-        border-radius: 8px;
+        border-radius: 10px;
         font-weight: 600;
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         cursor: pointer;
         white-space: nowrap;
+        box-shadow: 0 2px 4px rgba($primary, 0.3);
+
         &:hover {
-          background: darken($primary, 5%);
+          background: $primary-hover;
         }
+
         .text {
           @media (max-width: 600px) {
             display: none;
@@ -126,194 +150,231 @@ $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
   // --- Scroll Area ---
   .cards-viewport {
     position: relative;
-    margin: 0 -1.25rem;
+    // Tăng margin/padding để không bị cắt shadow
+    margin: 0 -1.5rem;
+
     .cards-track {
       display: flex;
-      gap: 1rem;
-      padding: 0.25rem 1.25rem 1rem 1.25rem;
+      gap: 1.25rem;
+      padding: 0.5rem 1.5rem 1.5rem 1.5rem;
       overflow-x: auto;
       scroll-behavior: smooth;
+
+      // Ẩn thanh cuộn nhưng vẫn cuộn được
       -ms-overflow-style: none;
       scrollbar-width: none;
       &::-webkit-scrollbar {
         display: none;
       }
+
       .spacer-right {
         min-width: 1px;
       }
     }
   }
 
-  // --- Card Styles ---
+  // --- Menu Card ---
   .menu-card {
     min-width: 280px;
     max-width: 280px;
     background: $white;
     border: 1px solid $border;
-    border-radius: 10px;
+    border-radius: 12px;
     position: relative;
     display: flex;
     flex-direction: column;
     cursor: pointer;
-    transition: all 0.3s ease;
-
-    // Đảm bảo card không che mất toolbar khi hover
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     z-index: 1;
 
     &:hover {
-      transform: translateY(-4px);
+      transform: translateY(-5px);
       box-shadow: $shadow-hover;
-      border-color: rgba($primary, 0.4);
-      z-index: 10; // Đưa card lên trên cùng khi hover để toolbar không bị che bởi card bên cạnh
-
-      .action-toolbar {
-        opacity: 1;
-        visibility: visible;
-        transform: translate(-50%, 0); // Vị trí chuẩn khi hiện
-      }
+      border-color: rgba($primary, 0.5);
+      z-index: 10;
     }
 
     &.is-selected {
       border-color: $primary;
-      box-shadow: 0 0 0 2px rgba($primary, 0.1);
+      box-shadow: 0 0 0 2px rgba($primary, 0.15);
+
       .active-indicator {
         position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
+        top: -1px;
+        left: 12px;
+        right: 12px;
         height: 3px;
         background: $primary;
-        border-radius: 3px 3px 0 0;
+        border-radius: 0 0 4px 4px;
+        z-index: 20;
       }
     }
 
-    &.is-disabled {
-      opacity: 0.7;
-      .img-holder img {
-        filter: grayscale(100%);
-      }
-    }
-
+    // --- Card Top (Image) ---
     .card-top {
       position: relative;
-      height: 130px;
-      border-radius: 10px 10px 0 0;
+      height: 140px;
+      border-radius: 12px 12px 0 0;
       overflow: hidden;
+
       .img-holder {
         width: 100%;
         height: 100%;
+        background: #e2e8f0;
+        position: relative;
+
         img {
           width: 100%;
           height: 100%;
           object-fit: cover;
         }
-      }
-      .badges {
-        position: absolute;
-        top: 8px;
-        left: 8px;
-        display: flex;
-        gap: 4px;
-        span {
-          font-size: 0.65rem;
-          font-weight: 700;
-          padding: 2px 8px;
-          border-radius: 12px;
-          background: white;
+
+        .img-placeholder {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 2rem;
+          color: #94a3b8;
+        }
+
+        // Badge tên danh mục (Sửa lỗi hiển thị)
+        .category-overlay-badge {
+          position: absolute;
+          bottom: 8px;
+          right: 8px;
+          z-index: 5;
+          background: rgba(15, 23, 42, 0.85); // Nền tối đậm hơn
+          color: $white;
+          font-size: 0.7rem;
+          font-weight: 600;
+          padding: 4px 10px;
+          border-radius: 6px;
+          backdrop-filter: blur(2px);
+          pointer-events: none;
         }
       }
+
+      .badges {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        z-index: 5;
+
+        .slot-badge,
+        .status-badge {
+          font-size: 0.65rem;
+          font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 6px;
+          background: $white;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+          color: $dark; // Fallback color
+        }
+      }
+
+      // Nút 3 chấm
       .more-opt {
         position: absolute;
         top: 8px;
         right: 8px;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.9);
-        border: none;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(0, 0, 0, 0.05);
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
+        z-index: 10;
+        color: $gray;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
         &:hover {
-          background: white;
           color: $primary;
+          background: $white;
         }
       }
     }
 
+    // --- Card Body ---
     .card-body {
-      padding: 0.75rem;
+      padding: 1rem 1rem 3.5rem 1rem; // Padding bottom lớn để chừa chỗ cho toolbar
       flex: 1;
       display: flex;
       flex-direction: column;
+      position: relative; // Context cho absolute children
+
       h3 {
-        margin: 0 0 0.25rem 0;
-        font-size: 0.95rem;
+        margin: 0 0 0.5rem 0;
+        font-size: 1rem;
         font-weight: 700;
         color: $dark;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
+
       .desc {
-        margin: 0 0 0.75rem 0;
-        font-size: 0.75rem;
+        margin: 0 0 0.5rem 0;
+        font-size: 0.8rem;
         color: $gray;
-        height: 2.2em;
-        overflow: hidden;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
+        overflow: hidden;
       }
+
       .stats-row {
-        margin-top: auto;
+        margin-top: auto; // Đẩy xuống đáy phần content còn lại
         display: flex;
         justify-content: space-between;
-        padding-top: 0.5rem;
-        border-top: 1px solid #f1f5f9;
+        align-items: center;
+        padding-top: 0.75rem;
+        border-top: 1px dashed $border;
+
         .stat {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
           font-size: 0.75rem;
           color: $gray;
           strong {
             color: $dark;
           }
-          .ic.star {
-            color: #eab308;
-          }
-          .ic.grow {
-            color: #10b981;
-          }
         }
       }
     }
 
-    // --- Action Toolbar Fix ---
+    // --- ACTION TOOLBAR (ĐÃ SỬA: LUÔN HIỂN THỊ) ---
     .action-toolbar {
       position: absolute;
-      bottom: 12px; // Cách đáy 12px
+      bottom: 12px; // Nằm ở đáy card
       left: 50%;
-      transform: translate(-50%, 10px); // Ban đầu thụt xuống một chút
+      transform: translateX(-50%); // Căn giữa
 
       display: flex;
       align-items: center;
-      gap: 4px;
-      background: $dark;
-      padding: 4px 6px;
-      border-radius: 20px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      gap: 6px;
 
-      opacity: 0;
-      visibility: hidden;
-      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); // Hiệu ứng nảy nhẹ
-      z-index: 20; // Luôn nằm trên các thành phần khác trong card
+      background: $dark;
+      padding: 5px 6px;
+      border-radius: 99px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 20;
+
+      // SỬA LỖI: Luôn hiển thị (không cần hover)
+      opacity: 1;
+      visibility: visible;
 
       .divider {
         width: 1px;
-        height: 12px;
+        height: 14px;
         background: rgba(255, 255, 255, 0.2);
         margin: 0 2px;
       }
@@ -321,35 +382,38 @@ $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
       .tool-btn {
         background: transparent;
         border: none;
-        color: rgba(255, 255, 255, 0.8);
-        padding: 4px 8px;
-        border-radius: 12px;
+        color: rgba(255, 255, 255, 0.85); // Màu sáng để nổi bật trên nền tối
+        padding: 6px 12px;
+        border-radius: 20px;
         cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
         font-size: 0.75rem;
-        font-weight: 500;
+        font-weight: 600;
+        transition: all 0.2s;
 
         &:hover {
-          color: white;
-          background: rgba(255, 255, 255, 0.15);
+          color: $white;
+          background: rgba(255, 255, 255, 0.2);
         }
 
         &.edit {
           background: $primary;
-          color: white;
+          color: $white;
           &:hover {
             background: lighten($primary, 5%);
           }
         }
+
         &.delete:hover {
-          background: #ef4444;
-          color: white;
+          color: $danger;
+          background: rgba(239, 68, 68, 0.1);
         }
+
         &.icon-only {
-          padding: 4px;
-          border-radius: 50%;
+          padding: 6px;
+          aspect-ratio: 1;
         }
       }
     }
@@ -357,39 +421,43 @@ $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
 
   // --- Ghost Card ---
   .menu-card.ghost-card {
-    min-width: 140px;
-    max-width: 140px; // Nhỏ hơn card thường
+    min-width: 160px;
+    max-width: 160px;
     border: 2px dashed $border;
-    background: #fdfdfd;
+    background: #f9fafb;
     box-shadow: none;
     justify-content: center;
     align-items: center;
+
     .ghost-content {
       text-align: center;
       .circle-plus {
-        width: 40px;
-        height: 40px;
-        margin: 0 auto 0.5rem auto;
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 0.75rem auto;
         border-radius: 50%;
-        background: #f1f5f9;
+        background: $white;
+        border: 1px solid $border;
         color: $gray;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.3s;
+        transition: all 0.2s;
       }
       h4 {
         margin: 0;
-        font-size: 0.8rem;
+        font-size: 0.9rem;
         color: $gray;
       }
     }
+
     &:hover {
       border-color: $primary;
-      transform: translateY(-2px);
+      background: #eff6ff;
       .circle-plus {
         background: $primary;
-        color: white;
+        color: $white;
+        border-color: $primary;
       }
       h4 {
         color: $primary;

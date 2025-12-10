@@ -3,24 +3,25 @@ import fp from "fastify-plugin";
 import multipart from "@fastify/multipart";
 import path from "node:path";
 import fs from "node:fs/promises";
-import fscb from "node:fs";
+// import fscb from "node:fs"; // Không cần dùng cái này nữa vì sharp sẽ lo việc ghi file
 import crypto from "node:crypto";
 import fastifyStatic from "@fastify/static";
 import process from "node:process";
+import sharp from "sharp"; // [NEW] Import sharp
+
 const ensureDir = async (dir) => {
   await fs.mkdir(dir, { recursive: true });
 };
 
 export default fp(
   async function uploadRoutes(app) {
-    // multipart 1 lần
     if (!app.hasContentTypeParser("multipart")) {
       await app.register(multipart, {
-        limits: { fileSize: 5 * 1024 * 1024, files: 1 }, // 5MB
+        limits: { fileSize: 10 * 1024 * 1024, files: 1 }, // Tăng lên 10MB cho thoải mái xử lý
+        attachFieldsToBody: false, // Quan trọng: để tự xử lý stream
       });
     }
 
-    // mount static /uploads
     const uploadRoot = path.resolve(
       process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads")
     );
@@ -30,48 +31,55 @@ export default fp(
       root: uploadRoot,
       prefix: "/uploads/",
       decorateReply: false,
-      setHeaders(res, pathName) {
-        res.setHeader("Access-Control-Allow-Origin", "*"); // hoặc chỉ định FE origin
+      setHeaders(res) {
+        res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
       },
     });
 
-    const randomName = (ext = "") =>
-      `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${
-        ext ? "." + ext.replace(/^\./, "") : ""
-      }`;
+    // Hàm tạo tên file ngẫu nhiên (Luôn đuôi .webp)
+    const randomName = () =>
+      `${Date.now()}-${crypto.randomBytes(6).toString("hex")}.webp`;
 
     app.post("/upload", async function (req, reply) {
-      const file = await req.file();
-      if (!file) return reply.code(400).send({ ok: false, message: "No file" });
+      try {
+        const data = await req.file();
+        if (!data)
+          return reply.code(400).send({ ok: false, message: "No file" });
 
-      const ext = (file.filename?.split(".").pop() || "").toLowerCase();
-      const allowed = ["jpg", "jpeg", "png", "webp", "gif"];
-      if (!allowed.includes(ext)) {
-        return reply.code(400).send({ ok: false, message: "Unsupported type" });
+        // 1. Convert Stream sang Buffer để Sharp xử lý
+        // (Lưu ý: Với file < 10MB, buffer vào RAM là an toàn và nhanh nhất)
+        const buffer = await data.toBuffer();
+
+        // 2. Xử lý ảnh bằng Sharp
+        // Logic: Bất kể đầu vào là jpg, png, jfif, heic, tiff... -> Đều convert sang WEBP
+        const outName = randomName();
+        const target = path.join(uploadRoot, outName);
+
+        await sharp(buffer)
+          .rotate() // Tự động xoay ảnh đúng chiều (quan trọng cho ảnh chụp điện thoại)
+          .webp({ quality: 80 }) // Nén ảnh WebP chất lượng 80% (nhẹ mà đẹp)
+          .toFile(target); // Lưu xuống đĩa
+
+        // 3. Trả về kết quả
+        const base =
+          process.env.PUBLIC_BASE_URL ||
+          `${req.protocol}://${
+            req.headers["x-forwarded-host"] || req.headers.host
+          }`;
+        const publicUrl = `${base}/uploads/${outName}`;
+
+        return reply.send({ ok: true, url: publicUrl, file: outName });
+      } catch (err) {
+        console.error("Upload Error:", err);
+        // Nếu Sharp không đọc được file (ví dụ upload file .exe hay text), nó sẽ throw error
+        return reply.code(400).send({
+          ok: false,
+          message: "Invalid image format. Please upload a valid image.",
+        });
       }
-
-      const outName = randomName(ext);
-      const target = path.join(uploadRoot, outName);
-
-      await new Promise((resolve, reject) => {
-        const ws = fscb.createWriteStream(target);
-        file.file.pipe(ws);
-        ws.on("finish", resolve);
-        ws.on("error", reject);
-      });
-
-      const base =
-        process.env.PUBLIC_BASE_URL ||
-        `${req.protocol}://${
-          req.headers["x-forwarded-host"] || req.headers.host
-        }`;
-      const publicUrl = `${base}/uploads/${outName}`;
-
-      return reply.send({ ok: true, url: publicUrl, file: outName });
     });
 
-    // probe nhỏ để test nhanh
     app.get("/_probe", async () => ({ ok: true, route: "upload" }));
   },
   { name: "upload-routes", fastify: "4.x || 5.x" }

@@ -1,126 +1,425 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+// src/pages/Restaurant/MenuManagement/components/CategoryModal/CategoryModal.scss
+
+$primary: #3b82f6;
+$primary-hover: #2563eb;
+$danger: #ef4444;
+$bg-gray: #f8fafc;
+$border-color: #e2e8f0;
+$text-main: #0f172a;
+$text-light: #64748b;
+$radius: 8px;
 
 .category-modal {
-  .form-group {
-    margin-bottom: $spacing-lg;
-  }
+  // Override Modal default width if needed
+  // max-width: 600px;
 
-  .form-label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-bottom: $spacing-sm;
-    color: #374151;
-  }
-
-  .form-input,
-  .form-textarea {
-    @include form-input;
-
-    &--error {
-      border-color: $error-600;
-      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-    }
-  }
-
-  .form-textarea {
-    resize: vertical;
-    min-height: 80px;
-  }
-
-  .form-error {
-    display: block;
-    color: $error-600;
-    font-size: 0.75rem;
-    margin-top: $spacing-xs;
-  }
-}
-
-.icon-selector {
-  .icon-grid {
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    gap: $spacing-sm;
-    margin-bottom: 1rem;
-    padding: 1rem;
-    border: 2px solid $border-color;
-    border-radius: $border-radius-sm;
-    background: #f8fafc;
-
-    @media (max-width: 768px) {
-      grid-template-columns: repeat(6, 1fr);
-    }
-  }
-
-  .icon-option {
-    width: 40px;
-    height: 40px;
-    border: 2px solid transparent;
-    border-radius: $border-radius-sm;
-    background: white;
-    cursor: pointer;
+  &__body {
+    min-height: 400px;
+    max-height: 70vh;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.25rem;
-    transition: all 0.3s ease;
-
-    &:hover {
-      border-color: $primary;
-      transform: scale(1.1);
-    }
-
-    &--selected {
-      border-color: $primary;
-      background: $primary-light;
-      transform: scale(1.1);
-    }
-  }
-
-  .custom-icon {
-    .form-input {
-      text-align: center;
-      font-size: 1.125rem;
-    }
-  }
-}
-
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  padding-top: $spacing-lg;
-  border-top: 2px solid $border-color;
-
-  @media (max-width: 768px) {
     flex-direction: column;
-
-    .btn {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-}
-
-.btn {
-  @include button-base;
-
-  &--primary {
-    background: $primary;
-    color: white;
-
-    &:hover {
-      background: $primary-hover;
-    }
+    overflow: hidden; // Prevent double scrollbar
   }
 
-  &--secondary {
-    background: $text-gray;
-    color: white;
+  // --- Animation ---
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
-    &:hover {
-      background: #4b5563;
+  // --- Scrollbar Style ---
+  .custom-scrollbar {
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  }
+
+  // ================= VIEW: LIST =================
+  .view-list {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+
+    .list-toolbar {
+      display: flex;
+      gap: 12px;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid $border-color;
+      margin-bottom: 1rem;
+
+      .search-box {
+        flex: 1;
+        position: relative;
+
+        .search-icon {
+          position: absolute;
+          left: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: $text-light;
+        }
+
+        input {
+          width: 100%;
+          padding: 8px 12px 8px 32px;
+          border: 1px solid $border-color;
+          border-radius: $radius;
+          font-size: 0.9rem;
+          outline: none;
+          transition: border 0.2s;
+
+          &:focus {
+            border-color: $primary;
+            box-shadow: 0 0 0 3px rgba($primary, 0.1);
+          }
+        }
+      }
+
+      .btn-add {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: $primary;
+        color: white;
+        border: none;
+        padding: 0 16px;
+        border-radius: $radius;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+        white-space: nowrap;
+
+        &:hover {
+          background: $primary-hover;
+        }
+      }
+    }
+
+    .list-content {
+      flex: 1;
+      overflow-y: auto;
+
+      .state-text {
+        text-align: center;
+        padding: 2rem;
+        color: $text-light;
+      }
+
+      .state-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem 1rem;
+        text-align: center;
+
+        .empty-icon {
+          font-size: 2.5rem;
+          color: #e2e8f0;
+          margin-bottom: 1rem;
+        }
+        p {
+          color: $text-light;
+          margin-bottom: 1rem;
+        }
+        button {
+          background: none;
+          border: 1px dashed $primary;
+          color: $primary;
+          padding: 6px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          &:hover {
+            background: #eff6ff;
+          }
+        }
+      }
+
+      .category-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .category-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border: 1px solid $border-color;
+        border-radius: $radius;
+        background: white;
+        transition: all 0.2s;
+
+        &:hover {
+          border-color: $primary;
+          background: #f8fafc;
+          transform: translateX(2px);
+
+          .cat-actions {
+            opacity: 1;
+          }
+        }
+
+        .cat-info {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+
+          .cat-icon {
+            width: 36px;
+            height: 36px;
+            background: #eff6ff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+          }
+
+          .cat-text {
+            display: flex;
+            flex-direction: column;
+
+            .cat-name {
+              font-weight: 600;
+              color: $text-main;
+              font-size: 0.95rem;
+            }
+            .cat-desc {
+              font-size: 0.8rem;
+              color: $text-light;
+            }
+          }
+        }
+
+        .cat-actions {
+          display: flex;
+          gap: 6px;
+          opacity: 0; // Hide actions by default for cleaner look
+          transition: opacity 0.2s;
+
+          // On mobile, always show
+          @media (max-width: 768px) {
+            opacity: 1;
+          }
+
+          .action-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+
+            &.edit {
+              background: #f1f5f9;
+              color: $text-light;
+              &:hover {
+                background: $primary;
+                color: white;
+              }
+            }
+            &.delete {
+              background: #fee2e2;
+              color: $danger;
+              &:hover {
+                background: $danger;
+                color: white;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ================= VIEW: FORM =================
+  .view-form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+
+    .form-content {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 4px;
+      padding-bottom: 1rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+
+      label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        color: $text-main;
+
+        .req {
+          color: $danger;
+          margin-left: 2px;
+        }
+      }
+
+      input[type="text"],
+      textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid $border-color;
+        border-radius: $radius;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        font-family: inherit;
+
+        &:focus {
+          outline: none;
+          border-color: $primary;
+          box-shadow: 0 0 0 3px rgba($primary, 0.1);
+        }
+
+        &.error {
+          border-color: $danger;
+          background: #fef2f2;
+        }
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+
+      .err-msg {
+        display: block;
+        margin-top: 4px;
+        color: $danger;
+        font-size: 0.8rem;
+      }
+    }
+
+    .icon-picker {
+      border: 1px solid $border-color;
+      border-radius: $radius;
+      padding: 1rem;
+      background: $bg-gray;
+
+      .icon-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+        gap: 8px;
+        margin-bottom: 1rem;
+
+        .icon-btn {
+          height: 36px;
+          border: 1px solid transparent;
+          background: white;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 1.2rem;
+          transition: transform 0.1s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          &:hover {
+            transform: scale(1.15);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          &.active {
+            border-color: $primary;
+            background: #eff6ff;
+            box-shadow: 0 0 0 2px rgba($primary, 0.2);
+          }
+        }
+      }
+
+      .custom-icon-input {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.85rem;
+        color: $text-light;
+
+        input {
+          width: 50px;
+          text-align: center;
+          padding: 6px;
+        }
+      }
+    }
+
+    .global-error {
+      padding: 10px;
+      background: #fee2e2;
+      color: $danger;
+      border-radius: $radius;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .form-footer {
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid $border-color;
+      padding-top: 1rem;
+      margin-top: auto;
+
+      button {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 20px;
+        border-radius: $radius;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+      }
+
+      .btn-back {
+        background: white;
+        border: 1px solid $border-color;
+        color: $text-light;
+        &:hover {
+          background: #f1f5f9;
+          color: $text-main;
+        }
+      }
+
+      .btn-save {
+        background: $primary;
+        color: white;
+        border: none;
+        &:hover {
+          background: $primary-hover;
+          transform: translateY(-1px);
+        }
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+          transform: none;
+        }
+      }
     }
   }
 }

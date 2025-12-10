@@ -2,6 +2,7 @@
 
 import { MenuQuery } from "./query.js";
 import { MenuMutation } from "./mutation.js";
+import { CategoryMenu } from "../../../models/index.js";
 
 export default {
   Query: {
@@ -22,6 +23,20 @@ export default {
       );
 
       return parent?.recipe?.servingVariants || [];
+    },
+  },
+
+  Menu: {
+    async categoryMenu(parent) {
+      console.log(
+        "🔥 [Menu.categoryMenu] id=",
+        parent.id || parent._id,
+        "categoryMenuId=",
+        parent.categoryMenuId
+      );
+      const id = parent.categoryMenuId;
+      if (!id) return null;
+      return CategoryMenu.findById(id).lean({ virtuals: true });
     },
   },
 };

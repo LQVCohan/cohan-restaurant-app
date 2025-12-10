@@ -1,701 +1,276 @@
-// Variables (Mô phỏng màu sắc của Tailwind)
-$primary-blue: #2563eb;
-$primary-blue-dark: #1d4ed8;
-$text-blue-900: #1e3a8a;
-$bg-gray-50: #f9fafb;
-$border-gray-200: #e5e7eb;
-$text-gray-600: #4b5563;
-$text-gray-900: #111827;
-$bg-white: #ffffff;
-$danger-red: #dc2626;
-$success-green: #16a34a;
-
-// Mixins
-@mixin card-base {
-  background-color: $bg-white;
-  border: 1px solid $border-gray-200;
-  border-radius: 0.75rem; // rounded-xl
-}
-
-@mixin flex-center-between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
+/* Reset & Base Layout */
 .schedule-container {
-  background-color: $bg-gray-50;
-  height: 100%;
+  background-color: #f3f4f6; /* Gray-100 */
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
 
-  // Header Section
+  /* 1. Header Section with KPI */
   .schedule-header {
-    background-color: $bg-white;
-    border-bottom: 1px solid $border-gray-200;
-    padding: 0.75rem 1rem;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 1.5rem 2rem;
 
-    .header-content {
-      @include flex-center-between;
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
 
       h1 {
-        font-size: 1.25rem;
+        font-size: 1.5rem;
         font-weight: 700;
-        color: $text-blue-900;
+        color: #111827;
         margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
       }
 
-      p {
-        font-size: 0.875rem;
-        color: $text-gray-600;
-        margin: 0;
+      .user-profile {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+
+        img {
+          width: 2.5rem;
+          height: 2.5rem;
+          border-radius: 50%;
+          border: 2px solid #e5e7eb;
+        }
+        span {
+          font-weight: 600;
+          color: #374151;
+        }
       }
     }
 
-    .btn-auto-schedule {
-      background-color: $success-green;
-      color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      font-weight: 500;
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      transition: background-color 0.2s;
+    /* KPI Cards Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
 
-      &:hover {
-        background-color: darken($success-green, 5%);
-      }
+      .kpi-card {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
 
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-    }
-  }
-
-  // Main Content
-  .schedule-main {
-    height: 100%;
-    overflow-y: auto;
-
-    // Filter Bar
-    .filter-bar {
-      background-color: $bg-white;
-      border-bottom: 1px solid $border-gray-200;
-      padding: 0.75rem 1rem;
-
-      .filter-content {
-        @include flex-center-between;
-
-        .controls {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-
-          input,
-          select {
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.875rem;
-            outline: none;
-
-            &:focus {
-              border-color: $primary-blue;
-              box-shadow: 0 0 0 2px rgba($primary-blue, 0.2);
-            }
-          }
+        .label {
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: #6b7280;
+          font-weight: 600;
+          margin-bottom: 0.5rem;
         }
 
-        .stats {
-          display: flex;
-          gap: 1rem;
+        .value {
+          font-size: 1.5rem;
+          font-weight: 800;
+          color: #1f2937;
+        }
+
+        .trend {
           font-size: 0.875rem;
+          margin-top: 0.25rem;
+          font-weight: 500;
 
-          .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: $text-gray-600;
-
-            .badge {
-              padding: 0.25rem 0.5rem;
-              border-radius: 9999px;
-              font-weight: 500;
-
-              &.red {
-                background: #fee2e2;
-                color: #991b1b;
-              }
-              &.blue {
-                background: #dbeafe;
-                color: #1e40af;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // Calendar Table
-    .calendar-wrapper {
-      background-color: $bg-white;
-
-      h3 {
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid $border-gray-200;
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: $text-blue-900;
-        margin: 0;
-      }
-
-      .table-responsive {
-        overflow-x: auto;
-      }
-
-      table {
-        width: 100%;
-        font-size: 0.875rem;
-        border-collapse: collapse;
-
-        thead {
-          background-color: $bg-gray-50;
-          th {
-            padding: 0.75rem 0.5rem;
-            color: $text-blue-900;
-            font-weight: 500;
-            text-align: center;
-
-            &:first-child {
-              text-align: left;
-              padding-left: 0.75rem;
-            }
-          }
-        }
-
-        tbody tr {
-          border-bottom: 1px solid #f3f4f6;
-
-          td {
-            padding: 0.5rem;
-            border-right: 1px solid #f3f4f6;
-            vertical-align: top;
-            min-height: 120px;
-
-            &:last-child {
-              border-right: none;
-            }
-          }
-        }
-
-        // Shift Type Column
-        .shift-type-header {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-
-          .icon {
-            font-size: 1.125rem;
-          }
-          .label {
-            font-weight: 500;
-            color: $text-blue-900;
-          }
-          .time {
-            font-size: 0.75rem;
-            color: $text-gray-600;
-          }
-        }
-
-        // Add Button Slot
-        .add-slot-btn {
-          height: 5rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border: 2px dashed $border-gray-200;
-          border-radius: 0.5rem;
-          cursor: pointer;
-          transition: all 0.2s;
-
-          &:hover {
-            border-color: #93c5fd;
-            background-color: #eff6ff;
-
-            .plus {
-              color: #60a5fa;
-            }
-            .text {
-              color: $primary-blue;
-            }
-          }
-
-          .plus {
-            font-size: 1.5rem;
-            color: #d1d5db;
-            margin-bottom: 0.25rem;
-          }
-          .text {
-            font-size: 0.75rem;
-            color: #9ca3af;
-          }
+          &.positive {
+            color: #16a34a;
+          } /* Green */
+          &.negative {
+            color: #dc2626;
+          } /* Red */
+          &.neutral {
+            color: #6b7280;
+          } /* Gray */
         }
       }
     }
   }
-}
 
-// Component: Shift Card
-.shift-card {
-  margin-bottom: 0.5rem;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  border-left: 4px solid transparent;
-  font-size: 0.75rem;
-
-  &:hover {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-
-  &.incomplete {
-    background-color: #fef2f2;
-    border-color: #f87171;
-    &:hover {
-      background-color: #fee2e2;
-    }
-    .status-badge {
-      background: #fee2e2;
-      color: #b91c1c;
-    }
-  }
-
-  &.complete {
-    background-color: #f0fdf4;
-    border-color: #4ade80;
-    &:hover {
-      background-color: #dcfce7;
-    }
-    .status-badge {
-      background: #dcfce7;
-      color: #15803d;
-    }
-  }
-
-  .card-header {
-    @include flex-center-between;
-    margin-bottom: 0.5rem;
-
-    .time-info {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 500;
-      color: #1f2937;
-    }
-
-    .toggle-btn {
-      color: #9ca3af;
-      background: none;
-      border: none;
-      cursor: pointer;
-      &:hover {
-        color: $text-gray-600;
-      }
-    }
-  }
-
-  .card-body {
-    @include flex-center-between;
-
-    .jobs {
-      display: flex;
-      gap: 0.25rem;
-    }
-    .status-badge {
-      padding: 0.125rem 0.5rem;
-      border-radius: 9999px;
-      font-weight: 500;
-    }
-  }
-
-  .card-details {
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid rgba(0, 0, 0, 0.05);
-
-    .staff-row {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      background: rgba(255, 255, 255, 0.8);
-      padding: 0.25rem 0.5rem;
-      border-radius: 0.25rem;
-      margin-bottom: 0.25rem;
-
-      .name {
-        flex: 1;
-        font-weight: 500;
-      }
-      .job {
-        color: $text-gray-600;
-      }
-    }
-
-    .missing-alert {
-      background: #fef2f2;
-      color: #dc2626;
-      padding: 0.25rem 0.5rem;
-      border-radius: 0.25rem;
-      margin-top: 0.25rem;
-    }
-  }
-}
-
-// Modals Common Styles
-.form-section {
-  margin-bottom: 1.5rem;
-
-  label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: $text-gray-900;
-    margin-bottom: 0.75rem;
-  }
-}
-
-.shift-summary-box {
-  background-color: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 0.75rem;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-
-  .header {
+  /* 2. Toolbar / Controls */
+  .schedule-toolbar {
+    padding: 1rem 2rem;
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-
-    .icon {
-      font-size: 1.5rem;
-    }
-    h4 {
-      font-weight: 600;
-      color: $text-blue-900;
-      margin: 0;
-    }
-    p {
-      font-size: 0.875rem;
-      color: #1d4ed8;
-      margin: 0;
-    }
-  }
-  .date {
-    font-size: 0.875rem;
-    color: #1e40af;
-  }
-}
-
-.job-selection-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
-
-  .job-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    border: 2px solid $border-gray-200;
-    cursor: pointer;
-    transition: all 0.2s;
-
-    &:hover {
-      border-color: #d1d5db;
-    }
-
-    &.selected {
-      border-color: #3b82f6;
-      background-color: #eff6ff;
-    }
-
-    .emoji {
-      font-size: 1.25rem;
-    }
-    .label {
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
-  }
-}
-
-.search-filter-box {
-  background-color: $bg-gray-50;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
-
-  .search-input-wrapper {
-    position: relative;
-    margin-bottom: 0.75rem;
-
-    input {
-      width: 100%;
-      padding: 0.5rem 1rem 0.5rem 2.5rem;
-      border: 1px solid #d1d5db;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-
-      &:focus {
-        border-color: $primary-blue;
-        outline: none;
-        box-shadow: 0 0 0 2px rgba($primary-blue, 0.2);
-      }
-    }
-
-    .icon-search {
-      position: absolute;
-      left: 0.75rem;
-      top: 0.6rem;
-      color: #9ca3af;
-    }
-    .btn-clear {
-      position: absolute;
-      right: 0.75rem;
-      top: 0.6rem;
-      border: none;
-      background: none;
-      color: #9ca3af;
-      cursor: pointer;
-      &:hover {
-        color: $text-gray-600;
-      }
-    }
-  }
-
-  .filters-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-
-    select {
-      width: 100%;
-      padding: 0.5rem;
-      border: 1px solid #d1d5db;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-    }
-  }
-
-  .tags-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-
-    button {
-      border: none;
-      border-radius: 9999px;
-      padding: 0.25rem 0.75rem;
-      font-size: 0.75rem;
-      cursor: pointer;
-
-      &.tag-blue {
-        background: #dbeafe;
-        color: #1d4ed8;
-        &:hover {
-          background: #bfdbfe;
-        }
-      }
-      &.tag-green {
-        background: #dcfce7;
-        color: #15803d;
-        &:hover {
-          background: #bbf7d0;
-        }
-      }
-    }
-  }
-}
-
-.staff-list-container {
-  max-height: 12rem;
-  overflow-y: auto;
-  border: 1px solid $border-gray-200;
-  border-radius: 0.5rem;
-
-  .staff-item {
-    display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 0.75rem;
-    border-bottom: 1px solid #f3f4f6;
-    cursor: pointer;
+    align-items: center;
+    background-color: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
 
-    &:last-child {
-      border-bottom: none;
-    }
-    &:hover {
-      background-color: $bg-gray-50;
-    }
-    &.selected {
-      background-color: #eff6ff;
-    }
-
-    .info-left {
+    .view-toggles {
       display: flex;
-      align-items: center;
-      gap: 0.75rem;
+      background: #f3f4f6;
+      padding: 0.25rem;
+      border-radius: 0.5rem;
 
-      input[type="checkbox"] {
-        width: 1rem;
-        height: 1rem;
+      button {
+        padding: 0.5rem 1rem;
+        border: none;
+        background: transparent;
+        border-radius: 0.375rem;
+        font-weight: 500;
+        color: #6b7280;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &.active {
+          background: #ffffff;
+          color: #1f2937;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
       }
     }
 
-    .info-right {
-      text-align: right;
-      .salary {
-        font-size: 0.875rem;
+    .actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+
+      .week-label {
+        color: #4b5563;
         font-weight: 500;
       }
-      .status {
-        font-size: 0.75rem;
-        padding: 0.125rem 0.5rem;
-        border-radius: 9999px;
-        &.active {
-          background: #dcfce7;
-          color: #166534;
+
+      .btn-publish {
+        background-color: #4f46e5;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.25rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+
+        &:hover {
+          background-color: #4338ca;
         }
-        &.off {
-          background: #fef9c3;
-          color: #854d0e;
-        }
-        &.sick {
-          background: #fee2e2;
-          color: #991b1b;
+        &:active {
+          transform: translateY(1px);
         }
       }
     }
   }
 
-  .empty-state {
-    text-align: center;
-    padding: 2rem 0;
-    color: #9ca3af;
-    .icon {
-      font-size: 1.5rem;
-      margin-bottom: 0.5rem;
-    }
-    .reset-link {
-      color: $primary-blue;
-      cursor: pointer;
-      border: none;
-      background: none;
-    }
-  }
-}
-
-.notes-textarea {
-  width: 100%;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  padding: 0.75rem;
-  resize: none;
-  &:focus {
-    outline: none;
-    border-color: $primary-blue;
-    box-shadow: 0 0 0 2px rgba($primary-blue, 0.2);
-  }
-}
-
-.modal-actions {
-  display: flex;
-  gap: 0.75rem;
-  padding-top: 1rem;
-  border-top: 1px solid $border-gray-200;
-  margin-top: 1rem;
-
-  button {
+  /* 3. Main Calendar Grid */
+  .calendar-area {
     flex: 1;
-    padding: 0.75rem;
-    border-radius: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.2s;
+    overflow-x: auto;
+    padding: 2rem;
+    background: #f9fafb;
 
-    &.btn-cancel {
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
       background: white;
-      border: 1px solid #d1d5db;
-      color: $text-gray-600;
-      &:hover {
-        background: $bg-gray-50;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+
+      thead th {
+        background-color: #f9fafb;
+        color: #374151;
+        font-weight: 600;
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+
+        .date-col {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          .day-name {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            color: #6b7280;
+          }
+          .date-num {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #111827;
+          }
+        }
       }
-    }
 
-    &.btn-confirm {
-      background: $primary-blue;
-      border: none;
-      color: white;
-      &:hover {
-        background: $primary-blue-dark;
+      tbody td {
+        vertical-align: top;
+        border-right: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 0.75rem;
+        height: 200px;
+        width: 13%;
+        transition: background 0.2s;
+
+        &:first-child {
+          width: 100px; /* Cột chứa Icon Ca */
+          border-left: none;
+          background-color: #fdfdfd;
+        }
+        &:last-child {
+          border-right: none;
+        }
+
+        &:hover {
+          background-color: #fafafa;
+        }
       }
-      &:disabled {
-        background: #d1d5db;
-        cursor: not-allowed;
+
+      /* Style cho cột đầu tiên (Loại Ca) */
+      .shift-type-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #4b5563;
+
+        .icon {
+          font-size: 1.5rem;
+          margin-bottom: 0.25rem;
+        }
+        .label {
+          font-weight: 700;
+          font-size: 0.875rem;
+          color: #1f2937;
+        }
+        .time {
+          font-size: 0.75rem;
+          color: #9ca3af;
+        }
       }
-    }
 
-    &.btn-delete {
-      background: $danger-red;
-      border: none;
-      color: white;
-      &:hover {
-        background: darken($danger-red, 10%);
+      /* Nút Add (+) ẩn hiện */
+      .add-slot-wrapper {
+        margin-top: 0.5rem;
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px dashed #e5e7eb;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        color: #d1d5db;
+        transition: all 0.2s;
+
+        .plus {
+          font-size: 1.5rem;
+        }
+
+        &:hover {
+          border-color: #6366f1;
+          background-color: #eef2ff;
+          color: #6366f1;
+        }
       }
-    }
-  }
-}
-
-// Edit Modal Specific
-.edit-staff-row {
-  @extend .staff-item;
-  background: white;
-  border: 1px solid $border-gray-200;
-  border-radius: 0.5rem;
-  margin-bottom: 0.5rem;
-  cursor: default !important;
-
-  .btn-remove {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-    padding: 0.5rem;
-    border-radius: 0.5rem;
-    &:hover {
-      background: #fee2e2;
-    }
-  }
-
-  .btn-add {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1rem;
-    padding: 0.5rem;
-    border-radius: 0.5rem;
-    &:hover {
-      background: #dcfce7;
     }
   }
 }

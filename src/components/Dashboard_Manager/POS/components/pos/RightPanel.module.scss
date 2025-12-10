@@ -1,454 +1,510 @@
 /* src/components/Dashboard_Manager/POS/components/panels/RightPanel.module.scss */
 
+/* --- Bảng màu Cam chủ đạo cho Nhà hàng --- */
+$orange-primary: #f97316; /* Cam rực rỡ (cho nút chính, điểm nhấn) */
+$orange-dark: #c2410c; /* Cam đậm (cho text quan trọng) */
+$orange-light: #fff7ed; /* Cam rất nhạt (cho nền badge) */
+$orange-text: #9a3412; /* Màu chữ trên nền cam nhạt */
+$orange-warning: #f59e0b; /* Vàng cam (cho cảnh báo/ghi chú - giữ nguyên) */
+
+/* --- Màu trạng thái khác --- */
+$green-success: #22c55e; /* Giữ lại cho trạng thái thành công/đã gửi */
+$green-bg-light: #dcfce7;
+$green-text-dark: #166534;
+$red-danger: #ef4444;
+$red-bg-light: #fee2e2;
+$gray-slate-50: #f8fafc;
+$gray-slate-100: #f1f5f9;
+$gray-slate-200: #e2e8f0;
+$gray-slate-300: #cbd5e1;
+$gray-slate-500: #64748b;
+$gray-slate-700: #334155;
+$gray-slate-800: #1e293b;
+$gray-slate-900: #0f172a;
+
 /* ============== WRAPPER ============== */
 .wrapper {
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 0;
-  background: #ffffff;
-  border-left: 2px solid #e2e8f0;
-  border-radius: 0 1rem 1rem 0;
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05);
+  background: #fff;
+  border-left: 1px solid $gray-slate-200;
+  position: relative;
   overflow: hidden;
 }
 
-/* pulse khi lưu */
 .pulse {
-  animation: posSaved 0.55s ease-out;
+  animation: posSaved 0.6s ease-out;
 }
-
+/* Đổi hiệu ứng pulse sang màu cam */
 @keyframes posSaved {
   0% {
-    box-shadow: 0 0 0 rgba(34, 197, 94, 0);
+    box-shadow: inset 0 0 0 0px $orange-primary;
   }
-  25% {
-    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.08);
+  30% {
+    box-shadow: inset 0 0 0 4px rgba($orange-primary, 0.2);
   }
   100% {
-    box-shadow: 0 0 0 rgba(34, 197, 94, 0);
+    box-shadow: inset 0 0 0 0px transparent;
   }
 }
 
 /* ============== HEADER ============== */
 .header {
-  padding: 1rem 1.25rem 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid $gray-slate-100;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  background: #ffffff;
-}
-
-.headerLeft {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  background: #fff;
+  z-index: 20;
+  position: relative;
 }
 
 .tableName {
-  font-weight: 600;
-  font-size: 1.05rem;
-  color: #0f172a;
+  font-weight: 700;
+  font-size: 1rem;
+  color: $gray-slate-900;
 }
-
 .tableMeta {
-  font-size: 0.8rem;
-  color: #6b7280;
+  font-size: 0.75rem;
+  color: $gray-slate-500;
   display: flex;
-  gap: 0.35rem;
+  gap: 6px;
   align-items: center;
 }
-
+/* Giữ màu xanh cho trạng thái bàn (Available) vì nó là quy chuẩn */
 .statusBadge {
-  background: #dcfce7;
-  color: #166534;
+  background: $green-bg-light;
+  color: $green-text-dark;
   font-weight: 600;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  padding: 0.15rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  padding: 0 4px;
   text-transform: uppercase;
 }
 
+/* --- DROPDOWN MENU --- */
 .headerRight {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
 }
 
-.timer {
-  background: #eff6ff;
-  color: #0f172a;
-  font-size: 0.75rem;
-  padding: 0.35rem 0.6rem;
-  border-radius: 999px;
+.menuWrapper {
+  position: relative;
 }
 
-.backBtn {
-  border: none;
-  background: #e2e8f0;
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  cursor: pointer;
+.manageBtn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #0f172a;
-  font-weight: 700;
-  transition: background 0.12s ease;
-}
-.backBtn:hover {
-  background: #cbd5f5;
+  gap: 4px;
+  background: $gray-slate-50;
+  color: #475569;
+  border: 1px solid $gray-slate-200;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover,
+  &.active {
+    background: $gray-slate-200;
+    color: $gray-slate-800;
+    border-color: $gray-slate-300;
+  }
 }
 
-/* ============== BODY (scroll) ============== */
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  background: #ffffff;
+  min-width: 140px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid $gray-slate-200;
+  padding: 4px;
+  z-index: 50;
+  transform-origin: top right;
+  animation: menuFadeIn 0.15s ease-out;
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: $gray-slate-700;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.1s;
+
+  &:hover {
+    background: $gray-slate-100;
+    color: $gray-slate-900;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+    color: $gray-slate-500;
+  }
+}
+
+/* ============== BODY ============== */
 .body {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1;
   overflow-y: auto;
-  padding: 1rem 0.75rem 1rem 0.75rem;
-  background: #f8fafc;
+  padding: 0.75rem;
+  background: $gray-slate-50;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
-/* group title */
 .groupHeader {
-  font-size: 0.73rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #475569;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-inline: 0.25rem;
-}
-
-.groupCount {
-  background: #e0f2fe;
-  color: #0f172a;
-  padding: 2px 8px;
-  border-radius: 999px;
   font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: $gray-slate-500;
+  margin-bottom: 0.5rem;
+  margin-left: 2px;
 }
-
 .dividerLabel {
   font-size: 0.7rem;
+  font-weight: 700;
   color: #94a3b8;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin: 0.25rem 0.25rem 0;
+  margin: 0.5rem 0 0.5rem;
+  border-top: 1px solid $gray-slate-200;
+  padding-top: 0.5rem;
+  text-align: center;
 }
-
-/* danh sách các item */
 .itemsList {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 6px;
 }
 
-/* ============== ORDER CARD ============== */
-.orderItemNew,
-.orderItemExisting {
-  background: #ffffff;
-  border-radius: 1rem;
-  border: 1px solid rgba(148, 163, 184, 0.15);
-  padding: 0.6rem 0.7rem 0.65rem 0.7rem;
+/* COMPACT ITEM CARDS */
+.cardNew,
+.cardExisting {
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  border: 1px solid $gray-slate-200;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+  gap: 4px;
+  transition: all 0.1s;
+  cursor: pointer;
+  position: relative;
+  &:hover {
+    border-color: $gray-slate-300;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+  }
 }
 
-.orderItemNew {
-  background: #ecfeff;
-  border-color: rgba(14, 165, 233, 0.25);
+/* Món mới: Đổi viền xanh dương sang Cam chủ đạo */
+.cardNew {
+  border-left: 3px solid $orange-primary;
+}
+/* Món đã gửi: Giữ viền xanh lá để phân biệt trạng thái */
+.cardExisting {
+  border-left: 3px solid $green-success;
+  background: #fafafa;
 }
 
-.orderItemExisting {
-  background: #f8fafc;
-  border-color: rgba(148, 163, 184, 0.12);
-}
-
-/* header row của item */
-.itemHeaderRow {
+/* Row 1 */
+.rowTop {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 8px;
 }
-
-.itemName {
+.cardName {
   font-weight: 600;
-  font-size: 0.92rem;
-  color: #0f172a;
-  line-height: 1.16;
-  max-width: 70%;
-  word-break: break-word;
-}
-
-/* nút x */
-.removeBtn {
-  width: 24px;
-  height: 24px;
-  border: 1px solid #fee2e2;
-  background: #fff1f2;
-  color: #b91c1c;
-  border-radius: 999px;
-  font-size: 1.05rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: all 0.12s ease;
+  font-size: 0.9rem;
+  color: $gray-slate-800;
+  line-height: 1.3;
+  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
-}
-.removeBtn:hover {
-  background: #dc2626;
-  color: #ffffff;
-  border-color: #dc2626;
-}
-
-/* controls: badge + qty + price */
-.itemControls {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
+  gap: 4px;
   flex-wrap: wrap;
 }
-
-.badgeNew,
-.badgeSaved {
-  font-size: 0.6rem;
-  font-weight: 700;
-  padding: 0.16rem 0.55rem;
-  border-radius: 999px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  line-height: 1;
-}
-.badgeNew {
-  background: rgba(34, 197, 94, 0.12);
-  color: #15803d;
-  border: 1px solid rgba(34, 197, 94, 0.35);
-}
-.badgeSaved {
-  background: rgba(59, 130, 246, 0.12);
-  color: #1d4ed8;
-  border: 1px solid rgba(59, 130, 246, 0.35);
-}
-
-/* qty */
-.qtyControls {
+/* Icon ảnh xác nhận: Đổi sang màu Cam */
+.iconProof {
+  color: $orange-primary;
   display: flex;
   align-items: center;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  background: #ffffff;
-  overflow: hidden;
+  cursor: help;
+  svg {
+    stroke-width: 2.5;
+  }
 }
-
-.qtyBtn {
-  width: 28px;
-  height: 26px;
-  border: none;
-  background: transparent;
-  color: #0f172a;
-  cursor: pointer;
-  font-size: 1.05rem;
-  line-height: 1;
+.timeTag {
+  font-size: 0.65rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  background: $gray-slate-100;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.btnDelete {
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.12s ease;
-}
-.qtyBtn:hover {
-  background: #e2e8f0;
-}
-
-.qtyInput {
-  width: 50px;
-  text-align: center;
   border: none;
-  font-weight: 500;
   background: transparent;
-  outline: none;
-  font-size: 0.85rem;
+  color: $gray-slate-300;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  margin-top: -2px;
+  &:hover {
+    background: $red-bg-light;
+    color: $red-danger;
+  }
+}
+.btnDeleteSaved {
+  @extend .btnDelete;
+  margin-left: 6px;
+  margin-top: 0;
+  opacity: 0;
+}
+.cardExisting:hover .btnDeleteSaved {
+  opacity: 1;
 }
 
-.itemPrice {
-  margin-left: auto;
-  font-weight: 600;
-  color: #0f172a;
-  font-size: 0.92rem;
-}
-
-/* meta dưới */
-.itemMetaRow {
-  font-size: 0.7rem;
-  color: #94a3b8;
+/* Row Note */
+.rowNote {
   display: flex;
-  gap: 0.5rem;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: -2px;
 }
-
-.method {
-  background: #eff6ff;
-  color: #0f172a;
-  padding: 2px 6px;
-  border-radius: 999px;
+/* Tag phương thức (VD: Mang về): Đổi từ xanh ngọc sang tông Cam nhạt */
+.tagMethod {
   font-size: 0.65rem;
+  color: $orange-text;
+  background: $orange-light;
+  padding: 0 6px;
+  border-radius: 4px;
+}
+.textNote,
+.textNoteSaved {
+  font-size: 0.7rem;
+  color: $orange-warning; /* Giữ màu vàng cam cho ghi chú */
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-.empty {
-  padding: 1.25rem 0.5rem;
+/* Row 2 */
+.rowBottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+.priceSingle {
+  font-size: 0.8rem;
+  color: $gray-slate-500;
+  font-weight: 500;
+  width: 70px;
+}
+.cardTotal {
+  font-weight: 700;
+  color: $gray-slate-900;
+  font-size: 0.95rem;
+  text-align: right;
+  flex: 1;
+}
+
+/* Qty Buttons */
+.qtyWrapper {
+  display: flex;
+  align-items: center;
+  background: $gray-slate-100;
+  border-radius: 6px;
+  padding: 1px;
+}
+/* Nút tăng giảm số lượng: Đổi sang tông Cam */
+.qtyBtn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #fff;
+  color: $orange-primary; /* Màu chữ cam */
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+  &:hover {
+    background: $orange-primary; /* Nền hover cam */
+    color: #fff;
+  }
+}
+.qtyInput {
+  width: 28px;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-weight: 700;
+  color: $gray-slate-700;
+  font-size: 0.85rem;
+  outline: none;
+  margin: 0 1px;
+}
+.qtyStatic {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: $gray-slate-700;
+  background: $gray-slate-200;
+  padding: 1px 8px;
+  border-radius: 4px;
+}
+
+.emptyState {
   text-align: center;
   color: #94a3b8;
-  font-weight: 500;
+  font-size: 0.85rem;
+  padding: 2rem 0;
 }
 
 /* ============== FOOTER ============== */
 .footer {
-  padding: 0.75rem 1rem 1rem;
-  border-top: 1px solid #e2e8f0;
-  background: #ffffff;
-  position: sticky;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 3;
+  padding: 0.75rem;
+  background: #fff;
+  border-top: 1px solid $gray-slate-200;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.03);
 }
-
 .summary {
-  display: grid;
-  gap: 0.35rem;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.75rem;
 }
-
 .row {
   display: flex;
   justify-content: space-between;
-  font-size: 0.87rem;
-  color: #0f172a;
+  font-size: 0.85rem;
+  color: $gray-slate-700;
+  margin-bottom: 4px;
 }
-
-.hr {
-  height: 1px;
-  background: #e2e8f0;
-  margin: 0.35rem 0;
-}
-
+/* Tổng cộng: Đổi màu nhấn từ xanh dương sang Cam đậm */
 .grand {
   font-size: 1rem;
   font-weight: 700;
-  color: #0284c7;
+  color: $orange-dark;
+  border-top: 1px dashed $gray-slate-200;
+  padding-top: 6px;
+  margin-top: 6px;
+  margin-bottom: 0;
 }
-
-/* buttons */
-.actionsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
-  gap: 0.5rem;
-}
-
-.btn {
-  padding: 0.55rem 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 0.85rem;
-  white-space: nowrap;
-  transition: background 0.15s ease, transform 0.12s ease;
-  text-align: center;
-}
-.btn:hover {
-  transform: translateY(-1px);
-}
-
-.primary {
-  background: #0284c7;
-  color: #fff;
-  border-color: transparent;
-}
-.secondary {
-  background: #f8fafc;
-  color: #6b7280;
-}
-.success {
-  background: #22c55e;
-  color: #fff;
-  border-color: transparent;
-}
-.violet {
-  background: #8b5cf6;
-  color: #fff;
-  border-color: transparent;
-}
-
-/* responsive */
-@media (max-width: 768px) {
-  .body {
-    padding-inline: 0.5rem;
-  }
-  .itemControls {
-    flex-wrap: wrap;
-  }
-  .itemPrice {
-    width: 100%;
-    text-align: right;
-  }
-}
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-input[type="number"] {
-  appearance: textfield;
-  -moz-appearance: textfield; /* For Firefox */
-}
-/* Remove the outline on button click */
-button:focus {
-  outline: none;
-}
-button:active {
-  outline: none;
-}
-
 .breakdownToggle {
-  margin: 8px 0;
-  font-size: 12px;
-  padding: 6px 10px;
+  width: 100%;
+  font-size: 0.7rem;
+  color: $gray-slate-500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: right;
+  padding: 0;
+  margin-bottom: 4px;
+  &:hover {
+    text-decoration: underline;
+  }
 }
-
 .breakdown {
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 8px;
-  padding: 8px;
-  margin: 6px 0 10px;
+  background: $gray-slate-50;
+  padding: 6px 8px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
 }
-
 .breakdownRow {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 4px 0;
-  font-size: 13px;
-}
-
-.muted {
-  opacity: 0.7;
+  margin-bottom: 2px;
 }
 .neg {
-  color: #d14343;
-} // số âm như giảm giá, đã thanh toán
-.pos {
-  color: #0f7b0f;
-} // số dương như còn phải trả, tiền thừa
+  color: $red-danger;
+}
+
+.actionsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.5fr 1fr;
+  gap: 6px;
+}
+.btn {
+  padding: 8px 0;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #fff;
+  transition: background-color 0.2s;
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* Nút Primary (Lưu): Đổi sang màu Cam chủ đạo */
+.primary {
+  background: $orange-primary;
+  &:hover:not(:disabled) {
+    background: darken($orange-primary, 5%);
+  }
+}
+
+/* Nút Success (Thanh toán): Giữ màu xanh lá để biểu thị hoàn thành/thanh toán */
+.success {
+  background: $green-success;
+  &:hover:not(:disabled) {
+    background: darken($green-success, 5%);
+  }
+}
+
+/* Nút Warning (In): Giữ màu vàng cam */
+.warning {
+  background: $orange-warning;
+  &:hover:not(:disabled) {
+    background: darken($orange-warning, 5%);
+  }
+}
+
+.secondary {
+  background: $gray-slate-100;
+  color: $gray-slate-500;
+  border: 1px solid $gray-slate-200;
+  &:hover:not(:disabled) {
+    background: $gray-slate-200;
+    color: $gray-slate-700;
+  }
+}
