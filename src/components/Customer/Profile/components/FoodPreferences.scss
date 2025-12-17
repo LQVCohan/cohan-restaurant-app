@@ -1,0 +1,267 @@
+$primary: #ff6600;
+$primary-light: #fff5eb;
+$primary-gradient: linear-gradient(135deg, #ff6600, #ff8533);
+$text-main: #1a202c;
+$text-sub: #64748b;
+$border: #e2e8f0;
+$bg-hover: #f8fafc;
+
+.food-prefs-container {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.pref-section {
+  .section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: $text-main;
+    margin: 0 0 4px;
+  }
+  .section-desc {
+    font-size: 0.9rem;
+    color: $text-sub;
+    margin: 0 0 16px;
+  }
+}
+
+.divider-dashed {
+  height: 1px;
+  border-top: 1px dashed $border;
+  width: 100%;
+}
+
+/* --- 1. DIET GRID --- */
+.diet-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+
+  .diet-card {
+    border: 1px solid $border;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+
+    &:hover {
+      background: $bg-hover;
+      border-color: $primary;
+    }
+
+    &.active {
+      border-color: $primary;
+      background: $primary-light;
+      box-shadow: 0 4px 10px rgba(255, 102, 0, 0.1);
+
+      .check-mark {
+        position: absolute;
+        top: 0;
+        right: 0;
+        background: $primary;
+        color: white;
+        padding: 2px 8px;
+        border-bottom-left-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: bold;
+      }
+    }
+
+    .diet-icon {
+      font-size: 24px;
+    }
+    .diet-info {
+      display: flex;
+      flex-direction: column;
+      strong {
+        font-size: 0.95rem;
+        color: $text-main;
+      }
+      span {
+        font-size: 0.8rem;
+        color: $text-sub;
+      }
+    }
+  }
+}
+
+/* --- 2. ALLERGY TAGS --- */
+.allergy-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  .tag-item {
+    padding: 8px 16px;
+    border-radius: 99px;
+    border: 1px solid $border;
+    background: white;
+    color: $text-main;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.2s;
+
+    &:hover {
+      border-color: $text-sub;
+    }
+
+    &.active {
+      background: $text-main;
+      color: white;
+      border-color: $text-main;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    }
+  }
+}
+
+/* --- 3. HABIT GRID --- */
+.habit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+
+  .habit-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    &.full-width {
+      grid-column: span 2;
+      @media (max-width: 768px) {
+        grid-column: span 1;
+      }
+    }
+
+    .habit-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .habit-icon {
+      font-size: 1.2rem;
+    }
+  }
+}
+
+/* Segment Control (Nút chọn ngang) */
+.segment-control {
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 8px;
+  button {
+    flex: 1;
+    border: none;
+    background: none;
+    padding: 8px;
+    font-size: 0.9rem;
+    color: $text-sub;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: 0.2s;
+
+    &:hover {
+      color: $text-main;
+    }
+    &.active {
+      background: white;
+      color: $primary;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      font-weight: 700;
+    }
+  }
+}
+
+/* Toggles (Hành/Ngò) */
+.toggles {
+  display: flex;
+  gap: 10px;
+  .toggle-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid $border;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: $text-sub;
+    transition: 0.2s;
+    user-select: none;
+
+    input {
+      display: none;
+    }
+
+    &:hover {
+      background: $bg-hover;
+    }
+    &.active {
+      border-color: #ef4444;
+      color: #ef4444;
+      background: #fef2f2;
+      font-weight: 600;
+    }
+  }
+}
+
+/* --- 4. PREVIEW & FOOTER --- */
+.preview-box {
+  background: #fffcf0;
+  border: 1px dashed #fbbf24;
+  border-radius: 12px;
+  padding: 16px;
+  .preview-header {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #b45309;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .preview-text {
+    font-style: italic;
+    color: $text-main;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+}
+
+.action-footer {
+  display: flex;
+  justify-content: flex-end;
+  .btn-save {
+    padding: 12px 32px;
+    background: $primary-gradient;
+    color: white;
+    border: none;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(255, 102, 0, 0.3);
+    transition: 0.2s;
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 102, 0, 0.4);
+    }
+    &:disabled {
+      opacity: 0.7;
+      transform: none;
+    }
+  }
+}

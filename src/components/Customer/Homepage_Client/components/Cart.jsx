@@ -1,10 +1,10 @@
-// src/components/Customer/Homepage_Client/Cart.jsx
 import React, { useCallback, useMemo, useState } from "react";
 import "../../../../styles/Homepage/Cart.scss";
 import OrderSummaryModal from "../../BookingDishesModal/OrderSummaryModal";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 
+// --- GRAPHQL ---
 const RESTAURANT_BY_ID = gql`
   query RestaurantById($id: ID!) {
     restaurant(id: $id) {
@@ -22,15 +22,84 @@ function useRestaurantName(restaurantId) {
   return data?.restaurant?.name;
 }
 
+// --- ICONS (SVG Inline) ---
+const IconClose = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M18 6 6 18" />
+    <path d="m6 6 12 12" />
+  </svg>
+);
+const IconTrash = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M3 6h18" />
+    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+  </svg>
+);
+const IconStore = () => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" />
+    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+    <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" />
+    <path d="M2 7h20" />
+    <path d="M22 7v3a2 2 0 0 1-2 2v0a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12v0a2 2 0 0 1-2-2V7" />
+  </svg>
+);
+const IconEmpty = () => (
+  <svg
+    width="64"
+    height="64"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{ opacity: 0.2 }}
+  >
+    <circle cx="8" cy="21" r="1" />
+    <circle cx="19" cy="21" r="1" />
+    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
+  </svg>
+);
+
+// --- COMPONENT CHÍNH ---
 const Cart = ({
   isOpen,
   onClose,
   cart,
-  onUpdateQuantity, // (itemId, delta)
-  totalPrice, // number | () => number
-  onCheckoutSuccess, // clearCart (khi thanh toán xong)
-  onClearCart, // ✅ new: clearCart (nút Xóa tất cả)
-  onRemoveRestaurantItems, // ✅ new: removeRestaurantItems(rid)
+  onUpdateQuantity,
+  totalPrice,
+  onCheckoutSuccess,
+  onClearCart,
+  onRemoveRestaurantItems,
 }) => {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const formatVND = useCallback(
@@ -55,6 +124,8 @@ const Cart = ({
 
   const total =
     typeof totalPrice === "function" ? totalPrice() : totalPrice || 0;
+  const itemCount =
+    cart?.reduce((acc, item) => acc + (item.quantity || 0), 0) || 0;
 
   const handleQtyChange = (item, e) => {
     const raw = e.target.value;
@@ -64,65 +135,88 @@ const Cart = ({
   };
 
   return (
-    <div className={`cart ${isOpen ? "cart--open" : ""}`}>
-      <div className="cart__header">
-        <h3 className="cart__title">Giỏ hàng</h3>
-        <button onClick={onClose} className="cart__close">
-          ✕
-        </button>
-      </div>
+    <>
+      {/* Overlay Backdrop */}
+      <div
+        className={`cart-backdrop ${isOpen ? "open" : ""}`}
+        onClick={onClose}
+      />
 
-      <div className="cart__items">
-        {!cart?.length && <p className="cart__empty">Giỏ hàng trống</p>}
-
-        {groups.map((group) => (
-          <RestaurantGroup
-            key={group.restaurantId}
-            group={group}
-            formatVND={formatVND}
-            onUpdateQuantity={onUpdateQuantity}
-            onQtyChange={handleQtyChange}
-            onRemoveRestaurantItems={onRemoveRestaurantItems}
-          />
-        ))}
-      </div>
-
-      <div className="cart__footer">
-        <div className="cart__total">
-          <span className="cart__total-label">Tổng cộng:</span>
-          <span className="cart__total-price">{formatVND(total)}</span>
-        </div>
-        <div className="cart__footer-actions">
-          <button
-            className="cart__checkout"
-            onClick={() => setIsOrderModalOpen(true)}
-            disabled={!cart?.length}
-          >
-            Thanh toán
-          </button>
-
+      <div className={`cart-panel ${isOpen ? "open" : ""}`}>
+        {/* HEADER */}
+        <div className="cart-header">
+          <div className="cart-header__top">
+            <h3 className="cart-header__title">
+              Giỏ hàng <span className="cart-header__count">({itemCount})</span>
+            </h3>
+            <button onClick={onClose} className="cart-header__close">
+              <IconClose />
+            </button>
+          </div>
           {!!cart?.length && (
             <button
-              className="cart__clear-all"
-              onClick={() => onClearCart?.()} // ✅ gọi clearCart
-              title="Xóa tất cả món trong giỏ"
+              className="cart-header__clear"
+              onClick={() => onClearCart?.()}
             >
-              🗑 Xóa tất cả
+              Xóa tất cả
             </button>
           )}
         </div>
+
+        {/* BODY */}
+        <div className="cart-body">
+          {!cart?.length && (
+            <div className="cart-empty">
+              <div className="cart-empty__icon">
+                <IconEmpty />
+              </div>
+              <p>Bạn chưa chọn món nào.</p>
+              <button className="cart-empty__btn" onClick={onClose}>
+                Tiếp tục xem món
+              </button>
+            </div>
+          )}
+
+          {groups.map((group) => (
+            <RestaurantGroup
+              key={group.restaurantId}
+              group={group}
+              formatVND={formatVND}
+              onUpdateQuantity={onUpdateQuantity}
+              onQtyChange={handleQtyChange}
+              onRemoveRestaurantItems={onRemoveRestaurantItems}
+            />
+          ))}
+        </div>
+
+        {/* FOOTER */}
+        {!!cart?.length && (
+          <div className="cart-footer">
+            <div className="cart-footer__row">
+              <span className="cart-footer__label">Tổng thanh toán</span>
+              <span className="cart-footer__total">{formatVND(total)}</span>
+            </div>
+            <button
+              className="cart-checkout-btn"
+              onClick={() => setIsOrderModalOpen(true)}
+            >
+              Đặt đơn ngay
+            </button>
+          </div>
+        )}
       </div>
 
       <OrderSummaryModal
         isOpen={isOrderModalOpen}
         onClose={() => setIsOrderModalOpen(false)}
         items={cart}
-        onSuccess={onCheckoutSuccess} // thường là clearCart
+        onSuccess={onCheckoutSuccess}
       />
-    </div>
+    </>
   );
 };
 
+// --- SUB-COMPONENT: GROUP NHÀ HÀNG ---
 function RestaurantGroup({
   group,
   formatVND,
@@ -136,67 +230,66 @@ function RestaurantGroup({
   return (
     <div className="cart-group">
       <div className="cart-group__header">
-        <h4 className="cart-group__title">🏪 {name}</h4>
+        <div className="cart-group__store-info">
+          <IconStore />
+          <span className="cart-group__name">{name}</span>
+        </div>
         <button
-          className="cart-group__remove-btn"
-          onClick={() => onRemoveRestaurantItems?.(group.restaurantId)} // ✅ gọi removeRestaurantItems
-          title="Xóa tất cả món của nhà hàng này"
+          className="cart-group__remove"
+          onClick={() => onRemoveRestaurantItems?.(group.restaurantId)}
+          title="Xóa nhà hàng này"
         >
-          Xóa toàn bộ
+          <IconTrash />
         </button>
       </div>
 
-      {group.items.map((item) => {
-        const line = (item.price || 0) * (item.quantity || 1);
-        return (
-          <div key={item.id} className="cart-item cart-item--grouped">
-            <div className="cart-item__info">
-              <div className="cart-item__details">
-                <h6 className="cart-item__name">{item.name}</h6>
-                <div className="cart-item__unit">
-                  Đơn giá: <strong>{formatVND(item.price)}</strong>
-                </div>
-                <div className="cart-item__line">
-                  Thành tiền: <strong>{formatVND(line)}</strong>
+      <div className="cart-group__list">
+        {group.items.map((item) => {
+          const line = (item.price || 0) * (item.quantity || 1);
+          return (
+            <div key={item.id} className="cart-item">
+              <div className="cart-item__main">
+                <div className="cart-item__info">
+                  <h6 className="cart-item__name">{item.name}</h6>
+                  <div className="cart-item__price-unit">
+                    {formatVND(item.price)}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="cart-item__controls">
-              <button
-                onClick={() => onUpdateQuantity?.(item.id, -1)}
-                className="cart-item__btn cart-item__btn--decrease"
-                aria-label="Giảm số lượng"
-              >
-                −
-              </button>
-              <input
-                className="cart-item__quantity-input"
-                type="number"
-                min={1}
-                value={item.quantity}
-                onChange={(e) => onQtyChange(item, e)} // ✅ tính delta chuẩn
-              />
-              <button
-                onClick={() => onUpdateQuantity?.(item.id, 1)}
-                className="cart-item__btn cart-item__btn--increase"
-                aria-label="Tăng số lượng"
-              >
-                +
-              </button>
+              <div className="cart-item__actions">
+                <div className="cart-qty">
+                  <button
+                    onClick={() => onUpdateQuantity?.(item.id, -1)}
+                    className="cart-qty__btn"
+                    disabled={item.quantity <= 1} // Hoặc để logic xóa nếu giảm về 0
+                  >
+                    −
+                  </button>
+                  <input
+                    className="cart-qty__input"
+                    type="number"
+                    value={item.quantity}
+                    onChange={(e) => onQtyChange(item, e)}
+                  />
+                  <button
+                    onClick={() => onUpdateQuantity?.(item.id, 1)}
+                    className="cart-qty__btn"
+                  >
+                    +
+                  </button>
+                </div>
+                <div className="cart-item__total-line">{formatVND(line)}</div>
+              </div>
             </div>
-          </div>
-        );
-      })}
-
-      <div className="cart-group__subtotal">
-        <span className="cart-group__subtotal-label">Tổng {name}:</span>
-        <span className="cart-group__subtotal-value">
-          {formatVND(group.subtotal)}
-        </span>
+          );
+        })}
       </div>
 
-      <hr className="cart-group__divider" />
+      <div className="cart-group__subtotal">
+        <span>Tạm tính ({name}):</span>
+        <strong>{formatVND(group.subtotal)}</strong>
+      </div>
     </div>
   );
 }

@@ -4,47 +4,134 @@ import mongoose from "mongoose";
 export const toId = (id) =>
   id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
 
-export function normalizeItem(i) {
-  const qty = parseFloat(i.quantity ?? 1);
-  const price = Number(i.price || 0);
-  const modifiersPrice = Number(i.modifiersPrice || 0);
-  const lineSubtotal = Math.round(price * qty + modifiersPrice * qty);
+export function normalizeItem(input) {
+  if (!input) throw new Error("Invalid item");
+
+  const servingVariant = input.servingVariant || null;
+  const basePrice = input.basePrice != null ? Number(input.basePrice) : null;
+
+  if (!servingVariant && basePrice == null) {
+    throw new Error("Item must have basePrice or servingVariant");
+  }
+
+  // servingVariant snapshot validation
+  if (servingVariant) {
+    if (
+      typeof servingVariant.name !== "string" ||
+      servingVariant.price == null ||
+      typeof Number(servingVariant.price) !== "number" ||
+      !servingVariant.mode
+    ) {
+      throw new Error("Invalid servingVariant snapshot");
+    }
+    if (!["PORTION", "BY_WEIGHT"].includes(servingVariant.mode)) {
+      throw new Error("Invalid servingVariant.mode");
+    }
+  }
+
+  // quantity / weightGrams rule
+  let quantity = Number(input.quantity ?? 1);
+  const weightGramsRaw = input.weightGrams;
+  const weightGrams = weightGramsRaw == null ? null : Number(weightGramsRaw);
+
+  const mode = servingVariant?.mode ?? null;
+
+  if (mode === "BY_WEIGHT") {
+    if (!(weightGrams > 0)) {
+      throw new Error("weightGrams is required (>0) for BY_WEIGHT item");
+    }
+    // quantity chỉ để UI/đếm line
+    quantity = 1;
+  } else {
+    // PORTION hoặc không có servingVariant (fallback basePrice)
+    if (!(quantity > 0)) throw new Error("quantity must be > 0");
+    // weightGrams không bắt buộc, nhưng nếu truyền phải hợp lệ
+    if (weightGrams != null && !(weightGrams > 0)) {
+      throw new Error("weightGrams must be > 0 when provided");
+    }
+  }
+
+  const modifiers = Array.isArray(input.modifiers)
+    ? input.modifiers.map((m) => ({
+        optionId: m.optionId,
+        optionName: m.optionName,
+        groupId: m.groupId,
+        price: Number(m.price || 0),
+      }))
+    : [];
 
   return {
-    dishId: i.dishId ?? i.id,
-    menuId: i.menuId,
-    categoryId: i.categoryId,
-    name: i.name,
-    unit: i.unit || "portion",
-    price,
-    modifiersPrice,
-    method: i.method || i.cookingMethod || "",
-    methodDelta: Number(i.methodDelta || 0),
-    note: i.description || "",
-    quantity: qty,
-    modifiers: (i.modifiers || []).map((m) => ({
-      optionId: m.optionId,
-      optionName: m.optionName,
-      groupId: m.groupId,
-      price: Number(m.price || 0),
-    })),
-    lineSubtotal,
-    status: i.status || "pending",
+    dishId: input.dishId || input.id,
+    menuId: input.menuId,
+    categoryId: input.categoryId,
+
+    name: input.name,
+    unit: input.unit || "portion",
+    image: input.image || null,
+    proofImages: Array.isArray(input.proofImages)
+      ? input.proofImages.filter(Boolean)
+      : [],
+
+    basePrice,
+    servingVariantId: input.servingVariantId || null,
+    servingVariant: servingVariant
+      ? {
+          name: servingVariant.name,
+          price: Number(servingVariant.price),
+          mode: servingVariant.mode,
+        }
+      : null,
+
+    quantity,
+    weightGrams: mode === "BY_WEIGHT" ? weightGrams : weightGrams ?? null,
+
+    modifiers,
+    note: input.note || null,
+    status: input.status || "pending",
   };
 }
 
-export function computeTotals(items) {
+export function computeTotals(items = []) {
   let subtotal = 0;
-  for (const it of items) {
-    const line =
-      it.lineSubtotal != null
-        ? Number(it.lineSubtotal)
-        : Number(it.price || 0) * Number(it.quantity || 0);
-    subtotal += line;
+
+  for (const item of items) {
+    const modifiersPrice = (item.modifiers || []).reduce(
+      (s, m) => s + (m.price || 0),
+      0
+    );
+
+    const unitPrice = item.servingVariant?.price ?? item.basePrice ?? 0;
+    if (!(unitPrice >= 0))
+      throw new Error(`Invalid unit price for ${item.name}`);
+
+    let lineSubtotal = 0;
+
+    if (item.servingVariant?.mode === "BY_WEIGHT") {
+      if (!(item.weightGrams > 0)) {
+        throw new Error(`weightGrams missing for BY_WEIGHT item ${item.name}`);
+      }
+      const kg = item.weightGrams / 1000;
+      lineSubtotal = Math.round(unitPrice * kg + modifiersPrice);
+    } else {
+      if (!(item.quantity > 0)) {
+        throw new Error(`quantity missing for PORTION item ${item.name}`);
+      }
+      lineSubtotal = Math.round(unitPrice * item.quantity + modifiersPrice);
+    }
+
+    item.modifiersPrice = modifiersPrice;
+    item.lineSubtotal = lineSubtotal;
+
+    if (!["cancelled", "returned"].includes(item.status)) {
+      subtotal += lineSubtotal;
+    }
   }
-  const tax = Math.round(subtotal * 0.1);
-  const service = Math.round(subtotal * 0.05);
-  const discount = 0;
-  const grandTotal = subtotal + tax + service - discount;
-  return { subtotal, discount, tax, service, grandTotal };
+
+  return {
+    subtotal,
+    discount: 0,
+    tax: 0,
+    service: 0,
+    grandTotal: subtotal,
+  };
 }

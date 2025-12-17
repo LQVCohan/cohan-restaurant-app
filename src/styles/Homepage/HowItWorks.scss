@@ -1,26 +1,102 @@
+// --- VARIABLES ---
+$primary: #ff6600;
+$primary-light: #fff5eb;
+$primary-gradient: linear-gradient(135deg, #fff5eb, #ffe4cc);
+$text-main: #1a202c;
+$text-sub: #718096;
+$bg-section: #fff7ed; // Màu nền Kem nhạt (giống DishGrid)
+$prev-section-bg: #ffffff; // Màu nền của section phía trên (RestaurantGrid)
+
 .how-it-works {
-  padding: 4rem 1rem;
-  background: linear-gradient(to bottom right, #f0f9ff, #dbeafe);
+  position: relative;
+  background-color: $bg-section;
+  z-index: 3; // Thấp hơn các phần trên một chút
+
+  // Padding lớn để chứa sóng đỉnh
+  padding-top: 100px;
+  padding-bottom: 100px;
+  width: 100%;
+  overflow-x: hidden;
+
+  // Kéo lên một chút để dính vào phần trên (nếu cần)
+  margin-top: -2px;
+
+  /* --- SÓNG ĐỈNH (WAVE TOP) --- */
+  &__wave-top {
+    position: absolute;
+    top: -1px; // Chồng lên trên 1px
+    left: 0;
+    width: 100%;
+    min-width: 100vw;
+    line-height: 0;
+    z-index: 1;
+    pointer-events: none;
+
+    .wave-svg {
+      display: block;
+      width: calc(100% + 1.3px);
+      height: 60px;
+      @media (min-width: 768px) {
+        height: 100px;
+      }
+
+      // Màu trắng, trùng với nền của RestaurantGrid phía trên
+      path {
+        fill: $prev-section-bg;
+      }
+    }
+  }
 
   &__container {
     max-width: 1280px;
     margin: 0 auto;
+    padding: 0 32px;
+    position: relative;
+    z-index: 2;
+    @media (max-width: 768px) {
+      padding: 0 20px;
+    }
+  }
+
+  /* --- HEADER --- */
+  &__header {
+    text-align: center;
+    margin-bottom: 50px;
+  }
+
+  &__badge {
+    display: inline-block;
+    background: #ffe4cc;
+    color: $primary;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
   }
 
   &__title {
-    font-size: 1.875rem;
-    font-weight: bold;
-    color: #0c4a6e;
-    text-align: center;
-    margin-bottom: 3rem;
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: $text-main;
+    margin: 0 0 10px 0;
   }
 
+  &__subtitle {
+    font-size: 1rem;
+    color: $text-sub;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  /* --- GRID --- */
   &__grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 2rem;
+    gap: 30px;
 
-    @media (min-width: 768px) {
+    @media (min-width: 640px) {
       grid-template-columns: repeat(2, 1fr);
     }
 
@@ -29,43 +105,76 @@
     }
   }
 
-  &__step {
-    text-align: center;
+  /* --- CARD --- */
+  &__card {
     background: white;
-    padding: 2rem 1.5rem;
-    border-radius: 1rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s;
+    padding: 32px 24px;
+    border-radius: 24px;
+    text-align: center;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 
     &:hover {
-      transform: translateY(-4px);
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px rgba(255, 102, 0, 0.1);
+      border-color: rgba(255, 102, 0, 0.2);
+
+      .how-it-works__step-number {
+        background-color: $primary;
+        color: white;
+      }
+      .how-it-works__icon-wrapper {
+        transform: scale(1.1) rotate(5deg);
+      }
     }
   }
 
-  &__icon {
-    width: 4rem;
-    height: 4rem;
-    background: linear-gradient(to right, #e0f2fe, #bae6fd);
+  /* Số thứ tự bước (1, 2, 3, 4) */
+  &__step-number {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: #f1f5f9;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+  }
+
+  &__icon-wrapper {
+    width: 80px;
+    height: 80px;
+    background: $primary-gradient;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 1rem;
+    margin: 0 auto 24px;
+    transition: transform 0.3s ease;
+  }
 
-    span {
-      font-size: 1.5rem;
-    }
+  &__icon {
+    font-size: 2rem;
   }
 
   &__step-title {
     font-size: 1.25rem;
-    font-weight: 600;
-    color: #075985;
-    margin-bottom: 0.5rem;
+    font-weight: 700;
+    color: $text-main;
+    margin-bottom: 12px;
   }
 
-  &__step-description {
-    color: #0284c7;
-    line-height: 1.5;
+  &__step-desc {
+    color: $text-sub;
+    line-height: 1.6;
+    font-size: 0.95rem;
   }
 }

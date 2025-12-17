@@ -635,3 +635,33 @@ $radius-pill: 999px;
     padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
 }
+/* Thêm vào MenuItemModal.module.scss */
+
+// Style cho giá hiển thị trên Chip
+.chipPrice {
+  font-size: 0.75rem;
+  color: #64748b; // Slate-500
+  &.missingPrice {
+    color: #ef4444; // Red-500
+    font-style: italic;
+    font-weight: 500;
+  }
+}
+
+// Khi chip Active thì chữ giá màu trắng
+.activeChip .chipPrice {
+  color: rgba(255, 255, 255, 0.9);
+  &.missingPrice {
+    color: #fecaca; // Red-200 (nhạt hơn để đọc trên nền cam)
+  }
+}
+
+// Style cho giá Base ở Header và Footer khi null
+.basePriceTag,
+.totalValue {
+  &.noPrice {
+    color: #ef4444; // Red-500
+    font-size: 1rem;
+    font-style: italic;
+  }
+}

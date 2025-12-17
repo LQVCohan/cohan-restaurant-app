@@ -1,0 +1,36 @@
+$primary: #ff6600;
+$text-sub: #64748b;
+
+.spending-tag {
+  font-size: 0.9rem;
+  color: $text-sub;
+  span {
+    color: $primary;
+    font-weight: 700;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 0;
+  .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    display: block;
+  }
+  p {
+    color: $text-sub;
+    margin-bottom: 20px;
+  }
+
+  // Nút dùng chung style btn-save từ file cha hoặc import
+  .btn-save {
+    padding: 10px 24px;
+    border-radius: 99px;
+    background: $primary;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+  }
+}

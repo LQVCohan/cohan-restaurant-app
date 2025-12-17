@@ -1,0 +1,256 @@
+// src/components/Customer/RestaurantMenu/styles/ProductModal.scss
+@import "./variables";
+
+.modal-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(5px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  animation: fadeOverlay 0.3s forwards;
+  padding: 1rem;
+
+  .modal-content {
+    background: white;
+    width: 100%;
+    max-width: 900px;
+    height: auto;
+    max-height: 90vh;
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    transform: scale(0.95);
+    opacity: 0;
+    animation: zoomIn 0.3s forwards;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .modal-img {
+      width: 45%;
+      background: #f3f4f6;
+      position: relative;
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      @media (max-width: 768px) {
+        width: 100%;
+        height: 250px;
+        flex-shrink: 0;
+      }
+      .close-btn.mobile-only {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: white;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        font-size: 1.2rem;
+        cursor: pointer;
+        z-index: 20;
+        display: none;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        @media (max-width: 768px) {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+    }
+
+    .modal-info {
+      width: 55%;
+      padding: 2.5rem;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      position: relative;
+
+      @media (max-width: 768px) {
+        width: 100%;
+        padding: 1.5rem;
+      }
+
+      .close-btn.desktop-only {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #f3f4f6;
+        border: none;
+        cursor: pointer;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        z-index: 10;
+        &:hover {
+          background: #e5e7eb;
+          color: #f97316;
+        }
+        @media (max-width: 768px) {
+          display: none;
+        }
+      }
+
+      h2 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+        color: #111827;
+        line-height: 1.2;
+      }
+      .desc {
+        color: #6b7280;
+        font-size: 1rem;
+        line-height: 1.6;
+        margin-bottom: 2rem;
+      }
+
+      .option-section {
+        margin-bottom: 1.5rem;
+        &.cooking-method {
+          .options-grid button {
+            border-radius: 20px; // Nút tròn hơn
+          }
+        }
+        h3 {
+          font-size: 0.9rem;
+          font-weight: 700;
+          color: #374151;
+          margin-bottom: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .options-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+          button {
+            padding: 0.6rem 1.2rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+            color: #374151;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            &:hover {
+              border-color: #f97316;
+              color: #f97316;
+            }
+            &.selected {
+              background: #fff7ed;
+              border-color: #f97316;
+              color: #c2410c;
+              box-shadow: 0 2px 4px rgba(249, 115, 22, 0.15);
+            }
+          }
+        }
+      }
+
+      .note-input {
+        width: 100%;
+        padding: 0.8rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        font-family: inherit;
+        font-size: 0.95rem;
+        resize: none;
+        &:focus {
+          outline: none;
+          border-color: #f97316;
+          ring: 2px solid rgba(249, 115, 22, 0.1);
+        }
+      }
+
+      .modal-footer {
+        margin-top: auto;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+
+        .qty-control {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #f9fafb;
+          padding: 4px;
+          border-radius: 8px;
+          border: 1px solid #f3f4f6;
+
+          button {
+            width: 36px;
+            height: 36px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.2rem;
+            color: #374151;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            padding-bottom: 2px;
+
+            &:hover {
+              border-color: #f97316;
+              color: #f97316;
+              background-color: #fff7ed;
+            }
+          }
+          span {
+            font-weight: 700;
+            min-width: 24px;
+            text-align: center;
+            font-size: 1rem;
+            color: #111827;
+          }
+        }
+
+        .add-cart-btn {
+          flex-grow: 1;
+          background: #111827;
+          color: white;
+          border: none;
+          padding: 0 1.5rem;
+          height: 48px;
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 1rem;
+          cursor: pointer;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          transition: background 0.2s;
+          &:hover {
+            background: #f97316;
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,4 +1,33 @@
-# --- Value Objects ---
+# =========================================================
+# ENUMS
+# =========================================================
+
+enum OrderStatus {
+  draft
+  pending
+  confirmed
+  customer_attached
+  preparing
+  ready
+  served
+  completed
+  cancelled
+  failed
+}
+
+enum ItemStatus {
+  pending
+  preparing
+  ready
+  served
+  cancelled
+  returned
+}
+
+# =========================================================
+# VALUE OBJECTS
+# =========================================================
+
 type Shipping {
   fullName: String
   phone: String
@@ -11,27 +40,37 @@ type Shipping {
   scheduleTime: String
 }
 
-enum OrderStatus {
-  draft
-  pending
-  confirmed
-  customer_attached
-  preparing
-  ready
-  served
-  completed
-  cancelled
-  failed # Thêm failed cho trường hợp lỗi thanh toán
+input ShippingInput {
+  fullName: String
+  phone: String
+  email: String
+  address: String
+  note: String
+  deliveryMethod: String
+  deliveryTime: String
+  scheduleDate: String
+  scheduleTime: String
 }
 
-enum ItemStatus {
-  pending
-  preparing
-  ready
-  served
-  cancelled
-  returned # Thêm returned cho trường hợp trả món
+# =========================================================
+# SERVING VARIANT SNAPSHOT (🔥 CORE)
+# =========================================================
+
+type ServingVariantSnapshot {
+  name: String
+  price: Int
+  mode: String # PORTION | BY_WEIGHT
 }
+
+input ServingVariantSnapshotInput {
+  name: String
+  price: Int
+  mode: String
+}
+
+# =========================================================
+# MODIFIERS
+# =========================================================
 
 type OrderModifier {
   optionId: ID
@@ -47,6 +86,64 @@ input OrderModifierInput {
   price: Int
 }
 
+# =========================================================
+# ORDER ITEM
+# =========================================================
+
+type OrderItem {
+  _id: ID
+
+  dishId: ID
+  menuId: ID
+  categoryId: ID
+
+  name: String!
+  unit: String
+  image: String
+  proofImages: [String]
+
+  # 🔥 PRICE SNAPSHOT
+  basePrice: Int
+  servingVariantId: ID
+  servingVariant: ServingVariantSnapshot
+
+  modifiersPrice: Int
+  quantity: Float!
+  weightGrams: Float
+  modifiers: [OrderModifier!]
+  lineSubtotal: Int
+
+  note: String
+  status: ItemStatus
+}
+
+input OrderItemInput {
+  dishId: ID
+  menuId: ID
+  categoryId: ID
+
+  name: String!
+  unit: String
+  image: String
+  proofImages: [String]
+
+  # 🔥 PRICE SNAPSHOT
+  basePrice: Int
+  servingVariantId: ID
+  servingVariant: ServingVariantSnapshotInput
+
+  modifiersPrice: Int
+  quantity: Float!
+  modifiers: [OrderModifierInput!]
+
+  note: String
+  status: ItemStatus
+}
+
+# =========================================================
+# ORDER TOTALS
+# =========================================================
+
 type OrderTotals {
   subtotal: Int!
   discount: Int!
@@ -55,12 +152,9 @@ type OrderTotals {
   grandTotal: Int!
 }
 
-type StatusEvent {
-  status: String! # Có thể giữ String để linh hoạt hoặc dùng Enum
-  at: String!
-  byUserId: ID
-  note: String
-}
+# =========================================================
+# PAYMENT
+# =========================================================
 
 type OrderPayment {
   method: String
@@ -71,57 +165,20 @@ type OrderPayment {
   paidAt: String
 }
 
-# --- Core Types ---
-input CreateOffPremiseOrderInput {
-  restaurantId: ID!
-  # "takeaway" hoặc "delivery"
-  orderType: String!
+# =========================================================
+# STATUS TIMELINE
+# =========================================================
 
-  items: [OrderItemInput!]!
+type StatusEvent {
+  status: String!
+  at: String!
+  byUserId: ID
   note: String
-  customer: CustomerInput
-  shipping: ShippingInput
-  userId: ID
-  clientMeta: JSON
-  warehouseId: ID
-}
-type CreateOffPremiseOrderPayload {
-  order: Order!
 }
 
-type OrderItem {
-  _id: ID # Thêm _id riêng của item nếu cần thao tác chính xác
-  dishId: ID
-  menuId: ID
-  categoryId: ID
-  name: String!
-  unit: String
-
-  # ✅ CẬP NHẬT: Ảnh thumbnail món ăn (snapshot)
-  image: String
-
-  # ✅ CẬP NHẬT: Ảnh minh chứng (do user upload)
-  proofImages: [String]
-
-  price: Int!
-  modifiersPrice: Int
-  method: String
-  methodDelta: Int
-  note: String
-  quantity: Float! # Float để hỗ trợ cân ký (1.5 kg)
-  # Inventory fields (để hiển thị nếu cần)
-  weightGrams: Float
-  servingMode: String
-
-  modifiers: [OrderModifier!]
-  lineSubtotal: Int
-
-  # ✅ Dùng Enum thay vì String
-  status: ItemStatus
-
-  recipeId: ID
-  recipe: Recipe
-}
+# =========================================================
+# CUSTOMER INFO
+# =========================================================
 
 type OrderCustomerInfo {
   name: String
@@ -129,17 +186,30 @@ type OrderCustomerInfo {
   email: String
   note: String
   partySize: Int
-  timeTo: DateTime
+  timeTo: String
 }
+
+input CustomerInput {
+  fullName: String
+  name: String
+  phone: String
+  email: String
+}
+
+# =========================================================
+# ORDER
+# =========================================================
 
 type Order {
   id: ID!
   orderCode: String
   restaurantId: ID!
-  userId: ID
-  reservationId: ID
+
   orderType: String!
   tableCode: String
+
+  userId: ID
+  reservationId: ID
 
   shipping: Shipping
   items: [OrderItem!]!
@@ -147,71 +217,27 @@ type Order {
   payment: OrderPayment
 
   statusTimeline: [StatusEvent!]!
-
-  # ✅ Dùng Enum thay vì String
   currentStatus: OrderStatus!
 
   note: String
   createdAt: String!
   updatedAt: String!
+
   user: User
   customerInfo: OrderCustomerInfo
   clientMeta: JSON
 }
 
-# --- Inputs ---
-input ShippingInput {
-  fullName: String
-  phone: String
-  email: String
-  address: String
-  note: String
-  deliveryMethod: String
-  deliveryTime: String
-  scheduleDate: String
-  scheduleTime: String
-}
-
-input OrderItemInput {
-  dishId: ID
-  menuId: ID
-  categoryId: ID
-  name: String!
-  unit: String
-
-  # ✅ Ảnh thumbnail (snapshot từ menu)
-  image: String
-
-  # ✅ Ảnh minh chứng (upload lên)
-  proofImages: [String]
-
-  price: Int!
-  modifiersPrice: Int
-  method: String
-  methodDelta: Int
-  note: String
-  quantity: Float!
-  modifiers: [OrderModifierInput!]
-  status: ItemStatus
-
-  # ✅ Inventory support (Optional)
-  weightGrams: Float
-  servingKey: String
-  servingMode: String
-}
-
-input CustomerInput {
-  fullName: String
-  name: String # Hỗ trợ cả 2 trường để tránh lỗi FE
-  phone: String
-  email: String
-}
+# =========================================================
+# INPUTS – CREATE / UPDATE
+# =========================================================
 
 input CreateOrAppendTableOrderInput {
   restaurantId: ID!
   tableId: ID
   tableCode: String!
   orderCode: String
+
   items: [OrderItemInput!]!
   note: String
   customer: CustomerInput
@@ -222,6 +248,22 @@ input CreateOrAppendTableOrderInput {
 
 type CreateOrAppendTableOrderPayload {
   isNewOrder: Boolean!
+  order: Order!
+}
+
+input CreateOffPremiseOrderInput {
+  restaurantId: ID!
+  orderType: String! # takeaway | delivery
+  items: [OrderItemInput!]!
+  note: String
+  customer: CustomerInput
+  shipping: ShippingInput
+  userId: ID
+  clientMeta: JSON
+  warehouseId: ID
+}
+
+type CreateOffPremiseOrderPayload {
   order: Order!
 }
 
@@ -236,7 +278,7 @@ input UpdateOrderStatusInput {
 input UpdateOrderItemStatusInput {
   orderId: ID!
   restaurantId: ID
-  itemKey: String! # Có thể là ID món hoặc index
+  itemKey: String!
   status: ItemStatus!
   note: String
 }
@@ -245,7 +287,7 @@ input UpdateOrderCustomerByCodeInput {
   restaurantId: ID!
   orderCode: String!
   customer: CustomerInput!
-  userId: ID # Cho phép đổi user phụ trách nếu cần
+  userId: ID
 }
 
 type UpdateOrderItemStatusPayload {
@@ -262,7 +304,19 @@ type CancelOrderPayload {
   order: Order!
 }
 
-# --- Connections & Lists ---
+# =========================================================
+# GROUPING / PAGINATION
+# =========================================================
+
+type OrderGroup {
+  orderCode: String
+  tableCode: String
+  restaurantId: ID
+  latestStatus: String
+  count: Int
+  orders: [Order!]!
+}
+
 type PageInfo {
   endCursor: ID
   hasNextPage: Boolean!
@@ -294,16 +348,10 @@ type OrderList {
   totalCount: Int!
 }
 
-type OrderGroup {
-  orderCode: String
-  tableCode: String
-  restaurantId: ID
-  latestStatus: String
-  count: Int
-  orders: [Order!]!
-}
+# =========================================================
+# ROOT
+# =========================================================
 
-# --- Root ---
 extend type Query {
   order(id: ID!): Order
 
@@ -334,13 +382,13 @@ extend type Query {
 }
 
 extend type Mutation {
-  createOffPremiseOrder(
-    input: CreateOffPremiseOrderInput!
-  ): CreateOffPremiseOrderPayload!
-
   createOrAppendTableOrder(
     input: CreateOrAppendTableOrderInput!
   ): CreateOrAppendTableOrderPayload!
+
+  createOffPremiseOrder(
+    input: CreateOffPremiseOrderInput!
+  ): CreateOffPremiseOrderPayload!
 
   updateOrderStatus(input: UpdateOrderStatusInput!): Order!
 

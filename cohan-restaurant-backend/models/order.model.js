@@ -1,13 +1,18 @@
 import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
 import ShippingSchema from "./order-shipping.model.js";
+
 const OrderItemSchema = new mongoose.Schema({
   dishId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "MenuItem",
     required: true,
   },
-  menuId: { type: mongoose.Schema.Types.ObjectId, ref: "Menu", required: true },
+  menuId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Menu",
+    required: true,
+  },
   categoryId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
@@ -15,28 +20,44 @@ const OrderItemSchema = new mongoose.Schema({
   },
 
   name: { type: String, required: true },
-  unit: { type: String, default: "phần" },
+  unit: { type: String, default: "portion" },
+
   image: { type: String },
   proofImages: [{ type: String }],
-  price: { type: Number, required: true, min: 0 },
+
+  /* =====================
+     PRICING SNAPSHOT
+     ===================== */
+
+  // Giá gốc của món (nếu không chọn servingVariant)
+  basePrice: { type: Number, min: 0 },
+
+  // ID để trace (optional)
+  servingVariantId: {
+    type: mongoose.Schema.Types.ObjectId,
+  },
+  weightGrams: { type: Number, min: 1 },
+  // SNAPSHOT phục vụ TÍNH TIỀN
+  servingVariant: {
+    name: { type: String },
+    mode: {
+      type: String,
+      enum: ["PORTION", "BY_WEIGHT"],
+    },
+    price: { type: Number, min: 0 }, // price / portion OR price / kg
+  },
+
   modifiersPrice: { type: Number, default: 0, min: 0 },
 
-  method: { type: String },
-  methodDelta: { type: Number, default: 0 },
-  description: { type: String },
-
-  quantity: { type: Number, required: true, min: 0.01 },
-
-  modifiers: [
-    {
-      optionId: { type: mongoose.Schema.Types.ObjectId, ref: "ModifierOption" },
-      optionName: { type: String },
-      price: { type: Number, default: 0, min: 0 },
-    },
-  ],
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1, // hỗ trợ 0.1kg, 0.25kg
+  },
 
   lineSubtotal: { type: Number, default: 0 },
-  cancelReason: { type: String },
+
+  note: { type: String },
 
   status: {
     type: String,
@@ -44,8 +65,13 @@ const OrderItemSchema = new mongoose.Schema({
     enum: ["pending", "preparing", "ready", "served", "cancelled", "returned"],
   },
 
-  recipeId: { type: mongoose.Schema.Types.ObjectId, ref: "Recipe" },
-  note: { type: String },
+  modifiers: [
+    {
+      optionId: { type: mongoose.Schema.Types.ObjectId },
+      optionName: { type: String },
+      price: { type: Number, default: 0, min: 0 },
+    },
+  ],
 });
 
 const OrderSchema = BaseSchemaModel({
@@ -141,42 +167,56 @@ const OrderSchema = BaseSchemaModel({
   currentStatus: { type: String, default: "confirmed" },
   note: { type: String },
 });
+
 OrderSchema.methods.calculateTotals = function () {
   let subtotal = 0;
 
   this.items.forEach((item) => {
-    const modifiersPrice = item.modifiers.reduce(
+    // 1️⃣ modifiersPrice
+    const modifiersPrice = (item.modifiers || []).reduce(
       (acc, mod) => acc + (mod.price || 0),
       0
     );
     item.modifiersPrice = modifiersPrice;
 
-    const unitPrice = item.price + modifiersPrice + (item.methodDelta || 0);
-    item.lineSubtotal = unitPrice * item.quantity;
+    // 2️⃣ xác định unit price
+    let unitPrice = 0;
+
+    if (item.servingVariant && item.servingVariant.price != null) {
+      unitPrice = item.servingVariant.price;
+    } else if (item.basePrice != null) {
+      unitPrice = item.basePrice;
+    } else {
+      throw new Error(
+        `Item ${item.name} has no basePrice or servingVariant.price`
+      );
+    }
+
+    // 3️⃣ line subtotal
+    item.lineSubtotal = unitPrice * item.quantity + item.modifiersPrice;
 
     if (!["cancelled", "returned"].includes(item.status)) {
       subtotal += item.lineSubtotal;
     }
   });
 
-  this.totals.subtotal = subtotal;
+  this.totals.subtotal = Math.round(subtotal);
 
   const serviceRate = this.totals.serviceRate || 0;
   const taxRate = this.totals.taxRate || 0;
   const discount = this.totals.discount || 0;
-  const shippingFee = this.totals.shippingFee || this.shipping.shippingFee || 0;
+  const shippingFee = this.totals.shippingFee || 0;
 
   this.totals.service = Math.round(subtotal * serviceRate);
 
-  const amountBeforeTax = Math.max(
+  const beforeTax = Math.max(
     0,
     this.totals.subtotal + this.totals.service - discount
   );
 
-  this.totals.tax = Math.round(amountBeforeTax * taxRate);
-
+  this.totals.tax = Math.round(beforeTax * taxRate);
   this.totals.grandTotal = Math.round(
-    amountBeforeTax + this.totals.tax + shippingFee
+    beforeTax + this.totals.tax + shippingFee
   );
 
   return this;
@@ -192,6 +232,7 @@ OrderSchema.pre("save", function (next) {
   }
   next();
 });
+
 OrderSchema.index({ restaurantId: 1, orderCode: 1 }, { unique: true });
 OrderSchema.index({ restaurantId: 1, currentStatus: 1, createdAt: -1 });
 OrderSchema.index({ "payment.transactionId": 1 });

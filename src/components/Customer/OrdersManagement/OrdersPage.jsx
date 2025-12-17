@@ -1,21 +1,22 @@
 import React, { useMemo, useState, useContext, useEffect } from "react";
 import "./OrdersPage.scss";
-import OrderItem from "./OrderItem";
+import OrderItem from "./OrderItem"; // Import OrderItem mới
 import Toast from "../../ui/Toast";
 import Skeleton from "../../ui/Skeleton";
-import Icon from "../../ui/Icon";
+
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { AuthContext } from "../../../context/AuthContext";
+
+// Modals
 import CancelOrderModal from "./modals/CancelOrderModal";
 import ChangeTimeModal from "./modals/ChangeTimeModal";
 import QRPaymentModal from "../QRPaymentModal/QRPaymentModal";
 import TrackingModal from "./modals/TrackingModal";
 import ChangeTableModal from "./modals/ChangeTableModal";
-// Import ConfirmationModal mà chúng ta đã làm ở bước trước
 import ConfirmationModal from "../../Customer/TableBooking/ConfirmationModal/ConfirmationModal";
 
-/* ───────────────── GraphQL Queries ───────────────── */
+/* ───────────────── GraphQL Queries (Giữ nguyên) ───────────────── */
 const ORDERS_BY_USER = gql`
   query OrdersByUser($userId: ID!, $limit: Int = 20, $cursor: ID) {
     ordersByUser(userId: $userId, limit: $limit, cursor: $cursor) {
@@ -27,6 +28,8 @@ const ORDERS_BY_USER = gql`
           restaurantId
           reservationId
           orderType
+          currentStatus
+          createdAt
           shipping {
             fullName
             phone
@@ -45,8 +48,6 @@ const ORDERS_BY_USER = gql`
           totals {
             grandTotal
           }
-          currentStatus
-          createdAt
         }
       }
     }
@@ -71,28 +72,12 @@ const MY_RESERVATIONS = gql`
   }
 `;
 
-const UPDATE_ORDER_STATUS = gql`
-  mutation UpdateOrderStatus($input: UpdateOrderStatusInput!) {
-    updateOrderStatus(input: $input) {
-      id
-      currentStatus
-      updatedAt
-    }
-  }
-`;
 const CANCEL_ORDER = gql`
   mutation CancelOrder($id: ID!, $reason: String) {
     cancelOrder(id: $id, reason: $reason) {
       id
       currentStatus
       updatedAt
-    }
-  }
-`;
-const CREATE_RESERVATION = gql`
-  mutation CreateReservation($input: CreateReservationInput!) {
-    createReservation(input: $input) {
-      id
     }
   }
 `;
@@ -104,8 +89,13 @@ const CANCEL_RESERVATION = gql`
     }
   }
 `;
-
-// ✅ MỚI: Mutation Xóa đặt bàn
+const CREATE_RESERVATION = gql`
+  mutation CreateReservation($input: CreateReservationInput!) {
+    createReservation(input: $input) {
+      id
+    }
+  }
+`;
 const DELETE_RESERVATION = gql`
   mutation DeleteReservation($id: ID!) {
     deleteReservation(id: $id) {
@@ -115,45 +105,32 @@ const DELETE_RESERVATION = gql`
   }
 `;
 
+// Helper format
 const fmtMoney = (v) =>
-  typeof v === "number" ? v.toLocaleString("vi-VN") + "đ" : "0đ";
-const toVNDateTime = (iso) => {
-  try {
-    return new Date(iso).toLocaleString("vi-VN");
-  } catch {
-    return iso;
-  }
-};
-const normalizeOrderType = (raw) => {
-  const v = (raw || "").toLowerCase();
-  if (["delivery", "ship", "giao_hang"].includes(v)) return "delivery";
-  return "dinein";
-};
+  new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
+    v
+  );
+const toVNDateTime = (iso) => new Date(iso).toLocaleString("vi-VN");
+const normalizeOrderType = (raw) =>
+  ["delivery", "ship", "giao_hang"].includes((raw || "").toLowerCase())
+    ? "delivery"
+    : "dinein";
 
 export default function OrdersPage() {
   const auth = useContext(AuthContext);
   const userId = auth?.user?.id;
-  console.log("User ID in OrdersPage:", userId);
   const [activeTab, setActiveTab] = useState("all");
   const [toasts, setToasts] = useState([]);
-  const pushToast = (text, type = "success") =>
-    setToasts((t) => [...t, { id: Math.random(), text, type }]);
-  const closeToast = (id) => setToasts((t) => t.filter((x) => x.id !== id));
 
-  // --- States Modal ---
-  const [modal, setModal] = useState({
-    type: null,
-    orderKey: null,
-    payload: null,
-  });
-  const [cancelTarget, setCancelTarget] = useState(null); // Target để Hủy
-  const [deleteTarget, setDeleteTarget] = useState(null); // Target để Xóa (Mới)
+  // State Modals
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [changeTimeTarget, setChangeTimeTarget] = useState(null);
   const [qrBooking, setQrBooking] = useState(null);
   const [trackingOrder, setTrackingOrder] = useState(null);
   const [changeTableOpen, setChangeTableOpen] = useState(null);
 
-  /* Queries */
+  // Queries
   const {
     data: orderConn,
     loading: ordersLoading,
@@ -163,7 +140,6 @@ export default function OrdersPage() {
     skip: !userId,
     fetchPolicy: "network-only",
   });
-
   const {
     data: resvList,
     loading: resvLoading,
@@ -174,101 +150,49 @@ export default function OrdersPage() {
     fetchPolicy: "network-only",
   });
 
-  /* Mutations */
+  // Mutations
   const [cancelOrderMutation] = useMutation(CANCEL_ORDER, {
     onCompleted: () => {
-      pushToast("Đã hủy đơn", "success");
+      pushToast("Đã hủy đơn");
       refetchOrders();
     },
   });
   const [cancelReservationMutation] = useMutation(CANCEL_RESERVATION, {
     onCompleted: () => {
-      pushToast("Đã hủy đặt bàn", "success");
+      pushToast("Đã hủy bàn");
       refetchReservations();
     },
   });
   const [createReservation] = useMutation(CREATE_RESERVATION, {
     onCompleted: () => {
-      pushToast("Đặt bàn thành công!", "success");
+      pushToast("Đặt bàn thành công!");
       refetchReservations();
     },
   });
-
-  // ✅ MỚI: Mutation Xóa
   const [deleteReservationMutation] = useMutation(DELETE_RESERVATION, {
     onCompleted: () => {
-      pushToast("Đã xóa lịch sử đặt bàn", "success");
+      pushToast("Đã xóa lịch sử");
       refetchReservations();
-    },
-    onError: (err) => {
-      pushToast("Lỗi khi xóa: " + err.message, "error");
     },
   });
 
-  /* --- 1. MAP DATA CHO ĐẶT BÀN --- */
+  const pushToast = (text) =>
+    setToasts((t) => [...t, { id: Math.random(), text }]);
+  const closeToast = (id) => setToasts((t) => t.filter((x) => x.id !== id));
+
+  /* --- 1. MAPPING RESERVATION DATA --- */
   const reservationItems = useMemo(() => {
-    const arr = resvList?.myReservations || [];
-    return arr.map((r) => {
-      const timeObj = new Date(r.timeTo);
-      const dateStr = timeObj.toLocaleDateString("vi-VN");
-      const timeStr = timeObj.toLocaleTimeString("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      const durationVal = r.durationMinutes ? r.durationMinutes : 90;
-
-      const mainInfo = [
-        { label: "Ngày giờ", value: `${dateStr} - ${timeStr}` },
-        { label: "Thời lượng", value: `${durationVal} phút` },
-        { label: "Số khách", value: `${r.partySize} người` },
-      ];
-      if (r.depositAmount > 0) {
-        mainInfo.push({
-          label: "Tiền cọc",
-          value: fmtMoney(r.depositAmount),
-          highlight: true,
-        });
-      }
-
-      // Logic xác định nút Hủy hay Xóa
+    return (resvList?.myReservations || []).map((r) => {
       const isCancelled = ["cancelled", "rejected", "expired"].includes(
         (r.status || "").toLowerCase()
       );
       const isCompleted = (r.status || "").toLowerCase() === "checked_in";
 
-      // Tạo danh sách actions động
-      const dynamicActions = [];
+      const actions = [];
 
-      // Action 1: Đổi giờ / Đổi bàn (Chỉ hiện khi chưa hủy/hoàn thành)
-      if (!isCancelled && !isCompleted) {
-        dynamicActions.push(
-          {
-            icon: "clock",
-            label: "Đổi giờ",
-            variant: "secondary",
-            onClick: () => setChangeTimeTarget(r),
-          },
-          {
-            icon: "mapPin",
-            label: "Đổi bàn",
-            variant: "secondary",
-            onClick: () => setChangeTableOpen(r),
-          }
-        );
-      }
-
-      // Action 2: Xem chi tiết (Luôn hiện)
-      dynamicActions.push({
-        icon: "eye",
-        label: "Chi tiết",
-        variant: "primary",
-        onClick: () => openOrderDetails(r.id, r),
-      });
-
-      // Action 3: Thanh toán (Chỉ hiện khi pending_payment)
+      // Action: Thanh toán
       if (r.status === "pending_payment") {
-        dynamicActions.push({
-          icon: "creditCard",
+        actions.push({
           label: "Thanh toán",
           variant: "success",
           onClick: () =>
@@ -280,348 +204,242 @@ export default function OrdersPage() {
         });
       }
 
-      // Action 4: Hủy hoặc Xóa
+      // Action: Đổi giờ/bàn
+      if (!isCancelled && !isCompleted) {
+        actions.push({
+          label: "Đổi giờ",
+          variant: "outline",
+          onClick: () => setChangeTimeTarget(r),
+        });
+        actions.push({
+          label: "Đổi bàn",
+          variant: "outline",
+          onClick: () => setChangeTableOpen(r),
+        });
+      }
+
+      // Action: Hủy/Xóa
       if (isCancelled || isCompleted) {
-        // Nếu đã hủy/xong -> Hiện nút Xóa
-        dynamicActions.push({
-          icon: "trash",
+        actions.push({
           label: "Xóa",
           variant: "danger",
           onClick: () => setDeleteTarget({ id: r.id, kind: "reservation" }),
         });
       } else {
-        // Nếu đang hoạt động -> Hiện nút Hủy
-        dynamicActions.push({
-          icon: "x",
-          label: "Hủy đặt",
+        actions.push({
+          label: "Hủy",
           variant: "danger",
           onClick: () => setCancelTarget({ id: r.id, kind: "reservation" }),
         });
       }
 
       return {
-        kind: "reservation",
         key: r.id,
+        kind: "reservation",
         status: (r.status || "").toLowerCase(),
-        restaurantName: r.restaurantName || "Đang cập nhật...",
-        header: {
-          id: `#${r.orderCode || r.id.slice(-6).toUpperCase()}`,
-          timeText: `Tạo lúc: ${toVNDateTime(r.createdAt)}`,
-        },
-        itemsPreview: [],
-        mainInfo: mainInfo,
-        actions: dynamicActions, // Sử dụng actions động
+        orderId: r.orderCode || r.id.slice(-6).toUpperCase(),
+        restaurantName: r.restaurantName || "Nhà hàng",
+        header: { timeText: toVNDateTime(r.createdAt) },
+        itemsPreview: [], // Đặt bàn không có list món
+        mainInfo: [
+          {
+            label: "Ngày đến",
+            value: new Date(r.timeTo).toLocaleString("vi-VN"),
+            highlight: true,
+          },
+          { label: "Số khách", value: `${r.partySize} người` },
+          { label: "Tiền cọc", value: fmtMoney(r.depositAmount) },
+        ],
+        actions: actions,
         raw: r,
       };
     });
   }, [resvList]);
 
-  /* --- 2. MAP DATA CHO ĐƠN HÀNG (ORDER) --- */
-  const deliveryAndDineinItems = useMemo(() => {
-    const edges = orderConn?.ordersByUser?.edges || [];
-    const nodes = edges.map((e) => e.node).filter(Boolean);
+  /* --- 2. MAPPING ORDER DATA --- */
+  const orderItems = useMemo(() => {
+    const nodes = (orderConn?.ordersByUser?.edges || [])
+      .map((e) => e.node)
+      .filter(Boolean);
 
     return nodes.map((o) => {
-      const orderTypeNorm = normalizeOrderType(o.orderType);
-      const itemsPreview = (o.items || [])
-        .slice(0, 2)
-        .map((it) => ({ quantity: it.quantity, name: it.name }));
-      const moreItemsCount = Math.max(0, (o.items?.length || 0) - 2);
-
-      const mainInfo = [
-        {
-          label: "Tổng tiền",
-          value: fmtMoney(o.totals?.grandTotal),
-          highlight: true,
-        },
-        { label: "Số lượng", value: `${o.items?.length || 0} món` },
-      ];
-      if (orderTypeNorm === "delivery") {
-        mainInfo.push({
-          label: "Giao lúc",
-          value: o.shipping?.deliveryTime || "—",
-        });
-      } else {
-        mainInfo.push({ label: "Hình thức", value: "Tại quán" });
-      }
-
-      // Logic nút Hủy cho Order (Order chưa có hàm delete trong schema cung cấp, nên tạm giữ Hủy)
-      // Nếu bạn có mutation deleteOrder thì áp dụng logic tương tự Reservation ở trên
+      const type = normalizeOrderType(o.orderType);
       const isCancelled = ["cancelled", "rejected"].includes(
         (o.currentStatus || "").toLowerCase()
       );
 
-      const orderActions = [
+      const itemsPreview = (o.items || [])
+        .slice(0, 2)
+        .map((it) => ({ quantity: it.quantity, name: it.name }));
+      const moreCount = Math.max(0, (o.items?.length || 0) - 2);
+
+      const actions = [
         {
-          icon: "eye",
-          label: "Chi tiết",
-          variant: "secondary",
-          onClick: () => openOrderDetails(o.id, o),
-        },
-        {
-          icon: "receipt",
           label: "Hóa đơn",
-          variant: "secondary",
-          onClick: () => viewReceipt(o.id),
+          variant: "outline",
+          onClick: () => pushToast("Xem hóa đơn..."),
         },
       ];
 
-      // Thêm nút Hủy nếu chưa hoàn thành/hủy
       if (!isCancelled && o.currentStatus !== "completed") {
-        orderActions.push({
-          icon: "x",
+        actions.push({
           label: "Hủy đơn",
           variant: "danger",
           onClick: () => setCancelTarget({ id: o.id, kind: "order" }),
         });
       }
-
-      // Thêm nút theo dõi nếu đang giao
       if (
-        orderTypeNorm === "delivery" &&
+        type === "delivery" &&
         ["shipping", "delivering"].includes(o.currentStatus)
       ) {
-        orderActions.unshift({
-          icon: "truck",
-          label: "Lộ trình",
+        actions.unshift({
+          label: "Theo dõi",
           variant: "primary",
           onClick: () => setTrackingOrder(o),
         });
       }
 
       return {
-        kind: orderTypeNorm === "delivery" ? "delivery" : "dinein",
         key: o.id,
+        kind: type,
         status: (o.currentStatus || "").toLowerCase(),
-        restaurantName: `Nhà hàng (ID: ${o.restaurantId.slice(-6)})`,
+        orderId: o.orderCode || o.id.slice(-6).toUpperCase(),
+        restaurantName: `Nhà hàng (ID: ${o.restaurantId.slice(-4)})`,
         header: {
-          id: `#${o.orderCode || o.id.slice(-6).toUpperCase()}`,
           timeText: toVNDateTime(o.createdAt),
-          moreItemsCount: moreItemsCount,
+          moreItemsCount: moreCount,
         },
         itemsPreview: itemsPreview,
-        mainInfo: mainInfo,
-        actions: orderActions,
+        mainInfo: [
+          {
+            label: "Tổng tiền",
+            value: fmtMoney(o.totals?.grandTotal),
+            highlight: true,
+          },
+          { label: "Số món", value: `${o.items?.length || 0} món` },
+          {
+            label: type === "delivery" ? "Giao lúc" : "Hình thức",
+            value:
+              type === "delivery"
+                ? o.shipping?.deliveryTime || "--"
+                : "Tại quán",
+          },
+        ],
+        actions: actions,
         raw: o,
       };
     });
   }, [orderConn]);
 
-  const allItems = useMemo(() => {
-    const rawList = [...reservationItems, ...deliveryAndDineinItems];
+  const allItems = [...reservationItems, ...orderItems];
 
-    // Chỉ giữ lại các item KHÔNG PHẢI là 'no_show'
-    return rawList.filter((item) => item.status !== "no_show");
-  }, [reservationItems, deliveryAndDineinItems]);
-  const counts = useMemo(() => {
-    const c = {
-      all: allItems.length,
-      reservation: 0,
-      dinein: 0,
-      delivery: 0,
-      cancelled: 0,
-      completed: 0,
-    };
-    allItems.forEach((o) => {
-      if (o.kind === "reservation") c.reservation++;
-      if (o.kind === "dinein") c.dinein++;
-      if (o.kind === "delivery") c.delivery++;
-      if (["cancelled", "rejected"].includes(o.status)) c.cancelled++;
-      if (o.status === "completed") c.completed++;
-    });
-    return c;
-  }, [allItems]);
-
-  const visible = useMemo(
-    () =>
-      allItems.filter((o) => {
-        if (activeTab === "all") return true;
-        if (activeTab === "reservation") return o.kind === "reservation";
-        if (activeTab === "dinein") return o.kind === "dinein";
-        if (activeTab === "delivery") return o.kind === "delivery";
-        if (activeTab === "done_cancel")
-          return ["cancelled", "completed", "rejected", "no_show"].includes(
-            o.status
-          );
-        return true;
-      }),
-    [allItems, activeTab]
-  );
-
-  /* Render Helper */
-  const openOrderDetails = (key, payload) =>
-    setModal({ type: "details", orderKey: key, payload });
-  const viewReceipt = (id) => {
-    pushToast("Đang tải hóa đơn...", "success");
-  };
-  const callShipper = () => pushToast("Đang kết nối shipper...", "success");
+  // Filter logic
+  const visibleItems = allItems.filter((item) => {
+    if (activeTab === "all") return true;
+    if (activeTab === "reservation") return item.kind === "reservation";
+    if (activeTab === "dinein") return item.kind === "dinein";
+    if (activeTab === "delivery") return item.kind === "delivery";
+    if (activeTab === "history")
+      return ["cancelled", "completed", "rejected", "expired"].includes(
+        item.status
+      );
+    return true;
+  });
 
   return (
-    <div className="orders-container">
+    <div className="orders-page">
       {toasts.map((t) => (
         <Toast key={t.id} {...t} onClose={closeToast} />
       ))}
+
       <div className="page-header">
-        <h1 className="page-title">
-          <Icon name="receipt" size={28} style={{ marginRight: 8 }} /> Đơn hàng
-          của tôi
-        </h1>
-        <button className="btn btn-primary">➕ Đặt món mới</button>
+        <h1 className="title">📦 Quản lý Đơn hàng</h1>
+        <button className="btn-create">➕ Tạo đơn mới</button>
       </div>
 
-      <div className="filter-tabs">
-        <button
-          className={`filter-tab ${activeTab === "all" ? "active" : ""}`}
-          onClick={() => setActiveTab("all")}
-        >
-          Tất cả ({counts.all})
-        </button>
-        <button
-          className={`filter-tab ${
-            activeTab === "reservation" ? "active" : ""
-          }`}
-          onClick={() => setActiveTab("reservation")}
-        >
-          <span className="tab-icon">🍽️</span> Đặt bàn ({counts.reservation})
-        </button>
-        <button
-          className={`filter-tab ${activeTab === "dinein" ? "active" : ""}`}
-          onClick={() => setActiveTab("dinein")}
-        >
-          <span className="tab-icon">🏬</span> Tại quán ({counts.dinein})
-        </button>
-        <button
-          className={`filter-tab ${activeTab === "delivery" ? "active" : ""}`}
-          onClick={() => setActiveTab("delivery")}
-        >
-          <span className="tab-icon">🚚</span> Giao hàng ({counts.delivery})
-        </button>
-        <button
-          className={`filter-tab ${
-            activeTab === "done_cancel" ? "active" : ""
-          }`}
-          onClick={() => setActiveTab("done_cancel")}
-        >
-          <span className="tab-icon">📜</span> Lịch sử
-        </button>
+      <div className="tabs-container">
+        {[
+          { id: "all", label: "Tất cả", icon: "📑" },
+          { id: "reservation", label: "Đặt bàn", icon: "📅" },
+          { id: "dinein", label: "Tại quán", icon: "🍽️" },
+          { id: "delivery", label: "Giao hàng", icon: "🚚" },
+          { id: "history", label: "Lịch sử", icon: "📜" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.icon} {tab.label}
+          </button>
+        ))}
       </div>
-      <div id="ordersList">
+
+      <div className="orders-grid">
         {ordersLoading || resvLoading ? (
           <Skeleton rows={3} />
         ) : (
-          visible.map((item) => {
-            // Logic kiểm tra xem đây có phải là đơn hàng cũ/đã xong không
-            const isHistory = [
-              "cancelled",
-              "completed",
-              "rejected",
-              "expired",
-              "no_show",
-              "checked_in",
-            ].includes(item.status);
-
-            return (
-              <div
-                key={item.key}
-                className={`order-item-wrapper ${isHistory ? "is-muted" : ""}`}
-              >
-                <OrderItem
-                  {...item}
-                  onClick={() => openOrderDetails(item.key, item.raw)}
-                />
-              </div>
-            );
-          })
+          visibleItems.map((item) => (
+            <OrderItem
+              key={item.key}
+              {...item}
+              onClick={() => console.log("View details", item.key)}
+            />
+          ))
+        )}
+        {!ordersLoading && !resvLoading && visibleItems.length === 0 && (
+          <div className="empty-state">Không có đơn hàng nào.</div>
         )}
       </div>
-      {/* --- Modals --- */}
+
+      {/* --- MODALS --- */}
       <QRPaymentModal
         isOpen={!!qrBooking}
         onClose={() => setQrBooking(null)}
         booking={qrBooking}
         onPaymentConfirmed={() => {
           setQrBooking(null);
-          pushToast("Thanh toán thành công!", "success");
-          refetchReservations?.();
+          refetchReservations();
         }}
       />
       <ChangeTimeModal
         isOpen={!!changeTimeTarget}
         onClose={() => setChangeTimeTarget(null)}
-        initialDate={
-          changeTimeTarget?.timeTo
-            ? new Date(changeTimeTarget.timeTo).toISOString().slice(0, 10)
-            : undefined
-        }
-        initialTime={
-          changeTimeTarget?.timeTo
-            ? new Date(changeTimeTarget.timeTo).toTimeString().slice(0, 5)
-            : "19:30"
-        }
-        onSubmit={({ iso }) => {
-          createReservation({
-            variables: {
-              input: {
-                restaurantId: changeTimeTarget.restaurantId,
-                tableId: changeTimeTarget.tableId,
-                timeTo: iso,
-                durationMinutes: 90,
-                partySize: changeTimeTarget.partySize,
-              },
-            },
-          }).finally(() => setChangeTimeTarget(null));
+        onSubmit={(v) => {
+          createReservation({ variables: { input: { ...v } } });
+          setChangeTimeTarget(null);
         }}
       />
-      {/* Modal Hủy (Có lý do) */}
       <CancelOrderModal
         isOpen={!!cancelTarget}
         onClose={() => setCancelTarget(null)}
-        title={
-          cancelTarget?.kind === "reservation"
-            ? "❌ Hủy đặt bàn"
-            : "❌ Hủy đơn hàng"
-        }
         onConfirm={({ reason }) => {
           if (cancelTarget.kind === "reservation")
-            cancelReservationMutation({
-              variables: { id: cancelTarget.id },
-            }).finally(() => setCancelTarget(null));
+            cancelReservationMutation({ variables: { id: cancelTarget.id } });
           else
-            cancelOrderMutation({
-              variables: { id: cancelTarget.id, reason },
-            }).finally(() => setCancelTarget(null));
+            cancelOrderMutation({ variables: { id: cancelTarget.id, reason } });
+          setCancelTarget(null);
         }}
       />
-      {/* ✅ Modal Xóa (Confirm đơn giản) */}
       <ConfirmationModal
         visible={!!deleteTarget}
-        variant="danger"
-        title="Xóa lịch sử đặt bàn?"
-        message="Bạn có chắc chắn muốn xóa bản ghi này khỏi lịch sử không? Hành động này không thể hoàn tác."
-        confirmText="Xóa vĩnh viễn"
-        cancelText="Giữ lại"
-        onClose={() => setDeleteTarget(null)}
+        title="Xóa lịch sử?"
         onConfirm={() => {
-          if (deleteTarget.kind === "reservation") {
-            deleteReservationMutation({ variables: { id: deleteTarget.id } });
-          }
+          deleteReservationMutation({ variables: { id: deleteTarget.id } });
           setDeleteTarget(null);
         }}
+        onClose={() => setDeleteTarget(null)}
       />
       <TrackingModal
         isOpen={!!trackingOrder}
         onClose={() => setTrackingOrder(null)}
         order={trackingOrder}
-        onCallShipper={callShipper}
       />
       <ChangeTableModal
         isOpen={!!changeTableOpen}
         onClose={() => setChangeTableOpen(null)}
-        currentReservation={changeTableOpen}
-        restaurants={[]}
-        tablesByRestaurant={{}}
         onSubmit={() => {
-          pushToast("Yêu cầu đổi bàn đã gửi.", "success");
+          pushToast("Đã gửi yêu cầu đổi bàn");
           setChangeTableOpen(null);
         }}
       />

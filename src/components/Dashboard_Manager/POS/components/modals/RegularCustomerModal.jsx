@@ -1,259 +1,94 @@
-// src/components/Dashboard_Manager/POS/components/modals/RegularCustomerModal.jsx
-import React, { useState, useMemo } from "react";
-import { createPortal } from "react-dom";
-import s from "./RegularCustomerModal.module.scss";
-import { useVnAddressLazy } from "@/hooks/useVnAddressLazy";
-import Map, { Marker } from "react-map-gl/maplibre";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import Modal from "../../../../common/Modal";
+import Button from "../../../../common/Button";
+import cls from "./RegularCustomerModal.module.scss";
+import { usePos } from "../../../../../context/PosContext";
+import { useVnAddressLazy } from "../../../../../hooks/useVnAddressLazy";
 
-/* ───────────── HELPERS: Chuẩn hoá tên hành chính ───────────── */
-function stripAccents(str = "") {
-  return str
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/Đ/g, "D");
-}
-
-function normalizeAdminName(str = "") {
-  const noAcc = stripAccents(str).toLowerCase().trim();
-
-  // Bỏ tiền tố hành chính thường gặp
-  return noAcc
-    .replace(
-      /^(thanh pho|tp\.?|quan|q\.?|huyen|h\.?|thi xa|tx\.?|phuong|p\.?|xa|thi tran)\s+/g,
-      ""
-    )
-    .replace(/\s+/g, " ");
-}
-
-// Tự map tỉnh + quận từ address (OSM / Nominatim) sang vn-address.json
-function autoMapProvinceDistrictFromOsm(address = {}, provinces = []) {
-  const rawProvince =
-    address.state || address.city || address.region || address.county || "";
-  const rawDistrict =
-    address.city_district || address.district || address.county || "";
-
-  const normProv = normalizeAdminName(rawProvince);
-  const normDist = normalizeAdminName(rawDistrict);
-
-  let matchedProvince = null;
-  let matchedDistrict = null;
-
-  if (normProv) {
-    matchedProvince =
-      provinces.find((p) => {
-        const nName = normalizeAdminName(p.name);
-        return (
-          nName === normProv ||
-          nName.includes(normProv) ||
-          normProv.includes(nName)
-        );
-      }) || null;
-  }
-
-  if (matchedProvince && normDist && Array.isArray(matchedProvince.districts)) {
-    matchedDistrict =
-      matchedProvince.districts.find((d) => {
-        const nName = normalizeAdminName(d.name);
-        return (
-          nName === normDist ||
-          nName.includes(normDist) ||
-          normDist.includes(nName)
-        );
-      }) || null;
-  }
-
-  return { matchedProvince, matchedDistrict };
-}
-
-/* ───────────── ICONS ───────────── */
-const IconSearch = () => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <circle cx="11" cy="11" r="8"></circle>
-    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-  </svg>
-);
-const IconX = () => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <line x1="18" y1="6" x2="6" y2="18"></line>
-    <line x1="6" y1="6" x2="18" y2="18"></line>
-  </svg>
-);
-const IconMapPin = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-    <circle cx="12" cy="10" r="3"></circle>
-  </svg>
-);
-const IconHeart = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-  </svg>
-);
-const IconPhone = () => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-  </svg>
-);
-
-// Mini map xem trước vị trí giao hàng
-const LocationPreviewMap = ({ lat, lng }) => {
-  const latNum = Number(lat);
-  const lngNum = Number(lng);
-
-  const isValid =
-    Number.isFinite(latNum) &&
-    Number.isFinite(lngNum) &&
-    lat !== "" &&
-    lng !== "";
-
-  if (!isValid) {
-    return (
-      <div className={s.locationMap}>
-        <div className={s.locationPlaceholder}>Chưa có vị trí hợp lệ</div>
-      </div>
-    );
-  }
-
-  const mapKey = `${latNum}_${lngNum}`;
-
-  return (
-    <div className={s.locationMap}>
-      <Map
-        key={mapKey}
-        mapLib={import("maplibre-gl")}
-        style={{ width: "100%", height: "100%" }}
-        mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
-        initialViewState={{
-          latitude: latNum,
-          longitude: lngNum,
-          zoom: 16,
-        }}
-        dragRotate={false}
-      >
-        <Marker longitude={lngNum} latitude={latNum} anchor="bottom">
-          <div className={s.locationMarker}>📍</div>
-        </Marker>
-      </Map>
-    </div>
-  );
+const emptyForm = {
+  name: "",
+  phone: "",
+  email: "",
+  note: "",
+  detail: "",
+  provinceKey: "",
+  districtKey: "",
+  wardKey: "",
 };
 
-/* ───────────── MOCK DATA (demo) ───────────── */
-const MOCK_CUSTOMERS = [
-  {
-    id: 1,
-    name: "Nguyễn Văn A",
-    phone: "0901234567",
-    level: "VIP Gold",
-    preferences: ["Ít đá", "50% Đường", "Không hành"],
-    addresses: [
-      { label: "Nhà riêng", text: "123 Nguyễn Huệ, Quận 1, TP.HCM" },
-      { label: "Công ty", text: "Tòa nhà Bitexco, Tầng 3" },
-    ],
-    lastOrder: "2023-10-25",
-  },
-  {
-    id: 2,
-    name: "Trần Thị B",
-    phone: "0987654321",
-    level: "Thân thiết",
-    preferences: ["Nhiều đá", "Cay cấp độ 3", "Nước mắm riêng"],
-    addresses: [{ label: "Nhà riêng", text: "456 Lê Lợi, Quận 1, TP.HCM" }],
-    lastOrder: "2023-10-20",
-  },
-  {
-    id: 3,
-    name: "Phạm Hoàng C",
-    phone: "0911223344",
-    level: "Mới",
-    preferences: ["Không đường", "Dị ứng đậu phộng"],
-    addresses: [
-      { label: "Văn phòng", text: "Khu Công Nghệ Cao, Quận 9" },
-      { label: "Nhà bố mẹ", text: "789 Võ Văn Ngân, Thủ Đức" },
-    ],
-    lastOrder: "2023-10-26",
-  },
-];
+const normalizePhone = (v) => (v || "").replace(/\s+/g, "").trim();
+const normalizeEmail = (v) => (v || "").trim().toLowerCase();
+
+function safeStr(v) {
+  return (v || "").toString().trim();
+}
+function normalizePart(s) {
+  return (s || "")
+    .toString()
+    .replace(/\s+/g, " ")
+    .replace(/^,\s*|,\s*$/g, "")
+    .trim();
+}
+
+function dedupeParts(parts) {
+  const seen = new Set();
+  const out = [];
+  for (const p of parts.map(normalizePart).filter(Boolean)) {
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(p);
+  }
+  return out;
+}
+
+function buildFullAddress({ detail, wardName, districtName, provinceName }) {
+  const parts = [detail, wardName, districtName, provinceName].filter(
+    (x) => safeStr(x).length > 0
+  );
+  return parts.join(", ");
+}
+
+// Reverse geocode FE (tạm thời). BE làm sau thì thay bằng API nội bộ.
+async function reverseGeocodeOSM(lat, lng) {
+  const url =
+    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&` +
+    `lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(
+      lng
+    )}&accept-language=vi`;
+
+  const res = await fetch(url, {
+    headers: {
+      Accept: "application/json",
+      // Nominatim khuyến nghị có User-Agent/Referer, browser sẽ tự set, đây best-effort
+    },
+  });
+  if (!res.ok) throw new Error("reverse_geocode_failed");
+  const data = await res.json();
+  return data;
+}
 
 export default function RegularCustomerModal({
   isOpen,
   onClose,
   onSelectCustomer,
 }) {
-  const [activeTab, setActiveTab] = useState("existing"); // "existing" | "new"
-  const [geoLoading, setGeoLoading] = useState(false);
-  const [geoError, setGeoError] = useState("");
+  const { restaurantId } = usePos();
 
-  // ───────────── STATE: Khách quen ─────────────
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedId, setSelectedId] = useState(null);
+  const [tab, setTab] = useState("select"); // select | create
+  const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
 
-  const filteredList = useMemo(() => {
-    if (!searchTerm.trim()) return MOCK_CUSTOMERS;
-    const lower = searchTerm.toLowerCase();
-    return MOCK_CUSTOMERS.filter(
-      (c) => c.name.toLowerCase().includes(lower) || c.phone.includes(lower)
-    );
-  }, [searchTerm]);
+  // TODO: thay bằng data thật (query) của bạn
+  const [customers, setCustomers] = useState([]);
 
-  // ───────────── STATE: Khách mới ─────────────
-  const [newForm, setNewForm] = useState({
-    fullName: "",
-    phone: "",
-    email: "",
-    street: "",
-    wardCode: "",
-    wardName: "",
-    districtCode: "",
-    districtName: "",
-    cityCode: "",
-    cityName: "",
-    building: "",
-    floor: "",
-    shippingNote: "",
-    lat: "",
-    lng: "",
-  });
-  const [formErrors, setFormErrors] = useState({});
+  const [form, setForm] = useState(emptyForm);
+  const firstOpenRef = useRef(false);
 
-  // Địa chỉ VN lazy
   const {
+    loading,
+    error,
     provinces,
     districts,
     wards,
@@ -263,586 +98,531 @@ export default function RegularCustomerModal({
     setProvince,
     setDistrict,
     setWard,
+    selectedProvince,
+    selectedDistrict,
   } = useVnAddressLazy({
-    enabled: isOpen && activeTab === "new",
+    enabled: !!isOpen,
+    initial: {
+      city: form.provinceKey || "",
+      district: form.districtKey || "",
+      ward: form.wardKey || "",
+    },
   });
 
-  // Địa chỉ hiển thị
-  const displayAddress = useMemo(() => {
-    const parts = [
-      newForm.street,
-      newForm.wardName,
-      newForm.districtName,
-      newForm.cityName,
-    ].filter(Boolean);
+  const selectedWard = useMemo(() => {
+    return (
+      (wards || []).find((w) => String(w.code) === String(wardKey)) || null
+    );
+  }, [wards, wardKey]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!firstOpenRef.current) firstOpenRef.current = true;
+    setTab("select");
+    setSearch("");
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setForm((prev) => ({
+      ...prev,
+      provinceKey: provinceKey || "",
+      districtKey: districtKey || "",
+      wardKey: wardKey || "",
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [provinceKey, districtKey, wardKey, isOpen]);
+
+  const fullAddress = useMemo(() => {
+    const detail = normalizePart(form.detail);
+
+    const wardName = normalizePart(selectedWard?.name);
+    const distName = normalizePart(selectedDistrict?.name);
+    const provName = normalizePart(selectedProvince?.name);
+
+    // Nếu user lỡ paste nguyên chuỗi dài (có cả tỉnh/quận/phường) vào detail
+    // thì loại bỏ các phần trùng với select để UI không bị lặp.
+    const cleanedDetail = dedupeParts(
+      detail
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .filter((x) => {
+          const lx = x.toLowerCase();
+          if (wardName && lx === wardName.toLowerCase()) return false;
+          if (distName && lx === distName.toLowerCase()) return false;
+          if (provName && lx === provName.toLowerCase()) return false;
+          return true;
+        })
+    ).join(", ");
+
+    const parts = dedupeParts([cleanedDetail, wardName, distName, provName]);
     return parts.join(", ");
   }, [
-    newForm.street,
-    newForm.wardName,
-    newForm.districtName,
-    newForm.cityName,
+    form.detail,
+    selectedWard?.name,
+    selectedDistrict?.name,
+    selectedProvince?.name,
   ]);
 
-  const updateField = (field) => (e) => {
-    const value = e.target.value;
-    setNewForm((prev) => ({ ...prev, [field]: value }));
+  const hasDirtyForm = useMemo(() => {
+    const f = form || {};
+    return (
+      safeStr(f.name) ||
+      safeStr(f.phone) ||
+      safeStr(f.email) ||
+      safeStr(f.note) ||
+      safeStr(f.detail) ||
+      safeStr(f.provinceKey) ||
+      safeStr(f.districtKey) ||
+      safeStr(f.wardKey)
+    );
+  }, [form]);
+
+  const filteredCustomers = useMemo(() => {
+    const q = safeStr(search).toLowerCase();
+    if (!q) return customers || [];
+    return (customers || []).filter((c) => {
+      const name = safeStr(c.name).toLowerCase();
+      const phone = safeStr(c.phone).toLowerCase();
+      const email = safeStr(c.email).toLowerCase();
+      return name.includes(q) || phone.includes(q) || email.includes(q);
+    });
+  }, [customers, search]);
+
+  const closeWithConfirm = () => {
+    if (tab === "create" && hasDirtyForm) {
+      const ok = window.confirm(
+        "Bạn có chắc muốn thoát? Dữ liệu đã nhập sẽ bị mất."
+      );
+      if (!ok) return;
+    }
+    onClose?.();
+    setForm(emptyForm);
   };
 
-  /* ───────────── GEO + REVERSE + MAP VÀO SELECT ───────────── */
-  const handleUseCurrentLocation = () => {
+  const setField = (key, value) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
+  const handlePickCustomer = (c) => {
+    if (!c) return;
+
+    const addressText = safeStr(c?.shippingInfo?.address || c?.address);
+
+    onSelectCustomer?.({
+      id: c.id || c._id || null,
+      name: safeStr(c.name),
+      phone: safeStr(c.phone),
+      email: safeStr(c.email),
+      note: safeStr(c?.shippingInfo?.note || c?.note),
+      isNew: false,
+      addressText,
+      shippingInfo: {
+        fullName: safeStr(c.name),
+        phone: safeStr(c.phone),
+        email: safeStr(c.email),
+        address: addressText,
+        note: safeStr(c?.shippingInfo?.note || c?.note),
+        deliveryMethod: "ship_now",
+        deliveryTime: "",
+        scheduleDate: "",
+        scheduleTime: "",
+      },
+    });
+
+    onClose?.();
+    setForm(emptyForm);
+  };
+
+  const handleProvinceChange = (code) => {
+    setProvince?.(code);
+    setForm((prev) => ({
+      ...prev,
+      provinceKey: code,
+      districtKey: "",
+      wardKey: "",
+    }));
+  };
+
+  const handleDistrictChange = async (code) => {
+    await setDistrict?.(code);
+    setForm((prev) => ({
+      ...prev,
+      districtKey: code,
+      wardKey: "",
+    }));
+  };
+
+  const handleWardChange = (code) => {
+    setWard?.(code);
+    setForm((prev) => ({ ...prev, wardKey: code }));
+  };
+
+  const validateCreate = () => {
+    const name = safeStr(form.name);
+    const phone = normalizePhone(form.phone);
+    if (!name) return "Vui lòng nhập tên khách.";
+    if (!phone) return "Vui lòng nhập SĐT.";
+    if (!safeStr(fullAddress)) return "Vui lòng nhập địa chỉ đầy đủ.";
+    return null;
+  };
+
+  const handleGetCurrentAddress = async () => {
     if (!navigator.geolocation) {
-      setGeoError("Trình duyệt không hỗ trợ xác định vị trí.");
+      alert("Trình duyệt không hỗ trợ định vị.");
       return;
     }
 
-    setGeoError("");
-    setGeoLoading(true);
+    setLocating(true);
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+        });
+      });
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const latitude = pos.coords.latitude;
-          const longitude = pos.coords.longitude;
-          const latStr = latitude.toFixed(6);
-          const lngStr = longitude.toFixed(6);
-
-          // Cập nhật lat/lng
-          setNewForm((prev) => ({
-            ...prev,
-            lat: latStr,
-            lng: lngStr,
-          }));
-
-          // Gọi reverse (GIỮ NGUYÊN CÁCH BẠN ĐANG DÙNG – chỉ là ví dụ endpoint)
-          const reverseUrl = `/api/maps/reverse-vn?lat=${latStr}&lng=${lngStr}`;
-          const res = await fetch(reverseUrl, {
-            headers: {
-              "Accept-Language": "vi",
-            },
-          });
-          if (!res.ok) {
-            throw new Error("Không đọc được địa chỉ từ server.");
-          }
-          const data = await res.json();
-
-          // Tuỳ BE: data.address hoặc data
-          const addr = data.address || data || {};
-
-          // Auto map Tỉnh / Thành phố & Quận / Huyện nếu tìm thấy
-          if (Array.isArray(provinces) && provinces.length) {
-            const { matchedProvince, matchedDistrict } =
-              autoMapProvinceDistrictFromOsm(addr, provinces);
-
-            if (matchedProvince) {
-              // setProvince để select hiển thị đúng & load districts
-              setProvince(matchedProvince.code);
-              setNewForm((prev) => ({
-                ...prev,
-                cityCode: matchedProvince.code,
-                cityName: matchedProvince.name,
-              }));
-
-              if (matchedDistrict) {
-                // setDistrict để select hiển thị đúng & load wards
-                setDistrict(matchedDistrict.code);
-                setNewForm((prev) => ({
-                  ...prev,
-                  districtCode: matchedDistrict.code,
-                  districtName: matchedDistrict.name,
-                  // ward vẫn để user chọn tay
-                  wardCode: "",
-                  wardName: "",
-                }));
-              }
-            }
-          }
-
-          // Đường / số nhà, toà nhà… để user nhập tay như yêu cầu,
-          // nên ở đây KHÔNG tự động ghi đè vào newForm.street / building.
-
-          setGeoLoading(false);
-        } catch (err) {
-          console.error("Geo / reverse error", err);
-          setGeoError(
-            err.message || "Không lấy được địa chỉ. Vui lòng thử lại."
-          );
-          setGeoLoading(false);
-        }
-      },
-      (err) => {
-        console.error("Geo error", err);
-        setGeoError("Không lấy được vị trí hiện tại. Vui lòng thử lại.");
-        setGeoLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
+      const lat = pos?.coords?.latitude;
+      const lng = pos?.coords?.longitude;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        throw new Error("invalid_coords");
       }
-    );
+
+      let displayName = "";
+      let addr = null;
+
+      try {
+        const r = await reverseGeocodeOSM(lat, lng);
+        displayName = safeStr(r?.display_name);
+        addr = r?.address || null;
+      } catch (e) {
+        displayName = "";
+        addr = null;
+      }
+
+      // Ưu tiên: hiển thị địa chỉ text dễ hiểu
+      if (addr) {
+        // Ưu tiên line địa chỉ dễ hiểu cho textarea: số nhà + đường + khu vực gần
+        const house = normalizePart(addr.house_number);
+        const road = normalizePart(addr.road);
+        const neighbourhood = normalizePart(
+          addr.neighbourhood || addr.suburb || addr.quarter
+        );
+
+        const detailLine = dedupeParts([house, road, neighbourhood]).join(" ");
+        setField("detail", detailLine || displayName || "");
+      } else if (displayName) {
+        // fallback nếu không có structured address
+        setField("detail", displayName);
+      } else {
+        setField("detail", "");
+      }
+
+      // Best-effort: tự map tỉnh/quận/phường theo tên (không bắt buộc)
+      // Nếu bạn không muốn map tự động thì comment block này.
+      if (addr && Array.isArray(provinces) && provinces.length > 0) {
+        const provName = safeStr(
+          addr.state || addr.city || addr.county || addr.province
+        ).toLowerCase();
+
+        const foundProv =
+          provinces.find((p) => safeStr(p.name).toLowerCase() === provName) ||
+          provinces.find((p) =>
+            safeStr(p.name).toLowerCase().includes(provName)
+          );
+
+        if (foundProv?.code) {
+          handleProvinceChange(String(foundProv.code));
+
+          // district có sau setProvince
+          // đợi 1 tick để districts cập nhật
+          setTimeout(async () => {
+            const distName = safeStr(
+              addr.county || addr.city_district || addr.district || ""
+            ).toLowerCase();
+
+            const ds = (foundProv.districts || []).map((d) => d);
+            const foundDist =
+              ds.find((d) => safeStr(d.name).toLowerCase() === distName) ||
+              ds.find((d) => safeStr(d.name).toLowerCase().includes(distName));
+
+            if (foundDist?.code) {
+              await handleDistrictChange(String(foundDist.code));
+
+              setTimeout(() => {
+                const wardName = safeStr(
+                  addr.suburb || addr.village || addr.town || addr.quarter || ""
+                ).toLowerCase();
+
+                const ws = wards || [];
+                const foundWard =
+                  ws.find((w) => safeStr(w.name).toLowerCase() === wardName) ||
+                  ws.find((w) =>
+                    safeStr(w.name).toLowerCase().includes(wardName)
+                  );
+
+                if (foundWard?.code) handleWardChange(String(foundWard.code));
+              }, 150);
+            }
+          }, 150);
+        }
+      }
+    } catch (e) {
+      console.warn(e);
+      alert("Không lấy được địa chỉ hiện tại. Vui lòng thử lại hoặc nhập tay.");
+    } finally {
+      setLocating(false);
+    }
   };
 
-  /* ───────────── VALIDATION & SAVE ───────────── */
-  const validateNewCustomer = () => {
-    const errs = {};
-    if (!newForm.fullName.trim()) errs.fullName = "Vui lòng nhập họ tên";
-    if (!newForm.phone.trim()) errs.phone = "Vui lòng nhập số điện thoại";
-    if (!provinceKey) errs.city = "Chọn Tỉnh / Thành phố";
-    if (!districtKey) errs.district = "Chọn Quận / Huyện";
-    if (!wardKey) errs.ward = "Chọn Phường / Xã";
-    setFormErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
+  const handleSaveCustomer = async () => {
+    const errMsg = validateCreate();
+    if (errMsg) {
+      alert(errMsg);
+      return;
+    }
 
-  const handleSaveNewCustomer = () => {
-    if (!validateNewCustomer()) return;
+    setSaving(true);
+    try {
+      const payload = {
+        id: `tmp_${Date.now()}`,
+        name: safeStr(form.name),
+        phone: normalizePhone(form.phone),
+        email: normalizeEmail(form.email),
+        note: safeStr(form.note),
+        shippingInfo: {
+          fullName: safeStr(form.name),
+          phone: normalizePhone(form.phone),
+          email: normalizeEmail(form.email),
+          address: safeStr(fullAddress),
+          note: safeStr(form.note),
+          deliveryMethod: "ship_now",
+          deliveryTime: "",
+          scheduleDate: "",
+          scheduleTime: "",
+        },
+        restaurantId,
+      };
 
-    const payload = {
-      id: null,
-      fullName: newForm.fullName.trim(),
-      phone: newForm.phone.trim(),
-      email: newForm.email.trim() || null,
-      address: {
-        full: displayAddress,
-        street: newForm.street.trim(),
-        wardCode: newForm.wardCode,
-        wardName: newForm.wardName,
-        districtCode: newForm.districtCode,
-        districtName: newForm.districtName,
-        cityCode: newForm.cityCode,
-        cityName: newForm.cityName,
-        building: newForm.building.trim(),
-        floor: newForm.floor.trim(),
-      },
-      shippingNote: newForm.shippingNote.trim(),
-      lat: newForm.lat ? Number(newForm.lat) : null,
-      lng: newForm.lng ? Number(newForm.lng) : null,
-    };
+      setCustomers((prev) => [payload, ...(prev || [])]);
 
-    onSelectCustomer?.(payload);
-    onClose?.();
-  };
+      onSelectCustomer?.({
+        id: payload.id,
+        name: payload.name,
+        phone: payload.phone,
+        email: payload.email,
+        note: payload.note,
+        isNew: true,
+        addressText: payload.shippingInfo.address,
+        shippingInfo: payload.shippingInfo,
+      });
 
-  const handleSelectExisting = (customer) => {
-    setSelectedId(customer.id);
-    const primaryAddr =
-      (customer.address && customer.address.text) ||
-      (Array.isArray(customer.addresses) && customer.addresses[0]?.text) ||
-      "";
-
-    const payload = {
-      id: customer.id,
-      fullName: customer.fullName || customer.name,
-      phone: customer.phone,
-      email: customer.email || "",
-      address: {
-        full: primaryAddr,
-      },
-    };
-
-    setTimeout(() => {
-      onSelectCustomer?.(payload);
       onClose?.();
-    }, 150);
+      setForm(emptyForm);
+    } catch (e) {
+      console.error(e);
+      alert("Lưu khách thất bại, vui lòng thử lại.");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (!isOpen) return null;
-
-  return createPortal(
-    <div className={s.backdrop} onClick={onClose}>
-      <div className={s.modal} onClick={(e) => e.stopPropagation()}>
-        {/* HEADER */}
-        <div className={s.header}>
-          <h3 className={s.title}>Khách hàng giao hàng</h3>
-          <button className={s.closeBtn} onClick={onClose}>
-            <IconX />
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={closeWithConfirm}
+      title="Khách quen"
+      width={560}
+    >
+      <div className={cls.wrapper}>
+        <div className={cls.tabs}>
+          <button
+            className={`${cls.tab} ${tab === "select" ? cls.active : ""}`}
+            onClick={() => setTab("select")}
+          >
+            Chọn khách
+          </button>
+          <button
+            className={`${cls.tab} ${tab === "create" ? cls.active : ""}`}
+            onClick={() => setTab("create")}
+          >
+            Thêm mới
           </button>
         </div>
 
-        {/* TABS */}
-        <div className={s.tabBar}>
-          <button
-            className={`${s.tab} ${
-              activeTab === "existing" ? s.tabActive : ""
-            }`}
-            onClick={() => setActiveTab("existing")}
-          >
-            Khách quen
-          </button>
-          <button
-            className={`${s.tab} ${activeTab === "new" ? s.tabActive : ""}`}
-            onClick={() => setActiveTab("new")}
-          >
-            Khách mới
-          </button>
-        </div>
-
-        {/* TAB: KHÁCH QUEN */}
-        {activeTab === "existing" && (
-          <>
-            <div className={s.searchSection}>
-              <div className={s.searchWrapper}>
-                <IconSearch />
-                <input
-                  className={s.searchInput}
-                  placeholder="Tìm theo tên hoặc số điện thoại..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  autoFocus
-                />
-              </div>
+        {tab === "select" && (
+          <div className={cls.selectTab}>
+            <div className={cls.searchRow}>
+              <input
+                className={cls.search}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm theo tên / sđt / email..."
+              />
+              <Button onClick={() => setTab("create")} variant="ghost">
+                + Thêm
+              </Button>
             </div>
 
-            <div className={s.listContainer}>
-              {filteredList.length > 0 ? (
-                filteredList.map((cust) => (
-                  <div
-                    key={cust.id}
-                    className={`${s.card} ${
-                      selectedId === cust.id ? s.selected : ""
-                    }`}
-                    onClick={() => handleSelectExisting(cust)}
-                  >
-                    <div className={s.cardHeader}>
-                      <div className={s.info}>
-                        <div className={s.nameRow}>
-                          <span className={s.name}>{cust.name}</span>
-                          <span
-                            className={`${s.badge} ${
-                              s[cust.level === "VIP Gold" ? "gold" : "standard"]
-                            }`}
-                          >
-                            {cust.level}
-                          </span>
-                        </div>
-                        <div className={s.phoneRow}>
-                          <IconPhone /> {cust.phone}
-                        </div>
-                      </div>
-                      <button className={s.selectBtn}>Chọn</button>
+            <div className={cls.list}>
+              {(filteredCustomers || []).map((c) => (
+                <button
+                  key={c.id || c._id}
+                  className={cls.customerRow}
+                  onClick={() => handlePickCustomer(c)}
+                >
+                  <div className={cls.customerMain}>
+                    <div className={cls.customerName}>{c.name}</div>
+                    <div className={cls.customerSub}>
+                      {safeStr(c.phone)}
+                      {c.email ? ` · ${c.email}` : ""}
                     </div>
-
-                    {cust.preferences.length > 0 && (
-                      <div className={s.prefSection}>
-                        <div className={s.sectionTitle}>
-                          <IconHeart /> Sở thích / Modifier riêng:
-                        </div>
-                        <div className={s.chipGrid}>
-                          {cust.preferences.map((pref, i) => (
-                            <span key={i} className={s.prefChip}>
-                              {pref}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {cust.addresses.length > 0 && (
-                      <div className={s.addrSection}>
-                        <div className={s.sectionTitle}>
-                          <IconMapPin /> Địa chỉ giao hàng:
-                        </div>
-                        <div className={s.addrList}>
-                          {cust.addresses.map((addr, i) => (
-                            <div key={i} className={s.addrItem}>
-                              <span className={s.addrLabel}>{addr.label}:</span>
-                              <span className={s.addrText}>{addr.text}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
-                ))
-              ) : (
-                <div className={s.emptyState}>
-                  Không tìm thấy khách hàng nào phù hợp.
-                </div>
+                  <div className={cls.customerAddr}>
+                    {safeStr(c?.shippingInfo?.address || c?.address) ||
+                      "Chưa có địa chỉ"}
+                  </div>
+                </button>
+              ))}
+
+              {filteredCustomers.length === 0 && (
+                <div className={cls.empty}>Chưa có khách nào.</div>
               )}
             </div>
-          </>
+          </div>
         )}
 
-        {/* TAB: KHÁCH MỚI */}
-        {activeTab === "new" && (
-          <div className={s.newCustomerForm}>
-            <div className={s.formBody}>
-              {/* Họ tên + SĐT */}
-              <div className={s.fieldRow}>
-                <div className={s.fieldGroup}>
-                  <label className={s.label}>
-                    Họ và tên<span className={s.required}>*</span>
-                  </label>
-                  <input
-                    className={`${s.input} ${
-                      formErrors.fullName ? s.inputError : ""
-                    }`}
-                    placeholder="VD: Lê Quốc Việt"
-                    value={newForm.fullName}
-                    onChange={updateField("fullName")}
-                  />
-                  {formErrors.fullName && (
-                    <div className={s.errorText}>{formErrors.fullName}</div>
-                  )}
-                </div>
-
-                <div className={s.fieldGroup}>
-                  <label className={s.label}>
-                    Số điện thoại<span className={s.required}>*</span>
-                  </label>
-                  <input
-                    className={`${s.input} ${
-                      formErrors.phone ? s.inputError : ""
-                    }`}
-                    placeholder="VD: 0909 888 999"
-                    value={newForm.phone}
-                    onChange={updateField("phone")}
-                  />
-                  {formErrors.phone && (
-                    <div className={s.errorText}>{formErrors.phone}</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Email */}
-              <div className={s.fieldGroup}>
-                <label className={s.label}>Email (tuỳ chọn)</label>
+        {tab === "create" && (
+          <div className={cls.createTab}>
+            <div className={cls.formGrid}>
+              <div className={cls.field}>
+                <label>Tên khách *</label>
                 <input
-                  className={s.input}
-                  placeholder="viet@example.com"
-                  value={newForm.email}
-                  onChange={updateField("email")}
+                  value={form.name}
+                  onChange={(e) => setField("name", e.target.value)}
+                  placeholder="VD: Nguyễn Văn A"
                 />
               </div>
 
-              {/* Địa chỉ hiển thị */}
-              <div className={s.fieldGroup}>
-                <label className={s.label}>Địa chỉ hiển thị</label>
-                <textarea
-                  className={s.textarea}
-                  rows={2}
-                  placeholder="VD: 12 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh"
-                  value={displayAddress}
-                  readOnly
-                />
-              </div>
-
-              {/* Đường / Số nhà */}
-              <div className={s.fieldGroup}>
-                <label className={s.label}>Đường / Số nhà</label>
+              <div className={cls.field}>
+                <label>SĐT *</label>
                 <input
-                  className={s.input}
-                  placeholder="VD: 12 Nguyễn Huệ"
-                  value={newForm.street}
-                  onChange={updateField("street")}
+                  value={form.phone}
+                  onChange={(e) => setField("phone", e.target.value)}
+                  placeholder="VD: 09xxxx"
                 />
               </div>
 
-              {/* Quận + Tỉnh */}
-              <div className={s.fieldRow}>
-                <div className={s.fieldGroup}>
-                  <label className={s.label}>
-                    Quận / Huyện<span className={s.required}>*</span>
-                  </label>
-                  <select
-                    className={`${s.input} ${
-                      formErrors.district ? s.inputError : ""
-                    }`}
-                    value={districtKey}
-                    onChange={(e) => {
-                      const code = e.target.value;
-                      setDistrict(code);
-                      const found =
-                        districts.find(
-                          (d) => String(d.code) === String(code)
-                        ) || null;
-                      setNewForm((prev) => ({
-                        ...prev,
-                        districtCode: code,
-                        districtName: found?.name || "",
-                        wardCode: "",
-                        wardName: "",
-                      }));
-                    }}
-                    disabled={!provinceKey}
+              <div className={cls.field}>
+                <label>Email</label>
+                <input
+                  value={form.email}
+                  onChange={(e) => setField("email", e.target.value)}
+                  placeholder="VD: abc@gmail.com"
+                />
+              </div>
+
+              <div className={cls.field}>
+                <div className={cls.labelRow}>
+                  <label>Địa chỉ *</label>
+                  <button
+                    type="button"
+                    className={cls.btnLocate}
+                    onClick={handleGetCurrentAddress}
+                    disabled={!!loading || locating}
+                    title="Lấy địa chỉ hiện tại"
                   >
-                    <option value="">Chọn Quận / Huyện</option>
-                    {districts.map((d) => (
-                      <option key={d.code} value={d.code}>
-                        {d.name}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.district && (
-                    <div className={s.errorText}>{formErrors.district}</div>
-                  )}
+                    {locating ? "Đang lấy..." : "Lấy địa chỉ hiện tại"}
+                  </button>
                 </div>
 
-                <div className={s.fieldGroup}>
-                  <label className={s.label}>
-                    Tỉnh / Thành phố<span className={s.required}>*</span>
-                  </label>
+                <div className={cls.addressSelects}>
                   <select
-                    className={`${s.input} ${
-                      formErrors.city ? s.inputError : ""
-                    }`}
-                    value={provinceKey}
-                    onChange={(e) => {
-                      const code = e.target.value;
-                      setProvince(code);
-                      const found =
-                        provinces.find(
-                          (p) => String(p.code) === String(code)
-                        ) || null;
-                      setNewForm((prev) => ({
-                        ...prev,
-                        cityCode: code,
-                        cityName: found?.name || "",
-                        districtCode: "",
-                        districtName: "",
-                        wardCode: "",
-                        wardName: "",
-                      }));
-                    }}
+                    value={provinceKey || ""}
+                    onChange={(e) => handleProvinceChange(e.target.value)}
+                    disabled={!!loading}
                   >
-                    <option value="">Chọn Tỉnh / Thành phố</option>
-                    {provinces.map((p) => (
+                    <option value="">Tỉnh/TP</option>
+                    {(provinces || []).map((p) => (
                       <option key={p.code} value={p.code}>
                         {p.name}
                       </option>
                     ))}
                   </select>
-                  {formErrors.city && (
-                    <div className={s.errorText}>{formErrors.city}</div>
-                  )}
-                </div>
-              </div>
 
-              {/* Phường + Toà nhà */}
-              <div className={s.fieldRow}>
-                <div className={s.fieldGroup}>
-                  <label className={s.label}>
-                    Phường / Xã<span className={s.required}>*</span>
-                  </label>
                   <select
-                    className={`${s.input} ${
-                      formErrors.ward ? s.inputError : ""
-                    }`}
-                    value={wardKey}
-                    onChange={(e) => {
-                      const code = e.target.value;
-                      setWard(code);
-                      const found =
-                        wards.find((w) => String(w.code) === String(code)) ||
-                        null;
-                      setNewForm((prev) => ({
-                        ...prev,
-                        wardCode: code,
-                        wardName: found?.name || "",
-                      }));
-                    }}
-                    disabled={!districtKey}
+                    value={districtKey || ""}
+                    onChange={(e) => handleDistrictChange(e.target.value)}
+                    disabled={!provinceKey || !!loading}
                   >
-                    <option value="">Chọn Phường / Xã</option>
-                    {wards.map((w) => (
+                    <option value="">Quận/Huyện</option>
+                    {(districts || []).map((d) => (
+                      <option key={d.code} value={d.code}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={wardKey || ""}
+                    onChange={(e) => handleWardChange(e.target.value)}
+                    disabled={!districtKey || !!loading}
+                  >
+                    <option value="">Phường/Xã</option>
+                    {(wards || []).map((w) => (
                       <option key={w.code} value={w.code}>
                         {w.name}
                       </option>
                     ))}
                   </select>
-                  {formErrors.ward && (
-                    <div className={s.errorText}>{formErrors.ward}</div>
-                  )}
                 </div>
 
-                <div className={s.fieldGroup}>
-                  <label className={s.label}>Toà nhà / Khu</label>
-                  <input
-                    className={s.input}
-                    placeholder="VD: Chung cư ABC, Block B"
-                    value={newForm.building}
-                    onChange={updateField("building")}
-                  />
+                <textarea
+                  className={cls.addrDetail}
+                  value={form.detail}
+                  onChange={(e) => setField("detail", e.target.value)}
+                  placeholder="Số nhà, tên đường, ghi chú vị trí dễ tìm..."
+                  rows={2}
+                />
+
+                <div className={cls.addrPreview}>
+                  <span>Địa chỉ hiển thị:</span>
+                  <strong>{safeStr(fullAddress) || "—"}</strong>
                 </div>
+
+                {!!error && <div className={cls.errorText}>{error}</div>}
               </div>
 
-              {/* Tầng / Căn + Ghi chú */}
-              <div className={s.fieldRow}>
-                <div className={s.fieldGroup}>
-                  <label className={s.label}>Tầng / Căn</label>
-                  <input
-                    className={s.input}
-                    placeholder="VD: Tầng 10, Căn 10-03"
-                    value={newForm.floor}
-                    onChange={updateField("floor")}
-                  />
-                </div>
-
-                <div className={s.fieldGroup}>
-                  <label className={s.label}>Ghi chú giao hàng</label>
-                  <textarea
-                    className={s.textarea}
-                    rows={2}
-                    placeholder="VD: Giao giờ hành chính, gọi trước khi tới..."
-                    value={newForm.shippingNote}
-                    onChange={updateField("shippingNote")}
-                  />
-                </div>
-              </div>
-
-              {/* Vị trí GPS (tự động) */}
-              <div className={s.fieldGroup}>
-                <label className={s.label}>Vị trí (tuỳ chọn)</label>
-
-                <div className={s.locationRow}>
-                  <div className={s.locationInfo}>
-                    {newForm.lat && newForm.lng ? (
-                      <div>
-                        <div className={s.locationTitle}>
-                          Đã định vị vị trí giao hàng
-                        </div>
-                        <div className={s.locationCoords}>
-                          Lat: <span>{newForm.lat}</span>, Lng:{" "}
-                          <span>{newForm.lng}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className={s.locationTitle}>
-                        Chưa có vị trí. Nhấn &quot;Lấy vị trí hiện tại&quot; để
-                        tự động điền.
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    className={s.locationBtn}
-                    onClick={handleUseCurrentLocation}
-                    disabled={geoLoading}
-                  >
-                    {geoLoading ? "Đang lấy..." : "Lấy vị trí hiện tại"}
-                  </button>
-                </div>
-
-                {geoError && <div className={s.errorText}>{geoError}</div>}
-
-                <LocationPreviewMap lat={newForm.lat} lng={newForm.lng} />
+              <div className={cls.field}>
+                <label>Ghi chú</label>
+                <textarea
+                  value={form.note}
+                  onChange={(e) => setField("note", e.target.value)}
+                  placeholder="Ghi chú thêm..."
+                  rows={3}
+                />
               </div>
             </div>
 
-            {/* FOOTER */}
-            <div className={s.formFooter}>
-              <button className={s.cancelBtn} onClick={onClose}>
-                Hủy
-              </button>
-              <button className={s.saveBtn} onClick={handleSaveNewCustomer}>
-                Lưu & sử dụng địa chỉ này
-              </button>
+            <div className={cls.actions}>
+              <Button
+                onClick={closeWithConfirm}
+                variant="ghost"
+                disabled={saving || locating}
+              >
+                Thoát
+              </Button>
+              <Button
+                onClick={handleSaveCustomer}
+                variant="primary"
+                disabled={saving || locating}
+              >
+                {saving ? "Đang lưu..." : "Lưu khách"}
+              </Button>
             </div>
           </div>
         )}
       </div>
-    </div>,
-    document.body
+    </Modal>
   );
 }

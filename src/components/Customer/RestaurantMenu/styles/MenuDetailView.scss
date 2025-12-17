@@ -1,0 +1,218 @@
+// src/components/Customer/RestaurantMenu/styles/MenuDetailView.scss
+@import "./variables";
+
+.menu-header {
+  background: $bg-card;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  box-shadow: $shadow-sm;
+  padding-top: 1rem;
+
+  .header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    .top-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      .back-btn {
+        @include flex-center;
+        gap: 0.5rem;
+        background: white;
+        border: 1px solid $border-color;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        cursor: pointer;
+        &:hover {
+          border-color: $primary;
+          color: $primary;
+        }
+      }
+      h2 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-right: auto;
+      }
+      .search-box {
+        position: relative;
+        max-width: 300px;
+        width: 100%;
+        input {
+          width: 100%;
+          padding: 0.5rem 1rem 0.5rem 2.5rem;
+          border: 1px solid $border-color;
+          border-radius: 20px;
+          outline: none;
+        }
+        span {
+          position: absolute;
+          left: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          opacity: 0.5;
+        }
+      }
+      .view-toggle {
+        display: flex;
+        gap: 4px;
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 8px;
+        button {
+          border: none;
+          background: transparent;
+          padding: 6px;
+          border-radius: 6px;
+          cursor: pointer;
+          color: $text-sub;
+          &:hover {
+            color: $primary;
+          }
+          &.active {
+            background: white;
+            color: $primary;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+          }
+          svg {
+            width: 20px;
+            height: 20px;
+          }
+        }
+      }
+    }
+    .tabs-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid $border-color;
+      .tab {
+        padding-bottom: 0.75rem;
+        cursor: pointer;
+        font-weight: 600;
+        color: $text-sub;
+        text-align: center;
+        &.active {
+          color: $primary;
+          border-bottom: 3px solid $primary;
+        }
+        &:hover:not(.active) {
+          background: #f8fafc;
+          color: $text-main;
+        }
+      }
+    }
+  }
+}
+
+.category-filter {
+  padding: 1.5rem 0;
+  .pills {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    &::-webkit-scrollbar {
+      height: 4px;
+    }
+    button {
+      white-space: nowrap;
+      padding: 0.5rem 1.2rem;
+      border-radius: 20px;
+      border: 1px solid $border-color;
+      background: white;
+      cursor: pointer;
+      &.active {
+        background: $text-main;
+        color: white;
+        border-color: $text-main;
+      }
+    }
+  }
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 3rem;
+  button {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid $border-color;
+    background: white;
+    cursor: pointer;
+    font-weight: 600;
+    color: $text-main;
+    @include flex-center;
+    &:hover:not(:disabled) {
+      border-color: $primary;
+      color: $primary;
+    }
+    &.active {
+      background: $primary;
+      color: white;
+      border-color: $primary;
+    }
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      background: #f3f4f6;
+    }
+  }
+}
+
+// Logic Grid View / List View khi nằm trong MenuDetail
+.grid-container.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+
+  &.list-view {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    // Ghi đè style của item-card để hiển thị ngang
+    .item-card {
+      flex-direction: row;
+      height: 160px !important;
+      min-height: 160px;
+      .thumb {
+        width: 180px;
+        height: 100%;
+        .badge {
+          border-radius: 0 0 8px 0;
+        }
+      }
+      .details {
+        padding: 1rem;
+        h4 {
+          font-size: 1.1rem;
+          margin-bottom: 0.25rem;
+        }
+        p {
+          -webkit-line-clamp: 2;
+          margin-bottom: 0.5rem;
+        }
+        .variants {
+          margin-bottom: 0.25rem;
+        }
+        .bottom {
+          padding-top: 0.5rem;
+        }
+      }
+      @media (max-width: 640px) {
+        flex-direction: column;
+        height: auto !important;
+        .thumb {
+          width: 100%;
+          height: 200px;
+        }
+      }
+    }
+  }
+}

@@ -106,6 +106,7 @@ function TableActionsModalCore({
     guests: 0,
     checkinDate: "",
     checkinTime: "",
+    checkinTimeTo: "",
     note: "",
   });
 
@@ -162,6 +163,7 @@ function TableActionsModalCore({
         guests: 0,
         checkinDate: getTodayLocal(),
         checkinTime: "",
+        checkinTimeTo: "",
         note: "",
       });
     }
@@ -296,6 +298,21 @@ function TableActionsModalCore({
     const [hh, mm] = timeStr.split(":").map((n) => Number(n));
     return new Date(y, m - 1, d, hh, mm, 0, 0).toISOString();
   };
+  const toMinutes = (hhmm) => {
+    if (!hhmm) return NaN;
+    const [hh, mm] = hhmm.split(":").map((n) => Number(n));
+    if (!Number.isFinite(hh) || !Number.isFinite(mm)) return NaN;
+    return hh * 60 + mm;
+  };
+
+  const calcDurationMinutes = (fromTime, toTime) => {
+    const a = toMinutes(fromTime);
+    const b = toMinutes(toTime);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+    const diff = b - a;
+    return diff > 0 ? diff : null; // ❌ không cho <= 0
+  };
+
   const clampGuests = (val) => Math.max(0, Number.isFinite(val) ? val : 0);
   const incGuests = (delta) =>
     setCust((prev) => ({
@@ -341,6 +358,15 @@ function TableActionsModalCore({
       }
       if (cust.checkinDate < todayStr) {
         alert("Ngày không hợp lệ.");
+        return false;
+      }
+      if (!cust.checkinTimeTo) {
+        alert("Vui lòng chọn giờ đến.");
+        return false;
+      }
+      const dur = calcDurationMinutes(cust.checkinTime, cust.checkinTimeTo);
+      if (!dur) {
+        alert("Giờ đến phải lớn hơn giờ vào.");
         return false;
       }
     }
@@ -543,12 +569,17 @@ function TableActionsModalCore({
       useTimeslot && cust.checkinDate && cust.checkinTime
         ? combineDateTimeToISO(cust.checkinDate, cust.checkinTime)
         : null;
+    const durationMinutes =
+      useTimeslot && cust.checkinTime && cust.checkinTimeTo
+        ? calcDurationMinutes(cust.checkinTime, cust.checkinTimeTo)
+        : null;
     try {
       setBusyKey("saveCustomer", true);
       await onSave(table.code, {
         ...cust,
         guests: Number(cust.guests || 0),
         checkin,
+        durationMinutes,
       });
     } catch (e) {
       console.error(e);
@@ -812,12 +843,23 @@ function TableActionsModalCore({
                     <select
                       className={s.select}
                       value={cust.checkinTime}
-                      onChange={(e) =>
-                        setCust({ ...cust, checkinTime: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setCust((prev) => ({
+                          ...prev,
+                          checkinTime: v,
+                          // ✅ nếu giờ đến đang <= giờ vào thì reset để user chọn lại
+                          checkinTimeTo: calcDurationMinutes(
+                            v,
+                            prev.checkinTimeTo
+                          )
+                            ? prev.checkinTimeTo
+                            : "",
+                        }));
+                      }}
                     >
                       <option value="" disabled>
-                        --:--
+                        Vào lúc --:--
                       </option>
                       {(cust.checkinDate
                         ? visibleTimeSlots(cust.checkinDate)
@@ -827,6 +869,30 @@ function TableActionsModalCore({
                           {t}
                         </option>
                       ))}
+                    </select>
+
+                    <select
+                      className={s.select}
+                      value={cust.checkinTimeTo}
+                      onChange={(e) =>
+                        setCust({ ...cust, checkinTimeTo: e.target.value })
+                      }
+                      disabled={!cust.checkinTime}
+                    >
+                      <option value="" disabled>
+                        Đến --:--
+                      </option>
+                      {(cust.checkinDate
+                        ? visibleTimeSlots(cust.checkinDate)
+                        : buildTimeSlots
+                      )
+                        // ✅ chỉ show giờ "đến" > giờ "vào"
+                        .filter((t) => calcDurationMinutes(cust.checkinTime, t))
+                        .map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
                     </select>
                   </>
                 )}

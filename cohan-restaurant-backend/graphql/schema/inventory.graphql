@@ -198,6 +198,7 @@ type ServingVariant {
   name: String
   Ingredients: [IngredientsComponent!]!
   price: Float
+  isDefault: Boolean
 }
 
 input ServingVariantInput {

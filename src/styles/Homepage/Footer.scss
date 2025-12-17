@@ -1,117 +1,328 @@
-.footer {
-  background: #0c4a6e;
-  color: white;
-  padding: 3rem 1rem 0;
+// --- VARIABLES ---
+$primary: #ff6600;
+$primary-hover: #e65c00;
+$bg-footer: #1a202c; // Màu đen xám (Dark Slate) - Trend SaaS hiện đại
+$text-light: #f7fafc;
+$text-gray: #a0aec0;
+$border-dark: #2d3748;
 
-  &__container {
-    max-width: 1280px;
+.footer-saas {
+  background-color: $bg-footer;
+  color: $text-light;
+  position: relative;
+  z-index: 10;
+
+  // Padding lớn để chứa sóng đỉnh và nội dung
+  padding-top: 80px;
+  padding-bottom: 40px;
+  width: 100%;
+  overflow-x: hidden;
+
+  /* --- SÓNG ĐỈNH (WAVE TOP) --- */
+  .footer-wave-top {
+    position: absolute;
+    top: -1px; // Chồng lấn lên trên để che khe hở
+    left: 0;
+    width: 100%;
+    min-width: 100vw;
+    line-height: 0;
+    z-index: 1;
+    pointer-events: none;
+
+    .wave-svg {
+      display: block;
+      width: calc(100% + 1.3px);
+      height: 60px;
+
+      @media (min-width: 768px) {
+        height: 100px;
+      }
+
+      // Màu fill đã được set cứng trong SVG là #1a202c (trùng màu footer)
+    }
+  }
+
+  /* --- CONTAINER --- */
+  .footer-container {
+    max-width: 1440px;
     margin: 0 auto;
+    padding: 0 32px;
+    position: relative;
+    z-index: 2;
+
+    @media (max-width: 768px) {
+      padding: 0 20px;
+    }
   }
 
-  &__grid {
+  /* --- GRID LAYOUT --- */
+  .footer-top {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
+    grid-template-columns: 1.5fr 1fr 1fr 1.5fr; // Chia cột tỷ lệ
+    gap: 40px;
+    margin-bottom: 60px;
 
-    @media (min-width: 768px) {
-      grid-template-columns: repeat(2, 1fr);
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr 1fr; // Tablet: 2 hàng 2 cột
+      gap: 30px;
     }
-
-    @media (min-width: 1024px) {
-      grid-template-columns: repeat(4, 1fr);
-    }
-  }
-
-  &__brand {
-    @media (min-width: 1024px) {
-      grid-column: span 1;
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr; // Mobile: 1 cột
     }
   }
 
-  &__logo {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-
-  &__logo-icon {
-    width: 2rem;
-    height: 2rem;
-    background: #0ea5e9;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-  }
-
-  &__logo-text {
-    font-size: 1.25rem;
-    font-weight: bold;
-  }
-
-  &__description {
-    color: #bae6fd;
-    line-height: 1.5;
-  }
-
-  &__section-title {
-    font-weight: 600;
-    margin-bottom: 1rem;
-  }
-
-  &__links {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  &__link {
-    color: #bae6fd;
-    text-decoration: none;
-    display: block;
-    padding: 0.25rem 0;
-    transition: color 0.2s;
-
-    &:hover {
+  /* --- COLUMNS --- */
+  .footer-col {
+    h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
       color: white;
+      margin-bottom: 24px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+
+      li {
+        margin-bottom: 12px;
+
+        a {
+          color: $text-gray;
+          text-decoration: none;
+          font-size: 0.95rem;
+          transition: all 0.2s;
+
+          &:hover {
+            color: $primary;
+            padding-left: 4px; // Hiệu ứng đẩy nhẹ
+          }
+        }
+      }
     }
   }
 
-  &__contact {
-    margin-bottom: 1rem;
+  /* --- BRAND COL --- */
+  .brand-col {
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      .logo-icon {
+        font-size: 24px;
+      }
+      .logo-text {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: white;
+        letter-spacing: -0.5px;
+      }
+    }
+    .brand-desc {
+      color: $text-gray;
+      line-height: 1.6;
+      font-size: 0.95rem;
+      margin-bottom: 24px;
+      max-width: 300px;
+    }
+    .social-links {
+      display: flex;
+      gap: 12px;
+      .social-link {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        transition: all 0.2s;
+        &:hover {
+          background: $primary;
+          transform: translateY(-3px);
+        }
+      }
+    }
   }
 
-  &__contact-item {
-    color: #bae6fd;
-    margin-bottom: 0.5rem;
+  /* --- NEWSLETTER COL --- */
+  .newsletter-col {
+    .newsletter-text {
+      color: $text-gray;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+
+    .newsletter-form {
+      margin-bottom: 30px;
+
+      .input-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+
+        .input-icon {
+          position: absolute;
+          left: 16px;
+          color: $text-gray;
+          z-index: 1;
+        }
+
+        input {
+          width: 100%;
+          height: 48px;
+          padding: 0 50px 0 44px;
+          border-radius: 99px;
+          border: 1px solid $border-dark;
+          background: rgba(255, 255, 255, 0.05);
+          color: white;
+          outline: none;
+          font-size: 0.95rem;
+          transition: all 0.2s;
+
+          &:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: $primary;
+          }
+          &::placeholder {
+            color: #718096;
+          }
+        }
+
+        button {
+          position: absolute;
+          right: 6px;
+          top: 6px;
+          bottom: 6px;
+          width: 36px;
+          border-radius: 50%;
+          border: none;
+          background: $primary;
+          color: white;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+
+          &:hover {
+            background: $primary-hover;
+          }
+          &:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+          }
+          &.success {
+            background: #10b981;
+          }
+
+          .spin {
+            animation: spin 1s linear infinite;
+          }
+        }
+      }
+    }
+
+    .app-download {
+      .app-label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: white;
+        margin-bottom: 12px;
+      }
+      .store-buttons {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        .store-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 8px 16px;
+          border-radius: 8px;
+          color: white;
+          text-decoration: none;
+          font-size: 0.9rem;
+          font-weight: 500;
+          transition: all 0.2s;
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+          }
+        }
+      }
+    }
   }
 
-  &__social {
+  /* --- DIVIDER --- */
+  .footer-divider {
+    height: 1px;
+    background: $border-dark;
+    margin-bottom: 30px;
+  }
+
+  /* --- BOTTOM --- */
+  .footer-bottom {
     display: flex;
-    gap: 1rem;
-  }
+    justify-content: space-between;
+    align-items: center;
+    color: $text-gray;
+    font-size: 0.9rem;
 
-  &__social-link {
-    display: inline-block;
-    font-size: 1.5rem;
-    text-decoration: none;
-    transition: transform 0.2s;
+    @media (max-width: 768px) {
+      flex-direction: column;
+      gap: 20px;
+      text-align: center;
+    }
 
-    &:hover {
-      transform: scale(1.1);
+    .bottom-right {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+
+      .contact-info {
+        display: flex;
+        gap: 16px;
+        span {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+      }
+
+      .scroll-top-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: $border-dark;
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+
+        &:hover {
+          background: $primary;
+        }
+      }
     }
   }
+}
 
-  &__bottom {
-    border-top: 1px solid #075985;
-    margin-top: 2rem;
-    padding: 2rem 0;
-    text-align: center;
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
   }
-
-  &__copyright {
-    color: #bae6fd;
+  100% {
+    transform: rotate(360deg);
   }
 }

@@ -10,11 +10,28 @@ import cls from "./RightPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { useNotification } from "../../../../../hooks/useNotification";
 import { formatPrice } from "@/utils/formatters";
+
 import PaymentModal from "../modals/PaymentModal";
 import ConfirmDeleteModal from "../modals/ConfirmDeleteModal";
 import MenuItemModal from "../modals/MenuItemModal";
+import OrderConfirmModal from "../modals/OrderConfirmModal";
 
-// --- Icons Definition ---
+const IconDraft = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+  </svg>
+);
+
 const IconImage = () => (
   <svg
     width="12"
@@ -102,14 +119,20 @@ const IconOrderList = () => (
   </svg>
 );
 
+const DRAFT_KEY_PREFIX = "pos_draft_items_v1";
+
 export default function RightPanel() {
   const navigate = useNavigate();
   const {
+    restaurantId,
     currentTable,
     currentOrder,
     currentOrderType,
+    currentOrderCode,
+
     shippingInfo,
     deliveryCustomer,
+
     updateItemQty,
     removeItem,
     finalTotals,
@@ -124,7 +147,6 @@ export default function RightPanel() {
     showNotification: (msg, type) => console.log(type || "info", msg),
   };
 
-  // --- States ---
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
   const [pulse, setPulse] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
@@ -135,9 +157,11 @@ export default function RightPanel() {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isClearModalOpen, setClearModalOpen] = useState(false);
 
-  // --- Dropdown Menu Logic ---
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
+
+  const [isConfirmOpen, setConfirmOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -154,14 +178,15 @@ export default function RightPanel() {
     setIsMenuOpen(false);
   };
 
-  // --- Computations ---
   const hasItems = Array.isArray(currentOrder) && currentOrder.length > 0;
 
   const { existingItems, newItems } = useMemo(() => {
     const ex = [];
     const nw = [];
     (currentOrder || []).forEach((it) => {
-      if (it.isExisting && !it.isNew) ex.push(it);
+      if (it?.isNew) nw.push(it); // ✅ chỉ isNew mới là món nháp
+      else if (it?.isExisting)
+        ex.push(it); // ✅ còn lại, nếu isExisting thì là đã lưu
       else nw.push(it);
     });
     return { existingItems: ex, newItems: nw };
@@ -170,13 +195,163 @@ export default function RightPanel() {
   const isOffPremise =
     currentOrderType === "delivery" || currentOrderType === "takeaway";
 
-  // --- Handlers ---
+  const offPremiseKind = currentOrderType === "delivery" ? "SHIP" : "TAKE";
+
+  const draftKey = useMemo(() => {
+    const code = currentOrderCode || "";
+    if (!code) return null;
+    return `${DRAFT_KEY_PREFIX}:${restaurantId || "na"}:${code}`;
+  }, [restaurantId, currentOrderCode]);
+
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      const payload = JSON.parse(localStorage.getItem(draftKey) || "null");
+      const saved = Array.isArray(payload?.items) ? payload.items : [];
+      if (!saved.length) return;
+
+      const currentHasNew = (newItems || []).length > 0;
+      if (currentHasNew) return;
+
+      const safe = saved
+        .filter((x) => x && (x.isNew || (!x.isExisting && x.isNew !== false)))
+        .map((x) => ({
+          ...x,
+          isNew: true,
+          isExisting: false,
+        }));
+
+      if (!safe.length) return;
+
+      showNotification("Đã khôi phục món nháp (draft).", "info", 2500);
+
+      // NOTE: autosave/restore chuẩn nhất nên thực hiện trong PosContext
+      // vì RightPanel không có quyền setCurrentOrder ở phiên bản này.
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      const toSave = (newItems || []).map((x) => ({
+        ...x,
+        isNew: true,
+        isExisting: false,
+      }));
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({
+          at: Date.now(),
+          items: toSave,
+        })
+      );
+    } catch {}
+  }, [draftKey, newItems]);
+
+  const clearDraft = useCallback(() => {
+    if (!draftKey) return;
+    try {
+      localStorage.removeItem(draftKey);
+    } catch {}
+  }, [draftKey]);
+
+  const getItemPrice = (item) => formatPrice(Number(item.price || 0));
+  const getItemTotal = (item) => {
+    const t =
+      item.total != null
+        ? Number(item.total)
+        : Number(item.price || 0) * Number(item.quantity || 1);
+    return formatPrice(t);
+  };
+
+  const formatTime = (dateInput) => {
+    if (!dateInput) return "";
+    let dateObj;
+    if (typeof dateInput === "string" && /^\d+$/.test(dateInput)) {
+      dateObj = new Date(parseInt(dateInput, 10));
+    } else {
+      dateObj = new Date(dateInput);
+    }
+    if (isNaN(dateObj.getTime())) return "";
+    return dateObj.toLocaleTimeString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const headerTitle = useMemo(() => {
+    if (currentOrderCode) return currentOrderCode;
+
+    if (currentOrderType === "dine_in") {
+      if (currentTable?.code) return `Bàn ${currentTable.code}`;
+      return "Chọn bàn";
+    }
+
+    return currentOrderType === "delivery"
+      ? "Đơn giao hàng"
+      : currentOrderType === "takeaway"
+      ? "Đơn mang về"
+      : "Đơn hàng";
+  }, [currentOrderCode, currentOrderType, currentTable?.code]);
+
+  const headerMeta = useMemo(() => {
+    if (isOffPremise) {
+      const name = (
+        shippingInfo?.fullName ||
+        deliveryCustomer?.name ||
+        ""
+      ).trim();
+      const phone = (
+        shippingInfo?.phone ||
+        deliveryCustomer?.phone ||
+        ""
+      ).trim();
+      const addr = (shippingInfo?.address || "").trim();
+
+      return {
+        line1:
+          name || phone
+            ? `${name || "Khách"}${phone ? ` · ${phone}` : ""}`
+            : "",
+        line2: addr || "Chưa có địa chỉ",
+      };
+    }
+
+    if (currentTable) {
+      return {
+        line1: `${currentTable.capacity || 0} chỗ`,
+        line2: currentTable.status || "available",
+      };
+    }
+
+    return {
+      line1: "Chưa chọn bàn",
+      line2: "",
+    };
+  }, [isOffPremise, shippingInfo, deliveryCustomer, currentTable]);
+
+  const totals = finalTotals || {};
+  const breakdownConfig = [
+    { key: "subtotal", label: "Tạm tính", cls: "" },
+    { key: "discount", label: "Giảm giá", cls: "neg" },
+    { key: "service", label: "Phí phục vụ", cls: "" },
+    { key: "tax", label: "Thuế", cls: "" },
+  ];
+
+  const breakdownRows = breakdownConfig
+    .filter(({ key }) => totals[key] !== undefined && totals[key] !== null)
+    .map(({ key, label, cls: c }) => ({
+      label,
+      value: totals[key],
+      clsName: c,
+    }));
+
   const closePaymentModal = useCallback(() => setPaymentModalOpen(false), []);
 
   const openPaymentModal = useCallback(async () => {
     if (!hasItems) return;
 
-    // Hiện tại thanh toán POS chỉ support dine-in
     if (isOffPremise) {
       showNotification(
         "Thanh toán tại POS hiện chỉ áp dụng cho đơn tại bàn.",
@@ -189,15 +364,21 @@ export default function RightPanel() {
       showNotification("Thiếu restaurantId.", "error");
       return;
     }
-    const res = await preparePayment({
+
+    const res = await preparePayment?.({
       restaurantId: currentTable.restaurantId,
     });
+
     if (!res?.success) {
-      showNotification(res?.message || "Lưu đơn thất bại.", "error");
+      showNotification(
+        res?.message || "Chuẩn bị thanh toán thất bại.",
+        "error"
+      );
       return;
     }
+
     setPaymentModalOpen(true);
-  }, [hasItems, currentTable, preparePayment, showNotification, isOffPremise]);
+  }, [hasItems, isOffPremise, currentTable, preparePayment, showNotification]);
 
   const handlePaymentComplete = useCallback(
     (payload) => {
@@ -205,6 +386,8 @@ export default function RightPanel() {
       const inv =
         payload?.server?.invoice?.number || payload?.server?.invoice?.id;
       if (inv) showNotification(`Hóa đơn: ${inv}`, "info");
+
+      clearDraft();
 
       clearOrder();
       if (currentTable?.id && setTableStatus) {
@@ -220,47 +403,14 @@ export default function RightPanel() {
       setTableStatus,
       setCurrentTable,
       showNotification,
+      clearDraft,
     ]
   );
-
-  const handleSaveOrder = async () => {
-    // Với dine_in thì vẫn bắt buộc phải chọn bàn
-    if (!currentTable && currentOrderType === "dine_in") {
-      showNotification("Vui lòng chọn bàn trước khi lưu.", "error");
-      return;
-    }
-
-    // saveOrder trong PosContext đã tự merge restaurantId rồi,
-    // nên ở đây chỉ cần truyền thêm flag nếu cần
-    const res = await saveOrder?.({
-      persist: true,
-    });
-
-    if (res?.success) {
-      setPulse(true);
-      setTimeout(() => setPulse(false), 650);
-
-      if (currentOrderType === "dine_in" && currentTable) {
-        showNotification(
-          `Đã lưu vào bàn ${currentTable.code}`,
-          "success",
-          3000
-        );
-      } else if (currentOrderType === "delivery") {
-        showNotification("Đã lưu đơn giao hàng.", "success", 3000);
-      } else if (currentOrderType === "takeaway") {
-        showNotification("Đã lưu đơn mang đi.", "success", 3000);
-      } else {
-        showNotification("Đã lưu đơn hàng.", "success", 3000);
-      }
-    } else {
-      showNotification(res?.message || "Lưu đơn hàng thất bại.", "error");
-    }
-  };
 
   const handleQtyChange = (e, item, change) => {
     e.stopPropagation();
     if (item.isExisting && !item.isNew) return;
+
     const next = Math.max(1, Number(item.quantity || 1) + change);
     updateItemQty(item._lineId || item.dishId || item.id, next);
   };
@@ -268,17 +418,32 @@ export default function RightPanel() {
   const handleQtyInput = (e, item) => {
     e.stopPropagation();
     if (item.isExisting && !item.isNew) return;
+
     const v = Math.max(1, Number(e.target.value) || 1);
     updateItemQty(item._lineId || item.dishId || item.id, v);
   };
 
   const handleDeleteClick = (e, item) => {
     e.stopPropagation();
+    if (item.isExisting && !item.isNew) {
+      showNotification(
+        "Không thể xóa món đã lưu. Chỉ xóa món nháp (draft).",
+        "warning"
+      );
+      return;
+    }
     setItemToDelete(item);
     setDeleteModalOpen(true);
   };
 
-  const handleDeleteItem = (action, selectedReason) => {
+  const handleDeleteItem = (_action, selectedReason) => {
+    if (!itemToDelete) return;
+    if (itemToDelete.isExisting && !itemToDelete.isNew) {
+      showNotification("Không thể xóa món đã lưu.", "warning");
+      setDeleteModalOpen(false);
+      setItemToDelete(null);
+      return;
+    }
     removeItem(itemToDelete._lineId || itemToDelete.dishId || itemToDelete.id);
     setDeleteModalOpen(false);
     setItemToDelete(null);
@@ -290,6 +455,7 @@ export default function RightPanel() {
 
   const handleClearConfirm = (action) => {
     if (action === "clear_table") {
+      clearDraft();
       clearOrder();
       if (currentTable?.id && setTableStatus) {
         setTableStatus({ id: currentTable.id, status: "available" });
@@ -298,11 +464,12 @@ export default function RightPanel() {
       showNotification(
         currentTable?.code
           ? `Đã xóa thông tin bàn ${currentTable.code}`
-          : "Đã xóa đơn hiện tại"
+          : "Đã xóa đơn"
       );
     } else {
+      clearDraft();
       clearOrder();
-      showNotification(`Đã xóa tất cả món (giữ thông tin bàn/đơn)`);
+      showNotification("Đã xóa tất cả món (giữ thông tin bàn/đơn)");
     }
     setClearModalOpen(false);
   };
@@ -328,84 +495,144 @@ export default function RightPanel() {
     setDetailModalOpen(true);
   };
 
-  // --- Helpers ---
-  const getItemPrice = (item) => formatPrice(Number(item.price || 0));
-  const getItemTotal = (item) => {
-    const t =
-      item.total != null
-        ? Number(item.total)
-        : Number(item.price || 0) * Number(item.quantity || 1);
-    return formatPrice(t);
-  };
-
-  const formatTime = (dateInput) => {
-    if (!dateInput) return "";
-    let dateObj;
-    if (typeof dateInput === "string" && /^\d+$/.test(dateInput)) {
-      dateObj = new Date(parseInt(dateInput, 10));
-    } else {
-      dateObj = new Date(dateInput);
+  const validateBeforeConfirm = useCallback(() => {
+    if (!hasItems) {
+      showNotification("Đơn đang trống.", "warning");
+      return { ok: false };
     }
-    if (isNaN(dateObj.getTime())) return "";
-    return dateObj.toLocaleTimeString("vi-VN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
-  // --- Totals Logic ---
-  const totals = finalTotals || {};
-  const breakdownConfig = [
-    { key: "subtotal", label: "Tạm tính", cls: "" },
-    { key: "discount", label: "Giảm giá", cls: "neg" },
-    { key: "service", label: "Phí phục vụ", cls: "" },
-    { key: "tax", label: "Thuế", cls: "" },
-  ];
-
-  const breakdownRows = breakdownConfig
-    .filter(({ key }) => totals[key] !== undefined && totals[key] !== null)
-    .map(({ key, label, cls: c }) => ({
-      label,
-      value: totals[key],
-      clsName: c,
-    }));
-
-  const headerTitle = isOffPremise
-    ? currentOrderType === "delivery"
-      ? "Đơn giao hàng"
-      : "Đơn mang về"
-    : currentTable
-    ? `Bàn ${currentTable.code}`
-    : "Chọn bàn";
-
-  const headerMeta = (() => {
-    if (isOffPremise) {
-      const name = shippingInfo?.fullName || deliveryCustomer?.name || "";
-      const phone = shippingInfo?.phone || deliveryCustomer?.phone || "";
-      const addr = shippingInfo?.address || "";
-      return {
-        line1: name || phone ? `${name || "Khách"} · ${phone || ""}` : "",
-        line2: addr || "Chưa có địa chỉ giao hàng",
-      };
+    if (newItems.length === 0) {
+      showNotification("Không có món mới (draft) để lưu.", "warning");
+      return { ok: false };
     }
-    if (currentTable) {
-      return {
-        line1: `${currentTable.capacity || 0} chỗ`,
-        line2: currentTable.status || "available",
-      };
+
+    if (currentOrderType === "dine_in") {
+      if (!currentTable?.code) {
+        showNotification("Vui lòng chọn bàn trước khi lưu.", "error");
+        return { ok: false };
+      }
+      return { ok: true };
     }
-    return {
-      line1: "Chưa chọn bàn",
-      line2: "",
-    };
-  })();
+
+    const name = (
+      shippingInfo?.fullName ||
+      deliveryCustomer?.name ||
+      ""
+    ).trim();
+    const phone = (shippingInfo?.phone || deliveryCustomer?.phone || "").trim();
+    const addr = (shippingInfo?.address || "").trim();
+
+    if (!name && !phone) {
+      showNotification(
+        "Vui lòng chọn/nhập thông tin khách hàng trước khi lưu.",
+        "error"
+      );
+      return { ok: false };
+    }
+
+    if (currentOrderType === "delivery") {
+      if (!addr) {
+        showNotification("Đơn giao hàng bắt buộc phải có địa chỉ.", "error");
+        return { ok: false };
+      }
+    }
+
+    if (!currentOrderCode) {
+      showNotification(
+        "Thiếu currentOrderCode. Vui lòng tạo đơn mới.",
+        "error"
+      );
+      return { ok: false };
+    }
+
+    return { ok: true };
+  }, [
+    hasItems,
+    newItems.length,
+    currentOrderType,
+    currentTable?.code,
+    shippingInfo,
+    deliveryCustomer,
+    currentOrderCode,
+    showNotification,
+  ]);
+
+  const handleOpenConfirm = useCallback(() => {
+    const v = validateBeforeConfirm();
+    if (!v.ok) return;
+    setConfirmOpen(true);
+  }, [validateBeforeConfirm]);
+
+  const handleConfirmSave = useCallback(async () => {
+    if (saving) return;
+
+    const v = validateBeforeConfirm();
+    if (!v.ok) return;
+
+    setSaving(true);
+    try {
+      const res = await saveOrder?.({ persist: true });
+
+      if (res?.success) {
+        setPulse(true);
+        setTimeout(() => setPulse(false), 650);
+
+        clearDraft();
+
+        if (currentOrderType === "dine_in" && currentTable?.code) {
+          showNotification(
+            `Đã lưu vào bàn ${currentTable.code}`,
+            "success",
+            2500
+          );
+        } else if (currentOrderType === "delivery") {
+          showNotification(
+            `Đã lưu đơn giao hàng (${currentOrderCode})`,
+            "success",
+            2500
+          );
+        } else if (currentOrderType === "takeaway") {
+          showNotification(
+            `Đã lưu đơn mang về (${currentOrderCode})`,
+            "success",
+            2500
+          );
+        } else {
+          showNotification("Đã lưu đơn.", "success", 2500);
+        }
+
+        setConfirmOpen(false);
+      } else {
+        showNotification(res?.message || "Lưu đơn thất bại.", "error");
+      }
+    } catch (e) {
+      showNotification(e?.message || "Lưu đơn thất bại.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }, [
+    saving,
+    validateBeforeConfirm,
+    saveOrder,
+    clearDraft,
+    currentOrderType,
+    currentTable?.code,
+    currentOrderCode,
+    showNotification,
+  ]);
+
+  const saveDisabled =
+    saving ||
+    !hasItems ||
+    newItems.length === 0 ||
+    (isOffPremise && !currentOrderCode);
 
   return (
     <div
       className={`${cls.wrapper} ${pulse ? cls.pulse : ""}`}
       data-pos-order-panel
+      data-kind={isOffPremise ? offPremiseKind : "DINE"}
     >
-      {/* --- Modals --- */}
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={closePaymentModal}
@@ -415,17 +642,20 @@ export default function RightPanel() {
         onConfirm={() => {}}
         onComplete={handlePaymentComplete}
       />
+
       <ConfirmDeleteModal
         isOpen={isDeleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDeleteItem}
       />
+
       <ConfirmDeleteModal
         isOpen={isClearModalOpen}
         onClose={() => setClearModalOpen(false)}
         onConfirm={handleClearConfirm}
         showScopeChoice={true}
       />
+
       <MenuItemModal
         isOpen={detailModalOpen}
         item={selectedDetailItem}
@@ -433,18 +663,42 @@ export default function RightPanel() {
         isReviewMode={true}
       />
 
-      {/* --- HEADER --- */}
+      <OrderConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={handleConfirmSave}
+        loading={saving}
+        orderType={currentOrderType}
+        orderCode={currentOrderCode}
+        tableCode={currentTable?.code || null}
+        totals={finalTotals}
+        newItems={newItems}
+        customer={{
+          name: (shippingInfo?.fullName || deliveryCustomer?.name || "").trim(),
+          phone: (shippingInfo?.phone || deliveryCustomer?.phone || "").trim(),
+          email: (shippingInfo?.email || deliveryCustomer?.email || "").trim(),
+        }}
+        address={(shippingInfo?.address || "").trim()}
+      />
+
       <div className={cls.header}>
         <div className={cls.headerLeft}>
           <div className={cls.tableName}>{headerTitle}</div>
+
           <div className={cls.tableMeta}>
             {headerMeta.line1}
             {headerMeta.line1 && headerMeta.line2 ? " · " : ""}
             <span className={cls.statusBadge}>{headerMeta.line2}</span>
           </div>
+
+          <div className={cls.draftLegend}>
+            <span className={cls.legendIcon}>
+              <IconDraft />
+            </span>
+            <span className={cls.legendText}>Món mới (chưa lưu)</span>
+          </div>
         </div>
 
-        {/* Dropdown Menu */}
         <div className={cls.headerRight}>
           <div className={cls.menuWrapper} ref={menuRef}>
             <button
@@ -474,9 +728,7 @@ export default function RightPanel() {
         </div>
       </div>
 
-      {/* --- BODY --- */}
       <div className={cls.body}>
-        {/* Section 1: Món Mới (Compact) */}
         {newItems.length > 0 && (
           <div className={cls.sectionNew}>
             <div className={cls.groupHeader}>Món mới ({newItems.length})</div>
@@ -484,10 +736,15 @@ export default function RightPanel() {
               {newItems.map((item) => (
                 <div
                   key={item._lineId || item.dishId || item.id}
-                  className={cls.cardNew}
+                  className={`${cls.cardNew} ${cls.cardNewAnim}`}
                   onClick={() => handleItemClick(item)}
                 >
-                  {/* Dòng 1: Tên + Icon ảnh + Nút xóa */}
+                  {item.isNew && (
+                    <span className={cls.draftBadge} title="Món mới – chưa lưu">
+                      <IconDraft />
+                    </span>
+                  )}
+
                   <div className={cls.rowTop}>
                     <div className={cls.cardName}>
                       {item.name}
@@ -497,6 +754,7 @@ export default function RightPanel() {
                         </span>
                       )}
                     </div>
+
                     <button
                       className={cls.btnDelete}
                       onClick={(e) => handleDeleteClick(e, item)}
@@ -506,7 +764,6 @@ export default function RightPanel() {
                     </button>
                   </div>
 
-                  {/* Dòng 2: Note (nếu có) */}
                   {(item.method || item.cookingOption || item.note) && (
                     <div className={cls.rowNote}>
                       {item.method || item.cookingOption ? (
@@ -520,9 +777,9 @@ export default function RightPanel() {
                     </div>
                   )}
 
-                  {/* Dòng 3: Giá + Số lượng + Tổng */}
                   <div className={cls.rowBottom}>
                     <div className={cls.priceSingle}>{getItemPrice(item)}</div>
+
                     <div
                       className={cls.qtyWrapper}
                       onClick={(e) => e.stopPropagation()}
@@ -547,6 +804,7 @@ export default function RightPanel() {
                         +
                       </button>
                     </div>
+
                     <div className={cls.cardTotal}>{getItemTotal(item)}</div>
                   </div>
                 </div>
@@ -555,7 +813,6 @@ export default function RightPanel() {
           </div>
         )}
 
-        {/* Section 2: Món Đã Gửi Bếp (Compact) */}
         {existingItems.length > 0 && (
           <div className={cls.sectionExisting}>
             <div className={cls.dividerLabel}>
@@ -601,10 +858,12 @@ export default function RightPanel() {
                     <div className={cls.priceSingle}>{getItemPrice(item)}</div>
                     <div className={cls.qtyStatic}>x{item.quantity}</div>
                     <div className={cls.cardTotal}>{getItemTotal(item)}</div>
+
                     <button
-                      className={cls.btnDeleteSaved}
+                      className={cls.btnDeleteSavedDisabled}
                       onClick={(e) => handleDeleteClick(e, item)}
-                      title="Hủy món"
+                      title="Không thể xóa món đã lưu"
+                      disabled
                     >
                       <IconTrash />
                     </button>
@@ -615,7 +874,6 @@ export default function RightPanel() {
           </div>
         )}
 
-        {/* Empty State */}
         {!hasItems && (
           <div className={cls.emptyState}>
             <p>Trống</p>
@@ -623,13 +881,13 @@ export default function RightPanel() {
         )}
       </div>
 
-      {/* --- FOOTER --- */}
       <div className={cls.footer}>
         <div className={cls.summary}>
           <div className={cls.row}>
             <span>Tạm tính:</span>
             <strong>{formatPrice(finalTotals?.subtotal || 0)}</strong>
           </div>
+
           <button
             type="button"
             className={cls.breakdownToggle}
@@ -637,6 +895,7 @@ export default function RightPanel() {
           >
             {showBreakdown ? "Thu gọn ▲" : "Chi tiết ▼"}
           </button>
+
           {showBreakdown && (
             <div id="totals-breakdown" className={cls.breakdown}>
               {breakdownRows.map((r) => (
@@ -651,39 +910,51 @@ export default function RightPanel() {
               <div className={cls.hr} />
             </div>
           )}
+
           <div className={`${cls.row} ${cls.grand}`}>
             <span>Tổng cộng:</span>
             <strong>{formatPrice(finalTotals?.total || 0)}</strong>
           </div>
         </div>
 
-        {/* Actions Grid */}
         <div className={cls.actionsGrid}>
           <button
             className={`${cls.btn} ${cls.secondary}`}
             onClick={() => setClearModalOpen(true)}
-            disabled={!hasItems}
+            disabled={!hasItems || saving}
           >
             Xóa
           </button>
+
           <button
             className={`${cls.btn} ${cls.primary}`}
-            onClick={handleSaveOrder}
-            disabled={!hasItems || newItems.length === 0}
+            onClick={handleOpenConfirm}
+            disabled={saveDisabled}
+            title={
+              !hasItems
+                ? "Đơn trống"
+                : newItems.length === 0
+                ? "Không có món nháp để lưu"
+                : saving
+                ? "Đang lưu..."
+                : ""
+            }
           >
-            Lưu
+            {saving ? "Đang lưu..." : "Lưu"}
           </button>
+
           <button
             className={`${cls.btn} ${cls.success}`}
-            disabled={!hasItems}
+            disabled={!hasItems || saving}
             onClick={openPaymentModal}
           >
             Thanh toán
           </button>
+
           <button
             className={`${cls.btn} ${cls.warning}`}
             onClick={() => handlePrint("draft")}
-            disabled={!hasItems}
+            disabled={!hasItems || saving}
           >
             In
           </button>

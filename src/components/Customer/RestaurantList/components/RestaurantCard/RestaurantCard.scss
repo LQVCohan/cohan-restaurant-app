@@ -1,410 +1,473 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+// --- VARIABLES ---
+$primary: #ff6600;
+$primary-hover: #e65c00;
+$primary-light: #fff5eb;
+$primary-gradient: linear-gradient(135deg, #ff6600, #ff8533);
 
+$text-main: #1a202c;
+$text-sub: #64748b;
+$border-color: #e2e8f0;
+$white: #ffffff;
+$bg-body: #f8fafc; // Màu nền trang web (để làm hiệu ứng cắt vé)
+$radius: 16px;
+
+$shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+$shadow-hover: 0 10px 25px -5px rgba(255, 102, 0, 0.15);
+
+// --- GLOBAL CARD STYLES ---
 .restaurant-card {
   background: $white;
-  border-radius: 1rem;
-  overflow: hidden;
-  @include card-shadow;
-  @include hover-lift;
-  cursor: pointer;
   border: 1px solid $border-color;
-  transition: all 0.3s ease;
+  border-radius: $radius;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
   position: relative;
-
-  // List view modifications
-  .restaurants-grid--list & {
-    display: grid;
-    grid-template-columns: 200px 1fr;
-    gap: 0;
-
-    @include r-tablet {
-      grid-template-columns: 150px 1fr;
-    }
-
-    @include r-mobile {
-      grid-template-columns: 1fr;
-    }
-  }
+  height: 100%; // Quan trọng cho Grid view đều nhau
 
   &:hover {
+    transform: translateY(-5px);
+    box-shadow: $shadow-hover;
     border-color: rgba($primary, 0.3);
+
+    .restaurant-card__img {
+      transform: scale(1.05);
+    }
   }
 
-  // Image Section
-  &__image {
+  // --- 1. IMAGE AREA ---
+  &__image-wrapper {
     position: relative;
-    height: 200px;
+    width: 100%;
+    padding-top: 60%; // Tỷ lệ 5:3
     overflow: hidden;
-    background: $gray-50;
-
-    .restaurants-grid--list & {
-      height: 150px;
-
-      @include r-mobile {
-        height: 180px;
-      }
-    }
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: transform 0.3s ease;
-    }
+    background: #f1f5f9;
+    flex-shrink: 0;
   }
 
-  &:hover &__image img {
-    transform: scale(1.05);
-  }
-
-  // Badges
-  &__badges {
+  &__img {
     position: absolute;
-    top: 1rem;
-    left: 1rem;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+
+  &__badges-top {
+    position: absolute;
+    top: 12px;
+    left: 12px;
     display: flex;
     flex-direction: column;
-    gap: $spacing-sm;
-    z-index: 2;
-  }
-
-  &__badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 1rem;
-    font-size: $text-xs;
-    font-weight: 600;
-    backdrop-filter: blur(10px);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-
-    &--featured {
-      background: rgba($error-red, 0.9);
-      color: $white;
-    }
-
-    &--new {
-      background: rgba($success-green, 0.9);
-      color: $white;
-    }
-
-    &--promotion {
-      background: rgba($warning-yellow, 0.9);
-      color: $white;
-    }
-  }
-
-  // Favorite Button
-  &__favorite {
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.9);
-    border: none;
-    border-radius: 50%;
-    @include flex-center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
+    gap: 6px;
     z-index: 2;
 
-    &:hover {
-      background: $white;
-      transform: scale(1.1);
-    }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: white;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      user-select: none;
 
-    &--favorited {
-      background: rgba($error-red, 0.1);
-
-      &:hover {
-        background: rgba($error-red, 0.2);
+      &--featured {
+        background: rgba(255, 69, 0, 0.9);
+      }
+      &--new {
+        background: rgba(16, 185, 129, 0.9);
+      }
+      &--promo {
+        background: linear-gradient(135deg, #8b5cf6, #6366f1);
       }
     }
   }
 
-  // Content Section
-  &__content {
-    padding: $spacing-lg;
+  .btn-favorite {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: 0.2s;
+    user-select: none; // Ngăn bôi đen icon
 
-    .restaurants-grid--list & {
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      padding: 1rem $spacing-lg;
+    &:hover {
+      transform: scale(1.1);
+      background: white;
     }
-
-    @include r-mobile {
-      padding: 1rem;
+    &.active {
+      background: #ffe4e6;
     }
   }
 
-  // Header
-  &__header {
+  // --- 2. CONTENT AREA (GRID VIEW DEFAULT) ---
+  &__content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .info-section {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  .content-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 0.75rem;
-    gap: $spacing-sm;
-  }
+    margin-bottom: 8px;
+    gap: 10px;
 
-  &__name {
-    font-size: $text-xl;
-    font-weight: 700;
-    color: $gray-900;
-    margin: 0;
-    line-height: 1.3;
-    flex: 1;
-
-    .restaurants-grid--list & {
-      font-size: $text-lg;
+    .restaurant-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: $text-main;
+      margin: 0;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
-    @include r-mobile {
-      font-size: $text-lg;
-    }
-  }
-
-  &__status {
-    font-size: $text-xs;
-    font-weight: 600;
-    padding: 0.25rem 0.75rem;
-    border-radius: 1rem;
-    white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-
-    &--open {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    &--closed {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    &--break {
-      background: #fef3c7;
-      color: #92400e;
-    }
-  }
-
-  // Meta Information
-  &__meta {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 0.75rem;
-    flex-wrap: wrap;
-
-    @include r-mobile {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: $spacing-sm;
-    }
-  }
-
-  &__rating {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: $text-sm;
-
-    &-stars {
-      color: #fbbf24;
-      font-size: $text-base;
-    }
-
-    &-score {
+    .status-pill {
+      font-size: 0.7rem;
       font-weight: 600;
-      color: $gray-900;
-    }
-
-    &-count {
-      color: $text-muted;
+      padding: 4px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+      text-transform: uppercase;
+      user-select: none;
+      &.open {
+        background: #dcfce7;
+        color: #166534;
+      }
+      &.closed {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      &.break {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      &.unknown {
+        background: #f3f4f6;
+        color: $text-sub;
+      }
     }
   }
 
-  &__cuisine {
-    font-size: $text-sm;
-    color: $text-muted;
+  .content-meta {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
+    color: $text-sub;
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+      &.rating {
+        color: $text-main;
+        font-weight: 600;
+        span {
+          color: #f59e0b;
+        }
+        .count {
+          color: $text-sub;
+          font-weight: 400;
+          font-size: 0.8rem;
+        }
+      }
+      &.price {
+        color: $primary;
+        font-weight: 600;
+      }
+    }
+    .dot {
+      width: 3px;
+      height: 3px;
+      background: #cbd5e1;
+      border-radius: 50%;
+    }
   }
 
-  &__price {
-    font-size: $text-sm;
-    color: $primary;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  // Description
-  &__description {
-    color: $text-muted;
-    font-size: $text-sm;
+  .restaurant-desc {
+    font-size: 0.9rem;
+    color: $text-sub;
     line-height: 1.5;
-    margin-bottom: 1rem;
+    margin-bottom: 16px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-
-    .restaurants-grid--list & {
-      -webkit-line-clamp: 3;
-      margin-bottom: auto;
-    }
   }
 
-  // Footer
-  &__footer {
+  // --- FOOTER / ACTIONS (GRID VIEW) ---
+  .action-section {
+    padding-top: 16px;
+    border-top: 1px dashed $border-color;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: 1rem;
-    border-top: 1px solid #f1f5f9;
-    gap: 1rem;
-
-    @include r-mobile {
-      flex-direction: column;
-      gap: 1rem;
-      align-items: stretch;
-    }
+    flex-direction: column;
+    gap: 12px;
   }
 
-  &__info {
+  .address-info {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    font-size: $text-sm;
-    color: $text-muted;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: $text-sub;
+    .icon {
+      font-size: 1rem;
+      user-select: none;
+    }
+    .text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
 
-    @include r-mobile {
-      justify-content: space-around;
+    // Mặc định ẩn, sẽ hiện tùy view
+    &.list-only {
+      display: none;
+    }
+    &.grid-only {
+      display: flex;
     }
   }
 
-  &__info-item {
+  .buttons-group {
     display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    white-space: nowrap;
-  }
-
-  // Actions
-  &__actions {
-    display: flex;
-    gap: $spacing-sm;
-
-    @include r-mobile {
-      justify-content: space-between;
-    }
+    gap: 10px;
 
     .btn {
-      font-size: $text-xs;
-      padding: 0.5rem 0.75rem;
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 0.2s;
+      border: none;
+      outline: none;
+      user-select: none;
 
-      @include r-mobile {
-        flex: 1;
-        font-size: $text-sm;
-        padding: 0.75rem;
+      &.btn-outline {
+        background: white;
+        border: 1px solid $primary;
+        color: $primary;
+        &:hover {
+          background: $primary-light;
+        }
+      }
+
+      &.btn-primary {
+        background: $primary-gradient;
+        color: white;
+        box-shadow: 0 4px 10px rgba(255, 102, 0, 0.2);
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 15px rgba(255, 102, 0, 0.3);
+        }
       }
     }
   }
-}
 
-// Hover effects for interactive elements
-.restaurant-card__favorite,
-.restaurant-card__actions .btn {
-  &:focus {
-    outline: 2px solid $primary;
-    outline-offset: 2px;
-  }
-}
+  /* =========================================
+     🔥 LIST VIEW VARIANT (DẠNG VÉ - TICKET STYLE)
+     ========================================= */
+  &.restaurant-card--list {
+    flex-direction: row;
+    height: auto;
+    min-height: 220px;
+    align-items: stretch; // Kéo dãn các cột bằng nhau
 
-// Loading state for images
-.restaurant-card__image {
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-      90deg,
-      rgba($border-color, 0.2) 25%,
-      rgba($border-color, 0.4) 50%,
-      rgba($border-color, 0.2) 75%
-    );
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-    z-index: 1;
-  }
+    // 1. ẢNH LỚN BÊN TRÁI
+    .restaurant-card__image-wrapper {
+      width: 280px;
+      padding-top: 0; // Bỏ tỷ lệ padding hack
+      height: auto;
+      min-height: 220px;
+      flex-shrink: 0;
+      border-right: 1px dashed $border-color; // Vạch ngăn cách ảnh
 
-  img {
-    position: relative;
-    z-index: 2;
-
-    &:loaded + &::before {
-      display: none;
-    }
-  }
-}
-
-@keyframes loading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-// Special styling for featured restaurants
-.restaurant-card {
-  &[data-featured="true"] {
-    border-color: rgba($warning-yellow, 0.3);
-
-    &:hover {
-      border-color: $warning-yellow;
-      box-shadow: 0 10px 25px rgba($warning-yellow, 0.2);
-    }
-  }
-}
-
-// Accessibility improvements
-@media (prefers-reduced-motion: reduce) {
-  .restaurant-card {
-    &:hover {
-      transform: none;
+      // Bo góc riêng cho ảnh
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
     }
 
-    &__image img {
-      transition: none;
+    // 2. NỘI DUNG (GIỮA + PHẢI)
+    .restaurant-card__content {
+      padding: 0; // Reset padding cha
+      flex-direction: row;
+      flex: 1;
+      display: flex;
     }
 
-    &:hover &__image img {
-      transform: none;
+    // Cột Thông tin (Giữa)
+    .info-section {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+
+      .content-header {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+        .restaurant-name {
+          font-size: 1.35rem;
+          line-height: 1.3;
+        }
+      }
+      .restaurant-desc {
+        -webkit-line-clamp: 2;
+        margin-bottom: 12px;
+        font-size: 0.95rem;
+      }
+      .content-meta .meta-item.rating {
+        background: #fff7ed;
+        padding: 4px 10px;
+        border-radius: 6px;
+        color: $primary;
+        font-weight: 700;
+      }
+
+      // Hiện địa chỉ ở cột này
+      .address-info.list-only {
+        display: flex;
+        margin-top: auto;
+        padding-top: 12px;
+        border-top: 1px solid #f1f5f9;
+      }
     }
-  }
-}
 
-// Print styles
-@media print {
-  .restaurant-card {
-    break-inside: avoid;
-    box-shadow: none;
-    border: 1px solid $border-color;
+    // Cột Hành động (Phải) - Ticket Stub
+    .action-section {
+      width: 200px;
+      flex-shrink: 0;
+      padding: 24px;
+      border-top: none;
+      border-left: 2px dashed $border-color; // Đường xé vé
+      position: relative;
+      background: #fafafa; // Nền khác biệt nhẹ
 
-    &__favorite,
-    &__actions {
-      display: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+
+      // HIỆU ỨNG CẮT GÓC (NOTCHES)
+      &::before,
+      &::after {
+        content: "";
+        position: absolute;
+        left: -10px;
+        width: 20px;
+        height: 20px;
+        background: $bg-body; // Màu trùng với nền trang web để tạo hiệu ứng trong suốt
+        border-radius: 50%;
+        border: 1px solid $border-color; // Viền khớp với thẻ
+        z-index: 2;
+      }
+      &::before {
+        top: -11px;
+        border-bottom-color: transparent;
+        border-left-color: transparent;
+        border-right-color: transparent;
+      }
+      &::after {
+        bottom: -11px;
+        border-top-color: transparent;
+        border-left-color: transparent;
+        border-right-color: transparent;
+      }
+
+      // Ẩn địa chỉ footer cũ
+      .address-info.grid-only {
+        display: none;
+      }
+
+      .buttons-group {
+        flex-direction: column;
+        width: 100%;
+        .btn {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+    }
+
+    // RESPONSIVE CHO LIST VIEW (Về lại dọc trên mobile)
+    @media (max-width: 850px) {
+      flex-direction: column;
+      height: auto;
+
+      .restaurant-card__image-wrapper {
+        width: 100%;
+        padding-top: 60%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid $border-color;
+      }
+
+      .restaurant-card__content {
+        flex-direction: column;
+      }
+
+      .info-section {
+        padding: 20px;
+      }
+
+      .action-section {
+        width: 100%;
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px dashed $border-color;
+        background: #fff;
+        padding: 20px;
+        flex-direction: row;
+        justify-content: space-between;
+
+        &::before,
+        &::after {
+          display: none;
+        } // Ẩn hiệu ứng vé
+
+        .address-info.grid-only {
+          display: flex;
+        }
+        .buttons-group {
+          flex-direction: row;
+        }
+      }
     }
   }
 }

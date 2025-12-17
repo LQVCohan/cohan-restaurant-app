@@ -1,0 +1,468 @@
+/* --- VARIABLES --- */
+$primary: #ff6600;
+$primary-dark: #e65c00;
+$bg-page: #fffbf8;
+$text-dark: #1f2937;
+$text-gray: #6b7280;
+$border: #e5e7eb;
+$shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+/* --- MAIN PAGE LAYOUT --- */
+.address-page {
+  background-color: $bg-page;
+  /* Hiệu ứng nền nhẹ nhàng */
+  background-image: radial-gradient(
+      circle at 5% 5%,
+      rgba(255, 102, 0, 0.03) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 95% 95%,
+      rgba(0, 123, 255, 0.03) 0%,
+      transparent 50%
+    );
+  min-height: 100vh;
+  padding: 40px 0 80px;
+  font-family: "Segoe UI", sans-serif;
+
+  .addr-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+}
+
+/* --- HEADER SECTION --- */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+
+  h1 {
+    font-size: 26px;
+    font-weight: 800;
+    color: $text-dark;
+    margin: 0 0 4px;
+  }
+
+  p {
+    color: $text-gray;
+    font-size: 15px;
+    margin: 0;
+  }
+
+  .btn-add-new {
+    background: $primary;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(255, 102, 0, 0.25);
+    transition: all 0.2s;
+
+    &:hover {
+      background: $primary-dark;
+      transform: translateY(-2px);
+    }
+  }
+}
+
+/* --- ADDRESS LIST GRID --- */
+.addr-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  /* Đảm bảo grid không ép chiều cao các phần tử con */
+  height: auto;
+}
+
+/* --- ADDRESS CARD (SỬA LỖI FLEX STRETCH TẠI ĐÂY) --- */
+.addr-card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+
+  /* [QUAN TRỌNG] Flex settings để tránh lỗi kéo dãn */
+  display: flex;
+  align-items: flex-start; /* Căn lề trên cùng, KHÔNG stretch */
+  gap: 20px;
+  height: auto; /* Chiều cao tự động theo nội dung */
+
+  border: 1px solid transparent;
+  box-shadow: $shadow;
+  transition: all 0.2s;
+  position: relative;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Style trạng thái Active/Default */
+  &.active {
+    border-color: rgba(255, 102, 0, 0.3);
+    background: #fffcf9;
+    .icon-box {
+      background: $primary;
+      color: white;
+    }
+  }
+
+  /* Box Icon bên trái */
+  .icon-box {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0; /* [QUAN TRỌNG] Không cho phép bị bóp méo hay kéo dãn */
+
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    color: $text-gray;
+
+    &.home {
+      background: #e0f2fe;
+      color: #0284c7;
+    }
+    &.office {
+      background: #fef3c7;
+      color: #d97706;
+    }
+  }
+
+  /* Nội dung chính giữa */
+  .addr-content {
+    flex: 1;
+
+    .row-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+
+      .addr-name {
+        font-weight: 700;
+        font-size: 16px;
+        color: $text-dark;
+      }
+      .addr-phone {
+        font-size: 14px;
+        color: $text-gray;
+      }
+
+      .badge-default {
+        font-size: 11px;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: $primary;
+        background: rgba(255, 102, 0, 0.1);
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
+    }
+
+    .addr-text {
+      font-size: 15px;
+      color: #374151;
+      line-height: 1.4;
+      margin: 0 0 6px;
+    }
+    .addr-note {
+      font-size: 13px;
+      color: $text-gray;
+      font-style: italic;
+      margin: 0;
+    }
+  }
+
+  /* Cột nút bấm bên phải */
+  .addr-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-end;
+
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: $text-gray;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.2s;
+
+      &:hover.edit {
+        background: #eff6ff;
+        color: #2563eb;
+      }
+      &:hover.delete {
+        background: #fef2f2;
+        color: #dc2626;
+      }
+    }
+
+    .btn-set-default {
+      font-size: 12px;
+      color: $primary;
+      background: white;
+      border: 1px solid $primary;
+      padding: 4px 10px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: 0.2s;
+
+      &:hover {
+        background: $primary;
+        color: white;
+      }
+    }
+  }
+}
+
+/* --- MODAL FORM STYLE (POPUP) --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s;
+}
+
+.addr-modal {
+  background: white;
+  width: 500px;
+  max-width: 95%;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+  .modal-head {
+    padding: 24px 24px 10px;
+    h2 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      color: $text-dark;
+    }
+    p {
+      margin: 0;
+      font-size: 13px;
+      color: $text-gray;
+    }
+  }
+
+  .modal-body {
+    padding: 20px 24px;
+
+    /* Nút định vị thông minh */
+    .btn-geo {
+      width: 100%;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px dashed #bfdbfe;
+      padding: 12px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: 0.2s;
+
+      &:hover {
+        background: #dbeafe;
+        border-color: #2563eb;
+      }
+      &.loading {
+        opacity: 0.7;
+        pointer-events: none;
+      }
+    }
+
+    .input-group-row {
+      display: flex;
+      gap: 15px;
+      .input-box {
+        flex: 1;
+      }
+    }
+
+    .input-box {
+      margin-bottom: 16px;
+      label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #4b5563;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        font-size: 14px;
+        font-family: inherit;
+        transition: 0.2s;
+
+        &:focus {
+          outline: none;
+          border-color: $primary;
+          box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
+        }
+      }
+    }
+
+    .label-selector {
+      margin-bottom: 16px;
+      .lbl {
+        font-size: 13px;
+        font-weight: 600;
+        color: #4b5563;
+        display: block;
+        margin-bottom: 8px;
+      }
+      .options {
+        display: flex;
+        gap: 10px;
+        .type-pill {
+          flex: 1;
+          padding: 8px;
+          border: 1px solid #e5e7eb;
+          background: white;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 13px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          color: $text-gray;
+          transition: 0.2s;
+
+          &:hover {
+            background: #f9fafb;
+          }
+          &.selected {
+            background: #fff7ed;
+            border-color: $primary;
+            color: $primary;
+            font-weight: 700;
+          }
+        }
+      }
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: $text-dark;
+      cursor: pointer;
+      input {
+        accent-color: $primary;
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+      }
+    }
+  }
+
+  .modal-foot {
+    padding: 16px 24px;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background: #f9fafb;
+
+    button {
+      padding: 10px 24px;
+      border-radius: 30px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-size: 14px;
+
+      &.btn-cancel {
+        background: white;
+        border: 1px solid #e5e7eb;
+        color: $text-gray;
+        &:hover {
+          background: #f3f4f6;
+        }
+      }
+      &.btn-save {
+        background: $primary;
+        color: white;
+        box-shadow: 0 4px 10px rgba(255, 102, 0, 0.2);
+        &:hover {
+          background: $primary-dark;
+        }
+      }
+    }
+  }
+}
+
+/* --- ANIMATIONS --- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* --- RESPONSIVE MOBILE --- */
+@media (max-width: 600px) {
+  .addr-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .addr-actions {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-end;
+    margin-top: 12px;
+    border-top: 1px dashed #eee;
+    padding-top: 12px;
+  }
+}

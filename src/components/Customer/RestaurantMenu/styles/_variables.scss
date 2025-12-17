@@ -1,0 +1,56 @@
+// src/components/Customer/RestaurantMenu/styles/_variables.scss
+
+// --- VARIABLES ---
+$primary: #f97316;
+$primary-dark: #c2410c;
+$primary-light: #fff7ed;
+$text-main: #111827;
+$text-sub: #6b7280;
+$bg-body: #f8fafc;
+$bg-card: #ffffff;
+$border-color: #e5e7eb;
+$radius: 12px;
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+$shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// --- KEYFRAMES ---
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes fadeOverlay {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// Class tiện ích chung
+.fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}

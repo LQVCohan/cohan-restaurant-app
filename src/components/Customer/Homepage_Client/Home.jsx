@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import Header from "./components/Header";
 import HeroSection from "./components/HeroSection";
 import Categories from "./components/Categories";
@@ -9,16 +9,11 @@ import Cart from "./components/Cart";
 import TableBooking from "./components/TableBooking";
 
 import { useCart } from "../../../context/CartProvider";
-
 import "../../../styles/Homepage/Home.scss";
 
-/** 👉 TẠM: id nhà hàng default (thay bằng id thật từ BE) */
-const DEFAULT_RESTAURANT_ID = "68e3fc0486dc90d60c7101dc";
-
-/** 👉 Hàm xác định timeSlot theo giờ hiện tại */
+// Hàm tiện ích lấy khung giờ (để lọc Category nếu cần)
 const getCurrentTimeSlot = () => {
   const hour = new Date().getHours();
-
   if (hour >= 5 && hour < 10) return "breakfast";
   if (hour >= 10 && hour < 15) return "lunch";
   if (hour >= 15 && hour < 22) return "dinner";
@@ -26,230 +21,120 @@ const getCurrentTimeSlot = () => {
 };
 
 const Home = () => {
-  // 👉 Ở đây nạp biến để truyền xuống dưới
-  const restaurantId = DEFAULT_RESTAURANT_ID;
   const timeSlot = getCurrentTimeSlot();
 
-  // Sample data - trong thực tế sẽ fetch từ API
-  const [restaurants] = useState([
-    {
-      id: 1,
-      name: "Phở Hà Nội",
-      image: "🍜",
-      rating: 4.8,
-      deliveryTime: "20-30 phút",
-      category: "vietnamese",
-      description: "Phở truyền thống Hà Nội",
-    },
-    {
-      id: 2,
-      name: "Pizza Italia",
-      image: "🍕",
-      rating: 4.6,
-      deliveryTime: "25-35 phút",
-      category: "pizza",
-      description: "Pizza Ý chính gốc",
-    },
-    {
-      id: 3,
-      name: "Burger King",
-      image: "🍔",
-      rating: 4.5,
-      deliveryTime: "15-25 phút",
-      category: "fastfood",
-      description: "Burger và fast food",
-    },
-    {
-      id: 4,
-      name: "Sushi Tokyo",
-      image: "🍱",
-      rating: 4.9,
-      deliveryTime: "30-40 phút",
-      category: "asian",
-      description: "Sushi Nhật Bản tươi ngon",
-    },
-    {
-      id: 5,
-      name: "Bánh ngọt Paris",
-      image: "🧁",
-      rating: 4.7,
-      deliveryTime: "20-30 phút",
-      category: "dessert",
-      description: "Bánh ngọt Pháp cao cấp",
-    },
-    {
-      id: 6,
-      name: "Trà sữa Taiwan",
-      image: "🥤",
-      rating: 4.4,
-      deliveryTime: "10-20 phút",
-      category: "drink",
-      description: "Trà sữa Taiwan chính gốc",
-    },
-  ]);
+  // --- STATE QUẢN LÝ ---
+  // 1. Filter: Dùng để lọc RestaurantGrid khi bấm vào Category hoặc Search
+  const [filterState, setFilterState] = useState({});
 
-  const [dishes] = useState([
-    {
-      id: 1,
-      name: "Phở bò tái",
-      price: 65000,
-      image: "🍜",
-      restaurant: "Phở Hà Nội",
-    },
-    {
-      id: 2,
-      name: "Pizza Margherita",
-      price: 180000,
-      image: "🍕",
-      restaurant: "Pizza Italia",
-    },
-    {
-      id: 3,
-      name: "Burger bò phô mai",
-      price: 95000,
-      image: "🍔",
-      restaurant: "Burger King",
-    },
-    {
-      id: 4,
-      name: "Sushi cá hồi",
-      price: 250000,
-      image: "🍱",
-      restaurant: "Sushi Tokyo",
-    },
-    {
-      id: 5,
-      name: "Bánh macaron",
-      price: 45000,
-      image: "🧁",
-      restaurant: "Bánh ngọt Paris",
-    },
-    {
-      id: 6,
-      name: "Trà sữa trân châu",
-      price: 35000,
-      image: "🥤",
-      restaurant: "Trà sữa Taiwan",
-    },
-    {
-      id: 7,
-      name: "Bún bò Huế",
-      price: 70000,
-      image: "🍜",
-      restaurant: "Phở Hà Nội",
-    },
-    {
-      id: 8,
-      name: "Pizza hải sản",
-      price: 220000,
-      image: "🍕",
-      restaurant: "Pizza Italia",
-    },
-  ]);
-
-  // State management
+  // 2. Cart & Booking UI
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isTableBookingOpen, setIsTableBookingOpen] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
-  const [filteredRestaurants, setFilteredRestaurants] = useState(restaurants);
+  const [isAnimatingCart, setIsAnimatingCart] = useState(false);
 
-  // Cart hook
+  // --- CART HOOK ---
   const {
     cart,
     addToCart,
     updateQuantity,
-
     clearCart,
     removeRestaurantItems,
     getTotalItems,
     getTotalPrice,
   } = useCart();
 
-  // Event handlers
-  const handleCategoryFilter = (category) => {
-    const filtered = restaurants.filter((r) => r.category === category);
-    setFilteredRestaurants(filtered);
+  // --- HANDLERS ---
 
-    document
-      .getElementById("restaurants")
-      ?.scrollIntoView({ behavior: "smooth" });
-  };
+  // 1. Khi chọn Danh mục -> Cập nhật bộ lọc cho RestaurantGrid
+  const handleCategorySelect = useCallback((categoryId) => {
+    setFilterState((prev) => ({ ...prev, categoryId }));
 
-  const handleSearchRestaurants = (address) => {
-    if (address.trim()) {
-      alert(`Đang tìm nhà hàng gần "${address}"...`);
+    // Scroll xuống phần nhà hàng
+    const element = document.getElementById("restaurants");
+    if (element) {
+      const headerOffset = 100;
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition =
+        elementPosition + window.pageYOffset - headerOffset;
+      window.scrollTo({ top: offsetPosition, behavior: "smooth" });
+    }
+  }, []);
+
+  // 2. Khi tìm kiếm từ Hero -> Cập nhật bộ lọc text
+  const handleSearch = useCallback((searchText) => {
+    if (searchText.trim()) {
+      setFilterState((prev) => ({ ...prev, search: searchText }));
       document
         .getElementById("restaurants")
         ?.scrollIntoView({ behavior: "smooth" });
-    } else {
-      alert("Vui lòng nhập địa chỉ giao hàng!");
     }
-  };
+  }, []);
 
-  const handleRestaurantInfoClick = (restaurantId) => {
-    const restaurant = restaurants.find((r) => r.id === restaurantId);
+  // 3. Xử lý thêm vào giỏ hàng (từ DishGrid)
+  const handleAddToCart = useCallback(
+    (dishPayload) => {
+      addToCart(dishPayload);
+      // Hiệu ứng nút giỏ hàng nảy lên
+      setIsAnimatingCart(true);
+      setTimeout(() => setIsAnimatingCart(false), 600);
+    },
+    [addToCart]
+  );
+
+  // 4. Mở modal đặt bàn (từ RestaurantGrid)
+  const handleOpenBooking = useCallback((restaurant) => {
     setSelectedRestaurant(restaurant);
-    setIsTableBookingOpen(false);
-  };
+    setIsTableBookingOpen(true);
+  }, []);
 
-  const handleAddToCart = (dish) => {
-    addToCart(dish);
-    showAddToCartAnimation();
-  };
-
+  // 5. Submit đặt bàn
   const handleBookTable = (bookingData) => {
-    console.log("Booking data:", bookingData);
-    alert(
-      `Đặt bàn thành công tại ${selectedRestaurant.name}!\nNgày: ${bookingData.date}\nGiờ: ${bookingData.time}\nSố khách: ${bookingData.guests}`
-    );
-    setIsTableBookingOpen(false);
-    setSelectedRestaurant(null);
-  };
-
-  const showAddToCartAnimation = () => {
-    const cartButton = document.querySelector(".cart-floating-btn");
-    if (cartButton) {
-      cartButton.style.transform = "scale(1.1)";
-      setTimeout(() => {
-        cartButton.style.transform = "scale(1)";
-      }, 200);
-    }
-  };
-
-  const handleCartToggle = () => {
-    setIsCartOpen(!isCartOpen);
-  };
-
-  const handleCartClose = () => {
-    setIsCartOpen(false);
-  };
-
-  const handleTableBookingClose = () => {
+    // Gọi API đặt bàn thật ở đây
+    console.log("Booking Data:", bookingData);
+    alert(`Đã gửi yêu cầu đặt bàn tại ${selectedRestaurant?.name}!`);
     setIsTableBookingOpen(false);
     setSelectedRestaurant(null);
   };
 
   return (
     <div className="home">
-      <Header />
-
-      <HeroSection onSearch={handleSearchRestaurants} />
-
-      {/* 👉 TRUYỀN restaurantId + timeSlot XUỐNG CATEGORIES */}
-      <Categories onCategorySelect={handleCategoryFilter} timeSlot={timeSlot} />
-
-      <RestaurantGrid
-        restaurants={filteredRestaurants}
-        onRestaurantInfoClick={handleRestaurantInfoClick}
+      <Header
+        onCartToggle={() => setIsCartOpen(!isCartOpen)}
+        cartItemCount={getTotalItems()}
       />
 
-      <DishGrid dishes={dishes.slice(0, 8)} onAddToCart={handleAddToCart} />
+      <main className="home__main-content">
+        {/* HERO: Banner & Search */}
+        <HeroSection onSearch={handleSearch} />
 
-      <HowItWorks />
+        {/* CATEGORIES: Fetch danh mục thật */}
+        <Categories
+          onCategorySelect={handleCategorySelect}
+          timeSlot={timeSlot}
+        />
 
+        {/* DISH GRID: Fetch Top Món Ăn (Không cần props data, tự fetch trong component) */}
+        <DishGrid onAddToCart={handleAddToCart} />
+
+        {/* RESTAURANT GRID: Fetch Nhà Hàng (Nhận filter từ Home) */}
+        {/* Lưu ý: Component RestaurantGrid cần xử lý prop `restaurantFilter` hoặc `addressFilter` để lọc */}
+        <RestaurantGrid
+          // Truyền filter xuống để RestaurantGrid gọi query lại
+          restaurantFilter={filterState}
+          // Xử lý khi bấm nút "Đặt bàn"
+          onBookingClick={handleOpenBooking}
+        />
+
+        <div className="home__section-wrapper">
+          <HowItWorks />
+        </div>
+      </main>
+
+      {/* --- MODALS --- */}
       <Cart
         isOpen={isCartOpen}
-        onClose={handleCartClose}
+        onClose={() => setIsCartOpen(false)}
         cart={cart}
         onUpdateQuantity={updateQuantity}
         totalPrice={getTotalPrice()}
@@ -261,14 +146,26 @@ const Home = () => {
       <TableBooking
         restaurant={selectedRestaurant}
         isOpen={isTableBookingOpen}
-        onClose={handleTableBookingClose}
+        onClose={() => {
+          setIsTableBookingOpen(false);
+          setSelectedRestaurant(null);
+        }}
         onBookTable={handleBookTable}
       />
 
-      <button onClick={handleCartToggle} className="cart-floating-btn">
+      {/* FLOATING CART BUTTON */}
+      <button
+        onClick={() => setIsCartOpen(!isCartOpen)}
+        className={`cart-floating-btn ${
+          isAnimatingCart ? "cart-animating" : ""
+        }`}
+        aria-label="Xem giỏ hàng"
+      >
         <span className="cart-floating-btn__icon">🛒</span>
         {getTotalItems() > 0 && (
-          <span className="cart-floating-btn__count">{getTotalItems()}</span>
+          <span className="cart-floating-btn__count">
+            {getTotalItems() > 99 ? "99+" : getTotalItems()}
+          </span>
         )}
       </button>
     </div>

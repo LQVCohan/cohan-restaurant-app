@@ -1,126 +1,120 @@
+/* OrderSummaryModal.scss */
+
+// Variables - Premium Theme
+$primary-color: #2563eb; // Royal Blue
+$primary-dark: #1e40af;
+$success-color: #10b981;
+$bg-color: #f8fafc; // Slate 50
+$card-bg: #ffffff;
+$text-main: #1e293b; // Slate 800
+$text-secondary: #64748b; // Slate 500
+$border-color: #e2e8f0;
+$radius-lg: 16px;
+$radius-md: 12px;
+$radius-sm: 8px;
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+  0 2px 4px -1px rgba(0, 0, 0, 0.03);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05),
+  0 4px 6px -2px rgba(0, 0, 0, 0.025);
+
 .order-summary-modal {
   .modal {
-    max-width: 800px;
+    max-width: 1000px; // Mở rộng chiều rộng để chứa bố cục 2 cột
+    border-radius: $radius-lg;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  }
+
+  .modal-content {
+    background: $bg-color;
   }
 }
 
 .order-summary-wrapper {
   display: flex;
   flex-direction: column;
-  height: 80vh;
+  height: 85vh;
+  background-color: $bg-color;
 }
 
 .order-summary-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 32px;
 
+  // Custom Scrollbar
   &::-webkit-scrollbar {
     width: 6px;
   }
-
   &::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 3px;
+    background: transparent;
   }
-
   &::-webkit-scrollbar-thumb {
     background: #cbd5e1;
-    border-radius: 3px;
-
+    border-radius: 10px;
     &:hover {
       background: #94a3b8;
     }
   }
 }
 
-.section {
-  margin-bottom: 32px;
+/* --- Layout Grid (Desktop) --- */
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 400px; // Cột trái linh hoạt, cột phải cố định
+  gap: 32px;
+  align-items: start;
 
-  &:last-child {
-    margin-bottom: 0;
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr; // Mobile về 1 cột
+  }
+}
+
+.left-column,
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* --- Cards & Sections --- */
+.section {
+  background: $card-bg;
+  border-radius: $radius-lg;
+  padding: 24px;
+  box-shadow: $shadow-sm;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: $shadow-md;
+    border-color: rgba($primary-color, 0.1);
   }
 }
 
 .section-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: $text-main;
+  margin-bottom: 20px;
   display: flex;
   align-items: center;
-  gap: 8px;
-}
+  gap: 10px;
 
-/* =========================
-   Restaurant Info
-   ========================= */
-.restaurant-info {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border: 2px solid #3b82f6;
-  border-radius: 12px;
-  padding: 20px;
-  text-align: center;
-
-  .restaurant-name {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #1e40af;
-    margin: 0 0 8px 0;
-  }
-
-  .restaurant-address {
-    color: #3730a3;
-    margin: 0 0 12px 0;
-  }
-
-  .order-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid #3b82f6;
-
-    .order-id {
-      font-weight: 600;
-      color: #1e40af;
-    }
-
-    .order-time {
-      color: #6366f1;
-      font-size: 0.9rem;
-    }
+  svg,
+  span.icon {
+    color: $primary-color;
+    font-size: 1.2em;
   }
 }
 
-/* =========================
-   Shipping Form (NEW)
-   ========================= */
+/* --- Forms (Premium Inputs) --- */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px 24px;
-  align-items: start;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-}
-
-.form-col {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-
-  @media (max-width: 768px) {
+  gap: 20px;
+  @media (max-width: 600px) {
     grid-template-columns: 1fr;
   }
 }
@@ -128,482 +122,432 @@
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 
   .form-label {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
-    color: #374151;
+    color: $text-main;
+    margin-left: 2px;
   }
 
   .form-input,
   .form-textarea,
   select {
     width: 100%;
-    padding: 10px 12px;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 8px;
-    background: #ffffff;
-    color: #111827;
+    padding: 12px 16px;
+    border: 1px solid $border-color;
+    border-radius: $radius-md;
     font-size: 0.95rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #f9fafb;
+    transition: all 0.2s ease;
+    color: $text-main;
 
     &:focus {
+      background: #fff;
+      border-color: $primary-color;
+      box-shadow: 0 0 0 4px rgba($primary-color, 0.1);
       outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
     }
 
     &.is-invalid {
       border-color: #ef4444;
-      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+      background: #fef2f2;
     }
-
-    &:disabled {
-      background: #f8fafc;
-      color: #6b7280;
-      cursor: not-allowed;
-    }
-  }
-
-  .form-textarea {
-    resize: vertical;
-    min-height: 72px;
   }
 
   .form-error {
-    font-size: 0.82rem;
-    color: #dc2626;
+    color: #ef4444;
+    font-size: 0.8rem;
+    margin-left: 2px;
   }
 }
 
-/* segmented control (delivery/pickup/dinein, asap/schedule) */
+/* --- Segmented Control (Pill Style) --- */
 .segmented {
-  display: inline-flex;
-  gap: 8px;
-  background: #f8fafc;
-  padding: 6px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: $radius-md;
+  width: fit-content;
 
   .segmented__option {
-    appearance: none;
-    background: #ffffff;
-    color: #374151;
-    border: 1px solid #e5e7eb;
-    padding: 8px 12px;
-    border-radius: 8px;
+    padding: 8px 16px;
+    border-radius: $radius-sm;
+    border: none;
+    background: transparent;
+    color: $text-secondary;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s;
 
     &:hover {
-      border-color: #3b82f6;
-      color: #1f2937;
-      transform: translateY(-1px);
+      color: $text-main;
     }
 
     &.is-active {
-      background: #3b82f6;
-      border-color: #3b82f6;
-      color: #ffffff;
-      box-shadow: 0 6px 12px rgba(59, 130, 246, 0.15);
+      background: #fff;
+      color: $primary-color;
+      box-shadow: $shadow-sm;
     }
   }
 }
 
-/* =========================
-   Order Items
-   ========================= */
-.order-items {
-  background: #f8fafc;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
+/* --- Restaurant Info --- */
+.restaurant-info {
+  background: linear-gradient(135deg, $primary-color 0%, $primary-dark 100%);
+  color: white;
+  border-radius: $radius-lg;
+  padding: 24px;
+  position: relative;
   overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 200px;
+    height: 200px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+  }
+
+  .restaurant-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .restaurant-address {
+    opacity: 0.9;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+  }
+
+  .order-meta {
+    display: flex;
+    gap: 16px;
+    font-size: 0.85rem;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 8px 12px;
+    border-radius: $radius-md;
+    width: fit-content;
+
+    span {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  }
+}
+
+/* --- Order Items (Compact & Clean) --- */
+.restaurant-group__title {
+  font-size: 1rem;
+  color: $text-secondary;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
 }
 
 .order-item {
   display: flex;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #e2e8f0;
-  transition: all 0.2s ease;
+  padding: 16px 0;
+  border-bottom: 1px dashed $border-color;
 
   &:last-child {
     border-bottom: none;
+    padding-bottom: 0;
   }
-
-  &:hover {
-    background: #f1f5f9;
+  &:first-child {
+    padding-top: 0;
   }
 
   .item-image {
-    width: 80px;
-    height: 80px;
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-    border-radius: 12px;
+    width: 64px;
+    height: 64px;
+    border-radius: $radius-md;
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 20px;
     flex-shrink: 0;
+    margin-right: 16px;
+    box-shadow: $shadow-sm;
 
     img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      display: block;
     }
   }
 
   .item-details {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 4px;
   }
 
   .item-name {
-    font-size: 1.1rem;
     font-weight: 600;
-    color: #1f2937;
-    margin: 0 0 8px 0;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-
-    .cooking-method {
-      background: #fef3c7;
-      color: #92400e;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      border: 1px solid #f59e0b;
-    }
+    color: $text-main;
+    font-size: 0.95rem;
+    margin: 0;
   }
 
-  .item-description {
-    color: #6b7280;
-    font-size: 0.9rem;
-    margin: 0 0 8px 0;
+  .item-price-total {
+    font-weight: 700;
+    color: $text-main;
+    font-size: 0.95rem;
+  }
+
+  .item-desc {
+    font-size: 0.85rem;
+    color: $text-secondary;
     line-height: 1.4;
+    margin-bottom: 4px;
   }
 
-  .item-modifiers {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 8px;
-
-    .modifier-tag {
-      background: #dbeafe;
-      color: #1e40af;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      font-weight: 500;
-    }
+  .modifier-tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    background: #f1f5f9;
+    color: $text-secondary;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    margin-bottom: 4px;
   }
 
-  .item-quantity-price {
+  .item-controls {
     display: flex;
     align-items: center;
-    gap: 16px;
+    justify-content: space-between;
+    margin-top: 8px;
 
-    .item-quantity {
-      background: #10b981;
-      color: white;
-      padding: 6px 12px;
-      border-radius: 20px;
+    .qty-badge {
+      font-size: 0.8rem;
       font-weight: 600;
-      font-size: 0.9rem;
+      background: #eff6ff;
+      color: $primary-color;
+      padding: 4px 10px;
+      border-radius: 20px;
     }
 
-    .item-price {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: #dc2626;
-
-      .item-unit-price {
-        font-size: 0.9rem;
-        color: #6b7280;
-        margin-left: 8px;
-      }
-    }
-  }
-
-  .item-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 12px;
-
-    .add-modifier-btn {
-      background: #3b82f6;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 6px;
+    .edit-btn {
       font-size: 0.8rem;
-      font-weight: 500;
+      color: $primary-color;
+      background: none;
+      border: none;
       cursor: pointer;
-      transition: all 0.2s ease;
-
+      font-weight: 500;
       &:hover {
-        background: #2563eb;
-        transform: translateY(-1px);
+        text-decoration: underline;
       }
     }
   }
 }
 
-/* =========================
-   Price Breakdown
-   ========================= */
+/* --- Price Breakdown --- */
 .price-breakdown {
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 20px;
-
   .price-row {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+    color: $text-secondary;
 
-    &:last-child {
-      border-bottom: none;
+    .price-val {
+      color: $text-main;
+      font-weight: 500;
     }
 
     &.total {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: #dc2626;
-      border-top: 2px solid #e5e7eb;
-      margin-top: 8px;
+      margin-top: 16px;
       padding-top: 16px;
+      border-top: 2px solid $border-color;
+      font-size: 1.25rem;
+      color: $text-main;
+      font-weight: 800;
 
-      .price-value {
-        color: #dc2626;
+      .price-val {
+        color: $primary-color;
       }
-    }
-
-    .price-label {
-      color: #374151;
-    }
-
-    .price-value {
-      font-weight: 600;
-      color: #1f2937;
     }
   }
 }
 
-/* =========================
-   Payment Methods
-   ========================= */
+/* --- Payment Methods (Cards) --- */
 .payment-methods {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-
-  .payment-method {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px;
-    border: 2px solid #e5e7eb;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &:hover {
-      border-color: #3b82f6;
-    }
-
-    &.selected {
-      border-color: #10b981;
-      background: #f0fdf4;
-    }
-
-    .payment-icon {
-      font-size: 2rem;
-    }
-
-    .payment-info {
-      flex: 1;
-
-      .payment-name {
-        font-weight: 600;
-        color: #1f2937;
-        margin: 0 0 4px 0;
-      }
-
-      .payment-desc {
-        font-size: 0.9rem;
-        color: #6b7280;
-        margin: 0;
-      }
-    }
-  }
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
-/* =========================
-   Success Screen
-   ========================= */
-.success-screen {
-  text-align: center;
-  padding: 40px 20px;
+.payment-method {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  border: 2px solid $border-color;
+  border-radius: $radius-md;
+  cursor: pointer;
+  background: #fff;
+  transition: all 0.2s ease;
+  position: relative;
 
-  .success-icon {
-    font-size: 4rem;
-    margin-bottom: 20px;
-    animation: bounce 2s infinite;
+  &:hover {
+    border-color: #cbd5e1;
   }
 
-  .success-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #10b981;
-    margin: 0 0 12px 0;
-  }
+  &.selected {
+    border-color: $primary-color;
+    background: #eff6ff;
 
-  .success-message {
-    color: #6b7280;
-    margin: 0 0 24px 0;
-    line-height: 1.6;
-  }
-}
-
-/* =========================
-   QR Payment
-   ========================= */
-.qr-payment {
-  text-align: center;
-  padding: 20px;
-
-  .qr-title {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: #1f2937;
-    margin: 0 0 8px 0;
-  }
-
-  .qr-subtitle {
-    color: #6b7280;
-    margin: 0 0 24px 0;
-  }
-
-  .qr-code {
-    width: 200px;
-    height: 200px;
-    background: white;
-    border: 2px solid #e5e7eb;
-    border-radius: 12px;
-    margin: 0 auto 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 6rem;
-  }
-
-  .qr-amount {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #dc2626;
-    margin: 0 0 16px 0;
-  }
-
-  .qr-instructions {
-    background: #fef3c7;
-    border: 2px solid #f59e0b;
-    border-radius: 8px;
-    padding: 16px;
-    margin: 20px 0;
-    text-align: left;
-
-    h4 {
-      color: #92400e;
-      margin: 0 0 8px 0;
-    }
-
-    ol {
-      color: #92400e;
-      margin: 0;
-      padding-left: 20px;
-
-      li {
-        margin-bottom: 4px;
-      }
+    &::after {
+      content: "✓";
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: $primary-color;
+      font-weight: bold;
+      font-size: 1.2rem;
     }
   }
-}
 
-/* =========================
-   Loading spinner / Animations
-   ========================= */
-.loading-spinner {
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top-color: white;
-  animation: spin 1s ease-in-out infinite;
-  margin-right: 8px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes bounce {
-  0%,
-  20%,
-  53%,
-  80%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  40%,
-  43% {
-    transform: translate3d(0, -15px, 0);
-  }
-  70% {
-    transform: translate3d(0, -7px, 0);
-  }
-  90% {
-    transform: translate3d(0, -2px, 0);
-  }
-}
-
-/* =========================
-   Responsive
-   ========================= */
-@media (max-width: 768px) {
-  .order-summary-modal .modal {
-    width: 95vw;
-  }
-
-  .order-summary-wrapper {
-    height: 85vh;
-  }
-
-  .payment-methods {
-    grid-template-columns: 1fr;
-  }
-
-  .order-item {
-    flex-direction: column;
+  .payment-icon {
+    font-size: 1.8rem;
+    margin-right: 16px;
+    width: 40px;
     text-align: center;
+  }
 
-    .item-image {
-      margin-right: 0;
-      margin-bottom: 16px;
+  .payment-name {
+    font-weight: 600;
+    color: $text-main;
+    margin: 0;
+  }
+
+  .payment-desc {
+    font-size: 0.85rem;
+    color: $text-secondary;
+    margin: 2px 0 0 0;
+  }
+}
+
+/* --- Footer (Action Bar) --- */
+.modal-footer {
+  padding: 20px 32px;
+  background: #fff;
+  border-top: 1px solid $border-color;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  z-index: 10;
+}
+
+.btn {
+  padding: 12px 24px;
+  border-radius: $radius-md;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.1s, box-shadow 0.2s;
+  font-size: 0.95rem;
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &--secondary {
+    background: #f1f5f9;
+    color: $text-main;
+    &:hover {
+      background: #e2e8f0;
     }
+  }
+
+  &--primary {
+    background: $primary-color;
+    color: white;
+    &:hover {
+      background: $primary-dark;
+      box-shadow: 0 4px 12px rgba($primary-color, 0.3);
+    }
+  }
+
+  &--success {
+    background: $success-color;
+    color: white;
+    &:hover {
+      background: #059669;
+      box-shadow: 0 4px 12px rgba($success-color, 0.3);
+    }
+
+    &:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  }
+}
+
+/* --- Success & QR Screens --- */
+.success-screen,
+.qr-payment {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 0;
+  height: 100%;
+}
+
+.success-icon {
+  font-size: 5rem;
+  margin-bottom: 24px;
+  animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.success-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: $text-main;
+  margin-bottom: 12px;
+}
+
+.success-message {
+  color: $text-secondary;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.qr-code {
+  background: white;
+  padding: 20px;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-lg;
+  margin: 24px 0;
+  border: 1px solid $border-color;
+  font-size: 8rem;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }

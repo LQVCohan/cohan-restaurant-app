@@ -1,298 +1,344 @@
-// src/styles/RestaurantDetail.scss
+// --- VARIABLES ---
+$primary: #ff6600;
+$primary-hover: #e65c00;
+$text-main: #1a202c;
+$text-sub: #64748b;
+$bg-body: #f8fafc;
+$white: #ffffff;
+$border: #e2e8f0;
+$radius: 16px;
+$shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
 
-// --- Variables ---
-$bg-color: #f8f9fa; // Xám rất nhạt cho nền tổng
-$container-bg: #ffffff;
-$primary-color: #3b82f6;
-$text-main: #1f2937;
-$text-muted: #6b7280;
-$radius-lg: 16px;
-$radius-md: 12px;
-$max-width: 1280px; // Giới hạn chiều rộng (Width) theo yêu cầu
-
-// --- Global Page Setup ---
 .restaurant-detail-page {
-  background-color: $bg-color;
+  background-color: $bg-body;
   min-height: 100vh;
-  padding-bottom: 80px; // Chừa chỗ cho nút mobile
-  position: relative;
-}
-
-// --- Floating Back Button ---
-.back-button-floating {
-  position: fixed;
-  top: 20px;
-  left: 20px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: white;
-  border: 1px solid #e5e7eb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 100;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-family: "Inter", sans-serif;
   color: $text-main;
-  transition: all 0.2s;
-
-  &:hover {
-    background: $bg-color;
-    transform: scale(1.05);
-  }
+  padding-bottom: 80px; // Cho mobile button
 }
 
-// --- Main Container ---
-.main-container {
-  max-width: $max-width;
+.container {
+  max-width: 1280px;
   margin: 0 auto;
-  padding-top: 20px; // Cách top một chút cho thoáng
-
-  @media (max-width: 768px) {
-    padding-top: 0;
-    max-width: 100%;
-  }
+  padding: 0 24px;
 }
 
-// --- Hero Section (Cover + Avatar + Info) ---
-.hero-section {
-  background: $container-bg;
-  border-radius: $radius-lg;
-  overflow: hidden; // Để bo góc ảnh bìa
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+/* 1. HERO SECTION */
+.rd-hero {
   position: relative;
-  margin-bottom: 20px;
+  background: $white;
+  padding-bottom: 24px;
 
-  @media (max-width: 768px) {
-    border-radius: 0; // Mobile thì full màn hình
-  }
-
-  // Cover Image
-  .cover-wrapper {
-    width: 100%;
-    height: 320px; // Chiều cao cố định, gọn gàng
+  .hero-cover {
+    height: 350px;
+    background-size: cover;
+    background-position: center;
     position: relative;
-    background-color: #e5e7eb;
 
-    .cover-image {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    // Gradient đen mờ ở đáy cover để text dễ đọc hơn nếu cần
-    .cover-overlay {
+    .overlay {
       position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 100px;
-      background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.2),
+        rgba(0, 0, 0, 0.6)
+      );
     }
 
-    @media (max-width: 768px) {
-      height: 220px;
+    .btn-back {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: 0.2s;
+      z-index: 10;
+      &:hover {
+        background: white;
+        transform: scale(1.1);
+      }
     }
   }
 
-  // Header Info (Avatar & Text)
-  .header-info {
+  .res-info-card {
     position: relative;
-    padding: 0 32px 24px 32px;
+    margin-top: -80px;
+    z-index: 2;
+    background: $white;
+    border-radius: $radius;
+    padding: 24px;
+    box-shadow: $shadow-card;
     display: flex;
-    flex-direction: column;
-
-    @media (min-width: 769px) {
-      // Desktop: Xếp avatar và nút Đặt bàn nằm ngang
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 24px;
-      align-items: flex-end;
-    }
+    gap: 24px;
 
     .avatar-wrapper {
-      margin-top: -60px; // Kéo avatar đè lên cover
-      z-index: 2;
-      position: relative;
-
-      .avatar-image {
-        width: 160px;
-        height: 160px;
-        border-radius: 50%;
-        border: 5px solid $container-bg;
+      flex-shrink: 0;
+      img {
+        width: 140px;
+        height: 140px;
+        border-radius: 12px;
         object-fit: cover;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        background: white;
+        border: 4px solid $white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       }
     }
 
-    .text-info {
-      padding-top: 12px;
-      .restaurant-name {
+    .info-text {
+      flex: 1;
+      .bread-crumbs {
+        font-size: 0.85rem;
+        color: $text-sub;
+        margin-bottom: 8px;
+      }
+      .res-name {
         font-size: 2rem;
-        font-weight: 700;
-        color: $text-main;
-        margin: 0 0 8px 0;
+        font-weight: 800;
+        margin: 0 0 12px;
         line-height: 1.2;
       }
 
-      .restaurant-meta {
+      .res-meta {
         display: flex;
-        gap: 12px;
         align-items: center;
-        margin-bottom: 8px;
-        flex-wrap: wrap;
-
-        .cuisine-tag {
-          background: #eff6ff;
-          color: $primary-color;
-          padding: 4px 10px;
-          border-radius: 20px;
-          font-size: 0.85rem;
-          font-weight: 600;
-        }
-
+        gap: 12px;
+        font-size: 0.95rem;
+        margin-bottom: 12px;
         .rating {
-          font-weight: 600;
-          color: #f59e0b;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          color: $text-main;
         }
-
-        .status-badge {
-          font-size: 0.85rem;
-          &.open {
-            color: #10b981;
-          }
-          &.closed {
-            color: #ef4444;
-          }
+        .status.open {
+          color: #166534;
+          font-weight: 600;
+          background: #dcfce7;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 0.8rem;
+        }
+        .status.closed {
+          color: #ef4444;
+          background: #fee2e2;
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 0.8rem;
+        }
+        .dot {
+          color: #cbd5e1;
         }
       }
 
-      .address {
-        color: $text-muted;
-        font-size: 0.95rem;
-        margin: 0;
+      .res-address {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: $text-sub;
+        font-size: 0.9rem;
       }
     }
 
-    // Nút đặt bàn trên Header (Desktop)
-    .btn-book-header {
-      padding: 12px 24px;
-      background: $primary-color;
+    .action-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-end;
+      .btn-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid $border;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: $text-sub;
+        transition: 0.2s;
+        &:hover {
+          color: $primary;
+          border-color: $primary;
+          background: #fff7ed;
+        }
+      }
+      .btn-book {
+        margin-top: auto;
+        padding: 12px 24px;
+        background: $primary;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 10px rgba(255, 102, 0, 0.3);
+        transition: 0.2s;
+        &:hover {
+          background: $primary-hover;
+          transform: translateY(-2px);
+        }
+      }
+    }
+  }
+}
+
+/* 2. STICKY TABS */
+.rd-tabs {
+  background: $white;
+  border-bottom: 1px solid $border;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transition: all 0.3s;
+  &.stuck {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  .tab-scroll {
+    display: flex;
+    gap: 32px;
+    overflow-x: auto;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-item {
+      background: none;
+      border: none;
+      padding: 16px 0;
+      font-size: 1rem;
+      font-weight: 500;
+      color: $text-sub;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: 0.2s;
+      white-space: nowrap;
+
+      &:hover {
+        color: $primary;
+      }
+      &.active {
+        color: $primary;
+        border-bottom-color: $primary;
+        font-weight: 700;
+      }
+    }
+  }
+}
+
+/* 3. LAYOUT CONTENT */
+.rd-container {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 32px;
+  padding-top: 32px;
+  padding-bottom: 60px;
+
+  @media (max-width: 992px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.main-content {
+  background: $white;
+  border-radius: $radius;
+  padding: 24px;
+  border: 1px solid $border;
+  min-height: 500px;
+}
+
+/* SIDEBAR */
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  position: sticky;
+  top: 80px;
+  height: fit-content;
+
+  .booking-widget {
+    background: $white;
+    border-radius: $radius;
+    padding: 24px;
+    border: 1px solid $border;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+    }
+    p {
+      color: $text-sub;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+
+    .time-picker-mock {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      background: #f8fafc;
+      border: 1px solid $border;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-weight: 500;
+      color: $text-main;
+    }
+
+    .btn-book-full {
+      width: 100%;
+      padding: 12px;
+      background: $primary;
       color: white;
       border: none;
       border-radius: 8px;
       font-weight: 600;
       cursor: pointer;
-      font-size: 1rem;
-      transition: background 0.2s;
-      margin-bottom: 10px; // Canh chỉnh với text
-
       &:hover {
-        background: darken($primary-color, 10%);
+        background: $primary-hover;
       }
     }
   }
-}
 
-// --- Sticky Tabs Navigation ---
-.sticky-tabs {
-  position: sticky;
-  top: 0; // Dính lên trên cùng màn hình
-  z-index: 50;
-  background: $container-bg;
-  border-radius: $radius-md;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  display: flex;
-  padding: 0 24px;
-  gap: 32px;
-  margin-bottom: 24px;
-  border: 1px solid #f3f4f6;
-
-  @media (max-width: 768px) {
-    border-radius: 0;
-    gap: 16px;
-    padding: 0 16px;
-    overflow-x: auto; // Cho phép cuộn ngang trên mobile nếu tab dài
-    white-space: nowrap;
-  }
-
-  .tab-item {
-    background: none;
-    border: none;
-    padding: 16px 4px;
-    font-size: 1rem;
-    font-weight: 500;
-    color: $text-muted;
-    cursor: pointer;
-    position: relative;
-    transition: color 0.2s;
-
-    &:hover {
-      color: $text-main;
-    }
-
-    &.active {
-      color: $primary-color;
-      font-weight: 600;
-
-      &::after {
-        content: "";
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        height: 3px;
-        background: $primary-color;
-        border-radius: 3px 3px 0 0;
-      }
-    }
-  }
-}
-
-// --- Content Body (Grid Layout) ---
-.content-body {
-  display: grid;
-  grid-template-columns: 2fr 1fr; // Chia tỉ lệ 2 phần nội dung chính, 1 phần sidebar
-  gap: 24px;
-
-  @media (max-width: 900px) {
-    grid-template-columns: 1fr; // Mobile/Tablet về 1 cột
-  }
-
-  .section-content {
-    background: $container-bg;
-    border-radius: $radius-md;
+  .similar-widget {
+    background: $white;
+    border-radius: $radius;
     padding: 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid $border;
+    h3 {
+      font-size: 1rem;
+      margin-bottom: 16px;
+    }
+  }
+
+  @media (max-width: 992px) {
+    display: none;
   }
 }
 
-// --- Sidebar (Similar Restaurants) ---
-.right-sidebar {
-  // Có thể thêm sticky sidebar nếu muốn
-  position: sticky;
-  top: 80px;
-  height: fit-content;
-}
-
-// --- Mobile Fixed Button ---
+/* MOBILE ACTION BAR */
 .mobile-action-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   width: 100%;
+  z-index: 100;
   background: white;
   padding: 12px 16px;
-  border-top: 1px solid #e5e7eb;
-  z-index: 1000;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  border-top: 1px solid $border;
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.05);
 
   .btn-book-mobile {
     width: 100%;
     padding: 14px;
-    background: $primary-color;
+    background: $primary;
     color: white;
     border: none;
     border-radius: 8px;
@@ -301,15 +347,57 @@ $max-width: 1280px; // Giới hạn chiều rộng (Width) theo yêu cầu
   }
 }
 
-// --- Utilities for Responsive ---
 .desktop-only {
-  @media (max-width: 768px) {
-    display: none !important;
+  @media (max-width: 992px) {
+    display: none;
+  }
+}
+.mobile-only {
+  @media (min-width: 993px) {
+    display: none;
   }
 }
 
-.mobile-only {
-  @media (min-width: 769px) {
-    display: none !important;
+/* UTILS */
+.detail-loading,
+.detail-error {
+  padding: 100px;
+  text-align: center;
+  color: $text-sub;
+}
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #ffe4cc;
+  border-top-color: $primary;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive Header */
+@media (max-width: 768px) {
+  .rd-hero {
+    .hero-cover {
+      height: 250px;
+    }
+    .res-info-card {
+      flex-direction: column;
+      margin-top: -40px;
+      gap: 16px;
+      .avatar-wrapper img {
+        width: 100px;
+        height: 100px;
+      }
+      .action-group {
+        flex-direction: row;
+        margin-top: 10px;
+      }
+    }
   }
 }

@@ -1,0 +1,229 @@
+$primary: #ff6600;
+$primary-hover: #e65c00;
+$primary-light: #fff5eb;
+$text-main: #1a202c;
+$text-sub: #64748b;
+$border: #e2e8f0;
+$white: #ffffff;
+$radius: 12px;
+$shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+
+.content-card {
+  background: $white;
+  border-radius: $radius;
+  border: 1px solid $border;
+  padding: 32px;
+  box-shadow: $shadow;
+  animation: fadeIn 0.3s ease-out;
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 16px;
+    border-bottom: 1px dashed $border;
+    .card-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: $text-main;
+      margin: 0;
+    }
+  }
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  .full {
+    grid-column: span 2;
+  }
+
+  .form-divider {
+    grid-column: span 2;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 24px 0 12px;
+    &::before,
+    &::after {
+      content: "";
+      height: 1px;
+      flex: 1;
+      background: $border;
+    }
+    span {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: $text-sub;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+    .full {
+      grid-column: span 1;
+    }
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: $text-main;
+    margin-left: 4px;
+  }
+
+  .form-input,
+  .form-select {
+    padding: 12px 16px;
+    border: 1px solid transparent;
+    border-radius: $radius;
+    font-size: 0.95rem;
+    color: $text-main;
+    outline: none;
+    transition: 0.2s;
+    background: #f8fafc;
+    width: 100%;
+
+    &:focus {
+      background: $white;
+      border-color: $primary;
+      box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
+    }
+    &:disabled {
+      background: #f1f5f9;
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+    &.disabled {
+      border-color: transparent;
+      background: #f8fafc;
+    }
+  }
+
+  // Chỉnh icon calendar cho đẹp
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: 0.2s;
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  .input-with-icon {
+    position: relative;
+    .verified-badge {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.1rem;
+    }
+  }
+}
+
+/* DIETARY TAGS STYLE */
+.dietary-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  .tag-item {
+    padding: 8px 16px;
+    border-radius: 99px;
+    border: 1px solid $border;
+    background: #fff;
+    color: $text-sub;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover:not(:disabled) {
+      border-color: $primary;
+      color: $primary;
+      background: $primary-light;
+    }
+
+    &.active {
+      background: linear-gradient(135deg, $primary, $primary-hover);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 4px 10px rgba(255, 102, 0, 0.2);
+      transform: translateY(-1px);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.8;
+      &.active {
+        opacity: 1;
+      }
+    }
+  }
+}
+
+.form-note {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+/* BUTTONS */
+.btn-save,
+.btn-edit,
+.btn-cancel {
+  padding: 10px 24px;
+  border-radius: 99px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border: none;
+  transition: 0.2s;
+}
+.btn-save {
+  background: linear-gradient(135deg, $primary, $primary-hover);
+  color: white;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 102, 0, 0.2);
+  }
+}
+.btn-edit {
+  background: $primary-light;
+  color: $primary;
+  &:hover {
+    background: #ffedd5;
+  }
+}
+.btn-cancel {
+  background: white;
+  border: 1px solid $border;
+  color: $text-sub;
+  margin-right: 12px;
+  &:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

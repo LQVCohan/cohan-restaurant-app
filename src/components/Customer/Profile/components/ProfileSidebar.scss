@@ -1,0 +1,257 @@
+$primary: #ff6600;
+$primary-dark: #e65c00;
+$primary-light: #fff0e6;
+$text-main: #1a202c;
+$text-sub: #64748b;
+$white: #ffffff;
+$border: #e2e8f0;
+$shadow-soft: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
+$radius: 20px;
+
+.profile-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  /* --- 1. USER CARD PRO --- */
+  .user-card-pro {
+    background: $white;
+    border-radius: $radius;
+    overflow: hidden; // Để cắt ảnh bìa
+    box-shadow: $shadow-soft;
+    border: 1px solid $border;
+    position: relative;
+
+    .card-cover {
+      height: 100px;
+      // Gradient cam tím nghệ thuật
+      background: linear-gradient(135deg, #ff9a9e 0%, #ff6600 100%);
+    }
+
+    .card-content {
+      padding: 0 24px 24px;
+      text-align: center;
+      margin-top: -50px; // Kéo avatar lên đè vào ảnh bìa
+    }
+
+    .avatar-area {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 12px;
+
+      .avatar-ring {
+        padding: 4px;
+        background: $white;
+        border-radius: 50%;
+        display: inline-block;
+      }
+
+      .user-avatar {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 1px solid $border;
+      }
+
+      .avatar-edit-btn {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: $text-main;
+        color: white;
+        border: 2px solid $white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: 0.2s;
+        &:hover {
+          transform: scale(1.1);
+          background: $primary;
+        }
+      }
+    }
+
+    .user-name {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: $text-main;
+      margin: 0;
+    }
+    .user-email {
+      font-size: 0.9rem;
+      color: $text-sub;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .user-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: $primary-light;
+      padding: 6px 14px;
+      border-radius: 99px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: $primary-dark;
+    }
+  }
+
+  /* --- 2. MEMBERSHIP CARD (Gradient Orange) --- */
+  .membership-card {
+    background: linear-gradient(135deg, #ff6600, #ff8533);
+    color: white;
+    border-radius: $radius;
+    padding: 20px;
+    box-shadow: 0 10px 20px -5px rgba(255, 102, 0, 0.4);
+    position: relative;
+    overflow: hidden;
+
+    // Họa tiết trang trí mờ
+    &::before {
+      content: "";
+      position: absolute;
+      top: -20px;
+      right: -20px;
+      width: 100px;
+      height: 100px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+    }
+
+    .mem-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+      opacity: 0.9;
+      .rank {
+        font-weight: 800;
+        letter-spacing: 1px;
+        color: #fff3cd;
+      }
+    }
+
+    .mem-points {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+      span {
+        font-size: 1rem;
+        font-weight: 500;
+        opacity: 0.8;
+      }
+    }
+
+    .mem-progress {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      margin-bottom: 8px;
+      .bar {
+        height: 100%;
+        background: white;
+        border-radius: 4px;
+      }
+    }
+
+    .mem-note {
+      font-size: 0.8rem;
+      opacity: 0.8;
+      margin: 0;
+    }
+  }
+
+  /* --- 3. NAV PRO --- */
+  .profile-nav-pro {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      border-radius: 16px;
+      background: $white;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: left;
+
+      .nav-icon {
+        width: 40px;
+        height: 40px;
+        background: $primary-light;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        transition: 0.3s;
+      }
+
+      .nav-text {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        .label {
+          font-weight: 600;
+          color: $text-main;
+          font-size: 1rem;
+        }
+        .desc {
+          font-size: 0.8rem;
+          color: $text-sub;
+          margin-top: 2px;
+        }
+      }
+
+      .nav-arrow {
+        color: #cbd5e1;
+        font-size: 1.2rem;
+        transition: 0.3s;
+      }
+
+      // Hover State
+      &:hover {
+        background: $white;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        transform: translateX(5px);
+        .nav-icon {
+          background: $primary;
+          color: white;
+        }
+        .nav-arrow {
+          color: $primary;
+          transform: translateX(3px);
+        }
+      }
+
+      // Active State
+      &.active {
+        background: $white;
+        border-color: $primary;
+        box-shadow: 0 4px 20px rgba(255, 102, 0, 0.15);
+        .nav-icon {
+          background: $primary;
+          color: white;
+        }
+        .nav-text .label {
+          color: $primary;
+        }
+        .nav-arrow {
+          color: $primary;
+          opacity: 1;
+        }
+      }
+    }
+  }
+}

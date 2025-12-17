@@ -3,128 +3,150 @@ import "./RestaurantCard.scss";
 
 const RestaurantCard = ({
   restaurant,
+  variant = "grid", // "grid" | "list"
   isFavorited,
   onToggleFavorite,
   onMakeReservation,
   onViewDetails,
 }) => {
-  const getStatusText = (status) => {
-    const statusMap = {
-      open: "🟢 Đang mở",
-      closed: "🔴 Đã đóng",
-      break: "🟡 Nghỉ trưa",
-    };
-    return statusMap[status] || "🕓 Chưa rõ";
+  // --- HELPERS ---
+  const getStatusInfo = (status) => {
+    switch (status) {
+      case "open":
+        return { text: "Đang mở", class: "open" };
+      case "closed":
+        return { text: "Đã đóng", class: "closed" };
+      case "break":
+        return { text: "Nghỉ trưa", class: "break" };
+      default:
+        return { text: "Chưa rõ", class: "unknown" };
+    }
   };
 
-  const getBadgeComponent = (badge) => {
-    const badgeMap = {
-      featured: (
-        <span className="restaurant-card__badge restaurant-card__badge--featured">
-          ⭐ Nổi bật
-        </span>
-      ),
-      new: (
-        <span className="restaurant-card__badge restaurant-card__badge--new">
-          🆕 Mới
-        </span>
-      ),
-      promotion: (
-        <span className="restaurant-card__badge restaurant-card__badge--promotion">
-          🎉 Khuyến mãi
-        </span>
-      ),
-    };
-    return badgeMap[badge] || null;
+  const renderBadges = (badges = []) => {
+    return badges.map((badge) => {
+      if (badge === "featured")
+        return (
+          <span key={badge} className="badge badge--featured">
+            ⭐ Nổi bật
+          </span>
+        );
+      if (badge === "new")
+        return (
+          <span key={badge} className="badge badge--new">
+            🆕 Mới
+          </span>
+        );
+      if (badge === "promotion")
+        return (
+          <span key={badge} className="badge badge--promo">
+            💎 Khuyến mãi
+          </span>
+        );
+      return null;
+    });
   };
 
-  const badges = restaurant.badges || []; // 👈 tránh lỗi undefined
+  const statusInfo = getStatusInfo(restaurant.status);
+  const addressText = [restaurant.district, restaurant.city]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <div
-      className="restaurant-card"
+      className={`restaurant-card ${
+        variant === "list" ? "restaurant-card--list" : ""
+      }`}
       onClick={() => onViewDetails(restaurant.id)}
     >
-      <div className="restaurant-card__image">
+      {/* 1. KHU VỰC ẢNH */}
+      <div className="restaurant-card__image-wrapper">
         <img
-          src={restaurant.image || "/images/placeholder.jpg"}
+          src={restaurant.image || "/default-restaurant.jpg"}
           alt={restaurant.name}
+          className="restaurant-card__img"
+          loading="lazy"
         />
-        <div className="restaurant-card__badges">
-          {badges.map((badge) => (
-            <React.Fragment key={badge}>
-              {getBadgeComponent(badge)}
-            </React.Fragment>
-          ))}
+
+        {/* Badges & Favorite Overlay */}
+        <div className="restaurant-card__badges-top">
+          {renderBadges(restaurant.badges)}
         </div>
+
         <button
-          className={`restaurant-card__favorite ${
-            isFavorited ? "restaurant-card__favorite--favorited" : ""
-          }`}
+          className={`btn-favorite ${isFavorited ? "active" : ""}`}
           onClick={(e) => onToggleFavorite(e, restaurant.id)}
+          title={isFavorited ? "Bỏ thích" : "Yêu thích"}
         >
           {isFavorited ? "❤️" : "🤍"}
         </button>
       </div>
 
+      {/* 2. KHU VỰC NỘI DUNG */}
       <div className="restaurant-card__content">
-        <div className="restaurant-card__header">
-          <h3 className="restaurant-card__name">{restaurant.name}</h3>
-          <span
-            className={`restaurant-card__status restaurant-card__status--${
-              restaurant.status || "open"
-            }`}
-          >
-            {getStatusText(restaurant.status)}
-          </span>
-        </div>
-
-        <div className="restaurant-card__meta">
-          <div className="restaurant-card__rating">
-            <span className="restaurant-card__rating-stars">⭐</span>
-            <span className="restaurant-card__rating-score">
-              {restaurant.avgRating ?? restaurant.rating ?? "–"}
+        {/* Cột Thông tin (Chính) */}
+        <div className="info-section">
+          <div className="content-header">
+            <h3 className="restaurant-name" title={restaurant.name}>
+              {restaurant.name}
+            </h3>
+            <span className={`status-pill ${statusInfo.class}`}>
+              {statusInfo.text}
             </span>
           </div>
-          {restaurant.cuisine && (
-            <span className="restaurant-card__cuisine">
-              🍽️ {restaurant.cuisine}
-            </span>
-          )}
-          {restaurant.priceRange && (
-            <span className="restaurant-card__price">
-              💰 {restaurant.priceRange}
-            </span>
-          )}
-        </div>
 
-        <p className="restaurant-card__description">
-          {restaurant.description || "Nhà hàng đang cập nhật thông tin."}
-        </p>
-
-        <div className="restaurant-card__footer">
-          <div className="restaurant-card__info">
-            <div className="restaurant-card__info-item">
-              <span>📍</span>
-              <span>
-                {[restaurant.district, restaurant.city]
-                  .filter(Boolean)
-                  .join(", ") || "Đang cập nhật"}
-              </span>
+          <div className="content-meta">
+            <div className="meta-item rating">
+              ⭐ <span>{restaurant.avgRating || 0}</span>
+              <span className="count">({restaurant.ratingCount || 0}+)</span>
             </div>
+            <div className="dot"></div>
+            <div className="meta-item cuisine">
+              🍽️ {restaurant.cuisine || "Đa dạng"}
+            </div>
+            {restaurant.priceRange && (
+              <>
+                <div className="dot"></div>
+                <div className="meta-item price">{restaurant.priceRange}</div>
+              </>
+            )}
           </div>
-          <div className="restaurant-card__actions">
+
+          <p className="restaurant-desc">
+            {restaurant.description ||
+              "Nhà hàng phục vụ các món ăn ngon, không gian thoáng mát, phù hợp cho gia đình và bạn bè."}
+          </p>
+
+          {/* Địa chỉ (Chỉ hiện ở cột này khi là List View) */}
+          <div className="address-info list-only">
+            <span className="icon">📍</span>{" "}
+            <span className="text">{addressText}</span>
+          </div>
+        </div>
+
+        {/* Cột Hành động / Footer */}
+        <div className="action-section">
+          {/* Địa chỉ (Chỉ hiện ở cột này khi là Grid View - Footer style) */}
+          <div className="address-info grid-only">
+            <span className="icon">📍</span>{" "}
+            <span className="text">{addressText}</span>
+          </div>
+
+          <div className="buttons-group">
             <button
-              className="btn btn--secondary"
+              className="btn btn-outline"
               onClick={(e) => onMakeReservation(e, restaurant.id)}
             >
-              📞 Đặt bàn
+              Đặt bàn
             </button>
             <button
-              className="btn btn--primary"
-              onClick={() => onViewDetails(restaurant.id)}
+              className="btn btn-primary"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewDetails(restaurant.id);
+              }}
             >
-              👁️ Xem chi tiết
+              Xem ngay
             </button>
           </div>
         </div>

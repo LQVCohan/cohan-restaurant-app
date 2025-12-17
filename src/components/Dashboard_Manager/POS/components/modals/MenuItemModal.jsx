@@ -1,11 +1,10 @@
-// src/components/Dashboard_Manager/POS/components/modals/MenuItemModal.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import s from "./MenuItemModal.module.scss";
 import { formatPrice } from "../../utils/format";
 import { flyToOrder } from "../../../../../utils/flyToOrder";
 import { useAvatarUploadLocal } from "../../../../../hooks/useAvatarUploadLocal";
 
-// --- ICONS (SVG) ---
+// ... (Giữ nguyên phần Import Icons như cũ) ...
 const IconCamera = () => (
   <svg
     width="20"
@@ -90,13 +89,11 @@ export default function MenuItemModal({
   onClose,
   isReviewMode = false,
 }) {
+  // --- STATE ---
   const [qty, setQty] = useState(1);
   const [qtyInput, setQtyInput] = useState("1");
-  const [cooking, setCooking] = useState(null);
-  const [unit, setUnit] = useState("portion");
+  const [selectedVariantKey, setSelectedVariantKey] = useState(null);
   const [note, setNote] = useState("");
-  const [price, setPrice] = useState(0);
-  const [servingVariants, setServingVariants] = useState([]);
 
   // Upload Logic
   const [proofFiles, setProofFiles] = useState([]);
@@ -108,7 +105,37 @@ export default function MenuItemModal({
 
   const { upload } = useAvatarUploadLocal();
 
-  // --- Logic Helpers ---
+  // --- DERIVED VALUES ---
+  const variants = useMemo(() => {
+    return Array.isArray(item?.servingVariants) ? item.servingVariants : [];
+  }, [item]);
+  const activeVariant = useMemo(() => {
+    return (
+      variants.find((v) => v.key === selectedVariantKey) || variants[0] || null
+    );
+  }, [variants, selectedVariantKey]);
+
+  const currentUnit = useMemo(() => {
+    if (!activeVariant) return "portion";
+    return activeVariant.mode === "BY_WEIGHT"
+      ? "kg"
+      : activeVariant.yieldUnit || "portion";
+  }, [activeVariant]);
+
+  // 🔥 LOGIC GIÁ: Trả về null nếu variant.price là null
+  const currentPrice = useMemo(() => {
+    if (isReviewMode) return Number(item?.price ?? 0);
+
+    if (activeVariant) {
+      // ✅ null nghĩa là "chưa có giá"
+      if (activeVariant.price === null) return null;
+      return Number(activeVariant.price ?? 0);
+    }
+
+    return Number(item?.basePrice ?? 0);
+  }, [isReviewMode, item, activeVariant]);
+
+  // --- LOGIC HELPERS ---
   const toNumber = (v) => {
     if (typeof v !== "string") return Number(v) || 0;
     const norm = v.replace(",", ".").replace(/^\.([0-9])/, "0.$1");
@@ -118,11 +145,12 @@ export default function MenuItemModal({
 
   const clampForUnit = useCallback(
     (n) => {
-      if (!Number.isFinite(n)) return unit === "kg" ? 0.5 : 1;
-      if (unit === "kg") return Math.max(0.1, Math.round(n * 100) / 100);
+      const isWeight = currentUnit === "kg";
+      if (!Number.isFinite(n)) return isWeight ? 0.5 : 1;
+      if (isWeight) return Math.max(0.1, Math.round(n * 100) / 100);
       return Math.max(1, Math.floor(n));
     },
-    [unit]
+    [currentUnit]
   );
 
   const setQtyFromInput = useCallback(
@@ -137,32 +165,25 @@ export default function MenuItemModal({
 
   const bump = (delta) => {
     if (isReviewMode) return;
-    const base = Number.isFinite(qty) ? qty : unit === "kg" ? 0.5 : 1;
+    const isWeight = currentUnit === "kg";
+    const base = Number.isFinite(qty) ? qty : isWeight ? 0.5 : 1;
     const next = clampForUnit(base + delta);
     setQty(next);
     setQtyInput(String(next));
   };
 
   const onBlurQty = () => {
+    const isWeight = currentUnit === "kg";
     if (["", ".", ","].includes(qtyInput)) {
-      const fallback = unit === "kg" ? 0.5 : 1;
+      const fallback = isWeight ? 0.5 : 1;
       setQty(fallback);
       setQtyInput(String(fallback));
       return;
     }
     const n = toNumber(qtyInput);
-    const fixed = clampForUnit(Number.isNaN(n) ? (unit === "kg" ? 0.5 : 1) : n);
+    const fixed = clampForUnit(Number.isNaN(n) ? (isWeight ? 0.5 : 1) : n);
     setQty(fixed);
     setQtyInput(String(fixed));
-  };
-
-  const onChangeUnit = (next) => {
-    if (isReviewMode) return;
-    const normalized = next === "kg" ? "kg" : "portion";
-    setUnit(normalized);
-    const base = normalized === "kg" ? 0.5 : 1;
-    setQty(base);
-    setQtyInput(String(base));
   };
 
   const handleFilesChange = (e) => {
@@ -196,36 +217,25 @@ export default function MenuItemModal({
     });
   };
 
-  // --- Effects ---
+  // --- EFFECTS ---
   useEffect(() => {
     if (isOpen && item) {
-      const defaultCooking =
-        item.preparationMethods?.find((m) => m.isDefault) ??
-        item.preparationMethods?.[0] ??
-        null;
-      const initialCooking = isReviewMode
-        ? item.method || item.cookingOption
-        : defaultCooking
-        ? defaultCooking.name
-        : null;
-      const initialUnit = isReviewMode
-        ? item.unit || "portion"
-        : item.servingVariants?.some((v) => v.mode === "BY_WEIGHT")
-        ? "kg"
-        : "portion";
-      const initialPrice = isReviewMode
-        ? item.price || 0
-        : defaultCooking?.price ?? item.basePrice ?? 0;
-      const initialQty = isReviewMode ? item.quantity || 1 : 1;
-      const initialNote = isReviewMode ? item.note || "" : "";
+      if (isReviewMode) {
+        setQty(item.quantity || 1);
+        setQtyInput(String(item.quantity || 1));
+        setNote(item.note || "");
+        setSelectedVariantKey(item.variantKey || null);
+      } else {
+        setQty(1);
+        setQtyInput("1");
+        setNote("");
+        if (item.servingVariants && item.servingVariants.length > 0) {
+          setSelectedVariantKey(item.servingVariants[0].key);
+        } else {
+          setSelectedVariantKey(null);
+        }
+      }
 
-      setCooking(initialCooking);
-      setPrice(initialPrice);
-      setServingVariants(item.servingVariants ?? []);
-      setUnit(initialUnit);
-      setQty(initialQty);
-      setQtyInput(String(initialQty));
-      setNote(initialNote);
       setProofPreviews(
         item.proofImages && Array.isArray(item.proofImages)
           ? item.proofImages
@@ -239,24 +249,30 @@ export default function MenuItemModal({
     }
   }, [isOpen, item, isReviewMode]);
 
-  const variantKeys = useMemo(() => {
-    return servingVariants.length
-      ? servingVariants.map((v) => (v.mode === "BY_WEIGHT" ? "kg" : "portion"))
-      : ["portion"];
-  }, [servingVariants]);
+  // --- RENDER HELPERS ---
 
-  const formattedTotal = formatPrice(price * qty);
-  const formattedPrice = formatPrice(price);
+  // 🔥 Xử lý hiển thị Tổng tiền ở Footer
+  const formattedTotal =
+    currentPrice === null ? "Chưa có giá" : formatPrice(currentPrice * qty);
+
+  const formattedUnitPrice =
+    currentPrice === null ? "Chưa có giá" : formatPrice(currentPrice);
 
   const handleAdd = async () => {
     if (isReviewMode) {
       onClose();
       return;
     }
+    // Chặn thêm nếu chưa có giá (tuỳ business logic, ở đây mình chặn để an toàn)
+    if (currentPrice === null) {
+      alert("Sản phẩm này chưa có giá, vui lòng liên hệ nhân viên.");
+      return;
+    }
     if (isUploading) return;
 
     const n = clampForUnit(toNumber(qtyInput));
-    const finalQty = Number.isFinite(n) ? n : unit === "kg" ? 0.5 : 1;
+    const isWeight = currentUnit === "kg";
+    const finalQty = Number.isFinite(n) ? n : isWeight ? 0.5 : 1;
     const finalProofUrls = [];
 
     if (proofFiles.length > 0) {
@@ -286,10 +302,10 @@ export default function MenuItemModal({
     onAdd?.({
       menuItem: item,
       quantity: finalQty,
-      cookingOption: cooking,
-      unit,
+      variantName: activeVariant?.name || "",
+      unit: currentUnit,
       note,
-      price,
+      price: currentPrice,
       proofImages: finalProofUrls,
     });
   };
@@ -322,7 +338,14 @@ export default function MenuItemModal({
             <div className={s.titleSection}>
               <div className={s.titleRow}>
                 <h3 className={s.title}>{item.name}</h3>
-                <span className={s.basePriceTag}>{formattedPrice}</span>
+                {/* Giá cơ bản hoặc giá variant đang chọn */}
+                <span
+                  className={`${s.basePriceTag} ${
+                    currentPrice === null ? s.noPrice : ""
+                  }`}
+                >
+                  {formattedUnitPrice}
+                </span>
               </div>
               {item.description && (
                 <p className={s.description}>{item.description}</p>
@@ -330,36 +353,48 @@ export default function MenuItemModal({
             </div>
 
             <div className={s.optionsGrid}>
-              {/* COOKING METHODS */}
-              {item.preparationMethods?.length > 0 && (
+              {/* === 1. SERVING VARIANTS (Cách chế biến/Quy cách) === */}
+              {variants.length > 0 && (
                 <div className={`${s.section} ${s.fullWidth}`}>
-                  <label className={s.sectionTitle}>Tuỳ chọn chế biến</label>
+                  <label className={s.sectionTitle}>Quy cách / Chế biến</label>
                   <div className={s.chipGrid}>
-                    {item.preparationMethods.map((m) => (
-                      <button
-                        key={m.name}
-                        onClick={() => !isReviewMode && setCooking(m.name)}
-                        disabled={isReviewMode}
-                        className={`${s.chip} ${
-                          cooking === m.name ? s.activeChip : ""
-                        } ${isReviewMode ? s.readOnly : ""}`}
-                      >
-                        <span className={s.chipName}>{m.name}</span>
-                        {m.price !== item.basePrice && (
-                          <span className={s.chipPrice}>
-                            {m.price > item.basePrice ? "+" : ""}
-                            {formatPrice(m.price - item.basePrice)}
+                    {variants.map((v, idx) => {
+                      const isSelected = selectedVariantKey === v.key;
+                      const isPriceNull = v.price === null;
+
+                      return (
+                        <button
+                          key={`${item?.id || "x"}-${v.key}-${idx}`}
+                          onClick={() =>
+                            !isReviewMode && setSelectedVariantKey(v.key)
+                          }
+                          disabled={isReviewMode}
+                          className={`${s.chip} ${
+                            isSelected ? s.activeChip : ""
+                          } ${isReviewMode ? s.readOnly : ""}`}
+                        >
+                          <span className={s.chipName}>{v.name}</span>
+
+                          {/* 🔥 HIỂN THỊ GIÁ TRÊN CHIP */}
+                          <span
+                            className={`${s.chipPrice} ${
+                              isPriceNull ? s.missingPrice : ""
+                            }`}
+                          >
+                            {isPriceNull ? "Chưa có giá" : formatPrice(v.price)}
                           </span>
-                        )}
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
-              {/* QUANTITY & UNIT */}
+              {/* === 2. QUANTITY CONTROL === */}
               <div className={s.section}>
-                <label className={s.sectionTitle}>Số lượng</label>
+                <label className={s.sectionTitle}>
+                  Số lượng ({currentUnit === "kg" ? "Kg" : "Phần"})
+                </label>
                 <div
                   className={`${s.qtyWrapper} ${
                     isReviewMode ? s.readOnlyBox : ""
@@ -367,7 +402,7 @@ export default function MenuItemModal({
                 >
                   <button
                     className={s.qtyControl}
-                    onClick={() => bump(unit === "kg" ? -0.1 : -1)}
+                    onClick={() => bump(currentUnit === "kg" ? -0.1 : -1)}
                     disabled={isUploading || isReviewMode}
                   >
                     <IconMinus />
@@ -386,7 +421,7 @@ export default function MenuItemModal({
                   />
                   <button
                     className={s.qtyControl}
-                    onClick={() => bump(unit === "kg" ? +0.1 : +1)}
+                    onClick={() => bump(currentUnit === "kg" ? +0.1 : +1)}
                     disabled={isUploading || isReviewMode}
                   >
                     <IconPlus />
@@ -394,28 +429,7 @@ export default function MenuItemModal({
                 </div>
               </div>
 
-              {/* UNIT TOGGLE */}
-              {variantKeys.length > 1 && (
-                <div className={s.section}>
-                  <label className={s.sectionTitle}>Đơn vị</label>
-                  <div className={s.toggleGroup}>
-                    {variantKeys.map((v) => (
-                      <button
-                        key={v}
-                        className={`${s.toggleBtn} ${
-                          unit === v ? s.activeToggle : ""
-                        } ${isReviewMode ? s.readOnly : ""}`}
-                        onClick={() => onChangeUnit(v)}
-                        disabled={isReviewMode}
-                      >
-                        {v === "portion" ? "Phần" : "Kg"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* NOTES */}
+              {/* === 3. NOTES === */}
               <div className={`${s.section} ${s.fullWidth}`}>
                 <label className={s.sectionTitle}>Ghi chú cho bếp</label>
                 <textarea
@@ -428,7 +442,8 @@ export default function MenuItemModal({
                 />
               </div>
 
-              {/* PROOF IMAGES */}
+              {/* === 4. PROOF IMAGES === */}
+              {/* (Giữ nguyên phần upload ảnh) */}
               <div className={`${s.section} ${s.fullWidth}`}>
                 <div className={s.sectionHeader}>
                   <label className={s.sectionTitle}>Ảnh xác nhận</label>
@@ -436,7 +451,6 @@ export default function MenuItemModal({
                     <span className={s.optional}>(Tuỳ chọn)</span>
                   )}
                 </div>
-
                 <div className={s.imagesScroll}>
                   {!isReviewMode && (
                     <label
@@ -456,7 +470,6 @@ export default function MenuItemModal({
                       <span>Thêm</span>
                     </label>
                   )}
-
                   {proofPreviews.map((src, idx) => (
                     <div
                       key={idx}
@@ -477,7 +490,6 @@ export default function MenuItemModal({
                       )}
                     </div>
                   ))}
-
                   {isReviewMode && proofPreviews.length === 0 && (
                     <div className={s.emptyState}>
                       <IconImageEmpty />
@@ -485,7 +497,6 @@ export default function MenuItemModal({
                     </div>
                   )}
                 </div>
-
                 {isUploading && (
                   <div className={s.uploadStatusBox}>
                     <div className={s.spinner}></div>
@@ -504,14 +515,20 @@ export default function MenuItemModal({
           <div className={s.footer}>
             <div className={s.totalInfo}>
               <span className={s.totalLabel}>Tạm tính</span>
-              <span className={s.totalValue}>{formattedTotal}</span>
+              <span
+                className={`${s.totalValue} ${
+                  currentPrice === null ? s.noPrice : ""
+                }`}
+              >
+                {formattedTotal}
+              </span>
             </div>
             <button
               className={`${s.confirmBtn} ${isUploading ? s.loadingBtn : ""} ${
                 isReviewMode ? s.closeMode : ""
               }`}
               onClick={handleAdd}
-              disabled={isUploading}
+              disabled={isUploading || currentPrice === null} // Disable nếu không có giá
             >
               {isUploading
                 ? "Đang tải..."

@@ -830,6 +830,40 @@ export default function useOrderManagement(pos = null) {
   /* ============================================================
      5) GỘP MÓN THEO ĐỢT (dine-in)
      ============================================================ */
+  const norm = (v) => String(v ?? "").trim();
+
+  const normalizeProofKey = (proofImages) => {
+    const arr = Array.isArray(proofImages) ? proofImages.filter(Boolean) : [];
+    return arr.length ? JSON.stringify([...arr].sort()) : "no_proof";
+  };
+
+  const normalizeModsKey = (mods) => {
+    const arr = Array.isArray(mods) ? mods : [];
+    if (!arr.length) return "no_mods";
+    return arr
+      .map((m) => `${norm(m.groupId)}:${norm(m.optionId || m.id)}`)
+      .filter(Boolean)
+      .sort()
+      .join("|");
+  };
+
+  const makeLineSignature = ({
+    dishId,
+    unit,
+    variantName,
+    note,
+    proofImages,
+    modifiers,
+  }) => {
+    return [
+      norm(dishId),
+      norm(unit || "portion"),
+      norm(variantName || ""), // ✅ chỉ 1 field
+      norm(note || ""),
+      normalizeProofKey(proofImages),
+      normalizeModsKey(modifiers),
+    ].join("__");
+  };
 
   const itemSignature = (it) => {
     const mods =
@@ -1145,11 +1179,12 @@ export default function useOrderManagement(pos = null) {
     ({
       menuItem,
       quantity = 1,
-      cookingOption = null,
       unit = null,
       note = "",
       price = null,
       proofImages = [],
+      variantName = "",
+      modifiers = [],
     }) => {
       if (!menuItem) return;
       const itemPrice =
@@ -1159,7 +1194,15 @@ export default function useOrderManagement(pos = null) {
         menuItem.basePrice ??
         0;
       const chosenUnit = unit || (menuItem.byWeight ? "kg" : "portion");
-
+      const incomingSig = makeLineSignature({
+        dishId: menuItem.dishId || menuItem.id,
+        unit: chosenUnit,
+        variantKey,
+        variantName: variantName || cookingOption, // fallback nếu bạn vẫn truyền cookingOption
+        note,
+        proofImages,
+        modifiers,
+      });
       let q;
       if (chosenUnit === "kg") {
         const f = parseFloat(quantity);
@@ -1170,16 +1213,19 @@ export default function useOrderManagement(pos = null) {
       }
 
       // Chỉ gộp món MỚI, không có ảnh minh chứng
-      const idx = (currentOrder || []).findIndex(
-        (it) =>
-          !it.isExisting &&
-          (it.dishId || it.id) === (menuItem.dishId || menuItem.id) &&
-          (it.method || it.cookingOption || "") === (cookingOption || "") &&
-          (it.unit || "portion") === (chosenUnit || "portion") &&
-          (it.note || "").trim() === (note || "").trim() &&
-          (!it.proofImages || it.proofImages.length === 0) &&
-          (!proofImages || proofImages.length === 0)
-      );
+      const idx = (currentOrder || []).findIndex((it) => {
+        if (it?.isExisting) return false;
+        const itSig = makeLineSignature({
+          dishId: it.dishId || it.id,
+          unit: it.unit,
+          variantKey: it.variantKey,
+          variantName: it.variantName || it.method || it.cookingOption,
+          note: it.note,
+          proofImages: it.proofImages,
+          modifiers: it.modifiers,
+        });
+        return itSig === incomingSig;
+      });
 
       if (idx !== -1) {
         const updated = [...currentOrder];
@@ -1289,6 +1335,7 @@ export default function useOrderManagement(pos = null) {
 
   const saveOrder = useCallback(
     async ({ persist = true, restaurantId } = {}) => {
+      // ❌ Không cho lưu đơn rỗng
       if (!currentOrder?.length) {
         return { success: false, message: "Chưa có món ăn nào trong đơn." };
       }
@@ -1336,6 +1383,7 @@ export default function useOrderManagement(pos = null) {
 
       /* ---------------- DINE-IN ---------------- */
       if (!currentOrderType || currentOrderType === "dine_in") {
+        // ❌ Chưa chọn bàn → không cho lưu
         if (!currentTable?.code) {
           return {
             success: false,
@@ -1426,6 +1474,42 @@ export default function useOrderManagement(pos = null) {
           }
         : null;
 
+      // 🔎 VALIDATION cho off-premise theo yêu cầu của bạn
+
+      // 1) Phải có ít nhất thông tin khách (tên hoặc số điện thoại)
+      const hasCustomerName =
+        (cleanCustomer?.fullName && cleanCustomer.fullName.trim()) ||
+        (shippingInfo?.fullName && shippingInfo.fullName.trim());
+      const hasCustomerPhone =
+        (cleanCustomer?.phone && cleanCustomer.phone.trim()) ||
+        (shippingInfo?.phone && shippingInfo.phone.trim());
+
+      if (!hasCustomerName && !hasCustomerPhone) {
+        return {
+          success: false,
+          message:
+            currentOrderType === "takeaway"
+              ? "Vui lòng nhập ít nhất tên hoặc số điện thoại khách mang về."
+              : "Vui lòng nhập ít nhất tên hoặc số điện thoại khách giao hàng.",
+        };
+      }
+
+      // 2) Nếu là GIAO ĐI → BẮT BUỘC có địa chỉ
+      if (
+        currentOrderType === "delivery" &&
+        !(
+          (shippingInfo?.address && shippingInfo.address.trim()) ||
+          (shippingPayload?.address && String(shippingPayload.address).trim())
+        )
+      ) {
+        return {
+          success: false,
+          message: "Vui lòng nhập địa chỉ giao hàng trước khi lưu đơn.",
+        };
+      }
+
+      // (Mang đi: không bắt buộc address)
+
       try {
         const res = await createOffPremiseOrder({
           variables: {
@@ -1456,7 +1540,6 @@ export default function useOrderManagement(pos = null) {
         }
 
         // Off-premise: sau khi lưu có thể clear cart POS
-        // (tùy logic, ở đây chỉ clear local để tránh add double)
         setCurrentOrder?.([]);
 
         return {

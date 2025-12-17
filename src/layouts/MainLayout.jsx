@@ -27,7 +27,7 @@ export default function MainLayout({ children }) {
   return (
     <>
       <Header />
-      <main style={{ minHeight: "80vh" }}>{children}</main>
+      <main style={{ minHeight: "80vh", width: "100vw" }}>{children}</main>
       <Footer />
     </>
   );

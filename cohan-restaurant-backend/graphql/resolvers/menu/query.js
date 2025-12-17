@@ -106,6 +106,7 @@ export const MenuQuery = {
     const docs = await MenuItem.find(q)
       .sort({ _id: 1 })
       .limit(limit + 1)
+      .populate("recipe")
       .lean({ virtuals: true });
 
     const hasNextPage = docs.length > limit;
@@ -134,6 +135,7 @@ export const MenuQuery = {
     const docs = await MenuItem.find(q)
       .sort({ point: -1, createdAt: -1, _id: 1 }) // ưu tiên point cao
       .limit(LIM)
+      .populate("recipe")
       .lean({ virtuals: true });
 
     return docs;

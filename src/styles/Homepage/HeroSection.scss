@@ -1,123 +1,465 @@
-.hero {
-  padding: 5rem 1rem;
-  background: linear-gradient(to bottom right, #f0f9ff, #dbeafe);
-  margin-top: 20px;
-  &__container {
-    width: 100%;
-    max-width: none;
-    margin: 0;
-    padding: 0 1rem;
-    text-align: center;
+/* =========================================
+   HERO SECTION STYLES (Orange Theme)
+   ========================================= */
 
-    @media (min-width: 768px) {
-      padding: 0 2rem;
+// Define local variables (nếu chưa có global)
+$primary: #ff6600;
+$primary-hover: #e65c00;
+$text-main: #1a202c;
+$text-sub: #718096;
+$bg-light: #fff5eb; // Màu nền cam nhạt
+$max-width: 1440px; // Đồng bộ với Header
+
+.hero {
+  position: relative;
+  // Gradient chuyển từ cam nhạt sang trắng
+  background: linear-gradient(135deg, #fff5eb 0%, #ffffff 100%);
+  padding: 80px 0 200px 0;
+  overflow: hidden;
+  &__image-area {
+    flex: 1;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 550px; // Tăng nhẹ max-width
+    min-height: 400px; // Đảm bảo chiều cao tối thiểu để không bị giật
+  }
+  @media (min-width: 1024px) {
+    padding: 80px 0 100px 0;
+  }
+
+  &__container {
+    max-width: $max-width;
+    margin: 0 auto;
+
+    display: flex;
+    flex-direction: column-reverse; // Mobile: Ảnh lên trên hoặc Text lên trên tuỳ ý
+    align-items: center;
+    gap: 40px;
+
+    @media (min-width: 1024px) {
+      padding: 0 32px;
+      flex-direction: row; // Desktop: Ngang
+      justify-content: space-between;
+      gap: 60px;
+    }
+  }
+  &__wave-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    line-height: 0; // Loại bỏ khoảng trắng thừa của SVG
+    z-index: 1;
+    bottom: -1px;
+  }
+
+  &__wave-svg {
+    position: relative;
+    display: block;
+    width: calc(100% + 1.3px);
+    height: 120px; // Chiều cao của sóng, bạn có thể chỉnh 100px-150px tuỳ ý
+
+    path {
+      fill: #ffffff; // Màu trắng trùng với nền của section Categories kế tiếp
+    }
+  }
+  /* --- LEFT CONTENT --- */
+  &__content {
+    flex: 1;
+    text-align: center;
+    z-index: 10;
+
+    @media (min-width: 1024px) {
+      text-align: left;
+      max-width: 600px;
+    }
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #ffe4cc;
+    color: $primary;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 99px;
+    margin-bottom: 24px;
+
+    &-icon {
+      font-size: 16px;
     }
   }
 
   &__title {
-    font-size: 3rem;
-    font-weight: bold;
-    color: #0c4a6e;
-    margin-bottom: 1.5rem;
+    font-size: 2.5rem;
+    line-height: 1.2;
+    font-weight: 800;
+    color: $text-main;
+    margin-bottom: 20px;
+    letter-spacing: -1px;
 
-    @media (max-width: 768px) {
-      font-size: 2.5rem;
+    @media (min-width: 768px) {
+      font-size: 3.5rem;
     }
-  }
 
-  &__subtitle {
-    font-size: 1.25rem;
-    color: #0369a1;
-    margin-bottom: 2rem;
-    max-width: 32rem;
-    margin-left: auto;
-    margin-right: auto;
-  }
+    .text-highlight {
+      color: $primary;
+      position: relative;
 
-  &__search {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 3rem;
-
-    @media (min-width: 640px) {
-      flex-direction: row;
-    }
-  }
-
-  &__search-input {
-    position: relative;
-
-    input {
-      width: 20rem;
-      padding: 1rem 1rem 1rem 3rem;
-      font-size: 1.125rem;
-      border: 2px solid #7dd3fc;
-      border-radius: 9999px;
-      outline: none;
-
-      &:focus {
-        ring: 2px;
-        ring-color: #0ea5e9;
-        border-color: transparent;
+      // Gạch chân màu vàng/cam dưới chữ
+      &::after {
+        content: "";
+        position: absolute;
+        bottom: 4px;
+        left: 0;
+        width: 100%;
+        height: 12px;
+        background-color: rgba(255, 102, 0, 0.15);
+        z-index: -1;
+        border-radius: 4px;
       }
     }
   }
 
-  &__search-icon {
-    position: absolute;
-    left: 1rem;
-    top: 1rem;
-    color: #0ea5e9;
-    font-size: 1.25rem;
-  }
-
-  &__search-btn {
-    background: #0284c7;
-    color: white;
-    padding: 1rem 2rem;
-    border-radius: 9999px;
-    font-size: 1.125rem;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-
-    &:hover {
-      background: #0369a1;
-    }
-  }
-
-  &__stats {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    max-width: 64rem;
-    margin: 0 auto;
+  &__subtitle {
+    font-size: 1.1rem;
+    color: $text-sub;
+    line-height: 1.6;
+    margin-bottom: 40px;
 
     @media (min-width: 768px) {
-      grid-template-columns: repeat(3, 1fr);
+      font-size: 1.25rem;
     }
   }
 
-  &__stat {
+  /* --- SEARCH BOX --- */
+  &__search-box {
     background: white;
-    border-radius: 1rem;
-    padding: 1.5rem;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    padding: 8px;
+    border-radius: 99px; // Hình viên thuốc lớn
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid #e2e8f0;
+
+    @media (min-width: 640px) {
+      flex-direction: row;
+      align-items: center;
+      padding: 6px 6px 6px 24px;
+    }
   }
 
-  &__stat-number {
-    font-size: 1.875rem;
+  &__input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    input {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 1rem;
+      color: $text-main;
+      padding: 10px 0;
+
+      &::placeholder {
+        color: #a0aec0;
+      }
+    }
+  }
+
+  &__icon-location {
+    color: $primary;
+    display: flex;
+  }
+
+  &__btn-search {
+    background-color: $primary;
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 14px 32px;
+    border-radius: 99px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(255, 102, 0, 0.3);
+    white-space: nowrap;
+
+    &:hover {
+      background-color: $primary-hover;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 102, 0, 0.4);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  /* --- STATS --- */
+  &__stats {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+
+    // Tạo thành một thẻ nổi
+    background: rgba(255, 255, 255, 0.8); // Nền trắng mờ
+    backdrop-filter: blur(10px); // Hiệu ứng kính mờ
+    padding: 24px 40px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(255, 102, 0, 0.08); // Bóng cam rất nhẹ
+    border: 1px solid rgba(255, 255, 255, 0.6);
+
+    // Định vị nó nằm đè lên phần sóng
+    position: relative;
+    z-index: 10;
+    margin-top: 60px; // Đẩy xuống một chút
+
+    @media (max-width: 768px) {
+      flex-direction: column; // Mobile thì dọc
+      gap: 20px;
+      width: 100%;
+    }
+  }
+
+  &__stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    @media (min-width: 1024px) {
+      align-items: flex-start;
+    }
+
+    .stat-num {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: $text-main;
+    }
+    .stat-label {
+      font-size: 0.9rem;
+      color: $text-sub;
+    }
+  }
+
+  &__stat-divider {
+    width: 1px;
+    height: 30px;
+    background-color: #cbd5e0;
+    display: none;
+    @media (min-width: 640px) {
+      display: block;
+    }
+  }
+
+  /* --- RIGHT IMAGE AREA --- */
+  &__image-area {
+    flex: 1;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  &__image-bg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    height: 90%;
+    background-color: #ffe4cc; // Màu cam nền sau ảnh
+    border-radius: 50% 40% 30% 70% / 60% 30% 70% 40%; // Hình Blob organic
+    z-index: 1;
+    animation: morph 8s ease-in-out infinite, rotateBlob 20s linear infinite;
+  }
+  &__slider {
+    position: relative;
+    width: 100%;
+    height: 380px; // Chiều cao cố định cho ảnh
+    z-index: 2;
+    cursor: grab; // Icon tay nắm để biết là kéo được
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    @media (max-width: 768px) {
+      height: 300px; // Chiều cao nhỏ hơn trên mobile
+    }
+  }
+  &__main-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 24px;
+    // Bóng đổ mặc định nhẹ hơn
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+
+    // --- TRẠNG THÁI ẨN (INACTIVE) ---
+    opacity: 0;
+    // Nghiêng nhiều hơn, nhỏ hơn và lùi về sau
+    transform: scale(0.85) rotate(-8deg) translateX(-30px);
+    // Thêm chút blur để tạo chiều sâu (tuỳ chọn)
+    filter: blur(2px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); // Transition mượt hơn
+
+    // --- TRẠNG THÁI HIỆN (ACTIVE) ---
+    &.active {
+      opacity: 1;
+      z-index: 2;
+      // Nghiêng nghệ thuật (-3deg), kích thước chuẩn
+      transform: scale(1) rotate(-3deg) translateX(0);
+      filter: blur(0);
+      // Bóng đổ sâu hơn, đậm hơn để tạo cảm giác nổi 3D
+      box-shadow: 20px 30px 50px rgba(0, 0, 0, 0.15);
+    }
+  }
+  /* --- NAVIGATION BUTTONS --- */
+  &__slider-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    background: white;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    color: $primary;
+    font-size: 24px;
     font-weight: bold;
-    color: #0284c7;
-    margin-bottom: 0.5rem;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    line-height: 1;
+    padding-bottom: 4px; // Căn chỉnh ký tự mũi tên
+
+    &:hover {
+      background: $primary;
+      color: white;
+      box-shadow: 0 6px 16px rgba(255, 102, 0, 0.3);
+    }
+
+    &.prev {
+      left: -20px;
+    }
+    &.next {
+      right: -20px;
+    }
+    &.prev:hover {
+      transform: translateY(-50%) translateX(-3px);
+    }
+    // Mũi tên phải dịch sang phải khi hover
+    &.next:hover {
+      transform: translateY(-50%) translateX(3px);
+    }
+    @media (max-width: 640px) {
+      display: none; // Ẩn nút trên mobile để dùng vuốt tay
+    }
+  }
+  /* --- FLOATING CARDS --- */
+  &__float-card {
+    position: absolute;
+    background: white;
+    padding: 10px 16px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 3;
+    animation: float 3s ease-in-out infinite;
+
+    .float-icon {
+      width: 40px;
+      height: 40px;
+      background-color: $bg-light;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    .float-content {
+      display: flex;
+      flex-direction: column;
+    }
+    .float-title {
+      font-weight: 700;
+      color: $text-main;
+      font-size: 14px;
+    }
+    .float-desc {
+      font-size: 12px;
+      color: $text-sub;
+    }
   }
 
-  &__stat-label {
-    color: #0369a1;
+  .float-review {
+    top: 10%;
+    left: -20px;
+    animation-delay: 0s;
+    @media (max-width: 640px) {
+      left: 0;
+    }
+  }
+
+  .float-delivery {
+    bottom: 10%;
+    right: -20px;
+    animation-delay: 1.5s;
+    @media (max-width: 640px) {
+      right: 0;
+    }
+  }
+}
+
+/* --- ANIMATIONS --- */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes morph {
+  0% {
+    border-radius: 50% 40% 30% 70% / 60% 30% 70% 40%;
+  }
+  50% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+  }
+  100% {
+    border-radius: 50% 40% 30% 70% / 60% 30% 70% 40%;
+  }
+}
+@keyframes rotateBlob {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
   }
 }

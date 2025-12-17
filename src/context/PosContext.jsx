@@ -6,8 +6,8 @@ import React, {
   useMemo,
   useState,
   useCallback,
+  useRef,
 } from "react";
-import { useApolloClient } from "@apollo/client";
 
 import useMenuManagement from "../hooks/useMenuManagement";
 import useFloorManagement from "../hooks/useFloorManagement";
@@ -37,7 +37,10 @@ export default function PosProvider({
   const [currentTable, setCurrentTable] = useState(null);
   const [currentOrderType, setCurrentOrderType] = useState("dine_in");
   const [tableOrders, setTableOrders] = useState({});
-  const [currentOrder, setCurrentOrder] = useState([]); // Local Cart
+  const [currentOrder, setCurrentOrder] = useState([]);
+
+  // ✅ NEW: currentOrderCode tách khỏi currentTable.code
+  const [currentOrderCode, setCurrentOrderCode] = useState(null);
 
   const [menuItems, setMenuItems] = useState([]);
   const [currentCategory, setCurrentCategory] = useState("all");
@@ -56,7 +59,7 @@ export default function PosProvider({
     email: "",
     address: "",
     note: "",
-    deliveryMethod: "ship_now", // ship_now | schedule | pickup_at_store ...
+    deliveryMethod: "ship_now",
     deliveryTime: "",
     scheduleDate: "",
     scheduleTime: "",
@@ -76,19 +79,6 @@ export default function PosProvider({
     getLevelFromId,
   } = useFloorManagement({ restaurantId, initialFloorId, initialFloorLevel });
 
-  // --- MENU ---
-  const {
-    menus,
-    timeSlotOptions,
-    selectedTimeSlot,
-    setSelectedTimeSlot,
-    itemsWithPrice,
-  } = useMenuManagement({
-    restaurantId,
-    defaultTimeSlot: "lunch",
-    pageSize: 100,
-  });
-
   const activeFloorId = useMemo(
     () => (activeLevel != null ? getIdFromLevel(activeLevel) : null),
     [activeLevel, getIdFromLevel]
@@ -102,6 +92,19 @@ export default function PosProvider({
     },
     [getLevelFromId, setActiveLevel]
   );
+
+  // --- MENU ---
+  const {
+    menus,
+    timeSlotOptions,
+    selectedTimeSlot,
+    setSelectedTimeSlot,
+    itemsWithPrice,
+  } = useMenuManagement({
+    restaurantId,
+    defaultTimeSlot: "lunch",
+    pageSize: 100,
+  });
 
   // --- TABLES ---
   const {
@@ -205,6 +208,8 @@ export default function PosProvider({
     currentOrderType,
     deliveryCustomer,
     shippingInfo,
+    currentOrderCode,
+    setCurrentOrderCode,
   });
 
   // --- [UTILITY] GENERATE VIRTUAL CODE ---
@@ -219,19 +224,107 @@ export default function PosProvider({
     return `${prefix}-${yyyy}${mm}${dd}-${randomPart}`;
   }, []);
 
+  // ===== Draft key (autosave FE) =====
+  const getDraftKey = useCallback(() => {
+    if (currentOrderCode) return `pos_draft_${currentOrderCode}`;
+    if (currentOrderType === "dine_in" && currentTable?.code)
+      return `pos_draft_table_${restaurantId}_${currentTable.code}`;
+    if (currentOrderType === "delivery")
+      return `pos_draft_ship_${restaurantId}`;
+    if (currentOrderType === "takeaway")
+      return `pos_draft_take_${restaurantId}`;
+    return null;
+  }, [currentOrderCode, currentOrderType, currentTable?.code, restaurantId]);
+
+  // ===== Auto-save only isNew (FE) =====
+  useEffect(() => {
+    const key = getDraftKey();
+    if (!key) return;
+    try {
+      const draftItems = (currentOrder || []).filter((i) => i?.isNew);
+      const payload = {
+        version: 1,
+        savedAt: Date.now(),
+        currentOrderType,
+        currentOrderCode,
+        tableCode: currentTable?.code || null,
+        items: draftItems,
+        shippingInfo:
+          currentOrderType === "delivery" ? shippingInfo : undefined,
+        deliveryCustomer:
+          currentOrderType === "delivery" || currentOrderType === "takeaway"
+            ? deliveryCustomer
+            : undefined,
+      };
+      localStorage.setItem(key, JSON.stringify(payload));
+    } catch {}
+  }, [
+    currentOrder,
+    currentOrderType,
+    currentOrderCode,
+    currentTable?.code,
+    shippingInfo,
+    deliveryCustomer,
+    getDraftKey,
+  ]);
+
+  // ===== Restore draft when context changes =====
+  useEffect(() => {
+    const key = getDraftKey();
+    if (!key) return;
+
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const payload = JSON.parse(raw);
+
+      const draftItems = Array.isArray(payload?.items) ? payload.items : [];
+      if (draftItems.length) {
+        setCurrentOrder((prev) => {
+          const prevExisting = (prev || []).filter((i) => i?.isExisting);
+          return [...prevExisting, ...draftItems];
+        });
+      }
+
+      if (
+        (currentOrderType === "delivery" || currentOrderType === "takeaway") &&
+        payload?.deliveryCustomer
+      ) {
+        setDeliveryCustomer(payload.deliveryCustomer);
+      }
+
+      if (currentOrderType === "delivery" && payload?.shippingInfo) {
+        setShippingInfo((s) => ({ ...s, ...payload.shippingInfo }));
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentOrderCode, currentOrderType, currentTable?.code]);
+
+  const clearDraftStorage = useCallback(() => {
+    const key = getDraftKey();
+    if (!key) return;
+    try {
+      localStorage.removeItem(key);
+    } catch {}
+  }, [getDraftKey]);
+
   // --- [NEW] START DELIVERY ORDER ---
   const startDeliveryOrder = useCallback(() => {
     const shipCode = generateVirtualCode("SHIP");
+    setCurrentOrderType("delivery");
+    setCurrentOrderCode(shipCode);
+
+    // currentTable.code là "table code" theo bạn: off-premise vẫn có 1 mã cố định
     setCurrentTable({
       id: null,
-      code: shipCode,
-      name: "Delivery Order",
+      code: "DELIVERY",
+      name: "Delivery",
       status: "occupied",
       type: "delivery",
       restaurantId,
-      isVirtual: true, // phân biệt với bàn thật
+      isVirtual: true,
     });
-    setCurrentOrderType("delivery");
+
     setCurrentOrder([]);
     setShippingInfo({
       fullName: "",
@@ -249,17 +342,20 @@ export default function PosProvider({
 
   // --- [NEW] START TAKEAWAY ORDER ---
   const startTakeawayOrder = useCallback(() => {
-    const takeawayCode = generateVirtualCode("TAKE");
+    const takeCode = generateVirtualCode("TAKE");
+    setCurrentOrderType("takeaway");
+    setCurrentOrderCode(takeCode);
+
     setCurrentTable({
       id: null,
-      code: takeawayCode,
-      name: "Takeaway Order",
+      code: "TAKEAWAY",
+      name: "Takeaway",
       status: "occupied",
       type: "takeaway",
       restaurantId,
       isVirtual: true,
     });
-    setCurrentOrderType("takeaway");
+
     setCurrentOrder([]);
     setShippingInfo({
       fullName: "",
@@ -274,6 +370,11 @@ export default function PosProvider({
     });
     setDeliveryCustomer(null);
   }, [restaurantId, generateVirtualCode]);
+
+  // ===== helper: detect isNew items =====
+  const hasNewDraftItems = useCallback(() => {
+    return (currentOrder || []).some((i) => i?.isNew);
+  }, [currentOrder]);
 
   // --- SELECT TABLE LOGIC (DINE-IN) ---
   const selectTableForOrder = useCallback(
@@ -295,6 +396,22 @@ export default function PosProvider({
         return;
       }
 
+      // ✅ confirm chỉ khi đang có món isNew ở FE và đổi sang bàn khác
+      const switchingToDifferentTable =
+        currentOrderType === "dine_in" &&
+        currentTable?.code &&
+        currentTable.code !== code;
+
+      if (switchingToDifferentTable && hasNewDraftItems()) {
+        const ok = window.confirm(
+          `Bạn đang có món mới chưa lưu.\nĐổi sang bàn ${code} sẽ chuyển các món mới này sang bàn mới.\nBạn có chắc muốn đổi bàn?`
+        );
+        if (!ok) return;
+      }
+
+      // giữ món mới để append lại sau khi load BE group
+      const draftNew = (currentOrder || []).filter((i) => i?.isNew);
+
       let groupsForTable = [];
       try {
         groupsForTable =
@@ -306,34 +423,32 @@ export default function PosProvider({
       const hasOrders =
         Array.isArray(groupsForTable) && groupsForTable.length > 0;
 
-      if (!hasOrders && statusTable === "available") {
-        showNotification(`Đã chọn bàn ${code}.`, "success");
-        setCurrentTable({
-          id: table?.id,
-          code,
-          capacity,
-          status: statusTable,
-          restaurantId,
-          orderCode: null,
-          isVirtual: false,
+      // chọn bàn + orderCode từ BE nếu có
+      const serverOrderCode = hasOrders ? groupsForTable[0]?.orderCode : null;
+
+      setCurrentTable({
+        id: table?.id,
+        code,
+        capacity,
+        status: hasOrders ? "occupied" : statusTable,
+        restaurantId,
+        isVirtual: false,
+      });
+
+      setCurrentOrderType("dine_in");
+      setCurrentOrderCode(serverOrderCode || null);
+
+      // sau khi loadGroupsForTable hook đã setCurrentOrder thành items existing,
+      // ta append món isNew lại (nếu có)
+      if (draftNew.length) {
+        setCurrentOrder((prev) => {
+          const prevArr = Array.isArray(prev) ? prev : [];
+          const existingPart = prevArr.filter((i) => i?.isExisting);
+          return [...existingPart, ...draftNew];
         });
-        setCurrentOrderType("dine_in");
-        setCurrentOrder((prev) => (prev && prev.length > 0 ? [] : prev));
-        return;
       }
 
       if (hasOrders) {
-        showNotification(`Đã chọn bàn ${code} có khách.`, "info");
-        setCurrentTable({
-          id: table?.id,
-          code,
-          capacity,
-          status: "occupied",
-          restaurantId,
-          orderCode: groupsForTable[0]?.orderCode || null,
-          isVirtual: false,
-        });
-        setCurrentOrderType("dine_in");
         if (
           (statusTable === "available" || statusTable === "reserved") &&
           table?.id
@@ -345,18 +460,12 @@ export default function PosProvider({
         return;
       }
 
+      if (!hasOrders && statusTable === "available") {
+        showNotification(`Đã chọn bàn ${code}.`, "success");
+        return;
+      }
+
       showNotification(`Bàn ${code} đang được đặt.`, "info");
-      setCurrentOrder([]);
-      setCurrentTable({
-        id: table?.id,
-        code,
-        capacity,
-        status: "reserved",
-        restaurantId,
-        orderCode: null,
-        isVirtual: false,
-      });
-      setCurrentOrderType("dine_in");
     },
     [
       allTables,
@@ -365,8 +474,13 @@ export default function PosProvider({
       setCurrentOrder,
       setCurrentTable,
       setCurrentOrderType,
+      setCurrentOrderCode,
       setTableStatus,
       showNotification,
+      currentOrder,
+      currentOrderType,
+      currentTable?.code,
+      hasNewDraftItems,
     ]
   );
 
@@ -381,40 +495,60 @@ export default function PosProvider({
     return (itemsWithPrice || []).filter((i) => byCat(i) && bySearch(i));
   }, [itemsWithPrice, currentCategory, searchTerm]);
 
-  const saveOrder = useCallback(
+  // ===== save wrapper: validate FE rules =====
+  const saveOrderSafe = useCallback(
     async (opts = {}) => {
-      const res = await rawSaveOrder({ ...opts, restaurantId });
-      // ⚠️ Với delivery/takeaway không có bàn thật nên không cần setTableStatus
-      if (
-        res?.success &&
-        currentTable?.id &&
-        !currentTable?.isVirtual // chỉ bàn thật
-      ) {
-        const savedOrder = res.data || null;
-        try {
-          await setTableStatus({ id: currentTable.id, status: "occupied" });
-        } catch (e) {
-          console.warn(e);
-        }
-        setCurrentOrder([]);
-        setCurrentTable((prev) =>
-          prev
-            ? {
-                ...prev,
-                status: "occupied",
-                orderCode: savedOrder?.orderCode || prev.orderCode || null,
-              }
-            : prev
-        );
+      // không lưu order rỗng
+      if (!Array.isArray(currentOrder) || currentOrder.length === 0) {
+        return { success: false, message: "Chưa có món ăn nào trong đơn." };
       }
+
+      // dine-in bắt buộc chọn bàn
+      if (currentOrderType === "dine_in" && !currentTable?.code) {
+        return { success: false, message: "Vui lòng chọn bàn trước khi lưu." };
+      }
+
+      // delivery: bắt buộc có địa chỉ (giữ nguyên rule)
+      if (currentOrderType === "delivery") {
+        const addr = (shippingInfo?.address || "").trim();
+        if (!addr) {
+          return { success: false, message: "Đơn giao đi cần địa chỉ." };
+        }
+      }
+
+      const res = await rawSaveOrder({
+        ...opts,
+        restaurantId,
+      });
+
+      // nếu server trả orderCode thì sync lại currentOrderCode (không đụng tableCode)
+      const savedOrderCode =
+        res?.data?.orderCode || res?.data?.order?.orderCode;
+      if (res?.success && savedOrderCode) {
+        setCurrentOrderCode(savedOrderCode);
+      }
+
+      // nếu lưu xong (thành công) và bạn muốn clear draft FE:
+      // (mình KHÔNG auto clear ở đây để tránh mất draft khi BE chưa hoàn thiện)
+      // clearDraftStorage();
+
       return res;
     },
-    [rawSaveOrder, restaurantId, currentTable, setTableStatus]
+    [
+      rawSaveOrder,
+      restaurantId,
+      currentOrder,
+      currentOrderType,
+      currentTable?.code,
+      shippingInfo?.address,
+      setCurrentOrderCode,
+    ]
   );
 
   const value = useMemo(
     () => ({
       restaurantId,
+
       floors,
       floorsLoading,
       floorsError,
@@ -425,8 +559,11 @@ export default function PosProvider({
       getLevelFromId,
       activeFloorId,
       setActiveFloorId,
+
       tables,
       refetchTables,
+      fetchTableByCode,
+
       tableSearch,
       setTableSearch,
       statusFilter,
@@ -434,21 +571,32 @@ export default function PosProvider({
       typeFilter,
       setTypeFilter,
       setTableStatus,
+      mergeTables,
+      splitTables,
+
       currentFloor,
       setCurrentFloor,
+
       currentTable,
       setCurrentTable,
+
       currentOrderType,
       setCurrentOrderType,
+
+      // ✅ expose orderCode
+      currentOrderCode,
+      setCurrentOrderCode,
+
       currentOrder,
       setCurrentOrder,
+
       tableOrders,
       setTableOrders,
+
       selectTableForOrder,
       startDeliveryOrder,
       startTakeawayOrder,
 
-      // 🔹 Shipping & customer cho off-premise
       shippingInfo,
       setShippingInfo,
       deliveryCustomer,
@@ -457,14 +605,18 @@ export default function PosProvider({
       addToOrder,
       updateItemQty,
       removeItem,
-      saveOrder,
+
+      saveOrder: saveOrderSafe,
       clearOrder: clearAll || (() => setCurrentOrder([])),
+
       orderNote,
       setOrderNote,
       updateOrderCustomerByCode,
+
       fetchOrderByTable,
       fetchOrderById,
       orderById,
+
       menuItems,
       setMenuItems,
       currentCategory,
@@ -472,18 +624,29 @@ export default function PosProvider({
       searchTerm,
       setSearchTerm,
       filteredMenu,
+
       paymentMethod,
       setPaymentMethod,
       printers,
       setPrinters,
+      selectedPrintType,
+      setSelectedPrintType,
+      printQueue,
+      setPrintQueue,
+      selectedPrinter,
+      setSelectedPrinter,
+
       finalTotals: totals,
       timeSlotOptions,
       selectedTimeSlot,
       setSelectedTimeSlot,
 
-      // Payment helpers (dine-in)
       preparePayment,
       checkoutOrder,
+
+      // FE helpers
+      hasNewDraftItems,
+      clearDraftStorage,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -496,44 +659,91 @@ export default function PosProvider({
       getIdFromLevel,
       getLevelFromId,
       activeFloorId,
+      setActiveFloorId,
+
       tables,
       refetchTables,
+      fetchTableByCode,
+
       tableSearch,
+      setTableSearch,
       statusFilter,
+      setStatusFilter,
       typeFilter,
+      setTypeFilter,
       setTableStatus,
+      mergeTables,
+      splitTables,
+
       currentFloor,
+      setCurrentFloor,
       currentTable,
+      setCurrentTable,
       currentOrderType,
+      setCurrentOrderType,
+
+      currentOrderCode,
+      setCurrentOrderCode,
+
       currentOrder,
+      setCurrentOrder,
+
       tableOrders,
+      setTableOrders,
+
       selectTableForOrder,
       startDeliveryOrder,
       startTakeawayOrder,
+
       shippingInfo,
+      setShippingInfo,
       deliveryCustomer,
+      setDeliveryCustomer,
+
       addToOrder,
       updateItemQty,
       removeItem,
-      saveOrder,
+
+      saveOrderSafe,
       clearAll,
+
       orderNote,
       setOrderNote,
       updateOrderCustomerByCode,
+
       fetchOrderByTable,
       fetchOrderById,
       orderById,
+
       menuItems,
+      setMenuItems,
       currentCategory,
+      setCurrentCategory,
       searchTerm,
+      setSearchTerm,
       filteredMenu,
+
       paymentMethod,
+      setPaymentMethod,
       printers,
+      setPrinters,
+      selectedPrintType,
+      setSelectedPrintType,
+      printQueue,
+      setPrintQueue,
+      selectedPrinter,
+      setSelectedPrinter,
+
       totals,
       timeSlotOptions,
       selectedTimeSlot,
+      setSelectedTimeSlot,
+
       preparePayment,
       checkoutOrder,
+
+      hasNewDraftItems,
+      clearDraftStorage,
     ]
   );
 

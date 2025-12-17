@@ -1,4 +1,4 @@
-// src/createServer.js
+// src/server/createServer.js
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
@@ -7,13 +7,12 @@ import rateLimit from "@fastify/rate-limit";
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import process from "process";
 import { Server as SocketIOServer } from "socket.io";
-import cron from "node-cron";
-
 import typeDefs from "../../graphql/schema/index.js";
 import resolvers from "../../graphql/resolvers/index.js";
 import buildContext from "../../graphql/context.js";
 import uploadRoutes from "./plugins/upload.route.js";
 import { createLoaders } from "../../graphql/loaders/index.js";
+import cron from "node-cron";
 import { autoCancelExpiredReservations } from "../services/reservationAutoCancel.service.js";
 
 export async function createServer() {
@@ -22,30 +21,16 @@ export async function createServer() {
     trustProxy: true,
   });
 
-  /* ─────────────────────────────────
-   * CORS
-   * ───────────────────────────────── */
-  const corsOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
   await app.register(cors, {
-    origin: corsOrigins,
+    origin: (process.env.CORS_ORIGINS || "http://localhost:5173")
+      .split(",")
+      .map((s) => s.trim()),
     credentials: true,
     exposedHeaders: ["Content-Disposition"],
   });
 
-  /* ─────────────────────────────────
-   * Helmet
-   * ───────────────────────────────── */
-  await app.register(helmet, {
-    contentSecurityPolicy: false,
-  });
+  await app.register(helmet, { contentSecurityPolicy: false });
 
-  /* ─────────────────────────────────
-   * Rate limit
-   * ───────────────────────────────── */
   const RL_GLOBAL_MAX = Number(process.env.RL_GLOBAL_MAX || 200);
   const RL_GLOBAL_WINDOW = process.env.RL_GLOBAL_WINDOW || "1 minute";
 
@@ -62,16 +47,13 @@ export async function createServer() {
     },
   });
 
-  /* ─────────────────────────────────
-   * GraphQL (Mercurius)
-   * ───────────────────────────────── */
   const schema = makeExecutableSchema({ typeDefs, resolvers });
 
   await app.register(mercurius, {
     schema,
     graphiql: process.env.NODE_ENV !== "production",
     ide: process.env.NODE_ENV !== "production",
-    subscription: false, // dùng Socket.IO
+    subscription: false,
     context: async (request, reply) => {
       const baseContext = await buildContext(request, reply);
       return {
@@ -82,46 +64,38 @@ export async function createServer() {
     },
   });
 
-  /* ─────────────────────────────────
-   * REST routes
-   * ───────────────────────────────── */
   await app.register(uploadRoutes, { prefix: "/api" });
 
-  // ✅ Reverse geocode: lat/lng → địa chỉ
-  app.get("/api/reverse-geocode", async (request, reply) => {
-    const { lat, lng } = request.query || {};
-    const latNum = Number(lat);
-    const lngNum = Number(lng);
+  // ===== REVERSE GEOCODE API =====
+  app.get("/api/reverse-geocode", async (req, reply) => {
+    const { lat, lng } = req.query || {};
 
-    if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+    if (!lat || !lng) {
       return reply.code(400).send({
         ok: false,
-        message: "Thiếu hoặc sai định dạng lat / lng",
+        message: "Thiếu tham số lat / lng",
       });
     }
 
-    try {
-      // Sử dụng Nominatim (OpenStreetMap) – free
-      const url = new URL("https://nominatim.openstreetmap.org/reverse");
-      url.searchParams.set("format", "jsonv2");
-      url.searchParams.set("lat", String(latNum));
-      url.searchParams.set("lon", String(lngNum));
-      url.searchParams.set("addressdetails", "1");
-      url.searchParams.set("accept-language", "vi"); // ưu tiên tiếng Việt
+    const url = new URL("https://nominatim.openstreetmap.org/reverse");
+    url.searchParams.set("format", "jsonv2");
+    url.searchParams.set("lat", String(lat));
+    url.searchParams.set("lon", String(lng));
+    url.searchParams.set("addressdetails", "1");
+    url.searchParams.set("accept-language", "vi");
 
+    try {
       const res = await fetch(url.toString(), {
         headers: {
-          "User-Agent":
-            process.env.APP_USER_AGENT ||
-            "FoodHub-POS/1.0 (reverse-geocode; contact: admin@example.com)",
+          // BẮT BUỘC phải có User-Agent khi gọi Nominatim
+          "User-Agent": "FoodHubPOS/1.0 (your-email@example.com)",
         },
       });
 
       if (!res.ok) {
-        const txt = await res.text();
-        request.log.error(
-          { status: res.status, body: txt },
-          "[ReverseGeocode] External service error"
+        req.log.error(
+          { status: res.status },
+          "Nominatim HTTP error khi reverse geocode"
         );
         return reply.code(502).send({
           ok: false,
@@ -132,58 +106,39 @@ export async function createServer() {
       const data = await res.json();
       const addr = data.address || {};
 
-      // ✅ Chuẩn hoá lại các field, có gì dùng nấy:
       const cityName =
-        addr.city ||
-        addr.town ||
-        addr.village ||
-        addr.state ||
-        addr.region ||
-        "";
+        addr.city || addr.town || addr.village || addr.state || "";
       const districtName =
-        addr.county || addr.state_district || addr.suburb || "";
+        addr.county || addr.district || addr.city_district || addr.suburb || "";
       const wardName =
-        addr.suburb ||
-        addr.city_district ||
+        addr.suburb || addr.city_district || addr.quarter || addr.hamlet || "";
+      const street =
+        addr.road ||
+        addr.residential ||
         addr.neighbourhood ||
-        addr.quarter ||
+        addr.house_number ||
         "";
-
-      // Số nhà + tên đường thường nằm ở house_number, road
-      const houseNumber = addr.house_number || "";
-      const streetName = addr.road || addr.residential || "";
-
-      const street = [houseNumber, streetName].filter(Boolean).join(" ");
-
-      const full =
-        data.display_name ||
-        [street, wardName, districtName, cityName].filter(Boolean).join(", ");
 
       return reply.send({
         ok: true,
-        lat: latNum,
-        lng: lngNum,
         address: {
-          full,
-          street, // để bạn bind vào ô "Số nhà / Tên đường" nếu muốn
-          wardName,
-          districtName,
+          full: data.display_name || "",
+          street,
           cityName,
-          // Các code hành chính bạn có thể để null
-          wardCode: null,
-          districtCode: null,
-          cityCode: null,
+          districtName,
+          wardName,
         },
-        raw: data, // nếu cần debug thêm FE
       });
     } catch (err) {
-      request.log.error({ err }, "[ReverseGeocode] Internal error");
+      req.log.error({ err }, "Reverse geocode error");
       return reply.code(500).send({
         ok: false,
-        message: "Lỗi máy chủ khi xử lý địa chỉ.",
+        message: "Không truy cập được dịch vụ địa chỉ (Nominatim).",
+        error: err.message,
       });
     }
   });
+  // ===== END REVERSE GEOCODE API =====
 
   app.get("/health", async () => ({ ok: true, ts: Date.now() }));
 
@@ -197,12 +152,11 @@ export async function createServer() {
     });
   });
 
-  /* ─────────────────────────────────
-   * Socket.IO
-   * ───────────────────────────────── */
   const io = new SocketIOServer(app.server, {
     cors: {
-      origin: corsOrigins,
+      origin: (process.env.CORS_ORIGINS || "http://localhost:5173")
+        .split(",")
+        .map((s) => s.trim()),
       methods: ["GET", "POST"],
       credentials: true,
     },
@@ -249,9 +203,6 @@ export async function createServer() {
     });
   });
 
-  /* ─────────────────────────────────
-   * Broadcast helpers
-   * ───────────────────────────────── */
   app.decorate("broadcastOrderEvent", (restaurantId, payload) => {
     if (!restaurantId || !payload) return;
     const room = `restaurant_${restaurantId}`;
@@ -274,9 +225,6 @@ export async function createServer() {
     );
   });
 
-  /* ─────────────────────────────────
-   * Lifecycle hooks
-   * ───────────────────────────────── */
   app.addHook("onReady", () => {
     app.log.info("✅ Server ready, routes:");
     app.printRoutes();
@@ -287,13 +235,9 @@ export async function createServer() {
     app.log.info("\n" + app.printRoutes());
   });
 
-  /* ─────────────────────────────────
-   * Cron jobs
-   * ───────────────────────────────── */
   cron.schedule("* * * * *", async () => {
     try {
       const result = await autoCancelExpiredReservations();
-
       if (result?.modifiedCount) {
         app.log.info(
           `[Reservation AutoCancel] Cancelled ${result.modifiedCount} expired reservations`

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import "./Footer.scss";
+import "../../../../styles/Homepage/Footer.scss";
 
-// Component Icon SVG đơn giản (Thay thế Emoji)
+// Component Icon SVG
 const Icon = ({ name, size = 20, className = "" }) => {
   const icons = {
     facebook: (
@@ -63,7 +63,7 @@ const Footer = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState("");
 
-  const handleNewsletterSubmit = async (e) => {
+  const handleNewsletterSubmit = (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setSubmitStatus("processing");
@@ -79,133 +79,147 @@ const Footer = () => {
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
-  const socialLinks = [
-    { icon: "facebook", href: "#" },
-    { icon: "instagram", href: "#" },
-    { icon: "twitter", href: "#" },
-    { icon: "youtube", href: "#" },
-  ];
-
-  const quickLinks = [
-    { text: "Trang chủ", href: "#" },
-    { text: "Nhà hàng", href: "#" },
-    { text: "Khuyến mãi", href: "#" },
-    { text: "Đối tác", href: "#" },
-  ];
-
-  const supportLinks = [
-    { text: "Trung tâm trợ giúp", href: "#" },
-    { text: "Chính sách bảo mật", href: "#" },
-    { text: "Điều khoản sử dụng", href: "#" },
-    { text: "Liên hệ", href: "#" },
-  ];
-
   return (
     <footer className="footer-saas">
-      <div className="footer-glow"></div>
+      {/* SÓNG ĐỈNH: Kết nối với phần HowItWorks/RestaurantGrid (màu nền trước đó là trắng hoặc kem) */}
+      <div className="footer-wave-top">
+        <svg
+          viewBox="0 0 1440 100"
+          xmlns="http://www.w3.org/2000/svg"
+          preserveAspectRatio="none"
+          className="wave-svg"
+        >
+          {/* Màu fill này phải là màu nền của Footer (#1a202c) */}
+          <path
+            fill="#1a202c"
+            fillOpacity="1"
+            d="M0,32L48,37.3C96,43,192,53,288,58.7C384,64,480,64,576,58.7C672,53,768,43,864,42.7C960,43,1056,53,1152,58.7C1248,64,1344,64,1392,64L1440,64L1440,100L1392,100C1344,100,1248,100,1152,100C1056,100,960,100,864,100C768,100,672,100,576,100C480,100,384,100,288,100C192,100,96,100,48,100L0,100Z"
+          ></path>
+        </svg>
+      </div>
 
       <div className="footer-container">
-        {/* Top Section: Brand & Newsletter */}
+        {/* TOP SECTION */}
         <div className="footer-top">
-          <div className="footer-brand-col">
+          {/* Cột 1: Brand Info */}
+          <div className="footer-col brand-col">
             <div className="brand-logo">
-              <div className="logo-symbol">FH</div>
-              <span className="logo-text">FoodieHub</span>
+              <span className="logo-icon">🍽️</span>
+              <span className="logo-text">FoodHub</span>
             </div>
             <p className="brand-desc">
-              Hệ thống đặt bàn và trải nghiệm ẩm thực hàng đầu.
+              Trải nghiệm đặt bàn và gọi món đẳng cấp. Kết nối thực khách với
+              những nhà hàng hàng đầu.
             </p>
             <div className="social-links">
-              {socialLinks.map((s, i) => (
-                <a key={i} href={s.href} className="social-link">
-                  <Icon name={s.icon} size={18} />
+              {["facebook", "instagram", "twitter", "youtube"].map((icon) => (
+                <a
+                  key={icon}
+                  href="#"
+                  className="social-link"
+                  aria-label={icon}
+                >
+                  <Icon name={icon} size={18} />
                 </a>
               ))}
             </div>
           </div>
 
-          {/* Links Columns */}
-          <div className="footer-links-group">
-            <div className="link-col">
-              <h4>Khám phá</h4>
-              <ul>
-                {quickLinks.map((link, i) => (
-                  <li key={i}>
-                    <a href={link.href}>{link.text}</a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="link-col">
-              <h4>Hỗ trợ</h4>
-              <ul>
-                {supportLinks.map((link, i) => (
-                  <li key={i}>
-                    <a href={link.href}>{link.text}</a>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {/* Cột 2: Khám phá */}
+          <div className="footer-col links-col">
+            <h4>Khám phá</h4>
+            <ul>
+              <li>
+                <a href="#">Về chúng tôi</a>
+              </li>
+              <li>
+                <a href="#">Blog ẩm thực</a>
+              </li>
+              <li>
+                <a href="#">Tuyển dụng</a>
+              </li>
+              <li>
+                <a href="#">Đối tác nhà hàng</a>
+              </li>
+            </ul>
           </div>
 
-          {/* Newsletter & App - Right Side */}
-          <div className="footer-action-col">
-            <div className="newsletter-box">
-              <h4>Đăng ký nhận tin</h4>
-              <p>Nhận ưu đãi độc quyền hàng tuần.</p>
-              <form
-                onSubmit={handleNewsletterSubmit}
-                className="newsletter-form"
-              >
-                <div className="input-wrapper">
-                  <Icon name="mail" size={16} className="input-icon" />
-                  <input
-                    type="email"
-                    placeholder="Email của bạn..."
-                    value={newsletterEmail}
-                    onChange={(e) => setNewsletterEmail(e.target.value)}
-                    disabled={isSubmitting}
-                  />
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className={submitStatus}
-                  >
-                    {submitStatus === "processing" ? (
-                      <Icon name="loader" className="spin" />
-                    ) : submitStatus === "success" ? (
-                      <Icon name="check" />
-                    ) : (
-                      <Icon name="send" />
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
+          {/* Cột 3: Hỗ trợ */}
+          <div className="footer-col links-col">
+            <h4>Hỗ trợ</h4>
+            <ul>
+              <li>
+                <a href="#">Trung tâm trợ giúp</a>
+              </li>
+              <li>
+                <a href="#">Chính sách bảo mật</a>
+              </li>
+              <li>
+                <a href="#">Điều khoản sử dụng</a>
+              </li>
+              <li>
+                <a href="#">Liên hệ</a>
+              </li>
+            </ul>
+          </div>
 
-            <div className="app-download-minimal">
-              <span>Tải ứng dụng</span>
-              <div className="store-btns">
+          {/* Cột 4: Newsletter & App */}
+          <div className="footer-col newsletter-col">
+            <h4>Đăng ký nhận tin</h4>
+            <p className="newsletter-text">
+              Nhận mã giảm giá và ưu đãi độc quyền hàng tuần.
+            </p>
+
+            <form onSubmit={handleNewsletterSubmit} className="newsletter-form">
+              <div className="input-group">
+                <Icon name="mail" size={16} className="input-icon" />
+                <input
+                  type="email"
+                  placeholder="Email của bạn..."
+                  value={newsletterEmail}
+                  onChange={(e) => setNewsletterEmail(e.target.value)}
+                  disabled={isSubmitting}
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={submitStatus}
+                >
+                  {submitStatus === "processing" ? (
+                    <Icon name="loader" className="spin" />
+                  ) : submitStatus === "success" ? (
+                    <Icon name="check" />
+                  ) : (
+                    <Icon name="send" />
+                  )}
+                </button>
+              </div>
+            </form>
+
+            <div className="app-download">
+              <span className="app-label">Tải ứng dụng</span>
+              <div className="store-buttons">
                 <a href="#" className="store-btn">
-                  <Icon name="apple" size={18} /> App Store
+                  <Icon name="apple" size={20} /> App Store
                 </a>
                 <a href="#" className="store-btn">
-                  <Icon name="android" size={18} /> Google Play
+                  <Icon name="android" size={20} /> Google Play
                 </a>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="footer-divider" />
+        <div className="footer-divider"></div>
 
-        {/* Bottom Section */}
+        {/* BOTTOM SECTION */}
         <div className="footer-bottom">
           <div className="copyright">
-            © 2024 FoodieHub Inc. All rights reserved.
+            © 2024 FoodHub Inc. All rights reserved.
           </div>
-          <div className="bottom-actions">
-            <div className="contact-mini">
+
+          <div className="bottom-right">
+            <div className="contact-info">
               <span>
                 <Icon name="mapPin" size={14} /> TP. Hồ Chí Minh
               </span>
@@ -213,7 +227,11 @@ const Footer = () => {
                 <Icon name="phone" size={14} /> 1900 1234
               </span>
             </div>
-            <button onClick={scrollToTop} className="scroll-top-btn">
+            <button
+              onClick={scrollToTop}
+              className="scroll-top-btn"
+              aria-label="Lên đầu trang"
+            >
               <Icon name="arrowUp" size={16} />
             </button>
           </div>

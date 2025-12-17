@@ -1,18 +1,16 @@
-/* src/components/Dashboard_Manager/POS/components/panels/RightPanel.module.scss */
+$orange-primary: #f97316;
+$orange-dark: #c2410c;
+$orange-light: #fff7ed;
+$orange-text: #9a3412;
+$orange-warning: #f59e0b;
 
-/* --- Bảng màu Cam chủ đạo cho Nhà hàng --- */
-$orange-primary: #f97316; /* Cam rực rỡ (cho nút chính, điểm nhấn) */
-$orange-dark: #c2410c; /* Cam đậm (cho text quan trọng) */
-$orange-light: #fff7ed; /* Cam rất nhạt (cho nền badge) */
-$orange-text: #9a3412; /* Màu chữ trên nền cam nhạt */
-$orange-warning: #f59e0b; /* Vàng cam (cho cảnh báo/ghi chú - giữ nguyên) */
-
-/* --- Màu trạng thái khác --- */
-$green-success: #22c55e; /* Giữ lại cho trạng thái thành công/đã gửi */
+$green-success: #22c55e;
 $green-bg-light: #dcfce7;
 $green-text-dark: #166534;
+
 $red-danger: #ef4444;
 $red-bg-light: #fee2e2;
+
 $gray-slate-50: #f8fafc;
 $gray-slate-100: #f1f5f9;
 $gray-slate-200: #e2e8f0;
@@ -22,7 +20,6 @@ $gray-slate-700: #334155;
 $gray-slate-800: #1e293b;
 $gray-slate-900: #0f172a;
 
-/* ============== WRAPPER ============== */
 .wrapper {
   display: flex;
   flex-direction: column;
@@ -36,7 +33,7 @@ $gray-slate-900: #0f172a;
 .pulse {
   animation: posSaved 0.6s ease-out;
 }
-/* Đổi hiệu ứng pulse sang màu cam */
+
 @keyframes posSaved {
   0% {
     box-shadow: inset 0 0 0 0px $orange-primary;
@@ -49,7 +46,6 @@ $gray-slate-900: #0f172a;
   }
 }
 
-/* ============== HEADER ============== */
 .header {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid $gray-slate-100;
@@ -61,11 +57,18 @@ $gray-slate-900: #0f172a;
   position: relative;
 }
 
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .tableName {
   font-weight: 700;
   font-size: 1rem;
   color: $gray-slate-900;
 }
+
 .tableMeta {
   font-size: 0.75rem;
   color: $gray-slate-500;
@@ -73,7 +76,7 @@ $gray-slate-900: #0f172a;
   gap: 6px;
   align-items: center;
 }
-/* Giữ màu xanh cho trạng thái bàn (Available) vì nó là quy chuẩn */
+
 .statusBadge {
   background: $green-bg-light;
   color: $green-text-dark;
@@ -84,7 +87,24 @@ $gray-slate-900: #0f172a;
   text-transform: uppercase;
 }
 
-/* --- DROPDOWN MENU --- */
+.draftLegend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  color: $gray-slate-500;
+}
+
+.legendIcon {
+  color: $orange-primary;
+  display: flex;
+  align-items: center;
+}
+
+.legendText {
+  white-space: nowrap;
+}
+
 .headerRight {
   display: flex;
   align-items: center;
@@ -168,7 +188,6 @@ $gray-slate-900: #0f172a;
   }
 }
 
-/* ============== BODY ============== */
 .body {
   flex: 1;
   overflow-y: auto;
@@ -187,6 +206,7 @@ $gray-slate-900: #0f172a;
   margin-bottom: 0.5rem;
   margin-left: 2px;
 }
+
 .dividerLabel {
   font-size: 0.7rem;
   font-weight: 700;
@@ -197,13 +217,13 @@ $gray-slate-900: #0f172a;
   padding-top: 0.5rem;
   text-align: center;
 }
+
 .itemsList {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-/* COMPACT ITEM CARDS */
 .cardNew,
 .cardExisting {
   background: #fff;
@@ -216,29 +236,59 @@ $gray-slate-900: #0f172a;
   transition: all 0.1s;
   cursor: pointer;
   position: relative;
+
   &:hover {
     border-color: $gray-slate-300;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
   }
 }
 
-/* Món mới: Đổi viền xanh dương sang Cam chủ đạo */
 .cardNew {
   border-left: 3px solid $orange-primary;
 }
-/* Món đã gửi: Giữ viền xanh lá để phân biệt trạng thái */
+
 .cardExisting {
   border-left: 3px solid $green-success;
   background: #fafafa;
 }
 
-/* Row 1 */
+@keyframes draftPop {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cardNewAnim {
+  animation: draftPop 0.25s ease-out;
+}
+
+.draftBadge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba($orange-primary, 0.12);
+  color: $orange-primary;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+
 .rowTop {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
 }
+
 .cardName {
   font-weight: 600;
   font-size: 0.9rem;
@@ -250,16 +300,18 @@ $gray-slate-900: #0f172a;
   gap: 4px;
   flex-wrap: wrap;
 }
-/* Icon ảnh xác nhận: Đổi sang màu Cam */
+
 .iconProof {
   color: $orange-primary;
   display: flex;
   align-items: center;
   cursor: help;
+
   svg {
     stroke-width: 2.5;
   }
 }
+
 .timeTag {
   font-size: 0.65rem;
   color: #94a3b8;
@@ -268,6 +320,7 @@ $gray-slate-900: #0f172a;
   padding: 1px 5px;
   border-radius: 4px;
 }
+
 .btnDelete {
   width: 20px;
   height: 20px;
@@ -281,29 +334,40 @@ $gray-slate-900: #0f172a;
   cursor: pointer;
   padding: 0;
   margin-top: -2px;
+
   &:hover {
     background: $red-bg-light;
     color: $red-danger;
   }
 }
-.btnDeleteSaved {
-  @extend .btnDelete;
+
+.btnDeleteSavedDisabled {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: $gray-slate-300;
+  border-radius: 4px;
+  cursor: not-allowed;
+  padding: 0;
   margin-left: 6px;
-  margin-top: 0;
-  opacity: 0;
-}
-.cardExisting:hover .btnDeleteSaved {
-  opacity: 1;
+  opacity: 0.35;
+
+  &:disabled {
+    opacity: 0.35;
+  }
 }
 
-/* Row Note */
 .rowNote {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
   margin-top: -2px;
 }
-/* Tag phương thức (VD: Mang về): Đổi từ xanh ngọc sang tông Cam nhạt */
+
 .tagMethod {
   font-size: 0.65rem;
   color: $orange-text;
@@ -311,10 +375,11 @@ $gray-slate-900: #0f172a;
   padding: 0 6px;
   border-radius: 4px;
 }
+
 .textNote,
 .textNoteSaved {
   font-size: 0.7rem;
-  color: $orange-warning; /* Giữ màu vàng cam cho ghi chú */
+  color: $orange-warning;
   font-style: italic;
   white-space: nowrap;
   overflow: hidden;
@@ -322,19 +387,20 @@ $gray-slate-900: #0f172a;
   max-width: 100%;
 }
 
-/* Row 2 */
 .rowBottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 2px;
 }
+
 .priceSingle {
   font-size: 0.8rem;
   color: $gray-slate-500;
   font-weight: 500;
   width: 70px;
 }
+
 .cardTotal {
   font-weight: 700;
   color: $gray-slate-900;
@@ -343,7 +409,6 @@ $gray-slate-900: #0f172a;
   flex: 1;
 }
 
-/* Qty Buttons */
 .qtyWrapper {
   display: flex;
   align-items: center;
@@ -351,13 +416,13 @@ $gray-slate-900: #0f172a;
   border-radius: 6px;
   padding: 1px;
 }
-/* Nút tăng giảm số lượng: Đổi sang tông Cam */
+
 .qtyBtn {
   width: 24px;
   height: 24px;
   border: none;
   background: #fff;
-  color: $orange-primary; /* Màu chữ cam */
+  color: $orange-primary;
   font-size: 1rem;
   font-weight: bold;
   border-radius: 4px;
@@ -366,11 +431,13 @@ $gray-slate-900: #0f172a;
   align-items: center;
   justify-content: center;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+
   &:hover {
-    background: $orange-primary; /* Nền hover cam */
+    background: $orange-primary;
     color: #fff;
   }
 }
+
 .qtyInput {
   width: 28px;
   border: none;
@@ -382,6 +449,7 @@ $gray-slate-900: #0f172a;
   outline: none;
   margin: 0 1px;
 }
+
 .qtyStatic {
   font-size: 0.85rem;
   font-weight: 700;
@@ -398,16 +466,17 @@ $gray-slate-900: #0f172a;
   padding: 2rem 0;
 }
 
-/* ============== FOOTER ============== */
 .footer {
   padding: 0.75rem;
   background: #fff;
   border-top: 1px solid $gray-slate-200;
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.03);
 }
+
 .summary {
   margin-bottom: 0.75rem;
 }
+
 .row {
   display: flex;
   justify-content: space-between;
@@ -415,7 +484,7 @@ $gray-slate-900: #0f172a;
   color: $gray-slate-700;
   margin-bottom: 4px;
 }
-/* Tổng cộng: Đổi màu nhấn từ xanh dương sang Cam đậm */
+
 .grand {
   font-size: 1rem;
   font-weight: 700;
@@ -425,6 +494,7 @@ $gray-slate-900: #0f172a;
   margin-top: 6px;
   margin-bottom: 0;
 }
+
 .breakdownToggle {
   width: 100%;
   font-size: 0.7rem;
@@ -435,10 +505,12 @@ $gray-slate-900: #0f172a;
   text-align: right;
   padding: 0;
   margin-bottom: 4px;
+
   &:hover {
     text-decoration: underline;
   }
 }
+
 .breakdown {
   background: $gray-slate-50;
   padding: 6px 8px;
@@ -446,13 +518,21 @@ $gray-slate-900: #0f172a;
   margin-bottom: 6px;
   font-size: 0.75rem;
 }
+
 .breakdownRow {
   display: flex;
   justify-content: space-between;
   margin-bottom: 2px;
 }
+
 .neg {
   color: $red-danger;
+}
+
+.hr {
+  height: 1px;
+  background: $gray-slate-200;
+  margin: 6px 0;
 }
 
 .actionsGrid {
@@ -460,6 +540,7 @@ $gray-slate-900: #0f172a;
   grid-template-columns: 1fr 1fr 1.5fr 1fr;
   gap: 6px;
 }
+
 .btn {
   padding: 8px 0;
   border-radius: 6px;
@@ -469,31 +550,32 @@ $gray-slate-900: #0f172a;
   cursor: pointer;
   color: #fff;
   transition: background-color 0.2s;
+
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 }
 
-/* Nút Primary (Lưu): Đổi sang màu Cam chủ đạo */
 .primary {
   background: $orange-primary;
+
   &:hover:not(:disabled) {
     background: darken($orange-primary, 5%);
   }
 }
 
-/* Nút Success (Thanh toán): Giữ màu xanh lá để biểu thị hoàn thành/thanh toán */
 .success {
   background: $green-success;
+
   &:hover:not(:disabled) {
     background: darken($green-success, 5%);
   }
 }
 
-/* Nút Warning (In): Giữ màu vàng cam */
 .warning {
   background: $orange-warning;
+
   &:hover:not(:disabled) {
     background: darken($orange-warning, 5%);
   }
@@ -503,8 +585,83 @@ $gray-slate-900: #0f172a;
   background: $gray-slate-100;
   color: $gray-slate-500;
   border: 1px solid $gray-slate-200;
+
   &:hover:not(:disabled) {
     background: $gray-slate-200;
     color: $gray-slate-700;
   }
+}
+/* ===== FIX: draft badge + delete icon overlap ===== */
+
+/* card để có không gian cho icon góc */
+.cardNew,
+.cardExisting {
+  padding-top: 10px; // chừa chỗ phía trên cho icon tuyệt đối
+}
+
+/* Row top chừa khoảng bên phải để tên không bị icon đè */
+.rowTop {
+  padding-right: 34px; // chừa chỗ cho nút xoá (absolute)
+}
+
+/* Nút xoá luôn cố định góc phải trên */
+.btnDelete {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  margin-top: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  z-index: 3;
+
+  color: $gray-slate-500;
+  opacity: 0.85;
+
+  &:hover {
+    background: $red-bg-light;
+    color: $red-danger;
+    opacity: 1;
+  }
+}
+
+/* Badge nháp lệch sang trái để không trùng nút xoá */
+.draftBadge {
+  position: absolute;
+  top: 6px;
+
+  /* ✅ đổi từ right:6px -> right:34px để né nút xoá */
+  right: 34px;
+
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+
+  background: rgba($orange-primary, 0.12);
+  border: 1px solid rgba($orange-primary, 0.25);
+  color: $orange-primary;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 2;
+  pointer-events: none; // tránh “dính” click (nếu muốn hover tooltip thì bỏ dòng này)
+}
+
+/* (Tuỳ chọn) hover card thì icon rõ hơn */
+.cardNew:hover .btnDelete,
+.cardExisting:hover .btnDelete {
+  opacity: 1;
+}
+
+/* (Tuỳ chọn) Tên món không bị đè khi dài */
+.cardName {
+  padding-right: 8px;
+  min-width: 0;
+
+  /* nếu muốn 1 dòng gọn: */
+  // white-space: nowrap;
+  // overflow: hidden;
+  // text-overflow: ellipsis;
 }

@@ -1,128 +1,111 @@
-/* --- Brand Constants --- */
-$brand-orange: #f97316;
-$brand-orange-dark: #ea580c;
-$brand-orange-soft: rgba(249, 115, 22, 0.08);
+// --- VARIABLES ---
+$primary: #ff6600;
+$primary-light: #fff5eb;
+$primary-hover: #e65c00;
+$text-main: #1a202c;
+$text-sub: #64748b;
+$bg-body: #f8fafc;
+$white: #ffffff;
+$border: #e2e8f0;
+$radius: 12px;
 
-.orders-container {
-  min-height: 100dvh;
-  padding: clamp(16px, 2.4vw, 28px);
-  background: radial-gradient(
-      1200px 600px at 10% -5%,
-      rgba(249, 115, 22, 0.05),
-      transparent 60%
-    ),
-    radial-gradient(
-      1000px 600px at 110% 10%,
-      rgba(245, 158, 11, 0.03),
-      transparent 60%
-    ),
-    #ffffff;
+.orders-page {
+  min-height: 100vh;
+  background-color: $bg-body;
+  padding: 32px 20px;
+  padding-top: 10vh;
+  max-width: 1440px; // Gom gọn nội dung lại cho đẹp
+  margin: 0 auto;
+  font-family: "Inter", sans-serif;
+
+  @media (max-width: 768px) {
+    padding: 20px 16px;
+  }
 }
 
-/* --- Tab Lọc (Khắc phục lỗi màu xanh) --- */
-.filter-tabs {
+/* HEADER */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+
+  .title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: $text-main;
+    margin: 0;
+  }
+
+  .btn-create {
+    padding: 10px 20px;
+    background: $primary;
+    color: $white;
+    border: none;
+    border-radius: 99px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    box-shadow: 0 4px 10px rgba(255, 102, 0, 0.2);
+    &:hover {
+      background: $primary-hover;
+      transform: translateY(-2px);
+    }
+  }
+}
+
+/* TABS FILTER */
+.tabs-container {
   display: flex;
   gap: 8px;
-  padding: 6px;
-  border-radius: 999px;
-  background: #f1f5f9; // Nền trung tính
-  overflow: auto;
-  margin-bottom: 16px;
-  scrollbar-width: none;
+  margin-bottom: 24px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 
-  .filter-tab {
-    border: 0;
-    background: transparent;
-    padding: 10px 16px;
-    border-radius: 999px;
-    font-weight: 700;
-    color: #64748b;
+  .tab-btn {
+    padding: 8px 16px;
+    background: $white;
+    border: 1px solid $border;
+    border-radius: 99px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: $text-sub;
+    cursor: pointer;
+    transition: 0.2s;
+    white-space: nowrap;
     display: flex;
     align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    gap: 6px;
 
     &:hover {
-      color: $brand-orange;
+      border-color: $primary;
+      color: $primary;
     }
 
     &.active {
-      color: #fff !important;
-      background: linear-gradient(
-        180deg,
-        $brand-orange,
-        $brand-orange-dark
-      ) !important;
-      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
-
-      /* Icon cũng phải chuyển trắng khi tab active */
-      span,
-      .tab-icon {
-        color: white !important;
-      }
+      background: $primary;
+      color: $white;
+      border-color: $primary;
+      box-shadow: 0 4px 12px rgba(255, 102, 0, 0.15);
     }
   }
 }
 
-/* --- Header & Title --- */
-.page-header {
-  .page-title {
-    font-weight: 800;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-
-    &:before {
-      content: "";
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: $brand-orange;
-      box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.15);
-    }
-  }
-
-  .btn-primary {
-    background: linear-gradient(180deg, $brand-orange, $brand-orange-dark);
-    box-shadow: 0 4px 10px rgba(249, 115, 22, 0.2);
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 99px;
-    font-weight: 700;
-  }
+/* LIST GRID */
+.orders-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-/* --- Hiệu ứng Đơn hàng lịch sử (Is-Muted) --- */
-#ordersList {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
-  gap: 18px;
-
-  .order-item-wrapper {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-    &.is-muted {
-      opacity: 0.6;
-      filter: grayscale(0.9);
-      transform: scale(0.98);
-
-      &:hover {
-        opacity: 0.95;
-        filter: grayscale(0.2);
-        transform: scale(1);
-      }
-
-      /* Tắt nháy Pulse của đơn cũ */
-      :global(.status-chip) {
-        animation: none !important;
-        box-shadow: none !important;
-      }
-    }
-
-    &:not(.is-muted) {
-      box-shadow: 0 8px 20px -6px rgba(249, 115, 22, 0.15);
-    }
-  }
+.empty-state {
+  text-align: center;
+  padding: 60px;
+  color: $text-sub;
+  background: $white;
+  border-radius: $radius;
+  border: 1px dashed $border;
 }

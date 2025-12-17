@@ -6,10 +6,11 @@ import {
   Navigate,
   useLocation,
   useNavigate,
+  Outlet, // ✅ Thêm Outlet
 } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
-// ✅ Apollo Client (gọn, đúng package)
+// ✅ Apollo Client
 import { gql, useQuery } from "@apollo/client";
 
 // ==== Public Components ====
@@ -26,25 +27,28 @@ import TableBooking from "../components/Customer/TableBooking/TableBooking";
 import OrdersPage from "../components/Customer/OrdersManagement/OrdersPage";
 import ProfilePage from "../components/Customer/Profile/ProfilePage";
 import OrderTrackingPage from "../components/Customer/OrderTracking/OrderTrackingPage";
+import RestaurantMenu from "@/components/Customer/RestaurantMenu/RestaurantMenu";
+import OwnerProfilePage from "../components/Customer/OwnerProfilePage/OwnerProfilePage.jsx";
+import ForYou from "@/components/Customer/ForYou/ForYou";
+import SearchPage from "../pages/SearchPage.jsx";
+import ContactPage from "@/pages/ContactPage.jsx";
 // ==== Manager/Admin ====
 import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
-
 import ManagerLayout from "../layouts/ManagerLayout";
+import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayout";
+import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDesigner";
 
 // ==== Staff ====
 import StaffOrder from "../components/StaffOrder";
 
+// ==== Layouts ====
 import MainLayout from "../layouts/MainLayout";
-import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayout";
 import { useNotification } from "@/hooks/useNotification";
-import RestaurantMenu from "@/components/Customer/RestaurantMenu/RestaurantMenu";
+import VoucherPage from "@/components/Customer/VoucherManagement/VoucherPage";
+import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
+import AddressPage from "@/components/Customer/AddressPage/AddressPage";
+import HelpPage from "@/components/Customer/HelpPage/HelpPage";
 
-import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDesigner";
-
-// ==== Search / Owner pages ====
-import SearchPage from "../pages/SearchPage.jsx";
-import OwnerProfilePage from "../components/Customer/OwnerProfilePage/OwnerProfilePage.jsx";
-import ForYou from "@/components/Customer/ForYou/ForYou";
 // =========================
 // 🔐 GraphQL Query: me
 // =========================
@@ -67,7 +71,6 @@ const ME_QUERY = gql`
           id
           name
         }
-
         createdAt
         updatedAt
       }
@@ -77,7 +80,7 @@ const ME_QUERY = gql`
 `;
 
 // =========================
-// 🔒 Auth Hook (GraphQL version)
+// 🔒 Auth Hook
 // =========================
 const useAuth = () => {
   const navigate = useNavigate();
@@ -90,6 +93,7 @@ const useAuth = () => {
     skip: !token,
     fetchPolicy: "network-only",
   });
+
   useEffect(() => {
     if (error) {
       showNotification(error.message, "error");
@@ -99,10 +103,10 @@ const useAuth = () => {
       navigate("/login");
     }
   }, [error, navigate, showNotification]);
+
   const role = data?.me?.roleName || null;
   const emailVerified = data?.me?.emailVerified ?? false;
 
-  // Đồng bộ token khi tab khác thay đổi
   useEffect(() => {
     const handleStorageChange = () => {
       const newToken =
@@ -116,7 +120,6 @@ const useAuth = () => {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, [token, refetch]);
 
-  // Nếu mất token -> về login
   useEffect(() => {
     if (!token) navigate("/login");
   }, [token, navigate]);
@@ -125,7 +128,7 @@ const useAuth = () => {
 };
 
 // =========================
-// 🔐 PrivateRoute ( kiểm tra emailVerified tuỳ ý)
+// 🔐 PrivateRoute
 // =========================
 const PrivateRoute = ({
   children,
@@ -150,6 +153,17 @@ const PrivateRoute = ({
 };
 
 // =========================
+// 🖼️ Wrapper Layout cho Khách Hàng
+// =========================
+const CustomerLayout = () => {
+  return (
+    <MainLayout>
+      <Outlet /> {/* Nơi các component con sẽ hiển thị */}
+    </MainLayout>
+  );
+};
+
+// =========================
 // 🌐 App Router
 // =========================
 const AppRouter = () => {
@@ -157,16 +171,161 @@ const AppRouter = () => {
   console.log("refRestaurant, restaurants", refRestaurant, restaurants);
 
   return (
-    <MainLayout>
-      <Routes>
-        {/* ===== PUBLIC ===== */}
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/verify-email" element={<VerifyEmailPending />} />
-        <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
-        <Route path="/403" element={<ForbiddenPage />} />
+    <Routes>
+      {/* =============================================
+          GROUP 1: PUBLIC & AUTH PAGES (KHÔNG Layout) 
+          =============================================
+      */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/verify-email" element={<VerifyEmailPending />} />
+      <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
+      <Route path="/403" element={<ForbiddenPage />} />
+      <Route path="/logout" element={<Navigate to="/login" replace />} />
 
-        {/* Search page */}
+      {/* =============================================
+          GROUP 2: STAFF, MANAGER, ADMIN (Layout Riêng)
+          =============================================
+      */}
+
+      {/* Staff Order */}
+      <Route
+        path="/staff/orders"
+        element={
+          <PrivateRoute allowedRoles={["staff"]} requireVerifiedEmail>
+            <StaffOrder />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Manager Dashboard (Đã có ManagerLayout bọc bên trong element) */}
+      <Route
+        path="/manager"
+        element={
+          <PrivateRoute
+            allowedRoles={["manager", "admin"]}
+            requireVerifiedEmail
+          >
+            <ManagerLayout>
+              <Dashboard />
+            </ManagerLayout>
+          </PrivateRoute>
+        }
+      />
+
+      {/* POS Layout */}
+      <Route
+        path="/manager/dashboard/POS"
+        element={
+          <PrivateRoute
+            allowedRoles={["manager", "admin"]}
+            requireVerifiedEmail
+          >
+            <POSLayout />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Floor Plan */}
+      <Route
+        path="/manager/floor-map/:restaurantId"
+        element={
+          <PrivateRoute allowedRoles={["manager", "admin"]}>
+            <FloorPlanDesigner />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Admin Dashboard */}
+      <Route
+        path="/admin/dashboard"
+        element={
+          <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
+            <Dashboard />
+          </PrivateRoute>
+        }
+      />
+
+      {/* Admin/Manager Shared Routes (Giữ nguyên không bọc MainLayout nếu chúng thuộc Dashboard) */}
+      <Route
+        path="/users"
+        element={
+          <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
+            <div>Quản Lý Người Dùng</div>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
+            <div>Cài Đặt Hệ Thống</div>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/employees"
+        element={
+          <PrivateRoute
+            allowedRoles={["admin", "manager"]}
+            requireVerifiedEmail
+          >
+            <div>Quản Lý Nhân Viên</div>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/inventory"
+        element={
+          <PrivateRoute
+            allowedRoles={["admin", "manager"]}
+            requireVerifiedEmail
+          >
+            <div>Quản Lý Kho</div>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/reservations"
+        element={
+          <PrivateRoute
+            allowedRoles={["admin", "manager"]}
+            requireVerifiedEmail
+          >
+            <div>Quản Lý Đặt Bàn</div>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/promotions"
+        element={
+          <PrivateRoute
+            allowedRoles={["admin", "manager"]}
+            requireVerifiedEmail
+          >
+            <div>Quản Lý Khuyến Mãi</div>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/analytics"
+        element={
+          <PrivateRoute
+            allowedRoles={["admin", "manager"]}
+            requireVerifiedEmail
+          >
+            <div>Phân Tích / Báo Cáo</div>
+          </PrivateRoute>
+        }
+      />
+
+      {/* =============================================
+          GROUP 3: CUSTOMER ROUTES (Được bọc bởi MainLayout)
+          =============================================
+      */}
+      <Route element={<CustomerLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/contact" element={<ContactPage />} />
+        {/* Search */}
         <Route
           path="/search"
           element={
@@ -179,7 +338,7 @@ const AppRouter = () => {
           }
         />
 
-        {/* Owner profile page */}
+        {/* Owner Profile */}
         <Route
           path="/owner/:id"
           element={
@@ -192,8 +351,10 @@ const AppRouter = () => {
           }
         />
 
-        {/* ===== CUSTOMER ===== */}
+        {/* For You */}
         <Route path="/for-you" element={<ForYou />} />
+
+        {/* Orders */}
         <Route
           path="/orders"
           element={
@@ -206,6 +367,8 @@ const AppRouter = () => {
           }
         />
         <Route path="/track-order/:orderId" element={<OrderTrackingPage />} />
+
+        {/* Restaurants */}
         <Route
           path="/restaurants"
           element={
@@ -239,138 +402,12 @@ const AppRouter = () => {
             </PrivateRoute>
           }
         />
-
-        {/* ===== STAFF ===== */}
-        <Route
-          path="/staff/orders"
-          element={
-            <PrivateRoute allowedRoles={["staff"]} requireVerifiedEmail>
-              <StaffOrder />
-            </PrivateRoute>
-          }
-        />
-
-        {/* ===== MANAGER / ADMIN ===== */}
-
-        <Route
-          path="/manager"
-          element={
-            <PrivateRoute
-              allowedRoles={["manager", "admin"]}
-              requireVerifiedEmail
-            >
-              <ManagerLayout>
-                <Dashboard />
-              </ManagerLayout>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/manager/dashboard/POS"
-          element={
-            <PrivateRoute
-              allowedRoles={["manager", "admin"]}
-              requireVerifiedEmail
-            >
-              <POSLayout />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/manager/floor-map/:restaurantId"
-          element={
-            <PrivateRoute allowedRoles={["manager", "admin"]}>
-              <FloorPlanDesigner />
-            </PrivateRoute>
-          }
-        />
-
         <Route path="/cus-menu" element={<RestaurantMenu />} />
-        {/* ===== ADMIN ===== */}
-        <Route
-          path="/admin/dashboard"
-          element={
-            <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
-              <Dashboard />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/users"
-          element={
-            <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
-              <div>Quản Lý Người Dùng</div>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
-              <div>Cài Đặt Hệ Thống</div>
-            </PrivateRoute>
-          }
-        />
-
-        {/* ===== MANAGER EXTENDED ===== */}
-        <Route
-          path="/employees"
-          element={
-            <PrivateRoute
-              allowedRoles={["admin", "manager"]}
-              requireVerifiedEmail
-            >
-              <div>Quản Lý Nhân Viên</div>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/inventory"
-          element={
-            <PrivateRoute
-              allowedRoles={["admin", "manager"]}
-              requireVerifiedEmail
-            >
-              <div>Quản Lý Kho</div>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/reservations"
-          element={
-            <PrivateRoute
-              allowedRoles={["admin", "manager"]}
-              requireVerifiedEmail
-            >
-              <div>Quản Lý Đặt Bàn</div>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/promotions"
-          element={
-            <PrivateRoute
-              allowedRoles={["admin", "manager"]}
-              requireVerifiedEmail
-            >
-              <div>Quản Lý Khuyến Mãi</div>
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/analytics"
-          element={
-            <PrivateRoute
-              allowedRoles={["admin", "manager"]}
-              requireVerifiedEmail
-            >
-              <div>Phân Tích / Báo Cáo</div>
-            </PrivateRoute>
-          }
-        />
-
-        {/* ===== UNIVERSAL ===== */}
+        <Route path="/vouchers/:id" element={<VoucherPage />} />
+        <Route path="/favorites/:id" element={<FavoritePage />} />
+        <Route path="/address-book/:id" element={<AddressPage />} />
+        <Route path="/help-center/:id" element={<HelpPage />} />
+        {/* Profile */}
         <Route
           path="/profile"
           element={
@@ -382,12 +419,11 @@ const AppRouter = () => {
             </PrivateRoute>
           }
         />
+      </Route>
 
-        {/* ===== MISC ===== */}
-        <Route path="/logout" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </MainLayout>
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 };
 

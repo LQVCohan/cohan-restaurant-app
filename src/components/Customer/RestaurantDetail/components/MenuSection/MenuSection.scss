@@ -1,369 +1,394 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+// --- VARIABLES ---
+$primary: #ff6600;
+$primary-hover: #e65c00;
+$primary-light: #fff5eb;
+$text-main: #1a202c;
+$text-sub: #64748b;
+$border: #e2e8f0;
+$white: #ffffff;
+$radius: 12px;
+$shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
 
-// --- Local Variables ---
-$blue-primary: #3b82f6;
-$blue-soft: #eff6ff;
-$text-dark: #111827;
-$text-gray: #6b7280;
-$bg-white: #ffffff;
-$border-light: #e5e7eb;
-$radius-md: 12px;
-$radius-lg: 16px;
-
-.menu-section-container {
+.menu-section {
   padding-bottom: 80px;
+}
 
-  // --- 1. Time Slot (Segmented Control) ---
-  .time-slot-wrapper {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 32px;
-  }
+/* 1. TIME SLOT TABS */
+.time-slot-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 32px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 12px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
 
-  .time-slot-control {
-    display: inline-flex;
-    background: #f3f4f6; // Gray 100
-    padding: 4px;
-    border-radius: 12px;
-    gap: 4px;
-
-    .slot-item {
-      padding: 8px 16px;
-      border: none;
-      background: transparent;
-      color: $text-gray;
-      font-weight: 500;
-      font-size: 0.9rem;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      &:hover {
-        color: $text-dark;
-      }
-
-      &.active {
-        background: $bg-white;
-        color: $blue-primary;
-        font-weight: 600;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
-    }
-
-    // Mobile scroll cho time slot nếu cần
-    @include r-mobile {
-      width: 100%;
-      overflow-x: auto;
-      justify-content: flex-start;
-      white-space: nowrap;
-    }
-  }
-
-  // --- 2. Main Layout Grid (Sidebar + Content) ---
-  .menu-layout-grid {
-    display: grid;
-    grid-template-columns: 240px 1fr; // Sidebar 240px, còn lại là content
-    gap: 32px;
-    align-items: start;
-
-    @include r-tablet {
-      grid-template-columns: 1fr; // Mobile: 1 cột
-      gap: 24px;
-    }
-  }
-
-  // --- Sidebar Categories ---
-  .menu-sidebar {
-    .sidebar-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin-bottom: 16px;
-      color: $text-dark;
-    }
-
-    .categories-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      position: sticky;
-      top: 80px; // Dính khi cuộn
-
-      @include r-tablet {
-        flex-direction: row; // Mobile: Chuyển thành hàng ngang
-        position: static;
-        overflow-x: auto;
-        padding-bottom: 8px;
-        // Ẩn scrollbar
-        &::-webkit-scrollbar {
-          display: none;
-        }
-      }
-    }
-
-    .category-pill {
-      text-align: left;
-      padding: 10px 16px;
-      border-radius: $radius-md;
-      background: transparent;
-      border: 1px solid transparent;
-      color: $text-gray;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-size: 0.95rem;
-
-      &:hover {
-        background: $blue-soft;
-        color: $blue-primary;
-      }
-
-      &.active {
-        background: $blue-primary;
-        color: white;
-        box-shadow: 0 4px 6px -1px rgba($blue-primary, 0.3);
-      }
-
-      @include r-tablet {
-        white-space: nowrap;
-        border: 1px solid $border-light; // Mobile thêm border cho dễ nhìn
-        &.active {
-          border-color: $blue-primary;
-        }
-      }
-    }
-  }
-
-  // --- 3. Main Content (Items) ---
-  .menu-main-content {
-    min-height: 400px;
-  }
-
-  // Grid Món Ăn (Responsive tự động)
-  .menu-items-grid {
-    display: grid;
-    // Tự động chia cột, mỗi cột tối thiểu 320px
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 20px;
-  }
-
-  // --- Menu Card Design ---
-  .menu-card {
-    display: flex;
-    background: $bg-white;
-    border: 1px solid $border-light;
-    border-radius: $radius-lg;
-    overflow: hidden;
-    transition: all 0.2s ease;
-    height: 100%; // Để các card cao bằng nhau
+  .slot-btn {
+    padding: 8px 20px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: $text-sub;
+    cursor: pointer;
+    transition: 0.2s;
 
     &:hover {
-      border-color: $blue-primary;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-      transform: translateY(-2px);
+      color: $text-main;
     }
+    &.active {
+      background: $white;
+      color: $primary;
+      font-weight: 600;
+      box-shadow: $shadow-sm;
+    }
+  }
+}
 
-    // Ảnh bên trái
-    .card-image-wrapper {
-      width: 110px; // Cố định chiều rộng ảnh
-      height: auto;
-      flex-shrink: 0; // Không bị co lại
-      position: relative;
-      background: #f9fafb;
+/* 2. LAYOUT */
+.menu-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 32px;
+  align-items: start;
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
 
-      img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
+/* 3. SIDEBAR */
+.category-sidebar {
+  position: sticky;
+  top: 80px;
+  background: $white;
+  border-radius: $radius;
+  border: 1px solid $border;
+  padding: 16px;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+
+  .sidebar-header {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: $text-main;
+  }
+
+  .category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .category-item {
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: transparent;
+      border: none;
+      font-size: 0.95rem;
+      color: $text-sub;
+      cursor: pointer;
+      transition: 0.2s;
+      font-weight: 500;
+
+      &:hover {
+        background: #f8fafc;
+        color: $primary;
+      }
+      &.active {
+        background: $primary-light;
+        color: $primary;
+        font-weight: 600;
       }
     }
+  }
 
-    // Nội dung bên phải
-    .card-content {
-      flex: 1;
-      padding: 12px 16px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+  @media (max-width: 900px) {
+    position: static;
+    padding: 0;
+    border: none;
+    background: transparent;
+    .sidebar-header {
+      display: none;
+    }
+    .category-list {
+      flex-direction: row;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      .category-item {
+        white-space: nowrap;
+        border: 1px solid $border;
+        background: $white;
+        &.active {
+          border-color: $primary;
+        }
+      }
+    }
+  }
+}
 
-      .card-header {
+/* 4. DISH LIST (HORIZONTAL CARDS) */
+.dish-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dish-card-horizontal {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: $white;
+  border: 1px solid $border;
+  border-radius: $radius;
+  transition: 0.2s;
+
+  &:hover {
+    border-color: $primary;
+    box-shadow: $shadow-sm;
+    transform: translateY(-2px);
+  }
+
+  .dish-img-wrapper {
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+  }
+
+  .dish-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    .info-top {
+      .header-row {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 6px;
-
-        .item-name {
-          font-size: 0.95rem;
-          font-weight: 600;
-          color: $text-dark;
-          margin: 0;
-          line-height: 1.3;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-
-        .item-price {
+        margin-bottom: 4px;
+        .dish-name {
+          font-size: 1.1rem;
           font-weight: 700;
-          color: $blue-primary;
-          font-size: 0.95rem;
+          color: $text-main;
+          margin: 0;
+        }
+        .price {
+          font-size: 1.1rem;
+          font-weight: 700;
+          color: $primary;
           white-space: nowrap;
-          margin-left: 8px;
+          margin-left: 12px;
         }
       }
-
-      .item-desc {
-        font-size: 0.8rem;
-        color: $text-gray;
+      .dish-desc {
+        font-size: 0.9rem;
+        color: $text-sub;
         line-height: 1.4;
-        margin: 0 0 12px 0;
         display: -webkit-box;
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
       }
+    }
 
-      .card-footer {
+    .info-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 12px;
+
+      // --- VARIANT SELECTOR STYLE ---
+      .variant-control {
+        flex: 1;
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        margin-top: auto; // Đẩy footer xuống đáy card
 
-        .method-selector {
-          flex: 1;
-          select {
+        .custom-select-wrapper {
+          position: relative;
+          display: inline-block;
+          max-width: 200px;
+          width: 100%;
+
+          .variant-select {
             width: 100%;
-            padding: 4px 8px;
-            font-size: 0.8rem;
-            border: 1px solid $border-light;
+            padding: 6px 30px 6px 12px; // Chừa chỗ cho icon
+            border: 1px solid $border;
             border-radius: 6px;
+            font-size: 0.85rem;
+            color: $text-main;
+            outline: none;
+            appearance: none;
             background-color: #f9fafb;
-            color: $text-dark;
-
-            &:focus {
-              outline: none;
-              border-color: $blue-primary;
-            }
-          }
-        }
-
-        .action-buttons {
-          display: flex;
-          gap: 8px;
-
-          .btn-add-cart {
-            background: $blue-primary;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
-            white-space: nowrap;
-
-            &:hover {
-              background: darken($blue-primary, 5%);
-            }
-
-            &:active {
-              transform: scale(0.95);
+            &:focus {
+              border-color: $primary;
+              background: $white;
             }
           }
+
+          .arrow-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: $text-sub;
+            pointer-events: none;
+          }
+        }
+
+        .single-variant-badge {
+          font-size: 0.8rem;
+          background: $primary-light;
+          color: $primary;
+          padding: 4px 10px;
+          border-radius: 4px;
+          font-weight: 600;
+        }
+      }
+
+      .btn-add {
+        padding: 8px 16px;
+        background: $primary;
+        border: none;
+        color: white;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9rem;
+        &:hover {
+          background: $primary-hover;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 8px rgba(255, 102, 0, 0.2);
         }
       }
     }
   }
 
-  // --- Load More & Empty States ---
-  .load-more-wrapper {
-    display: flex;
-    justify-content: center;
-    margin-top: 32px;
-
-    .btn-load-more {
-      padding: 10px 24px;
-      background: white;
-      border: 1px solid $border-light;
-      border-radius: 20px;
-      color: $text-gray;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-
-      &:hover {
-        border-color: $blue-primary;
-        color: $blue-primary;
+  @media (max-width: 600px) {
+    .dish-img-wrapper {
+      width: 90px;
+      height: 90px;
+    }
+    .dish-info {
+      .info-top .header-row {
+        flex-direction: column;
+        gap: 4px;
+        .price {
+          margin-left: 0;
+        }
+      }
+      .info-bottom {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        .variant-control,
+        .btn-add {
+          width: 100%;
+        }
       }
     }
-  }
-
-  .menu-loading,
-  .empty-state,
-  .error-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 0;
-    color: $text-gray;
-    font-size: 1rem;
-    gap: 16px;
   }
 }
 
-// --- Floating Cart Button ---
+/* UTILS */
+.btn-load-more {
+  margin: 24px auto 0;
+  display: block;
+  padding: 10px 24px;
+  background: $white;
+  border: 1px solid $border;
+  border-radius: 99px;
+  color: $text-sub;
+  cursor: pointer;
+  &:hover {
+    border-color: $primary;
+    color: $primary;
+  }
+}
+
+.empty-state,
+.loading-state {
+  text-align: center;
+  padding: 40px;
+  color: $text-sub;
+  .icon {
+    font-size: 32px;
+    margin-bottom: 8px;
+    display: block;
+  }
+}
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #ffe4cc;
+  border-top-color: $primary;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+.spinner-sm {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ffe4cc;
+  border-top-color: $primary;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* FLOATING CART */
 .cart-fab {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background: $text-dark;
-  color: white;
+  z-index: 99;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
   border: none;
-  border-radius: 30px;
-  padding: 12px 20px;
+  background: $text-main;
+  color: white;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
-  gap: 10px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  justify-content: center;
   cursor: pointer;
-  z-index: 99;
   transition: transform 0.2s;
 
   &:hover {
-    transform: scale(1.05);
-    background: black;
+    transform: scale(1.1);
   }
-
-  .icon {
-    font-size: 1.2rem;
-  }
-
   .count {
+    position: absolute;
+    top: 0;
+    right: 0;
     background: #ef4444;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 0.8rem;
+    color: white;
+    font-size: 0.75rem;
     font-weight: 700;
-  }
-}
-
-// --- Spinner Animation ---
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid $border-light;
-  border-top-color: $blue-primary;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+    padding: 2px 6px;
+    border-radius: 10px;
+    border: 2px solid white;
   }
 }

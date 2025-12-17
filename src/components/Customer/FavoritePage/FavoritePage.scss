@@ -1,0 +1,665 @@
+/* --- VARIABLES --- */
+$primary: #ff6600;
+$primary-hover: #e65c00;
+$text-dark: #1f2937;
+$text-gray: #6b7280;
+$bg-page: #fffbf8;
+$white: #ffffff;
+$shadow-sm: 0 4px 6px rgba(0, 0, 0, 0.03);
+$shadow-hover: 0 12px 24px rgba(255, 102, 0, 0.15);
+$radius: 16px;
+
+.favorite-page {
+  /* Nền Gradient đồng bộ với trang Voucher */
+  background-color: $bg-page;
+  background-image: radial-gradient(
+      circle at 10% 20%,
+      rgba(255, 102, 0, 0.05) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      circle at 90% 80%,
+      rgba(255, 213, 79, 0.1) 0%,
+      transparent 40%
+    );
+  min-height: 100vh;
+  padding: 40px 0 80px;
+  font-family: "Segoe UI", sans-serif;
+  padding-top: 10vh;
+  .fav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+}
+
+/* HEADER STYLE */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+
+  .header-content {
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: $text-dark;
+      margin: 0 0 5px;
+    }
+    p {
+      color: $text-gray;
+      font-size: 15px;
+      margin: 0;
+    }
+  }
+
+  .search-bar-mini {
+    display: flex;
+    align-items: center;
+    background: white;
+    padding: 8px 16px;
+    border-radius: 30px;
+    box-shadow: $shadow-sm;
+    border: 1px solid #eee;
+    input {
+      border: none;
+      outline: none;
+      margin-left: 8px;
+      font-size: 14px;
+      width: 200px;
+    }
+    svg {
+      color: $text-gray;
+    }
+    &:focus-within {
+      border-color: $primary;
+      box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
+    }
+  }
+}
+
+/* TABS STYLE (Giống trang Voucher) */
+.tabs-wrapper {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  .tab-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    font-weight: 600;
+    color: $text-gray;
+    cursor: pointer;
+    transition: all 0.2s;
+    &:hover,
+    &.active {
+      background: $primary;
+      color: white;
+      border-color: $primary;
+      box-shadow: 0 4px 10px rgba(255, 102, 0, 0.2);
+    }
+  }
+}
+
+/* GRID LAYOUT */
+.fav-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(280px, 1fr)
+  ); /* Responsive Grid */
+  gap: 24px;
+}
+
+/* CARD DESIGN */
+.fav-card {
+  background: white;
+  border-radius: $radius;
+  overflow: hidden;
+  box-shadow: $shadow-sm;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: $shadow-hover;
+    border-color: rgba(255, 102, 0, 0.1);
+
+    .btn-remove-fav {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* IMAGE AREA */
+  .card-image {
+    height: 180px;
+    width: 100%;
+    position: relative;
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s;
+    }
+
+    /* Hiệu ứng zoom nhẹ ảnh khi hover card */
+    &:hover img {
+      transform: scale(1.05);
+    }
+
+    .btn-remove-fav {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: white;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: 0.2s;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      &:hover {
+        background: #fff0f0;
+      }
+    }
+
+    .overlay-closed {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .discount-tag {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: #ff4d4f;
+      color: white;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 4px;
+    }
+  }
+
+  /* INFO AREA */
+  .card-info {
+    padding: 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+
+    .name {
+      font-size: 16px;
+      font-weight: 700;
+      color: $text-dark;
+      margin: 0 0 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sub-text {
+      font-size: 13px;
+      color: $text-gray;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .rating {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: $text-dark;
+    }
+
+    /* ACTION BUTTONS */
+    .action-row {
+      margin-top: auto;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-primary-solid {
+      flex: 1;
+      background: $primary;
+      color: white;
+      border: none;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      &:hover {
+        background: $primary-hover;
+      }
+    }
+
+    .btn-primary-outline {
+      flex: 1;
+      background: white;
+      color: $primary;
+      border: 1px solid $primary;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      &:hover {
+        background: #fff5eb;
+      }
+    }
+
+    /* SPECIFIC STYLES FOR FOOD */
+    .price-row {
+      margin-bottom: 12px;
+      .price {
+        font-size: 16px;
+        font-weight: 700;
+        color: $primary;
+        margin-right: 8px;
+      }
+      .old-price {
+        font-size: 13px;
+        text-decoration: line-through;
+        color: #9ca3af;
+      }
+    }
+    .btn-cart {
+      width: 100%;
+      background: #ebf8f2;
+      color: #10b981;
+      border: none;
+      padding: 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      &:hover {
+        background: #d1fae5;
+      }
+    }
+
+    /* SPECIFIC FOR CHEF & COLLECTION */
+    .chef-badge,
+    .collection-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: $text-gray;
+      background: #f3f4f6;
+      padding: 4px 8px;
+      border-radius: 4px;
+      width: fit-content;
+      margin-bottom: 8px;
+    }
+    .text-center {
+      text-align: center;
+    }
+    .stats-row {
+      display: flex;
+      justify-content: space-around;
+      background: #f9fafb;
+      padding: 8px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      strong {
+        display: block;
+        font-size: 14px;
+        color: $text-dark;
+      }
+    }
+    .full-width {
+      width: 100%;
+    }
+    .item-count {
+      font-size: 12px;
+      font-weight: 600;
+      color: $text-gray;
+    }
+    .btn-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid #eee;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: $primary;
+      &:hover {
+        background: $primary;
+        color: white;
+        border-color: $primary;
+      }
+    }
+  }
+}
+
+/* EMPTY STATE */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: $text-gray;
+  .empty-icon {
+    color: #e5e7eb;
+    margin-bottom: 16px;
+  }
+  h3 {
+    font-size: 18px;
+    color: $text-dark;
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  .fav-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* ... Giữ nguyên phần style của trang ... */
+
+/* === NEW: FOOD BUILDER MODAL (RENAMED) === */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* ĐỔI TÊN CLASS TẠI ĐÂY */
+.food-builder-modal {
+  background: white;
+  width: 900px;
+  max-width: 95%;
+  height: 550px;
+  border-radius: 20px;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  position: relative;
+  animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+  .close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.1);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.2s;
+    &:hover {
+      background: #fee2e2;
+      color: #ef4444;
+    }
+  }
+
+  /* builder-left thay cho modal-left */
+  .builder-left {
+    width: 45%;
+    background: #f0f0f0;
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  /* builder-right thay cho modal-right */
+  .builder-right {
+    width: 55%;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+
+    .builder-header {
+      margin-bottom: 24px;
+      .food-tag {
+        background: #fff7ed;
+        color: #ff6600;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+      h2 {
+        font-size: 24px;
+        color: #1f2937;
+        margin: 8px 0;
+      }
+      .desc {
+        color: #6b7280;
+        font-size: 14px;
+        line-height: 1.5;
+        margin-bottom: 12px;
+      }
+      .base-price {
+        font-size: 18px;
+        font-weight: 700;
+        color: #ff6600;
+      }
+    }
+
+    .builder-options {
+      flex: 1;
+      .option-section {
+        margin-bottom: 24px;
+        h4 {
+          font-size: 14px;
+          color: #374151;
+          margin-bottom: 10px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .option-pills {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          .pill {
+            background: white;
+            border: 1px solid #e5e7eb;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #4b5563;
+            cursor: pointer;
+            transition: 0.2s;
+            &:hover {
+              border-color: #ff6600;
+              color: #ff6600;
+            }
+            &.active {
+              background: #fff1e6;
+              border-color: #ff6600;
+              color: #ff6600;
+              font-weight: 600;
+            }
+          }
+        }
+
+        .control-wrapper {
+          display: flex;
+          .qty-control,
+          .weight-control {
+            display: flex;
+            align-items: center;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            button {
+              width: 40px;
+              height: 40px;
+              border: none;
+              background: transparent;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: #374151;
+              &:hover {
+                background: #f9fafb;
+                color: #ff6600;
+              }
+            }
+            .num {
+              width: 40px;
+              text-align: center;
+              font-weight: 700;
+              font-size: 16px;
+            }
+
+            .value-display {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              padding: 0 10px;
+              min-width: 80px;
+              .num {
+                width: auto;
+                font-size: 18px;
+              }
+              .unit {
+                font-size: 10px;
+                color: #9ca3af;
+                text-transform: uppercase;
+                font-weight: 700;
+              }
+            }
+          }
+        }
+        .note-text {
+          font-size: 12px;
+          color: #9ca3af;
+          margin-top: 6px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+      }
+    }
+
+    .builder-footer {
+      border-top: 1px solid #f3f4f6;
+      padding-top: 20px;
+      .total-area {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        .label {
+          font-size: 14px;
+          color: #6b7280;
+        }
+        .total-price {
+          font-size: 22px;
+          font-weight: 800;
+          color: #ff6600;
+        }
+      }
+
+      .btn-add-to-cart {
+        width: 100%;
+        background: #ff6600;
+        color: white;
+        border: none;
+        padding: 14px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 4px 12px rgba(255, 102, 0, 0.3);
+        transition: 0.2s;
+        &:hover {
+          background: #e65c00;
+          transform: translateY(-2px);
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .food-builder-modal {
+    flex-direction: column;
+    height: auto;
+    max-height: 90vh;
+    width: 95%;
+    overflow-y: scroll;
+    .builder-left {
+      width: 100%;
+      height: 200px;
+    }
+    .builder-right {
+      width: 100%;
+      padding: 20px;
+    }
+  }
+}

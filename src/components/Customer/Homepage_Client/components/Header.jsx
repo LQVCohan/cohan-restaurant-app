@@ -1,173 +1,284 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import "../../../../styles/Homepage/Header.scss";
 import HeaderSearch from "./HeaderSearch.jsx";
+
+// Mock dữ liệu thông báo
+const MOCK_NOTIFICATIONS = [
+  {
+    id: 1,
+    image: "https://cdn-icons-png.flaticon.com/512/7541/7541900.png",
+    text: "Đơn hàng #DH001 của bạn đã được giao thành công. Chúc bạn ngon miệng!",
+    time: "5 phút trước",
+    isRead: false,
+  },
+  {
+    id: 2,
+    image: "https://cdn-icons-png.flaticon.com/512/879/879757.png",
+    text: "Mã giảm giá 'SALE50' sắp hết hạn vào ngày mai. Sử dụng ngay!",
+    time: "1 giờ trước",
+    isRead: false,
+  },
+  {
+    id: 3,
+    image: "https://cdn-icons-png.flaticon.com/512/1046/1046857.png",
+    text: "Nhà hàng Pizza Company vừa thêm món mới. Khám phá ngay!",
+    time: "2 giờ trước",
+    isRead: true,
+  },
+];
+
 const Header = ({ onCartToggle, cartItemCount = 0 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useContext(AuthContext) || {};
+
+  const counts = {
+    vouchers: 3,
+    orders: 2,
+    favorites: 0,
+    notifications: 2, // Số thông báo chưa đọc
+  };
+
+  // State quản lý đóng mở Dropdown
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [lang, setLang] = useState(() => localStorage.getItem("lang") || "vi");
+  const [showNotify, setShowNotify] = useState(false); // State cho thông báo
+
+  const userMenuRef = useRef(null);
+  const notifyRef = useRef(null); // Ref cho thông báo
+
+  const [lang, setLang] = useState("vi");
+
+  const goto = (path) => {
+    setShowUserMenu(false);
+    setShowNotify(false);
+    if (location.pathname !== path) navigate(path);
+  };
+
+  // Logic: Click ra ngoài thì đóng menu
+  useEffect(() => {
+    function handleClickOutside(event) {
+      // Đóng User Menu
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+      // Đóng Notification Menu
+      if (notifyRef.current && !notifyRef.current.contains(event.target)) {
+        setShowNotify(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
     logout?.();
     setShowUserMenu(false);
-    navigate("/");
+    navigate("/login");
   };
 
-  const toggleUserMenu = () => setShowUserMenu((s) => !s);
-
-  const goto = (path) => {
-    setShowUserMenu(false);
-    if (location.pathname !== path) navigate(path);
-  };
-
-  // Lấy 2 từ cuối của tên. Nếu không có fullName → rút gọn email/username
-  const shortDisplayName = useMemo(() => {
-    const full = user?.fullName?.trim();
-    if (full) {
-      const parts = full.split(/\s+/);
-      return parts.slice(-2).join(" ");
-    }
-    const fromEmail =
-      typeof user?.email === "string"
-        ? user.email.split("@")[0]?.replace(/[._-]+/g, " ")
-        : "";
-    const fromUsername =
-      typeof user?.username === "string"
-        ? user.username.replace(/[._-]+/g, " ")
-        : "";
-    const base = fromEmail || fromUsername || "Người dùng";
-    const parts = base.trim().split(/\s+/);
-    return parts.slice(-2).join(" ");
+  const avatarText = useMemo(() => {
+    if (user?.fullName) return user.fullName.substring(0, 2).toUpperCase();
+    if (user?.username) return user.username.substring(0, 2).toUpperCase();
+    return "US";
   }, [user]);
 
   const roleLabel = useMemo(() => {
-    const role = (user?.roleName || user?.role || "").toString().toLowerCase();
-    if (role === "customer") return "👤 Khách hàng";
-    if (role === "staff") return "👨‍🍳 Nhân viên";
-    if (role === "manager") return "👨‍💼 Quản lý";
-    if (role === "owner") return "👑 Chủ nhà hàng";
-    if (role === "admin") return "🛡️ Admin";
-    return "👤 Người dùng";
+    const r = user?.role || "customer";
+    return r === "owner"
+      ? "Chủ nhà hàng"
+      : r === "admin"
+      ? "Quản trị viên"
+      : "Khách hàng";
   }, [user]);
 
-  const handleLangChange = (e) => {
-    const next = e.target.value;
-    setLang(next);
-    localStorage.setItem("lang", next);
-    // Sau này có i18n, có thể trigger i18n.changeLanguage(next) ở đây
+  // Toggle Notification
+  const toggleNotify = () => {
+    setShowNotify(!showNotify);
+    if (showUserMenu) setShowUserMenu(false); // Đóng menu kia nếu đang mở
+  };
+
+  // Toggle User
+  const toggleUser = () => {
+    setShowUserMenu(!showUserMenu);
+    if (showNotify) setShowNotify(false); // Đóng menu kia nếu đang mở
   };
 
   return (
     <header className="header">
       <div className="header__container">
-        {/* Logo */}
+        {/* --- 1. LOGO --- */}
         <button className="header__logo" onClick={() => goto("/")}>
           <div className="header__logo-icon">🍽️</div>
           <h1 className="header__logo-text">FoodHub</h1>
         </button>
 
-        {/* Nav */}
+        {/* --- 2. NAVIGATION --- */}
         <nav className="header__nav">
-          <button
-            className={`header__nav-link${
-              location.pathname === "/" ? " is-active" : ""
-            }`}
-            onClick={() => goto("/")}
-          >
-            Trang chủ
-          </button>
-          <button
-            className={`header__nav-link${
-              location.pathname.startsWith("/restaurants") ? " is-active" : ""
-            }`}
-            onClick={() => goto("/restaurants")}
-          >
-            Nhà hàng
-          </button>
-          <button
-            className={`header__nav-link${
-              location.pathname === "/cus-menu" ? " is-active" : ""
-            }`}
-            onClick={() => goto("/cus-menu")}
-          >
-            Thực đơn
-          </button>
-          <button
-            className={`header__nav-link${
-              location.pathname === "/contact" ? " is-active" : ""
-            }`}
-            onClick={() => goto("/contact")}
-          >
-            Liên hệ
-          </button>
+          {[
+            { path: "/", label: "Trang chủ" },
+            { path: "/restaurants", label: "Nhà hàng" },
+            { path: "/cus-menu", label: "Thực đơn" },
+            { path: "/contact", label: "Liên hệ" },
+          ].map((link) => (
+            <button
+              key={link.path}
+              className={`header__nav-link ${
+                location.pathname === link.path ? "is-active" : ""
+              }`}
+              onClick={() => goto(link.path)}
+            >
+              {link.label}
+            </button>
+          ))}
         </nav>
 
-        {/* Actions */}
+        {/* --- 3. ACTIONS --- */}
         <div className="header__actions">
-          {/* search (placeholder) */}
-          <HeaderSearch />
-
-          {/* Language switcher */}
+          {/* A. LANGUAGE SWITCHER (Đã chuyển sang trái cùng của cụm actions) */}
           <div className="header__lang">
-            <select
-              className="header__lang-select"
-              value={lang}
-              onChange={handleLangChange}
-              aria-label="Language"
-              title="Language"
-            >
-              <option value="vi">VI</option>
-              <option value="en">EN</option>
+            <select value={lang} onChange={(e) => setLang(e.target.value)}>
+              <option value="vi">VI 🇻🇳</option>
+              <option value="en">EN 🇺🇸</option>
             </select>
           </div>
 
-          {/* User / Auth */}
+          {/* B. SEARCH */}
+          <HeaderSearch />
+
+          {/* C. NOTIFICATIONS (Mới thêm) */}
+          <div className="header__notify" ref={notifyRef}>
+            <button
+              className={`header__notify-btn ${showNotify ? "is-active" : ""}`}
+              onClick={toggleNotify}
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              {counts.notifications > 0 && (
+                <span className="badge">{counts.notifications}</span>
+              )}
+            </button>
+
+            {/* Dropdown Thông báo */}
+            {showNotify && (
+              <div className="header__notify-dropdown">
+                <div className="header__notify-header">
+                  <h3>Thông báo</h3>
+                  <button className="mark-read">Đánh dấu đã đọc</button>
+                </div>
+                <div className="header__notify-list">
+                  {MOCK_NOTIFICATIONS.map((notif) => (
+                    <div
+                      key={notif.id}
+                      className={`notify-item ${!notif.isRead ? "unread" : ""}`}
+                    >
+                      <div className="notify-item__img">
+                        <img src={notif.image} alt="icon" />
+                      </div>
+                      <div className="notify-item__content">
+                        <p className="notify-item__text">{notif.text}</p>
+                        <span className="notify-item__time">{notif.time}</span>
+                      </div>
+                      {!notif.isRead && (
+                        <div className="notify-item__dot"></div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="header__notify-footer">
+                  <button onClick={() => goto("/notifications")}>
+                    Xem tất cả
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* D. USER MENU */}
           {user ? (
-            <div className="header__user-menu">
-              <button className="header__avatar-btn" onClick={toggleUserMenu}>
-                <img
-                  src="/default-avatar.png"
-                  alt="Avatar"
-                  className="header__avatar"
-                />
-                <span className="header__user-name">{shortDisplayName}</span>
-                <span className="header__dropdown-arrow">▼</span>
+            <div className="header__user-menu" ref={userMenuRef}>
+              <button
+                className={`header__user-btn ${
+                  showUserMenu ? "is-active" : ""
+                }`}
+                onClick={toggleUser}
+              >
+                <div className="header__avatar">
+                  {user.avatar ? (
+                    <img src={user.avatar} alt="avt" />
+                  ) : (
+                    avatarText
+                  )}
+                </div>
+                <div className="header__user-info">
+                  <span className="header__username">
+                    {user.fullName || user.username}
+                  </span>
+                  <span className="header__user-arrow">▼</span>
+                </div>
               </button>
 
               {showUserMenu && (
-                <div className="header__dropdown">
-                  <div className="header__dropdown-item">
-                    <span className="header__user-role">{roleLabel}</span>
+                <div className="header__user-dropdown">
+                  <div className="header__user-dropdown-header">
+                    <p className="user-name">
+                      {user.fullName || user.username}
+                    </p>
+                    <p className="user-role">{roleLabel}</p>
                   </div>
-                  <hr className="header__dropdown-divider" />
-                  <button
-                    className="header__dropdown-item header__dropdown-button"
-                    onClick={() => goto("/profile")}
-                  >
-                    👤 Thông tin cá nhân
-                  </button>
-                  <button
-                    className="header__dropdown-item header__dropdown-button"
-                    onClick={() => goto("/orders")}
-                  >
-                    📋 Đơn hàng của tôi
-                  </button>
-                  <button
-                    className="header__dropdown-item header__dropdown-button"
-                    onClick={() => goto("/settings")}
-                  >
-                    ⚙️ Cài đặt
-                  </button>
-                  <hr className="header__dropdown-divider" />
-                  <button
-                    className="header__dropdown-item header__dropdown-button header__logout"
-                    onClick={handleLogout}
-                  >
-                    🚪 Đăng xuất
-                  </button>
+                  <div className="header__user-dropdown-body">
+                    {/* Các nút menu cũ giữ nguyên */}
+                    <button
+                      className="header__menu-item"
+                      onClick={() => goto("/profile")}
+                    >
+                      <span className="header__item-label">
+                        👤 Hồ sơ cá nhân
+                      </span>
+                    </button>
+                    <button
+                      className="header__menu-item"
+                      onClick={() => goto(`/vouchers/${user.id}`)}
+                    >
+                      <span className="header__item-label">🎟️ Kho Voucher</span>
+                      {counts.vouchers > 0 && (
+                        <span className="header__item-badge">
+                          {counts.vouchers}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      className="header__menu-item"
+                      onClick={() => goto("/orders")}
+                    >
+                      <span className="header__item-label">
+                        📦 Đơn hàng của tôi
+                      </span>
+                      {counts.orders > 0 && (
+                        <span className="header__item-badge highlight">
+                          {counts.orders}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      className="header__menu-item logout-btn"
+                      onClick={handleLogout}
+                    >
+                      <span className="header__item-label">🚪 Đăng xuất</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -180,15 +291,24 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
             </button>
           )}
 
-          {/* Cart */}
-          <button
-            className="header__cart-btn"
-            onClick={onCartToggle}
-            aria-label="Giỏ hàng"
-          >
-            🛒
-            {Number(cartItemCount) > 0 && (
-              <span className="header__cart-count">{cartItemCount}</span>
+          {/* E. CART */}
+          <button className="header__cart-btn" onClick={onCartToggle}>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="9" cy="21" r="1"></circle>
+              <circle cx="20" cy="21" r="1"></circle>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+            </svg>
+            {cartItemCount > 0 && (
+              <span className="badge">{cartItemCount}</span>
             )}
           </button>
         </div>

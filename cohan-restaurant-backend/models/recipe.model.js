@@ -23,6 +23,7 @@ const ServingVariantSchema = new mongoose.Schema(
     name: { type: String },
     Ingredients: { type: [IngredientSchema], default: [] },
     price: { type: Number, default: 0 },
+    isDefault: { type: Boolean, default: false },
   },
   { _id: true }
 );

@@ -49,6 +49,7 @@ const FRAG_MENU_ITEM = gql`
       yieldQty
       yieldUnit
       name
+      price
       Ingredients {
         ingredientId
         name
