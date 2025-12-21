@@ -1,142 +1,330 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+@use "sass:color";
 
-.modal-overlay {
+// --- Variables (Shared with Cards) ---
+$font-family: "Inter", sans-serif;
+$white: #ffffff;
+$primary: #4f46e5; // Indigo 600
+$primary-dark: #4338ca;
+$danger: #ef4444;
+$text-main: #111827;
+$text-secondary: #6b7280;
+$border-color: #e5e7eb;
+$bg-body: #f9fafb;
+$bg-section: #f8fafc;
+$radius-xl: 20px;
+$radius-md: 8px;
+$shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+  0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+// --- Animation ---
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.premium-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6); // Darker blur overlay
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1050;
   padding: 1rem;
+  animation: overlayFadeIn 0.2s ease-out;
 
-  .modal {
+  .premium-modal {
     background: $white;
-    border: 2px solid $border-color;
-    border-radius: $border-radius;
-    padding: $spacing-xl;
-    max-width: 800px;
     width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: $shadow-2xl;
+    max-width: 700px; // Gọn gàng hơn
+    border-radius: $radius-xl;
+    box-shadow: $shadow-xl;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh; // Không bao giờ vượt quá chiều cao màn hình
+    animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 
-    @include mobile {
-      padding: 1rem;
-      max-width: 95%;
-    }
-
+    // --- HEADER ---
     .modal-header {
+      padding: 1.5rem 1.5rem 1rem;
+      border-bottom: 1px solid $border-color;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: $spacing-xl;
-      padding-bottom: 1rem;
-      border-bottom: 2px solid $border-color;
+      align-items: flex-start;
+      background: $white;
+      border-radius: $radius-xl $radius-xl 0 0;
 
-      .modal-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: $text-primary;
+      .header-content {
+        h2 {
+          font-family: $font-family;
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: $text-main;
+          margin: 0 0 4px;
+        }
+        p {
+          font-size: 0.875rem;
+          color: $text-secondary;
+          margin: 0;
+        }
       }
 
-      .modal-close {
-        width: 2rem;
-        height: 2rem;
+      .btn-close {
+        background: transparent;
         border: none;
-        background: $white;
-        border-radius: $border-radius-sm;
+        color: $text-secondary;
+        padding: 8px;
+        border-radius: 50%;
         cursor: pointer;
+        transition: all 0.2s;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.25rem;
-        color: $text-secondary;
-        transition: all 0.2s ease;
 
         &:hover {
-          background: $border-color;
-          transform: translateY(-1px);
+          background: $bg-section;
+          color: $text-main;
         }
       }
     }
 
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
-      margin-bottom: $spacing-lg;
+    // --- BODY (Scrollable Area) ---
+    .modal-body {
+      padding: 1.5rem;
+      overflow-y: auto;
+      flex: 1; // Chiếm hết khoảng trống còn lại
 
-      @include mobile {
-        grid-template-columns: 1fr;
+      // Scrollbar style
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+      &::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+      }
+      &::-webkit-scrollbar-track {
+        background: transparent;
       }
 
+      .form-section {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px dashed $border-color;
+
+        &.no-border {
+          border-bottom: none;
+          padding-bottom: 0;
+          margin-bottom: 0;
+        }
+
+        .section-title {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: $primary;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+      }
+
+      // Grid Helpers
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1rem;
+      }
+      .mt-3 {
+        margin-top: 1rem;
+      }
+      .full {
+        grid-column: 1 / -1;
+      }
+
+      // Form Controls
       .form-group {
         display: flex;
         flex-direction: column;
+        gap: 6px;
 
-        &.full-width {
-          grid-column: 1 / -1;
-        }
-
-        .form-label {
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: $text-primary;
-          margin-bottom: $spacing-sm;
-        }
-
-        .form-input,
-        .form-select,
-        .form-textarea {
-          @include form-input;
-
-          &.error {
-            border-color: #ef4444;
-            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        label {
+          font-size: 0.85rem;
+          font-weight: 500;
+          color: $text-main;
+          .req {
+            color: $danger;
+            margin-left: 2px;
           }
         }
 
-        .form-textarea {
-          resize: vertical;
-          min-height: 100px;
+        input,
+        select,
+        textarea {
+          font-family: $font-family;
+          padding: 10px 12px;
+          font-size: 0.9rem;
+          border: 1px solid $border-color;
+          border-radius: $radius-md;
+          background: $white;
+          transition: all 0.2s;
+          width: 100%;
+
+          &::placeholder {
+            color: #9ca3af;
+          }
+
+          &:hover {
+            border-color: #cbd5e1;
+          }
+
+          &:focus {
+            outline: none;
+            border-color: $primary;
+            box-shadow: 0 0 0 3px color.change($primary, $alpha: 0.1);
+          }
+
+          &.error {
+            border-color: $danger;
+            &:focus {
+              box-shadow: 0 0 0 3px color.change($danger, $alpha: 0.1);
+            }
+          }
         }
 
-        .error-message {
+        .code-input {
+          font-family: "Monaco", monospace;
+          font-weight: 600;
+          text-transform: uppercase;
+          color: $primary;
+          letter-spacing: 0.5px;
+        }
+
+        // Input with Icon Styling
+        .input-icon-wrapper {
+          position: relative;
+
+          .input-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: $text-secondary;
+            pointer-events: none;
+          }
+
+          input,
+          select {
+            padding-left: 36px; // Chừa chỗ cho icon
+          }
+        }
+
+        .err-msg {
           font-size: 0.75rem;
-          color: #ef4444;
-          margin-top: $spacing-xs;
+          color: $danger;
+          margin-top: 2px;
         }
       }
     }
 
-    .modal-actions {
+    // --- FOOTER ---
+    .modal-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid $border-color;
+      background: $bg-section;
+      border-radius: 0 0 $radius-xl $radius-xl;
       display: flex;
-      justify-content: flex-end;
-      gap: 1rem;
-      margin-top: $spacing-xl;
-      padding-top: 1rem;
-      border-top: 2px solid $border-color;
+      justify-content: space-between;
+      align-items: center;
 
-      @include mobile {
-        flex-direction: column;
-        gap: $spacing-sm;
+      .right-actions {
+        display: flex;
+        gap: 0.75rem;
       }
 
-      .btn {
-        &.btn-primary {
-          @include button-primary;
+      button {
+        padding: 10px 16px;
+        border-radius: $radius-md;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+
+        &.btn-ghost {
+          background: transparent;
+          color: $text-secondary;
+          &:hover {
+            background: rgba(0, 0, 0, 0.05);
+            color: $text-main;
+          }
         }
 
         &.btn-secondary {
-          @include button-secondary;
+          background: $white;
+          border-color: $border-color;
+          color: $text-main;
+          &:hover {
+            border-color: #cbd5e1;
+            background: #f1f5f9;
+          }
         }
 
-        @include mobile {
+        &.btn-primary {
+          background: $primary;
+          color: $white;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+          &:hover {
+            background: $primary-dark;
+            transform: translateY(-1px);
+          }
+        }
+      }
+    }
+  }
+
+  // Mobile Adaptation
+  @media (max-width: 640px) {
+    .premium-modal {
+      max-height: 100vh;
+      border-radius: 0;
+
+      .grid-2,
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+
+      .modal-footer {
+        flex-direction: column-reverse;
+        gap: 12px;
+        .right-actions {
+          width: 100%;
+        }
+        button {
           width: 100%;
           justify-content: center;
         }

@@ -27,12 +27,6 @@
     border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   }
 
-  .ingredient-icon {
-    font-size: 2.25rem;
-    line-height: 1;
-    filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.6));
-  }
-
   .ingredient-info {
     flex: 1;
     min-width: 0;
@@ -48,6 +42,13 @@
     text-overflow: ellipsis;
   }
 
+  .ingredient-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
   .ingredient-category {
     font-size: 0.75rem;
     color: $text-muted;
@@ -56,6 +57,25 @@
     border-radius: $border-radius-sm;
     border: 1px solid rgba(0, 0, 0, 0.05);
     display: inline-block;
+
+    &.ingredient-category--muted {
+      background: transparent;
+      border-style: dashed;
+      opacity: 0.9;
+    }
+  }
+
+  .ingredient-sku {
+    font-size: 0.75rem;
+    color: #64748b;
+    background: rgba(255, 255, 255, 0.65);
+    padding: 0.22rem 0.5rem;
+    border-radius: $border-radius-sm;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .ingredient-content {
@@ -67,6 +87,10 @@
     grid-template-columns: 1fr 1fr;
     gap: $spacing-md;
     margin-bottom: $spacing-md;
+
+    @media (min-width: 520px) {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
 
     .stat-item {
       text-align: center;
@@ -89,17 +113,32 @@
       }
     }
 
-    /* Ô giá nhập có thể click */
-    .stat-item--clickable {
-      cursor: pointer;
-      border-color: rgba($primary, 0.16);
-      transition: background-color 0.15s ease, box-shadow 0.15s ease,
-        border-color 0.15s ease;
+    // Box phụ: Tồn/Giữ
+    .stat-item--sub {
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
 
-      &:hover {
-        background: #eff6ff;
-        border-color: rgba($primary, 0.28);
-        box-shadow: 0 4px 8px rgba(15, 23, 42, 0.06);
+      // để nhìn gọn: chiếm full hàng
+      grid-column: 1 / -1;
+
+      .stat-subrow {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+      }
+
+      .stat-subkey {
+        font-size: 0.75rem;
+        color: $text-muted;
+      }
+
+      .stat-subval {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #0f172a;
       }
     }
   }
@@ -124,9 +163,8 @@
       }
     }
 
-    /* Màu từng nút */
     .ingredient-btn--edit {
-      background: #fef9c3; // vàng nhạt
+      background: #fef9c3;
       color: #854d0e;
 
       &:hover {
@@ -135,7 +173,7 @@
     }
 
     .ingredient-btn--stock {
-      background: #dbeafe; // xanh dương nhạt
+      background: #dbeafe;
       color: #1d4ed8;
 
       &:hover {
@@ -144,7 +182,7 @@
     }
 
     .ingredient-btn--usage {
-      background: #f3f4f6; // xám nhạt
+      background: #f3f4f6;
       color: #374151;
 
       &:hover {
@@ -153,7 +191,7 @@
     }
 
     .ingredient-btn--delete {
-      background: #fee2e2; // đỏ nhạt
+      background: #fee2e2;
       color: #b91c1c;
 
       &:hover {
@@ -162,7 +200,7 @@
     }
   }
 
-  /* Status badge */
+  // Status badge (hỗ trợ cả class kiểu "success/warning/danger" và kiểu "status-...")
   .status-badge {
     margin-left: auto;
     font-weight: 700;
@@ -185,75 +223,10 @@
       @include status-badge(#fee2e2, #991b1b);
       border: 1px solid rgba(153, 27, 27, 0.18);
     }
-  }
-}
 
-/* ================= MODAL GIÁ NHẬP ================= */
-
-.ingredient-price-modal {
-  display: flex;
-  flex-direction: column;
-  gap: $spacing-md;
-  padding-top: 0.25rem;
-
-  .form-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    padding: 0.75rem 1rem;
-    background: #f9fafb;
-    border-radius: 0.9rem;
-    border: 1px solid #e5e7eb;
-
-    label {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #111827;
+    &.unknown {
+      @include status-badge(#e5e7eb, #374151);
+      border: 1px solid rgba(55, 65, 81, 0.15);
     }
-
-    input,
-    select {
-      border-radius: 0.5rem;
-      border: 1px solid rgba(148, 163, 184, 0.9);
-      padding: 0.55rem 0.75rem;
-      font-size: 0.9rem;
-      outline: none;
-      background: #ffffff;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease,
-        background-color 0.15s ease;
-
-      &:focus {
-        border-color: $primary;
-        box-shadow: 0 0 0 1px rgba($primary, 0.25);
-        background: #f9fafb;
-      }
-    }
-
-    .price-input-group {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-
-      input {
-        flex: 1;
-      }
-
-      select {
-        width: 110px;
-      }
-    }
-
-    .helper-text {
-      font-size: 0.75rem;
-      color: $text-muted;
-      margin-top: 0.15rem;
-    }
-  }
-
-  /* Tùy chỉnh nhẹ cho footer bên dưới modal này */
-  .modal__footer {
-    margin-top: 0.5rem;
-    border-top: none;
-    padding-top: 0.75rem;
   }
 }

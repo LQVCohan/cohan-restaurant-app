@@ -28,6 +28,13 @@ enum ServingMode {
   BY_WEIGHT
 }
 
+# Sell unit cho variant (đơn vị bán)
+enum SellUnit {
+  portion
+  g
+  kg
+}
+
 # ================================
 # SHARED TYPES
 # ================================
@@ -171,44 +178,60 @@ type StockMovement {
 }
 
 # ================================
-# RECIPE
+# RECIPE (UPDATED)
 # ================================
 
-type IngredientsComponent {
-  ingredientId: ID!
-  quantify: Float!
-  wastePct: Float
-  name: String
-  costPerBaseUnit: Float
-  baseUnit: Unit
-}
-
-input IngredientsComponentInput {
+"""
+1 dòng nguyên liệu trong công thức:
+- qty + unit là số lượng theo đơn vị chỉ định
+- wastePct là % hao hụt (0..100)
+"""
+type RecipeIngredientLine {
   ingredientId: ID!
   qty: Float!
+  unit: Unit!
+  wastePct: Float
   name: String
+  baseUnit: Unit
+  costPerBaseUnit: Float
+}
+
+input RecipeIngredientLineInput {
+  ingredientId: ID!
+  qty: Float!
+  unit: Unit!
   wastePct: Float
 }
 
+"""
+ServingVariant:
+- ingredients là nguyên liệu cho 1 sell unit (sellQty + sellUnit)
+- price là giá bán theo 1 sell unit
+"""
 type ServingVariant {
   key: String!
-  mode: ServingMode!
-  yieldQty: Float!
-  yieldUnit: String!
   name: String
-  Ingredients: [IngredientsComponent!]!
+  mode: ServingMode!
+
+  sellQty: Float!
+  sellUnit: SellUnit!
+
+  ingredients: [RecipeIngredientLine!]!
   price: Float
   isDefault: Boolean
 }
 
 input ServingVariantInput {
   key: String!
+  name: String
   mode: ServingMode!
-  yieldQty: Float!
-  yieldUnit: String!
-  preparationMethodName: String
-  ingredients: [IngredientsComponentInput!]!
+
+  sellQty: Float
+  sellUnit: SellUnit
+
+  ingredients: [RecipeIngredientLineInput!]!
   price: Float
+  isDefault: Boolean
 }
 
 type Recipe {
@@ -225,8 +248,6 @@ type Recipe {
 input UpsertRecipeInput {
   restaurantId: ID!
   menuItemId: ID!
-  yieldQty: Float
-  yieldUnit: String
   notes: String
   isActive: Boolean
   servingVariants: [ServingVariantInput!]
@@ -251,7 +272,7 @@ input OrderLineInput {
   menuItemId: ID!
   quantity: Float
   preparationMethodName: String
-  weightGrams: Float
+  weightGrams: Int
   servingKey: String
   servingMode: ServingMode
 }
@@ -355,8 +376,8 @@ extend type Mutation {
     restaurantId: ID!
     warehouseId: ID!
     ingredientId: ID!
-    onHand: Float
-    reserved: Float
+    onHand: Int
+    reserved: Int
     batches: [StockBatchInput!]
   ): StockItem!
 
@@ -364,7 +385,7 @@ extend type Mutation {
     restaurantId: ID!
     warehouseId: ID!
     ingredientId: ID!
-    qty: Float!
+    qty: Int!
     reason: String
   ): StockItem!
 
@@ -373,7 +394,7 @@ extend type Mutation {
     fromWarehouseId: ID!
     toWarehouseId: ID!
     ingredientId: ID!
-    qty: Float!
+    qty: Int!
     reason: String
   ): Boolean!
 

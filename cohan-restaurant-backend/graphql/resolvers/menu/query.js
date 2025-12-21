@@ -1,17 +1,35 @@
-// src/graphql/resolvers/menu/query.js
+// src/graphql/resolvers/menu/query.js (CLEAN + aligned with Recipe-as-source-of-truth)
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Menu, MenuItem } from "../../../models/index.js";
 
+const toObjectIdOrNull = (id) => {
+  try {
+    return mongoose.isValidObjectId(id)
+      ? new mongoose.Types.ObjectId(String(id))
+      : null;
+  } catch {
+    return null;
+  }
+};
+
 export const MenuQuery = {
-  menus: (_, { restaurantId }) =>
-    Menu.find({ restaurantId }).sort({ timeSlot: 1 }).lean({ virtuals: true }),
+  menus: async (_p, { restaurantId }) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return [];
+    return Menu.find({ restaurantId })
+      .sort({ timeSlot: 1 })
+      .lean({ virtuals: true });
+  },
 
-  menu: (_, { restaurantId, timeSlot }) =>
-    Menu.findOne({ restaurantId, timeSlot }).lean({ virtuals: true }),
+  menu: async (_p, { restaurantId, timeSlot }) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return null;
+    return Menu.findOne({ restaurantId, timeSlot }).lean({ virtuals: true });
+  },
 
+  // Note: menuItems here returns MenuItem only (no recipe populate).
+  // Recipe/servingVariants should be fetched via inventory.menuItemsWithRecipes or type resolvers.
   menuItems: async (
-    _,
+    _p,
     { restaurantId, timeSlot, categoryId, search, limit = 50 }
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
@@ -19,42 +37,42 @@ export const MenuQuery = {
     const q = { restaurantId };
 
     if (timeSlot) {
-      const menu = await Menu.findOne({ restaurantId, timeSlot }).lean({
-        virtuals: true,
-      });
+      const menu = await Menu.findOne({ restaurantId, timeSlot })
+        .select({ _id: 1 })
+        .lean();
       if (!menu) return [];
       q.menuId = menu._id;
     }
 
-    // Optional filters
     if (categoryId && mongoose.isValidObjectId(categoryId)) {
       q.categoryId = categoryId;
     }
+
     if (search?.trim()) {
       q.name = new RegExp(search.trim(), "i");
     }
 
-    const menuItems = await MenuItem.find(q)
-      .limit(Math.min(limit ?? 50, 500))
-      .sort({ name: 1 })
-      .populate("recipe")
-      .lean({ virtuals: true });
+    const safeLimit = Math.min(Math.max(limit || 50, 1), 500);
 
-    // recipe (và servingVariants) sẽ được autoPopulate từ model + types resolver
-    return menuItems;
+    return MenuItem.find(q)
+      .sort({ name: 1 })
+      .limit(safeLimit)
+      .lean({ virtuals: true });
   },
 
-  menuItemsConnection: async (_, { limit = 20, cursor, filter }) => {
+  menuItemsConnection: async (_p, { limit = 20, cursor, filter }) => {
     if (!filter || !filter.restaurantId) {
       throw new GraphQLError("filter.restaurantId is required", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    if (!mongoose.isValidObjectId(filter.restaurantId)) {
+      return {
+        edges: [],
+        pageInfo: { endCursor: null, hasNextPage: false },
+      };
+    }
 
-    const toObj = (id) =>
-      mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
-
-    // Xây filter chính cho MenuItem
     const q = { restaurantId: filter.restaurantId };
 
     // timeSlot -> menuId
@@ -62,7 +80,10 @@ export const MenuQuery = {
       const m = await Menu.findOne({
         restaurantId: filter.restaurantId,
         timeSlot: filter.timeSlot,
-      }).lean();
+      })
+        .select({ _id: 1 })
+        .lean();
+
       if (!m) {
         return {
           edges: [],
@@ -86,31 +107,29 @@ export const MenuQuery = {
       ];
     }
 
-    // Price range: hiện tại chỉ filter theo basePrice
+    // Price range: filter by MenuItem.basePrice (cached min variant price)
     const hasMin = typeof filter.minPrice === "number";
     const hasMax = typeof filter.maxPrice === "number";
     if (hasMin || hasMax) {
-      const basePriceCond = {};
-      if (hasMin) basePriceCond.$gte = filter.minPrice;
-      if (hasMax) basePriceCond.$lte = filter.maxPrice;
-
-      q.$and = (q.$and || []).concat([{ basePrice: basePriceCond }]);
+      const cond = {};
+      if (hasMin) cond.$gte = filter.minPrice;
+      if (hasMax) cond.$lte = filter.maxPrice;
+      q.$and = (q.$and || []).concat([{ basePrice: cond }]);
     }
 
-    // Cursor
-    const cId = cursor && toObj(cursor);
-    if (cId) q._id = { ...(q._id || {}), $gt: cId };
+    // Cursor-based pagination by _id ascending
+    const cId = cursor ? toObjectIdOrNull(cursor) : null;
+    if (cId) q._id = { $gt: cId };
 
-    console.log("info: ", q);
+    const safeLimit = Math.min(Math.max(limit || 20, 1), 200);
 
     const docs = await MenuItem.find(q)
       .sort({ _id: 1 })
-      .limit(limit + 1)
-      .populate("recipe")
+      .limit(safeLimit + 1)
       .lean({ virtuals: true });
 
-    const hasNextPage = docs.length > limit;
-    const slice = hasNextPage ? docs.slice(0, -1) : docs;
+    const hasNextPage = docs.length > safeLimit;
+    const slice = hasNextPage ? docs.slice(0, safeLimit) : docs;
 
     return {
       edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
@@ -121,23 +140,20 @@ export const MenuQuery = {
     };
   },
 
-  topMenuItems: async (_parent, { limit = 8, restaurantId, categoryId }) => {
-    const LIM = Math.min(Math.max(limit, 1), 50); // 1..50
+  topMenuItems: async (_p, { limit = 8, restaurantId, categoryId }) => {
+    const LIM = Math.min(Math.max(limit, 1), 50);
 
     const q = {};
     if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
-      q.restaurantId = new mongoose.Types.ObjectId(restaurantId);
+      q.restaurantId = restaurantId;
     }
     if (categoryId && mongoose.isValidObjectId(categoryId)) {
-      q.categoryId = new mongoose.Types.ObjectId(categoryId);
+      q.categoryId = categoryId;
     }
 
-    const docs = await MenuItem.find(q)
-      .sort({ point: -1, createdAt: -1, _id: 1 }) // ưu tiên point cao
+    return MenuItem.find(q)
+      .sort({ point: -1, createdAt: -1, _id: 1 })
       .limit(LIM)
-      .populate("recipe")
       .lean({ virtuals: true });
-
-    return docs;
   },
 };

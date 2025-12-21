@@ -1,217 +1,243 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
-.promotion-card {
-  background: $primary-light;
-  border: 2px solid $border-color;
-  border-radius: $border-radius;
-  overflow: hidden;
-  transition: all 0.3s ease;
+@use "sass:color";
 
+// --- Variables (Đồng bộ hệ thống) ---
+$primary: #4f46e5; // Indigo 600
+$primary-soft: #e0e7ff;
+$white: #ffffff;
+$text-main: #111827;
+$text-secondary: #4b5563;
+$text-muted: #9ca3af;
+$border-color: #e5e7eb;
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+$shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+  0 4px 6px -2px rgba(0, 0, 0, 0.05);
+$radius: 16px;
+
+// --- Status Colors ---
+$status-active-bg: #dcfce7;
+$status-active-text: #166534; // Green
+$status-draft-bg: #f3f4f6;
+$status-draft-text: #4b5563; // Gray
+$status-expired-bg: #fee2e2;
+$status-expired-text: #991b1b; // Red
+
+.promotion-card {
+  background: $white;
+  border: 1px solid $border-color;
+  border-radius: $radius;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%; // Đảm bảo chiều cao bằng nhau trong Grid
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden; // Để clip các hiệu ứng background nếu có
+
+  // --- Hover Effect ---
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15),
-      0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    border-color: $primary;
-  }
-
-  .card-header {
-    padding: $spacing-lg;
-    background: $white;
-    border-bottom: 2px solid $border-color;
-
-    .card-title {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: $spacing-sm;
-
-      .promotion-name {
-        font-size: 1.125rem;
-        font-weight: 700;
-        color: $text-primary;
-        margin-bottom: $spacing-xs;
-      }
-
-      .promotion-description {
-        color: $text-secondary;
-        font-size: 0.875rem;
-        line-height: 1.5;
-      }
-
-      .promotion-type {
-        background: $primary;
-        color: $white;
-        padding: 0.25rem 0.75rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        white-space: nowrap;
-      }
-    }
-  }
-
-  .card-body {
-    padding: $spacing-lg;
-
-    .status-indicator {
-      display: flex;
-      align-items: center;
-      gap: $spacing-sm;
-      margin-bottom: 1rem;
-
-      .status-dot {
-        width: 0.75rem;
-        height: 0.75rem;
-        border-radius: 50%;
-      }
-
-      .status-text {
-        font-size: 0.875rem;
-        font-weight: 600;
-      }
-
-      &.status-active .status-dot {
-        background: #10b981;
-      }
-
-      &.status-scheduled .status-dot {
-        background: #f59e0b;
-      }
-
-      &.status-expired .status-dot {
-        background: #ef4444;
-      }
-
-      &.status-draft .status-dot {
-        background: $text-secondary;
-      }
-    }
-
-    .promotion-details {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1rem;
-      margin-bottom: $spacing-lg;
-
-      .detail-item {
-        display: flex;
-        flex-direction: column;
-
-        .detail-label {
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: $text-secondary;
-          text-transform: uppercase;
-          margin-bottom: $spacing-xs;
-        }
-
-        .detail-value {
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: $text-primary;
-        }
-      }
-    }
-
-    .promotion-conditions {
-      background: $white;
-      border: 2px solid $border-color;
-      border-radius: $border-radius;
-      padding: 1rem;
-      margin-bottom: $spacing-lg;
-
-      .conditions-title {
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: $text-primary;
-        margin-bottom: $spacing-sm;
-      }
-
-      .conditions-list {
-        list-style: none;
-        font-size: 0.75rem;
-        color: $text-secondary;
-        margin: 0;
-        padding: 0;
-
-        li {
-          margin-bottom: $spacing-xs;
-          padding-left: 1rem;
-          position: relative;
-
-          &:before {
-            content: "•";
-            color: $primary;
-            font-weight: bold;
-            position: absolute;
-            left: 0;
-          }
-        }
-      }
-    }
+    box-shadow: $shadow-hover;
+    border-color: color.change($primary, $alpha: 0.3);
 
     .card-actions {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  // --- 1. Header: Badge & Context ---
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+
+    .status-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+
+      &.active {
+        background-color: $status-active-bg;
+        color: $status-active-text;
+      }
+
+      &.draft {
+        background-color: $status-draft-bg;
+        color: $status-draft-text;
+      }
+
+      &.expired {
+        background-color: $status-expired-bg;
+        color: $status-expired-text;
+      }
+    }
+
+    .menu-trigger {
+      color: $text-muted;
+      cursor: pointer;
+      transition: color 0.2s;
+
+      &:hover {
+        color: $text-main;
+      }
+    }
+  }
+
+  // --- 2. Body: Main Info ---
+  .card-body {
+    flex: 1; // Đẩy footer xuống dưới cùng
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+
+    .promo-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: $text-main;
+      margin: 0;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2; // Giới hạn 2 dòng
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    // Giá trị giảm giá (Nổi bật nhất)
+    .discount-highlight {
       display: flex;
-      gap: $spacing-sm;
-      justify-content: flex-start;
+      align-items: baseline;
+      gap: 4px;
+      color: $primary;
 
-      .btn {
-        &.btn-small {
-          padding: $spacing-sm 1rem;
-          font-size: 0.75rem;
-          border-radius: $border-radius-sm;
+      .value {
+        font-size: 1.75rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .unit {
+        font-size: 1rem;
+        font-weight: 600;
+      }
+    }
+
+    // Mã Code Box (Copyable style)
+    .code-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      border: 1px dashed $border-color;
+      padding: 6px 10px;
+      border-radius: 8px;
+      width: fit-content;
+      margin-top: 4px;
+
+      .code-icon {
+        color: $text-muted;
+        width: 14px;
+        height: 14px;
+      }
+
+      .promo-code {
+        font-family: "Monaco", "Consolas", monospace;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: $text-secondary;
+        letter-spacing: 0.5px;
+        user-select: all; // Cho phép user bôi đen nhanh để copy
+      }
+    }
+  }
+
+  // --- 3. Footer: Metadata & Info ---
+  .card-info {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid $border-color;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: $text-secondary;
+
+      svg {
+        color: $text-muted;
+        flex-shrink: 0;
+      }
+
+      span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+
+  // --- 4. Hover Actions (Floating Buttons) ---
+  // Các nút Edit/Delete/Copy hiện ra khi hover card
+  .card-actions {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    gap: 8px;
+    opacity: 0; // Ẩn mặc định
+    transform: translateY(-5px);
+    transition: all 0.2s ease-in-out;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(4px);
+    border-radius: 8px;
+
+    // Nếu màn hình cảm ứng (mobile), luôn hiện
+    @media (hover: none) {
+      opacity: 1;
+      transform: translateY(0);
+      position: relative;
+      top: 0;
+      right: 0;
+      margin-top: 1rem;
+      justify-content: flex-end;
+    }
+
+    .action-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid $border-color;
+      background: $white;
+      color: $text-secondary;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        &.edit {
+          background: $primary-soft;
+          color: $primary;
+          border-color: $primary-soft;
         }
-
-        &.btn-edit {
-          background: #f59e0b;
-          color: $white;
-          border: none;
-
-          &:hover {
-            background: #d97706;
-            transform: translateY(-1px);
-          }
+        &.delete {
+          background: #fee2e2;
+          color: #ef4444;
+          border-color: #fee2e2;
         }
-
-        &.btn-delete {
-          background: #ef4444;
-          color: $white;
-          border: none;
-
-          &:hover {
-            background: #dc2626;
-            transform: translateY(-1px);
-          }
-        }
-
-        &.btn-duplicate {
-          background: $text-secondary;
-          color: $white;
-          border: none;
-
-          &:hover {
-            background: #4b5563;
-            transform: translateY(-1px);
-          }
+        &.duplicate {
+          background: #f3f4f6;
+          color: $text-main;
         }
       }
     }
   }
-}
-
-// Animation
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.fade-in {
-  animation: fadeIn 0.3s ease-out;
 }

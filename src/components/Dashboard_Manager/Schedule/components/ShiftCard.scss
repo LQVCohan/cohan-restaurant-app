@@ -1,122 +1,214 @@
+/* =========================================
+   SHIFT CARD - MANAGEMENT THEME
+   ========================================= */
+
 .shift-card {
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-left: 4px solid transparent;
+  background-color: var(--m-bg-surface, #ffffff);
+  border: 1px solid var(--m-border, #e2e8f0);
   border-radius: 0.5rem;
   padding: 0.75rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
   cursor: pointer;
-  transition: all 0.2s;
-  font-family: "Inter", sans-serif;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
+  /* --- Variants --- */
 
-  /* Trạng thái thiếu người (Màu cam/đỏ) */
-  &.incomplete {
-    background-color: #fffbeb;
-    border-color: #fcd34d;
-    border-left-color: #f59e0b;
+  /* 1. Trạng thái Thiếu người (Critical) */
+  &.critical {
+    border-left: 3px solid var(--m-danger, #ef4444);
 
-    .status-dot {
-      background-color: #f59e0b;
+    .alert-icon {
+      color: var(--m-danger, #ef4444);
+      animation: pulse 2s infinite;
+    }
+
+    &:hover {
+      border-color: var(--m-danger, #ef4444);
+      background-color: #fef2f2; /* Red-50 */
     }
   }
 
-  /* Trạng thái đủ người (Màu xanh) */
-  &.complete {
-    background-color: #ffffff;
-    border-color: #e5e7eb;
-    border-left-color: #10b981;
+  /* 2. Trạng thái Đủ người (Optimal) */
+  &.optimal {
+    border-left: 3px solid var(--m-success, #10b981);
 
-    .status-dot {
-      background-color: #10b981;
+    &:hover {
+      border-color: var(--m-primary, #4f46e5);
+      background-color: #f8fafc;
     }
   }
 
+  /* --- Header --- */
   .card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
-    font-size: 0.75rem;
-    color: #6b7280;
-    font-weight: 600;
+    margin-bottom: 0.75rem;
 
-    .time-wrapper {
+    .time-badge {
       display: flex;
       align-items: center;
-      gap: 0.25rem;
-    }
-
-    .status-dot {
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 50%;
-    }
-  }
-
-  .avatar-stack {
-    display: flex;
-    align-items: center;
-    margin-left: 0.5rem;
-
-    img {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      border: 2px solid #ffffff;
-      margin-left: -8px;
-      object-fit: cover;
-      background-color: #e5e7eb;
-    }
-
-    .more-count {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      background-color: #f3f4f6;
-      border: 2px solid #ffffff;
-      margin-left: -8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.65rem;
-      color: #6b7280;
-      font-weight: 600;
-    }
-
-    .empty-text {
+      gap: 0.35rem;
       font-size: 0.75rem;
-      color: #9ca3af;
-      font-style: italic;
-    }
-  }
-
-  .missing-badge {
-    background-color: #fef2f2;
-    color: #dc2626;
-    font-size: 0.7rem;
-    padding: 0.125rem 0.375rem;
-    border-radius: 0.25rem;
-    font-weight: 700;
-    margin-left: auto;
-  }
-
-  .job-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    margin-top: 0.5rem;
-
-    span {
-      font-size: 0.7rem;
-      padding: 0.125rem 0.375rem;
+      font-weight: 700;
+      color: var(--m-text-main, #0f172a);
+      background-color: var(--m-bg-body, #f1f5f9);
+      padding: 0.2rem 0.5rem;
       border-radius: 0.25rem;
-      background-color: #f3f4f6;
-      font-weight: 500;
+      font-variant-numeric: tabular-nums; /* Căn thẳng hàng số */
     }
+  }
+
+  /* --- Body: Avatars --- */
+  .card-body {
+    margin-bottom: 0.75rem;
+
+    .staff-visuals {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.35rem;
+
+      /* Kỹ thuật xếp chồng Avatar */
+      .avatar-wrapper {
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 50%;
+        border: 2px solid var(--m-bg-surface, #fff);
+        overflow: hidden;
+        margin-left: -0.5rem; /* Negative margin tạo hiệu ứng stack */
+        position: relative;
+        flex-shrink: 0;
+        transition: transform 0.2s;
+
+        &:first-child {
+          margin-left: 0;
+        }
+        &:hover {
+          transform: translateY(-3px);
+          z-index: 10;
+        }
+
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        /* Ô hiện số lượng thêm (+2) */
+        &.more {
+          background-color: #e2e8f0;
+          color: #64748b;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.7rem;
+          font-weight: 600;
+        }
+
+        /* Ô trống (Ghost Slot) */
+        &.ghost {
+          background-color: transparent;
+          border: 1px dashed #cbd5e1;
+          color: #94a3b8;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.8rem;
+          font-weight: 600;
+        }
+      }
+    }
+
+    .staff-summary {
+      font-size: 0.75rem;
+      font-weight: 500;
+
+      .text-sub {
+        color: var(--m-text-sub, #64748b);
+      }
+      .text-danger {
+        color: var(--m-danger, #ef4444);
+        font-weight: 600;
+      }
+    }
+  }
+
+  /* --- Footer: Job Indicators --- */
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 1rem; /* Giữ chiều cao cố định */
+
+    .job-dots {
+      display: flex;
+      gap: 0.25rem;
+      align-items: center;
+
+      .job-dot {
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 50%;
+
+        /* Màu sắc cho từng job (dùng biến CSS nếu muốn, ở đây dùng mã màu cứng cho nhanh) */
+        &.job-purple {
+          background-color: #a855f7;
+        }
+        &.job-indigo {
+          background-color: #6366f1;
+        }
+        &.job-blue {
+          background-color: #3b82f6;
+        }
+        &.job-pink {
+          background-color: #ec4899;
+        }
+        &.job-teal {
+          background-color: #14b8a6;
+        }
+        &.job-orange {
+          background-color: #f97316;
+        }
+        &.job-gray {
+          background-color: #94a3b8;
+        }
+      }
+
+      .job-more {
+        font-size: 0.65rem;
+        color: #94a3b8;
+        line-height: 1;
+      }
+    }
+
+    .hover-action {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--m-primary, #4f46e5);
+      opacity: 0;
+      transform: translateX(-5px);
+      transition: all 0.2s;
+    }
+  }
+
+  /* Hiệu ứng khi hover vào cả card */
+  &:hover {
+    .hover-action {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
   }
 }

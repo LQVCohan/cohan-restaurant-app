@@ -1,22 +1,23 @@
+// src/graphql/resolvers/inventory/type.js
 import mongoose from "mongoose";
 import { Recipe } from "../../../models/index.js";
 
 export default {
-  IngredientsComponent: {
+  RecipeIngredientLine: {
     name: async (parent, _args, ctx) => {
-      const id = parent.ingredientId;
+      const id = parent?.ingredientId;
       if (!id || !mongoose.isValidObjectId(id)) return null;
       const doc = await ctx.loaders.ingredientLoader.load(id);
       return doc?.name ?? null;
     },
     baseUnit: async (parent, _args, ctx) => {
-      const id = parent.ingredientId;
+      const id = parent?.ingredientId;
       if (!id || !mongoose.isValidObjectId(id)) return null;
       const doc = await ctx.loaders.ingredientLoader.load(id);
       return doc?.baseUnit ?? null;
     },
     costPerBaseUnit: async (parent, _args, ctx) => {
-      const id = parent.ingredientId;
+      const id = parent?.ingredientId;
       if (!id || !mongoose.isValidObjectId(id)) return null;
       const doc = await ctx.loaders.ingredientLoader.load(id);
       return doc?.costPerBaseUnit ?? null;
@@ -24,12 +25,8 @@ export default {
   },
 
   MenuItem: {
-    servingVariants: async (parent, _args, _ctx) => {
-      if (
-        parent &&
-        parent.recipe &&
-        Array.isArray(parent.recipe.servingVariants)
-      ) {
+    servingVariants: async (parent) => {
+      if (parent?.recipe && Array.isArray(parent.recipe.servingVariants)) {
         return parent.recipe.servingVariants;
       }
 
@@ -44,7 +41,10 @@ export default {
         filter.restaurantId = parent.restaurantId;
       }
 
-      const recipe = await Recipe.findOne(filter).lean();
+      const recipe = await Recipe.findOne(filter)
+        .select({ servingVariants: 1 })
+        .lean();
+
       return recipe?.servingVariants || [];
     },
   },

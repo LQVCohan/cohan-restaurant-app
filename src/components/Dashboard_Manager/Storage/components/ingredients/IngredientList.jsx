@@ -1,5 +1,5 @@
 // src/components/.../ingredients/IngredientList.jsx
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import IngredientCard from "./IngredientCard";
 import IngredientModal from "./IngredientModal";
 import Button from "../../../../common/Button";
@@ -8,6 +8,8 @@ import "./IngredientList.scss";
 
 const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
   const {
+    loading,
+    error,
     filteredIngredients,
     filters,
     setFilters,
@@ -16,11 +18,21 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
     deleteIngredient,
     addStock,
     getStockStatus,
+    warehouses,
+    defaultWarehouseId,
   } = useIngredients(restaurantId, selectedWarehouseId);
 
+  const defaultWarehouseName = useMemo(() => {
+    const wh = warehouses.find((w) => w.id === defaultWarehouseId);
+    return wh?.name || null;
+  }, [warehouses, defaultWarehouseId]);
+
   const [showModal, setShowModal] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingItem, setEditingItem] = useState();
+  const [editingItem, setEditingItem] = useState(null);
+  const isEditing = Boolean(editingItem?.id);
+
+  const [saving, setSaving] = useState(false);
+
   const handleSearch = (e) =>
     setFilters({ ...filters, search: e.target.value });
   const handleCategoryFilter = (e) =>
@@ -28,24 +40,56 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
   const handleStatusFilter = (e) =>
     setFilters({ ...filters, status: e.target.value });
 
-  const handleAddStock = (id) => {
+  const handleAddStock = async (id) => {
     const ingredient = filteredIngredients.find((i) => i.id === id);
-    const amount = prompt(`Nhập số lượng ${ingredient.unit} muốn thêm:`);
-    if (amount && !isNaN(amount) && parseFloat(amount) > 0) {
-      addStock(id, parseFloat(amount));
+    if (!ingredient) return;
+
+    const amount = prompt(`Nhập số lượng (${ingredient.baseUnit}) muốn thêm:`);
+    const qty = Number(amount);
+    if (Number.isFinite(qty) && qty > 0) {
+      await addStock(id, qty);
     }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa nguyên liệu này?")) {
-      deleteIngredient(id);
+      await deleteIngredient(id);
     }
   };
-  const handleShowModal = (ingredient) => {
+
+  const openCreate = () => {
+    setEditingItem(null);
     setShowModal(true);
-    setEditingItem(ingredient);
-    setIsEditing(true);
   };
+
+  const openEdit = (ingredient) => {
+    setEditingItem(ingredient);
+    setShowModal(true);
+  };
+
+  const closeModal = () => {
+    if (saving) return;
+    setShowModal(false);
+    setEditingItem(null);
+  };
+
+  const handleSubmit = async ({ payload, initialStockQty, isEditing, id }) => {
+    try {
+      setSaving(true);
+      if (isEditing && id) {
+        await updateIngredient(id, { payload });
+      } else {
+        await addIngredient({ payload, initialStockQty });
+      }
+      setShowModal(false);
+      setEditingItem(null);
+    } catch (e) {
+      alert(e?.message || "Có lỗi khi lưu nguyên liệu");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="ingredient-list">
       <div className="toolbar">
@@ -58,6 +102,7 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
               value={filters.search}
               onChange={handleSearch}
             />
+
             <select
               className="filter-select"
               value={filters.category}
@@ -70,6 +115,7 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
               <option value="dairy">Sữa & trứng</option>
               <option value="grain">Ngũ cốc</option>
             </select>
+
             <select
               className="filter-select"
               value={filters.status}
@@ -81,40 +127,57 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
               <option value="out-of-stock">Hết hàng</option>
             </select>
           </div>
+
+          {defaultWarehouseName ? (
+            <></>
+          ) : (
+            <div className="hint hint--warn">
+              Chưa có kho. Bạn vẫn tạo được nguyên liệu, nhưng không nhập tồn
+              ban đầu / nhập kho được.
+            </div>
+          )}
         </div>
+
         <div className="toolbar-right">
-          <Button onClick={() => setShowModal(true)}>
+          <Button onClick={openCreate} disabled={!restaurantId || saving}>
             ➕ Thêm nguyên liệu
           </Button>
         </div>
       </div>
 
-      <div className="ingredients-grid">
-        {filteredIngredients.map((ingredient) => (
-          <IngredientCard
-            key={ingredient.id}
-            ingredient={ingredient}
-            onEdit={() => handleShowModal(ingredient)} // tuỳ bạn mở modal edit
-            onDelete={handleDelete}
-            onAddStock={handleAddStock}
-            onShowUsage={() => {
-              /* show recipe usage nếu muốn */
-            }}
-            getStockStatus={getStockStatus}
-          />
-        ))}
-      </div>
+      {error && (
+        <div style={{ color: "#b91c1c", padding: "8px 0" }}>
+          Lỗi: {error.message}
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ padding: "12px 0" }}>Đang tải…</div>
+      ) : (
+        <div className="ingredients-grid">
+          {filteredIngredients.map((ingredient) => (
+            <IngredientCard
+              key={ingredient.id}
+              ingredient={ingredient}
+              onEdit={() => openEdit(ingredient)}
+              onDelete={handleDelete}
+              onAddStock={handleAddStock}
+              onShowUsage={() => {}}
+              getStockStatus={getStockStatus}
+            />
+          ))}
+        </div>
+      )}
 
       <IngredientModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onSave={(data) => {
-          if (data.id) updateIngredient(data.id, data);
-          else addIngredient(data);
-        }}
-        onDelete={(id) => deleteIngredient(id)}
-        isEditing={isEditing}
+        onClose={closeModal}
         initial={editingItem}
+        isEditing={isEditing}
+        onSubmit={handleSubmit}
+        canInitStock={!isEditing && Boolean(defaultWarehouseId)}
+        defaultWarehouseName={defaultWarehouseName}
+        saving={saving}
       />
     </div>
   );

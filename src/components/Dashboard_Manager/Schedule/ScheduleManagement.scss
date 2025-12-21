@@ -1,276 +1,491 @@
-/* Reset & Base Layout */
+/* =========================================
+   SCHEDULE MANAGEMENT - THEME & LAYOUT
+   ========================================= */
+
+// Color Variables
+$primary: #4f46e5; // Indigo 600
+$primary-light: #e0e7ff; // Indigo 100
+$text-main: #1e293b; // Slate 800
+$text-sec: #64748b; // Slate 500
+$border: #e2e8f0; // Slate 200
+$bg-main: #f8fafc; // Slate 50
+$white: #ffffff;
+
+// Status Colors
+$success: #10b981;
+$warning: #f59e0b;
+$danger: #ef4444;
+
 .schedule-container {
-  background-color: #f3f4f6; /* Gray-100 */
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    sans-serif;
+  height: 100vh;
+  background-color: $bg-main;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
 
-  /* 1. Header Section with KPI */
+  /* --- 1. HEADER SECTION --- */
   .schedule-header {
-    background-color: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
+    background: $white;
     padding: 1.5rem 2rem;
+    border-bottom: 1px solid $border;
+    flex-shrink: 0;
 
     .header-top {
       display: flex;
       justify-content: space-between;
-      align-items: center;
+      align-items: flex-start;
       margin-bottom: 1.5rem;
 
-      h1 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: #111827;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
+      .title-group {
+        h1 {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: $text-main;
+          margin: 0;
+        }
+        .subtitle {
+          color: $text-sec;
+          font-size: 0.9rem;
+          margin-top: 0.25rem;
+        }
       }
 
       .user-profile {
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        background: $bg-main;
+        padding: 0.5rem 0.75rem;
+        border-radius: 2rem;
+        border: 1px solid $border;
+
+        .user-info {
+          text-align: right;
+          display: flex;
+          flex-direction: column;
+
+          .name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: $text-main;
+          }
+          .role {
+            font-size: 0.75rem;
+            color: $primary;
+            font-weight: 500;
+          }
+        }
 
         img {
-          width: 2.5rem;
-          height: 2.5rem;
+          width: 36px;
+          height: 36px;
           border-radius: 50%;
-          border: 2px solid #e5e7eb;
-        }
-        span {
-          font-weight: 600;
-          color: #374151;
+          border: 2px solid $white;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
       }
     }
 
-    /* KPI Cards Grid */
+    /* --- KPI DASHBOARD --- */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 1.5rem;
 
       .kpi-card {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
+        background: $white;
+        border: 1px solid $border;
         border-radius: 0.75rem;
-        padding: 1.25rem;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        padding: 1rem;
         display: flex;
-        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 
-        .label {
-          font-size: 0.75rem;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: #6b7280;
-          font-weight: 600;
-          margin-bottom: 0.5rem;
+        &:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
-        .value {
-          font-size: 1.5rem;
-          font-weight: 800;
-          color: #1f2937;
+        .kpi-icon {
+          width: 42px;
+          height: 42px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 0.5rem;
+          font-size: 1.25rem;
+          background: $bg-main;
         }
 
-        .trend {
-          font-size: 0.875rem;
-          margin-top: 0.25rem;
-          font-weight: 500;
+        .kpi-content {
+          display: flex;
+          flex-direction: column;
 
-          &.positive {
-            color: #16a34a;
-          } /* Green */
-          &.negative {
-            color: #dc2626;
-          } /* Red */
-          &.neutral {
-            color: #6b7280;
-          } /* Gray */
+          .label {
+            font-size: 0.75rem;
+            color: $text-sec;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+          }
+          .value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: $text-main;
+            margin: 0.1rem 0;
+          }
+          .trend {
+            font-size: 0.75rem;
+            font-weight: 500;
+          }
+        }
+
+        /* Specific Card Styles */
+        &.money {
+          .kpi-icon {
+            background: #ecfdf5;
+            color: #059669;
+          } // Emerald
+          .trend.positive {
+            color: #059669;
+          }
+        }
+        &.shifts {
+          .kpi-icon {
+            background: #eff6ff;
+            color: #3b82f6;
+          } // Blue
+        }
+        &.alerts {
+          .kpi-icon {
+            background: #fff7ed;
+            color: #ea580c;
+          } // Orange
+          .trend {
+            color: #ea580c;
+          }
+
+          &.has-alert {
+            border-color: #fdba74;
+            background-color: #fffaf0;
+            animation: pulse-border 2s infinite;
+          }
+        }
+        &.status {
+          .kpi-icon {
+            background: #f1f5f9;
+            color: #64748b;
+          }
+          .value.published {
+            color: $success;
+          }
+          .value.draft {
+            color: $text-sec;
+            font-style: italic;
+          }
         }
       }
     }
   }
 
-  /* 2. Toolbar / Controls */
+  /* --- 2. TOOLBAR SECTION --- */
   .schedule-toolbar {
     padding: 1rem 2rem;
+    background: $bg-main;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #ffffff;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid $border;
 
-    .view-toggles {
+    .toolbar-left {
       display: flex;
-      background: #f3f4f6;
-      padding: 0.25rem;
-      border-radius: 0.5rem;
+      align-items: center;
+      gap: 1.5rem;
 
-      button {
-        padding: 0.5rem 1rem;
-        border: none;
-        background: transparent;
-        border-radius: 0.375rem;
-        font-weight: 500;
-        color: #6b7280;
-        cursor: pointer;
-        transition: all 0.2s;
+      .view-toggles {
+        background: #e2e8f0;
+        padding: 4px;
+        border-radius: 0.5rem;
+        display: flex;
 
-        &.active {
-          background: #ffffff;
-          color: #1f2937;
-          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        button {
+          padding: 0.4rem 1rem;
+          border: none;
+          background: transparent;
+          border-radius: 0.375rem;
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: $text-sec;
+          cursor: pointer;
+          transition: all 0.2s;
+
+          &.active {
+            background: $white;
+            color: $primary;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+          }
+        }
+      }
+
+      .week-label {
+        font-weight: 700;
+        color: $text-main;
+        .date-range {
+          font-weight: 400;
+          color: $text-sec;
+          margin-left: 0.5rem;
         }
       }
     }
 
-    .actions {
+    .toolbar-right {
       display: flex;
-      gap: 1rem;
       align-items: center;
 
-      .week-label {
-        color: #4b5563;
-        font-weight: 500;
+      // Note: btn-auto-schedule styles are also handled inline in JSX for the icon,
+      // but we add hover effects here.
+      .btn-auto-schedule {
+        &:hover {
+          background-color: #f5f3ff !important;
+          border-color: #6366f1 !important;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
+        }
       }
 
       .btn-publish {
-        background-color: #4f46e5;
-        color: white;
-        border: none;
-        padding: 0.6rem 1.25rem;
+        padding: 0.6rem 1.2rem;
         border-radius: 0.5rem;
         font-weight: 600;
+        font-size: 0.9rem;
         cursor: pointer;
-        box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+        border: none;
+        background: $text-main;
+        color: $white;
+        transition: all 0.2s;
 
         &:hover {
-          background-color: #4338ca;
+          background: #0f172a;
         }
-        &:active {
-          transform: translateY(1px);
+
+        &.published {
+          background: $success;
+          &:hover {
+            background: #059669;
+          }
         }
       }
     }
   }
 
-  /* 3. Main Calendar Grid */
+  /* --- 3. CALENDAR AREA (MAIN GRID) --- */
   .calendar-area {
     flex: 1;
-    overflow-x: auto;
-    padding: 2rem;
-    background: #f9fafb;
+    overflow: auto; // Cho phép cuộn
+    background: $white;
+    padding: 1rem;
 
     table {
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
-      background: white;
-      border-radius: 0.75rem;
-      overflow: hidden;
-      border: 1px solid #e5e7eb;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      table-layout: fixed;
+      min-width: 1200px; // Đảm bảo bảng không bị co quá nhỏ
 
+      /* Table Header */
       thead th {
-        background-color: #f9fafb;
-        color: #374151;
-        font-weight: 600;
+        background: $bg-main;
         padding: 1rem;
+        border-bottom: 2px solid $border;
+        border-right: 1px solid $border;
+        position: sticky;
+        top: 0;
+        z-index: 10;
         text-align: left;
-        border-bottom: 1px solid #e5e7eb;
+
+        &:first-child {
+          border-top-left-radius: 0.5rem;
+          width: 150px; // Cột Ca làm việc
+          z-index: 11;
+        }
+        &:last-child {
+          border-right: none;
+          border-top-right-radius: 0.5rem;
+        }
 
         .date-col {
           display: flex;
           flex-direction: column;
           align-items: center;
+
           .day-name {
-            font-size: 0.875rem;
+            font-size: 0.75rem;
+            color: $text-sec;
             text-transform: uppercase;
-            color: #6b7280;
+            font-weight: 600;
           }
           .date-num {
-            font-size: 1.125rem;
+            font-size: 1.1rem;
+            color: $text-main;
             font-weight: 700;
-            color: #111827;
           }
+        }
+
+        &.corner-th {
+          color: $text-sec;
+          font-weight: 600;
+          text-align: center;
+          vertical-align: middle;
         }
       }
 
+      /* Table Body */
       tbody td {
+        border-bottom: 1px solid $border;
+        border-right: 1px solid $border;
         vertical-align: top;
-        border-right: 1px solid #e5e7eb;
-        border-bottom: 1px solid #e5e7eb;
-        padding: 0.75rem;
-        height: 200px;
-        width: 13%;
-        transition: background 0.2s;
+        padding: 0.5rem;
+        height: 180px; // Chiều cao tối thiểu cho mỗi ô lịch
+        transition: background 0.1s;
 
-        &:first-child {
-          width: 100px; /* Cột chứa Icon Ca */
-          border-left: none;
-          background-color: #fdfdfd;
-        }
         &:last-child {
           border-right: none;
         }
+      }
 
-        &:hover {
-          background-color: #fafafa;
+      /* Shift Type Column (Left Side) */
+      .shift-header-cell {
+        background: $white;
+        vertical-align: middle;
+        padding: 1rem;
+
+        .shift-type-badge {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 1rem 0.5rem;
+          border-radius: 0.5rem;
+          text-align: center;
+
+          .icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+          }
+          .shift-info {
+            display: flex;
+            flex-direction: column;
+            .label {
+              font-weight: 700;
+              color: $text-main;
+              font-size: 0.95rem;
+            }
+            .time {
+              font-size: 0.75rem;
+              color: $text-sec;
+              margin-top: 0.2rem;
+            }
+          }
+
+          /* Theme cho từng ca */
+          &.morning {
+            background: linear-gradient(
+              to bottom right,
+              #fff7ed,
+              #ffedd5
+            ); // Orange/Yellow Light
+            border: 1px solid #fed7aa;
+            .label {
+              color: #c2410c;
+            }
+          }
+          &.afternoon {
+            background: linear-gradient(
+              to bottom right,
+              #eff6ff,
+              #dbeafe
+            ); // Blue Light
+            border: 1px solid #bfdbfe;
+            .label {
+              color: #1d4ed8;
+            }
+          }
         }
       }
 
-      /* Style cho cột đầu tiên (Loại Ca) */
-      .shift-type-cell {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        color: #4b5563;
+      /* Main Shift Cell */
+      .shift-cell {
+        position: relative;
+        background-color: $white;
 
-        .icon {
-          font-size: 1.5rem;
-          margin-bottom: 0.25rem;
+        &:hover {
+          background-color: #f8fafc;
+          .add-slot-trigger {
+            opacity: 1;
+          }
         }
-        .label {
+
+        // Add Slot Button (Dấu + mờ)
+        .add-slot-trigger {
+          margin-top: 0.5rem;
+          border: 2px dashed #cbd5e1;
+          border-radius: 0.5rem;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: #94a3b8;
           font-weight: 700;
-          font-size: 0.875rem;
-          color: #1f2937;
-        }
-        .time {
-          font-size: 0.75rem;
-          color: #9ca3af;
+          font-size: 1.2rem;
+          opacity: 0; // Ẩn mặc định
+          transition: all 0.2s;
+
+          &:hover {
+            border-color: $primary;
+            color: $primary;
+            background: $primary-light;
+          }
         }
       }
+    }
+  }
+}
 
-      /* Nút Add (+) ẩn hiện */
-      .add-slot-wrapper {
-        margin-top: 0.5rem;
-        height: 3rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 2px dashed #e5e7eb;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        color: #d1d5db;
-        transition: all 0.2s;
+/* --- ANIMATIONS --- */
+@keyframes pulse-border {
+  0% {
+    border-color: #fdba74;
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.4);
+  }
+  70% {
+    border-color: #fdba74;
+    box-shadow: 0 0 0 4px rgba(234, 88, 12, 0);
+  }
+  100% {
+    border-color: #fdba74;
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0);
+  }
+}
 
-        .plus {
-          font-size: 1.5rem;
-        }
+/* --- RESPONSIVE ADJUSTMENTS --- */
+@media (max-width: 1024px) {
+  .schedule-container .kpi-grid {
+    grid-template-columns: repeat(2, 1fr); // 2 cột trên tablet
+  }
 
-        &:hover {
-          border-color: #6366f1;
-          background-color: #eef2ff;
-          color: #6366f1;
-        }
-      }
+  .schedule-container .schedule-toolbar {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+
+    .toolbar-right {
+      width: 100%;
+      justify-content: space-between;
     }
   }
 }

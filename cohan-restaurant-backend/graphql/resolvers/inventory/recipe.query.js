@@ -1,29 +1,41 @@
-// src/graphql/resolvers/inventory/recipe.query.js
 import mongoose from "mongoose";
-import { Recipe, MenuItem, Menu, Ingredient } from "../../../models/index.js";
+import { Recipe, MenuItem, Menu } from "../../../models/index.js";
+
 function toObjectIdOrNull(v) {
-  try {
-    return v ? new mongoose.Types.ObjectId(v) : null;
-  } catch {
-    return null;
-  }
+  if (!v) return null;
+
+  if (v instanceof mongoose.Types.ObjectId) return v;
+
+  const s = typeof v === "string" ? v : String(v);
+
+  if (!mongoose.isValidObjectId(s)) return null;
+
+  return mongoose.Types.ObjectId.createFromHexString(s);
 }
+
+function escapeRegex(input) {
+  return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export default {
   recipe: async (_p, { restaurantId, menuItemId }) => {
     if (![restaurantId, menuItemId].every(mongoose.isValidObjectId))
       return null;
-    return Recipe.findOne({ restaurantId, menuItemId }).lean({
-      virtuals: true,
-    });
+
+    return Recipe.findOne({ restaurantId, menuItemId })
+      .select({ __v: 0 })
+      .lean({ virtuals: true });
   },
 
   recipesByMenuItems: async (_p, { restaurantId, menuItemIds }) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+
     const ids = (menuItemIds || []).filter(mongoose.isValidObjectId);
     if (!ids.length) return [];
-    return Recipe.find({ restaurantId, menuItemId: { $in: ids } }).lean({
-      virtuals: true,
-    });
+
+    return Recipe.find({ restaurantId, menuItemId: { $in: ids } })
+      .select({ __v: 0 })
+      .lean({ virtuals: true });
   },
 
   menuItemsWithRecipes: async (
@@ -31,10 +43,10 @@ export default {
     {
       restaurantId,
       timeSlot, // 'breakfast'|'lunch'|'dinner'|'late-night' | null
-      search = null, // optional
-      categoryId = null, // optional nếu bạn có category riêng cho MenuItem
+      search = null,
+      categoryId = null,
       first = 30,
-      after = null, // cursor _id (string)
+      after = null,
     }
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) {
@@ -51,6 +63,7 @@ export default {
       const m = await Menu.findOne({ restaurantId, timeSlot })
         .select({ __v: 0 })
         .lean({ virtuals: true });
+
       if (!m) {
         return {
           total: 0,
@@ -63,6 +76,7 @@ export default {
       menus = await Menu.find({ restaurantId })
         .select({ __v: 0 })
         .lean({ virtuals: true });
+
       if (!menus.length) {
         return {
           total: 0,
@@ -74,13 +88,16 @@ export default {
 
     const menuIds = menus.map((m) => m._id);
 
-    // 2) Xây filter cho MenuItem
+    // 2) Filter MenuItem
     const q = { restaurantId, menuId: { $in: menuIds } };
+
     if (categoryId && mongoose.isValidObjectId(categoryId)) {
       q.categoryId = new mongoose.Types.ObjectId(categoryId);
     }
-    if (search && search.trim()) {
-      q.name = new RegExp(search.trim(), "i");
+
+    if (search && String(search).trim()) {
+      const pattern = escapeRegex(String(search).trim());
+      q.name = new RegExp(pattern, "i");
     }
 
     // Cursor-based pagination theo _id tăng dần
@@ -91,22 +108,18 @@ export default {
 
     const safeLimit = Math.min(Math.max(first || 30, 1), 200);
 
-    // 3) total để FE hiển thị (không bắt buộc)
+    // 3) total (optional)
     const total = await MenuItem.countDocuments({
       restaurantId,
       menuId: { $in: menuIds },
-      ...(categoryId && mongoose.isValidObjectId(categoryId)
-        ? { categoryId: new mongoose.Types.ObjectId(categoryId) }
-        : {}),
-      ...(search && search.trim()
-        ? { name: new RegExp(search.trim(), "i") }
-        : {}),
+      ...(q.categoryId ? { categoryId: q.categoryId } : {}),
+      ...(q.name ? { name: q.name } : {}),
     });
 
     // 4) lấy items + 1 để tính hasNext
     const itemsPlusOne = await MenuItem.find(q)
       .select({ __v: 0 })
-      .sort({ _id: 1 }) // quan trọng: consistent với cursor _id
+      .sort({ _id: 1 })
       .limit(safeLimit + 1)
       .lean({ virtuals: true });
 
@@ -121,8 +134,9 @@ export default {
       };
     }
 
-    // 5) Lấy recipes tương ứng (1 query)
+    // 5) Lấy recipes tương ứng
     const menuItemIds = items.map((i) => i._id);
+
     const recipes = await Recipe.find({
       restaurantId,
       menuItemId: { $in: menuItemIds },
@@ -134,11 +148,11 @@ export default {
       recipes.map((r) => [String(r.menuItemId), r])
     );
 
-    // 6) Build items theo shape { menuItem, recipe }
+    // 6) Build rows { menuItem, recipe }
     const rows = items.map((mi) => ({
       menuItem: {
         ...mi,
-        id: String(mi._id), // đảm bảo id có mặt trong subfield MenuItem
+        id: String(mi._id),
       },
       recipe: recipeByMenuItem.get(String(mi._id)) || null,
     }));

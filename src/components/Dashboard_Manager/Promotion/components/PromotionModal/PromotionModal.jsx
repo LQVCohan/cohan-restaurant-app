@@ -1,4 +1,15 @@
 import React, { useState, useEffect } from "react";
+import {
+  X,
+  Save,
+  FileText,
+  Tag,
+  Clock,
+  Percent,
+  DollarSign,
+  Users,
+  Store,
+} from "lucide-react";
 import { RESTAURANTS, PROMOTION_TYPES } from "../../../../../utils/constants";
 import "./PromotionModal.scss";
 
@@ -43,71 +54,36 @@ const PromotionModal = ({ promotion, onSave, onClose }) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
-    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Tên khuyến mãi là bắt buộc";
-    }
-
-    if (!formData.code.trim()) {
-      newErrors.code = "Mã khuyến mãi là bắt buộc";
-    }
-
-    if (!formData.type) {
-      newErrors.type = "Loại khuyến mãi là bắt buộc";
-    }
-
-    if (!formData.discountValue) {
-      newErrors.discountValue = "Giá trị giảm là bắt buộc";
-    }
-
-    if (!formData.startDate) {
-      newErrors.startDate = "Ngày bắt đầu là bắt buộc";
-    }
-
-    if (!formData.endDate) {
-      newErrors.endDate = "Ngày kết thúc là bắt buộc";
-    }
-
-    if (!formData.restaurantId) {
-      newErrors.restaurantId = "Nhà hàng là bắt buộc";
-    }
-
+    if (!formData.name.trim()) newErrors.name = "Bắt buộc nhập";
+    if (!formData.code.trim()) newErrors.code = "Bắt buộc nhập";
+    if (!formData.type) newErrors.type = "Chọn loại";
+    if (!formData.discountValue) newErrors.discountValue = "Nhập giá trị";
+    if (!formData.startDate) newErrors.startDate = "Chọn ngày";
+    if (!formData.endDate) newErrors.endDate = "Chọn ngày";
+    if (!formData.restaurantId) newErrors.restaurantId = "Chọn nhà hàng";
     if (
       formData.startDate &&
       formData.endDate &&
       formData.startDate >= formData.endDate
     ) {
-      newErrors.endDate = "Ngày kết thúc phải sau ngày bắt đầu";
+      newErrors.endDate = "Ngày kết thúc không hợp lệ";
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
-    if (!validateForm()) {
-      return;
-    }
-
-    const promotionData = {
+    // Logic xử lý dữ liệu (giữ nguyên logic cũ)
+    const formattedData = {
       ...formData,
       discountValue: parseFloat(formData.discountValue),
       minOrderValue: formData.minOrderValue
@@ -120,250 +96,250 @@ const PromotionModal = ({ promotion, onSave, onClose }) => {
       conditions: formData.conditions.split("\n").filter((c) => c.trim()),
       status: "active",
     };
-
-    onSave(promotionData);
-  };
-
-  const handleSaveDraft = () => {
-    const promotionData = {
-      ...formData,
-      discountValue: parseFloat(formData.discountValue) || 0,
-      minOrderValue: formData.minOrderValue
-        ? parseFloat(formData.minOrderValue)
-        : null,
-      maxDiscount: formData.maxDiscount
-        ? parseFloat(formData.maxDiscount)
-        : null,
-      usageLimit: formData.usageLimit ? parseInt(formData.usageLimit) : null,
-      conditions: formData.conditions.split("\n").filter((c) => c.trim()),
-      status: "draft",
-    };
-
-    onSave(promotionData);
-  };
-
-  const handleOverlayClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+    onSave(formattedData);
   };
 
   return (
-    <div className="modal-overlay" onClick={handleOverlayClick}>
-      <div className="modal">
+    <div
+      className="premium-modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="premium-modal">
+        {/* --- HEADER --- */}
         <div className="modal-header">
-          <h2 className="modal-title">
-            {promotion ? "✏️ Chỉnh Sửa Khuyến Mãi" : "🎁 Tạo Khuyến Mãi Mới"}
-          </h2>
-          <button className="modal-close" onClick={onClose}>
-            ×
+          <div className="header-content">
+            <h2>{promotion ? "Chỉnh sửa ưu đãi" : "Tạo ưu đãi mới"}</h2>
+            <p>Điền thông tin chi tiết để thiết lập chương trình khuyến mãi.</p>
+          </div>
+          <button className="btn-close" onClick={onClose}>
+            <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-grid">
-            <div className="form-group">
-              <label className="form-label">Tên khuyến mãi *</label>
-              <input
-                type="text"
-                name="name"
-                className={`form-input ${errors.name ? "error" : ""}`}
-                value={formData.name}
-                onChange={handleInputChange}
-              />
-              {errors.name && (
-                <span className="error-message">{errors.name}</span>
-              )}
+        {/* --- BODY (Scrollable) --- */}
+        <div className="modal-body">
+          <form id="promoForm" onSubmit={handleSubmit}>
+            {/* SECTION 1: CƠ BẢN */}
+            <div className="form-section">
+              <h3 className="section-title">
+                <FileText size={18} /> Thông tin chung
+              </h3>
+              <div className="grid-2">
+                <div className="form-group full">
+                  <label>
+                    Tên chương trình <span className="req">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="VD: Mừng khai trương cơ sở 2"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className={errors.name ? "error" : ""}
+                  />
+                  {errors.name && (
+                    <span className="err-msg">{errors.name}</span>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    Mã Code <span className="req">*</span>
+                  </label>
+                  <div className="input-icon-wrapper">
+                    <Tag size={16} className="input-icon" />
+                    <input
+                      type="text"
+                      name="code"
+                      placeholder="VD: SUMMER2024"
+                      className={`code-input ${errors.code ? "error" : ""}`}
+                      value={formData.code}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    Nhà hàng áp dụng <span className="req">*</span>
+                  </label>
+                  <select
+                    name="restaurantId"
+                    value={formData.restaurantId}
+                    onChange={handleInputChange}
+                    className={errors.restaurantId ? "error" : ""}
+                  >
+                    <option value="">-- Chọn chi nhánh --</option>
+                    {Object.entries(RESTAURANTS).map(([key, name]) => (
+                      <option key={key} value={key}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Mã khuyến mãi *</label>
-              <input
-                type="text"
-                name="code"
-                className={`form-input ${errors.code ? "error" : ""}`}
-                value={formData.code}
-                onChange={handleInputChange}
-              />
-              {errors.code && (
-                <span className="error-message">{errors.code}</span>
-              )}
+            {/* SECTION 2: GIÁ TRỊ & ĐIỀU KIỆN */}
+            <div className="form-section">
+              <h3 className="section-title">
+                <Percent size={18} /> Giá trị ưu đãi
+              </h3>
+              <div className="grid-3">
+                <div className="form-group">
+                  <label>
+                    Loại giảm giá <span className="req">*</span>
+                  </label>
+                  <select
+                    name="type"
+                    value={formData.type}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">-- Loại --</option>
+                    {Object.entries(PROMOTION_TYPES).map(([key, label]) => (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    Mức giảm <span className="req">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="discountValue"
+                    placeholder="0"
+                    value={formData.discountValue}
+                    onChange={handleInputChange}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Giảm tối đa</label>
+                  <input
+                    type="number"
+                    name="maxDiscount"
+                    placeholder="Không giới hạn"
+                    value={formData.maxDiscount}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </div>
+
+              <div className="grid-2 mt-3">
+                <div className="form-group">
+                  <label>Đơn tối thiểu</label>
+                  <div className="input-icon-wrapper">
+                    <DollarSign size={16} className="input-icon" />
+                    <input
+                      type="number"
+                      name="minOrderValue"
+                      placeholder="0"
+                      value={formData.minOrderValue}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Giới hạn lượt dùng</label>
+                  <input
+                    type="number"
+                    name="usageLimit"
+                    placeholder="Tổng lượt dùng tối đa"
+                    value={formData.usageLimit}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Loại khuyến mãi *</label>
-              <select
-                name="type"
-                className={`form-select ${errors.type ? "error" : ""}`}
-                value={formData.type}
-                onChange={handleInputChange}
-              >
-                <option value="">-- Chọn loại --</option>
-                {Object.entries(PROMOTION_TYPES).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              {errors.type && (
-                <span className="error-message">{errors.type}</span>
-              )}
+            {/* SECTION 3: THỜI GIAN & ĐỐI TƯỢNG */}
+            <div className="form-section">
+              <h3 className="section-title">
+                <Clock size={18} /> Thời gian & Đối tượng
+              </h3>
+              <div className="grid-2">
+                <div className="form-group">
+                  <label>
+                    Bắt đầu <span className="req">*</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="startDate"
+                    value={formData.startDate}
+                    onChange={handleInputChange}
+                    className={errors.startDate ? "error" : ""}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>
+                    Kết thúc <span className="req">*</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleInputChange}
+                    className={errors.endDate ? "error" : ""}
+                  />
+                  {errors.endDate && (
+                    <span className="err-msg">{errors.endDate}</span>
+                  )}
+                </div>
+
+                <div className="form-group full">
+                  <label>Khách hàng mục tiêu</label>
+                  <div className="input-icon-wrapper">
+                    <Users size={16} className="input-icon" />
+                    <select
+                      name="targetAudience"
+                      value={formData.targetAudience}
+                      onChange={handleInputChange}
+                    >
+                      <option value="all">Tất cả khách hàng</option>
+                      <option value="new">Khách hàng mới</option>
+                      <option value="vip">Khách VIP</option>
+                      <option value="birthday">Sinh nhật trong tháng</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Giá trị giảm *</label>
-              <input
-                type="number"
-                name="discountValue"
-                className={`form-input ${errors.discountValue ? "error" : ""}`}
-                value={formData.discountValue}
-                onChange={handleInputChange}
-              />
-              {errors.discountValue && (
-                <span className="error-message">{errors.discountValue}</span>
-              )}
+            {/* SECTION 4: MÔ TẢ */}
+            <div className="form-section no-border">
+              <div className="form-group full">
+                <label>Điều kiện áp dụng (Mỗi dòng 1 điều kiện)</label>
+                <textarea
+                  name="conditions"
+                  rows="3"
+                  placeholder="- Chỉ áp dụng ăn tại quán&#10;- Không áp dụng lễ tết"
+                  value={formData.conditions}
+                  onChange={handleInputChange}
+                />
+              </div>
             </div>
+          </form>
+        </div>
 
-            <div className="form-group">
-              <label className="form-label">Đơn hàng tối thiểu</label>
-              <input
-                type="number"
-                name="minOrderValue"
-                className="form-input"
-                value={formData.minOrderValue}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Giảm tối đa</label>
-              <input
-                type="number"
-                name="maxDiscount"
-                className="form-input"
-                value={formData.maxDiscount}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Ngày bắt đầu *</label>
-              <input
-                type="datetime-local"
-                name="startDate"
-                className={`form-input ${errors.startDate ? "error" : ""}`}
-                value={formData.startDate}
-                onChange={handleInputChange}
-              />
-              {errors.startDate && (
-                <span className="error-message">{errors.startDate}</span>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Ngày kết thúc *</label>
-              <input
-                type="datetime-local"
-                name="endDate"
-                className={`form-input ${errors.endDate ? "error" : ""}`}
-                value={formData.endDate}
-                onChange={handleInputChange}
-              />
-              {errors.endDate && (
-                <span className="error-message">{errors.endDate}</span>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Số lượng sử dụng</label>
-              <input
-                type="number"
-                name="usageLimit"
-                className="form-input"
-                value={formData.usageLimit}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Đối tượng áp dụng</label>
-              <select
-                name="targetAudience"
-                className="form-select"
-                value={formData.targetAudience}
-                onChange={handleInputChange}
-              >
-                <option value="all">Tất cả khách hàng</option>
-                <option value="new">Khách hàng mới</option>
-                <option value="vip">Khách VIP</option>
-                <option value="birthday">Sinh nhật</option>
-                <option value="inactive">Khách không hoạt động</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Nhà hàng áp dụng *</label>
-              <select
-                name="restaurantId"
-                className={`form-select ${errors.restaurantId ? "error" : ""}`}
-                value={formData.restaurantId}
-                onChange={handleInputChange}
-              >
-                <option value="">-- Chọn nhà hàng --</option>
-                {Object.entries(RESTAURANTS).map(([key, name]) => (
-                  <option key={key} value={key}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-              {errors.restaurantId && (
-                <span className="error-message">{errors.restaurantId}</span>
-              )}
-            </div>
-
-            <div className="form-group full-width">
-              <label className="form-label">Mô tả khuyến mãi</label>
-              <textarea
-                name="description"
-                className="form-textarea"
-                placeholder="Mô tả chi tiết về khuyến mãi..."
-                value={formData.description}
-                onChange={handleInputChange}
-              />
-            </div>
-
-            <div className="form-group full-width">
-              <label className="form-label">Điều kiện áp dụng</label>
-              <textarea
-                name="conditions"
-                className="form-textarea"
-                placeholder="Các điều kiện và quy định áp dụng khuyến mãi (mỗi điều kiện một dòng)..."
-                value={formData.conditions}
-                onChange={handleInputChange}
-              />
-            </div>
+        {/* --- FOOTER --- */}
+        <div className="modal-footer">
+          <button type="button" className="btn-ghost" onClick={onClose}>
+            Hủy bỏ
+          </button>
+          <div className="right-actions">
+            <button type="button" className="btn-secondary">
+              Lưu Nháp
+            </button>
+            <button type="submit" form="promoForm" className="btn-primary">
+              <Save size={18} />
+              {promotion ? "Lưu thay đổi" : "Tạo khuyến mãi"}
+            </button>
           </div>
-
-          <div className="modal-actions">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onClose}
-            >
-              Hủy
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handleSaveDraft}
-            >
-              💾 Lưu Nháp
-            </button>
-            <button type="submit" className="btn btn-primary">
-              🚀 {promotion ? "Cập Nhật" : "Tạo Khuyến Mãi"}
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );

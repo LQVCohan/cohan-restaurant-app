@@ -1,31 +1,39 @@
 import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
+import { UnitEnum } from "./ingredient.model.js";
 
-const IngredientSchema = new mongoose.Schema(
+export const SellUnitEnum = ["portion", "g", "kg"];
+
+const RecipeIngredientLineSchema = new mongoose.Schema(
   {
     ingredientId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Ingredient",
       required: true,
     },
-    quantify: { type: Number, default: 1 },
-    wastePct: { type: Number, default: 0 },
+    qty: { type: Number, required: true, min: 0 },
+    unit: { type: String, enum: UnitEnum, required: true },
+    wastePct: { type: Number, default: 0, min: 0, max: 100 },
   },
-  { _id: true }
+  { _id: false }
 );
 
 const ServingVariantSchema = new mongoose.Schema(
   {
     key: { type: String, required: true, trim: true },
+    name: { type: String, trim: true },
+
     mode: { type: String, enum: ["PORTION", "BY_WEIGHT"], required: true },
-    yieldQty: { type: Number, required: true, default: 1 },
-    yieldUnit: { type: String, required: true, default: "portion" },
-    name: { type: String },
-    Ingredients: { type: [IngredientSchema], default: [] },
-    price: { type: Number, default: 0 },
+
+    sellQty: { type: Number, default: 1, min: 0.000001 },
+    sellUnit: { type: String, enum: SellUnitEnum, default: "portion" },
+
+    ingredients: { type: [RecipeIngredientLineSchema], default: [] },
+
+    price: { type: Number, default: 0, min: 0 },
     isDefault: { type: Boolean, default: false },
   },
-  { _id: true }
+  { _id: false } // key là định danh ổn định
 );
 
 const RecipeSchema = BaseSchemaModel({
@@ -33,17 +41,58 @@ const RecipeSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
+    index: true,
   },
   menuItemId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "MenuItem",
     required: true,
+    index: true,
   },
+
   servingVariants: { type: [ServingVariantSchema], default: [] },
+
   notes: { type: String },
   isActive: { type: Boolean, default: true },
 });
 
 RecipeSchema.index({ restaurantId: 1, menuItemId: 1 }, { unique: true });
+
+RecipeSchema.pre("validate", function (next) {
+  const variants = Array.isArray(this.servingVariants)
+    ? this.servingVariants
+    : [];
+
+  const keys = variants.map((v) => String(v?.key || "").trim()).filter(Boolean);
+  const keySet = new Set(keys);
+  if (keySet.size !== keys.length) {
+    return next(new Error("servingVariants.key must be unique"));
+  }
+
+  const defaultCount = variants.filter((v) => v?.isDefault).length;
+  if (defaultCount > 1) {
+    return next(new Error("Only one servingVariant can be isDefault=true"));
+  }
+
+  for (const v of variants) {
+    if (!v) continue;
+
+    if (v.mode === "PORTION" && v.sellUnit !== "portion") {
+      return next(
+        new Error(`Variant "${v.key}": PORTION must have sellUnit="portion"`)
+      );
+    }
+
+    if (v.mode === "BY_WEIGHT" && !["kg", "g"].includes(v.sellUnit)) {
+      return next(
+        new Error(
+          `Variant "${v.key}": BY_WEIGHT must have sellUnit "kg" or "g"`
+        )
+      );
+    }
+  }
+
+  next();
+});
 
 export default mongoose.model("Recipe", RecipeSchema);

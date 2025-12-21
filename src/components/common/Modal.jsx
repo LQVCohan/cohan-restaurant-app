@@ -1,158 +1,163 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 import "./Modal.scss";
 
 const Modal = ({
-  // Support both `isOpen` (internal) và `open` (dùng chỗ khác)
   isOpen,
   open,
   onClose,
   title,
   children,
   footer,
-  size = "md",
-  showCloseButton = true,
+  size = "md", // sm, md, lg, xl, full
+  position = "center", // center, top
   closeOnOverlayClick = true,
   closeOnEscape = true,
-  className = "", // 👈 thêm prop className để style riêng từng modal
+  showCloseButton = true,
+  className = "",
+  bodyClassName = "",
 }) => {
+  // Support cả 2 prop isOpen và open
   const visibleProp = typeof isOpen !== "undefined" ? isOpen : open;
-  const [isVisible, setIsVisible] = useState(false);
-  const [shouldRender, setShouldRender] = useState(false);
 
+  const [isRendered, setIsRendered] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+
+  const modalRef = useRef(null);
+  const previousFocusRef = useRef(null);
+  const mouseDownTarget = useRef(null);
+
+  // 1. Lifecycle & Animation Control
   useEffect(() => {
     if (visibleProp) {
-      setShouldRender(true);
-      const timer = setTimeout(() => {
-        setIsVisible(true);
-      }, 10);
-      return () => clearTimeout(timer);
+      previousFocusRef.current = document.activeElement;
+      setIsRendered(true);
+      // Double requestAnimationFrame để đảm bảo animation chạy mượt
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setIsVisible(true));
+      });
+      document.body.style.overflow = "hidden";
     } else {
       setIsVisible(false);
+      // Đợi animation chạy xong mới unmount (300ms khớp với SCSS)
       const timer = setTimeout(() => {
-        setShouldRender(false);
-      }, 800); // Match transition duration
+        setIsRendered(false);
+        previousFocusRef.current?.focus();
+      }, 300);
+      document.body.style.overflow = "";
       return () => clearTimeout(timer);
     }
   }, [visibleProp]);
 
+  // 2. Handle Escape Key & Focus Trap
   useEffect(() => {
-    if (!closeOnEscape) return;
+    const handleKeyDown = (e) => {
+      if (!visibleProp) return;
 
-    const handleEscape = (event) => {
-      if (event.key === "Escape" && visibleProp) {
+      if (e.key === "Escape" && closeOnEscape) {
         onClose?.();
+      }
+
+      // Logic Focus Trap (Giữ tab bên trong modal)
+      if (e.key === "Tab" && modalRef.current) {
+        const focusableElements = modalRef.current.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          // Shift + Tab
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            e.preventDefault();
+          }
+        } else {
+          // Tab
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            e.preventDefault();
+          }
+        }
       }
     };
 
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [visibleProp, onClose, closeOnEscape]);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [visibleProp, closeOnEscape, onClose]);
 
-  useEffect(() => {
-    if (visibleProp) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "auto";
-    }
+  // 3. Smart Overlay Click (Tránh đóng nhầm khi bôi đen text)
+  const handleMouseDown = (e) => {
+    mouseDownTarget.current = e.target;
+  };
 
-    return () => {
-      document.body.style.overflow = "auto";
-    };
-  }, [visibleProp]);
-
-  const handleOverlayClick = (event) => {
-    if (closeOnOverlayClick && event.target === event.currentTarget) {
+  const handleMouseUp = (e) => {
+    if (
+      closeOnOverlayClick &&
+      mouseDownTarget.current === e.currentTarget &&
+      e.target === e.currentTarget
+    ) {
       onClose?.();
     }
   };
 
-  if (!shouldRender) return null;
+  if (!isRendered) return null;
 
   return createPortal(
     <div
-      className={`modal-overlay ${isVisible ? "modal-overlay--open" : ""}`}
-      onClick={handleOverlayClick}
+      // 🔥 Dùng class chuẩn BEM: modal-overlay--open
+      className={`modal-overlay ${isVisible ? "modal-overlay--open" : ""} ${
+        position === "top" ? "modal-overlay--top" : ""
+      }`}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? "modal-title" : undefined}
+      aria-labelledby="modal-title"
     >
       <div
-        className={`modal modal--${size} ${className}`.trim()} // 👈 gắn className thêm
+        ref={modalRef}
+        // 🔥 Dùng class chuẩn BEM: modal modal--md, modal--lg...
+        className={`modal modal--${size} ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* HEADER */}
         {(title || showCloseButton) && (
           <div className="modal__header">
             {title && (
-              <h2 id="modal-title" className="modal__title">
+              <h3 id="modal-title" className="modal__title">
                 {title}
-              </h2>
+              </h3>
             )}
             {showCloseButton && (
               <button
-                type="button"
                 className="modal__close"
                 onClick={onClose}
-                aria-label="Đóng modal"
+                aria-label="Close modal"
               >
-                <span aria-hidden="true">×</span>
+                <X size={20} />
               </button>
             )}
           </div>
         )}
 
-        <div className="modal__content">{children}</div>
-        {footer ? <div className="modal__footer">{footer}</div> : null}
+        {/* CONTENT (BODY) */}
+        <div className={`modal__content ${bodyClassName}`}>{children}</div>
+
+        {/* FOOTER */}
+        {footer && <div className="modal__footer">{footer}</div>}
       </div>
     </div>,
-    document.body // Render to body
+    document.body
   );
 };
 
+// --- Export ModalFooter với class chuẩn cũ ---
 export const ModalFooter = ({ children, className = "" }) => (
   <div className={`modal__footer ${className}`}>{children}</div>
 );
-
-export const ModalExample = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  return (
-    <div>
-      <button onClick={() => setIsModalOpen(true)} className="btn btn--primary">
-        🎭 Mở Modal
-      </button>
-
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="🎉 Modal với Transition"
-        size="md"
-      >
-        <p>Đây là nội dung modal với hiệu ứng slide down mượt mà!</p>
-        <p>Transition hoạt động với:</p>
-        <ul>
-          <li>⏱️ Duration: 0.8s</li>
-          <li>🎯 Timing: cubic-bezier bounce</li>
-          <li>📱 Responsive design</li>
-        </ul>
-
-        <ModalFooter>
-          <button
-            onClick={() => setIsModalOpen(false)}
-            className="btn btn--secondary"
-          >
-            Hủy
-          </button>
-          <button
-            onClick={() => setIsModalOpen(false)}
-            className="btn btn--primary"
-          >
-            Xác nhận
-          </button>
-        </ModalFooter>
-      </Modal>
-    </div>
-  );
-};
 
 export default Modal;

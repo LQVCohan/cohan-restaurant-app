@@ -29,18 +29,23 @@ const IngredientSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
+    index: true,
   },
   name: { type: String, required: true, trim: true, index: "text" },
   sku: { type: String, trim: true },
-  category: { type: String, trim: true }, // "thịt", "rau", "gia vị"...
+  category: { type: String, trim: true },
+
   baseUnit: { type: String, enum: UnitEnum, required: true, default: "g" },
-  conversions: { type: [ConversionSchema], default: [] }, // optional
-  costPerBaseUnit: { type: Number, default: 0 }, // giá theo baseUnit (VD đ/gram)
+  conversions: { type: [ConversionSchema], default: [] },
+
+  costPerBaseUnit: { type: Number, default: 0, min: 0 },
+
   photos: { type: [String], default: [] },
-  minStock: { type: Number, default: 0 }, // ngưỡng cảnh báo
+  minStock: { type: Number, default: 0, min: 0 },
   notes: { type: String },
   isActive: { type: Boolean, default: true },
 });
+
 IngredientSchema.index({ restaurantId: 1, name: 1 }, { unique: true });
 
 export default mongoose.model("Ingredient", IngredientSchema);

@@ -1,36 +1,51 @@
 import React from "react";
+import { Wallet, Activity, Ticket, Flame } from "lucide-react";
 import "./StatsCard.scss";
 
 const StatsCard = ({ stats }) => {
-  const statsData = [
+  // Cấu hình hiển thị cho từng loại chỉ số
+  const statItems = [
     {
-      number: `₫${(stats.totalSavings / 1000000).toFixed(1)}M`,
-      label: "Tiết kiệm KH",
+      key: "savings",
+      label: "Tiết kiệm cho KH",
+      value: `₫${(stats.totalSavings / 1000000).toFixed(1)}M`,
+      icon: <Wallet size={24} />,
+      colorClass: "green", // Class màu sắc trong SCSS
     },
     {
-      number: `${stats.usageRate}%`,
-      label: "Tỷ lệ dùng",
+      key: "usage",
+      label: "Tỷ lệ sử dụng",
+      value: `${stats.usageRate}%`,
+      icon: <Activity size={24} />,
+      colorClass: "blue",
     },
     {
-      number: stats.totalUsage,
-      label: "Lượt sử dụng",
+      key: "total",
+      label: "Tổng lượt dùng",
+      value: stats.totalUsage.toLocaleString(), // Format số 1,000
+      icon: <Ticket size={24} />,
+      colorClass: "purple",
     },
     {
-      number: stats.hotPromotions,
-      label: "KM hot",
+      key: "hot",
+      label: "Đang thịnh hành",
+      value: stats.hotPromotions,
+      icon: <Flame size={24} />,
+      colorClass: "orange",
     },
   ];
 
   return (
-    <div className="stats-card">
-      <div className="stats-grid">
-        {statsData.map((stat, index) => (
-          <div key={index} className="stat-card">
-            <div className="stat-card-number">{stat.number}</div>
-            <div className="stat-card-label">{stat.label}</div>
+    <div className="stats-overview-grid">
+      {statItems.map((item, index) => (
+        <div key={index} className={`stat-card-premium ${item.colorClass}`}>
+          <div className="stat-content">
+            <span className="stat-label">{item.label}</span>
+            <h3 className="stat-value">{item.value}</h3>
           </div>
-        ))}
-      </div>
+          <div className="stat-icon-wrapper">{item.icon}</div>
+        </div>
+      ))}
     </div>
   );
 };

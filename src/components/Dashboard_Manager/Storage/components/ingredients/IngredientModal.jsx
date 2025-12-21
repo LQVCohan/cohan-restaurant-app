@@ -1,9 +1,9 @@
+// src/components/.../ingredients/IngredientModal.jsx
 import React, { useEffect, useState } from "react";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
 import "./IngredientModal.scss";
 
-// Enum Unit theo schema
 const UNITS = [
   "g",
   "kg",
@@ -30,7 +30,17 @@ const defaultForm = {
   initialStockQty: "",
 };
 
-const IngredientModal = ({ isOpen, onClose, initial, isEditing, onSubmit }) => {
+const IngredientModal = ({
+  isOpen,
+  onClose,
+  initial,
+  isEditing,
+  onSubmit,
+
+  canInitStock = false,
+  defaultWarehouseName = null,
+  saving = false,
+}) => {
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState({});
 
@@ -38,11 +48,15 @@ const IngredientModal = ({ isOpen, onClose, initial, isEditing, onSubmit }) => {
     if (initial) {
       setForm({
         name: initial.name || "",
-        sku: initial._raw?.sku || "",
+        sku: initial.sku || initial._raw?.sku || "",
         category: initial.category || "",
-        baseUnit: initial.unit || initial._raw?.baseUnit || "g",
+        baseUnit:
+          initial.baseUnit || initial.unit || initial._raw?.baseUnit || "g",
         costPerBaseUnit:
-          initial.costPrice ?? initial._raw?.costPerBaseUnit ?? "",
+          initial.costPerBaseUnit ??
+          initial.costPrice ??
+          initial._raw?.costPerBaseUnit ??
+          "",
         minStock: initial.minStock ?? "",
         notes: initial.notes || "",
         isActive: initial.isActive ?? true,
@@ -51,6 +65,7 @@ const IngredientModal = ({ isOpen, onClose, initial, isEditing, onSubmit }) => {
     } else {
       setForm(defaultForm);
     }
+    setErrors({});
   }, [initial, isOpen]);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
@@ -68,11 +83,12 @@ const IngredientModal = ({ isOpen, onClose, initial, isEditing, onSubmit }) => {
 
   const save = (e) => {
     e.preventDefault();
+    if (saving) return;
     if (!validate()) return;
 
     const payload = {
       name: form.name.trim(),
-      sku: form.sku?.trim() || undefined,
+      sku: form.sku?.trim() || null,
       category: form.category?.trim() || "",
       baseUnit: form.baseUnit,
       costPerBaseUnit: Number(form.costPerBaseUnit) || 0,
@@ -80,8 +96,15 @@ const IngredientModal = ({ isOpen, onClose, initial, isEditing, onSubmit }) => {
       notes: form.notes?.trim() || "",
       isActive: !!form.isActive,
     };
+
     const initialStockQty = Number(form.initialStockQty) || 0;
-    onSubmit?.({ payload, initialStockQty, isEditing, id: initial?.id });
+
+    onSubmit?.({
+      payload,
+      initialStockQty: canInitStock ? initialStockQty : 0,
+      isEditing,
+      id: initial?.id,
+    });
   };
 
   if (!isOpen) return null;
@@ -89,7 +112,7 @@ const IngredientModal = ({ isOpen, onClose, initial, isEditing, onSubmit }) => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={saving ? undefined : onClose}
       title={isEditing ? "Sửa nguyên liệu" : "Thêm nguyên liệu"}
       size="md"
     >
@@ -188,7 +211,16 @@ const IngredientModal = ({ isOpen, onClose, initial, isEditing, onSubmit }) => {
 
             {!isEditing && (
               <label>
-                Nhập tồn ban đầu <small className="hint">(tuỳ chọn)</small>
+                Nhập tồn ban đầu{" "}
+                <small className="hint">
+                  (
+                  {canInitStock
+                    ? defaultWarehouseName
+                      ? `Kho: ${defaultWarehouseName}`
+                      : "Kho mặc định"
+                    : "Chưa có kho"}
+                  )
+                </small>
                 <input
                   type="number"
                   min="0"
@@ -196,6 +228,7 @@ const IngredientModal = ({ isOpen, onClose, initial, isEditing, onSubmit }) => {
                   value={form.initialStockQty}
                   onChange={(e) => set({ initialStockQty: e.target.value })}
                   placeholder="0"
+                  disabled={!canInitStock}
                 />
               </label>
             )}
@@ -212,11 +245,20 @@ const IngredientModal = ({ isOpen, onClose, initial, isEditing, onSubmit }) => {
           </label>
 
           <div className="modal-footer">
-            <Button type="button" variant="secondary" onClick={onClose}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onClose}
+              disabled={saving}
+            >
               Hủy
             </Button>
-            <Button type="submit" variant="primary">
-              {isEditing ? "Lưu thay đổi" : "Tạo nguyên liệu"}
+            <Button type="submit" variant="primary" disabled={saving}>
+              {saving
+                ? "Đang lưu..."
+                : isEditing
+                ? "Lưu thay đổi"
+                : "Tạo nguyên liệu"}
             </Button>
           </div>
         </form>

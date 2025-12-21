@@ -1,10 +1,16 @@
 import { gql } from "@apollo/client";
 
-export const FR_RECIPE_COMPONENT_FIELDS = gql`
-  fragment RecipeComponentFields on IngredientsComponent {
+/** =========================
+ *  FRAGMENTS (NEW RECIPE MODEL)
+ *  ========================= */
+
+export const FR_RECIPE_INGREDIENT_LINE_FIELDS = gql`
+  fragment RecipeIngredientLineFields on RecipeIngredientLine {
     ingredientId
-    quantify
+    qty
+    unit
     wastePct
+    # Các field dưới nếu BE của bạn có resolver join Ingredient:
     name
     baseUnit
     costPerBaseUnit
@@ -14,16 +20,17 @@ export const FR_RECIPE_COMPONENT_FIELDS = gql`
 export const FR_SERVING_VARIANT_FIELDS = gql`
   fragment ServingVariantFields on ServingVariant {
     key
-    mode
-    yieldQty
-    yieldUnit
     name
+    mode
+    sellQty
+    sellUnit
     price
-    Ingredients {
-      ...RecipeComponentFields
+    isDefault
+    ingredients {
+      ...RecipeIngredientLineFields
     }
   }
-  ${FR_RECIPE_COMPONENT_FIELDS}
+  ${FR_RECIPE_INGREDIENT_LINE_FIELDS}
 `;
 
 export const FR_RECIPE_FIELDS = gql`
@@ -41,6 +48,10 @@ export const FR_RECIPE_FIELDS = gql`
   }
   ${FR_SERVING_VARIANT_FIELDS}
 `;
+
+/** =========================
+ *  QUERIES / MUTATIONS
+ *  ========================= */
 
 export const Q_MENU_ITEMS_WITH_RECIPES_PAGED = gql`
   query MenuItemsWithRecipes(
@@ -64,6 +75,10 @@ export const Q_MENU_ITEMS_WITH_RECIPES_PAGED = gql`
           id
           name
           description
+          categoryId
+          basePrice
+          thumbImage
+          status
         }
         recipe {
           ...RecipeFields
@@ -103,6 +118,10 @@ export const M_DELETE_RECIPE = gql`
   }
 `;
 
+/**
+ * Nếu bạn vẫn cần query menuItems thuần để chọn món (không kéo recipe):
+ * - Đã bỏ preparationMethods vì dễ không còn trong schema mới.
+ */
 export const Q_MENU_ITEMS_FOR_RECIPE = gql`
   query MenuItemsForRecipe(
     $restaurantId: ID!
@@ -116,12 +135,8 @@ export const Q_MENU_ITEMS_FOR_RECIPE = gql`
       description
       categoryId
       basePrice
-      preparationMethods {
-        name
-        price
-        isDefault
-      }
       thumbImage
+      status
     }
   }
 `;

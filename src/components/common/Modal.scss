@@ -1,63 +1,62 @@
+/* --- CSS VARIABLES (THEME CONFIG) --- */
 :root {
-  --modal-overlay-bg: rgba(
-    15,
-    23,
-    42,
-    0.65
-  ); // Màu tối hơn, sang hơn (Slate-900 alpha)
+  --modal-overlay-bg: rgba(15, 23, 42, 0.65); // Slate-900 alpha 65%
   --modal-bg: #ffffff;
-  --modal-border-radius: 16px; // Bo góc vừa phải, chuẩn SaaS hiện đại
+  --modal-border-radius: 16px;
   --modal-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 8px 10px -6px rgba(0, 0, 0, 0.1); // Shadow mềm
-  --modal-border: 1px solid #e2e8f0; // Border nhẹ
+    0 8px 10px -6px rgba(0, 0, 0, 0.1); // Shadow sâu, mềm
+  --modal-border: 1px solid #f1f5f9;
 
-  --modal-header-bg: #ffffff; // Nền trắng sạch sẽ, bỏ gradient cũ
+  --modal-header-bg: #ffffff;
   --modal-header-border: 1px solid #f1f5f9;
 
-  --modal-animation-duration: 0.3s; // Nhanh hơn để tạo cảm giác mượt (snappy)
-  --modal-animation-spring: cubic-bezier(0.16, 1, 0.3, 1); // Easing hiện đại
+  --modal-anim-duration: 0.3s;
+  --modal-anim-easing: cubic-bezier(0.16, 1, 0.3, 1); // Apple-style spring
 
-  --modal-backdrop-blur: 4px; // Blur nhẹ
-
-  --text-primary: #0f172a; // Slate-900
-  --text-secondary: #64748b; // Slate-500
-  --primary-color: #2563eb; // Blue-600
+  --modal-backdrop-blur: 4px;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
   --danger-color: #ef4444;
 }
 
-// 1. MODAL OVERLAY - CẬP NHẬT VỊ TRÍ
+/* --- 1. OVERLAY --- */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0; // Thay cho top/left/right/bottom: 0
   background: var(--modal-overlay-bg);
   backdrop-filter: blur(var(--modal-backdrop-blur));
   -webkit-backdrop-filter: blur(var(--modal-backdrop-blur));
 
   display: flex;
   justify-content: center;
-
-  // 🔥 KEY CHANGE: Thay vì center, dùng flex-start để đẩy lên trên
-  align-items: flex-start;
-  padding-top: 3rem; // Cách đỉnh màn hình một khoảng thoáng
-  padding-bottom: 3rem; // Để không bị dính đáy nếu modal dài
-  padding-left: 1rem;
-  padding-right: 1rem;
+  align-items: center; // Mặc định căn giữa (Desktop)
+  padding: 20px; // Padding an toàn
 
   z-index: 9999;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.2s ease-out;
+  transition: opacity var(--modal-anim-duration) ease;
 
+  // Trạng thái Active
   &.modal-overlay--open {
     opacity: 1;
     visibility: visible;
+
+    // Kích hoạt animation của modal con khi overlay mở
+    .modal {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+  }
+
+  // Support vị trí top nếu cần
+  &.modal-overlay--top {
+    align-items: flex-start;
+    padding-top: 60px;
   }
 }
 
-// 2. MODAL CONTAINER
+/* --- 2. MODAL CONTAINER --- */
 .modal {
   background: var(--modal-bg);
   border-radius: var(--modal-border-radius);
@@ -65,106 +64,89 @@
   border: var(--modal-border);
   width: 100%;
 
-  // 🔥 KEY CHANGE: Thiết lập chiều cao linh hoạt
-  max-height: calc(100vh - 6rem); // Trừ đi padding trên dưới của overlay
   display: flex;
   flex-direction: column;
   position: relative;
+  max-height: calc(100vh - 40px); // Giới hạn chiều cao an toàn
 
-  // Animation: Trượt nhẹ từ trên xuống (ít scale hơn để đỡ chóng mặt)
-  transform: translateY(-20px);
+  // Animation mặc định (khi đóng)
+  transform: scale(0.95) translateY(10px);
   opacity: 0;
-  transition: transform var(--modal-animation-duration)
-      var(--modal-animation-spring),
-    opacity var(--modal-animation-duration) ease-out;
+  transition: transform var(--modal-anim-duration) var(--modal-anim-easing),
+    opacity var(--modal-anim-duration) ease;
 
-  .modal-overlay--open & {
-    transform: translateY(0);
-    opacity: 1;
-  }
-
-  // Size variants
+  // SIZE VARIANTS (Giữ nguyên tên class cũ)
   &--sm {
     max-width: 28rem;
-  }
+  } // ~450px
   &--md {
     max-width: 36rem;
-  } // Tăng nhẹ size MD cho thoáng
+  } // ~576px
   &--lg {
     max-width: 52rem;
-  }
+  } // ~832px
   &--xl {
     max-width: 72rem;
-  }
+  } // ~1152px
   &--full {
-    max-width: 96vw;
-    height: 90vh;
+    max-width: 100%;
+    height: 100%;
+    border-radius: 0;
   }
 }
 
-// 3. MODAL HEADER - CẬP NHẬT COMPACT
+/* --- 3. HEADER --- */
 .modal__header {
   display: flex;
-  align-items: center; // Căn giữa theo chiều dọc chuẩn xác
+  align-items: center;
   justify-content: space-between;
-
-  // 🔥 KEY CHANGE: Giảm padding để header gọn hơn
   padding: 1rem 1.5rem;
-  min-height: 60px; // Chiều cao tối thiểu cố định
-
   background: var(--modal-header-bg);
   border-bottom: var(--modal-header-border);
+  // Bo góc trên để khớp với modal
   border-radius: var(--modal-border-radius) var(--modal-border-radius) 0 0;
   flex-shrink: 0;
 }
 
 .modal__title {
-  // 🔥 KEY CHANGE: Font size vừa phải, không quá to
-  font-size: 1.15rem;
+  font-size: 1.125rem;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0;
   line-height: 1.2;
-  letter-spacing: -0.01em;
 }
 
-// 4. CLOSE BUTTON - TINH TẾ HƠN
+/* --- 4. CLOSE BUTTON --- */
 .modal__close {
-  background: transparent; // Transparent mặc định cho sạch
+  background: transparent;
   border: none;
-  border-radius: 50%; // Tròn hoàn toàn
-  width: 32px; // Nhỏ gọn
+  border-radius: 8px; // Bo vuông nhẹ hiện đại hơn tròn
+  width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #94a3b8; // Màu nhạt mặc định
+  color: var(--text-secondary);
   transition: all 0.2s ease;
-  font-size: 20px;
-  margin-left: 1rem; // Tách biệt khỏi title
+  margin-left: 1rem;
 
   &:hover {
-    background: #f1f5f9; // Hover xám nhẹ
+    background: #f1f5f9;
     color: var(--danger-color);
-  }
-
-  &:active {
-    transform: scale(0.95);
   }
 }
 
-// 5. MODAL CONTENT
+/* --- 5. CONTENT (BODY) --- */
 .modal__content {
   flex: 1;
   overflow-y: auto;
-  padding: 1.5rem; // Padding nội dung chuẩn
-  background: var(--modal-bg);
+  padding: 1.5rem;
+  color: var(--text-primary);
 
-  // Scrollbar đẹp
+  // Custom Scrollbar
   &::-webkit-scrollbar {
     width: 6px;
-    height: 6px;
   }
   &::-webkit-scrollbar-track {
     background: transparent;
@@ -178,81 +160,43 @@
   }
 }
 
-// 6. MODAL FOOTER
+/* --- 6. FOOTER --- */
 .modal__footer {
-  padding: 1rem 1.5rem; // Gọn hơn footer cũ
-  background: #fff; // Nền trắng để liền mạch hoặc xám nhạt tùy ý
+  padding: 1rem 1.5rem;
+  background: #f8fafc; // Nền xám nhẹ khác biệt
   border-top: 1px solid #f1f5f9;
   border-radius: 0 0 var(--modal-border-radius) var(--modal-border-radius);
   flex-shrink: 0;
   display: flex;
-  gap: 0.75rem;
+  gap: 12px;
   justify-content: flex-end;
   align-items: center;
 }
 
-// RESPONSIVE
+/* --- 7. RESPONSIVE MOBILE (Bottom Sheet) --- */
 @media (max-width: 640px) {
   .modal-overlay {
     padding: 0;
-    align-items: flex-end; // Mobile thì trượt từ dưới lên
-  }
+    align-items: flex-end !important; // Luôn đẩy xuống đáy
 
-  .modal {
-    max-height: 90vh;
-    border-radius: 20px 20px 0 0; // Chỉ bo góc trên
-    margin-bottom: 0; // Dính đáy
-
-    // Animation Mobile
-    transform: translateY(100%);
-    .modal-overlay--open & {
+    // Khi mở trên mobile, container trượt lên
+    &.modal-overlay--open .modal {
       transform: translateY(0);
     }
   }
 
-  .modal__header {
-    padding: 1rem;
+  .modal {
+    max-width: 100% !important;
+    max-height: 90vh;
+    border-radius: 20px 20px 0 0; // Bo góc trên
+    margin: 0;
+
+    // Animation Mobile: Slide Up
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .modal__content {
-    padding: 1rem;
-  }
+
   .modal__footer {
-    padding: 1rem;
-    flex-direction: column-reverse;
-  }
-  .modal__footer > * {
-    width: 100%;
-  }
-}
-
-// BUTTON UTILS (Nếu cần dùng trong footer)
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border-radius: 8px;
-  transition: all 0.2s;
-  cursor: pointer;
-  border: 1px solid transparent;
-
-  &--primary {
-    background: var(--primary-color);
-    color: #fff;
-    &:hover {
-      background: #1d4ed8;
-    }
-  }
-
-  &--secondary {
-    background: #fff;
-    border-color: #cbd5e1;
-    color: var(--text-primary);
-    &:hover {
-      background: #f8fafc;
-      border-color: #94a3b8;
-    }
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }

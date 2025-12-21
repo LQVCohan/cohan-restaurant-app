@@ -32,11 +32,51 @@ async function resolveWarehouseIdOrDefault(restaurantId, warehouseIdInput) {
   return wh._id;
 }
 
+function normalizeLines(lines) {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    throw new GraphQLError("lines is required");
+  }
+
+  return lines.map((l, idx) => {
+    if (!l || !mongoose.isValidObjectId(l.menuItemId)) {
+      throw new GraphQLError(`Invalid menuItemId at lines[${idx}]`);
+    }
+
+    // Normalize numbers (GraphQL Float đôi khi đã là number, nhưng normalize cho chắc)
+    const quantity =
+      l.quantity === null || l.quantity === undefined
+        ? undefined
+        : Number(l.quantity);
+    const weightGrams =
+      l.weightGrams === null || l.weightGrams === undefined
+        ? undefined
+        : Number(l.weightGrams);
+
+    if (quantity !== undefined && !Number.isFinite(quantity)) {
+      throw new GraphQLError(`Invalid quantity at lines[${idx}]`);
+    }
+    if (weightGrams !== undefined && !Number.isFinite(weightGrams)) {
+      throw new GraphQLError(`Invalid weightGrams at lines[${idx}]`);
+    }
+
+    return {
+      ...l,
+      quantity,
+      weightGrams,
+      // servingKey/preparationMethodName/servingMode giữ nguyên, service tự xử lý
+    };
+  });
+}
+
 export default {
   consumeForOrder: async (_p, { input }) => {
-    const { restaurantId } = input || {};
+    const { restaurantId, orderCode, lines } = input || {};
+
     if (!mongoose.isValidObjectId(restaurantId)) {
       throw new GraphQLError("Invalid restaurantId");
+    }
+    if (!orderCode || !String(orderCode).trim()) {
+      throw new GraphQLError("orderCode is required");
     }
 
     try {
@@ -45,13 +85,20 @@ export default {
         input.warehouseId
       );
 
+      const normalizedLines = normalizeLines(lines);
+
       const res = await consumeForOrderTx({
-        ...input,
+        restaurantId,
         warehouseId,
+        orderCode: String(orderCode).trim(),
+        lines: normalizedLines,
+        // allowNegative hiện service mới chưa xử lý logic âm (nếu cần mình sẽ bổ sung sau)
+        allowNegative: !!input.allowNegative,
       });
+
       return res;
     } catch (e) {
-      throw new GraphQLError(e.message || "consumeForOrder failed");
+      throw new GraphQLError(e?.message || "consumeForOrder failed");
     }
   },
 };

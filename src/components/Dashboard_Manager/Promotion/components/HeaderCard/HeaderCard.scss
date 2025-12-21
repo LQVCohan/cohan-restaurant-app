@@ -1,64 +1,215 @@
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
 
+// Biến màu sắc riêng cho component (nếu chưa có trong variables)
+$bg-white: #ffffff;
+$text-dark: #1e293b;
+$text-gray: #64748b;
+$primary-blue: #3b82f6;
+$success-green: #10b981;
+$warn-orange: #f59e0b;
+$border-light: #e2e8f0;
+
 .header-card {
-  @include card-base;
+  background: $bg-white;
+  border-radius: 16px;
+  padding: 1.5rem 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); // Bóng mờ nhẹ tinh tế
+  border: 1px solid $border-light;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column; // Xếp chồng từ trên xuống
+  gap: 1.5rem; // Khoảng cách giữa dòng trên và dòng dưới
+  width: 100%;
 
-  @include mobile {
-    flex-direction: column;
-    gap: 1rem;
-    text-align: center;
-    padding: 1rem;
-  }
-
-  .header-left {
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: $text-primary;
-      margin-bottom: $spacing-xs;
-    }
-
-    .header-subtitle {
-      font-size: 0.875rem;
-      color: $text-secondary;
-      margin-bottom: $spacing-sm;
-    }
-
-    .restaurant-selector {
-      @include form-input;
-      background: $primary-light;
-      font-weight: 500;
-      color: $text-primary;
-      min-width: 220px;
-    }
-  }
-
-  .header-stats {
+  // --- DÒNG 1: TITLE & SELECT ---
+  .header-top {
     display: flex;
-    gap: $spacing-lg;
+    justify-content: space-between; // Đẩy 2 bên ra xa nhau
+    align-items: center;
 
     @include mobile {
-      justify-content: center;
+      flex-direction: column;
+      align-items: flex-start;
       gap: 1rem;
     }
 
-    .stat-item {
-      text-align: center;
+    .title-section {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
 
-      .stat-number {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: $primary;
+      .icon-box {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(
+          135deg,
+          $primary-blue,
+          darken($primary-blue, 20%)
+        );
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4px 10px rgba($primary-blue, 0.3);
       }
 
-      .stat-label {
-        font-size: 0.75rem;
-        color: $text-secondary;
-        font-weight: 500;
+      .text-content {
+        h1 {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: $text-dark;
+          margin: 0;
+          line-height: 1.3;
+        }
+        .subtitle {
+          font-size: 0.875rem;
+          color: $text-gray;
+          margin: 0;
+        }
+      }
+    }
+
+    .action-section {
+      .custom-select-wrapper {
+        position: relative;
+        min-width: 220px;
+
+        .select-icon {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: $text-gray;
+          z-index: 1;
+        }
+
+        .restaurant-selector {
+          width: 100%;
+          padding: 10px 16px 10px 40px; // Padding trái để né icon
+          border: 1px solid $border-light;
+          border-radius: 8px;
+          background-color: #f8fafc;
+          font-size: 0.9rem;
+          color: $text-dark;
+          font-weight: 500;
+          cursor: pointer;
+          appearance: none; // Ẩn mũi tên mặc định
+          transition: all 0.2s;
+
+          &:hover {
+            border-color: $primary-blue;
+            background-color: #fff;
+          }
+          &:focus {
+            outline: none;
+            border-color: $primary-blue;
+            box-shadow: 0 0 0 3px rgba($primary-blue, 0.1);
+          }
+        }
+
+        // Tạo mũi tên custom
+        .arrow-icon {
+          position: absolute;
+          right: 14px;
+          top: 50%;
+          transform: translateY(-30%);
+          border: 5px solid transparent;
+          border-top-color: $text-gray;
+          pointer-events: none;
+        }
+      }
+    }
+  }
+
+  // --- ĐƯỜNG KẺ NGANG ---
+  .divider {
+    height: 1px;
+    background-color: #f1f5f9;
+    width: 100%;
+  }
+
+  // --- DÒNG 2: GRID STATS ---
+  .header-bottom {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); // Chia 3 cột đều nhau
+    gap: 1.5rem;
+
+    @include mobile {
+      grid-template-columns: 1fr; // Mobile thành 1 cột
+      gap: 1rem;
+    }
+
+    .stat-card {
+      background: #fff;
+      border: 1px solid #f1f5f9;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.05);
+      }
+
+      .stat-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-shrink: 0;
+      }
+
+      .stat-content {
+        display: flex;
+        flex-direction: column;
+
+        .label {
+          font-size: 0.75rem;
+          color: $text-gray;
+          font-weight: 600;
+          text-transform: uppercase;
+          margin-bottom: 2px;
+        }
+
+        .value {
+          font-size: 1.5rem;
+          font-weight: 700;
+          line-height: 1.1;
+        }
+      }
+
+      // Màu sắc riêng cho từng thẻ
+      &.blue {
+        .stat-icon {
+          background: rgba($primary-blue, 0.1);
+          color: $primary-blue;
+        }
+        .value {
+          color: $text-dark;
+        }
+      }
+      &.green {
+        .stat-icon {
+          background: rgba($success-green, 0.1);
+          color: $success-green;
+        }
+        .value {
+          color: $text-dark;
+        }
+      }
+      &.orange {
+        .stat-icon {
+          background: rgba($warn-orange, 0.1);
+          color: $warn-orange;
+        }
+        .value {
+          color: $text-dark;
+        }
       }
     }
   }

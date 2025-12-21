@@ -1,41 +1,75 @@
 import React from "react";
+import { Store, Ticket, Activity, TrendingUp, Gift } from "lucide-react";
 import { RESTAURANTS } from "../../../../../utils/constants";
 import "./HeaderCard.scss";
 
 const HeaderCard = ({ stats, selectedRestaurant, onRestaurantChange }) => {
   return (
     <div className="header-card">
-      <div className="header-left">
-        <h1>🎁 Quản Lý Khuyến Mãi</h1>
-        <div className="header-subtitle">
-          Hệ thống khuyến mãi thông minh FoodHub
+      {/* --- DÒNG 1: TIÊU ĐỀ & BỘ LỌC --- */}
+      <div className="header-top">
+        <div className="title-section">
+          <div className="icon-box">
+            <Gift size={24} color="#fff" />
+          </div>
+          <div className="text-content">
+            <h1>Quản Lý Khuyến Mãi</h1>
+            <p className="subtitle">Hệ thống tối ưu doanh thu FoodHub</p>
+          </div>
         </div>
-        <select
-          className="restaurant-selector"
-          value={selectedRestaurant}
-          onChange={(e) => onRestaurantChange(e.target.value)}
-        >
-          <option value="all">🏪 Tất cả nhà hàng</option>
-          {Object.entries(RESTAURANTS).map(([key, name]) => (
-            <option key={key} value={key}>
-              {name}
-            </option>
-          ))}
-        </select>
+
+        <div className="action-section">
+          <div className="custom-select-wrapper">
+            <Store size={16} className="select-icon" />
+            <select
+              className="restaurant-selector"
+              value={selectedRestaurant}
+              onChange={(e) => onRestaurantChange(e.target.value)}
+            >
+              <option value="all">Tất cả nhà hàng</option>
+              {Object.entries(RESTAURANTS).map(([key, name]) => (
+                <option key={key} value={key}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <div className="arrow-icon" />
+          </div>
+        </div>
       </div>
 
-      <div className="header-stats">
-        <div className="stat-item">
-          <div className="stat-number">{stats.total}</div>
-          <div className="stat-label">Tổng KM</div>
+      <div className="divider" />
+
+      {/* --- DÒNG 2: CHỈ SỐ (STATS) --- */}
+      <div className="header-bottom">
+        <div className="stat-card blue">
+          <div className="stat-icon">
+            <Ticket size={22} />
+          </div>
+          <div className="stat-content">
+            <span className="label">Tổng Voucher</span>
+            <span className="value">{stats.total}</span>
+          </div>
         </div>
-        <div className="stat-item">
-          <div className="stat-number">{stats.active}</div>
-          <div className="stat-label">Hoạt động</div>
+
+        <div className="stat-card green">
+          <div className="stat-icon">
+            <Activity size={22} />
+          </div>
+          <div className="stat-content">
+            <span className="label">Đang chạy</span>
+            <span className="value">{stats.active}</span>
+          </div>
         </div>
-        <div className="stat-item">
-          <div className="stat-number">{stats.totalUsage}</div>
-          <div className="stat-label">Lượt dùng</div>
+
+        <div className="stat-card orange">
+          <div className="stat-icon">
+            <TrendingUp size={22} />
+          </div>
+          <div className="stat-content">
+            <span className="label">Lượt sử dụng</span>
+            <span className="value">{stats.totalUsage}</span>
+          </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,11 @@
 // src/components/Dashboard_Manager/Storage/StorageManagement.jsx
-import React, { useState, useEffect, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useMemo,
+  useCallback,
+} from "react";
 import { useQuery } from "@apollo/client";
 import { AuthContext } from "../../../context/AuthContext";
 import Header from "./layout/Header/Header";
@@ -35,16 +41,19 @@ const StorageManagement = () => {
   } = useQuery(GET_MANAGER_RESTAURANTS, {
     variables: { managerId, limit: 50 },
     skip: !managerId,
+    fetchPolicy: "cache-and-network",
   });
 
-  const managerRestaurants =
-    mgrData?.restaurantsByManager?.edges?.map((e) => e.node) || [];
+  const managerRestaurants = useMemo(() => {
+    return mgrData?.restaurantsByManager?.edges?.map((e) => e.node) || [];
+  }, [mgrData]);
 
   useEffect(() => {
-    if (managerRestaurants.length) {
-      setCurrentRestaurant((prev) => prev || managerRestaurants[0].id);
+    // chỉ set default khi chưa có currentRestaurant
+    if (!currentRestaurant && managerRestaurants.length) {
+      setCurrentRestaurant(managerRestaurants[0].id);
     }
-  }, [managerRestaurants]);
+  }, [currentRestaurant, managerRestaurants]);
 
   const restaurantReady = Boolean(currentRestaurant);
 
@@ -64,6 +73,8 @@ const StorageManagement = () => {
     fetchPolicy: "cache-and-network",
   });
 
+  const ingredients = useMemo(() => ingData?.ingredients || [], [ingData]);
+
   // ==== 3) Warehouses ====
   const {
     data: whData,
@@ -75,7 +86,19 @@ const StorageManagement = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  // ==== 4) StockItems/Movements (để dành tab sau) ====
+  const warehouses = useMemo(() => whData?.warehouses || [], [whData]);
+  useEffect(() => {
+    if (!selectedWarehouseId && warehouses.length) {
+      setSelectedWarehouseId(warehouses[0].id);
+    }
+  }, [warehouses, selectedWarehouseId]);
+  // ==== 4) StockItems/Movements ====
+  const shouldFetchStock =
+    restaurantReady &&
+    (activeTab === "ingredients" ||
+      activeTab === "inventory" ||
+      activeTab === "allocation");
+
   const {
     data: stockData,
     loading: stockLoading,
@@ -87,11 +110,11 @@ const StorageManagement = () => {
       warehouseId: selectedWarehouseId || null,
       limit: 200,
     },
-    skip:
-      !restaurantReady ||
-      (activeTab !== "inventory" && activeTab !== "allocation"),
+    skip: !shouldFetchStock,
     fetchPolicy: "cache-and-network",
   });
+
+  const stockItems = useMemo(() => stockData?.stockItems || [], [stockData]);
 
   const {
     data: movData,
@@ -109,10 +132,10 @@ const StorageManagement = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  // ==== 5) Recipes (hook đã tối ưu: gộp menuItem + recipe, phân trang, CRUD) ====
-  const [recipeTimeSlot, setRecipeTimeSlot] = useState(null); // 'breakfast'|'lunch'|'dinner'|'late-night'|null
-  const [recipeSearch, setRecipeSearch] = useState(null); // search server-side
-  const [recipeCategoryId, setRecipeCategoryId] = useState(null); // nếu có category cho Menu/Category
+  // ==== 5) Recipes (hook) ====
+  const [recipeTimeSlot, setRecipeTimeSlot] = useState(null);
+  const [recipeSearch, setRecipeSearch] = useState(null);
+  const [recipeCategoryId, setRecipeCategoryId] = useState(null);
 
   const {
     recipes,
@@ -130,9 +153,9 @@ const StorageManagement = () => {
     categoryId: recipeCategoryId,
   });
 
-  // ==== Chuẩn bị dữ liệu ====
-  const warehouses = whData?.warehouses || [];
-  const ingredients = ingData?.ingredients || [];
+  const reloadIngredientsAndStock = useCallback(async () => {
+    await Promise.all([refetchIngredients?.(), refetchStock?.()]);
+  }, [refetchIngredients, refetchStock]);
 
   // ==== Loading / Error Nhà hàng ====
   if (mgrError) {
@@ -157,10 +180,12 @@ const StorageManagement = () => {
       component: (
         <IngredientList
           restaurantId={currentRestaurant}
+          warehouseId={selectedWarehouseId}
           data={ingredients}
-          loading={ingLoading}
-          error={ingError}
-          onReload={refetchIngredients}
+          stockItems={stockItems}
+          loading={ingLoading || stockLoading}
+          error={ingError || stockError}
+          onReload={reloadIngredientsAndStock}
           onSearch={setIngredientSearch}
         />
       ),
@@ -174,7 +199,7 @@ const StorageManagement = () => {
           warehouseId={selectedWarehouseId}
           warehouses={warehouses}
           warehousesLoading={whLoading}
-          onReload={refetchIngredients}
+          onReload={reloadIngredientsAndStock}
         />
       ),
     },
@@ -220,8 +245,7 @@ const StorageManagement = () => {
           currentRestaurantId={currentRestaurant}
           onRestaurantChange={(id) => {
             setCurrentRestaurant(id);
-            setSelectedWarehouseId(null); // reset kho khi đổi nhà hàng
-            // reset filter recipes:
+            setSelectedWarehouseId(null);
             setRecipeTimeSlot(null);
             setRecipeSearch(null);
             setRecipeCategoryId(null);
@@ -239,21 +263,29 @@ const StorageManagement = () => {
             activeTab={activeTab}
             onTabChange={(t) => {
               setActiveTab(t);
-              if (t === "inventory" || t === "allocation") {
-                // Khi sang tab liên quan kho → refetch tồn & lịch sử
+
+              if (
+                t === "inventory" ||
+                t === "allocation" ||
+                t === "ingredients"
+              ) {
                 refetchStock?.();
-                refetchMovements?.();
+                if (t === "inventory") refetchMovements?.();
               }
-              if (t === "recipes") {
-                // Chủ động refresh recipe khi quay lại tab
-                refreshRecipes?.();
-              }
+
+              if (t === "recipes") refreshRecipes?.();
             }}
           />
 
           <div className="tab-content">
             {tabs.find((tab) => tab.id === activeTab)?.component}
           </div>
+
+          {whError ? (
+            <div style={{ color: "#b91c1c", marginTop: 10 }}>
+              Lỗi tải kho: {whError.message}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

@@ -1,102 +1,159 @@
 import React from "react";
-import {
-  RESTAURANTS,
-  PROMOTION_TYPES,
-  STATUS_TYPES,
-  TARGET_AUDIENCE,
-} from "../../../../../utils/constants";
-import "./PromotionCard.scss";
+import { Calendar, Copy, Edit2, Tag, Trash2, Users, Clock } from "lucide-react";
+import "./PromotionCard.scss"; // Đảm bảo import file SCSS vừa tạo
 
 const PromotionCard = ({ promotion, onEdit, onDelete, onDuplicate }) => {
-  const getDiscountText = () => {
-    switch (promotion.type) {
-      case "percentage":
-        return `${promotion.discountValue}%`;
-      case "fixed":
-        return `${promotion.discountValue.toLocaleString()}đ`;
-      case "freeship":
-        return "Miễn phí";
-      default:
-        return "Đặc biệt";
-    }
+  // --- 1. Helper Functions ---
+
+  // Định dạng ngày: DD/MM/YYYY
+  const formatDate = (dateString) => {
+    if (!dateString) return "--/--";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
-  const getStatusClass = () => `status-${promotion.status}`;
+  // Định dạng giờ: HH:MM
+  const formatTime = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleTimeString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Định dạng giá trị giảm (VD: 50% hoặc 50.000)
+  const formatDiscount = (value, type) => {
+    if (type === "percent") {
+      return { value: value, unit: "%" };
+    }
+    // Nếu là tiền mặt, format số (VD: 50000 -> 50.000)
+    return { value: value.toLocaleString("vi-VN"), unit: "đ" };
+  };
+
+  // Tính toán trạng thái hiển thị
+  const getStatusInfo = () => {
+    const now = new Date();
+    const start = new Date(promotion.startDate);
+    const end = new Date(promotion.endDate);
+
+    if (promotion.status === "draft") {
+      return { class: "draft", label: "Nháp" };
+    }
+    if (now > end) {
+      return { class: "expired", label: "Hết hạn" };
+    }
+    if (now < start) {
+      return { class: "draft", label: "Sắp chạy" }; // Tận dụng style màu xám
+    }
+    return { class: "active", label: "Đang chạy" };
+  };
+
+  const status = getStatusInfo();
+  const discount = formatDiscount(promotion.discountValue, promotion.type);
 
   return (
-    <div className="promotion-card fade-in">
+    <div className="promotion-card">
+      {/* --- FLOATING ACTIONS (Hiện khi hover) --- */}
+      <div className="card-actions">
+        <button
+          className="action-btn duplicate"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDuplicate();
+          }}
+          title="Nhân bản"
+        >
+          <Copy size={16} />
+        </button>
+        <button
+          className="action-btn edit"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+          title="Chỉnh sửa"
+        >
+          <Edit2 size={16} />
+        </button>
+        <button
+          className="action-btn delete"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          title="Xóa"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+
+      {/* --- HEADER: Status Badge --- */}
       <div className="card-header">
-        <div className="card-title">
-          <div>
-            <h3 className="promotion-name">{promotion.name}</h3>
-            <div className="promotion-description">{promotion.description}</div>
-          </div>
-          <span className="promotion-type">
-            {PROMOTION_TYPES[promotion.type]}
-          </span>
+        <span className={`status-badge ${status.class}`}>{status.label}</span>
+      </div>
+
+      {/* --- BODY: Main Content --- */}
+      <div className="card-body">
+        {/* Discount Value Highlighting */}
+        <div className="discount-highlight">
+          <span className="value">{discount.value}</span>
+          <span className="unit">{discount.unit}</span>
+          {promotion.type === "percent" && promotion.maxDiscount && (
+            <span className="max-discount-hint">
+              (Max {promotion.maxDiscount.toLocaleString()}đ)
+            </span>
+          )}
+        </div>
+
+        {/* Title */}
+        <h3 className="promo-title" title={promotion.name}>
+          {promotion.name}
+        </h3>
+
+        {/* Code Box */}
+        <div
+          className="code-container"
+          onClick={() => {
+            navigator.clipboard.writeText(promotion.code);
+            // Có thể thêm toast notification ở đây nếu muốn
+          }}
+        >
+          <Tag size={14} className="code-icon" />
+          <span className="promo-code">{promotion.code}</span>
         </div>
       </div>
 
-      <div className="card-body">
-        <div className={`status-indicator ${getStatusClass()}`}>
-          <div className="status-dot"></div>
-          <span className="status-text">{STATUS_TYPES[promotion.status]}</span>
+      {/* --- FOOTER: Metadata --- */}
+      <div className="card-info">
+        {/* Date Range */}
+        <div className="info-row">
+          <Calendar size={14} />
+          <span>
+            {formatDate(promotion.startDate)} - {formatDate(promotion.endDate)}
+          </span>
         </div>
 
-        <div className="promotion-details">
-          <div className="detail-item">
-            <span className="detail-label">Mã KM</span>
-            <span className="detail-value">{promotion.code}</span>
+        {/* Time Detail (Optional, chỉ hiện nếu cần chi tiết) */}
+        {status.class === "active" && (
+          <div className="info-row">
+            <Clock size={14} />
+            <span>Kết thúc lúc {formatTime(promotion.endDate)}</span>
           </div>
-          <div className="detail-item">
-            <span className="detail-label">Giá trị</span>
-            <span className="detail-value">{getDiscountText()}</span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-label">Đối tượng</span>
-            <span className="detail-value">
-              {TARGET_AUDIENCE[promotion.targetAudience]}
-            </span>
-          </div>
-          <div className="detail-item">
-            <span className="detail-label">Nhà hàng</span>
-            <span className="detail-value">
-              {RESTAURANTS[promotion.restaurantId]}
-            </span>
-          </div>
-        </div>
+        )}
 
-        <div className="promotion-conditions">
-          <div className="conditions-title">📋 Điều kiện áp dụng:</div>
-          <ul className="conditions-list">
-            {promotion.conditions.map((condition, index) => (
-              <li key={index}>{condition}</li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="card-actions">
-          <button
-            className="btn btn-small btn-duplicate"
-            onClick={onDuplicate}
-            title="Sao chép"
-          >
-            📋
-          </button>
-          <button
-            className="btn btn-small btn-edit"
-            onClick={onEdit}
-            title="Chỉnh sửa"
-          >
-            ✏️
-          </button>
-          <button
-            className="btn btn-small btn-delete"
-            onClick={onDelete}
-            title="Xóa"
-          >
-            🗑️
-          </button>
+        {/* Usage Stats */}
+        <div className="info-row">
+          <Users size={14} />
+          <span>
+            Đã dùng: <b>{promotion.usageCount || 0}</b>
+            <span className="separator">/</span>
+            {promotion.usageLimit ? promotion.usageLimit : "∞"}
+          </span>
         </div>
       </div>
     </div>

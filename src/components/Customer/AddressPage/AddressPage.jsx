@@ -1,39 +1,79 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MapPin,
   Home,
   Briefcase,
   Plus,
-  MoreVertical,
   Navigation,
   Phone,
   User,
   Trash2,
   Edit3,
   CheckCircle,
-  Search,
+  Star,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import "./AddressPage.scss";
 
-// --- MOCK DATA ---
+// --- MOCK DATA ĐỊA LÝ (Rút gọn demo) ---
+const LOCATION_DATA = {
+  79: {
+    name: "TP. Hồ Chí Minh",
+    districts: {
+      760: {
+        name: "Quận 1",
+        wards: ["Phường Bến Nghé", "Phường Bến Thành", "Phường Đa Kao"],
+      },
+      761: {
+        name: "Quận Bình Thạnh",
+        wards: ["Phường 25", "Phường 19", "Phường 12"],
+      },
+      762: {
+        name: "TP. Thủ Đức",
+        wards: ["Phường Thảo Điền", "Phường An Phú", "Phường Hiệp Bình Chánh"],
+      },
+    },
+  },
+  "01": {
+    name: "TP. Hà Nội",
+    districts: {
+      "001": {
+        name: "Quận Ba Đình",
+        wards: ["Phường Phúc Xá", "Phường Trúc Bạch"],
+      },
+      "002": {
+        name: "Quận Hoàn Kiếm",
+        wards: ["Phường Hàng Bạc", "Phường Hàng Gai"],
+      },
+    },
+  },
+  48: {
+    name: "TP. Đà Nẵng",
+    districts: {
+      490: {
+        name: "Quận Hải Châu",
+        wards: ["Phường Thạch Thang", "Phường Hải Châu I"],
+      },
+    },
+  },
+};
+
 const INITIAL_ADDRESSES = [
   {
     id: 1,
-    label: "home", // home | office | other
+    label: "home",
     name: "Nguyễn Văn A",
     phone: "0909 123 456",
-    address: "123 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM",
+    fullAddress:
+      "123 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
+    // Lưu trữ các trường riêng lẻ để Edit lại được
+    specificAddress: "123 Đường Nguyễn Huệ",
+    province: "79",
+    district: "760",
+    ward: "Phường Bến Nghé",
     note: "Cổng số 2, gọi trước khi đến",
     isDefault: true,
-  },
-  {
-    id: 2,
-    label: "office",
-    name: "Nguyễn Văn A",
-    phone: "0909 123 456",
-    address: "Tòa nhà Landmark 81, Quận Bình Thạnh, TP.HCM",
-    note: "Giao tại sảnh lễ tân",
-    isDefault: false,
   },
 ];
 
@@ -49,14 +89,27 @@ const AddressPage = () => {
     label: "home",
     name: "",
     phone: "",
-    address: "",
     note: "",
     isDefault: false,
+    specificAddress: "", // Số nhà, đường
   });
 
-  // --- ACTIONS ---
+  // State riêng cho Địa lý
+  const [geo, setGeo] = useState({
+    province: "",
+    district: "",
+    ward: "",
+  });
 
-  // 1. Mở Modal Thêm mới
+  // --- HANDLERS ---
+  const handleProvinceChange = (e) => {
+    setGeo({ province: e.target.value, district: "", ward: "" });
+  };
+
+  const handleDistrictChange = (e) => {
+    setGeo({ ...geo, district: e.target.value, ward: "" });
+  };
+
   const handleAddNew = () => {
     setIsEditing(false);
     setFormData({
@@ -64,99 +117,121 @@ const AddressPage = () => {
       label: "home",
       name: "",
       phone: "",
-      address: "",
       note: "",
       isDefault: false,
+      specificAddress: "",
+    });
+    setGeo({ province: "", district: "", ward: "" });
+    setShowModal(true);
+  };
+
+  const handleEdit = (item) => {
+    setIsEditing(true);
+    setFormData({
+      id: item.id,
+      label: item.label,
+      name: item.name,
+      phone: item.phone,
+      note: item.note,
+      isDefault: item.isDefault,
+      specificAddress: item.specificAddress || "",
+    });
+    // Load lại geo nếu có, nếu không để trống
+    setGeo({
+      province: item.province || "",
+      district: item.district || "",
+      ward: item.ward || "",
     });
     setShowModal(true);
   };
 
-  // 2. Mở Modal Edit
-  const handleEdit = (item) => {
-    setIsEditing(true);
-    setFormData(item);
-    setShowModal(true);
-  };
-
-  // 3. Xóa địa chỉ
   const handleDelete = (id) => {
     if (window.confirm("Bạn có chắc muốn xóa địa chỉ này?")) {
       setAddresses(addresses.filter((addr) => addr.id !== id));
     }
   };
 
-  // 4. Đặt làm mặc định
   const handleSetDefault = (id) => {
     const updated = addresses.map((addr) => ({
       ...addr,
       isDefault: addr.id === id,
     }));
-    // Đưa địa chỉ mặc định lên đầu danh sách
     updated.sort((x, y) =>
       x.isDefault === y.isDefault ? 0 : x.isDefault ? -1 : 1
     );
     setAddresses(updated);
   };
 
-  // 5. Lưu form
   const handleSave = () => {
-    if (!formData.name || !formData.address || !formData.phone) {
-      alert("Vui lòng điền đầy đủ thông tin!");
+    // Validate
+    if (!formData.name || !formData.phone || !formData.specificAddress) {
+      alert("Vui lòng điền tên, số điện thoại và địa chỉ cụ thể!");
+      return;
+    }
+    if (!geo.province || !geo.district || !geo.ward) {
+      alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã!");
       return;
     }
 
+    // Ghép địa chỉ hiển thị
+    const provinceName = LOCATION_DATA[geo.province]?.name || "";
+    const districtName =
+      LOCATION_DATA[geo.province]?.districts[geo.district]?.name || "";
+    const fullAddressString = `${formData.specificAddress}, ${geo.ward}, ${districtName}, ${provinceName}`;
+
+    const newAddressObj = {
+      ...formData,
+      ...geo, // Lưu lại ID để sau này edit
+      fullAddress: fullAddressString, // Chuỗi hiển thị
+    };
+
     if (isEditing) {
-      setAddresses(addresses.map((a) => (a.id === formData.id ? formData : a)));
+      setAddresses(
+        addresses.map((a) => (a.id === formData.id ? newAddressObj : a))
+      );
     } else {
-      // Nếu là địa chỉ đầu tiên, tự động set default
-      const newAddr = {
-        ...formData,
-        isDefault: addresses.length === 0 ? true : formData.isDefault,
-      };
-      setAddresses([...addresses, newAddr]);
+      const isFirst = addresses.length === 0;
+      setAddresses([
+        ...addresses,
+        { ...newAddressObj, isDefault: isFirst ? true : formData.isDefault },
+      ]);
     }
     setShowModal(false);
   };
 
-  // 6. TÍNH NĂNG THÔNG MINH: Lấy vị trí hiện tại (Simulation)
   const handleGetCurrentLocation = () => {
     setLoadingLoc(true);
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          // Giả lập delay API Reverse Geocoding
           setTimeout(() => {
+            // Demo fill dữ liệu giả định
             setFormData((prev) => ({
               ...prev,
-              address:
-                "Vị trí hiện tại: 20 Cộng Hòa, Tân Bình, TP.HCM (Đã định vị)",
-              note: `Tọa độ: ${position.coords.latitude.toFixed(
-                4
-              )}, ${position.coords.longitude.toFixed(4)}`,
+              specificAddress: "20 Cộng Hòa",
             }));
+            setGeo({ province: "79", district: "761", ward: "Phường 12" }); // Fill TP.HCM, Bình Thạnh...
             setLoadingLoc(false);
-          }, 1500);
+          }, 1000);
         },
-        (error) => {
-          alert("Không thể lấy vị trí. Vui lòng kiểm tra quyền truy cập.");
+        () => {
+          alert("Không thể lấy vị trí.");
           setLoadingLoc(false);
         }
       );
     } else {
-      alert("Trình duyệt không hỗ trợ Geolocation.");
       setLoadingLoc(false);
     }
   };
 
-  // Helper: Chọn Icon theo nhãn
   const getIconByLabel = (label) => {
     switch (label) {
       case "home":
-        return <Home size={20} />;
+        return <Home size={18} />;
       case "office":
-        return <Briefcase size={20} />;
+        return <Briefcase size={18} />;
       default:
-        return <MapPin size={20} />;
+        return <MapPin size={18} />;
     }
   };
 
@@ -165,207 +240,300 @@ const AddressPage = () => {
       <div className="addr-container">
         {/* HEADER */}
         <div className="page-header">
-          <div>
-            <h1>Sổ địa chỉ & Giao hàng 📍</h1>
+          <div className="header-content">
+            <h1>Sổ địa chỉ 📍</h1>
             <p>Quản lý nơi nhận món ngon của bạn</p>
           </div>
           <button className="btn-add-new" onClick={handleAddNew}>
-            <Plus size={20} /> Thêm địa chỉ mới
+            <div className="icon-wrap">
+              <Plus size={20} />
+            </div>
+            <span>Thêm địa chỉ mới</span>
           </button>
         </div>
 
         {/* LIST ADDRESSES */}
-        <div className="addr-grid">
-          {addresses.map((item) => (
-            <div
-              key={item.id}
-              className={`addr-card ${item.isDefault ? "active" : ""}`}
-            >
-              {/* Left Icon */}
-              <div className={`icon-box ${item.label}`}>
-                {getIconByLabel(item.label)}
-              </div>
-
-              {/* Content */}
-              <div className="addr-content">
-                <div className="row-head">
-                  <span className="addr-name">{item.name}</span>
-                  <span className="addr-phone">| {item.phone}</span>
-                  {item.isDefault && (
-                    <span className="badge-default">Mặc định</span>
-                  )}
-                </div>
-                <p className="addr-text">{item.address}</p>
-                {item.note && <p className="addr-note">📝 Note: {item.note}</p>}
-              </div>
-
-              {/* Actions */}
-              <div className="addr-actions">
-                <button
-                  className="btn-icon edit"
-                  onClick={() => handleEdit(item)}
-                  title="Sửa"
-                >
-                  <Edit3 size={18} />
-                </button>
-                {!item.isDefault && (
-                  <button
-                    className="btn-icon delete"
-                    onClick={() => handleDelete(item.id)}
-                    title="Xóa"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                )}
-                {!item.isDefault && (
-                  <button
-                    className="btn-set-default"
-                    onClick={() => handleSetDefault(item.id)}
-                  >
-                    Đặt mặc định
-                  </button>
-                )}
-              </div>
+        {addresses.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">
+              <MapPin size={48} />
             </div>
-          ))}
-        </div>
+            <h3>Chưa có địa chỉ nào</h3>
+            <p>Hãy thêm địa chỉ để chúng tôi giao hàng nhanh nhất nhé!</p>
+          </div>
+        ) : (
+          <div className="addr-grid">
+            {addresses.map((item) => (
+              <div
+                key={item.id}
+                className={`addr-card ${item.isDefault ? "active" : ""}`}
+              >
+                {item.isDefault && (
+                  <div className="badge-corner">
+                    <Star size={12} fill="currentColor" /> Mặc định
+                  </div>
+                )}
+                <div className="card-body">
+                  <div className={`icon-box ${item.label}`}>
+                    {getIconByLabel(item.label)}
+                  </div>
+                  <div className="info-box">
+                    <div className="user-line">
+                      <span className="name">{item.name}</span>
+                      <span className="phone">{item.phone}</span>
+                    </div>
+                    <p className="address-text">{item.fullAddress}</p>
+                    {item.note && <p className="note-text">📝 {item.note}</p>}
+                  </div>
+                </div>
+                <div className="card-footer">
+                  <div className="actions-left">
+                    {!item.isDefault && (
+                      <button
+                        className="btn-text-default"
+                        onClick={() => handleSetDefault(item.id)}
+                      >
+                        Đặt làm mặc định
+                      </button>
+                    )}
+                  </div>
+                  <div className="actions-right">
+                    <button
+                      className="btn-circle edit"
+                      onClick={() => handleEdit(item)}
+                    >
+                      <Edit3 size={16} />
+                    </button>
+                    {!item.isDefault && (
+                      <button
+                        className="btn-circle delete"
+                        onClick={() => handleDelete(item.id)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* --- SMART MODAL FORM --- */}
+      {/* --- PROFESSIONAL MODAL --- */}
       {showModal && (
-        <div
-          className="modal-address-overlay"
-          onClick={() => setShowModal(false)}
-        >
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="addr-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
+            <div className="modal-header">
               <h2>{isEditing ? "Cập nhật địa chỉ" : "Thêm địa chỉ mới"}</h2>
-              <p>
-                Thông tin giao hàng chính xác giúp FoodHub phục vụ nhanh hơn.
-              </p>
+              <button
+                className="btn-close-icon"
+                onClick={() => setShowModal(false)}
+              >
+                <X size={20} />
+              </button>
             </div>
 
             <div className="modal-body">
-              {/* Button Định vị thông minh */}
-              <button
-                className={`btn-geo ${loadingLoc ? "loading" : ""}`}
-                onClick={handleGetCurrentLocation}
-                disabled={loadingLoc}
-              >
-                {loadingLoc ? (
-                  "Đang định vị..."
-                ) : (
-                  <>
-                    <Navigation size={18} /> Dùng vị trí hiện tại của tôi
-                  </>
-                )}
-              </button>
-
-              <div className="input-group-row">
-                <div className="input-box">
-                  <label>
-                    <User size={14} /> Tên người nhận
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="VD: Anh Ba"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="input-box">
-                  <label>
-                    <Phone size={14} /> Số điện thoại
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="VD: 0909..."
-                    value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
-                  />
+              {/* Row 1: Thông tin cá nhân */}
+              <div className="form-section">
+                <div className="form-grid">
+                  <div className="input-group">
+                    <label>Họ và tên</label>
+                    <div className="input-wrapper">
+                      <User size={18} />
+                      <input
+                        type="text"
+                        placeholder="VD: Nguyễn Văn A"
+                        value={formData.name}
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Số điện thoại</label>
+                    <div className="input-wrapper">
+                      <Phone size={18} />
+                      <input
+                        type="text"
+                        placeholder="09xx..."
+                        value={formData.phone}
+                        onChange={(e) =>
+                          setFormData({ ...formData, phone: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="input-box">
-                <label>
-                  <MapPin size={14} /> Địa chỉ chi tiết
-                </label>
-                <textarea
-                  rows="3"
-                  placeholder="Số nhà, tên đường, phường/xã..."
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                ></textarea>
-              </div>
+              {/* Row 2: Địa chỉ hành chính (Cascading Selects) */}
+              <div className="form-section">
+                <div className="geo-header">
+                  <label>Khu vực vận chuyển</label>
+                  <button
+                    className="btn-geo-sm"
+                    onClick={handleGetCurrentLocation}
+                    disabled={loadingLoc}
+                  >
+                    {loadingLoc ? "Đang tìm..." : "📍 Định vị tôi"}
+                  </button>
+                </div>
 
-              <div className="input-box">
-                <label>Ghi chú cho tài xế (Tùy chọn)</label>
-                <input
-                  type="text"
-                  placeholder="VD: Cổng sau, bấm chuông..."
-                  value={formData.note}
-                  onChange={(e) =>
-                    setFormData({ ...formData, note: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="label-selector">
-                <span className="lbl">Loại địa chỉ:</span>
-                <div className="options">
-                  {["home", "office", "other"].map((type) => (
-                    <button
-                      key={type}
-                      className={`type-pill ${
-                        formData.label === type ? "selected" : ""
-                      }`}
-                      onClick={() => setFormData({ ...formData, label: type })}
+                <div className="geo-grid">
+                  {/* TỈNH/THÀNH */}
+                  <div className="select-wrapper">
+                    <select
+                      value={geo.province}
+                      onChange={handleProvinceChange}
                     >
-                      {type === "home" ? (
-                        <Home size={14} />
-                      ) : type === "office" ? (
-                        <Briefcase size={14} />
-                      ) : (
-                        <MapPin size={14} />
-                      )}
-                      {type === "home"
-                        ? "Nhà riêng"
-                        : type === "office"
-                        ? "Văn phòng"
-                        : "Khác"}
-                    </button>
-                  ))}
+                      <option value="">-- Tỉnh/Thành --</option>
+                      {Object.keys(LOCATION_DATA).map((key) => (
+                        <option key={key} value={key}>
+                          {LOCATION_DATA[key].name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={16} className="select-arrow" />
+                  </div>
+
+                  {/* QUẬN/HUYỆN */}
+                  <div
+                    className={`select-wrapper ${
+                      !geo.province ? "disabled" : ""
+                    }`}
+                  >
+                    <select
+                      value={geo.district}
+                      onChange={handleDistrictChange}
+                      disabled={!geo.province}
+                    >
+                      <option value="">-- Quận/Huyện --</option>
+                      {geo.province &&
+                        Object.keys(LOCATION_DATA[geo.province].districts).map(
+                          (key) => (
+                            <option key={key} value={key}>
+                              {LOCATION_DATA[geo.province].districts[key].name}
+                            </option>
+                          )
+                        )}
+                    </select>
+                    <ChevronDown size={16} className="select-arrow" />
+                  </div>
+
+                  {/* PHƯỜNG/XÃ */}
+                  <div
+                    className={`select-wrapper ${
+                      !geo.district ? "disabled" : ""
+                    }`}
+                  >
+                    <select
+                      value={geo.ward}
+                      onChange={(e) => setGeo({ ...geo, ward: e.target.value })}
+                      disabled={!geo.district}
+                    >
+                      <option value="">-- Phường/Xã --</option>
+                      {geo.district &&
+                        LOCATION_DATA[geo.province].districts[
+                          geo.district
+                        ].wards.map((w) => (
+                          <option key={w} value={w}>
+                            {w}
+                          </option>
+                        ))}
+                    </select>
+                    <ChevronDown size={16} className="select-arrow" />
+                  </div>
+                </div>
+
+                {/* ĐỊA CHỈ CỤ THỂ */}
+                <div className="input-group mt-3">
+                  <div className="input-wrapper textarea-wrapper">
+                    <MapPin size={18} className="mt-1" />
+                    <textarea
+                      rows="2"
+                      placeholder="Số nhà, tên đường, tòa nhà..."
+                      value={formData.specificAddress}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          specificAddress: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
                 </div>
               </div>
 
-              {!isEditing && (
-                <label className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    checked={formData.isDefault}
-                    onChange={(e) =>
-                      setFormData({ ...formData, isDefault: e.target.checked })
-                    }
-                  />
-                  Đặt làm địa chỉ mặc định
-                </label>
-              )}
+              {/* Row 3: Ghi chú & Loại */}
+              <div className="form-section">
+                <div className="input-group">
+                  <label>Ghi chú (Tùy chọn)</label>
+                  <div className="input-wrapper">
+                    <Edit3 size={18} />
+                    <input
+                      type="text"
+                      placeholder="VD: Gọi trước khi giao, cổng sau..."
+                      value={formData.note}
+                      onChange={(e) =>
+                        setFormData({ ...formData, note: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="label-row">
+                  <div className="pills">
+                    {["home", "office", "other"].map((type) => (
+                      <button
+                        key={type}
+                        className={`pill ${
+                          formData.label === type ? "selected" : ""
+                        }`}
+                        onClick={() =>
+                          setFormData({ ...formData, label: type })
+                        }
+                      >
+                        {getIconByLabel(type)}
+                        <span>
+                          {type === "home"
+                            ? "Nhà riêng"
+                            : type === "office"
+                            ? "Văn phòng"
+                            : "Khác"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {!isEditing && (
+                    <label className="checkbox-styled">
+                      <input
+                        type="checkbox"
+                        checked={formData.isDefault}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            isDefault: e.target.checked,
+                          })
+                        }
+                      />
+                      <span className="checkmark">
+                        <CheckCircle size={14} />
+                      </span>
+                      <span>Mặc định</span>
+                    </label>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div className="modal-foot">
-              <button
-                className="btn-cancel"
-                onClick={() => setShowModal(false)}
-              >
+            <div className="modal-footer">
+              <button className="btn-text" onClick={() => setShowModal(false)}>
                 Hủy bỏ
               </button>
-              <button className="btn-save" onClick={handleSave}>
+              <button className="btn-primary" onClick={handleSave}>
                 Hoàn tất
               </button>
             </div>

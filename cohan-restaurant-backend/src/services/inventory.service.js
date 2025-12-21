@@ -1,4 +1,4 @@
-// src/services/inventory.service.js
+// src/services/inventory.service.js (FINAL - integer baseUnit, servingKey, recipe per 1 sell unit)
 import mongoose from "mongoose";
 import {
   Recipe,
@@ -7,677 +7,733 @@ import {
   StockMovement,
 } from "../../models/index.js";
 
-/**
- * =========================
- *   SERVING MULTIPLIER
- * =========================
- * - PORTION: multiplier = quantity / yieldQty
- * - BY_WEIGHT:
- *    - yieldUnit "g":   multiplier = weightGrams / yieldQty
- *    - yieldUnit "100g": multiplier = weightGrams / 100
- *    - yieldUnit "kg":  multiplier = (weightGrams/1000) / yieldQty
- * NOTE:
- * - We assume serving.Ingredients quantify is in Ingredient.baseUnit (thường là g/ml/unit...)
- * - yieldQty/yieldUnit chỉ để scale theo line (phần hoặc gram)
- */
+/* ---------------- utils ---------------- */
+const arr = (v) => (Array.isArray(v) ? v : []);
+const s = (v) => (v == null ? "" : String(v));
+const toNum = (v, d = null) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : d;
+};
+const uniq = (list) => Array.from(new Set((list || []).map(String)));
 
-function requirePositiveNumber(val, name) {
-  const n = Number(val);
-  if (!Number.isFinite(n) || n <= 0) throw new Error(`${name} must be > 0`);
-  return n;
+async function withOptionalTransaction(externalSession, fn) {
+  if (externalSession) return fn(externalSession);
+  const session = await mongoose.startSession();
+  try {
+    let out;
+    await session.withTransaction(async () => {
+      out = await fn(session);
+    });
+    return out;
+  } finally {
+    await session.endSession();
+  }
 }
 
-function computeMultiplierFromServing(serving, line) {
-  if (!serving?.mode) throw new Error("Missing serving.mode");
+// ceil safe for float noise
+function ceilInt(x) {
+  const n = Number(x);
+  if (!Number.isFinite(n)) return 0;
+  // avoid ceil(2.00000000001) => 3
+  return Math.ceil(n - 1e-9);
+}
 
-  if (serving.mode === "BY_WEIGHT") {
-    const weightGrams = Number(line.weightGrams || 0);
-    if (!(weightGrams > 0)) {
-      throw new Error("weightGrams is required for BY_WEIGHT serving");
+/* ------------ unit conversion graph ------------ */
+const DEFAULT_EDGES = [
+  { from: "kg", to: "g", ratio: 1000 },
+  { from: "g", to: "kg", ratio: 1 / 1000 },
+  { from: "l", to: "ml", ratio: 1000 },
+  { from: "ml", to: "l", ratio: 1 / 1000 },
+];
+
+function buildAdj(conversions = []) {
+  const edges = [];
+
+  for (const c of arr(conversions)) {
+    const from = s(c?.from).trim();
+    const to = s(c?.to).trim();
+    const ratio = toNum(c?.ratio, null);
+    if (!from || !to || !(ratio > 0)) continue;
+
+    edges.push({ from, to, ratio });
+    edges.push({ from: to, to: from, ratio: 1 / ratio });
+  }
+  for (const d of DEFAULT_EDGES) edges.push(d);
+
+  const adj = new Map();
+  for (const e of edges) {
+    if (!adj.has(e.from)) adj.set(e.from, []);
+    adj.get(e.from).push({ to: e.to, ratio: e.ratio });
+  }
+  return adj;
+}
+
+function findMultiplier(fromUnit, toUnit, conversions = []) {
+  const from = s(fromUnit).trim();
+  const to = s(toUnit).trim();
+  if (!from || !to) return null;
+  if (from === to) return 1;
+
+  const adj = buildAdj(conversions);
+
+  const q = [{ u: from, m: 1 }];
+  const seen = new Set([from]);
+
+  while (q.length) {
+    const cur = q.shift();
+    const nexts = adj.get(cur.u) || [];
+    for (const nx of nexts) {
+      if (seen.has(nx.to)) continue;
+      const m = cur.m * nx.ratio;
+      if (nx.to === to) return m;
+      seen.add(nx.to);
+      q.push({ u: nx.to, m });
+    }
+  }
+  return null;
+}
+
+function convertToBaseFloat(qty, fromUnit, ing) {
+  const n = toNum(qty, null);
+  if (!(n >= 0)) return null;
+
+  const baseUnit = s(ing?.baseUnit).trim();
+  const from = s(fromUnit || baseUnit).trim();
+  if (!baseUnit) return null;
+
+  const mult = findMultiplier(from, baseUnit, ing?.conversions || []);
+  if (mult == null) {
+    throw new Error(
+      `No unit conversion from '${from}' to baseUnit '${baseUnit}' for ingredient '${
+        ing?.name || ing?._id
+      }'`
+    );
+  }
+  return n * mult;
+}
+
+/* ------------ serving variant resolve (key only) ------------ */
+function normalizeKey(k) {
+  return s(k).trim();
+}
+function deriveKeyFromName(name) {
+  const t = s(name).trim().toLowerCase();
+  if (!t) return "";
+  return t.replace(/\s+/g, "_").slice(0, 80);
+}
+function pickServingVariant(recipe, line) {
+  const variants = arr(recipe?.servingVariants);
+
+  let key = normalizeKey(line?.servingKey || line?.servingVariantKey || "");
+  if (!key && line?.preparationMethodName)
+    key = deriveKeyFromName(line.preparationMethodName);
+  if (!key) return null;
+
+  return variants.find((v) => normalizeKey(v?.key) === key) || null;
+}
+
+/* ------------ multiplier (recipe per 1 sell unit) ------------ */
+function getSellDef(serving) {
+  const mode = s(serving?.mode) || "PORTION";
+  const sellQty = toNum(serving?.sellQty, 1);
+  const sellUnit =
+    s(serving?.sellUnit) || (mode === "BY_WEIGHT" ? "kg" : "portion");
+
+  if (!(sellQty > 0)) throw new Error("Invalid servingVariant.sellQty");
+  return { mode, sellQty, sellUnit };
+}
+
+function multiplierForLine(serving, line) {
+  const { mode, sellQty, sellUnit } = getSellDef(serving);
+
+  if (mode === "BY_WEIGHT") {
+    const wg = toNum(line?.weightGrams, null);
+
+    if (wg != null && wg > 0) {
+      let w = 0;
+      if (sellUnit === "kg") w = wg / 1000;
+      else if (sellUnit === "g") w = wg;
+      else throw new Error(`Unsupported sellUnit for BY_WEIGHT: ${sellUnit}`);
+      return w / sellQty;
     }
 
-    const yieldQty = Number(serving.yieldQty || 0) || 1;
-    const yieldUnit = serving.yieldUnit || "g";
+    // fallback: quantity = amount in sellUnit
+    const q = toNum(line?.quantity, null);
+    if (q != null && q > 0) return q / sellQty;
 
-    // weightGrams -> grams
-    if (yieldUnit === "100g") return weightGrams / 100;
-    if (yieldUnit === "g") return weightGrams / yieldQty;
-    if (yieldUnit === "kg") return weightGrams / 1000 / yieldQty;
-
-    // fallback: treat as grams-based
-    return weightGrams / yieldQty;
+    throw new Error(
+      "BY_WEIGHT requires weightGrams (>0) or quantity (>0) fallback"
+    );
   }
 
-  // PORTION
-  const qty = requirePositiveNumber(line.quantity ?? 1, "quantity");
-  const yieldQty = Number(serving.yieldQty || 0) || 1;
-  return qty / yieldQty;
+  const q = toNum(line?.quantity, 1);
+  if (!(q > 0)) throw new Error("quantity must be > 0 for PORTION");
+  return q / sellQty;
 }
 
-/**
- * =========================
- *   RECIPE LOOKUP HELPERS
- * =========================
- * We fetch recipes by menuItemId and locate servingVariant by servingVariantId.
- */
-
-function toStrId(x) {
-  return x == null ? "" : String(x);
-}
-
-function findServingVariantById(recipe, servingVariantId) {
-  if (!recipe?.servingVariants?.length) return null;
-  const sid = toStrId(servingVariantId);
-  if (!sid) return null;
-  return recipe.servingVariants.find((v) => toStrId(v._id) === sid) || null;
-}
-
-/**
- * =========================
- *   BUILD INGREDIENT NEEDS
- * =========================
- * Output: Map<ingredientId, { total, parts[] }>
- * total: tổng need theo baseUnit của Ingredient (giả định quantify đã là baseUnit)
- */
-async function buildIngredientNeeds({ restaurantId, lines }) {
+/* ------------ needs builder (INTEGER baseUnit) ------------ */
+async function buildNeeds({ restaurantId, lines, session }) {
   if (!restaurantId) throw new Error("restaurantId is required");
-  if (!Array.isArray(lines) || lines.length === 0) return new Map();
+  if (!Array.isArray(lines) || !lines.length) return new Map();
 
-  // Validate minimal line fields
-  for (const l of lines) {
-    if (!l?.menuItemId) throw new Error("Line missing menuItemId");
-    if (!l?.servingVariantId) {
-      throw new Error("Line missing servingVariantId (required)");
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (!l?.menuItemId)
+      throw new Error(`Line missing menuItemId at index ${i}`);
+
+    const hasKey =
+      !!normalizeKey(l?.servingKey || l?.servingVariantKey) ||
+      !!deriveKeyFromName(l?.preparationMethodName);
+    if (!hasKey) {
+      throw new Error(
+        `Line missing servingKey at index ${i} (ServingVariant uses key-only, no _id).`
+      );
     }
-    // mode-based required fields checked later
   }
 
-  const menuItemIds = Array.from(
-    new Set(lines.map((l) => String(l.menuItemId)))
-  );
+  const menuItemIds = uniq(lines.map((l) => l.menuItemId));
 
-  // Only pick needed fields for performance
-  const recipes = await Recipe.find({
+  let q = Recipe.find({
     restaurantId,
     menuItemId: { $in: menuItemIds },
     isActive: true,
-  })
-    .select({
-      menuItemId: 1,
-      servingVariants: 1, // includes Ingredients
-    })
-    .lean();
+  }).select({ menuItemId: 1, servingVariants: 1 });
+  if (session) q = q.session(session);
+  const recipes = await q.lean();
 
   const recipeMap = new Map(recipes.map((r) => [String(r.menuItemId), r]));
 
-  const needs = new Map();
+  // pass1
+  const resolved = [];
+  const ingIdsSet = new Set();
 
   for (const line of lines) {
     const recipe = recipeMap.get(String(line.menuItemId));
-    if (!recipe) {
+    if (!recipe)
       throw new Error(`Recipe not found for menuItem ${line.menuItemId}`);
-    }
 
-    const serving = findServingVariantById(recipe, line.servingVariantId);
+    const serving = pickServingVariant(recipe, line);
     if (!serving) {
       throw new Error(
-        `ServingVariant not found for menuItem ${line.menuItemId} with servingVariantId ${line.servingVariantId}`
+        `ServingVariant not found for menuItem ${line.menuItemId} (servingKey=${
+          s(line.servingKey) || deriveKeyFromName(line.preparationMethodName)
+        })`
       );
     }
 
-    // Optional consistency check if client sends servingVariantMode
-    if (line.servingVariantMode && serving.mode !== line.servingVariantMode) {
+    const comps = arr(serving?.ingredients);
+    if (!comps.length) {
       throw new Error(
-        `ServingVariant mode mismatch for menuItem ${line.menuItemId}: line=${line.servingVariantMode} recipe=${serving.mode}`
+        `ServingVariant has no ingredients for menuItem ${
+          line.menuItemId
+        } (key=${s(serving.key)})`
       );
     }
 
-    // Mode required fields
-    if (serving.mode === "BY_WEIGHT") {
-      if (!(Number(line.weightGrams) > 0)) {
-        throw new Error("weightGrams is required for BY_WEIGHT serving");
-      }
-    } else {
-      if (!(Number(line.quantity) > 0)) {
-        throw new Error("quantity is required for PORTION serving");
-      }
-    }
+    for (const c of comps)
+      if (c?.ingredientId) ingIdsSet.add(String(c.ingredientId));
+    resolved.push({ line, serving, comps });
+  }
 
-    const comps = serving.Ingredients || serving.ingredients || [];
-    if (!Array.isArray(comps) || comps.length === 0) {
-      // nếu variant không có Ingredients thì coi như không trừ kho
-      // (hoặc bạn muốn throw để bắt buộc khai báo công thức)
-      throw new Error(
-        `ServingVariant ${serving._id} has no Ingredients for menuItem ${line.menuItemId}`
-      );
-    }
+  const ingIds = Array.from(ingIdsSet);
+  let q2 = Ingredient.find({ _id: { $in: ingIds } }).select({
+    name: 1,
+    baseUnit: 1,
+    conversions: 1,
+    minStock: 1,
+  });
+  if (session) q2 = q2.session(session);
+  const ings = await q2.lean();
+  const ingMap = new Map(ings.map((d) => [String(d._id), d]));
 
-    const mult = computeMultiplierFromServing(serving, line);
+  const needs = new Map();
 
-    for (const comp of comps) {
-      const ingredientId = comp.ingredientId;
+  for (const r of resolved) {
+    const { line, serving, comps } = r;
+    const mult = multiplierForLine(serving, line);
+
+    for (const c of comps) {
+      const ingredientId = c?.ingredientId;
       if (!ingredientId) continue;
 
-      // quantify: schema mới
-      const base = Number(comp.quantify ?? 0);
-      if (!(base > 0)) continue;
+      const ing = ingMap.get(String(ingredientId));
+      if (!ing) throw new Error(`Ingredient not found: ${ingredientId}`);
 
-      const wastePct = Number(comp.wastePct || 0);
-      const need = base * mult * (1 + wastePct / 100);
+      const qty = toNum(c?.qty, 0);
+      const unit = c?.unit || ing.baseUnit;
+      const wastePct = toNum(c?.wastePct, 0);
 
-      if (!(need > 0)) continue;
+      if (!(qty > 0)) continue;
 
-      const key = String(ingredientId);
-      const current = needs.get(key) || { total: 0, parts: [] };
+      // float in baseUnit
+      const baseFloat = convertToBaseFloat(qty, unit, ing);
+      if (!(baseFloat > 0)) continue;
 
-      current.total += need;
-      current.parts.push({
-        need,
+      const needFloat = baseFloat * mult * (1 + wastePct / 100);
+      const needInt = ceilInt(needFloat); // ✅ chốt integer baseUnit
+      if (!(needInt > 0)) continue;
+
+      const k = String(ingredientId);
+      const curr = needs.get(k) || { total: 0, parts: [] };
+      curr.total += needInt;
+      curr.parts.push({
         menuItemId: line.menuItemId,
-        servingVariantId: line.servingVariantId,
-        servingMode: serving.mode,
+        servingKey: s(serving.key),
+        mode: s(serving.mode),
+        sellQty: serving.sellQty,
+        sellUnit: serving.sellUnit,
         quantity: line.quantity ?? null,
         weightGrams: line.weightGrams ?? null,
-        // debug/tracing
-        servingKey: serving.key || null,
-        servingName: serving.name || null,
+        need: needInt,
       });
-
-      needs.set(key, current);
+      needs.set(k, curr);
     }
   }
 
   return needs;
 }
 
-/**
- * =========================
- *   FEFO (First Expiry First Out)
- * =========================
- */
-function consumeFromBatchesFIFO(batches = [], qtyNeed) {
-  const clone = (batches || []).map((b) => ({ ...b }));
-  const sortable = clone
+/* ------------ FEFO batches ------------ */
+function consumeFromBatchesFEFO(batches = [], qtyNeed) {
+  const clone = arr(batches).map((b) => ({ ...b }));
+  const sorted = clone
     .map((b) => ({
       ...b,
-      expirySortable: b.expiry
-        ? new Date(b.expiry).getTime()
-        : Number.POSITIVE_INFINITY,
+      _t: b.expiry ? new Date(b.expiry).getTime() : Number.POSITIVE_INFINITY,
     }))
-    .sort((a, b) => a.expirySortable - b.expirySortable);
+    .sort((a, b) => a._t - b._t);
 
   let remain = qtyNeed;
   const lots = [];
 
-  for (const b of sortable) {
+  for (const b of sorted) {
     if (remain <= 0) break;
-    const take = Math.min(Number(b.qty || 0), remain);
+
+    const available = toNum(b.qty, 0);
+    if (available <= 0) continue;
+
+    const take = Math.min(available, remain);
     if (take > 0) {
-      b.qty = Number(b.qty || 0) - take;
+      b.qty = available - take;
       remain -= take;
+
       lots.push({
         lot: b.lot || null,
-        qty: take,
+        qty: take, // ✅ integer
         expiry: b.expiry || null,
-        expirySortable: b.expiry
-          ? new Date(b.expiry).getTime()
-          : Number.POSITIVE_INFINITY,
-        costPerBaseUnit: Number(b.costPerBaseUnit || 0),
+        costPerBaseUnit: toNum(b.costPerBaseUnit, 0) || 0,
+        shortage: false,
       });
     }
   }
 
-  // If not enough, still record shortage lot (optional)
   if (remain > 0) {
     lots.push({
       lot: null,
       qty: remain,
       expiry: null,
-      expirySortable: Number.POSITIVE_INFINITY,
       costPerBaseUnit: 0,
       shortage: true,
     });
   }
 
-  const newBatches = sortable
-    .filter((b) => Number(b.qty || 0) > 0)
-    .map(({ expirySortable, ...rest }) => rest);
+  const newBatches = sorted
+    .filter((b) => toNum(b.qty, 0) > 0)
+    .map(({ _t, ...rest }) => rest);
 
   return { newBatches, lots };
 }
 
-/**
- * =========================
- *   STOCK MAP HELPERS
- * =========================
- */
-async function buildStockMap({
+async function ensureStockItems({
+  restaurantId,
+  warehouseId,
+  ingredientIds,
+  session,
+  createMissing,
+}) {
+  // normalize + unique ids
+  const ids = Array.from(
+    new Set((ingredientIds || []).map((x) => String(x)).filter(Boolean))
+  ).map((x) => new mongoose.Types.ObjectId(x));
+
+  if (!ids.length) return;
+
+  let q = StockItem.find({
+    restaurantId,
+    warehouseId,
+    ingredientId: { $in: ids },
+  }).select({ ingredientId: 1 });
+
+  if (session) q = q.session(session);
+
+  const existing = await q.lean();
+  const existSet = new Set(existing.map((x) => String(x.ingredientId)));
+  const missing = ids.filter((id) => !existSet.has(String(id)));
+
+  if (!missing.length) return;
+
+  if (!createMissing) {
+    throw new Error(
+      `StockItem not found for ingredients: ${missing.map(String).join(", ")}`
+    );
+  }
+
+  // ✅ race-safe: upsert per (restaurantId, warehouseId, ingredientId)
+  const ops = missing.map((ingredientId) => ({
+    updateOne: {
+      filter: { restaurantId, warehouseId, ingredientId },
+      update: {
+        $setOnInsert: {
+          restaurantId,
+          warehouseId,
+          ingredientId,
+          onHand: 0,
+          reserved: 0,
+          batches: [],
+        },
+      },
+      upsert: true,
+    },
+  }));
+
+  await StockItem.bulkWrite(ops, { session });
+}
+
+async function findLowStocks({
   restaurantId,
   warehouseId,
   ingredientIds,
   session,
 }) {
-  const items = await StockItem.find({
+  if (!ingredientIds?.length) return [];
+
+  let q1 = StockItem.find({
     restaurantId,
     warehouseId,
     ingredientId: { $in: ingredientIds },
-  }).session(session);
+  }).select({ ingredientId: 1, onHand: 1 });
+  if (session) q1 = q1.session(session);
+  const stock = await q1.lean();
 
-  return new Map(items.map((doc) => [String(doc.ingredientId), doc]));
+  let q2 = Ingredient.find({ _id: { $in: ingredientIds } }).select({
+    _id: 1,
+    minStock: 1,
+  });
+  if (session) q2 = q2.session(session);
+  const ing = await q2.lean();
+
+  const minMap = new Map(
+    ing.map((x) => [String(x._id), toNum(x.minStock, 0) || 0])
+  );
+
+  const lowIds = stock
+    .filter(
+      (st) =>
+        (toNum(st.onHand, 0) || 0) <= (minMap.get(String(st.ingredientId)) || 0)
+    )
+    .map((st) => st.ingredientId);
+
+  if (!lowIds.length) return [];
+
+  let q3 = Ingredient.find({ _id: { $in: lowIds } });
+  if (session) q3 = q3.session(session);
+  return q3.lean({ virtuals: true });
 }
 
-async function ensureAllStockDocsExist({
-  restaurantId,
-  warehouseId,
-  ingredientIds,
-  session,
-}) {
-  const count = await StockItem.countDocuments({
-    restaurantId,
-    warehouseId,
-    ingredientId: { $in: ingredientIds },
-  }).session(session);
+/* ---------------- Public APIs ---------------- */
 
-  if (count === ingredientIds.length) return;
-
-  const existing = await StockItem.find({
-    restaurantId,
-    warehouseId,
-    ingredientId: { $in: ingredientIds },
-  })
-    .select({ ingredientId: 1 })
-    .session(session)
-    .lean();
-
-  const existingSet = new Set(existing.map((x) => String(x.ingredientId)));
-  const missing = ingredientIds.filter((id) => !existingSet.has(String(id)));
-
-  throw new Error(`StockItem not found for ingredients: ${missing.join(", ")}`);
-}
-
-/**
- * =========================
- *  ATOMIC OPS & TRANSACTIONS
- * =========================
- *
- * Reserved logic:
- * - reserveForOrderTx: reserved += need (requires available onHand - reserved >= need)
- * - commitReservationForOrderTx: reserved -= need, onHand -= need, FEFO, create StockMovement
- * - cancelReservationForOrderTx: reserved -= need
- * - consumeForOrderTx: onHand -= need, FEFO, movement (no reserve phase)
- */
-
-/**
- * 1) RESERVATION: Giữ chỗ (reserved += need)
- */
+// Reserve: reserved += needInt
 export async function reserveForOrderTx({
   restaurantId,
   warehouseId,
   orderCode,
   lines,
+  allowNegative = false,
+  session,
 }) {
-  const session = await mongoose.startSession();
-
-  try {
-    const needs = await buildIngredientNeeds({ restaurantId, lines });
+  return withOptionalTransaction(session, async (sesh) => {
+    const needs = await buildNeeds({ restaurantId, lines, session: sesh });
     const ingredientIds = Array.from(needs.keys());
+    if (!ingredientIds.length)
+      return { success: true, totalConsumed: 0, movements: [], lowStocks: [] };
 
-    await session.withTransaction(async () => {
-      await ensureAllStockDocsExist({
-        restaurantId,
-        warehouseId,
-        ingredientIds,
-        session,
-      });
-
-      for (const [ingredientId, info] of needs) {
-        const need = Number(info.total || 0);
-
-        const res = await StockItem.updateOne(
-          {
-            restaurantId,
-            warehouseId,
-            ingredientId,
-            $expr: { $gte: [{ $subtract: ["$onHand", "$reserved"] }, need] },
-          },
-          { $inc: { reserved: need } },
-          { session }
-        );
-
-        if (res.matchedCount === 0) {
-          throw new Error(
-            `Insufficient available stock to reserve ingredient ${ingredientId}`
-          );
-        }
-      }
+    await ensureStockItems({
+      restaurantId,
+      warehouseId,
+      ingredientIds,
+      session: sesh,
+      createMissing: !!allowNegative,
     });
 
-    session.endSession();
+    for (const [ingredientId, info] of needs) {
+      const need = Number(info.total || 0); // integer
+
+      const filter = { restaurantId, warehouseId, ingredientId };
+      if (!allowNegative) {
+        filter.$expr = {
+          $gte: [{ $subtract: ["$onHand", "$reserved"] }, need],
+        };
+      }
+
+      const res = await StockItem.updateOne(
+        filter,
+        { $inc: { reserved: need } },
+        { session: sesh }
+      );
+      if (!allowNegative && res.matchedCount === 0) {
+        throw new Error(
+          `Insufficient available stock to reserve ingredient ${ingredientId}`
+        );
+      }
+    }
+
     return { success: true, totalConsumed: 0, movements: [], lowStocks: [] };
-  } catch (e) {
-    session.endSession();
-    throw e;
-  }
+  });
 }
 
-/**
- * 2) COMMIT RESERVATION: reserved -= need, onHand -= need, FEFO, movement
- */
-export async function commitReservationForOrderTx({
-  restaurantId,
-  warehouseId,
-  orderCode,
-  lines,
-}) {
-  const session = await mongoose.startSession();
-  const movements = [];
-  const lowStocksSet = new Set();
-  let totalConsumed = 0;
-
-  try {
-    const needs = await buildIngredientNeeds({ restaurantId, lines });
-    const ingredientIds = Array.from(needs.keys());
-
-    await session.withTransaction(async () => {
-      await ensureAllStockDocsExist({
-        restaurantId,
-        warehouseId,
-        ingredientIds,
-        session,
-      });
-
-      const stockMap = await buildStockMap({
-        restaurantId,
-        warehouseId,
-        ingredientIds,
-        session,
-      });
-
-      // 2.1 Atomic giảm reserved + onHand
-      for (const [ingredientId, info] of needs) {
-        const need = Number(info.total || 0);
-
-        const res = await StockItem.updateOne(
-          {
-            restaurantId,
-            warehouseId,
-            ingredientId,
-            $expr: { $gte: ["$reserved", need] },
-          },
-          { $inc: { reserved: -need } },
-          { session }
-        );
-        if (res.matchedCount === 0) {
-          throw new Error(
-            `Insufficient reserved to commit ingredient ${ingredientId}`
-          );
-        }
-
-        const res2 = await StockItem.updateOne(
-          {
-            restaurantId,
-            warehouseId,
-            ingredientId,
-            $expr: { $gte: ["$onHand", need] },
-          },
-          { $inc: { onHand: -need } },
-          { session }
-        );
-        if (res2.matchedCount === 0) {
-          throw new Error(
-            `Insufficient stock to commit ingredient ${ingredientId}`
-          );
-        }
-      }
-
-      // 2.2 FEFO + movement theo lô
-      for (const [ingredientId, info] of needs) {
-        const need = Number(info.total || 0);
-
-        let current = stockMap.get(String(ingredientId));
-        if (!current) {
-          current = await StockItem.findOne({
-            restaurantId,
-            warehouseId,
-            ingredientId,
-          }).session(session);
-          if (current) stockMap.set(String(ingredientId), current);
-        }
-        if (!current) continue;
-
-        const { newBatches, lots } = consumeFromBatchesFIFO(
-          current.batches,
-          need
-        );
-        current.batches = newBatches;
-        await current.save({ session });
-
-        totalConsumed += need;
-
-        const lotMoves = lots.filter((l) => Number(l.qty) > 0);
-        if (lotMoves.length) {
-          const docs = lotMoves.map((l) => ({
-            restaurantId,
-            warehouseId,
-            ingredientId,
-            type: "outbound",
-            qty: -Number(l.qty),
-            reason: `order:${orderCode}`,
-            meta: {
-              orderCode,
-              lot: l.lot,
-              expiry: l.expiry,
-              expirySortable: l.expirySortable,
-              costPerBaseUnit: l.costPerBaseUnit,
-              shortage: !!l.shortage,
-              lines: info.parts,
-            },
-          }));
-
-          const created = await StockMovement.insertMany(docs, { session });
-          movements.push(...created.map((x) => x.toObject()));
-        }
-
-        // Low stock check
-        const ing = await Ingredient.findById(ingredientId)
-          .select({ minStock: 1 })
-          .session(session)
-          .lean();
-
-        if (ing && (current.onHand ?? 0) <= (ing.minStock ?? 0)) {
-          lowStocksSet.add(String(ingredientId));
-        }
-      }
-    });
-
-    const lowStocks = lowStocksSet.size
-      ? await Ingredient.find({ _id: { $in: Array.from(lowStocksSet) } }).lean({
-          virtuals: true,
-        })
-      : [];
-
-    session.endSession();
-    return { success: true, totalConsumed, movements, lowStocks };
-  } catch (e) {
-    session.endSession();
-    throw e;
-  }
-}
-
-/**
- * 3) CANCEL RESERVATION: reserved -= need
- */
+// Cancel reservation: reserved -= needInt (must have reserved>=need)
 export async function cancelReservationForOrderTx({
   restaurantId,
   warehouseId,
   orderCode,
   lines,
+  session,
 }) {
-  const session = await mongoose.startSession();
-
-  try {
-    const needs = await buildIngredientNeeds({ restaurantId, lines });
+  return withOptionalTransaction(session, async (sesh) => {
+    const needs = await buildNeeds({ restaurantId, lines, session: sesh });
     const ingredientIds = Array.from(needs.keys());
+    if (!ingredientIds.length)
+      return { success: true, totalConsumed: 0, movements: [], lowStocks: [] };
 
-    await session.withTransaction(async () => {
-      await ensureAllStockDocsExist({
-        restaurantId,
-        warehouseId,
-        ingredientIds,
-        session,
-      });
-
-      for (const [ingredientId, info] of needs) {
-        const need = Number(info.total || 0);
-
-        const res = await StockItem.updateOne(
-          {
-            restaurantId,
-            warehouseId,
-            ingredientId,
-            $expr: { $gte: ["$reserved", need] },
-          },
-          { $inc: { reserved: -need } },
-          { session }
-        );
-
-        if (res.matchedCount === 0) {
-          throw new Error(
-            `Not enough reserved to cancel for ingredient ${ingredientId}`
-          );
-        }
-      }
+    await ensureStockItems({
+      restaurantId,
+      warehouseId,
+      ingredientIds,
+      session: sesh,
+      createMissing: false,
     });
 
-    session.endSession();
+    for (const [ingredientId, info] of needs) {
+      const need = Number(info.total || 0);
+
+      const filter = {
+        restaurantId,
+        warehouseId,
+        ingredientId,
+        $expr: { $gte: ["$reserved", need] },
+      };
+      const res = await StockItem.updateOne(
+        filter,
+        { $inc: { reserved: -need } },
+        { session: sesh }
+      );
+
+      if (res.matchedCount === 0) {
+        throw new Error(
+          `Not enough reserved to cancel ingredient ${ingredientId}`
+        );
+      }
+    }
+
     return { success: true, totalConsumed: 0, movements: [], lowStocks: [] };
-  } catch (e) {
-    session.endSession();
-    throw e;
-  }
+  });
 }
 
-/**
- * 4) DIRECT CONSUMPTION (no reserve phase)
- */
+// Commit: reserved -= needInt, onHand -= needInt + FEFO + outbound movement (qty negative int)
+export async function commitReservationForOrderTx({
+  restaurantId,
+  warehouseId,
+  orderCode,
+  lines,
+  allowNegative = false,
+  session,
+}) {
+  return withOptionalTransaction(session, async (sesh) => {
+    const needs = await buildNeeds({ restaurantId, lines, session: sesh });
+    const ingredientIds = Array.from(needs.keys());
+    if (!ingredientIds.length)
+      return { success: true, totalConsumed: 0, movements: [], lowStocks: [] };
+
+    await ensureStockItems({
+      restaurantId,
+      warehouseId,
+      ingredientIds,
+      session: sesh,
+      createMissing: !!allowNegative,
+    });
+
+    // atomic decrement
+    for (const [ingredientId, info] of needs) {
+      const need = Number(info.total || 0);
+
+      const filter = { restaurantId, warehouseId, ingredientId };
+      filter.$expr = allowNegative
+        ? { $gte: ["$reserved", need] }
+        : {
+            $and: [{ $gte: ["$reserved", need] }, { $gte: ["$onHand", need] }],
+          };
+
+      const res = await StockItem.updateOne(
+        filter,
+        { $inc: { reserved: -need, onHand: -need } },
+        { session: sesh }
+      );
+
+      if (res.matchedCount === 0) {
+        throw new Error(
+          `Insufficient reserved/onHand to commit ingredient ${ingredientId}`
+        );
+      }
+    }
+
+    const movements = [];
+    let totalConsumed = 0;
+
+    for (const [ingredientId, info] of needs) {
+      const need = Number(info.total || 0);
+      totalConsumed += need;
+
+      const item = await StockItem.findOne({
+        restaurantId,
+        warehouseId,
+        ingredientId,
+      }).session(sesh);
+      if (!item) continue;
+
+      const { newBatches, lots } = consumeFromBatchesFEFO(
+        item.batches || [],
+        need
+      );
+      item.batches = newBatches;
+      await item.save({ session: sesh });
+
+      const docs = lots
+        .filter((l) => Number(l.qty) > 0)
+        .map((l) => ({
+          restaurantId,
+          warehouseId,
+          ingredientId,
+          type: "outbound",
+          qty: -Number(l.qty),
+          reason: `order:${orderCode}`,
+          meta: {
+            orderCode,
+            lot: l.lot,
+            expiry: l.expiry,
+            costPerBaseUnit: l.costPerBaseUnit,
+            shortage: !!l.shortage,
+          },
+        }));
+
+      if (docs.length) {
+        const created = await StockMovement.insertMany(docs, { session: sesh });
+        movements.push(...created.map((d) => d.toObject()));
+      }
+    }
+
+    const lowStocks = await findLowStocks({
+      restaurantId,
+      warehouseId,
+      ingredientIds,
+      session: sesh,
+    });
+    return { success: true, totalConsumed, movements, lowStocks };
+  });
+}
+
+// Consume directly: onHand -= needInt + FEFO + outbound movement
 export async function consumeForOrderTx({
   restaurantId,
   warehouseId,
   orderCode,
   lines,
+  allowNegative = false,
+  session,
 }) {
-  const session = await mongoose.startSession();
-  const movements = [];
-  const lowStocksSet = new Set();
-  let totalConsumed = 0;
-
-  try {
-    const needs = await buildIngredientNeeds({ restaurantId, lines });
+  return withOptionalTransaction(session, async (sesh) => {
+    const needs = await buildNeeds({ restaurantId, lines, session: sesh });
     const ingredientIds = Array.from(needs.keys());
+    if (!ingredientIds.length)
+      return { success: true, totalConsumed: 0, movements: [], lowStocks: [] };
 
-    await session.withTransaction(async () => {
-      await ensureAllStockDocsExist({
-        restaurantId,
-        warehouseId,
-        ingredientIds,
-        session,
-      });
-
-      const stockMap = await buildStockMap({
-        restaurantId,
-        warehouseId,
-        ingredientIds,
-        session,
-      });
-
-      // 4.1 Atomic trừ onHand
-      for (const [ingredientId, info] of needs) {
-        const need = Number(info.total || 0);
-
-        const res = await StockItem.updateOne(
-          {
-            restaurantId,
-            warehouseId,
-            ingredientId,
-            $expr: { $gte: ["$onHand", need] },
-          },
-          { $inc: { onHand: -need } },
-          { session }
-        );
-        if (res.matchedCount === 0) {
-          throw new Error(`Insufficient stock for ingredient ${ingredientId}`);
-        }
-      }
-
-      // 4.2 FEFO + movement
-      for (const [ingredientId, info] of needs) {
-        const need = Number(info.total || 0);
-
-        let current = stockMap.get(String(ingredientId));
-        if (!current) {
-          current = await StockItem.findOne({
-            restaurantId,
-            warehouseId,
-            ingredientId,
-          }).session(session);
-          if (current) stockMap.set(String(ingredientId), current);
-        }
-        if (!current) continue;
-
-        const { newBatches, lots } = consumeFromBatchesFIFO(
-          current.batches,
-          need
-        );
-        current.batches = newBatches;
-        await current.save({ session });
-
-        totalConsumed += need;
-
-        const lotMoves = lots.filter((l) => Number(l.qty) > 0);
-        if (lotMoves.length) {
-          const docs = lotMoves.map((l) => ({
-            restaurantId,
-            warehouseId,
-            ingredientId,
-            type: "outbound",
-            qty: -Number(l.qty),
-            reason: `order:${orderCode}`,
-            meta: {
-              orderCode,
-              lot: l.lot,
-              expiry: l.expiry,
-              expirySortable: l.expirySortable,
-              costPerBaseUnit: l.costPerBaseUnit,
-              shortage: !!l.shortage,
-              lines: info.parts,
-            },
-          }));
-          const created = await StockMovement.insertMany(docs, { session });
-          movements.push(...created.map((x) => x.toObject()));
-        }
-
-        // Low stock check
-        const ing = await Ingredient.findById(ingredientId)
-          .select({ minStock: 1 })
-          .session(session)
-          .lean();
-
-        if (ing && (current.onHand ?? 0) <= (ing.minStock ?? 0)) {
-          lowStocksSet.add(String(ingredientId));
-        }
-      }
+    await ensureStockItems({
+      restaurantId,
+      warehouseId,
+      ingredientIds,
+      session: sesh,
+      createMissing: !!allowNegative,
     });
 
-    const lowStocks = lowStocksSet.size
-      ? await Ingredient.find({ _id: { $in: Array.from(lowStocksSet) } }).lean({
-          virtuals: true,
-        })
-      : [];
+    for (const [ingredientId, info] of needs) {
+      const need = Number(info.total || 0);
 
-    session.endSession();
+      const filter = { restaurantId, warehouseId, ingredientId };
+      if (!allowNegative) filter.$expr = { $gte: ["$onHand", need] };
+
+      const res = await StockItem.updateOne(
+        filter,
+        { $inc: { onHand: -need } },
+        { session: sesh }
+      );
+
+      if (!allowNegative && res.matchedCount === 0) {
+        throw new Error(
+          `Insufficient onHand to consume ingredient ${ingredientId}`
+        );
+      }
+    }
+
+    const movements = [];
+    let totalConsumed = 0;
+
+    for (const [ingredientId, info] of needs) {
+      const need = Number(info.total || 0);
+      totalConsumed += need;
+
+      const item = await StockItem.findOne({
+        restaurantId,
+        warehouseId,
+        ingredientId,
+      }).session(sesh);
+      if (!item) continue;
+
+      const { newBatches, lots } = consumeFromBatchesFEFO(
+        item.batches || [],
+        need
+      );
+      item.batches = newBatches;
+      await item.save({ session: sesh });
+
+      const docs = lots
+        .filter((l) => Number(l.qty) > 0)
+        .map((l) => ({
+          restaurantId,
+          warehouseId,
+          ingredientId,
+          type: "outbound",
+          qty: -Number(l.qty),
+          reason: `order:${orderCode}`,
+          meta: {
+            orderCode,
+            lot: l.lot,
+            expiry: l.expiry,
+            costPerBaseUnit: l.costPerBaseUnit,
+            shortage: !!l.shortage,
+          },
+        }));
+
+      if (docs.length) {
+        const created = await StockMovement.insertMany(docs, { session: sesh });
+        movements.push(...created.map((d) => d.toObject()));
+      }
+    }
+
+    const lowStocks = await findLowStocks({
+      restaurantId,
+      warehouseId,
+      ingredientIds,
+      session: sesh,
+    });
     return { success: true, totalConsumed, movements, lowStocks };
-  } catch (e) {
-    session.endSession();
-    throw e;
-  }
+  });
 }

@@ -14,6 +14,7 @@ import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/Payro
 import "./ManagerLayout.scss";
 import StorageManagement from "../components/Dashboard_Manager/Storage/StorageManagement";
 import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManagement";
+import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
 const ManagerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -130,9 +131,10 @@ const ManagerLayout = () => {
 
       // case "transactions": return <Transactions />;
       // case "reports": return <Reports />;
+      case "finance":
+        return <FinanceDashboard />;
       case "settings":
       case "rates":
-      case "finance":
       case "setting":
       case "backup":
         return <div>Đang phát triển…</div>;

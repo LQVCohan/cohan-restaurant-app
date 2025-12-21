@@ -1,53 +1,416 @@
-@use "../../../../../styles/variables" as v;
-@use "../../../../../styles/mixins" as m;
-.actions-card {
-  @include m.card-base;
+@use "sass:color";
+
+// --- CONFIGURATION ---
+$font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+  sans-serif;
+
+// Colors
+$white: #ffffff;
+$primary: #4f46e5; // Indigo hiện đại
+$primary-dark: #4338ca;
+$primary-light: #eef2ff;
+
+$text-main: #111827; // Gần đen
+$text-secondary: #6b7280; // Xám trung tính
+$text-placeholder: #9ca3af;
+
+$border-color: #e5e7eb;
+$bg-body: #f9fafb;
+$bg-control: #f3f4f6; // Màu nền input
+$bg-control-hover: #e5e7eb;
+
+// Shadows & Radius
+$radius-lg: 16px;
+$radius-md: 10px;
+$radius-sm: 6px;
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+  0 2px 4px -1px rgba(0, 0, 0, 0.03);
+$shadow-float: 0 10px 15px -3px rgba(0, 0, 0, 0.05),
+  0 4px 6px -2px rgba(0, 0, 0, 0.025);
+
+// Mixins
+@mixin flex-center {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: v.$spacing-md;
-  flex-wrap: wrap;
+  justify-content: center;
+}
 
-  @include m.mobile {
-    flex-direction: column;
-    align-items: stretch;
-    gap: v.$spacing-md;
-    padding: v.$spacing-md;
+@mixin transition-all {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// --- STYLES ---
+
+.premium-actions-card {
+  font-family: $font-family;
+  background: $white;
+  border-radius: $radius-lg;
+  border: 1px solid $border-color;
+  box-shadow: $shadow-md;
+  display: flex;
+  flex-direction: column;
+  overflow: visible; // Để dropdown không bị che nếu cần
+  margin-bottom: 24px;
+
+  // 1. HEADER (TABS)
+  .card-header {
+    padding: 0 24px;
+    border-bottom: 1px solid $border-color;
+
+    .tabs-container {
+      display: flex;
+      gap: 32px;
+      overflow-x: auto;
+      // Ẩn scrollbar
+      &::-webkit-scrollbar {
+        display: none;
+      }
+      scrollbar-width: none;
+
+      .tab-item {
+        position: relative;
+        background: none;
+        border: none;
+        padding: 16px 4px;
+        color: $text-secondary;
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        @include transition-all;
+
+        .tab-badge {
+          background: $bg-control;
+          color: $text-secondary;
+          font-size: 0.75rem;
+          padding: 2px 8px;
+          border-radius: 99px;
+          font-weight: 600;
+          @include transition-all;
+        }
+
+        .active-indicator {
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: $primary;
+          border-radius: 2px 2px 0 0;
+          transform: scaleX(0);
+          transition: transform 0.25s ease;
+        }
+
+        &:hover {
+          color: $text-main;
+          .tab-badge {
+            background: $bg-control-hover;
+            color: $text-main;
+          }
+        }
+
+        &.active {
+          color: $primary;
+
+          .tab-badge {
+            background: $primary-light;
+            color: $primary;
+          }
+
+          .active-indicator {
+            transform: scaleX(1);
+          }
+        }
+      }
+    }
   }
 
-  .search-section {
+  // 2. TOOLBAR
+  .card-toolbar {
+    padding: 16px 24px;
     display: flex;
-    gap: v.$spacing-md;
-    flex: 1;
-    max-width: 600px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
 
-    @include m.mobile {
-      max-width: none;
+    @media (max-width: 768px) {
       flex-direction: column;
+      align-items: stretch;
     }
 
-    .search-input {
-      @include m.form-input;
+    // --- LEFT AREA ---
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
       flex: 1;
-    }
+      flex-wrap: wrap;
 
-    .status-filter {
-      background: v.$white;
-      min-width: 180px;
-    }
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 0.75rem;
-
-    .btn {
-      &.btn-primary {
-        @include m.button-primary;
+      // Divider
+      .divider {
+        height: 24px;
+        width: 1px;
+        background: $border-color;
+        margin: 0 8px;
+        @media (max-width: 640px) {
+          display: none;
+        }
       }
 
-      &.btn-secondary {
-        @include m.button-secondary;
+      // Search Group
+      .control-group.search-group {
+        position: relative;
+        min-width: 260px;
+        flex-shrink: 0;
+
+        @media (max-width: 640px) {
+          width: 100%;
+        }
+
+        .icon-left {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: $text-placeholder;
+          pointer-events: none;
+          transition: color 0.2s;
+        }
+
+        input {
+          width: 100%;
+          padding: 10px 36px; // Left padding cho icon
+          background: $white;
+          border: 1px solid $border-color;
+          border-radius: $radius-md;
+          font-size: 0.9rem;
+          color: $text-main;
+          @include transition-all;
+          box-shadow: $shadow-sm;
+
+          &::placeholder {
+            color: $text-placeholder;
+          }
+
+          &:hover {
+            border-color: darken($border-color, 10%);
+          }
+
+          &:focus {
+            outline: none;
+            border-color: $primary;
+            box-shadow: 0 0 0 3px color.change($primary, $alpha: 0.15);
+          }
+        }
+
+        // Khi focus wrapper
+        &:focus-within .icon-left {
+          color: $primary;
+        }
+
+        .clear-btn {
+          position: absolute;
+          right: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: transparent;
+          border: none;
+          color: $text-placeholder;
+          cursor: pointer;
+          padding: 2px;
+          border-radius: 50%;
+          display: flex;
+          &:hover {
+            background: $bg-control;
+            color: $text-main;
+          }
+        }
+      }
+
+      // Filter Rows
+      .filters-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+
+        // Custom Select Wrapper
+        .select-wrapper {
+          position: relative;
+          min-width: 140px;
+
+          .select-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: $text-secondary;
+            z-index: 1;
+            pointer-events: none;
+          }
+
+          .chevron {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: $text-secondary;
+            pointer-events: none;
+          }
+
+          select {
+            appearance: none;
+            width: 100%;
+            padding: 9px 34px 9px 38px;
+            background: $white; // Nền trắng thay vì xám để trông sạch hơn
+            border: 1px solid $border-color;
+            border-radius: $radius-md;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: $text-main;
+            cursor: pointer;
+            box-shadow: $shadow-sm;
+            @include transition-all;
+
+            &:hover {
+              background: $bg-body;
+              border-color: darken($border-color, 10%);
+            }
+
+            &:focus {
+              outline: none;
+              border-color: $primary;
+              box-shadow: 0 0 0 3px color.change($primary, $alpha: 0.15);
+            }
+          }
+        }
+
+        .btn-reset {
+          background: none;
+          border: none;
+          color: #ef4444; // Red
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.85rem;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 6px 10px;
+          border-radius: $radius-sm;
+
+          &:hover {
+            background: #fef2f2;
+          }
+        }
+      }
+    }
+
+    // --- RIGHT AREA ---
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      @media (max-width: 768px) {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .divider {
+        height: 24px;
+        width: 1px;
+        background: $border-color;
+        @media (max-width: 768px) {
+          display: none;
+        }
+      }
+
+      // View Switcher (Segmented Control)
+      .view-switcher {
+        display: flex;
+        background: $bg-control;
+        padding: 3px;
+        border-radius: 8px;
+        border: 1px solid $border-color;
+
+        button {
+          border: none;
+          background: transparent;
+          width: 34px;
+          height: 30px;
+          border-radius: 6px;
+          color: $text-secondary;
+          cursor: pointer;
+          @include flex-center;
+          @include transition-all;
+
+          &:hover {
+            color: $text-main;
+          }
+
+          &.active {
+            background: $white;
+            color: $primary;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            font-weight: 600;
+          }
+        }
+      }
+
+      // Action Buttons
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 16px;
+        border-radius: $radius-md;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        @include transition-all;
+        white-space: nowrap;
+
+        .text {
+          @media (max-width: 640px) {
+            display: none;
+          }
+        }
+
+        &.btn-secondary {
+          background: $white;
+          border: 1px solid $border-color;
+          color: $text-main;
+          box-shadow: $shadow-sm;
+
+          &:hover {
+            background: $bg-body;
+            border-color: darken($border-color, 15%);
+            transform: translateY(-1px);
+            box-shadow: $shadow-md;
+          }
+        }
+
+        &.btn-primary {
+          background: $primary;
+          border: 1px solid transparent;
+          color: $white;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05),
+            0 4px 12px color.change($primary, $alpha: 0.3);
+
+          &:hover {
+            background: $primary-dark;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px color.change($primary, $alpha: 0.4);
+          }
+
+          &:active {
+            transform: translateY(0);
+          }
+        }
       }
     }
   }

@@ -1,11 +1,25 @@
 import mongoose from "mongoose";
 import { StockMovement } from "../../../models/index.js";
 
+function escapeRegex(input) {
+  return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function toValidDateOrNull(v) {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isFinite(d.getTime()) ? d : null;
+}
+
 function buildDateFilter(dateFrom, dateTo) {
-  if (!dateFrom && !dateTo) return null;
+  const from = toValidDateOrNull(dateFrom);
+  const to = toValidDateOrNull(dateTo);
+
+  if (!from && !to) return null;
+
   const r = {};
-  if (dateFrom) r.$gte = new Date(dateFrom);
-  if (dateTo) r.$lte = new Date(dateTo);
+  if (from) r.$gte = from;
+  if (to) r.$lte = to;
   return r;
 }
 
@@ -25,19 +39,25 @@ export default {
     }
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+
     const q = { restaurantId };
 
     if (warehouseId && mongoose.isValidObjectId(warehouseId))
       q.warehouseId = warehouseId;
     if (ingredientId && mongoose.isValidObjectId(ingredientId))
       q.ingredientId = ingredientId;
+
+    // type là enum GraphQL, ok
     if (type) q.type = type;
 
     // match orderCode ở reason hoặc meta.orderCode
     if (orderCode?.trim()) {
       const oc = orderCode.trim();
+      const ocEsc = escapeRegex(oc);
+
       q.$or = [
-        { reason: new RegExp(`order:${oc}$`, "i") },
+        // service bạn đang ghi reason: `order:${orderCode}`
+        { reason: new RegExp(`order:${ocEsc}$`, "i") },
         { "meta.orderCode": oc },
       ];
     }
@@ -45,12 +65,14 @@ export default {
     const createdAt = buildDateFilter(dateFrom, dateTo);
     if (createdAt) q.createdAt = createdAt;
 
-    const docs = await StockMovement.find(q)
-      .sort({ createdAt: sort === 1 ? 1 : -1 })
-      .limit(Math.min(limit ?? 200, 1000))
-      .lean({ virtuals: true });
+    const safeLimit = Math.min(limit ?? 200, 1000);
+    const sortDir = sort === 1 ? 1 : -1;
 
-    return docs;
+    return StockMovement.find(q)
+      .select({ __v: 0 })
+      .sort({ createdAt: sortDir })
+      .limit(safeLimit)
+      .lean({ virtuals: true });
   },
 
   stockMovementSummary: async (
@@ -97,21 +119,30 @@ export default {
       transferIn = 0,
       transferOut = 0,
       count = 0;
+
     for (const r of rows) {
       count += r.count || 0;
+
       switch (r._id) {
         case "inbound":
+          // inbound thường dương
           inbound += r.totalQty || 0;
           break;
+
         case "outbound":
+          // outbound service đang lưu âm → lấy trị tuyệt đối
           outbound += Math.abs(r.totalQty || 0);
-          break; // qty outbound lưu âm → lấy trị tuyệt đối
+          break;
+
         case "adjustment":
+          // adjustment có thể +/-
           adjustment += r.totalQty || 0;
           break;
+
         case "transfer":
-          // chuyển kho ghi hai bản ghi: âm ở kho nguồn, dương ở kho đích (đều type="transfer")
-          // Nếu bạn muốn tách rõ in/out theo sign:
+          // transfer ghi 2 dòng cùng type="transfer":
+          // - kho nguồn: qty âm
+          // - kho đích: qty dương
           if ((r.totalQty || 0) >= 0) transferIn += r.totalQty || 0;
           else transferOut += Math.abs(r.totalQty || 0);
           break;

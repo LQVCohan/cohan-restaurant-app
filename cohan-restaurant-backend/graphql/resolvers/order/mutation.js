@@ -1,4 +1,4 @@
-// src/graphql/resolvers/order/mutation.js (FINAL)
+// src/graphql/resolvers/order/mutation.js (UPDATED - servingKey required, BY_WEIGHT grams integer)
 import mongoose from "mongoose";
 
 import {
@@ -8,11 +8,11 @@ import {
   Warehouse,
 } from "../../../models/index.js";
 
-import { normalizeItem, computeTotals, toId } from "./helper/orderUtils.js"; // <- chỉnh path nếu khác
-import { emitOrderEvent } from "./helper/emitOrderEvent.js"; // <- chỉnh path nếu khác
-import { ensureUserForOrder, resolveTable } from "./helper/userUtils.js"; // <- chỉnh path nếu khác
-import { markTableStatus } from "./helper/tableUtils.js"; // <- chỉnh path nếu khác
-import { createOrderTrackingEvent } from "./helper/tracking.js"; // <- chỉnh path nếu khác
+import { normalizeItem, computeTotals, toId } from "./helper/orderUtils.js";
+import { emitOrderEvent } from "./helper/emitOrderEvent.js";
+import { ensureUserForOrder, resolveTable } from "./helper/userUtils.js";
+import { markTableStatus } from "./helper/tableUtils.js";
+import { createOrderTrackingEvent } from "./helper/tracking.js";
 import generateOrderCode from "../../../utils/generateOrderCode.js";
 
 import {
@@ -29,24 +29,95 @@ const RESERVABLE_STATUSES = [
 ];
 const COMMIT_STATUSES = ["preparing", "ready", "served", "completed"];
 
+const CANCELLED_ITEM_STATUSES = ["cancelled", "returned"];
+
 /** =========================
- *  Inventory line builder
- *  ========================= */
-function buildInventoryLinesFromItems(items = []) {
-  return (items || [])
-    .map((it) => ({
-      menuItemId: it.dishId,
-      quantity: it.quantity ?? 1, // PORTION
-      weightGrams: it.weightGrams ?? null, // BY_WEIGHT
-      servingVariantId: it.servingVariantId, // REQUIRED
-      servingVariantMode: it.servingVariant?.mode ?? null, // service check chéo (optional)
-    }))
-    .filter((l) => l.menuItemId);
+ * Standard unit guards
+ * ========================= */
+function assertPositiveIntegerGrams(v, field = "weightGrams") {
+  const n = Number(v);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) {
+    throw new Error(
+      `${field} must be a positive integer (grams). Có lỗi trong chuyển đổi sang đơn vị chuẩn.`
+    );
+  }
+  return n;
+}
+
+function assertPositiveNumber(v, field = "quantity") {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`${field} must be > 0`);
+  return n;
 }
 
 /** =========================
- *  Find / create orderCode
- *  ========================= */
+ * Inventory line builders (NEW STANDARD)
+ * - REQUIRED servingKey
+ * - BY_WEIGHT requires weightGrams integer (grams)
+ * - NO servingVariantId fallback anymore
+ * ========================= */
+function buildInventoryLineFromItem(it) {
+  if (!it) return null;
+
+  const menuItemId = it.dishId;
+  if (!menuItemId) return null;
+
+  // ✅ chuẩn mới: chỉ dùng servingKey (ổn định theo recipe.key)
+  const servingKey = it.servingKey ? String(it.servingKey).trim() : "";
+  if (!servingKey) {
+    throw new Error(
+      "servingKey is required for inventory. Có lỗi trong chuyển đổi sang đơn vị chuẩn."
+    );
+  }
+
+  const mode = it.servingVariant?.mode ?? null;
+
+  // ✅ BY_WEIGHT: quantity luôn = 1, weightGrams bắt buộc integer
+  if (mode === "BY_WEIGHT") {
+    const grams = assertPositiveIntegerGrams(it.weightGrams, "weightGrams");
+    return {
+      menuItemId,
+      quantity: 1,
+      weightGrams: grams,
+      servingKey,
+
+      // optional debug
+      servingMode: "BY_WEIGHT",
+      preparationMethodName: it.servingVariant?.name ?? null,
+    };
+  }
+
+  // PORTION (hoặc fallback basePrice): quantity > 0
+  const qty = assertPositiveNumber(it.quantity ?? 1, "quantity");
+
+  // weightGrams không bắt buộc, nhưng nếu có truyền thì cũng phải integer grams (để không phát sinh lệch chuẩn)
+  let gramsOrNull = null;
+  if (it.weightGrams != null) {
+    gramsOrNull = assertPositiveIntegerGrams(it.weightGrams, "weightGrams");
+  }
+
+  return {
+    menuItemId,
+    quantity: qty,
+    weightGrams: gramsOrNull,
+    servingKey,
+
+    // optional debug
+    servingMode: it.servingVariant?.mode ?? null,
+    preparationMethodName: it.servingVariant?.name ?? null,
+  };
+}
+
+function buildInventoryLinesFromItems(items = []) {
+  return (items || [])
+    .filter((it) => it && !CANCELLED_ITEM_STATUSES.includes(it.status))
+    .map(buildInventoryLineFromItem)
+    .filter(Boolean);
+}
+
+/** =========================
+ * Find / create orderCode
+ * ========================= */
 async function findOrCreateOrderCode({
   restaurantId,
   tableId,
@@ -58,31 +129,31 @@ async function findOrCreateOrderCode({
     return String(requestedOrderCode).trim();
   }
 
-  // Nếu có reservation active → lấy orderCode
-  const activeRes = await Reservation.findOne(
+  const activeResQuery = Reservation.findOne(
     {
       restaurantId: toId(restaurantId),
       tableId: toId(tableId),
       status: { $in: ["pending_payment", "confirmed", "seated"] },
     },
     { orderCode: 1 }
-  )
-    .sort({ createdAt: -1 })
-    .session?.(session);
+  ).sort({ createdAt: -1 });
+
+  if (session) activeResQuery.session(session);
+  const activeRes = await activeResQuery.lean();
 
   if (activeRes?.orderCode) return activeRes.orderCode;
 
-  // Nếu bàn đã có “đợt” orderCode đang chạy → reuse
-  const firstOrder = await Order.findOne(
+  const firstOrderQuery = Order.findOne(
     {
       restaurantId: toId(restaurantId),
       tableCode,
       currentStatus: { $nin: ["completed", "cancelled", "failed"] },
     },
     { orderCode: 1, createdAt: 1 }
-  )
-    .sort({ createdAt: 1, _id: 1 })
-    .session?.(session);
+  ).sort({ createdAt: 1, _id: 1 });
+
+  if (session) firstOrderQuery.session(session);
+  const firstOrder = await firstOrderQuery.lean();
 
   if (firstOrder?.orderCode) return firstOrder.orderCode;
 
@@ -90,8 +161,8 @@ async function findOrCreateOrderCode({
 }
 
 /** =========================
- *  Upsert TableCustomer
- *  ========================= */
+ * Upsert TableCustomer
+ * ========================= */
 async function upsertTableCustomerFromOrder({
   restaurantId,
   tableId,
@@ -138,14 +209,18 @@ async function upsertTableCustomerFromOrder({
     new: true,
     upsert: true,
     setDefaultsOnInsert: true,
-    session,
+    session: session || undefined,
   }).lean();
 }
 
 /** =========================
- *  Resolve warehouse id
- *  ========================= */
-async function resolveWarehouseIdOrDefault(restaurantId, warehouseIdInput) {
+ * Resolve warehouse id (session-aware)
+ * ========================= */
+async function resolveWarehouseIdOrDefault(
+  restaurantId,
+  warehouseIdInput,
+  session
+) {
   const rid = toId(restaurantId);
   if (!rid) throw new Error("Invalid restaurantId for warehouse resolution");
 
@@ -155,18 +230,21 @@ async function resolveWarehouseIdOrDefault(restaurantId, warehouseIdInput) {
     return wid;
   }
 
-  const wh = await Warehouse.findOne({ restaurantId: rid, isActive: true })
-    .sort({ createdAt: 1, _id: 1 })
-    .lean();
+  const q = Warehouse.findOne({ restaurantId: rid, isActive: true }).sort({
+    createdAt: 1,
+    _id: 1,
+  });
 
+  if (session) q.session(session);
+
+  const wh = await q.lean();
   if (!wh) throw new Error("No warehouse found for this restaurant");
   return wh._id;
 }
 
 /** =========================
- *  Shipping builder (off-premise)
- *  (giữ nguyên logic cũ, chỉ clean lại)
- *  ========================= */
+ * Shipping builder (off-premise)
+ * ========================= */
 function buildShippingForOffPremise(orderType, shipping = {}, customer = {}) {
   const s = shipping || {};
   const c = customer || {};
@@ -240,10 +318,7 @@ function buildShippingForOffPremise(orderType, shipping = {}, customer = {}) {
 export const OrderMutation = {
   /** =========================================
    * CREATE / APPEND TABLE ORDER (dine_in)
-   * - batch-based
-   * - reserve inventory
-   * - mark table occupied
-   * - ưu tiên reservation customer
+   * - reserve inventory (atomic with order)
    * ========================================= */
   async createOrAppendTableOrder(_, { input }, ctx) {
     const {
@@ -267,7 +342,6 @@ export const OrderMutation = {
     const tableInfo = await resolveTable(restaurantId, { tableId, tableCode });
     if (!tableInfo) throw new Error("Table not found");
 
-    // active reservation → override customer
     const activeReservation = await Reservation.findOne({
       restaurantId: rid,
       tableId: toId(tableInfo.tableId),
@@ -290,6 +364,7 @@ export const OrderMutation = {
 
     const effectiveCustomer = reservationCustomer || customer || null;
 
+    // normalizeItem (orderUtils) đã enforce servingKey + integer grams
     const normalizedItems = items.map(normalizeItem);
     const totals = computeTotals(normalizedItems);
 
@@ -357,13 +432,16 @@ export const OrderMutation = {
         if (lines.length) {
           const whId = await resolveWarehouseIdOrDefault(
             restaurantId,
-            warehouseId
+            warehouseId,
+            session
           );
+
           await reserveForOrderTx({
-            restaurantId,
+            restaurantId: rid,
             warehouseId: whId,
             orderCode: effectiveOrderCode,
             lines,
+            session, // ✅ atomic
           });
         }
       });
@@ -379,13 +457,12 @@ export const OrderMutation = {
 
   /** =========================================
    * CREATE OFF-PREMISE ORDER (takeaway/delivery)
-   * - reserve inventory
-   * - tracking event for delivery
+   * - reserve inventory (atomic with order)
    * ========================================= */
   async createOffPremiseOrder(_, { input }, ctx) {
     const {
       restaurantId,
-      orderType, // "takeaway" | "delivery"
+      orderType,
       items,
       note,
       customer,
@@ -429,7 +506,7 @@ export const OrderMutation = {
               userId: finalUserId ? toId(finalUserId) : undefined,
               orderCode: effectiveOrderCode,
 
-              orderType, // takeaway/delivery
+              orderType,
               shipping: shippingObj,
 
               items: normalizedItems,
@@ -468,13 +545,16 @@ export const OrderMutation = {
         if (lines.length) {
           const whId = await resolveWarehouseIdOrDefault(
             restaurantId,
-            warehouseId
+            warehouseId,
+            session
           );
+
           await reserveForOrderTx({
-            restaurantId,
+            restaurantId: rid,
             warehouseId: whId,
             orderCode: effectiveOrderCode,
             lines,
+            session, // ✅ atomic
           });
         }
       });
@@ -482,7 +562,6 @@ export const OrderMutation = {
       await session.endSession();
     }
 
-    // tracking chỉ cho delivery
     if (createdOrderDoc && createdOrderDoc.orderType === "delivery") {
       await createOrderTrackingEvent({
         order: createdOrderDoc,
@@ -503,7 +582,7 @@ export const OrderMutation = {
 
   /** =========================================
    * UPDATE ORDER STATUS
-   * - commit/cancel inventory reservation
+   * - inventory commit/cancel + order save in ONE transaction
    * ========================================= */
   async updateOrderStatus(_, { input }, ctx) {
     const { id, restaurantId, status, note, warehouseId } = input || {};
@@ -518,54 +597,71 @@ export const OrderMutation = {
       filter.restaurantId = rid;
     }
 
-    const order = await Order.findOne(filter);
-    if (!order) throw new Error("Order not found");
+    const session = await mongoose.startSession();
 
-    const prevStatus = order.currentStatus;
-    const lines = buildInventoryLinesFromItems(order.items);
+    let order = null;
+    let prevStatus = null;
 
-    if (lines.length) {
-      const wasReservable = RESERVABLE_STATUSES.includes(prevStatus);
+    try {
+      await session.withTransaction(async () => {
+        order = await Order.findOne(filter).session(session);
+        if (!order) throw new Error("Order not found");
 
-      if (wasReservable && COMMIT_STATUSES.includes(status)) {
-        const whId = await resolveWarehouseIdOrDefault(
-          order.restaurantId,
-          warehouseId
-        );
-        await commitReservationForOrderTx({
-          restaurantId: order.restaurantId,
-          warehouseId: whId,
-          orderCode: order.orderCode,
-          lines,
+        prevStatus = order.currentStatus;
+
+        const lines = buildInventoryLinesFromItems(order.items);
+
+        if (lines.length) {
+          const wasReservable = RESERVABLE_STATUSES.includes(prevStatus);
+
+          if (wasReservable && COMMIT_STATUSES.includes(status)) {
+            const whId = await resolveWarehouseIdOrDefault(
+              order.restaurantId,
+              warehouseId,
+              session
+            );
+
+            await commitReservationForOrderTx({
+              restaurantId: order.restaurantId,
+              warehouseId: whId,
+              orderCode: order.orderCode,
+              lines,
+              session, // ✅ atomic
+            });
+          }
+
+          if (wasReservable && status === "cancelled") {
+            const whId = await resolveWarehouseIdOrDefault(
+              order.restaurantId,
+              warehouseId,
+              session
+            );
+
+            await cancelReservationForOrderTx({
+              restaurantId: order.restaurantId,
+              warehouseId: whId,
+              orderCode: order.orderCode,
+              lines,
+              session, // ✅ atomic
+            });
+          }
+        }
+
+        order.currentStatus = status;
+        order.statusTimeline.push({
+          status,
+          at: new Date(),
+          note,
+          byUserId: ctx?.user?.id ? toId(ctx.user.id) : undefined,
         });
-      }
 
-      if (wasReservable && status === "cancelled") {
-        const whId = await resolveWarehouseIdOrDefault(
-          order.restaurantId,
-          warehouseId
-        );
-        await cancelReservationForOrderTx({
-          restaurantId: order.restaurantId,
-          warehouseId: whId,
-          orderCode: order.orderCode,
-          lines,
-        });
-      }
+        await order.save({ session });
+      });
+    } finally {
+      await session.endSession();
     }
 
-    order.currentStatus = status;
-    order.statusTimeline.push({
-      status,
-      at: new Date(),
-      note,
-      byUserId: ctx?.user?.id ? toId(ctx.user.id) : undefined,
-    });
-
-    await order.save();
-
-    // tracking event (delivery)
-    if (order.orderType === "delivery") {
+    if (order && order.orderType === "delivery") {
       await createOrderTrackingEvent({
         order,
         restaurantId: order.restaurantId,
@@ -589,6 +685,7 @@ export const OrderMutation = {
 
   /** =========================================
    * UPDATE ORDER ITEM STATUS
+   * - if order is reservable: cancel/reserve inventory per-item (atomic with save)
    * ========================================= */
   async updateOrderItemStatus(_, { input }, ctx) {
     const { restaurantId, orderId, itemKey, status, note } = input || {};
@@ -603,33 +700,84 @@ export const OrderMutation = {
       filter.restaurantId = rid;
     }
 
-    const order = await Order.findOne(filter);
-    if (!order) throw new Error("Order not found");
+    const session = await mongoose.startSession();
+    let order = null;
+    let prevItemStatus = null;
+    let item = null;
 
-    const idx = order.items.findIndex(
-      (it, i) =>
-        String(it._id) === String(itemKey) ||
-        String(it.dishId) === String(itemKey) ||
-        String(i) === String(itemKey)
-    );
-    if (idx === -1) throw new Error("Item not found");
+    try {
+      await session.withTransaction(async () => {
+        order = await Order.findOne(filter).session(session);
+        if (!order) throw new Error("Order not found");
 
-    const item = order.items[idx];
-    const prevItemStatus = item.status;
+        const idx = order.items.findIndex(
+          (it, i) =>
+            String(it._id) === String(itemKey) ||
+            String(it.dishId) === String(itemKey) ||
+            String(i) === String(itemKey)
+        );
+        if (idx === -1) throw new Error("Item not found");
 
-    item.status = status;
+        item = order.items[idx];
+        prevItemStatus = item.status;
 
-    await order.save();
+        const isOrderReservable = RESERVABLE_STATUSES.includes(
+          order.currentStatus
+        );
 
-    if (order.orderType === "delivery") {
+        if (isOrderReservable) {
+          const fromCancelled =
+            CANCELLED_ITEM_STATUSES.includes(prevItemStatus);
+          const toCancelled = CANCELLED_ITEM_STATUSES.includes(status);
+
+          const line = buildInventoryLineFromItem(item);
+
+          if (line) {
+            const whId = await resolveWarehouseIdOrDefault(
+              order.restaurantId,
+              null,
+              session
+            );
+
+            if (!fromCancelled && toCancelled) {
+              await cancelReservationForOrderTx({
+                restaurantId: order.restaurantId,
+                warehouseId: whId,
+                orderCode: order.orderCode,
+                lines: [line],
+                session,
+              });
+            }
+
+            if (fromCancelled && !toCancelled) {
+              await reserveForOrderTx({
+                restaurantId: order.restaurantId,
+                warehouseId: whId,
+                orderCode: order.orderCode,
+                lines: [line],
+                session,
+              });
+            }
+          }
+        }
+
+        item.status = status;
+
+        await order.save({ session });
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    if (order?.orderType === "delivery") {
       await createOrderTrackingEvent({
         order,
         restaurantId: order.restaurantId,
         eventType: "item_status_changed",
         ctx,
         payload: {
-          itemId: item._id,
-          itemName: item.name,
+          itemId: item?._id,
+          itemName: item?.name,
           itemStatusFrom: prevItemStatus,
           itemStatusTo: status,
           note,
@@ -640,8 +788,8 @@ export const OrderMutation = {
     await emitOrderEvent(ctx, order.restaurantId, "ORDER_ITEM_STATUS_CHANGED", {
       order,
       meta: {
-        itemId: item._id,
-        itemName: item.name,
+        itemId: item?._id,
+        itemName: item?.name,
         statusFrom: prevItemStatus,
         statusTo: status,
         note,
@@ -653,8 +801,6 @@ export const OrderMutation = {
 
   /** =========================================
    * UPDATE ORDER CUSTOMER BY CODE
-   * - attach / ensure user
-   * - upsert TableCustomer
    * ========================================= */
   async updateOrderCustomerByCode(_, { input }) {
     const { restaurantId, orderCode, userId, customer } = input || {};
@@ -673,6 +819,7 @@ export const OrderMutation = {
       },
       { $set: { userId: finalUserId ? toId(finalUserId) : undefined } }
     );
+
     const one = await Order.findOne({
       restaurantId: rid,
       orderCode: String(orderCode),
@@ -680,6 +827,7 @@ export const OrderMutation = {
     })
       .select({ tableId: 1, tableCode: 1 })
       .lean();
+
     await upsertTableCustomerFromOrder({
       restaurantId,
       tableId: one?.tableId,
@@ -694,41 +842,60 @@ export const OrderMutation = {
 
   /** =========================================
    * CANCEL ORDER
-   * - cancel reservation inventory
-   * - mark table available
+   * - cancel reservation + save in one transaction
    * ========================================= */
   async cancelOrder(_, { restaurantId, orderId, reason, warehouseId }, ctx) {
     const rid = toId(restaurantId);
     const oid = toId(orderId);
     if (!rid || !oid) throw new Error("Missing/invalid fields");
 
-    const order = await Order.findOne({ _id: oid, restaurantId: rid });
-    if (!order) throw new Error("Order not found");
+    const session = await mongoose.startSession();
 
-    const prevStatus = order.currentStatus;
-    const lines = buildInventoryLinesFromItems(order.items);
+    let order = null;
+    let prevStatus = null;
 
-    if (RESERVABLE_STATUSES.includes(prevStatus) && lines.length) {
-      const whId = await resolveWarehouseIdOrDefault(restaurantId, warehouseId);
-      await cancelReservationForOrderTx({
-        restaurantId,
-        warehouseId: whId,
-        orderCode: order.orderCode,
-        lines,
+    try {
+      await session.withTransaction(async () => {
+        order = await Order.findOne({ _id: oid, restaurantId: rid }).session(
+          session
+        );
+        if (!order) throw new Error("Order not found");
+
+        prevStatus = order.currentStatus;
+
+        const lines = buildInventoryLinesFromItems(order.items);
+
+        if (RESERVABLE_STATUSES.includes(prevStatus) && lines.length) {
+          const whId = await resolveWarehouseIdOrDefault(
+            restaurantId,
+            warehouseId,
+            session
+          );
+
+          await cancelReservationForOrderTx({
+            restaurantId: rid,
+            warehouseId: whId,
+            orderCode: order.orderCode,
+            lines,
+            session, // ✅ atomic
+          });
+        }
+
+        order.currentStatus = "cancelled";
+        order.statusTimeline.push({
+          status: "cancelled",
+          at: new Date(),
+          note: reason || "Cancelled",
+          byUserId: ctx?.user?.id ? toId(ctx.user.id) : undefined,
+        });
+
+        await order.save({ session });
       });
+    } finally {
+      await session.endSession();
     }
 
-    order.currentStatus = "cancelled";
-    order.statusTimeline.push({
-      status: "cancelled",
-      at: new Date(),
-      note: reason || "Cancelled",
-      byUserId: ctx?.user?.id ? toId(ctx.user.id) : undefined,
-    });
-
-    await order.save();
-
-    if (order.orderType === "delivery") {
+    if (order?.orderType === "delivery") {
       await createOrderTrackingEvent({
         order,
         restaurantId,
@@ -743,8 +910,10 @@ export const OrderMutation = {
     }
 
     await emitOrderEvent(ctx, restaurantId, "ORDER_CANCELLED", order);
-    if (order.tableCode)
+
+    if (order?.tableCode) {
       await markTableStatus(restaurantId, order.tableCode, "available");
+    }
 
     return { success: true, order: order.toJSON() };
   },

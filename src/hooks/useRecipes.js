@@ -21,27 +21,22 @@ const initialRecipes = [
 ];
 
 /**
- * Map BE -> FE (card/list/detail)
+ * Map BE -> FE
  * items: [{ menuItem, recipe }]
  */
 const mapToFeRecipes = (items = []) =>
   items.map(({ menuItem: mi, recipe: r }) => {
     const servingVariants = Array.isArray(r?.servingVariants)
       ? r.servingVariants.map((sv) => {
-          const rawIngredients = Array.isArray(sv.Ingredients)
-            ? sv.Ingredients
+          const rawIngredients = Array.isArray(sv?.ingredients)
+            ? sv.ingredients
             : [];
 
           const components = rawIngredients.map((ic) => ({
             ingredientId: ic.ingredientId,
-            qty:
-              typeof ic.quantify === "number"
-                ? ic.quantify
-                : typeof ic.qty === "number"
-                ? ic.qty
-                : 0,
-            unit: ic.baseUnit || "g",
-            baseUnit: ic.baseUnit || "g",
+            qty: typeof ic.qty === "number" ? ic.qty : 0,
+            unit: ic.unit || ic.baseUnit || "g", // unit is the recipe line unit
+            baseUnit: ic.baseUnit || "g", // optional (resolver)
             name: ic.name || "",
             wastePct: typeof ic.wastePct === "number" ? ic.wastePct : 0,
             costPerBaseUnit:
@@ -53,17 +48,23 @@ const mapToFeRecipes = (items = []) =>
           return {
             key: sv.key,
             mode: sv.mode, // "PORTION" | "BY_WEIGHT"
-            yieldQty: sv.yieldQty,
-            yieldUnit: sv.yieldUnit,
-            // BE type dùng name, input dùng preparationMethodName
+            name: sv.name || "",
+            sellQty: typeof sv.sellQty === "number" ? sv.sellQty : 1,
+            sellUnit:
+              sv.sellUnit || (sv.mode === "BY_WEIGHT" ? "kg" : "portion"),
+
+            // FE field alias để UI cũ khỏi vỡ
             preparationMethodName: sv.name || "",
-            components,
-            Ingredients: rawIngredients,
-            // 🔥 thêm price để FE có thể hiển thị / edit nếu cần
+
+            components, // UI editor đang dùng
+            ingredients: rawIngredients, // raw from BE (nếu cần debug)
+
             price:
               typeof sv.price === "number" && !Number.isNaN(sv.price)
                 ? sv.price
                 : null,
+
+            isDefault: !!sv.isDefault,
           };
         })
       : [];
@@ -72,16 +73,21 @@ const mapToFeRecipes = (items = []) =>
       id: mi.id, // CRUD theo menuItemId
       name: mi.name,
       description: mi.description || "",
-      category: "main", // sau này map categoryId nếu cần
+      categoryId: mi.categoryId || null,
+      basePrice: typeof mi.basePrice === "number" ? mi.basePrice : null,
+      thumbImage: mi.thumbImage || null,
+      status: mi.status || null,
+
       icon: "🍽️",
       servingVariants,
+
       _rawRecipeId: r?.id,
       _rawRecipe: r || null,
     };
   });
 
 /**
- * Chuẩn hóa dữ liệu để gửi đúng định dạng UpsertRecipeInput
+ * Chuẩn hóa dữ liệu để gửi đúng định dạng UpsertRecipeInput (NEW MODEL)
  */
 function buildUpsertInput({
   restaurantId,
@@ -94,7 +100,14 @@ function buildUpsertInput({
   }
 
   const servingVariants = (form?.servingVariants || []).map((v) => {
-    const isByWeight = v.mode === "BY_WEIGHT";
+    const mode = v.mode || "PORTION";
+
+    const sellQty =
+      v.sellQty !== undefined && v.sellQty !== null && v.sellQty !== ""
+        ? Number(v.sellQty)
+        : 1;
+
+    const sellUnit = v.sellUnit || (mode === "BY_WEIGHT" ? "kg" : "portion"); // default hợp lý
 
     const srcList = Array.isArray(v.ingredients)
       ? v.ingredients
@@ -105,7 +118,7 @@ function buildUpsertInput({
     const ingredients = srcList.map((c) => ({
       ingredientId: c.ingredientId,
       qty: Number(c.qty) || 0,
-      name: c.name || undefined,
+      unit: c.unit || c.baseUnit || "g",
       wastePct: Number(c.wastePct || 0) || 0,
     }));
 
@@ -114,16 +127,38 @@ function buildUpsertInput({
         ? Number(v.price)
         : undefined;
 
-    return {
-      key: v.key || (isByWeight ? "by-weight" : "portion"),
-      mode: v.mode || "PORTION",
-      yieldQty: Number(v.yieldQty || 1),
-      yieldUnit: v.yieldUnit || (isByWeight ? "100g" : "portion"),
-      preparationMethodName: v.preparationMethodName || "",
+    const key = v.key || (mode === "BY_WEIGHT" ? "by_weight" : "default");
+
+    const name = (v.name || v.preparationMethodName || "").trim() || undefined;
+
+    const isDefault = !!v.isDefault;
+
+    // basic validations (client-side)
+    if (!(sellQty > 0)) {
+      throw new Error(`sellQty must be > 0 (variant ${key})`);
+    }
+    if (mode === "PORTION" && sellUnit !== "portion") {
+      throw new Error(`PORTION must have sellUnit="portion" (variant ${key})`);
+    }
+    if (mode === "BY_WEIGHT" && !["kg", "g"].includes(sellUnit)) {
+      throw new Error(
+        `BY_WEIGHT must have sellUnit "kg" or "g" (variant ${key})`
+      );
+    }
+
+    const payload = {
+      key,
+      mode,
+      name,
+      sellQty,
+      sellUnit,
       ingredients,
-      // 🔥 gửi luôn price nếu có, đúng schema ServingVariantInput
-      ...(Number.isFinite(price) && price >= 0 ? { price } : {}),
+      isDefault,
     };
+
+    if (Number.isFinite(price) && price >= 0) payload.price = price;
+
+    return payload;
   });
 
   return {
@@ -277,6 +312,7 @@ export const useRecipes = (
         form,
         defaultActive: true,
       });
+
       await upsertRecipeMutation({ variables: { input } });
       await refresh?.();
     },

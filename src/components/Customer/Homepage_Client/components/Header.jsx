@@ -4,7 +4,6 @@ import { AuthContext } from "@/context/AuthContext";
 import "../../../../styles/Homepage/Header.scss";
 import HeaderSearch from "./HeaderSearch.jsx";
 
-// Mock dữ liệu thông báo
 const MOCK_NOTIFICATIONS = [
   {
     id: 1,
@@ -38,17 +37,15 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
     vouchers: 3,
     orders: 2,
     favorites: 0,
-    notifications: 2, // Số thông báo chưa đọc
+    notifications: 2,
   };
 
-  // State quản lý đóng mở Dropdown
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showNotify, setShowNotify] = useState(false); // State cho thông báo
+  const [showNotify, setShowNotify] = useState(false);
+  const [lang, setLang] = useState("vi");
 
   const userMenuRef = useRef(null);
-  const notifyRef = useRef(null); // Ref cho thông báo
-
-  const [lang, setLang] = useState("vi");
+  const notifyRef = useRef(null);
 
   const goto = (path) => {
     setShowUserMenu(false);
@@ -56,14 +53,11 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
     if (location.pathname !== path) navigate(path);
   };
 
-  // Logic: Click ra ngoài thì đóng menu
   useEffect(() => {
     function handleClickOutside(event) {
-      // Đóng User Menu
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setShowUserMenu(false);
       }
-      // Đóng Notification Menu
       if (notifyRef.current && !notifyRef.current.contains(event.target)) {
         setShowNotify(false);
       }
@@ -93,28 +87,24 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
       : "Khách hàng";
   }, [user]);
 
-  // Toggle Notification
   const toggleNotify = () => {
     setShowNotify(!showNotify);
-    if (showUserMenu) setShowUserMenu(false); // Đóng menu kia nếu đang mở
+    if (showUserMenu) setShowUserMenu(false);
   };
 
-  // Toggle User
   const toggleUser = () => {
     setShowUserMenu(!showUserMenu);
-    if (showNotify) setShowNotify(false); // Đóng menu kia nếu đang mở
+    if (showNotify) setShowNotify(false);
   };
 
   return (
     <header className="header">
       <div className="header__container">
-        {/* --- 1. LOGO --- */}
         <button className="header__logo" onClick={() => goto("/")}>
           <div className="header__logo-icon">🍽️</div>
           <h1 className="header__logo-text">FoodHub</h1>
         </button>
 
-        {/* --- 2. NAVIGATION --- */}
         <nav className="header__nav">
           {[
             { path: "/", label: "Trang chủ" },
@@ -134,9 +124,7 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
           ))}
         </nav>
 
-        {/* --- 3. ACTIONS --- */}
         <div className="header__actions">
-          {/* A. LANGUAGE SWITCHER (Đã chuyển sang trái cùng của cụm actions) */}
           <div className="header__lang">
             <select value={lang} onChange={(e) => setLang(e.target.value)}>
               <option value="vi">VI 🇻🇳</option>
@@ -144,10 +132,8 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
             </select>
           </div>
 
-          {/* B. SEARCH */}
           <HeaderSearch />
 
-          {/* C. NOTIFICATIONS (Mới thêm) */}
           <div className="header__notify" ref={notifyRef}>
             <button
               className={`header__notify-btn ${showNotify ? "is-active" : ""}`}
@@ -171,7 +157,6 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
               )}
             </button>
 
-            {/* Dropdown Thông báo */}
             {showNotify && (
               <div className="header__notify-dropdown">
                 <div className="header__notify-header">
@@ -206,7 +191,6 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
             )}
           </div>
 
-          {/* D. USER MENU */}
           {user ? (
             <div className="header__user-menu" ref={userMenuRef}>
               <button
@@ -239,7 +223,6 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                     <p className="user-role">{roleLabel}</p>
                   </div>
                   <div className="header__user-dropdown-body">
-                    {/* Các nút menu cũ giữ nguyên */}
                     <button
                       className="header__menu-item"
                       onClick={() => goto("/profile")}
@@ -273,6 +256,25 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                       )}
                     </button>
                     <button
+                      className="header__menu-item"
+                      onClick={() => goto(`/favorites/${user.id}`)}
+                    >
+                      <span className="header__item-label">❤️ Yêu thích</span>
+                    </button>
+                    <button
+                      className="header__menu-item"
+                      onClick={() => goto(`/address-book/${user.id}`)}
+                    >
+                      <span className="header__item-label">📍 Sổ địa chỉ</span>
+                    </button>
+                    <div className="divider"></div>
+                    <button
+                      className="header__menu-item"
+                      onClick={() => goto(`/help-center/${user.id}`)}
+                    >
+                      <span className="header__item-label">❓ Trợ giúp</span>
+                    </button>
+                    <button
                       className="header__menu-item logout-btn"
                       onClick={handleLogout}
                     >
@@ -291,7 +293,6 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
             </button>
           )}
 
-          {/* E. CART */}
           <button className="header__cart-btn" onClick={onCartToggle}>
             <svg
               width="20"
