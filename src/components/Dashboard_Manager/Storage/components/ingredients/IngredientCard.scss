@@ -1,3 +1,4 @@
+// src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCard.scss
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
 
@@ -42,13 +43,6 @@
     text-overflow: ellipsis;
   }
 
-  .ingredient-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
   .ingredient-category {
     font-size: 0.75rem;
     color: $text-muted;
@@ -57,25 +51,6 @@
     border-radius: $border-radius-sm;
     border: 1px solid rgba(0, 0, 0, 0.05);
     display: inline-block;
-
-    &.ingredient-category--muted {
-      background: transparent;
-      border-style: dashed;
-      opacity: 0.9;
-    }
-  }
-
-  .ingredient-sku {
-    font-size: 0.75rem;
-    color: #64748b;
-    background: rgba(255, 255, 255, 0.65);
-    padding: 0.22rem 0.5rem;
-    border-radius: $border-radius-sm;
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    max-width: 100%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .ingredient-content {
@@ -87,10 +62,6 @@
     grid-template-columns: 1fr 1fr;
     gap: $spacing-md;
     margin-bottom: $spacing-md;
-
-    @media (min-width: 520px) {
-      grid-template-columns: 1fr 1fr 1fr;
-    }
 
     .stat-item {
       text-align: center;
@@ -113,14 +84,24 @@
       }
     }
 
-    // Box phụ: Tồn/Giữ
+    .stat-item--clickable {
+      cursor: pointer;
+      border-color: rgba($primary, 0.16);
+      transition: background-color 0.15s ease, box-shadow 0.15s ease,
+        border-color 0.15s ease;
+
+      &:hover {
+        background: #eff6ff;
+        border-color: rgba($primary, 0.28);
+        box-shadow: 0 4px 8px rgba(15, 23, 42, 0.06);
+      }
+    }
+
     .stat-item--sub {
       text-align: left;
       display: flex;
       flex-direction: column;
       gap: 0.35rem;
-
-      // để nhìn gọn: chiếm full hàng
       grid-column: 1 / -1;
 
       .stat-subrow {
@@ -200,7 +181,6 @@
     }
   }
 
-  // Status badge (hỗ trợ cả class kiểu "success/warning/danger" và kiểu "status-...")
   .status-badge {
     margin-left: auto;
     font-weight: 700;

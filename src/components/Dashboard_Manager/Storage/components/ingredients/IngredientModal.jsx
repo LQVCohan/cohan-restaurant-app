@@ -18,6 +18,8 @@ const UNITS = [
   "can",
 ];
 
+const CATEGORIES = ["Meat", "Vegetable", "Spices", "Dairy", "Grain", "Others"]; // Cập nhật danh mục nguyên liệu cơ bản
+
 const defaultForm = {
   name: "",
   sku: "",
@@ -30,16 +32,18 @@ const defaultForm = {
   initialStockQty: "",
 };
 
+// src/components/.../ingredients/IngredientModal.jsx
+
 const IngredientModal = ({
   isOpen,
   onClose,
   initial,
   isEditing,
   onSubmit,
-
   canInitStock = false,
   defaultWarehouseName = null,
   saving = false,
+  onCheckOrders, // callback kiểm tra đơn hàng (nếu có)
 }) => {
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState({});
@@ -81,10 +85,21 @@ const IngredientModal = ({
     return Object.keys(e).length === 0;
   };
 
-  const save = (e) => {
+  const save = async (e) => {
     e.preventDefault();
     if (saving) return;
     if (!validate()) return;
+
+    // Kiểm tra đơn hàng có đang dùng nguyên liệu này không
+    if (
+      form.baseUnit !== initial?.baseUnit &&
+      (await onCheckOrders(initial?.id))
+    ) {
+      alert(
+        "Không thể thay đổi đơn vị gốc vì có đơn hàng đang sử dụng nguyên liệu này."
+      );
+      return;
+    }
 
     const payload = {
       name: form.name.trim(),
@@ -142,11 +157,16 @@ const IngredientModal = ({
           <div className="grid-3">
             <label>
               Danh mục
-              <input
+              <select
                 value={form.category}
                 onChange={(e) => set({ category: e.target.value })}
-                placeholder="VD: meat / vegetable / spice..."
-              />
+              >
+                {CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
             </label>
 
             <label>

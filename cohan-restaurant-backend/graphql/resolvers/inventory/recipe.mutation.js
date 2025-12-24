@@ -1,3 +1,4 @@
+// src/graphql/resolvers/recipe/mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import { Recipe, MenuItem } from "../../../models/index.js";
@@ -9,7 +10,7 @@ function slugifyKey(str) {
   return String(str || "")
     .trim()
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s_-]+/gu, "") // bỏ ký tự lạ
+    .replace(/[^\p{L}\p{N}\s_-]+/gu, "")
     .replace(/\s+/g, "_")
     .replace(/_+/g, "_")
     .slice(0, 80);
@@ -18,6 +19,26 @@ function slugifyKey(str) {
 function toNumberOrDefault(v, def) {
   const n = Number(v);
   return Number.isFinite(n) ? n : def;
+}
+
+function pickDefaultVariantKey(variants = []) {
+  if (!Array.isArray(variants) || variants.length === 0) return undefined;
+  const d = variants.find((x) => x?.isDefault);
+  return (d?.key || variants[0]?.key || "").trim() || undefined;
+}
+
+function computeMinPrice(variants = []) {
+  const prices = (Array.isArray(variants) ? variants : [])
+    .map((v) => Number(v?.price))
+    .filter((n) => Number.isFinite(n) && n >= 0);
+  if (!prices.length) return 0;
+  return Math.min(...prices);
+}
+
+function computeHasByWeight(variants = []) {
+  return (Array.isArray(variants) ? variants : []).some(
+    (v) => v?.mode === "BY_WEIGHT"
+  );
 }
 
 export default {
@@ -36,6 +57,9 @@ export default {
     const patch = { ...rest };
     let normalizedVariants = [];
 
+    // =========================
+    // Normalize servingVariants
+    // =========================
     if (Array.isArray(inputServingVariants)) {
       normalizedVariants = inputServingVariants
         .map((v) => {
@@ -63,11 +87,12 @@ export default {
           let sellUnit = (
             v.sellUnit || (mode === "PORTION" ? "portion" : "kg")
           ).toString();
+
           let sellQty = toNumberOrDefault(v.sellQty, 1);
 
           if (mode === "PORTION") {
             sellUnit = "portion";
-            sellQty = 1; // portion bán theo 1 phần
+            sellQty = 1;
           } else {
             // BY_WEIGHT
             if (!["kg", "g"].includes(sellUnit)) sellUnit = "kg";
@@ -88,7 +113,7 @@ export default {
           // Ingredients lines: bắt buộc qty + unit
           const rawLines = Array.isArray(v.ingredients)
             ? v.ingredients
-            : Array.isArray(v.Ingredients) // fallback legacy
+            : Array.isArray(v.Ingredients)
             ? v.Ingredients
             : [];
 
@@ -97,9 +122,10 @@ export default {
               if (!c?.ingredientId) return null;
 
               const qty = toNumberOrDefault(
-                c.qty ?? c.quantify ?? c.quantity, // fallback legacy
+                c.qty ?? c.quantify ?? c.quantity,
                 0
               );
+
               const unit = c.unit ?? c.baseUnit; // baseUnit fallback legacy
               const wastePct = toNumberOrDefault(c.wastePct, 0);
 
@@ -174,7 +200,9 @@ export default {
       patch.servingVariants = normalizedVariants;
     }
 
-    // Upsert
+    // =========================
+    // Upsert Recipe
+    // =========================
     const doc = await Recipe.findOneAndUpdate(
       { restaurantId, menuItemId },
       { $set: patch },
@@ -186,22 +214,32 @@ export default {
       }
     ).lean({ virtuals: true });
 
-    // Sync MenuItem.basePrice = min variant.price
+    // =========================
+    // Sync MenuItem caches
+    // =========================
     try {
       const variants = patch.servingVariants || doc?.servingVariants || [];
-      const prices = variants
-        .map((v) => Number(v?.price))
-        .filter((n) => Number.isFinite(n) && n >= 0);
 
-      if (prices.length > 0) {
-        const minPrice = Math.min(...prices);
-        await MenuItem.updateOne(
-          { _id: menuItemId, restaurantId },
-          { $set: { basePrice: minPrice } }
-        );
+      const minPrice = computeMinPrice(variants);
+      const defaultServingKey = pickDefaultVariantKey(variants);
+      const hasByWeightVariant = computeHasByWeight(variants);
+
+      const setObj = {
+        basePrice: minPrice,
+        hasByWeightVariant,
+      };
+
+      // chỉ set khi có key hợp lệ (để tránh set undefined)
+      if (defaultServingKey) {
+        setObj.defaultServingKey = defaultServingKey;
       }
+
+      await MenuItem.updateOne(
+        { _id: menuItemId, restaurantId },
+        { $set: setObj }
+      );
     } catch (err) {
-      console.error("sync MenuItem.basePrice from recipe failed:", err);
+      console.error("sync MenuItem from recipe failed:", err);
     }
 
     return doc;

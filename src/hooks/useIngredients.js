@@ -1,4 +1,3 @@
-// src/hooks/useIngredients.js
 import { useMemo, useState, useCallback } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 import {
@@ -169,7 +168,7 @@ export function useIngredients(restaurantId, selectedWarehouseId = null) {
             costPerBaseUnit: Number(payload.costPerBaseUnit) || 0,
             minStock: Number(payload.minStock) || 0,
             notes: payload.notes || "",
-            isActive: payload.isActive ?? true,
+            isActive: true,
             conversions: payload.conversions || [],
             photos: payload.photos || [],
           },
@@ -199,7 +198,7 @@ export function useIngredients(restaurantId, selectedWarehouseId = null) {
         }
       }
 
-      // 3) refetch để UI không bị “đơ”
+      // 3) refetch để UI không bị “đơ” (lấy lại dữ liệu mới)
       await safeRefetchAll();
 
       return { createdId, created };

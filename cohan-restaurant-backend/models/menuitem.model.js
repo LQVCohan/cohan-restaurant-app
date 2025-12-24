@@ -6,16 +6,19 @@ const menuItemSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
     required: true,
+    index: true,
   },
   menuId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Menu",
     required: true,
+    index: true,
   },
   categoryId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
     required: true,
+    index: true,
   },
 
   code: { type: String, trim: true, uppercase: true },
@@ -24,31 +27,33 @@ const menuItemSchema = BaseSchemaModel({
   description: { type: String, trim: true },
 
   sortOrder: { type: Number, default: 1000 },
-
   labels: [{ type: String }],
 
+  // cache để list món nhanh (sync từ Recipe: min price)
   basePrice: { type: Number, default: 0, min: 0 },
+
+  // cache để FE add món nhanh (sync từ Recipe: variant isDefault)
+  defaultServingKey: { type: String, trim: true },
+
+  // optional cache (sync từ Recipe: tồn tại variant BY_WEIGHT)
+  hasByWeightVariant: { type: Boolean, default: false },
 
   taxRate: { type: Number },
 
+  // UI meta
   servingPortion: { type: Number, default: 1 },
   servingUnit: { type: String, default: "người" },
 
   printStationId: { type: mongoose.Schema.Types.ObjectId, ref: "PrintStation" },
 
-  byWeight: { type: Boolean, default: false },
-
   thumbImage: { type: String, trim: true },
   mediaAssetIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "MediaAsset" }],
-
-  modifierGroupIds: [
-    { type: mongoose.Schema.Types.ObjectId, ref: "ModifierGroup" },
-  ],
 
   status: {
     type: String,
     enum: ["available", "unavailable", "out_of_stock", "hidden"],
     default: "available",
+    index: true,
   },
 
   avgPrepTimeMin: { type: Number, default: 10, min: 0 },
@@ -70,7 +75,7 @@ menuItemSchema.index(
   }
 );
 
-menuItemSchema.index({ restaurantId: 1, sortOrder: 1 });
+menuItemSchema.index({ restaurantId: 1, status: 1, sortOrder: 1 });
 
 menuItemSchema.index({
   name: "text",

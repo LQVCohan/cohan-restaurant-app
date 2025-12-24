@@ -1,125 +1,210 @@
-# ====== Types ======
+# =========================================================
+# ENUMS
+# =========================================================
 
-type ModifierIngredient {
+enum ModifierGroupType {
+  SIZE
+  TOPPING
+  PREPARATION
+  CUSTOM
+}
+
+enum ModifierCoverage {
+  GLOBAL
+  ITEMS
+}
+
+enum ModifierSelectionType {
+  single
+  multiple
+}
+
+enum ModifierPriceRuleType {
+  DELTA
+  SET
+}
+
+enum ModifierInventoryRuleType {
+  NONE
+  ADD_INGREDIENTS
+  REPLACE_INGREDIENTS
+  MULTIPLY_BASE_RECIPE
+}
+
+# =========================================================
+# VALUE OBJECTS
+# =========================================================
+
+type ModifierInventoryIngredientLine {
   ingredientId: ID!
-  quantify: Float
+  qty: Float!
+  unit: String! # must match UnitEnum in BE (g, kg, ml, l, unit, piece,...)
+  wastePct: Float # 0..100
+}
+
+input ModifierInventoryIngredientLineInput {
+  ingredientId: ID!
+  qty: Float!
+  unit: String!
   wastePct: Float
 }
 
-type ModifierOptionRecipe {
-  Ingredients: [ModifierIngredient!]!
-  yieldQty: Float
-  yieldUnit: String
-  notes: String
+type ModifierPriceRule {
+  rule: ModifierPriceRuleType!
+  amount: Float! # VND; DELTA can be negative; SET must be >= 0
 }
 
-type ModifierOption {
-  id: ID
-  name: String!
-  priceDelta: Float!
-  isDefault: Boolean
-  recipe: ModifierOptionRecipe
+input ModifierPriceRuleInput {
+  rule: ModifierPriceRuleType!
+  amount: Float!
 }
+
+type ModifierInventoryRule {
+  rule: ModifierInventoryRuleType!
+
+  ingredientLines: [ModifierInventoryIngredientLine!]!
+  baseRecipeMultiplier: Float
+  note: String
+}
+
+input ModifierInventoryRuleInput {
+  rule: ModifierInventoryRuleType!
+  ingredientLines: [ModifierInventoryIngredientLineInput!]
+  baseRecipeMultiplier: Float
+  note: String
+}
+
+# =========================================================
+# OPTION
+# =========================================================
+
+type ModifierOption {
+  id: ID!
+  name: String!
+  isDefault: Boolean
+  isActive: Boolean
+
+  priceRule: ModifierPriceRule!
+  inventoryRule: ModifierInventoryRule!
+}
+
+input ModifierOptionInput {
+  name: String!
+  isDefault: Boolean
+  isActive: Boolean
+
+  priceRule: ModifierPriceRuleInput!
+  inventoryRule: ModifierInventoryRuleInput!
+}
+
+# =========================================================
+# GROUP
+# =========================================================
 
 type ModifierGroup {
   id: ID!
   restaurantId: ID!
   name: String!
-  selectionType: String!
+
+  groupType: ModifierGroupType!
+  coverage: ModifierCoverage!
+
+  # if coverage=ITEMS => must have values
+  # if coverage=GLOBAL => must be empty
+  menuItemIds: [ID!]!
+
+  selectionType: ModifierSelectionType!
   required: Boolean
-  appliesTo: String
+
+  minSelected: Int
+  maxSelected: Int
+
   options: [ModifierOption!]!
+
+  note: String
   isActive: Boolean
+
   createdAt: DateTime
   updatedAt: DateTime
 }
 
-# ====== Inputs ======
-
-input ModifierIngredientInput {
-  ingredientId: ID!
-  quantify: Float
-  wastePct: Float
-}
-
-input ModifierOptionRecipeInput {
-  Ingredients: [ModifierIngredientInput!]
-  yieldQty: Float
-  yieldUnit: String
-  notes: String
-}
-
-input ModifierOptionInput {
-  name: String!
-  priceDelta: Float!
-  isDefault: Boolean
-  recipe: ModifierOptionRecipeInput
-}
+# =========================================================
+# INPUTS — CREATE / UPDATE
+# =========================================================
 
 input CreateModifierGroupInput {
   restaurantId: ID!
   name: String!
-  selectionType: String = "multiple"
-  required: Boolean = false
-  appliesTo: String = "item"
-  options: [ModifierOptionInput!]
-  isActive: Boolean = true
-}
 
-input CreateModifierGroupForMenuItemInput {
-  menuItemId: ID!
-  restaurantId: ID
-  name: String
-  selectionType: String = "multiple"
+  groupType: ModifierGroupType! = CUSTOM
+  coverage: ModifierCoverage! = ITEMS
+  menuItemIds: [ID!]
+
+  selectionType: ModifierSelectionType! = multiple
   required: Boolean = false
-  appliesTo: String = "item"
-  options: [ModifierOptionInput!]
+  minSelected: Int = 0
+  maxSelected: Int
+
+  options: [ModifierOptionInput!]!
+
+  note: String
   isActive: Boolean = true
 }
 
 input UpdateModifierGroupInput {
   id: ID!
+
   name: String
-  selectionType: String
+
+  groupType: ModifierGroupType
+  coverage: ModifierCoverage
+  menuItemIds: [ID!]
+
+  selectionType: ModifierSelectionType
   required: Boolean
-  appliesTo: String
+  minSelected: Int
+  maxSelected: Int
+
+  options: [ModifierOptionInput!]
+
+  note: String
   isActive: Boolean
 }
 
-# ====== Link món ↔ nhóm tuỳ chọn ======
+# =========================================================
+# FILTERS (for Query)
+# =========================================================
 
-input SetMenuItemModifierGroupsInput {
-  menuItemId: ID!
-  groupIds: [ID!]! # thay thế toàn bộ danh sách group của món
+input ModifierGroupFilterInput {
+  restaurantId: ID!
+  search: String
+
+  # fetch groups applicable to a menu item:
+  # - coverage=GLOBAL OR (coverage=ITEMS and menuItemIds contains menuItemId)
+  menuItemId: ID
+
+  groupType: ModifierGroupType
+  isActive: Boolean = true
 }
 
-input AttachMenuItemModifierGroupsInput {
-  menuItemId: ID!
-  groupIds: [ID!]!
-}
-
-input DetachMenuItemModifierGroupsInput {
-  menuItemId: ID!
-  groupIds: [ID!]!
-}
-
-# ====== Queries / Mutations ======
+# =========================================================
+# QUERIES / MUTATIONS
+# =========================================================
 
 extend type Query {
-  modifierGroups(restaurantId: ID!, search: String): [ModifierGroup!]!
+  # list groups with filters (cleaner than separate params)
+  modifierGroups(filter: ModifierGroupFilterInput!): [ModifierGroup!]!
+
   modifierGroup(id: ID!): ModifierGroup
 }
 
 extend type Mutation {
   # Group CRUD
   createModifierGroup(input: CreateModifierGroupInput!): ModifierGroup!
-  createModifierGroupForMenuItem(
-    input: CreateModifierGroupForMenuItemInput!
-  ): ModifierGroup!
   updateModifierGroup(input: UpdateModifierGroupInput!): ModifierGroup!
   deleteModifierGroup(id: ID!): Boolean!
 
-  # Option CRUD (trên 1 group)
+  # Option CRUD (operate on a group)
   addModifierOption(groupId: ID!, option: ModifierOptionInput!): ModifierGroup!
   updateModifierOption(
     groupId: ID!
@@ -127,13 +212,4 @@ extend type Mutation {
     option: ModifierOptionInput!
   ): ModifierGroup!
   removeModifierOption(groupId: ID!, optionId: ID!): ModifierGroup!
-
-  # Liên kết với món ăn
-  setMenuItemModifierGroups(input: SetMenuItemModifierGroupsInput!): Boolean!
-  attachMenuItemModifierGroups(
-    input: AttachMenuItemModifierGroupsInput!
-  ): Boolean!
-  detachMenuItemModifierGroups(
-    input: DetachMenuItemModifierGroupsInput!
-  ): Boolean!
 }

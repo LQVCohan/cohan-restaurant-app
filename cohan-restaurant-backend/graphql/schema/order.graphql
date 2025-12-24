@@ -24,9 +24,38 @@ enum ItemStatus {
   returned
 }
 
+enum OrderType {
+  dine_in
+  takeaway
+  delivery
+}
+
+enum ServingMode {
+  PORTION
+  BY_WEIGHT
+}
+
+enum PriceRuleKind {
+  SET
+  DELTA
+}
+
+enum InventoryRuleKind {
+  NONE
+  ADD_INGREDIENTS
+  REPLACE_INGREDIENTS
+  MULTIPLY_BASE_RECIPE
+}
+
 # =========================================================
 # VALUE OBJECTS
 # =========================================================
+
+type GeoPoint {
+  lat: Float
+  lng: Float
+  address: String
+}
 
 type Shipping {
   fullName: String
@@ -34,10 +63,35 @@ type Shipping {
   email: String
   address: String
   note: String
+
   deliveryMethod: String
   deliveryTime: String
   scheduleDate: String
   scheduleTime: String
+
+  shippingFee: Int
+  deliveryStatus: String
+
+  location: GeoPoint
+  customerLocation: GeoPoint
+  restaurantLocation: GeoPoint
+  driverLocation: GeoPoint
+
+  driverName: String
+  driverPhone: String
+  driverAvatar: String
+  driverVehiclePlate: String
+
+  distance: Float
+  duration: Float
+  eta: DateTime
+  externalTrackingCode: String
+}
+
+input GeoPointInput {
+  lat: Float
+  lng: Float
+  address: String
 }
 
 input ShippingInput {
@@ -46,44 +100,102 @@ input ShippingInput {
   email: String
   address: String
   note: String
+
   deliveryMethod: String
   deliveryTime: String
   scheduleDate: String
   scheduleTime: String
+
+  shippingFee: Int
+  deliveryStatus: String
+
+  location: GeoPointInput
+  customerLocation: GeoPointInput
+  restaurantLocation: GeoPointInput
+  driverLocation: GeoPointInput
+
+  driverName: String
+  driverPhone: String
+  driverAvatar: String
+  driverVehiclePlate: String
+
+  distance: Float
+  duration: Float
+  eta: DateTime
+  externalTrackingCode: String
 }
 
 # =========================================================
-# SERVING VARIANT SNAPSHOT (🔥 CORE)
+# SERVING VARIANT SNAPSHOT (CORE)
 # =========================================================
 
 type ServingVariantSnapshot {
+  key: String!
   name: String
+  mode: ServingMode!
   price: Int
-  mode: String # PORTION | BY_WEIGHT
+  sellQty: Float
+  sellUnit: String
 }
 
 input ServingVariantSnapshotInput {
+  key: String!
   name: String
+  mode: ServingMode!
   price: Int
-  mode: String
+  sellQty: Float
+  sellUnit: String
 }
 
 # =========================================================
-# MODIFIERS
+# INGREDIENT SNAPSHOT (COSTING + AUDIT)
 # =========================================================
 
-type OrderModifier {
-  optionId: ID
-  optionName: String!
-  groupId: ID
-  price: Int
+type OrderIngredientSnapshot {
+  ingredientId: ID!
+  name: String
+  quantity: Float!
+  unit: String!
+  baseUnitQuantity: Float!
+  costPerBaseUnit: Float
+  totalCost: Float
 }
 
-input OrderModifierInput {
-  optionId: ID
-  optionName: String!
-  groupId: ID
-  price: Int
+# =========================================================
+# MODIFIERS (NEW SNAPSHOT + INPUT SELECTION)
+# =========================================================
+
+type ModifierPriceRuleSnapshot {
+  rule: PriceRuleKind!
+  amount: Int!
+}
+
+type ModifierIngredientLineSnapshot {
+  ingredientId: ID!
+  qty: Float!
+  unit: String!
+  wastePct: Float
+}
+
+type ModifierInventoryRuleSnapshot {
+  rule: InventoryRuleKind!
+  ingredientLines: [ModifierIngredientLineSnapshot!]!
+  baseRecipeMultiplier: Float
+  note: String
+}
+
+type OrderModifierSnapshot {
+  groupId: ID!
+  groupName: String
+  optionId: ID!
+  optionName: String
+  priceRule: ModifierPriceRuleSnapshot!
+  inventoryRule: ModifierInventoryRuleSnapshot!
+}
+
+input OrderModifierSelectionInput {
+  groupId: ID!
+  optionId: ID!
 }
 
 # =========================================================
@@ -102,16 +214,19 @@ type OrderItem {
   image: String
   proofImages: [String]
 
-  # 🔥 PRICE SNAPSHOT
   basePrice: Int
-  servingVariantId: ID
-  servingVariant: ServingVariantSnapshot
+  servingKey: String!
+  servingVariant: ServingVariantSnapshot!
 
-  modifiersPrice: Int
   quantity: Float!
-  weightGrams: Float
-  modifiers: [OrderModifier!]
+  weightGrams: Int
+
+  modifiers: [OrderModifierSnapshot!]!
+  modifiersPrice: Int
+  unitPrice: Int
   lineSubtotal: Int
+
+  ingredientsSnapshot: [OrderIngredientSnapshot!]!
 
   note: String
   status: ItemStatus
@@ -127,14 +242,14 @@ input OrderItemInput {
   image: String
   proofImages: [String]
 
-  # 🔥 PRICE SNAPSHOT
   basePrice: Int
-  servingVariantId: ID
+  servingKey: String!
   servingVariant: ServingVariantSnapshotInput
 
-  modifiersPrice: Int
   quantity: Float!
-  modifiers: [OrderModifierInput!]
+  weightGrams: Int
+
+  selectedModifiers: [OrderModifierSelectionInput!]
 
   note: String
   status: ItemStatus
@@ -147,8 +262,17 @@ input OrderItemInput {
 type OrderTotals {
   subtotal: Int!
   discount: Int!
-  tax: Int!
+  discountReason: String
+  voucherCode: String
+  promotionId: ID
+
   service: Int!
+  serviceRate: Float
+
+  tax: Int!
+  taxRate: Float
+
+  shippingFee: Int
   grandTotal: Int!
 }
 
@@ -158,11 +282,13 @@ type OrderTotals {
 
 type OrderPayment {
   method: String
-  paidAmount: Int
-  currency: String
+  provider: String
+  transactionId: ID
   status: String
-  txnRef: String
-  paidAt: String
+  paidAmount: Int
+  changeAmount: Int
+  currency: String
+  paidAt: DateTime
 }
 
 # =========================================================
@@ -170,8 +296,8 @@ type OrderPayment {
 # =========================================================
 
 type StatusEvent {
-  status: String!
-  at: String!
+  status: OrderStatus!
+  at: DateTime!
   byUserId: ID
   note: String
 }
@@ -203,10 +329,13 @@ input CustomerInput {
 type Order {
   id: ID!
   orderCode: String
+  parentOrderCode: String
   restaurantId: ID!
 
-  orderType: String!
+  orderType: OrderType!
   tableCode: String
+  tableName: String
+  guestCount: Int
 
   userId: ID
   reservationId: ID
@@ -220,8 +349,8 @@ type Order {
   currentStatus: OrderStatus!
 
   note: String
-  createdAt: String!
-  updatedAt: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 
   user: User
   customerInfo: OrderCustomerInfo
@@ -237,6 +366,7 @@ input CreateOrAppendTableOrderInput {
   tableId: ID
   tableCode: String!
   orderCode: String
+  parentOrderCode: String
 
   items: [OrderItemInput!]!
   note: String
@@ -253,7 +383,9 @@ type CreateOrAppendTableOrderPayload {
 
 input CreateOffPremiseOrderInput {
   restaurantId: ID!
-  orderType: String! # takeaway | delivery
+  orderType: OrderType! # takeaway | delivery
+  parentOrderCode: String
+
   items: [OrderItemInput!]!
   note: String
   customer: CustomerInput
@@ -336,6 +468,7 @@ input OrderFilterInput {
   restaurantId: ID
   tableCode: String
   orderCode: String
+  parentOrderCode: String
   status: String
   statuses: [String!]
   dateFrom: String

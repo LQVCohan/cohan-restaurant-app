@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Ingredient } from "../../../models/index.js";
+import { Ingredient, Order } from "../../../models/index.js";
 
 function normalizeDupKeyError(err) {
   // Mongo duplicate key
@@ -11,6 +11,16 @@ function normalizeDupKeyError(err) {
   }
   return err;
 }
+
+const ACTIVE_ORDER_STATUSES = [
+  "draft",
+  "pending",
+  "confirmed",
+  "customer_attached",
+  "preparing",
+  "ready",
+  "served",
+];
 
 export default {
   createIngredient: async (_p, { input }) => {
@@ -33,6 +43,33 @@ export default {
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid id");
 
     try {
+      // 1) Load ingredient để lấy restaurantId (scope check đúng nhà hàng)
+      const ing = await Ingredient.findById(id)
+        .select({ _id: 1, restaurantId: 1, name: 1 })
+        .lean();
+
+      if (!ing) throw new GraphQLError("Ingredient not found");
+
+      // 2) Check ingredient đang được dùng trong order nào không (active orders)
+      const usedOrder = await Order.findOne({
+        restaurantId: ing.restaurantId,
+        currentStatus: { $in: ACTIVE_ORDER_STATUSES },
+        "items.ingredientsSnapshot.ingredientId": ing._id,
+      })
+        .select({ orderCode: 1, tableCode: 1, currentStatus: 1 })
+        .lean();
+
+      if (usedOrder) {
+        const code = usedOrder.orderCode || "unknown";
+        const table = usedOrder.tableCode
+          ? ` (bàn ${usedOrder.tableCode})`
+          : "";
+        throw new GraphQLError(
+          `Không thể cập nhật nguyên liệu "${ing.name}" vì đang được sử dụng trong đơn ${code}${table} (status: ${usedOrder.currentStatus}).`
+        );
+      }
+
+      // 3) Update nếu không bị dùng
       const doc = await Ingredient.findByIdAndUpdate(
         id,
         { $set: patch },

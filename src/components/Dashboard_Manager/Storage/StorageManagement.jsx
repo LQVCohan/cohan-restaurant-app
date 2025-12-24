@@ -30,7 +30,11 @@ const StorageManagement = () => {
 
   const [activeTab, setActiveTab] = useState("ingredients");
   const [currentRestaurant, setCurrentRestaurant] = useState("");
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState(null);
+
+  // ✅ undefined = chưa init (auto pick kho đầu)
+  // ✅ null = tất cả kho (KHÔNG auto pick)
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState(undefined);
+
   const [ingredientSearch, setIngredientSearch] = useState("");
 
   // ==== 1) Nhà hàng theo Manager ====
@@ -49,7 +53,6 @@ const StorageManagement = () => {
   }, [mgrData]);
 
   useEffect(() => {
-    // chỉ set default khi chưa có currentRestaurant
     if (!currentRestaurant && managerRestaurants.length) {
       setCurrentRestaurant(managerRestaurants[0].id);
     }
@@ -87,11 +90,17 @@ const StorageManagement = () => {
   });
 
   const warehouses = useMemo(() => whData?.warehouses || [], [whData]);
+
+  // ✅ chỉ auto chọn kho đầu tiên khi CHƯA INIT (undefined)
   useEffect(() => {
-    if (!selectedWarehouseId && warehouses.length) {
+    if (selectedWarehouseId === undefined && warehouses.length) {
       setSelectedWarehouseId(warehouses[0].id);
     }
   }, [warehouses, selectedWarehouseId]);
+
+  // id thực sự dùng để filter query: string id hoặc null (tất cả kho)
+  const warehouseFilterId = selectedWarehouseId ? selectedWarehouseId : null;
+
   // ==== 4) StockItems/Movements ====
   const shouldFetchStock =
     restaurantReady &&
@@ -107,7 +116,7 @@ const StorageManagement = () => {
   } = useQuery(STOCK_ITEMS_QUERY, {
     variables: {
       restaurantId: currentRestaurant,
-      warehouseId: selectedWarehouseId || null,
+      warehouseId: warehouseFilterId, // ✅ null = tất cả kho
       limit: 200,
     },
     skip: !shouldFetchStock,
@@ -116,15 +125,10 @@ const StorageManagement = () => {
 
   const stockItems = useMemo(() => stockData?.stockItems || [], [stockData]);
 
-  const {
-    data: movData,
-    loading: movLoading,
-    error: movError,
-    refetch: refetchMovements,
-  } = useQuery(STOCK_MOVEMENTS_QUERY, {
+  const { refetch: refetchMovements } = useQuery(STOCK_MOVEMENTS_QUERY, {
     variables: {
       restaurantId: currentRestaurant,
-      warehouseId: selectedWarehouseId || null,
+      warehouseId: warehouseFilterId, // ✅ null = tất cả kho
       limit: 100,
       sort: -1,
     },
@@ -157,7 +161,6 @@ const StorageManagement = () => {
     await Promise.all([refetchIngredients?.(), refetchStock?.()]);
   }, [refetchIngredients, refetchStock]);
 
-  // ==== Loading / Error Nhà hàng ====
   if (mgrError) {
     return (
       <div style={{ color: "#b91c1c" }}>
@@ -165,6 +168,7 @@ const StorageManagement = () => {
       </div>
     );
   }
+
   if (mgrLoading) {
     return (
       <div className="storage-management">
@@ -180,7 +184,7 @@ const StorageManagement = () => {
       component: (
         <IngredientList
           restaurantId={currentRestaurant}
-          warehouseId={selectedWarehouseId}
+          warehouseId={warehouseFilterId} // ✅ null = tất cả kho
           data={ingredients}
           stockItems={stockItems}
           loading={ingLoading || stockLoading}
@@ -196,7 +200,7 @@ const StorageManagement = () => {
       component: (
         <SupplyList
           restaurantId={currentRestaurant}
-          warehouseId={selectedWarehouseId}
+          warehouseId={warehouseFilterId}
           warehouses={warehouses}
           warehousesLoading={whLoading}
           onReload={reloadIngredientsAndStock}
@@ -245,14 +249,17 @@ const StorageManagement = () => {
           currentRestaurantId={currentRestaurant}
           onRestaurantChange={(id) => {
             setCurrentRestaurant(id);
-            setSelectedWarehouseId(null);
+            setSelectedWarehouseId(undefined); // ✅ reset về trạng thái “chưa init” để auto-pick kho đầu của NH mới
             setRecipeTimeSlot(null);
             setRecipeSearch(null);
             setRecipeCategoryId(null);
           }}
           warehouses={warehouses}
-          selectedWarehouseId={selectedWarehouseId}
-          onWarehouseChange={setSelectedWarehouseId}
+          selectedWarehouseId={warehouseFilterId} // ✅ null = tất cả kho
+          onWarehouseChange={(idOrNull) => {
+            // idOrNull có thể là null (tất cả kho) hoặc id string
+            setSelectedWarehouseId(idOrNull);
+          }}
           restaurantsLoading={mgrLoading}
           warehousesLoading={whLoading}
         />
