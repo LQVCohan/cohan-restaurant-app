@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Recipe, MenuItem, Menu } from "../../../models/index.js";
+import { Recipe, MenuItem, Menu, Ingredient } from "../../../models/index.js";
 
 function toObjectIdOrNull(v) {
   if (!v) return null;
@@ -38,11 +38,20 @@ export default {
       .lean({ virtuals: true });
   },
 
+  /**
+   * ✅ Search nâng cấp:
+   * - Search món: name/description/code/labels
+   * - Search công thức: notes, servingVariants.name, servingVariants.key
+   * - Search theo nguyên liệu: Ingredient.name/sku/category -> recipe chứa ingredientId
+   *
+   * Output giữ nguyên shape:
+   * { total, pageInfo, items: [{ menuItem, recipe }] }
+   */
   menuItemsWithRecipes: async (
     _,
     {
       restaurantId,
-      timeSlot, // 'breakfast'|'lunch'|'dinner'|'late-night' | null
+      timeSlot,
       search = null,
       categoryId = null,
       first = 30,
@@ -88,36 +97,122 @@ export default {
 
     const menuIds = menus.map((m) => m._id);
 
-    // 2) Filter MenuItem
-    const q = { restaurantId, menuId: { $in: menuIds } };
+    // 2) Base filter MenuItem theo menuIds + category
+    const qBase = { restaurantId, menuId: { $in: menuIds } };
 
     if (categoryId && mongoose.isValidObjectId(categoryId)) {
-      q.categoryId = new mongoose.Types.ObjectId(categoryId);
-    }
-
-    if (search && String(search).trim()) {
-      const pattern = escapeRegex(String(search).trim());
-      q.name = new RegExp(pattern, "i");
+      qBase.categoryId = new mongoose.Types.ObjectId(categoryId);
     }
 
     // Cursor-based pagination theo _id tăng dần
     const cursorId = toObjectIdOrNull(after);
-    if (cursorId) {
-      q._id = { $gt: cursorId };
-    }
 
     const safeLimit = Math.min(Math.max(first || 30, 1), 200);
 
-    // 3) total (optional)
-    const total = await MenuItem.countDocuments({
-      restaurantId,
-      menuId: { $in: menuIds },
-      ...(q.categoryId ? { categoryId: q.categoryId } : {}),
-      ...(q.name ? { name: q.name } : {}),
-    });
+    // === SEARCH: menu item + recipe + ingredient ===
+    const s = search && String(search).trim() ? String(search).trim() : null;
 
-    // 4) lấy items + 1 để tính hasNext
-    const itemsPlusOne = await MenuItem.find(q)
+    let filteredMenuItemIds = null; // null = không áp filter search
+
+    if (s) {
+      const pattern = escapeRegex(s);
+      const rx = new RegExp(pattern, "i");
+
+      // 2.1) menu item matches
+      const miMatches = await MenuItem.find({
+        ...qBase,
+        $or: [{ name: rx }, { description: rx }, { code: rx }, { labels: rx }],
+      })
+        .select({ _id: 1 })
+        .limit(5000)
+        .lean();
+
+      const idsFromMenuItem = miMatches.map((d) => d._id);
+
+      // 2.2) ingredient matches -> lấy ingredientIds
+      const ingMatches = await Ingredient.find({
+        restaurantId,
+        isActive: true,
+        $or: [{ name: rx }, { sku: rx }, { category: rx }],
+      })
+        .select({ _id: 1 })
+        .limit(200)
+        .lean();
+
+      const ingredientIds = ingMatches.map((d) => d._id);
+
+      // 2.3) recipe matches
+      const recipeOr = [
+        { notes: rx },
+        { "servingVariants.name": rx },
+        { "servingVariants.key": rx },
+      ];
+
+      if (ingredientIds.length) {
+        recipeOr.push({
+          "servingVariants.ingredients.ingredientId": { $in: ingredientIds },
+        });
+      }
+
+      const recipeMatches = await Recipe.find({
+        restaurantId,
+        $or: recipeOr,
+      })
+        .select({ menuItemId: 1 })
+        .limit(10000)
+        .lean();
+
+      const idsFromRecipe = recipeMatches
+        .map((r) => r.menuItemId)
+        .filter(Boolean);
+
+      // union ids
+      const union = new Map();
+      idsFromMenuItem.forEach((id) => union.set(String(id), id));
+      idsFromRecipe.forEach((id) => union.set(String(id), id));
+
+      filteredMenuItemIds = Array.from(union.values());
+
+      // search mà không ra gì -> return empty
+      if (!filteredMenuItemIds.length) {
+        return {
+          total: 0,
+          pageInfo: { endCursor: null, hasNextPage: false },
+          items: [],
+        };
+      }
+    }
+
+    // 3) Build query lấy page items
+    const qPage = { ...qBase };
+
+    // áp cursor
+    if (cursorId) {
+      qPage._id = { $gt: cursorId };
+    }
+
+    // áp search filter
+    if (filteredMenuItemIds) {
+      if (qPage._id && typeof qPage._id === "object") {
+        qPage._id = { ...qPage._id, $in: filteredMenuItemIds };
+      } else {
+        qPage._id = { $in: filteredMenuItemIds };
+      }
+    }
+
+    // 4) total (không tính cursor)
+    let total = 0;
+    if (filteredMenuItemIds) {
+      total = await MenuItem.countDocuments({
+        ...qBase,
+        _id: { $in: filteredMenuItemIds },
+      });
+    } else {
+      total = await MenuItem.countDocuments(qBase);
+    }
+
+    // 5) lấy items + 1 để tính hasNext
+    const itemsPlusOne = await MenuItem.find(qPage)
       .select({ __v: 0 })
       .sort({ _id: 1 })
       .limit(safeLimit + 1)
@@ -134,7 +229,7 @@ export default {
       };
     }
 
-    // 5) Lấy recipes tương ứng
+    // 6) Lấy recipes tương ứng cho page
     const menuItemIds = items.map((i) => i._id);
 
     const recipes = await Recipe.find({
@@ -148,7 +243,7 @@ export default {
       recipes.map((r) => [String(r.menuItemId), r])
     );
 
-    // 6) Build rows { menuItem, recipe }
+    // 7) Build rows { menuItem, recipe }
     const rows = items.map((mi) => ({
       menuItem: {
         ...mi,

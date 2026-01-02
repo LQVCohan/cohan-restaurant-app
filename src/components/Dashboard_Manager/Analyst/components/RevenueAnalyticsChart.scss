@@ -1,0 +1,83 @@
+$gold: #c5a47e;
+$gold-dark: #b08d66;
+$charcoal: #1a1a1a;
+$bg-light: #f8fafc;
+$text-secondary: #64748b;
+
+.revenue-analytics-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); // Shadow nhẹ nhàng
+  border: 1px solid #e2e8f0;
+  height: 100%; // Fill chiều cao
+  display: flex;
+  flex-direction: column;
+
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+
+    .header-info {
+      h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: $charcoal;
+        margin: 0 0 4px 0;
+      }
+
+      .growth-indicator {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #10b981; // Màu xanh lá cây tăng trưởng
+
+        svg {
+          stroke-width: 2.5px;
+        }
+      }
+    }
+
+    .chart-filters {
+      display: flex;
+      background: $bg-light;
+      padding: 4px;
+      border-radius: 8px;
+
+      .filter-btn {
+        border: none;
+        background: transparent;
+        padding: 6px 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: $text-secondary;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          color: $gold;
+        }
+
+        &.active {
+          background: white;
+          color: $gold-dark;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+      }
+    }
+  }
+
+  .chart-container {
+    flex-grow: 1;
+    position: relative;
+    min-height: 300px; // Chiều cao tối thiểu
+    width: 100%;
+  }
+}

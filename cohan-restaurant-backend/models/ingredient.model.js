@@ -47,5 +47,5 @@ const IngredientSchema = BaseSchemaModel({
 });
 
 IngredientSchema.index({ restaurantId: 1, name: 1 }, { unique: true });
-
+IngredientSchema.index({ restaurantId: 1, createdAt: -1 });
 export default mongoose.model("Ingredient", IngredientSchema);

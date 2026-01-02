@@ -1,206 +1,244 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+/* src/components/Dashboard_Manager/Storage/layout/Header/Header.scss */
 
-/* ============================
-   HEADER CARD & TITLE
-============================ */
-.header-card {
-  margin-bottom: $spacing-lg;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas:
-    "title actions"
-    "selects selects";
-  gap: 12px;
-  align-items: center;
+// Variables (Đồng bộ với StorageManagement.scss)
+$gold: #c5a47e;
+$gold-hover: #b08d65;
+$charcoal: #1e293b;
+$border-color: #e2e8f0;
+$text-main: #0f172a;
+$text-sub: #64748b;
+$white: #ffffff;
+$bg-input: #f8fafc;
 
-  @include mobile {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "title"
-      "actions"
-      "selects";
+.sm-header-card {
+  background: $white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid $border-color;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   }
 }
 
-.header-section {
-  grid-area: title;
+/* --- Top Section --- */
+.sm-header-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 1rem;
-
-  @include mobile {
-    flex-direction: column;
-    align-items: stretch;
-  }
 }
 
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #0c4a6e;
-  margin: 0;
-
-  @include mobile {
-    text-align: center;
-  }
-}
-
-/* ============================
-   ACTION BUTTONS
-============================ */
-.header-actions {
-  grid-area: actions;
-  display: flex;
-  gap: $spacing-sm;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-
-  @include mobile {
-    justify-content: center;
-  }
-}
-
-/* ============================
-   SELECT SECTION
-============================ */
-.select-container {
-  grid-area: selects;
+.title-wrapper {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
-  margin-top: 4px;
 
-  @include mobile {
-    flex-direction: column;
-    align-items: stretch;
+  .icon-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: #fdf8f3; // very light gold
+    border: 1px solid rgba($gold, 0.2);
+  }
+
+  .page-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: $charcoal;
+    margin: 0;
+    letter-spacing: -0.5px;
   }
 }
 
-/* Export Excel mẫu */
-.export-sample-button {
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(2, 6, 23, 0.12);
-  background: #ffffff;
-  color: #0f172a;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.18s ease;
-
-  &:hover {
-    background: #f8fafc;
-    transform: translateY(-1px);
-  }
-}
-
-/* ============================
-   SELECT BOX + LABEL
-============================ */
-.select-group {
+.actions-wrapper {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 
-  @include mobile {
-    width: 100%;
-    justify-content: space-between;
+  .divider-vertical {
+    width: 1px;
+    height: 24px;
+    background: $border-color;
+    margin: 0 4px;
   }
 }
 
-.select-label {
-  font-size: 14px;
-  font-weight: 700;
-  color: #334155;
+/* --- Buttons --- */
+.sm-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  // Reset default
+  border: 1px solid transparent;
+  outline: none;
+
+  &.ghost {
+    background: transparent;
+    color: $text-sub;
+    &:hover {
+      background: $bg-input;
+      color: $charcoal;
+    }
+  }
+
+  &.secondary {
+    background: $white;
+    border-color: $border-color;
+    color: $charcoal;
+    &:hover {
+      border-color: $gold;
+      color: $gold-hover;
+    }
+  }
+
+  &.primary {
+    background: $charcoal;
+    color: $gold;
+    &:hover {
+      background: lighten($charcoal, 5%);
+      box-shadow: 0 4px 12px rgba($charcoal, 0.2);
+    }
+  }
 }
 
-/* Spinner inline nhỏ */
-.inline-loader {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid rgba(99, 102, 241, 0.25);
-  border-top-color: #6366f1;
-  animation: spin 0.75s linear infinite;
-  display: inline-block;
+/* --- Bottom Section (Filters) --- */
+.sm-header-filters {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding-top: 1.5rem;
+  border-top: 1px dashed $border-color;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 200px;
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: $text-sub;
+    text-transform: uppercase;
+
+    svg {
+      color: $gold;
+    }
+    .spin {
+      animation: spin 1s linear infinite;
+      color: $gold;
+    }
+  }
+}
+
+.custom-select-wrapper {
+  position: relative;
+  width: 100%;
+
+  select {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    padding-right: 36px; // space for arrow
+    border-radius: 8px;
+    border: 1px solid $border-color;
+    background: $bg-input;
+    color: $charcoal;
+    font-size: 0.95rem;
+    font-weight: 500;
+    appearance: none; // Hide default arrow
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover:not(:disabled) {
+      border-color: rgba($gold, 0.5);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $gold;
+      background: $white;
+      box-shadow: 0 0 0 3px rgba($gold, 0.1);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background: #f1f5f9;
+    }
+  }
+
+  .arrow-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: $text-sub;
+  }
 }
 
 @keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
   to {
     transform: rotate(360deg);
   }
 }
 
-.select-box {
-  min-width: 220px;
-  height: 40px;
-  border-radius: 10px;
-  border: 1px solid rgba(2, 6, 23, 0.12);
-  background: #ffffff;
-  color: #0f172a;
-  padding: 0 12px;
-  font-size: 14px;
-  line-height: 40px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-
-  &:focus {
-    outline: none;
-    border-color: rgba($primary, 0.45);
-    box-shadow: 0 0 0 4px rgba($primary, 0.12);
-  }
-
-  &:disabled {
-    background: #f3f4f6;
-    color: #94a3b8;
-    cursor: not-allowed;
-  }
-
-  /* Hiệu ứng loading khi fetch */
-  &.loading {
-    background-image: linear-gradient(
-      90deg,
-      rgba(2, 6, 23, 0.03),
-      rgba(2, 6, 23, 0.06),
-      rgba(2, 6, 23, 0.03)
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.2s ease-in-out infinite;
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-/* ============================
-   RESPONSIVE
-============================ */
+/* --- Responsive --- */
 @media (max-width: 768px) {
-  .header-actions {
-    justify-content: flex-start;
-  }
-
-  .select-container {
+  .sm-header-top {
+    flex-direction: column;
     align-items: stretch;
   }
 
-  .select-group {
-    width: 100%;
+  .actions-wrapper {
+    justify-content: space-between;
+    .divider-vertical {
+      display: none;
+    }
   }
 
-  .select-box {
-    width: 60%;
-    min-width: 0;
+  .sm-btn {
+    flex: 1;
+    padding: 0 10px;
+    .hide-on-mobile {
+      display: none;
+    }
+  }
+
+  .sm-header-filters {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
   }
 }

@@ -1,72 +1,91 @@
 import React from "react";
+import { ChevronRight, TrendingUp } from "lucide-react";
 import "./TopDishes.scss";
-
-const DishItem = ({ rank, name, category, price, salesCount }) => (
-  <div className="dish-item">
-    <div className="dish-rank">{rank}</div>
-    <div className="dish-info">
-      <h4>{name}</h4>
-      <p>
-        {category} • {price}
-      </p>
-    </div>
-    <div className="dish-sales">
-      <div className="sales-number">{salesCount}</div>
-      <div className="sales-label">đã bán</div>
-    </div>
-  </div>
-);
 
 const TopDishes = () => {
   const dishes = [
     {
-      rank: 1,
-      name: "Phở Bò Đặc Biệt",
-      category: "Món chính",
-      price: "₫85.000",
-      salesCount: 234,
+      id: 1,
+      name: "Sashimi Bào Ngư",
+      price: 1250000,
+      sales: 85,
+      img: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?auto=format&fit=crop&w=100&q=80",
     },
     {
-      rank: 2,
-      name: "Bún Bò Huế",
-      category: "Món chính",
-      price: "₫75.000",
-      salesCount: 189,
+      id: 2,
+      name: "Bò Wagyu A5",
+      price: 2800000,
+      sales: 62,
+      img: "https://images.unsplash.com/photo-1558030006-4506719b7402?auto=format&fit=crop&w=100&q=80",
     },
-    {
-      rank: 3,
-      name: "Cơm Tấm Sườn Nướng",
-      category: "Món chính",
-      price: "₫65.000",
-      salesCount: 156,
-    },
-    {
-      rank: 4,
-      name: "Bánh Mì Thịt Nướng",
-      category: "Món nhẹ",
-      price: "₫35.000",
-      salesCount: 142,
-    },
+    { id: 3, name: "Tôm Hùm Bỏ Lò", price: 1850000, sales: 45, img: null }, // Trường hợp không có ảnh
+    { id: 4, name: "Set Sushi Cao Cấp", price: 950000, sales: 38, img: null },
+    { id: 5, name: "Rượu Sake Gold", price: 3200000, sales: 20, img: null },
   ];
 
   return (
-    <div className="dishes-card fade-in">
+    <div className="top-dishes-wrapper">
       <div className="dishes-header">
-        <h3 className="dishes-title">🍽️ Món Ăn Bán Chạy</h3>
-        <a href="#" className="view-all-btn">
-          Xem tất cả
-        </a>
+        <div className="title-group">
+          <h3 className="dishes-title">Món Bán Chạy</h3>
+          <span className="subtitle">Top trending tháng này</span>
+        </div>
+        <button className="view-all-btn">
+          Xem thêm <ChevronRight size={16} />
+        </button>
       </div>
+
       <div className="dishes-list">
         {dishes.map((dish, index) => (
-          <DishItem
-            key={index}
-            rank={dish.rank}
-            name={dish.name}
-            category={dish.category}
-            price={dish.price}
-            salesCount={dish.salesCount}
-          />
+          <div key={dish.id} className="dish-item">
+            {/* Rank Number */}
+            <div className={`dish-rank rank-${index + 1}`}>
+              <span>{index + 1}</span>
+            </div>
+
+            {/* Thumbnail (Optional) */}
+            <div className="dish-thumb">
+              {dish.img ? (
+                <img src={dish.img} alt={dish.name} />
+              ) : (
+                // Placeholder nếu không có ảnh
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    background: "#eee",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#999",
+                  }}
+                >
+                  <TrendingUp size={20} />
+                </div>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="dish-info">
+              <h4>{dish.name}</h4>
+              <p className="dish-meta">
+                <span className="price">
+                  {new Intl.NumberFormat("vi-VN", {
+                    style: "currency",
+                    currency: "VND",
+                  }).format(dish.price)}
+                </span>
+              </p>
+            </div>
+
+            {/* Sales Stats */}
+            <div className="dish-stats">
+              <div className="sales-badge">
+                <span className="count">{dish.sales}</span>
+                <span className="label">Đã bán</span>
+              </div>
+            </div>
+          </div>
         ))}
       </div>
     </div>

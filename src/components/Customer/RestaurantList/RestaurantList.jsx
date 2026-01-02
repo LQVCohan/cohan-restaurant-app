@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import DiscoveryHero from "./components/DiscoveryHero/DiscoveryHero";
 import FiltersSidebar from "./components/FiltersSidebar/FiltersSidebar";
 import RestaurantCard from "./components/RestaurantCard/RestaurantCard";
-import Footer from "../Homepage_Client/components/Footer";
+
 import { useRestaurants } from "../../../hooks/useRestaurants";
 
 // Styles

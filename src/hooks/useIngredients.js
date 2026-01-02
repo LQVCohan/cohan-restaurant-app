@@ -1,3 +1,4 @@
+// src/hooks/useIngredients.js
 import { useMemo, useState, useCallback } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 import {
@@ -8,24 +9,35 @@ import {
   WAREHOUSES_QUERY,
   STOCK_ITEMS_QUERY,
   ADJUST_STOCK,
-} from "../components/Dashboard_Manager/Storage/graphql/inventory.gql";
+} from "@/components/Dashboard_Manager/Storage/graphql/inventory.gql";
 
 /**
- * Dùng cho màn Nguyên liệu.
- * - restaurantId: bắt buộc
- * - selectedWarehouseId:
- *   - nếu truyền → tồn theo kho này
- *   - nếu null → gộp tất cả kho
- * NOTE: tồn khả dụng = onHand - reserved
+ * useIngredients (SINGLE SOURCE OF TRUTH)
+ *
+ * restaurantId: bắt buộc
+ * selectedWarehouseId:
+ *   - undefined: chưa init -> auto pick kho đầu tiên (nếu có)
+ *   - null: tất cả kho (KHÔNG auto pick) -> chỉ xem, không nhập kho / nhập tồn ban đầu
+ *   - string: 1 kho cụ thể
+ *
+ * options:
+ *  - withStock: default true  (tab recipes có thể dùng false)
+ *  - withWarehouses: default true
  */
-export function useIngredients(restaurantId, selectedWarehouseId = null) {
+export function useIngredients(
+  restaurantId,
+  selectedWarehouseId = undefined,
+  options = {}
+) {
+  const { withStock = true, withWarehouses = true } = options;
+
   const [filters, setFilters] = useState({
     search: "",
     category: "",
     status: "", // "", "in-stock", "low-stock", "out-of-stock"
   });
 
-  // 1) Ingredients
+  // ===== 1) Ingredients =====
   const {
     data: ingData,
     loading: ingLoading,
@@ -41,45 +53,64 @@ export function useIngredients(restaurantId, selectedWarehouseId = null) {
     fetchPolicy: "cache-and-network",
   });
 
-  // 2) Warehouses (để lấy kho mặc định khi nhập tồn ban đầu / addStock)
-  const { data: whData, loading: whLoading } = useQuery(WAREHOUSES_QUERY, {
+  // ===== 2) Warehouses (optional) =====
+  const {
+    data: whData,
+    loading: whLoading,
+    error: whError,
+  } = useQuery(WAREHOUSES_QUERY, {
     variables: { restaurantId },
-    skip: !restaurantId,
+    skip: !restaurantId || !withWarehouses,
     fetchPolicy: "cache-and-network",
   });
 
-  // 3) StockItems để tính tồn hiện tại theo nguyên liệu
+  const warehouses = useMemo(() => whData?.warehouses || [], [whData]);
+
+  // ===== 3) Resolve warehouse mode =====
+  // - undefined: auto pick kho đầu (nếu có)
+  // - null: tất cả kho
+  // - string: kho cụ thể
+  const effectiveWarehouseId = useMemo(() => {
+    if (selectedWarehouseId === null) return null; // all warehouses
+    if (typeof selectedWarehouseId === "string") return selectedWarehouseId;
+
+    // selectedWarehouseId === undefined -> auto pick kho đầu
+    if (warehouses.length) return warehouses[0].id;
+    return undefined; // chưa có kho
+  }, [selectedWarehouseId, warehouses]);
+
+  // ===== 4) StockItems (optional) =====
   const {
     data: stockData,
     loading: stockLoading,
+    error: stockError,
     refetch: refetchStock,
   } = useQuery(STOCK_ITEMS_QUERY, {
     variables: {
       restaurantId,
-      warehouseId: selectedWarehouseId || null,
+      warehouseId:
+        // null = all, string = specific, undefined = chưa có kho (skip)
+        effectiveWarehouseId === undefined ? null : effectiveWarehouseId,
       limit: 500,
     },
-    skip: !restaurantId,
+    skip: !restaurantId || !withStock || effectiveWarehouseId === undefined,
     fetchPolicy: "cache-and-network",
   });
 
-  const ingredientsRaw = ingData?.ingredients || [];
-  const warehouses = whData?.warehouses || [];
-  const stockItems = stockData?.stockItems || [];
+  const ingredientsRaw = useMemo(() => ingData?.ingredients || [], [ingData]);
+  const stockItems = useMemo(() => stockData?.stockItems || [], [stockData]);
 
-  // Kho mặc định: kho đầu tiên (đúng flow bạn chốt)
-  const defaultWarehouseId = useMemo(() => {
-    if (selectedWarehouseId) return selectedWarehouseId;
-    return warehouses?.[0]?.id || null;
-  }, [selectedWarehouseId, warehouses]);
-
-  // index tồn theo ingredientId (tính AVAILABLE = onHand - reserved)
+  // ===== 5) Aggregate stock per ingredientId =====
+  // AVAILABLE = onHand - reserved
   const stockAggByIngredient = useMemo(() => {
     const map = new Map();
+    if (!withStock) return map;
+
     for (const s of stockItems) {
       const key = s.ingredientId;
       const onHand = Number(s.onHand) || 0;
       const reserved = Number(s.reserved) || 0;
+
       const prev = map.get(key) || { onHand: 0, reserved: 0, available: 0 };
       const next = {
         onHand: prev.onHand + onHand,
@@ -88,10 +119,11 @@ export function useIngredients(restaurantId, selectedWarehouseId = null) {
       };
       map.set(key, next);
     }
-    return map;
-  }, [stockItems]);
 
-  // Map → shape UI (vẫn giữ alias unit/costPrice để UI cũ không vỡ)
+    return map;
+  }, [stockItems, withStock]);
+
+  // ===== 6) UI Mapping (chuẩn hoá field) =====
   const ingredientsMapped = useMemo(() => {
     return ingredientsRaw.map((it) => {
       const agg = stockAggByIngredient.get(it.id) || {
@@ -102,31 +134,44 @@ export function useIngredients(restaurantId, selectedWarehouseId = null) {
 
       return {
         id: it.id,
+        restaurantId: it.restaurantId,
         name: it.name,
         sku: it.sku || "",
         category: it.category || "",
-        baseUnit: it.baseUnit, // chuẩn
-        unit: it.baseUnit, // alias UI cũ
-        costPerBaseUnit: Number(it.costPerBaseUnit) || 0, // chuẩn
-        costPrice: Number(it.costPerBaseUnit) || 0, // alias UI cũ
 
+        baseUnit: it.baseUnit,
+        conversions: it.conversions || [],
+
+        costPerBaseUnit: Number(it.costPerBaseUnit) || 0,
+        photos: it.photos || [],
         minStock: Number(it.minStock) || 0,
         notes: it.notes || "",
         isActive: it.isActive ?? true,
 
-        // tồn kho
+        // stock
         onHand: agg.onHand,
         reserved: agg.reserved,
-        availableStock: agg.available,
-        currentStock: agg.available, // alias UI cũ
-
+        availableStock: agg.available, // canonical
+        // icons
         icon: categoryIcon(it.category),
         _raw: it,
       };
     });
   }, [ingredientsRaw, stockAggByIngredient]);
 
-  // Lọc UI-level (category, status)
+  // ===== 7) Status helper =====
+  const getStockStatus = useCallback((ingredient) => {
+    const avail = Number(ingredient.availableStock) || 0;
+    const min = Number(ingredient.minStock) || 0;
+
+    if (avail <= 0)
+      return { key: "out-of-stock", class: "danger", text: "Hết hàng" };
+    if (avail <= min)
+      return { key: "low-stock", class: "warning", text: "Sắp hết" };
+    return { key: "in-stock", class: "success", text: "Còn hàng" };
+  }, []);
+
+  // ===== 8) UI filters (category/status) =====
   const filteredIngredients = useMemo(() => {
     let arr = ingredientsMapped;
 
@@ -140,23 +185,39 @@ export function useIngredients(restaurantId, selectedWarehouseId = null) {
     }
 
     return arr;
-  }, [ingredientsMapped, filters.category, filters.status]);
+  }, [ingredientsMapped, filters.category, filters.status, getStockStatus]);
 
-  // ==== Mutations ====
+  // ===== 9) Mutations =====
   const [createIngredientMu] = useMutation(CREATE_INGREDIENT);
   const [updateIngredientMu] = useMutation(UPDATE_INGREDIENT);
   const [deleteIngredientMu] = useMutation(DELETE_INGREDIENT);
   const [adjustStockMu] = useMutation(ADJUST_STOCK);
 
   const safeRefetchAll = useCallback(async () => {
-    await Promise.allSettled([refetchIngredients(), refetchStock()]);
-  }, [refetchIngredients, refetchStock]);
+    await Promise.allSettled([
+      refetchIngredients?.(),
+      withStock ? refetchStock?.() : Promise.resolve(),
+    ]);
+  }, [refetchIngredients, refetchStock, withStock]);
+
+  const assertWarehouseForStock = useCallback(() => {
+    // null => all warehouses (không được nhập kho)
+    if (effectiveWarehouseId === null) {
+      throw new Error(
+        "Bạn đang ở chế độ 'Tất cả kho'. Hãy chọn 1 kho cụ thể để nhập kho / nhập tồn."
+      );
+    }
+    // undefined => chưa có kho
+    if (effectiveWarehouseId === undefined) {
+      throw new Error("Chưa có kho. Hãy tạo kho trước khi nhập hàng.");
+    }
+    return effectiveWarehouseId; // string
+  }, [effectiveWarehouseId]);
 
   const addIngredient = useCallback(
     async ({ payload, initialStockQty }) => {
       if (!restaurantId) throw new Error("restaurantId is required");
 
-      // 1) tạo ingredient
       const res = await createIngredientMu({
         variables: {
           input: {
@@ -165,12 +226,12 @@ export function useIngredients(restaurantId, selectedWarehouseId = null) {
             sku: payload.sku || null,
             category: payload.category || "",
             baseUnit: payload.baseUnit,
+            conversions: payload.conversions || [],
             costPerBaseUnit: Number(payload.costPerBaseUnit) || 0,
+            photos: payload.photos || [],
             minStock: Number(payload.minStock) || 0,
             notes: payload.notes || "",
-            isActive: true,
-            conversions: payload.conversions || [],
-            photos: payload.photos || [],
+            isActive: payload.isActive ?? true,
           },
         },
       });
@@ -178,42 +239,41 @@ export function useIngredients(restaurantId, selectedWarehouseId = null) {
       const created = res?.data?.createIngredient;
       const createdId = created?.id;
 
-      // 2) nhập tồn ban đầu (nếu có kho)
+      // init stock
       const qty0 = Number(initialStockQty) || 0;
-      if (qty0 > 0) {
-        if (!defaultWarehouseId) {
-          // Không có kho → không thể lưu tồn ban đầu
-          // (không throw để vẫn tạo được ingredient)
-          console.warn("No warehouse available to save initial stock");
-        } else if (createdId) {
+      if (qty0 > 0 && withStock) {
+        const wid = assertWarehouseForStock();
+        const intQty = Math.round(qty0); // BE: integer
+        if (intQty > 0 && createdId) {
           await adjustStockMu({
             variables: {
               restaurantId,
-              warehouseId: defaultWarehouseId,
+              warehouseId: wid,
               ingredientId: createdId,
-              qty: Math.abs(qty0),
+              qty: intQty,
               reason: "Nhập tồn ban đầu",
             },
           });
         }
       }
 
-      // 3) refetch để UI không bị “đơ” (lấy lại dữ liệu mới)
       await safeRefetchAll();
-
       return { createdId, created };
     },
     [
       restaurantId,
+      withStock,
       createIngredientMu,
       adjustStockMu,
-      defaultWarehouseId,
+      assertWarehouseForStock,
       safeRefetchAll,
     ]
   );
 
   const updateIngredient = useCallback(
     async (id, { payload }) => {
+      // ⚠️ BE chặn update nếu ingredient đang trong active orders
+      // -> FE chỉ cần show đúng message BE trả
       await updateIngredientMu({
         variables: {
           input: {
@@ -222,12 +282,12 @@ export function useIngredients(restaurantId, selectedWarehouseId = null) {
             sku: payload.sku || null,
             category: payload.category || "",
             baseUnit: payload.baseUnit,
+            conversions: payload.conversions || [],
             costPerBaseUnit: Number(payload.costPerBaseUnit) || 0,
+            photos: payload.photos || [],
             minStock: Number(payload.minStock) || 0,
             notes: payload.notes || "",
             isActive: !!payload.isActive,
-            conversions: payload.conversions || [],
-            photos: payload.photos || [],
           },
         },
       });
@@ -245,67 +305,92 @@ export function useIngredients(restaurantId, selectedWarehouseId = null) {
     [deleteIngredientMu, safeRefetchAll]
   );
 
-  /**
-   * addStock: +qty vào kho
-   * - Nếu có selectedWarehouseId → dùng luôn
-   * - Nếu không → mặc định kho đầu tiên
-   */
   const addStock = useCallback(
     async (ingredientId, qty, reason = "Nhập bổ sung") => {
-      const warehouseId = defaultWarehouseId;
-      if (!warehouseId) {
-        alert("Chưa có kho. Hãy tạo kho trước khi nhập hàng.");
-        return;
-      }
+      if (!withStock)
+        throw new Error("withStock=false: không hỗ trợ nhập kho.");
+
+      const wid = assertWarehouseForStock();
 
       const q = Number(qty);
       if (!Number.isFinite(q) || q <= 0) return;
 
+      const intQty = Math.round(q); // BE integer
+      if (intQty === 0) return;
+
       await adjustStockMu({
         variables: {
           restaurantId,
-          warehouseId,
+          warehouseId: wid,
           ingredientId,
-          qty: Math.abs(q),
+          qty: Math.abs(intQty),
           reason,
         },
       });
 
-      await refetchStock();
+      await refetchStock?.();
     },
-    [restaurantId, defaultWarehouseId, adjustStockMu, refetchStock]
+    [
+      restaurantId,
+      withStock,
+      assertWarehouseForStock,
+      adjustStockMu,
+      refetchStock,
+    ]
   );
 
-  // Status dựa vào tồn khả dụng
-  const getStockStatus = (ingredient) => {
-    const avail =
-      Number(ingredient.availableStock ?? ingredient.currentStock) || 0;
-    const min = Number(ingredient.minStock) || 0;
+  // Update giá nhập nhanh (costPerBaseUnit) – vẫn đi qua updateIngredient (BE sẽ chặn nếu active order)
+  const updateCostPerBaseUnit = useCallback(
+    async (ingredientId, nextCost) => {
+      const ing = ingredientsMapped.find((x) => x.id === ingredientId);
+      if (!ing) throw new Error("Ingredient not found in cache");
 
-    if (avail <= 0)
-      return { key: "out-of-stock", class: "danger", text: "Hết hàng" };
-    if (avail <= min)
-      return { key: "low-stock", class: "warning", text: "Sắp hết" };
-    return { key: "in-stock", class: "success", text: "Còn hàng" };
-  };
+      await updateIngredient(ingredientId, {
+        payload: {
+          name: ing.name,
+          sku: ing.sku || null,
+          category: ing.category || "",
+          baseUnit: ing.baseUnit,
+          conversions: ing.conversions || [],
+          photos: ing.photos || [],
+          minStock: Number(ing.minStock) || 0,
+          notes: ing.notes || "",
+          isActive: ing.isActive ?? true,
+          costPerBaseUnit: Number(nextCost) || 0,
+        },
+      });
+    },
+    [ingredientsMapped, updateIngredient]
+  );
 
   return {
-    loading: ingLoading || whLoading || stockLoading,
-    error: ingError,
+    // status
+    loading:
+      ingLoading ||
+      (withWarehouses ? whLoading : false) ||
+      (withStock ? stockLoading : false),
+    error: ingError || whError || stockError,
+
+    // data
+    warehouses,
+    effectiveWarehouseId, // string | null | undefined
     ingredients: ingredientsMapped,
     filteredIngredients,
+    stockItems,
+
+    // ui filters
     filters,
     setFilters,
 
-    warehouses,
-    defaultWarehouseId,
-
+    // actions
     addIngredient,
     updateIngredient,
     deleteIngredient,
     addStock,
-    getStockStatus,
+    updateCostPerBaseUnit,
 
+    // helpers
+    getStockStatus,
     refetch: safeRefetchAll,
   };
 }
@@ -317,6 +402,7 @@ function categoryIcon(category) {
     spice: "🧂",
     dairy: "🥛",
     grain: "🌾",
+    others: "📦",
   };
   return icons[(category || "").toLowerCase()] || "📦";
 }

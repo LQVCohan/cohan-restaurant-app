@@ -1,43 +1,49 @@
 @use "../../../../styles/variables.scss" as *;
 
-// --- Local Variables ---
-$bsm-primary: #3b82f6; // Blue
-$bsm-success: #10b981; // Green
-$bsm-bg-white: #ffffff;
-$bsm-text-dark: #1e293b;
-$bsm-text-gray: #64748b;
-$bsm-border: #e2e8f0;
-$bsm-bg-subtle: #f8fafc;
+// --- Premium Palette ---
+$gold: #c5a47e;
+$gold-light: #e6dace;
+$gold-dark: #8c6b4a;
+$charcoal: #1a1a1a;
+$slate: #334155;
+$bg-paper: #fdfdfd;
+$border-color: rgba($gold, 0.25);
 
 .bsm-card {
-  background: $bsm-bg-white;
-  border-radius: 16px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  border: 1px solid $bsm-border;
+  background: $bg-paper;
+  border-radius: 12px; // Bo góc nhẹ hơn để sang hơn
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+  border: 1px solid $border-color;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: auto;
+  height: 100%; // Fill height nếu ở trong grid
   transition: all 0.3s ease;
   position: relative;
 
   // --- Header ---
   .bsm-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid $bsm-border;
-    background: $bsm-bg-subtle;
+    padding: 24px 24px 16px;
+    border-bottom: 1px solid $border-color;
+    background: linear-gradient(to right, #ffffff, #fafafa);
+    text-align: center;
 
     .bsm-title {
-      font-size: 1.1rem;
+      font-family: "Playfair Display", serif; // Font có chân sang trọng
+      font-size: 1.25rem;
       font-weight: 700;
-      color: $bsm-text-dark;
+      color: $charcoal;
       margin: 0 0 4px 0;
+      letter-spacing: -0.01em;
+      text-transform: uppercase;
     }
 
     .bsm-subtitle {
-      font-size: 0.85rem;
-      color: $bsm-text-gray;
+      font-size: 0.75rem;
+      color: $gold;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      font-weight: 600;
     }
   }
 
@@ -45,7 +51,7 @@ $bsm-bg-subtle: #f8fafc;
   .bsm-body {
     padding: 24px;
     flex: 1;
-    min-height: 200px;
+    min-height: 220px;
     display: flex;
     flex-direction: column;
 
@@ -57,48 +63,70 @@ $bsm-bg-subtle: #f8fafc;
       align-items: center;
       justify-content: center;
       text-align: center;
-      color: $bsm-text-gray;
-      padding: 20px 0;
+      color: lighten($slate, 20%);
+      border: 1px dashed $border-color;
+      border-radius: 8px;
+      margin: 10px 0;
 
       .bsm-empty-icon {
-        font-size: 3.5rem;
+        color: $gold;
+        opacity: 0.5;
         margin-bottom: 16px;
-        opacity: 0.4;
-        filter: grayscale(1);
       }
       .bsm-empty-text {
-        font-size: 0.95rem;
-        line-height: 1.5;
-        max-width: 200px;
+        font-size: 1rem;
+        color: $slate;
+        font-weight: 500;
+        margin-bottom: 4px;
+      }
+      .bsm-empty-subtext {
+        font-size: 0.8rem;
+        font-style: italic;
+        opacity: 0.7;
       }
     }
 
-    // 2. Selected Visual
+    // 2. Selected Visual (Thẻ VIP)
     .bsm-selected-visual {
       display: flex;
       align-items: center;
       gap: 16px;
       margin-bottom: 24px;
       padding: 16px;
-      background: #eff6ff; // Blue 50
-      border-radius: 12px;
-      border: 1px solid #dbeafe;
+      background: linear-gradient(135deg, $charcoal 0%, #2d2d2d 100%);
+      border-radius: 8px;
+      border: 1px solid rgba($gold, 0.3);
+      position: relative;
+      overflow: hidden;
+
+      // Họa tiết trang trí mờ
+      &::after {
+        content: "";
+        position: absolute;
+        top: -20px;
+        right: -20px;
+        width: 80px;
+        height: 80px;
+        background: radial-gradient(circle, $gold 0%, transparent 70%);
+        opacity: 0.1;
+      }
 
       .bsm-table-icon {
-        width: 56px;
-        height: 56px;
+        width: 50px;
+        height: 50px;
         border-radius: 50%;
-        background: $bsm-primary;
-        color: white;
+        background: transparent;
+        border: 2px solid $gold;
+        color: $gold;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
-        border: 3px solid #bfdbfe;
+        box-shadow: 0 0 15px rgba($gold, 0.2);
 
         .label {
-          font-weight: 800;
+          font-weight: 700;
           font-size: 1.1rem;
+          font-family: "Playfair Display", serif;
         }
       }
 
@@ -106,18 +134,20 @@ $bsm-bg-subtle: #f8fafc;
         display: flex;
         flex-direction: column;
         gap: 2px;
+        z-index: 1;
 
         .floor-badge {
-          font-weight: 700;
-          color: $bsm-text-dark;
-          font-size: 1rem;
+          font-weight: 600;
+          color: white; // Chữ trắng trên nền đen
+          font-size: 1.05rem;
+          letter-spacing: 0.02em;
         }
         .status-text {
-          font-size: 0.8rem;
-          color: $bsm-primary;
-          font-weight: 600;
+          font-size: 0.75rem;
+          color: $gold;
+          font-weight: 500;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 1px;
         }
       }
     }
@@ -126,53 +156,50 @@ $bsm-bg-subtle: #f8fafc;
     .bsm-info-list {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 18px;
 
       .bsm-info-item {
         display: flex;
-        align-items: flex-start;
-        gap: 12px;
+        align-items: center;
+        gap: 14px;
 
-        .icon {
-          font-size: 1.2rem;
-          width: 24px;
-          text-align: center;
+        .icon-wrapper {
+          color: $gold-dark;
+          display: flex;
+          align-items: center;
         }
 
         .details {
           display: flex;
-          flex-direction: column;
+          justify-content: space-between;
+          align-items: center;
           width: 100%;
 
           .label {
-            font-size: 0.8rem;
-            color: $bsm-text-gray;
+            font-size: 0.85rem;
+            color: $slate;
             font-weight: 500;
-            margin-bottom: 2px;
           }
           .value {
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 600;
-            color: $bsm-text-dark;
+            color: $charcoal;
           }
         }
 
         &.total {
+          margin-top: 4px;
           .details {
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-
             .label {
-              font-size: 1rem;
-              color: $bsm-text-dark;
+              color: $charcoal;
               font-weight: 700;
-              margin: 0;
+              font-size: 0.95rem;
             }
             .value.highlight {
-              font-size: 1.25rem;
-              color: $bsm-primary;
+              font-size: 1.2rem;
+              color: $gold-dark;
               font-weight: 800;
+              font-family: "Playfair Display", serif;
             }
           }
         }
@@ -181,7 +208,12 @@ $bsm-bg-subtle: #f8fafc;
       .bsm-divider {
         height: 1px;
         width: 100%;
-        border-top: 2px dashed $bsm-border;
+        background: linear-gradient(
+          to right,
+          transparent,
+          $border-color,
+          transparent
+        );
         margin: 4px 0;
       }
     }
@@ -198,29 +230,30 @@ $bsm-bg-subtle: #f8fafc;
     .bsm-btn {
       width: 100%;
       padding: 14px;
-      border-radius: 10px;
+      border-radius: 6px; // Góc vuông hơn
       font-weight: 600;
-      font-size: 1rem;
+      font-size: 0.95rem;
       cursor: pointer;
       border: none;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       align-items: center;
       justify-content: center;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
 
       &-confirm {
-        background: $bsm-success;
+        background: $gold;
         color: white;
-        box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+        box-shadow: 0 4px 10px rgba($gold, 0.3);
 
         &:hover {
-          background: darken($bsm-success, 5%);
-          transform: translateY(-2px);
-          box-shadow: 0 6px 12px -2px rgba(16, 185, 129, 0.3);
+          background: $gold-dark;
+          transform: translateY(-1px);
         }
         &:disabled {
-          background: $bsm-border;
-          color: $bsm-text-gray;
+          background: #e2e8f0;
+          color: #94a3b8;
           cursor: not-allowed;
           box-shadow: none;
           transform: none;
@@ -228,23 +261,32 @@ $bsm-bg-subtle: #f8fafc;
       }
 
       &-cancel {
-        background: $bsm-bg-subtle;
-        color: $bsm-text-gray;
+        background: transparent;
+        color: $slate;
+        font-size: 0.85rem;
+        gap: 6px;
+        text-transform: none; // Nút hủy để chữ thường cho nhẹ nhàng
         border: 1px solid transparent;
 
         &:hover {
-          background: #e2e8f0;
-          color: $bsm-text-dark;
+          color: $charcoal;
+          background: rgba($charcoal, 0.03);
+          border-color: rgba($charcoal, 0.1);
         }
       }
     }
   }
 }
 
-// Responsive Mobile (Đặt thanh này ở dưới cùng)
+// Responsive Mobile
 @media (max-width: 1024px) {
   .bsm-card {
-    border-radius: 16px 16px 0 0;
+    border-radius: 16px 16px 0 0; // Bo tròn đỉnh khi ở dạng drawer mobile
     border-bottom: none;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+
+    .bsm-body {
+      min-height: auto;
+    }
   }
 }

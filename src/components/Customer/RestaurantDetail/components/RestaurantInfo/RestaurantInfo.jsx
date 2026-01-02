@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import "./RestaurantInfo.scss";
-import { formatAddress } from "../../../../../utils/formatters";
 import {
   Wifi,
   Car,
@@ -11,7 +10,6 @@ import {
   Check,
   MapPin,
   Phone,
-  Mail,
   Globe,
   Clock,
   ExternalLink,
@@ -23,27 +21,61 @@ import {
   Smile,
   Music,
   DollarSign,
+  Star,
+  Calendar,
+  ChefHat,
 } from "lucide-react";
 
-// --- MOCK DATA MỞ RỘNG (Giả lập dữ liệu chi tiết nếu API chưa có) ---
+// --- MOCK UTILS & DATA ---
+// Thay thế hàm mock cũ bằng hàm này
+const formatAddress = (address) => {
+  if (!address) return "Đang cập nhật";
+
+  // Nếu API trả về string sẵn thì dùng luôn
+  if (typeof address === "string") return address;
+
+  // Nếu là Object (như lỗi bạn gặp), hãy nối các trường lại
+  // Dựa vào keys trong lỗi: {line1, line2, ward, district, city, country}
+  const parts = [
+    address.line1,
+    address.line2,
+    address.ward,
+    address.district,
+    address.city,
+    address.country,
+  ];
+
+  // Lọc bỏ các giá trị null/undefined/rỗng và nối bằng dấu phẩy
+  return parts.filter((part) => part && part.trim() !== "").join(", ");
+};
+
+// Giả lập trạng thái mở cửa
+const checkOpenStatus = () => {
+  const hour = new Date().getHours();
+  return hour >= 9 && hour < 22
+    ? { status: "open", text: "Đang mở cửa" }
+    : { status: "closed", text: "Đã đóng cửa" };
+};
+
 const EXTENDED_INFO = {
-  paymentMethods: ["Visa", "MasterCard", "MoMo", "Tiền mặt"],
-  dressCode: "Lịch sự / Casual",
-  suitableFor: ["Hẹn hò", "Gia đình", "Tiếp khách", "Sinh nhật"],
-  parkingDetail: "Có bãi đỗ xe ô tô miễn phí (Valet Parking)",
-  ratings: { food: 4.8, service: 4.5, ambience: 4.7, value: 4.4 }, // Điểm thành phần
+  paymentMethods: ["Visa", "MasterCard", "AMEX", "MoMo", "Tiền mặt"],
+  dressCode: "Smart Casual",
+  chef: "Michelin Star Chef - Gordon Ramsay (Guest)",
+  suitableFor: ["Hẹn hò lãng mạn", "Tiếp khách VIP", "Kỷ niệm", "Gia đình"],
+  parkingDetail: "Valet Parking miễn phí tại sảnh chính",
+  ratings: { food: 4.8, service: 4.9, ambience: 4.7, value: 4.5 },
   faqs: [
     {
-      q: "Nhà hàng có ghế trẻ em không?",
-      a: "Có, chúng tôi trang bị sẵn ghế trẻ em.",
+      q: "Nhà hàng có yêu cầu đặt cọc không?",
+      a: "Với nhóm trên 6 người, chúng tôi yêu cầu đặt cọc 30% giá trị dự kiến.",
     },
     {
-      q: "Có thể mang rượu từ ngoài vào không?",
-      a: "Có, phí phục vụ (corkage fee) là 200k/chai.",
+      q: "Chính sách Corkage charge?",
+      a: "Phí phục vụ rượu mang vào là 500.000 VNĐ/chai (Rượu mạnh/Vang).",
     },
     {
-      q: "Nhà hàng có phòng riêng không?",
-      a: "Có, chúng tôi có 3 phòng VIP sức chứa 10-20 người.",
+      q: "Có phòng riêng (Private Room) không?",
+      a: "Có hệ thống phòng VIP cách âm, sức chứa 4-20 khách.",
     },
   ],
 };
@@ -55,285 +87,238 @@ const Icons = {
   card: <CreditCard size={18} />,
   delivery: <Truck size={18} />,
   takeaway: <ShoppingBag size={18} />,
-  check: <Check size={14} />,
 };
 
 const RestaurantInfo = ({ restaurant }) => {
-  // Merge dữ liệu thật và mock
   const fullData = { ...EXTENDED_INFO, ...restaurant };
+  const { status, text: statusText } = checkOpenStatus();
 
+  // Amenities Configuration
   const amenities = [
     {
       id: "wifi",
       icon: Icons.wifi,
-      label: "Wifi miễn phí",
+      label: "High-speed Wifi",
       available: fullData.amenities?.wifi,
     },
     {
       id: "parking",
       icon: Icons.parking,
-      label: "Đỗ xe",
+      label: "Valet Parking",
       available: fullData.amenities?.parking,
     },
     {
-      id: "aircon",
-      icon: Icons.aircon,
-      label: "Điều hòa",
-      available: fullData.amenities?.aircon,
-    },
+      id: "vip",
+      icon: <Star size={18} />,
+      label: "Phòng VIP",
+      available: true,
+    }, // Mock
     {
       id: "card",
       icon: Icons.card,
-      label: "Thẻ tín dụng",
+      label: "Thanh toán thẻ",
       available: fullData.amenities?.card,
-    },
-    {
-      id: "delivery",
-      icon: Icons.delivery,
-      label: "Giao hàng",
-      available: fullData.amenities?.delivery,
-    },
-    {
-      id: "takeaway",
-      icon: Icons.takeaway,
-      label: "Mang về",
-      available: fullData.amenities?.takeaway,
     },
   ];
 
   const workingHours = [
-    { day: "Thứ 2", hours: fullData.workingHours?.monday || "09:00 - 22:00" },
-    { day: "Thứ 3", hours: fullData.workingHours?.tuesday || "09:00 - 22:00" },
-    {
-      day: "Thứ 4",
-      hours: fullData.workingHours?.wednesday || "09:00 - 22:00",
-    },
-    { day: "Thứ 5", hours: fullData.workingHours?.thursday || "09:00 - 22:00" },
-    { day: "Thứ 6", hours: fullData.workingHours?.friday || "09:00 - 22:00" },
-    { day: "Thứ 7", hours: fullData.workingHours?.saturday || "09:00 - 23:00" },
-    {
-      day: "Chủ nhật",
-      hours: fullData.workingHours?.sunday || "09:00 - 23:00",
-    },
+    { day: "Thứ 2 - Thứ 6", hours: "09:00 - 22:00" },
+    { day: "Thứ 7 - Chủ Nhật", hours: "09:00 - 23:00", isWeekend: true },
   ];
 
   return (
-    <div className="restaurant-info">
-      {/* --- CỘT TRÁI: NỘI DUNG CHÍNH --- */}
-      <div className="info-main-col">
-        {/* 1. GIỚI THIỆU & TAGS */}
-        <section className="info-block intro-block">
-          <h3 className="block-title">📖 Câu chuyện thương hiệu</h3>
+    <div className="restaurant-info-premium">
+      {/* --- LEFT COLUMN: CONTENT EXPERIENCE --- */}
+      <div className="info-content">
+        {/* 1. BRAND STORY (Premium Typography) */}
+        <section className="section-block intro-premium">
+          <div className="section-header">
+            <span className="subtitle">Về chúng tôi</span>
+            <h3 className="title">Câu chuyện thương hiệu</h3>
+          </div>
           <p className="description">
             {fullData.about ||
-              "Nhà hàng mang đến trải nghiệm ẩm thực độc đáo, kết hợp tinh hoa truyền thống và phong cách hiện đại trong không gian sang trọng, ấm cúng."}
+              "Trải nghiệm ẩm thực không chỉ là món ăn, đó là nghệ thuật đánh thức mọi giác quan. Chúng tôi mang đến sự giao thoa tinh tế giữa bản sắc truyền thống và kỹ thuật hiện đại."}
           </p>
 
-          <div className="tags-wrapper">
-            <div className="tag-group">
-              <span className="label">Phù hợp:</span>
-              {fullData.suitableFor.map((tag, i) => (
-                <span key={i} className="tag-pill">
-                  {tag}
-                </span>
+          {fullData.chef && (
+            <div className="chef-signature">
+              <ChefHat size={24} className="icon" />
+              <span>
+                Bếp trưởng điều hành: <strong>{fullData.chef}</strong>
+              </span>
+            </div>
+          )}
+
+          <div className="tags-container">
+            {fullData.suitableFor.map((tag, i) => (
+              <span key={i} className="premium-tag">
+                {tag}
+              </span>
+            ))}
+          </div>
+        </section>
+
+        {/* 2. RATINGS & AMENITIES (Grid Layout) */}
+        <div className="dual-grid">
+          <section className="section-block rating-premium">
+            <h4 className="mini-title">Đánh giá chi tiết</h4>
+            <div className="rating-wrapper">
+              <RatingRow
+                icon={<Utensils />}
+                label="Hương vị"
+                score={fullData.ratings.food}
+              />
+              <RatingRow
+                icon={<Smile />}
+                label="Phục vụ"
+                score={fullData.ratings.service}
+              />
+              <RatingRow
+                icon={<Music />}
+                label="Không gian"
+                score={fullData.ratings.ambience}
+              />
+              <RatingRow
+                icon={<DollarSign />}
+                label="Giá trị"
+                score={fullData.ratings.value}
+              />
+            </div>
+          </section>
+
+          <section className="section-block amenities-premium">
+            <h4 className="mini-title">Tiện ích cao cấp</h4>
+            <div className="amenities-list">
+              {amenities.map((item) => (
+                <div
+                  key={item.id}
+                  className={`amenity-pill ${item.available ? "" : "disabled"}`}
+                >
+                  {item.icon} <span>{item.label}</span>
+                </div>
               ))}
             </div>
-            {fullData.highlights?.length > 0 && (
-              <div className="tag-group">
-                <span className="label">Nổi bật:</span>
-                {fullData.highlights.map((tag, i) => (
-                  <span key={i} className="tag-pill highlight">
-                    ✨ {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+          </section>
+        </div>
 
-        {/* 2. ĐÁNH GIÁ CHI TIẾT (RATING BREAKDOWN) - MỚI */}
-        <section className="info-block rating-block">
-          <h3 className="block-title">⭐ Điểm đánh giá</h3>
-          <div className="rating-grid">
-            <RatingBar
-              icon={<Utensils size={16} />}
-              label="Món ăn"
-              score={fullData.ratings.food}
-            />
-            <RatingBar
-              icon={<Smile size={16} />}
-              label="Phục vụ"
-              score={fullData.ratings.service}
-            />
-            <RatingBar
-              icon={<Music size={16} />}
-              label="Không gian"
-              score={fullData.ratings.ambience}
-            />
-            <RatingBar
-              icon={<DollarSign size={16} />}
-              label="Giá cả"
-              score={fullData.ratings.value}
-            />
-          </div>
-        </section>
-
-        {/* 3. TIỆN ÍCH */}
-        <section className="info-block amenities-block">
-          <h3 className="block-title">✅ Tiện ích & Dịch vụ</h3>
-          <div className="amenities-grid">
-            {amenities.map((item) => (
-              <div
-                key={item.id}
-                className={`amenity-item ${
-                  item.available ? "active" : "inactive"
-                }`}
-              >
-                <div className="icon-box">{item.icon}</div>
-                <span className="label">{item.label}</span>
-                {item.available && (
-                  <span className="check-icon">
-                    <Check size={14} />
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 4. FAQ (ACCORDION) - MỚI */}
-        <section className="info-block faq-block">
-          <h3 className="block-title">
-            <HelpCircle size={20} /> Câu hỏi thường gặp
-          </h3>
-          <div className="faq-list">
+        {/* 3. FAQ ACCORDION */}
+        <section className="section-block faq-premium">
+          <h4 className="mini-title">Thông tin hữu ích</h4>
+          <div className="faq-container">
             {fullData.faqs.map((faq, idx) => (
-              <FAQItem key={idx} question={faq.q} answer={faq.a} />
+              <FAQItem key={idx} q={faq.q} a={faq.a} />
             ))}
           </div>
         </section>
       </div>
 
-      {/* --- CỘT PHẢI: SIDEBAR THÔNG TIN --- */}
-      <div className="info-sidebar-col">
-        {/* 1. MAP & ADDRESS (Nâng cấp) */}
-        <section className="info-block map-block">
-          <div className="map-preview">
-            <div className="map-overlay">
-              <button
-                className="btn-direction"
-                onClick={() =>
-                  window.open(
-                    `https://maps.google.com/?q=${formatAddress(
-                      fullData.address
-                    )}`,
-                    "_blank"
-                  )
-                }
-              >
-                <ExternalLink size={16} /> Chỉ đường
-              </button>
+      {/* --- RIGHT COLUMN: STICKY SIDEBAR --- */}
+      <aside className="info-sidebar">
+        <div className="sidebar-sticky-content">
+          {/* MAP CARD */}
+          <div className="card map-card">
+            <div className="map-visual">
+              <div className="overlay">
+                <button
+                  className="btn-direction"
+                  onClick={() =>
+                    window.open(
+                      `http://maps.google.com/?q=${fullData.address}`,
+                      "_blank"
+                    )
+                  }
+                >
+                  <MapPin size={16} /> Chỉ đường
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="address-content">
-            <div className="addr-row">
-              <MapPin size={20} className="icon" />
-              <p>{formatAddress(fullData.address)}</p>
-            </div>
-            {fullData.parkingDetail && (
-              <div className="parking-note">
+            <div className="card-body">
+              <p className="address-text">{formatAddress(fullData.address)}</p>
+              <div className="parking-info">
                 <Info size={14} /> {fullData.parkingDetail}
               </div>
-            )}
+            </div>
           </div>
-        </section>
 
-        {/* 2. GIỜ HOẠT ĐỘNG */}
-        <section className="info-block hours-block">
-          <h3 className="sidebar-title">
-            <Clock size={18} /> Giờ mở cửa
-          </h3>
-          <div className="hours-list">
-            {workingHours.map((schedule, i) => (
-              <div
-                key={i}
-                className={`hour-item ${
-                  schedule.day === "Chủ nhật" ? "highlight" : ""
-                }`}
+          {/* HOURS CARD */}
+          <div className="card hours-card">
+            <div className="card-header">
+              <Clock size={18} />
+              <span>Giờ mở cửa</span>
+              <span className={`status-badge ${status}`}>{statusText}</span>
+            </div>
+            <div className="hours-list">
+              {workingHours.map((h, i) => (
+                <div
+                  key={i}
+                  className={`hour-row ${h.isWeekend ? "weekend" : ""}`}
+                >
+                  <span>{h.day}</span>
+                  <span className="time">{h.hours}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ACTION CARD */}
+          <div className="card action-card">
+            <div className="meta-row">
+              <span className="label">Trang phục:</span>
+              <span className="value">{fullData.dressCode}</span>
+            </div>
+            <div className="divider"></div>
+            <button className="btn-primary-action">
+              <Calendar size={18} /> Đặt bàn ngay
+            </button>
+            <div className="secondary-actions">
+              <a href={`tel:${fullData.phone}`} className="btn-icon">
+                <Phone size={18} />
+              </a>
+              <a
+                href={fullData.website}
+                target="_blank"
+                rel="noreferrer"
+                className="btn-icon"
               >
-                <span className="day">{schedule.day}</span>
-                <span className="time">{schedule.hours}</span>
-              </div>
-            ))}
+                <Globe size={18} />
+              </a>
+            </div>
           </div>
-        </section>
-
-        {/* 3. THÔNG TIN KHÁC (GOOD TO KNOW) - MỚI */}
-        <section className="info-block meta-block">
-          <h3 className="sidebar-title">
-            <Info size={18} /> Thông tin cần biết
-          </h3>
-          <ul className="meta-list">
-            <li>
-              <span className="meta-label">Trang phục:</span>
-              <span className="meta-value">{fullData.dressCode}</span>
-            </li>
-            <li>
-              <span className="meta-label">Thanh toán:</span>
-              <span className="meta-value payment-icons">
-                {fullData.paymentMethods.join(", ")}
-              </span>
-            </li>
-          </ul>
-
-          <div className="divider"></div>
-
-          <div className="contact-links">
-            <a href={`tel:${fullData.phone}`} className="c-link">
-              <Phone size={16} /> Gọi điện
-            </a>
-            <a
-              href={fullData.website}
-              target="_blank"
-              rel="noreferrer"
-              className="c-link"
-            >
-              <Globe size={16} /> Website
-            </a>
-          </div>
-        </section>
-      </div>
+        </div>
+      </aside>
     </div>
   );
 };
 
 // --- SUB COMPONENTS ---
-
-const RatingBar = ({ icon, label, score }) => (
-  <div className="rating-bar-item">
-    <div className="rb-header">
-      <span className="rb-icon">{icon}</span>
-      <span className="rb-label">{label}</span>
-      <span className="rb-score">{score}</span>
+const RatingRow = ({ icon, label, score }) => (
+  <div className="rating-row">
+    <div className="r-label">
+      {icon} <span>{label}</span>
     </div>
-    <div className="rb-track">
-      <div className="rb-fill" style={{ width: `${(score / 5) * 100}%` }}></div>
+    <div className="r-bar-container">
+      <div
+        className="r-bar-fill"
+        style={{ width: `${(score / 5) * 100}%` }}
+      ></div>
     </div>
+    <span className="r-score">{score}</span>
   </div>
 );
 
-const FAQItem = ({ question, answer }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const FAQItem = ({ q, a }) => {
+  const [open, setOpen] = useState(false);
   return (
     <div
-      className={`faq-item ${isOpen ? "open" : ""}`}
-      onClick={() => setIsOpen(!isOpen)}
+      className={`faq-item ${open ? "active" : ""}`}
+      onClick={() => setOpen(!open)}
     >
-      <div className="faq-question">
-        <span>{question}</span>
-        {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+      <div className="q-header">
+        <span>{q}</span>
+        {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </div>
-      <div className="faq-answer">{answer}</div>
+      <div className="a-body">{a}</div>
     </div>
   );
 };

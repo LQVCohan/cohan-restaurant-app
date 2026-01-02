@@ -1,113 +1,158 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+// Định nghĩa màu trực tiếp (Luxury Palette)
+$gold: #c5a47e;
+$gold-light: rgba(197, 164, 126, 0.1);
+$charcoal: #1a1a1a;
+$slate: #64748b;
+$success: #10b981;
+$danger: #ef4444;
+$card-bg: #ffffff;
 
 .stats-grid {
-  @include responsive-grid(220px);
-  margin-bottom: $spacing-lg !important;
+  display: grid;
+  // Responsive: Tự động chia cột, tối thiểu 240px/thẻ
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+  font-family: "Be Vietnam Pro", sans-serif; // Đồng bộ font
+
   .stat-card {
-    @include card-base; // từ mixins của bạn
+    background: $card-bg;
+    border-radius: 12px;
+    padding: 24px;
     position: relative;
+
+    // Viền vàng rất mờ để tạo cảm giác sang trọng
+    border: 1px solid rgba(197, 164, 126, 0.15);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: default;
     overflow: hidden;
-    border-radius: $border-radius;
-    background: $white;
-    border: 2px solid $border-color;
-    box-shadow: $shadow-base;
-    margin-bottom: 0 !important;
-    &::before {
-      content: "";
-      position: absolute;
-      inset: 0 auto auto 0;
-      width: 100%;
-      height: 4px;
-      background: linear-gradient(90deg, $primary-blue, $primary-blue-dark);
+
+    // Hiệu ứng Hover: Nhấc thẻ lên + Đậm viền
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 20px -3px rgba(197, 164, 126, 0.15);
+      border-color: rgba(197, 164, 126, 0.4);
+
+      // Xoay nhẹ icon khi hover
+      .stat-icon-box {
+        background: $gold;
+        color: white;
+        transform: rotate(-8deg);
+      }
     }
 
-    .stat-header {
+    .card-content-wrapper {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
+    }
 
-      .stat-icon {
+    // --- Phần nội dung (Text) ---
+    .stat-info {
+      display: flex;
+      flex-direction: column;
+
+      .stat-label {
+        font-size: 0.8125rem; // ~13px
+        color: $slate;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+      }
+
+      .stat-value {
+        // Font số hiển thị lớn và thẳng hàng
+        font-family: "Be Vietnam Pro", sans-serif;
+        font-variant-numeric: tabular-nums; // Quan trọng: Giúp số thẳng hàng
         font-size: 1.75rem;
-        line-height: 1;
-        opacity: 0.9;
+        font-weight: 700;
+        color: $charcoal;
+        margin: 0 0 10px 0;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
       }
 
       .stat-trend {
-        display: inline-flex;
+        display: flex;
         align-items: center;
-        gap: $spacing-xs;
-        font-size: 0.75rem;
-        font-weight: 700;
-        padding: $spacing-xs $spacing-sm;
-        border-radius: $radius-full;
-        background: #dcfce7; // up
-        color: #16a34a;
+        gap: 6px;
+        font-size: 0.8125rem;
+        font-weight: 500;
 
-        .trend-chip {
-          display: inline-grid;
-          place-items: center;
-          width: 18px;
-          height: 18px;
-          border-radius: $radius-sm;
-          background: $primary-blue;
-          color: $white;
-          font-size: 0.65rem;
+        .trend-val {
+          font-weight: 700;
         }
 
-        &.trend-down {
-          background: #fee2e2;
-          color: #dc2626;
+        .trend-text {
+          color: $slate;
+          font-weight: 400;
+          font-size: 0.75rem;
+        }
 
-          .trend-chip {
-            background: #ef4444;
+        &.positive {
+          color: $success;
+          // Style cho mũi tên tăng
+          svg {
+            stroke: $success;
+          }
+        }
+
+        &.negative {
+          color: $danger;
+          // Style cho mũi tên giảm
+          svg {
+            stroke: $danger;
           }
         }
       }
     }
 
-    .stat-number {
-      font-family: $font-family;
-      font-size: 2rem;
-      font-weight: 800;
-      color: $primary-blue;
-
-      text-decoration: none; // chống underline “₫”
-      letter-spacing: 0.2px;
-
-      .currency {
-        text-decoration: none; // chắc chắn không underline
-        margin-right: 2px;
-      }
-      .abbr {
-        font-weight: 700;
-        opacity: 0.95;
-      }
+    // --- Phần Icon (Góc phải) ---
+    .stat-icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: $gold-light; // Nền vàng nhạt
+      color: $gold; // Icon màu vàng
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      flex-shrink: 0;
     }
-
-    .stat-label {
-      font-size: 0.875rem;
-      color: $text-gray;
-      font-weight: 600;
-    }
-  }
-
-  @include mobile {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-// Animation
-@keyframes fadeIn {
+// Animation xuất hiện lần lượt (Stagger)
+.stats-grid > .stat-card {
+  animation: slideUpFade 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+// Delay cho từng thẻ để tạo hiệu ứng thác nước
+.stats-grid > .stat-card:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.stats-grid > .stat-card:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.stats-grid > .stat-card:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.stats-grid > .stat-card:nth-child(4) {
+  animation-delay: 0.2s;
+}
+
+@keyframes slideUpFade {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
-}
-.fade-in {
-  animation: fadeIn 0.3s ease-out;
 }

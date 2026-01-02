@@ -1,6 +1,6 @@
-// src/components/Customer/TableBooking/TableBooking.jsx
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { ChevronLeft, Info, Map as MapIcon, Layers } from "lucide-react"; // Dùng lucide-react cho đồng bộ
 
 import FloorMap from "./FloorMap/FloorMap";
 import FloorSelector from "./FloorSelector/FloorSelector";
@@ -9,24 +9,8 @@ import BookingModal from "../BookingTableModal/BookingModal";
 import QRPaymentModal from "../QRPaymentModal/QRPaymentModal";
 import SuccessModal from "../SuccessModal/SuccessModal";
 
-import useFloorManagement from "../../../hooks/useFloorManagement"; // chỉnh lại path nếu khác
+import useFloorManagement from "../../../hooks/useFloorManagement";
 import "./TableBooking.scss";
-
-// Icon Back
-const BackIcon = () => (
-  <svg
-    width="20"
-    height="20"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M19 12H5M12 19l-7-7 7-7" />
-  </svg>
-);
 
 const TableBooking = () => {
   const { id } = useParams();
@@ -39,7 +23,6 @@ const TableBooking = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [bookingData, setBookingData] = useState(null);
 
-  // 👉 Dùng hook mới
   const {
     floors,
     floorsLoading,
@@ -53,7 +36,12 @@ const TableBooking = () => {
     tableLimit: 200,
   });
 
-  const handleSelectTable = (table) => setSelectedTable(table);
+  const handleSelectTable = (table) => {
+    // Chỉ cho chọn bàn trống
+    if (table.status === "available") {
+      setSelectedTable(table);
+    }
+  };
 
   const handleBookingConfirmed = (reservation) => {
     setBookingData(reservation);
@@ -69,81 +57,103 @@ const TableBooking = () => {
 
   if (floorsLoading)
     return (
-      <div className="booking-loading">
-        <div className="spinner"></div>
-        <p>Đang tải sơ đồ...</p>
+      <div className="booking-loading-premium">
+        <div className="loader-logo"></div>
+        <p>Đang chuẩn bị không gian...</p>
       </div>
     );
 
   return (
-    <div className="table-booking-page">
-      {/* Header Section */}
-      <header className="booking-header">
-        <div className="header-container">
-          <button className="btn-back" onClick={() => navigate(-1)}>
-            <BackIcon /> Quay lại
+    <div className="table-booking-premium">
+      {/* Header Premium */}
+      <header className="premium-header">
+        <div className="header-inner">
+          <button className="btn-back-link" onClick={() => navigate(-1)}>
+            <ChevronLeft size={20} /> Quay lại
           </button>
-          <div className="header-content">
-            <h1 className="page-title">Chọn vị trí ngồi</h1>
-            <p className="page-subtitle">
-              Vui lòng chọn tầng và bàn phù hợp với bạn
-            </p>
+          <div className="header-center">
+            <span className="sub-heading">Đặt bàn trực tuyến</span>
+            <h1 className="main-heading">Sơ đồ chỗ ngồi</h1>
           </div>
-          <div className="header-spacer"></div>
+          <div className="header-actions">
+            <button className="btn-help">
+              <Info size={20} />
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="booking-container">
-        {/* LEFT COLUMN */}
-        <div className="booking-main-area">
-          {/* Floor Selector (Tabs Style) */}
-          <div className="floor-tabs-wrapper">
-            <FloorSelector
-              floors={floors}
-              selectedFloor={activeFloorData}
-              onSelect={(floor) => setActiveLevel(floor.level)}
-            />
+      <div className="booking-layout-grid">
+        {/* LEFT COLUMN: Main Interaction Area */}
+        <main className="main-visual-area">
+          {/* Floor Selector Bar */}
+          <div className="floor-control-bar">
+            <div className="bar-label">
+              <Layers size={18} /> Chọn tầng:
+            </div>
+            <div className="floor-scroll-container">
+              <FloorSelector
+                floors={floors}
+                selectedFloor={activeFloorData}
+                onSelect={(floor) => setActiveLevel(floor.level)}
+              />
+            </div>
           </div>
 
-          {/* Map Area */}
-          <div className="map-viewport">
+          {/* Map Viewport */}
+          <div className="map-viewport-frame">
             {tablesLoading ? (
-              <div className="map-loading">Đang tải bàn...</div>
+              <div className="map-state-msg">Đang tải dữ liệu bàn...</div>
             ) : (
               <>
+                <div className="floor-name-watermark">
+                  {activeFloorData?.name}
+                </div>
                 <FloorMap
                   tables={tables}
                   selectedTable={selectedTable}
                   onSelectTable={handleSelectTable}
-                  layout={activeFloorData?.layout || []} // 👈 layout từ DB
-                  meta={activeFloorData?.meta || null} // nếu cần
+                  layout={activeFloorData?.layout || []}
+                  // Truyền prop để map render style đẹp hơn
+                  theme="premium"
                 />
 
-                {/* Legend (Chú thích) nằm góc bản đồ */}
-                <div className="map-legend">
-                  <div className="legend-item">
+                {/* Legend Floating Pill */}
+                <div className="legend-pill">
+                  <div className="l-item">
                     <span className="dot available"></span> Trống
                   </div>
-                  <div className="legend-item">
+                  <div className="l-item">
                     <span className="dot selected"></span> Đang chọn
                   </div>
-                  <div className="legend-item">
+                  <div className="l-item">
                     <span className="dot occupied"></span> Đã đặt
                   </div>
                 </div>
               </>
             )}
           </div>
-        </div>
+        </main>
 
-        {/* RIGHT COLUMN: Sidebar Summary */}
-        <aside className="booking-sidebar">
-          <BookingSummary
-            selectedTable={selectedTable}
-            selectedFloorName={activeFloorData?.name}
-            onConfirm={() => selectedTable && setShowBookingModal(true)}
-            onCancel={() => setSelectedTable(null)}
-          />
+        {/* RIGHT COLUMN: Sidebar Summary Card */}
+        <aside className="sidebar-summary-area">
+          <div className="summary-sticky-wrapper">
+            <div className="summary-card-premium">
+              <div className="card-header">
+                <h3>Thông tin đặt bàn</h3>
+              </div>
+              <div className="card-body-wrapper">
+                <BookingSummary
+                  selectedTable={selectedTable}
+                  selectedFloorName={activeFloorData?.name}
+                  // Chúng ta sẽ ẩn nút mặc định của component con và dùng nút custom ở dưới nếu cần,
+                  // hoặc style lại nút của component con qua CSS
+                  onConfirm={() => selectedTable && setShowBookingModal(true)}
+                  onCancel={() => setSelectedTable(null)}
+                />
+              </div>
+            </div>
+          </div>
         </aside>
       </div>
 

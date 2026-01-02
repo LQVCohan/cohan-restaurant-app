@@ -1,72 +1,148 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+/* src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.scss */
 
-/* Khung chứa tabs – cho nó giống 1 card riêng */
-.tabs-card {
-  margin-top: 8px;
-  margin-bottom: 16px;
-  padding: 8px 12px;
-  background: #ffffff;
-  border-radius: 18px;
+// Variables đồng bộ
+$gold: #c5a47e;
+$charcoal: #1e293b;
+$white: #ffffff;
+$slate-100: #f1f5f9; // Màu nền hover
+$slate-400: #94a3b8; // Màu text inactive
+$border-color: #e2e8f0;
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+.sm-tabs-container {
+  display: inline-flex;
+  background: $white;
+  padding: 6px;
+  border-radius: 12px;
   border: 1px solid $border-color;
-  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.04);
-}
+  box-shadow: $shadow-sm;
+  gap: 6px;
 
-/* Dải pill bên trong card */
-.tabs {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 999px;
-  background: #f3f4f6; // xám rất nhạt
-  border-bottom: none;
+  // Đảm bảo không bị tràn layout cha
+  max-width: 100%;
   overflow-x: auto;
 
-  @include mobile {
-    flex-wrap: wrap;
+  // Ẩn thanh cuộn nhưng vẫn cuộn được
+  scrollbar-width: none; // Firefox
+  &::-webkit-scrollbar {
+    display: none;
+  } // Chrome/Safari
+}
+
+.sm-tab-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+
+  // Typography
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: $slate-400;
+
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+
+  .tab-icon {
+    display: flex;
+    align-items: center;
+    opacity: 0.7;
+    transition: transform 0.2s ease;
+
+    // Resize icon từ Lucide cho vừa mắt
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  /* --- Hover State (Inactive) --- */
+  &:hover:not(.active) {
+    background-color: $slate-100;
+    color: darken($slate-400, 20%);
+
+    .tab-icon {
+      transform: scale(1.1);
+      opacity: 1;
+    }
+  }
+
+  /* --- Active State (Gold & Charcoal) --- */
+  &.active {
+    background-color: $charcoal;
+    color: $gold;
+    box-shadow: 0 4px 12px rgba(30, 41, 59, 0.25); // Bóng đổ nhẹ màu tối
+
+    .tab-icon {
+      opacity: 1;
+      color: $gold;
+    }
+
+    .active-dot {
+      position: absolute;
+      bottom: 4px;
+      width: 4px;
+      height: 4px;
+      background-color: $gold;
+      border-radius: 50%;
+      animation: fadeIn 0.3s ease-out;
+    }
+  }
+
+  /* --- Focus for Accessibility --- */
+  &:focus-visible {
+    outline: 2px solid $gold;
+    outline-offset: 2px;
   }
 }
 
-/* Mỗi tab là 1 chip, chia đều ngang */
-.tab {
-  flex: 1 1 0;
-  text-align: center;
-  padding: 0.6rem $spacing-md;
-  border-radius: 999px;
-  background: transparent;
-  border: 1px solid transparent;
-  cursor: pointer;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
-  font-weight: 600;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  color: #6b7280; // gray-500
-
-  transition: background-color 0.15s ease, color 0.15s ease,
-    border-color 0.15s ease, box-shadow 0.15s ease, transform 0.08s ease;
-
-  /* Tab đang chọn – nổi hẳn lên khỏi dải xám */
-  &.active {
-    background: #ffffff;
-    color: $primary;
-    border-color: rgba($primary, 0.35);
-    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
-    transform: none;
+/* --- Responsive Mobile --- */
+@media (max-width: 768px) {
+  .sm-tabs-container {
+    display: flex; // Cho phép flex item co giãn
+    width: 100%;
+    padding: 4px;
+    border-radius: 0; // Trên mobile có thể bỏ bo góc container nếu muốn full-width
+    border-left: none;
+    border-right: none;
+    background: transparent;
+    box-shadow: none;
+    gap: 8px;
   }
 
-  /* Hover tab thường – chỉ đổi nhẹ */
-  &:hover:not(.active) {
-    background: rgba($primary, 0.04);
-    color: $primary;
-  }
+  .sm-tab-item {
+    flex: 0 0 auto; // Không co nhỏ, giữ nguyên kích thước nội dung
+    padding: 8px 16px;
+    background: $white;
+    border: 1px solid transparent;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 
-  &:active:not(.active) {
-    transform: translateY(1px);
-  }
+    // Trên mobile, tab inactive có nền trắng để nổi trên nền xám body
+    &:not(.active) {
+      border-color: rgba(0, 0, 0, 0.05);
+    }
 
-  @include mobile {
-    flex: 1 1 50%;
-    font-size: 0.8rem;
-    padding: 0.5rem 0.4rem;
+    &.active {
+      background: $charcoal;
+      border-color: $charcoal;
+    }
   }
 }

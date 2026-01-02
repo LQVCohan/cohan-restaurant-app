@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useIngredients } from "./useIngredients";
+import { useIngredients } from "./useIngredients.js";
 import { useRecipes } from "./useRecipes";
 
 export const useAllocation = () => {

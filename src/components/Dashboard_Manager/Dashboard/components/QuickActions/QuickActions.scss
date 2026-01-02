@@ -1,37 +1,435 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
-.quick-actions-card {
-  @include card-base;
-  margin-bottom: $spacing-lg;
+// ==========================================
+// 1. VARIABLES & SETUP
+// ==========================================
+$gold: #c5a47e;
+$gold-dim: rgba(197, 164, 126, 0.15);
+$charcoal: #1a1a1a;
+$slate: #64748b;
+$light-gray: #e2e8f0;
+$white: #ffffff;
+$bg-input: #faf9f6; // Màu kem rất nhạt cho input
 
-  .quick-actions-header {
-    margin-bottom: 1rem;
+// Mixin để căn giữa
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-    .quick-actions-title {
+// ==========================================
+// 2. MAIN CONTAINER
+// ==========================================
+.quick-actions-wrapper {
+  width: 100%;
+  margin-bottom: 24px;
+  font-family: "Be Vietnam Pro", sans-serif;
+
+  // --- Header Section ---
+  .actions-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid $gold-dim;
+
+    .actions-title {
+      font-family: "Be Vietnam Pro", sans-serif;
       font-size: 1.125rem;
+      font-weight: 700;
+      color: $charcoal;
+      margin: 0;
+    }
+
+    .subtitle {
+      font-size: 0.75rem;
+      color: $slate;
+      text-transform: uppercase;
       font-weight: 600;
-      color: $text-primary;
+      letter-spacing: 0.5px;
+      padding-left: 12px;
+      border-left: 1px solid $gold;
+      height: 16px;
+      display: flex;
+      align-items: center;
     }
   }
 
-  .quick-actions-grid {
-    @include responsive-grid(200px);
-    gap: 1rem;
+  // ==========================================
+  // 3. GRID & TILES
+  // ==========================================
+  .actions-grid {
+    display: grid;
+    // Tự động chia cột, tối thiểu 160px
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
 
-    .btn {
-      &.btn-primary {
-        @include button-primary;
+    // --- Common Tile Style ---
+    .action-tile {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      height: 110px;
+      padding: 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      text-align: left;
+      font-family: "Be Vietnam Pro", sans-serif;
+
+      // Nội dung bên trong tile
+      .tile-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        height: 100%;
+
+        .icon-wrapper {
+          width: fit-content;
+          transition: transform 0.3s ease;
+        }
+
+        .tile-label {
+          font-size: 0.9375rem;
+          font-weight: 600;
+          margin-top: auto;
+          line-height: 1.3;
+          transition: color 0.2s;
+        }
       }
 
-      &.btn-secondary {
-        @include button-secondary;
+      // --- Variant 1: Secondary (Nút thường - Trắng) ---
+      &.secondary {
+        background: $white;
+        border: 1px solid rgba($gold, 0.3); // Viền vàng mờ
+        color: $charcoal;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+
+        .icon-wrapper {
+          color: $gold;
+          background: rgba($gold, 0.1);
+          padding: 8px;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          @include flex-center;
+        }
+
+        .hover-indicator {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          opacity: 0;
+          transform: translateX(-10px);
+          transition: all 0.3s;
+          color: $gold;
+        }
+
+        &:hover {
+          background: $white;
+          border-color: $gold;
+          transform: translateY(-4px);
+          box-shadow: 0 8px 20px -5px rgba($gold, 0.25);
+
+          .icon-wrapper {
+            transform: scale(1.1);
+          }
+          .tile-label {
+            color: $gold;
+            font-weight: 700;
+          }
+          .hover-indicator {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+      }
+
+      // --- Variant 2: Primary (Nút chính - Đen) ---
+      &.primary {
+        background: $charcoal;
+        color: $white;
+        border: 1px solid $charcoal;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+
+        .icon-wrapper {
+          color: $gold;
+        }
+        .tile-label {
+          color: $gold;
+          font-weight: 700;
+        }
+
+        &:hover {
+          background: lighten($charcoal, 5%);
+          transform: translateY(-4px);
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+
+          .icon-wrapper {
+            transform: rotate(90deg); // Xoay icon cộng
+          }
+        }
+      }
+
+      // --- Variant 3: Add New (Nút thêm mới - Nét đứt) ---
+      &.add-new-tile {
+        border: 1px dashed rgba($slate, 0.4);
+        background: transparent;
+        box-shadow: none;
+
+        .icon-wrapper {
+          background: transparent;
+          border: 1px dashed rgba($slate, 0.4);
+          color: $slate;
+          padding: 8px;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          @include flex-center;
+        }
+
+        .tile-label {
+          color: $slate;
+          font-weight: 500;
+        }
+
+        &:hover {
+          border-color: $gold;
+          background: rgba($gold, 0.05);
+          transform: translateY(-2px);
+
+          .icon-wrapper {
+            color: $gold;
+            border-color: $gold;
+            transform: rotate(90deg);
+          }
+          .tile-label {
+            color: $gold;
+          }
+        }
       }
     }
   }
 
-  @include mobile {
-    .quick-actions-grid {
-      grid-template-columns: repeat(2, 1fr);
+  // ==========================================
+  // 4. MODAL & FORM (Luxury Style)
+  // ==========================================
+  .qa-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6); // Nền tối đậm hơn chút
+    backdrop-filter: blur(4px); // Hiệu ứng mờ nền sau
+    z-index: 1000;
+    @include flex-center;
+
+    .qa-modal-content {
+      background: $white;
+      width: 420px;
+      max-width: 90%;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      border: 1px solid $gold; // Viền vàng đặc trưng
+
+      // Header Modal
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+
+        h4 {
+          margin: 0;
+          font-family: "Be Vietnam Pro", sans-serif;
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: $charcoal;
+        }
+
+        .close-btn {
+          background: transparent;
+          border: none;
+          color: $slate;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 4px;
+          transition: all 0.2s;
+
+          &:hover {
+            color: $charcoal;
+            background: rgba(0, 0, 0, 0.05);
+          }
+        }
+      }
+
+      // Form Elements
+      .form-group {
+        margin-bottom: 20px;
+
+        label {
+          display: block;
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: $charcoal;
+          margin-bottom: 8px;
+        }
+
+        .hint-text {
+          display: block;
+          margin-top: 6px;
+          font-size: 0.75rem;
+          color: $slate;
+          font-style: italic;
+        }
+
+        // Custom Dropdown & Input styling
+        input,
+        select {
+          width: 100%;
+          padding: 12px 16px;
+          border: 1px solid $light-gray;
+          border-radius: 8px;
+          font-family: inherit;
+          font-size: 0.95rem;
+          color: $charcoal;
+          background-color: $bg-input;
+          transition: all 0.2s;
+          appearance: none; // Tắt style mặc định của trình duyệt
+
+          &:focus {
+            outline: none;
+            border-color: $gold;
+            background-color: $white;
+            box-shadow: 0 0 0 3px rgba($gold, 0.15);
+          }
+
+          &::placeholder {
+            color: rgba($slate, 0.6);
+          }
+        }
+
+        // Wrapper để thêm mũi tên cho Select
+        .select-wrapper {
+          position: relative;
+
+          &::after {
+            content: "▼"; // Mũi tên custom
+            font-size: 0.65rem;
+            color: $gold;
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+          }
+
+          select {
+            cursor: pointer;
+            padding-right: 36px; // Tránh chữ đè lên mũi tên
+          }
+        }
+      }
+
+      // Action Buttons
+      .modal-actions {
+        display: flex;
+        gap: 16px;
+        margin-top: 32px;
+
+        button {
+          flex: 1;
+          padding: 12px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          border: none;
+          font-size: 0.95rem;
+          transition: all 0.2s;
+        }
+
+        .btn-cancel {
+          background: #f1f5f9;
+          color: $slate;
+          &:hover {
+            background: #e2e8f0;
+            color: $charcoal;
+          }
+        }
+
+        .btn-submit {
+          background: $charcoal;
+          color: $gold;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          &:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+          }
+        }
+      }
+    }
+  }
+
+  // ==========================================
+  // 5. ANIMATIONS & MEDIA QUERIES
+  // ==========================================
+
+  // Animation xuất hiện từ dưới lên
+  .fade-in-up {
+    animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  // Animation xuất hiện mờ dần
+  .fade-in {
+    animation: fadeIn 0.6s ease-out;
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  // Mobile Responsive
+  @media (max-width: 600px) {
+    .actions-grid {
+      grid-template-columns: repeat(2, 1fr); // Luôn là 2 cột trên mobile
+
+      .action-tile {
+        height: 100px;
+        padding: 12px;
+
+        .tile-label {
+          font-size: 0.85rem;
+        }
+
+        // Trên mobile, ẩn mũi tên hover đi cho đỡ rối
+        .hover-indicator {
+          display: none;
+        }
+      }
+    }
+
+    .qa-modal-content {
+      padding: 24px;
+      width: 95%;
     }
   }
 }

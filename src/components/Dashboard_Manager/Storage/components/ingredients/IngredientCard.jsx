@@ -1,5 +1,5 @@
 // src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCard.jsx
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Card from "../../../../common/Card";
 import Button from "../../../../common/Button";
 import Modal, { ModalFooter } from "../../../../common/Modal";
@@ -8,51 +8,48 @@ import "./IngredientCard.scss";
 
 const IngredientCard = ({
   ingredient,
+  stockQty = 0, // ✅ tồn từ stockItems (đã filter theo warehouseId ở query cha)
   onEdit,
   onDelete,
   onAddStock,
   onShowUsage,
   getStockStatus,
-  onUpdateCostPrice, // optional: callback lưu giá nhập
-}) => {
-  // Tính tồn khả dụng: onHand - reserved
-  const currentStock = ingredient.onHand - ingredient.reserved;
-  const status = getStockStatus(ingredient);
 
-  // ==== state cho modal giá nhập ====
+  // ✅ callback chuẩn: cập nhật costPerBaseUnit
+  onUpdateCostPerBaseUnit,
+}) => {
+  const baseUnit = ingredient.baseUnit || ingredient.unit || "";
+  const statusObj = getStockStatus ? getStockStatus(ingredient) : null;
+
+  const status = useMemo(() => {
+    if (statusObj?.text) return statusObj;
+    // fallback nếu truyền sai
+    return { text: "—", class: "status--in" };
+  }, [statusObj]);
+
+  // ====== Modal giá nhập ======
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
-  const [priceInput, setPriceInput] = useState(ingredient?.costPrice ?? "");
-  const [unitInput, setUnitInput] = useState(ingredient?.unit ?? "");
-  const [currency, setCurrency] = useState("vnd"); // mặc định VND
+  const [priceInput, setPriceInput] = useState(
+    ingredient?.costPerBaseUnit ?? ""
+  );
 
   const openPriceModal = (e) => {
     e?.stopPropagation();
-    setPriceInput(ingredient?.costPrice ?? "");
-    setUnitInput(ingredient?.unit ?? "");
-    setCurrency("vnd");
+    setPriceInput(ingredient?.costPerBaseUnit ?? "");
     setIsPriceModalOpen(true);
   };
 
-  const handleSavePrice = () => {
-    const numericPrice = parseFloat(priceInput);
-    if (!Number.isFinite(numericPrice) || numericPrice < 0) {
-      return;
-    }
+  const handleSavePrice = async () => {
+    const numericPrice = Number(priceInput);
+    if (!Number.isFinite(numericPrice) || numericPrice < 0) return;
 
-    // Ưu tiên callback chuyên cho giá nhập, fallback qua onEdit nếu chưa truyền
-    if (onUpdateCostPrice) {
-      onUpdateCostPrice(ingredient.id, {
-        costPrice: numericPrice,
-        unit: unitInput || ingredient.unit,
-        currency,
+    if (onUpdateCostPerBaseUnit) {
+      await onUpdateCostPerBaseUnit(ingredient.id, {
+        costPerBaseUnit: numericPrice,
       });
     } else if (onEdit) {
-      onEdit({
-        ...ingredient,
-        costPrice: numericPrice,
-        unit: unitInput || ingredient.unit,
-        currency,
-      });
+      // fallback: mở edit với dữ liệu đã đổi (nếu bạn muốn xử lý trong modal edit chính)
+      onEdit({ ...ingredient, costPerBaseUnit: numericPrice });
     }
 
     setIsPriceModalOpen(false);
@@ -63,7 +60,7 @@ const IngredientCard = ({
       <Card
         className="ingredient-card"
         hover
-        onClick={() => onShowUsage(ingredient.id)}
+        onClick={() => onShowUsage?.(ingredient.id)}
       >
         <div className="ingredient-header">
           <div className="ingredient-icon">{ingredient.icon}</div>
@@ -77,19 +74,18 @@ const IngredientCard = ({
         <div className="ingredient-content">
           <div className="ingredient-stats">
             <div className="stat-item">
-              <div className="stat-value">{currentStock}</div>
-              <div className="stat-label">Tồn khả dụng ({ingredient.unit})</div>
+              <div className="stat-value">{stockQty}</div>
+              <div className="stat-label">Tồn ({baseUnit})</div>
             </div>
 
-            {/* Ô giá nhập – click để mở modal */}
             <div
               className="stat-item stat-item--clickable"
               onClick={openPriceModal}
             >
               <div className="stat-value">
-                {formatPrice(ingredient.costPrice)}
+                {formatPrice(ingredient.costPerBaseUnit)}
               </div>
-              <div className="stat-label">Giá nhập/{ingredient.unit}</div>
+              <div className="stat-label">Giá nhập/{baseUnit}</div>
             </div>
           </div>
 
@@ -100,40 +96,43 @@ const IngredientCard = ({
               className="ingredient-btn ingredient-btn--edit"
               onClick={(e) => {
                 e.stopPropagation();
-                onEdit(ingredient);
+                onEdit?.(ingredient);
               }}
             >
               ✏️ Sửa
             </Button>
+
             <Button
               variant="success"
               size="sm"
               className="ingredient-btn ingredient-btn--stock"
               onClick={(e) => {
                 e.stopPropagation();
-                onAddStock(ingredient.id);
+                onAddStock?.(ingredient.id);
               }}
             >
               📦 Nhập kho
             </Button>
+
             <Button
               variant="secondary"
               size="sm"
               className="ingredient-btn ingredient-btn--usage"
               onClick={(e) => {
                 e.stopPropagation();
-                onShowUsage(ingredient.id);
+                onShowUsage?.(ingredient.id);
               }}
             >
               👁️ Xem món ăn
             </Button>
+
             <Button
               variant="danger"
               size="sm"
               className="ingredient-btn ingredient-btn--delete"
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete(ingredient.id);
+                onDelete?.(ingredient.id);
               }}
             >
               🗑️ Xóa
@@ -142,7 +141,6 @@ const IngredientCard = ({
         </div>
       </Card>
 
-      {/* Modal cập nhật giá nhập */}
       <Modal
         isOpen={isPriceModalOpen}
         onClose={() => setIsPriceModalOpen(false)}
@@ -151,37 +149,18 @@ const IngredientCard = ({
       >
         <div className="ingredient-price-modal">
           <div className="form-row">
-            <label>Giá nhập</label>
-            <div className="price-input-group">
-              <input
-                type="number"
-                min="0"
-                value={priceInput}
-                onChange={(e) => setPriceInput(e.target.value)}
-                placeholder="Nhập giá"
-              />
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-              >
-                <option value="vnd">VND</option>
-                <option value="usd">USD</option>
-                <option value="eur">EUR</option>
-              </select>
-            </div>
-            <p className="helper-text">
-              Đơn giá áp dụng cho mỗi đơn vị bên dưới.
-            </p>
-          </div>
-
-          <div className="form-row">
-            <label>Đơn vị</label>
+            <label>Giá nhập / {baseUnit}</label>
             <input
-              type="text"
-              value={unitInput}
-              onChange={(e) => setUnitInput(e.target.value)}
-              placeholder={ingredient.unit || "vd: kg, ml, g…"}
+              type="number"
+              min="0"
+              step="0.01"
+              value={priceInput}
+              onChange={(e) => setPriceInput(e.target.value)}
+              placeholder="Nhập giá"
             />
+            <p className="helper-text">
+              Giá này là <b>costPerBaseUnit</b> theo đơn vị gốc.
+            </p>
           </div>
 
           <ModalFooter>

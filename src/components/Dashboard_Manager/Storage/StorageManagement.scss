@@ -1,106 +1,189 @@
 // src/components/Dashboard_Manager/Storage/StorageManagement.scss
 
+/* --- Theme Variables --- */
+$gold: #c5a47e;
+$gold-light: #fdf8f3;
+$charcoal: #1e293b;
+$charcoal-light: #334155;
+$bg-body: #f8fafc;
+$white: #ffffff;
+$border-color: #e2e8f0;
+$text-main: #0f172a;
+$text-sub: #64748b;
+
+/* --- Main Page Styles --- */
 .storage-management {
-  background-color: #f3f4f6; // nền xám nhạt cho cả page
+  background-color: $bg-body;
   min-height: 100vh;
+  font-family: "Inter", sans-serif;
+  color: $text-main;
+  padding-bottom: 40px;
 
-  .container {
-    max-width: 1200px;
+  /* Container */
+  .sm-container {
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 24px 16px 32px;
-  }
-
-  .header {
-    margin-bottom: 16px;
-  }
-
-  .alert-system {
-    margin-bottom: 16px;
-  }
-
-  .main-content {
+    padding: 24px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 24px;
   }
 
-  /* Thanh tab trên cùng */
-  .tabs {
+  .sm-header-section {
+    margin-bottom: 8px;
+  }
+
+  /* Main Content Wrapper */
+  .sm-main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  /* --- TOOLBAR LAYOUT (Tabs & Status) --- */
+  .sm-toolbar-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; // Đẩy 2 bên ra xa nhau
+    flex-wrap: wrap; // Cho phép rớt dòng trên mobile
+    gap: 16px;
+    margin-bottom: 4px;
+  }
+
+  // Khu vực chứa Tabs (Left)
+  .toolbar-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  // Khu vực chứa WarehouseStatus (Right)
+  .toolbar-right {
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+  }
+
+  /* --- Tab Content Area --- */
+  .sm-tab-content-wrapper {
+    background-color: $white;
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid $border-color;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+
+    > * {
+      flex: 1;
+    }
+  }
+
+  /* --- Utilities & States --- */
+  .sm-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    color: $gold;
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba($gold, 0.3);
+      border-radius: 50%;
+      border-top-color: $gold;
+      animation: spin 1s ease-in-out infinite;
+      margin-bottom: 16px;
+    }
+  }
+
+  .sm-error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 80vh;
+    color: #ef4444;
+    text-align: center;
+    h3 {
+      margin: 16px 0 8px;
+      color: $charcoal;
+    }
+  }
+
+  .sm-error-toast {
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: #fef2f2;
+    border: 1px solid #fee2e2;
+    color: #b91c1c;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 8px;
-    border-radius: 999px;
-    background-color: #e5e7eb;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
+    font-size: 0.9rem;
   }
 
-  .tab-button {
-    flex: 1 1 0; // 👉 mỗi tab chiếm đều
-    position: relative;
-    display: inline-flex;
+  .sm-dev-placeholder {
+    display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px; // emoji + text
-    padding: 10px 16px;
-    border-radius: 999px;
-    border: 1px solid transparent;
-    background: transparent;
-    cursor: pointer;
-    font-weight: 500;
-    font-size: 14px;
-    white-space: nowrap;
-    color: #4b5563;
-    transition: background-color 0.15s ease, color 0.15s ease,
-      box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
-
-    /* hover tab thường */
-    &:hover:not(.active) {
-      background-color: #f3f4f6;
-      color: #111827;
-    }
-
-    &:active:not(.active) {
-      transform: translateY(1px);
-    }
-
-    &:focus-visible {
-      outline: 2px solid #2563eb;
-      outline-offset: 2px;
-      box-shadow: none;
-    }
-
-    /* Tab đang được chọn – đổi màu nhẹ, không còn line xanh dưới */
-    &.active {
-      background-color: #eef2ff; // tím nhạt dịu
-      color: #3730a3; // tím đậm
-      border-color: rgba(129, 140, 248, 0.8);
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
-      transform: none;
-    }
-
-    &.active:hover {
-      background-color: #e0e7ff;
-      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.16);
-    }
+    height: 100%;
+    color: $text-sub;
+    font-style: italic;
+    background: $bg-body;
+    border-radius: 8px;
+    border: 1px dashed $border-color;
+    min-height: 300px;
   }
+}
 
-  /* Vùng nội dung chính của tab – hiển thị component */
-  .tab-content {
-    margin-top: 8px;
-    background-color: #ffffff;
-    border-radius: 12px;
-    padding: 16px 20px;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);
-    min-height: 360px;
-    display: flex;
-    flex-direction: column;
+/* Animations */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
-  .tab-content > * {
-    flex: 1;
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Responsive Mobile */
+@media (max-width: 768px) {
+  .sm-toolbar-wrapper {
+    flex-direction: column-reverse; // Status lên trên, Tabs xuống dưới
+    align-items: stretch;
+    gap: 12px;
+  }
+  .toolbar-right {
+    justify-content: flex-start;
   }
 }

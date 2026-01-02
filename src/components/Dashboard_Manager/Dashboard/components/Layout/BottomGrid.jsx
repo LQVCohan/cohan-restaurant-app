@@ -5,9 +5,13 @@ import "./BottomGrid.scss";
 
 const BottomGrid = () => {
   return (
-    <div className="bottom-grid">
-      <RecentOrders />
-      <TopDishes />
+    <div className="bottom-grid fade-in-up">
+      <div className="grid-item orders-section">
+        <RecentOrders />
+      </div>
+      <div className="grid-item dishes-section">
+        <TopDishes />
+      </div>
     </div>
   );
 };

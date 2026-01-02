@@ -1,11 +1,9 @@
-// src/components/Customer/TableBooking/FloorMap/FloorMap.jsx
 import React, { useState, useContext, useRef } from "react";
 import { AuthContext } from "../../../../context/AuthContext";
 import NotifyModal from "../../NotifyModal/NotifyModal";
 import { useNotification } from "../../../../hooks/useNotification";
+import { Plus, Minus, RotateCcw, Info, X } from "lucide-react"; // Import Icons
 import "./FloorMap.scss";
-
-// Mock decor cũ – dùng khi chưa có layout thật
 
 const FloorMap = ({
   tables,
@@ -13,18 +11,17 @@ const FloorMap = ({
   selectedTable,
   layout = [],
   meta = null,
+  theme = "premium", // Prop mới để kích hoạt style premium
 }) => {
-  const [isLegendOpen, setIsLegendOpen] = useState(true);
+  const [isLegendOpen, setIsLegendOpen] = useState(false); // Mặc định đóng cho gọn
   const { user } = useContext(AuthContext) || {};
   const [notifyTable, setNotifyTable] = useState(null);
   const { showNotification } = useNotification();
   const hasLayout = layout && layout.length > 0;
-  const hasTables = tables && tables.length > 0;
 
   // --- PAN & ZOOM ---
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const [cursorState, setCursorState] = useState("grab");
-
   const isPanning = useRef(false);
   const startPos = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
@@ -45,11 +42,9 @@ const FloorMap = ({
     e.preventDefault();
     const newX = e.clientX - startPos.current.x;
     const newY = e.clientY - startPos.current.y;
-
     if (Math.abs(newX - transform.x) > 5 || Math.abs(newY - transform.y) > 5) {
       hasMoved.current = true;
     }
-
     setTransform((prev) => ({ ...prev, x: newX, y: newY }));
   };
 
@@ -64,7 +59,6 @@ const FloorMap = ({
   const handleTableClick = (e, table) => {
     e.stopPropagation();
     if (hasMoved.current) return;
-
     if (table.status === "available") {
       onSelectTable(table);
     } else {
@@ -86,20 +80,7 @@ const FloorMap = ({
     setNotifyTable(null);
   };
 
-  // render decor mock (fallback)
-  const renderMockDecorItem = (item, index) => (
-    <div
-      key={index}
-      className={`decor-item decor-${item.type}`}
-      style={item.style}
-    >
-      {item.label && <span className="decor-label">{item.label}</span>}
-      {item.type === "plant" && <div className="plant-leaves"></div>}
-      {item.type === "bar" && <div className="bar-stools"></div>}
-    </div>
-  );
-
-  // render layout item từ DB
+  // Render các element kiến trúc (Tường, Cửa, Decor)
   const renderLayoutItem = (item) => (
     <div
       key={item.id}
@@ -112,16 +93,19 @@ const FloorMap = ({
         transform: `rotate(${item.rotation || 0}deg)`,
       }}
     >
-      {item.label &&
-        !item.type.includes("table") &&
-        !["wall", "half-wall", "window"].includes(item.type) && (
-          <span className="layout-label">{item.label}</span>
-        )}
+      {/* Hiển thị label cho các khu vực lớn */}
+      {item.label && !item.type.includes("table") && item.w > 40 && (
+        <span className="layout-label">{item.label}</span>
+      )}
+
+      {/* Decor cụ thể */}
+      {item.type === "plant" && <div className="plant-leaf-effect"></div>}
+      {item.type === "window" && <div className="window-glare"></div>}
     </div>
   );
 
   return (
-    <div className="floor-map-viz">
+    <div className={`floor-map-viz ${theme}`}>
       <div
         className={`viewport ${cursorState}`}
         onMouseDown={handleMouseDown}
@@ -136,54 +120,29 @@ const FloorMap = ({
           }}
         >
           <div className="map-container-realistic">
-            {/* Nếu có layout từ Designer -> dùng layout đó */}
-
-            {/* Layout thật từ Designer */}
-            {hasLayout && (
+            {/* 1. LAYOUT LAYER */}
+            {hasLayout ? (
               <div className="layout-layer">
                 {layout.map((item) => renderLayoutItem(item))}
               </div>
-            )}
-
-            {/* Empty-state: chỉ hiện khi CHƯA có layout, nhưng vẫn cho phép chọn bàn */}
-            {!hasLayout && (
+            ) : (
               <div className="empty-map-state">
-                <div className="empty-icon">🏗️</div>
-                <div className="empty-text">
-                  <h3>Chưa có sơ đồ cho tầng này</h3>
-                  <p>
-                    Sơ đồ chi tiết đang được cập nhật. Bạn vẫn có thể chọn bàn
-                    có sẵn trên sơ đồ bên trên.
-                  </p>
+                <div className="empty-content">
+                  <span className="icon">📐</span>
+                  <div>
+                    <h3>Sơ đồ kiến trúc</h3>
+                    <p>Dữ liệu đang được cập nhật</p>
+                  </div>
                 </div>
               </div>
             )}
-            {/* Bàn ghế */}
+
+            {/* 2. TABLES LAYER */}
             <div className="tables-layer">
               {tables.map((table) => {
+                const isSelected = selectedTable?.id === table.id;
                 let statusClass = table.status;
-                if (selectedTable?.id === table.id) statusClass = "selected";
-
-                let titleText = "";
-                switch (table.status) {
-                  case "available":
-                    titleText = "Bàn trống - Chọn ngay";
-                    break;
-                  case "payment_pending":
-                    titleText = "Đang chờ thanh toán";
-                    break;
-                  case "cleaning":
-                    titleText = "Đang dọn dẹp";
-                    break;
-                  case "reserved":
-                    titleText = "Đã đặt trước";
-                    break;
-                  case "occupied":
-                    titleText = "Đang có khách";
-                    break;
-                  default:
-                    titleText = table.status;
-                }
+                if (isSelected) statusClass = "selected";
 
                 return (
                   <div
@@ -191,29 +150,37 @@ const FloorMap = ({
                     className={`table-node ${statusClass}`}
                     style={{ top: table.position.y, left: table.position.x }}
                     onClick={(e) => handleTableClick(e, table)}
-                    title={titleText}
                   >
-                    <div className="table-shape">
+                    {/* Ghế ngồi xung quanh */}
+                    <div className="chairs-wrapper">
+                      {[...Array(table.capacity > 4 ? 4 : table.capacity)].map(
+                        (_, i) => (
+                          <div key={i} className={`chair chair-${i}`}></div>
+                        )
+                      )}
+                    </div>
+
+                    {/* Mặt bàn chính */}
+                    <div className="table-surface">
                       <span className="table-label">{table.label}</span>
 
+                      {/* Icons trạng thái */}
                       {table.status === "payment_pending" && (
-                        <span className="status-icon">💸</span>
+                        <span className="status-badge dollar">$</span>
                       )}
                       {table.status === "cleaning" && (
-                        <span className="status-icon">🧹</span>
+                        <span className="status-badge clean">🧹</span>
                       )}
                       {(table.status === "occupied" ||
                         table.status === "reserved") && (
-                        <span className="notify-bell">🔔</span>
+                        <span className="status-badge bell">🔔</span>
                       )}
                     </div>
-                    <div className="chairs-decoration">
-                      <span className="chair chair-n"></span>
-                      <span className="chair chair-e"></span>
-                      <span className="chair chair-s"></span>
-                      <span className="chair chair-w"></span>
+
+                    {/* Capacity pill */}
+                    <div className="capacity-pill">
+                      {table.capacity} <span style={{ fontSize: 8 }}>👤</span>
                     </div>
-                    <div className="capacity-badge">{table.capacity}</div>
                   </div>
                 );
               })}
@@ -222,58 +189,46 @@ const FloorMap = ({
         </div>
       </div>
 
-      <div className="map-controls">
+      {/* CONTROLS (Floating) */}
+      <div className="map-controls-premium">
         <button onClick={() => handleZoom(0.2)} title="Phóng to">
-          +
+          <Plus size={20} />
         </button>
         <button onClick={() => handleZoom(-0.2)} title="Thu nhỏ">
-          -
+          <Minus size={20} />
         </button>
+        <div className="divider"></div>
         <button onClick={handleResetView} title="Đặt lại">
-          ⟲
+          <RotateCcw size={18} />
         </button>
       </div>
 
-      {/* LEGEND */}
-      <div className={`map-legend-smart ${isLegendOpen ? "open" : "closed"}`}>
-        <div
-          className="legend-header"
+      {/* MINI LEGEND (Collapsible) */}
+      <div className={`mini-legend ${isLegendOpen ? "expanded" : "collapsed"}`}>
+        <button
+          className="legend-toggle"
           onClick={() => setIsLegendOpen(!isLegendOpen)}
         >
-          <span className="icon">ℹ️</span>
-          {isLegendOpen && <span className="title">Trạng thái bàn</span>}
-          <span className="toggle-arrow">{isLegendOpen ? "▼" : ""}</span>
-        </div>
+          {isLegendOpen ? <X size={18} /> : <Info size={18} />}
+        </button>
+
         {isLegendOpen && (
           <div className="legend-content">
-            <div className="legend-grid">
-              <div className="legend-item">
-                <span className="symbol table-available"></span>
-                <span className="text">Trống</span>
-              </div>
-              <div className="legend-item">
-                <span className="symbol table-selected"></span>
-                <span className="text">Đang chọn</span>
-              </div>
-
-              <div className="legend-divider"></div>
-
-              <div className="legend-item">
-                <span className="symbol table-payment-pending"></span>
-                <span className="text">Chờ t.toán</span>
-              </div>
-              <div className="legend-item">
-                <span className="symbol table-cleaning"></span>
-                <span className="text">Đang dọn</span>
-              </div>
-              <div className="legend-item">
-                <span className="symbol table-reserved"></span>
-                <span className="text">Đã đặt</span>
-              </div>
-              <div className="legend-item">
-                <span className="symbol table-occupied"></span>
-                <span className="text">Có khách</span>
-              </div>
+            <h4>Chú thích</h4>
+            <div className="l-row">
+              <span className="dot avl"></span> Trống
+            </div>
+            <div className="l-row">
+              <span className="dot sel"></span> Đang chọn
+            </div>
+            <div className="l-row">
+              <span className="dot occ"></span> Có khách
+            </div>
+            <div className="l-row">
+              <span className="dot res"></span> Đặt trước
+            </div>
+            <div className="l-row">
+              <span className="dot cln"></span> Dọn dẹp
             </div>
           </div>
         )}

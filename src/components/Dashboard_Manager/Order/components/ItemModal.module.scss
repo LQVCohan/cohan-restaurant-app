@@ -1,0 +1,360 @@
+/* src/pages/OrderManagement/components/ItemModal.module.scss */
+
+// --- Variables (Theme Gold & Charcoal) ---
+$gold: #c5a47e;
+$charcoal: #1e293b;
+$text-main: #0f172a;
+$text-sub: #64748b;
+$bg-body: #f8fafc;
+$border-color: #e2e8f0;
+
+// Status Colors
+$st-pending-bg: #fff7ed;
+$st-pending-text: #c2410c;
+$st-confirmed-bg: #eff6ff;
+$st-confirmed-text: #1d4ed8;
+$st-preparing-bg: #faf5ff;
+$st-preparing-text: #7e22ce;
+$st-ready-bg: #f0fdf4;
+$st-ready-text: #15803d;
+$st-served-bg: #ecfeff;
+$st-served-text: #0e7490;
+$st-cancelled-bg: #fef2f2;
+$st-cancelled-text: #b91c1c;
+
+// --- Mixins ---
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// --- Styles ---
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba($charcoal, 0.6); // Darker backdrop
+  backdrop-filter: blur(4px);
+  z-index: 1050;
+  @include flex-center;
+  animation: fadeIn 0.2s ease-out;
+  padding: 1rem;
+}
+
+.modal {
+  width: 100%;
+  max-width: 550px; // Rộng hơn một chút để thoáng
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  border: 1px solid rgba($gold, 0.3); // Viền vàng tinh tế
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+// --- Header ---
+.header {
+  @include flex-between;
+  padding: 1.25rem 1.5rem;
+  background-color: #fff;
+  border-bottom: 1px solid $border-color;
+
+  h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: $charcoal;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    svg {
+      color: $gold;
+    }
+  }
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: $text-sub;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s;
+  @include flex-center;
+
+  &:hover {
+    background-color: $bg-body;
+    color: $charcoal;
+    transform: rotate(90deg);
+  }
+}
+
+// --- Body ---
+.body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+  }
+}
+
+// Section: General Info
+.infoSection {
+  margin-bottom: 1.5rem;
+}
+
+.itemName {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: $charcoal;
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.gridInfo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  background-color: $bg-body;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid $border-color;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  label {
+    font-size: 0.75rem;
+    color: $text-sub;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  span {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: $charcoal;
+  }
+}
+
+.priceHighlight {
+  color: $gold !important;
+  font-weight: 800 !important;
+  font-size: 1.1rem !important;
+}
+
+// Badges (Map with status from JS)
+.badge {
+  display: inline-flex;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+
+  // Status mapping classes
+  &.pending {
+    background: $st-pending-bg;
+    color: $st-pending-text;
+    border: 1px solid rgba($st-pending-text, 0.1);
+  }
+  &.confirmed {
+    background: $st-confirmed-bg;
+    color: $st-confirmed-text;
+    border: 1px solid rgba($st-confirmed-text, 0.1);
+  }
+  &.preparing {
+    background: $st-preparing-bg;
+    color: $st-preparing-text;
+    border: 1px solid rgba($st-preparing-text, 0.1);
+  }
+  &.ready {
+    background: $st-ready-bg;
+    color: $st-ready-text;
+    border: 1px solid rgba($st-ready-text, 0.1);
+  }
+  &.served {
+    background: $st-served-bg;
+    color: $st-served-text;
+    border: 1px solid rgba($st-served-text, 0.1);
+  }
+  &.cancelled {
+    background: $st-cancelled-bg;
+    color: $st-cancelled-text;
+    border: 1px solid rgba($st-cancelled-text, 0.1);
+  }
+}
+
+// Section: Notes (Customer)
+.noteBlock {
+  margin-bottom: 1.5rem;
+
+  h4 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: $charcoal;
+    margin: 0 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    svg {
+      color: #f59e0b;
+      width: 16px;
+    }
+  }
+
+  .noteContent {
+    background-color: #fffbeb;
+    border-left: 3px solid #f59e0b;
+    padding: 0.75rem 1rem;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.9rem;
+    color: #92400e;
+    font-style: italic;
+  }
+}
+
+// Section: Recipe (Chef)
+.recipeBlock {
+  margin-bottom: 1.5rem;
+
+  h4 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: $charcoal;
+    margin: 0 0 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    svg {
+      color: $gold;
+      width: 16px;
+    }
+  }
+}
+
+.recipeContent {
+  background-color: white;
+  border: 1px dashed $gold;
+  border-radius: 8px;
+  padding: 1rem;
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: $gold;
+    border-radius: 8px 0 0 8px;
+  }
+}
+
+.recipeText {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: $charcoal;
+  white-space: pre-line;
+}
+
+// States (Loading / Error / Empty)
+.stateBox {
+  padding: 1.5rem;
+  text-align: center;
+  background: $bg-body;
+  border-radius: 8px;
+  color: $text-sub;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  &.error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+  }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  color: $gold;
+}
+
+// --- Footer ---
+.footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid $border-color;
+  background-color: #fcfcfc;
+}
+
+.btnAction {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid $charcoal;
+  background-color: white;
+  color: $charcoal;
+
+  &:hover {
+    background-color: $charcoal;
+    color: white;
+  }
+}
+
+// Animations
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

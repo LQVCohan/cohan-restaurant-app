@@ -1,87 +1,93 @@
+// src/pages/OrderManagement/components/ItemModal.jsx
 import React from "react";
-import { X, ChefHat, StickyNote, BookOpen, Loader } from "lucide-react";
+import {
+  X,
+  ChefHat,
+  StickyNote,
+  BookOpen,
+  Loader2,
+  Receipt,
+} from "lucide-react";
 import { gql, useQuery } from "@apollo/client";
+import styles from "./ItemModal.module.scss";
 
-// 1. Định nghĩa Query để lấy chi tiết Recipe
+// 1. GraphQL Query
 const GET_RECIPE_DETAILS = gql`
   query GetRecipeById($id: ID!) {
     recipe(id: $id) {
-      # (Giả sử bạn có query 'recipe' trả về 1 Recipe)
       id
-      notes # (Đây là ghi chú/hướng dẫn của công thức)
+      name
+      notes
     }
   }
 `;
 
-// 2. Component con để tải và hiển thị công thức
+// 2. Sub-component: Recipe Display
 const RecipeDetails = ({ recipeId }) => {
   const { data, loading, error } = useQuery(GET_RECIPE_DETAILS, {
     variables: { id: recipeId },
-    skip: !recipeId, // Bỏ qua nếu không có recipeId
+    skip: !recipeId,
   });
+
+  if (!recipeId) {
+    return (
+      <div className={styles.stateBox}>
+        <span>Món này chưa được liên kết công thức.</span>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
-      <div className="p-4 bg-gray-50 rounded-lg flex items-center justify-center">
-        <Loader size={16} className="animate-spin text-purple-600" />
-        <span className="ml-2 text-gray-600">Đang tải công thức...</span>
+      <div className={styles.stateBox}>
+        <Loader2 size={18} className={styles.spinner} />
+        <span>Đang tải hướng dẫn chế biến...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
-        <p className="text-red-700">Lỗi tải công thức: {error.message}</p>
+      <div className={`${styles.stateBox} ${styles.error}`}>
+        <p>Không thể tải công thức. Vui lòng thử lại.</p>
       </div>
     );
   }
 
-  if (!data?.recipe || !data.recipe.notes) {
+  const recipeNotes = data?.recipe?.notes;
+
+  if (!recipeNotes) {
     return (
-      <div className="p-4 bg-gray-50 border-l-4 border-gray-300 rounded-lg">
-        <p className="text-gray-600">Món này không có công thức/ghi chú.</p>
+      <div className={styles.stateBox}>
+        <span>Chưa có hướng dẫn cụ thể cho món này.</span>
       </div>
     );
   }
 
   return (
-    <div className="p-4 bg-gray-50 border-l-4 border-purple-500 rounded-lg">
-      <p className="text-gray-700 leading-relaxed">{data.recipe.notes}</p>
+    <div className={styles.recipeContent}>
+      <p className={styles.recipeText}>{recipeNotes}</p>
     </div>
   );
 };
 
-// 3. Component Modal chính (đã cập nhật)
-const ItemModal = ({ item, orderInfo, onClose }) => {
-  const getItemStatusText = (status) => {
-    // ... (Hàm này giữ nguyên)
-    const statusMap = {
+// 3. Main Component
+const ItemModal = ({ item, onClose }) => {
+  if (!item) return null;
+
+  // --- Helpers ---
+  const getStatusLabel = (status) => {
+    const map = {
       pending: "Chưa xác nhận",
       confirmed: "Đã xác nhận",
-      preparing: "Đang chuẩn bị",
+      preparing: "Đang chế biến",
+      ready: "Sẵn sàng",
+      served: "Đã phục vụ",
+      cancelled: "Đã hủy",
     };
-    return statusMap[status] || status;
+    return map[status] || status;
   };
 
-  const getStatusBadge = (status) => {
-    // ... (Hàm này giữ nguyên)
-    const statusConfig = {
-      pending: { bg: "bg-yellow-100", text: "text-yellow-800" },
-      confirmed: { bg: "bg-blue-100", text: "text-blue-800" },
-      preparing: { bg: "bg-purple-100", text: "text-purple-800" },
-    };
-    const config = statusConfig[status] || statusConfig.pending;
-    return (
-      <span
-        className={`px-3 py-1 rounded-full text-xs font-semibold ${config.bg} ${config.text}`}
-      >
-        {getItemStatusText(status)}
-      </span>
-    );
-  };
-
-  // (Hàm format tiền)
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -89,87 +95,87 @@ const ItemModal = ({ item, orderInfo, onClose }) => {
     }).format(amount || 0);
   };
 
+  // Tính tổng tiền item
+  const totalPrice = (item.price || 0) * (item.quantity || 1);
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
+    <div className={styles.overlay} onClick={onClose}>
+      {/* Ngăn click propagation để không đóng modal khi click vào nội dung */}
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Chi tiết món ăn
+        <div className={styles.header}>
+          <h2>
+            <Receipt size={20} />
+            Chi tiết Order
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={onClose} className={styles.closeBtn}>
             <X size={24} />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          {/* Item Info */}
-          <div className="mb-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
-              <ChefHat className="text-blue-600" />
-              {item.name}
-            </h3>
+        {/* Body */}
+        <div className={styles.body}>
+          {/* Section: Basic Info */}
+          <div className={styles.infoSection}>
+            <div className={styles.itemName}>{item.name}</div>
 
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Số lượng:</span>
-                <span className="font-medium">{item.quantity}</span>
+            <div className={styles.gridInfo}>
+              <div className={styles.row}>
+                <label>Số lượng</label>
+                <span>x{item.quantity}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Đơn giá:</span>
-                <span className="font-medium">
-                  {formatCurrency(item.price)}
+
+              <div className={styles.row}>
+                <label>Đơn giá</label>
+                <span>{formatCurrency(item.price)}</span>
+              </div>
+
+              <div className={styles.row}>
+                <label>Trạng thái</label>
+                <div>
+                  <span
+                    className={`${styles.badge} ${styles[item.status] || ""}`}
+                  >
+                    {getStatusLabel(item.status)}
+                  </span>
+                </div>
+              </div>
+
+              <div className={styles.row}>
+                <label>Thành tiền</label>
+                <span className={styles.priceHighlight}>
+                  {formatCurrency(totalPrice)}
                 </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Thành tiền:</span>
-                <span className="font-medium text-green-600">
-                  {formatCurrency(item.price * item.quantity)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Trạng thái:</span>
-                {getStatusBadge(item.status)}
               </div>
             </div>
           </div>
 
-          {/* Notes (SỬA LẠI ĐỂ DÙNG `item.note` HOẶC `item.description`) */}
+          {/* Section: Customer Note (Ghi chú từ khách/waiter) */}
           {item.note && (
-            <div className="mb-6">
-              <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                <StickyNote className="text-yellow-600" />
-                Ghi chú đặc biệt (của khách):
+            <div className={styles.noteBlock}>
+              <h4>
+                <StickyNote />
+                Ghi chú đặc biệt
               </h4>
-              <div className="p-3 bg-yellow-50 border-l-4 border-yellow-500 rounded-lg">
-                <p className="text-yellow-800">{item.note}</p>
-              </div>
+              <div className={styles.noteContent}>"{item.note}"</div>
             </div>
           )}
 
-          {/* Recipe (SỬA LẠI ĐỂ DÙNG COMPONENT MỚI) */}
-          <div className="mb-6">
-            <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-              <BookOpen className="text-purple-600" />
-              Ghi chú công thức (cho bếp):
+          {/* Section: Recipe (Dành cho bếp) */}
+          <div className={styles.recipeBlock}>
+            <h4>
+              <ChefHat />
+              Hướng dẫn chế biến (Bếp)
             </h4>
-            {/* Truyền `recipeId` vào component con */}
             <RecipeDetails recipeId={item.recipeId} />
           </div>
+        </div>
 
-          {/* Actions */}
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Đóng
-            </button>
-          </div>
+        {/* Footer */}
+        <div className={styles.footer}>
+          <button onClick={onClose} className={styles.btnAction}>
+            Đóng
+          </button>
         </div>
       </div>
     </div>

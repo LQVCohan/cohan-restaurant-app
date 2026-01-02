@@ -1,217 +1,413 @@
 @use "../../../../styles/variables" as *;
 @use "../../../../styles/mixins" as *;
 
-.orderSettingsModal {
+/* --- Layout Grid --- */
+.osm-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: $spacing-6;
+  padding-bottom: $spacing-4;
+
+  @include tablet {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Form Column --- */
+.osm-form {
   display: flex;
   flex-direction: column;
   gap: $spacing-5;
-  padding-bottom: $spacing-2;
+}
 
-  &__section {
-    border-radius: 1rem;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-    padding: $spacing-4 $spacing-5;
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+.osm-section {
+  background: white;
+  border: 1px solid $gray-200;
+  border-radius: 12px;
+  padding: $spacing-5;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 
-    @include mobile {
-      padding: $spacing-3;
+  &__header {
+    display: flex;
+    gap: $spacing-3;
+    margin-bottom: $spacing-5;
+
+    .icon {
+      color: $primary-500;
+      background: $primary-50;
+      padding: 6px;
+      box-sizing: content-box;
+      border-radius: 8px;
+    }
+
+    h4 {
+      margin: 0;
+      font-size: $text-base;
+      font-weight: 700;
+      color: $gray-900;
+    }
+
+    p {
+      margin: 2px 0 0 0;
+      font-size: $text-xs;
+      color: $gray-500;
+    }
+  }
+}
+
+/* --- Input Groups --- */
+.osm-time-inputs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-4;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+
+  .input-group {
+    label {
+      display: block;
+      font-size: $text-xs;
+      font-weight: 600;
+      color: $gray-600;
+      margin-bottom: 6px;
+      text-transform: uppercase;
     }
   }
 
-  &__title {
-    font-size: $text-lg;
-    font-weight: 700;
-    color: $gray-900;
-    margin: 0 0 $spacing-2 0;
+  .input-wrapper {
     display: flex;
     align-items: center;
-    gap: $spacing-2;
-  }
+    background: white;
+    border: 1px solid $gray-300;
+    border-radius: 8px;
+    padding: 0 10px;
+    transition: all 0.2s;
 
-  &__hint {
-    margin: 0 0 $spacing-4 0;
-    font-size: $text-sm;
-    color: $gray-600;
-  }
-
-  /* GRID cho input thời gian */
-  &__grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: $spacing-4;
-
-    @include tablet {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+    &:focus-within {
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.15);
     }
 
-    @include mobile {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  &__field {
-    display: flex;
-    flex-direction: column;
-    gap: $spacing-2;
-    font-size: $text-sm;
-
-    label {
+    input {
+      width: 100%;
+      border: none;
+      padding: 8px 0;
       font-weight: 600;
       color: $gray-800;
+      outline: none;
+      background: transparent;
     }
 
-    input[type="number"] {
-      width: 100%;
-      border-radius: 0.6rem;
-      border: 1px solid $gray-300;
-      padding: 0.5rem 0.75rem;
-      font-size: $text-sm;
-      outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    span {
+      font-size: $text-xs;
+      color: $gray-400;
+      white-space: nowrap;
+    }
 
-      &:focus {
-        border-color: $primary-500;
-        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+    /* Color indicators on focus */
+    &.warn:focus-within {
+      border-color: #eab308;
+      box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.2);
+    }
+    &.danger:focus-within {
+      border-color: #f97316;
+      box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
+    }
+    &.critical:focus-within {
+      border-color: #b91c1c;
+      box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.2);
+    }
+  }
+}
+
+/* --- Colors --- */
+.osm-colors-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-4;
+  margin-bottom: $spacing-4;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+
+  .color-picker-item {
+    label {
+      font-size: $text-sm;
+      font-weight: 500;
+      color: $gray-700;
+      display: block;
+      margin-bottom: 4px;
+    }
+  }
+
+  .color-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid $gray-300;
+    border-radius: 8px;
+    padding: 4px 8px 4px 4px;
+    background: white;
+
+    input[type="color"] {
+      border: none;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border-radius: 6px;
+      cursor: pointer;
+      background: none;
+
+      &::-webkit-color-swatch-wrapper {
+        padding: 0;
+      }
+      &::-webkit-color-swatch {
+        border: none;
+        border-radius: 6px;
       }
     }
 
-    .suffix {
-      font-size: $text-xs;
+    .hex-code {
+      font-family: monospace;
+      font-size: $text-sm;
       color: $gray-500;
-      margin-left: 0.25rem;
+      text-transform: uppercase;
     }
   }
+}
 
-  &__field-row {
+.osm-presets {
+  display: flex;
+  align-items: center;
+  gap: $spacing-3;
+  padding-top: $spacing-3;
+  border-top: 1px dashed $gray-200;
+
+  span {
+    font-size: $text-sm;
+    color: $gray-500;
+  }
+
+  .preset-badges {
+    display: flex;
+    gap: $spacing-2;
+    flex-wrap: wrap;
+  }
+
+  .preset-btn {
     display: flex;
     align-items: center;
-    gap: $spacing-2;
-  }
+    gap: 6px;
+    padding: 4px 10px;
+    background: $gray-50;
+    border: 1px solid $gray-200;
+    border-radius: 99px;
+    font-size: $text-xs;
+    cursor: pointer;
+    transition: all 0.2s;
 
-  /* CHIP SIZE */
-  &__chipsize {
+    &:hover {
+      background: white;
+      border-color: $primary-300;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .preset-dots {
+      display: flex;
+      gap: 2px;
+      span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        display: block;
+      }
+    }
+  }
+}
+
+/* --- Chip Options --- */
+.osm-chip-options {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-3;
+
+  .chip-radio {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: $spacing-3;
+    padding: $spacing-3;
+    border: 1px solid $gray-200;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    input {
+      accent-color: $primary-500;
+      width: 16px;
+      height: 16px;
+    }
+
+    &:hover {
+      background: $gray-50;
+    }
+
+    &.active {
+      border-color: $primary-500;
+      background: rgba($primary-500, 0.03);
+      font-weight: 500;
+      color: $primary-700;
+    }
+  }
+}
+
+/* --- Preview Column --- */
+.osm-preview {
+  &__sticky {
+    position: sticky;
+    top: 20px;
+    background: $gray-50;
+    border-radius: 16px;
+    padding: $spacing-5;
+    border: 1px solid $gray-200;
   }
 
-  &__chipsize-label {
-    font-weight: 600;
+  .preview-title {
+    font-size: $text-sm;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: $gray-400;
+    margin: 0 0 $spacing-4 0;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+
+  .preview-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: $spacing-4;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: center;
+
+    .btn-reset {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      font-size: $text-xs;
+      color: $gray-500;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 6px;
+
+      &:hover {
+        background: $gray-200;
+        color: $gray-800;
+      }
+    }
+  }
+}
+
+/* --- Mock Card Styles --- */
+.mockCard {
+  width: 100%;
+  max-width: 280px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  border: 1px solid $gray-200;
+  transition: transform 0.2s;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: white;
+    border-bottom: 2px solid; // Color set inline
+    transition: border-color 0.3s ease;
+  }
+
+  &__id {
+    font-weight: 800;
+    font-size: 1.1rem;
     color: $gray-800;
   }
 
-  &__chipsize-options {
-    display: inline-flex;
-    flex-wrap: wrap;
-    gap: $spacing-2;
-  }
-}
-
-/* chip size radio */
-.chipSizeOption {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid $gray-300;
-  background-color: white;
-  font-size: $text-sm;
-  cursor: pointer;
-  transition: all 0.15s ease;
-
-  input {
-    accent-color: $primary-500;
+  &__timer {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    transition: background-color 0.3s ease;
   }
 
-  span {
-    white-space: nowrap;
-  }
-
-  input:checked + span {
-    font-weight: 600;
-  }
-
-  &:has(input:checked) {
-    border-color: $primary-500;
-    background-color: #eef2ff;
-    box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.4);
-  }
-
-  &:hover {
-    border-color: $primary-500;
-    background-color: #f5f3ff;
-  }
-}
-
-/* COLOR SETTINGS */
-.orderSettingsModal {
-  &__colors {
+  &__body {
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: $spacing-3;
-  }
+    gap: 8px;
 
-  &__color-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: $spacing-4;
-    padding: $spacing-3;
-    border-radius: 0.75rem;
-    background-color: rgba(255, 255, 255, 0.85);
-    border: 1px dashed rgba(148, 163, 184, 0.6);
-
-    @include mobile {
-      flex-direction: column;
-      align-items: stretch;
+    &.size-s {
+      font-size: 0.8rem;
+      .mockItem {
+        gap: 6px;
+      }
     }
-
-    input[type="color"] {
-      width: 3rem;
-      height: 2.25rem;
-      border-radius: 0.75rem;
-      border: 1px solid $gray-300;
-      padding: 0;
-      cursor: pointer;
-      background: transparent;
-      overflow: hidden;
+    &.size-m {
+      font-size: 0.95rem;
+      .mockItem {
+        gap: 10px;
+      }
+    }
+    &.size-l {
+      font-size: 1.15rem;
+      .mockItem {
+        gap: 12px;
+      }
     }
   }
 
-  &__color-label {
+  .mockItem {
     display: flex;
     align-items: center;
-    gap: $spacing-3;
+    color: $gray-800;
+    font-weight: 500;
+
+    .qty {
+      font-weight: 800;
+      background: $gray-100;
+      padding: 2px 6px;
+      border-radius: 4px;
+      min-width: 24px;
+      text-align: center;
+    }
+
+    &.note {
+      font-size: 0.85em;
+      color: $gray-500;
+      font-style: italic;
+      font-weight: 400;
+      margin-top: 4px;
+    }
   }
-}
 
-/* chấm preview màu */
-.dot {
-  &--preview {
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: 999px;
-    border: 2px solid rgba(15, 23, 42, 0.1);
-    box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.4);
-  }
-}
-
-.colorName {
-  font-weight: 600;
-  color: $gray-800;
-  font-size: $text-sm;
-}
-
-.colorDesc {
-  font-size: $text-xs;
-  color: $gray-500;
-}
-
-/* Mobile tweak */
-@media (max-width: 640px) {
-  .orderSettingsModal__section {
-    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  &__hint {
+    background: $gray-50;
+    border-top: 1px solid $gray-100;
+    padding: 8px;
+    text-align: center;
+    font-size: 0.65rem;
+    color: $gray-400;
   }
 }

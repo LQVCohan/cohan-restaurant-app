@@ -10,6 +10,13 @@ enum PriceUpdateMode {
   AMOUNT
 }
 
+enum MenuItemStatus {
+  available
+  unavailable
+  out_of_stock
+  hidden
+}
+
 input BulkPriceUpdateTarget {
   categoryId: ID
   menuItemIds: [ID!]
@@ -47,7 +54,7 @@ input MenuItemFilter {
   restaurantId: ID!
   timeSlot: TimeSlot
   categoryId: ID
-  status: String
+  status: MenuItemStatus
   search: String
   minPrice: Float
   maxPrice: Float
@@ -68,29 +75,39 @@ type MenuItem {
   restaurantId: ID!
   menuId: ID!
   categoryId: ID!
+
+  code: String
   name: String!
   description: String
-  basePrice: Float
-  byWeight: Boolean
+
+  sortOrder: Int
+  labels: [String!]
   servingVariants: [ServingVariant]
+  # cache sync từ Recipe
+  basePrice: Float
+  defaultServingKey: String
+  hasByWeightVariant: Boolean
+
+  taxRate: Float
+
+  # UI meta
+  servingPortion: Float
+  servingUnit: String
+
+  printStationId: ID
+
   thumbImage: String
   mediaAssetIds: [ID!]
-  modifierGroupIds: [ID!]
-  status: String
+
+  status: MenuItemStatus!
   avgPrepTimeMin: Int
-  notes: String
   point: Int
+  notes: String
+
   createdAt: DateTime
   updatedAt: DateTime
 }
 
-input UpdateMenuItemBasicInput {
-  restaurantId: ID!
-  menuItemId: ID!
-  name: String
-  description: String
-  categoryId: ID
-}
 input EnsureMenuInput {
   restaurantId: ID!
   timeSlot: TimeSlot!
@@ -101,40 +118,108 @@ input EnsureMenuInput {
   categoryMenuId: ID
 }
 
+"""
+Create: vẫn dùng timeSlot để BE suy ra menuId (vì model yêu cầu menuId).
+"""
 input CreateMenuItemInput {
   restaurantId: ID!
   timeSlot: TimeSlot!
   categoryId: ID!
+
+  code: String
   name: String!
   description: String
+
+  sortOrder: Int
+  labels: [String!]
+
+  # cache: thường do Recipe sync, nhưng vẫn cho set nếu bạn muốn
   basePrice: Float
-  byWeight: Boolean
+  defaultServingKey: String
+  hasByWeightVariant: Boolean
+
+  taxRate: Float
+  servingPortion: Float
+  servingUnit: String
+
+  printStationId: ID
+
   thumbImage: String
   mediaAssetIds: [ID!]
-  modifierGroupIds: [ID!]
-  status: String
+
+  status: MenuItemStatus
   avgPrepTimeMin: Int
+  point: Int
   notes: String
 }
 
+"""
+Update full (theo id).
+"""
 input UpdateMenuItemInput {
   id: ID!
+
+  categoryId: ID
+
+  code: String
   name: String
   description: String
-  categoryId: ID
+
+  sortOrder: Int
+  labels: [String!]
+
   basePrice: Float
-  byWeight: Boolean
+  defaultServingKey: String
+  hasByWeightVariant: Boolean
+
+  taxRate: Float
+  servingPortion: Float
+  servingUnit: String
+
+  printStationId: ID
+
   thumbImage: String
   mediaAssetIds: [ID!]
-  modifierGroupIds: [ID!]
-  status: String
+
+  status: MenuItemStatus
   avgPrepTimeMin: Int
+  point: Int
+  notes: String
+}
+
+"""
+Update nhanh (đúng nghĩa "basic") — bạn có thể giữ ít field hơn nếu muốn.
+"""
+input UpdateMenuItemBasicInput {
+  restaurantId: ID!
+  menuItemId: ID!
+
+  categoryId: ID
+  code: String
+  name: String
+  description: String
+
+  sortOrder: Int
+  labels: [String!]
+
+  taxRate: Float
+  servingPortion: Float
+  servingUnit: String
+
+  printStationId: ID
+  thumbImage: String
+  mediaAssetIds: [ID!]
+
+  status: MenuItemStatus
+  avgPrepTimeMin: Int
+  point: Int
   notes: String
 }
 
 extend type Query {
   menus(restaurantId: ID!): [Menu!]!
   menu(restaurantId: ID!, timeSlot: TimeSlot!): Menu
+
   menuItems(
     restaurantId: ID!
     timeSlot: TimeSlot
@@ -142,20 +227,26 @@ extend type Query {
     search: String
     limit: Int = 50
   ): [MenuItem!]!
+
   menuItemsConnection(
     limit: Int = 20
     cursor: ID
     filter: MenuItemFilter!
   ): MenuItemConnection!
+
   topMenuItems(limit: Int = 8, restaurantId: ID, categoryId: ID): [MenuItem!]!
 }
 
 extend type Mutation {
   bulkUpdateMenuItemPrices(input: BulkPriceUpdateInput!): BulkPriceUpdateResult!
+
   ensureMenu(input: EnsureMenuInput!): Menu!
+
   createMenuItem(input: CreateMenuItemInput!): MenuItem!
   updateMenuItem(input: UpdateMenuItemInput!): MenuItem!
   deleteMenuItem(id: ID!): Boolean!
-  toggleMenuItemStatus(id: ID!, status: String!): MenuItem!
+
+  toggleMenuItemStatus(id: ID!, status: MenuItemStatus!): MenuItem!
+
   updateMenuItemBasic(input: UpdateMenuItemBasicInput!): MenuItem!
 }

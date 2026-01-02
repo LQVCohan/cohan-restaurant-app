@@ -1,298 +1,436 @@
-@use "../../../styles/variables.scss" as *;
-@use "../../../styles/mixins.scss" as *;
+/* --- VARIABLES & FONTS --- */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap");
 
-// --- Local Variables ---
-$bg-page: #f8f9fa;
-$bg-white: #ffffff;
-$primary-blue: #3b82f6;
-$text-dark: #1f2937;
-$text-muted: #6b7280;
-$border-light: #e5e7eb;
-$radius-lg: 16px;
+$font-heading: "Playfair Display", serif;
+$font-body: "Inter", sans-serif;
+
+$color-gold: #c5a47e;
+$color-gold-dark: #a6855e;
+$color-gold-light: #eaddcf;
+$color-dark: #1a1a1a;
+$color-gray-text: #6b7280;
+$color-bg-page: #f9fafb;
+$color-white: #ffffff;
+
+$shadow-card: 0 10px 30px -5px rgba(0, 0, 0, 0.08);
+$shadow-float: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+$radius-xl: 20px;
 $radius-md: 12px;
-$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 
-.table-booking-page {
+/* --- GLOBAL LAYOUT --- */
+.table-booking-premium {
+  background-color: $color-bg-page;
+  font-family: $font-body;
+  color: $color-dark;
   min-height: 100vh;
-  background-color: $bg-page;
-  font-family: "Inter", sans-serif;
-  padding-bottom: 60px;
-
-  // Tránh bị header fixed đè nếu có
-  padding-top: 80px;
+  padding-top: 10vh;
+  padding-bottom: 80px;
 }
 
-// --- Header ---
-.booking-header {
-  background: $bg-white;
-  border-bottom: 1px solid $border-light;
+/* --- HEADER --- */
+.premium-header {
+  background: $color-white;
   padding: 20px 0;
-  margin-bottom: 32px;
-  box-shadow: $shadow-sm;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  margin-bottom: 40px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 
-  .header-container {
-    max-width: 1400px; // Rộng rãi
+  .header-inner {
+    max-width: 1400px;
     margin: 0 auto;
     padding: 0 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-
-    @include r-mobile {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 16px;
-    }
   }
 
-  .btn-back {
+  .btn-back-link {
+    background: none;
+    border: none;
     display: flex;
     align-items: center;
     gap: 8px;
-    background: transparent;
-    border: 1px solid $border-light;
-    padding: 8px 16px;
-    border-radius: 8px;
-    cursor: pointer;
     font-weight: 500;
-    color: $text-dark;
-    transition: all 0.2s;
-
+    color: $color-gray-text;
+    cursor: pointer;
+    transition: 0.2s;
     &:hover {
-      background: $bg-page;
-      border-color: $text-dark;
+      color: $color-dark;
     }
   }
 
-  .header-content {
+  .header-center {
     text-align: center;
-    .page-title {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: $text-dark;
-      margin: 0 0 4px 0;
+    .sub-heading {
+      display: block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: $color-gold;
+      margin-bottom: 4px;
+      font-weight: 600;
     }
-    .page-subtitle {
-      color: $text-muted;
-      font-size: 0.95rem;
+    .main-heading {
+      font-family: $font-heading;
+      font-size: 1.8rem;
       margin: 0;
+      color: $color-dark;
+      line-height: 1.2;
     }
   }
 
-  .header-spacer {
-    width: 100px; // Dummy width để cân giữa title
-    @include r-mobile {
-      display: none;
+  .header-actions {
+    .btn-help {
+      background: none;
+      border: 1px solid #e5e7eb;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: $color-dark;
+      cursor: pointer;
+      transition: 0.2s;
+      &:hover {
+        border-color: $color-gold;
+        color: $color-gold;
+      }
     }
   }
 }
 
-// --- Main Container Grid ---
-.booking-container {
+/* --- GRID LAYOUT --- */
+.booking-layout-grid {
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 24px;
   display: grid;
-  // Layout: Map chiếm phần lớn, Sidebar cố định 360px
-  grid-template-columns: 1fr 360px;
-  gap: 32px;
+  grid-template-columns: 1fr 380px; // Sidebar rộng hơn chút
+  gap: 40px;
 
-  @include r-tablet {
-    grid-template-columns: 1fr; // Tablet/Mobile về 1 cột
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
   }
 }
 
-// --- Left Column: Map Area ---
-.booking-main-area {
+/* --- MAIN COLUMN --- */
+.main-visual-area {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
-// Floor Tabs (Giả lập container cho component FloorSelector)
-.floor-tabs-wrapper {
-  // Style này phụ thuộc vào cấu trúc bên trong component FloorSelector
-  // Nhưng ta định hướng nó nằm ngang
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-
-  // Custom scrollbar
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
-  }
-}
-
-// Map Viewport
-.map-viewport {
-  background: $bg-white;
-  border-radius: $radius-lg;
-  border: 1px solid $border-light;
-  height: 600px; // Chiều cao cố định cho map
-  position: relative;
-  overflow: hidden; // Map có thể drag/pan bên trong
-  box-shadow: $shadow-sm;
-
-  // Grid background effect cho đẹp
-  background-image: linear-gradient(#f1f5f9 1px, transparent 1px),
-    linear-gradient(90deg, #f1f5f9 1px, transparent 1px);
-  background-size: 40px 40px;
-
-  @include r-mobile {
-    height: 400px;
-  }
-}
-
-.map-loading {
+/* Floor Control Bar */
+.floor-control-bar {
   display: flex;
   align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: $text-muted;
-  font-weight: 500;
-}
-
-// Map Legend
-.map-legend {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(4px);
-  padding: 12px;
-  border-radius: $radius-md;
-  box-shadow: $shadow-md;
-  display: flex;
   gap: 16px;
-  border: 1px solid $border-light;
-  z-index: 10;
+  background: $color-white;
+  padding: 12px 20px;
+  border-radius: 99px; // Pill shape
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: $shadow-card;
 
-  .legend-item {
+  .bar-label {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: $text-dark;
+    gap: 8px;
+    font-weight: 600;
+    color: $color-dark;
+    white-space: nowrap;
+    svg {
+      color: $color-gold;
+    }
+  }
 
-    .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      &.available {
-        background: #e5e7eb;
-        border: 1px solid #d1d5db;
-      } // Xám
-      &.selected {
-        background: $primary-blue;
-        box-shadow: 0 0 0 2px rgba($primary-blue, 0.2);
-      } // Xanh
-      &.occupied {
-        background: #ef4444;
-        opacity: 0.5;
-      } // Đỏ
+  .floor-scroll-container {
+    flex: 1;
+    overflow-x: auto;
+    /* Custom style cho FloorSelector con */
+    :global(.floor-selector) {
+      display: flex;
+      gap: 8px;
+      button {
+        padding: 8px 20px;
+        border-radius: 99px;
+        border: none;
+        background: transparent;
+        color: $color-gray-text;
+        font-weight: 500;
+        cursor: pointer;
+        transition: 0.3s;
+        &.active {
+          background: $color-dark;
+          color: $color-gold;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        &:hover:not(.active) {
+          background: #f3f4f6;
+        }
+      }
     }
   }
 }
 
-// --- Right Column: Sidebar ---
-.booking-sidebar {
-  // Sticky sidebar trick
-  position: sticky;
-  top: 100px; // Cách top một khoảng khi cuộn
-  height: fit-content;
-  z-index: 20;
+/* Map Viewport Frame - The Blueprint Look */
+.map-viewport-frame {
+  position: relative;
+  height: 650px;
+  background: #fdfdfd; // Off-white
+  border-radius: $radius-xl;
+  border: 8px solid $color-white; // Khung tranh trắng
+  box-shadow: $shadow-card;
+  overflow: hidden;
 
-  @include r-tablet {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    top: auto;
-    background: white;
-    padding: 16px;
-    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1);
-    border-top: 1px solid $border-light;
-    z-index: 100;
+  /* Grid Pattern Background */
+  background-image: radial-gradient(
+    rgba($color-dark, 0.1) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
 
-    // Ẩn booking summary đầy đủ, chỉ hiện nút action trên mobile
-    // (Cần CSS sâu hơn trong BookingSummary để responsive tốt)
+  @media (max-width: 768px) {
+    height: 450px;
+  }
+
+  .floor-name-watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: $font-heading;
+    font-size: 5rem;
+    color: rgba(0, 0, 0, 0.03);
+    font-weight: 700;
+    pointer-events: none;
+    z-index: 0;
+    white-space: nowrap;
+  }
+
+  .map-state-msg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: $color-gray-text;
+    font-style: italic;
   }
 }
 
-// --- Loading Spinner ---
-.booking-loading {
+/* Legend Pill */
+.legend-pill {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba($color-dark, 0.9);
+  backdrop-filter: blur(8px);
+  padding: 10px 24px;
+  border-radius: 99px;
+  display: flex;
+  gap: 24px;
+  box-shadow: $shadow-float;
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  .l-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: $color-white;
+    font-weight: 500;
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      &.available {
+        background: #d1d5db;
+      }
+      &.selected {
+        background: $color-gold;
+        box-shadow: 0 0 10px $color-gold;
+      }
+      &.occupied {
+        background: #ef4444;
+        opacity: 0.6;
+      }
+    }
+  }
+}
+
+/* --- SIDEBAR SUMMARY --- */
+.sidebar-summary-area {
+  position: relative;
+
+  .summary-sticky-wrapper {
+    position: sticky;
+    top: 120px;
+  }
+
+  .summary-card-premium {
+    background: $color-white;
+    border-radius: $radius-xl;
+    box-shadow: $shadow-card;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+
+    .card-header {
+      background: $color-dark;
+      padding: 20px;
+      text-align: center;
+      h3 {
+        margin: 0;
+        color: $color-gold;
+        font-family: $font-heading;
+        font-size: 1.2rem;
+        letter-spacing: 0.5px;
+      }
+    }
+
+    .card-body-wrapper {
+      padding: 24px;
+      /* Override style của component con (BookingSummary) nếu cần */
+      :global(.booking-summary) {
+        /* Chỉnh style component con tại đây */
+        .info-row {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 12px;
+          font-size: 0.95rem;
+          color: $color-gray-text;
+          strong {
+            color: $color-dark;
+          }
+        }
+        .table-highlight {
+          font-size: 1.5rem;
+          color: $color-gold-dark;
+          font-family: $font-heading;
+          font-weight: 700;
+          text-align: center;
+          margin: 20px 0;
+          padding: 10px;
+          background: rgba($color-gold, 0.1);
+          border-radius: 8px;
+        }
+        .btn-confirm {
+          width: 100%;
+          padding: 14px;
+          margin-top: 10px;
+          background: $color-dark;
+          color: $color-white;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: 0.2s;
+          &:hover {
+            background: lighten($color-dark, 10%);
+          }
+          &:disabled {
+            background: #e5e7eb;
+            color: #9ca3af;
+            cursor: not-allowed;
+          }
+        }
+        .btn-cancel {
+          width: 100%;
+          padding: 10px;
+          background: transparent;
+          border: none;
+          color: #ef4444;
+          cursor: pointer;
+          text-decoration: underline;
+          margin-top: 8px;
+        }
+      }
+    }
+  }
+}
+
+/* --- LOADING ANIMATION --- */
+.booking-loading-premium {
   height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  color: $text-muted;
+  background: $color-bg-page;
 
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid #e5e7eb;
-    border-top-color: $primary-blue;
+  .loader-logo {
+    width: 50px;
+    height: 50px;
+    border: 2px solid $color-gold;
+    border-top-color: transparent;
+    border-bottom-color: transparent;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    animation: spin-slow 1.5s linear infinite;
+    margin-bottom: 16px;
+    position: relative;
+
+    &:after {
+      content: "";
+      position: absolute;
+      inset: 4px;
+      border: 2px solid $color-dark;
+      border-left-color: transparent;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite reverse;
+    }
+  }
+  p {
+    font-family: $font-heading;
+    color: $color-dark;
+    letter-spacing: 1px;
   }
 }
 
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-// --- Notifications ---
-.notifications-container {
-  position: fixed;
-  top: 24px;
-  right: 24px;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* --- RESPONSIVE MOBILE BAR --- */
+@media (max-width: 1024px) {
+  .sidebar-summary-area {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 100;
+    padding: 0;
 
-  .notification-toast {
-    padding: 12px 24px;
-    border-radius: 8px;
-    background: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    font-size: 0.9rem;
-    font-weight: 500;
-    animation: slideIn 0.3s ease;
+    .summary-sticky-wrapper {
+      position: static;
+    }
 
-    &.success {
-      border-left: 4px solid #10b981;
-      color: #065f46;
-    }
-    &.error {
-      border-left: 4px solid #ef4444;
-      color: #7f1d1d;
-    }
-    &.info {
-      border-left: 4px solid $primary-blue;
-      color: #1e3a8a;
+    .summary-card-premium {
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+      .card-header {
+        display: none;
+      } // Ẩn header trên mobile cho gọn
+      .card-body-wrapper {
+        padding: 16px 24px;
+      }
     }
   }
-}
 
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
+  // Đẩy content lên để không bị che bởi fixed bar
+  .table-booking-premium {
+    padding-bottom: 200px;
   }
 }

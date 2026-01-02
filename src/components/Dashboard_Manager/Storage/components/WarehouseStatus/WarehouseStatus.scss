@@ -1,0 +1,233 @@
+// src/components/Dashboard_Manager/Storage/layout/WarehouseStatus/WarehouseStatus.scss
+
+@use "../../../../../styles/variables" as *; // Import file chứa biến màu nếu cần
+
+$green-safe: #10b981;
+$green-bg: #ecfdf5;
+$red-warning: #ef4444;
+$red-bg: #fef2f2;
+$charcoal: #1e293b;
+$white: #ffffff;
+$gold: #c5a47e;
+
+.warehouse-status-wrapper {
+  position: relative; // Để neo tooltip
+  display: inline-flex;
+  margin-left: 16px; // Cách tabs một chút
+  z-index: 50; // Nằm trên các thành phần khác khi hover
+
+  /* --- Badge Chính --- */
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 99px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: default;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+
+    .icon {
+      margin-right: 2px;
+    }
+  }
+
+  /* --- Trạng thái: An toàn --- */
+  &.safe .status-badge {
+    background-color: $green-bg;
+    color: darken($green-safe, 10%);
+    border-color: rgba($green-safe, 0.2);
+
+    .safe-icon {
+      color: $green-safe;
+    }
+  }
+
+  /* --- Trạng thái: Cảnh báo --- */
+  &.warning {
+    cursor: pointer;
+
+    .status-badge {
+      background-color: $red-bg;
+      color: #b91c1c;
+      border-color: rgba($red-warning, 0.3);
+      position: relative;
+      padding-right: 12px;
+
+      &:hover {
+        background-color: darken($red-bg, 3%);
+        box-shadow: 0 4px 12px rgba($red-warning, 0.15);
+      }
+    }
+
+    .warning-icon {
+      color: $red-warning;
+      animation: shake 2s infinite; // Rung nhẹ để gây chú ý
+    }
+
+    /* Hiệu ứng Pulse (Vòng tròn tỏa ra) */
+    .pulse-ring {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 10px;
+      height: 10px;
+      background: rgba($red-warning, 0.5);
+      border-radius: 50%;
+      animation: pulse-animation 2s infinite;
+      z-index: 0;
+    }
+  }
+
+  /* --- Tooltip Dropdown --- */
+  .status-dropdown {
+    position: absolute;
+    top: 130%; // Cách badge một chút
+    left: 0;
+    width: 280px;
+    background: $white;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e2e8f0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+
+    &::before {
+      // Mũi tên nhỏ trỏ lên
+      content: "";
+      position: absolute;
+      top: -6px;
+      left: 20px;
+      width: 12px;
+      height: 12px;
+      background: $white;
+      transform: rotate(45deg);
+      border-left: 1px solid #e2e8f0;
+      border-top: 1px solid #e2e8f0;
+    }
+  }
+
+  /* Hover vào wrapper thì hiện dropdown */
+  &.warning:hover .status-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  /* Nội dung Dropdown */
+  .dropdown-header {
+    padding: 12px 16px;
+    background: #fff1f2; // Đỏ rất nhạt
+    border-bottom: 1px solid #fee2e2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #991b1b;
+
+    .count-badge {
+      background: $red-warning;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+    }
+  }
+
+  .warning-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 200px;
+    overflow-y: auto;
+
+    .warning-item {
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.9rem;
+
+      &:last-child {
+        border-bottom: none;
+      }
+      &:hover {
+        background: #f8fafc;
+      }
+
+      .item-name {
+        color: $charcoal;
+        font-weight: 500;
+      }
+      .item-stock {
+        color: $red-warning;
+        font-size: 0.85rem;
+        background: #fff1f2;
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+    }
+  }
+
+  .dropdown-footer {
+    padding: 10px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    text-align: center;
+
+    button {
+      width: 100%;
+      padding: 8px;
+      border: none;
+      background: $charcoal;
+      color: $gold;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      &:hover {
+        background: lighten($charcoal, 10%);
+      }
+    }
+  }
+}
+
+/* Animations */
+@keyframes pulse-animation {
+  0% {
+    transform: translateY(-50%) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-50%) scale(3);
+    opacity: 0;
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: rotate(-2deg);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: rotate(2deg);
+  }
+}

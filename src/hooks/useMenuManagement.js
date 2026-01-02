@@ -30,33 +30,30 @@ const FRAG_MENU_ITEM = gql`
     restaurantId
     menuId
     categoryId
+    code
     name
     description
+    sortOrder
+    labels
+
     basePrice
-    byWeight
+    defaultServingKey
+    hasByWeightVariant
+
+    taxRate
+    servingPortion
+    servingUnit
+
+    printStationId
     thumbImage
     mediaAssetIds
-    modifierGroupIds
+
     status
     avgPrepTimeMin
-    notes
     point
+    notes
     createdAt
     updatedAt
-    servingVariants {
-      key
-      mode
-      yieldQty
-      yieldUnit
-      name
-      price
-      Ingredients {
-        ingredientId
-        name
-        quantify
-        wastePct
-      }
-    }
   }
 `;
 

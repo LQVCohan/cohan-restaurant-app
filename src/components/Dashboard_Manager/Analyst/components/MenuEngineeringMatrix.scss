@@ -1,0 +1,315 @@
+// Variables đồng bộ với Theme
+$gold: #c5a47e;
+$star-color: #eab308; // Vàng (Ngôi sao)
+$plowhorse-color: #3b82f6; // Xanh (Bò sữa)
+$puzzle-color: #a855f7; // Tím (Dấu hỏi)
+$dog-color: #94a3b8; // Xám (Chó mực)
+$bg-chart: #f8fafc;
+$border-color: #cbd5e1;
+$text-sub: #64748b;
+
+.menu-matrix-widget {
+  width: 100%;
+  height: 100%; /* Quan trọng: Fill đầy ô chứa của trang cha */
+  display: flex;
+  flex-direction: column;
+  padding: 24px; /* Padding nội bộ của card */
+  box-sizing: border-box;
+  background: white;
+
+  // --- 1. HEADER SECTION ---
+  .widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    flex-shrink: 0; /* Không cho header bị co lại */
+
+    .header-content {
+      h4 {
+        margin: 0 0 4px 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1a1a1a;
+      }
+      .subtitle {
+        font-size: 0.85rem;
+        color: $text-sub;
+      }
+    }
+
+    .legend {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      .legend-item {
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        &.star {
+          color: $star-color;
+        }
+        &.plowhorse {
+          color: $plowhorse-color;
+        }
+        &.puzzle {
+          color: $puzzle-color;
+        }
+        &.dog {
+          color: $dog-color;
+        }
+      }
+    }
+  }
+
+  // --- 2. BODY SECTION (Chứa biểu đồ) ---
+  .matrix-body {
+    flex: 1; /* Tự động chiếm hết khoảng trống còn lại */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    /* Tạo khoảng trống an toàn cho các nhãn trục (Labels) */
+    padding-left: 30px; /* Chừa chỗ cho Label trục Y */
+    padding-bottom: 25px; /* Chừa chỗ cho Label trục X */
+    min-height: 300px; /* Chiều cao tối thiểu để không bị bẹp */
+
+    // Label trục Y (Dọc)
+    .axis-y-label {
+      position: absolute;
+      left: -10px; /* Căn chỉnh vào vùng padding-left */
+      top: 50%;
+      transform: rotate(-90deg) translateX(50%);
+      transform-origin: left center;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: $text-sub;
+      white-space: nowrap;
+
+      .arrow {
+        color: $gold;
+        font-size: 0.6rem;
+      }
+    }
+
+    // Label trục X (Ngang)
+    .axis-x-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: $text-sub;
+      padding-left: 30px; /* Căn chỉnh lại cho khớp với chart */
+
+      .arrow {
+        color: $gold;
+        font-size: 0.6rem;
+        display: inline-block;
+        margin-left: 4px;
+      }
+    }
+
+    // --- 3. CHART AREA (Khu vực vẽ) ---
+    .chart-area {
+      width: 100%;
+      height: 100%;
+      background: $bg-chart;
+      border-left: 2px solid $text-sub;
+      border-bottom: 2px solid $text-sub;
+      position: relative;
+
+      // Chia 4 vùng (Grid 2x2)
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      overflow: visible; /* Cho phép tooltip hiển thị ra ngoài nếu cần */
+
+      // Đường kẻ đứt nét chia tư
+      .mid-line-x {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        border-top: 1px dashed #cbd5e1;
+        pointer-events: none;
+        z-index: 1;
+      }
+      .mid-line-y {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        border-left: 1px dashed #cbd5e1;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      // Các ô phần tư (Background labels)
+      .quadrant {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 10px;
+
+        .q-label {
+          font-size: 0.9rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          opacity: 0.1; /* Làm mờ chữ nền */
+          user-select: none;
+          line-height: 1.3;
+
+          small {
+            display: block;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-top: 4px;
+          }
+        }
+
+        // Màu nền nhẹ từng vùng
+        &.q-star {
+          background-color: rgba($star-color, 0.03);
+          color: $star-color;
+        }
+        &.q-plowhorse {
+          background-color: rgba($plowhorse-color, 0.03);
+          color: $plowhorse-color;
+        }
+        &.q-puzzle {
+          background-color: rgba($puzzle-color, 0.03);
+          color: $puzzle-color;
+        }
+        &.q-dog {
+          background-color: rgba($dog-color, 0.03);
+          color: $dog-color;
+        }
+      }
+
+      // --- 4. DATA POINTS (Các chấm tròn) ---
+      .dish-dot {
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        background: #fff;
+        border: 3px solid;
+        border-radius: 50%;
+        transform: translate(-50%, 50%); /* Căn tâm điểm vào đúng toạ độ */
+        cursor: pointer;
+        z-index: 10;
+        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+
+        // Màu sắc viền
+        &.star {
+          border-color: $star-color;
+        }
+        &.plowhorse {
+          border-color: $plowhorse-color;
+        }
+        &.puzzle {
+          border-color: $puzzle-color;
+        }
+        &.dog {
+          border-color: $dog-color;
+        }
+
+        // Hiệu ứng Hover
+        &:hover {
+          z-index: 100; /* Luôn nổi lên trên cùng */
+          transform: translate(-50%, 50%) scale(1.4);
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+
+          .tooltip {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -10px); /* Đẩy lên trên */
+          }
+        }
+
+        // Tooltip Styling
+        .tooltip {
+          position: absolute;
+          bottom: 100%; // Nằm trên dot
+          left: 50%;
+          transform: translate(-50%, 0);
+          background: #1e293b;
+          color: white;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-size: 0.75rem;
+          white-space: nowrap;
+          pointer-events: none;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+          min-width: 120px;
+          text-align: center;
+
+          /* Mũi tên tooltip */
+          &::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+          }
+
+          strong {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.85rem;
+            color: $white;
+          }
+
+          .tooltip-stats {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.7rem;
+            color: #cbd5e1;
+            margin-bottom: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 4px;
+          }
+
+          .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            background: rgba(255, 255, 255, 0.15);
+
+            &.star {
+              color: $star-color;
+            }
+            &.plowhorse {
+              color: $plowhorse-color;
+            }
+            &.puzzle {
+              color: $puzzle-color;
+            }
+            &.dog {
+              color: #fff;
+            }
+          }
+        }
+      }
+    }
+  }
+}

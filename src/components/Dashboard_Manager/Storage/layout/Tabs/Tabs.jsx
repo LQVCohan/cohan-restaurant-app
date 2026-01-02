@@ -1,22 +1,30 @@
+// src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.jsx
 import React from "react";
-import Card from "../../../../common/Card";
 import "./Tabs.scss";
 
 const Tabs = ({ tabs, activeTab, onTabChange }) => {
   return (
-    <Card className="tabs-card">
-      <div className="tabs">
-        {tabs.map((tab) => (
+    <div className="sm-tabs-container">
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.id;
+        return (
           <button
             key={tab.id}
-            className={`tab ${activeTab === tab.id ? "active" : ""}`}
+            className={`sm-tab-item ${isActive ? "active" : ""}`}
             onClick={() => onTabChange(tab.id)}
+            type="button"
           >
-            {tab.label}
+            {/* Render Icon nếu có */}
+            {tab.icon && <span className="tab-icon">{tab.icon}</span>}
+
+            <span className="tab-label">{tab.label}</span>
+
+            {/* Dấu chấm nhỏ trang trí khi active (Optional) */}
+            {isActive && <span className="active-dot" />}
           </button>
-        ))}
-      </div>
-    </Card>
+        );
+      })}
+    </div>
   );
 };
 

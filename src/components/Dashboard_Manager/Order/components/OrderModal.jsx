@@ -7,73 +7,48 @@ import React, {
   useRef,
 } from "react";
 import { createPortal } from "react-dom";
-import { X, Printer, Loader2 } from "lucide-react";
+import {
+  X,
+  Printer,
+  Loader2,
+  Clock,
+  CheckCircle2,
+  ChefHat,
+  MoreVertical,
+  Utensils,
+  Bike,
+  Users,
+} from "lucide-react";
 import { gql, useMutation } from "@apollo/client";
 import "./OrderModal.scss";
 
-/* ---------------- Helpers: tiền tệ & thời gian (an toàn) ---------------- */
+/* ---------------- Helpers & Sub-components vẫn giữ nguyên ---------------- */
 
 const formatCurrency = (amount) => {
-  const n = Number(amount);
-  const safe = Number.isFinite(n) ? n : 0;
-  return safe.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
-};
-
-/** Parse nhiều dạng timestamp: number, "1762805854781", seconds(10), {$date: ...}, Date */
-const toEpochMs = (v) => {
-  if (v == null) return null;
-  if (v instanceof Date) return isNaN(v.getTime()) ? null : v.getTime();
-  if (typeof v === "object" && "$date" in v) return toEpochMs(v.$date);
-  if (typeof v === "number" && Number.isFinite(v)) {
-    return v < 1e12 ? v * 1000 : v; // giây -> ms
-  }
-  if (typeof v === "string") {
-    const s = v.trim();
-    if (/^\d+$/.test(s)) {
-      const n = Number(s);
-      return n < 1e12 ? n * 1000 : n;
-    }
-    const d = new Date(s);
-    return isNaN(d.getTime()) ? null : d.getTime();
-  }
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d.getTime();
+  const n = Number(amount) || 0;
+  return n.toLocaleString("vi-VN", { style: "currency", currency: "VND" });
 };
 
 const toSafeDate = (v) => {
-  const ms = toEpochMs(v);
-  return ms ? new Date(ms) : null;
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
 };
 
-/* ---------------- Status mapping ---------------- */
-
-const ITEM_STATUS_LABEL = {
-  pending: "Chờ xác nhận",
-  confirmed: "Đã xác nhận",
-  preparing: "Đang chuẩn bị",
-  ready: "Sẵn sàng",
-  served: "Đã phục vụ",
-  cancelled: "Đã hủy",
-  completed: "Hoàn thành",
+const getMinutesElapsed = (dateStr) => {
+  const start = toSafeDate(dateStr);
+  if (!start) return 0;
+  return Math.floor((Date.now() - start.getTime()) / 60000);
 };
 
-const getItemStatusText = (status) => ITEM_STATUS_LABEL[status] || status;
-
-// orderType → VI
-const toViOrderType = (type) => {
-  switch (type) {
-    case "dine_in":
-      return "Tại bàn";
-    case "takeaway":
-      return "Mang về";
-    case "delivery":
-      return "Giao hàng";
-    default:
-      return type || "Tại bàn";
-  }
+const ITEM_STATUS_CONFIG = {
+  pending: { label: "Chờ xác nhận", color: "yellow", icon: null },
+  confirmed: { label: "Đã nhận", color: "blue", icon: null },
+  preparing: { label: "Đang làm", color: "indigo", icon: ChefHat },
+  ready: { label: "Sẵn sàng", color: "green", icon: CheckCircle2 },
+  served: { label: "Đã trả", color: "cyan", icon: CheckCircle2 },
+  cancelled: { label: "Đã hủy", color: "red", icon: X },
 };
-
-/* ---------------- Mutation: updateOrderStatus theo ID ---------------- */
 
 const UPDATE_ORDER_STATUS = gql`
   mutation UpdateOrderStatus($input: UpdateOrderStatusInput!) {
@@ -85,386 +60,324 @@ const UPDATE_ORDER_STATUS = gql`
   }
 `;
 
-/* ============================== Component ============================== */
+// ... (Giữ nguyên OrderItemRow component như cũ) ...
+const OrderItemRow = React.memo(
+  ({ item, index, orderStatus, onStatusChange, isSaving }) => {
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event) => {
+        if (menuRef.current && !menuRef.current.contains(event.target)) {
+          setMenuOpen(false);
+        }
+      };
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const config =
+      ITEM_STATUS_CONFIG[item.status] || ITEM_STATUS_CONFIG.pending;
+    const StatusIcon = config.icon;
+    const disabled =
+      ["completed", "cancelled"].includes(orderStatus) ||
+      item.status === "cancelled" ||
+      item.status === "served";
+
+    const handleSelectStatus = (status) => {
+      onStatusChange(item, index, status);
+      setMenuOpen(false);
+    };
+
+    return (
+      <div className={`itemCard ${item.status} ${isSaving ? "saving" : ""}`}>
+        <div className="itemCard__info">
+          <div className="itemCard__header">
+            <span className="qtyBadge">x{item.quantity}</span>
+            <span className="itemName">{item.name}</span>
+          </div>
+          <div className="itemCard__meta">
+            {item.modifiersPrice > 0 && (
+              <span className="metaTag mod">
+                +{formatCurrency(item.modifiersPrice)}
+              </span>
+            )}
+            {item.method && <span className="metaTag">{item.method}</span>}
+            {item.unit && <span className="metaTag gray">{item.unit}</span>}
+          </div>
+          {item.note && (
+            <div className="itemCard__note">
+              <span>Note:</span> {item.note}
+            </div>
+          )}
+          <div className="itemCard__price">
+            {formatCurrency(item._lineTotal)}
+          </div>
+        </div>
+        <div className="itemCard__actions">
+          {isSaving ? (
+            <Loader2 className="spin text-gold" size={20} />
+          ) : (
+            <div className="statusDropdown" ref={menuRef}>
+              <button
+                className={`statusBtn ${config.color}`}
+                onClick={() => !disabled && setMenuOpen(!menuOpen)}
+                disabled={disabled}
+              >
+                {StatusIcon && <StatusIcon size={14} />}
+                <span>{config.label}</span>
+                {!disabled && (
+                  <MoreVertical size={14} style={{ opacity: 0.5 }} />
+                )}
+              </button>
+              {menuOpen && (
+                <div className="statusMenu">
+                  {Object.entries(ITEM_STATUS_CONFIG).map(([key, cfg]) => {
+                    if (key === item.status) return null;
+                    return (
+                      <button
+                        key={key}
+                        className={`statusMenuItem ${cfg.color}`}
+                        onClick={() => handleSelectStatus(key)}
+                      >
+                        {cfg.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+);
+
+/* ============================== Main Component ============================== */
 
 const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
   const [savingMap, setSavingMap] = useState({});
   const completingRef = useRef(false);
-  const [autoServed, setAutoServed] = useState(false); // ✅ đánh dấu đã auto-served
-
+  const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [mutStatusById] = useMutation(UPDATE_ORDER_STATUS);
 
-  /* ---------------- Normalize order fields ---------------- */
-
-  const orderIdShort = useMemo(
-    () => (order?.id ? String(order.id).slice(-6) : "N/A"),
-    [order?.id]
-  );
-
-  const orderCode = order?.orderCode || null;
-
-  const customerName = order?.user?.fullName || "Khách lẻ";
-  const tableNumber = order?.tableCode || "N/A";
-  const orderStatus = order?.currentStatus || "pending";
-  const orderNotes = order?.note || "";
-  const orderTypeVi = toViOrderType(order?.orderType);
-
-  const createdAtDate = useMemo(
-    () => toSafeDate(order?.createdAt),
-    [order?.createdAt]
-  );
-
-  const totals = useMemo(() => {
-    const t = order?.totals || {};
-    return {
-      subtotal: Number(t.subtotal || 0),
-      discount: Number(t.discount || 0),
-      tax: Number(t.tax || 0),
-      service: Number(t.service || 0),
-      grandTotal: Number(t.grandTotal || 0),
-    };
-  }, [order?.totals]);
-
   const items = useMemo(() => {
-    const raw = Array.isArray(order?.items) ? order.items : [];
-    return raw.map((it) => {
-      const price = Number(it?.price || 0);
-      const mod = Number(it?.modifiersPrice || 0);
-      const qty = Number(it?.quantity || 0);
-      const per =
-        (Number.isFinite(price) ? price : 0) + (Number.isFinite(mod) ? mod : 0);
-      const lineTotal = per * (Number.isFinite(qty) ? qty : 0);
-
-      return {
-        ...it,
-        price: Number.isFinite(price) ? price : 0,
-        modifiersPrice: Number.isFinite(mod) ? mod : 0,
-        quantity: Number.isFinite(qty) && qty > 0 ? qty : 0,
-        status: it?.status || "pending",
-        _lineTotal: lineTotal,
-      };
-    });
+    return (order?.items || []).map((it) => ({
+      ...it,
+      quantity: Number(it.quantity) || 0,
+      price: Number(it.price) || 0,
+      modifiersPrice: Number(it.modifiersPrice) || 0,
+      _lineTotal:
+        ((Number(it.price) || 0) + (Number(it.modifiersPrice) || 0)) *
+        (Number(it.quantity) || 0),
+    }));
   }, [order?.items]);
 
-  /* ---------------- Tiến độ (% món served trên tổng món của ORDER) ---------------- */
-
   const progress = useMemo(() => {
-    const alive = items.filter((i) => i.status !== "cancelled");
-    if (!alive.length) return 0;
+    const validItems = items.filter((i) => i.status !== "cancelled");
+    if (!validItems.length) return 0;
+    const servedCount = validItems.filter((i) => i.status === "served").length;
+    return Math.round((servedCount / validItems.length) * 100);
+  }, [items]);
 
-    const servedCount = alive.filter((i) => i.status === "served").length;
-    const pct = Math.round((servedCount / alive.length) * 100);
+  useEffect(() => {
+    setElapsedMinutes(getMinutesElapsed(order?.createdAt));
+    const interval = setInterval(() => {
+      setElapsedMinutes(getMinutesElapsed(order?.createdAt));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [order?.createdAt]);
 
-    if (order?.currentStatus === "completed") return 100;
-
-    return Math.max(0, Math.min(100, pct));
-  }, [items, order?.currentStatus]);
-
-  /* ---------------- Auto-complete: 100% -> served (by ID) ---------------- */
+  const handleClose = useCallback(() => onClose?.(), [onClose]);
 
   useEffect(() => {
     const shouldComplete =
       progress === 100 &&
       order?.id &&
-      order?.currentStatus !== "served" &&
-      order?.currentStatus !== "completed" &&
-      order?.currentStatus !== "cancelled";
-
+      ["pending", "confirmed", "preparing", "ready"].includes(
+        order?.currentStatus
+      );
     if (!shouldComplete || completingRef.current) return;
-
-    completingRef.current = true;
-
-    const complete = async () => {
+    const performComplete = async () => {
+      completingRef.current = true;
       try {
         await mutStatusById({
-          variables: {
-            input: {
-              id: order.id,
-              status: "served",
-            },
-          },
+          variables: { input: { id: order.id, status: "served" } },
         });
-        // ✅ mark là đã auto-served
-        setAutoServed(true);
       } catch (e) {
-        console.warn("Auto-complete order failed:", e?.message);
+        console.error("Auto-complete failed:", e);
       } finally {
-        setTimeout(() => {
-          completingRef.current = false;
-        }, 1200);
+        completingRef.current = false;
       }
     };
-
-    complete();
+    performComplete();
   }, [progress, order?.id, order?.currentStatus, mutStatusById]);
-
-  /* ---------------- Close handler: reload nếu đã auto-served ---------------- */
-
-  const handleClose = useCallback(() => {
-    if (autoServed) {
-      window.location.reload();
-      return;
-    }
-    onClose?.();
-  }, [autoServed, onClose]);
-
-  /* ---------------- Hotkeys: ESC đóng ---------------- */
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.key === "Escape") handleClose();
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [handleClose]);
-
-  /* ---------------- Helpers UI ---------------- */
-
-  const getStatusClass = (status) => {
-    const map = {
-      pending: "pending",
-      confirmed: "confirmed",
-      preparing: "preparing",
-      ready: "ready",
-      served: "served",
-      completed: "served",
-      cancelled: "cancelled",
-    };
-    return map[status] || "pending";
-  };
-
-  const getStatusBadge = (status) => (
-    <span className={`statusBadge ${getStatusClass(status)}`}>
-      {getItemStatusText(status)}
-    </span>
-  );
-
-  const handlePrint = () => window.print();
 
   const handleChangeStatus = useCallback(
     async (item, index, nextStatus) => {
-      const itemKey = item?._lineId || item?.dishId || index;
-
-      setSavingMap((m) => ({ ...m, [itemKey]: true }));
+      const itemKey = item?._lineId || index;
+      setSavingMap((prev) => ({ ...prev, [itemKey]: true }));
       try {
-        if (typeof onUpdateItemStatus === "function") {
-          const maybe = onUpdateItemStatus(order?.id, itemKey, nextStatus);
-          if (maybe?.then) await maybe;
-        } else {
-          console.warn("No handler provided for item status change.");
+        if (onUpdateItemStatus) {
+          await onUpdateItemStatus(order?.id, itemKey, nextStatus);
         }
-      } catch (err) {
-        console.error("Update item status error:", err);
       } finally {
-        setSavingMap((m) => ({ ...m, [itemKey]: false }));
+        setSavingMap((prev) => ({ ...prev, [itemKey]: false }));
       }
     },
     [onUpdateItemStatus, order?.id]
   );
 
-  /* -------------------------------- JSX -------------------------------- */
+  const handleServeAll = async () => {
+    if (!window.confirm("Xác nhận đã trả hết các món còn lại?")) return;
+    const pendingItems = items
+      .map((it, idx) => ({ ...it, idx }))
+      .filter((it) => !["served", "cancelled"].includes(it.status));
+    for (const item of pendingItems) {
+      await handleChangeStatus(item, item.idx, "served");
+    }
+  };
 
-  const node = (
-    <div
-      className="orderModalOverlay"
-      onClick={handleClose}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="orderModal" onClick={(e) => e.stopPropagation()}>
-        {/* HEADER (không còn chữ Chi tiết đơn hàng, chỉ code + meta) */}
-        <header className="orderModal__header">
-          <div className="orderModal__headerLeft">
-            <h2 className="orderModal__title">
-              {orderCode || `#${orderIdShort}`}
-            </h2>
-            <div className="orderModal__meta">
-              <span>#{orderIdShort}</span>
-              <span className="dot">•</span>
-              <span>
-                {createdAtDate
-                  ? createdAtDate.toLocaleString("vi-VN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      day: "2-digit",
-                      month: "2-digit",
-                    })
-                  : "—"}
+  const renderOrderTypeIcon = (type) => {
+    switch (type) {
+      case "takeaway":
+      case "delivery":
+        return <Bike size={16} />;
+      default:
+        return <Users size={16} />;
+    }
+  };
+
+  const totals = order?.totals || { grandTotal: 0 };
+
+  return createPortal(
+    <div className="om-overlay" onClick={handleClose}>
+      {/* ⚠️ ĐÃ SỬA TÊN CLASS TẠI ĐÂY TỪ om-container SANG om-modal-box */}
+      <div className="om-modal-box" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <header className="om-header">
+          <div className="om-header__left">
+            <div className="om-header__title-row">
+              <h2 className="title">
+                {order?.orderCode || `#${String(order?.id).slice(-4)}`}
+              </h2>
+              <span className={`status-badge ${order?.currentStatus}`}>
+                {ITEM_STATUS_CONFIG[order?.currentStatus]?.label ||
+                  order?.currentStatus}
+              </span>
+            </div>
+            <div className="om-header__meta">
+              <span className="meta-item">
+                <Clock size={14} /> {elapsedMinutes} phút trước
+              </span>
+              <span className="meta-item">
+                {renderOrderTypeIcon(order?.orderType)}{" "}
+                {order?.tableCode || "Mang về"}
               </span>
             </div>
           </div>
-          <div className="orderModal__headerActions">
+          <div className="om-header__actions">
             <button
-              onClick={handlePrint}
-              className="orderModal__iconButton"
-              aria-label="In đơn hàng"
+              className="om-btn ghost icon-only"
+              onClick={() => window.print()}
+              title="In phiếu"
             >
-              <Printer size={18} />
-              <span>In</span>
+              <Printer size={20} />
             </button>
             <button
+              className="om-btn ghost icon-only"
               onClick={handleClose}
-              className="orderModal__iconButton ghost"
-              aria-label="Đóng"
+              title="Đóng"
             >
-              <X size={18} />
-              <span>Đóng</span>
+              <X size={24} />
             </button>
           </div>
         </header>
 
-        {/* BODY: progress + content scroll + footer fixed */}
-        <div className="orderModal__body">
-          {/* progress dính ngay dưới header */}
-          <div className="orderProgress">
+        {/* Progress */}
+        <div className="om-progress">
+          <div className="om-progress__track">
             <div
-              className="orderProgress__bar"
+              className="om-progress__fill"
               style={{ width: `${progress}%` }}
-            />
-            <div className="orderProgress__label">
-              Tiến độ đơn: <strong>{progress}%</strong>
-            </div>
+            ></div>
           </div>
-
-          {/* content scrollable */}
-          <div className="orderModal__scroll">
-            {/* Order info */}
-            <section className="section">
-              <div className="infoGrid">
-                <div className="infoItem">
-                  <span className="label">Khách hàng:</span>
-                  <span className="value">{customerName}</span>
-                </div>
-                <div className="infoItem">
-                  <span className="label">Bàn/Loại:</span>
-                  <span className="value">
-                    {tableNumber}
-                    {orderTypeVi ? ` • ${orderTypeVi}` : ""}
-                  </span>
-                </div>
-                <div className="infoItem">
-                  <span className="label">Trạng thái đơn:</span>
-                  {getStatusBadge(orderStatus)}
-                </div>
-                <div className="infoItem">
-                  <span className="label">Số món:</span>
-                  <span className="value">{items.length}</span>
-                </div>
-              </div>
-            </section>
-
-            {/* Items */}
-            <section className="section">
-              <h3 className="sectionTitle">Chi tiết món</h3>
-              <div className="itemsList">
-                {items.map((item, index) => {
-                  const key = item._lineId || item.dishId || index;
-                  const isSaving = !!savingMap[key];
-
-                  const disabledAll =
-                    orderStatus === "completed" ||
-                    orderStatus === "cancelled" ||
-                    item.status === "cancelled";
-
-                  return (
-                    <div
-                      key={key}
-                      className={`itemCard ${isSaving ? "saving" : ""}`}
-                    >
-                      <div className="itemInfo">
-                        <div className="itemName">{item.name}</div>
-                        <div className="itemDetails">
-                          {getItemStatusText(item.status)} • Đơn giá:{" "}
-                          {formatCurrency(item.price)}
-                          {Number(item.modifiersPrice) > 0
-                            ? ` (+${formatCurrency(item.modifiersPrice)})`
-                            : ""}
-                          {item.method ? ` • CĐB: ${item.method}` : ""}
-                          {item.unit ? ` • ĐV: ${item.unit}` : ""}
-                        </div>
-                        {item.note && (
-                          <div className="itemNote">
-                            <span>Ghi chú:</span> {item.note}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="itemMeta">
-                        <div className="itemPricing">
-                          <div className="quantity">x{item.quantity}</div>
-                          <div className="itemTotal">
-                            {formatCurrency(item._lineTotal)}
-                          </div>
-                        </div>
-
-                        <div className="itemControl">
-                          <select
-                            value={item.status || "pending"}
-                            onChange={(e) =>
-                              handleChangeStatus(item, index, e.target.value)
-                            }
-                            className="statusSelect"
-                            disabled={disabledAll || isSaving}
-                            aria-label={`Trạng thái của ${item.name}`}
-                          >
-                            <option value="pending">Chờ xác nhận</option>
-                            <option value="preparing">Đang chuẩn bị</option>
-                            <option value="ready">Sẵn sàng</option>
-                            <option value="served">Đã phục vụ</option>
-                            <option value="cancelled">Hủy món</option>
-                          </select>
-                          {isSaving && (
-                            <span
-                              className="savingSpin"
-                              aria-live="polite"
-                              title="Đang lưu"
-                            >
-                              <Loader2 className="spin" size={16} />
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* Totals */}
-            <section className="section">
-              <div className="totalSection">
-                <span className="totalLabel">Tổng cộng</span>
-                <span className="totalAmount">
-                  {formatCurrency(totals.grandTotal)}
-                </span>
-              </div>
-            </section>
-
-            {/* Notes */}
-            {orderNotes && (
-              <section className="section">
-                <h4 className="notesTitle">Ghi chú (Tổng đơn)</h4>
-                <p className="notesContent">{orderNotes}</p>
-              </section>
-            )}
+          <div className="om-progress__text">
+            Hoàn thành: <b>{progress}%</b>
           </div>
-
-          {/* footer cố định */}
-          <footer className="orderModal__footer">
-            <button onClick={handleClose} className="cancelButton">
-              Đóng
-            </button>
-            <button onClick={handlePrint} className="printButton">
-              <Printer size={16} />
-              In đơn hàng
-            </button>
-          </footer>
         </div>
-      </div>
-    </div>
-  );
 
-  return createPortal(node, document.body);
+        {/* Body */}
+        <div className="om-body custom-scrollbar">
+          <section className="om-section info-card">
+            <div className="info-row">
+              <label>Khách hàng:</label>
+              <strong>{order?.user?.fullName || "Khách lẻ"}</strong>
+            </div>
+            {order?.note && (
+              <div className="order-note-box">
+                <Utensils size={16} />{" "}
+                <span className="text">{order.note}</span>
+              </div>
+            )}
+          </section>
+
+          <section className="om-section">
+            <div className="section-header">
+              <h3>Danh sách món ({items.length})</h3>
+              {progress < 100 && order?.currentStatus !== "cancelled" && (
+                <button className="text-link-btn" onClick={handleServeAll}>
+                  Trả hết món
+                </button>
+              )}
+            </div>
+            <div className="items-grid">
+              {items.map((item, index) => (
+                <OrderItemRow
+                  key={item._lineId || index}
+                  item={item}
+                  index={index}
+                  orderStatus={order?.currentStatus}
+                  isSaving={savingMap[item._lineId || index]}
+                  onStatusChange={handleChangeStatus}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="om-section total-summary">
+            <div className="summary-row">
+              <span>Tạm tính</span>
+              <span>{formatCurrency(totals.subtotal)}</span>
+            </div>
+            {totals.discount > 0 && (
+              <div className="summary-row discount">
+                <span>Giảm giá</span>
+                <span>-{formatCurrency(totals.discount)}</span>
+              </div>
+            )}
+            <div className="summary-row grand-total">
+              <span>Tổng cộng</span>
+              <span>{formatCurrency(totals.grandTotal)}</span>
+            </div>
+          </section>
+        </div>
+
+        {/* Footer */}
+        <footer className="om-footer">
+          <button className="om-btn secondary" onClick={handleClose}>
+            Đóng
+          </button>
+          <button className="om-btn primary" onClick={() => window.print()}>
+            <Printer size={18} /> In hóa đơn
+          </button>
+        </footer>
+      </div>
+    </div>,
+    document.body
+  );
 };
 
 export default OrderModal;

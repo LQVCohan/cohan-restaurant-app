@@ -1,0 +1,276 @@
+$gold: #c5a47e;
+$charcoal: #1e293b;
+$bg-cell: #c5a47e;
+$danger: #ef4444;
+
+.smart-heatmap-widget {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow: hidden; // Không cho widget phá vỡ layout cha
+
+  // --- HEADER ---
+  .widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 16px;
+    flex-shrink: 0;
+
+    .header-info {
+      h4 {
+        margin: 0 0 8px 0;
+        font-size: 1.1rem;
+        color: $charcoal;
+      }
+
+      .mode-switch {
+        display: flex;
+        background: #f1f5f9;
+        border-radius: 6px;
+        padding: 3px;
+        gap: 2px;
+
+        button {
+          border: none;
+          background: transparent;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 10px;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          color: #64748b;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+
+          span {
+            display: inline-block;
+          }
+          @media (max-width: 1200px) {
+            span {
+              display: none;
+            }
+          } // Ẩn chữ trên màn nhỏ
+
+          &.active {
+            background: white;
+            color: $gold;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          }
+        }
+      }
+    }
+
+    .heatmap-legend {
+      .legend-track {
+        width: 80px;
+        height: 6px;
+        border-radius: 3px;
+        background: linear-gradient(to right, rgba($gold, 0.1), $gold);
+        margin-bottom: 4px;
+      }
+      .legend-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.6rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+      }
+    }
+  }
+
+  // --- BODY (SCROLLABLE WRAPPER) ---
+  .heatmap-scroll-wrapper {
+    flex: 1;
+    overflow-x: auto; // Cho phép cuộn ngang nếu màn hình quá bé
+    overflow-y: hidden;
+    position: relative;
+
+    /* Custom Scrollbar cho đẹp */
+    &::-webkit-scrollbar {
+      height: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: #e2e8f0;
+      border-radius: 10px;
+    }
+
+    .heatmap-grid {
+      display: grid;
+      /* QUAN TRỌNG: 60px cho cột Ngày, còn lại chia đều 7 cột Giờ */
+      grid-template-columns: 50px repeat(7, minmax(60px, 1fr));
+      gap: 6px;
+      padding-bottom: 4px; // Chừa chỗ cho scrollbar
+
+      // Class chung cho các ô
+      .grid-cell {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+      }
+
+      // 1. Header Cells
+      .header-hour {
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 4px;
+      }
+
+      // 2. Row Labels (Cột ngày)
+      .row-label {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        border-right: 1px solid #f1f5f9;
+        padding-right: 8px;
+
+        .lbl-day {
+          font-weight: 700;
+          color: $charcoal;
+        }
+        .lbl-date {
+          font-size: 0.65rem;
+          color: #94a3b8;
+        }
+      }
+
+      // 3. Data Cells (Các ô nhiệt)
+      .data-cell {
+        position: relative;
+        background: #f8fafc; // Màu nền gốc
+        border-radius: 6px;
+        height: 40px; // Chiều cao cố định cho ô đẹp
+        cursor: pointer;
+        transition: transform 0.2s;
+
+        // Layer màu opacity
+        .cell-bg {
+          position: absolute;
+          inset: 0;
+          background-color: $gold;
+          opacity: var(--bg-opacity);
+          border-radius: 6px;
+          z-index: 0;
+        }
+
+        // Icons & Badges
+        .icon-weather {
+          position: relative;
+          z-index: 1;
+          color: white;
+          filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+        }
+        .badge-event {
+          position: absolute;
+          top: -3px;
+          right: -3px;
+          z-index: 2;
+          background: $danger;
+          color: white;
+          font-size: 0.5rem;
+          padding: 1px 4px;
+          border-radius: 4px;
+          font-weight: bold;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        // High Load Border
+        &.high-load {
+          border: 1px solid rgba($danger, 0.3);
+        }
+
+        // Hover Effect & Tooltip
+        &:hover {
+          transform: scale(1.05);
+          z-index: 10;
+          border: 1px solid $gold;
+
+          .cell-tooltip {
+            visibility: visible;
+            opacity: 1;
+            transform: translate(-50%, -100%);
+            top: -8px;
+          }
+        }
+
+        .cell-tooltip {
+          position: absolute;
+          left: 50%;
+          top: 0;
+          width: 120px;
+          background: $charcoal;
+          color: white;
+          padding: 8px;
+          border-radius: 6px;
+          font-size: 0.7rem;
+          visibility: hidden;
+          opacity: 0;
+          pointer-events: none;
+          transition: all 0.2s;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+          z-index: 100;
+
+          .tt-head {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 4px;
+            padding-bottom: 2px;
+          }
+          .tt-stat {
+            margin-bottom: 2px;
+          }
+          .tt-warn {
+            color: #fca5a5;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 4px;
+            font-weight: bold;
+          }
+
+          // Mũi tên
+          &::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -4px;
+            border-width: 4px;
+            border-style: solid;
+            border-color: $charcoal transparent transparent transparent;
+          }
+        }
+      }
+    }
+  }
+
+  // --- FOOTER ---
+  .forecast-insight {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #92400e;
+
+    .icon {
+      color: #d97706;
+    }
+    strong {
+      font-weight: 700;
+    }
+  }
+}

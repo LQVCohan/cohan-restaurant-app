@@ -4,7 +4,7 @@ import Modal from "../../../../common/Modal";
 import "./MenuItemModal.scss";
 
 import useMenuManagement from "../../../../../hooks/useMenuManagement";
-import useRecipes from "../../../../../hooks/useRecipes";
+import { useRecipes } from "../../../../../hooks/useRecipes";
 
 const MenuItemModal = ({
   isOpen,

@@ -57,7 +57,7 @@ const RecipeSchema = BaseSchemaModel({
 });
 
 RecipeSchema.index({ restaurantId: 1, menuItemId: 1 }, { unique: true });
-
+RecipeSchema.index({ restaurantId: 1, updatedAt: -1 });
 RecipeSchema.pre("validate", function (next) {
   const variants = Array.isArray(this.servingVariants)
     ? this.servingVariants

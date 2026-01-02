@@ -391,17 +391,7 @@ const AppRouter = () => {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/restaurant/:id/table"
-          element={
-            <PrivateRoute
-              allowedRoles={["customer", "manager", "admin"]}
-              requireVerifiedEmail
-            >
-              <TableBooking />
-            </PrivateRoute>
-          }
-        />
+        <Route path="/restaurant/:id/layout" element={<TableBooking />} />
         <Route path="/cus-menu" element={<RestaurantMenu />} />
         <Route path="/vouchers/:id" element={<VoucherPage />} />
         <Route path="/favorites/:id" element={<FavoritePage />} />

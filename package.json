@@ -40,6 +40,7 @@
     "react-map-gl": "^8.1.0",
     "react-pageflip": "^2.0.3",
     "react-router-dom": "^7.6.3",
+    "recharts": "^3.6.0",
     "sass": "^1.89.2",
     "socket.io-client": "^4.8.1"
   },

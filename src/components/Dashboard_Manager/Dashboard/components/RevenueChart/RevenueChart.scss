@@ -1,0 +1,137 @@
+// Variables (Đồng bộ với Dashboard)
+$gold: #c5a47e;
+$charcoal: #1a1a1a;
+$slate: #64748b;
+$bg-hover: #faf9f6;
+
+.revenue-chart-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  // Font inherit from Dashboard
+  font-family: "Be Vietnam Pro", sans-serif;
+
+  // --- Header ---
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    flex-wrap: wrap; // Cho mobile
+    gap: 16px;
+
+    .title-group {
+      h3 {
+        font-family: "Be Vietnam Pro", sans-serif; // Hoặc Playfair Display nếu muốn điệu
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: $charcoal;
+        margin: 0 0 6px 0;
+      }
+
+      .growth-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8125rem;
+
+        // Màu xanh cho tăng trưởng (hoặc màu Gold nếu muốn monochrome)
+        color: #15803d; // Green-700
+        font-weight: 600;
+
+        .text-muted {
+          color: $slate;
+          font-weight: 400;
+        }
+      }
+    }
+
+    // --- Filter Tabs (Style viên thuốc) ---
+    .filter-tabs {
+      display: flex;
+      background: #f1f5f9; // Nền xám nhạt cho cả cụm
+      padding: 4px;
+      border-radius: 8px;
+
+      .filter-btn {
+        border: none;
+        background: transparent;
+        color: $slate;
+        font-size: 0.75rem;
+        font-weight: 500;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          color: $charcoal;
+        }
+
+        &.active {
+          background: #ffffff; // Tab đang chọn màu trắng
+          color: $charcoal;
+          font-weight: 600;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); // Bóng nhẹ
+        }
+      }
+    }
+  }
+
+  // --- Chart Area ---
+  .chart-body {
+    flex: 1;
+    width: 100%;
+    min-height: 0; // Fix lỗi flexbox overflow trên Firefox
+
+    // Tùy chỉnh CSS nội tại của Recharts nếu cần
+    .recharts-cartesian-grid-horizontal line {
+      stroke: #e2e8f0; // Màu lưới mờ hơn
+    }
+  }
+
+  // --- Custom Tooltip Styling ---
+  .custom-tooltip {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba($gold, 0.3);
+    padding: 10px 14px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(4px);
+
+    .label {
+      font-size: 0.75rem;
+      color: $slate;
+      margin: 0 0 2px 0;
+      text-transform: capitalize;
+    }
+
+    .value {
+      font-family: "Be Vietnam Pro", sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: $charcoal; // Hoặc $gold
+      margin: 0;
+    }
+  }
+}
+
+// Mobile Responsive
+@media (max-width: 600px) {
+  .revenue-chart-container {
+    .chart-header {
+      flex-direction: column;
+      align-items: flex-start;
+
+      .filter-tabs {
+        width: 100%;
+        justify-content: space-between;
+
+        .filter-btn {
+          flex: 1;
+        }
+      }
+    }
+  }
+}

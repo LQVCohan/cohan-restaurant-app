@@ -1,5 +1,4 @@
-// src/hooks/useRecipes.js
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLazyQuery, useMutation } from "@apollo/client";
 import {
   Q_MENU_ITEMS_WITH_RECIPES_PAGED,
@@ -8,173 +7,254 @@ import {
   M_UPDATE_MENU_ITEM_BASIC,
 } from "@/components/Dashboard_Manager/Storage/graphql/recipe.gql";
 
-// Mock nhỏ để UI không trống khi chưa chọn nhà hàng
-const initialRecipes = [
-  {
-    id: "demo-1",
-    name: "Bò Wagyu nướng",
-    category: "main",
-    description: "Demo – thay bằng dữ liệu thật khi chọn nhà hàng",
-    icon: "🍽️",
-    servingVariants: [],
-  },
-];
-
 /**
- * Map BE -> FE
- * items: [{ menuItem, recipe }]
+ * useRecipes(restaurantId)
+ * - Hook là nơi xử lý tất cả:
+ *   + filters (search/categoryId/timeSlot/pagination)
+ *   + fetch list (menuItemsWithRecipes)
+ *   + CRUD recipe (upsert/delete)
+ *   + sync MenuItem basic (optional)
+ *   + normalize payload đúng schema BE mới
+ *   + safeRefetchAll + optimistic updates
+ *
+ * Schema BE: servingVariants { key, name, mode, sellQty, sellUnit, ingredients[{ingredientId, qty, unit, wastePct}], price, isDefault }
  */
-const mapToFeRecipes = (items = []) =>
-  items.map(({ menuItem: mi, recipe: r }) => {
-    const servingVariants = Array.isArray(r?.servingVariants)
-      ? r.servingVariants.map((sv) => {
-          const rawIngredients = Array.isArray(sv?.ingredients)
-            ? sv.ingredients
-            : [];
 
-          const components = rawIngredients.map((ic) => ({
-            ingredientId: ic.ingredientId,
-            qty: typeof ic.qty === "number" ? ic.qty : 0,
-            unit: ic.unit || ic.baseUnit || "g", // unit is the recipe line unit
-            baseUnit: ic.baseUnit || "g", // optional (resolver)
-            name: ic.name || "",
-            wastePct: typeof ic.wastePct === "number" ? ic.wastePct : 0,
-            costPerBaseUnit:
-              typeof ic.costPerBaseUnit === "number"
-                ? ic.costPerBaseUnit
-                : null,
-          }));
+// =========================
+// Helpers (match BE behavior)
+// =========================
+const MODES = new Set(["PORTION", "BY_WEIGHT"]);
+const SELL_UNITS = new Set(["portion", "g", "kg"]);
 
-          return {
-            key: sv.key,
-            mode: sv.mode, // "PORTION" | "BY_WEIGHT"
-            name: sv.name || "",
-            sellQty: typeof sv.sellQty === "number" ? sv.sellQty : 1,
-            sellUnit:
-              sv.sellUnit || (sv.mode === "BY_WEIGHT" ? "kg" : "portion"),
+function slugifyKey(str) {
+  return String(str || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]+/gu, "")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .slice(0, 80);
+}
 
-            // FE field alias để UI cũ khỏi vỡ
-            preparationMethodName: sv.name || "",
+function genStableKey() {
+  return `sv_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
 
-            components, // UI editor đang dùng
-            ingredients: rawIngredients, // raw from BE (nếu cần debug)
+function toNum(v, def = 0) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : def;
+}
 
-            price:
-              typeof sv.price === "number" && !Number.isNaN(sv.price)
-                ? sv.price
-                : null,
+function normalizeMode(mode) {
+  const m = String(mode || "PORTION");
+  return MODES.has(m) ? m : "PORTION";
+}
 
-            isDefault: !!sv.isDefault,
-          };
-        })
-      : [];
+function normalizeSellUnit(mode, sellUnit) {
+  const m = normalizeMode(mode);
+  if (m === "PORTION") return "portion";
+  const u = String(sellUnit || "").trim();
+  if (u === "kg" || u === "g") return u;
+  return "kg";
+}
 
-    return {
-      id: mi.id, // CRUD theo menuItemId
-      name: mi.name,
-      description: mi.description || "",
-      categoryId: mi.categoryId || null,
-      basePrice: typeof mi.basePrice === "number" ? mi.basePrice : null,
-      thumbImage: mi.thumbImage || null,
-      status: mi.status || null,
+function normalizeSellQty(mode, sellQty) {
+  const m = normalizeMode(mode);
+  if (m === "PORTION") return 1;
+  const q = toNum(sellQty, 1);
+  return q > 0 ? q : 1;
+}
 
-      icon: "🍽️",
-      servingVariants,
+function normalizeVariantName(v) {
+  return String(v?.name ?? v?.preparationMethodName ?? "").trim();
+}
 
-      _rawRecipeId: r?.id,
-      _rawRecipe: r || null,
-    };
-  });
+function normalizeVariantKey(v, fallbackName = "") {
+  // ✅ không ép key theo mode
+  let key = String(v?.key || "").trim();
+  if (!key && fallbackName) key = slugifyKey(fallbackName);
+  key = slugifyKey(key);
+  if (!key) key = genStableKey();
+  return key;
+}
 
-/**
- * Chuẩn hóa dữ liệu để gửi đúng định dạng UpsertRecipeInput (NEW MODEL)
- */
-function buildUpsertInput({
-  restaurantId,
-  menuItemId,
-  form,
-  defaultActive = true,
-}) {
-  if (!restaurantId || !menuItemId) {
-    throw new Error("Missing restaurantId or menuItemId for upsertRecipe");
+function normalizeIngredientLine(line) {
+  if (!line?.ingredientId) return null;
+
+  const ingredientId = line.ingredientId;
+  const qty = toNum(line.qty ?? line.quantify ?? line.quantity, 0);
+  const unit = String(line.unit ?? line.baseUnit ?? "").trim();
+  const wastePct = Math.min(100, Math.max(0, toNum(line.wastePct, 0)));
+
+  if (!(qty > 0)) return null;
+  if (!unit) {
+    // BE throw Missing unit -> FE throw sớm
+    throw new Error("Thiếu unit cho một dòng nguyên liệu.");
   }
 
-  const servingVariants = (form?.servingVariants || []).map((v) => {
-    const mode = v.mode || "PORTION";
+  return { ingredientId, qty, unit, wastePct };
+}
 
-    const sellQty =
-      v.sellQty !== undefined && v.sellQty !== null && v.sellQty !== ""
-        ? Number(v.sellQty)
-        : 1;
+function ensureUniqueVariantKeys(variants) {
+  const keys = variants.map((v) => v.key);
+  const set = new Set(keys);
+  if (set.size !== keys.length) {
+    throw new Error("servingVariants.key bị trùng.");
+  }
+}
 
-    const sellUnit = v.sellUnit || (mode === "BY_WEIGHT" ? "kg" : "portion"); // default hợp lý
+function ensureSingleDefault(variants) {
+  const defaults = variants.filter((v) => !!v.isDefault);
+  if (defaults.length > 1) {
+    throw new Error("Chỉ được có 1 biến thể isDefault=true.");
+  }
+  if (defaults.length === 0 && variants.length) {
+    variants[0].isDefault = true;
+  }
+}
 
-    const srcList = Array.isArray(v.ingredients)
-      ? v.ingredients
-      : Array.isArray(v.components)
-      ? v.components
-      : [];
+function normalizeServingVariants(inputVariants = []) {
+  const arr = Array.isArray(inputVariants) ? inputVariants : [];
 
-    const ingredients = srcList.map((c) => ({
-      ingredientId: c.ingredientId,
-      qty: Number(c.qty) || 0,
-      unit: c.unit || c.baseUnit || "g",
-      wastePct: Number(c.wastePct || 0) || 0,
-    }));
+  const normalized = arr
+    .map((raw) => {
+      if (!raw) return null;
 
-    const price =
-      v.price !== undefined && v.price !== null && v.price !== ""
-        ? Number(v.price)
-        : undefined;
+      const name = normalizeVariantName(raw);
+      const mode = normalizeMode(raw.mode);
+      const key = normalizeVariantKey(raw, name);
 
-    const key = v.key || (mode === "BY_WEIGHT" ? "by_weight" : "default");
+      const sellUnit = normalizeSellUnit(mode, raw.sellUnit);
+      const sellQty = normalizeSellQty(mode, raw.sellQty);
 
-    const name = (v.name || v.preparationMethodName || "").trim() || undefined;
+      // price optional
+      let price = raw.price;
+      if (price === "" || price === null || price === undefined) price = 0;
+      price = Math.max(0, toNum(price, 0));
 
-    const isDefault = !!v.isDefault;
+      const isDefault = !!raw.isDefault;
 
-    // basic validations (client-side)
-    if (!(sellQty > 0)) {
-      throw new Error(`sellQty must be > 0 (variant ${key})`);
-    }
-    if (mode === "PORTION" && sellUnit !== "portion") {
-      throw new Error(`PORTION must have sellUnit="portion" (variant ${key})`);
-    }
-    if (mode === "BY_WEIGHT" && !["kg", "g"].includes(sellUnit)) {
-      throw new Error(
-        `BY_WEIGHT must have sellUnit "kg" or "g" (variant ${key})`
-      );
-    }
+      const rawLines = Array.isArray(raw.ingredients)
+        ? raw.ingredients
+        : Array.isArray(raw.components)
+        ? raw.components
+        : Array.isArray(raw.Ingredients)
+        ? raw.Ingredients
+        : [];
 
-    const payload = {
-      key,
-      mode,
-      name,
-      sellQty,
-      sellUnit,
-      ingredients,
-      isDefault,
-    };
+      const ingredients = rawLines.map(normalizeIngredientLine).filter(Boolean);
 
-    if (Number.isFinite(price) && price >= 0) payload.price = price;
+      // match BE checks
+      if (mode === "PORTION" && sellUnit !== "portion") {
+        throw new Error(
+          `Variant "${key}": PORTION phải có sellUnit="portion".`
+        );
+      }
+      if (mode === "BY_WEIGHT" && !["kg", "g"].includes(sellUnit)) {
+        throw new Error(`Variant "${key}": BY_WEIGHT phải có sellUnit kg/g.`);
+      }
+      if (!SELL_UNITS.has(sellUnit)) {
+        throw new Error(`Variant "${key}": sellUnit không hợp lệ.`);
+      }
 
-    return payload;
-  });
+      return {
+        key,
+        name: name || undefined,
+        mode,
+        sellQty,
+        sellUnit,
+        ingredients,
+        price,
+        isDefault,
+      };
+    })
+    .filter(Boolean);
+
+  if (!normalized.length) {
+    throw new Error("servingVariants phải có ít nhất 1 biến thể.");
+  }
+
+  ensureUniqueVariantKeys(normalized);
+  ensureSingleDefault(normalized);
+  return normalized;
+}
+
+function mapRowToFe(row) {
+  const mi = row?.menuItem || {};
+  const r = row?.recipe || null;
+
+  const servingVariants = Array.isArray(r?.servingVariants)
+    ? r.servingVariants.map((sv) => {
+        const ingredients = Array.isArray(sv?.ingredients)
+          ? sv.ingredients
+          : [];
+
+        // alias cho UI editor cũ
+        const components = ingredients.map((ic) => ({
+          ingredientId: ic.ingredientId,
+          qty: toNum(ic.qty, 0),
+          unit: ic.unit || ic.baseUnit || "g",
+          wastePct: toNum(ic.wastePct, 0),
+          // join fields optional
+          name: ic.name || "",
+          baseUnit: ic.baseUnit || "",
+          costPerBaseUnit:
+            typeof ic.costPerBaseUnit === "number" ? ic.costPerBaseUnit : null,
+        }));
+
+        return {
+          key: sv.key,
+          name: sv.name || "",
+          preparationMethodName: sv.name || "",
+          mode: sv.mode,
+          sellQty: typeof sv.sellQty === "number" ? sv.sellQty : 1,
+          sellUnit: sv.sellUnit || (sv.mode === "BY_WEIGHT" ? "kg" : "portion"),
+          price: typeof sv.price === "number" ? sv.price : 0,
+          isDefault: !!sv.isDefault,
+
+          ingredients, // chuẩn
+          components, // alias editor
+        };
+      })
+    : [];
 
   return {
-    restaurantId,
-    menuItemId,
-    notes: form?.description || "",
-    isActive: form?.isActive ?? defaultActive,
+    id: mi.id, // menuItemId (flatten)
+    menuItemId: mi.id,
+    restaurantId: mi.restaurantId,
+
+    name: mi.name || "",
+    description: mi.description || "",
+    categoryId: mi.categoryId || null,
+
+    basePrice: typeof mi.basePrice === "number" ? mi.basePrice : 0,
+    thumbImage: mi.thumbImage || null,
+    status: mi.status || null,
+
+    // recipe
     servingVariants,
+    notes: r?.notes || "",
+    isActive: r?.isActive ?? true,
+
+    _rawRecipeId: r?.id || null,
+    _rawRecipe: r,
+
+    icon: "🍽️",
   };
 }
 
-/**
- * Xây input cho updateMenuItemBasic (chỉ có field thay đổi)
- */
+function buildUpsertInput(restaurantId, menuItemId, form) {
+  return {
+    restaurantId,
+    menuItemId,
+    notes: typeof form?.notes === "string" ? form.notes : form?.notes ?? "",
+    isActive: form?.isActive ?? true,
+    servingVariants: normalizeServingVariants(form?.servingVariants || []),
+  };
+}
+
 function buildMenuItemPatch(restaurantId, menuItemId, form) {
-  if (!restaurantId || !menuItemId) return null;
+  // optional — nếu modal cho sửa menuItem basic
   const patch = {};
   if (typeof form?.name === "string") patch.name = form.name.trim();
   if (typeof form?.description === "string")
@@ -186,73 +266,141 @@ function buildMenuItemPatch(restaurantId, menuItemId, form) {
     : null;
 }
 
-/**
- * Hook useRecipes — quản lý danh sách công thức + CRUD
- */
-export const useRecipes = (
-  restaurantId = null,
-  timeSlot = null,
-  filters = { search: null, categoryId: null }
-) => {
-  const [recipes, setRecipes] = useState(initialRecipes);
+// =========================
+// Hook
+// =========================
+export function useRecipes(
+  restaurantId,
+  initialTimeSlot = null,
+  initialFilters = {}
+) {
+  // --- like useIngredients: filters state inside hook
+  const [filters, setFilters] = useState({
+    search: initialFilters?.search || "",
+    categoryId: initialFilters?.categoryId || "",
+    timeSlot: initialTimeSlot || "",
+    first: initialFilters?.first || 30,
+  });
 
-  const [fetchList, { data, loading, error, fetchMore, refetch }] =
-    useLazyQuery(Q_MENU_ITEMS_WITH_RECIPES_PAGED, {
-      fetchPolicy: "cache-and-network",
-    });
-
-  const [upsertRecipeMutation, { loading: upserting }] =
-    useMutation(M_UPSERT_RECIPE);
-  const [deleteRecipeMutation, { loading: deleting }] =
-    useMutation(M_DELETE_RECIPE);
-  const [updateMenuItemBasicMutation] = useMutation(M_UPDATE_MENU_ITEM_BASIC);
-
-  // ==== Query recipes list ====
-  useEffect(() => {
-    if (!restaurantId) {
-      setRecipes(initialRecipes);
-      return;
-    }
-    setRecipes([]);
-    fetchList({
-      variables: {
-        restaurantId,
-        timeSlot: timeSlot ?? null,
-        search: filters?.search || null,
-        categoryId: filters?.categoryId || null,
-        first: 30,
-        after: null,
-      },
-    });
-  }, [restaurantId, timeSlot, filters?.search, filters?.categoryId, fetchList]);
-
-  // Map BE -> FE
-  useEffect(() => {
-    if (!restaurantId) return;
-    const items = data?.menuItemsWithRecipes?.items || [];
-    setRecipes(mapToFeRecipes(items));
-  }, [restaurantId, data]);
-
-  const pageInfo = data?.menuItemsWithRecipes?.pageInfo || {
+  // --- data state
+  const [recipes, setRecipes] = useState([]);
+  const [pageInfo, setPageInfo] = useState({
     endCursor: null,
     hasNextPage: false,
-  };
-  const total = data?.menuItemsWithRecipes?.total ?? undefined;
+  });
+  const [total, setTotal] = useState(0);
 
-  // ==== Load more ====
+  // --- local ui state
+  const [localError, setLocalError] = useState(null);
+
+  // for loadMore vars
+  const lastVarsRef = useRef(null);
+
+  const [fetchList, listState] = useLazyQuery(Q_MENU_ITEMS_WITH_RECIPES_PAGED, {
+    fetchPolicy: "cache-and-network",
+  });
+
+  const [upsertMu, upsertState] = useMutation(M_UPSERT_RECIPE);
+  const [deleteMu, deleteState] = useMutation(M_DELETE_RECIPE);
+  const [updateMenuItemMu, menuItemState] = useMutation(
+    M_UPDATE_MENU_ITEM_BASIC
+  );
+
+  const loading =
+    listState.loading ||
+    upsertState.loading ||
+    deleteState.loading ||
+    menuItemState.loading;
+
+  const error = listState.error || localError;
+
+  const runFetch = useCallback(
+    async (override = {}) => {
+      if (!restaurantId) return;
+
+      const vars = {
+        restaurantId,
+        timeSlot: (override.timeSlot ?? filters.timeSlot) || null,
+        search: (override.search ?? filters.search)?.trim()
+          ? (override.search ?? filters.search).trim()
+          : null,
+        categoryId: (override.categoryId ?? filters.categoryId) || null,
+        first: override.first ?? filters.first ?? 30,
+        after: override.after ?? null,
+      };
+
+      lastVarsRef.current = vars;
+      setLocalError(null);
+      return fetchList({ variables: vars });
+    },
+    [restaurantId, filters, fetchList]
+  );
+
+  // auto fetch when restaurantId/filters change (like ingredient)
+  useEffect(() => {
+    if (!restaurantId) {
+      setRecipes([]);
+      setPageInfo({ endCursor: null, hasNextPage: false });
+      setTotal(0);
+      return;
+    }
+
+    // reset list on filter change
+    setRecipes([]);
+    setPageInfo({ endCursor: null, hasNextPage: false });
+    setTotal(0);
+    runFetch({ after: null });
+  }, [
+    restaurantId,
+    filters.search,
+    filters.categoryId,
+    filters.timeSlot,
+    filters.first,
+    runFetch,
+  ]);
+
+  // map result -> state
+  useEffect(() => {
+    const items = listState.data?.menuItemsWithRecipes?.items || [];
+    const pi = listState.data?.menuItemsWithRecipes?.pageInfo || {
+      endCursor: null,
+      hasNextPage: false,
+    };
+    const t = listState.data?.menuItemsWithRecipes?.total ?? 0;
+
+    setRecipes(items.map(mapRowToFe));
+    setPageInfo(pi);
+    setTotal(t);
+  }, [listState.data]);
+
+  // like useIngredients safeRefetchAll
+  const safeRefetchAll = useCallback(async () => {
+    try {
+      setLocalError(null);
+      await Promise.allSettled([runFetch({ after: null })]);
+    } catch (e) {
+      setLocalError(e);
+    }
+  }, [runFetch]);
+
   const loadMore = useCallback(async () => {
     if (!restaurantId) return;
     if (!pageInfo?.hasNextPage || !pageInfo?.endCursor) return;
 
-    const res = await fetchMore({
-      variables: {
-        restaurantId,
-        timeSlot: timeSlot ?? null,
-        search: filters?.search || null,
-        categoryId: filters?.categoryId || null,
-        first: 30,
-        after: pageInfo.endCursor,
-      },
+    const base = lastVarsRef.current || {
+      restaurantId,
+      timeSlot: filters.timeSlot || null,
+      search: filters.search?.trim() ? filters.search.trim() : null,
+      categoryId: filters.categoryId || null,
+      first: filters.first || 30,
+      after: null,
+    };
+
+    const nextVars = { ...base, after: pageInfo.endCursor };
+    lastVarsRef.current = nextVars;
+
+    const res = await listState.fetchMore?.({
+      variables: nextVars,
       updateQuery: (prev, { fetchMoreResult }) => {
         if (!fetchMoreResult) return prev;
         const prevItems = prev?.menuItemsWithRecipes?.items || [];
@@ -268,101 +416,188 @@ export const useRecipes = (
       },
     });
 
-    const mergedItems = res?.data?.menuItemsWithRecipes?.items || [];
-    setRecipes(mapToFeRecipes(mergedItems));
-  }, [
-    restaurantId,
-    timeSlot,
-    filters?.search,
-    filters?.categoryId,
-    fetchMore,
-    pageInfo?.endCursor,
-    pageInfo?.hasNextPage,
-  ]);
+    const merged = res?.data?.menuItemsWithRecipes?.items || [];
+    setRecipes(merged.map(mapRowToFe));
+    setPageInfo(res?.data?.menuItemsWithRecipes?.pageInfo || pageInfo);
+    setTotal(res?.data?.menuItemsWithRecipes?.total ?? total);
+  }, [restaurantId, pageInfo, filters, listState.fetchMore, total]);
 
-  // ==== Refresh ====
-  const refresh = useCallback(() => {
-    if (!restaurantId) return Promise.resolve();
-    return refetch?.({
-      restaurantId,
-      timeSlot: timeSlot ?? null,
-      search: filters?.search || null,
-      categoryId: filters?.categoryId || null,
-      first: 30,
-      after: null,
-    });
-  }, [refetch, restaurantId, timeSlot, filters?.search, filters?.categoryId]);
+  // ===== optimistic helpers =====
+  const applyOptimisticUpsert = useCallback((menuItemId, form) => {
+    setRecipes((prev) =>
+      prev.map((r) => {
+        if (String(r.id) !== String(menuItemId)) return r;
 
-  // ==== CRUD: ADD ====
+        // optimistic: update menu item basic if provided
+        const next = { ...r };
+        if (typeof form?.name === "string") next.name = form.name.trim();
+        if (typeof form?.description === "string")
+          next.description = form.description.trim();
+        if (form?.categoryId) next.categoryId = form.categoryId;
+
+        // optimistic: update recipe variants
+        try {
+          const normalizedVariants = normalizeServingVariants(
+            form?.servingVariants || next.servingVariants
+          );
+          next.servingVariants = normalizedVariants.map((sv) => ({
+            key: sv.key,
+            name: sv.name || "",
+            preparationMethodName: sv.name || "",
+            mode: sv.mode,
+            sellQty: sv.sellQty,
+            sellUnit: sv.sellUnit,
+            price: sv.price ?? 0,
+            isDefault: !!sv.isDefault,
+            ingredients: sv.ingredients,
+            components: sv.ingredients.map((ic) => ({
+              ingredientId: ic.ingredientId,
+              qty: ic.qty,
+              unit: ic.unit,
+              wastePct: ic.wastePct,
+            })),
+          }));
+        } catch {
+          // ignore optimistic normalize error — BE sẽ trả lỗi, UI vẫn giữ data cũ
+        }
+
+        next.notes = typeof form?.notes === "string" ? form.notes : next.notes;
+        next.isActive = form?.isActive ?? next.isActive;
+
+        return next;
+      })
+    );
+  }, []);
+
+  // ===== CRUD =====
   const addRecipe = useCallback(
     async (form) => {
       if (!restaurantId) throw new Error("restaurantId is required");
-      const menuItemId =
-        form?.menuItemId || form?.id || form?.menuItem?.id || null;
-      if (!menuItemId) throw new Error("menuItemId is required to create");
+      const menuItemId = form?.menuItemId || form?.id || form?.menuItem?.id;
+      if (!menuItemId) throw new Error("menuItemId is required");
 
-      const miInput = buildMenuItemPatch(restaurantId, menuItemId, form);
-      if (miInput) {
-        await updateMenuItemBasicMutation({ variables: { input: miInput } });
+      setLocalError(null);
+
+      // optimistic
+      applyOptimisticUpsert(menuItemId, form);
+
+      // update menu item (optional)
+      const miPatch = buildMenuItemPatch(restaurantId, menuItemId, form);
+      if (miPatch) {
+        await updateMenuItemMu({ variables: { input: miPatch } });
       }
 
-      const input = buildUpsertInput({
-        restaurantId,
-        menuItemId,
-        form,
-        defaultActive: true,
-      });
+      // upsert recipe
+      const input = buildUpsertInput(restaurantId, menuItemId, form);
+      await upsertMu({ variables: { input } });
 
-      await upsertRecipeMutation({ variables: { input } });
-      await refresh?.();
+      await safeRefetchAll();
     },
-    [restaurantId, upsertRecipeMutation, updateMenuItemBasicMutation, refresh]
+    [
+      restaurantId,
+      applyOptimisticUpsert,
+      updateMenuItemMu,
+      upsertMu,
+      safeRefetchAll,
+    ]
   );
 
-  // ==== CRUD: UPDATE ====
   const updateRecipe = useCallback(
     async (menuItemId, form) => {
       if (!restaurantId) throw new Error("restaurantId is required");
-      if (!menuItemId) throw new Error("menuItemId is required to update");
+      if (!menuItemId) throw new Error("menuItemId is required");
 
-      const miInput = buildMenuItemPatch(restaurantId, menuItemId, form);
-      if (miInput) {
-        await updateMenuItemBasicMutation({ variables: { input: miInput } });
+      setLocalError(null);
+
+      // optimistic
+      applyOptimisticUpsert(menuItemId, form);
+
+      const miPatch = buildMenuItemPatch(restaurantId, menuItemId, form);
+      if (miPatch) {
+        await updateMenuItemMu({ variables: { input: miPatch } });
       }
 
-      const input = buildUpsertInput({ restaurantId, menuItemId, form });
-      await upsertRecipeMutation({ variables: { input } });
-      await refresh?.();
+      const input = buildUpsertInput(restaurantId, menuItemId, form);
+      await upsertMu({ variables: { input } });
+
+      await safeRefetchAll();
     },
-    [restaurantId, upsertRecipeMutation, updateMenuItemBasicMutation, refresh]
+    [
+      restaurantId,
+      applyOptimisticUpsert,
+      updateMenuItemMu,
+      upsertMu,
+      safeRefetchAll,
+    ]
   );
 
-  // ==== CRUD: DELETE ====
   const deleteRecipe = useCallback(
     async (menuItemId) => {
       if (!restaurantId) throw new Error("restaurantId is required");
-      if (!menuItemId) throw new Error("menuItemId is required to delete");
+      if (!menuItemId) throw new Error("menuItemId is required");
 
-      await deleteRecipeMutation({ variables: { restaurantId, menuItemId } });
-      await refresh?.();
+      setLocalError(null);
+
+      // optimistic remove recipe only (không xoá menuItem)
+      setRecipes((prev) =>
+        prev.map((r) =>
+          String(r.id) === String(menuItemId)
+            ? {
+                ...r,
+                servingVariants: [],
+                notes: "",
+                _rawRecipeId: null,
+                _rawRecipe: null,
+              }
+            : r
+        )
+      );
+
+      await deleteMu({ variables: { restaurantId, menuItemId } });
+      await safeRefetchAll();
     },
-    [restaurantId, deleteRecipeMutation, refresh]
+    [restaurantId, deleteMu, safeRefetchAll]
   );
 
-  const filteredRecipes = useMemo(() => recipes, [recipes]);
+  // ===== Optional: client-side filters (nếu bạn muốn) =====
+  const filteredRecipes = useMemo(() => {
+    // server đã filter search/category/timeSlot rồi.
+    // giữ đây để tương tự useIngredients, và sau này nếu muốn filter local thêm.
+    return recipes;
+  }, [recipes]);
+
+  // ===== Extra helpers =====
+  const getDefaultVariant = useCallback((recipe) => {
+    const arr = Array.isArray(recipe?.servingVariants)
+      ? recipe.servingVariants
+      : [];
+    return arr.find((v) => v?.isDefault) || arr[0] || null;
+  }, []);
 
   return {
-    recipes: filteredRecipes,
-    loading: loading || upserting || deleting,
+    // like useIngredients
+    loading,
     error,
+
+    recipes,
+    filteredRecipes,
+
+    filters,
+    setFilters,
+
     total,
     pageInfo,
+
     loadMore,
-    refresh,
+    refresh: safeRefetchAll,
+    refetch: safeRefetchAll, // alias
+
     addRecipe,
     updateRecipe,
     deleteRecipe,
-  };
-};
 
-export default useRecipes;
+    // helpers exposed (optional)
+    genStableKey,
+    getDefaultVariant,
+  };
+}

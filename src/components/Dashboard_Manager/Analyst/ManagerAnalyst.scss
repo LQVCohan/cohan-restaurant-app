@@ -1,740 +1,182 @@
-@use "../../../styles/variables.scss" as *;
-@use "../../../styles/mixins" as *;
-.manager-analyst {
-  padding: 1.5rem;
-  max-width: 1400px;
-  margin: 0 auto;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: $gray-50;
+// Variables
+$bg-page: #f1f5f9; // Xám rất nhạt, sang trọng
+$text-dark: #0f172a;
+$gold: #c5a47e;
+$white: #ffffff;
+$gap: 24px; // Khoảng cách chuẩn giữa các widget
+
+.manager-analyst-page {
+  padding: 32px;
+  background-color: $bg-page;
   min-height: 100vh;
+  font-family: "Inter", sans-serif;
+  color: $text-dark;
 
-  .header {
-    margin-bottom: 2rem;
+  // --- 1. HEADER STYLES ---
+  .analyst-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 32px;
 
-    h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      color: $gray-900;
-      margin-bottom: 0.5rem;
+    .header-titles {
+      h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin: 0 0 8px 0;
+        letter-spacing: -0.5px;
+      }
+      p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.95rem;
+      }
     }
 
-    p {
-      color: $gray-500;
-      font-size: 1rem;
-    }
-  }
-
-  .time-filter-container {
-    background: white;
-    border-radius: $border-radius;
-    box-shadow: $shadow-sm;
-    border: 1px solid $gray-200;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-
-    .time-filter-content {
+    .header-actions {
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 1rem;
+      gap: 12px;
 
-      .filter-label {
-        font-size: 0.875rem;
-        font-weight: 500;
-        color: $gray-700;
-      }
-
-      .filter-buttons {
-        display: flex;
-        gap: 0.5rem;
-
-        .filter-btn {
-          padding: 0.5rem 1rem;
-          font-size: 0.875rem;
-          border-radius: $border-radius-sm;
-          border: none;
-          cursor: pointer;
-          transition: all 0.2s;
-
-          &.active {
-            background-color: $primary;
-            color: white;
-          }
-
-          &:not(.active) {
-            background-color: $gray-100;
-            color: $gray-600;
-
-            &:hover {
-              background-color: $gray-200;
-            }
-          }
-        }
-      }
-
-      .date-filter {
+      .date-picker-mock {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
-        margin-left: auto;
-
-        .date-input {
-          padding: 0.5rem 0.75rem;
-          border: 1px solid $gray-300;
-          border-radius: $border-radius-sm;
-          font-size: 0.875rem;
-        }
-
-        span {
-          color: $gray-500;
-        }
-
-        .search-btn {
-          padding: 0.5rem 1rem;
-          background-color: $primary;
-          color: white;
-          border: none;
-          border-radius: $border-radius-sm;
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: background-color 0.2s;
-
-          &:hover {
-            background-color: darken($primary, 10%);
-          }
-
-          i {
-            margin-right: 0.25rem;
-          }
-        }
-      }
-    }
-  }
-
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-
-  .kpi-card {
-    background: white;
-    border-radius: $border-radius;
-    box-shadow: $shadow-sm;
-    border: 1px solid $gray-200;
-    padding: 1.5rem;
-    transition: box-shadow 0.2s;
-
-    &:hover {
-      box-shadow: $shadow-hover;
-    }
-
-    .kpi-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1rem;
-
-      .kpi-icon {
-        padding: 0.75rem;
-        border-radius: $border-radius-sm;
-        font-size: 1.25rem;
-
-        &.revenue {
-          background-color: custom-lighten($success-400, 40%);
-          color: $success-400;
-        }
-
-        &.orders {
-          background-color: custom-lighten($primary, 40%);
-          color: $primary;
-        }
-
-        &.customers {
-          background-color: custom-lighten($secondary-300, 40%);
-          color: $secondary-300;
-        }
-
-        &.average {
-          background-color: custom-lighten($warning-400, 40%);
-          color: $warning-400;
-        }
-      }
-
-      .kpi-change {
-        font-size: 0.875rem;
-        font-weight: 500;
-
-        &.positive {
-          color: $success-400;
-        }
-
-        &.negative {
-          color: $error-red;
-        }
-      }
-    }
-
-    .kpi-value {
-      font-size: 1.875rem;
-      font-weight: 700;
-      color: $gray-900;
-      margin-bottom: 0.25rem;
-    }
-
-    .kpi-label {
-      color: $gray-500;
-      font-size: 0.875rem;
-    }
-
-    .kpi-comparison {
-      margin-top: 0.75rem;
-      display: flex;
-      align-items: center;
-      font-size: 0.75rem;
-      color: $gray-500;
-
-      i {
-        margin-right: 0.25rem;
-      }
-    }
-  }
-
-  .charts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-
-  .chart-card {
-    background: white;
-    border-radius: $border-radius;
-    box-shadow: $shadow-sm;
-    border: 1px solid $gray-200;
-    padding: 1.5rem;
-
-    .chart-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.5rem;
-
-      .chart-title {
-        font-size: 1.125rem;
+        gap: 8px;
+        background: $white;
+        border: 1px solid #e2e8f0;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 0.9rem;
         font-weight: 600;
-        color: $gray-900;
+        color: $text-dark;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
       }
 
-      .chart-toggles {
-        display: flex;
-        gap: 0.5rem;
-
-        .chart-toggle {
-          padding: 0.25rem 0.75rem;
-          font-size: 0.875rem;
-          border-radius: 0.375rem;
-          border: none;
-          cursor: pointer;
-          transition: all 0.2s;
-
-          &.active {
-            background-color: custom-lighten($primary, 40%);
-            color: darken($primary, 10%);
-          }
-
-          &:not(.active) {
-            background-color: $gray-100;
-            color: $gray-500;
-
-            &:hover {
-              background-color: $gray-200;
-            }
-          }
-        }
-      }
-    }
-
-    .chart-title {
-      font-size: 1.125rem;
-      font-weight: 600;
-      color: $gray-900;
-      margin-bottom: 1.5rem;
-    }
-  }
-
-  .top-products {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-
-    .product-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.75rem;
-      background-color: $gray-50;
-      border-radius: $border-radius-sm;
-
-      .product-left {
+      .btn-icon {
+        width: 42px;
+        height: 42px;
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-
-        .product-rank {
-          width: 2.5rem;
-          height: 2.5rem;
-          border-radius: $border-radius-sm;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 700;
-
-          &.first {
-            background-color: #fef3c7;
-            color: #d97706;
-          }
-
-          &.second {
-            background-color: $gray-100;
-            color: $gray-500;
-          }
-
-          &.third {
-            background-color: custom-lighten($warning-400, 40%);
-            color: $warning-400;
-          }
-
-          &.fourth {
-            background-color: custom-lighten($primary, 40%);
-            color: $primary;
-          }
-        }
-
-        .product-info {
-          h4 {
-            font-weight: 500;
-            color: $gray-900;
-            margin-bottom: 0.125rem;
-          }
-
-          p {
-            font-size: 0.875rem;
-            color: $gray-500;
-          }
+        justify-content: center;
+        background: $white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        cursor: pointer;
+        color: #64748b;
+        &:hover {
+          border-color: $gold;
+          color: $gold;
         }
       }
 
-      .product-right {
-        text-align: right;
-
-        .revenue {
-          font-weight: 600;
-          color: $gray-900;
-          margin-bottom: 0.125rem;
-        }
-
-        .change {
-          font-size: 0.875rem;
-
-          &.positive {
-            color: $success-400;
-          }
-
-          &.negative {
-            color: $error-red;
-          }
-        }
-      }
-    }
-  }
-
-  .analytics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-  }
-
-  .service-stats {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-
-    .service-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 1rem;
-      border-radius: $border-radius-sm;
-
-      &.dine-in {
-        background-color: custom-lighten($primary, 40%);
-      }
-
-      &.delivery {
-        background-color: custom-lighten($success-400, 40%);
-      }
-
-      &.reservation {
-        background-color: custom-lighten($secondary-300, 40%);
-      }
-
-      .service-left {
+      .btn-primary {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-
-        .service-icon {
-          padding: 0.5rem;
-          border-radius: $border-radius-sm;
-
-          &.dine-in {
-            background-color: custom-lighten($primary, 30%);
-            color: $primary;
-          }
-
-          &.delivery {
-            background-color: custom-lighten($success-400, 30%);
-            color: $success-400;
-          }
-
-          &.reservation {
-            background-color: custom-lighten($secondary-300, 30%);
-            color: $secondary-300;
-          }
-        }
-
-        .service-info {
-          h4 {
-            font-weight: 500;
-            color: $gray-900;
-            margin-bottom: 0.125rem;
-          }
-
-          p {
-            font-size: 0.875rem;
-            color: $gray-500;
-          }
-        }
-      }
-
-      .service-right {
-        text-align: right;
-
-        .service-percentage {
-          font-size: 1.125rem;
-          font-weight: 700;
-
-          &.dine-in {
-            color: $primary;
-          }
-
-          &.delivery {
-            color: $success-400;
-          }
-
-          &.reservation {
-            color: $secondary-300;
-          }
-        }
-
-        .service-change {
-          font-size: 0.75rem;
-
-          &.positive {
-            color: $success-400;
-          }
-
-          &.negative {
-            color: $error-red;
-          }
-        }
-      }
-    }
-
-    .summary-box {
-      margin-top: 1rem;
-      padding: 0.75rem;
-      background-color: $gray-50;
-      border-radius: $border-radius-sm;
-
-      .summary-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        font-size: 0.875rem;
-        margin-bottom: 0.25rem;
-
-        &:last-child {
-          margin-bottom: 0;
-        }
-
-        .summary-label {
-          color: $gray-500;
-        }
-
-        .summary-value {
-          font-weight: 600;
-          color: $gray-900;
-        }
-      }
-    }
-  }
-
-  .peak-hours {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-
-    .hour-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      .hour-label {
-        font-size: 0.875rem;
-        color: $gray-500;
-      }
-
-      .hour-progress {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-
-        .progress-bar {
-          width: 5rem;
-          height: 0.5rem;
-          background-color: $gray-200;
-          border-radius: 9999px;
-          overflow: hidden;
-
-          .progress-fill {
-            height: 100%;
-            border-radius: 9999px;
-
-            &.high {
-              background-color: #ef4444;
-            }
-
-            &.medium-high {
-              background-color: #f97316;
-            }
-
-            &.medium {
-              background-color: #eab308;
-            }
-
-            &.low {
-              background-color: #22c55e;
-            }
-          }
-        }
-
-        .progress-percentage {
-          font-size: 0.875rem;
-          font-weight: 500;
-        }
-      }
-    }
-  }
-
-  .payment-methods {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-
-    .payment-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.75rem;
-      border-radius: $border-radius-sm;
-
-      &.credit {
-        background-color: custom-lighten($primary, 40%);
-      }
-
-      &.cash {
-        background-color: custom-lighten($success-400, 40%);
-      }
-
-      &.ewallet {
-        background-color: custom-lighten($secondary-300, 40%);
-      }
-
-      .payment-left {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-
-        .payment-icon {
-          &.credit {
-            color: $primary;
-          }
-
-          &.cash {
-            color: $success-400;
-          }
-
-          &.ewallet {
-            color: $secondary-300;
-          }
-        }
-
-        .payment-method {
-          font-size: 0.875rem;
-          font-weight: 500;
-        }
-      }
-
-      .payment-right {
-        text-align: right;
-
-        .payment-percentage {
-          font-size: 0.875rem;
-          font-weight: 600;
-        }
-
-        .payment-amount {
-          font-size: 0.75rem;
-          color: $gray-500;
-        }
-      }
-    }
-  }
-
-  .table-container {
-    background: white;
-    border-radius: $border-radius;
-    box-shadow: $shadow-sm;
-    border: 1px solid $gray-200;
-    padding: 1.5rem;
-
-    .table-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.5rem;
-
-      .table-title {
-        font-size: 1.125rem;
+        gap: 8px;
+        background: $text-dark;
+        color: $gold;
+        border: none;
+        padding: 0 20px;
+        border-radius: 8px;
         font-weight: 600;
-        color: $gray-900;
-      }
+        cursor: pointer;
+        transition: all 0.2s;
 
-      .table-actions {
-        display: flex;
-        gap: 0.5rem;
-
-        .action-btn {
-          padding: 0.5rem 1rem;
-          font-size: 0.875rem;
-          border-radius: $border-radius-sm;
-          border: none;
-          cursor: pointer;
-          transition: all 0.2s;
-
-          &.secondary {
-            background-color: $gray-100;
-            color: $gray-600;
-
-            &:hover {
-              background-color: $gray-200;
-            }
-          }
-
-          &.primary {
-            background-color: $primary;
-            color: white;
-
-            &:hover {
-              background-color: darken($primary, 10%);
-            }
-          }
-
-          i {
-            margin-right: 0.5rem;
-          }
-        }
-      }
-    }
-
-    .data-table {
-      width: 100%;
-      overflow-x: auto;
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-
-        th {
-          text-align: left;
-          padding: 0.75rem 1rem;
-          font-weight: 500;
-          color: $gray-700;
-          border-bottom: 1px solid $gray-200;
-        }
-
-        td {
-          padding: 0.75rem 1rem;
-          font-size: 0.875rem;
-          border-bottom: 1px solid $gray-100;
-
-          &.highlight {
-            font-weight: 500;
-            color: $success-400;
-          }
-        }
-
-        tr:hover {
-          background-color: $gray-50;
-        }
-      }
-
-      .growth-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.25rem 0.5rem;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-
-        &.positive {
-          background-color: custom-lighten($success-400, 40%);
-          color: darken($success-400, 20%);
-        }
-
-        &.negative {
-          background-color: custom-lighten($error-red, 40%);
-          color: darken($error-red, 10%);
-        }
-
-        i {
-          margin-right: 0.25rem;
+        &:hover {
+          background: black;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
       }
     }
   }
 
-  // Responsive Design
-  @media (max-width: 768px) {
-    padding: 1rem;
+  // --- COMMON GRID ITEM ---
+  .grid-item {
+    background: $white;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+      0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    height: 100%; // Fill chiều cao của row
+    animation: fadeIn 0.5s ease-out;
+  }
 
-    .time-filter-content {
-      flex-direction: column;
-      align-items: stretch;
+  // --- 2. KPI SECTION ---
+  .kpi-section {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: $gap;
+    margin-bottom: $gap;
 
-      .date-filter {
-        margin-left: 0;
-        margin-top: 1rem;
-      }
+    @media (max-width: 1200px) {
+      grid-template-columns: repeat(2, 1fr);
     }
-
-    .kpi-grid,
-    .charts-grid,
-    .analytics-grid {
+    @media (max-width: 768px) {
       grid-template-columns: 1fr;
     }
+  }
+
+  // --- 3. STRATEGY GRID (AI + Revenue) ---
+  .strategy-grid {
+    display: grid;
+    grid-template-columns: 3.5fr 8.5fr; // Tỉ lệ 3.5 : 8.5
+    gap: $gap;
+    margin-bottom: $gap;
+    align-items: stretch; // Kéo giãn chiều cao bằng nhau
+
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr;
+    } // Mobile xếp chồng
+
+    .ai-assistant {
+      // Style riêng nếu cần
+      border: 1px solid rgba($gold, 0.3); // Viền vàng nhẹ nhấn mạnh
+    }
+  }
+
+  // --- 4. PRODUCT & CUSTOMER GRID ---
+  .product-customer-grid {
+    display: grid;
+    grid-template-columns: 7fr 5fr; // Menu Matrix lớn hơn Feedback
+    gap: $gap;
+    margin-bottom: $gap;
+    min-height: 500px; // Đảm bảo chiều cao đủ cho Matrix
+
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  // --- 5. OPERATIONS GRID ---
+  .operations-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr; // Heatmap lớn hơn Staffing
+    gap: $gap;
+    margin-bottom: 32px;
+
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  // --- FOOTER ---
+  .analyst-footer {
+    text-align: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    padding-top: 20px;
+    border-top: 1px dashed #cbd5e1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { X, Eye, Loader } from "lucide-react";
+import { X, Eye, Loader, Calendar, Filter, DollarSign } from "lucide-react";
 import useOrderManagement from "../../../../hooks/useOrderManagement";
 import "./HistoryModal.scss";
 
-/* helpers */
+/* --- Helpers --- */
 const toEpochMs = (v) => {
   if (v == null) return null;
   if (v instanceof Date) return isNaN(v.getTime()) ? null : v.getTime();
@@ -17,32 +17,48 @@ const toEpochMs = (v) => {
   const d = new Date(v);
   return isNaN(d.getTime()) ? null : d.getTime();
 };
+
 const toDT = (v) => {
   const ms = toEpochMs(v);
   return ms ? new Date(ms) : null;
 };
+
 const formatCurrency = (n) =>
   Number(n || 0).toLocaleString("vi-VN", {
     style: "currency",
     currency: "VND",
   });
-const toViOrderType = (t) =>
-  t === "dine_in"
-    ? "Tại bàn"
-    : t === "takeaway"
-    ? "Mang về"
-    : t === "delivery"
-    ? "Giao hàng"
-    : t || "Tại bàn";
 
-/** ✅ History gồm: served + completed + cancelled */
+const toViOrderType = (t) => {
+  switch (t) {
+    case "dine_in":
+      return "Tại bàn";
+    case "takeaway":
+      return "Mang về";
+    case "delivery":
+      return "Giao hàng";
+    default:
+      return "Tại bàn";
+  }
+};
+
+const formatDate = (date) => {
+  if (!date) return "—";
+  return date.toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+  });
+};
+
 const VALID_HISTORY = new Set(["served", "completed", "cancelled"]);
 
 const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
   const { loadOrdersAll } = useOrderManagement();
 
   const [allOrders, setAllOrders] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("all"); // all | served | completed | cancelled
+  const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [pageInfo, setPageInfo] = useState({
@@ -68,12 +84,12 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
         const edges = Array.isArray(conn?.edges) ? conn.edges : [];
         const nodes = edges.map((e) => e.node);
 
-        // chỉ nhận served / completed / cancelled
+        // Filter local
         const filtered = nodes.filter((o) =>
           VALID_HISTORY.has(o?.currentStatus)
         );
 
-        // sort updatedAt desc (fallback createdAt)
+        // Sort DESC
         filtered.sort((a, b) => {
           const ta = toEpochMs(a?.updatedAt || a?.createdAt) || 0;
           const tb = toEpochMs(b?.updatedAt || b?.createdAt) || 0;
@@ -98,15 +114,9 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
     loadPage(null);
   }, [loadPage]);
 
-  // áp dụng filter
   const history = useMemo(() => {
-    if (statusFilter === "served")
-      return allOrders.filter((o) => o.currentStatus === "served");
-    if (statusFilter === "completed")
-      return allOrders.filter((o) => o.currentStatus === "completed");
-    if (statusFilter === "cancelled")
-      return allOrders.filter((o) => o.currentStatus === "cancelled");
-    return allOrders;
+    if (statusFilter === "all") return allOrders;
+    return allOrders.filter((o) => o.currentStatus === statusFilter);
   }, [allOrders, statusFilter]);
 
   const summary = useMemo(() => {
@@ -122,203 +132,193 @@ const HistoryModal = ({ restaurantId, onClose, onViewOrder }) => {
 
   return (
     <div
-      className="modal_hisOverlay"
+      className="hm-overlay"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
     >
-      <div className="modal_his" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="modal_hisHeader">
-          <h3 className="modal_hisTitle">Lịch sử đơn hàng</h3>
-          <button
-            className="modal_hisClose"
-            onClick={onClose}
-            aria-label="Đóng"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="modal_hisContent">
-          {/* Summary + Filter */}
-          <div className="hisTopRow">
-            <p className="hisSummary">
-              Đã phục vụ: <strong>{summary.served}</strong> • Hoàn thành:{" "}
-              <strong>{summary.completed}</strong> • Hủy:{" "}
-              <strong>{summary.cancelled}</strong> • Tổng:{" "}
-              <strong>{summary.total}</strong>
-            </p>
-
-            <div className="hisFilters">
-              <button
-                className={`hisChip ${statusFilter === "all" ? "active" : ""}`}
-                onClick={() => setStatusFilter("all")}
-              >
-                Tất cả
-              </button>
-              <button
-                className={`hisChip ${
-                  statusFilter === "served" ? "active" : ""
-                }`}
-                onClick={() => setStatusFilter("served")}
-              >
-                Đã phục vụ
-              </button>
-              <button
-                className={`hisChip ${
-                  statusFilter === "completed" ? "active" : ""
-                }`}
-                onClick={() => setStatusFilter("completed")}
-              >
-                Hoàn thành
-              </button>
-              <button
-                className={`hisChip ${
-                  statusFilter === "cancelled" ? "active" : ""
-                }`}
-                onClick={() => setStatusFilter("cancelled")}
-              >
-                Đã hủy
-              </button>
-              {statusFilter !== "all" && (
-                <button
-                  className="hisClear"
-                  onClick={() => setStatusFilter("all")}
-                >
-                  Xóa lọc
-                </button>
-              )}
+      <div className="hm-modal" onClick={(e) => e.stopPropagation()}>
+        {/* --- HEADER --- */}
+        <header className="hm-header">
+          <div className="hm-header__title-group">
+            <Calendar className="hm-header__icon" size={24} />
+            <div>
+              <h3 className="hm-header__title">Lịch sử đơn hàng</h3>
+              <p className="hm-header__subtitle">
+                Xem lại các đơn đã hoàn thành hoặc hủy
+              </p>
             </div>
           </div>
+          <button className="hm-close-btn" onClick={onClose} aria-label="Đóng">
+            <X size={20} />
+          </button>
+        </header>
 
-          {/* trạng thái */}
-          {errorMsg && (
-            <div className="emptyState">
-              <h3>Lỗi</h3>
-              <p>{errorMsg}</p>
+        {/* --- STATS BAR --- */}
+        <div className="hm-stats">
+          <div className="hm-stat-item">
+            <span className="hm-stat-label">Tổng</span>
+            <span className="hm-stat-val">{summary.total}</span>
+          </div>
+          <div className="hm-stat-divider" />
+          <div className="hm-stat-item hm-text-served">
+            <span className="hm-stat-label">Đã phục vụ</span>
+            <span className="hm-stat-val">{summary.served}</span>
+          </div>
+          <div className="hm-stat-item hm-text-completed">
+            <span className="hm-stat-label">Hoàn thành</span>
+            <span className="hm-stat-val">{summary.completed}</span>
+          </div>
+          <div className="hm-stat-item hm-text-cancelled">
+            <span className="hm-stat-label">Đã hủy</span>
+            <span className="hm-stat-val">{summary.cancelled}</span>
+          </div>
+        </div>
+
+        {/* --- FILTERS --- */}
+        <div className="hm-filters">
+          <div className="hm-filters__scroll">
+            <button
+              className={`hm-chip ${
+                statusFilter === "all" ? "hm-chip--active" : ""
+              }`}
+              onClick={() => setStatusFilter("all")}
+            >
+              Tất cả
+            </button>
+            <button
+              className={`hm-chip ${
+                statusFilter === "served" ? "hm-chip--active" : ""
+              }`}
+              onClick={() => setStatusFilter("served")}
+            >
+              Đã phục vụ
+            </button>
+            <button
+              className={`hm-chip ${
+                statusFilter === "completed" ? "hm-chip--active" : ""
+              }`}
+              onClick={() => setStatusFilter("completed")}
+            >
+              Hoàn thành
+            </button>
+            <button
+              className={`hm-chip ${
+                statusFilter === "cancelled" ? "hm-chip--active" : ""
+              }`}
+              onClick={() => setStatusFilter("cancelled")}
+            >
+              Đã hủy
+            </button>
+          </div>
+        </div>
+
+        {/* --- CONTENT --- */}
+        <div className="hm-body custom-scrollbar">
+          {errorMsg ? (
+            <div className="hm-empty">
+              <p className="hm-empty__text hm-text-error">{errorMsg}</p>
             </div>
-          )}
-
-          {!errorMsg && history.length === 0 && !loading && (
-            <div className="emptyState">
-              <h3>Không có đơn phù hợp</h3>
-              <p>Hãy thay đổi bộ lọc hoặc thử lại sau.</p>
+          ) : history.length === 0 && !loading ? (
+            <div className="hm-empty">
+              <div className="hm-empty__icon">
+                <Filter size={32} />
+              </div>
+              <h3>Không tìm thấy đơn hàng</h3>
+              <p>Thử thay đổi bộ lọc hoặc tải lại trang</p>
             </div>
-          )}
+          ) : (
+            <div className="hm-list">
+              {history.map((order) => {
+                const createdAt = toDT(order?.createdAt);
+                const items = Array.isArray(order?.items) ? order.items : [];
+                const visibleItems = items.slice(0, 5);
+                const remaining = items.length - 5;
+                const st = order.currentStatus;
 
-          {/* List */}
-          <div className="historyList">
-            {history.map((o) => {
-              const createdAt = toDT(o?.createdAt);
-              const updatedAt = toDT(o?.updatedAt);
-              const items = Array.isArray(o?.items) ? o.items : [];
-              const tags = items.slice(0, 6);
-              const st = o.currentStatus;
-
-              return (
-                <div key={o.id} className="historyItem">
-                  <div className="itemHeader">
-                    <div>
-                      <h4 className="orderTitle">
-                        #{String(o.id).slice(-6)} • {o.orderCode || "—"}
-                      </h4>
-                      <p className="tableInfo">
-                        Bàn: <strong>{o.tableCode || "—"}</strong> • Loại:{" "}
-                        <strong>{toViOrderType(o?.orderType)}</strong>
-                      </p>
+                return (
+                  <div key={order.id} className="hm-card">
+                    {/* Card Header */}
+                    <div className="hm-card__header">
+                      <div className="hm-card__id-group">
+                        <span className="hm-card__code">
+                          #{order.orderCode || String(order.id).slice(-4)}
+                        </span>
+                        <span className="hm-card__table">
+                          {order.tableCode || "N/A"}
+                        </span>
+                      </div>
+                      <div className={`hm-badge hm-badge--${st}`}>
+                        {st === "served"
+                          ? "Đã phục vụ"
+                          : st === "completed"
+                          ? "Hoàn thành"
+                          : "Đã hủy"}
+                      </div>
                     </div>
 
-                    {st === "served" && (
-                      <span className="servedBadge">Đã phục vụ</span>
-                    )}
-                    {st === "completed" && (
-                      <span className="completedBadge">Hoàn thành</span>
-                    )}
-                    {st === "cancelled" && (
-                      <span className="cancelledBadge">Đã hủy</span>
-                    )}
-                  </div>
-
-                  <div className="timeInfo">
-                    <div>
-                      <span className="timeLabel">Tạo lúc:</span>{" "}
-                      <span className="timeValue">
-                        {createdAt
-                          ? createdAt.toLocaleString("vi-VN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              day: "2-digit",
-                              month: "2-digit",
-                            })
-                          : "—"}
-                      </span>
+                    {/* Card Meta */}
+                    <div className="hm-card__meta">
+                      <span>{toViOrderType(order.orderType)}</span>
+                      <span className="hm-dot">•</span>
+                      <span>{formatDate(createdAt)}</span>
+                      {order.user?.fullName && (
+                        <>
+                          <span className="hm-dot">•</span>
+                          <span>{order.user.fullName}</span>
+                        </>
+                      )}
                     </div>
-                    <div>
-                      <span className="timeLabel">Cập nhật:</span>{" "}
-                      <span className="timeValue">
-                        {updatedAt
-                          ? updatedAt.toLocaleString("vi-VN", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              day: "2-digit",
-                              month: "2-digit",
-                            })
-                          : "—"}
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="itemsInfo">
-                    <div className="itemsLabel">Các món:</div>
-                    <div className="itemsTags">
-                      {tags.map((it, idx) => (
-                        <span key={idx} className="itemTag">
-                          {it.quantity}× {it.name}
+                    {/* Items */}
+                    <div className="hm-card__items">
+                      {visibleItems.map((item, idx) => (
+                        <span key={idx} className="hm-item-tag">
+                          <b>{item.quantity}</b> {item.name}
                         </span>
                       ))}
-                      {items.length > tags.length && (
-                        <span className="itemTag">
-                          +{items.length - tags.length} món
+                      {remaining > 0 && (
+                        <span className="hm-item-tag hm-item-tag--more">
+                          +{remaining} món
                         </span>
                       )}
                     </div>
-                  </div>
 
-                  <div className="itemFooter">
-                    <div className="totalAmount">
-                      {formatCurrency(o?.totals?.grandTotal)}
+                    {/* Footer */}
+                    <div className="hm-card__footer">
+                      <div className="hm-card__total">
+                        <DollarSign size={14} strokeWidth={3} />
+                        {formatCurrency(order?.totals?.grandTotal)}
+                      </div>
+                      <button
+                        className="hm-btn-view"
+                        onClick={() => onViewOrder?.(order)}
+                      >
+                        <Eye size={16} /> Chi tiết
+                      </button>
                     </div>
-                    <button
-                      className="hisViewButton"
-                      onClick={() => onViewOrder?.(o)}
-                      aria-label="Xem chi tiết"
-                    >
-                      <Eye size={16} />
-                      Xem chi tiết
-                    </button>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
-          {/* Load more */}
-          <div className="hisLoadMoreRow">
+          {/* Loading / Load More */}
+          <div className="hm-loader-area">
             {loading ? (
-              <div className="hisLoading">
-                <Loader size={16} className="animate-spin" /> Đang tải...
+              <div className="hm-loading">
+                <Loader className="animate-spin" size={20} /> Đang tải thêm...
               </div>
-            ) : pageInfo.hasNextPage ? (
-              <button
-                className="hisViewButton"
-                onClick={() => loadPage(pageInfo.endCursor)}
-              >
-                Tải thêm
-              </button>
-            ) : history.length > 0 ? (
-              <div className="itemsLabel">Đã hết kết quả</div>
-            ) : null}
+            ) : (
+              pageInfo.hasNextPage && (
+                <button
+                  className="hm-btn-loadmore"
+                  onClick={() => loadPage(pageInfo.endCursor)}
+                >
+                  Tải thêm đơn cũ hơn
+                </button>
+              )
+            )}
           </div>
         </div>
       </div>

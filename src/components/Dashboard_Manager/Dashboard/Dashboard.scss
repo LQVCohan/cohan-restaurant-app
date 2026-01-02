@@ -1,6 +1,185 @@
-.dashboard {
-  padding-top: 20px;
-  max-width: 1400px;
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap");
+
+// --- Variables Luxury ---
+$gold: #c5a47e;
+$charcoal: #1a1a1a;
+$slate: #64748b;
+$bg-page: #f9f8f6; // Màu kem nền tổng thể
+$card-bg: #ffffff;
+$border-light: rgba(197, 164, 126, 0.15);
+
+// --- Mixins ---
+@mixin flex-center-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard-container {
+  font-family: "Be Vietnam Pro", sans-serif;
+  background-color: $bg-page;
+  min-height: 100vh;
+  padding: 32px 40px; // Padding rộng rãi hơn cho desktop
+  color: $charcoal;
+  max-width: 1600px;
   margin: 0 auto;
-  width: 100%;
+
+  // Global Animation
+  &.fade-in {
+    animation: fadeIn 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+
+  // --- 1. Top Bar Styling ---
+  .dashboard-top-bar {
+    @include flex-center-between;
+    margin-bottom: 32px;
+    flex-wrap: wrap; // Cho phép xuống dòng trên màn hình nhỏ
+    gap: 20px;
+
+    .greeting-group {
+      .greeting-title {
+        font-size: 1.75rem; // Kích thước vừa phải, thanh lịch (Không quá to)
+        font-weight: 600;
+        color: $charcoal;
+        margin: 0 0 8px 0;
+        letter-spacing: -0.5px;
+
+        .highlight {
+          color: $slate; // "Quản lý" màu nhạt hơn chút hoặc giữ nguyên đen
+          font-weight: 400;
+        }
+      }
+
+      .greeting-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.875rem;
+        color: $slate;
+        font-weight: 500;
+
+        .divider {
+          color: #cbd5e1;
+        }
+
+        .date,
+        .location {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+
+          svg {
+            stroke-width: 2px;
+            color: $gold;
+          } // Icon màu vàng
+        }
+
+        .location {
+          color: $charcoal;
+          font-weight: 600;
+        }
+      }
+    }
+
+    .controls-group {
+      // Container cho Header con
+      flex-shrink: 0;
+    }
+  }
+
+  // --- 2. Sections Spacing ---
+  .section-stats {
+    margin-bottom: 24px;
+  }
+
+  .section-quick-actions {
+    margin-bottom: 24px;
+    // Component QuickActions bên trong sẽ tự lo layout
+  }
+
+  // --- 3. Main Layout Grid (The Core) ---
+  .dashboard-layout-grid {
+    display: grid;
+    // Chia cột: 2.2 phần cho Main, 1 phần cho Side (~ 68% - 32%)
+    grid-template-columns: 2.2fr 1fr;
+    gap: 24px;
+    align-items: start; // Quan trọng: Để các cột không bị kéo giãn chiều cao ép buộc
+
+    .main-column {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+
+      // Biểu đồ
+      .chart-wrapper {
+        background: $card-bg;
+        border-radius: 12px;
+        border: 1px solid $border-light;
+        padding: 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+        min-height: 350px; // Chiều cao tối thiểu cho chart
+      }
+
+      // Đơn hàng (Không cần style thêm vì RecentOrders.scss đã lo)
+      .recent-orders-wrapper-container {
+        width: 100%;
+      }
+    }
+
+    .side-column {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      // TopDishes.scss đã lo phần style card
+    }
+  }
+
+  // --- Responsive Media Queries ---
+
+  // Tablet Vertical & Small Laptop
+  @media (max-width: 1200px) {
+    padding: 24px;
+
+    .dashboard-layout-grid {
+      // Vẫn giữ 2 cột nhưng tỉ lệ 1:1 hoặc đổi sang dọc tùy nội dung
+      grid-template-columns: 1.5fr 1fr;
+    }
+  }
+
+  // Tablet & Mobile
+  @media (max-width: 992px) {
+    .dashboard-layout-grid {
+      grid-template-columns: 1fr; // Chuyển hết về 1 cột dọc
+    }
+
+    .dashboard-top-bar {
+      flex-direction: column;
+      align-items: flex-start;
+
+      .controls-group {
+        width: 100%;
+        // Header con bên trong nên set width 100%
+      }
+    }
+  }
+
+  @media (max-width: 600px) {
+    padding: 16px;
+
+    .greeting-title {
+      font-size: 1.5rem !important;
+    }
+  }
+}
+
+// Animation Keyframes
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

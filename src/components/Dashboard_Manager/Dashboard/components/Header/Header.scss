@@ -1,71 +1,209 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+// --- LUXURY VARIABLES LOCAL ---
+$gold: #c5a47e;
+$charcoal: #1a1a1a;
+$slate: #64748b;
+$card-bg: #ffffff;
+$bg-hover: #faf9f6;
+$border-light: rgba(197, 164, 126, 0.15); // Viền vàng mờ đặc trưng
 
-.header-card {
-  @include card-base;
+.header-toolbar {
+  // Layout Toolbar mở (Transparent Background)
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: $spacing-lg !important;
+  margin-bottom: 24px;
+  background: transparent;
+  font-family: "Be Vietnam Pro", sans-serif; // Áp dụng font mới toàn cục
 
-  .header-left {
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: $text-primary;
-      margin-bottom: $spacing-xs;
+  // --- 1. Location Selector Style ---
+  .location-wrapper {
+    display: flex;
+    align-items: center;
+    background: $card-bg;
+    padding: 10px 16px 10px 12px; // Padding rộng hơn chút cho dễ thở
+    border-radius: 12px;
+
+    // Style Luxury: Viền vàng mờ + Bóng nhẹ
+    border: 1px solid $border-light;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 320px; // Tăng width một chút
+
+    // Hover Effect: Sáng viền vàng
+    &:hover {
+      border-color: rgba($gold, 0.5);
+      box-shadow: 0 10px 15px -3px rgba(197, 164, 126, 0.15);
+      transform: translateY(-2px); // Nhấc nhẹ
+
+      .location-icon {
+        background: $gold;
+        color: white;
+        transform: rotate(-10deg); // Xoay nhẹ icon
+      }
     }
 
-    .header-subtitle {
-      font-size: 0.875rem;
-      color: $text-gray;
-      margin-bottom: $spacing-sm;
+    // Icon định vị bên trái
+    .location-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba($gold, 0.1);
+      color: $gold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 14px;
+      transition: all 0.3s ease;
+      flex-shrink: 0;
     }
 
-    .restaurant-selector {
-      padding: $spacing-sm $spacing-lg;
-      border: 2px solid $border-color;
-      border-radius: $border-radius;
-      background: $primary-light;
-      font-size: 0.875rem;
-      font-family: "Inter", sans-serif;
-      font-weight: 500;
-      color: $text-primary;
-      min-width: 220px;
-      transition: all 0.2s ease;
+    .select-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
 
-      &:focus {
-        outline: none;
-        border-color: $primary-blue;
-        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+      .select-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: $slate;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+      }
+
+      .select-input-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+
+        // Custom Select Trick
+        .custom-select {
+          appearance: none;
+          -webkit-appearance: none;
+          width: 100%;
+          border: none;
+          background: transparent;
+
+          // CẬP NHẬT FONT: Thay Playfair bằng Be Vietnam Pro
+          font-family: "Be Vietnam Pro", sans-serif;
+          font-size: 1rem;
+          font-weight: 700; // Bold để làm nổi bật tên chi nhánh
+          color: $charcoal;
+
+          cursor: pointer;
+          padding-right: 24px;
+          line-height: 1.2;
+
+          &:focus {
+            outline: none;
+          }
+        }
+
+        // Custom Arrow Icon
+        .arrow-icon {
+          position: absolute;
+          right: 0;
+          pointer-events: none;
+          color: $slate;
+          width: 16px;
+          height: 16px;
+        }
       }
     }
   }
 
-  .header-actions {
+  // --- 2. Action Buttons Style ---
+  .toolbar-actions {
     display: flex;
-    gap: 1rem;
-    align-items: center;
+    gap: 12px;
 
     .btn {
-      &.btn-primary {
-        @include button-primary;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 10px; // Bo góc mềm hơn chút
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+      // CẬP NHẬT FONT: Thay Inter bằng Be Vietnam Pro
+      font-family: "Be Vietnam Pro", sans-serif;
+
+      // Nút phụ (Trắng)
+      &.btn-secondary {
+        background: $card-bg;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        color: $slate;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+
+        &:hover {
+          border-color: $gold;
+          color: $gold;
+          background: #fff;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 8px rgba(197, 164, 126, 0.15);
+        }
       }
 
-      &.btn-secondary {
-        @include button-secondary;
+      // Nút chính (Đen Than + Chữ Vàng)
+      &.btn-primary {
+        background: $charcoal;
+        border: 1px solid $charcoal;
+        color: $gold; // Signature Luxury
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+        &:hover {
+          background: lighten($charcoal, 5%); // Sáng lên 1 chút
+          transform: translateY(-2px);
+          box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        // Icon trong nút chính
+        svg {
+          stroke-width: 2.5px;
+        }
       }
     }
   }
 
-  @include mobile {
+  // --- Mobile Responsive ---
+  @media (max-width: 768px) {
     flex-direction: column;
-    gap: $spacing-lg;
-    text-align: center;
-    padding: $spacing-lg;
+    align-items: stretch;
+    gap: 16px;
+    margin-bottom: 20px;
 
-    .header-actions {
-      justify-content: center;
+    .location-wrapper {
+      width: 100%;
+      min-width: unset;
     }
+
+    .toolbar-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr; // Chia đều 2 nút
+
+      .btn {
+        justify-content: center;
+      }
+    }
+  }
+}
+
+// Animation
+.fade-in {
+  animation: fadeInDown 0.4s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

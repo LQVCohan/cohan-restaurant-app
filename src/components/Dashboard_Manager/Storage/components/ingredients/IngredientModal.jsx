@@ -1,4 +1,4 @@
-// src/components/.../ingredients/IngredientModal.jsx
+// src/components/Dashboard_Manager/Storage/components/ingredients/IngredientModal.jsx
 import React, { useEffect, useState } from "react";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
@@ -18,8 +18,6 @@ const UNITS = [
   "can",
 ];
 
-const CATEGORIES = ["Meat", "Vegetable", "Spices", "Dairy", "Grain", "Others"]; // Cập nhật danh mục nguyên liệu cơ bản
-
 const defaultForm = {
   name: "",
   sku: "",
@@ -32,8 +30,6 @@ const defaultForm = {
   initialStockQty: "",
 };
 
-// src/components/.../ingredients/IngredientModal.jsx
-
 const IngredientModal = ({
   isOpen,
   onClose,
@@ -43,7 +39,6 @@ const IngredientModal = ({
   canInitStock = false,
   defaultWarehouseName = null,
   saving = false,
-  onCheckOrders, // callback kiểm tra đơn hàng (nếu có)
 }) => {
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState({});
@@ -52,15 +47,10 @@ const IngredientModal = ({
     if (initial) {
       setForm({
         name: initial.name || "",
-        sku: initial.sku || initial._raw?.sku || "",
+        sku: initial.sku || "",
         category: initial.category || "",
-        baseUnit:
-          initial.baseUnit || initial.unit || initial._raw?.baseUnit || "g",
-        costPerBaseUnit:
-          initial.costPerBaseUnit ??
-          initial.costPrice ??
-          initial._raw?.costPerBaseUnit ??
-          "",
+        baseUnit: initial.baseUnit || "g",
+        costPerBaseUnit: initial.costPerBaseUnit ?? "",
         minStock: initial.minStock ?? "",
         notes: initial.notes || "",
         isActive: initial.isActive ?? true,
@@ -78,9 +68,23 @@ const IngredientModal = ({
     const e = {};
     if (!form.name.trim()) e.name = "Bắt buộc";
     if (!form.baseUnit) e.baseUnit = "Bắt buộc";
-    if (form.costPerBaseUnit === "" || Number(form.costPerBaseUnit) < 0)
-      e.costPerBaseUnit = "≥ 0";
-    if (form.minStock === "" || Number(form.minStock) < 0) e.minStock = "≥ 0";
+
+    const cost = Number(form.costPerBaseUnit);
+    if (!Number.isFinite(cost) || cost < 0) e.costPerBaseUnit = "≥ 0";
+
+    const min = Number(form.minStock);
+    if (!Number.isFinite(min) || min < 0) e.minStock = "≥ 0";
+
+    if (!isEditing && canInitStock) {
+      const qty0 =
+        form.initialStockQty === "" ? 0 : Number(form.initialStockQty);
+      if (!Number.isFinite(qty0) || qty0 < 0) e.initialStockQty = "≥ 0";
+      if (Number.isFinite(qty0) && qty0 !== Math.round(qty0)) {
+        e.initialStockQty =
+          "Phải là số nguyên (hệ thống lưu integer theo baseUnit)";
+      }
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -89,17 +93,6 @@ const IngredientModal = ({
     e.preventDefault();
     if (saving) return;
     if (!validate()) return;
-
-    // Kiểm tra đơn hàng có đang dùng nguyên liệu này không
-    if (
-      form.baseUnit !== initial?.baseUnit &&
-      (await onCheckOrders(initial?.id))
-    ) {
-      alert(
-        "Không thể thay đổi đơn vị gốc vì có đơn hàng đang sử dụng nguyên liệu này."
-      );
-      return;
-    }
 
     const payload = {
       name: form.name.trim(),
@@ -110,13 +103,16 @@ const IngredientModal = ({
       minStock: Number(form.minStock) || 0,
       notes: form.notes?.trim() || "",
       isActive: !!form.isActive,
+      conversions: initial?.conversions || [],
+      photos: initial?.photos || [],
     };
 
-    const initialStockQty = Number(form.initialStockQty) || 0;
+    const initialStockQty =
+      !isEditing && canInitStock ? Number(form.initialStockQty || 0) : 0;
 
     onSubmit?.({
       payload,
-      initialStockQty: canInitStock ? initialStockQty : 0,
+      initialStockQty,
       isEditing,
       id: initial?.id,
     });
@@ -157,16 +153,11 @@ const IngredientModal = ({
           <div className="grid-3">
             <label>
               Danh mục
-              <select
+              <input
                 value={form.category}
                 onChange={(e) => set({ category: e.target.value })}
-              >
-                {CATEGORIES.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
+                placeholder="vd: meat, vegetable..."
+              />
             </label>
 
             <label>
@@ -208,7 +199,7 @@ const IngredientModal = ({
               <input
                 type="number"
                 min="0"
-                step="0.01"
+                step="1"
                 value={form.minStock}
                 onChange={(e) => set({ minStock: e.target.value })}
                 placeholder="0"
@@ -237,19 +228,22 @@ const IngredientModal = ({
                   {canInitStock
                     ? defaultWarehouseName
                       ? `Kho: ${defaultWarehouseName}`
-                      : "Kho mặc định"
-                    : "Chưa có kho"}
+                      : "Kho đã chọn"
+                    : "Chưa chọn kho / Tất cả kho"}
                   )
                 </small>
                 <input
                   type="number"
                   min="0"
-                  step="0.01"
+                  step="1"
                   value={form.initialStockQty}
                   onChange={(e) => set({ initialStockQty: e.target.value })}
                   placeholder="0"
                   disabled={!canInitStock}
                 />
+                {errors.initialStockQty && (
+                  <small className="error">{errors.initialStockQty}</small>
+                )}
               </label>
             )}
           </div>

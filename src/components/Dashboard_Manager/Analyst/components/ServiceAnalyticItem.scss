@@ -1,0 +1,127 @@
+// Variables (Đảm bảo bạn đã import hoặc khai báo các biến này)
+$gold: #c5a47e;
+$charcoal: #1a1a1a;
+$slate: #64748b;
+$bg-hover: #f8fafc;
+$success: #10b981;
+$danger: #ef4444;
+
+.service-analytic-item {
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0; // Border nhẹ
+  transition: all 0.3s ease;
+  cursor: default;
+  margin-bottom: 12px;
+
+  &:hover {
+    background: $bg-hover;
+    border-color: rgba($gold, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  .item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+
+    .left-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .icon-box {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        // Background color được set inline trong JS để linh động theo props
+      }
+
+      .info-box {
+        display: flex;
+        flex-direction: column;
+
+        .service-label {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: $charcoal;
+          margin: 0 0 4px 0;
+        }
+
+        .service-metrics {
+          font-size: 0.8rem;
+          display: flex;
+          align-items: center;
+
+          .primary-value {
+            font-weight: 700;
+            color: $charcoal;
+          }
+
+          .separator {
+            margin: 0 6px;
+            color: #cbd5e1;
+          }
+
+          .sub-value {
+            color: $slate;
+          }
+        }
+      }
+    }
+
+    .right-section {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+
+      .percentage-display {
+        .percent-text {
+          font-size: 1.1rem;
+          font-weight: 800;
+          color: $charcoal;
+        }
+      }
+
+      .trend-badge {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.75rem;
+        font-weight: 600;
+
+        &.up {
+          color: $success;
+        }
+        &.down {
+          color: $danger;
+        }
+        &.flat {
+          color: $slate;
+        }
+      }
+    }
+  }
+
+  .progress-track {
+    width: 100%;
+    height: 6px;
+    background-color: #f1f5f9;
+    border-radius: 99px;
+    overflow: hidden;
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1s ease-in-out; // Animation mượt mà khi load
+    }
+  }
+}

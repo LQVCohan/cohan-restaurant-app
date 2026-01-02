@@ -1,28 +1,22 @@
 @use "../../../../styles/variables.scss" as *;
 
-// --- Colors ---
-$wall-color: #cbd5e1;
-$floor-bg: #f8fafc;
-$grid-line: #e2e8f0;
-$wood-color: #d97706;
-$plant-color: #16a34a;
-$glass-color: #93c5fd;
-$chair-color: #94a3b8;
-$bell-color: #f59e0b;
+// --- Premium Palette ---
+$gold: #c5a47e;
+$gold-light: #eaddcf;
+$gold-dark: #8c6b4a;
+$charcoal: #1a1a1a;
+$slate: #334155;
+$bg-paper: #fdfdfd; // Màu giấy trắng ngà
+$wall-color: #374151; // Tường màu xám đậm kiến trúc
+$wood-texture: #a16207;
 
-// Status Colors
-$st-available-bg: #ffffff;
-$st-available-bd: #22c55e;
-$st-selected-bg: #3b82f6;
-$st-selected-bd: #1d4ed8;
-$st-occupied-bg: #e2e8f0;
-$st-occupied-bd: #94a3b8;
-$st-reserved-bg: #ffedd5;
-$st-reserved-bd: #f97316; // Cam nhạt
-$st-payment-bg: #fef9c3;
-$st-payment-bd: #eab308; // Vàng
-$st-cleaning-bg: #ecfeff;
-$st-cleaning-bd: #06b6d4; // Cyan
+// --- Mixins ---
+@mixin glass-panel {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
 
 .floor-map-viz {
   width: 100%;
@@ -31,20 +25,19 @@ $st-cleaning-bd: #06b6d4; // Cyan
   position: relative;
   border-radius: 16px;
   overflow: hidden;
-  border: 4px solid $wall-color;
-  background-color: $st-available-bg;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  background-color: $bg-paper;
+  user-select: none;
 
-  // Viewport
+  // Viewport & Grid
   .viewport {
     width: 100%;
     height: 100%;
-    overflow: hidden;
     position: relative;
-    background-color: $floor-bg;
-    background-image: linear-gradient($grid-line 1px, transparent 1px),
-      linear-gradient(90deg, $grid-line 1px, transparent 1px);
-    background-size: 50px 50px;
+    background-color: $bg-paper;
+    // Dot grid tinh tế hơn line grid cũ
+    background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+    background-size: 20px 20px;
+
     &.grab {
       cursor: grab;
     }
@@ -55,718 +48,474 @@ $st-cleaning-bd: #06b6d4; // Cyan
 
   .map-transform-layer {
     position: absolute;
-    inset: 0; // bám full theo viewport
+    inset: 0;
     transform-origin: center center;
-    transition: transform 0.1s linear;
-    will-change: transform;
+    transition: transform 0.15s cubic-bezier(0.2, 0, 0.2, 1); // Smooth hơn
   }
+
   .map-container-realistic {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
-    // để transparent, chỉ chứa layout + bàn thôi
-    background-color: transparent;
   }
 
-  // --- EMPTY STATE (khi chưa có layout) ---
-
-  .empty-map-state {
-    position: absolute;
-    left: 50%;
-    bottom: 16px;
-    transform: translateX(-50%);
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 14px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.92);
-    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
-    border: 1px solid #e2e8f0;
-    pointer-events: none; // không chặn click bàn
-    z-index: 2; // thấp hơn tables-layer (z-index:10)
-
-    .empty-icon {
-      font-size: 1.3rem;
-    }
-
-    .empty-text {
-      h3 {
-        margin: 0;
-        font-size: 0.8rem;
-        font-weight: 700;
-        color: #0f172a;
-      }
-
-      p {
-        margin: 2px 0 0;
-        font-size: 0.7rem;
-        color: #64748b;
-        white-space: nowrap;
-      }
-    }
-  }
-
-  // --- LAYOUT LAYER (map thật từ Designer) ---
-  .layout-layer {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    pointer-events: none;
-  }
-
+  // --- 1. LAYOUT ELEMENTS (Walls, Decor) ---
   .layout-node {
     position: absolute;
-    box-sizing: border-box;
     pointer-events: none;
+    box-sizing: border-box;
 
+    // Walls - Style kiến trúc
     &.wall {
-      background: #1d4ed8;
-      border-radius: 999px;
+      background: $wall-color;
+      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
     }
 
     &.half-wall {
-      background: #e0f2fe;
-      border-radius: 999px;
-      border: 2px dashed #0ea5e9;
-    }
-
-    &.door,
-    &.door-double {
-      background: #fed7aa;
-      border-radius: 6px;
-      border: 2px solid #ea580c;
+      border: 2px solid $wall-color;
+      background: transparent;
+      &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 5px,
+          rgba($wall-color, 0.1) 5px,
+          rgba($wall-color, 0.1) 10px
+        );
+      }
     }
 
     &.window {
-      background: #bfdbfe;
-      border-radius: 4px;
-      border: 1px solid #1d4ed8;
+      background: #e0f2fe;
+      border: 1px solid #7dd3fc;
+      overflow: hidden;
+      .window-glare {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 50%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.4);
+        transform: skewX(-20deg);
+      }
     }
 
-    &.corridor,
-    &.staff-corridor {
-      border-radius: 999px;
-      background: #fee2e2;
-      border: 1px solid #f97316;
+    &.door {
+      border: 2px solid $wood-texture;
+      background: rgba($wood-texture, 0.2);
+      border-radius: 2px;
     }
 
-    &.pillar {
-      background: #e5e7eb;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
-    }
-
-    &.bar,
-    &.buffet,
-    &.kitchen,
-    &.cashier,
-    &.wc,
-    &.sofa,
-    &.rug,
     &.plant {
-      border-radius: 10px;
-      background: rgba(148, 163, 184, 0.1);
-      border: 1px solid rgba(148, 163, 184, 0.6);
-      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      .plant-leaf-effect {
+        width: 100%;
+        height: 100%;
+        background: #15803d;
+        border-radius: 50%;
+        opacity: 0.2;
+        border: 1px dashed #15803d;
+      }
+      &::after {
+        content: "🌿";
+        font-size: 1.2rem;
+        position: absolute;
+      }
+    }
+
+    &.rug {
+      background: rgba($gold, 0.1);
+      border: 1px dashed $gold;
+      border-radius: 8px;
+    }
+
+    .layout-label {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: "Playfair Display", serif;
+      font-weight: 700;
+      color: rgba($charcoal, 0.2);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      white-space: nowrap;
     }
   }
 
-  .layout-label {
+  // --- 2. TABLES (Premium Style) ---
+  .table-node {
     position: absolute;
-    bottom: -16px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.65rem;
-    font-weight: 600;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
+    width: 64px;
+    height: 64px; // Size chuẩn
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: transform 0.2s ease, z-index 0s;
+
+    &:hover {
+      transform: scale(1.1);
+      z-index: 20;
+      .table-surface {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        border-color: $gold;
+      }
+    }
+
+    // A. CHAIRS
+    .chairs-wrapper {
+      position: absolute;
+      inset: -6px;
+      pointer-events: none;
+      .chair {
+        position: absolute;
+        width: 24px;
+        height: 10px;
+        background: #9ca3af;
+        border-radius: 4px;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        // Vị trí ghế giả lập 4 phía (đơn giản hoá)
+        &.chair-0 {
+          top: 0;
+          left: 50%;
+          transform: translateX(-50%);
+        }
+        &.chair-1 {
+          bottom: 0;
+          left: 50%;
+          transform: translateX(-50%);
+        }
+        &.chair-2 {
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%) rotate(90deg);
+        }
+        &.chair-3 {
+          right: 0;
+          top: 50%;
+          transform: translateY(-50%) rotate(90deg);
+        }
+      }
+    }
+
+    // B. SURFACE (Mặt bàn)
+    .table-surface {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      border: 2px solid #e5e7eb; // Viền xám nhạt mặc định
+      border-radius: 12px; // Bàn vuông bo góc (hiện đại hơn tròn)
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s;
+
+      .table-label {
+        font-weight: 700;
+        color: $slate;
+        font-size: 0.9rem;
+      }
+
+      .status-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: white;
+        border: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+
+        &.bell {
+          color: #f59e0b;
+          border-color: #f59e0b;
+          animation: ring 1s infinite;
+        }
+        &.dollar {
+          color: #16a34a;
+          font-weight: bold;
+        }
+        &.clean {
+          color: #0891b2;
+        }
+      }
+    }
+
+    // C. CAPACITY
+    .capacity-pill {
+      position: absolute;
+      bottom: -8px;
+      background: $charcoal;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 99px;
+      font-size: 0.6rem;
+      font-weight: 600;
+      z-index: 3;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    // --- STATES ---
+
+    // 1. Available
+    &.available {
+      .table-surface {
+        border-color: #10b981;
+      } // Viền xanh lá nhẹ
+      .table-label {
+        color: #065f46;
+      }
+    }
+
+    // 2. Selected (Highlight Gold)
+    &.selected {
+      z-index: 30;
+      transform: scale(1.15);
+      .table-surface {
+        background: $gold;
+        border-color: $gold-dark;
+        box-shadow: 0 0 0 4px rgba($gold, 0.2);
+        .table-label {
+          color: white;
+        }
+      }
+      .chairs-wrapper .chair {
+        background: darken($gold, 10%);
+      }
+      .capacity-pill {
+        background: white;
+        color: $gold;
+      }
+    }
+
+    // 3. Occupied (Dark)
+    &.occupied {
+      .table-surface {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        // Hatch pattern
+        background-image: repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 5px,
+          rgba(0, 0, 0, 0.05) 5px,
+          rgba(0, 0, 0, 0.05) 10px
+        );
+        .table-label {
+          color: #94a3b8;
+        }
+      }
+      .chairs-wrapper {
+        opacity: 0.5;
+      }
+    }
+
+    // 4. Reserved (Orange tint)
+    &.reserved {
+      .table-surface {
+        background: #fff7ed;
+        border-color: #fb923c;
+        .table-label {
+          color: #c2410c;
+        }
+      }
+    }
   }
 
-  // --- CONTROLS ---
-  .map-controls {
+  // --- 3. CONTROLS & LEGEND ---
+
+  // Floating Controls
+  .map-controls-premium {
     position: absolute;
     top: 20px;
     right: 20px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    z-index: 100;
+    gap: 0;
+    @include glass-panel;
+    border-radius: 12px;
+    padding: 4px;
+    z-index: 50;
 
     button {
       width: 36px;
       height: 36px;
-      border-radius: 8px;
-      background: white;
-      border: 1px solid #e2e8f0;
-      color: #1e293b;
-      font-size: 1.2rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      border: none;
+      background: transparent;
+      color: $slate;
       cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      transition: all 0.2s;
-
-      &:hover {
-        background: #f1f5f9;
-        transform: translateY(-1px);
-      }
-
-      &:active {
-        transform: translateY(0);
-      }
-    }
-  }
-
-  // --- (các class decor cũ vẫn giữ, phòng khi còn dùng ở nơi khác) ---
-  .architectural-walls {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-
-    .wall {
-      position: absolute;
-      background: $wall-color;
-      z-index: 5;
-
-      &--top,
-      &--bottom {
-        height: 12px;
-        left: 0;
-        right: 0;
-      }
-      &--top {
-        top: 0;
-      }
-      &--bottom {
-        bottom: 0;
-      }
-
-      &--left,
-      &--right {
-        width: 12px;
-        top: 0;
-        bottom: 0;
-      }
-      &--left {
-        left: 0;
-      }
-      &--right {
-        right: 0;
-      }
-    }
-
-    .door {
-      position: absolute;
-      height: 12px;
-      width: 100px;
-      background: $wood-color;
-      z-index: 6;
-      transform: translateX(-50%);
-      border-radius: 2px;
-
-      .door-label {
-        position: absolute;
-        top: 18px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 0.7rem;
-        font-weight: 800;
-        color: darken($wood-color, 15%);
-        white-space: nowrap;
-        text-transform: uppercase;
-      }
-
-      .door-swing {
-        position: absolute;
-        top: 12px;
-        left: 0;
-        width: 100px;
-        height: 100px;
-        border-left: 2px dashed rgba($wood-color, 0.3);
-        border-bottom: 2px dashed rgba($wood-color, 0.3);
-        border-radius: 0 0 0 100%;
-      }
-    }
-  }
-
-  .decor-layer {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 1;
-  }
-
-  .decor-item {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    .decor-label {
-      font-size: 0.65rem;
-      font-weight: 700;
-      color: #64748b;
-      text-transform: uppercase;
-    }
-
-    &.decor-window {
-      background: rgba($glass-color, 0.3);
-      border-left: 4px solid $glass-color;
-      width: 12px;
-      box-shadow: -2px 0 10px rgba($glass-color, 0.2);
-    }
-
-    &.decor-plant {
-      width: 40px;
-      height: 40px;
-      background: rgba($plant-color, 0.2);
-      border-radius: 50%;
-      border: 2px solid $plant-color;
-
-      &::after {
-        content: "🌿";
-        font-size: 1.2rem;
-      }
-    }
-
-    &.decor-pillar {
-      width: 30px;
-      height: 30px;
-      background: #94a3b8;
-      border-radius: 4px;
-      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
-    }
-
-    &.decor-bar {
-      background: #fde68a;
-      border-bottom: 4px solid $wood-color;
-      border-left: 4px solid $wood-color;
-      border-radius: 0 0 0 12px;
-
-      .bar-stools {
-        position: absolute;
-        bottom: -12px;
-        left: 10px;
-        right: 10px;
-        height: 10px;
-        background-image: radial-gradient(
-          circle,
-          $wood-color 4px,
-          transparent 5px
-        );
-        background-size: 20px 20px;
-      }
-    }
-
-    &.decor-wc {
-      background: #e2e8f0;
-      border-top: 2px solid #94a3b8;
-      border-left: 2px solid #94a3b8;
-
-      &::after {
-        content: "🚻";
-        font-size: 1.5rem;
-        opacity: 0.5;
-      }
-    }
-
-    &.decor-rug {
-      background: darken($floor-bg, 3%);
-      border-radius: 20px;
-      border: 2px dashed #e2e8f0;
-    }
-  }
-
-  // --- TABLES ---
-  .tables-layer {
-    position: absolute;
-    inset: 0;
-    z-index: 10;
-  }
-
-  .table-node {
-    position: absolute;
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-
-    &:hover {
-      transform: scale(1.1);
-      z-index: 20;
-
-      .table-shape {
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-      }
-    }
-
-    .table-shape {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      background: $st-available-bg;
-      border: 2px solid darken($st-available-bg, 10%);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 700;
-      font-size: 0.85rem;
-      color: #334155;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
-      position: relative;
-      z-index: 2;
-    }
-
-    .table-label {
-      padding: 0 4px;
-    }
-
-    .chairs-decoration {
-      position: absolute;
-      inset: -8px;
-      pointer-events: none;
-
-      .chair {
-        position: absolute;
-        width: 14px;
-        height: 14px;
-        background: $chair-color;
-        border-radius: 4px;
-        box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
-
-        &.chair-n {
-          top: 0;
-          left: 50%;
-          transform: translateX(-50%);
-        }
-
-        &.chair-s {
-          bottom: 0;
-          left: 50%;
-          transform: translateX(-50%);
-        }
-
-        &.chair-e {
-          right: 0;
-          top: 50%;
-          transform: translateY(-50%);
-        }
-
-        &.chair-w {
-          left: 0;
-          top: 50%;
-          transform: translateY(-50%);
-        }
-      }
-    }
-
-    .capacity-badge {
-      position: absolute;
-      bottom: -4px;
-      right: -4px;
-      background: white;
-      border: 1px solid #cbd5e1;
-      color: #475569;
-      font-size: 0.65rem;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      z-index: 3;
-    }
-
-    .notify-bell,
-    .status-icon {
-      position: absolute;
-      top: -8px;
-      right: -8px;
-      width: 22px;
-      height: 22px;
-      background: white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.85rem;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-      z-index: 4;
-    }
-
-    .notify-bell {
-      color: $bell-color;
-      border: 1px solid $bell-color;
-      display: none;
-      animation: bellShake 2s infinite;
-    }
-
-    .status-icon {
-      border: 1px solid #e5e7eb;
-    }
-
-    // STATES
-    &.available {
-      .table-shape {
-        background: $st-available-bg;
-        border-color: $st-available-bd;
-        color: #15803d;
-      }
-    }
-
-    &.selected {
-      z-index: 30;
-      transform: scale(1.15);
-
-      .table-shape {
-        background: $st-selected-bg;
-        border-color: $st-selected-bd;
-        color: white;
-      }
-
-      .capacity-badge {
-        color: $st-selected-bg;
-        border-color: $st-selected-bg;
-      }
-
-      .chair {
-        background: lighten($st-selected-bg, 20%);
-      }
-    }
-
-    &.occupied,
-    &.reserved {
-      .table-shape {
-        background: $st-occupied-bg;
-        border-color: $st-occupied-bd;
-        color: #64748b;
-        box-shadow: none;
-        background-image: repeating-linear-gradient(
-          45deg,
-          transparent,
-          transparent 5px,
-          rgba(0, 0, 0, 0.03) 5px,
-          rgba(0, 0, 0, 0.03) 10px
-        );
-      }
-
-      .chairs-decoration {
-        opacity: 0.5;
-      }
-
+      transition: 0.2s;
+      border-radius: 8px;
       &:hover {
-        transform: scale(1.05);
-
-        .notify-bell {
-          display: flex;
-        }
+        background: rgba(0, 0, 0, 0.05);
+        color: $charcoal;
       }
     }
-
-    &.reserved .table-shape {
-      background: $st-reserved-bg;
-      border-color: $st-reserved-bd;
-      color: #9a3412;
-    }
-
-    &.payment_pending {
-      .table-shape {
-        background: repeating-linear-gradient(
-          45deg,
-          $st-payment-bg,
-          $st-payment-bg 5px,
-          darken($st-payment-bg, 5%) 5px,
-          darken($st-payment-bg, 5%) 10px
-        );
-        border-color: $st-payment-bd;
-        color: #854d0e;
-      }
-
-      &:hover {
-        transform: scale(1.05);
-
-        .notify-bell {
-          display: flex;
-        }
-      }
-    }
-
-    &.cleaning {
-      .table-shape {
-        background: $st-cleaning-bg;
-        border-color: $st-cleaning-bd;
-        color: #0e7490;
-        border-style: dashed;
-      }
-
-      .chairs-decoration {
-        opacity: 0.4;
-      }
-
-      &:hover {
-        transform: scale(1.05);
-
-        .notify-bell {
-          display: flex;
-        }
-      }
+    .divider {
+      height: 1px;
+      background: rgba(0, 0, 0, 0.1);
+      margin: 2px 6px;
     }
   }
 
-  // --- LEGEND ---
-  .map-legend-smart {
+  // Mini Legend
+  .mini-legend {
     position: absolute;
     bottom: 20px;
     right: 20px;
-    left: auto;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(8px);
-    padding: 12px 16px;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    border: 1px solid #e2e8f0;
     z-index: 50;
-    transition: 0.3s;
-    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
 
-    &.closed {
-      width: 40px;
-      height: 40px;
+    .legend-toggle {
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
-      padding: 0;
+      border: none;
+      background: $charcoal;
+      color: $gold;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-
-      .legend-header {
-        border: none;
-
-        .title,
-        .toggle-arrow {
-          display: none;
-        }
-      }
-
-      .legend-content {
-        display: none;
-      }
-    }
-
-    &.open {
-      min-width: 180px;
-    }
-
-    .legend-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #f1f5f9;
-
-      .title {
-        font-size: 0.8rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #64748b;
-        flex: 1;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      transition: 0.3s;
+      &:hover {
+        transform: scale(1.1);
       }
     }
 
     .legend-content {
-      padding-top: 8px;
+      margin-bottom: 12px;
+      @include glass-panel;
+      padding: 16px;
+      border-radius: 12px;
+      animation: slideUp 0.2s ease;
 
-      .legend-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
+      h4 {
+        margin: 0 0 10px;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        color: $slate;
       }
-
-      .legend-item {
+      .l-row {
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-size: 0.75rem;
-        color: #334155;
-        font-weight: 500;
+        gap: 10px;
+        font-size: 0.85rem;
+        color: $charcoal;
+        margin-bottom: 6px;
+        &:last-child {
+          margin-bottom: 0;
+        }
+        .dot {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          &.avl {
+            background: white;
+            border-color: #10b981;
+          }
+          &.sel {
+            background: $gold;
+          }
+          &.occ {
+            background: #cbd5e1;
+          }
+          &.res {
+            background: #fff7ed;
+            border-color: #fb923c;
+          }
+          &.cln {
+            background: #ecfeff;
+            border-color: #06b6d4;
+          }
+        }
       }
+    }
+  }
 
-      .symbol {
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        display: inline-block;
-        flex-shrink: 0;
+  // Empty State
+  .empty-map-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    .empty-content {
+      text-align: center;
+      background: white;
+      padding: 20px 40px;
+      border-radius: 16px;
+      border: 1px dashed #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      opacity: 0.8;
+      .icon {
+        font-size: 2rem;
       }
-
-      .table-available {
-        background: $st-available-bg;
-        border: 2px solid $st-available-bd;
+      h3 {
+        margin: 0;
+        font-size: 1rem;
+        color: $slate;
       }
-
-      .table-selected {
-        background: $st-selected-bg;
-        border: 2px solid $st-selected-bd;
-      }
-
-      .table-payment-pending {
-        background: repeating-linear-gradient(
-          45deg,
-          $st-payment-bg,
-          $st-payment-bg 3px,
-          darken($st-payment-bg, 10%) 3px,
-          darken($st-payment-bg, 10%) 6px
-        );
-        border: 1px solid $st-payment-bd;
-      }
-
-      .table-cleaning {
-        background: $st-cleaning-bg;
-        border: 1px dashed $st-cleaning-bd;
-      }
-
-      .table-reserved {
-        background: $st-reserved-bg;
-        border: 1px solid $st-reserved-bd;
-      }
-
-      .table-occupied {
-        background: $st-occupied-bg;
-        border: 1px solid $st-occupied-bd;
-      }
-
-      .legend-divider {
-        grid-column: span 2;
-        height: 1px;
-        background: #e2e8f0;
-        margin: 2px 0;
+      p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: #9ca3af;
       }
     }
   }
 }
 
-@keyframes bellShake {
-  0%,
-  100% {
+@keyframes ring {
+  0% {
     transform: rotate(0);
   }
-  10%,
+  10% {
+    transform: rotate(15deg);
+  }
+  20% {
+    transform: rotate(-15deg);
+  }
   30% {
     transform: rotate(15deg);
   }
-  20%,
-  40% {
-    transform: rotate(-15deg);
+  100% {
+    transform: rotate(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

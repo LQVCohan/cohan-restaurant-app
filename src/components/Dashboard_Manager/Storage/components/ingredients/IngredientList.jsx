@@ -1,12 +1,12 @@
-// src/components/.../ingredients/IngredientList.jsx
+// src/components/Dashboard_Manager/Storage/components/ingredients/IngredientList.jsx
 import React, { useMemo, useState } from "react";
 import IngredientCard from "./IngredientCard";
 import IngredientModal from "./IngredientModal";
 import Button from "../../../../common/Button";
-import { useIngredients } from "../../../../../hooks/useIngredients";
+import { useIngredients } from "@/hooks/useIngredients";
 import "./IngredientList.scss";
 
-const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
+const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
   const {
     loading,
     error,
@@ -17,20 +17,25 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
     updateIngredient,
     deleteIngredient,
     addStock,
+    updateCostPerBaseUnit,
     getStockStatus,
     warehouses,
-    defaultWarehouseId,
-  } = useIngredients(restaurantId, selectedWarehouseId);
+    effectiveWarehouseId,
+  } = useIngredients(restaurantId, selectedWarehouseId, {
+    withStock: true,
+    withWarehouses: true,
+  });
 
   const defaultWarehouseName = useMemo(() => {
-    const wh = warehouses.find((w) => w.id === defaultWarehouseId);
+    if (!warehouses?.length) return null;
+    if (typeof effectiveWarehouseId !== "string") return null;
+    const wh = warehouses.find((w) => w.id === effectiveWarehouseId);
     return wh?.name || null;
-  }, [warehouses, defaultWarehouseId]);
+  }, [warehouses, effectiveWarehouseId]);
 
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const isEditing = Boolean(editingItem?.id);
-
   const [saving, setSaving] = useState(false);
 
   const handleSearch = (e) =>
@@ -41,19 +46,28 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
     setFilters({ ...filters, status: e.target.value });
 
   const handleAddStock = async (id) => {
-    const ingredient = filteredIngredients.find((i) => i.id === id);
-    if (!ingredient) return;
+    const ing = filteredIngredients.find((i) => i.id === id);
+    if (!ing) return;
 
-    const amount = prompt(`Nhập số lượng (${ingredient.baseUnit}) muốn thêm:`);
+    const amount = prompt(
+      `Nhập số lượng (${ing.baseUnit}) muốn thêm.\nLưu ý: hệ thống lưu integer theo baseUnit.`
+    );
     const qty = Number(amount);
-    if (Number.isFinite(qty) && qty > 0) {
+    if (!Number.isFinite(qty) || qty <= 0) return;
+
+    try {
       await addStock(id, qty);
+    } catch (e) {
+      alert(e?.message || "Có lỗi khi nhập kho");
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa nguyên liệu này?")) {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa nguyên liệu này?")) return;
+    try {
       await deleteIngredient(id);
+    } catch (e) {
+      alert(e?.message || "Có lỗi khi xóa nguyên liệu");
     }
   };
 
@@ -84,11 +98,17 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
       setShowModal(false);
       setEditingItem(null);
     } catch (e) {
+      // BE sẽ trả message rất cụ thể nếu bị chặn bởi active order
       alert(e?.message || "Có lỗi khi lưu nguyên liệu");
     } finally {
       setSaving(false);
     }
   };
+
+  const canInitStock =
+    !isEditing &&
+    typeof effectiveWarehouseId === "string" &&
+    Boolean(defaultWarehouseName);
 
   return (
     <div className="ingredient-list">
@@ -114,6 +134,7 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
               <option value="spice">Gia vị</option>
               <option value="dairy">Sữa & trứng</option>
               <option value="grain">Ngũ cốc</option>
+              <option value="others">Khác</option>
             </select>
 
             <select
@@ -128,14 +149,17 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
             </select>
           </div>
 
-          {defaultWarehouseName ? (
-            <></>
-          ) : (
+          {effectiveWarehouseId === null ? (
+            <div className="hint hint--warn">
+              Bạn đang xem <b>Tất cả kho</b>. Không thể nhập kho / nhập tồn ban
+              đầu.
+            </div>
+          ) : effectiveWarehouseId === undefined ? (
             <div className="hint hint--warn">
               Chưa có kho. Bạn vẫn tạo được nguyên liệu, nhưng không nhập tồn
               ban đầu / nhập kho được.
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className="toolbar-right">
@@ -164,6 +188,7 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
               onAddStock={handleAddStock}
               onShowUsage={() => {}}
               getStockStatus={getStockStatus}
+              onUpdateCostPerBaseUnit={updateCostPerBaseUnit}
             />
           ))}
         </div>
@@ -175,7 +200,7 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = null }) => {
         initial={editingItem}
         isEditing={isEditing}
         onSubmit={handleSubmit}
-        canInitStock={!isEditing && Boolean(defaultWarehouseId)}
+        canInitStock={canInitStock}
         defaultWarehouseName={defaultWarehouseName}
         saving={saving}
       />

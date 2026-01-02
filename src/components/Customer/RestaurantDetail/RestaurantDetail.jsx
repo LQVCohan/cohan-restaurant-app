@@ -8,7 +8,6 @@ import MenuSection from "./components/MenuSection/MenuSection";
 import ReviewsSection from "./components/ReviewsSection/ReviewsSection";
 import PhotoGallery from "./components/PhotoGallery/PhotoGallery";
 import SimilarRestaurants from "./components/SimilarRestaurants/SimilarRestaurants";
-import Footer from "../Homepage_Client/components/Footer";
 
 // Icons
 import { ArrowLeft, Star, MapPin, Clock, Share2, Heart } from "lucide-react";

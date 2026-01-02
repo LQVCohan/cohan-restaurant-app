@@ -639,3 +639,13 @@ $secondary-700: darken($secondary-500, 12%) !default;
 // Các token “trộn” (dùng cho icon/status,...)
 $secondary-300-500: mix($secondary-300, $secondary-500, 50%) !default;
 $secondary-300-700: mix($secondary-300, $secondary-700, 50%) !default;
+$orange-50: #fff7ed; // Cam rất nhạt (dùng làm nền)
+$orange-100: #ffedd5;
+$orange-200: #fed7aa;
+$orange-300: #fdba74;
+$orange-400: #fb923c;
+$orange-500: #f97316;
+$orange-600: #ea580c; // Dùng làm màu text/icon chính
+$orange-700: #c2410c;
+$orange-800: #9a3412;
+$orange-900: #7c2d12;

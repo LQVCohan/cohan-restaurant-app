@@ -1,0 +1,398 @@
+@use "../../../../../styles/variables" as *;
+@use "../../../../../styles/mixins" as *;
+
+.recipeDetail {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+}
+
+/* ===== Pills / chips ===== */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid transparent;
+  white-space: nowrap;
+
+  &--soft {
+    background: #f8fafc;
+    border-color: #eef2f7;
+    color: #0f172a;
+  }
+
+  &--ok {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #059669;
+  }
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  border: 1px solid #e5e7eb;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  .chip__sub {
+    margin-left: 6px;
+    opacity: 0.75;
+    font-weight: 800;
+  }
+}
+
+/* ===== Header ===== */
+.recipeDetail__header {
+  padding: 14px 14px 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+}
+
+.recipeDetail__titleRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.recipeDetail__titleBlock {
+  min-width: 0;
+}
+
+.recipeDetail__name {
+  font-size: 18px;
+  font-weight: 900;
+  color: #0c4a6e;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+
+.recipeDetail__desc {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.45;
+
+  &--muted {
+    opacity: 0.75;
+  }
+}
+
+.recipeDetail__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+
+  @include mobile {
+    justify-content: flex-start;
+  }
+}
+
+.recipeDetail__notes {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e5e7eb;
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 10px;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.recipeDetail__notesLabel {
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #64748b;
+}
+
+.recipeDetail__notesText {
+  font-size: 13px;
+  color: #0f172a;
+  line-height: 1.55;
+}
+
+/* ===== Section ===== */
+.recipeDetail__sectionTitle {
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.recipeDetail__variants {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* ===== Variant card ===== */
+.variantCard {
+  border-radius: 14px;
+  border: 1px solid #eef2f7;
+  overflow: hidden;
+
+  &--empty {
+    padding: 14px;
+  }
+}
+
+.variantCard__head {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 12px;
+  padding: 12px 12px 10px;
+  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  border-bottom: 1px solid #eef2f7;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
+}
+
+.variantCard__nameRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.variantCard__name {
+  font-size: 15px;
+  font-weight: 900;
+  color: #0c4a6e;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.variantCard__meta {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.variantCard__right {
+  text-align: right;
+  padding: 10px;
+  background: #f0f9ff;
+  border: 1px solid rgba(2, 132, 199, 0.15);
+  border-radius: 12px;
+
+  @include mobile {
+    text-align: left;
+  }
+}
+
+.variantCard__costLabel {
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+  color: #075985;
+}
+
+.variantCard__costValue {
+  margin-top: 4px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #0c4a6e;
+}
+
+.variantCard__costHint {
+  margin-top: 2px;
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.variantCard__body {
+  padding: 12px;
+}
+
+.variantCard__subTitle {
+  font-size: 12px;
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.variantCard__empty {
+  padding: 10px 12px;
+  background: #fafafa;
+  border: 1px dashed #e5e7eb;
+  border-radius: 12px;
+  opacity: 0.85;
+}
+
+/* ===== Ingredient table ===== */
+.ingTable {
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ingTable__head {
+  display: grid;
+  grid-template-columns: 1.6fr 0.7fr 0.6fr 0.7fr 0.8fr;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+  color: #64748b;
+
+  @include mobile {
+    grid-template-columns: 1.4fr 0.8fr 0.8fr;
+    .right:nth-child(4),
+    .right:nth-child(5) {
+      display: none;
+    }
+  }
+}
+
+.ingTable__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.ingRow {
+  display: grid;
+  grid-template-columns: 1.6fr 0.7fr 0.6fr 0.7fr 0.8fr;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  align-items: center;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  @include mobile {
+    grid-template-columns: 1.4fr 0.8fr 0.8fr;
+
+    .right:nth-child(4),
+    .right:nth-child(5) {
+      display: none;
+    }
+  }
+}
+
+.ingRow__name {
+  font-weight: 800;
+  color: #0f172a;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ingRow__cell {
+  font-size: 13px;
+  color: #0f172a;
+
+  &.right {
+    text-align: right;
+
+    @include mobile {
+      text-align: left;
+    }
+  }
+
+  &.strong {
+    font-weight: 900;
+    color: #0c4a6e;
+  }
+}
+
+/* ===== Cost summary ===== */
+.costSummary {
+  padding: 14px;
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
+.costSummary__title {
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 10px;
+}
+
+.costSummary__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.costSummary__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.costSummary__rowName {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.costSummary__rowValue {
+  font-weight: 900;
+  color: #0c4a6e;
+  white-space: nowrap;
+}
+
+.costSummary__footer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.costSummary__min {
+  font-size: 13px;
+  color: #0f172a;
+
+  strong {
+    color: #0c4a6e;
+    font-weight: 900;
+  }
+}
+
+.costSummary__note {
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.75;
+}

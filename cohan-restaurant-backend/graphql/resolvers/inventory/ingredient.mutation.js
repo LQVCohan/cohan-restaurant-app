@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Ingredient, Order } from "../../../models/index.js";
+import { Ingredient, Order, IngredientRecent } from "../../../models/index.js";
 
 function normalizeDupKeyError(err) {
   // Mongo duplicate key
@@ -89,5 +89,46 @@ export default {
     if (!mongoose.isValidObjectId(id)) return false;
     const res = await Ingredient.deleteOne({ _id: id });
     return res.deletedCount > 0;
+  },
+
+  /**
+   * ✅ FE gọi khi user chọn ingredient
+   * -> lưu recent-used theo user+restaurant
+   */
+  recordIngredientUsed: async (_p, { restaurantId, ingredientId }, ctx) => {
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new GraphQLError("Invalid restaurantId");
+    }
+    if (!mongoose.isValidObjectId(ingredientId)) {
+      throw new GraphQLError("Invalid ingredientId");
+    }
+
+    const userIdRaw = ctx?.user?.id;
+    if (!userIdRaw || !mongoose.isValidObjectId(userIdRaw)) {
+      throw new GraphQLError("Unauthenticated", {
+        extensions: { code: "UNAUTHENTICATED" },
+      });
+    }
+
+    const rid = new mongoose.Types.ObjectId(String(restaurantId));
+    const iid = new mongoose.Types.ObjectId(String(ingredientId));
+    const uid = new mongoose.Types.ObjectId(String(userIdRaw));
+
+    // optional: verify ingredient belongs to restaurant
+    const ing = await Ingredient.findOne({ _id: iid, restaurantId: rid })
+      .select({ _id: 1 })
+      .lean();
+    if (!ing) throw new GraphQLError("Ingredient not found");
+
+    await IngredientRecent.updateOne(
+      { restaurantId: rid, userId: uid, ingredientId: iid },
+      {
+        $set: { lastUsedAt: new Date() },
+        $inc: { times: 1 },
+      },
+      { upsert: true }
+    );
+
+    return true;
   },
 };

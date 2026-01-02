@@ -8,14 +8,30 @@ import React, {
 } from "react";
 import { useQuery } from "@apollo/client";
 import { AuthContext } from "../../../context/AuthContext";
+
+// Components
 import Header from "./layout/Header/Header";
 import Tabs from "./layout/Tabs/Tabs";
 import IngredientList from "./components/ingredients/IngredientList";
 import SupplyList from "./components/supplies/SupplyList";
 import RecipeList from "./components/recipes/RecipeList";
-import useRecipes from "@/hooks/useRecipes";
+import WarehouseStatus from "./components/WarehouseStatus/WarehouseStatus"; // Import Component Status
+
+// Hooks & Icons
+import { useRecipes } from "@/hooks/useRecipes";
+import {
+  Carrot,
+  Package,
+  BookOpen,
+  PieChart,
+  ClipboardList,
+  AlertCircle,
+} from "lucide-react";
+
+// Styles
 import "./StorageManagement.scss";
 
+// GraphQL
 import {
   GET_MANAGER_RESTAURANTS,
   INGREDIENTS_QUERY,
@@ -30,12 +46,28 @@ const StorageManagement = () => {
 
   const [activeTab, setActiveTab] = useState("ingredients");
   const [currentRestaurant, setCurrentRestaurant] = useState("");
-
-  // ✅ undefined = chưa init (auto pick kho đầu)
-  // ✅ null = tất cả kho (KHÔNG auto pick)
   const [selectedWarehouseId, setSelectedWarehouseId] = useState(undefined);
-
   const [ingredientSearch, setIngredientSearch] = useState("");
+
+  // --- MOCK DATA CHO WAREHOUSE STATUS ---
+  // (Bạn có thể thay thế bằng dữ liệu thật từ API stockItems sau này)
+  const mockInventory = [
+    { id: 1, name: "Bột mì đa dụng", quantity: 2, minStock: 10, unit: "kg" },
+    { id: 2, name: "Trứng gà", quantity: 5, minStock: 50, unit: "quả" }, // Sắp hết
+    { id: 3, name: "Sữa tươi", quantity: 20, minStock: 5, unit: "lít" },
+    { id: 4, name: "Đường kính", quantity: 0, minStock: 5, unit: "kg" }, // Hết hàng
+  ];
+
+  const lowStockItems = useMemo(() => {
+    return mockInventory
+      .filter((item) => item.quantity <= item.minStock)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        currentStock: item.quantity,
+        unit: item.unit,
+      }));
+  }, []);
 
   // ==== 1) Nhà hàng theo Manager ====
   const {
@@ -91,14 +123,12 @@ const StorageManagement = () => {
 
   const warehouses = useMemo(() => whData?.warehouses || [], [whData]);
 
-  // ✅ chỉ auto chọn kho đầu tiên khi CHƯA INIT (undefined)
   useEffect(() => {
     if (selectedWarehouseId === undefined && warehouses.length) {
       setSelectedWarehouseId(warehouses[0].id);
     }
   }, [warehouses, selectedWarehouseId]);
 
-  // id thực sự dùng để filter query: string id hoặc null (tất cả kho)
   const warehouseFilterId = selectedWarehouseId ? selectedWarehouseId : null;
 
   // ==== 4) StockItems/Movements ====
@@ -116,7 +146,7 @@ const StorageManagement = () => {
   } = useQuery(STOCK_ITEMS_QUERY, {
     variables: {
       restaurantId: currentRestaurant,
-      warehouseId: warehouseFilterId, // ✅ null = tất cả kho
+      warehouseId: warehouseFilterId,
       limit: 200,
     },
     skip: !shouldFetchStock,
@@ -128,7 +158,7 @@ const StorageManagement = () => {
   const { refetch: refetchMovements } = useQuery(STOCK_MOVEMENTS_QUERY, {
     variables: {
       restaurantId: currentRestaurant,
-      warehouseId: warehouseFilterId, // ✅ null = tất cả kho
+      warehouseId: warehouseFilterId,
       limit: 100,
       sort: -1,
     },
@@ -136,7 +166,7 @@ const StorageManagement = () => {
     fetchPolicy: "cache-and-network",
   });
 
-  // ==== 5) Recipes (hook) ====
+  // ==== 5) Recipes ====
   const [recipeTimeSlot, setRecipeTimeSlot] = useState(null);
   const [recipeSearch, setRecipeSearch] = useState(null);
   const [recipeCategoryId, setRecipeCategoryId] = useState(null);
@@ -161,30 +191,16 @@ const StorageManagement = () => {
     await Promise.all([refetchIngredients?.(), refetchStock?.()]);
   }, [refetchIngredients, refetchStock]);
 
-  if (mgrError) {
-    return (
-      <div style={{ color: "#b91c1c" }}>
-        Lỗi tải danh sách nhà hàng: {mgrError.message}
-      </div>
-    );
-  }
-
-  if (mgrLoading) {
-    return (
-      <div className="storage-management">
-        <div className="container">Đang tải nhà hàng…</div>
-      </div>
-    );
-  }
-
+  // Define Tabs
   const tabs = [
     {
       id: "ingredients",
-      label: "🥬 Nguyên liệu",
+      label: "Nguyên liệu",
+      icon: <Carrot size={18} />,
       component: (
         <IngredientList
           restaurantId={currentRestaurant}
-          warehouseId={warehouseFilterId} // ✅ null = tất cả kho
+          warehouseId={warehouseFilterId}
           data={ingredients}
           stockItems={stockItems}
           loading={ingLoading || stockLoading}
@@ -196,7 +212,8 @@ const StorageManagement = () => {
     },
     {
       id: "supplies",
-      label: "🧴 Vật phẩm khác",
+      label: "Vật tư & Khác",
+      icon: <Package size={18} />,
       component: (
         <SupplyList
           restaurantId={currentRestaurant}
@@ -209,7 +226,8 @@ const StorageManagement = () => {
     },
     {
       id: "recipes",
-      label: "📋 Công thức",
+      label: "Công thức",
+      icon: <BookOpen size={18} />,
       component: (
         <RecipeList
           restaurantId={currentRestaurant}
@@ -231,68 +249,104 @@ const StorageManagement = () => {
     },
     {
       id: "allocation",
-      label: "🎯 Phân bổ nguyên liệu",
-      component: <div>Allocation (dev)</div>,
+      label: "Phân bổ",
+      icon: <PieChart size={18} />,
+      component: (
+        <div className="sm-dev-placeholder">
+          Tính năng phân bổ đang phát triển...
+        </div>
+      ),
     },
     {
       id: "inventory",
-      label: "📊 Kiểm kê",
-      component: <div>Inventory (dev)</div>,
+      label: "Kiểm kê",
+      icon: <ClipboardList size={18} />,
+      component: (
+        <div className="sm-dev-placeholder">
+          Tính năng kiểm kê đang phát triển...
+        </div>
+      ),
     },
   ];
 
+  if (mgrError) {
+    return (
+      <div className="sm-error-state">
+        <AlertCircle size={40} />
+        <h3>Không thể tải dữ liệu</h3>
+        <p>{mgrError.message}</p>
+      </div>
+    );
+  }
+
+  if (mgrLoading) {
+    return (
+      <div className="storage-management">
+        <div className="sm-loading-state">
+          <div className="spinner"></div>
+          <p>Đang tải dữ liệu nhà hàng...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="storage-management">
-      <div className="container">
-        <Header
-          restaurantList={managerRestaurants}
-          currentRestaurantId={currentRestaurant}
-          onRestaurantChange={(id) => {
-            setCurrentRestaurant(id);
-            setSelectedWarehouseId(undefined); // ✅ reset về trạng thái “chưa init” để auto-pick kho đầu của NH mới
-            setRecipeTimeSlot(null);
-            setRecipeSearch(null);
-            setRecipeCategoryId(null);
-          }}
-          warehouses={warehouses}
-          selectedWarehouseId={warehouseFilterId} // ✅ null = tất cả kho
-          onWarehouseChange={(idOrNull) => {
-            // idOrNull có thể là null (tất cả kho) hoặc id string
-            setSelectedWarehouseId(idOrNull);
-          }}
-          restaurantsLoading={mgrLoading}
-          warehousesLoading={whLoading}
-        />
-
-        <div className="main-content">
-          <Tabs
-            tabs={tabs}
-            activeTab={activeTab}
-            onTabChange={(t) => {
-              setActiveTab(t);
-
-              if (
-                t === "inventory" ||
-                t === "allocation" ||
-                t === "ingredients"
-              ) {
-                refetchStock?.();
-                if (t === "inventory") refetchMovements?.();
-              }
-
-              if (t === "recipes") refreshRecipes?.();
+      <div className="sm-container">
+        {/* --- Header Section --- */}
+        <section className="sm-header-section">
+          <Header
+            restaurantList={managerRestaurants}
+            currentRestaurantId={currentRestaurant}
+            onRestaurantChange={(id) => {
+              setCurrentRestaurant(id);
+              setSelectedWarehouseId(undefined);
+              setRecipeTimeSlot(null);
+              setRecipeSearch(null);
+              setRecipeCategoryId(null);
             }}
+            warehouses={warehouses}
+            selectedWarehouseId={warehouseFilterId}
+            onWarehouseChange={setSelectedWarehouseId}
+            restaurantsLoading={mgrLoading}
+            warehousesLoading={whLoading}
           />
+        </section>
 
-          <div className="tab-content">
+        {/* --- Content Section --- */}
+        <div className="sm-main-content">
+          {/* TOOLBAR: Tabs (Left) - Status (Right) */}
+          <div className="sm-toolbar-wrapper">
+            <div className="toolbar-left">
+              <Tabs
+                tabs={tabs}
+                activeTab={activeTab}
+                onTabChange={(t) => {
+                  setActiveTab(t);
+                  if (["inventory", "allocation", "ingredients"].includes(t)) {
+                    refetchStock?.();
+                    if (t === "inventory") refetchMovements?.();
+                  }
+                  if (t === "recipes") refreshRecipes?.();
+                }}
+              />
+            </div>
+
+            <div className="toolbar-right">
+              <WarehouseStatus lowStockItems={lowStockItems} />
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="sm-tab-content-wrapper">
             {tabs.find((tab) => tab.id === activeTab)?.component}
           </div>
 
-          {whError ? (
-            <div style={{ color: "#b91c1c", marginTop: 10 }}>
-              Lỗi tải kho: {whError.message}
+          {whError && (
+            <div className="sm-error-toast">
+              <AlertCircle size={16} /> Lỗi tải kho: {whError.message}
             </div>
-          ) : null}
+          )}
         </div>
       </div>
     </div>

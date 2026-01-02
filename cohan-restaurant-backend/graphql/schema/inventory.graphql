@@ -213,10 +213,10 @@ type ServingVariant {
   name: String
   mode: ServingMode!
 
-  sellQty: Float!
-  sellUnit: SellUnit!
+  sellQty: Float
+  sellUnit: SellUnit
 
-  ingredients: [RecipeIngredientLine!]!
+  ingredients: [RecipeIngredientLine!]
   price: Float
   isDefault: Boolean
 }
@@ -233,7 +233,11 @@ input ServingVariantInput {
   price: Float
   isDefault: Boolean
 }
-
+type IngredientSuggestionsPayload {
+  topUsed: [Ingredient!]!
+  recentUsed: [Ingredient!]!
+  recentCreated: [Ingredient!]!
+}
 type Recipe {
   id: ID!
   restaurantId: ID!
@@ -312,7 +316,10 @@ extend type Query {
     search: String
     limit: Int = 100
   ): [Ingredient!]!
-
+  ingredientSuggestions(
+    restaurantId: ID!
+    limit: Int = 8
+  ): IngredientSuggestionsPayload!
   ingredient(id: ID!): Ingredient
 
   warehouses(restaurantId: ID!): [Warehouse!]!
@@ -371,7 +378,7 @@ extend type Mutation {
   createWarehouse(input: CreateWarehouseInput!): Warehouse!
   updateWarehouse(input: UpdateWarehouseInput!): Warehouse!
   deleteWarehouse(id: ID!): Boolean!
-
+  recordIngredientUsed(restaurantId: ID!, ingredientId: ID!): Boolean!
   upsertStockItem(
     restaurantId: ID!
     warehouseId: ID!
