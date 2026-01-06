@@ -55,10 +55,18 @@ export default {
     const wh = await Warehouse.findById(warehouseId).lean();
     if (!wh) throw new Error("Warehouse not found");
 
+    const supply = await Supply.findById(supplyId).lean();
     const stock = await StockItem.findOneAndUpdate(
       { restaurantId, warehouseId, supplyId },
       {
-        $setOnInsert: { onHand: 0, reserved: 0, batches: [] },
+        $setOnInsert: {
+          onHand: 0,
+          reserved: 0,
+          batches: [],
+          costPerUnit: supply?.costPerUnit ?? 0,
+          pricePerUnit: supply?.pricePerUnit ?? 0,
+          note: supply?.notes ?? "",
+        },
         $inc: { onHand: qty },
       },
       { new: true, upsert: true }
@@ -104,10 +112,18 @@ export default {
     const wh = await Warehouse.findById(warehouseId).lean();
     if (!wh) throw new Error("Warehouse not found");
 
+    const supply = await Supply.findById(supplyId).lean();
     const stock = await StockItem.findOneAndUpdate(
       { restaurantId, warehouseId, supplyId },
       {
-        $setOnInsert: { onHand: 0, reserved: 0, batches: [] },
+        $setOnInsert: {
+          onHand: 0,
+          reserved: 0,
+          batches: [],
+          costPerUnit: supply?.costPerUnit ?? 0,
+          pricePerUnit: supply?.pricePerUnit ?? 0,
+          note: supply?.notes ?? "",
+        },
         $inc: { onHand: qty },
         $push: {
           batches: {
@@ -209,6 +225,7 @@ export default {
       throw new Error("Cannot transfer to the same warehouse");
 
     // ===== 1️⃣: Trừ FIFO ở kho xuất =====
+    const supply = await Supply.findById(supplyId).lean();
     const fromStock = await StockItem.findOne({
       restaurantId,
       warehouseId: fromWarehouseId,
@@ -256,7 +273,14 @@ export default {
     const toStock = await StockItem.findOneAndUpdate(
       { restaurantId, warehouseId: toWarehouseId, supplyId },
       {
-        $setOnInsert: { onHand: 0, reserved: 0, batches: [] },
+        $setOnInsert: {
+          onHand: 0,
+          reserved: 0,
+          batches: [],
+          costPerUnit: supply?.costPerUnit ?? 0,
+          pricePerUnit: supply?.pricePerUnit ?? 0,
+          note: supply?.notes ?? "",
+        },
         $inc: { onHand: qty },
       },
       { new: true, upsert: true }

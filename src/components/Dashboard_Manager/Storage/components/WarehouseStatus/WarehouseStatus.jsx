@@ -9,19 +9,7 @@ import "./WarehouseStatus.scss";
  * (Danh sách các mặt hàng dưới định mức)
  */
 const WarehouseStatus = ({ lowStockItems = [] }) => {
-  // Mock dữ liệu giả lập nếu chưa có props truyền vào (để bạn test giao diện)
-  const mockWarnings =
-    lowStockItems.length > 0
-      ? lowStockItems
-      : [
-          { id: 1, name: "Bột mì đa dụng", currentStock: 2, unit: "kg" },
-          { id: 2, name: "Trứng gà", currentStock: 5, unit: "quả" },
-          { id: 3, name: "Sữa tươi không đường", currentStock: 1, unit: "lít" },
-        ];
-
-  // Logic chuyển đổi trạng thái: Nếu list rỗng = Ổn định.
-  // Đổi `mockWarnings` thành `lowStockItems` khi bạn đã nối API thực tế.
-  const warnings = mockWarnings; // Dùng biến này để render
+  const warnings = Array.isArray(lowStockItems) ? lowStockItems : [];
   const isSafe = warnings.length === 0;
 
   return (
