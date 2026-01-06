@@ -5,7 +5,9 @@ type Supply {
   category: String
   unit: Unit!
   costPerUnit: Float
+  pricePerUnit: Float
   minStock: Float
+  notes: String
   isActive: Boolean
   createdAt: DateTime
   updatedAt: DateTime
@@ -37,7 +39,9 @@ type SupplyWithStock {
   category: String
   unit: Unit!
   costPerUnit: Float
+  pricePerUnit: Float
   minStock: Float
+  notes: String
   isActive: Boolean
   createdAt: DateTime
   updatedAt: DateTime
@@ -53,7 +57,9 @@ input CreateSupplyInput {
   category: String
   unit: Unit = unit
   costPerUnit: Float
+  pricePerUnit: Float
   minStock: Float
+  notes: String
   isActive: Boolean = true
 }
 
@@ -62,7 +68,9 @@ input UpdateSupplyInput {
   category: String
   unit: Unit
   costPerUnit: Float
+  pricePerUnit: Float
   minStock: Float
+  notes: String
   isActive: Boolean
 }
 

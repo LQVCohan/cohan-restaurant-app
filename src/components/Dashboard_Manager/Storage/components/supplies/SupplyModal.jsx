@@ -32,6 +32,7 @@ const defaultForm = {
   category: "other",
   unit: "unit",
   costPerUnit: "",
+  pricePerUnit: "",
   minStock: "",
   isActive: true,
   notes: "",
@@ -67,6 +68,10 @@ const SupplyModal = ({
           typeof initial.costPerUnit === "number"
             ? String(initial.costPerUnit)
             : "",
+        pricePerUnit:
+          typeof initial.pricePerUnit === "number"
+            ? String(initial.pricePerUnit)
+            : "",
         minStock:
           typeof initial.minStock === "number" ? String(initial.minStock) : "",
         isActive: initial.isActive ?? true,
@@ -86,6 +91,8 @@ const SupplyModal = ({
     if (!form.unit) e.unit = "Chọn đơn vị";
     if (form.costPerUnit === "" || Number(form.costPerUnit) < 0)
       e.costPerUnit = "Giá trị không hợp lệ";
+    if (form.pricePerUnit === "" || Number(form.pricePerUnit) < 0)
+      e.pricePerUnit = "Giá trị không hợp lệ";
     if (form.minStock === "" || Number(form.minStock) < 0) e.minStock = "≥ 0";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -98,6 +105,7 @@ const SupplyModal = ({
       category: form.category || "other",
       unit: form.unit || "unit",
       costPerUnit: Number(form.costPerUnit) || 0,
+      pricePerUnit: Number(form.pricePerUnit) || 0,
       minStock: Number(form.minStock) || 0,
       isActive: !!form.isActive,
       notes: form.notes?.trim() || "",
@@ -193,6 +201,23 @@ const SupplyModal = ({
               onChange={(e) => set({ costPerUnit: e.target.value })}
               placeholder="0"
             />
+          </label>
+
+          <label className="sm-field">
+            <span className="sm-label">
+              Giá bán (VNĐ) <b className="req">*</b>
+            </span>
+            <input
+              className={`sm-input ${errors.pricePerUnit ? "error" : ""}`}
+              type="number"
+              min="0"
+              value={form.pricePerUnit}
+              onChange={(e) => set({ pricePerUnit: e.target.value })}
+              placeholder="0"
+            />
+            {errors.pricePerUnit && (
+              <small className="sm-msg">{errors.pricePerUnit}</small>
+            )}
           </label>
 
           <label className="sm-field">

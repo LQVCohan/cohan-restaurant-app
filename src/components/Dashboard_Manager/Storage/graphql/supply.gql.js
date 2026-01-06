@@ -9,7 +9,9 @@ export const Q_SUPPLIES_WITH_STOCK = gql`
       category
       unit
       costPerUnit
+      pricePerUnit
       minStock
+      notes
       isActive
       createdAt
       updatedAt
@@ -17,6 +19,9 @@ export const Q_SUPPLIES_WITH_STOCK = gql`
         id
         restaurantId
         warehouseId
+        costPerUnit
+        pricePerUnit
+        note
 
         onHand
         reserved
@@ -45,7 +50,9 @@ export const M_CREATE_SUPPLY = gql`
       category
       unit
       costPerUnit
+      pricePerUnit
       minStock
+      notes
       isActive
       createdAt
       updatedAt
@@ -62,7 +69,9 @@ export const M_UPDATE_SUPPLY = gql`
       category
       unit
       costPerUnit
+      pricePerUnit
       minStock
+      notes
       isActive
       updatedAt
     }
@@ -83,6 +92,9 @@ export const M_ADJUST_SUPPLY = gql`
       warehouseId
       onHand
       reserved
+      costPerUnit
+      pricePerUnit
+      note
       updatedAt
     }
   }
@@ -96,6 +108,9 @@ export const M_STOCK_INBOUND = gql`
       warehouseId
       onHand
       reserved
+      costPerUnit
+      pricePerUnit
+      note
       updatedAt
     }
   }
@@ -113,6 +128,9 @@ export const M_STOCK_OUTBOUND = gql`
       warehouseId
       onHand
       reserved
+      costPerUnit
+      pricePerUnit
+      note
       updatedAt
     }
   }
