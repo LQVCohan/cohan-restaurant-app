@@ -1,6 +1,6 @@
 // src/resolvers/index.ts (ví dụ)
 import { OrderQuery } from "./query.js";
-import { payOrder } from "./mutation.js";
+import { payOrdersByTableId } from "./mutation.js";
 
 export default {
   Query: {
@@ -9,6 +9,6 @@ export default {
   },
   Mutation: {
     // ...các mutation khác
-    payOrder,
+    payOrdersByTableId,
   },
 };

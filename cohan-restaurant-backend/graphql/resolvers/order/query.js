@@ -1,6 +1,6 @@
 // graphql/resolvers/order/query.js
 import mongoose from "mongoose";
-import { Order, User } from "../../../models/index.js";
+import { Order, User, Table } from "../../../models/index.js";
 import { toId } from "../order/helper/orderUtils.js";
 import { resolveTableSafe } from "../order/helper/tableUtils.js";
 import TableCustomer from "../../../models/tableCustomer.model.js";
@@ -67,12 +67,12 @@ function buildFilter(filter = {}) {
   return q;
 }
 
-/** Group orders by rootCode = parentOrderCode || orderCode */
+/** Group orders by orderCode (no parentOrderCode usage) */
 function groupOrdersByRootCode(orders = []) {
   const map = new Map();
 
   for (const ord of orders) {
-    const key = getRootCode(ord);
+    const key = String(ord.orderCode || ord._id);
     if (!map.has(key)) map.set(key, []);
     map.get(key).push(ord);
   }
@@ -88,6 +88,7 @@ function groupOrdersByRootCode(orders = []) {
     return {
       orderCode, // root code
       tableCode: sorted[0]?.tableCode || null,
+      tableId: sorted[0]?.tableId || null,
       restaurantId: sorted[0]?.restaurantId,
       latestStatus: sorted[sorted.length - 1]?.currentStatus || null,
       count: sorted.length,
@@ -301,20 +302,29 @@ export const OrderQuery = {
    * Group by table => group theo rootCode (parentOrderCode || orderCode)
    * - hỗ trợ tách đơn: các đơn con sẽ vào chung group của đơn cha
    */
-  async ordersGroupedByTable(_, { restaurantId, tableCode }) {
+  async ordersGroupedByTable(_, { restaurantId, tableId, tableCode }) {
     if (!mongoose.isValidObjectId(restaurantId)) {
       throw new Error("Invalid restaurantId");
     }
 
     const rid = toId(restaurantId);
-    const safe = String(tableCode).trim().toUpperCase();
-
-    const t = await resolveTableSafe(restaurantId, safe);
+    let t = null;
+    if (tableId && mongoose.isValidObjectId(tableId)) {
+      t = await Table.findOne({ _id: tableId, restaurantId: rid })
+        .select({ _id: 1, code: 1 })
+        .lean();
+    } else if (tableCode) {
+      const safe = String(tableCode).trim().toUpperCase();
+      t = await resolveTableSafe(restaurantId, safe);
+    }
     if (!t) return [];
+
+    const safeCode = (t.code || tableCode || "").toUpperCase();
 
     const f = {
       restaurantId: rid,
-      tableCode: safe,
+      tableId: t._id,
+      tableCode: safeCode,
       // nếu muốn chỉ "đang hoạt động": currentStatus: { $nin: INACTIVE_STATUSES }
     };
 

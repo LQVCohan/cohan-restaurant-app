@@ -11,6 +11,7 @@ const CashflowSchema = BaseSchemaModel(
     ref: {
       kind: String,
       id: { type: Types.ObjectId }, // e.g., kind: 'Invoice', id: ...
+      orderIds: [{ type: Types.ObjectId }],
     },
     note: String,
     occurredAt: { type: Date, default: Date.now },

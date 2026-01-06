@@ -41,7 +41,8 @@ const InvoiceTotalsSchema = new Schema(
 const InvoiceSchema = BaseSchemaModel(
   {
     restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true },
-    orderId: { type: Types.ObjectId, ref: "Order", required: true },
+    orderId: { type: Types.ObjectId, ref: "Order" },
+    orderIds: [{ type: Types.ObjectId, ref: "Order" }],
     userId: { type: Types.ObjectId, ref: "User" },
     tableCode: { type: String },
 
@@ -81,6 +82,7 @@ const InvoiceSchema = BaseSchemaModel(
 );
 
 InvoiceSchema.index({ restaurantId: 1, orderId: 1 });
+InvoiceSchema.index({ restaurantId: 1, orderIds: 1 });
 InvoiceSchema.index({ number: 1 }, { unique: true, sparse: true });
 InvoiceSchema.index({ code: 1 }, { unique: true, sparse: true });
 

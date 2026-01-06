@@ -1,6 +1,5 @@
 type Reservation {
   id: ID!
-  orderCode: String!
   restaurantId: ID!
   restaurantName: String
   tableId: ID!
@@ -63,7 +62,7 @@ input changeReservationTableInput {
 }
 
 extend type Query {
-  reservation(id: ID, orderCode: String): Reservation
+  reservation(id: ID): Reservation
   myReservations(limit: Int = 20, cursor: ID): [Reservation!]!
   confirmedReservationByTable(restaurantId: ID!, tableId: ID!): Reservation
 }

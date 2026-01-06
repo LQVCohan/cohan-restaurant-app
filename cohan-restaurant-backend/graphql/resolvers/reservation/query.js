@@ -18,11 +18,8 @@ function toObjectId(id) {
 }
 
 export const ReservationQuery = {
-  /** Lấy 1 reservation theo id hoặc orderCode */
-  async reservation(_, { id, orderCode }) {
-    if (orderCode) {
-      return Reservation.findOne({ orderCode }).lean({ virtuals: true });
-    }
+  /** Lấy 1 reservation theo id */
+  async reservation(_, { id }) {
     if (id) {
       if (!mongoose.isValidObjectId(id)) throw badInput("Invalid ID");
       return Reservation.findById(id).lean({ virtuals: true });

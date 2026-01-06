@@ -443,6 +443,7 @@ type CancelOrderPayload {
 type OrderGroup {
   orderCode: String
   tableCode: String
+  tableId: ID
   restaurantId: ID
   latestStatus: String
   count: Int
@@ -511,7 +512,11 @@ extend type Query {
     offset: Int
   ): OrderList!
 
-  ordersGroupedByTable(restaurantId: ID!, tableCode: String!): [OrderGroup!]!
+  ordersGroupedByTable(
+    restaurantId: ID!
+    tableId: ID
+    tableCode: String
+  ): [OrderGroup!]!
 }
 
 extend type Mutation {
