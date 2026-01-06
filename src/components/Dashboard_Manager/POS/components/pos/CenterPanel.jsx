@@ -51,28 +51,63 @@ export default function CenterPanel() {
   const onSelectCategory = (cat) => setCurrentCategory?.(cat);
 
   const withDisplay = useMemo(() => {
+    const toNumberOrNull = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
     return (filteredMenu || []).map((it) => {
-      const base = Number(it.basePrice ?? 0);
-      const defaultPrep =
-        Array.isArray(it.preparationMethods) && it.preparationMethods.length > 0
-          ? it.preparationMethods.find((p) => p?.isDefault) ||
-            it.preparationMethods[0]
+      const variants = Array.isArray(it._normalizedVariants)
+        ? it._normalizedVariants
+        : Array.isArray(it.servingVariants)
+        ? it.servingVariants
+        : [];
+      const defaultVariant =
+        it._defaultVariant ||
+        variants.find((v) => v?.isDefault) ||
+        (variants.length === 1 ? variants[0] : null);
+
+      const prices = variants
+        .map((v) => toNumberOrNull(v?.price))
+        .filter((p) => p !== null && p >= 0);
+      const minPrice = prices.length ? Math.min(...prices) : null;
+      const maxPrice = prices.length ? Math.max(...prices) : null;
+
+      const computedRange =
+        !defaultVariant && minPrice !== null
+          ? { min: minPrice, max: maxPrice ?? minPrice }
           : null;
-      const prepPrice = Number(defaultPrep?.price ?? 0);
 
       const displayPrice =
-        base > 0
-          ? base
-          : Number.isFinite(prepPrice) && prepPrice > 0
-          ? prepPrice
-          : Number(it.price ?? 0);
+        toNumberOrNull(defaultVariant?.price) ??
+        toNumberOrNull(it._displayPrice) ??
+        toNumberOrNull(minPrice);
 
-      const unit = it.byWeight ? "Kg" : "Phần";
-      const cookingOption = defaultPrep?.name || "Bình thường";
+      const priceRange = it._priceRange || computedRange;
+      const hasRange =
+        !!priceRange && priceRange.min !== priceRange.max && priceRange.min !== null;
+
+      const priceText = hasRange
+        ? `${formatPrice(priceRange.min)} - ${formatPrice(priceRange.max)}`
+        : displayPrice !== null
+        ? formatPrice(displayPrice)
+        : "Chưa có giá";
+
+      const isByWeight =
+        defaultVariant?.mode === "BY_WEIGHT" ||
+        (defaultVariant?.sellUnit && defaultVariant.sellUnit !== "portion");
+      const unit = isByWeight
+        ? defaultVariant?.sellUnit || "kg"
+        : it._displayUnit || "portion";
+      const cookingOption = defaultVariant?.name || "";
 
       return {
         ...it,
         _displayPrice: displayPrice,
+        _priceText: priceText,
+        _priceRange: priceRange,
+        _defaultVariant: defaultVariant,
+        _variants: variants,
         _unit: unit,
         _defaultCooking: cookingOption,
       };
@@ -93,17 +128,43 @@ export default function CenterPanel() {
     setSelectedItem(null);
   }, []);
 
-  const handleModalAdd = useCallback(
-    (payload) => {
+  const toFinitePrice = useCallback((v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }, []);
+
+  const addMenuItemToOrder = useCallback(
+    (menuItem, options = {}) => {
+      if (!menuItem) return;
+
       const {
-        menuItem,
+        variant = null,
         quantity = 1,
-        cookingOption,
         unit,
-        note,
+        note = "",
         price,
-        proofImages,
-      } = payload || {};
+        proofImages = [],
+        cookingOption,
+        variantName,
+        variantKey,
+      } = options;
+
+      const resolvedPrice =
+        toFinitePrice(price) ??
+        toFinitePrice(variant?.price) ??
+        toFinitePrice(menuItem._displayPrice ?? menuItem.price);
+
+      if (resolvedPrice === null) {
+        openModal(menuItem);
+        return;
+      }
+
+      const chosenUnit =
+        unit ||
+        (variant?.mode === "BY_WEIGHT"
+          ? variant?.sellUnit || "kg"
+          : "portion");
+
       const core = {
         id: menuItem?.id,
         dishId: menuItem?.id,
@@ -111,21 +172,54 @@ export default function CenterPanel() {
         categoryId: menuItem?.categoryId,
         name: menuItem?.name,
         image: menuItem?.thumbImage,
-        price: Number(price ?? menuItem?._displayPrice ?? menuItem?.price ?? 0),
+        thumbImage: menuItem?.thumbImage,
+        price: resolvedPrice,
       };
 
       addToOrder?.({
         menuItem: core,
+        cookingOption: cookingOption || variant?.name || variantName || "",
+        variantName: variantName || cookingOption || variant?.name || "",
+        variantKey: variantKey || variant?.key || "",
+        unit: chosenUnit,
+        note,
+        quantity,
+        price: resolvedPrice,
+        proofImages: proofImages || [],
+      });
+    },
+    [addToOrder, openModal, toFinitePrice]
+  );
+
+  const handleModalAdd = useCallback(
+    (payload) => {
+      const {
+        menuItem,
+        quantity = 1,
         cookingOption,
+        variantName,
+        variantKey,
+        unit,
+        note,
+        price,
+        proofImages,
+        variant,
+      } = payload || {};
+
+      addMenuItemToOrder(menuItem, {
+        variant: variant || null,
+        variantName: variantName || cookingOption,
+        variantKey,
         unit,
         note,
         quantity,
-        price: core.price,
+        price,
         proofImages: proofImages || [],
+        cookingOption,
       });
       closeModal();
     },
-    [addToOrder, closeModal]
+    [addMenuItemToOrder, closeModal]
   );
 
   return (
@@ -189,7 +283,17 @@ export default function CenterPanel() {
       <div className={cls.gridContainer}>
         <div className={cls.grid}>
           {withDisplay.map((item) => {
-            const price = Number(item._displayPrice || 0);
+            const priceLabel =
+              item._priceText ||
+              (item._displayPrice !== null && item._displayPrice !== undefined
+                ? formatPrice(item._displayPrice)
+                : "Chưa có giá");
+            const weightUnit =
+              item._priceRange || !item._unit
+                ? null
+                : ["kg", "g"].includes(String(item._unit).toLowerCase())
+                ? String(item._unit).toLowerCase()
+                : null;
             const thumb = item.thumbImage;
             const emoji = item.emoji || "🍽️";
 
@@ -215,8 +319,28 @@ export default function CenterPanel() {
                   ) : (
                     <div className={cls.cardPlaceholder}>{emoji}</div>
                   )}
-                  {/* Quick Add Overlay Button (Visual only) */}
-                  <div className={cls.overlayAdd}>
+                  {/* Quick Add Overlay Button */}
+                  <div
+                    className={cls.overlayAdd}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const variant =
+                        item._defaultVariant ||
+                        (Array.isArray(item._variants) &&
+                        item._variants.length === 1
+                          ? item._variants[0]
+                          : null);
+
+                    if (!variant && item._priceRange) {
+                      openModal(item);
+                      return;
+                      }
+
+                      addMenuItemToOrder(item, { variant });
+                    }}
+                    role="button"
+                    tabIndex={-1}
+                  >
                     <span>+</span>
                   </div>
                 </div>
@@ -233,8 +357,10 @@ export default function CenterPanel() {
 
                   <div className={cls.cardFooter}>
                     <div className={cls.priceTag}>
-                      {formatPrice(price)}
-                      {item.byWeight && <span className={cls.unit}> /kg</span>}
+                      {priceLabel}
+                      {weightUnit && (
+                        <span className={cls.unit}> /{weightUnit}</span>
+                      )}
                     </div>
                   </div>
                 </div>
