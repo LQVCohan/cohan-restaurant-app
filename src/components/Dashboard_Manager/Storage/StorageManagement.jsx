@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
-import { useQuery } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client";
 import { AuthContext } from "../../../context/AuthContext";
 
 // Components
@@ -16,6 +16,7 @@ import IngredientList from "./components/ingredients/IngredientList";
 import SupplyList from "./components/supplies/SupplyList";
 import RecipeList from "./components/recipes/RecipeList";
 import WarehouseStatus from "./components/WarehouseStatus/WarehouseStatus"; // Import Component Status
+import QuickStockModal from "./components/ingredients/QuickStockModal";
 
 // Hooks & Icons
 import { useRecipes } from "@/hooks/useRecipes";
@@ -38,6 +39,7 @@ import {
   WAREHOUSES_QUERY,
   STOCK_ITEMS_QUERY,
   STOCK_MOVEMENTS_QUERY,
+  ADJUST_STOCK,
 } from "./graphql/inventory.gql";
 
 const StorageManagement = () => {
@@ -202,6 +204,10 @@ const StorageManagement = () => {
       .filter((it) => it.currentStock <= it.minStock);
   }, [ingredients, restaurantReady, shouldFetchStock, stockItems]);
 
+  const [adjustStockMu] = useMutation(ADJUST_STOCK);
+  const [poOpen, setPoOpen] = useState(false);
+  const [poEntries, setPoEntries] = useState([]);
+
   // Define Tabs
   const tabs = [
     {
@@ -344,7 +350,24 @@ const StorageManagement = () => {
             </div>
 
             <div className="toolbar-right">
-              <WarehouseStatus lowStockItems={lowStockItems} />
+              <WarehouseStatus
+                lowStockItems={lowStockItems}
+                onCreatePO={() => {
+                  if (!warehouseFilterId) {
+                    alert("Vui lòng chọn kho cụ thể trước khi nhập kho.");
+                    return;
+                  }
+                  setPoEntries(
+                    lowStockItems.map((it) => ({
+                      id: it.id,
+                      type: "ingredient",
+                      name: it.name,
+                      unit: it.unit,
+                    }))
+                  );
+                  setPoOpen(true);
+                }}
+              />
             </div>
           </div>
 
@@ -360,8 +383,41 @@ const StorageManagement = () => {
           )}
         </div>
       </div>
+
+      <QuickStockModal
+        isOpen={poOpen}
+        onClose={() => setPoOpen(false)}
+        entries={poEntries}
+        onSubmit={async (rows) => {
+          try {
+            for (const row of rows) {
+              await adjustStockMu({
+                variables: {
+                  restaurantId: currentRestaurant,
+                  warehouseId: warehouseFilterId,
+                  ingredientId: row.id,
+                  qty: row.qty,
+                  reason: buildReason(row),
+                },
+              });
+            }
+            setPoOpen(false);
+            await reloadIngredientsAndStock();
+          } catch (e) {
+            alert(e?.message || "Có lỗi khi nhập kho");
+          }
+        }}
+      />
     </div>
   );
 };
 
 export default StorageManagement;
+
+function buildReason(row) {
+  const parts = [];
+  if (row.supplier) parts.push(`Nguồn: ${row.supplier}`);
+  if (row.datetime) parts.push(`Thời gian: ${row.datetime}`);
+  if (row.note) parts.push(`Ghi chú: ${row.note}`);
+  return parts.join(" | ") || "Nhập kho nhanh";
+}

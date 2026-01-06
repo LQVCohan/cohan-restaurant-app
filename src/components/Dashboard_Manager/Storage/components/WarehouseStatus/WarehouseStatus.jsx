@@ -8,7 +8,7 @@ import "./WarehouseStatus.scss";
  * - lowStockItems: Array [{ id, name, currentStock, minStock, unit }]
  * (Danh sách các mặt hàng dưới định mức)
  */
-const WarehouseStatus = ({ lowStockItems = [] }) => {
+const WarehouseStatus = ({ lowStockItems = [], onCreatePO }) => {
   const warnings = Array.isArray(lowStockItems) ? lowStockItems : [];
   const isSafe = warnings.length === 0;
 
@@ -51,7 +51,7 @@ const WarehouseStatus = ({ lowStockItems = [] }) => {
             ))}
           </ul>
           <div className="dropdown-footer">
-            <button>Tạo phiếu nhập ngay</button>
+            <button onClick={onCreatePO}>Tạo phiếu nhập ngay</button>
           </div>
         </div>
       )}
