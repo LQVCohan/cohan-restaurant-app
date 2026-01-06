@@ -156,9 +156,13 @@ type StockItem {
   id: ID!
   restaurantId: ID!
   warehouseId: ID
-  ingredientId: ID!
+  ingredientId: ID
+  supplyId: ID
   onHand: Float!
   reserved: Float!
+  costPerUnit: Float
+  pricePerUnit: Float
+  note: String
   batches: [StockBatch!]!
   createdAt: DateTime
   updatedAt: DateTime
@@ -364,6 +368,12 @@ extend type Query {
     dateFrom: DateTime
     dateTo: DateTime
   ): MovementSummary!
+
+  menuItemsUsingIngredient(
+    restaurantId: ID!
+    ingredientId: ID!
+    limit: Int = 100
+  ): [MenuItem!]!
 }
 
 # ================================
