@@ -1,122 +1,237 @@
-/* SupplyModal.scss */
-/* Không phụ thuộc biến lạ để tránh xung đột; ưu tiên giá trị cụ thể, tận dụng style của Modal.scss */
+/* --- Supply Modal Unique Variables --- */
+$sm-gold-primary: #c5a47e;
+$sm-gold-soft: #fdfaf6;
+$sm-text-main: #1e293b;
+$sm-text-light: #64748b;
+$sm-border: #e2e8f0;
+$sm-bg-input: #ffffff;
+$sm-radius: 8px;
+$sm-danger: #ef4444;
 
-.supply-modal {
-  /* nhịp và typo */
-  padding: 4px 0;
-  color: #0f172a;
+.sm-container {
+  padding: 8px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: $sm-text-main;
 
-  .supply-modal__subtitle {
-    margin: 0 0 12px 0;
-    font-size: 14px;
-    line-height: 1.5;
-    color: #475569;
-    background: linear-gradient(180deg, #f8fafc, #f1f5f9);
-    border: 1px solid rgba(2, 6, 23, 0.06);
-    border-radius: 10px;
-    padding: 10px 12px;
+  /* Header Note Box */
+  .sm-header-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid rgba($sm-text-main, 0.05);
+    border-radius: $sm-radius;
+    padding: 12px;
+    margin-bottom: 20px;
+
+    .note-icon {
+      font-style: normal;
+      font-size: 16px;
+    }
+    span {
+      font-size: 13px;
+      line-height: 1.5;
+      color: $sm-text-light;
+    }
   }
 
-  /* field block */
-  .fm-field {
-    display: block;
+  /* Grid Layouts */
+  .sm-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
   }
-  .fm-label {
-    display: block;
-    font-weight: 700;
-    margin: 0 0 6px 0;
-    color: #0f172a;
-  }
-  .req {
-    color: #b91c1c;
-    font-weight: 800;
+  .sm-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 16px;
   }
 
-  .fm-input {
-    display: block;
+  /* Form Fields */
+  .sm-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .sm-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: $sm-text-light;
+    letter-spacing: 0.02em;
+
+    .req {
+      color: $sm-danger;
+      margin-left: 2px;
+    }
+  }
+
+  /* Input Styling */
+  .sm-input {
     width: 100%;
-    border-radius: 10px;
-    border: 1px solid rgba(2, 6, 23, 0.12);
-    background: #ffffff;
-    padding: 10px 12px;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: $sm-radius;
+    border: 1px solid $sm-border;
+    background: $sm-bg-input;
     font-size: 14px;
-    line-height: 20px;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    color: $sm-text-main;
+    transition: all 0.2s ease;
+
+    &::placeholder {
+      color: lighten($sm-text-light, 20%);
+    }
 
     &:focus {
       outline: none;
-      border-color: rgba(99, 102, 241, 0.55); /* primary-ish */
-      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+      border-color: $sm-gold-primary;
+      box-shadow: 0 0 0 3px rgba($sm-gold-primary, 0.15);
+    }
+
+    &.error {
+      border-color: $sm-danger;
+      background: #fef2f2;
+
+      &:focus {
+        box-shadow: 0 0 0 3px rgba($sm-danger, 0.1);
+      }
     }
   }
 
-  .fm-error {
-    display: block;
-    margin-top: 6px;
-    color: #b91c1c;
-    font-size: 12px;
-    line-height: 1.3;
+  /* Error Message */
+  .sm-msg {
+    color: $sm-danger;
+    font-size: 11px;
+    font-weight: 500;
   }
 
-  /* grid helpers */
-  .grid-2,
-  .grid-3 {
-    display: grid;
-    gap: 12px;
-    margin-top: 12px;
-  }
-  .grid-2 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .grid-3 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  @media (max-width: 768px) {
-    .grid-2,
-    .grid-3 {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  /* FIFO hint bar */
-  .hint-box {
-    margin-top: 12px;
-    padding: 12px;
-    border-radius: 12px;
-    background: #f8fafc;
-    border: 1px solid rgba(2, 6, 23, 0.08);
+  /* Quick Actions Box (FIFO) */
+  .sm-quick-actions {
+    margin-top: 24px;
+    padding: 16px;
+    border-radius: $sm-radius;
+    background: $sm-gold-soft; // Nền vàng rất nhạt
+    border: 1px dashed rgba($sm-gold-primary, 0.3);
     display: flex;
     align-items: center;
-    gap: 12px;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
 
-    .hint-text {
-      color: #334155;
-      font-size: 14px;
-      line-height: 1.5;
+    .qa-info {
       flex: 1;
+      min-width: 200px;
+
+      .qa-badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        background: $sm-gold-primary;
+        color: #fff;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-bottom: 4px;
+      }
+      p {
+        margin: 0;
+        font-size: 12px;
+        color: darken($sm-gold-primary, 20%);
+        line-height: 1.4;
+      }
     }
 
-    .hint-actions {
+    .qa-buttons {
       display: flex;
       gap: 8px;
-      flex-wrap: wrap;
+    }
+  }
+
+  /* Buttons inside Modal Body */
+  .sm-btn-ghost {
+    background: #fff;
+    border: 1px solid rgba($sm-gold-primary, 0.4);
+    color: darken($sm-gold-primary, 10%);
+    padding: 8px 12px;
+    border-radius: $sm-radius;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: $sm-gold-primary;
+      color: #fff;
+      border-color: $sm-gold-primary;
+      transform: translateY(-1px);
     }
   }
 }
 
-/* nhỏ gọn nút phụ (match với Modal.scss .btn) */
-.btn.btn--light {
-  background: #f3f4f6;
-  color: #111827;
-  border: 1px solid rgba(2, 6, 23, 0.08);
-  border-radius: 8px;
-  padding: 10px 12px;
+/* Footer Buttons (Custom Override for this Modal context if needed, 
+   otherwise rely on ModalFooter styles. Here we provide specific classes used in JSX) */
+
+.sm-btn-cancel {
+  padding: 10px 20px;
+  border-radius: $sm-radius;
+  border: 1px solid $sm-border;
+  background: #fff;
+  color: $sm-text-light;
   font-weight: 600;
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
+  cursor: pointer;
+  transition: all 0.2s;
 
   &:hover {
-    background: #e5e7eb;
+    background: #f1f5f9;
+    color: $sm-text-main;
+  }
+}
+
+.sm-btn-submit {
+  padding: 10px 24px;
+  border-radius: $sm-radius;
+  border: none;
+  background: $sm-gold-primary;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba($sm-gold-primary, 0.25);
+  transition: all 0.2s;
+
+  &:hover {
+    background: darken($sm-gold-primary, 5%);
     transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba($sm-gold-primary, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .sm-container {
+    .sm-grid-2,
+    .sm-grid-3 {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .sm-quick-actions {
+      flex-direction: column;
+      align-items: flex-start;
+
+      .qa-buttons {
+        width: 100%;
+        .sm-btn-ghost {
+          flex: 1;
+          justify-content: center;
+          display: flex;
+        }
+      }
+    }
   }
 }

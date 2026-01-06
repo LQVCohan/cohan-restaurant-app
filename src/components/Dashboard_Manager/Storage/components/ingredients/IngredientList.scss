@@ -1,121 +1,331 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+// src/components/Dashboard_Manager/Storage/components/ingredients/IngredientList.scss
 
-.ingredient-list {
-  padding: $spacing-sm 0;
+/* --- 1. Variables (Scoped riêng cho trang này - Prefix $il-) --- */
+$il-bg-surface: #ffffff;
+$il-bg-body: #f8fafc;
+$il-border-color: #e2e8f0;
+$il-text-main: #1e293b;
+$il-text-sub: #64748b;
+$il-primary: #c5a47e; // Màu chủ đạo
+$il-danger: #ef4444;
+$il-focus-ring: rgba(197, 164, 126, 0.25);
+$il-radius: 8px;
 
-  .toolbar {
+/* --- 2. Main Wrapper (Namespace .ing-storage-wrapper) --- */
+.ing-storage-wrapper {
+  font-family: inherit; // Kế thừa font của dự án
+  color: $il-text-main;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+
+  /* Reset box-sizing cho tất cả con cháu để đảm bảo tính toán kích thước đúng */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  /* --- HEADER --- */
+  .il-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: $spacing-md;
-    margin-bottom: $spacing-md;
-    padding: $spacing-sm $spacing-md;
-    background: $white;
-    border: 1px solid rgba(0, 0, 0, 0.04);
-    border-radius: 0.5rem;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    gap: 12px;
 
-    @include mobile {
-      flex-direction: column;
-      align-items: stretch;
+    .il-header__left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      h2 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.2;
+      }
+
+      .il-badge {
+        background: #f1f5f9;
+        color: $il-text-sub;
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 20px;
+      }
     }
 
-    &-left,
-    &-right {
-      display: flex;
-      gap: $spacing-md;
-      flex-wrap: wrap;
+    .il-header__alert {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #b45309;
+      background: #fffbeb;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid #fcd34d;
+    }
+  }
 
-      @include mobile {
-        justify-content: center;
+  /* --- TOOLBAR (Thanh công cụ) --- */
+  .il-toolbar {
+    background: $il-bg-surface;
+    border: 1px solid $il-border-color;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+
+    /* Nhóm Filter bên trái */
+    .il-toolbar__filters {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1; /* Chiếm phần dư */
+      flex-wrap: wrap;
+    }
+
+    /* Nhóm Action bên phải */
+    .il-toolbar__actions {
+      flex-shrink: 0; /* Không cho phép co lại */
+    }
+  }
+
+  /* --- INPUTS & SELECTS (Custom Style) --- */
+
+  /* Wrapper cho Search để định vị icon */
+  .il-input-group {
+    position: relative;
+    width: 320px; /* Độ rộng cố định cho Search */
+    max-width: 100%;
+
+    /* Icon chung */
+    .il-icon-left {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: $il-text-sub;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    /* Input Search */
+    .il-input-search {
+      width: 100%;
+      height: 40px;
+      padding: 0 36px 0 40px; /* Padding trái né icon trái, phải né nút X */
+      border: 1px solid $il-border-color;
+      border-radius: $il-radius;
+      font-size: 0.9rem;
+      color: $il-text-main;
+      background: #fff;
+      transition: border 0.2s, box-shadow 0.2s;
+      outline: none;
+
+      &:focus {
+        border-color: $il-primary;
+        box-shadow: 0 0 0 3px $il-focus-ring;
+      }
+
+      &::placeholder {
+        color: #94a3b8;
+      }
+    }
+
+    /* Nút xóa search (X) */
+    .il-btn-clear {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: none;
+      background: transparent;
+      color: $il-text-sub;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 50%;
+
+      &:hover {
+        background: #f1f5f9;
+        color: $il-danger;
       }
     }
   }
 
-  .search-filter {
-    display: flex;
-    gap: $spacing-md;
-    flex-wrap: wrap;
-    align-items: center;
+  /* Wrapper cho Select Dropdown */
+  .il-select-group {
+    position: relative;
+    width: 200px; /* Độ rộng cố định cho Select */
 
-    @include mobile {
+    .il-icon-left {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: $il-text-sub;
+      pointer-events: none;
+    }
+
+    .il-select {
+      width: 100%;
+      height: 40px;
+      padding: 0 30px 0 38px;
+      appearance: none; /* Xóa style mặc định */
+      background-color: #fff;
+      border: 1px solid $il-border-color;
+      border-radius: $il-radius;
+      font-size: 0.9rem;
+      color: $il-text-main;
+      cursor: pointer;
+      outline: none;
+
+      /* Mũi tên custom */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+
+      &:focus {
+        border-color: $il-primary;
+      }
+      &:hover {
+        border-color: #cbd5e1;
+      }
+    }
+  }
+
+  /* --- BUTTONS --- */
+  .il-btn-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed $il-border-color;
+    border-radius: $il-radius;
+    background: #fff;
+    color: $il-text-sub;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: $il-danger;
+      color: $il-danger;
+      background: #fef2f2;
+    }
+  }
+
+  .il-btn-primary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 20px;
+    background-color: $il-text-main; /* Hoặc $il-primary */
+    color: #fff;
+    border: none;
+    border-radius: $il-radius;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap; /* Chống xuống dòng chữ bên trong nút */
+    transition: opacity 0.2s;
+
+    &:hover {
+      opacity: 0.9;
+    }
+
+    &:disabled {
+      background-color: #cbd5e1;
+      cursor: not-allowed;
+    }
+  }
+
+  /* --- CONTENT AREA --- */
+  .il-content {
+    min-height: 400px;
+  }
+
+  .il-error {
+    background: #fef2f2;
+    color: $il-danger;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .il-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  /* Empty State */
+  .il-empty {
+    text-align: center;
+    padding: 60px 20px;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px dashed $il-border-color;
+
+    .il-empty__icon {
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+    h3 {
+      margin-bottom: 8px;
+      color: $il-text-main;
+      font-size: 1.1rem;
+    }
+    p {
+      color: $il-text-sub;
+      margin-bottom: 16px;
+    }
+    button {
+      background: none;
+      border: none;
+      color: $il-primary;
+      text-decoration: underline;
+      cursor: pointer;
+      font-weight: 600;
+    }
+  }
+
+  /* --- RESPONSIVE (Mobile fix) --- */
+  @media (max-width: 992px) {
+    .il-toolbar {
       flex-direction: column;
       align-items: stretch;
-      gap: $spacing-sm;
+      padding: 12px;
+
+      .il-toolbar__filters {
+        flex-direction: column;
+        align-items: stretch;
+
+        .il-input-group,
+        .il-select-group {
+          width: 100%; /* Full width trên mobile */
+        }
+      }
+
+      .il-toolbar__actions {
+        display: flex;
+        justify-content: flex-end;
+      }
     }
-  }
-
-  .search-input {
-    @include form-input;
-    min-width: 280px;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
-
-    &:focus {
-      border-color: rgba($primary, 0.35);
-      box-shadow: 0 0 0 4px rgba($primary, 0.08);
-      outline: none;
-    }
-
-    @include mobile {
-      min-width: auto;
-      width: 100%;
-    }
-  }
-
-  .filter-select {
-    @include form-input;
-    background: $white;
-    color: #334155;
-    min-width: 180px;
-    transition: box-shadow 0.2s ease, border-color 0.2s ease;
-
-    &:focus {
-      border-color: rgba($primary, 0.35);
-      box-shadow: 0 0 0 4px rgba($primary, 0.08);
-      outline: none;
-    }
-
-    @include mobile {
-      width: 100%;
-      min-width: 0;
-    }
-  }
-
-  .ingredients-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: $spacing-md;
-
-    @include mobile {
-      grid-template-columns: 1fr;
-      gap: $spacing-sm;
-    }
-  }
-}
-
-/* utilities dùng chung */
-.space-y-3 > * + * {
-  margin-top: $spacing-md;
-}
-
-.grid-2 {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: $spacing-md;
-
-  @include mobile {
-    grid-template-columns: 1fr;
-  }
-}
-
-.grid-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: $spacing-md;
-
-  @include mobile {
-    grid-template-columns: 1fr;
   }
 }

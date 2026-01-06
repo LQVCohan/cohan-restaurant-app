@@ -1,97 +1,168 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+// src/components/Dashboard_Manager/Storage/components/ingredients/IngredientModal.scss
 
-/* Scope để không ảnh hưởng modal khác */
-.ingredient-modal {
-  .modal-body {
-    padding: $spacing-lg;
-    background: $white;
+/* --- Variables (Đồng bộ với IngredientList) --- */
+$il-primary: #c5a47e;
+$il-text-main: #1e293b;
+$il-text-sub: #64748b;
+$il-border-color: #e2e8f0;
+$il-bg-input: #ffffff;
+$il-danger: #ef4444;
+$il-focus-ring: rgba(197, 164, 126, 0.25);
+$il-radius: 8px;
 
-    &.space-y-3 > * + * {
-      margin-top: $spacing-lg;
-    }
+.il-modal-form {
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  /* --- Grid System --- */
+  .il-grid-2,
+  .il-grid-3 {
+    display: grid;
+    gap: 16px;
+  }
+  .il-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .il-grid-3 {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  /* --- Form Group --- */
+  .il-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 
     label {
-      display: block;
       font-size: 0.9rem;
-      font-weight: 700;
-      color: #0f172a;
-      margin-bottom: 0.35rem;
+      font-weight: 600;
+      color: $il-text-main;
 
-      .hint {
-        font-weight: 500;
-        color: $text-muted;
-        margin-left: 0.25rem;
-      }
       .req {
-        color: #b91c1c;
-      } /* dùng màu trực tiếp, không tạo biến mới */
+        color: $il-danger;
+        margin-left: 2px;
+      }
+      .hint {
+        font-size: 0.8rem;
+        color: $il-text-sub;
+        font-weight: 400;
+        margin-left: 6px;
+      }
     }
 
-    input,
-    select,
-    textarea {
-      @include form-input;
-      width: 100%;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    /* Input có icon bên trong */
+    .il-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .il-input-icon {
+        position: absolute;
+        left: 12px;
+        color: $il-text-sub;
+        pointer-events: none;
+        z-index: 2;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        padding: 10px 12px;
+        padding-left: 38px; /* Chừa chỗ cho icon */
+        font-size: 0.95rem;
+        border: 1px solid $il-border-color;
+        border-radius: $il-radius;
+        color: $il-text-main;
+        background: $il-bg-input;
+        transition: all 0.2s;
+        outline: none;
+
+        &::placeholder {
+          color: #cbd5e1;
+        }
+
+        &:focus {
+          border-color: $il-primary;
+          box-shadow: 0 0 0 3px $il-focus-ring;
+        }
+
+        &:disabled {
+          background: #f1f5f9;
+          cursor: not-allowed;
+          color: #94a3b8;
+        }
+      }
+
+      /* Select arrow customization */
+      select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 32px;
+      }
+    }
+
+    /* Textarea không có icon wrapper */
+    textarea.il-textarea {
+      padding: 12px;
+      min-height: 80px;
+      resize: vertical;
+      border: 1px solid $il-border-color;
+      border-radius: $il-radius;
+      font-family: inherit;
 
       &:focus {
-        border-color: rgba($primary, 0.35);
-        box-shadow: 0 0 0 4px rgba($primary, 0.1);
+        border-color: $il-primary;
+        box-shadow: 0 0 0 3px $il-focus-ring;
         outline: none;
       }
     }
 
-    textarea {
-      min-height: 96px;
-      resize: vertical;
-    }
-
-    .error {
-      display: block;
-      margin-top: 0.35rem;
+    .il-error-msg {
       font-size: 0.8rem;
-      color: #b91c1c;
-    }
-
-    .grid-2 {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: $spacing-lg;
-
-      @include mobile {
-        grid-template-columns: 1fr;
-        gap: $spacing-md;
-      }
-    }
-
-    .grid-3 {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: $spacing-lg;
-
-      @include mobile {
-        grid-template-columns: 1fr;
-        gap: $spacing-md;
-      }
+      color: $il-danger;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
   }
 
-  .modal-footer,
-  .form-actions {
-    padding: $spacing-lg;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
+  /* --- Initial Stock Section (Highlight) --- */
+  .il-stock-init-section {
+    background: #f8fafc;
+    border: 1px dashed $il-border-color;
+    padding: 12px;
+    border-radius: $il-radius;
+
+    label {
+      color: #0f172a;
+    }
+  }
+
+  /* --- Footer --- */
+  .il-modal-footer {
     display: flex;
     justify-content: flex-end;
-    align-items: center;
-    gap: $spacing-md;
-    background: linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);
+    gap: 12px;
+    margin-top: 10px;
+    padding-top: 20px;
+    border-top: 1px solid $il-border-color;
 
     button {
-      transition: transform 0.1s ease, box-shadow 0.12s ease;
-      &:active {
-        transform: translateY(1px);
-      }
+      min-width: 100px;
+    }
+  }
+
+  /* --- Responsive --- */
+  @media (max-width: 768px) {
+    .il-grid-2,
+    .il-grid-3 {
+      grid-template-columns: 1fr;
     }
   }
 }

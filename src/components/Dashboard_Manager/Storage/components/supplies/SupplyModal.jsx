@@ -1,33 +1,22 @@
-// SupplyModal.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import Modal, { ModalFooter } from "../../../../common/Modal";
 import "./SupplyModal.scss";
 
 /**
- * SupplyModal
- * - Tạo/Sửa vật phẩm (không phải nhập/xuất kho)
- * - Đồng bộ FIFO: cung cấp nút mở nhanh "Nhập kho" / "Xuất kho" (optional)
- *
- * Props:
- *  - isOpen: boolean
- *  - onClose: fn()
- *  - initial: Supply | null
- *  - onSubmit: fn(input)  // { restaurantId?, name, category, unit, costPerUnit, minStock, isActive }
- *  - onOpenInbound?: fn(supply)   // Mở modal nhập kho (tuỳ chọn)
- *  - onOpenOutbound?: fn(supply)  // Mở modal xuất kho (tuỳ chọn)
+ * SupplyModal - Nâng cấp giao diện Luxury/Minimalist
  */
 const UNITS = [
-  { value: "unit", label: "unit" },
-  { value: "piece", label: "piece" },
-  { value: "bottle", label: "bottle" },
-  { value: "can", label: "can" },
-  { value: "pack", label: "pack" },
-  { value: "g", label: "g" },
-  { value: "kg", label: "kg" },
-  { value: "ml", label: "ml" },
-  { value: "l", label: "l" },
-  { value: "tbsp", label: "tbsp" },
-  { value: "tsp", label: "tsp" },
+  { value: "unit", label: "Đơn vị (unit)" },
+  { value: "piece", label: "Cái (piece)" },
+  { value: "bottle", label: "Chai (bottle)" },
+  { value: "can", label: "Lon (can)" },
+  { value: "pack", label: "Gói (pack)" },
+  { value: "g", label: "Gram (g)" },
+  { value: "kg", label: "Kilogram (kg)" },
+  { value: "ml", label: "Milliliter (ml)" },
+  { value: "l", label: "Lít (l)" },
+  { value: "tbsp", label: "Muỗng canh (tbsp)" },
+  { value: "tsp", label: "Muỗng cà phê (tsp)" },
 ];
 
 const CATEGORIES = [
@@ -60,12 +49,11 @@ const SupplyModal = ({
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState({});
 
-  // derived subtitle (FIFO hint)
   const subtitle = useMemo(
     () =>
       isEditing
-        ? "Chỉnh sửa vật phẩm. Gợi ý: nhập/xuất kho theo FIFO sẽ trừ từ lô cũ trước."
-        : "Thêm vật phẩm mới. Kho sẽ quản lý theo lô và xuất FIFO.",
+        ? "Điều chỉnh thông tin vật phẩm và quản lý lô hàng."
+        : "Thiết lập vật phẩm mới vào hệ thống quản lý kho.",
     [isEditing]
   );
 
@@ -94,10 +82,10 @@ const SupplyModal = ({
 
   const validate = () => {
     const e = {};
-    if (!form.name.trim()) e.name = "Bắt buộc";
-    if (!form.unit) e.unit = "Bắt buộc";
+    if (!form.name.trim()) e.name = "Vui lòng nhập tên vật phẩm";
+    if (!form.unit) e.unit = "Chọn đơn vị";
     if (form.costPerUnit === "" || Number(form.costPerUnit) < 0)
-      e.costPerUnit = "≥ 0";
+      e.costPerUnit = "Giá trị không hợp lệ";
     if (form.minStock === "" || Number(form.minStock) < 0) e.minStock = "≥ 0";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -133,30 +121,34 @@ const SupplyModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={isEditing ? "✏️ Chỉnh sửa vật phẩm" : "➕ Thêm vật phẩm"}
+      title={isEditing ? "Chỉnh Sửa Vật Phẩm" : "Thêm Vật Phẩm Mới"}
       size="md"
     >
-      <div className="supply-modal">
-        <p className="supply-modal__subtitle">{subtitle}</p>
+      <div className="sm-container">
+        <div className="sm-header-note">
+          <i className="note-icon">ℹ️</i>
+          <span>{subtitle}</span>
+        </div>
 
-        <div className="grid-2">
-          <label className="fm-field">
-            <span className="fm-label">
+        {/* --- Block 1: Định danh --- */}
+        <div className="sm-grid-2">
+          <label className="sm-field">
+            <span className="sm-label">
               Tên vật phẩm <b className="req">*</b>
             </span>
             <input
-              className="fm-input"
+              className={`sm-input ${errors.name ? "error" : ""}`}
               value={form.name}
               onChange={(e) => set({ name: e.target.value })}
-              placeholder="Ví dụ: Coca-Cola lon 330ml"
+              placeholder="VD: Coca-Cola 330ml"
             />
-            {errors.name && <small className="fm-error">{errors.name}</small>}
+            {errors.name && <small className="sm-msg">{errors.name}</small>}
           </label>
 
-          <label className="fm-field">
-            <span className="fm-label">Danh mục</span>
+          <label className="sm-field">
+            <span className="sm-label">Danh mục</span>
             <select
-              className="fm-input"
+              className="sm-input"
               value={form.category}
               onChange={(e) => set({ category: e.target.value })}
             >
@@ -169,14 +161,14 @@ const SupplyModal = ({
           </label>
         </div>
 
-        {/* row: unit + costPerUnit */}
-        <div className="grid-3">
-          <label className="fm-field">
-            <span className="fm-label">
+        {/* --- Block 2: Định lượng & Giá --- */}
+        <div className="sm-grid-3">
+          <label className="sm-field">
+            <span className="sm-label">
               Đơn vị <b className="req">*</b>
             </span>
             <select
-              className="fm-input"
+              className={`sm-input ${errors.unit ? "error" : ""}`}
               value={form.unit}
               onChange={(e) => set({ unit: e.target.value })}
             >
@@ -186,33 +178,29 @@ const SupplyModal = ({
                 </option>
               ))}
             </select>
-            {errors.unit && <small className="fm-error">{errors.unit}</small>}
+            {errors.unit && <small className="sm-msg">{errors.unit}</small>}
           </label>
 
-          <label className="fm-field">
-            <span className="fm-label">
-              Giá/đơn vị (VNĐ) <b className="req">*</b>
+          <label className="sm-field">
+            <span className="sm-label">
+              Giá nhập (VNĐ) <b className="req">*</b>
             </span>
             <input
-              className="fm-input"
+              className={`sm-input ${errors.costPerUnit ? "error" : ""}`}
               type="number"
               min="0"
-              step="1"
               value={form.costPerUnit}
               onChange={(e) => set({ costPerUnit: e.target.value })}
               placeholder="0"
             />
-            {errors.costPerUnit && (
-              <small className="fm-error">{errors.costPerUnit}</small>
-            )}
           </label>
 
-          <label className="fm-field">
-            <span className="fm-label">
+          <label className="sm-field">
+            <span className="sm-label">
               Tồn tối thiểu <b className="req">*</b>
             </span>
             <input
-              className="fm-input"
+              className={`sm-input ${errors.minStock ? "error" : ""}`}
               type="number"
               min="0"
               step="0.01"
@@ -220,56 +208,58 @@ const SupplyModal = ({
               onChange={(e) => set({ minStock: e.target.value })}
               placeholder="0"
             />
-            {errors.minStock && (
-              <small className="fm-error">{errors.minStock}</small>
-            )}
           </label>
         </div>
 
-        <div className="grid-2">
-          <label className="fm-field">
-            <span className="fm-label">Trạng thái</span>
+        {/* --- Block 3: Trạng thái & Ghi chú --- */}
+        <div className="sm-grid-2">
+          <label className="sm-field">
+            <span className="sm-label">Trạng thái</span>
             <select
-              className="fm-input"
+              className="sm-input"
               value={form.isActive ? "1" : "0"}
               onChange={(e) => set({ isActive: e.target.value === "1" })}
             >
-              <option value="1">Đang dùng</option>
-              <option value="0">Ngừng</option>
+              <option value="1">🟢 Đang hoạt động</option>
+              <option value="0">🔴 Ngưng sử dụng</option>
             </select>
           </label>
 
-          <label className="fm-field">
-            <span className="fm-label">Ghi chú</span>
+          <label className="sm-field">
+            <span className="sm-label">Ghi chú</span>
             <input
-              className="fm-input"
+              className="sm-input"
               value={form.notes}
               onChange={(e) => set({ notes: e.target.value })}
-              placeholder="Mô tả ngắn…"
+              placeholder="Ghi chú nội bộ..."
             />
           </label>
         </div>
 
+        {/* --- Block 4: Quick Actions (Chỉ hiện khi edit) --- */}
         {isEditing && (onOpenInbound || onOpenOutbound) && (
-          <div className="hint-box">
-            <div className="hint-text">
-              <b>FIFO:</b> Khi xuất kho, hệ thống sẽ tự động trừ từ những lô cũ
-              nhất trước (ưu tiên lô sắp hết hạn).
+          <div className="sm-quick-actions">
+            <div className="qa-info">
+              <span className="qa-badge">FIFO System</span>
+              <p>
+                Hệ thống tự động ưu tiên xuất các lô hàng cũ nhất để đảm bảo
+                tuổi thọ sản phẩm.
+              </p>
             </div>
-            <div className="hint-actions">
+            <div className="qa-buttons">
               {onOpenInbound && (
                 <button
                   type="button"
-                  className="btn btn--light"
+                  className="sm-btn-ghost"
                   onClick={openInbound}
                 >
-                  📦 Nhập kho
+                  📥 Nhập kho
                 </button>
               )}
               {onOpenOutbound && (
                 <button
                   type="button"
-                  className="btn btn--light"
+                  className="sm-btn-ghost"
                   onClick={openOutbound}
                 >
                   📤 Xuất kho
@@ -281,11 +271,11 @@ const SupplyModal = ({
       </div>
 
       <ModalFooter>
-        <button className="btn btn--secondary" onClick={onClose}>
-          Hủy
+        <button className="sm-btn-cancel" onClick={onClose}>
+          Hủy bỏ
         </button>
-        <button className="btn btn--primary" onClick={handleSave}>
-          {isEditing ? "Lưu thay đổi" : "Tạo vật phẩm"}
+        <button className="sm-btn-submit" onClick={handleSave}>
+          {isEditing ? "Lưu Thay Đổi" : "Xác Nhận Tạo"}
         </button>
       </ModalFooter>
     </Modal>

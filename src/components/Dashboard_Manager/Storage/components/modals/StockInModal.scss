@@ -1,58 +1,189 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+/* --- Stock In Modal Unique Variables --- */
+$si-primary: #c5a47e; // Gold theme
+$si-primary-dark: #b08d66;
+$si-bg-light: #f8fafc;
+$si-bg-white: #ffffff;
+$si-border: #e2e8f0;
+$si-text-main: #1e293b;
+$si-text-sub: #64748b;
+$si-radius: 8px;
+$si-danger: #ef4444;
 
-/* Áp dụng cho nội dung modal nhập/xuất/điều chỉnh */
-.stockin-modal {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 4px 0;
+.si-container {
+  padding: 8px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: $si-text-main;
 
-  label {
-    display: block;
-    font-weight: 700;
-    color: #0f172a;
-    margin-bottom: 2px;
+  /* Header Product Info Box */
+  .si-product-info {
+    background: linear-gradient(135deg, #fffbf7 0%, #fff 100%);
+    border: 1px solid rgba($si-primary, 0.2);
+    border-left: 4px solid $si-primary;
+    border-radius: $si-radius;
+    padding: 12px 16px;
+    margin-bottom: 20px;
 
-    input,
-    select,
-    textarea {
-      @include form-input;
-      width: 100%;
-      background: #ffffff;
-      border-color: rgba(0, 0, 0, 0.12);
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-
-      &:focus {
-        border-color: rgba($primary, 0.45);
-        box-shadow: 0 0 0 4px rgba($primary, 0.12);
-        outline: none;
+    .si-pi-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: $si-text-sub;
+      margin-bottom: 4px;
+      letter-spacing: 0.05em;
+    }
+    .si-pi-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: $si-text-main;
+      margin-bottom: 2px;
+    }
+    .si-pi-meta {
+      font-size: 13px;
+      color: $si-text-sub;
+      strong {
+        color: $si-primary-dark;
+        font-weight: 600;
       }
     }
   }
 
-  .grid-2,
-  .grid-3 {
+  /* Grid Layout */
+  .si-grid-2 {
     display: grid;
-    gap: 12px;
-  }
-  .grid-2 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .grid-3 {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
   }
 
-  @include mobile {
-    .grid-2,
-    .grid-3 {
-      grid-template-columns: 1fr;
+  /* Section Divider */
+  .si-section-divider {
+    display: flex;
+    align-items: center;
+    margin: 8px 0 16px 0;
+
+    &::before,
+    &::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: $si-border;
+    }
+    span {
+      padding: 0 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: $si-text-sub;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+  }
+
+  /* Form Fields */
+  .si-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .si-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: $si-text-sub;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+
+    .req {
+      color: $si-danger;
+      margin-left: 3px;
+    }
+  }
+
+  /* Inputs */
+  .si-input {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    border-radius: $si-radius;
+    border: 1px solid $si-border;
+    background: $si-bg-white;
+    font-size: 14px;
+    color: $si-text-main;
+    transition: all 0.2s ease-in-out;
+
+    &::placeholder {
+      color: lighten($si-text-sub, 20%);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $si-primary;
+      box-shadow: 0 0 0 3px rgba($si-primary, 0.15);
+    }
+
+    /* Highlighted Input Style (cho Số lượng) */
+    &.si-input-lg {
+      font-size: 16px;
+      font-weight: 600;
+      color: darken($si-primary, 20%);
+      background: #fffdfa; // slight tint
     }
   }
 }
 
-/* Nút disabled rõ ràng hơn */
-.btn[disabled] {
-  opacity: 0.6;
-  cursor: not-allowed;
+/* Footer Buttons (Scoped classes) */
+.si-btn-cancel {
+  padding: 10px 20px;
+  border-radius: $si-radius;
+  border: 1px solid $si-border;
+  background: #fff;
+  color: $si-text-sub;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: $si-bg-light;
+    color: $si-text-main;
+  }
+}
+
+.si-btn-confirm {
+  padding: 10px 24px;
+  border-radius: $si-radius;
+  border: none;
+  background: $si-primary;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba($si-primary, 0.25);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  &:hover:not(:disabled) {
+    background: $si-primary-dark;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba($si-primary, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+    background: $si-text-sub;
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .si-container {
+    .si-grid-2 {
+      grid-template-columns: 1fr; // Stack columns on mobile
+      gap: 12px;
+    }
+  }
 }

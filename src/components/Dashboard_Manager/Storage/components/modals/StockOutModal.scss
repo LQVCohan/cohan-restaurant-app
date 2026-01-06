@@ -1,29 +1,196 @@
-@use "../../../../../styles/mixins" as *;
+/* --- Stock Out Modal Unique Variables --- */
+$so-primary: #c5a47e; // Gold theme
+$so-primary-dark: #b08d66;
+$so-bg-light: #f8fafc;
+$so-bg-white: #ffffff;
+$so-border: #e2e8f0;
+$so-text-main: #1e293b;
+$so-text-sub: #64748b;
+$so-radius: 8px;
+$so-danger: #ef4444; // Dùng màu đỏ nhẹ nếu muốn nhấn mạnh tính chất "trừ kho"
 
-.stockout-modal {
-  > * + * {
-    margin-top: 12px;
+.so-container {
+  padding: 8px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: $so-text-main;
+
+  /* Product Info & FIFO Badge */
+  .so-product-info {
+    margin-bottom: 24px;
+    background: $so-bg-light;
+    border-radius: $so-radius;
+    padding: 12px 16px;
+    border: 1px dashed $so-border;
+
+    .so-pi-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .so-pi-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      color: $so-text-sub;
+      font-weight: 600;
+    }
+
+    .so-pi-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: $so-text-main;
+    }
+
+    .so-pi-fifo {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: darken($so-primary, 10%);
+      background: rgba($so-primary, 0.1);
+      padding: 6px 10px;
+      border-radius: 6px;
+
+      .fifo-icon {
+        font-style: normal;
+        font-size: 12px;
+      }
+    }
   }
 
-  label {
-    display: block;
-    font-weight: 700;
-    color: #0f172a;
-    margin-bottom: 6px;
+  /* Main Action Area (Quantity) */
+  .so-main-action {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
 
-    input,
-    select,
-    textarea {
-      @include form-input;
+    .so-field-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
       width: 100%;
-      background: #ffffff;
-      border-color: rgba(0, 0, 0, 0.12);
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-      &:focus {
-        border-color: rgba(2, 132, 199, 0.45);
-        box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.12);
-        outline: none;
+    }
+
+    .so-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: $so-text-sub;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Huge Input for Quantity */
+    .so-input-huge {
+      width: 60%;
+      height: 60px;
+      text-align: center;
+      font-size: 32px;
+      font-weight: 700;
+      color: $so-text-main;
+      border: 2px solid $so-border;
+      border-radius: 12px;
+      background: $so-bg-white;
+      transition: all 0.2s ease;
+
+      &::placeholder {
+        color: #e2e8f0;
       }
+
+      &:focus {
+        outline: none;
+        border-color: $so-primary;
+        box-shadow: 0 0 0 4px rgba($so-primary, 0.15);
+        transform: scale(1.02);
+      }
+    }
+  }
+
+  /* Reason Block */
+  .so-reason-block {
+    .so-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .so-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: $so-text-sub;
+      margin-left: 4px;
+    }
+
+    .so-input {
+      width: 100%;
+      height: 40px;
+      padding: 0 12px;
+      border-radius: $so-radius;
+      border: 1px solid $so-border;
+      font-size: 14px;
+      transition: border-color 0.2s;
+
+      &:focus {
+        outline: none;
+        border-color: $so-primary;
+      }
+    }
+  }
+}
+
+/* Footer Buttons */
+.so-btn-cancel {
+  padding: 10px 20px;
+  border-radius: $so-radius;
+  border: 1px solid $so-border;
+  background: #fff;
+  color: $so-text-sub;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: $so-bg-light;
+    color: $so-text-main;
+  }
+}
+
+.so-btn-confirm {
+  padding: 10px 24px;
+  border-radius: $so-radius;
+  border: none;
+  background: $so-text-main; // Dùng màu tối cho nút xuất để cảnh báo
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: #000;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: $so-border;
+    color: $so-text-sub;
+    box-shadow: none;
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .so-container {
+    .so-main-action .so-input-huge {
+      width: 100%; // Full width on mobile
     }
   }
 }

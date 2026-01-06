@@ -1,21 +1,27 @@
 // src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCard.jsx
 import React, { useMemo, useState } from "react";
-import Card from "../../../../common/Card";
-import Button from "../../../../common/Button";
+import {
+  Pencil,
+  PackagePlus,
+  Eye,
+  Trash2,
+  DollarSign,
+  Box,
+  Tag,
+} from "lucide-react";
+
 import Modal, { ModalFooter } from "../../../../common/Modal";
 import { formatPrice } from "../../../../../utils/formatters";
 import "./IngredientCard.scss";
 
 const IngredientCard = ({
   ingredient,
-  stockQty = 0, // ✅ tồn từ stockItems (đã filter theo warehouseId ở query cha)
+  stockQty = 0,
   onEdit,
   onDelete,
   onAddStock,
   onShowUsage,
   getStockStatus,
-
-  // ✅ callback chuẩn: cập nhật costPerBaseUnit
   onUpdateCostPerBaseUnit,
 }) => {
   const baseUnit = ingredient.baseUnit || ingredient.unit || "";
@@ -23,11 +29,10 @@ const IngredientCard = ({
 
   const status = useMemo(() => {
     if (statusObj?.text) return statusObj;
-    // fallback nếu truyền sai
-    return { text: "—", class: "status--in" };
+    return { text: "—", class: "status-unknown" };
   }, [statusObj]);
 
-  // ====== Modal giá nhập ======
+  // --- Price Modal State ---
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
   const [priceInput, setPriceInput] = useState(
     ingredient?.costPerBaseUnit ?? ""
@@ -48,135 +53,154 @@ const IngredientCard = ({
         costPerBaseUnit: numericPrice,
       });
     } else if (onEdit) {
-      // fallback: mở edit với dữ liệu đã đổi (nếu bạn muốn xử lý trong modal edit chính)
       onEdit({ ...ingredient, costPerBaseUnit: numericPrice });
     }
-
     setIsPriceModalOpen(false);
   };
 
   return (
     <>
-      <Card
-        className="ingredient-card"
-        hover
-        onClick={() => onShowUsage?.(ingredient.id)}
-      >
-        <div className="ingredient-header">
-          <div className="ingredient-icon">{ingredient.icon}</div>
-          <div className="ingredient-info">
-            <h3 className="ingredient-name">{ingredient.name}</h3>
-            <span className="ingredient-category">{ingredient.category}</span>
+      <div className="il-card" onClick={() => onShowUsage?.(ingredient.id)}>
+        {/* Header Section */}
+        <div className="il-card__header">
+          <div className="il-card__icon-wrapper">
+            {/* Fallback icon nếu ingredient.icon là emoji hoặc string không hợp lệ */}
+            {typeof ingredient.icon === "string" &&
+            ingredient.icon.length < 5 ? (
+              <span style={{ fontSize: "1.5rem" }}>{ingredient.icon}</span>
+            ) : (
+              <Box size={24} color="#c5a47e" />
+            )}
           </div>
-          <span className={`status-badge ${status.class}`}>{status.text}</span>
+          <div className="il-card__title-group">
+            <h3 className="il-card__title" title={ingredient.name}>
+              {ingredient.name}
+            </h3>
+            <div className="il-card__subtitle">
+              <Tag size={12} />
+              <span>{ingredient.category}</span>
+            </div>
+          </div>
+          <span className={`il-status-badge ${status.class}`}>
+            {status.text}
+          </span>
         </div>
 
-        <div className="ingredient-content">
-          <div className="ingredient-stats">
-            <div className="stat-item">
-              <div className="stat-value">{stockQty}</div>
-              <div className="stat-label">Tồn ({baseUnit})</div>
+        {/* Content Stats */}
+        <div className="il-card__body">
+          <div className="il-stats-grid">
+            {/* Stock Quantity */}
+            <div className="il-stat-box">
+              <span className="il-stat-label">Tồn kho</span>
+              <div className="il-stat-value-group">
+                <span className="il-stat-value">{stockQty}</span>
+                <span className="il-stat-unit">{baseUnit}</span>
+              </div>
             </div>
 
+            {/* Cost Price (Clickable) */}
             <div
-              className="stat-item stat-item--clickable"
+              className="il-stat-box il-stat-box--interactive"
               onClick={openPriceModal}
+              title="Nhấp để cập nhật giá nhập"
             >
-              <div className="stat-value">
-                {formatPrice(ingredient.costPerBaseUnit)}
+              <div className="il-stat-label">
+                Giá nhập{" "}
+                <Pencil size={10} style={{ marginLeft: 4, opacity: 0.5 }} />
               </div>
-              <div className="stat-label">Giá nhập/{baseUnit}</div>
+              <div className="il-stat-value-group">
+                <span className="il-stat-value il-text-price">
+                  {formatPrice(ingredient.costPerBaseUnit)}
+                </span>
+                <span className="il-stat-unit">/{baseUnit}</span>
+              </div>
             </div>
           </div>
 
-          <div className="ingredient-actions">
-            <Button
-              variant="primary"
-              size="sm"
-              className="ingredient-btn ingredient-btn--edit"
+          {/* Action Toolbar */}
+          <div className="il-card__actions">
+            <button
+              className="il-action-btn il-btn-edit"
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit?.(ingredient);
               }}
+              title="Chỉnh sửa thông tin"
             >
-              ✏️ Sửa
-            </Button>
+              <Pencil size={16} />
+            </button>
 
-            <Button
-              variant="success"
-              size="sm"
-              className="ingredient-btn ingredient-btn--stock"
+            <button
+              className="il-action-btn il-btn-stock"
               onClick={(e) => {
                 e.stopPropagation();
                 onAddStock?.(ingredient.id);
               }}
+              title="Nhập thêm hàng"
             >
-              📦 Nhập kho
-            </Button>
+              <PackagePlus size={16} />
+            </button>
 
-            <Button
-              variant="secondary"
-              size="sm"
-              className="ingredient-btn ingredient-btn--usage"
+            <button
+              className="il-action-btn il-btn-view"
               onClick={(e) => {
                 e.stopPropagation();
                 onShowUsage?.(ingredient.id);
               }}
+              title="Xem món ăn sử dụng"
             >
-              👁️ Xem món ăn
-            </Button>
+              <Eye size={16} />
+            </button>
 
-            <Button
-              variant="danger"
-              size="sm"
-              className="ingredient-btn ingredient-btn--delete"
+            <div className="il-divider-vertical"></div>
+
+            <button
+              className="il-action-btn il-btn-delete"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete?.(ingredient.id);
               }}
+              title="Xóa nguyên liệu"
             >
-              🗑️ Xóa
-            </Button>
+              <Trash2 size={16} />
+            </button>
           </div>
         </div>
-      </Card>
+      </div>
 
+      {/* Price Update Modal */}
       <Modal
         isOpen={isPriceModalOpen}
         onClose={() => setIsPriceModalOpen(false)}
-        title={`Cập nhật giá nhập - ${ingredient.name}`}
+        title="Cập nhật giá vốn"
         size="sm"
       >
-        <div className="ingredient-price-modal">
-          <div className="form-row">
-            <label>Giá nhập / {baseUnit}</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={priceInput}
-              onChange={(e) => setPriceInput(e.target.value)}
-              placeholder="Nhập giá"
-            />
-            <p className="helper-text">
-              Giá này là <b>costPerBaseUnit</b> theo đơn vị gốc.
-            </p>
+        <div className="il-modal-content">
+          <div className="il-form-group">
+            <label className="il-label">Giá nhập mới (VND) / {baseUnit}</label>
+            <div className="il-input-wrapper">
+              <DollarSign size={16} className="il-input-icon" />
+              <input
+                type="number"
+                className="il-input"
+                min="0"
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <p className="il-hint">Giá này sẽ dùng để tính lợi nhuận món ăn.</p>
           </div>
 
           <ModalFooter>
             <button
-              type="button"
-              className="btn btn--secondary"
+              className="il-btn-secondary"
               onClick={() => setIsPriceModalOpen(false)}
             >
               Hủy
             </button>
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={handleSavePrice}
-            >
-              Lưu
+            <button className="il-btn-primary" onClick={handleSavePrice}>
+              Lưu giá
             </button>
           </ModalFooter>
         </div>

@@ -1,212 +1,304 @@
 // src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCard.scss
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
 
-.ingredient-card {
-  position: relative;
+/* Copy lại Variables để đảm bảo tính độc lập nếu chưa import global */
+$il-bg-surface: #ffffff;
+$il-border-color: #e2e8f0;
+$il-primary: #c5a47e;
+$il-text-main: #1e293b;
+$il-text-sub: #64748b;
+$il-danger: #ef4444;
+$il-success: #10b981;
+$il-warning: #f59e0b;
+$il-info: #3b82f6;
+
+.il-card {
+  background: $il-bg-surface;
+  border: 1px solid $il-border-color;
+  border-radius: 12px;
   overflow: hidden;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  background: $white;
-  transition: transform 0.18s ease, box-shadow 0.18s ease,
-    border-color 0.18s ease;
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  display: flex;
+  flex-direction: column;
 
   &:hover {
-    transform: translateY(-2px);
-    border-color: rgba($primary, 0.15);
-    box-shadow: 0 8px 16px rgba(2, 8, 20, 0.06), 0 2px 6px rgba(2, 8, 20, 0.04);
-    cursor: pointer;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
+    border-color: rgba($il-primary, 0.4);
+
+    .il-card__actions {
+      background-color: #f8fafc; // Highlight toolbar khi hover card
+    }
   }
 
-  .ingredient-header {
-    padding: $spacing-md $spacing-lg;
-    background: linear-gradient(135deg, #f4f7fb 0%, #eef2f7 100%);
+  /* --- Header --- */
+  &__header {
+    padding: 16px;
     display: flex;
     align-items: center;
-    gap: $spacing-md;
-    margin: (-$spacing-lg) (-$spacing-lg) $spacing-md (-$spacing-lg);
-    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    gap: 12px;
+    border-bottom: 1px solid rgba($il-border-color, 0.5);
   }
 
-  .ingredient-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .ingredient-name {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #334155;
-    margin: 0 0 0.25rem 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .ingredient-category {
-    font-size: 0.75rem;
-    color: $text-muted;
-    background: $white;
-    padding: 0.25rem 0.5rem;
-    border-radius: $border-radius-sm;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    display: inline-block;
-  }
-
-  .ingredient-content {
-    padding: 0 $spacing-lg $spacing-lg $spacing-lg;
-  }
-
-  .ingredient-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: $spacing-md;
-    margin-bottom: $spacing-md;
-
-    .stat-item {
-      text-align: center;
-      padding: 0.75rem;
-      background: #f8fafc;
-      border-radius: 0.75rem;
-      border: 1px solid rgba(0, 0, 0, 0.04);
-
-      .stat-value {
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: $primary;
-        margin-bottom: 0.25rem;
-        letter-spacing: 0.2px;
-      }
-
-      .stat-label {
-        font-size: 0.75rem;
-        color: $text-muted;
-      }
-    }
-
-    .stat-item--clickable {
-      cursor: pointer;
-      border-color: rgba($primary, 0.16);
-      transition: background-color 0.15s ease, box-shadow 0.15s ease,
-        border-color 0.15s ease;
-
-      &:hover {
-        background: #eff6ff;
-        border-color: rgba($primary, 0.28);
-        box-shadow: 0 4px 8px rgba(15, 23, 42, 0.06);
-      }
-    }
-
-    .stat-item--sub {
-      text-align: left;
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      grid-column: 1 / -1;
-
-      .stat-subrow {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-      }
-
-      .stat-subkey {
-        font-size: 0.75rem;
-        color: $text-muted;
-      }
-
-      .stat-subval {
-        font-size: 0.9rem;
-        font-weight: 700;
-        color: #0f172a;
-      }
-    }
-  }
-
-  .ingredient-actions {
+  &__icon-wrapper {
+    width: 40px;
+    height: 40px;
+    background: #fdf8f6; // Màu nền nhạt của primary
+    border-radius: 10px;
     display: flex;
-    flex-wrap: wrap;
-    gap: $spacing-sm;
-    margin-top: $spacing-sm;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: $il-primary;
+  }
 
-    .ingredient-btn {
-      border-radius: 999px;
+  &__title-group {
+    flex: 1;
+    min-width: 0; // Để text-overflow hoạt động
+
+    .il-card__title {
+      font-size: 1rem;
       font-weight: 600;
-      font-size: 0.8rem;
-      padding-inline: 0.9rem;
-      transition: transform 0.12s ease, box-shadow 0.12s ease,
-        background-color 0.15s ease, color 0.15s ease;
-
-      &:active {
-        transform: translateY(1px);
-        box-shadow: none;
-      }
+      color: $il-text-main;
+      margin: 0 0 4px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .ingredient-btn--edit {
-      background: #fef9c3;
-      color: #854d0e;
+    .il-card__subtitle {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+      color: $il-text-sub;
 
-      &:hover {
-        background: #fef08a;
-      }
-    }
-
-    .ingredient-btn--stock {
-      background: #dbeafe;
-      color: #1d4ed8;
-
-      &:hover {
-        background: #bfdbfe;
-      }
-    }
-
-    .ingredient-btn--usage {
-      background: #f3f4f6;
-      color: #374151;
-
-      &:hover {
-        background: #e5e7eb;
-      }
-    }
-
-    .ingredient-btn--delete {
-      background: #fee2e2;
-      color: #b91c1c;
-
-      &:hover {
-        background: #fecaca;
+      svg {
+        opacity: 0.7;
       }
     }
   }
 
-  .status-badge {
-    margin-left: auto;
-    font-weight: 700;
-    letter-spacing: 0.2px;
+  /* Status Badge Styles */
+  .il-status-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
 
     &.status-in-stock,
     &.success {
-      @include status-badge(#dcfce7, #166534);
-      border: 1px solid rgba(22, 101, 52, 0.15);
+      background: #ecfdf5;
+      color: $il-success;
+      border: 1px solid rgba($il-success, 0.2);
     }
-
     &.status-low-stock,
     &.warning {
-      @include status-badge(#fef3c7, #92400e);
-      border: 1px solid rgba(146, 64, 14, 0.18);
+      background: #fffbeb;
+      color: $il-warning;
+      border: 1px solid rgba($il-warning, 0.2);
     }
-
     &.status-out-of-stock,
     &.danger {
-      @include status-badge(#fee2e2, #991b1b);
-      border: 1px solid rgba(153, 27, 27, 0.18);
+      background: #fef2f2;
+      color: $il-danger;
+      border: 1px solid rgba($il-danger, 0.2);
+    }
+    &.status-unknown {
+      background: #f1f5f9;
+      color: $il-text-sub;
+    }
+  }
+
+  /* --- Body --- */
+  &__body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    flex: 1;
+  }
+
+  /* Stats Grid */
+  .il-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+
+    .il-stat-box {
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: 10px;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+
+      &.il-stat-box--interactive {
+        cursor: pointer;
+        &:hover {
+          background: #fff;
+          border-color: $il-primary;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+      }
+
+      .il-stat-label {
+        font-size: 0.75rem;
+        color: $il-text-sub;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+      }
+
+      .il-stat-value-group {
+        display: flex;
+        align-items: baseline;
+        gap: 2px;
+
+        .il-stat-value {
+          font-size: 1rem;
+          font-weight: 700;
+          color: $il-text-main;
+
+          &.il-text-price {
+            color: $il-primary;
+          }
+        }
+
+        .il-stat-unit {
+          font-size: 0.7rem;
+          color: $il-text-sub;
+        }
+      }
+    }
+  }
+
+  /* --- Actions Toolbar --- */
+  &__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; // Dàn đều nút
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 6px;
+    margin-top: auto; // Đẩy xuống đáy nếu card bị kéo giãn
+    transition: background 0.2s;
+
+    .il-action-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: $il-text-sub;
+      transition: all 0.2s;
+
+      &:hover {
+        background: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+
+      &.il-btn-edit:hover {
+        color: $il-info;
+      }
+      &.il-btn-stock:hover {
+        color: $il-success;
+      }
+      &.il-btn-view:hover {
+        color: $il-warning;
+      }
+      &.il-btn-delete:hover {
+        color: $il-danger;
+        background: #fef2f2;
+      }
     }
 
-    &.unknown {
-      @include status-badge(#e5e7eb, #374151);
-      border: 1px solid rgba(55, 65, 81, 0.15);
+    .il-divider-vertical {
+      width: 1px;
+      height: 20px;
+      background: $il-border-color;
+      margin: 0 4px;
+    }
+  }
+}
+
+/* --- Modal Styles (Custom localized) --- */
+.il-modal-content {
+  padding: 8px 0;
+
+  .il-form-group {
+    margin-bottom: 20px;
+
+    .il-label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: $il-text-main;
+      margin-bottom: 8px;
+    }
+
+    .il-input-wrapper {
+      position: relative;
+
+      .il-input-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: $il-text-sub;
+      }
+
+      .il-input {
+        width: 100%;
+        padding: 10px 10px 10px 36px;
+        border: 1px solid $il-border-color;
+        border-radius: 8px;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.2s;
+
+        &:focus {
+          border-color: $il-primary;
+        }
+      }
+    }
+
+    .il-hint {
+      font-size: 0.8rem;
+      color: $il-text-sub;
+      margin-top: 6px;
+    }
+  }
+
+  /* Modal Buttons */
+  .il-btn-primary,
+  .il-btn-secondary {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    font-size: 0.9rem;
+  }
+
+  .il-btn-primary {
+    background: $il-text-main;
+    color: #fff;
+    &:hover {
+      opacity: 0.9;
+    }
+  }
+
+  .il-btn-secondary {
+    background: transparent;
+    color: $il-text-sub;
+    margin-right: 8px;
+    &:hover {
+      background: #f1f5f9;
     }
   }
 }

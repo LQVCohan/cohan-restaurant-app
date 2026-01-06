@@ -1,75 +1,290 @@
+// src/components/Dashboard_Manager/Storage/components/supplies/SupplyList.scss
+
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
 
-.supply-list {
-  .toolbar {
+/* --- Local Variables --- */
+$sl-primary: #c5a47e;
+$sl-bg-surface: #ffffff;
+$sl-border: #e2e8f0;
+$sl-text-main: #1e293b;
+$sl-text-sub: #64748b;
+$sl-radius: 8px;
+
+.supply-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+
+  /* --- Toolbar Area --- */
+  .sl-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    background: $sl-bg-surface;
+    border: 1px solid $sl-border;
+    border-radius: $sl-radius;
+    padding: 10px 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    flex-wrap: wrap;
     gap: 12px;
-    margin-bottom: 12px;
-    padding: 8px 12px;
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    border-radius: 10px;
-    box-shadow: 0 1px 2px rgba(2, 8, 20, 0.04);
 
-    @include mobile {
+    /* --- Left: Search & Filter --- */
+    &__left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    /* --- Right: Stats & Actions --- */
+    &__right {
+      display: flex;
+      align-items: center;
+      gap: 8px; /* Khoảng cách giữa các nút */
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+
+    /* Input Groups */
+    .sl-input-group {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .sl-icon {
+        position: absolute;
+        left: 10px;
+        color: $sl-text-sub;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      input,
+      select {
+        height: 38px;
+        padding: 0 12px 0 34px;
+        border: 1px solid $sl-border;
+        border-radius: 6px;
+        background: $sl-bg-surface;
+        color: $sl-text-main;
+        font-size: 0.9rem;
+        outline: none;
+        transition: all 0.2s;
+
+        &:focus {
+          border-color: $sl-primary;
+          box-shadow: 0 0 0 3px rgba($sl-primary, 0.15);
+        }
+      }
+
+      &.sl-search-box input {
+        width: 220px;
+      }
+      &.sl-filter-box select {
+        min-width: 140px;
+        cursor: pointer;
+      }
+
+      @media (max-width: 768px) {
+        width: 100%;
+        &.sl-search-box input {
+          width: 100%;
+        }
+      }
+    }
+
+    /* --- Badge: Tổng --- */
+    .sl-stats {
+      display: flex;
+      align-items: center;
+      height: 38px;
+      padding: 0 12px;
+      background-color: #f8fafc;
+      border: 1px solid $sl-border;
+      border-radius: 6px;
+      color: $sl-text-sub;
+      font-size: 0.85rem;
+      white-space: nowrap;
+      margin-right: 4px; /* Tách nhẹ khỏi nút refresh */
+
+      b {
+        color: $sl-text-main;
+        margin-left: 5px;
+        font-weight: 700;
+        font-size: 0.95rem;
+      }
+    }
+
+    /* --- Button: Refresh (Fix lỗi mất icon) --- */
+    .sl-btn-icon {
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      border: 1px solid $sl-border;
+      border-radius: 6px;
+      color: $sl-text-sub; /* Đảm bảo icon có màu xám, không phải trắng */
+      cursor: pointer;
+      padding: 0;
+      transition: all 0.2s;
+
+      &:hover {
+        border-color: $sl-primary;
+        color: $sl-primary;
+        background: #fdfdfd;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .spin {
+        animation: spin 1s linear infinite;
+      }
+    }
+
+    /* --- Button: Thêm mới (Fix lỗi vỡ dòng) --- */
+    .sl-btn-add {
+      /* Cưỡng chế hiển thị ngang */
+      display: flex !important;
+      flex-direction: row !important;
+      align-items: center !important;
+      justify-content: center !important;
+
+      /* Cưỡng chế chiều rộng tự động theo nội dung */
+      width: auto !important;
+      min-width: fit-content !important;
+      height: 38px !important;
+
+      /* Padding và khoảng cách */
+      padding: 0 16px !important;
+      gap: 8px !important;
+
+      /* Chống xuống dòng */
+      white-space: nowrap !important;
+      flex-shrink: 0 !important;
+
+      /* Fix icon bên trong */
+      svg {
+        margin: 0 !important; /* Xóa margin thừa nếu có */
+      }
+    }
+  }
+
+  /* --- Content Grid --- */
+  .sl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+
+  /* --- States --- */
+  .sl-state-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    background: $sl-bg-surface;
+    border: 1px dashed $sl-border;
+    border-radius: $sl-radius;
+    text-align: center;
+
+    &.error {
+      color: #ef4444;
+      border-color: #fca5a5;
+      background: #fef2f2;
+    }
+
+    &.empty {
+      .icon-circle {
+        width: 50px;
+        height: 50px;
+        background: #f1f5f9;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: $sl-text-sub;
+        margin-bottom: 12px;
+      }
+      h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      p {
+        font-size: 0.9rem;
+        color: $sl-text-sub;
+        margin-bottom: 16px;
+      }
+    }
+  }
+
+  /* --- Skeleton --- */
+  .sl-skeleton-card {
+    height: 160px;
+    background: #f1f5f9;
+    border-radius: $sl-radius;
+    position: relative;
+    overflow: hidden;
+    &::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.6),
+        transparent
+      );
+      transform: translateX(-100%);
+      animation: shimmer 1.5s infinite;
+    }
+  }
+
+  /* --- Mobile --- */
+  @media (max-width: 768px) {
+    .sl-toolbar {
       flex-direction: column;
       align-items: stretch;
+      &__left,
+      &__right {
+        width: 100%;
+        justify-content: space-between;
+      }
+      &__right {
+        margin-top: 10px;
+        border-top: 1px solid $sl-border;
+        padding-top: 10px;
+      }
+      .sl-input-group {
+        width: 100%;
+        &.sl-search-box input {
+          width: 100%;
+        }
+      }
     }
   }
+}
 
-  .toolbar-left {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-
-    @include mobile {
-      width: 100%;
-    }
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
   }
-
-  .toolbar-right {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-left: auto;
-
-    @include mobile {
-      margin-left: 0;
-      justify-content: flex-end;
-    }
-  }
-
-  .search-input {
-    @include form-input;
-    width: 220px; // ✅ nhỏ gọn
-    padding: 8px 10px;
-    &:focus {
-      border-color: rgba(2, 132, 199, 0.35);
-      box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.08);
-    }
-
-    @include mobile {
-      width: 100%;
-    }
-  }
-
-  .filter-select {
-    @include form-input;
-    min-width: 160px;
-    background: #ffffff;
-  }
-
-  .supplies-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 12px;
-
-    @include mobile {
-      grid-template-columns: 1fr;
-      gap: 10px;
-    }
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
   }
 }

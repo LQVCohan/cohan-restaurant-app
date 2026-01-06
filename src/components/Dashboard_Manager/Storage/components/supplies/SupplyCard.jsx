@@ -2,16 +2,6 @@ import React, { useMemo } from "react";
 import Card from "../../../../common/Card";
 import "./SupplyCard.scss";
 
-/**
- * @param {Object} props
- * @param {Object} props.supply
- * @param {Object} props.stockItem  // { onHand, reserved, batches: [{qty, costPerBaseUnit}] }
- * @param {Function} props.onEdit
- * @param {Function} props.onDelete
- * @param {Function} props.onStockClick
- * @param {Function} props.onStockOutClick
- * @param {Function} props.onTransferClick
- */
 const SupplyCard = ({
   supply,
   stockItem,
@@ -24,18 +14,21 @@ const SupplyCard = ({
   const onHand = Number(stockItem?.onHand || 0);
   const minStock = Number(supply?.minStock || 0);
 
+  // Status calculation logic
   const status = useMemo(() => {
-    if (onHand <= 0) return { text: "Hết hàng", cls: "status-out" };
-    if (onHand < minStock) return { text: "Sắp hết", cls: "status-low" };
-    return { text: "Còn hàng", cls: "status-in" };
+    if (onHand <= 0) return { text: "Hết hàng", cls: "is-out" };
+    if (onHand < minStock) return { text: "Sắp hết", cls: "is-low" };
+    return { text: "Còn hàng", cls: "is-stocked" };
   }, [onHand, minStock]);
 
+  // Number Formatter
   const fmt = (n, opt = {}) =>
     (Number.isFinite(Number(n)) ? Number(n) : 0).toLocaleString("vi-VN", {
       maximumFractionDigits: 2,
       ...opt,
     });
 
+  // Category Icon Mapper
   const iconByCategory = (cat) => {
     switch ((cat || "").toLowerCase()) {
       case "drink":
@@ -51,8 +44,7 @@ const SupplyCard = ({
     }
   };
 
-  // === Tính Giá vốn (avg cost) theo trọng số từ các batch ===
-  // FIFO dùng cho xuất kho; để hiện thị giá vốn "đại diện" trên thẻ, ta dùng weighted-average cost hiện có.
+  // Average Cost Calculation
   const avgCost = useMemo(() => {
     const batches = stockItem?.batches || [];
     let sumCost = 0;
@@ -66,141 +58,135 @@ const SupplyCard = ({
       }
     }
     if (sumQty > 0) return sumCost / sumQty;
-    // fallback: nếu chưa có lô hoặc chưa nhập giá → dùng giá nhập mặc định
     return Number(supply?.costPerUnit || 0);
   }, [stockItem?.batches, supply?.costPerUnit]);
 
-  // Giá bán: ưu tiên sellingPrice → retailPrice → 0
   const sellingPrice =
     Number(supply?.sellingPrice ?? supply?.retailPrice ?? 0) || 0;
 
   return (
-    <Card className="supply-card" hover padding="none">
-      {/* Header */}
+    <Card className="supply-card" hover={false} padding="none">
+      {/* --- Header --- */}
       <div className="supply-header">
-        <div className="supply-left">
-          <div className="supply-icon">{iconByCategory(supply?.category)}</div>
+        <div className="supply-flex-row">
+          {/* Icon */}
+          <div className="sc-icon-box">{iconByCategory(supply?.category)}</div>
 
-          <div className="supply-meta">
-            <div className="supply-top">
-              <h3 className="supply-name" title={supply?.name || ""}>
+          {/* Meta Info */}
+          <div className="sc-meta">
+            <div className="sc-title-row">
+              <h3 className="sc-name" title={supply?.name || ""}>
                 {supply?.name || "-"}
               </h3>
-
-              {/* Stock circle (click = nhập kho) */}
-              <button
-                className="stock-circle"
-                title="Nhập kho"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onStockClick?.(supply);
-                }}
-              >
-                {fmt(onHand)}
-              </button>
+              <div
+                className={`sc-status-dot ${status.cls}`}
+                title={status.text}
+              />
             </div>
 
-            {/* category + unit + status */}
-            <div className="supply-sub">
-              <span className="chip">{supply?.category || "other"}</span>
-              <span className="dot">•</span>
-              <span className="chip chip-soft">{supply?.unit || "unit"}</span>
-              <span className={`status-badge ${status.cls}`}>
-                {status.text}
+            <div className="sc-sub-info">
+              <span className="sc-chip">
+                {supply?.code || supply?.category || "N/A"}
               </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="supply-body">
-        <div className="stats">
-          <div className="stat">
-            <div className="stat-label">Tồn kho</div>
-            <div className="stat-value">
-              {fmt(onHand)} <span className="unit">{supply?.unit}</span>
+              <span className="sc-sep">|</span>
+              <span>{supply?.unit || "unit"}</span>
             </div>
           </div>
 
-          <div className="stat">
-            <div className="stat-label">Cảnh báo</div>
-            <div className="stat-value">
-              {fmt(minStock)} <span className="unit">{supply?.unit}</span>
-            </div>
-          </div>
-
-          <div className="stat">
-            <div className="stat-label">Giá vốn (ước tính)</div>
-            <div className="stat-value">
-              {fmt(avgCost, { maximumFractionDigits: 0 })}{" "}
-              <span className="unit">đ/{supply?.unit || "unit"}</span>
-            </div>
-          </div>
-
-          <div className="stat">
-            <div className="stat-label">Giá bán</div>
-            <div className="stat-value">
-              {fmt(sellingPrice, { maximumFractionDigits: 0 })}{" "}
-              <span className="unit">đ/{supply?.unit || "unit"}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="actions">
+          {/* Quick Stock Action */}
           <button
-            className="btn btn-in"
-            title="Nhập kho"
+            className="sc-stock-btn"
+            title="Nhập nhanh"
             onClick={(e) => {
               e.stopPropagation();
               onStockClick?.(supply);
             }}
           >
-            📦 Nhập
+            <span className="val">{fmt(onHand)}</span>
+            <span className="lbl">Tồn</span>
           </button>
-          <button
-            className="btn btn-out"
-            title="Xuất kho"
-            onClick={(e) => {
-              e.stopPropagation();
-              onStockOutClick?.(supply);
-            }}
-          >
-            📤 Xuất
-          </button>
-          <button
-            className="btn btn-transfer"
-            title="Chuyển kho"
-            onClick={(e) => {
-              e.stopPropagation();
-              onTransferClick?.(supply);
-            }}
-          >
-            🔁 Chuyển
-          </button>
+        </div>
+      </div>
 
-          <div className="spacer" />
+      {/* --- Body --- */}
+      <div className="supply-body">
+        {/* Stats Grid */}
+        <div className="sc-stats-grid">
+          <div className="sc-stat-item">
+            <span className="sc-stat-lbl">Cảnh báo</span>
+            <span className="sc-stat-val">{fmt(minStock)}</span>
+          </div>
+          <div className="sc-stat-item">
+            <span className="sc-stat-lbl">Giá vốn</span>
+            <span className="sc-stat-val">
+              {fmt(avgCost, { maximumFractionDigits: 0 })}
+            </span>
+          </div>
+          <div className="sc-stat-item">
+            <span className="sc-stat-lbl">Giá bán</span>
+            <span className="sc-stat-val highlight">
+              {fmt(sellingPrice, { maximumFractionDigits: 0 })}
+            </span>
+          </div>
+        </div>
 
-          <button
-            className="icon-btn"
-            title="Sửa"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit?.(supply);
-            }}
-          >
-            ✏️
-          </button>
-          <button
-            className="icon-btn danger"
-            title="Xoá"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete?.(supply?.id);
-            }}
-          >
-            🗑️
-          </button>
+        {/* Action Buttons */}
+        <div className="sc-actions">
+          <div className="sc-group-left">
+            <button
+              className="sc-btn variant-ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStockClick?.(supply);
+              }}
+              title="Nhập kho"
+            >
+              📥 Nhập
+            </button>
+            <button
+              className="sc-btn variant-ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                onStockOutClick?.(supply);
+              }}
+              title="Xuất kho"
+            >
+              📤 Xuất
+            </button>
+            <button
+              className="sc-btn variant-icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                onTransferClick?.(supply);
+              }}
+              title="Chuyển kho"
+            >
+              🔁
+            </button>
+          </div>
+
+          <div className="sc-group-right">
+            <button
+              className="sc-btn variant-icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.(supply);
+              }}
+              title="Chỉnh sửa"
+            >
+              ✏️
+            </button>
+            <button
+              className="sc-btn variant-icon danger"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.(supply?.id);
+              }}
+              title="Xoá"
+            >
+              🗑️
+            </button>
+          </div>
         </div>
       </div>
     </Card>

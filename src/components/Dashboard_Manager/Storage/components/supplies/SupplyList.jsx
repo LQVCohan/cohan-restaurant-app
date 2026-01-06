@@ -1,6 +1,13 @@
 // src/components/Dashboard_Manager/Storage/components/supplies/SupplyList.jsx
 import React, { useMemo, useState, useEffect } from "react";
-import Card from "../../../../common/Card";
+import {
+  Search,
+  Filter,
+  Plus,
+  RefreshCw,
+  PackageOpen,
+  Layers,
+} from "lucide-react";
 import Button from "../../../../common/Button";
 import SupplyCard from "./SupplyCard";
 import SupplyModal from "./SupplyModal";
@@ -36,10 +43,10 @@ const SupplyList = ({
   const [unit, setUnit] = useState("");
   const [current, setCurrent] = useState(null);
   const [mode, setMode] = useState(null); // 'in' | 'out' | 'transfer'
-  const [isModalOpen, setIsModalOpen] = useState(false); // SupplyModal
-  const [editing, setEditing] = useState(null); // supply đang sửa
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
 
-  // reset theo nhà hàng/kho
+  // Reset filter khi đổi nhà hàng/kho
   useEffect(() => {
     setSearch("");
     setCategory("");
@@ -62,11 +69,9 @@ const SupplyList = ({
   }, [supplies, search, category, unit]);
 
   const formatNum = (n) =>
-    (Number.isFinite(Number(n)) ? Number(n) : 0).toLocaleString("vi-VN", {
-      maximumFractionDigits: 2,
-    });
+    (Number.isFinite(Number(n)) ? Number(n) : 0).toLocaleString("vi-VN");
 
-  // ----- SupplyModal handlers -----
+  // ----- Handlers -----
   const openCreate = () => {
     setEditing(null);
     setIsModalOpen(true);
@@ -88,29 +93,32 @@ const SupplyList = ({
     closeModal();
   };
 
-  // ----- Stock modals -----
   const requireWarehouse = () => {
     if (!warehouseId) {
-      alert("Vui lòng chọn kho trước khi thao tác tồn (nhập/xuất).");
+      // Có thể thay bằng Toast notification
+      alert("Vui lòng chọn kho cụ thể để thực hiện nhập/xuất.");
       return false;
     }
     return true;
   };
 
   const openIn = (s) => {
-    if (!requireWarehouse()) return;
-    setCurrent(s);
-    setMode("in");
+    if (requireWarehouse()) {
+      setCurrent(s);
+      setMode("in");
+    }
   };
   const openOut = (s) => {
-    if (!requireWarehouse()) return;
-    setCurrent(s);
-    setMode("out");
+    if (requireWarehouse()) {
+      setCurrent(s);
+      setMode("out");
+    }
   };
   const openTransfer = (s) => {
     setCurrent(s);
     setMode("transfer");
   };
+
   const closeStockModal = () => {
     setCurrent(null);
     setMode(null);
@@ -120,14 +128,9 @@ const SupplyList = ({
     if (!current) return;
     await handleInbound({
       restaurantId,
-      warehouseId, // nhập vào kho đang chọn
+      warehouseId,
       supplyId: current.id,
-      qty: values.qty,
-      lot: values.lot,
-      expiry: values.expiry,
-      costPerBaseUnit: values.costPerBaseUnit,
-      reason: values.reason,
-      supplier: values.supplier,
+      ...values,
     });
     closeStockModal();
   };
@@ -136,7 +139,7 @@ const SupplyList = ({
     if (!current) return;
     await handleOutbound({
       restaurantId,
-      warehouseId, // xuất từ kho đang chọn
+      warehouseId,
       supplyId: current.id,
       qty: values.qty,
       reason: values.reason,
@@ -149,94 +152,140 @@ const SupplyList = ({
     await handleTransfer({
       restaurantId,
       supplyId: current.id,
-      fromWarehouseId: values.fromWarehouseId,
-      toWarehouseId: values.toWarehouseId,
-      qty: values.qty,
-      reason: values.reason,
+      ...values,
     });
     closeStockModal();
   };
 
+  // --- Render Skeleton ---
+  const renderSkeletons = () => (
+    <div className="sl-grid">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="sl-skeleton-card"></div>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="supply-list">
+    <div className="supply-list-container">
       {/* Toolbar */}
-      <div className="toolbar">
-        <div className="toolbar-left">
-          <input
-            className="search-input"
-            placeholder="🔍 Tìm vật phẩm..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select
-            className="filter-select"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            <option value="">Tất cả danh mục</option>
-            <option value="drink">Nước uống</option>
-            <option value="tissue">Khăn giấy</option>
-            <option value="clean">Vệ sinh</option>
-            <option value="sauce">Gia vị đóng gói</option>
-            <option value="other">Khác</option>
-          </select>
-          <select
-            className="filter-select"
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-          >
-            <option value="">Tất cả đơn vị</option>
-            <option value="unit">unit</option>
-            <option value="piece">piece</option>
-            <option value="pack">pack</option>
-            <option value="bottle">bottle</option>
-            <option value="can">can</option>
-          </select>
+      <div className="sl-toolbar">
+        <div className="sl-toolbar__left">
+          {/* Search Box */}
+          <div className="sl-input-group sl-search-box">
+            <Search size={18} className="sl-icon" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm vật tư..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          {/* Filter Category */}
+          <div className="sl-input-group sl-filter-box">
+            <Filter size={16} className="sl-icon" />
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="">Tất cả danh mục</option>
+              <option value="drink">Nước uống</option>
+              <option value="tissue">Khăn giấy</option>
+              <option value="clean">Vệ sinh</option>
+              <option value="sauce">Gia vị</option>
+              <option value="other">Khác</option>
+            </select>
+          </div>
+
+          {/* Filter Unit */}
+          <div className="sl-input-group sl-filter-box">
+            <Layers size={16} className="sl-icon" />
+            <select value={unit} onChange={(e) => setUnit(e.target.value)}>
+              <option value="">Đơn vị</option>
+              <option value="unit">Cái</option>
+              <option value="piece">Mảnh</option>
+              <option value="pack">Gói</option>
+              <option value="bottle">Chai</option>
+              <option value="can">Lon</option>
+            </select>
+          </div>
         </div>
 
-        <div className="toolbar-right">
-          <span className="toolbar-hint">
-            Tổng: <strong>{formatNum(filtered.length)}</strong> vật phẩm
-          </span>
-          <Button onClick={refresh} disabled={loading}>
-            {loading ? "⟳ Đang tải…" : "🔄 Tải lại"}
-          </Button>
-          <Button variant="primary" onClick={openCreate}>
-            ➕ Thêm vật phẩm
+        <div className="sl-toolbar__right">
+          {/* Badge Tổng - Đã sửa lại cho gọn */}
+          <div className="sl-stats">
+            Tổng: <b>{formatNum(filtered.length)}</b>
+          </div>
+
+          {/* Nút Refresh - Dùng thẻ <button> thuần để tránh style lạ của Button component */}
+          <button
+            className="sl-btn-icon"
+            onClick={refresh}
+            disabled={loading}
+            title="Tải lại"
+            type="button"
+          >
+            {/* Ép màu cho icon bằng class text-gray-500 hoặc style trực tiếp nếu cần */}
+            <RefreshCw
+              size={18}
+              className={loading ? "spin" : ""}
+              style={{ color: "inherit" }}
+            />
+          </button>
+
+          {/* Nút Thêm mới - Đã ép style mạnh */}
+          <Button variant="primary" onClick={openCreate} className="sl-btn-add">
+            <Plus size={18} />
+            <span>Thêm mới</span>
           </Button>
         </div>
       </div>
 
-      {/* List */}
-      {loading ? (
-        <Card padding="default">Đang tải vật phẩm…</Card>
-      ) : error ? (
-        <Card padding="default" className="error">
-          Lỗi: {error.message}
-        </Card>
-      ) : filtered.length === 0 ? (
-        <Card padding="default">Chưa có vật phẩm phù hợp</Card>
-      ) : (
-        <div className="supplies-grid">
-          {filtered.map((supply) => {
-            const stockItem = getStockItem(supply.id);
-            return (
-              <SupplyCard
-                key={supply.id}
-                supply={supply}
-                stockItem={stockItem}
-                onEdit={() => openEdit(supply)}
-                onDelete={async () => await handleDelete(supply.id)}
-                onStockClick={openIn}
-                onStockOutClick={openOut}
-                onTransferClick={openTransfer}
-              />
-            );
-          })}
-        </div>
-      )}
+      {/* Main Content */}
+      <div className="sl-content">
+        {error ? (
+          <div className="sl-state-box error">
+            <p>Đã xảy ra lỗi: {error.message}</p>
+            <Button size="sm" onClick={refresh}>
+              Thử lại
+            </Button>
+          </div>
+        ) : loading ? (
+          renderSkeletons()
+        ) : filtered.length === 0 ? (
+          <div className="sl-state-box empty">
+            <div className="icon-circle">
+              <PackageOpen size={40} />
+            </div>
+            <h3>Không tìm thấy vật tư nào</h3>
+            <p>Thử thay đổi bộ lọc hoặc thêm vật tư mới</p>
+            <Button variant="primary" onClick={openCreate}>
+              Thêm vật tư ngay
+            </Button>
+          </div>
+        ) : (
+          <div className="sl-grid">
+            {filtered.map((supply) => {
+              const stockItem = getStockItem(supply.id);
+              return (
+                <SupplyCard
+                  key={supply.id}
+                  supply={supply}
+                  stockItem={stockItem}
+                  onEdit={() => openEdit(supply)}
+                  onDelete={async () => await handleDelete(supply.id)}
+                  onStockClick={openIn}
+                  onStockOutClick={openOut}
+                  onTransferClick={openTransfer}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-      {/* SupplyModal: create/update */}
+      {/* Modals */}
       {isModalOpen && (
         <SupplyModal
           isOpen
@@ -245,8 +294,6 @@ const SupplyList = ({
           onSubmit={submitSupply}
         />
       )}
-
-      {/* Stock modals */}
       {mode === "in" && current && (
         <StockInModal
           isOpen

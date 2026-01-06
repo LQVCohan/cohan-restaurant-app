@@ -1,8 +1,16 @@
 // src/components/Dashboard_Manager/Storage/components/ingredients/IngredientList.jsx
 import React, { useMemo, useState } from "react";
+import {
+  Search,
+  Filter,
+  Plus,
+  X,
+  PackageOpen,
+  AlertCircle,
+  ListFilter,
+} from "lucide-react";
 import IngredientCard from "./IngredientCard";
 import IngredientModal from "./IngredientModal";
-import Button from "../../../../common/Button";
 import { useIngredients } from "@/hooks/useIngredients";
 import "./IngredientList.scss";
 
@@ -38,6 +46,7 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
   const isEditing = Boolean(editingItem?.id);
   const [saving, setSaving] = useState(false);
 
+  // --- Handlers ---
   const handleSearch = (e) =>
     setFilters({ ...filters, search: e.target.value });
   const handleCategoryFilter = (e) =>
@@ -45,13 +54,16 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
   const handleStatusFilter = (e) =>
     setFilters({ ...filters, status: e.target.value });
 
+  const clearFilters = () => {
+    setFilters({ search: "", category: "", status: "" });
+  };
+
+  const hasActiveFilters = filters.search || filters.category || filters.status;
+
   const handleAddStock = async (id) => {
     const ing = filteredIngredients.find((i) => i.id === id);
     if (!ing) return;
-
-    const amount = prompt(
-      `Nhập số lượng (${ing.baseUnit}) muốn thêm.\nLưu ý: hệ thống lưu integer theo baseUnit.`
-    );
+    const amount = prompt(`Nhập số lượng (${ing.baseUnit}) muốn thêm:`);
     const qty = Number(amount);
     if (!Number.isFinite(qty) || qty <= 0) return;
 
@@ -98,7 +110,6 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
       setShowModal(false);
       setEditingItem(null);
     } catch (e) {
-      // BE sẽ trả message rất cụ thể nếu bị chặn bởi active order
       alert(e?.message || "Có lỗi khi lưu nguyên liệu");
     } finally {
       setSaving(false);
@@ -111,20 +122,57 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
     Boolean(defaultWarehouseName);
 
   return (
-    <div className="ingredient-list">
-      <div className="toolbar">
-        <div className="toolbar-left">
-          <div className="search-filter">
+    <div className="ing-storage-wrapper">
+      {/* 1. Header Section */}
+      <div className="il-header">
+        <div className="il-header__left">
+          <h2>Danh sách nguyên liệu</h2>
+          <span className="il-badge">
+            {loading ? "..." : filteredIngredients.length}
+          </span>
+        </div>
+
+        {(effectiveWarehouseId === null ||
+          effectiveWarehouseId === undefined) && (
+          <div className="il-header__alert">
+            <AlertCircle size={16} />
+            <span>
+              {effectiveWarehouseId === null
+                ? "Đang xem toàn bộ kho"
+                : "Chưa chọn kho hàng"}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* 2. Toolbar Actions */}
+      <div className="il-toolbar">
+        <div className="il-toolbar__filters">
+          {/* Search Input */}
+          <div className="il-input-group">
+            <Search size={18} className="il-icon-left" />
             <input
               type="text"
-              className="search-input"
-              placeholder="🔍 Tìm kiếm nguyên liệu..."
+              className="il-input-search"
+              placeholder="Tìm tên, mã nguyên liệu..."
               value={filters.search}
               onChange={handleSearch}
             />
+            {filters.search && (
+              <button
+                className="il-btn-clear"
+                onClick={() => setFilters({ ...filters, search: "" })}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
 
+          {/* Category Filter */}
+          <div className="il-select-group">
+            <Filter size={16} className="il-icon-left" />
             <select
-              className="filter-select"
+              className="il-select"
               value={filters.category}
               onChange={handleCategoryFilter}
             >
@@ -136,9 +184,13 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
               <option value="grain">Ngũ cốc</option>
               <option value="others">Khác</option>
             </select>
+          </div>
 
+          {/* Status Filter */}
+          <div className="il-select-group">
+            <ListFilter size={16} className="il-icon-left" />
             <select
-              className="filter-select"
+              className="il-select"
               value={filters.status}
               onChange={handleStatusFilter}
             >
@@ -149,50 +201,86 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
             </select>
           </div>
 
-          {effectiveWarehouseId === null ? (
-            <div className="hint hint--warn">
-              Bạn đang xem <b>Tất cả kho</b>. Không thể nhập kho / nhập tồn ban
-              đầu.
-            </div>
-          ) : effectiveWarehouseId === undefined ? (
-            <div className="hint hint--warn">
-              Chưa có kho. Bạn vẫn tạo được nguyên liệu, nhưng không nhập tồn
-              ban đầu / nhập kho được.
-            </div>
-          ) : null}
+          {/* Reset Button */}
+          {hasActiveFilters && (
+            <button
+              className="il-btn-icon"
+              onClick={clearFilters}
+              title="Xóa bộ lọc"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
 
-        <div className="toolbar-right">
-          <Button onClick={openCreate} disabled={!restaurantId || saving}>
-            ➕ Thêm nguyên liệu
-          </Button>
+        <div className="il-toolbar__actions">
+          <button
+            className="il-btn-primary"
+            onClick={openCreate}
+            disabled={!restaurantId || saving}
+          >
+            <Plus size={18} /> Thêm mới
+          </button>
         </div>
       </div>
 
-      {error && (
-        <div style={{ color: "#b91c1c", padding: "8px 0" }}>
-          Lỗi: {error.message}
-        </div>
-      )}
+      {/* 3. Content Area */}
+      <div className="il-content">
+        {error && (
+          <div className="il-error">
+            <AlertCircle size={20} />
+            <span>{error.message}</span>
+          </div>
+        )}
 
-      {loading ? (
-        <div style={{ padding: "12px 0" }}>Đang tải…</div>
-      ) : (
-        <div className="ingredients-grid">
-          {filteredIngredients.map((ingredient) => (
-            <IngredientCard
-              key={ingredient.id}
-              ingredient={ingredient}
-              onEdit={() => openEdit(ingredient)}
-              onDelete={handleDelete}
-              onAddStock={handleAddStock}
-              onShowUsage={() => {}}
-              getStockStatus={getStockStatus}
-              onUpdateCostPerBaseUnit={updateCostPerBaseUnit}
-            />
-          ))}
-        </div>
-      )}
+        {loading ? (
+          <div className="il-empty">
+            <div
+              className="spinner"
+              style={{
+                display: "inline-block",
+                width: 30,
+                height: 30,
+                border: "3px solid #ccc",
+                borderTopColor: "#333",
+                borderRadius: "50%",
+                animation: "spin 1s infinite",
+              }}
+            ></div>
+            <p>Đang tải dữ liệu...</p>
+          </div>
+        ) : filteredIngredients.length > 0 ? (
+          <div className="il-grid">
+            {filteredIngredients.map((ingredient) => (
+              <IngredientCard
+                key={ingredient.id}
+                ingredient={ingredient}
+                onEdit={() => openEdit(ingredient)}
+                onDelete={handleDelete}
+                onAddStock={handleAddStock}
+                onShowUsage={() => {}}
+                getStockStatus={getStockStatus}
+                onUpdateCostPerBaseUnit={updateCostPerBaseUnit}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="il-empty">
+            <div className="il-empty__icon">
+              <PackageOpen size={48} />
+            </div>
+            <h3>Không tìm thấy nguyên liệu</h3>
+            <p>
+              {hasActiveFilters
+                ? "Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm."
+                : "Danh sách trống. Hãy thêm nguyên liệu đầu tiên!"}
+            </p>
+            {hasActiveFilters && (
+              <button onClick={clearFilters}>Xóa tất cả bộ lọc</button>
+            )}
+          </div>
+        )}
+      </div>
 
       <IngredientModal
         isOpen={showModal}

@@ -51,73 +51,105 @@ const StockTransferModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`🔄 Chuyển kho — ${supply?.name}`}
+      title="🔄 Điều Chuyển Kho"
       size="md"
     >
-      <div className="stocktransfer-modal">
-        <label>
-          Kho xuất
-          <select
-            value={fromWarehouseId}
-            onChange={(e) => setFromWarehouseId(e.target.value)}
-          >
-            <option value="">Chọn kho</option>
-            {warehouses.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="st-container">
+        {/* Header Info */}
+        <div className="st-header-info">
+          <span className="st-hi-label">Vật phẩm:</span>
+          <span className="st-hi-name">{supply?.name || "..."}</span>
+        </div>
 
-        <label>
-          Kho nhận
-          <select
-            value={toWarehouseId}
-            onChange={(e) => setToWarehouseId(e.target.value)}
-          >
-            <option value="">Chọn kho</option>
-            {warehouses.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* Transfer Flow Zone */}
+        <div className="st-transfer-zone">
+          <div className="st-tz-box">
+            <label className="st-label">Kho Xuất (Nguồn)</label>
+            <select
+              className="st-select"
+              value={fromWarehouseId}
+              onChange={(e) => setFromWarehouseId(e.target.value)}
+            >
+              <option value="">-- Chọn kho --</option>
+              {warehouses.map((w) => (
+                <option
+                  key={w.id}
+                  value={w.id}
+                  disabled={w.id === toWarehouseId}
+                >
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <label>
-          Số lượng ({supply.unit})
+          <div className="st-tz-arrow">
+            <i className="arrow-icon">➔</i>
+          </div>
+
+          <div className="st-tz-box">
+            <label className="st-label">Kho Nhập (Đích)</label>
+            <select
+              className="st-select"
+              value={toWarehouseId}
+              onChange={(e) => setToWarehouseId(e.target.value)}
+            >
+              <option value="">-- Chọn kho --</option>
+              {warehouses.map((w) => (
+                <option
+                  key={w.id}
+                  value={w.id}
+                  disabled={w.id === fromWarehouseId}
+                >
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Quantity Input */}
+        <div className="st-qty-block">
+          <label className="st-label-center">
+            Số lượng chuyển ({supply?.unit})
+          </label>
           <input
+            className="st-input-qty"
             type="number"
             min="0.0001"
-            step="0.01"
+            step="any"
             value={qty}
             onChange={(e) => setQty(e.target.value)}
             placeholder="0"
           />
-        </label>
+        </div>
 
-        <label>
-          Lý do (tuỳ chọn)
+        {/* Reason Input */}
+        <div className="st-reason-block">
+          <label className="st-label">Lý do / Ghi chú</label>
           <input
+            className="st-input"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Chuyển kho do..."
+            placeholder="VD: Cân bằng kho, chuyển hàng gấp..."
           />
-        </label>
+        </div>
+
+        {/* FIFO Note */}
+        <div className="st-fifo-note">
+          ⚠️ <strong>Lưu ý:</strong> Hệ thống sẽ tự động trừ hàng từ các lô cũ
+          nhất (FIFO) tại kho xuất.
+        </div>
       </div>
 
       <ModalFooter>
-        <button className="btn btn--secondary" onClick={onClose}>
-          Hủy
+        <button className="st-btn-cancel" onClick={onClose}>
+          Huỷ bỏ
         </button>
         <button
-          className="btn btn--primary"
+          className="st-btn-confirm"
           onClick={confirm}
           disabled={!canSubmit}
-          title={
-            !canSubmit ? "Chọn kho hợp lệ và số lượng > 0" : "Xác nhận chuyển"
-          }
         >
           Xác nhận chuyển
         </button>

@@ -4,23 +4,25 @@ import "./StockInModal.scss";
 
 const StockInModal = ({ isOpen, onClose, onConfirm, supply }) => {
   const [qty, setQty] = useState("");
+  const [costPerBaseUnit, setCostPerBaseUnit] = useState("");
   const [lot, setLot] = useState("");
   const [expiry, setExpiry] = useState("");
-  const [costPerBaseUnit, setCostPerBaseUnit] = useState("");
-  const [reason, setReason] = useState("");
   const [supplier, setSupplier] = useState("");
+  const [reason, setReason] = useState("");
 
+  // Reset form khi mở modal
   useEffect(() => {
     if (isOpen) {
       setQty("");
+      setCostPerBaseUnit("");
       setLot("");
       setExpiry("");
-      setCostPerBaseUnit("");
-      setReason("");
       setSupplier("");
+      setReason("");
     }
   }, [isOpen]);
 
+  // Logic validate
   const canSubmit =
     qty !== "" &&
     Number(qty) > 0 &&
@@ -45,49 +47,71 @@ const StockInModal = ({ isOpen, onClose, onConfirm, supply }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`📦 Nhập kho — ${supply?.name ?? ""}`}
+      title="📦 Nhập Kho Hàng Hoá"
       size="md"
     >
-      <div className="stockin-modal">
-        <div className="grid-2">
-          <label>
-            Số lượng ({supply?.unit})
+      <div className="si-container">
+        {/* Header Info Block */}
+        <div className="si-product-info">
+          <div className="si-pi-label">Đang nhập kho cho:</div>
+          <div className="si-pi-name">{supply?.name || "Sản phẩm chưa rõ"}</div>
+          <div className="si-pi-meta">
+            Đơn vị tính: <strong>{supply?.unit || "unit"}</strong>
+          </div>
+        </div>
+
+        {/* --- Block 1: Định lượng (Quan trọng nhất) --- */}
+        <div className="si-grid-2">
+          <label className="si-field">
+            <span className="si-label">
+              Số lượng nhập <b className="req">*</b>
+            </span>
             <input
+              className="si-input si-input-lg"
               type="number"
               min="0.00001"
-              step="0.01"
+              step="any"
               value={qty}
               onChange={(e) => setQty(e.target.value)}
-              placeholder="0"
+              placeholder="0.0"
+              autoFocus
             />
           </label>
 
-          <label>
-            Giá/đơn vị nhập (tuỳ chọn)
+          <label className="si-field">
+            <span className="si-label">Giá nhập / đơn vị</span>
             <input
+              className="si-input"
               type="number"
               min="0"
-              step="0.01"
+              step="1"
               value={costPerBaseUnit}
               onChange={(e) => setCostPerBaseUnit(e.target.value)}
-              placeholder="0"
+              placeholder="VNĐ (Tuỳ chọn)"
             />
           </label>
         </div>
 
-        <div className="grid-2">
-          <label>
-            Lô (tuỳ chọn)
+        {/* --- Block 2: Quản lý Lô/Hạn (FIFO) --- */}
+        <div className="si-section-divider">
+          <span>Thông tin lô hàng (FIFO)</span>
+        </div>
+
+        <div className="si-grid-2">
+          <label className="si-field">
+            <span className="si-label">Mã Lô (Batch/Lot)</span>
             <input
+              className="si-input"
               value={lot}
               onChange={(e) => setLot(e.target.value)}
-              placeholder="K1-2025-10-01"
+              placeholder="VD: L01-OCT25"
             />
           </label>
 
-          <label>
-            Hạn dùng (tuỳ chọn)
+          <label className="si-field">
+            <span className="si-label">Hạn sử dụng</span>
             <input
+              className="si-input"
               type="date"
               value={expiry}
               onChange={(e) => setExpiry(e.target.value)}
@@ -95,36 +119,40 @@ const StockInModal = ({ isOpen, onClose, onConfirm, supply }) => {
           </label>
         </div>
 
-        <label>
-          Nhà cung cấp (tuỳ chọn)
-          <input
-            value={supplier}
-            onChange={(e) => setSupplier(e.target.value)}
-            placeholder="Công ty ABC"
-          />
-        </label>
+        {/* --- Block 3: Metadata --- */}
+        <div className="si-grid-2">
+          <label className="si-field">
+            <span className="si-label">Nhà cung cấp</span>
+            <input
+              className="si-input"
+              value={supplier}
+              onChange={(e) => setSupplier(e.target.value)}
+              placeholder="Tên NCC..."
+            />
+          </label>
 
-        <label>
-          Lý do (tuỳ chọn)
-          <input
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Ghi chú..."
-          />
-        </label>
+          <label className="si-field">
+            <span className="si-label">Lý do / Ghi chú</span>
+            <input
+              className="si-input"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Nhập hàng mới..."
+            />
+          </label>
+        </div>
       </div>
 
       <ModalFooter>
-        <button className="btn btn--secondary" onClick={onClose}>
-          Hủy
+        <button className="si-btn-cancel" onClick={onClose}>
+          Huỷ bỏ
         </button>
         <button
-          className="btn btn--primary"
+          className="si-btn-confirm"
           onClick={confirm}
           disabled={!canSubmit}
-          title={!canSubmit ? "Nhập số lượng hợp lệ" : "Xác nhận nhập kho"}
         >
-          Xác nhận
+          Xác nhận nhập
         </button>
       </ModalFooter>
     </Modal>

@@ -1,27 +1,238 @@
-.stocktransfer-modal {
-  display: grid;
-  gap: 12px;
+/* --- Stock Transfer Modal Unique Variables --- */
+$st-primary: #c5a47e; // Gold theme
+$st-primary-dark: #b08d66;
+$st-bg-light: #f8fafc;
+$st-bg-white: #ffffff;
+$st-border: #e2e8f0;
+$st-text-main: #1e293b;
+$st-text-sub: #64748b;
+$st-radius: 8px;
+$st-accent: #0ea5e9; // Màu xanh dương nhẹ cho hành động chuyển đổi
 
-  label {
+.st-container {
+  padding: 8px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: $st-text-main;
+
+  /* Header Info */
+  .st-header-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: $st-bg-light;
+    padding: 10px 14px;
+    border-radius: $st-radius;
+    margin-bottom: 20px;
+    border: 1px dashed $st-border;
+
+    .st-hi-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      color: $st-text-sub;
+      font-weight: 600;
+    }
+    .st-hi-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: $st-text-main;
+    }
+  }
+
+  /* Labels generic */
+  .st-label {
     display: block;
-    font-weight: 700;
-    color: #0f172a;
+    font-size: 12px;
+    font-weight: 600;
+    color: $st-text-sub;
+    text-transform: uppercase;
     margin-bottom: 6px;
+    letter-spacing: 0.02em;
+  }
 
-    input,
-    select {
+  /* Transfer Flow Zone (From -> To) */
+  .st-transfer-zone {
+    display: flex;
+    align-items: flex-end; // Canh đáy để mũi tên nằm giữa chiều cao input
+    gap: 12px;
+    margin-bottom: 24px;
+
+    .st-tz-box {
+      flex: 1;
+      width: 0; // Fix flex layout overflow
+    }
+
+    .st-tz-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 42px; // Match input height
+      width: 30px;
+      color: $st-primary;
+
+      .arrow-icon {
+        font-style: normal;
+        font-size: 20px;
+        font-weight: 700;
+      }
+    }
+  }
+
+  /* Select Styling */
+  .st-select {
+    width: 100%;
+    height: 42px;
+    padding: 0 10px;
+    border-radius: $st-radius;
+    border: 1px solid $st-border;
+    background: $st-bg-white;
+    font-size: 14px;
+    color: $st-text-main;
+    transition: all 0.2s;
+    cursor: pointer;
+
+    &:focus {
+      outline: none;
+      border-color: $st-primary;
+      box-shadow: 0 0 0 3px rgba($st-primary, 0.15);
+    }
+
+    option {
+      color: $st-text-main;
+    }
+  }
+
+  /* Quantity Block */
+  .st-qty-block {
+    margin-bottom: 20px;
+    text-align: center;
+
+    .st-label-center {
       display: block;
-      width: 100%;
-      border: 1px solid rgba(0, 0, 0, 0.1);
-      border-radius: 8px;
-      padding: 8px 10px;
-      transition: border-color 0.2s ease;
+      font-size: 12px;
+      font-weight: 600;
+      color: $st-text-sub;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .st-input-qty {
+      width: 50%;
+      height: 50px;
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      color: $st-text-main;
+      border: 2px solid $st-border;
+      border-radius: 10px;
+      transition: all 0.2s;
 
       &:focus {
         outline: none;
-        border-color: #6366f1;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        border-color: $st-primary;
+        box-shadow: 0 0 0 4px rgba($st-primary, 0.15);
       }
+      &::placeholder {
+        color: #e2e8f0;
+      }
+    }
+  }
+
+  /* Reason Input */
+  .st-input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: $st-radius;
+    border: 1px solid $st-border;
+    font-size: 14px;
+    transition: all 0.2s;
+
+    &:focus {
+      outline: none;
+      border-color: $st-primary;
+    }
+  }
+
+  /* FIFO Note */
+  .st-fifo-note {
+    margin-top: 20px;
+    font-size: 12px;
+    color: #854d0e; // Dark yellow/brown text
+    background: #fefce8; // Light yellow bg
+    padding: 10px;
+    border-radius: $st-radius;
+    line-height: 1.4;
+  }
+}
+
+/* Footer Buttons */
+.st-btn-cancel {
+  padding: 10px 20px;
+  border-radius: $st-radius;
+  border: 1px solid $st-border;
+  background: #fff;
+  color: $st-text-sub;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: $st-bg-light;
+    color: $st-text-main;
+  }
+}
+
+.st-btn-confirm {
+  padding: 10px 24px;
+  border-radius: $st-radius;
+  border: none;
+  background: $st-primary;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba($st-primary, 0.25);
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background: $st-primary-dark;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba($st-primary, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: $st-border;
+    color: $st-text-sub;
+    box-shadow: none;
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .st-container {
+    .st-transfer-zone {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+
+      .st-tz-arrow {
+        height: 20px;
+        transform: rotate(90deg); /* Xoay mũi tên xuống dưới */
+        margin: 4px 0;
+      }
+
+      .st-tz-box {
+        width: 100%;
+      }
+    }
+
+    .st-qty-block .st-input-qty {
+      width: 100%;
     }
   }
 }
