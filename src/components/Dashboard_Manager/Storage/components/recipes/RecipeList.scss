@@ -1,0 +1,357 @@
+/* --- Recipe List Styling (Luxury/Minimalist) --- */
+$rl-primary: #c5a47e; // Luxury Gold
+$rl-primary-dark: #b08d66;
+$rl-bg-body: #f8fafc; // Slate 50
+$rl-bg-surface: #ffffff;
+$rl-border: #e2e8f0; // Slate 200
+$rl-text-main: #1e293b; // Slate 800
+$rl-text-sub: #64748b; // Slate 500
+$rl-radius: 10px;
+$rl-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+$rl-danger: #ef4444;
+
+.rl-container {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: $rl-text-main;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+
+  /* --- 1. Header --- */
+  .rl-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+
+    .rl-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 4px;
+
+      .rl-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin: 0;
+        color: $rl-text-main;
+        letter-spacing: -0.5px;
+      }
+
+      .rl-badge {
+        background: rgba($rl-primary, 0.15);
+        color: darken($rl-primary, 10%);
+        font-size: 13px;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 20px;
+      }
+    }
+
+    .rl-subtitle {
+      margin: 0;
+      color: $rl-text-sub;
+      font-size: 14px;
+    }
+  }
+
+  /* --- 2. Toolbar --- */
+  .rl-toolbar {
+    background: $rl-bg-surface;
+    border: 1px solid $rl-border;
+    border-radius: $rl-radius;
+    padding: 16px;
+    box-shadow: $rl-shadow;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+
+    .rl-toolbar-filters {
+      display: flex;
+      gap: 12px;
+      flex: 1;
+      flex-wrap: wrap;
+    }
+  }
+
+  /* Input & Select Styles */
+  .rl-input-group {
+    position: relative;
+    width: 300px;
+    max-width: 100%;
+
+    .rl-icon-left {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: $rl-text-sub;
+      pointer-events: none;
+    }
+
+    .rl-input-search {
+      width: 100%;
+      height: 42px;
+      padding: 0 36px 0 40px;
+      border: 1px solid $rl-border;
+      border-radius: 8px;
+      font-size: 14px;
+      color: $rl-text-main;
+      transition: all 0.2s;
+
+      &:focus {
+        outline: none;
+        border-color: $rl-primary;
+        box-shadow: 0 0 0 3px rgba($rl-primary, 0.15);
+      }
+      &::placeholder {
+        color: lighten($rl-text-sub, 15%);
+      }
+    }
+
+    .rl-btn-clear {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: $rl-text-sub;
+      cursor: pointer;
+      display: flex;
+      padding: 4px;
+      border-radius: 50%;
+      &:hover {
+        background: #f1f5f9;
+        color: $rl-danger;
+      }
+    }
+  }
+
+  .rl-select-group {
+    position: relative;
+    min-width: 160px;
+
+    .rl-icon-left {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: $rl-text-sub;
+      pointer-events: none;
+    }
+
+    .rl-select {
+      width: 100%;
+      height: 42px;
+      padding: 0 30px 0 38px;
+      appearance: none;
+      background-color: #fff;
+      border: 1px solid $rl-border;
+      border-radius: 8px;
+      font-size: 14px;
+      color: $rl-text-main;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+
+      /* Custom Arrow */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+
+      &:focus {
+        border-color: $rl-primary;
+      }
+      &:hover {
+        border-color: darken($rl-border, 10%);
+      }
+    }
+  }
+
+  .rl-btn-reset {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed $rl-border;
+    border-radius: 8px;
+    background: #fff;
+    color: $rl-text-sub;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: $rl-danger;
+      color: $rl-danger;
+      background: #fef2f2;
+    }
+  }
+
+  /* Buttons */
+  .rl-btn-primary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 42px;
+    padding: 0 20px;
+    background-color: $rl-text-main; // Dark button for luxury feel
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+
+    &:hover:not(:disabled) {
+      background-color: lighten($rl-text-main, 10%);
+      transform: translateY(-1px);
+    }
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  .rl-btn-secondary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 40px;
+    padding: 0 24px;
+    background: #fff;
+    border: 1px solid $rl-border;
+    border-radius: 8px;
+    color: $rl-text-main;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover:not(:disabled) {
+      background: $rl-bg-body;
+      border-color: $rl-primary;
+      color: $rl-primary-dark;
+    }
+    .spinner-sm {
+      animation: spin 1s linear infinite;
+    }
+  }
+
+  /* --- 3. Content --- */
+  .rl-content {
+    min-height: 400px;
+  }
+
+  .rl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+
+  .rl-load-more {
+    text-align: center;
+    margin-top: 24px;
+    padding-bottom: 24px;
+  }
+
+  /* States */
+  .rl-loading-state {
+    text-align: center;
+    padding: 80px 0;
+    color: $rl-text-sub;
+    .spinner {
+      color: $rl-primary;
+      animation: spin 1s linear infinite;
+      margin-bottom: 12px;
+    }
+  }
+
+  .rl-error-box {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: $rl-danger;
+    padding: 16px;
+    border-radius: $rl-radius;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 500;
+  }
+
+  .rl-empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    background: $rl-bg-surface;
+    border: 1px dashed $rl-border;
+    border-radius: 16px;
+
+    .rl-empty-icon {
+      color: #cbd5e1; // Slate 300
+      margin-bottom: 16px;
+      svg {
+        width: 64px;
+        height: 64px;
+      }
+    }
+
+    h3 {
+      font-size: 18px;
+      color: $rl-text-main;
+      margin-bottom: 8px;
+    }
+    p {
+      color: $rl-text-sub;
+      margin-bottom: 16px;
+    }
+
+    .rl-link-btn {
+      background: none;
+      border: none;
+      color: $rl-primary;
+      font-weight: 600;
+      text-decoration: underline;
+      cursor: pointer;
+      &:hover {
+        color: $rl-primary-dark;
+      }
+    }
+  }
+
+  /* Animation */
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Responsive */
+  @media (max-width: 992px) {
+    .rl-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+
+      .rl-toolbar-filters {
+        flex-direction: column;
+        .rl-input-group,
+        .rl-select-group {
+          width: 100%;
+        }
+      }
+
+      .rl-btn-primary {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  }
+}

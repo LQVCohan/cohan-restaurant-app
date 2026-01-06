@@ -1,141 +1,131 @@
 // src/components/Dashboard_Manager/Storage/components/recipes/RecipeCard.jsx
 import React from "react";
-import Card from "../../../../common/Card";
-import Button from "../../../../common/Button";
+import {
+  Edit,
+  Eye,
+  Trash2,
+  ChefHat,
+  Layers,
+  DollarSign,
+  UtensilsCrossed,
+} from "lucide-react";
 import { formatPrice } from "../../../../../utils/formatters";
+import "./RecipeCard.scss";
 
 const RecipeCard = ({ recipe, onEdit, onDelete, onViewDetails }) => {
   const safeRecipe = recipe || {};
-  const variants = Array.isArray(safeRecipe.servingVariants)
-    ? safeRecipe.servingVariants
-    : [];
 
-  const getComponents = (variant) => {
-    if (!variant) return [];
-    if (Array.isArray(variant.Ingredients)) return variant.Ingredients;
-    if (Array.isArray(variant.ingredients)) return variant.ingredients;
-    return [];
-  };
+  // Tận dụng _meta được truyền từ RecipeList để tối ưu hiệu năng
+  // Nếu không có _meta (trường hợp dùng lẻ), fallback về giá trị mặc định
+  const {
+    totalIngredients = 0,
+    totalVariants = 0,
+    minCost = 0,
+    hasAnyCost = false,
+  } = safeRecipe._meta || {};
 
-  // Đếm số nguyên liệu UNIQUE theo ingredientId
-  const calcTotalIngredients = () => {
-    const ids = new Set();
-    variants.forEach((v) => {
-      const comps = getComponents(v);
-      comps.forEach((c) => {
-        if (c && c.ingredientId) {
-          ids.add(String(c.ingredientId));
-        }
-      });
-    });
-    return ids.size;
-  };
-
-  const totalIngredients = calcTotalIngredients();
-  const totalVariants = variants.length;
-
-  // Tính chi phí thấp nhất giữa các phương pháp
-  const calcMinCost = () => {
-    if (!variants.length) return { minCost: 0, hasAnyCost: false };
-
-    const costs = variants.map((v) => {
-      const comps = getComponents(v);
-      return comps.reduce((sum, c) => {
-        const qty = Number(c?.quantify) || 0;
-        const unitCost = Number(c?.costPerBaseUnit);
-        if (!Number.isFinite(unitCost) || unitCost <= 0) return sum;
-        return sum + qty * unitCost;
-      }, 0);
-    });
-
-    const filtered = costs.filter((v) => Number.isFinite(v) && v > 0);
-    if (!filtered.length) return { minCost: 0, hasAnyCost: false };
-
-    return { minCost: Math.min(...filtered), hasAnyCost: true };
-  };
-
-  const { minCost, hasAnyCost } = calcMinCost();
-
-  const handleCardClick = () => {
+  const handleCardClick = (e) => {
+    // Ngăn chặn click nếu user đang bôi đen văn bản (optional UX)
+    if (window.getSelection().toString()) return;
     if (onEdit && safeRecipe.id) onEdit(safeRecipe.id);
   };
 
+  const handleAction = (e, actionCallback) => {
+    e.stopPropagation();
+    if (actionCallback && safeRecipe.id) actionCallback(safeRecipe.id);
+  };
+
   return (
-    <Card className="recipe-card" hover onClick={handleCardClick}>
-      <div className="recipe-header">
-        <div className="recipe-icon">{safeRecipe.icon || "🍽️"}</div>
-        <div className="recipe-info">
-          <h3 className="recipe-name">{safeRecipe.name || "Không có tên"}</h3>
-          {safeRecipe.category && (
-            <span className="recipe-category">{safeRecipe.category}</span>
+    <div className="rc-card" onClick={handleCardClick}>
+      {/* 1. Header: Icon & Title */}
+      <div className="rc-header">
+        <div className="rc-icon-box">
+          {/* Nếu có icon từ BE thì hiển thị, nếu không dùng icon mặc định */}
+          {safeRecipe.icon ? (
+            <span className="rc-emoji-icon">{safeRecipe.icon}</span>
+          ) : (
+            <UtensilsCrossed size={24} strokeWidth={1.5} />
           )}
+        </div>
+        <div className="rc-title-area">
+          <h3 className="rc-name" title={safeRecipe.name}>
+            {safeRecipe.name || "Chưa đặt tên"}
+          </h3>
+          <span className="rc-category">
+            {safeRecipe.category
+              ? safeRecipe.category.charAt(0).toUpperCase() +
+                safeRecipe.category.slice(1)
+              : "Chưa phân loại"}
+          </span>
         </div>
       </div>
 
-      <div className="recipe-content">
-        <p className="recipe-description">
-          {safeRecipe.description || "Chưa có mô tả cho công thức này."}
-        </p>
-
-        <div className="recipe-stats">
-          <div className="stat-item">
-            <div className="stat-value">{totalIngredients}</div>
-            <div className="stat-label">Nguyên liệu</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value">{totalVariants}</div>
-            <div className="stat-label">Phương pháp</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value">
-              {hasAnyCost ? formatPrice(minCost) : "—"}
-            </div>
-            <div className="stat-label">Chi phí thấp nhất</div>
-          </div>
+      {/* 2. Stats Grid (Metrics) */}
+      <div className="rc-stats">
+        <div className="rc-stat-item" title="Số lượng nguyên liệu">
+          <ChefHat size={16} className="rc-stat-icon" />
+          <span className="rc-stat-value">{totalIngredients}</span>
+          <span className="rc-stat-label">Nguyên liệu</span>
         </div>
 
-        <div className="recipe-actions">
-          {onEdit && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (safeRecipe.id) onEdit(safeRecipe.id);
-              }}
-            >
-              ✏️ Sửa
-            </Button>
-          )}
+        <div className="rc-stat-item" title="Số biến thể/Size">
+          <Layers size={16} className="rc-stat-icon" />
+          <span className="rc-stat-value">{totalVariants}</span>
+          <span className="rc-stat-label">Variants</span>
+        </div>
 
-          {onViewDetails && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (safeRecipe.id) onViewDetails(safeRecipe.id);
-              }}
+        <div className="rc-stat-item is-cost" title="Giá vốn thấp nhất">
+          <DollarSign size={16} className="rc-stat-icon" />
+          <span className="rc-stat-value">
+            {hasAnyCost ? formatPrice(minCost) : "—"}
+          </span>
+          <span className="rc-stat-label">Min Cost</span>
+        </div>
+      </div>
+
+      {/* 3. Description (Short) */}
+      <div className="rc-body">
+        <p className="rc-desc">
+          {safeRecipe.description || "Chưa có mô tả chi tiết cho món này."}
+        </p>
+      </div>
+
+      {/* 4. Footer Actions */}
+      <div className="rc-actions">
+        {onViewDetails && (
+          <button
+            className="rc-btn rc-btn-view"
+            onClick={(e) => handleAction(e, onViewDetails)}
+            title="Xem chi tiết"
+          >
+            <Eye size={16} />
+            <span>Chi tiết</span>
+          </button>
+        )}
+
+        <div className="rc-actions-group">
+          {onEdit && (
+            <button
+              className="rc-icon-btn rc-btn-edit"
+              onClick={(e) => handleAction(e, onEdit)}
+              title="Chỉnh sửa"
             >
-              👁️ Xem chi tiết
-            </Button>
+              <Edit size={16} />
+            </button>
           )}
 
           {onDelete && (
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (safeRecipe.id) onDelete(safeRecipe.id);
-              }}
+            <button
+              className="rc-icon-btn rc-btn-delete"
+              onClick={(e) => handleAction(e, onDelete)}
+              title="Xóa món"
             >
-              🗑️ Xóa
-            </Button>
+              <Trash2 size={16} />
+            </button>
           )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
 
