@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Ingredient, Recipe, IngredientRecent } from "../../../models/index.js";
+import {
+  Ingredient,
+  Recipe,
+  IngredientRecent,
+  MenuItem,
+} from "../../../models/index.js";
 
 function escapeRegex(input) {
   return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -149,5 +154,45 @@ export default {
       recentUsed,
       recentCreated,
     };
+  },
+
+  /**
+   * Danh sách món đang sử dụng một nguyên liệu cụ thể (theo recipe.servingVariants)
+   */
+  menuItemsUsingIngredient: async (
+    _p,
+    { restaurantId, ingredientId, limit = 100 }
+  ) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return [];
+    if (!mongoose.isValidObjectId(ingredientId)) return [];
+
+    // Tìm các recipe có chứa ingredientId
+    const recipes = await Recipe.find({
+      restaurantId,
+      "servingVariants.ingredients.ingredientId": ingredientId,
+    })
+      .select({ menuItemId: 1 })
+      .limit(Math.min(limit ?? 100, 500))
+      .lean();
+
+    const menuItemIds = [
+      ...new Set(
+        recipes
+          .map((r) => r.menuItemId)
+          .filter((id) => mongoose.isValidObjectId(id))
+          .map((id) => String(id))
+      ),
+    ];
+
+    if (!menuItemIds.length) return [];
+
+    const menuItems = await MenuItem.find({
+      _id: { $in: menuItemIds.map((id) => new mongoose.Types.ObjectId(id)) },
+      restaurantId,
+    })
+      .select({ __v: 0 })
+      .lean({ virtuals: true });
+
+    return reorderByIdList(menuItems, menuItemIds);
   },
 };

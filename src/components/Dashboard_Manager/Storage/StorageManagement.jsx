@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
-import { useQuery } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client";
 import { AuthContext } from "../../../context/AuthContext";
 
 // Components
@@ -16,6 +16,7 @@ import IngredientList from "./components/ingredients/IngredientList";
 import SupplyList from "./components/supplies/SupplyList";
 import RecipeList from "./components/recipes/RecipeList";
 import WarehouseStatus from "./components/WarehouseStatus/WarehouseStatus"; // Import Component Status
+import QuickStockModal from "./components/ingredients/QuickStockModal";
 
 // Hooks & Icons
 import { useRecipes } from "@/hooks/useRecipes";
@@ -38,6 +39,7 @@ import {
   WAREHOUSES_QUERY,
   STOCK_ITEMS_QUERY,
   STOCK_MOVEMENTS_QUERY,
+  ADJUST_STOCK,
 } from "./graphql/inventory.gql";
 
 const StorageManagement = () => {
@@ -48,26 +50,6 @@ const StorageManagement = () => {
   const [currentRestaurant, setCurrentRestaurant] = useState("");
   const [selectedWarehouseId, setSelectedWarehouseId] = useState(undefined);
   const [ingredientSearch, setIngredientSearch] = useState("");
-
-  // --- MOCK DATA CHO WAREHOUSE STATUS ---
-  // (Bạn có thể thay thế bằng dữ liệu thật từ API stockItems sau này)
-  const mockInventory = [
-    { id: 1, name: "Bột mì đa dụng", quantity: 2, minStock: 10, unit: "kg" },
-    { id: 2, name: "Trứng gà", quantity: 5, minStock: 50, unit: "quả" }, // Sắp hết
-    { id: 3, name: "Sữa tươi", quantity: 20, minStock: 5, unit: "lít" },
-    { id: 4, name: "Đường kính", quantity: 0, minStock: 5, unit: "kg" }, // Hết hàng
-  ];
-
-  const lowStockItems = useMemo(() => {
-    return mockInventory
-      .filter((item) => item.quantity <= item.minStock)
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        currentStock: item.quantity,
-        unit: item.unit,
-      }));
-  }, []);
 
   // ==== 1) Nhà hàng theo Manager ====
   const {
@@ -190,6 +172,41 @@ const StorageManagement = () => {
   const reloadIngredientsAndStock = useCallback(async () => {
     await Promise.all([refetchIngredients?.(), refetchStock?.()]);
   }, [refetchIngredients, refetchStock]);
+
+  const lowStockItems = useMemo(() => {
+    if (!restaurantReady || !shouldFetchStock) return [];
+    if (!ingredients.length) return [];
+
+    const availableByIngredient = new Map();
+    stockItems.forEach((item) => {
+      const ingId = item.ingredientId;
+      const onHand = Number(item.onHand) || 0;
+      const reserved = Number(item.reserved) || 0;
+      const available = onHand - reserved;
+      availableByIngredient.set(
+        ingId,
+        (availableByIngredient.get(ingId) || 0) + available
+      );
+    });
+
+    return ingredients
+      .map((ing) => {
+        const current = availableByIngredient.get(ing.id) || 0;
+        const min = Number(ing.minStock) || 0;
+        return {
+          id: ing.id,
+          name: ing.name,
+          currentStock: current,
+          minStock: min,
+          unit: ing.baseUnit,
+        };
+      })
+      .filter((it) => it.currentStock <= it.minStock);
+  }, [ingredients, restaurantReady, shouldFetchStock, stockItems]);
+
+  const [adjustStockMu] = useMutation(ADJUST_STOCK);
+  const [poOpen, setPoOpen] = useState(false);
+  const [poEntries, setPoEntries] = useState([]);
 
   // Define Tabs
   const tabs = [
@@ -333,7 +350,24 @@ const StorageManagement = () => {
             </div>
 
             <div className="toolbar-right">
-              <WarehouseStatus lowStockItems={lowStockItems} />
+              <WarehouseStatus
+                lowStockItems={lowStockItems}
+                onCreatePO={() => {
+                  if (!warehouseFilterId) {
+                    alert("Vui lòng chọn kho cụ thể trước khi nhập kho.");
+                    return;
+                  }
+                  setPoEntries(
+                    lowStockItems.map((it) => ({
+                      id: it.id,
+                      type: "ingredient",
+                      name: it.name,
+                      unit: it.unit,
+                    }))
+                  );
+                  setPoOpen(true);
+                }}
+              />
             </div>
           </div>
 
@@ -349,8 +383,41 @@ const StorageManagement = () => {
           )}
         </div>
       </div>
+
+      <QuickStockModal
+        isOpen={poOpen}
+        onClose={() => setPoOpen(false)}
+        entries={poEntries}
+        onSubmit={async (rows) => {
+          try {
+            for (const row of rows) {
+              await adjustStockMu({
+                variables: {
+                  restaurantId: currentRestaurant,
+                  warehouseId: warehouseFilterId,
+                  ingredientId: row.id,
+                  qty: row.qty,
+                  reason: buildReason(row),
+                },
+              });
+            }
+            setPoOpen(false);
+            await reloadIngredientsAndStock();
+          } catch (e) {
+            alert(e?.message || "Có lỗi khi nhập kho");
+          }
+        }}
+      />
     </div>
   );
 };
 
 export default StorageManagement;
+
+function buildReason(row) {
+  const parts = [];
+  if (row.supplier) parts.push(`Nguồn: ${row.supplier}`);
+  if (row.datetime) parts.push(`Thời gian: ${row.datetime}`);
+  if (row.note) parts.push(`Ghi chú: ${row.note}`);
+  return parts.join(" | ") || "Nhập kho nhanh";
+}
