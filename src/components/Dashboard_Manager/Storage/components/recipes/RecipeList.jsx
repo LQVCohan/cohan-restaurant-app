@@ -1,31 +1,21 @@
 // src/components/Dashboard_Manager/Storage/components/recipes/RecipeList.jsx
 import React, { useMemo, useState } from "react";
+import {
+  Search,
+  Plus,
+  ChefHat,
+  Clock,
+  Filter,
+  X,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import RecipeCard from "./RecipeCard";
 import RecipeModal from "./RecipeModal";
 import RecipeDetailModal from "./RecipeDetailModal";
-import Button from "../../../../common/Button";
 import { RECIPE_CATEGORIES } from "../../../../../utils/constants";
-import "./recipes.scss";
+import "./RecipeList.scss";
 
-/**
- * Props:
- * - restaurantId
- * - recipes: array (flatten từ useRecipes) có dạng:
- *   {
- *     id: menuItemId,
- *     name, description, category, icon, ...
- *     servingVariants: [{ key, name, mode, sellQty, sellUnit, price, isDefault, ingredients: [...] }]
- *   }
- * - loading, error, pageInfo, total
- * - onTimeSlotChange(val|null)
- * - onSearchChange(val|null)
- * - onCategoryChange(val|null)
- * - loadMore()
- * - onAddRecipe(form)
- * - onUpdateRecipe(menuItemId, form)
- * - onDeleteRecipe(menuItemId)
- * - ingredients: list ingredient (cho modal)
- */
 const RecipeList = ({
   restaurantId,
   recipes = [],
@@ -52,7 +42,7 @@ const RecipeList = ({
   const [editingRecipe, setEditingRecipe] = useState(null);
   const [viewingRecipe, setViewingRecipe] = useState(null);
 
-  // ===== Helpers =====
+  // ===== Helpers (Logic giữ nguyên) =====
   const getVariantLines = (v) => {
     if (!v) return [];
     if (Array.isArray(v.ingredients)) return v.ingredients;
@@ -61,8 +51,6 @@ const RecipeList = ({
   };
 
   const normalizeLineQty = (line) => {
-    // BE mới: qty
-    // legacy: quantify / quantity
     const q = Number(line?.qty ?? line?.quantify ?? line?.quantity ?? 0);
     return Number.isFinite(q) ? q : 0;
   };
@@ -94,13 +82,12 @@ const RecipeList = ({
     return { minCost: Math.min(...costs), hasAnyCost: true };
   };
 
-  // (Optional) map quick meta để RecipeCard có thể dùng nếu bạn muốn
+  // Map meta data cho hiển thị
   const recipesWithMeta = useMemo(() => {
     return (recipes || []).map((r) => {
       const variants = Array.isArray(r?.servingVariants)
         ? r.servingVariants
         : [];
-      // count unique ingredientId across variants
       const ids = new Set();
       variants.forEach((v) => {
         getVariantLines(v).forEach((c) => {
@@ -124,7 +111,7 @@ const RecipeList = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipes]);
 
-  // ===== Filters =====
+  // ===== Filters Handlers =====
   const handleSearch = (e) => {
     const val = e.target.value;
     setSearch(val);
@@ -143,7 +130,18 @@ const RecipeList = ({
     onTimeSlotChange?.(val || null);
   };
 
-  // ===== CRUD modal =====
+  const clearFilters = () => {
+    setSearch("");
+    setCategory("");
+    setTimeSlot("");
+    onSearchChange?.(null);
+    onCategoryChange?.(null);
+    onTimeSlotChange?.(null);
+  };
+
+  const hasActiveFilters = search || category || timeSlot;
+
+  // ===== CRUD Handlers =====
   const handleAdd = () => {
     setEditingRecipe(null);
     setShowModal(true);
@@ -167,7 +165,6 @@ const RecipeList = ({
   };
 
   const handleSave = async (formData) => {
-    // formData sẽ là shape mà RecipeModal trả về (servingVariants new model)
     if (editingRecipe) {
       await onUpdateRecipe?.(editingRecipe.id, formData);
     } else {
@@ -182,30 +179,56 @@ const RecipeList = ({
     setEditingRecipe(null);
   };
 
-  const handleDetailModalClose = () => {
-    setShowDetailModal(false);
-    setViewingRecipe(null);
-  };
-
   return (
-    <div className="recipe-list">
-      {/* Toolbar */}
-      <div className="toolbar">
-        <div className="toolbar-left">
-          <div className="search-filter">
+    <div className="rl-container">
+      {/* 1. Header Section */}
+      <header className="rl-header">
+        <div className="rl-header-left">
+          <div className="rl-title-group">
+            <h2 className="rl-title">Công Thức Món Ăn</h2>
+            <span className="rl-badge">
+              {typeof total === "number" ? total : recipes.length} món
+            </span>
+          </div>
+          <p className="rl-subtitle">
+            Quản lý định lượng (Recipe), Variants và Giá vốn (Cost).
+          </p>
+        </div>
+      </header>
+
+      {/* 2. Toolbar Section */}
+      <div className="rl-toolbar">
+        <div className="rl-toolbar-filters">
+          {/* Search */}
+          <div className="rl-input-group">
+            <Search className="rl-icon-left" size={18} />
             <input
               type="text"
-              className="search-input"
-              placeholder="🔍 Tìm kiếm món ăn..."
+              className="rl-input-search"
+              placeholder="Tìm món ăn..."
               value={search}
               onChange={handleSearch}
             />
+            {search && (
+              <button
+                className="rl-btn-clear"
+                onClick={() => {
+                  setSearch("");
+                  onSearchChange?.(null);
+                }}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
 
+          {/* Category Filter */}
+          <div className="rl-select-group">
+            <Filter className="rl-icon-left" size={16} />
             <select
-              className="filter-select"
+              className="rl-select"
               value={category}
               onChange={handleCategoryFilter}
-              title="Danh mục món"
             >
               <option value="">Tất cả danh mục</option>
               {RECIPE_CATEGORIES.map((c) => (
@@ -214,14 +237,17 @@ const RecipeList = ({
                 </option>
               ))}
             </select>
+          </div>
 
+          {/* TimeSlot Filter */}
+          <div className="rl-select-group">
+            <Clock className="rl-icon-left" size={16} />
             <select
-              className="filter-select"
+              className="rl-select"
               value={timeSlot}
               onChange={handleTimeSlotFilter}
-              title="Buổi ăn"
             >
-              <option value="">— Tất cả buổi —</option>
+              <option value="">Tất cả buổi</option>
               <option value="breakfast">Sáng</option>
               <option value="lunch">Trưa</option>
               <option value="dinner">Tối</option>
@@ -229,58 +255,91 @@ const RecipeList = ({
             </select>
           </div>
 
-          {typeof total === "number" ? (
-            <div className="hint">
-              Tổng: <b>{total}</b> món
-            </div>
-          ) : null}
+          {hasActiveFilters && (
+            <button
+              className="rl-btn-reset"
+              onClick={clearFilters}
+              title="Xóa bộ lọc"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
 
-        <div className="toolbar-right">
-          <Button onClick={handleAdd} disabled={!restaurantId}>
-            ➕ Thêm công thức
-          </Button>
+        <div className="rl-toolbar-actions">
+          <button
+            className="rl-btn-primary"
+            onClick={handleAdd}
+            disabled={!restaurantId}
+          >
+            <Plus size={18} />
+            <span>Thêm Công Thức</span>
+          </button>
         </div>
       </div>
 
-      {/* Grid list */}
-      {loading && !recipesWithMeta.length ? (
-        <div className="recipes-grid">
-          <div className="card">Đang tải công thức...</div>
-        </div>
-      ) : error ? (
-        <div className="recipes-grid">
-          <div className="card error">Lỗi: {error.message}</div>
-        </div>
-      ) : (
-        <>
-          <div className="recipes-grid">
-            {recipesWithMeta.map((r) => (
-              <RecipeCard
-                key={r.id}
-                recipe={r}
-                onEdit={handleEdit}
-                onViewDetails={handleViewDetails}
-                onDelete={handleDelete}
-              />
-            ))}
+      {/* 3. Content Grid */}
+      <div className="rl-content">
+        {loading && !recipesWithMeta.length ? (
+          <div className="rl-loading-state">
+            <Loader2 className="spinner" size={32} />
+            <p>Đang tải danh sách công thức...</p>
+          </div>
+        ) : error ? (
+          <div className="rl-error-box">
+            <AlertCircle size={20} />
+            <span>Lỗi: {error.message}</span>
+          </div>
+        ) : recipesWithMeta.length > 0 ? (
+          <>
+            <div className="rl-grid">
+              {recipesWithMeta.map((r) => (
+                <RecipeCard
+                  key={r.id}
+                  recipe={r}
+                  onEdit={handleEdit}
+                  onViewDetails={handleViewDetails}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
 
-            {!recipesWithMeta.length && (
-              <div className="card">Không có công thức phù hợp</div>
+            {pageInfo?.hasNextPage && (
+              <div className="rl-load-more">
+                <button
+                  className="rl-btn-secondary"
+                  onClick={loadMore}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <Loader2 className="spinner-sm" size={16} />
+                  ) : null}
+                  {loading ? "Đang tải thêm..." : "Xem thêm công thức"}
+                </button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="rl-empty-state">
+            <div className="rl-empty-icon">
+              <ChefHat strokeWidth={1} />
+            </div>
+            <h3>Không tìm thấy công thức</h3>
+            <p>
+              {hasActiveFilters
+                ? "Thử thay đổi bộ lọc tìm kiếm của bạn."
+                : "Danh sách trống. Hãy thêm công thức đầu tiên!"}
+            </p>
+            {hasActiveFilters && (
+              <button className="rl-link-btn" onClick={clearFilters}>
+                Xóa bộ lọc
+              </button>
             )}
           </div>
+        )}
+      </div>
 
-          {pageInfo?.hasNextPage && (
-            <div className="load-more">
-              <Button onClick={loadMore} disabled={loading}>
-                {loading ? "Đang tải..." : "Tải thêm"}
-              </Button>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Modal: Create/Update */}
+      {/* Modals */}
       <RecipeModal
         isOpen={showModal}
         onClose={handleModalClose}
@@ -293,10 +352,12 @@ const RecipeList = ({
         ingredients={ingredients}
       />
 
-      {/* Modal: Detail view */}
       <RecipeDetailModal
         isOpen={showDetailModal}
-        onClose={handleDetailModalClose}
+        onClose={() => {
+          setShowDetailModal(false);
+          setViewingRecipe(null);
+        }}
         recipe={viewingRecipe}
       />
     </div>

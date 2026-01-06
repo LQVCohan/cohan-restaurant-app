@@ -1,0 +1,217 @@
+/* --- Recipe Card Variables --- */
+$rc-primary: #c5a47e; // Gold
+$rc-bg: #ffffff;
+$rc-border: #e2e8f0; // Slate 200
+$rc-text-main: #1e293b; // Slate 800
+$rc-text-sub: #64748b; // Slate 500
+$rc-bg-hover: #f8fafc; // Slate 50
+$rc-danger: #ef4444;
+$rc-radius: 12px;
+
+.rc-card {
+  background: $rc-bg;
+  border: 1px solid $rc-border;
+  border-radius: $rc-radius;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  height: 100%; /* Đảm bảo thẻ có chiều cao đồng đều trong grid */
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 20px -10px rgba(0, 0, 0, 0.1);
+    border-color: darken($rc-border, 5%);
+
+    .rc-icon-box {
+      background: $rc-primary;
+      color: #fff;
+    }
+  }
+
+  /* --- 1. Header --- */
+  .rc-header {
+    padding: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .rc-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: #f1f5f9; // Slate 100
+    color: $rc-text-sub;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+    font-size: 20px;
+  }
+
+  .rc-title-area {
+    flex: 1;
+    min-width: 0; // Fix text overflow ellipsis
+
+    .rc-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: $rc-text-main;
+      margin: 0 0 4px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+
+    .rc-category {
+      font-size: 12px;
+      color: $rc-primary;
+      font-weight: 600;
+      background: rgba($rc-primary, 0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+  }
+
+  /* --- 2. Stats Grid --- */
+  .rc-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr; // Cost rộng hơn chút
+    border-top: 1px solid $rc-border;
+    border-bottom: 1px solid $rc-border;
+    background: #fafbfc;
+  }
+
+  .rc-stat-item {
+    padding: 10px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border-right: 1px solid $rc-border;
+
+    &:last-child {
+      border-right: none;
+    }
+
+    .rc-stat-icon {
+      color: $rc-text-sub;
+      margin-bottom: 4px;
+      opacity: 0.7;
+    }
+
+    .rc-stat-value {
+      font-size: 13px;
+      font-weight: 700;
+      color: $rc-text-main;
+      line-height: 1.2;
+    }
+
+    .rc-stat-label {
+      font-size: 10px;
+      color: lighten($rc-text-sub, 10%);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+
+    &.is-cost {
+      .rc-stat-icon,
+      .rc-stat-value {
+        color: darken($rc-primary, 5%);
+      }
+      background: rgba($rc-primary, 0.03);
+    }
+  }
+
+  /* --- 3. Body --- */
+  .rc-body {
+    padding: 16px;
+    flex: 1; // Đẩy footer xuống đáy
+
+    .rc-desc {
+      font-size: 13px;
+      color: $rc-text-sub;
+      margin: 0;
+      line-height: 1.5;
+
+      // Giới hạn 2 dòng
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  }
+
+  /* --- 4. Actions --- */
+  .rc-actions {
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    // border-top: 1px solid transparent; // Có thể bật border nếu muốn tách biệt
+  }
+
+  .rc-actions-group {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Button Styles */
+  .rc-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .rc-btn-view {
+    color: $rc-text-sub;
+    background: #f1f5f9;
+
+    &:hover {
+      color: $rc-text-main;
+      background: darken(#f1f5f9, 5%);
+    }
+  }
+
+  .rc-icon-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid $rc-border;
+    border-radius: 6px;
+    background: #fff;
+    color: $rc-text-sub;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: $rc-primary;
+      color: $rc-primary;
+    }
+  }
+
+  .rc-btn-delete:hover {
+    border-color: lighten($rc-danger, 20%);
+    color: $rc-danger;
+    background: #fef2f2;
+  }
+}
