@@ -12,9 +12,9 @@ import Button from "../../../../common/Button";
 import SupplyCard from "./SupplyCard";
 import SupplyModal from "./SupplyModal";
 import useSupply from "../../../../../hooks/useSupply";
-import StockInModal from "../modals/StockInModal";
 import StockOutModal from "../modals/StockOutModal";
 import StockTransferModal from "../modals/StockTransferModal";
+import QuickStockModal from "../ingredients/QuickStockModal";
 import "./SupplyList.scss";
 
 const SupplyList = ({
@@ -45,6 +45,8 @@ const SupplyList = ({
   const [mode, setMode] = useState(null); // 'in' | 'out' | 'transfer'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [quickStockOpen, setQuickStockOpen] = useState(false);
+  const [quickEntries, setQuickEntries] = useState([]);
 
   // Reset filter khi đổi nhà hàng/kho
   useEffect(() => {
@@ -103,10 +105,18 @@ const SupplyList = ({
   };
 
   const openIn = (s) => {
-    if (requireWarehouse()) {
-      setCurrent(s);
-      setMode("in");
-    }
+    if (!requireWarehouse()) return;
+    setCurrent(s);
+    setMode("in");
+    setQuickEntries([
+      {
+        id: s.id,
+        type: "supply",
+        name: s.name,
+        unit: s.unit,
+      },
+    ]);
+    setQuickStockOpen(true);
   };
   const openOut = (s) => {
     if (requireWarehouse()) {
@@ -295,12 +305,20 @@ const SupplyList = ({
         />
       )}
       {mode === "in" && current && (
-        <StockInModal
+        <QuickStockModal
           isOpen
           onClose={closeStockModal}
-          onConfirm={submitInbound}
-          mode="in"
-          supply={current}
+          entries={quickEntries}
+          onSubmit={async (rows) => {
+            for (const row of rows) {
+              await submitInbound({
+                qty: row.qty,
+                supplier: row.supplier,
+                reason: buildReason(row),
+              });
+            }
+            closeStockModal();
+          }}
         />
       )}
       {mode === "out" && current && (
@@ -327,3 +345,11 @@ const SupplyList = ({
 };
 
 export default SupplyList;
+
+function buildReason(row) {
+  const parts = [];
+  if (row.supplier) parts.push(`Nguồn: ${row.supplier}`);
+  if (row.datetime) parts.push(`Thời gian: ${row.datetime}`);
+  if (row.note) parts.push(`Ghi chú: ${row.note}`);
+  return parts.join(" | ") || "Nhập kho nhanh";
+}

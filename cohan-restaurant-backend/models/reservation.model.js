@@ -70,37 +70,11 @@ const ReservationSchema = BaseSchemaModel(
       type: Date,
     },
 
-    // --- Mã đặt bàn, sinh tự động ---
-    orderCode: {
-      type: String,
-      unique: true,
-    },
   },
   {
     collection: "reservations",
   }
 );
-
-// ─────────────────────────────────────────────────────────────
-// Hooks
-// ─────────────────────────────────────────────────────────────
-
-// Tự sinh mã đặt bàn ngắn (vd: RES-20251019-ABC123)
-ReservationSchema.pre("save", function (next) {
-  if (!this.orderCode) {
-    const shortId = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const datePart = new Date().toISOString().split("T")[0].replace(/-/g, "");
-    this.orderCode = `RES-${datePart}-${shortId}`;
-  }
-
-  // Nếu trạng thái là pending_payment mà chưa có expireAt → đặt TTL 10 phút
-  if (this.status === "pending_payment" && !this.pendingPaymentExpiresAt) {
-    const expires = new Date(Date.now() + 10 * 60 * 1000);
-    this.pendingPaymentExpiresAt = expires;
-  }
-
-  next();
-});
 
 // ─────────────────────────────────────────────────────────────
 // Indexes

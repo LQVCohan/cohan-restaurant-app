@@ -10,6 +10,9 @@ const SupplierSchema = new Schema(
     phone: String,
     email: String,
     address: String,
+    reliabilityScore: { type: Number, default: 0, min: 0 },
+    tags: [{ type: String, trim: true }],
+    notes: { type: String, trim: true },
   },
   baseOptions
 );

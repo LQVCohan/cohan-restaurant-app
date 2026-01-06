@@ -44,7 +44,11 @@ const SupplyCard = ({
     }
   };
 
-  // Average Cost Calculation
+  const costFromStock = Number(stockItem?.costPerUnit ?? NaN);
+  const priceFromStock = Number(stockItem?.pricePerUnit ?? NaN);
+  const noteFromStock = stockItem?.note || "";
+
+  // Average Cost Calculation (fallback)
   const avgCost = useMemo(() => {
     const batches = stockItem?.batches || [];
     let sumCost = 0;
@@ -57,12 +61,15 @@ const SupplyCard = ({
         sumCost += q * c;
       }
     }
+    if (Number.isFinite(costFromStock)) return costFromStock;
     if (sumQty > 0) return sumCost / sumQty;
     return Number(supply?.costPerUnit || 0);
-  }, [stockItem?.batches, supply?.costPerUnit]);
+  }, [costFromStock, stockItem?.batches, supply?.costPerUnit]);
 
   const sellingPrice =
-    Number(supply?.sellingPrice ?? supply?.retailPrice ?? 0) || 0;
+    Number.isFinite(priceFromStock) && priceFromStock >= 0
+      ? priceFromStock
+      : Number(supply?.pricePerUnit ?? supply?.sellingPrice ?? supply?.retailPrice ?? 0) || 0;
 
   return (
     <Card className="supply-card" hover={false} padding="none">
@@ -129,6 +136,13 @@ const SupplyCard = ({
             </span>
           </div>
         </div>
+
+        {noteFromStock && (
+          <div className="sc-note">
+            <span className="sc-note-label">Ghi chú:</span>{" "}
+            <span className="sc-note-text">{noteFromStock}</span>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="sc-actions">

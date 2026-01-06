@@ -5,7 +5,8 @@ const { Types } = mongoose;
 const TransactionSchema = BaseSchemaModel(
   {
     restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true },
-    orderId: { type: Types.ObjectId, ref: "Order", required: true },
+    orderId: { type: Types.ObjectId, ref: "Order" },
+    orderIds: [{ type: Types.ObjectId, ref: "Order" }],
     invoiceId: { type: Types.ObjectId, ref: "Invoice" },
     userId: { type: Types.ObjectId, ref: "User" },
     method: {
@@ -28,6 +29,7 @@ const TransactionSchema = BaseSchemaModel(
 );
 
 TransactionSchema.index({ restaurantId: 1, orderId: 1 });
+TransactionSchema.index({ restaurantId: 1, orderIds: 1 });
 TransactionSchema.index({ paidAt: -1 });
 
 export default mongoose.models.Transaction ||

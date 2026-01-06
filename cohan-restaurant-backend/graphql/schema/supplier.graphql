@@ -1,0 +1,61 @@
+type Supplier {
+  id: ID!
+  name: String!
+  contact: String
+  phone: String
+  email: String
+  address: String
+  reliabilityScore: Float
+  tags: [String!]
+  notes: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SupplierFilter {
+  search: String
+  tag: String
+}
+
+input SupplierInput {
+  name: String!
+  contact: String
+  phone: String
+  email: String
+  address: String
+  tags: [String!]
+  notes: String
+}
+
+input UpdateSupplierInput {
+  id: ID!
+  name: String
+  contact: String
+  phone: String
+  email: String
+  address: String
+  tags: [String!]
+  notes: String
+}
+
+type SupplierConnection {
+  edges: [Supplier!]!
+  total: Int!
+  pageInfo: PageInfo!
+}
+
+extend type Query {
+  suppliers(
+    filter: SupplierFilter
+    limit: Int = 6
+    cursor: ID
+  ): SupplierConnection!
+  supplier(id: ID!): Supplier
+}
+
+extend type Mutation {
+  createSupplier(input: SupplierInput!): Supplier!
+  updateSupplier(input: UpdateSupplierInput!): Supplier!
+  deleteSupplier(id: ID!): Boolean!
+  bumpSupplierReliability(id: ID!, delta: Int = 1): Supplier!
+}

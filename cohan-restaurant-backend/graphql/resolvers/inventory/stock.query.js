@@ -1,6 +1,6 @@
 // src/graphql/resolvers/inventory/stockItem.query.js
 import mongoose from "mongoose";
-import { StockItem, Ingredient } from "../../../models/index.js";
+import { StockItem, Ingredient, Supply } from "../../../models/index.js";
 
 export default {
   stockItems: async (
@@ -9,7 +9,7 @@ export default {
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
 
-    const q = { restaurantId };
+    const q = { restaurantId, ingredientId: { $exists: true, $ne: null } };
 
     if (warehouseId && mongoose.isValidObjectId(warehouseId)) {
       q.warehouseId = warehouseId;
@@ -42,5 +42,49 @@ export default {
     return list.filter(
       (s) => (s.onHand ?? 0) <= (ingMap.get(String(s.ingredientId)) ?? 0)
     );
+  },
+
+  // StockItem cho Supply (theo schema supply.graphql)
+  supplyStockItems: async (_p, { restaurantId, supplyId }) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return [];
+
+    const q = { restaurantId, supplyId: { $exists: true, $ne: null } };
+    if (supplyId && mongoose.isValidObjectId(supplyId)) {
+      q.supplyId = supplyId;
+    }
+
+    const items = await StockItem.find(q)
+      .select({ __v: 0 })
+      .sort({ updatedAt: -1 })
+      .lean({ virtuals: true });
+
+    if (!items.length) return [];
+
+    // Gắn minStock từ Supply để FE có thể tính cảnh báo nếu cần
+    const ids = items.map((it) => it.supplyId).filter(Boolean);
+    const supplies = await Supply.find({ _id: { $in: ids } })
+      .select({ _id: 1, minStock: 1, costPerUnit: 1, pricePerUnit: 1, notes: 1 })
+      .lean();
+    const metaMap = new Map(
+      supplies.map((s) => [
+        String(s._id),
+        {
+          minStock: Number(s.minStock) || 0,
+          costPerUnit: Number(s.costPerUnit) || 0,
+          pricePerUnit: Number(s.pricePerUnit) || 0,
+          notes: s.notes || "",
+        },
+      ])
+    );
+
+    return items.map((it) => ({
+      ...it,
+      minStock: metaMap.get(String(it.supplyId))?.minStock ?? 0,
+      costPerUnit:
+        it.costPerUnit ?? metaMap.get(String(it.supplyId))?.costPerUnit ?? 0,
+      pricePerUnit:
+        it.pricePerUnit ?? metaMap.get(String(it.supplyId))?.pricePerUnit ?? 0,
+      note: it.note ?? metaMap.get(String(it.supplyId))?.notes ?? "",
+    }));
   },
 };

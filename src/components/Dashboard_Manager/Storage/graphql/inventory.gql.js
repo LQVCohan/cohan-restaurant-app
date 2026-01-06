@@ -58,11 +58,23 @@ export const CREATE_INGREDIENT = gql`
   mutation CreateIngredient($input: CreateIngredientInput!) {
     createIngredient(input: $input) {
       id
+      restaurantId
       name
+      sku
+      category
       baseUnit
+      conversions {
+        from
+        to
+        ratio
+      }
       costPerBaseUnit
+      photos
       minStock
+      notes
       isActive
+      createdAt
+      updatedAt
     }
   }
 `;
@@ -71,11 +83,22 @@ export const UPDATE_INGREDIENT = gql`
   mutation UpdateIngredient($input: UpdateIngredientInput!) {
     updateIngredient(input: $input) {
       id
+      restaurantId
       name
+      sku
+      category
       baseUnit
+      conversions {
+        from
+        to
+        ratio
+      }
       costPerBaseUnit
+      photos
       minStock
+      notes
       isActive
+      updatedAt
     }
   }
 `;

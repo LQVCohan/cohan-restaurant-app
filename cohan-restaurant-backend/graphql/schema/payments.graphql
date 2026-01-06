@@ -10,14 +10,15 @@ enum PaymentStatus {
   PENDING
   CANCELED
 }
-input PayOrdersByCodeInput {
+input PayOrdersByTableIdInput {
   restaurantId: ID!
-  orderCode: String!
-  paidAmount: Float!
+  tableId: ID!
+  paidAmount: Float
   method: String! # "cash" | "card" | "bank_transfer" | "e_wallet" | ...
   paidAt: DateTime
   note: String
   externalRef: String
+  includeUnserved: Boolean = false
 }
 enum InvoiceStatus {
   UNPAID
@@ -36,21 +37,12 @@ enum CashflowCategory {
   OTHER
 }
 
-input PayOrderInput {
-  orderId: ID!
-  restaurantId: ID!
-  paidAmount: Float!
-  method: String!
-  paidAt: DateTime
-  note: String
-  externalRef: String
-}
-
-type PayOrderResult {
-  order: Order!
-  invoice: Invoice!
-  transaction: PaymentTransaction!
-  cashflow: Cashflow!
+type PayOrdersByTableResult {
+  warning: Boolean!
+  pendingOrderCodes: [String!]
+  invoice: Invoice
+  transaction: PaymentTransaction
+  cashflow: Cashflow
 }
 
 type CashflowReference {
@@ -106,6 +98,5 @@ extend type Query {
 }
 
 extend type Mutation {
-  payOrdersByCode(input: PayOrdersByCodeInput!): PayOrderResult!
-  payOrder(input: PayOrderInput!): PayOrderResult!
+  payOrdersByTableId(input: PayOrdersByTableIdInput!): PayOrdersByTableResult!
 }

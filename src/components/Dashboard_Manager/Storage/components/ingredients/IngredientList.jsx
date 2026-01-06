@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import IngredientCard from "./IngredientCard";
 import IngredientModal from "./IngredientModal";
+import QuickStockModal from "./QuickStockModal";
 import { useIngredients } from "@/hooks/useIngredients";
 import "./IngredientList.scss";
 
@@ -45,6 +46,8 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
   const [editingItem, setEditingItem] = useState(null);
   const isEditing = Boolean(editingItem?.id);
   const [saving, setSaving] = useState(false);
+  const [quickStockOpen, setQuickStockOpen] = useState(false);
+  const [quickEntries, setQuickEntries] = useState([]);
 
   // --- Handlers ---
   const handleSearch = (e) =>
@@ -63,15 +66,15 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
   const handleAddStock = async (id) => {
     const ing = filteredIngredients.find((i) => i.id === id);
     if (!ing) return;
-    const amount = prompt(`Nhập số lượng (${ing.baseUnit}) muốn thêm:`);
-    const qty = Number(amount);
-    if (!Number.isFinite(qty) || qty <= 0) return;
-
-    try {
-      await addStock(id, qty);
-    } catch (e) {
-      alert(e?.message || "Có lỗi khi nhập kho");
-    }
+    setQuickEntries([
+      {
+        id: ing.id,
+        type: "ingredient",
+        name: ing.name,
+        unit: ing.baseUnit,
+      },
+    ]);
+    setQuickStockOpen(true);
   };
 
   const handleDelete = async (id) => {
@@ -292,8 +295,32 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
         defaultWarehouseName={defaultWarehouseName}
         saving={saving}
       />
+
+      <QuickStockModal
+        isOpen={quickStockOpen}
+        onClose={() => setQuickStockOpen(false)}
+        entries={quickEntries}
+        onSubmit={async (rows) => {
+          try {
+            for (const row of rows) {
+              await addStock(row.id, row.qty, buildReason(row));
+            }
+            setQuickStockOpen(false);
+          } catch (e) {
+            alert(e?.message || "Có lỗi khi nhập kho");
+          }
+        }}
+      />
     </div>
   );
 };
+
+function buildReason(row) {
+  const parts = [];
+  if (row.supplier) parts.push(`Nguồn: ${row.supplier}`);
+  if (row.datetime) parts.push(`Thời gian: ${row.datetime}`);
+  if (row.note) parts.push(`Ghi chú: ${row.note}`);
+  return parts.join(" | ") || "Nhập bổ sung";
+}
 
 export default IngredientList;
