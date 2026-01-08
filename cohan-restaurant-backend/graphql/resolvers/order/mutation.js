@@ -856,7 +856,7 @@ export const OrderMutation = {
    * CREATE TABLE ORDER (dine_in)
    * - reserve inventory (atomic with order)
    * ========================================= */
-  async createOrAppendTableOrder(_, { input }, ctx) {
+  async createOrderForTable(_, { input }, ctx) {
     const {
       restaurantId,
       tableId,

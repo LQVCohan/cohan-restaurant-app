@@ -1,9 +1,24 @@
 // src/components/Dashboard_Manager/POS/components/panels/CenterPanel.jsx
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { gql, useLazyQuery } from "@apollo/client";
 import cls from "./CenterPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { formatPrice } from "../../utils/format";
 import MenuItemModal from "../modals/MenuItemModal";
+
+const SEARCH_SUGGESTIONS = gql`
+  query PosSearchSuggestions($query: String!, $timeSlot: TimeSlot) {
+    searchSuggestions(query: $query, timeSlot: $timeSlot, limitPerType: 6) {
+      menuItems {
+        id
+        name
+        timeSlot
+        thumbImage
+        basePrice
+      }
+    }
+  }
+`;
 
 // Icon Search SVG
 const SearchIcon = () => (
@@ -25,6 +40,7 @@ const SearchIcon = () => (
 
 export default function CenterPanel() {
   const {
+    restaurantId,
     filteredMenu,
     currentCategory,
     setCurrentCategory,
@@ -34,6 +50,60 @@ export default function CenterPanel() {
     selectedTimeSlot,
     setSelectedTimeSlot,
   } = usePos();
+
+  const [searchValue, setSearchValue] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [recentSearches, setRecentSearches] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const hideTimerRef = useRef(null);
+
+  const recentKey = useMemo(
+    () => `pos_recent_searches_${restaurantId || "na"}`,
+    [restaurantId]
+  );
+
+  const [loadSuggestions, { data: suggestionsData, error: suggestionsError }] =
+    useLazyQuery(SEARCH_SUGGESTIONS, { fetchPolicy: "network-only" });
+
+  useEffect(() => {
+    if (!recentKey) return;
+    try {
+      const raw = localStorage.getItem(recentKey);
+      const parsed = JSON.parse(raw || "[]");
+      if (Array.isArray(parsed)) setRecentSearches(parsed);
+    } catch {
+      setRecentSearches([]);
+    }
+  }, [recentKey]);
+
+  useEffect(() => {
+    if (!suggestionsData?.searchSuggestions) return;
+    const items = suggestionsData.searchSuggestions.menuItems || [];
+    setSuggestions(items);
+  }, [suggestionsData]);
+
+  useEffect(() => {
+    if (suggestionsError) {
+      console.error("POS searchSuggestions error:", suggestionsError);
+    }
+  }, [suggestionsError]);
+
+  useEffect(() => {
+    const query = searchValue.trim();
+    if (!query) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      loadSuggestions({
+        variables: {
+          query,
+          timeSlot: selectedTimeSlot || null,
+        },
+      });
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchValue, selectedTimeSlot, loadSuggestions]);
 
   const categoryTabs = useMemo(
     () => [
@@ -231,6 +301,62 @@ export default function CenterPanel() {
     [addMenuItemToOrder, closeModal]
   );
 
+  const persistRecentSearch = useCallback(
+    (value) => {
+      const trimmed = value.trim();
+      if (!trimmed) return;
+      setRecentSearches((prev) => {
+        const next = [trimmed, ...(prev || []).filter((v) => v !== trimmed)];
+        const capped = next.slice(0, 6);
+        try {
+          localStorage.setItem(recentKey, JSON.stringify(capped));
+        } catch {}
+        return capped;
+      });
+    },
+    [recentKey]
+  );
+
+  const handleSearchChange = useCallback(
+    (e) => {
+      const value = e.target.value;
+      setSearchValue(value);
+      setSearchTerm?.(value);
+      if (!showSuggestions) setShowSuggestions(true);
+    },
+    [setSearchTerm, showSuggestions]
+  );
+
+  const handleSearchBlur = useCallback(() => {
+    hideTimerRef.current = setTimeout(() => {
+      setShowSuggestions(false);
+    }, 150);
+  }, []);
+
+  const handleSearchFocus = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    setShowSuggestions(true);
+  }, []);
+
+  const handleSuggestionPick = useCallback(
+    (value) => {
+      setSearchValue(value);
+      setSearchTerm?.(value);
+      persistRecentSearch(value);
+      setShowSuggestions(false);
+    },
+    [persistRecentSearch, setSearchTerm]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, []);
+
   return (
     <div className={cls.wrapper}>
       {/* HEADER AREA */}
@@ -265,8 +391,74 @@ export default function CenterPanel() {
             <input
               className={cls.searchInput}
               placeholder="Tìm kiếm món ăn..."
-              onChange={(e) => setSearchTerm?.(e.target.value)}
+              value={searchValue}
+              onChange={handleSearchChange}
+              onFocus={handleSearchFocus}
+              onBlur={handleSearchBlur}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  persistRecentSearch(searchValue);
+                  setShowSuggestions(false);
+                }
+              }}
             />
+            {showSuggestions &&
+              (recentSearches.length > 0 || suggestions.length > 0) && (
+                <div className={cls.searchDropdown}>
+                  {suggestions.length > 0 && (
+                    <div className={cls.searchSection}>
+                      <div className={cls.searchSectionTitle}>Gợi ý</div>
+                      {suggestions.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={cls.searchItem}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleSuggestionPick(item.name)}
+                        >
+                          {item.thumbImage ? (
+                            <img
+                              src={item.thumbImage}
+                              alt={item.name}
+                              className={cls.searchThumb}
+                            />
+                          ) : (
+                            <span className={cls.searchEmoji}>🍽️</span>
+                          )}
+                          <div className={cls.searchText}>
+                            <span className={cls.searchName}>{item.name}</span>
+                            {typeof item.basePrice === "number" && (
+                              <span className={cls.searchMeta}>
+                                {formatPrice(item.basePrice)}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {recentSearches.length > 0 && (
+                    <div className={cls.searchSection}>
+                      <div className={cls.searchSectionTitle}>Gần đây</div>
+                      {recentSearches.map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          className={cls.searchItem}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleSuggestionPick(value)}
+                        >
+                          <span className={cls.searchEmoji}>🕘</span>
+                          <div className={cls.searchText}>
+                            <span className={cls.searchName}>{value}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
           </div>
         </div>
       </div>

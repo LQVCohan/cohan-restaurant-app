@@ -281,12 +281,12 @@ export default function RightPanel() {
   };
 
   const headerTitle = useMemo(() => {
-    if (currentOrderCode) return currentOrderCode;
-
     if (currentOrderType === "dine_in") {
       if (currentTable?.code) return `Bàn ${currentTable.code}`;
       return "Chọn bàn";
     }
+
+    if (currentOrderCode) return currentOrderCode;
 
     return currentOrderType === "delivery"
       ? "Đơn giao hàng"
@@ -436,7 +436,7 @@ export default function RightPanel() {
     setDeleteModalOpen(true);
   };
 
-  const handleDeleteItem = (_action, selectedReason) => {
+  const handleDeleteItem = (_action, _selectedReason) => {
     if (!itemToDelete) return;
     if (itemToDelete.isExisting && !itemToDelete.isNew) {
       showNotification("Không thể xóa món đã lưu.", "warning");
@@ -447,10 +447,7 @@ export default function RightPanel() {
     removeItem(itemToDelete._lineId || itemToDelete.dishId || itemToDelete.id);
     setDeleteModalOpen(false);
     setItemToDelete(null);
-    showNotification(
-      `Đã xóa món${selectedReason ? ` — ${selectedReason}` : ""}`,
-      "info"
-    );
+    showNotification("Đã xóa món", "info");
   };
 
   const handleClearConfirm = (action) => {
@@ -602,11 +599,17 @@ export default function RightPanel() {
         }
 
         setConfirmOpen(false);
-        setTimeout(() => window.location.reload(), 300);
       } else {
+        if (Array.isArray(res?.errors) && res.errors.length > 0) {
+          res.errors.forEach((msg) =>
+            showNotification(String(msg), "error")
+          );
+          console.error("POS save errors:", res.errors);
+        }
         showNotification(res?.message || "Lưu đơn thất bại.", "error");
       }
     } catch (e) {
+      console.error("POS save exception:", e);
       showNotification(e?.message || "Lưu đơn thất bại.", "error");
     } finally {
       setSaving(false);
@@ -648,6 +651,7 @@ export default function RightPanel() {
         isOpen={isDeleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDeleteItem}
+        requireReason={false}
       />
 
       <ConfirmDeleteModal
@@ -931,6 +935,7 @@ export default function RightPanel() {
             className={`${cls.btn} ${cls.primary}`}
             onClick={handleOpenConfirm}
             disabled={saveDisabled}
+            aria-busy={saving}
             title={
               !hasItems
                 ? "Đơn trống"
@@ -941,7 +946,14 @@ export default function RightPanel() {
                 : ""
             }
           >
-            {saving ? "Đang lưu..." : "Lưu"}
+            {saving ? (
+              <span className={cls.btnLoading}>
+                <span className={cls.spinner} />
+                Đang lưu...
+              </span>
+            ) : (
+              "Lưu"
+            )}
           </button>
 
           <button
