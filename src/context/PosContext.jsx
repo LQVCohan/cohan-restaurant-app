@@ -265,14 +265,6 @@ export default function PosProvider({
     restaurantId,
   ]);
 
-  const getDraftKeyForTable = useCallback(
-    (tableCode) => {
-      if (!tableCode) return null;
-      return `pos_draft_table_${restaurantId}_${tableCode}`;
-    },
-    [restaurantId]
-  );
-
   // ===== Auto-save only isNew (FE) =====
   useEffect(() => {
     const key = getDraftKey();
@@ -345,7 +337,7 @@ export default function PosProvider({
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentOrderCode, currentOrderType, currentTable?.code]);
+  }, [currentOrderCode, currentOrderType, currentTable?.id, currentTable?.code]);
 
   const clearDraftStorage = useCallback(() => {
     const key = getDraftKey();
