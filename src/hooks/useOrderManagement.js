@@ -836,14 +836,16 @@ export default function useOrderManagement(pos = null) {
     dishId,
     unit,
     variantName,
+    variantKey,
     note,
     proofImages,
     modifiers,
   }) => {
+    const variantSig = norm(variantKey || "") || norm(variantName || "");
     return [
       norm(dishId),
       norm(unit || "portion"),
-      norm(variantName || ""), // ✅ chỉ 1 field
+      variantSig, // ✅ ưu tiên variantKey nếu có
       norm(note || ""),
       normalizeProofKey(proofImages),
       normalizeModsKey(modifiers),
@@ -1171,21 +1173,27 @@ export default function useOrderManagement(pos = null) {
       price = null,
       proofImages = [],
       variantName = "",
+      variantKey = "",
+      cookingOption = "",
+      variant = null,
       modifiers = [],
     }) => {
       if (!menuItem) return;
-      const itemPrice =
+      const variantLabel = variantName || cookingOption || variant?.name || "";
+      const itemPrice = Number(
         price ??
-        menuItem._displayPrice ??
-        menuItem.price ??
-        menuItem.basePrice ??
-        0;
+          menuItem._displayPrice ??
+          menuItem.price ??
+          menuItem.basePrice ??
+          0
+      );
+      const resolvedPrice = Number.isFinite(itemPrice) ? itemPrice : 0;
       const chosenUnit = unit || (menuItem.byWeight ? "kg" : "portion");
       const incomingSig = makeLineSignature({
         dishId: menuItem.dishId || menuItem.id,
         unit: chosenUnit,
-        variantKey,
-        variantName: variantName || cookingOption, // fallback nếu bạn vẫn truyền cookingOption
+        variantKey: variantKey || variant?.key,
+        variantName: variantLabel,
         note,
         proofImages,
         modifiers,
@@ -1226,7 +1234,8 @@ export default function useOrderManagement(pos = null) {
           ...updated[idx],
           quantity: nextQty,
           lineSubtotal:
-            (itemPrice + Number(updated[idx].modifiersPrice || 0)) * nextQty,
+            (resolvedPrice + Number(updated[idx].modifiersPrice || 0)) *
+            nextQty,
           _edited: true,
         };
         setCurrentOrder(updated);
@@ -1239,12 +1248,14 @@ export default function useOrderManagement(pos = null) {
           name: menuItem.name,
           image: menuItem.image || menuItem.thumbImage,
           unit: chosenUnit,
-          price: Number(itemPrice),
+          price: Number(resolvedPrice),
           modifiersPrice: 0,
-          method: cookingOption,
+          method: variantLabel,
+          variantName: variantLabel,
+          variantKey: variantKey || variant?.key || "",
           note: note,
           quantity: q,
-          lineSubtotal: Number(itemPrice) * q,
+          lineSubtotal: Number(resolvedPrice) * q,
           isNew: true,
           isExisting: false,
           proofImages: proofImages || [],
