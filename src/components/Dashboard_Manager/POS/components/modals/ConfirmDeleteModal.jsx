@@ -7,6 +7,7 @@ const ConfirmDeleteModal = ({
   onConfirm,
   // when true, show choice between clearing items only or clearing the table
   showScopeChoice = false,
+  requireReason = true,
 }) => {
   const [selectedReason, setSelectedReason] = useState("");
   const [customReason, setCustomReason] = useState("");
@@ -15,8 +16,9 @@ const ConfirmDeleteModal = ({
   );
 
   const handleConfirm = () => {
-    // Truyền action và lý do đã chọn và lý do nhập vào cho hàm xác nhận
-    onConfirm(action, selectedReason, customReason);
+    const finalReason = requireReason ? selectedReason : "";
+    const finalCustom = requireReason ? customReason : "";
+    onConfirm(action, finalReason, finalCustom);
     onClose();
   };
 
@@ -26,7 +28,7 @@ const ConfirmDeleteModal = ({
     <div className="modal-overlay-delete">
       <div className="modal-container">
         <h2>Xác nhận xóa món</h2>
-        <p>Vui lòng chọn lý do xóa món:</p>
+        {requireReason && <p>Vui lòng chọn lý do xóa món:</p>}
 
         <div className="reason-group">
           {showScopeChoice && (
@@ -53,25 +55,29 @@ const ConfirmDeleteModal = ({
               </label>
             </div>
           )}
-          <select
-            value={selectedReason}
-            onChange={(e) => setSelectedReason(e.target.value)}
-            className="reason-select"
-          >
-            <option value="">Chọn lý do</option>
-            <option value="Out of stock">Hết hàng</option>
-            <option value="Mistake">Nhầm lẫn</option>
-            <option value="Not needed">Không cần nữa</option>
-            <option value="Other">Lý do khác</option>
-          </select>
+          {requireReason && (
+            <>
+              <select
+                value={selectedReason}
+                onChange={(e) => setSelectedReason(e.target.value)}
+                className="reason-select"
+              >
+                <option value="">Chọn lý do</option>
+                <option value="Out of stock">Hết hàng</option>
+                <option value="Mistake">Nhầm lẫn</option>
+                <option value="Not needed">Không cần nữa</option>
+                <option value="Other">Lý do khác</option>
+              </select>
 
-          {selectedReason === "Other" && (
-            <textarea
-              placeholder="Nhập lý do khác"
-              value={customReason}
-              onChange={(e) => setCustomReason(e.target.value)}
-              className="custom-reason-input"
-            />
+              {selectedReason === "Other" && (
+                <textarea
+                  placeholder="Nhập lý do khác"
+                  value={customReason}
+                  onChange={(e) => setCustomReason(e.target.value)}
+                  className="custom-reason-input"
+                />
+              )}
+            </>
           )}
         </div>
 
@@ -83,7 +89,8 @@ const ConfirmDeleteModal = ({
             className="btn-confirm"
             onClick={handleConfirm}
             disabled={
-              !selectedReason || (selectedReason === "Other" && !customReason)
+              requireReason &&
+              (!selectedReason || (selectedReason === "Other" && !customReason))
             }
           >
             Xác nhận
