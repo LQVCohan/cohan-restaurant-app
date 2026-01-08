@@ -192,6 +192,7 @@ export default function CenterPanel() {
         quantity,
         price: resolvedPrice,
         proofImages: proofImages || [],
+        cookingOption,
       });
     },
     [addToOrder, openModal, toFinitePrice]
