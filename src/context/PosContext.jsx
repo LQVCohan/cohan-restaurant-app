@@ -531,6 +531,20 @@ export default function PosProvider({
         setCurrentOrderCode(savedOrderCode);
       }
 
+      if (
+        res?.success &&
+        currentOrderType === "dine_in" &&
+        currentTable?.id &&
+        !currentTable?.isVirtual
+      ) {
+        try {
+          await setTableStatus({ id: currentTable.id, status: "occupied" });
+        } catch {}
+        setCurrentTable((prev) =>
+          prev ? { ...prev, status: "occupied" } : prev
+        );
+      }
+
       // nếu lưu xong (thành công) và bạn muốn clear draft FE:
       // (mình KHÔNG auto clear ở đây để tránh mất draft khi BE chưa hoàn thiện)
       // clearDraftStorage();
@@ -543,7 +557,11 @@ export default function PosProvider({
       currentOrder,
       currentOrderType,
       currentTable?.code,
+      currentTable?.id,
+      currentTable?.isVirtual,
       shippingInfo?.address,
+      setCurrentTable,
+      setTableStatus,
       setCurrentOrderCode,
     ]
   );
