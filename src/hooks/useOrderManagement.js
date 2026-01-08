@@ -12,10 +12,10 @@ import useSocketOrder from "./useSocketOrder";
    1) GRAPHQL
    ============================================================ */
 
-/** ✅ CREATE OR APPEND TABLE ORDER (dine-in) */
-const CREATE_OR_APPEND_TABLE_ORDER = gql`
-  mutation CreateOrAppendTableOrder($input: CreateOrAppendTableOrderInput!) {
-    createOrAppendTableOrder(input: $input) {
+/** ✅ CREATE ORDER FOR TABLE (dine-in) */
+const CREATE_ORDER_FOR_TABLE = gql`
+  mutation CreateOrderForTable($input: CreateOrderForTableInput!) {
+    createOrderForTable(input: $input) {
       isNewOrder
       order {
         id
@@ -538,7 +538,7 @@ export default function useOrderManagement(pos = null) {
   const lastPreparedOrderIdRef = useRef(null);
 
   // apollo mutations
-  const [createOrAppendOrder] = useMutation(CREATE_OR_APPEND_TABLE_ORDER);
+  const [createOrderForTable] = useMutation(CREATE_ORDER_FOR_TABLE);
   const [createOffPremiseOrder] = useMutation(CREATE_OFF_PREMISE_ORDER);
   const [mutPayByTable, { loading: payLoadingByTable }] = useMutation(
     PAY_ORDERS_BY_TABLE_ID
@@ -834,28 +834,28 @@ export default function useOrderManagement(pos = null) {
       categoryId,
       name: it.name,
       unit,
-      price: Math.round(it.price || 0),
-      modifiersPrice: Math.round(it.modifiersPrice || 0),
-      method: it.method || it.cookingOption || "",
+      basePrice: hasServingVariant ? null : Math.round(it.price || 0),
       note: it.description || it.note || "",
       quantity,
       proofImages: it.proofImages || [],
       servingKey,
       servingVariant: hasServingVariant
         ? {
+            key: it.servingVariant.key || servingKey,
             name: it.servingVariant.name,
             price: Number(it.servingVariant.price ?? it.price ?? 0),
             mode: it.servingVariant.mode,
+            sellQty: it.servingVariant.sellQty ?? null,
+            sellUnit: it.servingVariant.sellUnit ?? null,
           }
         : null,
-      basePrice: hasServingVariant ? null : Number(it.price || 0),
       weightGrams: weightGrams,
-      modifiers: (it.modifiers || []).map((m) => ({
-        optionId: m.optionId,
-        optionName: m.optionName,
-        groupId: m.groupId,
-        price: Math.round(m.price || 0),
-      })),
+      selectedModifiers: (it.modifiers || [])
+        .map((m) => ({
+          groupId: m.groupId,
+          optionId: m.optionId || m.id,
+        }))
+        .filter((m) => m.groupId && m.optionId),
     };
   }, []);
 
@@ -1498,7 +1498,7 @@ export default function useOrderManagement(pos = null) {
 
   /* ============================================================
      9) SAVE / UPSERT
-     - dine_in → createOrAppendTableOrder
+     - dine_in → createOrderForTable
      - delivery/takeaway → createOffPremiseOrder
      ============================================================ */
 
@@ -1561,7 +1561,7 @@ export default function useOrderManagement(pos = null) {
         }
 
         try {
-          const res = await createOrAppendOrder({
+          const res = await createOrderForTable({
             variables: {
               input: {
                 restaurantId,
@@ -1581,7 +1581,7 @@ export default function useOrderManagement(pos = null) {
           });
 
           const serverOrder =
-            res?.data?.createOrAppendTableOrder?.order || null;
+            res?.data?.createOrderForTable?.order || null;
 
           if (serverOrder) {
             writeOrderIntoCache(serverOrder);
@@ -1733,7 +1733,7 @@ export default function useOrderManagement(pos = null) {
       currentTable,
       currentOrderType,
       orderNote,
-      createOrAppendOrder,
+      createOrderForTable,
       createOffPremiseOrder,
       setTableOrders,
       normalizeOutgoingItem,
