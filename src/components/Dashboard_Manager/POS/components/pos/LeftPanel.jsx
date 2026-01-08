@@ -3,7 +3,6 @@ import cls from "./LeftPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { TableActionsModal } from "../modals/TableActionsModal";
 import RegularCustomerModal from "../modals/RegularCustomerModal";
-import SwitchTableConfirmModal from "../modals/SwitchTableConfirmModal";
 import useTableCustomers from "../../../../../hooks/useTableCustomers";
 
 /* --- ICONS --- */
@@ -144,9 +143,7 @@ export default function LeftPanel() {
   const [actionModalOpen, setActionModalOpen] = useState(false);
   const [actionTable, setActionTable] = useState(null);
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
-  const [switchConfirmOpen, setSwitchConfirmOpen] = useState(false);
-  const [switchTarget, setSwitchTarget] = useState(null);
-  const [pendingDraftItems, setPendingDraftItems] = useState([]);
+  const [draftTableCodes, setDraftTableCodes] = useState(new Set());
 
   // Drag & Drop
   const [dragOverId, setDragOverId] = useState(null);
@@ -228,6 +225,29 @@ export default function LeftPanel() {
     return { all, available, occupied };
   }, [tables]);
 
+  useEffect(() => {
+    if (!restaurantId) return;
+    try {
+      const prefix = "pos_draft_";
+      const next = new Set();
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(prefix)) continue;
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const payload = JSON.parse(raw);
+        const items = Array.isArray(payload?.items) ? payload.items : [];
+        if (!items.length) continue;
+        if (payload?.currentOrderType !== "dine_in") continue;
+        const code = payload?.tableCode;
+        if (code) next.add(String(code).toLowerCase());
+      }
+      setDraftTableCodes(next);
+    } catch {
+      setDraftTableCodes(new Set());
+    }
+  }, [restaurantId, currentOrder, currentTable?.code]);
+
   const offPremiseOrders = useMemo(() => {
     const kind =
       currentOrderType === "delivery" ? "delivery" : "takeaway";
@@ -269,10 +289,10 @@ export default function LeftPanel() {
         switching) ||
       (currentOrderType === "dine_in" && switching && hasUnsavedNewItems)
     ) {
-      if (hasUnsavedNewItems) {
-        setPendingDraftItems(currentOrder);
-        setSwitchTarget(table);
-        setSwitchConfirmOpen(true);
+      if (hasUnsavedNewItems && currentOrderType === "dine_in") {
+        await selectTableForOrder(targetCode, table.capacity, {
+          preserveDraftItems: true,
+        });
         return;
       }
       await selectTableForOrder(targetCode, table.capacity);
@@ -327,18 +347,6 @@ export default function LeftPanel() {
     });
   };
 
-  const confirmSwitch = async () => {
-    const t = switchTarget;
-    const drafts = pendingDraftItems;
-    setSwitchConfirmOpen(false);
-    setSwitchTarget(null);
-    setPendingDraftItems([]);
-
-    if (!t) return;
-    await selectTableForOrder(t.code, t.capacity, {
-      preserveDraftItems: drafts,
-    });
-  };
 
   const openActionModal = (e, table) => {
     e.stopPropagation();
@@ -638,6 +646,9 @@ export default function LeftPanel() {
 
             const isDragOver = dragOverId === table.id;
             const isDraggingThis = draggingId === table.id;
+            const hasDraft = draftTableCodes.has(
+              String(table.code || "").toLowerCase()
+            );
 
             return (
               <div
@@ -660,6 +671,9 @@ export default function LeftPanel() {
               >
                 <div className={cls.tableTop}>
                   <span className={cls.tableCode}>{table.code}</span>
+                  {hasDraft && (
+                    <span className={cls.draftDot} title="Có món nháp" />
+                  )}
                   <button
                     className={cls.kebab}
                     onClick={(e) => openActionModal(e, table)}
@@ -748,24 +762,6 @@ export default function LeftPanel() {
         onSelectCustomer={handleSelectRegularCustomer}
       />
 
-      <SwitchTableConfirmModal
-        isOpen={switchConfirmOpen}
-        fromLabel={
-          currentOrderType === "delivery"
-            ? "Đơn giao"
-            : currentOrderType === "takeaway"
-            ? "Đơn mang về"
-            : currentTable?.code
-        }
-        toLabel={switchTarget?.code}
-        itemCount={pendingDraftItems?.length || 0}
-        onCancel={() => {
-          setSwitchConfirmOpen(false);
-          setSwitchTarget(null);
-          setPendingDraftItems([]);
-        }}
-        onConfirm={confirmSwitch}
-      />
     </div>
   );
 }
