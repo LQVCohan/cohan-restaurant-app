@@ -66,6 +66,7 @@ export default function PosProvider({
   });
 
   const [deliveryCustomer, setDeliveryCustomer] = useState(null);
+  const skipDraftAutosaveRef = useRef(false);
 
   // --- FLOORS ---
   const {
@@ -93,6 +94,23 @@ export default function PosProvider({
     [getLevelFromId, setActiveLevel]
   );
 
+  const getTimeSlotForNow = useCallback(() => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 11) return "breakfast";
+    if (hour >= 11 && hour < 16) return "lunch";
+    if (hour >= 16 && hour < 22) return "dinner";
+    return "late_night";
+  }, []);
+
+  const [autoTimeSlot, setAutoTimeSlot] = useState(getTimeSlotForNow);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setAutoTimeSlot(getTimeSlotForNow());
+    }, 5 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [getTimeSlotForNow]);
+
   // --- MENU ---
   const {
     menus,
@@ -102,7 +120,7 @@ export default function PosProvider({
     itemsWithPrice,
   } = useMenuManagement({
     restaurantId,
-    defaultTimeSlot: "lunch",
+    defaultTimeSlot: autoTimeSlot,
     pageSize: 100,
   });
 
@@ -229,27 +247,44 @@ export default function PosProvider({
 
   // ===== Draft key (autosave FE) =====
   const getDraftKey = useCallback(() => {
+    if (currentOrderType === "dine_in" && (currentTable?.id || currentTable?.code)) {
+      const tableKey = currentTable?.id || currentTable?.code;
+      return `pos_draft_table_${restaurantId}_${tableKey}`;
+    }
     if (currentOrderCode) return `pos_draft_${currentOrderCode}`;
-    if (currentOrderType === "dine_in" && currentTable?.code)
-      return `pos_draft_table_${restaurantId}_${currentTable.code}`;
     if (currentOrderType === "delivery")
       return `pos_draft_ship_${restaurantId}`;
     if (currentOrderType === "takeaway")
       return `pos_draft_take_${restaurantId}`;
     return null;
-  }, [currentOrderCode, currentOrderType, currentTable?.code, restaurantId]);
+  }, [
+    currentOrderCode,
+    currentOrderType,
+    currentTable?.id,
+    currentTable?.code,
+    restaurantId,
+  ]);
 
   // ===== Auto-save only isNew (FE) =====
   useEffect(() => {
     const key = getDraftKey();
     if (!key) return;
+    if (skipDraftAutosaveRef.current) {
+      skipDraftAutosaveRef.current = false;
+      return;
+    }
     try {
       const draftItems = (currentOrder || []).filter((i) => i?.isNew);
+      if (draftItems.length === 0) {
+        localStorage.removeItem(key);
+        return;
+      }
       const payload = {
         version: 1,
         savedAt: Date.now(),
         currentOrderType,
         currentOrderCode,
+        tableId: currentTable?.id || null,
         tableCode: currentTable?.code || null,
         items: draftItems,
         shippingInfo:
@@ -265,6 +300,7 @@ export default function PosProvider({
     currentOrder,
     currentOrderType,
     currentOrderCode,
+    currentTable?.id,
     currentTable?.code,
     shippingInfo,
     deliveryCustomer,
@@ -381,7 +417,7 @@ export default function PosProvider({
 
   // --- SELECT TABLE LOGIC (DINE-IN) ---
   const selectTableForOrder = useCallback(
-    async (code, capacity) => {
+    async (code, capacity, options = {}) => {
       const table =
         (allTables || []).find(
           (t) => (t.code || "").toLowerCase() === code.toLowerCase()
@@ -399,21 +435,44 @@ export default function PosProvider({
         return;
       }
 
-      // ✅ confirm chỉ khi đang có món isNew ở FE và đổi sang bàn khác
       const switchingToDifferentTable =
         currentOrderType === "dine_in" &&
         currentTable?.code &&
         currentTable.code !== code;
 
-      if (switchingToDifferentTable && hasNewDraftItems()) {
-        const ok = window.confirm(
-          `Bạn đang có món mới chưa lưu.\nĐổi sang bàn ${code} sẽ chuyển các món mới này sang bàn mới.\nBạn có chắc muốn đổi bàn?`
-        );
-        if (!ok) return;
+      if (switchingToDifferentTable || !currentTable?.code) {
+        skipDraftAutosaveRef.current = true;
       }
 
       // giữ món mới để append lại sau khi load BE group
       const draftNew = (currentOrder || []).filter((i) => i?.isNew);
+      const preserveDraftItems =
+        options?.preserveDraftItems !== false &&
+        switchingToDifferentTable &&
+        currentTable?.code &&
+        draftNew.length > 0;
+
+      if (preserveDraftItems) {
+        const oldKey = getDraftKey();
+        if (oldKey) {
+          try {
+            localStorage.setItem(
+              oldKey,
+              JSON.stringify({
+                version: 1,
+                savedAt: Date.now(),
+                currentOrderType,
+                currentOrderCode,
+                tableId: currentTable?.id || null,
+                tableCode: currentTable.code,
+                items: draftNew,
+              })
+            );
+          } catch {}
+        }
+        skipDraftAutosaveRef.current = true;
+        setCurrentOrder((prev) => (prev || []).filter((i) => i?.isExisting));
+      }
 
       let groupsForTable = [];
       try {
@@ -443,7 +502,7 @@ export default function PosProvider({
 
       // sau khi loadGroupsForTable hook đã setCurrentOrder thành items existing,
       // ta append món isNew lại (nếu có)
-      if (draftNew.length) {
+      if (draftNew.length && !preserveDraftItems) {
         setCurrentOrder((prev) => {
           const prevArr = Array.isArray(prev) ? prev : [];
           const existingPart = prevArr.filter((i) => i?.isExisting);
@@ -483,7 +542,8 @@ export default function PosProvider({
       currentOrder,
       currentOrderType,
       currentTable?.code,
-      hasNewDraftItems,
+      currentOrderCode,
+      getDraftKey,
     ]
   );
 
@@ -531,6 +591,20 @@ export default function PosProvider({
         setCurrentOrderCode(savedOrderCode);
       }
 
+      if (
+        res?.success &&
+        currentOrderType === "dine_in" &&
+        currentTable?.id &&
+        !currentTable?.isVirtual
+      ) {
+        try {
+          await setTableStatus({ id: currentTable.id, status: "occupied" });
+        } catch {}
+        setCurrentTable((prev) =>
+          prev ? { ...prev, status: "occupied" } : prev
+        );
+      }
+
       // nếu lưu xong (thành công) và bạn muốn clear draft FE:
       // (mình KHÔNG auto clear ở đây để tránh mất draft khi BE chưa hoàn thiện)
       // clearDraftStorage();
@@ -543,7 +617,11 @@ export default function PosProvider({
       currentOrder,
       currentOrderType,
       currentTable?.code,
+      currentTable?.id,
+      currentTable?.isVirtual,
       shippingInfo?.address,
+      setCurrentTable,
+      setTableStatus,
       setCurrentOrderCode,
     ]
   );
