@@ -1189,6 +1189,7 @@ export default function useOrderManagement(pos = null) {
       proofImages = [],
       variantName = "",
       variantKey = "",
+      servingKey: servingKeyInput = "",
       cookingOption = "",
       variant = null,
       modifiers = [],
@@ -1202,9 +1203,14 @@ export default function useOrderManagement(pos = null) {
           menuItem.basePrice ??
           0
       );
+      const servingKey =
+        servingKeyInput ||
+        variantKey ||
+        variant?.key ||
+        menuItem?.defaultServingKey ||
+        "";
       const resolvedPrice = Number.isFinite(itemPrice) ? itemPrice : 0;
       const chosenUnit = unit || (menuItem.byWeight ? "kg" : "portion");
-      const servingKey = variantKey || variant?.key || menuItem?.defaultServingKey || "";
       const servingVariant =
         variant && variant.name && variant.mode
           ? {
@@ -1264,22 +1270,23 @@ export default function useOrderManagement(pos = null) {
         };
         setCurrentOrder(updated);
       } else {
-        const newItem = {
-          _lineId: makeLineId(),
-          dishId: menuItem.id,
-          menuId: menuItem.menuId,
-          categoryId: menuItem.categoryId,
-          name: menuItem.name,
-          image: menuItem.image || menuItem.thumbImage,
-          unit: chosenUnit,
-          price: Number(resolvedPrice),
-          modifiersPrice: 0,
-          method: variantLabel,
-          variantName: variantLabel,
-          variantKey: variantKey || variant?.key || "",
-          servingKey,
-          servingVariant,
-          note: note,
+      const newItem = {
+        _lineId: makeLineId(),
+        dishId: menuItem.id,
+        menuId: menuItem.menuId,
+        categoryId: menuItem.categoryId,
+        name: menuItem.name,
+        image: menuItem.image || menuItem.thumbImage,
+        unit: chosenUnit,
+        price: Number(resolvedPrice),
+        modifiersPrice: 0,
+        method: variantLabel,
+        variantName: variantLabel,
+        variantKey: variantKey || variant?.key || "",
+        servingKey,
+        defaultServingKey: menuItem?.defaultServingKey || "",
+        servingVariant,
+        note: note,
           quantity: q,
           lineSubtotal: Number(resolvedPrice) * q,
           isNew: true,

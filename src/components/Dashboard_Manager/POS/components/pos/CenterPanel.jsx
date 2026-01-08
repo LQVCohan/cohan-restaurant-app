@@ -147,6 +147,7 @@ export default function CenterPanel() {
         cookingOption,
         variantName,
         variantKey,
+        servingKey,
       } = options;
 
       const resolvedPrice =
@@ -174,6 +175,10 @@ export default function CenterPanel() {
         image: menuItem?.thumbImage,
         thumbImage: menuItem?.thumbImage,
         price: resolvedPrice,
+        defaultServingKey:
+          menuItem?.defaultServingKey ||
+          menuItem?._defaultVariant?.key ||
+          "",
       };
 
       addToOrder?.({
@@ -181,11 +186,13 @@ export default function CenterPanel() {
         cookingOption: cookingOption || variant?.name || variantName || "",
         variantName: variantName || cookingOption || variant?.name || "",
         variantKey: variantKey || variant?.key || "",
+        servingKey: servingKey || variant?.key || core.defaultServingKey,
         unit: chosenUnit,
         note,
         quantity,
         price: resolvedPrice,
         proofImages: proofImages || [],
+        cookingOption,
       });
     },
     [addToOrder, openModal, toFinitePrice]
@@ -193,28 +200,30 @@ export default function CenterPanel() {
 
   const handleModalAdd = useCallback(
     (payload) => {
-      const {
-        menuItem,
-        quantity = 1,
-        cookingOption,
-        variantName,
-        variantKey,
-        unit,
-        note,
-        price,
-        proofImages,
-        variant,
-      } = payload || {};
+    const {
+      menuItem,
+      quantity = 1,
+      cookingOption,
+      variantName,
+      variantKey,
+      servingKey,
+      unit,
+      note,
+      price,
+      proofImages,
+      variant,
+    } = payload || {};
 
-      addMenuItemToOrder(menuItem, {
-        variant: variant || null,
-        variantName: variantName || cookingOption,
-        variantKey,
-        unit,
-        note,
-        quantity,
-        price,
-        proofImages: proofImages || [],
+    addMenuItemToOrder(menuItem, {
+      variant: variant || null,
+      variantName: variantName || cookingOption,
+      variantKey,
+      servingKey,
+      unit,
+      note,
+      quantity,
+      price,
+      proofImages: proofImages || [],
         cookingOption,
       });
       closeModal();

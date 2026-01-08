@@ -314,6 +314,7 @@ export default function MenuItemModal({
       quantity: finalQty,
       variantName: activeVariant?.name || "",
       variantKey: activeVariant?.key || "",
+      servingKey: activeVariant?.key || item?.defaultServingKey || "",
       variant: activeVariant || null,
       cookingOption: activeVariant?.name || "",
       unit: currentUnit,
