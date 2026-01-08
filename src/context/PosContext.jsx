@@ -196,6 +196,9 @@ export default function PosProvider({
     setOrderNote,
     updateOrderCustomerByCode,
     loadGroupsForTable,
+    loadOrdersNow,
+    ordersNow,
+    ordersLoading,
     preparePayment,
     checkoutOrder,
   } = useOrderManagement({
@@ -616,6 +619,9 @@ export default function PosProvider({
       fetchOrderByTable,
       fetchOrderById,
       orderById,
+      loadOrdersNow,
+      ordersNow,
+      ordersLoading,
 
       menuItems,
       setMenuItems,
@@ -714,6 +720,9 @@ export default function PosProvider({
       fetchOrderByTable,
       fetchOrderById,
       orderById,
+      loadOrdersNow,
+      ordersNow,
+      ordersLoading,
 
       menuItems,
       setMenuItems,

@@ -4,6 +4,7 @@ import { usePos } from "../../../../../context/PosContext";
 import { TableActionsModal } from "../modals/TableActionsModal";
 import RegularCustomerModal from "../modals/RegularCustomerModal";
 import SwitchTableConfirmModal from "../modals/SwitchTableConfirmModal";
+import useTableCustomers from "../../../../../hooks/useTableCustomers";
 
 /* --- ICONS --- */
 const IconMulti = () => (
@@ -102,6 +103,7 @@ const IconChevron = ({ expanded }) => (
 export default function LeftPanel() {
   const {
     floors,
+    restaurantId,
     tables,
     currentTable,
     currentOrder,
@@ -112,6 +114,13 @@ export default function LeftPanel() {
     startDeliveryOrder, // Action: Bắt đầu đơn giao hàng
     startTakeawayOrder, // Action: Bắt đầu đơn mang về
     selectTableForOrder,
+    setCurrentTable,
+    setCurrentOrder,
+    setCurrentOrderCode,
+    fetchOrderById,
+    loadOrdersNow,
+    ordersNow,
+    ordersLoading,
     deliveryCustomer,
     setDeliveryCustomer,
     shippingInfo,
@@ -122,6 +131,7 @@ export default function LeftPanel() {
   const [currentFloorId, setCurrentFloorId] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [orderSearchTerm, setOrderSearchTerm] = useState("");
 
   // State hiển thị accordion (bộ lọc)
   const [showFilters, setShowFilters] = useState(true);
@@ -154,10 +164,8 @@ export default function LeftPanel() {
 
   // --- EFFECT: TỰ ĐỘNG ĐÓNG/MỞ BỘ LỌC KHI CHUYỂN TAB ---
   useEffect(() => {
-    if (currentOrderType === "dine_in") {
-      setShowFilters(true); // Bàn ăn cần nhìn sơ đồ -> Mở
-    } else {
-      setShowFilters(false); // Giao hàng/Mang về cần không gian -> Đóng
+    if (currentOrderType !== "dine_in") {
+      setShowFilters(false);
     }
   }, [currentOrderType]);
 
@@ -170,6 +178,17 @@ export default function LeftPanel() {
 
   const selectedCustomer = deliveryCustomer;
 
+  const { customers: tableCustomers } = useTableCustomers({ restaurantId });
+
+  const tableCustomerMap = useMemo(() => {
+    const map = new Map();
+    (tableCustomers || []).forEach((c) => {
+      if (c.tableId) map.set(String(c.tableId), c);
+      if (c.tableCode) map.set(String(c.tableCode).toLowerCase(), c);
+    });
+    return map;
+  }, [tableCustomers]);
+
   const filteredTables = useMemo(() => {
     let res = tables || [];
     if (currentFloorId !== "all") {
@@ -178,12 +197,22 @@ export default function LeftPanel() {
     if (statusFilter !== "all") {
       res = res.filter((t) => t.status === statusFilter);
     }
-    if (searchTerm.trim()) {
-      const lower = searchTerm.toLowerCase();
-      res = res.filter((t) => t.code.toLowerCase().includes(lower));
+    const rawQ = searchTerm ?? "";
+    const hasTrailingSpace = /\s$/.test(rawQ);
+    const q = rawQ.trim().toLowerCase();
+    if (q) {
+      res = res.filter((t) => {
+        const code = (t.code || "").toLowerCase();
+        const customer =
+          tableCustomerMap.get(String(t.id)) ||
+          tableCustomerMap.get(String(t.code || "").toLowerCase());
+        const customerName = (customer?.customerName || "").toLowerCase();
+        if (hasTrailingSpace) return code === q;
+        return code.includes(q) || customerName.includes(q);
+      });
     }
     return res;
-  }, [tables, currentFloorId, statusFilter, searchTerm]);
+  }, [tables, currentFloorId, statusFilter, searchTerm, tableCustomerMap]);
 
   const hasUnsavedNewItems = useMemo(() => {
     return (
@@ -198,6 +227,25 @@ export default function LeftPanel() {
     const occupied = tables.filter((t) => t.status === "occupied").length;
     return { all, available, occupied };
   }, [tables]);
+
+  const offPremiseOrders = useMemo(() => {
+    const kind =
+      currentOrderType === "delivery" ? "delivery" : "takeaway";
+    const q = (orderSearchTerm || "").trim().toLowerCase();
+    return (ordersNow || [])
+      .filter((o) => o.orderType === kind)
+      .filter((o) => {
+        if (!q) return true;
+        const code = (o.orderCode || "").toLowerCase();
+        const name = (o.customerInfo?.name || "").toLowerCase();
+        return code.includes(q) || name.includes(q);
+      });
+  }, [ordersNow, currentOrderType, orderSearchTerm]);
+
+  useEffect(() => {
+    if (currentOrderType === "dine_in" || !restaurantId) return;
+    loadOrdersNow?.({ variables: { restaurantId, limit: 50 } });
+  }, [currentOrderType, restaurantId, loadOrdersNow]);
 
   // --- HANDLERS ---
   const handleTableClick = async (table) => {
@@ -232,6 +280,51 @@ export default function LeftPanel() {
     }
 
     selectTableForOrder(targetCode, table.capacity);
+  };
+
+  const handleOffPremiseOrderClick = async (order) => {
+    if (!order?.id) return;
+    const res = await fetchOrderById?.(order.id);
+    if (!res?.success || !res?.data) return;
+
+    const payload = res.data;
+    const items = (payload.items || []).map((it, idx) => ({
+      _lineId: `ord_${payload.orderCode || payload.id}_${idx}`,
+      dishId: it.dishId,
+      menuId: it.menuId,
+      categoryId: it.categoryId,
+      name: it.name,
+      unit: it.unit,
+      price: it.price,
+      modifiersPrice: it.modifiersPrice,
+      method: it.method,
+      note: it.note,
+      quantity: it.quantity,
+      status: it.status,
+      proofImages: it.proofImages || [],
+      modifiers: it.modifiers || [],
+      isExisting: true,
+      isNew: false,
+    }));
+
+    setCurrentOrder(items);
+    setCurrentOrderCode(payload.orderCode || null);
+    setCurrentOrderType(payload.orderType || currentOrderType);
+    setCurrentTable({
+      id: null,
+      code: payload.orderType === "delivery" ? "DELIVERY" : "TAKEAWAY",
+      name: payload.orderType === "delivery" ? "Delivery" : "Takeaway",
+      status: "occupied",
+      type: payload.orderType,
+      restaurantId,
+      isVirtual: true,
+    });
+    setDeliveryCustomer({
+      id: null,
+      name: payload.customerInfo?.name || "",
+      phone: payload.customerInfo?.phone || "",
+      email: payload.customerInfo?.email || "",
+    });
   };
 
   const confirmSwitch = async () => {
@@ -420,171 +513,221 @@ export default function LeftPanel() {
           </div>
         )}
 
-        {/* 3. BỘ LỌC & THAO TÁC BÀN (COLLAPSIBLE) */}
-        <div className={cls.filterWrapper}>
-          <button
-            className={cls.filterToggleBtn}
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <div className={cls.filterTitle}>
-              <IconFilter />
-              <span>Bộ lọc & Thao tác bàn</span>
-              <span className={cls.filterBadge}>
-                {currentFloorId !== "all" ||
-                statusFilter !== "all" ||
-                searchTerm
-                  ? "•"
-                  : ""}
-              </span>
-            </div>
-            <IconChevron expanded={showFilters} />
-          </button>
-
-          {showFilters && (
-            <div className={cls.filterContent}>
-              <div className={cls.searchGroup}>
-                <select
-                  className={cls.select}
-                  value={currentFloorId}
-                  onChange={(e) => setCurrentFloorId(e.target.value)}
-                >
-                  <option value="all">Tất cả tầng</option>
-                  {floors.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      Tầng {f.level} - {f.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className={cls.search}
-                  placeholder="Tìm số bàn..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              <div className={cls.statusChips}>
-                <button
-                  className={`${cls.chip} ${
-                    statusFilter === "all" ? cls.chipActive : ""
-                  }`}
-                  onClick={() => setStatusFilter("all")}
-                >
-                  Tất cả ({counts.all})
-                </button>
-                <button
-                  className={`${cls.chip} ${
-                    statusFilter === "available" ? cls.chipActive : ""
-                  }`}
-                  onClick={() => setStatusFilter("available")}
-                >
-                  Trống ({counts.available})
-                </button>
-                <button
-                  className={`${cls.chip} ${
-                    statusFilter === "occupied" ? cls.chipActive : ""
-                  }`}
-                  onClick={() => setStatusFilter("occupied")}
-                >
-                  Có khách ({counts.occupied})
-                </button>
-              </div>
-
-              <div className={cls.toolbar}>
-                <button
-                  className={`${cls.btn} ${
-                    isMultiSelectMode ? cls.primary : cls.ghost
-                  } ${cls.btnSm}`}
-                  onClick={() => {
-                    setIsMultiSelectMode(!isMultiSelectMode);
-                    setSelectedIds([]);
-                  }}
-                >
-                  <IconMulti />
-                  {isMultiSelectMode
-                    ? `Đang chọn (${selectedIds.length})`
-                    : "Chọn nhiều"}
-                </button>
-
-                {isMultiSelectMode && selectedIds.length > 0 && (
-                  <button
-                    className={`${cls.btn} ${cls.primary} ${cls.btnSm}`}
-                    onClick={() => alert("Xử lý hàng loạt")}
-                  >
-                    Xử lý ({selectedIds.length})
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 4. TABLES GRID */}
-      <div className={cls.tablesGrid}>
-        {filteredTables.map((table) => {
-          const isSelected = isMultiSelectMode
-            ? selectedIds.includes(table.id)
-            : currentTable?.id === table.id;
-
-          const isDragOver = dragOverId === table.id;
-          const isDraggingThis = draggingId === table.id;
-
-          return (
-            <div
-              key={table.id}
-              className={`
-                ${cls.tableItem}
-                ${isSelected ? cls.selected : ""}
-                ${isDraggingThis ? cls.dragging : ""}
-                ${isDragOver ? cls.dragOver : ""}
-              `}
-              data-status={table.status || "available"}
-              onClick={() => handleTableClick(table)}
-              draggable={!isMultiSelectMode}
-              onDragStart={(e) => handleDragStart(e, table)}
-              onDragEnd={handleDragEnd}
-              onDragOver={(e) => handleDragOver(e, table)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, table)}
-              title={!isMultiSelectMode ? "Kéo thả để gộp bàn" : ""}
+        {currentOrderType === "dine_in" && (
+          <div className={cls.filterWrapper}>
+            <button
+              className={cls.filterToggleBtn}
+              onClick={() => setShowFilters(!showFilters)}
             >
-              <div className={cls.tableTop}>
-                <span className={cls.tableCode}>{table.code}</span>
-                <button
-                  className={cls.kebab}
-                  onClick={(e) => openActionModal(e, table)}
-                >
-                  <IconDots />
-                </button>
-              </div>
-
-              <div className={cls.tableMeta}>
-                <span className={cls.capacity}>{table.capacity || 4} chỗ</span>
-                <span className={cls.statusText}>
-                  {table.status === "occupied"
-                    ? "Có khách"
-                    : table.status === "reserved"
-                    ? "Đã đặt"
-                    : table.status === "cleaning"
-                    ? "Đang dọn"
-                    : "Trống"}
+              <div className={cls.filterTitle}>
+                <IconFilter />
+                <span>Bộ lọc & Thao tác bàn</span>
+                <span className={cls.filterBadge}>
+                  {currentFloorId !== "all" ||
+                  statusFilter !== "all" ||
+                  searchTerm
+                    ? "•"
+                    : ""}
                 </span>
               </div>
+              <IconChevron expanded={showFilters} />
+            </button>
 
-              {isSelected && isMultiSelectMode && (
-                <div className={cls.checkOverlay}>
-                  <IconCheck />
+            {showFilters && (
+              <div className={cls.filterContent}>
+                <div className={cls.searchGroup}>
+                  <select
+                    className={cls.select}
+                    value={currentFloorId}
+                    onChange={(e) => setCurrentFloorId(e.target.value)}
+                  >
+                    <option value="all">Tất cả tầng</option>
+                    {floors.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        Tầng {f.level} - {f.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className={cls.search}
+                    placeholder="Tìm bàn hoặc tên khách..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
                 </div>
-              )}
-            </div>
-          );
-        })}
 
-        {filteredTables.length === 0 && (
-          <div className={cls.emptyState}>Không tìm thấy bàn nào</div>
+                <div className={cls.statusChips}>
+                  <button
+                    className={`${cls.chip} ${
+                      statusFilter === "all" ? cls.chipActive : ""
+                    }`}
+                    onClick={() => setStatusFilter("all")}
+                  >
+                    Tất cả ({counts.all})
+                  </button>
+                  <button
+                    className={`${cls.chip} ${
+                      statusFilter === "available" ? cls.chipActive : ""
+                    }`}
+                    onClick={() => setStatusFilter("available")}
+                  >
+                    Trống ({counts.available})
+                  </button>
+                  <button
+                    className={`${cls.chip} ${
+                      statusFilter === "occupied" ? cls.chipActive : ""
+                    }`}
+                    onClick={() => setStatusFilter("occupied")}
+                  >
+                    Có khách ({counts.occupied})
+                  </button>
+                </div>
+
+                <div className={cls.toolbar}>
+                  <button
+                    className={`${cls.btn} ${
+                      isMultiSelectMode ? cls.primary : cls.ghost
+                    } ${cls.btnSm}`}
+                    onClick={() => {
+                      setIsMultiSelectMode(!isMultiSelectMode);
+                      setSelectedIds([]);
+                    }}
+                  >
+                    <IconMulti />
+                    {isMultiSelectMode
+                      ? `Đang chọn (${selectedIds.length})`
+                      : "Chọn nhiều"}
+                  </button>
+
+                  {isMultiSelectMode && selectedIds.length > 0 && (
+                    <button
+                      className={`${cls.btn} ${cls.primary} ${cls.btnSm}`}
+                      onClick={() => alert("Xử lý hàng loạt")}
+                    >
+                      Xử lý ({selectedIds.length})
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentOrderType !== "dine_in" && (
+          <div className={cls.filterWrapper}>
+            <div className={cls.filterContent}>
+              <div className={cls.searchGroup}>
+                <input
+                  className={cls.search}
+                  placeholder="Tìm theo mã đơn hoặc tên khách..."
+                  value={orderSearchTerm}
+                  onChange={(e) => setOrderSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
         )}
       </div>
+
+      {currentOrderType === "dine_in" && (
+        <div className={cls.tablesGrid}>
+          {filteredTables.map((table) => {
+            const isSelected = isMultiSelectMode
+              ? selectedIds.includes(table.id)
+              : currentTable?.id === table.id;
+
+            const isDragOver = dragOverId === table.id;
+            const isDraggingThis = draggingId === table.id;
+
+            return (
+              <div
+                key={table.id}
+                className={`
+                  ${cls.tableItem}
+                  ${isSelected ? cls.selected : ""}
+                  ${isDraggingThis ? cls.dragging : ""}
+                  ${isDragOver ? cls.dragOver : ""}
+                `}
+                data-status={table.status || "available"}
+                onClick={() => handleTableClick(table)}
+                draggable={!isMultiSelectMode}
+                onDragStart={(e) => handleDragStart(e, table)}
+                onDragEnd={handleDragEnd}
+                onDragOver={(e) => handleDragOver(e, table)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, table)}
+                title={!isMultiSelectMode ? "Kéo thả để gộp bàn" : ""}
+              >
+                <div className={cls.tableTop}>
+                  <span className={cls.tableCode}>{table.code}</span>
+                  <button
+                    className={cls.kebab}
+                    onClick={(e) => openActionModal(e, table)}
+                  >
+                    <IconDots />
+                  </button>
+                </div>
+
+                <div className={cls.tableMeta}>
+                  <span className={cls.capacity}>{table.capacity || 4} chỗ</span>
+                  <span className={cls.statusText}>
+                    {table.status === "occupied"
+                      ? "Có khách"
+                      : table.status === "reserved"
+                      ? "Đã đặt"
+                      : table.status === "cleaning"
+                      ? "Đang dọn"
+                      : "Trống"}
+                  </span>
+                </div>
+
+                {isSelected && isMultiSelectMode && (
+                  <div className={cls.checkOverlay}>
+                    <IconCheck />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {filteredTables.length === 0 && (
+            <div className={cls.emptyState}>Không tìm thấy bàn nào</div>
+          )}
+        </div>
+      )}
+
+      {currentOrderType !== "dine_in" && (
+        <div className={cls.tablesGrid}>
+          {ordersLoading && (
+            <div className={cls.emptyState}>Đang tải danh sách đơn...</div>
+          )}
+          {!ordersLoading &&
+            offPremiseOrders.map((order) => (
+              <div
+                key={order.id}
+                className={cls.tableItem}
+                data-status={order.currentStatus || "pending"}
+                onClick={() => handleOffPremiseOrderClick(order)}
+              >
+                <div className={cls.tableTop}>
+                  <span className={cls.tableCode}>{order.orderCode}</span>
+                </div>
+                <div className={cls.tableMeta}>
+                  <span className={cls.capacity}>
+                    {order.customerInfo?.name || "Khách lẻ"}
+                  </span>
+                  <span className={cls.statusText}>
+                    {order.currentStatus || "pending"}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+          {!ordersLoading && offPremiseOrders.length === 0 && (
+            <div className={cls.emptyState}>Chưa có đơn nào</div>
+          )}
+        </div>
+      )}
 
       {/* MODALS */}
       {actionTable && (

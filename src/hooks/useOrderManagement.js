@@ -666,8 +666,10 @@ export default function useOrderManagement(pos = null) {
     const dishId = it.dishId || it.id || it.dish_id || null;
     const menuId = it.menuId || it.menuItemId || it.menu_id || null;
     const categoryId = it.categoryId || it.category_id || null;
+    const servingKey =
+      it.servingKey || it.variantKey || it.servingVariantKey || null;
 
-    if (!dishId || !menuId || !categoryId) {
+    if (!dishId || !menuId || !categoryId || !servingKey) {
       return {
         _invalid: true,
         _index: idx,
@@ -678,8 +680,10 @@ export default function useOrderManagement(pos = null) {
 
     const unit = it.unit || "portion";
     const rawQty = it.quantity != null ? it.quantity : 1;
+    const hasServingVariant = it.servingVariant && it.servingVariant.mode;
 
     let quantity;
+    let weightGrams = null;
     if (unit === "kg") {
       const f = parseFloat(rawQty);
       if (!Number.isFinite(f) || f <= 0) {
@@ -691,6 +695,7 @@ export default function useOrderManagement(pos = null) {
         };
       }
       quantity = Math.round(f * 10) / 10;
+      weightGrams = Math.round(quantity * 1000);
     } else {
       const n = Math.round(Number(rawQty) || 0);
       if (!Number.isFinite(n) || n <= 0) {
@@ -716,6 +721,16 @@ export default function useOrderManagement(pos = null) {
       note: it.description || it.note || "",
       quantity,
       proofImages: it.proofImages || [],
+      servingKey,
+      servingVariant: hasServingVariant
+        ? {
+            name: it.servingVariant.name,
+            price: Number(it.servingVariant.price ?? it.price ?? 0),
+            mode: it.servingVariant.mode,
+          }
+        : null,
+      basePrice: hasServingVariant ? null : Number(it.price || 0),
+      weightGrams: weightGrams,
       modifiers: (it.modifiers || []).map((m) => ({
         optionId: m.optionId,
         optionName: m.optionName,
@@ -836,14 +851,16 @@ export default function useOrderManagement(pos = null) {
     dishId,
     unit,
     variantName,
+    variantKey,
     note,
     proofImages,
     modifiers,
   }) => {
+    const variantSig = norm(variantKey || "") || norm(variantName || "");
     return [
       norm(dishId),
       norm(unit || "portion"),
-      norm(variantName || ""), // ✅ chỉ 1 field
+      variantSig, // ✅ ưu tiên variantKey nếu có
       norm(note || ""),
       normalizeProofKey(proofImages),
       normalizeModsKey(modifiers),
@@ -1171,21 +1188,42 @@ export default function useOrderManagement(pos = null) {
       price = null,
       proofImages = [],
       variantName = "",
+      variantKey = "",
+      servingKey: servingKeyInput = "",
+      cookingOption = "",
+      variant = null,
       modifiers = [],
     }) => {
       if (!menuItem) return;
-      const itemPrice =
+      const variantLabel = variantName || cookingOption || variant?.name || "";
+      const itemPrice = Number(
         price ??
-        menuItem._displayPrice ??
-        menuItem.price ??
-        menuItem.basePrice ??
-        0;
+          menuItem._displayPrice ??
+          menuItem.price ??
+          menuItem.basePrice ??
+          0
+      );
+      const servingKey =
+        servingKeyInput ||
+        variantKey ||
+        variant?.key ||
+        menuItem?.defaultServingKey ||
+        "";
+      const resolvedPrice = Number.isFinite(itemPrice) ? itemPrice : 0;
       const chosenUnit = unit || (menuItem.byWeight ? "kg" : "portion");
+      const servingVariant =
+        variant && variant.name && variant.mode
+          ? {
+              name: variant.name,
+              price: Number(variant.price ?? itemPrice),
+              mode: variant.mode,
+            }
+          : null;
       const incomingSig = makeLineSignature({
         dishId: menuItem.dishId || menuItem.id,
         unit: chosenUnit,
-        variantKey,
-        variantName: variantName || cookingOption, // fallback nếu bạn vẫn truyền cookingOption
+        variantKey: variantKey || variant?.key,
+        variantName: variantLabel,
         note,
         proofImages,
         modifiers,
@@ -1226,25 +1264,31 @@ export default function useOrderManagement(pos = null) {
           ...updated[idx],
           quantity: nextQty,
           lineSubtotal:
-            (itemPrice + Number(updated[idx].modifiersPrice || 0)) * nextQty,
+            (resolvedPrice + Number(updated[idx].modifiersPrice || 0)) *
+            nextQty,
           _edited: true,
         };
         setCurrentOrder(updated);
       } else {
-        const newItem = {
-          _lineId: makeLineId(),
-          dishId: menuItem.id,
-          menuId: menuItem.menuId,
-          categoryId: menuItem.categoryId,
-          name: menuItem.name,
-          image: menuItem.image || menuItem.thumbImage,
-          unit: chosenUnit,
-          price: Number(itemPrice),
-          modifiersPrice: 0,
-          method: cookingOption,
-          note: note,
+      const newItem = {
+        _lineId: makeLineId(),
+        dishId: menuItem.id,
+        menuId: menuItem.menuId,
+        categoryId: menuItem.categoryId,
+        name: menuItem.name,
+        image: menuItem.image || menuItem.thumbImage,
+        unit: chosenUnit,
+        price: Number(resolvedPrice),
+        modifiersPrice: 0,
+        method: variantLabel,
+        variantName: variantLabel,
+        variantKey: variantKey || variant?.key || "",
+        servingKey,
+        defaultServingKey: menuItem?.defaultServingKey || "",
+        servingVariant,
+        note: note,
           quantity: q,
-          lineSubtotal: Number(itemPrice) * q,
+          lineSubtotal: Number(resolvedPrice) * q,
           isNew: true,
           isExisting: false,
           proofImages: proofImages || [],

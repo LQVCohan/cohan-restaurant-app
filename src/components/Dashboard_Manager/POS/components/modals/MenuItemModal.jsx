@@ -107,7 +107,8 @@ export default function MenuItemModal({
 
   // --- DERIVED VALUES ---
   const variants = useMemo(() => {
-    return Array.isArray(item?.servingVariants) ? item.servingVariants : [];
+    if (Array.isArray(item?.servingVariants)) return item.servingVariants;
+    return [];
   }, [item]);
   const activeVariant = useMemo(() => {
     return (
@@ -118,8 +119,8 @@ export default function MenuItemModal({
   const currentUnit = useMemo(() => {
     if (!activeVariant) return "portion";
     return activeVariant.mode === "BY_WEIGHT"
-      ? "kg"
-      : activeVariant.yieldUnit || "portion";
+      ? activeVariant.sellUnit || "kg"
+      : activeVariant.sellUnit || "portion";
   }, [activeVariant]);
 
   // 🔥 LOGIC GIÁ: Trả về null nếu variant.price là null
@@ -130,6 +131,10 @@ export default function MenuItemModal({
       // ✅ null nghĩa là "chưa có giá"
       if (activeVariant.price === null) return null;
       return Number(activeVariant.price ?? 0);
+    }
+
+    if (item?._displayPrice !== undefined && item?._displayPrice !== null) {
+      return Number(item._displayPrice);
     }
 
     return Number(item?.basePrice ?? 0);
@@ -220,20 +225,25 @@ export default function MenuItemModal({
   // --- EFFECTS ---
   useEffect(() => {
     if (isOpen && item) {
+      const variantList = Array.isArray(item.servingVariants)
+        ? item.servingVariants
+        : [];
+      const defaultVariant =
+        variantList.find((v) => v?.isDefault) ||
+        (variantList.length === 1 ? variantList[0] : null) ||
+        variantList[0] ||
+        null;
+
       if (isReviewMode) {
         setQty(item.quantity || 1);
         setQtyInput(String(item.quantity || 1));
         setNote(item.note || "");
-        setSelectedVariantKey(item.variantKey || null);
+        setSelectedVariantKey(item.variantKey || defaultVariant?.key || null);
       } else {
         setQty(1);
         setQtyInput("1");
         setNote("");
-        if (item.servingVariants && item.servingVariants.length > 0) {
-          setSelectedVariantKey(item.servingVariants[0].key);
-        } else {
-          setSelectedVariantKey(null);
-        }
+        setSelectedVariantKey(defaultVariant?.key || null);
       }
 
       setProofPreviews(
@@ -303,6 +313,10 @@ export default function MenuItemModal({
       menuItem: item,
       quantity: finalQty,
       variantName: activeVariant?.name || "",
+      variantKey: activeVariant?.key || "",
+      servingKey: activeVariant?.key || item?.defaultServingKey || "",
+      variant: activeVariant || null,
+      cookingOption: activeVariant?.name || "",
       unit: currentUnit,
       note,
       price: currentPrice,
