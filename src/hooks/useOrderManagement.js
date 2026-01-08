@@ -1605,7 +1605,15 @@ export default function useOrderManagement(pos = null) {
             data: serverOrder,
           };
         } catch (err) {
-          return { success: false, message: err.message };
+          const messages = err?.graphQLErrors?.length
+            ? err.graphQLErrors.map((e) => e.message)
+            : [err?.message || "Lưu đơn dine-in thất bại."];
+          console.error("createOrderForTable failed:", err);
+          return {
+            success: false,
+            message: messages.join(" | "),
+            errors: messages,
+          };
         }
       }
 
@@ -1722,9 +1730,14 @@ export default function useOrderManagement(pos = null) {
           data: serverOrder,
         };
       } catch (err) {
+        const messages = err?.graphQLErrors?.length
+          ? err.graphQLErrors.map((e) => e.message)
+          : [err?.message || "Tạo đơn giao/mang về thất bại."];
+        console.error("createOffPremiseOrder failed:", err);
         return {
           success: false,
-          message: err?.message || "Tạo đơn giao/mang về thất bại.",
+          message: messages.join(" | "),
+          errors: messages,
         };
       }
     },

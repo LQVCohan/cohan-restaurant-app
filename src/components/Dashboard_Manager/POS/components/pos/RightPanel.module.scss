@@ -557,6 +557,31 @@ $gray-slate-900: #0f172a;
   }
 }
 
+.btnLoading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  border-top-color: #fff;
+  animation: posSpin 0.8s linear infinite;
+}
+
+@keyframes posSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .primary {
   background: $orange-primary;
 

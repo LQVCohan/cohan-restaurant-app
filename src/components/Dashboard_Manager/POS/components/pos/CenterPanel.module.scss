@@ -126,6 +126,89 @@ $radius-md: 0.75rem;
   }
 }
 
+.searchDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+  padding: 0.5rem;
+  z-index: 20;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.searchSection + .searchSection {
+  margin-top: 0.35rem;
+  border-top: 1px dashed $border-color;
+  padding-top: 0.35rem;
+}
+
+.searchSectionTitle {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: $text-gray;
+  margin: 0.2rem 0.6rem 0.3rem;
+  font-weight: 600;
+}
+
+.searchItem {
+  width: 100%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: #f8fafc;
+  }
+}
+
+.searchThumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.searchEmoji {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  font-size: 1rem;
+}
+
+.searchText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.searchName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: $text-dark;
+}
+
+.searchMeta {
+  font-size: 0.75rem;
+  color: $text-gray;
+}
+
 /* ================= TABS ================= */
 .tabsScroll {
   overflow-x: auto;
