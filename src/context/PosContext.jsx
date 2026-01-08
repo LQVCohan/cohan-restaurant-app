@@ -247,15 +247,23 @@ export default function PosProvider({
 
   // ===== Draft key (autosave FE) =====
   const getDraftKey = useCallback(() => {
+    if (currentOrderType === "dine_in" && (currentTable?.id || currentTable?.code)) {
+      const tableKey = currentTable?.id || currentTable?.code;
+      return `pos_draft_table_${restaurantId}_${tableKey}`;
+    }
     if (currentOrderCode) return `pos_draft_${currentOrderCode}`;
-    if (currentOrderType === "dine_in" && currentTable?.code)
-      return `pos_draft_table_${restaurantId}_${currentTable.code}`;
     if (currentOrderType === "delivery")
       return `pos_draft_ship_${restaurantId}`;
     if (currentOrderType === "takeaway")
       return `pos_draft_take_${restaurantId}`;
     return null;
-  }, [currentOrderCode, currentOrderType, currentTable?.code, restaurantId]);
+  }, [
+    currentOrderCode,
+    currentOrderType,
+    currentTable?.id,
+    currentTable?.code,
+    restaurantId,
+  ]);
 
   const getDraftKeyForTable = useCallback(
     (tableCode) => {
@@ -284,6 +292,7 @@ export default function PosProvider({
         savedAt: Date.now(),
         currentOrderType,
         currentOrderCode,
+        tableId: currentTable?.id || null,
         tableCode: currentTable?.code || null,
         items: draftItems,
         shippingInfo:
@@ -299,6 +308,7 @@ export default function PosProvider({
     currentOrder,
     currentOrderType,
     currentOrderCode,
+    currentTable?.id,
     currentTable?.code,
     shippingInfo,
     deliveryCustomer,
@@ -461,6 +471,7 @@ export default function PosProvider({
                 savedAt: Date.now(),
                 currentOrderType,
                 currentOrderCode,
+                tableId: currentTable?.id || null,
                 tableCode: currentTable.code,
                 items: draftNew,
               })
