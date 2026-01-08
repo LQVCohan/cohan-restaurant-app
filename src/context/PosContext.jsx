@@ -438,6 +438,10 @@ export default function PosProvider({
         currentTable?.code &&
         currentTable.code !== code;
 
+      if (switchingToDifferentTable || !currentTable?.code) {
+        skipDraftAutosaveRef.current = true;
+      }
+
       // giữ món mới để append lại sau khi load BE group
       const draftNew = (currentOrder || []).filter((i) => i?.isNew);
       const preserveDraftItems =
