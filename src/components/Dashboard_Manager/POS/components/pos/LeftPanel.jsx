@@ -228,7 +228,7 @@ export default function LeftPanel() {
   useEffect(() => {
     if (!restaurantId) return;
     try {
-      const prefix = `pos_draft_table_${restaurantId}_`;
+      const prefix = "pos_draft_";
       const next = new Set();
       for (let i = 0; i < localStorage.length; i += 1) {
         const key = localStorage.key(i);
@@ -237,10 +237,10 @@ export default function LeftPanel() {
         if (!raw) continue;
         const payload = JSON.parse(raw);
         const items = Array.isArray(payload?.items) ? payload.items : [];
-        if (items.length > 0) {
-          const code = key.slice(prefix.length);
-          if (code) next.add(code.toLowerCase());
-        }
+        if (!items.length) continue;
+        if (payload?.currentOrderType !== "dine_in") continue;
+        const code = payload?.tableCode;
+        if (code) next.add(String(code).toLowerCase());
       }
       setDraftTableCodes(next);
     } catch {

@@ -447,7 +447,7 @@ export default function PosProvider({
         draftNew.length > 0;
 
       if (preserveDraftItems) {
-        const oldKey = getDraftKeyForTable(currentTable.code);
+        const oldKey = getDraftKey();
         if (oldKey) {
           try {
             localStorage.setItem(
@@ -536,7 +536,7 @@ export default function PosProvider({
       currentOrderType,
       currentTable?.code,
       currentOrderCode,
-      getDraftKeyForTable,
+      getDraftKey,
     ]
   );
 
