@@ -12,10 +12,10 @@ import useSocketOrder from "./useSocketOrder";
    1) GRAPHQL
    ============================================================ */
 
-/** ✅ CREATE OR APPEND TABLE ORDER (dine-in) */
-const CREATE_OR_APPEND_TABLE_ORDER = gql`
-  mutation CreateOrAppendTableOrder($input: CreateOrAppendTableOrderInput!) {
-    createOrAppendTableOrder(input: $input) {
+/** ✅ CREATE ORDER FOR TABLE (dine-in) */
+const CREATE_ORDER_FOR_TABLE = gql`
+  mutation CreateOrderForTable($input: CreateOrderForTableInput!) {
+    createOrderForTable(input: $input) {
       isNewOrder
       order {
         id
@@ -33,14 +33,31 @@ const CREATE_OR_APPEND_TABLE_ORDER = gql`
           categoryId
           name
           unit
-          price
+          basePrice
+          servingKey
+          servingVariant {
+            key
+            name
+            mode
+            price
+            sellQty
+            sellUnit
+          }
           modifiersPrice
-          method
+          unitPrice
+          lineSubtotal
           note
           quantity
+          weightGrams
           status
           image
           proofImages
+          modifiers {
+            groupId
+            groupName
+            optionId
+            optionName
+          }
         }
         totals {
           subtotal
@@ -94,19 +111,30 @@ const CREATE_OFF_PREMISE_ORDER = gql`
           categoryId
           name
           unit
-          price
+          basePrice
+          servingKey
+          servingVariant {
+            key
+            name
+            mode
+            price
+            sellQty
+            sellUnit
+          }
           modifiersPrice
-          method
+          unitPrice
+          lineSubtotal
           note
           quantity
+          weightGrams
           status
           image
           proofImages
           modifiers {
+            groupId
+            groupName
             optionId
             optionName
-            groupId
-            price
           }
         }
         totals {
@@ -159,19 +187,30 @@ const ORDERS_GROUPED_BY_TABLE = gql`
           categoryId
           name
           unit
-          price
+          basePrice
+          servingKey
+          servingVariant {
+            key
+            name
+            mode
+            price
+            sellQty
+            sellUnit
+          }
           modifiersPrice
-          method
+          unitPrice
+          lineSubtotal
           note
           quantity
+          weightGrams
           status
           image
           proofImages
           modifiers {
+            groupId
+            groupName
             optionId
             optionName
-            groupId
-            price
           }
         }
         totals {
@@ -217,11 +256,22 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             categoryId
             name
             unit
-            price
+            basePrice
+            servingKey
+            servingVariant {
+              key
+              name
+              mode
+              price
+              sellQty
+              sellUnit
+            }
             modifiersPrice
-            method
+            unitPrice
+            lineSubtotal
             note
             quantity
+            weightGrams
             status
           }
           totals {
@@ -278,11 +328,22 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
             categoryId
             name
             unit
-            price
+            basePrice
+            servingKey
+            servingVariant {
+              key
+              name
+              mode
+              price
+              sellQty
+              sellUnit
+            }
             modifiersPrice
-            method
+            unitPrice
+            lineSubtotal
             note
             quantity
+            weightGrams
             status
           }
           totals {
@@ -320,11 +381,22 @@ const GET_ORDER = gql`
         categoryId
         name
         unit
-        price
+        basePrice
+        servingKey
+        servingVariant {
+          key
+          name
+          mode
+          price
+          sellQty
+          sellUnit
+        }
         modifiersPrice
-        method
+        unitPrice
+        lineSubtotal
         note
         quantity
+        weightGrams
         status
       }
       totals {
@@ -404,9 +476,13 @@ const UPDATE_ORDER_ITEM_STATUS = gql`
           dishId
           name
           status
-          price
           modifiersPrice
+          unitPrice
           quantity
+          servingVariant {
+            key
+            name
+          }
         }
         updatedAt
       }
@@ -462,7 +538,7 @@ export default function useOrderManagement(pos = null) {
   const lastPreparedOrderIdRef = useRef(null);
 
   // apollo mutations
-  const [createOrAppendOrder] = useMutation(CREATE_OR_APPEND_TABLE_ORDER);
+  const [createOrderForTable] = useMutation(CREATE_ORDER_FOR_TABLE);
   const [createOffPremiseOrder] = useMutation(CREATE_OFF_PREMISE_ORDER);
   const [mutPayByTable, { loading: payLoadingByTable }] = useMutation(
     PAY_ORDERS_BY_TABLE_ID
@@ -488,6 +564,53 @@ export default function useOrderManagement(pos = null) {
   const [loadGroupsQuery] = useLazyQuery(ORDERS_GROUPED_BY_TABLE, {
     fetchPolicy: "network-only",
   });
+
+  /* ============================================================
+     4) HELPERS
+     ============================================================ */
+
+  const getItemUnitPrice = useCallback(
+    (it) =>
+      Number(
+        it?.unitPrice ??
+          it?.price ??
+          it?.servingVariant?.price ??
+          it?.basePrice ??
+          0
+      ),
+    []
+  );
+
+  const getItemMethod = useCallback(
+    (it) =>
+      (it?.method ||
+        it?.cookingOption ||
+        it?.servingVariant?.name ||
+        it?.variantName ||
+        it?.servingKey ||
+        "") ??
+      "",
+    []
+  );
+
+  const mapServerItemToUi = useCallback(
+    (it) => {
+      const price = getItemUnitPrice(it);
+      const modifiersPrice = Number(it?.modifiersPrice ?? 0);
+      const quantity = Number(it?.quantity ?? 0);
+      const lineSubtotal =
+        it?.lineSubtotal != null
+          ? Number(it.lineSubtotal)
+          : (price + modifiersPrice) * quantity;
+      return {
+        ...it,
+        price,
+        method: getItemMethod(it),
+        lineSubtotal,
+      };
+    },
+    [getItemMethod, getItemUnitPrice]
+  );
 
   /* ============================================================
      SOCKET REALTIME EVENTS
@@ -530,18 +653,18 @@ export default function useOrderManagement(pos = null) {
       // Hydrate currentOrder ở UI bằng gộp món
       if (latest) {
         const merged = mergeGroupItems(latest);
-        const uiItems = merged.items.map((i) => ({
-          ...i,
-          lineSubtotal:
-            (Number(i.price || 0) + Number(i.modifiersPrice || 0)) *
-            Number(i.quantity || 0),
-          isExisting: true,
-          isNew: false,
-          _edited: false,
-          _lineId: `grp_${latest.orderCode}_${(i.dishId || i.name || "x")
-            .toString()
-            .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
-        }));
+        const uiItems = merged.items.map((i) => {
+          const base = mapServerItemToUi(i);
+          return {
+            ...base,
+            isExisting: true,
+            isNew: false,
+            _edited: false,
+            _lineId: `grp_${latest.orderCode}_${(i.dishId || i.name || "x")
+              .toString()
+              .slice(0, 6)}_${Math.random().toString(36).slice(2, 5)}`,
+          };
+        });
         setCurrentOrder?.(uiItems);
         const key = tableCode || latest.tableCode || latest.tableId || "";
         if (setTableOrders && key) {
@@ -556,7 +679,7 @@ export default function useOrderManagement(pos = null) {
       }
       return gs;
     },
-    [loadGroupsQuery, setCurrentOrder, setTableOrders]
+    [loadGroupsQuery, mapServerItemToUi, setCurrentOrder, setTableOrders]
   );
 
   useSocketOrder(restaurantId, {
@@ -650,10 +773,6 @@ export default function useOrderManagement(pos = null) {
     setTotals(newTotals);
   }, [currentOrder]);
 
-  /* ============================================================
-     4) HELPERS
-     ============================================================ */
-
   const makeLineId = useCallback(
     () =>
       `line_${Date.now().toString(36)}_${Math.random()
@@ -715,28 +834,28 @@ export default function useOrderManagement(pos = null) {
       categoryId,
       name: it.name,
       unit,
-      price: Math.round(it.price || 0),
-      modifiersPrice: Math.round(it.modifiersPrice || 0),
-      method: it.method || it.cookingOption || "",
+      basePrice: hasServingVariant ? null : Math.round(it.price || 0),
       note: it.description || it.note || "",
       quantity,
       proofImages: it.proofImages || [],
       servingKey,
       servingVariant: hasServingVariant
         ? {
+            key: it.servingVariant.key || servingKey,
             name: it.servingVariant.name,
             price: Number(it.servingVariant.price ?? it.price ?? 0),
             mode: it.servingVariant.mode,
+            sellQty: it.servingVariant.sellQty ?? null,
+            sellUnit: it.servingVariant.sellUnit ?? null,
           }
         : null,
-      basePrice: hasServingVariant ? null : Number(it.price || 0),
       weightGrams: weightGrams,
-      modifiers: (it.modifiers || []).map((m) => ({
-        optionId: m.optionId,
-        optionName: m.optionName,
-        groupId: m.groupId,
-        price: Math.round(m.price || 0),
-      })),
+      selectedModifiers: (it.modifiers || [])
+        .map((m) => ({
+          groupId: m.groupId,
+          optionId: m.optionId || m.id,
+        }))
+        .filter((m) => m.groupId && m.optionId),
     };
   }, []);
 
@@ -770,12 +889,31 @@ export default function useOrderManagement(pos = null) {
               categoryId
               name
               unit
-              price
+              basePrice
+              servingKey
+              servingVariant {
+                key
+                name
+                mode
+                price
+                sellQty
+                sellUnit
+              }
               modifiersPrice
-              method
+              unitPrice
+              lineSubtotal
               note
               quantity
+              weightGrams
               status
+              image
+              proofImages
+              modifiers {
+                groupId
+                groupName
+                optionId
+                optionName
+              }
             }
           }
         `,
@@ -875,7 +1013,7 @@ export default function useOrderManagement(pos = null) {
         .join("|") || "";
 
     const unit = it.unit || "portion";
-    const method = it.method || it.cookingOption || "";
+    const method = getItemMethod(it);
     const dishId = it.dishId || it.id || it.name;
     const note = (it.note || "").trim();
 
@@ -938,7 +1076,7 @@ export default function useOrderManagement(pos = null) {
         prev.quantity = Number(prev.quantity || 0) + Number(it.quantity || 0);
 
         const currentItemTotal =
-          (Number(it.price || 0) + Number(it.modifiersPrice || 0)) *
+          (getItemUnitPrice(it) + Number(it.modifiersPrice || 0)) *
           Number(it.quantity || 0);
         prev.lineSubtotal = (prev.lineSubtotal || 0) + currentItemTotal;
 
@@ -949,7 +1087,7 @@ export default function useOrderManagement(pos = null) {
     for (const k of Object.keys(totalsAgg))
       totalsAgg[k] = Math.round(totalsAgg[k]);
     return { items: Array.from(map.values()), totals: totalsAgg };
-  }, []);
+  }, [getItemMethod, getItemUnitPrice]);
 
   /** Tổng gộp của group đang active (dine-in) */
   const mergedCurrent = useMemo(
@@ -1360,7 +1498,7 @@ export default function useOrderManagement(pos = null) {
 
   /* ============================================================
      9) SAVE / UPSERT
-     - dine_in → createOrAppendTableOrder
+     - dine_in → createOrderForTable
      - delivery/takeaway → createOffPremiseOrder
      ============================================================ */
 
@@ -1423,7 +1561,7 @@ export default function useOrderManagement(pos = null) {
         }
 
         try {
-          const res = await createOrAppendOrder({
+          const res = await createOrderForTable({
             variables: {
               input: {
                 restaurantId,
@@ -1443,7 +1581,7 @@ export default function useOrderManagement(pos = null) {
           });
 
           const serverOrder =
-            res?.data?.createOrAppendTableOrder?.order || null;
+            res?.data?.createOrderForTable?.order || null;
 
           if (serverOrder) {
             writeOrderIntoCache(serverOrder);
@@ -1595,7 +1733,7 @@ export default function useOrderManagement(pos = null) {
       currentTable,
       currentOrderType,
       orderNote,
-      createOrAppendOrder,
+      createOrderForTable,
       createOffPremiseOrder,
       setTableOrders,
       normalizeOutgoingItem,
@@ -1871,12 +2009,20 @@ export default function useOrderManagement(pos = null) {
       try {
         const res = await loadOrderById({ variables: { id } });
         const order = res?.data?.order ?? null;
-        return { success: true, data: order };
+        const mapped = order
+          ? {
+              ...order,
+              items: Array.isArray(order.items)
+                ? order.items.map(mapServerItemToUi)
+                : [],
+            }
+          : null;
+        return { success: true, data: mapped };
       } catch (err) {
         return { success: false, message: err.message };
       }
     },
-    [loadOrderById]
+    [loadOrderById, mapServerItemToUi]
   );
 
   /* ============================================================
@@ -1921,10 +2067,33 @@ export default function useOrderManagement(pos = null) {
      13) RETURN
      ============================================================ */
 
-  const ordersNow =
-    ordersNowData?.ordersByRestaurantNow?.edges?.map((e) => e.node) || [];
-  const ordersAll =
-    ordersAllData?.ordersByRestaurant?.edges?.map((e) => e.node) || [];
+  const mapOrderForUi = useCallback(
+    (order) => {
+      if (!order) return order;
+      const items = Array.isArray(order.items)
+        ? order.items.map(mapServerItemToUi)
+        : [];
+      return { ...order, items };
+    },
+    [mapServerItemToUi]
+  );
+
+  const ordersNow = useMemo(() => {
+    const nodes =
+      ordersNowData?.ordersByRestaurantNow?.edges?.map((e) => e.node) || [];
+    return nodes.map(mapOrderForUi);
+  }, [ordersNowData, mapOrderForUi]);
+
+  const ordersAll = useMemo(() => {
+    const nodes =
+      ordersAllData?.ordersByRestaurant?.edges?.map((e) => e.node) || [];
+    return nodes.map(mapOrderForUi);
+  }, [ordersAllData, mapOrderForUi]);
+
+  const orderById = useMemo(() => {
+    const order = orderByIdData?.order ?? null;
+    return order ? mapOrderForUi(order) : null;
+  }, [orderByIdData, mapOrderForUi]);
 
   const loadOrders = loadOrdersNow;
   const orders = ordersNow;
@@ -1974,7 +2143,7 @@ export default function useOrderManagement(pos = null) {
     ordersAllError,
 
     // single order cache & loader
-    orderById: orderByIdData?.order ?? null,
+    orderById,
     loadOrders,
     orders,
 
