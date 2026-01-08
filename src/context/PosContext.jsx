@@ -275,6 +275,10 @@ export default function PosProvider({
     }
     try {
       const draftItems = (currentOrder || []).filter((i) => i?.isNew);
+      if (draftItems.length === 0) {
+        localStorage.removeItem(key);
+        return;
+      }
       const payload = {
         version: 1,
         savedAt: Date.now(),

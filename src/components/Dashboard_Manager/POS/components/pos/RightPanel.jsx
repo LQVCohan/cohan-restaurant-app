@@ -672,7 +672,7 @@ export default function RightPanel() {
         isOpen={isConfirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleConfirmSave}
-        loading={saving}
+        isSaving={saving}
         orderType={currentOrderType}
         orderCode={currentOrderCode}
         tableCode={currentTable?.code || null}
@@ -696,12 +696,14 @@ export default function RightPanel() {
             <span className={cls.statusBadge}>{headerMeta.line2}</span>
           </div>
 
-          <div className={cls.draftLegend}>
-            <span className={cls.legendIcon}>
-              <IconDraft />
-            </span>
-            <span className={cls.legendText}>Món mới (chưa lưu)</span>
-          </div>
+          {newItems.length > 0 && (
+            <div className={cls.draftLegend}>
+              <span className={cls.legendIcon}>
+                <IconDraft />
+              </span>
+              <span className={cls.legendText}>Món mới (chưa lưu)</span>
+            </div>
+          )}
         </div>
 
         <div className={cls.headerRight}>
