@@ -361,7 +361,7 @@ type Order {
 # INPUTS – CREATE / UPDATE
 # =========================================================
 
-input CreateOrAppendTableOrderInput {
+input CreateOrderForTableInput {
   restaurantId: ID!
   tableId: ID
   tableCode: String!
@@ -376,7 +376,7 @@ input CreateOrAppendTableOrderInput {
   warehouseId: ID
 }
 
-type CreateOrAppendTableOrderPayload {
+type CreateOrderForTablePayload {
   isNewOrder: Boolean!
   order: Order!
 }
@@ -520,9 +520,9 @@ extend type Query {
 }
 
 extend type Mutation {
-  createOrAppendTableOrder(
-    input: CreateOrAppendTableOrderInput!
-  ): CreateOrAppendTableOrderPayload!
+  createOrderForTable(
+    input: CreateOrderForTableInput!
+  ): CreateOrderForTablePayload!
 
   createOffPremiseOrder(
     input: CreateOffPremiseOrderInput!
