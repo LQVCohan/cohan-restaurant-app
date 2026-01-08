@@ -602,6 +602,7 @@ export default function RightPanel() {
         }
 
         setConfirmOpen(false);
+        setTimeout(() => window.location.reload(), 300);
       } else {
         showNotification(res?.message || "Lưu đơn thất bại.", "error");
       }

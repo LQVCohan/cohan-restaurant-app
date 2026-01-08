@@ -39,6 +39,15 @@ const FRAG_MENU_ITEM = gql`
     basePrice
     defaultServingKey
     hasByWeightVariant
+    servingVariants {
+      key
+      name
+      mode
+      sellQty
+      sellUnit
+      price
+      isDefault
+    }
 
     taxRate
     servingPortion
@@ -198,14 +207,76 @@ const TIME_SLOT_OPTIONS = [
   { value: "late_night", label: "Đêm" },
 ];
 
-function coalesceNumber(n, fallback = 0) {
+const coalesceNumber = (n, fallback = null) => {
   const v = Number(n);
   return Number.isFinite(v) ? v : fallback;
+};
+
+function computeItemPricing(item) {
+  const variants = Array.isArray(item?.servingVariants)
+    ? item.servingVariants.filter(Boolean)
+    : [];
+
+  const normalized = variants.map((v, idx) => {
+    const key = v.key || `variant_${idx}`;
+    return {
+      key,
+      name: v.name || "",
+      mode: v.mode || "PORTION",
+      sellUnit: v.sellUnit || "portion",
+      price:
+        v.price === null || v.price === undefined
+          ? null
+          : coalesceNumber(v.price, null),
+      isDefault: !!v.isDefault,
+    };
+  });
+
+  const defaultVariant =
+    normalized.find((v) => v.isDefault) ||
+    (normalized.length === 1 ? normalized[0] : null);
+
+  const priceList = normalized
+    .map((v) => v.price)
+    .filter((p) => Number.isFinite(p) && p >= 0);
+
+  const basePrice =
+    Number.isFinite(item?.basePrice) && item.basePrice >= 0
+      ? item.basePrice
+      : null;
+
+  const displayPrice = Number.isFinite(
+    defaultVariant?.price ?? basePrice ?? priceList[0]
+  )
+    ? coalesceNumber(defaultVariant?.price ?? basePrice ?? priceList[0], null)
+    : null;
+
+  const hasRange = !defaultVariant && priceList.length > 0;
+  const minPrice = priceList.length ? Math.min(...priceList) : null;
+  const maxPrice = priceList.length ? Math.max(...priceList) : null;
+
+  const priceRange =
+    hasRange && minPrice !== null
+      ? { min: minPrice, max: maxPrice ?? minPrice }
+      : null;
+
+  const unit =
+    defaultVariant?.mode === "BY_WEIGHT"
+      ? defaultVariant.sellUnit || "kg"
+      : "portion";
+
+  return {
+    variants: normalized,
+    defaultVariant,
+    displayPrice,
+    priceRange,
+    unit,
+  };
 }
 
 function computeItemPrice(item) {
-  const base = coalesceNumber(item?.basePrice, 0);
-  return base;
+  const price = computeItemPricing(item).displayPrice;
+  return Number.isFinite(price) ? price : 0;
 }
 
 /* ======================= Hook ======================= */
@@ -344,10 +415,17 @@ export default function useMenuManagement({
 
   const itemsWithPrice = useMemo(
     () =>
-      (items || []).map((it) => ({
-        ...it,
-        _displayPrice: computeItemPrice(it),
-      })),
+      (items || []).map((it) => {
+        const pricing = computeItemPricing(it);
+        return {
+          ...it,
+          _displayPrice: pricing.displayPrice,
+          _priceRange: pricing.priceRange,
+          _defaultVariant: pricing.defaultVariant,
+          _normalizedVariants: pricing.variants,
+          _displayUnit: pricing.unit,
+        };
+      }),
     [items]
   );
 
@@ -642,6 +720,7 @@ export default function useMenuManagement({
 
     // helpers
     computeItemPrice,
+    computeItemPricing,
     findItemByName,
 
     // mutations

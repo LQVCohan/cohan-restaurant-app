@@ -1,8 +1,9 @@
 // src/graphql/resolvers/menu/index.js
 
+import mongoose from "mongoose";
 import { MenuQuery } from "./query.js";
 import { MenuMutation } from "./mutation.js";
-import { CategoryMenu } from "../../../models/index.js";
+import { CategoryMenu, Recipe } from "../../../models/index.js";
 
 export default {
   Query: {
@@ -14,15 +15,27 @@ export default {
   },
 
   MenuItem: {
-    servingVariants(parent) {
-      console.log(
-        "🔥 [MenuItem.servingVariants] id=",
-        parent.id || parent._id,
-        "recipe=",
-        parent.recipe
-      );
+    async servingVariants(parent) {
+      if (parent?.recipe && Array.isArray(parent.recipe.servingVariants)) {
+        return parent.recipe.servingVariants;
+      }
 
-      return parent?.recipe?.servingVariants || [];
+      const menuItemId = parent._id || parent.id;
+      if (!menuItemId || !mongoose.isValidObjectId(menuItemId)) return [];
+
+      const filter = { menuItemId };
+      if (
+        parent.restaurantId &&
+        mongoose.isValidObjectId(parent.restaurantId)
+      ) {
+        filter.restaurantId = parent.restaurantId;
+      }
+
+      const recipe = await Recipe.findOne(filter)
+        .select({ servingVariants: 1 })
+        .lean();
+
+      return recipe?.servingVariants || [];
     },
   },
 
