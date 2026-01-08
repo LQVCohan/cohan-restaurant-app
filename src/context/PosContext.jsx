@@ -257,6 +257,14 @@ export default function PosProvider({
     return null;
   }, [currentOrderCode, currentOrderType, currentTable?.code, restaurantId]);
 
+  const getDraftKeyForTable = useCallback(
+    (tableCode) => {
+      if (!tableCode) return null;
+      return `pos_draft_table_${restaurantId}_${tableCode}`;
+    },
+    [restaurantId]
+  );
+
   // ===== Auto-save only isNew (FE) =====
   useEffect(() => {
     const key = getDraftKey();
