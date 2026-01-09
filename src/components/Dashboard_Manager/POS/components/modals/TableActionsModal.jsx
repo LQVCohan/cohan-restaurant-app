@@ -1,9 +1,28 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { gql, useMutation } from "@apollo/client";
 import s from "./TableActionsModal.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import useOrderManagement from "../../../../../hooks/useOrderManagement";
 import { useReservation } from "../../../../../hooks/useReservation";
+import useTableCustomers from "../../../../../hooks/useTableCustomers";
+
+const UPSERT_TABLE_CUSTOMER = gql`
+  mutation UpsertTableCustomer($input: UpsertTableCustomerInput!) {
+    upsertTableCustomer(input: $input) {
+      id
+      tableId
+      tableCode
+      orderCode
+      customerName
+      customerPhone
+      customerEmail
+      note
+      partySize
+      timeTo
+    }
+  }
+`;
 
 // --- ICONS SVG ---
 const IconX = () => (
@@ -62,6 +81,9 @@ function TableActionsModalCore({
   const { changeOrderStatusByCode, updateOrderCustomerByCode } =
     useOrderManagement();
   const { findConfirmedByTable } = useReservation();
+  const { customers: tableCustomers, refetch: refetchTableCustomers } =
+    useTableCustomers({ restaurantId });
+  const [upsertTableCustomer] = useMutation(UPSERT_TABLE_CUSTOMER);
 
   const [orderCodeForTable, setOrderCodeForTable] = useState(null);
 
@@ -139,6 +161,7 @@ function TableActionsModalCore({
 
   const hydratedReservationFor = useRef(null);
   const hydratedOrderFor = useRef(null);
+  const hydratedTableCustomerFor = useRef(null);
 
   useEffect(() => {
     if (table && reallyOpen) {
@@ -155,6 +178,7 @@ function TableActionsModalCore({
       setOrderCodeForTable(null);
       hydratedReservationFor.current = null;
       hydratedOrderFor.current = null;
+      hydratedTableCustomerFor.current = null;
 
       setCust({
         name: "",
@@ -248,6 +272,53 @@ function TableActionsModalCore({
       cancelled = true;
     };
   }, [reallyOpen, restaurantId, table?.id, table?.code, table?.status]);
+
+  const matchedTableCustomer = useMemo(() => {
+    if (!table || !Array.isArray(tableCustomers)) return null;
+    const byId = table.id
+      ? tableCustomers.find((c) => String(c.tableId) === String(table.id))
+      : null;
+    if (byId) return byId;
+    const byCode = table.code
+      ? tableCustomers.find(
+          (c) =>
+            String(c.tableCode || "").toLowerCase() ===
+            String(table.code || "").toLowerCase()
+        )
+      : null;
+    if (byCode) return byCode;
+    const byOrder = orderCodeForTable
+      ? tableCustomers.find(
+          (c) => String(c.orderCode || "") === String(orderCodeForTable)
+        )
+      : null;
+    return byOrder || null;
+  }, [table, tableCustomers, orderCodeForTable]);
+
+  useEffect(() => {
+    if (!reallyOpen || !table?.id || !matchedTableCustomer) return;
+    if (hydratedTableCustomerFor.current === table.id) return;
+    if (table?.status === "reserved") return;
+    if (table?.status === "occupied" && orderCodeForTable) return;
+
+    const { date, time } = isoToDateTimeParts(matchedTableCustomer.timeTo);
+    setCustIfChanged({
+      name: matchedTableCustomer.customerName ?? "",
+      phone: matchedTableCustomer.customerPhone ?? "",
+      email: matchedTableCustomer.customerEmail ?? "",
+      guests: Number(matchedTableCustomer.partySize || 0),
+      checkinDate: date || getTodayLocal(),
+      checkinTimeTo: time || "",
+      note: matchedTableCustomer.note ?? "",
+    });
+    hydratedTableCustomerFor.current = table.id;
+  }, [
+    matchedTableCustomer,
+    orderCodeForTable,
+    reallyOpen,
+    table?.id,
+    table?.status,
+  ]);
 
   const floorsSorted = useMemo(
     () => (floors || []).slice().sort((a, b) => a.level - b.level),
@@ -535,6 +606,35 @@ function TableActionsModalCore({
     }
   };
 
+  const buildTableCustomerInput = (opts = {}) => {
+    const timeTo =
+      useTimeslot && cust.checkinDate && cust.checkinTimeTo
+        ? combineDateTimeToISO(cust.checkinDate, cust.checkinTimeTo)
+        : null;
+    return {
+      restaurantId,
+      tableId: table?.id || undefined,
+      tableCode: table?.code || undefined,
+      orderCode: opts.orderCode || orderCodeForTable || undefined,
+      customerName: (cust.name || "").trim() || null,
+      customerPhone: (cust.phone || "").trim() || null,
+      customerEmail: (cust.email || "").trim().toLowerCase() || null,
+      note: cust.note || null,
+      partySize: Number(cust.guests || 0) || null,
+      timeTo,
+    };
+  };
+
+  const hasCustomerIdentity = () =>
+    !!(cust.name?.trim() || cust.phone?.trim());
+
+  const persistTableCustomer = async (opts = {}) => {
+    if (!restaurantId || !table?.code) return;
+    const input = buildTableCustomerInput(opts);
+    await upsertTableCustomer({ variables: { input } });
+    refetchTableCustomers?.();
+  };
+
   const saveCustomerInfo = async () => {
     if (status === "occupied" && orderCodeForTable && restaurantId) {
       const customer = {
@@ -551,6 +651,7 @@ function TableActionsModalCore({
           orderCode: orderCodeForTable,
           customer,
         });
+        await persistTableCustomer({ orderCode: orderCodeForTable });
         if (res?.success) {
           alert("Đã cập nhật đơn hàng.");
           onUpdated?.();
@@ -562,7 +663,10 @@ function TableActionsModalCore({
       }
       return;
     }
-    if (!onSave) return;
+    if (!hasCustomerIdentity()) {
+      alert("Cần tên hoặc SĐT.");
+      return;
+    }
     if (useTimeslot && !validateCustomerForReservation()) return;
 
     const checkin =
@@ -575,12 +679,15 @@ function TableActionsModalCore({
         : null;
     try {
       setBusyKey("saveCustomer", true);
-      await onSave(table.code, {
-        ...cust,
-        guests: Number(cust.guests || 0),
-        checkin,
-        durationMinutes,
-      });
+      if (onSave) {
+        await onSave(table.code, {
+          ...cust,
+          guests: Number(cust.guests || 0),
+          checkin,
+          durationMinutes,
+        });
+      }
+      await persistTableCustomer();
     } catch (e) {
       console.error(e);
     } finally {
