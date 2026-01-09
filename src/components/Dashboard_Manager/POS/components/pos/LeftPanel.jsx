@@ -240,7 +240,10 @@ export default function LeftPanel() {
         if (!items.length) continue;
         if (payload?.currentOrderType !== "dine_in") continue;
         const tableId = payload?.tableId;
+        const tableCode = payload?.tableCode;
         if (tableId) next.add(String(tableId));
+        if (!tableId && tableCode)
+          next.add(String(tableCode).toLowerCase());
       }
       setDraftTableCodes(next);
     } catch {
@@ -646,7 +649,9 @@ export default function LeftPanel() {
 
             const isDragOver = dragOverId === table.id;
             const isDraggingThis = draggingId === table.id;
-            const hasDraft = draftTableCodes.has(String(table.id));
+            const hasDraft =
+              draftTableCodes.has(String(table.id)) ||
+              draftTableCodes.has(String(table.code || "").toLowerCase());
 
             return (
               <div

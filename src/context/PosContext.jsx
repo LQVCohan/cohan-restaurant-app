@@ -67,6 +67,7 @@ export default function PosProvider({
 
   const [deliveryCustomer, setDeliveryCustomer] = useState(null);
   const skipDraftAutosaveRef = useRef(false);
+  const lastDraftKeyRef = useRef(null);
 
   // --- FLOORS ---
   const {
@@ -273,6 +274,11 @@ export default function PosProvider({
     const tableId = currentTable?.id || null;
     const key = isDineIn ? getDraftKeyForTable(tableId) : getDraftKey();
     if (!key) return;
+    if (key !== lastDraftKeyRef.current) {
+      lastDraftKeyRef.current = key;
+      skipDraftAutosaveRef.current = false;
+      return;
+    }
     if (skipDraftAutosaveRef.current) {
       skipDraftAutosaveRef.current = false;
       return;
