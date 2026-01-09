@@ -249,6 +249,30 @@ export default function OrderConfirmModal({
             </div>
           )}
 
+          {hasItems && (
+            <div className={cls.section}>
+              <div className={cls.sectionTitle}>Món sẽ lưu</div>
+              <div className={cls.itemList}>
+                {newItems.map((item, idx) => (
+                  <div
+                    key={item._lineId || item.dishId || item.id || idx}
+                    className={cls.itemRow}
+                  >
+                    <div className={cls.itemInfo}>
+                      <span className={cls.itemName}>{item.name}</span>
+                      {(item.method || item.cookingOption) && (
+                        <span className={cls.itemMeta}>
+                          {item.method || item.cookingOption}
+                        </span>
+                      )}
+                    </div>
+                    <span className={cls.itemQty}>x{item.quantity || 1}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className={cls.summary}>
             <div className={cls.totalRow}>
               <span>Tổng cộng</span>
@@ -277,7 +301,7 @@ export default function OrderConfirmModal({
             disabled={!canSave || isSaving}
             title="Enter"
           >
-            {isSaving ? "Đang lưu..." : "Xác nhận (Enter)"}
+            Xác nhận (Enter)
           </button>
         </div>
       </div>
