@@ -228,7 +228,7 @@ export default function LeftPanel() {
   useEffect(() => {
     if (!restaurantId) return;
     try {
-      const prefix = "pos_draft_";
+      const prefix = `pos_draft_table_${restaurantId}_`;
       const next = new Set();
       for (let i = 0; i < localStorage.length; i += 1) {
         const key = localStorage.key(i);

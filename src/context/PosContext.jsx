@@ -245,6 +245,14 @@ export default function PosProvider({
     return `${prefix}-${yyyy}${mm}${dd}-${randomPart}`;
   }, []);
 
+  const getDraftKeyForTable = useCallback(
+    (tableId) => {
+      if (!tableId) return null;
+      return `pos_draft_table_${restaurantId}_${tableId}`;
+    },
+    [restaurantId]
+  );
+
   // ===== Draft key (autosave FE) =====
   const getDraftKey = useCallback(() => {
     if (currentOrderType === "dine_in" && (currentTable?.id || currentTable?.code)) {
@@ -257,17 +265,13 @@ export default function PosProvider({
     if (currentOrderType === "takeaway")
       return `pos_draft_take_${restaurantId}`;
     return null;
-  }, [
-    currentOrderCode,
-    currentOrderType,
-    currentTable?.id,
-    currentTable?.code,
-    restaurantId,
-  ]);
+  }, [currentOrderCode, currentOrderType, restaurantId]);
 
   // ===== Auto-save only isNew (FE) =====
   useEffect(() => {
-    const key = getDraftKey();
+    const isDineIn = currentOrderType === "dine_in";
+    const tableId = currentTable?.id || null;
+    const key = isDineIn ? getDraftKeyForTable(tableId) : getDraftKey();
     if (!key) return;
     if (skipDraftAutosaveRef.current) {
       skipDraftAutosaveRef.current = false;
@@ -284,7 +288,7 @@ export default function PosProvider({
         savedAt: Date.now(),
         currentOrderType,
         currentOrderCode,
-        tableId: currentTable?.id || null,
+        tableId,
         tableCode: currentTable?.code || null,
         items: draftItems,
         shippingInfo:
@@ -305,26 +309,27 @@ export default function PosProvider({
     shippingInfo,
     deliveryCustomer,
     getDraftKey,
+    getDraftKeyForTable,
   ]);
 
   // ===== Restore draft when context changes =====
   useEffect(() => {
-    const key = getDraftKey();
+    const isDineIn = currentOrderType === "dine_in";
+    const tableId = currentTable?.id || null;
+    const key = isDineIn ? getDraftKeyForTable(tableId) : getDraftKey();
     if (!key) return;
 
     try {
       const raw = localStorage.getItem(key);
       if (!raw) return;
       const payload = JSON.parse(raw);
-
-      const draftItems = Array.isArray(payload?.items) ? payload.items : [];
-      if (draftItems.length) {
+      const collected = Array.isArray(payload?.items) ? payload.items : [];
+      if (collected.length) {
         setCurrentOrder((prev) => {
           const prevExisting = (prev || []).filter((i) => i?.isExisting);
-          return [...prevExisting, ...draftItems];
+          return [...prevExisting, ...collected];
         });
       }
-
       if (
         (currentOrderType === "delivery" || currentOrderType === "takeaway") &&
         payload?.deliveryCustomer
@@ -337,15 +342,24 @@ export default function PosProvider({
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentOrderCode, currentOrderType, currentTable?.id, currentTable?.code]);
+  }, [
+    currentOrderCode,
+    currentOrderType,
+    currentTable?.id,
+    currentTable?.code,
+    getDraftKey,
+    getDraftKeyForTable,
+  ]);
 
   const clearDraftStorage = useCallback(() => {
-    const key = getDraftKey();
+    const isDineIn = currentOrderType === "dine_in";
+    const tableId = currentTable?.id || null;
+    const key = isDineIn ? getDraftKeyForTable(tableId) : getDraftKey();
     if (!key) return;
     try {
       localStorage.removeItem(key);
     } catch {}
-  }, [getDraftKey]);
+  }, [currentOrderType, currentTable?.id, getDraftKey, getDraftKeyForTable]);
 
   // --- [NEW] START DELIVERY ORDER ---
   const startDeliveryOrder = useCallback(() => {
@@ -453,7 +467,8 @@ export default function PosProvider({
         draftNew.length > 0;
 
       if (preserveDraftItems) {
-        const oldKey = getDraftKey();
+        const tableId = currentTable?.id || null;
+        const oldKey = getDraftKeyForTable(tableId);
         if (oldKey) {
           try {
             localStorage.setItem(
@@ -463,7 +478,7 @@ export default function PosProvider({
                 savedAt: Date.now(),
                 currentOrderType,
                 currentOrderCode,
-                tableId: currentTable?.id || null,
+                tableId,
                 tableCode: currentTable.code,
                 items: draftNew,
               })
