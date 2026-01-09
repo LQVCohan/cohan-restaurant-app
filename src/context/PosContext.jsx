@@ -245,21 +245,12 @@ export default function PosProvider({
     return `${prefix}-${yyyy}${mm}${dd}-${randomPart}`;
   }, []);
 
-  const getDraftKeyPrefixForTable = useCallback(
-    (tableId) => {
-      if (!tableId) return null;
-      return `pos_draft_table_${restaurantId}_${tableId}_`;
-    },
-    [restaurantId]
-  );
-
   const getDraftKeyForTable = useCallback(
     (tableId) => {
-      const prefix = getDraftKeyPrefixForTable(tableId);
-      if (!prefix) return null;
-      return `${prefix}${Date.now()}`;
+      if (!tableId) return null;
+      return `pos_draft_table_${restaurantId}_${tableId}`;
     },
-    [getDraftKeyPrefixForTable]
+    [restaurantId]
   );
 
   // ===== Draft key (autosave FE) =====
@@ -285,19 +276,7 @@ export default function PosProvider({
     try {
       const draftItems = (currentOrder || []).filter((i) => i?.isNew);
       if (draftItems.length === 0) {
-        if (isDineIn && tableId) {
-          const prefix = getDraftKeyPrefixForTable(tableId);
-          if (prefix) {
-            for (let i = localStorage.length - 1; i >= 0; i -= 1) {
-              const lsKey = localStorage.key(i);
-              if (lsKey && lsKey.startsWith(prefix)) {
-                localStorage.removeItem(lsKey);
-              }
-            }
-          }
-        } else {
-          localStorage.removeItem(key);
-        }
+        localStorage.removeItem(key);
         return;
       }
       const payload = {
@@ -327,55 +306,35 @@ export default function PosProvider({
     deliveryCustomer,
     getDraftKey,
     getDraftKeyForTable,
-    getDraftKeyPrefixForTable,
   ]);
 
   // ===== Restore draft when context changes =====
   useEffect(() => {
     const isDineIn = currentOrderType === "dine_in";
     const tableId = currentTable?.id || null;
-    const key = isDineIn ? getDraftKeyPrefixForTable(tableId) : getDraftKey();
+    const key = isDineIn ? getDraftKeyForTable(tableId) : getDraftKey();
     if (!key) return;
 
     try {
-      const collected = [];
-      if (isDineIn && tableId) {
-        const prefix = key;
-        for (let i = 0; i < localStorage.length; i += 1) {
-          const lsKey = localStorage.key(i);
-          if (!lsKey || !lsKey.startsWith(prefix)) continue;
-          const raw = localStorage.getItem(lsKey);
-          if (!raw) continue;
-          const payload = JSON.parse(raw);
-          if (payload?.tableId !== tableId) continue;
-          const items = Array.isArray(payload?.items) ? payload.items : [];
-          collected.push(...items);
-        }
-      } else {
-        const raw = localStorage.getItem(key);
-        if (raw) {
-          const payload = JSON.parse(raw);
-          const items = Array.isArray(payload?.items) ? payload.items : [];
-          collected.push(...items);
-          if (
-            (currentOrderType === "delivery" ||
-              currentOrderType === "takeaway") &&
-            payload?.deliveryCustomer
-          ) {
-            setDeliveryCustomer(payload.deliveryCustomer);
-          }
-
-          if (currentOrderType === "delivery" && payload?.shippingInfo) {
-            setShippingInfo((s) => ({ ...s, ...payload.shippingInfo }));
-          }
-        }
-      }
-
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const payload = JSON.parse(raw);
+      const collected = Array.isArray(payload?.items) ? payload.items : [];
       if (collected.length) {
         setCurrentOrder((prev) => {
           const prevExisting = (prev || []).filter((i) => i?.isExisting);
           return [...prevExisting, ...collected];
         });
+      }
+      if (
+        (currentOrderType === "delivery" || currentOrderType === "takeaway") &&
+        payload?.deliveryCustomer
+      ) {
+        setDeliveryCustomer(payload.deliveryCustomer);
+      }
+
+      if (currentOrderType === "delivery" && payload?.shippingInfo) {
+        setShippingInfo((s) => ({ ...s, ...payload.shippingInfo }));
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -385,28 +344,18 @@ export default function PosProvider({
     currentTable?.id,
     currentTable?.code,
     getDraftKey,
-    getDraftKeyPrefixForTable,
+    getDraftKeyForTable,
   ]);
 
   const clearDraftStorage = useCallback(() => {
     const isDineIn = currentOrderType === "dine_in";
     const tableId = currentTable?.id || null;
-    const key = isDineIn ? getDraftKeyPrefixForTable(tableId) : getDraftKey();
+    const key = isDineIn ? getDraftKeyForTable(tableId) : getDraftKey();
     if (!key) return;
     try {
-      if (isDineIn && tableId) {
-        const prefix = key;
-        for (let i = localStorage.length - 1; i >= 0; i -= 1) {
-          const lsKey = localStorage.key(i);
-          if (lsKey && lsKey.startsWith(prefix)) {
-            localStorage.removeItem(lsKey);
-          }
-        }
-      } else {
-        localStorage.removeItem(key);
-      }
+      localStorage.removeItem(key);
     } catch {}
-  }, [currentOrderType, currentTable?.id, getDraftKey, getDraftKeyPrefixForTable]);
+  }, [currentOrderType, currentTable?.id, getDraftKey, getDraftKeyForTable]);
 
   // --- [NEW] START DELIVERY ORDER ---
   const startDeliveryOrder = useCallback(() => {
