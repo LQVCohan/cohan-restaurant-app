@@ -255,6 +255,10 @@ export default function PosProvider({
 
   // ===== Draft key (autosave FE) =====
   const getDraftKey = useCallback(() => {
+    if (currentOrderType === "dine_in" && (currentTable?.id || currentTable?.code)) {
+      const tableKey = currentTable?.id || currentTable?.code;
+      return `pos_draft_table_${restaurantId}_${tableKey}`;
+    }
     if (currentOrderCode) return `pos_draft_${currentOrderCode}`;
     if (currentOrderType === "delivery")
       return `pos_draft_ship_${restaurantId}`;
