@@ -174,7 +174,9 @@ function TableActionsModalCore({
       setSwapWithCode("");
       setMergeCodes("");
       setTodayStr(getTodayLocal());
-      setUseTimeslot(true);
+      setUseTimeslot(
+        table.status === "available" || table.status === "reserved"
+      );
       setOrderCodeForTable(null);
       hydratedReservationFor.current = null;
       hydratedOrderFor.current = null;
@@ -192,6 +194,11 @@ function TableActionsModalCore({
       });
     }
   }, [table, reallyOpen]);
+
+  useEffect(() => {
+    if (status === "available" || status === "reserved") return;
+    setUseTimeslot(false);
+  }, [status]);
 
   const isoToDateTimeParts = (iso) => {
     if (!iso) return { date: "", time: "" };
@@ -418,7 +425,7 @@ function TableActionsModalCore({
       alert("Email không hợp lệ.");
       return false;
     }
-    if (useTimeslot) {
+    if (useTimeslot && (status === "available" || status === "reserved")) {
       if (!cust.checkinDate) {
         alert("Vui lòng chọn ngày.");
         return false;
@@ -667,7 +674,12 @@ function TableActionsModalCore({
       alert("Cần tên hoặc SĐT.");
       return;
     }
-    if (useTimeslot && !validateCustomerForReservation()) return;
+    if (
+      useTimeslot &&
+      (status === "available" || status === "reserved") &&
+      !validateCustomerForReservation()
+    )
+      return;
 
     const checkin =
       useTimeslot && cust.checkinDate && cust.checkinTime
