@@ -56,14 +56,17 @@ export default function CenterPanel() {
   const [recentSearches, setRecentSearches] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const hideTimerRef = useRef(null);
+  const suggestionRequestRef = useRef(0);
 
   const recentKey = useMemo(
     () => `pos_recent_searches_${restaurantId || "na"}`,
     [restaurantId]
   );
 
-  const [loadSuggestions, { data: suggestionsData, error: suggestionsError }] =
-    useLazyQuery(SEARCH_SUGGESTIONS, { fetchPolicy: "network-only" });
+  const [loadSuggestions, { error: suggestionsError }] = useLazyQuery(
+    SEARCH_SUGGESTIONS,
+    { fetchPolicy: "network-only" }
+  );
 
   useEffect(() => {
     if (!recentKey) return;
@@ -77,12 +80,6 @@ export default function CenterPanel() {
   }, [recentKey]);
 
   useEffect(() => {
-    if (!suggestionsData?.searchSuggestions) return;
-    const items = suggestionsData.searchSuggestions.menuItems || [];
-    setSuggestions(items);
-  }, [suggestionsData]);
-
-  useEffect(() => {
     if (suggestionsError) {
       console.error("POS searchSuggestions error:", suggestionsError);
     }
@@ -91,16 +88,28 @@ export default function CenterPanel() {
   useEffect(() => {
     const query = searchValue.trim();
     if (!query) {
+      suggestionRequestRef.current += 1;
       setSuggestions([]);
       return;
     }
-    const timer = setTimeout(() => {
-      loadSuggestions({
-        variables: {
-          query,
-          timeSlot: selectedTimeSlot || null,
-        },
-      });
+    const requestId = suggestionRequestRef.current + 1;
+    suggestionRequestRef.current = requestId;
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await loadSuggestions({
+          variables: {
+            query,
+            timeSlot: selectedTimeSlot || null,
+          },
+        });
+        if (requestId !== suggestionRequestRef.current) return;
+        const items = data?.searchSuggestions?.menuItems || [];
+        setSuggestions(items);
+      } catch (error) {
+        if (requestId !== suggestionRequestRef.current) return;
+        console.error("POS searchSuggestions error:", error);
+        setSuggestions([]);
+      }
     }, 250);
     return () => clearTimeout(timer);
   }, [searchValue, selectedTimeSlot, loadSuggestions]);
