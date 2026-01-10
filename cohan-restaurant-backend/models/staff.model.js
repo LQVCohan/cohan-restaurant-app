@@ -70,13 +70,12 @@ const staffSchema = new mongoose.Schema(
       phone: { type: String, trim: true },
       relation: { type: String, trim: true },
     },
-  },
-  { discriminatorValue: "STAFF" }
+  }
 );
 
 staffSchema.index({ employeeCode: 1 });
 staffSchema.index({ userType: 1, employmentStatus: 1, primaryRestaurant: 1 });
 
 export const Staff =
-  mongoose.models.Staff || User.discriminator("Staff", staffSchema);
+  mongoose.models.Staff || User.discriminator("Staff", staffSchema, "STAFF");
 export default Staff;

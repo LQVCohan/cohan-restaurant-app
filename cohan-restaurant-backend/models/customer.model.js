@@ -16,8 +16,7 @@ const customerSchema = new mongoose.Schema(
 
     isGuest: { type: Boolean, default: false },
     guestExpiresAt: { type: Date },
-  },
-  { discriminatorValue: "CUSTOMER" }
+  }
 );
 
 customerSchema.index(
@@ -26,5 +25,6 @@ customerSchema.index(
 );
 
 export const Customer =
-  mongoose.models.Customer || User.discriminator("Customer", customerSchema);
+  mongoose.models.Customer ||
+  User.discriminator("Customer", customerSchema, "CUSTOMER");
 export default Customer;
