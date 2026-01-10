@@ -1,6 +1,6 @@
 // graphql/resolvers/order/helper/userUtils.js
 import mongoose from "mongoose";
-import { User, Table } from "../../../../models/index.js";
+import { Customer, Table } from "../../../../models/index.js";
 import { toId } from "./orderUtils.js";
 
 export async function ensureUserForOrder(userId, customer) {
@@ -10,20 +10,20 @@ export async function ensureUserForOrder(userId, customer) {
   const fullName = customer?.fullName?.trim();
 
   if (phone) {
-    const foundByPhone = await User.findOne({ phone, isGuest: true }).select(
+    const foundByPhone = await Customer.findOne({ phone, isGuest: true }).select(
       "_id"
     );
     if (foundByPhone) return foundByPhone._id;
   }
 
   if (email) {
-    const foundByEmail = await User.findOne({ email, isGuest: true }).select(
+    const foundByEmail = await Customer.findOne({ email, isGuest: true }).select(
       "_id"
     );
     if (foundByEmail) return foundByEmail._id;
   }
 
-  const guest = new User({
+  const guest = new Customer({
     fullName: fullName || "Guest",
     phone,
     email,

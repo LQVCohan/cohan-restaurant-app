@@ -1,5 +1,5 @@
 // src/graphql/resolvers/user/query.js
-import { User, Role } from "../../../models/index.js";
+import { User, Role, Customer } from "../../../models/index.js";
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { requireRole } from "../../../utils/authz.js";
@@ -108,7 +108,7 @@ export const UserQuery = {
         const s = buildSearchCond(search);
         const guestOnlyCond = { isGuest: true, ...(s || {}) };
         const guestOnly = includeGuests
-          ? await User.find(guestOnlyCond)
+          ? await Customer.find(guestOnlyCond)
               .populate({ path: "role", select: "name slug" })
               .sort({ createdAt: -1 })
               .lean()
@@ -120,7 +120,7 @@ export const UserQuery = {
 
       // 1) Customers theo role
       const customerCond = { role: customerRole._id, ...(s || {}) };
-      const roleCustomers = await User.find(customerCond)
+      const roleCustomers = await Customer.find(customerCond)
         .populate({ path: "role", select: "name slug" })
         .sort({ createdAt: -1 })
         .lean();
@@ -129,7 +129,7 @@ export const UserQuery = {
       let guests = [];
       if (includeGuests) {
         const guestCond = { isGuest: true, ...(s || {}) };
-        guests = await User.find(guestCond)
+        guests = await Customer.find(guestCond)
           .populate({ path: "role", select: "name slug" })
           .sort({ createdAt: -1 })
           .lean();

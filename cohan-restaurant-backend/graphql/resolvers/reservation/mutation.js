@@ -1,7 +1,12 @@
 // graphql/reservation/mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Reservation, Restaurant, Table, User } from "../../../models/index.js";
+import {
+  Reservation,
+  Restaurant,
+  Table,
+  Customer,
+} from "../../../models/index.js";
 
 const { Types } = mongoose;
 
@@ -154,20 +159,20 @@ async function resolveUserIdFromContact({
   customerEmail,
 }) {
   if (customerPhone) {
-    const foundByPhone = await User.findOne({
+    const foundByPhone = await Customer.findOne({
       phone: customerPhone?.trim(),
     }).select({ _id: 1 });
     if (foundByPhone) return foundByPhone._id;
   }
 
   if (customerEmail) {
-    const foundByEmail = await User.findOne({
+    const foundByEmail = await Customer.findOne({
       email: customerEmail?.trim(),
     }).select({ _id: 1 });
     if (foundByEmail) return foundByEmail._id;
   }
 
-  const guest = new User({
+  const guest = new Customer({
     fullName: (customerName || "Guest").trim(),
     phone: customerPhone?.trim() || undefined,
     email: customerEmail?.trim() || undefined,
