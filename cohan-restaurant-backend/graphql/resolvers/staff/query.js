@@ -1,12 +1,12 @@
 // src/graphql/staff/query.js
-import { User } from "../../../models/index.js";
+import { Staff } from "../../../models/index.js";
 
 export default {
   // =========================
   // GET ONE STAFF
   // =========================
   staff: async (_, { id }, ctx) => {
-    const user = await User.findById(id)
+    const user = await Staff.findById(id)
       .populate("role")
       .populate("refRestaurants")
       .populate("primaryRestaurant");
@@ -26,7 +26,7 @@ export default {
     { restaurantId, roleId, search, employmentStatus },
     ctx
   ) => {
-    const filter = { userType: "STAFF" };
+    const filter = {};
 
     if (restaurantId) filter.refRestaurants = restaurantId;
     if (roleId) filter.role = roleId;
@@ -43,7 +43,7 @@ export default {
       ];
     }
 
-    return User.find(filter)
+    return Staff.find(filter)
       .populate("role")
       .populate("refRestaurants")
       .populate("primaryRestaurant")

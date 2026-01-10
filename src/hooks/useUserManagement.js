@@ -68,6 +68,57 @@ export const GET_USERS = gql`
   }
 `;
 
+export const GET_CUSTOMERS = gql`
+  query GetCustomers($search: String, $includeGuests: Boolean) {
+    customers(search: $search, includeGuests: $includeGuests) {
+      id
+      fullName
+      username
+      email
+      phone
+      address {
+        line1
+        line2
+        ward
+        district
+        city
+        country
+      }
+      role {
+        id
+        name
+        slug
+      }
+      roleName
+      status
+      provider
+      avatarUrl
+      refRestaurants {
+        id
+        name
+      }
+      point
+      loyaltyPoints
+      customerType
+      totalOrders
+      totalSpending
+      emailVerified
+      isGuest
+      guestExpiresAt
+      createdAt
+      updatedAt
+      createdBy {
+        id
+        fullName
+      }
+      updatedBy {
+        id
+        fullName
+      }
+    }
+  }
+`;
+
 export const CREATE_USER = gql`
   mutation CreateUser($input: CreateUserInput!) {
     createUser(input: $input) {
@@ -388,6 +439,11 @@ const useUserManagement = () => {
       fetchPolicy: "network-only",
       onCompleted: (d) => setUsersCache(d?.users || []),
     });
+  const [fetchCustomers, { loading: customersLoading, error: customersError }] =
+    useLazyQuery(GET_CUSTOMERS, {
+      fetchPolicy: "network-only",
+      onCompleted: (d) => setUsersCache(d?.customers || []),
+    });
 
   // Mutations
   const [createUserMut, { loading: creating }] = useMutation(CREATE_USER, {
@@ -439,8 +495,8 @@ const useUserManagement = () => {
     const { purpose, variables } = lastFetch.current || {};
     if (!purpose) return;
     if (purpose === "allUsers") fetchUsers({ variables });
-    else if (purpose === "customers") getCustomers(variables);
-  }, [fetchUsers]); // eslint-disable-line
+    else if (purpose === "customers") fetchCustomers({ variables });
+  }, [fetchUsers, fetchCustomers]); // eslint-disable-line
 
   /* ===== Fetch ===== */
 
@@ -460,25 +516,18 @@ const useUserManagement = () => {
 
   const getCustomers = useCallback(
     ({ includeGuests = true, search } = {}) => {
-      const customerRoleId = roleMap["customer"];
-      const v1 = {
-        roleId: customerRoleId || undefined,
+      const variables = {
+        includeGuests,
         search:
           (typeof search === "string" ? search : searchQuery) || undefined,
       };
       lastFetch.current = {
         purpose: "customers",
-        variables: { includeGuests, search },
+        variables,
       };
-
-      fetchUsers({ variables: v1 });
-      if (includeGuests) {
-        fetchUsers({
-          variables: { roleId: undefined, search: v1.search, isGuest: true },
-        });
-      }
+      fetchCustomers({ variables });
     },
-    [fetchUsers, roleMap, searchQuery]
+    [fetchCustomers, searchQuery]
   );
 
   /* ===== Auto-sync loyalty (theo FE rule) =====
@@ -679,6 +728,7 @@ const useUserManagement = () => {
     // network
     loading:
       usersLoading ||
+      customersLoading ||
       creating ||
       creatingGuest ||
       updatingMe ||
@@ -688,6 +738,7 @@ const useUserManagement = () => {
       softDeleting ||
       updatingMetrics,
     usersLoading,
+    customersLoading,
     creating,
     creatingGuest,
     updatingMe,
@@ -696,7 +747,7 @@ const useUserManagement = () => {
     settingStatus,
     softDeleting,
     updatingMetrics,
-    error: usersError || null,
+    error: usersError || customersError || null,
 
     // fetch
     getAllUsers,

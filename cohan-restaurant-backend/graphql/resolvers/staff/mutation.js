@@ -1,5 +1,5 @@
 // src/graphql/staff/mutation.js
-import { User, Role, EventLog } from "../../../models/index.js";
+import { Staff, Role, EventLog } from "../../../models/index.js";
 
 async function logStaffEvent({
   staff,
@@ -126,7 +126,7 @@ export default {
     if (primaryRestaurantId) doc.primaryRestaurant = primaryRestaurantId;
     if (refRestaurantIds) doc.refRestaurants = refRestaurantIds;
 
-    const staff = new User(doc);
+    const staff = new Staff(doc);
 
     // Nếu FE có truyền password → hash luôn
     // Nếu không → hook pre('save') trong User.js sẽ tự generate (nếu em có thêm logic đó)
@@ -155,7 +155,7 @@ export default {
   // UPDATE STAFF
   // =========================
   updateStaff: async (_, { userId, input }, ctx) => {
-    const staff = await User.findById(userId);
+    const staff = await Staff.findById(userId);
     if (!staff || staff.userType !== "STAFF") {
       throw new Error("Staff not found");
     }
@@ -237,7 +237,7 @@ export default {
   // DELETE STAFF (SOFT DELETE)
   // =========================
   deleteStaff: async (_, { userId }, ctx) => {
-    const staff = await User.findById(userId);
+    const staff = await Staff.findById(userId);
 
     if (!staff || staff.userType !== "STAFF") {
       throw new Error("Staff not found");
@@ -262,7 +262,7 @@ export default {
   // SET STAFF EMPLOYMENT STATUS
   // =========================
   setStaffEmploymentStatus: async (_, { userId, employmentStatus }, ctx) => {
-    const staff = await User.findById(userId);
+    const staff = await Staff.findById(userId);
 
     if (!staff || staff.userType !== "STAFF") {
       throw new Error("Staff not found");
@@ -302,7 +302,7 @@ export default {
   // RATE STAFF (1–5 sao)
   // =========================
   rateStaff: async (_, { userId, rating }, ctx) => {
-    const staff = await User.findById(userId);
+    const staff = await Staff.findById(userId);
 
     if (!staff || staff.userType !== "STAFF") {
       throw new Error("Staff not found");

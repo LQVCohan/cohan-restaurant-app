@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import process from "process";
-import { User, Role } from "../../../models/index.js";
+import { User, Role, Customer } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
 import dayjs from "dayjs";
 
@@ -259,7 +259,7 @@ export const UserMutation = {
       });
     }
 
-    const doc = new User({
+    const doc = new Customer({
       fullName: fullName.trim(),
       username: username?.trim() || undefined,
       email: email?.toLowerCase().trim() || undefined,
@@ -478,7 +478,7 @@ export const UserMutation = {
   async createGuestUser(_, { fullName, phone, expiresInDays = 30 }, { user }) {
     requireRole(user, ["admin", "manager", "staff"]);
 
-    const doc = new User({
+    const doc = new Customer({
       fullName: (fullName || "Guest").trim(),
       phone: phone ? normalizePhone(phone) : undefined,
       status: "active",
@@ -626,10 +626,10 @@ export const UserMutation = {
       updates.role = input.roleId;
     }
 
-    const saved = await User.findByIdAndUpdate(u._id, updates, {
-      new: true,
-      runValidators: true,
-    })
+    u.set(updates);
+    await u.save();
+
+    const saved = await User.findById(u._id)
       .populate("role")
       .lean({ virtuals: true });
 
@@ -707,7 +707,7 @@ export const UserMutation = {
       });
     }
 
-    const saved = await User.findByIdAndUpdate(
+    const saved = await Customer.findByIdAndUpdate(
       id,
       {
         loyaltyPoints: lp,
