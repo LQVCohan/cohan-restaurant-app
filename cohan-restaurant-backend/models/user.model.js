@@ -46,180 +46,97 @@ const generateRandomPassword = (length = 12) => {
     .join("");
 };
 
-const userSchema = BaseSchemaModel({
-  /* ============================================================
-   * THÔNG TIN CHUNG
-   * ============================================================ */
-  fullName: { type: String, trim: true },
+const userSchema = BaseSchemaModel(
+  {
+    /* ============================================================
+     * THÔNG TIN CHUNG
+     * ============================================================ */
+    fullName: { type: String, trim: true },
 
-  username: {
-    type: String,
-    trim: true,
-    lowercase: true,
-    unique: true,
-    sparse: true,
-  },
-
-  email: {
-    type: String,
-    lowercase: true,
-    trim: true,
-    unique: true,
-    sparse: true,
-    validate: {
-      validator: function (v) {
-        if (!v) return true;
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-      },
-      message: (props) => `${props.value} không phải là email hợp lệ!`,
-    },
-  },
-
-  phone: {
-    type: String,
-    trim: true,
-    unique: true,
-    sparse: true,
-    validate: {
-      validator: function (v) {
-        if (!v) return true;
-        return /^(0|\+?84)(\d{9,10})$/.test(v.replace(/\s+/g, ""));
-      },
-      message: (props) => `${props.value} không phải là số điện thoại hợp lệ!`,
-    },
-  },
-
-  address: addressSchema,
-
-  passwordHash: { type: String },
-
-  provider: {
-    type: String,
-    enum: ["local", "google", "facebook", "apple", "other"],
-    default: "local",
-  },
-
-  status: {
-    type: String,
-    enum: ["active", "inactive", "blocked", "pending"],
-    default: "active",
-  },
-
-  userType: {
-    type: String,
-    enum: ["CUSTOMER", "STAFF", "MANAGER", "ADMIN"],
-    default: "CUSTOMER",
-  },
-
-  role: { type: mongoose.Schema.Types.ObjectId, ref: "Role" },
-
-  refRestaurants: [{ type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" }],
-
-  taxCode: {
-    type: String,
-    trim: true,
-  },
-
-  /* ============================================================
-   * THÔNG TIN KHÁCH HÀNG
-   * ============================================================ */
-  loyaltyPoints: { type: Number, default: 0 },
-
-  customerType: {
-    type: String,
-    enum: ["VIP", "NEW", "OFTEN"],
-    default: "NEW",
-  },
-
-  avatarUrl: { type: String },
-
-  totalOrders: { type: Number, default: 0 },
-  totalSpending: { type: Number, default: 0 },
-
-  emailVerified: { type: Boolean, default: false },
-  emailVerifyToken: { type: String, default: null },
-  emailVerifyTokenExp: { type: Date, default: null },
-
-  isGuest: { type: Boolean, default: false },
-  guestExpiresAt: { type: Date },
-
-  /* ============================================================
-   * THÔNG TIN NHÂN VIÊN / STAFF
-   * ============================================================ */
-
-  employeeCode: {
-    type: String,
-    trim: true,
-    unique: true,
-    sparse: true,
-  },
-
-  // ⭐ Chuyên khoa / bộ phận của nhân viên
-  department: {
-    type: String,
-    enum: [
-      "service",
-      "kitchen",
-      "cashier",
-      "management",
-      "cleaning",
-      "delivery",
-    ],
-  },
-
-  rate: { type: Number, default: 0 },
-  rateCount: { type: Number, default: 0 },
-
-  positionTitle: {
-    type: String,
-    trim: true,
-  },
-
-  employmentType: {
-    type: String,
-    enum: ["full_time", "part_time", "probation", "seasonal", "contract"],
-    default: "full_time",
-  },
-
-  employmentStatus: {
-    type: String,
-    enum: ["working", "on_leave", "resigned", "suspended"],
-    default: "working",
-  },
-
-  primaryRestaurant: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Restaurant",
-  },
-
-  shiftType: {
-    type: String,
-    enum: ["morning", "afternoon", "evening", "full_day", "rotating"],
-  },
-
-  workingDays: [
-    {
+    username: {
       type: String,
-      enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      trim: true,
+      lowercase: true,
+      unique: true,
+      sparse: true,
     },
-  ],
 
-  dateJoined: { type: Date },
-  dateLeft: { type: Date, default: null },
+    email: {
+      type: String,
+      lowercase: true,
+      trim: true,
+      unique: true,
+      sparse: true,
+      validate: {
+        validator: function (v) {
+          if (!v) return true;
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+        },
+        message: (props) => `${props.value} không phải là email hợp lệ!`,
+      },
+    },
 
-  lastLoginAt: { type: Date },
-  lastLoginIp: { type: String },
+    phone: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true,
+      validate: {
+        validator: function (v) {
+          if (!v) return true;
+          return /^(0|\+?84)(\d{9,10})$/.test(v.replace(/\s+/g, ""));
+        },
+        message: (props) =>
+          `${props.value} không phải là số điện thoại hợp lệ!`,
+      },
+    },
 
-  forcePasswordChange: { type: Boolean, default: false },
+    address: addressSchema,
 
-  noteInternal: { type: String, trim: true },
+    passwordHash: { type: String },
 
-  emergencyContact: {
-    name: { type: String, trim: true },
-    phone: { type: String, trim: true },
-    relation: { type: String, trim: true },
+    provider: {
+      type: String,
+      enum: ["local", "google", "facebook", "apple", "other"],
+      default: "local",
+    },
+
+    status: {
+      type: String,
+      enum: ["active", "inactive", "blocked", "pending"],
+      default: "active",
+    },
+
+    userType: {
+      type: String,
+      enum: ["CUSTOMER", "STAFF", "MANAGER", "ADMIN"],
+      default: "CUSTOMER",
+    },
+
+    role: { type: mongoose.Schema.Types.ObjectId, ref: "Role" },
+
+    refRestaurants: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" },
+    ],
+
+    taxCode: {
+      type: String,
+      trim: true,
+    },
+
+    avatarUrl: { type: String },
+
+    emailVerified: { type: Boolean, default: false },
+    emailVerifyToken: { type: String, default: null },
+    emailVerifyTokenExp: { type: Date, default: null },
+
+    lastLoginAt: { type: Date },
+    lastLoginIp: { type: String },
+
+    forcePasswordChange: { type: Boolean, default: false },
   },
-});
+  { discriminatorKey: "userType" }
+);
 
 /* ============================================================
  * HOOKS
@@ -291,14 +208,6 @@ userSchema.index({
   "address.district": 1,
 });
 
-userSchema.index(
-  { guestExpiresAt: 1 },
-  { expireAfterSeconds: 0, partialFilterExpression: { isGuest: true } }
-);
-
-userSchema.index({ employeeCode: 1 });
-
-userSchema.index({ userType: 1, employmentStatus: 1, primaryRestaurant: 1 });
 userSchema.index({ phone: 1 });
 export const User = mongoose.models.User || mongoose.model("User", userSchema);
 export default User;
