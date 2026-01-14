@@ -110,7 +110,12 @@ const PromotionModal = ({ onClose, customers }) => {
   };
 
   return (
-    <Modal onClose={onClose} className="promotion-modal">
+    <Modal
+      isOpen
+      onClose={onClose}
+      size="lg"
+      className="promotion-modal"
+    >
       <div className="promotion-modal__header">
         <h2>Gửi Khuyến Mãi</h2>
         <div className="step-indicator">
