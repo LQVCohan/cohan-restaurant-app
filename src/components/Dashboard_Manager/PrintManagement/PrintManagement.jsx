@@ -1,8 +1,31 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import { PRINT_STATIONS } from "@/utils/printStations";
 import { PrinterSettingsModal } from "@/components/Dashboard_Manager/POS/components/modals/PrinterSettingsModal";
 import "./PrintManagement.scss";
+
+const Q_PRINT_SETTINGS = gql`
+  query PrintSettings($restaurantId: ID!) {
+    printSettings(restaurantId: $restaurantId) {
+      id
+      restaurantId
+      printers
+      stations
+    }
+  }
+`;
+
+const M_UPSERT_PRINT_SETTINGS = gql`
+  mutation UpsertPrintSettings($input: UpsertPrintSettingInput!) {
+    upsertPrintSettings(input: $input) {
+      id
+      restaurantId
+      printers
+      stations
+    }
+  }
+`;
 
 const buildStationDefaults = () =>
   PRINT_STATIONS.reduce((acc, station) => {
@@ -21,6 +44,8 @@ export default function PrintManagement() {
   const [stationMap, setStationMap] = useState(buildStationDefaults);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState(null);
+  const hydrateRef = useRef(false);
+  const debounceRef = useRef(null);
 
   useEffect(() => {
     if (!selectedRestaurantId && restaurantList.length) {
@@ -30,44 +55,45 @@ export default function PrintManagement() {
     }
   }, [restaurantList, selectedRestaurantId]);
 
-  const storageKey = useMemo(
-    () =>
-      selectedRestaurantId
-        ? `pos.print.settings.${selectedRestaurantId}`
-        : null,
-    [selectedRestaurantId]
-  );
+  const { data } = useQuery(Q_PRINT_SETTINGS, {
+    variables: { restaurantId: selectedRestaurantId },
+    skip: !selectedRestaurantId,
+    fetchPolicy: "network-only",
+  });
+
+  const [upsertPrintSettings] = useMutation(M_UPSERT_PRINT_SETTINGS);
 
   useEffect(() => {
-    if (!storageKey) return;
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) {
-        setPrinters([]);
-        setStationMap(buildStationDefaults());
-        return;
-      }
-      const parsed = JSON.parse(raw);
-      setPrinters(Array.isArray(parsed?.printers) ? parsed.printers : []);
-      setStationMap(parsed?.stations || buildStationDefaults());
-    } catch {
+    if (!selectedRestaurantId) return;
+    const settings = data?.printSettings;
+    if (!settings) {
       setPrinters([]);
       setStationMap(buildStationDefaults());
+      return;
     }
-  }, [storageKey]);
+    hydrateRef.current = true;
+    setPrinters(Array.isArray(settings?.printers) ? settings.printers : []);
+    setStationMap(settings?.stations || buildStationDefaults());
+    setTimeout(() => {
+      hydrateRef.current = false;
+    }, 0);
+  }, [data, selectedRestaurantId]);
 
   useEffect(() => {
-    if (!storageKey) return;
-    const payload = {
-      printers,
-      stations: stationMap,
-    };
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(payload));
-    } catch {
-      // ignore storage errors
-    }
-  }, [storageKey, printers, stationMap]);
+    if (!selectedRestaurantId || hydrateRef.current) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      upsertPrintSettings({
+        variables: {
+          input: {
+            restaurantId: selectedRestaurantId,
+            printers,
+            stations: stationMap,
+          },
+        },
+      }).catch(() => {});
+    }, 400);
+  }, [selectedRestaurantId, printers, stationMap, upsertPrintSettings]);
 
   const openAddPrinter = () => {
     setEditingPrinter(null);
