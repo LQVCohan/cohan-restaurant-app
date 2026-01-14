@@ -517,7 +517,15 @@ function TableActionsModalCore({
       guests: clampGuests((prev.guests || 0) + delta),
     }));
 
+  const resolveCustomerIdentity = () => {
+    const name = (cust.name || selectedCustomer?.name || "").trim();
+    const phone = (cust.phone || selectedCustomer?.phone || "").trim();
+    const email = (cust.email || selectedCustomer?.email || "").trim();
+    return { name, phone, email };
+  };
+
   const validateCustomerForReservation = () => {
+    const identity = resolveCustomerIdentity();
     const size = Number(cust.guests || 0);
     if (!(size > 0)) {
       alert("Số khách phải lớn hơn 0.");
@@ -530,8 +538,8 @@ function TableActionsModalCore({
       alert(`Số khách (${size}) vượt quá sức chứa (${table.capacity}).`);
       return false;
     }
-    const phone = (cust.phone || "").trim();
-    const email = (cust.email || "").trim();
+    const phone = identity.phone;
+    const email = identity.email;
     if (!phone && !email) {
       alert("Cần SĐT hoặc Email.");
       return false;
@@ -733,6 +741,7 @@ function TableActionsModalCore({
   };
 
   const buildTableCustomerInput = (opts = {}) => {
+    const identity = resolveCustomerIdentity();
     const timeTo =
       useTimeslot && cust.checkinDate && cust.checkinTimeTo
         ? combineDateTimeToISO(cust.checkinDate, cust.checkinTimeTo)
@@ -742,9 +751,9 @@ function TableActionsModalCore({
       tableId: table?.id || undefined,
       tableCode: table?.code || undefined,
       orderCode: opts.orderCode || orderCodeForTable || undefined,
-      customerName: (cust.name || "").trim() || null,
-      customerPhone: (cust.phone || "").trim() || null,
-      customerEmail: (cust.email || "").trim().toLowerCase() || null,
+      customerName: identity.name || null,
+      customerPhone: identity.phone || null,
+      customerEmail: identity.email ? identity.email.toLowerCase() : null,
       note: cust.note || null,
       partySize: Number(cust.guests || 0) || null,
       timeTo,
@@ -752,7 +761,12 @@ function TableActionsModalCore({
   };
 
   const hasCustomerIdentity = () =>
-    !!(cust.name?.trim() || cust.phone?.trim() || selectedCustomer?.id);
+    !!(
+      cust.name?.trim() ||
+      cust.phone?.trim() ||
+      cust.email?.trim() ||
+      selectedCustomer?.id
+    );
 
   const persistTableCustomer = async (opts = {}) => {
     if (!restaurantId || !table?.code) return;
@@ -763,10 +777,11 @@ function TableActionsModalCore({
 
   const saveCustomerInfo = async () => {
     if (status === "occupied" && orderCodeForTable && restaurantId) {
+      const identity = resolveCustomerIdentity();
       const customer = {
-        fullName: cust.name,
-        phone: cust.phone,
-        email: cust.email,
+        fullName: identity.name,
+        phone: identity.phone,
+        email: identity.email,
       };
       if (!customer.fullName && !customer.phone)
         return alert("Cần tên hoặc SĐT.");
