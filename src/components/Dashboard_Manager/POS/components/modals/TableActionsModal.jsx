@@ -7,6 +7,7 @@ import useOrderManagement from "../../../../../hooks/useOrderManagement";
 import { useReservation } from "../../../../../hooks/useReservation";
 import useTableCustomers from "../../../../../hooks/useTableCustomers";
 import { GET_CUSTOMERS } from "../../../../../hooks/useUserManagement";
+import { useNotification } from "../../../../../hooks/useNotification";
 
 const UPSERT_TABLE_CUSTOMER = gql`
   mutation UpsertTableCustomer($input: UpsertTableCustomerInput!) {
@@ -85,6 +86,7 @@ function TableActionsModalCore({
   const { customers: tableCustomers, refetch: refetchTableCustomers } =
     useTableCustomers({ restaurantId });
   const [upsertTableCustomer] = useMutation(UPSERT_TABLE_CUSTOMER);
+  const { showNotification } = useNotification();
 
   const [orderCodeForTable, setOrderCodeForTable] = useState(null);
 
@@ -594,9 +596,10 @@ function TableActionsModalCore({
           .filter(Boolean),
       });
       onUpdated?.();
+      showNotification?.("Đã lưu thay đổi bàn.", "success");
     } catch (e) {
       console.error(e);
-      alert("Lỗi cập nhật.");
+      showNotification?.("Lỗi cập nhật thông tin bàn.", "error");
     } finally {
       setBusyKey("save", false);
     }
@@ -784,7 +787,7 @@ function TableActionsModalCore({
         email: identity.email,
       };
       if (!customer.fullName && !customer.phone)
-        return alert("Cần tên hoặc SĐT.");
+        return showNotification?.("Cần tên hoặc SĐT.", "warning");
       try {
         setBusyKey("saveCustomer", true);
         const res = await updateOrderCustomerByCode({
@@ -794,18 +797,21 @@ function TableActionsModalCore({
         });
         await persistTableCustomer({ orderCode: orderCodeForTable });
         if (res?.success) {
-          alert("Đã cập nhật đơn hàng.");
+          showNotification?.("Đã cập nhật đơn hàng.", "success");
           onUpdated?.();
-        } else alert("Lỗi cập nhật.");
+        } else {
+          showNotification?.("Lỗi cập nhật đơn hàng.", "error");
+        }
       } catch (e) {
         console.error(e);
+        showNotification?.("Lỗi cập nhật đơn hàng.", "error");
       } finally {
         setBusyKey("saveCustomer", false);
       }
       return;
     }
     if (!hasCustomerIdentity()) {
-      alert("Cần tên hoặc SĐT.");
+      showNotification?.("Cần tên hoặc SĐT.", "warning");
       return;
     }
     if (
@@ -834,8 +840,10 @@ function TableActionsModalCore({
         });
       }
       await persistTableCustomer();
+      showNotification?.("Đã lưu thông tin khách.", "success");
     } catch (e) {
       console.error(e);
+      showNotification?.("Lưu thông tin khách thất bại.", "error");
     } finally {
       setBusyKey("saveCustomer", false);
     }
