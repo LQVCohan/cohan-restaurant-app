@@ -5,7 +5,6 @@ type TableCustomer {
   restaurantId: ID!
   tableId: ID
   tableCode: String
-  orderCode: String
 
   customerName: String
   customerPhone: String
@@ -22,7 +21,6 @@ input UpsertTableCustomerInput {
   restaurantId: ID!
   tableId: ID
   tableCode: String
-  orderCode: String
 
   customerName: String
   customerPhone: String
@@ -34,14 +32,13 @@ input UpsertTableCustomerInput {
 
 extend type Query {
   """
-  Lấy thông tin khách cho một bàn hoặc một orderCode.
-  Ưu tiên tableId > tableCode > orderCode.
+  Lấy thông tin khách cho một bàn.
+  Ưu tiên tableId > tableCode.
   """
   tableCustomer(
     restaurantId: ID!
     tableId: ID
     tableCode: String
-    orderCode: String
   ): TableCustomer
 
   """
@@ -57,7 +54,6 @@ extend type Mutation {
     restaurantId: ID!
     tableId: ID
     tableCode: String
-    orderCode: String
   ): Boolean!
 
   clearTableCustomers(restaurantId: ID!): Boolean!

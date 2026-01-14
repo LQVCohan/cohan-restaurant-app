@@ -703,12 +703,11 @@ async function upsertTableCustomerFromOrder({
   restaurantId,
   tableId,
   tableCode,
-  orderCode,
   customer,
   note,
   session,
 }) {
-  if (!restaurantId || (!tableId && !tableCode && !orderCode)) return;
+  if (!restaurantId || (!tableId && !tableCode)) return;
 
   const rid = toId(restaurantId);
   if (!rid) return;
@@ -718,9 +717,7 @@ async function upsertTableCustomerFromOrder({
   const cond =
     tid != null
       ? { restaurantId: rid, tableId: tid }
-      : tableCode
-      ? { restaurantId: rid, tableCode: String(tableCode) }
-      : { restaurantId: rid, orderCode: String(orderCode) };
+      : { restaurantId: rid, tableCode: String(tableCode) };
 
   const fullName = (customer?.fullName || customer?.name || "").trim() || null;
   const phone = customer?.phone ? String(customer.phone).trim() : null;
@@ -731,7 +728,6 @@ async function upsertTableCustomerFromOrder({
       restaurantId: rid,
       ...(tid != null ? { tableId: tid } : {}),
       ...(tableCode ? { tableCode: String(tableCode) } : {}),
-      ...(orderCode ? { orderCode: String(orderCode) } : {}),
       customerName: fullName,
       customerPhone: phone,
       customerEmail: email,
@@ -966,7 +962,6 @@ export const OrderMutation = {
             restaurantId,
             tableId: tableInfo.tableId,
             tableCode: tableInfo.tableCode,
-            orderCode: effectiveOrderCode,
             customer: effectiveCustomer,
             note,
             session,
@@ -1082,16 +1077,6 @@ export const OrderMutation = {
         );
 
         createdOrderDoc = order;
-
-        if (customer) {
-          await upsertTableCustomerFromOrder({
-            restaurantId,
-            orderCode: effectiveOrderCode,
-            customer,
-            note,
-            session,
-          });
-        }
 
         const lines = buildInventoryLinesFromItems(normalizedItems);
         if (lines.length) {
@@ -1383,7 +1368,6 @@ export const OrderMutation = {
       restaurantId,
       tableId: one?.tableId,
       tableCode: one?.tableCode,
-      orderCode,
       customer,
       session: null,
     });

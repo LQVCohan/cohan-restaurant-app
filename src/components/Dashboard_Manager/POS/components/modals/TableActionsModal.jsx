@@ -6,7 +6,7 @@ import { usePos } from "../../../../../context/PosContext";
 import useOrderManagement from "../../../../../hooks/useOrderManagement";
 import { useReservation } from "../../../../../hooks/useReservation";
 import useTableCustomers from "../../../../../hooks/useTableCustomers";
-import { GET_CUSTOMERS } from "../../../../../hooks/useUserManagement";
+import { GET_CUSTOMERS_FOR_TABLE_INFO } from "../../../../../hooks/useUserManagement";
 import { useNotification } from "../../../../../hooks/useNotification";
 
 const UPSERT_TABLE_CUSTOMER = gql`
@@ -15,7 +15,6 @@ const UPSERT_TABLE_CUSTOMER = gql`
       id
       tableId
       tableCode
-      orderCode
       customerName
       customerPhone
       customerEmail
@@ -147,9 +146,9 @@ function TableActionsModalCore({
   const suppressEmailSuggestRef = useRef(false);
 
   const [loadPhoneSuggestions, { loading: phoneSuggestionsLoading }] =
-    useLazyQuery(GET_CUSTOMERS, { fetchPolicy: "network-only" });
+    useLazyQuery(GET_CUSTOMERS_FOR_TABLE_INFO, { fetchPolicy: "network-only" });
   const [loadEmailSuggestions, { loading: emailSuggestionsLoading }] =
-    useLazyQuery(GET_CUSTOMERS, { fetchPolicy: "network-only" });
+    useLazyQuery(GET_CUSTOMERS_FOR_TABLE_INFO, { fetchPolicy: "network-only" });
 
   const [busy, setBusy] = useState({});
   const setBusyKey = (k, v) => setBusy((b) => ({ ...b, [k]: v }));
@@ -415,13 +414,8 @@ function TableActionsModalCore({
         )
       : null;
     if (byCode) return byCode;
-    const byOrder = orderCodeForTable
-      ? tableCustomers.find(
-          (c) => String(c.orderCode || "") === String(orderCodeForTable)
-        )
-      : null;
-    return byOrder || null;
-  }, [table, tableCustomers, orderCodeForTable]);
+    return null;
+  }, [table, tableCustomers]);
 
   useEffect(() => {
     if (!reallyOpen || !table?.id || !matchedTableCustomer) return;
@@ -753,7 +747,6 @@ function TableActionsModalCore({
       restaurantId,
       tableId: table?.id || undefined,
       tableCode: table?.code || undefined,
-      orderCode: opts.orderCode || orderCodeForTable || undefined,
       customerName: identity.name || null,
       customerPhone: identity.phone || null,
       customerEmail: identity.email ? identity.email.toLowerCase() : null,
@@ -795,7 +788,7 @@ function TableActionsModalCore({
           orderCode: orderCodeForTable,
           customer,
         });
-        await persistTableCustomer({ orderCode: orderCodeForTable });
+        await persistTableCustomer();
         if (res?.success) {
           showNotification?.("Đã cập nhật đơn hàng.", "success");
           onUpdated?.();
