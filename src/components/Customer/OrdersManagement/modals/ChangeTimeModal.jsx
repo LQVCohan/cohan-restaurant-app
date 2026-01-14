@@ -1,6 +1,6 @@
 // src/components/orders/modals/ChangeTimeModal.jsx
 import React, { useEffect, useState, useMemo } from "react";
-import Modal, { ModalFooter } from "@/components/common/Modal";
+import Modal from "@/components/common/Modal";
 
 function toISOFromDateAndTime(dateStr, timeStr) {
   if (!dateStr || !timeStr) return null;
@@ -66,14 +66,14 @@ export default function ChangeTimeModal({
         </div>
       </div>
 
-      <ModalFooter>
+      <Modal.Footer>
         <button className="btn btn--secondary" onClick={onClose}>
           Huỷ
         </button>
         <button className="btn btn--primary" onClick={submit}>
           Xác nhận
         </button>
-      </ModalFooter>
+      </Modal.Footer>
     </Modal>
   );
 }

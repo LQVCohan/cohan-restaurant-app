@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
-import Modal, { ModalFooter } from "../../common/Modal";
+import Modal from "../../common/Modal";
 import { formatCurrency } from "../../../utils/formatters";
 import "./ModifierModal.scss";
 
@@ -223,7 +223,7 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
         )}
       </div>
 
-      <ModalFooter className="modifier-modal__footer">
+      <Modal.Footer className="modifier-modal__footer">
         <div className="modifier-total">
           Tổng:{" "}
           <span className="modifier-total__price">
@@ -242,7 +242,7 @@ const ModifierModal = ({ isOpen, onClose, item, onApply, restaurantId }) => {
             Áp dụng
           </button>
         </div>
-      </ModalFooter>
+      </Modal.Footer>
     </Modal>
   );
 };

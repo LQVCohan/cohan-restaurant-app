@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import Modal, { ModalFooter } from "../../../../common/Modal";
+import Modal from "../../../../common/Modal";
 import "./SupplyModal.scss";
 
 /**
@@ -295,14 +295,14 @@ const SupplyModal = ({
         )}
       </div>
 
-      <ModalFooter>
+      <Modal.Footer>
         <button className="sm-btn-cancel" onClick={onClose}>
           Hủy bỏ
         </button>
         <button className="sm-btn-submit" onClick={handleSave}>
           {isEditing ? "Lưu Thay Đổi" : "Xác Nhận Tạo"}
         </button>
-      </ModalFooter>
+      </Modal.Footer>
     </Modal>
   );
 };

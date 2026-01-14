@@ -1,6 +1,6 @@
 // src/components/orders/modals/ChangeTableModal.jsx
 import React, { useMemo, useState, useEffect } from "react";
-import Modal, { ModalFooter } from "@/components/common/Modal";
+import Modal from "@/components/common/Modal";
 import "./ChangeTableModal.scss";
 
 /**
@@ -162,7 +162,7 @@ export default function ChangeTableModal({
         </section>
       </div>
 
-      <ModalFooter>
+      <Modal.Footer>
         <button className="btn btn--secondary" onClick={onClose}>
           Huỷ
         </button>
@@ -174,7 +174,7 @@ export default function ChangeTableModal({
         >
           Xác nhận đổi bàn
         </button>
-      </ModalFooter>
+      </Modal.Footer>
     </Modal>
   );
 }

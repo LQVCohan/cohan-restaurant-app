@@ -1,5 +1,5 @@
 import React from "react";
-import Modal, { ModalFooter } from "@/components/common/Modal";
+import Modal from "@/components/common/Modal";
 import { formatCurrency, formatDateTime } from "@/utils/formatters";
 import "./SuccessModal.scss";
 
@@ -37,14 +37,14 @@ const SuccessModal = ({
           <OrderConfirmation order={order} />
         )}
 
-        <ModalFooter>
+        <Modal.Footer>
           <button
             className="action-btn action-btn--secondary"
             onClick={onClose}
           >
             Đóng
           </button>
-        </ModalFooter>
+        </Modal.Footer>
       </div>
     </Modal>
   );

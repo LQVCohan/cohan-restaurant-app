@@ -10,7 +10,7 @@ import {
   Tag,
 } from "lucide-react";
 
-import Modal, { ModalFooter } from "../../../../common/Modal";
+import Modal from "../../../../common/Modal";
 import { formatPrice } from "../../../../../utils/formatters";
 import "./IngredientCard.scss";
 
@@ -192,7 +192,7 @@ const IngredientCard = ({
             <p className="il-hint">Giá này sẽ dùng để tính lợi nhuận món ăn.</p>
           </div>
 
-          <ModalFooter>
+          <Modal.Footer>
             <button
               className="il-btn-secondary"
               onClick={() => setIsPriceModalOpen(false)}
@@ -202,7 +202,7 @@ const IngredientCard = ({
             <button className="il-btn-primary" onClick={handleSavePrice}>
               Lưu giá
             </button>
-          </ModalFooter>
+          </Modal.Footer>
         </div>
       </Modal>
     </>

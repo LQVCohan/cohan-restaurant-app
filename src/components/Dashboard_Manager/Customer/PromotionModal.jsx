@@ -1,320 +1,384 @@
-import React, { useState } from "react";
-import Modal from "../../common/Modal";
+// src/pages/CustomerManagement/PromotionModal.jsx
+import React, { useState, useMemo } from "react";
+import {
+  Gift,
+  Users,
+  Calendar,
+  Check,
+  ArrowRight,
+  ArrowLeft,
+  X,
+  Clock,
+  Zap,
+  Star,
+  Sparkles,
+  Cake,
+} from "lucide-react";
+import Modal from "../../common/Modal"; // Đảm bảo đường dẫn đúng
 import "./PromotionModal.scss";
 
-const PromotionModal = ({ onClose, customers }) => {
-  const [selectedPromotion, setSelectedPromotion] = useState(null);
-  const [selectedGroups, setSelectedGroups] = useState([]);
-  const [scheduleType, setScheduleType] = useState("now");
+// Dữ liệu giả lập (Move outside component to avoid recreate)
+const PROMOTIONS_DATA = [
+  {
+    id: "welcome",
+    title: "Chào Bạn Mới",
+    description:
+      "Giảm 20% cho đơn hàng đầu tiên, tối đa 100k. Áp dụng cho menu chính.",
+    icon: <Gift size={24} className="text-green-600" />,
+    bgColor: "bg-green-100",
+    validDays: 30,
+    targetGroup: "Khách mới",
+  },
+  {
+    id: "vip",
+    title: "Tri Ân VIP",
+    description:
+      "Giảm 15% tổng bill + Tặng món tráng miệng đặc biệt theo ngày.",
+    icon: <Star size={24} className="text-yellow-600" />,
+    bgColor: "bg-yellow-100",
+    validDays: 15,
+    targetGroup: "Khách VIP",
+  },
+  {
+    id: "weekend",
+    title: "Happy Weekend",
+    description: "Mua 2 tặng 1 cho nhóm đồ uống. Áp dụng T7 & CN.",
+    icon: <Zap size={24} className="text-purple-600" />,
+    bgColor: "bg-purple-100",
+    validDays: 3,
+    targetGroup: "Tất cả khách",
+  },
+  {
+    id: "birthday",
+    title: "Sinh Nhật Vui Vẻ",
+    description:
+      "Giảm 25% bill + Tặng bánh kem mini. Áp dụng trong tháng sinh nhật.",
+    icon: <Cake size={24} className="text-pink-600" />,
+    bgColor: "bg-pink-100",
+    validDays: 30,
+    targetGroup: "Sinh nhật",
+  },
+];
+
+const CUSTOMER_GROUPS = [
+  { id: "vip", name: "Khách VIP (Vàng/Kim Cương)", icon: "⭐", count: 89 },
+  { id: "frequent", name: "Khách Thường Xuyên", icon: "🔥", count: 234 },
+  { id: "new", name: "Khách Mới (Đăng ký < 30 ngày)", icon: "🆕", count: 156 },
+  { id: "birthday", name: "Sinh Nhật Tháng Này", icon: "🎂", count: 23 },
+  { id: "inactive", name: "Khách Cần Tương Tác Lại", icon: "💤", count: 67 },
+  { id: "all", name: "Tất Cả Khách Hàng", icon: "👥", count: 1247 },
+];
+
+const PromotionModal = ({ onClose }) => {
+  // State
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedPromo, setSelectedPromo] = useState(null);
+  const [selectedGroupIds, setSelectedGroupIds] = useState([]);
+  const [scheduleType, setScheduleType] = useState("now"); // 'now' | 'later'
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
-  const [currentStep, setCurrentStep] = useState(1);
+  const [isSending, setIsSending] = useState(false);
 
-  const promotions = [
-    {
-      id: "welcome",
-      title: "Chào Mừng Khách Mới",
-      description: "Giảm 20% cho đơn hàng đầu tiên, tối đa 100.000đ",
-      icon: "🎁",
-      bgColor: "bg-green-100",
-      validDays: 30,
-      targetGroup: "Khách mới",
-    },
-    {
-      id: "loyalty",
-      title: "Ưu Đãi Khách VIP",
-      description: "Giảm 15% toàn bộ menu + tặng món tráng miệng",
-      icon: "⭐",
-      bgColor: "bg-purple-100",
-      validDays: 15,
-      targetGroup: "Khách VIP",
-    },
-    {
-      id: "weekend",
-      title: "Khuyến Mãi Cuối Tuần",
-      description: "Mua 2 tặng 1 cho các món nước uống",
-      icon: "🎉",
-      bgColor: "bg-orange-100",
-      validDays: 2,
-      targetGroup: "Tất cả khách",
-    },
-    {
-      id: "birthday",
-      title: "Sinh Nhật Vui Vẻ",
-      description: "Giảm 25% + tặng bánh sinh nhật mini",
-      icon: "🎂",
-      bgColor: "bg-pink-100",
-      validDays: 30,
-      targetGroup: "Khách có sinh nhật",
-    },
-  ];
+  // Derived Values
+  const totalRecipients = useMemo(() => {
+    if (selectedGroupIds.includes("all")) {
+      const allGroup = CUSTOMER_GROUPS.find((g) => g.id === "all");
+      return allGroup ? allGroup.count : 0;
+    }
+    return selectedGroupIds.reduce((sum, id) => {
+      const group = CUSTOMER_GROUPS.find((g) => g.id === id);
+      return sum + (group ? group.count : 0);
+    }, 0);
+  }, [selectedGroupIds]);
 
-  const customerGroups = [
-    { id: "vip", name: "Khách VIP", icon: "⭐", count: 89 },
-    { id: "frequent", name: "Khách Thường Xuyên", icon: "🔥", count: 234 },
-    { id: "new", name: "Khách Mới", icon: "🆕", count: 156 },
-    { id: "birthday", name: "Sinh Nhật Tháng Này", icon: "🎂", count: 23 },
-    {
-      id: "inactive",
-      name: "Khách Lâu Không Hoạt Động",
-      icon: "💤",
-      count: 67,
-    },
-    { id: "all", name: "Tất Cả Khách Hàng", icon: "👥", count: 1247 },
-  ];
-
-  const totalRecipients = selectedGroups.reduce((total, groupId) => {
-    const group = customerGroups.find((g) => g.id === groupId);
-    return total + (group ? group.count : 0);
-  }, 0);
-
-  const handlePromotionSelect = (promotion) => {
-    setSelectedPromotion(promotion);
-  };
-
-  const handleGroupToggle = (groupId) => {
-    setSelectedGroups((prev) =>
-      prev.includes(groupId)
-        ? prev.filter((id) => id !== groupId)
-        : [...prev, groupId]
-    );
-  };
-
-  const handleSendPromotion = () => {
-    if (!selectedPromotion) {
-      alert("Vui lòng chọn gói khuyến mãi!");
+  // Handlers
+  const handleGroupToggle = (id) => {
+    if (id === "all") {
+      if (selectedGroupIds.includes("all")) {
+        setSelectedGroupIds([]);
+      } else {
+        setSelectedGroupIds(["all"]);
+      }
       return;
     }
 
-    if (selectedGroups.length === 0) {
-      alert("Vui lòng chọn ít nhất một nhóm khách hàng!");
-      return;
+    // Nếu đang chọn "all" mà click cái khác -> bỏ "all"
+    let newSelection = selectedGroupIds.filter((gid) => gid !== "all");
+
+    if (newSelection.includes(id)) {
+      newSelection = newSelection.filter((gid) => gid !== id);
+    } else {
+      newSelection.push(id);
     }
+    setSelectedGroupIds(newSelection);
+  };
 
-    const groupNames = selectedGroups
-      .map((id) => customerGroups.find((g) => g.id === id)?.name)
-      .join(", ");
+  const handleSelectAll = () => {
+    if (selectedGroupIds.includes("all")) setSelectedGroupIds([]);
+    else setSelectedGroupIds(["all"]);
+  };
 
-    alert(
-      `✅ Đã gửi khuyến mãi "${selectedPromotion.title}" đến ${totalRecipients} khách hàng (${groupNames}) thành công!`
+  const handleSend = () => {
+    setIsSending(true);
+    // Simulate API call
+    setTimeout(() => {
+      setIsSending(false);
+      alert(
+        `✅ Đã gửi chiến dịch "${selectedPromo.title}" tới ${totalRecipients} khách hàng!`
+      );
+      onClose();
+    }, 1500);
+  };
+
+  // Render Steps
+  const renderStepIndicator = () => {
+    const steps = [
+      { num: 1, label: "Chọn Gói KM" },
+      { num: 2, label: "Đối Tượng" },
+      { num: 3, label: "Lên Lịch & Gửi" },
+    ];
+    return (
+      <div className="pm-steps">
+        {steps.map((s) => (
+          <div
+            key={s.num}
+            className={`step-item ${currentStep === s.num ? "active" : ""} ${
+              currentStep > s.num ? "completed" : ""
+            }`}
+          >
+            <div className="step-num">
+              {currentStep > s.num ? <Check size={14} /> : s.num}
+            </div>
+            <span>{s.label}</span>
+          </div>
+        ))}
+      </div>
     );
-    onClose();
-  };
-
-  const nextStep = () => {
-    if (currentStep < 3) setCurrentStep(currentStep + 1);
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
   return (
-    <Modal onClose={onClose} className="promotion-modal">
-      <div className="promotion-modal__header">
-        <h2>Gửi Khuyến Mãi</h2>
-        <div className="step-indicator">
-          {[1, 2, 3].map((step) => (
-            <div
-              key={step}
-              className={`step ${currentStep >= step ? "active" : ""} ${
-                currentStep === step ? "current" : ""
-              }`}
-            >
-              <span className="step-number">{step}</span>
-              <span className="step-label">
-                {step === 1
-                  ? "Chọn KM"
-                  : step === 2
-                  ? "Chọn Khách"
-                  : "Lên Lịch"}
-              </span>
-            </div>
-          ))}
+    <Modal onClose={onClose} className="promotion-modal-wrapper">
+      <div className="pm-container">
+        {/* HEADER */}
+        <div className="pm-header">
+          <h2>
+            <Gift className="text-blue-500" />
+            Tạo Chiến Dịch Mới
+          </h2>
+          <button className="pm-close-btn" onClick={onClose}>
+            <X size={24} />
+          </button>
         </div>
-      </div>
 
-      <div className="promotion-modal__content">
-        {/* Step 1: Select Promotion */}
-        {currentStep === 1 && (
-          <div className="step-content step-promotions">
-            <h3>1. Chọn Gói Khuyến Mãi</h3>
-            <div className="promotions-grid">
-              {promotions.map((promotion) => (
-                <div
-                  key={promotion.id}
-                  className={`promotion-card ${
-                    selectedPromotion?.id === promotion.id ? "selected" : ""
-                  }`}
-                  onClick={() => handlePromotionSelect(promotion)}
-                >
-                  <div className="promotion-card__header">
-                    <div className={`promotion-icon ${promotion.bgColor}`}>
-                      <span>{promotion.icon}</span>
+        {/* STEPS */}
+        {renderStepIndicator()}
+
+        {/* BODY */}
+        <div className="pm-body">
+          {/* STEP 1: CHỌN PROMOTION */}
+          {currentStep === 1 && (
+            <div className="step-content">
+              <div className="promo-grid">
+                {PROMOTIONS_DATA.map((promo) => (
+                  <div
+                    key={promo.id}
+                    className={`promo-card ${
+                      selectedPromo?.id === promo.id ? "selected" : ""
+                    }`}
+                    onClick={() => setSelectedPromo(promo)}
+                  >
+                    <div className="check-mark">
+                      <Check size={14} />
                     </div>
-                    <div className="promotion-info">
-                      <h4>{promotion.title}</h4>
-                      <p>{promotion.description}</p>
+                    <div className={`pc-icon ${promo.bgColor}`}>
+                      {promo.icon}
                     </div>
-                  </div>
-                  <div className="promotion-card__footer">
-                    <div className="promotion-tags">
-                      <span className="tag tag--validity">
-                        Còn hiệu lực {promotion.validDays} ngày
-                      </span>
-                      <span className="tag tag--target">
-                        {promotion.targetGroup}
-                      </span>
+                    <h4>{promo.title}</h4>
+                    <p>{promo.description}</p>
+                    <div className="pc-footer">
+                      <span>Hiệu lực: {promo.validDays} ngày</span>
+                      <span>{promo.targetGroup}</span>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Step 2: Select Customer Groups */}
-        {currentStep === 2 && (
-          <div className="step-content step-groups">
-            <h3>2. Chọn Nhóm Khách Hàng</h3>
-            <div className="groups-list">
-              {customerGroups.map((group) => (
-                <label
-                  key={group.id}
-                  className={`group-item ${
-                    selectedGroups.includes(group.id) ? "selected" : ""
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedGroups.includes(group.id)}
-                    onChange={() => handleGroupToggle(group.id)}
-                  />
-                  <div className="group-content">
-                    <div className="group-info">
-                      <span className="group-icon">{group.icon}</span>
-                      <span className="group-name">{group.name}</span>
+          {/* STEP 2: CHỌN KHÁCH HÀNG */}
+          {currentStep === 2 && (
+            <div className="step-content group-selection">
+              <div className="gs-header">
+                <h3>Chọn nhóm khách hàng mục tiêu</h3>
+                <button className="select-all-btn" onClick={handleSelectAll}>
+                  {selectedGroupIds.includes("all")
+                    ? "Bỏ chọn tất cả"
+                    : "Chọn tất cả"}
+                </button>
+              </div>
+              <div className="group-list">
+                {CUSTOMER_GROUPS.map((group) => {
+                  const isChecked =
+                    selectedGroupIds.includes("all") ||
+                    selectedGroupIds.includes(group.id);
+                  const disabled =
+                    selectedGroupIds.includes("all") && group.id !== "all"; // Disable others if All is selected
+
+                  return (
+                    <div
+                      key={group.id}
+                      className={`group-item ${isChecked ? "active" : ""} ${
+                        disabled ? "opacity-50 pointer-events-none" : ""
+                      }`}
+                      onClick={() => !disabled && handleGroupToggle(group.id)}
+                    >
+                      <input type="checkbox" checked={isChecked} readOnly />
+                      <div className="gi-icon">{group.icon}</div>
+                      <div className="gi-info">
+                        <span className="gi-name">{group.name}</span>
+                        <span className="gi-count">
+                          {group.count.toLocaleString()} khách
+                        </span>
+                      </div>
                     </div>
-                    <span className="group-count">({group.count} khách)</span>
-                  </div>
-                </label>
-              ))}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Step 3: Schedule */}
-        {currentStep === 3 && (
-          <div className="step-content step-schedule">
-            <h3>3. Lên Lịch Gửi</h3>
-            <div className="schedule-options">
-              <label className="schedule-option">
-                <input
-                  type="radio"
-                  name="schedule"
-                  value="now"
-                  checked={scheduleType === "now"}
-                  onChange={(e) => setScheduleType(e.target.value)}
-                />
-                <span>Gửi ngay</span>
-              </label>
-
-              <label className="schedule-option">
-                <input
-                  type="radio"
-                  name="schedule"
-                  value="later"
-                  checked={scheduleType === "later"}
-                  onChange={(e) => setScheduleType(e.target.value)}
-                />
-                <span>Lên lịch gửi sau</span>
-              </label>
-
-              {scheduleType === "later" && (
-                <div className="schedule-inputs">
-                  <div className="input-group">
-                    <label>Ngày:</label>
+          {/* STEP 3: REVIEW & SCHEDULE */}
+          {currentStep === 3 && (
+            <div className="step-content review-layout">
+              {/* Cột trái: Lên lịch */}
+              <div className="schedule-section">
+                <h3>
+                  <Clock size={18} /> Thời gian gửi tin
+                </h3>
+                <div className="radio-options">
+                  <label>
                     <input
-                      type="date"
-                      value={scheduleDate}
-                      onChange={(e) => setScheduleDate(e.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
+                      type="radio"
+                      name="schedule"
+                      value="now"
+                      checked={scheduleType === "now"}
+                      onChange={(e) => setScheduleType(e.target.value)}
                     />
-                  </div>
-                  <div className="input-group">
-                    <label>Giờ:</label>
+                    <div>
+                      <div>Gửi ngay bây giờ</div>
+                      <div className="text-xs text-gray-400 font-normal">
+                        Hệ thống sẽ bắt đầu gửi ngay sau khi duyệt
+                      </div>
+                    </div>
+                  </label>
+                  <label>
                     <input
-                      type="time"
-                      value={scheduleTime}
-                      onChange={(e) => setScheduleTime(e.target.value)}
+                      type="radio"
+                      name="schedule"
+                      value="later"
+                      checked={scheduleType === "later"}
+                      onChange={(e) => setScheduleType(e.target.value)}
                     />
-                  </div>
+                    <div>Lên lịch gửi sau</div>
+                  </label>
                 </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* Summary */}
-        <div className="promotion-summary">
-          <h4>📋 Tóm Tắt</h4>
-          <div className="summary-content">
-            <div className="summary-item">
-              <span className="label">Khuyến mãi:</span>
-              <span className="value">
-                {selectedPromotion ? selectedPromotion.title : "Chưa chọn"}
-              </span>
+                {scheduleType === "later" && (
+                  <div className="datetime-inputs">
+                    <div className="field">
+                      <label>Ngày gửi</label>
+                      <input
+                        type="date"
+                        value={scheduleDate}
+                        onChange={(e) => setScheduleDate(e.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
+                      />
+                    </div>
+                    <div className="field">
+                      <label>Giờ gửi</label>
+                      <input
+                        type="time"
+                        value={scheduleTime}
+                        onChange={(e) => setScheduleTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Cột phải: Summary */}
+              <div className="summary-card">
+                <h4>Xác nhận thông tin</h4>
+                <div className="sum-row">
+                  <span className="label">Chiến dịch:</span>
+                  <span className="val">{selectedPromo?.title}</span>
+                </div>
+                <div className="sum-row">
+                  <span className="label">Đối tượng:</span>
+                  <span className="val">
+                    {selectedGroupIds.includes("all")
+                      ? "Tất cả khách hàng"
+                      : `${selectedGroupIds.length} nhóm khách`}
+                  </span>
+                </div>
+                <div className="sum-row">
+                  <span className="label">Thời gian:</span>
+                  <span className="val">
+                    {scheduleType === "now"
+                      ? "Ngay lập tức"
+                      : `${scheduleTime}, ${scheduleDate}`}
+                  </span>
+                </div>
+                <div className="sum-row">
+                  <span className="label">Tổng gửi dự kiến:</span>
+                  <span className="val text-blue-600">
+                    {totalRecipients.toLocaleString()}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="summary-item">
-              <span className="label">Nhóm khách:</span>
-              <span className="value">
-                {selectedGroups.length > 0
-                  ? `${selectedGroups.length} nhóm được chọn`
-                  : "Chưa chọn"}
-              </span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Số lượng:</span>
-              <span className="value">{totalRecipients} khách hàng</span>
-            </div>
-            <div className="summary-item">
-              <span className="label">Thời gian:</span>
-              <span className="value">
-                {scheduleType === "now"
-                  ? "Gửi ngay"
-                  : `${scheduleDate} ${scheduleTime}`}
-              </span>
-            </div>
-          </div>
+          )}
         </div>
-      </div>
 
-      <div className="promotion-modal__footer">
-        <div className="navigation-buttons">
+        {/* FOOTER ACTIONS */}
+        <div className="pm-footer">
           {currentStep > 1 && (
-            <button onClick={prevStep} className="btn btn--secondary">
-              ← Quay lại
+            <button
+              className="btn-back"
+              onClick={() => setCurrentStep((p) => p - 1)}
+              disabled={isSending}
+            >
+              <ArrowLeft size={16} /> Quay lại
             </button>
           )}
 
           {currentStep < 3 ? (
             <button
-              onClick={nextStep}
-              className="btn btn--primary"
+              className="btn-next"
+              onClick={() => setCurrentStep((p) => p + 1)}
               disabled={
-                (currentStep === 1 && !selectedPromotion) ||
-                (currentStep === 2 && selectedGroups.length === 0)
+                (currentStep === 1 && !selectedPromo) ||
+                (currentStep === 2 && selectedGroupIds.length === 0)
               }
             >
-              Tiếp theo →
+              Tiếp theo <ArrowRight size={16} />
             </button>
           ) : (
             <button
-              onClick={handleSendPromotion}
-              className="btn btn--success"
-              disabled={!selectedPromotion || selectedGroups.length === 0}
+              className="btn-send"
+              onClick={handleSend}
+              disabled={
+                isSending ||
+                (scheduleType === "later" && (!scheduleDate || !scheduleTime))
+              }
             >
-              📧 Gửi Khuyến Mãi
+              {isSending ? (
+                <>Đang xử lý...</>
+              ) : (
+                <>
+                  <Zap size={16} /> Gửi Chiến Dịch
+                </>
+              )}
             </button>
           )}
         </div>

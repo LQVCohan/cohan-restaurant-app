@@ -1,9 +1,86 @@
-// components/CustomerModal.jsx
+// src/components/CustomerManagement/CustomerModal.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { gql, useMutation } from "@apollo/client";
-import Modal, { ModalFooter } from "../../../components/common/Modal";
+import {
+  Mail,
+  Phone,
+  Star,
+  Zap,
+  Sparkles,
+  ShoppingBag,
+  Wallet,
+  Edit3,
+  ArrowRight,
+  TrendingUp,
+  Clock,
+  Tag,
+  CreditCard,
+  User,
+  MessageSquare,
+  X,
+} from "lucide-react";
+import Modal from "../../../components/common/Modal";
+import "./CustomerModal.scss";
 
-/* ===== GraphQL: cập nhật loyaltyPoints & customerType ===== */
+/* ===== Helpers & Utils ===== */
+const normalizeEpochToMs = (v) => {
+  if (!v) return null;
+  const num = Number(v);
+  if (!Number.isNaN(num))
+    return String(Math.floor(num)).length === 10 ? num * 1000 : num;
+  const parsed = Date.parse(v);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const formatDate = (ts) => {
+  const ms = normalizeEpochToMs(ts);
+  return ms ? new Date(ms).toLocaleDateString("vi-VN") : "N/A";
+};
+
+const formatMoney = (amount) =>
+  Number(amount || 0).toLocaleString("vi-VN") + "đ";
+
+const getEntryAmount = (entry) => {
+  if (entry?.raw?.totals?.grandTotal != null)
+    return Number(entry.raw.totals.grandTotal);
+  if (Array.isArray(entry?.raw?.items)) {
+    return entry.raw.items.reduce(
+      (sum, it) =>
+        sum + ((it.price || 0) + (it.modifiersPrice || 0)) * (it.quantity || 1),
+      0
+    );
+  }
+  return Number(entry?.amount || 0);
+};
+
+/* ===== Config ===== */
+const CUSTOMER_TIERS = {
+  VIP: {
+    label: "VIP",
+    color: "bg-gradient-to-r from-amber-400 to-orange-500",
+    icon: <Star size={12} fill="white" />,
+  },
+  OFTEN: {
+    label: "Thân thiết",
+    color: "bg-gradient-to-r from-blue-500 to-indigo-600",
+    icon: <Zap size={12} fill="white" />,
+  },
+  NEW: {
+    label: "Mới",
+    color: "bg-gradient-to-r from-emerald-400 to-teal-500",
+    icon: <Sparkles size={12} />,
+  },
+};
+
+const STATUS_CONFIG = {
+  pending: { label: "Chờ xác nhận", color: "#b45309", bg: "#fef3c7" },
+  confirmed: { label: "Đã xác nhận", color: "#0369a1", bg: "#e0f2fe" },
+  completed: { label: "Hoàn tất", color: "#15803d", bg: "#dcfce7" },
+  cancelled: { label: "Đã hủy", color: "#b91c1c", bg: "#fee2e2" },
+  default: { label: "Khác", color: "#475569", bg: "#f1f5f9" },
+};
+
+/* ===== GraphQL ===== */
 const UPDATE_CUSTOMER_METRICS = gql`
   mutation UpdateCustomerMetrics(
     $id: ID!
@@ -23,497 +100,317 @@ const UPDATE_CUSTOMER_METRICS = gql`
   }
 `;
 
-/* ===== Status meta + flow (hiển thị) ===== */
-const ORDER_STATUS_META = {
-  pending: {
-    label: "Chờ xác nhận",
-    cls: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  },
-  confirmed: {
-    label: "Đã xác nhận",
-    cls: "bg-blue-100 text-blue-800 border-blue-200",
-  },
-  preparing: {
-    label: "Đang chế biến",
-    cls: "bg-indigo-100 text-indigo-800 border-indigo-200",
-  },
-  ready: {
-    label: "Sẵn sàng",
-    cls: "bg-teal-100 text-teal-800 border-teal-200",
-  },
-  served: {
-    label: "Đã phục vụ",
-    cls: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  },
-  paid: {
-    label: "Đã thanh toán",
-    cls: "bg-green-100 text-green-800 border-green-200",
-  },
-  completed: {
-    label: "Hoàn tất",
-    cls: "bg-green-100 text-green-800 border-green-200",
-  },
-  cancelled: { label: "Đã hủy", cls: "bg-red-100 text-red-800 border-red-200" },
-  default: {
-    label: "Không rõ",
-    cls: "bg-gray-100 text-gray-700 border-gray-200",
-  },
-};
-const ORDER_FLOW = [
-  "pending",
-  "confirmed",
-  "preparing",
-  "ready",
-  "served",
-  "paid",
-  "completed",
-];
-const statusToStep = (st) => {
-  const idx = ORDER_FLOW.indexOf((st || "").toLowerCase());
-  return idx >= 0 ? idx : -1;
-};
-const stepLabel = {
-  pending: "Chờ xác nhận",
-  confirmed: "Đã xác nhận",
-  preparing: "Đang chế biến",
-  ready: "Sẵn sàng",
-  served: "Đã phục vụ",
-  paid: "Đã thanh toán",
-  completed: "Hoàn tất",
-};
-
-/* ===== Helpers thời gian/tiền an toàn ===== */
-const normalizeEpochToMs = (v) => {
-  if (v == null) return null;
-  if (v instanceof Date) return v.getTime();
-  if (typeof v === "number" && Number.isFinite(v)) {
-    const len = String(Math.floor(v)).length;
-    return len === 10 ? v * 1000 : v;
-  }
-  if (typeof v === "string") {
-    const s = v.trim();
-    if (/^\d+$/.test(s)) {
-      const n = Number(s);
-      const len = s.length;
-      return len === 10 ? n * 1000 : n;
-    }
-    const parsed = Date.parse(s);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-};
-const toDateStringVI = (ts) => {
-  const ms = normalizeEpochToMs(ts);
-  return Number.isFinite(ms)
-    ? new Date(ms).toLocaleDateString("vi-VN")
-    : new Date().toLocaleDateString("vi-VN");
-};
-const ceilToThousand = (n) => Math.ceil((Number(n) || 0) / 1000) * 1000;
-
-const getEntryAmount = (entry) => {
-  if (entry?.raw?.totals?.grandTotal != null) {
-    return Number(entry.raw.totals.grandTotal) || 0;
-  }
-  if (Array.isArray(entry?.raw?.items) && entry.raw.items.length) {
-    return entry.raw.items.reduce((sum, it) => {
-      const p = Number(it?.price || 0) + Number(it?.modifiersPrice || 0);
-      const q = Number(it?.quantity || 1);
-      return sum + p * q;
-    }, 0);
-  }
-  if (entry?.amount != null) return Number(entry.amount) || 0;
-  return 0;
-};
-const getOrderItems = (entry) => {
-  if (Array.isArray(entry?.raw?.items) && entry.raw.items.length) {
-    return entry.raw.items.map((i) => i?.name).filter(Boolean);
-  }
-  return Array.isArray(entry?.items) ? entry.items : [];
-};
-
-/* ===== Phân hạng dựa trên điểm ===== */
-const classifyCustomerType = (points) => {
-  if (points < 5000) return "NEW";
-  if (points <= 15000) return "OFTEN";
-  return "VIP";
-};
-
-const CustomerModal = ({ customer, onClose, onShowBill }) => {
-  // Professional UI: chỉ giữ tính năng cần
+// Thêm prop isOpen vào đây để điều khiển modal
+const CustomerModal = ({ isOpen, customer, onClose, onShowBill }) => {
   const [notes, setNotes] = useState(customer?.notes || "");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState(customer?.notes || "");
 
-  const recentOrders = Array.isArray(customer?.recentOrders)
-    ? customer.recentOrders
-    : [];
-  const favoriteItems = Array.isArray(customer?.favoriteItems)
-    ? customer.favoriteItems
-    : [];
+  // 1. Data Processing
+  const recentOrders = useMemo(() => customer?.recentOrders || [], [customer]);
 
-  // 🔢 FE compute: tổng số đơn, tổng chi tiêu, TB/đơn từ recentOrders
-  const orderCount = recentOrders.length;
-  const totalSpentRaw = useMemo(
-    () => recentOrders.reduce((sum, entry) => sum + getEntryAmount(entry), 0),
-    [recentOrders]
-  );
-  const totalSpent = ceilToThousand(totalSpentRaw);
-  const averagePerOrder =
-    orderCount > 0 ? ceilToThousand(totalSpentRaw / orderCount) : 0;
+  const stats = useMemo(() => {
+    const count = recentOrders.length;
+    const totalRaw = recentOrders.reduce(
+      (sum, e) => sum + getEntryAmount(e),
+      0
+    );
+    const avg = count > 0 ? totalRaw / count : 0;
+    const pts = Math.floor(totalRaw / 1000);
 
-  // Điểm tích lũy & loại khách theo quy tắc mới
-  const computedPoints = Math.floor(totalSpentRaw / 1000);
-  const computedType = classifyCustomerType(computedPoints);
+    let type = "NEW";
+    if (pts > 15000) type = "VIP";
+    else if (pts > 5000) type = "OFTEN";
 
-  // Cập nhật DB nếu khác dữ liệu hiện có
+    return { count, total: totalRaw, avg, points: pts, type };
+  }, [recentOrders]);
+
+  const topItems = useMemo(() => {
+    if (customer?.favoriteItems?.length > 0) return customer.favoriteItems;
+    const itemMap = {};
+    recentOrders.forEach((order) => {
+      const items = order.items || order.raw?.items || [];
+      items.forEach((i) => {
+        const name = typeof i === "string" ? i : i.name;
+        if (name) itemMap[name] = (itemMap[name] || 0) + (i.quantity || 1);
+      });
+    });
+    return Object.entries(itemMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map((entry) => entry[0]);
+  }, [recentOrders, customer?.favoriteItems]);
+
+  const walletStatus = useMemo(() => {
+    const hasWallet = customer?.wallet?.id || customer?.hasWallet;
+    const isActive = customer?.wallet?.isActive ?? hasWallet;
+    if (isActive) return { label: "Đang hoạt động", cls: "active" };
+    return { label: "Chưa kích hoạt", cls: "inactive" };
+  }, [customer]);
+
+  // Sync Data
   const [mutUpdateMetrics] = useMutation(UPDATE_CUSTOMER_METRICS);
   useEffect(() => {
-    const currentPoints = Number(customer?.loyaltyPoints || 0);
-    const currentType = (customer?.customerType || "").toUpperCase(); // DB enum string
+    if (!customer?.id) return;
+    const currentPts = Number(customer.loyaltyPoints || 0);
+    const currentType = (customer.customerType || "NEW").toUpperCase();
+    if (currentPts !== stats.points || currentType !== stats.type) {
+      mutUpdateMetrics({
+        variables: {
+          id: customer.id,
+          loyaltyPoints: stats.points,
+          customerType: stats.type,
+        },
+      }).catch((err) => console.error(err));
+    }
+  }, [customer?.id, stats.points, stats.type, mutUpdateMetrics]);
 
-    const needUpdate =
-      currentPoints !== computedPoints || currentType !== computedType;
-    if (!customer?.id || !needUpdate) return;
-
-    mutUpdateMetrics({
-      variables: {
-        id: customer.id,
-        loyaltyPoints: computedPoints,
-        customerType: computedType,
-      },
-    }).catch(() => {
-      // im lặng trong UI
-    });
-  }, [
-    customer?.id,
-    customer?.loyaltyPoints,
-    customer?.customerType,
-    computedPoints,
-    computedType,
-    mutUpdateMetrics,
-  ]);
-
-  const idDisplay = useMemo(() => {
-    const idStr = customer?.id != null ? String(customer.id) : "0";
-    return idStr.padStart(4, "0");
-  }, [customer?.id]);
+  const tier = CUSTOMER_TIERS[stats.type] || CUSTOMER_TIERS.NEW;
+  const joinDate = formatDate(customer?.joinDate);
 
   const handleSaveNotes = () => {
     setNotes(tempNotes);
     setIsEditingNotes(false);
-    // TODO: call API lưu notes nếu có
   };
-  const handleCancelEdit = () => {
-    setTempNotes(notes);
-    setIsEditingNotes(false);
-  };
-  const handleShowBill = (entry) => onShowBill?.(entry);
-
-  // membership days
-  const membershipDays = useMemo(() => {
-    const ms = normalizeEpochToMs(customer?.joinDate);
-    if (!Number.isFinite(ms)) return 0;
-    return Math.max(0, Math.floor((Date.now() - ms) / (1000 * 60 * 60 * 24)));
-  }, [customer?.joinDate]);
-
-  // Nhãn hiển thị loại khách sau khi tính & đồng bộ
-  const prettyType = useMemo(() => {
-    switch (computedType) {
-      case "VIP":
-        return {
-          text: "⭐ VIP",
-          cls: "bg-gradient-to-r from-yellow-400 to-orange-500 text-white",
-        };
-      case "OFTEN":
-        return {
-          text: "🔥 Thường xuyên",
-          cls: "bg-gradient-to-r from-blue-500 to-purple-600 text-white",
-        };
-      default:
-        return {
-          text: "🆕 Mới",
-          cls: "bg-gradient-to-r from-green-500 to-teal-600 text-white",
-        };
-    }
-  }, [computedType]);
 
   return (
     <Modal
-      isOpen={true}
+      isOpen={isOpen} // Sử dụng prop isOpen được truyền vào
       onClose={onClose}
-      title="Chi tiết khách hàng"
       size="xl"
       closeOnOverlayClick
-      closeOnEscape
     >
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl p-6 text-white mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <div className="w-20 h-20 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center text-3xl">
-                {customer?.avatar || "👤"}
+      {/* 1. Header chuẩn của Modal mới */}
+      <Modal.Header onClose={onClose}>
+        <div className="flex items-center gap-2">
+          <User size={20} className="text-blue-600" />
+          <span>Hồ sơ khách hàng</span>
+        </div>
+      </Modal.Header>
+
+      {/* 2. Body chứa toàn bộ nội dung chính */}
+      <Modal.Body>
+        <div className="customer-modal-content">
+          {/* Profile Banner */}
+          <div className="cm-header-modern">
+            <div className="profile-left">
+              <div className="avatar-ring">
+                {customer?.avatar || (
+                  <User size={28} className="text-blue-500" />
+                )}
               </div>
-              <div
-                className={`absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-white`}
-                title="Đang hoạt động"
-              />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-1">
-                {customer?.name || "Khách hàng"}
-              </h2>
-              <p className="text-blue-100 mb-2">ID: #{idDisplay}</p>
-              <div className="flex items-center flex-wrap gap-2">
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${prettyType.cls}`}
-                >
-                  {prettyType.text}
-                </span>
-                <span className="px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm font-medium">
-                  Điểm: {computedPoints.toLocaleString("vi-VN")}
-                </span>
-                <span className="px-3 py-1 bg-white bg-opacity-20 rounded-full text-sm font-medium">
-                  Đang hoạt động
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-3xl font-bold">
-              {computedPoints.toLocaleString("vi-VN")}
-            </div>
-            <div className="text-blue-100">Điểm tích lũy</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Contact quick row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-        <div className="flex items-center text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-3">
-          <span className="w-5 text-center mr-3">📧</span>
-          <span className="truncate">{customer?.email || "Chưa có email"}</span>
-        </div>
-        <div className="flex items-center text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-3">
-          <span className="w-5 text-center mr-3">📱</span>
-          <span>{customer?.phone || "Chưa có SĐT"}</span>
-        </div>
-        <div className="flex items-center text-sm text-gray-700 bg-gray-50 rounded-xl px-4 py-3">
-          <span className="w-5 text-center mr-3">⏰</span>
-          <span className="font-medium">Đang hoạt động</span>
-        </div>
-      </div>
-
-      {/* Stats (production) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-green-50 p-4 rounded-xl text-center">
-          <div className="text-2xl font-bold text-green-600">
-            {totalSpent.toLocaleString("vi-VN")}đ
-          </div>
-          <div className="text-sm text-gray-600">Tổng chi tiêu</div>
-        </div>
-        <div className="bg-blue-50 p-4 rounded-xl text-center">
-          <div className="text-2xl font-bold text-blue-600">
-            {orderCount.toLocaleString("vi-VN")}
-          </div>
-          <div className="text-sm text-gray-600">Tổng đơn hàng</div>
-        </div>
-        <div className="bg-purple-50 p-4 rounded-xl text-center">
-          <div className="text-2xl font-bold text-purple-600">
-            {averagePerOrder.toLocaleString("vi-VN")}đ
-          </div>
-          <div className="text-sm text-gray-600">Giá trị TB/đơn</div>
-        </div>
-        <div className="bg-yellow-50 p-4 rounded-xl text-center">
-          <div className="text-2xl font-bold text-yellow-600">
-            {membershipDays}
-          </div>
-          <div className="text-sm text-gray-600">Ngày thành viên</div>
-        </div>
-      </div>
-
-      {/* Recent Orders */}
-      <div className="bg-gray-50 rounded-xl p-6 mb-6">
-        <h3 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
-          <svg
-            className="w-5 h-5 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-            />
-          </svg>
-          Đơn hàng gần đây ({orderCount})
-        </h3>
-
-        {recentOrders.length > 0 ? (
-          <div className="space-y-3">
-            {recentOrders.map((entry, index) => {
-              const st = (
-                entry?.status ||
-                entry?.raw?.currentStatus ||
-                "default"
-              ).toLowerCase();
-              const meta = ORDER_STATUS_META[st] || ORDER_STATUS_META.default;
-              const step = statusToStep(st);
-              const totalSteps = ORDER_FLOW.length - 1;
-              const displayDate =
-                entry?.raw?.createdAt != null
-                  ? toDateStringVI(entry.raw.createdAt)
-                  : entry?.date || toDateStringVI(Date.now);
-              const amount = ceilToThousand(getEntryAmount(entry));
-
-              return (
-                <div
-                  key={entry?.id || entry?.orderCode || index}
-                  className="bg-white p-4 rounded-lg border border-gray-200 hover:border-blue-600 cursor-pointer transition-colors"
-                  onClick={() => handleShowBill(entry)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-medium text-blue-900">
-                      📅 {displayDate}
-                    </div>
-                    <div className="text-lg font-bold text-green-600">
-                      {amount.toLocaleString("vi-VN")}đ
-                    </div>
-                  </div>
-
-                  {/* Status badge */}
-                  <div className="mb-2">
-                    <span
-                      className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${meta.cls}`}
-                    >
-                      {meta.label}
-                    </span>
-                  </div>
-
-                  {/* Step progress */}
-                  <div className="mt-2">
-                    <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                      {ORDER_FLOW.map((k, i) => {
-                        const active = i <= step && step >= 0;
-                        return (
-                          <div key={k} className="flex items-center">
-                            <div
-                              className={`w-6 h-1 rounded ${
-                                active ? "bg-blue-600" : "bg-gray-200"
-                              }`}
-                              title={stepLabel[k]}
-                            />
-                            {i < totalSteps && <div className="w-1" />}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="mt-1 text-[11px] text-gray-600">
-                      {stepLabel[st] || "Trạng thái không rõ"}
-                    </div>
-                  </div>
-
-                  {/* Items */}
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {(getOrderItems(entry) || []).map((item, itemIndex) => (
-                      <span
-                        key={itemIndex}
-                        className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="mt-2 text-xs text-blue-600 font-medium">
-                    👆 Nhấn để xem hóa đơn chi tiết
-                  </div>
+              <div className="info-block">
+                <h2>{customer?.name || "Khách vãng lai"}</h2>
+                <div className="meta-badges">
+                  <span className="badge-id">
+                    #{String(customer?.id || 0).padStart(4, "0")}
+                  </span>
+                  <span className={`badge-tier ${tier.color}`}>
+                    {tier.icon} {tier.label}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <div className="text-4xl mb-2">📝</div>
-            <div className="text-gray-500 font-medium">
-              Chưa có đơn hàng nào
+              </div>
             </div>
-            <div className="text-sm text-gray-400 mt-1">
-              Khách hàng chưa thực hiện đơn hàng nào
+            <div className="points-right">
+              <div className="pts-val">{stats.points.toLocaleString()}</div>
+              <div className="pts-lbl">Điểm tích lũy</div>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Notes — vẫn giữ nhưng tối giản để production */}
-      <div className="bg-yellow-50 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-blue-900 flex items-center">
-            <svg
-              className="w-5 h-5 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              />
-            </svg>
-            Ghi chú
-          </h3>
-          {!isEditingNotes && (
-            <button
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              onClick={() => setIsEditingNotes(true)}
-            >
-              ✏️ Chỉnh sửa
-            </button>
-          )}
+          {/* Key Metrics */}
+          <div className="cm-stats-modern">
+            <div className="stat-item">
+              <div className="stat-icon bg-green-100 text-green-600">
+                <TrendingUp size={18} />
+              </div>
+              <div className="stat-value">{formatMoney(stats.total)}</div>
+              <div className="stat-label">Tổng chi tiêu</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-icon bg-blue-100 text-blue-600">
+                <ShoppingBag size={18} />
+              </div>
+              <div className="stat-value">{stats.count} đơn</div>
+              <div className="stat-label">Tổng đơn hàng</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-icon bg-purple-100 text-purple-600">
+                <CreditCard size={18} />
+              </div>
+              <div className="stat-value">{formatMoney(stats.avg)}</div>
+              <div className="stat-label">Trung bình/Đơn</div>
+            </div>
+            <div className="stat-item">
+              <div className="stat-icon bg-amber-100 text-amber-600">
+                <Clock size={18} />
+              </div>
+              <div className="stat-value">{joinDate}</div>
+              <div className="stat-label">Ngày tham gia</div>
+            </div>
+          </div>
+
+          {/* Insights Row */}
+          <div className="cm-insights-grid">
+            <div className="insight-card">
+              <div className="card-title">
+                <User size={14} /> Thông tin cá nhân
+              </div>
+              <div className="contact-list">
+                <div className="c-item" title="Email">
+                  <Mail size={14} className="icon" /> {customer?.email || "—"}
+                </div>
+                <div className="c-item" title="Điện thoại">
+                  <Phone size={14} className="icon" /> {customer?.phone || "—"}
+                </div>
+              </div>
+
+              <div className="wallet-status-block">
+                <span className="w-label flex items-center gap-2">
+                  <Wallet size={14} /> Ví điện tử
+                </span>
+                <span className={`w-badge ${walletStatus.cls}`}>
+                  <span className="dot"></span> {walletStatus.label}
+                </span>
+              </div>
+            </div>
+
+            <div className="insight-card">
+              <div className="card-title text-orange-600">
+                <Star size={14} /> Món yêu thích
+              </div>
+              <div className="chips-container mb-3">
+                {topItems.length > 0 ? (
+                  topItems.map((item, idx) => (
+                    <span key={idx} className="chip fav">
+                      {item}
+                    </span>
+                  ))
+                ) : (
+                  <span className="empty-text">Chưa có dữ liệu món ăn</span>
+                )}
+              </div>
+
+              <div className="card-title mt-auto">
+                <Tag size={14} /> Nhãn (Tags)
+              </div>
+              <div className="chips-container">
+                <span className="chip">Khách văn phòng</span>
+                <span className="chip">Thích cay</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Body: History vs Notes */}
+          <div className="cm-body-split">
+            <div className="orders-section">
+              <div className="section-header">
+                <h3>Lịch sử gần đây</h3>
+                <button className="text-xs text-blue-600 font-medium hover:underline">
+                  Xem tất cả
+                </button>
+              </div>
+              <div className="order-rows">
+                {recentOrders.length > 0 ? (
+                  recentOrders.slice(0, 5).map((order, i) => {
+                    const stKey = (
+                      order.status ||
+                      order.raw?.currentStatus ||
+                      "default"
+                    ).toLowerCase();
+                    const st = STATUS_CONFIG[stKey] || STATUS_CONFIG.default;
+                    return (
+                      <div
+                        key={i}
+                        className="order-row"
+                        onClick={() => onShowBill && onShowBill(order)}
+                      >
+                        <div className="o-date">
+                          {formatDate(order.raw?.createdAt || Date.now())}
+                        </div>
+                        <div className="o-price">
+                          {formatMoney(getEntryAmount(order))}
+                        </div>
+                        <div className="o-status">
+                          <span
+                            style={{ color: st.color, backgroundColor: st.bg }}
+                          >
+                            {st.label}
+                          </span>
+                        </div>
+                        <div className="o-arrow">
+                          <ArrowRight size={14} />
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-gray-400 text-sm">
+                    Chưa có đơn hàng nào
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="notes-section">
+              <div className="notes-header">
+                <h3>
+                  <Edit3 size={14} /> Ghi chú nội bộ
+                </h3>
+                {!isEditingNotes && (
+                  <button onClick={() => setIsEditingNotes(true)}>
+                    Chỉnh sửa
+                  </button>
+                )}
+              </div>
+
+              {isEditingNotes ? (
+                <>
+                  <textarea
+                    rows={6}
+                    value={tempNotes}
+                    onChange={(e) => setTempNotes(e.target.value)}
+                    placeholder="Ghi lại lưu ý về khách hàng..."
+                    autoFocus
+                  />
+                  <div className="action-row">
+                    <button className="save" onClick={handleSaveNotes}>
+                      Lưu
+                    </button>
+                    <button
+                      className="cancel"
+                      onClick={() => {
+                        setIsEditingNotes(false);
+                        setTempNotes(notes);
+                      }}
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div
+                  className="note-display"
+                  onClick={() => setIsEditingNotes(true)}
+                >
+                  {notes || (
+                    <em className="text-gray-400">Chạm để thêm ghi chú...</em>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
+      </Modal.Body>
 
-        {!isEditingNotes ? (
-          <p className="text-gray-700 whitespace-pre-line">
-            {notes || "— Chưa có ghi chú —"}
-          </p>
-        ) : (
-          <div>
-            <textarea
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-              rows="4"
-              value={tempNotes}
-              onChange={(e) => setTempNotes(e.target.value)}
-              placeholder="Nhập ghi chú cho khách hàng này…"
-            />
-            <div className="flex gap-2 mt-3">
-              <button
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm"
-                onClick={handleSaveNotes}
-              >
-                💾 Lưu
-              </button>
-              <button
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm"
-                onClick={handleCancelEdit}
-              >
-                ❌ Hủy
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <ModalFooter>
-        <button className="btn btn--secondary" onClick={onClose}>
+      {/* 3. Footer */}
+      <Modal.Footer>
+        <button className="btn btn-secondary" onClick={onClose}>
           Đóng
         </button>
-        <button className="btn btn--primary">📧 Gửi khuyến mãi</button>
-        <button className="btn btn--primary">📅 Đặt bàn</button>
-      </ModalFooter>
+        <button className="btn btn-primary">
+          <MessageSquare size={16} className="mr-2" /> Gửi tin nhắn
+        </button>
+      </Modal.Footer>
     </Modal>
   );
 };

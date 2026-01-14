@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import Modal, { ModalFooter } from "../../../../common/Modal";
+import Modal from "../../../../common/Modal";
 import "./StockOutModal.scss";
 
 const StockOutModal = ({ isOpen, onClose, onConfirm, supply }) => {
@@ -79,7 +79,7 @@ const StockOutModal = ({ isOpen, onClose, onConfirm, supply }) => {
         </div>
       </div>
 
-      <ModalFooter>
+      <Modal.Footer>
         <button className="so-btn-cancel" onClick={onClose}>
           Huỷ bỏ
         </button>
@@ -90,7 +90,7 @@ const StockOutModal = ({ isOpen, onClose, onConfirm, supply }) => {
         >
           Xác nhận xuất
         </button>
-      </ModalFooter>
+      </Modal.Footer>
     </Modal>
   );
 };

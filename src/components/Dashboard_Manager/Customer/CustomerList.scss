@@ -1,0 +1,180 @@
+/* src/pages/CustomerManagement/CustomerList.scss */
+
+$cl-gap: 16px;
+$cl-radius: 12px;
+$cl-border: #e2e8f0;
+$cl-bg-skeleton: #f1f5f9; // Slate 100
+/* Thêm vào đầu file CustomerList.scss */
+
+// 1. Định nghĩa Mixin tạo hiệu ứng
+@mixin shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: #f1f5f9; // Màu nền mặc định cho khối skeleton
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    // Tạo dải ánh sáng trắng mờ quét qua
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.6) 50%,
+      transparent 100%
+    );
+    transform: translateX(-100%);
+    animation: shimmer-animation 1.5s infinite;
+  }
+}
+
+// 2. Định nghĩa Keyframes chuyển động
+@keyframes shimmer-animation {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ... Các phần code khác giữ nguyên ... */
+/* 1. Grid Layout */
+.cl-grid {
+  display: grid;
+  // Tự động chia cột: nhỏ nhất 300px, còn lại chia đều (1fr)
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: $cl-gap;
+  padding-bottom: 24px;
+}
+
+/* 2. Empty State */
+.cl-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: #64748b; // Slate 500
+
+  .cl-empty-icon {
+    width: 80px;
+    height: 80px;
+    background: #f8fafc;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    color: #94a3b8; // Slate 400
+  }
+
+  .cl-empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b; // Slate 800
+    margin: 0 0 8px 0;
+  }
+
+  .cl-empty-desc {
+    font-size: 14px;
+    color: #94a3b8;
+    max-width: 300px;
+    margin: 0;
+  }
+}
+
+/* 3. Skeleton Loading */
+.cl-skeleton-card {
+  background: #fff;
+  border: 1px solid $cl-border;
+  border-radius: $cl-radius;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  /* Header Skeleton */
+  .cl-sk-header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .cl-sk-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: $cl-bg-skeleton;
+    @include shimmer;
+  }
+
+  .cl-sk-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* Body Skeleton */
+  .cl-sk-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid $cl-bg-skeleton;
+  }
+
+  /* Common Line Style */
+  .cl-sk-line {
+    height: 10px;
+    background: $cl-bg-skeleton;
+    border-radius: 4px;
+    @include shimmer;
+
+    &.w-80 {
+      width: 80%;
+    }
+    &.w-60 {
+      width: 60%;
+    }
+    &.w-50 {
+      width: 50%;
+    }
+    &.w-40 {
+      width: 40%;
+    }
+  }
+}
+
+/* Animation Mixin (Nếu bạn chưa có global mixin) */
+@mixin shimmer {
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.5),
+      transparent
+    );
+    animation: shimmer-anim 1.5s infinite;
+  }
+}
+
+@keyframes shimmer-anim {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}

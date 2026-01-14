@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import Modal, { ModalFooter } from "../../../../components/common/Modal";
+import Modal from "../../../../components/common/Modal";
 import {
   Clock,
   Palette,
@@ -349,14 +349,14 @@ const OrderSettingsModal = ({
         </div>
       </div>
 
-      <ModalFooter>
+      <Modal.Footer>
         <button className="btn btn--secondary" onClick={onClose}>
           Hủy bỏ
         </button>
         <button className="btn btn--primary" onClick={handleSave}>
           Lưu cài đặt
         </button>
-      </ModalFooter>
+      </Modal.Footer>
     </Modal>
   );
 };

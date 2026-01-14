@@ -1,214 +1,172 @@
 // src/pages/CustomerManagement/CustomerFilters.jsx
 import React, { useMemo, useState } from "react";
+import {
+  X,
+  Filter,
+  Users,
+  Star,
+  Zap,
+  Sparkles,
+  Check,
+  Wifi,
+  Coffee,
+  LogOut,
+  CircleSlash,
+} from "lucide-react";
+import "./CustomerFilters.scss";
 
+// Định nghĩa Metadata với Icon component
 const CATEGORY_META = {
-  all: { label: "Tất cả", icon: "👥", cls: "bg-slate-100 text-slate-700" },
-  vip: { label: "VIP", icon: "⭐", cls: "bg-amber-100 text-amber-800" },
-  frequent: {
-    label: "Thường xuyên",
-    icon: "🔥",
-    cls: "bg-indigo-100 text-indigo-800",
-  },
-  new: { label: "Mới", icon: "🆕", cls: "bg-emerald-100 text-emerald-800" },
+  all: { label: "Tất cả", icon: <Users size={20} /> },
+  vip: { label: "VIP", icon: <Star size={20} /> },
+  frequent: { label: "Thường xuyên", icon: <Zap size={20} /> },
+  new: { label: "Mới", icon: <Sparkles size={20} /> },
 };
 
 const STATUS_META = {
-  online: { label: "Đang online", dot: "bg-green-500" },
-  ordering: { label: "Đang order", dot: "bg-blue-500" },
-  away: { label: "Đang away", dot: "bg-yellow-500" },
-  offline: { label: "Offline", dot: "bg-gray-400" },
+  online: { label: "Online", color: "#22c55e", icon: <Wifi size={14} /> }, // Green
+  ordering: {
+    label: "Đang gọi món",
+    color: "#3b82f6",
+    icon: <Coffee size={14} />,
+  }, // Blue
+  away: { label: "Tạm vắng", color: "#eab308", icon: <LogOut size={14} /> }, // Yellow
+  offline: {
+    label: "Offline",
+    color: "#94a3b8",
+    icon: <CircleSlash size={14} />,
+  }, // Slate
 };
 
-const CATEGORY_KEYS = ["all", "vip", "frequent", "new"];
-const STATUS_KEYS = ["online", "ordering", "away", "offline"];
-
-const ToggleChip = ({ active, onClick, children }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={[
-      "px-3 py-1.5 rounded-full text-sm font-semibold border transition",
-      active
-        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-        : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-slate-50",
-    ].join(" ")}
-  >
-    {children}
-  </button>
-);
-
-const CategoryPill = ({ id, active, onClick }) => {
-  const meta = CATEGORY_META[id] || CATEGORY_META.all;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition",
-        active
-          ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-          : `border-slate-200 ${meta.cls} hover:brightness-95`,
-      ].join(" ")}
-    >
-      <span>{meta.icon}</span>
-      <span>{meta.label}</span>
-    </button>
-  );
-};
+const CATEGORY_KEYS = Object.keys(CATEGORY_META);
+const STATUS_KEYS = Object.keys(STATUS_META);
 
 const CustomerFilters = ({ onClose, onApplyFilters }) => {
   const [category, setCategory] = useState("all");
   const [status, setStatus] = useState({
     online: true,
+    ordering: true,
     away: true,
     offline: true,
-    ordering: true,
   });
 
-  const allOn = useMemo(() => Object.values(status).every(Boolean), [status]);
-  const noneOn = useMemo(
-    () => Object.values(status).every((v) => !v),
-    [status]
-  );
+  // Helpers logic
+  const toggleStatus = (key) =>
+    setStatus((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const toggleStatus = (key) => setStatus((s) => ({ ...s, [key]: !s[key] }));
+  const setAllStatus = (isActive) => {
+    const newStatus = {};
+    STATUS_KEYS.forEach((k) => (newStatus[k] = isActive));
+    setStatus(newStatus);
+  };
 
-  const selectAllStatus = () =>
-    setStatus({ online: true, away: true, offline: true, ordering: true });
-
-  const clearAllStatus = () =>
-    setStatus({ online: false, away: false, offline: false, ordering: false });
-
-  const applyFilters = () => {
+  const handleApply = () => {
     onApplyFilters && onApplyFilters({ category, status });
     onClose && onClose();
   };
 
-  const resetFilters = () => {
+  const handleReset = () => {
     setCategory("all");
-    selectAllStatus();
+    setAllStatus(true);
     onApplyFilters &&
       onApplyFilters({
         category: "all",
-        status: { online: true, away: true, offline: true, ordering: true },
+        status: { online: true, ordering: true, away: true, offline: true },
       });
-    onClose && onClose();
   };
 
   return (
-    <aside className="w-80 h-full bg-white border-l border-gray-200 flex flex-col">
-      {/* Header (sticky) */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-5 py-4 flex items-center justify-between">
-        <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
-          Bộ lọc nâng cao
-        </h3>
-        <button
-          onClick={onClose}
-          className="text-slate-400 hover:text-slate-600 transition text-xl leading-none"
-          aria-label="Đóng bộ lọc"
-          title="Đóng"
-        >
-          ✕
+    <aside className="customer-filters">
+      {/* Header */}
+      <div className="cf-header">
+        <div className="flex items-center gap-2">
+          <Filter size={18} className="text-blue-600" />
+          <h3>Bộ lọc nâng cao</h3>
+        </div>
+        <button onClick={onClose} className="cf-close-btn" title="Đóng">
+          <X size={20} />
         </button>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto px-5 py-5 space-y-6">
-        {/* Category */}
+      {/* Body */}
+      <div className="cf-body">
+        {/* Section: Loại khách hàng */}
         <section>
-          <div className="mb-3">
-            <h4 className="text-sm font-semibold text-slate-900">
-              Loại khách hàng
-            </h4>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Lọc nhanh theo nhóm hành vi/giá trị.
-            </p>
+          <div className="cf-section-title">Loại khách hàng</div>
+          <div className="cf-section-desc">
+            Phân loại theo mức độ thân thiết
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {CATEGORY_KEYS.map((k) => (
-              <CategoryPill
-                key={k}
-                id={k}
-                active={category === k}
-                onClick={() => setCategory(k)}
-              />
-            ))}
+          <div className="cf-cat-grid">
+            {CATEGORY_KEYS.map((key) => {
+              const meta = CATEGORY_META[key];
+              const isActive = category === key;
+              return (
+                <div
+                  key={key}
+                  className={`cf-cat-item ${isActive ? "active" : ""}`}
+                  onClick={() => setCategory(key)}
+                >
+                  {meta.icon}
+                  <span>{meta.label}</span>
+                </div>
+              );
+            })}
           </div>
         </section>
 
-        <div className="h-px bg-slate-200/80" />
+        <div className="h-px bg-slate-100" />
 
-        {/* Status */}
+        {/* Section: Trạng thái */}
         <section>
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-semibold text-slate-900">
-                Trạng thái
-              </h4>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Chọn nhiều trạng thái cùng lúc.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <ToggleChip active={allOn} onClick={selectAllStatus}>
-                Chọn hết
-              </ToggleChip>
-              <ToggleChip active={noneOn} onClick={clearAllStatus}>
-                Bỏ chọn
-              </ToggleChip>
-            </div>
+          <div className="cf-section-title">Trạng thái hoạt động</div>
+          <div className="cf-status-actions">
+            <button className="cf-link-btn" onClick={() => setAllStatus(true)}>
+              Chọn tất cả
+            </button>
+            <button
+              className="cf-link-btn sub"
+              onClick={() => setAllStatus(false)}
+            >
+              Bỏ chọn
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 gap-2">
-            {STATUS_KEYS.map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => toggleStatus(k)}
-                className={[
-                  "w-full flex items-center justify-between rounded-xl border px-3 py-2 transition",
-                  status[k]
-                    ? "bg-slate-50 border-blue-300"
-                    : "bg-white border-slate-200 hover:border-blue-300",
-                ].join(" ")}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={"w-2.5 h-2.5 rounded-full " + STATUS_META[k].dot}
-                  />
-                  <span className="text-sm font-medium text-slate-800">
-                    {STATUS_META[k].label}
-                  </span>
-                </div>
-                <span
-                  className={[
-                    "text-xs font-bold px-2 py-0.5 rounded",
-                    status[k]
-                      ? "bg-blue-600 text-white"
-                      : "bg-slate-200 text-slate-700",
-                  ].join(" ")}
+          <div className="cf-status-list">
+            {STATUS_KEYS.map((key) => {
+              const meta = STATUS_META[key];
+              const isChecked = status[key];
+              return (
+                <div
+                  key={key}
+                  className="cf-status-row"
+                  onClick={() => toggleStatus(key)}
                 >
-                  {status[k] ? "Bật" : "Tắt"}
-                </span>
-              </button>
-            ))}
+                  <div className="cf-status-info">
+                    <div
+                      className="cf-dot"
+                      style={{ backgroundColor: meta.color }}
+                    />
+                    <span>{meta.label}</span>
+                  </div>
+
+                  {/* Custom Checkbox UI */}
+                  <div className={`cf-checkbox ${isChecked ? "checked" : ""}`}>
+                    {isChecked && <Check size={14} strokeWidth={3} />}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
       </div>
 
-      {/* Footer (sticky) */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-200 px-5 py-4">
-        <div className="flex gap-3">
-          <button
-            onClick={resetFilters}
-            className="w-full h-10 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-sm font-semibold transition"
-          >
+      {/* Footer */}
+      <div className="cf-footer">
+        <div className="cf-btn-group">
+          <button className="btn-reset" onClick={handleReset}>
             Đặt lại
           </button>
-          <button
-            onClick={applyFilters}
-            className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-sm transition"
-          >
+          <button className="btn-apply" onClick={handleApply}>
             Áp dụng
           </button>
         </div>

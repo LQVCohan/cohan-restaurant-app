@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import Modal, { ModalFooter } from "../../../../common/Modal";
+import Modal from "../../../../common/Modal";
 import "./StockTransferModal.scss";
 
 const StockTransferModal = ({
@@ -142,7 +142,7 @@ const StockTransferModal = ({
         </div>
       </div>
 
-      <ModalFooter>
+      <Modal.Footer>
         <button className="st-btn-cancel" onClick={onClose}>
           Huỷ bỏ
         </button>
@@ -153,7 +153,7 @@ const StockTransferModal = ({
         >
           Xác nhận chuyển
         </button>
-      </ModalFooter>
+      </Modal.Footer>
     </Modal>
   );
 };

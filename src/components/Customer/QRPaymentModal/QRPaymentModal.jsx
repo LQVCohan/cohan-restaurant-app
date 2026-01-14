@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import Modal, { ModalFooter } from "@/components/common/Modal";
+import Modal from "@/components/common/Modal";
 import { gql } from "@apollo/client";
 import { useLazyQuery } from "@apollo/client/react";
 import { usePaymentTimer } from "../../../hooks/usePaymentTimer";
@@ -161,7 +161,7 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
           <PaymentInfo booking={booking} amount={depositAmount} />
         </div>
 
-        <ModalFooter>
+        <Modal.Footer>
           <button
             className="btn btn--success"
             onClick={handleConfirmPaid}
@@ -178,7 +178,7 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
           <button className="btn btn--secondary" onClick={handleCancel}>
             Đóng
           </button>
-        </ModalFooter>
+        </Modal.Footer>
       </div>
     </Modal>
   );

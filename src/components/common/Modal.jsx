@@ -1,163 +1,145 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, useId } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import "./Modal.scss";
 
+// --- Custom Hook: Animation Delay ---
+const useDelayUnmount = (isMounted, delayTime) => {
+  const [shouldRender, setShouldRender] = useState(false);
+
+  useEffect(() => {
+    let timeoutId;
+    if (isMounted && !shouldRender) {
+      setShouldRender(true);
+    } else if (!isMounted && shouldRender) {
+      timeoutId = setTimeout(() => setShouldRender(false), delayTime);
+    }
+    return () => clearTimeout(timeoutId);
+  }, [isMounted, delayTime, shouldRender]);
+
+  return shouldRender;
+};
+
+// --- Main Component ---
 const Modal = ({
-  isOpen,
-  open,
+  isOpen, // Ưu tiên dùng tên chuẩn boolean
   onClose,
-  title,
-  children,
-  footer,
   size = "md", // sm, md, lg, xl, full
   position = "center", // center, top
+  children,
   closeOnOverlayClick = true,
   closeOnEscape = true,
-  showCloseButton = true,
   className = "",
-  bodyClassName = "",
+  zIndex = 1000, // Hỗ trợ stack modals
 }) => {
-  // Support cả 2 prop isOpen và open
-  const visibleProp = typeof isOpen !== "undefined" ? isOpen : open;
-
-  const [isRendered, setIsRendered] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
-
+  const shouldRender = useDelayUnmount(isOpen, 300); // 300ms khớp với CSS transition
   const modalRef = useRef(null);
-  const previousFocusRef = useRef(null);
-  const mouseDownTarget = useRef(null);
+  const overlayRef = useRef(null);
+  const titleId = useId();
 
-  // 1. Lifecycle & Animation Control
+  // 1. Lock Body Scroll & Focus Trap
   useEffect(() => {
-    if (visibleProp) {
-      previousFocusRef.current = document.activeElement;
-      setIsRendered(true);
-      // Double requestAnimationFrame để đảm bảo animation chạy mượt
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => setIsVisible(true));
-      });
+    if (isOpen) {
       document.body.style.overflow = "hidden";
-    } else {
-      setIsVisible(false);
-      // Đợi animation chạy xong mới unmount (300ms khớp với SCSS)
-      const timer = setTimeout(() => {
-        setIsRendered(false);
-        previousFocusRef.current?.focus();
-      }, 300);
-      document.body.style.overflow = "";
-      return () => clearTimeout(timer);
-    }
-  }, [visibleProp]);
 
-  // 2. Handle Escape Key & Focus Trap
+      // Focus vào modal khi mở
+      const timer = setTimeout(() => {
+        modalRef.current?.focus();
+      }, 50);
+
+      return () => {
+        document.body.style.overflow = "unset";
+        clearTimeout(timer);
+      };
+    }
+  }, [isOpen]);
+
+  // 2. Handle Key Press (Escape)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (!visibleProp) return;
-
-      if (e.key === "Escape" && closeOnEscape) {
-        onClose?.();
-      }
-
-      // Logic Focus Trap (Giữ tab bên trong modal)
-      if (e.key === "Tab" && modalRef.current) {
-        const focusableElements = modalRef.current.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusableElements.length === 0) return;
-
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey) {
-          // Shift + Tab
-          if (document.activeElement === firstElement) {
-            lastElement.focus();
-            e.preventDefault();
-          }
-        } else {
-          // Tab
-          if (document.activeElement === lastElement) {
-            firstElement.focus();
-            e.preventDefault();
-          }
-        }
+      if (isOpen && closeOnEscape && e.key === "Escape") {
+        e.stopPropagation(); // Ngăn event bubbling nếu có modal cha
+        onClose();
       }
     };
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [visibleProp, closeOnEscape, onClose]);
+    // Chỉ add event listener khi modal đang mở
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, closeOnEscape, onClose]);
 
-  // 3. Smart Overlay Click (Tránh đóng nhầm khi bôi đen text)
-  const handleMouseDown = (e) => {
-    mouseDownTarget.current = e.target;
-  };
-
-  const handleMouseUp = (e) => {
+  // 3. Handle Overlay Click (An toàn hơn mouseDown/Up)
+  const handleOverlayClick = (e) => {
     if (
       closeOnOverlayClick &&
-      mouseDownTarget.current === e.currentTarget &&
-      e.target === e.currentTarget
+      overlayRef.current &&
+      e.target === overlayRef.current
     ) {
-      onClose?.();
+      onClose();
     }
   };
 
-  if (!isRendered) return null;
+  if (!shouldRender) return null;
 
   return createPortal(
     <div
-      // 🔥 Dùng class chuẩn BEM: modal-overlay--open
-      className={`modal-overlay ${isVisible ? "modal-overlay--open" : ""} ${
-        position === "top" ? "modal-overlay--top" : ""
+      ref={overlayRef}
+      className={`modal-overlay ${isOpen ? "is-open" : ""} ${
+        position === "top" ? "is-top" : ""
       }`}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      role="dialog"
+      style={{ zIndex }}
+      onClick={handleOverlayClick}
       aria-modal="true"
-      aria-labelledby="modal-title"
+      role="dialog"
+      aria-labelledby={titleId}
     >
       <div
         ref={modalRef}
-        // 🔥 Dùng class chuẩn BEM: modal modal--md, modal--lg...
-        className={`modal modal--${size} ${className}`}
-        onClick={(e) => e.stopPropagation()}
+        className={`modal-container size-${size} ${className}`}
+        tabIndex="-1" // Cho phép div nhận focus programmatically
       >
-        {/* HEADER */}
-        {(title || showCloseButton) && (
-          <div className="modal__header">
-            {title && (
-              <h3 id="modal-title" className="modal__title">
-                {title}
-              </h3>
-            )}
-            {showCloseButton && (
-              <button
-                className="modal__close"
-                onClick={onClose}
-                aria-label="Close modal"
-              >
-                <X size={20} />
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* CONTENT (BODY) */}
-        <div className={`modal__content ${bodyClassName}`}>{children}</div>
-
-        {/* FOOTER */}
-        {footer && <div className="modal__footer">{footer}</div>}
+        {/* Inject titleId context if needed, simple children rendering here */}
+        {React.Children.map(children, (child) => {
+          // Clone element để truyền props tự động nếu cần (như onClose cho Header)
+          if (React.isValidElement(child) && child.type === ModalHeader) {
+            return React.cloneElement(child, { onClose, titleId });
+          }
+          return child;
+        })}
       </div>
     </div>,
     document.body
   );
 };
 
-// --- Export ModalFooter với class chuẩn cũ ---
-export const ModalFooter = ({ children, className = "" }) => (
-  <div className={`modal__footer ${className}`}>{children}</div>
-);
+// --- Compound Components ---
+
+const ModalHeader = ({ children, onClose, titleId, className = "" }) => {
+  return (
+    <div className={`modal-header ${className}`}>
+      <h3 id={titleId}>{children}</h3>
+      {onClose && (
+        <button className="btn-close" onClick={onClose} aria-label="Close">
+          <X size={20} />
+        </button>
+      )}
+    </div>
+  );
+};
+
+const ModalBody = ({ children, className = "" }) => {
+  return <div className={`modal-body ${className}`}>{children}</div>;
+};
+
+const ModalFooter = ({ children, className = "" }) => {
+  return <div className={`modal-footer ${className}`}>{children}</div>;
+};
+
+// --- Gắn các sub-components vào Modal chính ---
+Modal.Header = ModalHeader;
+Modal.Body = ModalBody;
+Modal.Footer = ModalFooter;
 
 export default Modal;

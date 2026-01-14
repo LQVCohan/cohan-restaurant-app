@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useContext,
 } from "react";
-import Modal, { ModalFooter } from "../../common/Modal";
+import Modal from "../../common/Modal";
 import ModifierModal from "./ModifierModal";
 import { formatCurrency, formatQuantity } from "../../../utils/formatters";
 import "./OrderSummaryModal.scss";
@@ -444,15 +444,15 @@ const OrderSummaryModal = ({
     switch (currentView) {
       case "success":
         return (
-          <ModalFooter>
+          <Modal.Footer>
             <button className="btn btn--primary" onClick={() => onClose()}>
               Đặt hàng mới
             </button>
-          </ModalFooter>
+          </Modal.Footer>
         );
       case "qr":
         return (
-          <ModalFooter>
+          <Modal.Footer>
             <button className="btn btn--secondary" onClick={resetToSummaryView}>
               Quay lại
             </button>
@@ -470,11 +470,11 @@ const OrderSummaryModal = ({
                 "Tôi đã thanh toán"
               )}
             </button>
-          </ModalFooter>
+          </Modal.Footer>
         );
       default:
         return (
-          <ModalFooter>
+          <Modal.Footer>
             <button className="btn btn--secondary" onClick={onClose}>
               Đóng
             </button>
@@ -502,7 +502,7 @@ const OrderSummaryModal = ({
             >
               {isProcessingPayment ? "Đang lưu đơn..." : "Xác nhận thanh toán"}
             </button>
-          </ModalFooter>
+          </Modal.Footer>
         );
     }
   };

@@ -1,648 +1,492 @@
-.customer-detail-modal {
-  .modal__content {
-    max-width: 64rem;
-    max-height: 90vh;
+/* src/components/CustomerManagement/CustomerModal.scss */
+
+/* --- Palette Refined for Depth --- */
+$cm-primary: #2563eb; // Vibrant Blue
+$cm-gold: #c5a47e; // Luxury Gold Accent
+$cm-bg-modal: #ffffff; // Pure White (Modal base)
+$cm-bg-block: #f8fafc; // Slate 50 (Main content blocks - LIGHT GREY)
+$cm-bg-inset: #f1f5f9; // Slate 100 (Deeper inset items)
+$cm-border: #e2e8f0; // Slate 200
+$cm-text-main: #0f172a; // Slate 900 (Stronger headings)
+$cm-text-body: #334155; // Slate 700 (Body text)
+$cm-text-sub: #64748b; // Slate 500 (Secondary text)
+$cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+.customer-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 4px;
+  color: $cm-text-body;
+
+  /* --- 1. Header Card (Hero Section) --- */
+  .cm-header-modern {
+    // CHANGE: Sử dụng nền gradient nhẹ màu ấm để tạo cảm giác cao cấp, không còn là trắng phẳng
+    background: linear-gradient(to right, #fffbf8, #fff);
+    border: 1px solid darken($cm-border, 2%);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: $cm-shadow-sm;
+    position: relative;
     overflow: hidden;
-  }
 
-  &__content {
-    padding: 1.5rem;
-    overflow-y: auto;
-    max-height: calc(90vh - 3rem);
-
-    .customer-header {
-      background: linear-gradient(135deg, #eff6ff 0%, #faf5ff 100%);
-      border-radius: 0.75rem;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-
-      .customer-avatar-section {
-        display: flex;
-        align-items: flex-start;
-        gap: 1.5rem;
-        margin-bottom: 1rem;
-
-        .customer-avatar {
-          position: relative;
-
-          .avatar-icon {
-            width: 5rem;
-            height: 5rem;
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-          }
-
-          .status-indicator {
-            position: absolute;
-            bottom: -0.25rem;
-            right: -0.25rem;
-            width: 1.5rem;
-            height: 1.5rem;
-            border-radius: 50%;
-            border: 2px solid white;
-
-            &.status--online {
-              background: #22c55e;
-            }
-            &.status--ordering {
-              background: #3b82f6;
-            }
-            &.status--away {
-              background: #f59e0b;
-            }
-            &.status--offline {
-              background: #9ca3af;
-            }
-          }
-        }
-
-        .customer-basic-info {
-          flex: 1;
-
-          .name-section {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 0.75rem;
-
-            h2 {
-              font-size: 1.5rem;
-              font-weight: 700;
-              color: #111827;
-              margin: 0;
-            }
-
-            .customer-type {
-              padding: 0.25rem 0.75rem;
-              border-radius: 9999px;
-              font-size: 0.875rem;
-              font-weight: 500;
-
-              &.type--vip {
-                background: #faf5ff;
-                color: #7c3aed;
-              }
-              &.type--frequent {
-                background: #eff6ff;
-                color: #2563eb;
-              }
-              &.type--new {
-                background: #f0fdf4;
-                color: #059669;
-              }
-            }
-          }
-
-          .contact-info {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-
-            .contact-row {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 1rem;
-            }
-
-            .contact-item {
-              display: flex;
-              align-items: center;
-              gap: 0.5rem;
-              font-size: 0.875rem;
-
-              .contact-icon {
-                width: 1rem;
-              }
-
-              .contact-label {
-                color: #6b7280;
-                min-width: 4rem;
-              }
-
-              .contact-value {
-                font-weight: 500;
-                color: #111827;
-
-                &.activity {
-                  &.status--online {
-                    color: #059669;
-                  }
-                  &.status--ordering {
-                    color: #2563eb;
-                  }
-                  &.status--away {
-                    color: #d97706;
-                  }
-                  &.status--offline {
-                    color: #6b7280;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      .customer-stats {
-        display: flex;
-        justify-content: flex-end;
-        gap: 2rem;
-
-        .stat-item {
-          text-align: center;
-
-          .stat-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #059669;
-          }
-
-          .stat-label {
-            font-size: 0.875rem;
-            color: #6b7280;
-            margin-top: 0.25rem;
-          }
-        }
-      }
+    // Optional: Thêm một dải màu vàng nhấn ở trên cùng
+    &::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(to right, $cm-primary, $cm-gold);
     }
 
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-
-      .stats-card {
-        padding: 1rem;
-        border-radius: 0.75rem;
-        text-align: center;
-
-        &--orders {
-          background: #eff6ff;
-          .stats-value {
-            color: #2563eb;
-          }
-          .stats-label {
-            color: #1e40af;
-          }
-        }
-
-        &--average {
-          background: #f0fdf4;
-          .stats-value {
-            color: #059669;
-          }
-          .stats-label {
-            color: #047857;
-          }
-        }
-
-        &--favorites {
-          background: #faf5ff;
-          .stats-value {
-            color: #7c3aed;
-          }
-          .stats-label {
-            color: #6b21a8;
-          }
-        }
-
-        &--reservations {
-          background: #fff7ed;
-          .stats-value {
-            color: #ea580c;
-          }
-          .stats-label {
-            color: #c2410c;
-          }
-        }
-
-        .stats-value {
-          font-size: 1.5rem;
-          font-weight: 700;
-        }
-
-        .stats-label {
-          font-size: 0.875rem;
-          margin-top: 0.25rem;
-        }
-      }
-    }
-
-    .tabs-section {
-      border: 1px solid #e5e7eb;
-      border-radius: 0.75rem;
-      overflow: hidden;
-      margin-bottom: 1.5rem;
-
-      .tabs-nav {
-        display: flex;
-        background: #f9fafb;
-        border-bottom: 1px solid #e5e7eb;
-
-        .tab-btn {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          padding: 0.75rem 1rem;
-          border: none;
-          background: transparent;
-          color: #6b7280;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          border-bottom: 2px solid transparent;
-
-          &:hover {
-            color: #3b82f6;
-            background: #f3f4f6;
-          }
-
-          &.active {
-            color: #3b82f6;
-            background: white;
-            border-bottom-color: #3b82f6;
-          }
-
-          .tab-icon {
-            font-size: 1rem;
-          }
-
-          .tab-label {
-            font-size: 0.875rem;
-          }
-        }
-      }
-
-      .tabs-content {
-        padding: 1.5rem;
-        background: white;
-
-        .tab-content {
-          h3 {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #111827;
-            margin: 0 0 1rem 0;
-          }
-
-          // Orders Tab
-          .orders-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-
-            .order-item {
-              background: #f9fafb;
-              border-radius: 0.5rem;
-              padding: 1rem;
-
-              .order-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-
-                .order-info {
-                  display: flex;
-                  align-items: center;
-                  gap: 0.75rem;
-
-                  .order-type-icon {
-                    font-size: 1.125rem;
-                  }
-
-                  .order-items {
-                    font-weight: 500;
-                    color: #111827;
-                  }
-
-                  .order-date {
-                    font-size: 0.875rem;
-                    color: #6b7280;
-                  }
-                }
-
-                .order-amount {
-                  text-align: right;
-
-                  .amount {
-                    font-weight: 700;
-                    color: #059669;
-                  }
-
-                  .order-type {
-                    font-size: 0.875rem;
-                    color: #6b7280;
-                  }
-                }
-              }
-            }
-          }
-
-          // Reservations Tab
-          .reservations-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-
-            .reservation-item {
-              background: #f9fafb;
-              border-radius: 0.5rem;
-              padding: 1rem;
-              display: flex;
-              align-items: center;
-              justify-content: space-between;
-
-              .reservation-info {
-                display: flex;
-                align-items: center;
-                gap: 0.75rem;
-
-                .reservation-icon {
-                  font-size: 1.125rem;
-                }
-
-                .reservation-datetime {
-                  font-weight: 500;
-                  color: #111827;
-                }
-
-                .reservation-guests {
-                  font-size: 0.875rem;
-                  color: #6b7280;
-                }
-              }
-
-              .reservation-status {
-                padding: 0.25rem 0.75rem;
-                border-radius: 9999px;
-                font-size: 0.875rem;
-                font-weight: 500;
-
-                &.confirmed {
-                  background: #f0fdf4;
-                  color: #15803d;
-                }
-
-                &.completed {
-                  background: #f3f4f6;
-                  color: #374151;
-                }
-              }
-            }
-          }
-
-          .empty-state {
-            text-align: center;
-            padding: 2rem;
-            color: #9ca3af;
-
-            .empty-icon {
-              font-size: 2rem;
-              margin-bottom: 0.5rem;
-              display: block;
-            }
-
-            p {
-              margin: 0;
-            }
-          }
-
-          // Preferences Tab
-          .preferences-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-
-            .preference-section {
-              &.full-width {
-                grid-column: 1 / -1;
-              }
-
-              h4 {
-                font-size: 1rem;
-                font-weight: 500;
-                color: #111827;
-                margin: 0 0 0.5rem 0;
-              }
-
-              .preference-tag {
-                display: inline-block;
-                padding: 0.25rem 0.75rem;
-                border-radius: 9999px;
-                font-size: 0.875rem;
-                font-weight: 500;
-                margin-right: 0.5rem;
-                margin-bottom: 0.5rem;
-
-                &.spice {
-                  background: #fff7ed;
-                  color: #ea580c;
-                }
-
-                &.diet {
-                  background: #f0fdf4;
-                  color: #15803d;
-                }
-
-                &.allergy {
-                  background: #fef2f2;
-                  color: #dc2626;
-                }
-
-                &.favorite {
-                  background: #eff6ff;
-                  color: #2563eb;
-                }
-              }
-
-              .no-allergies {
-                color: #6b7280;
-                font-style: italic;
-              }
-
-              .allergies-list,
-              .favorite-items {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-              }
-            }
-          }
-
-          // Notes Tab
-          .existing-note {
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-
-            .note-header {
-              display: flex;
-              align-items: center;
-              gap: 0.5rem;
-              margin-bottom: 0.5rem;
-
-              .note-icon {
-                font-size: 1.125rem;
-              }
-
-              h4 {
-                font-size: 1rem;
-                font-weight: 500;
-                color: #92400e;
-                margin: 0;
-              }
-            }
-
-            .note-content {
-              color: #92400e;
-              margin: 0;
-            }
-          }
-
-          .add-note-section {
-            h4 {
-              font-size: 1rem;
-              font-weight: 500;
-              color: #111827;
-              margin: 0 0 0.75rem 0;
-            }
-
-            .note-textarea {
-              width: 100%;
-              padding: 0.75rem;
-              border: 1px solid #d1d5db;
-              border-radius: 0.5rem;
-              resize: vertical;
-              font-family: inherit;
-              margin-bottom: 0.75rem;
-
-              &:focus {
-                outline: none;
-                ring: 2px;
-                ring-color: #3b82f6;
-                border-color: transparent;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    .action-buttons {
+    .profile-left {
       display: flex;
-      gap: 0.75rem;
+      align-items: center;
+      gap: 16px;
 
-      .btn {
-        flex: 1;
+      .avatar-ring {
+        width: 68px;
+        height: 68px;
+        border-radius: 50%;
+        // CHANGE: Nền avatar nổi bật hơn
+        background: white;
+        border: 3px solid $cm-bg-inset;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
-        padding: 0.75rem 1rem;
-        border-radius: 0.75rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border: none;
+        font-size: 28px;
+        color: $cm-primary;
+        box-shadow: $cm-shadow-sm;
+      }
 
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
+      .info-block {
+        h2 {
+          font-size: 22px;
+          font-weight: 800;
+          color: $cm-text-main;
+          margin: 0 0 6px 0;
+          letter-spacing: -0.5px;
         }
-
-        &--primary {
-          background: #3b82f6;
-          color: white;
-
-          &:hover:not(:disabled) {
-            background: #2563eb;
+        .meta-badges {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          .badge-id {
+            font-family: monospace;
+            font-size: 13px;
+            color: $cm-text-sub;
+            background: $cm-bg-inset;
+            padding: 2px 8px;
+            border-radius: 6px;
+          }
+          .badge-tier {
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            // Các class màu từ JSX sẽ áp dụng background gradient tại đây
           }
         }
+      }
+    }
 
-        &--success {
-          background: #059669;
-          color: white;
+    .points-right {
+      text-align: right;
+      // CHANGE: Sử dụng tông màu vàng Gold làm điểm nhấn cho khu vực điểm số
+      background: #fffbea; // Very light amber
+      border: 1px solid #fcd34d; // Amber 300 border
+      padding: 12px 24px;
+      border-radius: 12px;
 
-          &:hover:not(:disabled) {
-            background: #047857;
-          }
-        }
-
-        &--info {
-          background: #7c3aed;
-          color: white;
-
-          &:hover:not(:disabled) {
-            background: #6d28d9;
-          }
-        }
+      .pts-val {
+        font-size: 26px;
+        font-weight: 900;
+        color: #b45309; // Dark amber text
+        line-height: 1;
+      }
+      .pts-lbl {
+        font-size: 13px;
+        color: #92400e;
+        font-weight: 600;
+        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
     }
   }
 
-  // Responsive
-  @media (max-width: 1024px) {
-    .modal__content {
-      max-width: 95vw;
-      margin: 1rem;
+  /* --- 2. Stats Row (Metrics) --- */
+  .cm-stats-modern {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+
+    .stat-item {
+      // CHANGE: Không dùng nền trắng viền màu nữa. Dùng nền màu khối (solid tinted background) để tạo sức nặng thị giác.
+      padding: 16px;
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      border: none; // Xóa border
+
+      // Áp dụng màu nền trực tiếp dựa trên class của icon cha (ví dụ)
+      &:nth-child(1) {
+        background: #ecfdf5;
+        .stat-value {
+          color: #059669;
+        }
+      } // Green
+      &:nth-child(2) {
+        background: #eff6ff;
+        .stat-value {
+          color: #1d4ed8;
+        }
+      } // Blue
+      &:nth-child(3) {
+        background: #faf5ff;
+        .stat-value {
+          color: #7e22ce;
+        }
+      } // Purple
+      &:nth-child(4) {
+        background: #fff7ed;
+        .stat-value {
+          color: #c2410c;
+        }
+      } // Orange
+
+      .stat-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+        background: white; // Icon nằm trong hộp trắng để nổi bật trên nền màu
+        box-shadow: $cm-shadow-sm;
+      }
+      .stat-value {
+        font-size: 20px;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+      .stat-label {
+        font-size: 13px;
+        color: $cm-text-sub;
+        font-weight: 600;
+      }
     }
+  }
 
-    &__content {
-      .customer-header {
-        .customer-avatar-section {
-          flex-direction: column;
-          text-align: center;
+  /* --- 3. Insights Grid (Contact & Favorites) --- */
+  .cm-insights-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
 
-          .contact-info .contact-row {
-            grid-template-columns: 1fr;
-          }
-        }
+    .insight-card {
+      // CHANGE: Sử dụng nền xám nhẹ ($cm-bg-block) thay vì trắng.
+      // Điều này giúp tách biệt nó khỏi nền modal trắng.
+      background: $cm-bg-block;
+      border: 1px solid $cm-border;
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
 
-        .customer-stats {
-          justify-content: center;
-        }
+      .card-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: $cm-text-main;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid $cm-border; // Thêm đường kẻ dưới tiêu đề
       }
 
-      .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .tabs-section .tabs-nav {
-        flex-wrap: wrap;
-
-        .tab-btn {
-          flex: 1 1 50%;
-        }
-      }
-
-      .preferences-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .action-buttons {
+      /* Contact List */
+      .contact-list {
+        display: flex;
         flex-direction: column;
+        gap: 12px;
+        .c-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 14px;
+          font-weight: 500;
+          .icon {
+            color: $cm-text-sub;
+          }
+        }
+      }
+
+      /* Wallet Status */
+      .wallet-status-block {
+        margin-top: auto;
+        padding-top: 14px;
+        border-top: 1px solid $cm-border; // Đổi từ dashed sang solid
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        .w-label {
+          font-size: 13px;
+          color: $cm-text-sub;
+          font-weight: 600;
+          display: flex;
+          gap: 6px;
+        }
+        .w-badge {
+          font-size: 12px;
+          font-weight: 600;
+          padding: 4px 12px;
+          border-radius: 100px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          // Làm cho badge trạng thái nổi bật hơn
+          &.active {
+            background: #22c55e;
+            color: white;
+            .dot {
+              background: white;
+            }
+          }
+          &.inactive {
+            background: $cm-border;
+            color: $cm-text-sub;
+          }
+          .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+          }
+        }
+      }
+
+      /* Tags / Favorites */
+      .chips-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        .chip {
+          font-size: 13px;
+          padding: 6px 12px;
+          border-radius: 8px;
+          background: white; // Chip màu trắng nổi trên nền xám của card
+          color: $cm-text-body;
+          font-weight: 500;
+          border: 1px solid $cm-border;
+          box-shadow: $cm-shadow-sm;
+
+          // Chip món yêu thích có màu nhấn Gold
+          &.fav {
+            background: #fffbea;
+            border-color: #fcd34d;
+            color: #92400e;
+          }
+        }
+        .empty-text {
+          font-size: 13px;
+          color: $cm-text-sub;
+          font-style: italic;
+          padding: 4px;
+        }
       }
     }
   }
 
-  @media (max-width: 768px) {
-    &__content {
-      .stats-grid {
-        grid-template-columns: 1fr;
+  /* --- 4. Main Body Split --- */
+  .cm-body-split {
+    display: grid;
+    grid-template-columns: 1.7fr 1fr;
+    gap: 16px;
+    align-items: start;
+
+    /* Orders Section */
+    .orders-section {
+      // CHANGE: Nền xám nhẹ cho khối đơn hàng
+      background: $cm-bg-block;
+      border: 1px solid $cm-border;
+      border-radius: 14px;
+      padding: 20px;
+      min-height: 320px;
+
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+        h3 {
+          font-size: 16px;
+          font-weight: 700;
+          color: $cm-text-main;
+        }
+        button {
+          font-size: 13px;
+          color: $cm-primary;
+          font-weight: 600;
+          &:hover {
+            text-decoration: underline;
+          }
+        }
       }
 
-      .tabs-section .tabs-nav .tab-btn {
-        flex: 1 1 100%;
+      .order-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
+        .order-row {
+          display: grid;
+          grid-template-columns: 1.5fr 1.2fr 1.5fr 0.5fr;
+          align-items: center;
+          // CHANGE: Mỗi dòng đơn hàng là một thẻ trắng nổi trên nền xám
+          background: white;
+          padding: 12px 16px;
+          border-radius: 10px;
+          border: 1px solid $cm-border;
+          font-size: 13px;
+          cursor: pointer;
+          transition: all 0.2s;
+
+          &:hover {
+            border-color: $cm-primary;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+            transform: translateX(2px);
+          }
+
+          .o-date {
+            font-weight: 600;
+            color: $cm-text-body;
+          }
+          .o-price {
+            font-weight: 700;
+            color: $cm-text-main;
+            font-size: 14px;
+          }
+          .o-status span {
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+          }
+          .o-arrow {
+            color: $cm-border;
+            text-align: right;
+            transition: color 0.2s;
+          }
+          &:hover .o-arrow {
+            color: $cm-primary;
+          }
+        }
+      }
+    }
+
+    /* Notes Section */
+    .notes-section {
+      // CHANGE: Nền màu ấm áp hơn cho phần ghi chú, tạo cảm giác "giấy note"
+      background: #fffbf0; // Very light warm beige
+      border: 1px solid #fee9c3; // Warm border
+      border-radius: 14px;
+      padding: 20px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+
+      .notes-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 14px;
+        h3 {
+          font-size: 15px;
+          font-weight: 700;
+          color: #78350f;
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+        button {
+          font-size: 12px;
+          color: #b45309;
+          font-weight: 600;
+          &:hover {
+            text-decoration: underline;
+          }
+        }
+      }
+
+      textarea {
+        flex: 1;
+        width: 100%;
+        background: white;
+        border: 2px solid #fee9c3;
+        border-radius: 10px;
+        padding: 12px;
+        font-size: 14px;
+        resize: none;
+        &:focus {
+          outline: none;
+          border-color: #f59e0b;
+        } // Amber focus
+      }
+
+      .note-display {
+        flex: 1;
+        font-size: 14px;
+        line-height: 1.6;
+        color: #451a03;
+        white-space: pre-line;
+        padding: 4px;
+        em {
+          color: #a16207;
+        }
+      }
+
+      .action-row {
+        margin-top: 12px;
+        display: flex;
+        gap: 10px;
+        button {
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          &.save {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            &:hover {
+              background: #d97706;
+            }
+          }
+          &.cancel {
+            background: white;
+            border: 1px solid #fee9c3;
+            color: #78350f;
+            &:hover {
+              background: #fffbeb;
+            }
+          }
+        }
       }
     }
   }

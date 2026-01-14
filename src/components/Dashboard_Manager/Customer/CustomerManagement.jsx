@@ -1,17 +1,37 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import {
+  Users,
+  Search,
+  Plus,
+  Filter,
+  Download,
+  Gift,
+  Star,
+  Sparkles,
+  Zap,
+  UserCheck,
+} from "lucide-react";
+
+// Components
 import CustomerList from "./CustomerList";
 import CustomerFilters from "./CustomerFilters";
 import PromotionModal from "./PromotionModal";
 import CustomerDetailModal from "./CustomerModal";
 import AddCustomerModal from "./AddCustomerModal";
+
+// Hooks & Context
 import useUserManagement from "../../../hooks/useUserManagement";
 import useOrderManagement from "../../../hooks/useOrderManagement";
 import { AuthContext } from "../../../context/AuthContext";
+
+// Styles
 import "./CustomerManagement.scss";
 
-/* ===== Helpers ===== */
+/* ================== Helpers ================== */
+
 const toDateStringVI = (ts) => {
   if (typeof ts === "number" && Number.isFinite(ts)) {
+    // Nếu timestamp là giây (10 số), đổi sang ms
     const ms = String(ts).length === 10 ? ts * 1000 : ts;
     return new Date(ms).toLocaleDateString("vi-VN");
   }
@@ -25,6 +45,7 @@ const toDateStringVI = (ts) => {
   return new Date().toLocaleDateString("vi-VN");
 };
 
+// Tạo danh sách đơn hàng rút gọn để hiển thị nhanh
 const buildRecentOrdersForUser = (orders = []) =>
   orders.slice(0, 5).map((o) => ({
     id: o.id,
@@ -35,9 +56,17 @@ const buildRecentOrdersForUser = (orders = []) =>
     raw: o,
   }));
 
-const GUEST_BADGE = "🟡";
+// Định dạng số lượng hiển thị trên nút lọc (VD: 1.2k)
+const formatCompactCount = (n) =>
+  new Intl.NumberFormat("vi-VN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(n || 0));
+
+/* ================== Main Component ================== */
 
 const CustomerManagement = () => {
+  // --- 1. Hooks & State ---
   const { restaurants = [] } = useContext(AuthContext) || {};
 
   const {
@@ -55,23 +84,29 @@ const CustomerManagement = () => {
   const [selectedRestaurantId, setSelectedRestaurantId] =
     useState(defaultRestaurantId);
 
+  // UI States
   const [showRightSidebar, setShowRightSidebar] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+
+  // Filter & Search States
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  /* Sync default restaurant */
+  // --- 2. Effects ---
+
+  // Sync default restaurant ID khi load trang
   useEffect(() => {
     if (!selectedRestaurantId && restaurants?.length) {
       setSelectedRestaurantId(restaurants[0].id);
     }
   }, [restaurants, selectedRestaurantId]);
 
-  /* Initial fetch + when restaurant changes */
+  // Fetch dữ liệu khách hàng và đơn hàng khi thay đổi nhà hàng
   useEffect(() => {
     getCustomers({ includeGuests: true, search: "" });
+
     if (selectedRestaurantId) {
       loadOrdersAll({
         variables: {
@@ -84,10 +119,12 @@ const CustomerManagement = () => {
     }
   }, [getCustomers, loadOrdersAll, selectedRestaurantId]);
 
-  /* Search & filter */
+  // --- 3. Handlers ---
+
   const handleSearch = (query) => {
     setSearchQuery(query);
     searchCustomers(query);
+    // Reload orders để đảm bảo dữ liệu mới nhất khi search
     if (selectedRestaurantId) {
       loadOrdersAll({
         variables: {
@@ -100,22 +137,25 @@ const CustomerManagement = () => {
     }
   };
 
-  const handleFilter = (filter) => {
-    setActiveFilter(filter);
-    filterCustomers(filter);
+  const handleFilter = (filterKey) => {
+    setActiveFilter(filterKey);
+    // Logic mapping filterKey sang params của API hoặc hàm lọc local
+    // Ở đây giả sử filterCustomers nhận key tương ứng
+    filterCustomers(filterKey);
   };
-  const formatCompactCount = (n) =>
-    new Intl.NumberFormat("vi-VN", {
-      notation: "compact",
-      maximumFractionDigits: 1,
-    }).format(Number(n || 0));
 
   const handleRestaurantChange = (restaurantId) => {
     setSelectedRestaurantId(restaurantId);
     switchRestaurant(restaurantId);
   };
 
-  /* Orders map */
+  const handleCustomerClick = (customer) => {
+    setSelectedCustomer(customer);
+  };
+
+  // --- 4. Data Processing (Memoized) ---
+
+  // Gom nhóm đơn hàng theo UserID để map vào Customer
   const ordersByUserId = useMemo(() => {
     const map = new Map();
     (ordersAll || []).forEach((o) => {
@@ -124,27 +164,19 @@ const CustomerManagement = () => {
       if (!map.has(uid)) map.set(uid, []);
       map.get(uid).push(o);
     });
+
+    // Sort đơn hàng mới nhất lên đầu cho mỗi user
     for (const [, list] of map.entries()) {
       list.sort((a, b) => {
-        const ta =
-          typeof a.createdAt === "number"
-            ? (String(a.createdAt).length === 10
-                ? a.createdAt * 1000
-                : a.createdAt) || 0
-            : Date.parse(a.createdAt) || 0;
-        const tb =
-          typeof b.createdAt === "number"
-            ? (String(b.createdAt).length === 10
-                ? b.createdAt * 1000
-                : b.createdAt) || 0
-            : Date.parse(b.createdAt) || 0;
+        const ta = new Date(a.createdAt).getTime();
+        const tb = new Date(b.createdAt).getTime();
         return tb - ta;
       });
     }
     return map;
   }, [ordersAll]);
 
-  /* Decorate customers with recent orders + keep guest icon on card (not in name) */
+  // Decorate: Gắn đơn hàng gần đây vào thông tin khách hàng
   const customersDecorated = useMemo(() => {
     return (filteredCustomers || []).map((c) => {
       const uid = c.id;
@@ -152,14 +184,15 @@ const CustomerManagement = () => {
       const recentOrders = buildRecentOrdersForUser(userOrders);
       return {
         ...c,
-        // tên KH không gắn icon vàng; icon sẽ hiển thị riêng trên card như trước
         displayName: c.name || "Khách hàng",
         recentOrders,
-        isGuestBadge: c.isGuest ? GUEST_BADGE : "",
+        // Logic badge Guest nếu cần xử lý ở cấp độ list
+        isGuestBadge: c.isGuest ? "GUEST" : "",
       };
     });
   }, [filteredCustomers, ordersByUserId]);
 
+  // Tính toán số lượng cho các bộ lọc nhanh (Quick Filters)
   const quickFilters = useMemo(() => {
     const total = customersDecorated.length || 0;
     const vip = customersDecorated.filter(
@@ -173,90 +206,104 @@ const CustomerManagement = () => {
     ).length;
 
     return [
-      { key: "all", label: "Tất cả", icon: "👥", count: total },
-      { key: "vip", label: "VIP", icon: "⭐", count: vip },
-      { key: "new", label: "Mới", icon: "🆕", count: isNew },
-      { key: "frequent", label: "Thường xuyên", icon: "🔥", count: often },
+      { key: "all", label: "Tất cả", icon: <Users size={16} />, count: total },
+      {
+        key: "vip",
+        label: "VIP",
+        icon: <Star size={16} fill="currentColor" />,
+        count: vip,
+      },
+      { key: "new", label: "Mới", icon: <Sparkles size={16} />, count: isNew },
+      {
+        key: "frequent",
+        label: "Thân thiết",
+        icon: <UserCheck size={16} />,
+        count: often,
+      },
     ];
   }, [customersDecorated]);
 
-  const handleCustomerClick = (customer) => setSelectedCustomer(customer);
   const loading = usersLoading || ordersAllLoading;
 
+  // --- 5. Render ---
+
   return (
-    <div
-      className={`customer-management ${
-        showRightSidebar ? "is-sidebar-open" : ""
-      }`}
-    >
-      {/* Header */}
+    <div className={`cm-page ${showRightSidebar ? "is-sidebar-open" : ""}`}>
+      {/* === HEADER SECTION === */}
       <header className="cm-header">
-        <div className="cm-header__left">
-          <div className="cm-header__icon">👥</div>
-          <div className="cm-header__info">
-            <h1>Quản Lý Khách Hàng</h1>
-            <select
-              value={selectedRestaurantId}
-              onChange={(e) => handleRestaurantChange(e.target.value)}
-              className="cm-restaurant"
-            >
-              {(restaurants || []).map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
+        <div className="cm-header-left">
+          <div className="cm-brand-icon">
+            <Users size={20} strokeWidth={2.5} />
+          </div>
+          <div className="cm-header-info">
+            <h1 className="cm-title">Quản lý Khách hàng</h1>
+            <div className="cm-select-wrapper">
+              <select
+                value={selectedRestaurantId}
+                onChange={(e) => handleRestaurantChange(e.target.value)}
+                className="cm-select"
+              >
+                {(restaurants || []).map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="cm-header__right">
-          <div className="cm-header__stat">
-            <span className="dot" />
+        <div className="cm-header-right">
+          <div className="cm-stat-badge">
+            <span className="cm-dot-pulse" />
             <span>24 Online</span>
           </div>
 
           <button
+            className="cm-btn cm-btn-primary"
             onClick={() => setShowAddModal(true)}
-            className="btn btn--primary"
           >
-            ➕ Thêm khách hàng
+            <Plus size={18} strokeWidth={2.5} />
+            <span>Thêm khách</span>
           </button>
 
           <button
+            className={`cm-btn cm-btn-icon ${showRightSidebar ? "active" : ""}`}
             onClick={() => setShowRightSidebar((v) => !v)}
-            className="btn btn--secondary"
+            title="Bộ lọc nâng cao"
           >
-            ⚙️ Bộ Lọc
+            <Filter size={18} />
           </button>
         </div>
       </header>
 
-      {/* Toolbar */}
+      {/* === TOOLBAR SECTION === */}
       <div className="cm-toolbar">
-        <div className="cm-toolbar__left">
-          <div className="cm-search">
-            <span className="cm-search__icon">🔍</span>
+        <div className="cm-toolbar-left">
+          {/* Search Box */}
+          <div className="cm-search-box">
+            <Search className="cm-search-icon" size={18} />
             <input
               type="text"
-              placeholder="Tìm kiếm khách hàng... (Ctrl + K)"
+              placeholder="Tìm tên, SĐT, mã khách..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
             />
           </div>
 
-          <div className="cm-quick">
+          {/* Quick Filter Pills */}
+          <div className="cm-quick-filters">
             {quickFilters.map((f) => (
               <button
                 key={f.key}
                 onClick={() => handleFilter(f.key)}
-                className={`cm-quick__pill ${
+                className={`cm-pill ${
                   activeFilter === f.key ? "is-active" : ""
                 }`}
-                title={`${f.label}: ${f.count.toLocaleString("vi-VN")}`}
               >
-                <span className="cm-quick__icon">{f.icon}</span>
-                <span className="cm-quick__label">{f.label}</span>
-                <span className="cm-quick__count">
+                <span className="cm-pill-icon">{f.icon}</span>
+                <span className="cm-pill-label">{f.label}</span>
+                <span className="cm-pill-count">
                   {formatCompactCount(f.count)}
                 </span>
               </button>
@@ -264,20 +311,23 @@ const CustomerManagement = () => {
           </div>
         </div>
 
-        <div className="cm-toolbar__right">
-          <button className="btn btn--primary">📊 Xuất Báo Cáo</button>
+        <div className="cm-toolbar-right">
+          <button className="cm-btn cm-btn-text" title="Xuất danh sách Excel">
+            <Download size={20} />
+          </button>
           <button
             onClick={() => setShowPromotionModal(true)}
-            className="btn btn--success"
+            className="cm-btn cm-btn-secondary"
           >
-            📧 Gửi Khuyến Mãi
+            <Gift size={18} className="text-yellow-600" />
+            <span className="text-yellow-700">Gửi Ưu Đãi</span>
           </button>
         </div>
       </div>
 
-      {/* Content Grid: content + sidebar (2 cột) */}
-      <main className="cm-content">
-        <section className="cm-content__main">
+      {/* === MAIN CONTENT LAYOUT === */}
+      <main className="cm-layout">
+        <section className="cm-main-area">
           <CustomerList
             customers={customersDecorated}
             loading={loading}
@@ -285,15 +335,20 @@ const CustomerManagement = () => {
           />
         </section>
 
-        <aside className="cm-content__sidebar">
-          <CustomerFilters
-            onClose={() => setShowRightSidebar(false)}
-            onApplyFilters={filterCustomers}
-          />
+        {/* Sidebar Filter Panel (Animated) */}
+        <aside className="cm-sidebar">
+          {showRightSidebar && (
+            <CustomerFilters
+              onClose={() => setShowRightSidebar(false)}
+              onApplyFilters={filterCustomers}
+            />
+          )}
         </aside>
       </main>
 
-      {/* Modals */}
+      {/* === MODALS === */}
+
+      {/* Modal gửi khuyến mãi */}
       {showPromotionModal && (
         <PromotionModal
           onClose={() => setShowPromotionModal(false)}
@@ -301,6 +356,7 @@ const CustomerManagement = () => {
         />
       )}
 
+      {/* Modal chi tiết khách hàng */}
       {selectedCustomer && (
         <CustomerDetailModal
           customer={selectedCustomer}
@@ -308,6 +364,7 @@ const CustomerManagement = () => {
         />
       )}
 
+      {/* Modal thêm khách hàng mới */}
       {showAddModal && (
         <AddCustomerModal onClose={() => setShowAddModal(false)} />
       )}

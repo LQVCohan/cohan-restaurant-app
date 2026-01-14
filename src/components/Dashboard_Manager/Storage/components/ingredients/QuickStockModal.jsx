@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import Modal, { ModalFooter } from "../../../../common/Modal";
+import Modal from "../../../../common/Modal";
 import "./QuickStockModal.scss";
 
 /**
@@ -119,7 +119,9 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
                     className={errors[idx] ? "error" : ""}
                     placeholder="0"
                   />
-                  {errors[idx] && <small className="qsm-error">{errors[idx]}</small>}
+                  {errors[idx] && (
+                    <small className="qsm-error">{errors[idx]}</small>
+                  )}
                 </label>
 
                 <label className="qsm-field">
@@ -127,7 +129,9 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
                   <input
                     type="text"
                     value={row.supplier}
-                    onChange={(e) => updateRow(idx, { supplier: e.target.value })}
+                    onChange={(e) =>
+                      updateRow(idx, { supplier: e.target.value })
+                    }
                     placeholder="Tên NCC hoặc nguồn"
                   />
                 </label>
@@ -137,7 +141,9 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
                   <input
                     type="datetime-local"
                     value={row.datetime}
-                    onChange={(e) => updateRow(idx, { datetime: e.target.value })}
+                    onChange={(e) =>
+                      updateRow(idx, { datetime: e.target.value })
+                    }
                   />
                 </label>
               </div>
@@ -155,14 +161,14 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
         </div>
       </div>
 
-      <ModalFooter>
+      <Modal.Footer>
         <button className="qsm-btn qsm-btn--secondary" onClick={onClose}>
           Huỷ
         </button>
         <button className="qsm-btn qsm-btn--primary" onClick={submit}>
           Xác nhận nhập kho
         </button>
-      </ModalFooter>
+      </Modal.Footer>
     </Modal>
   );
 };

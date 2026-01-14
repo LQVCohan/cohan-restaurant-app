@@ -1,6 +1,6 @@
 // src/components/orders/modals/CancelOrderModal.jsx
 import React, { useState, useEffect } from "react";
-import Modal, { ModalFooter } from "@/components/common/Modal";
+import Modal from "@/components/common/Modal";
 
 const REASONS = [
   "Tôi đặt nhầm",
@@ -68,14 +68,14 @@ export default function CancelOrderModal({
         </div>
       </div>
 
-      <ModalFooter>
+      <Modal.Footer>
         <button className="btn btn--secondary" onClick={onClose}>
           Đóng
         </button>
         <button className="btn btn--danger" onClick={submit}>
           Xác nhận hủy
         </button>
-      </ModalFooter>
+      </Modal.Footer>
     </Modal>
   );
 }

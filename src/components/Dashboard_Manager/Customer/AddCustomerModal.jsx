@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import Modal, { ModalFooter } from "../../common/Modal";
+import Modal from "../../common/Modal";
 import useUserManagement from "../../../hooks/useUserManagement";
 import { useNotification } from "../../../hooks/useNotification";
 import "./AddCustomerModal.scss";
@@ -441,7 +441,7 @@ const AddCustomerModal = ({ onClose }) => {
         )}
       </div>
 
-      <ModalFooter>
+      <Modal.Footer>
         <button
           type="button"
           className="btn btn--secondary"
@@ -458,7 +458,7 @@ const AddCustomerModal = ({ onClose }) => {
         >
           {asGuest ? "🟡 Tạo khách vãng lai" : "💾 Lưu khách hàng"}
         </button>
-      </ModalFooter>
+      </Modal.Footer>
     </Modal>
   );
 };

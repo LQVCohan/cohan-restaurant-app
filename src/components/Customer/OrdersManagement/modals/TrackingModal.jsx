@@ -1,6 +1,6 @@
 // src/components/orders/modals/TrackingModal.jsx
 import React, { useMemo } from "react";
-import Modal, { ModalFooter } from "@/components/common/Modal";
+import Modal from "@/components/common/Modal";
 import "./TrackingModal.scss";
 
 /**
@@ -100,14 +100,14 @@ export default function TrackingModal({
         </div>
       </div>
 
-      <ModalFooter>
+      <Modal.Footer>
         <button className="btn btn--secondary" onClick={onCallShipper}>
           📞 Gọi shipper
         </button>
         <button className="btn btn--primary" onClick={onClose}>
           Đóng
         </button>
-      </ModalFooter>
+      </Modal.Footer>
     </Modal>
   );
 }
