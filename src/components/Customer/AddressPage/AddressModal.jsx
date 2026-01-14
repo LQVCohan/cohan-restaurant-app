@@ -132,8 +132,11 @@ const AddressModal = ({ isOpen, onClose, onSave, initialData }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+    <div className="address-modal-overlay" onClick={onClose}>
+      <div
+        className="address-modal-container"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* HEADER */}
         <div className="modal-header">
           <h3>Thông tin địa chỉ</h3>

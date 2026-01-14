@@ -5,7 +5,7 @@ $text-gray: #6b7280;
 $border: #e2e8f0;
 $bg-input: #f8fafc;
 
-.modal-overlay {
+.address-modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
@@ -17,7 +17,7 @@ $bg-input: #f8fafc;
   padding: 20px;
 }
 
-.modal-container {
+.address-modal-container {
   background: white;
   width: 100%;
   max-width: 650px; /* Rộng hơn để chứa 3 cột select */
