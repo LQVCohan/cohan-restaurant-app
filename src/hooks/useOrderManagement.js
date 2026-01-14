@@ -1570,7 +1570,6 @@ export default function useOrderManagement(pos = null) {
                   activeGroup?.orderCode || currentTable.orderCode || null,
                 items: outgoing,
                 note: orderNote,
-                customer: null,
                 clientMeta: {
                   savedAt: new Date().toISOString(),
                   ua:
