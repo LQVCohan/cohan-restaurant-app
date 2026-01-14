@@ -157,7 +157,12 @@ const PromotionModal = ({ onClose }) => {
   };
 
   return (
-    <Modal onClose={onClose} className="promotion-modal-wrapper">
+    <Modal
+      isOpen
+      onClose={onClose}
+      size="xl"
+      className="promotion-modal-wrapper"
+    >
       <div className="pm-container">
         {/* HEADER */}
         <div className="pm-header">

@@ -19,16 +19,11 @@ $shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05),
   0 4px 6px -2px rgba(0, 0, 0, 0.025);
 
 .order-summary-modal {
-  .modal {
-    max-width: 1000px; // Mở rộng chiều rộng để chứa bố cục 2 cột
-    border-radius: $radius-lg;
-    overflow: hidden;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-  }
-
-  .modal-content {
-    background: $bg-color;
-  }
+  max-width: 1000px; // Mở rộng chiều rộng để chứa bố cục 2 cột
+  border-radius: $radius-lg;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+  background: $bg-color;
 }
 
 .order-summary-wrapper {

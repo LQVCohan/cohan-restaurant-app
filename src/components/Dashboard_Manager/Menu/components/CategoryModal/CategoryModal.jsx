@@ -187,7 +187,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
           ? "Cập nhật Danh mục"
           : "Tạo Danh mục mới"
       }
-      size="medium"
+      size="md"
       className="category-modal"
     >
       <div className="category-modal__body">

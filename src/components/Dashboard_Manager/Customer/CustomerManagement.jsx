@@ -359,6 +359,7 @@ const CustomerManagement = () => {
       {/* Modal chi tiết khách hàng */}
       {selectedCustomer && (
         <CustomerDetailModal
+          isOpen={Boolean(selectedCustomer)}
           customer={selectedCustomer}
           onClose={() => setSelectedCustomer(null)}
         />
