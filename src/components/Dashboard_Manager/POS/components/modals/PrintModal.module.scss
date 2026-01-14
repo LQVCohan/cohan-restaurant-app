@@ -19,6 +19,35 @@
   align-items: center;
   margin-bottom: 1rem;
 }
+.modes {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.modeBtn {
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  padding: 0.45rem 0.9rem;
+  background: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.modeActive {
+  border-color: #0284c7;
+  color: #0369a1;
+  background: #e0f2fe;
+}
+.queueBtn {
+  margin-left: auto;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  padding: 0.45rem 0.9rem;
+  background: #f8fafc;
+  cursor: pointer;
+  font-weight: 600;
+}
 .title {
   font-size: 1.25rem;
   font-weight: 600;
@@ -68,6 +97,23 @@
   border-color: #0284c7;
   background: #f0f9ff;
 }
+.sectionTitle {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.cardName {
+  font-weight: 600;
+}
+.cardMeta {
+  font-size: 0.85rem;
+  color: #64748b;
+}
 .status {
   display: inline-block;
   padding: 0.25rem 0.5rem;
@@ -97,6 +143,31 @@
   line-height: 1.4;
   max-height: 400px;
   overflow: auto;
+}
+.stationGrid {
+  display: grid;
+  gap: 1rem;
+}
+.stationCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: #fff;
+}
+.stationHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.stationTitle {
+  font-weight: 700;
+}
+.stationMeta {
+  font-size: 0.85rem;
+  color: #64748b;
 }
 .actions {
   display: flex;

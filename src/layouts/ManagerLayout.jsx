@@ -15,6 +15,7 @@ import "./ManagerLayout.scss";
 import StorageManagement from "../components/Dashboard_Manager/Storage/StorageManagement";
 import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManagement";
 import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
+import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/PrintManagement";
 const ManagerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -41,6 +42,7 @@ const ManagerLayout = () => {
         "payroll",
         "backup",
         "reviews",
+        "print-management",
       ]),
     []
   );
@@ -146,6 +148,8 @@ const ManagerLayout = () => {
         return <PayrollManagement />;
       case "reviews":
         return <ReviewManagement />;
+      case "print-management":
+        return <PrintManagement />;
       default:
         return <div>Content not found</div>;
     }

@@ -51,6 +51,18 @@
   border-bottom: 1px solid #f1f5f9;
   font-size: 0.875rem;
 }
+.itemInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.itemTitle {
+  font-weight: 600;
+}
+.itemMeta {
+  font-size: 0.8rem;
+  color: #64748b;
+}
 .badge {
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import s from "./PrinterSettingsModal.module.scss";
+import { PRINT_STATIONS } from "@/utils/printStations";
 
 export function PrinterSettingsModal({
   isOpen,
@@ -80,9 +81,11 @@ export function PrinterSettingsModal({
             value={form.location}
             onChange={(e) => change("location", e.target.value)}
           >
-            <option value="kitchen">Bếp</option>
-            <option value="bar">Bar</option>
-            <option value="cashier">Thu ngân</option>
+            {PRINT_STATIONS.map((station) => (
+              <option key={station.id} value={station.id}>
+                {station.label}
+              </option>
+            ))}
             <option value="manager">Quản lý</option>
           </select>
         </div>

@@ -15,6 +15,7 @@ import useTableManagement from "../hooks/useTableManagement";
 import useOrderManagement from "../hooks/useOrderManagement";
 import { useNotification } from "../hooks/useNotification";
 import useSocketOrder from "@/hooks/useSocketOrder";
+import { PRINT_STATIONS } from "@/utils/printStations";
 
 const PosContext = createContext(undefined);
 
@@ -51,6 +52,52 @@ export default function PosProvider({
   const [selectedPrintType, setSelectedPrintType] = useState("kitchen");
   const [printQueue, setPrintQueue] = useState([]);
   const [selectedPrinter, setSelectedPrinter] = useState(null);
+  const [printStations, setPrintStations] = useState({});
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    const storageKey = `pos.print.settings.${restaurantId}`;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const list = Array.isArray(parsed?.printers) ? parsed.printers : [];
+      const mapped = list.reduce((acc, printer) => {
+        if (!printer?.id) return acc;
+        acc[printer.id] = printer;
+        return acc;
+      }, {});
+      setPrinters(mapped);
+      const fallbackStations = PRINT_STATIONS.reduce((acc, st) => {
+        acc[st.id] = [];
+        return acc;
+      }, {});
+      setPrintStations(parsed?.stations || fallbackStations);
+    } catch {
+      // ignore parse errors
+    }
+  }, [restaurantId]);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    const storageKey = `pos.print.settings.${restaurantId}`;
+    const list = Object.values(printers || {});
+    const fallbackStations = PRINT_STATIONS.reduce((acc, st) => {
+      acc[st.id] = [];
+      return acc;
+    }, {});
+    const payload = {
+      printers: list,
+      stations: Object.keys(printStations || {}).length
+        ? printStations
+        : fallbackStations,
+    };
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+    } catch {
+      // ignore storage errors
+    }
+  }, [restaurantId, printers, printStations]);
 
   // 🔹 Shipping + Customer cho off-premise (delivery/takeaway)
   const [shippingInfo, setShippingInfo] = useState({
@@ -736,6 +783,8 @@ export default function PosProvider({
       setPaymentMethod,
       printers,
       setPrinters,
+      printStations,
+      setPrintStations,
       selectedPrintType,
       setSelectedPrintType,
       printQueue,
@@ -838,6 +887,8 @@ export default function PosProvider({
       setPaymentMethod,
       printers,
       setPrinters,
+      printStations,
+      setPrintStations,
       selectedPrintType,
       setSelectedPrintType,
       printQueue,
