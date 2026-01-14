@@ -15,17 +15,15 @@ $radius: 10px;
 
 .employee-form-modal {
   // 1. FIX LAYOUT MODAL CONTAINER (Dính footer đáy, body cuộn)
-  .modal {
-    background: #fff;
-    display: flex;
-    flex-direction: column; /* Xếp dọc */
-    height: 85vh; /* Chiều cao cố định */
-    max-height: 800px;
-    border-radius: 16px;
-    overflow: hidden; /* Không cho container cha scroll */
-    border: 1px solid $c-border;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  }
+  background: #fff;
+  display: flex;
+  flex-direction: column; /* Xếp dọc */
+  height: 85vh; /* Chiều cao cố định */
+  max-height: 800px;
+  border-radius: 16px;
+  overflow: hidden; /* Không cho container cha scroll */
+  border: 1px solid $c-border;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 
   // HEADER
   .modal-header-custom {
