@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { gql, useMutation } from "@apollo/client";
+import { gql, useLazyQuery, useMutation } from "@apollo/client";
 import s from "./TableActionsModal.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import useOrderManagement from "../../../../../hooks/useOrderManagement";
 import { useReservation } from "../../../../../hooks/useReservation";
 import useTableCustomers from "../../../../../hooks/useTableCustomers";
+import { GET_CUSTOMERS } from "../../../../../hooks/useUserManagement";
 
 const UPSERT_TABLE_CUSTOMER = gql`
   mutation UpsertTableCustomer($input: UpsertTableCustomerInput!) {
@@ -131,6 +132,22 @@ function TableActionsModalCore({
     checkinTimeTo: "",
     note: "",
   });
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [phoneSuggestions, setPhoneSuggestions] = useState([]);
+  const [emailSuggestions, setEmailSuggestions] = useState([]);
+  const [phoneSuggestionsOpen, setPhoneSuggestionsOpen] = useState(false);
+  const [emailSuggestionsOpen, setEmailSuggestionsOpen] = useState(false);
+  const phoneBlurTimerRef = useRef(null);
+  const emailBlurTimerRef = useRef(null);
+  const phoneSuggestionReqRef = useRef(0);
+  const emailSuggestionReqRef = useRef(0);
+  const suppressPhoneSuggestRef = useRef(false);
+  const suppressEmailSuggestRef = useRef(false);
+
+  const [loadPhoneSuggestions, { loading: phoneSuggestionsLoading }] =
+    useLazyQuery(GET_CUSTOMERS, { fetchPolicy: "network-only" });
+  const [loadEmailSuggestions, { loading: emailSuggestionsLoading }] =
+    useLazyQuery(GET_CUSTOMERS, { fetchPolicy: "network-only" });
 
   const [busy, setBusy] = useState({});
   const setBusyKey = (k, v) => setBusy((b) => ({ ...b, [k]: v }));
@@ -178,6 +195,11 @@ function TableActionsModalCore({
         table.status === "available" || table.status === "reserved"
       );
       setOrderCodeForTable(null);
+      setSelectedCustomer(null);
+      setPhoneSuggestions([]);
+      setEmailSuggestions([]);
+      setPhoneSuggestionsOpen(false);
+      setEmailSuggestionsOpen(false);
       hydratedReservationFor.current = null;
       hydratedOrderFor.current = null;
       hydratedTableCustomerFor.current = null;
@@ -199,6 +221,103 @@ function TableActionsModalCore({
     if (status === "available" || status === "reserved") return;
     setUseTimeslot(false);
   }, [status]);
+
+  const normalizeSuggestion = (u) => ({
+    id: u?.id || null,
+    name: u?.fullName || u?.username || u?.name || "",
+    phone: u?.phone || "",
+    email: u?.email || "",
+    raw: u || null,
+  });
+
+  const applyCustomerSuggestion = (customer) => {
+    if (!customer) return;
+    suppressPhoneSuggestRef.current = true;
+    suppressEmailSuggestRef.current = true;
+    setCust((prev) => ({
+      ...prev,
+      name: customer.name || prev.name,
+      phone: customer.phone || prev.phone,
+      email: customer.email || prev.email,
+    }));
+    setSelectedCustomer(customer);
+    setPhoneSuggestions([]);
+    setEmailSuggestions([]);
+    setPhoneSuggestionsOpen(false);
+    setEmailSuggestionsOpen(false);
+  };
+
+  useEffect(() => {
+    const query = (cust.phone || "").trim();
+    if (!query) {
+      setPhoneSuggestions([]);
+      return;
+    }
+    if (suppressPhoneSuggestRef.current) {
+      suppressPhoneSuggestRef.current = false;
+      return;
+    }
+    if (query.length < 2) {
+      setPhoneSuggestions([]);
+      return;
+    }
+    const requestId = phoneSuggestionReqRef.current + 1;
+    phoneSuggestionReqRef.current = requestId;
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await loadPhoneSuggestions({
+          variables: { search: query, includeGuests: true },
+        });
+        if (requestId !== phoneSuggestionReqRef.current) return;
+        const raw = Array.isArray(data?.customers) ? data.customers : [];
+        const next = raw
+          .map(normalizeSuggestion)
+          .filter((c) => c.phone);
+        setPhoneSuggestions(next);
+      } catch (e) {
+        if (requestId !== phoneSuggestionReqRef.current) return;
+        console.warn("Phone suggestion error:", e);
+        setPhoneSuggestions([]);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [cust.phone, loadPhoneSuggestions]);
+
+  useEffect(() => {
+    const query = (cust.email || "").trim();
+    if (!query) {
+      setEmailSuggestions([]);
+      return;
+    }
+    if (suppressEmailSuggestRef.current) {
+      suppressEmailSuggestRef.current = false;
+      return;
+    }
+    if (query.length < 2) {
+      setEmailSuggestions([]);
+      return;
+    }
+    const requestId = emailSuggestionReqRef.current + 1;
+    emailSuggestionReqRef.current = requestId;
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await loadEmailSuggestions({
+          variables: { search: query, includeGuests: true },
+        });
+        if (requestId !== emailSuggestionReqRef.current) return;
+        const raw = Array.isArray(data?.customers) ? data.customers : [];
+        const next = raw
+          .map(normalizeSuggestion)
+          .filter((c) => c.email);
+        setEmailSuggestions(next);
+      } catch (e) {
+        if (requestId !== emailSuggestionReqRef.current) return;
+        console.warn("Email suggestion error:", e);
+        setEmailSuggestions([]);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [cust.email, loadEmailSuggestions]);
 
   const isoToDateTimeParts = (iso) => {
     if (!iso) return { date: "", time: "" };
@@ -633,7 +752,7 @@ function TableActionsModalCore({
   };
 
   const hasCustomerIdentity = () =>
-    !!(cust.name?.trim() || cust.phone?.trim());
+    !!(cust.name?.trim() || cust.phone?.trim() || selectedCustomer?.id);
 
   const persistTableCustomer = async (opts = {}) => {
     if (!restaurantId || !table?.code) return;
@@ -705,6 +824,29 @@ function TableActionsModalCore({
     } finally {
       setBusyKey("saveCustomer", false);
     }
+  };
+
+  const handlePhoneFocus = () => {
+    if (phoneBlurTimerRef.current) clearTimeout(phoneBlurTimerRef.current);
+    setPhoneSuggestionsOpen(true);
+  };
+  const handlePhoneBlur = () => {
+    if (phoneBlurTimerRef.current) clearTimeout(phoneBlurTimerRef.current);
+    phoneBlurTimerRef.current = setTimeout(
+      () => setPhoneSuggestionsOpen(false),
+      120
+    );
+  };
+  const handleEmailFocus = () => {
+    if (emailBlurTimerRef.current) clearTimeout(emailBlurTimerRef.current);
+    setEmailSuggestionsOpen(true);
+  };
+  const handleEmailBlur = () => {
+    if (emailBlurTimerRef.current) clearTimeout(emailBlurTimerRef.current);
+    emailBlurTimerRef.current = setTimeout(
+      () => setEmailSuggestionsOpen(false),
+      120
+    );
   };
 
   /* ================== RENDER ================== */
@@ -898,15 +1040,101 @@ function TableActionsModalCore({
               <input
                 className={s.input}
                 value={cust.name}
-                onChange={(e) => setCust({ ...cust, name: e.target.value })}
+                onChange={(e) => {
+                  setSelectedCustomer(null);
+                  setCust({ ...cust, name: e.target.value });
+                }}
                 placeholder="Tên khách"
               />
-              <input
-                className={s.input}
-                value={cust.phone}
-                onChange={(e) => setCust({ ...cust, phone: e.target.value })}
-                placeholder="Số điện thoại"
-              />
+              <div className={s.inputGroup}>
+                <input
+                  className={s.input}
+                  value={cust.phone}
+                  onChange={(e) => {
+                    setSelectedCustomer(null);
+                    setCust({ ...cust, phone: e.target.value });
+                  }}
+                  onFocus={handlePhoneFocus}
+                  onBlur={handlePhoneBlur}
+                  placeholder="Số điện thoại"
+                />
+                {phoneSuggestionsOpen &&
+                  (phoneSuggestionsLoading ||
+                    phoneSuggestions.length > 0) && (
+                    <div className={s.suggestions}>
+                      {phoneSuggestionsLoading && (
+                        <div className={s.suggestionEmpty}>
+                          Đang tìm kiếm...
+                        </div>
+                      )}
+                      {!phoneSuggestionsLoading &&
+                        phoneSuggestions.map((c) => (
+                          <button
+                            key={`phone-${c.id || c.phone}`}
+                            type="button"
+                            className={s.suggestionItem}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              applyCustomerSuggestion(c);
+                            }}
+                          >
+                            <span className={s.suggestionName}>
+                              {c.name || "Khách hàng"}
+                            </span>
+                            <span className={s.suggestionMeta}>
+                              {c.phone}
+                              {c.email ? ` · ${c.email}` : ""}
+                            </span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+              </div>
+
+              <div className={s.inputGroup}>
+                <input
+                  className={s.input}
+                  value={cust.email}
+                  onChange={(e) => {
+                    setSelectedCustomer(null);
+                    setCust({ ...cust, email: e.target.value });
+                  }}
+                  onFocus={handleEmailFocus}
+                  onBlur={handleEmailBlur}
+                  placeholder="Email"
+                />
+                {emailSuggestionsOpen &&
+                  (emailSuggestionsLoading ||
+                    emailSuggestions.length > 0) && (
+                    <div className={s.suggestions}>
+                      {emailSuggestionsLoading && (
+                        <div className={s.suggestionEmpty}>
+                          Đang tìm kiếm...
+                        </div>
+                      )}
+                      {!emailSuggestionsLoading &&
+                        emailSuggestions.map((c) => (
+                          <button
+                            key={`email-${c.id || c.email}`}
+                            type="button"
+                            className={s.suggestionItem}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              applyCustomerSuggestion(c);
+                            }}
+                          >
+                            <span className={s.suggestionName}>
+                              {c.name || "Khách hàng"}
+                            </span>
+                            <span className={s.suggestionMeta}>
+                              {c.email}
+                              {c.phone ? ` · ${c.phone}` : ""}
+                            </span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+              </div>
 
               <div
                 style={{ display: "flex", alignItems: "center", gap: "1rem" }}
