@@ -146,7 +146,7 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
       isOpen={isOpen}
       onClose={onClose}
       title="Chỉnh sửa giá hàng loạt"
-      size="extra-large"
+      size="xl"
       className="price-edit-modal"
     >
       <div className="price-edit-content">

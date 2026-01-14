@@ -7,15 +7,12 @@ $pm-text: #334155; // Slate 700
 $pm-radius: 12px;
 
 .promotion-modal-wrapper {
-  // Override styles của Modal chung nếu cần
-  .modal-content {
-    max-width: 800px;
-    width: 95%;
-    border-radius: 16px;
-    padding: 0;
-    overflow: hidden;
-    background: #fff;
-  }
+  max-width: 960px;
+  width: min(95vw, 960px);
+  border-radius: 16px;
+  padding: 0;
+  overflow: hidden;
+  background: #fff;
 }
 
 .pm-container {

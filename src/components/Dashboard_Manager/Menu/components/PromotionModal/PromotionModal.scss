@@ -2,10 +2,8 @@
 @use "../../../../../styles/mixins" as *;
 
 .promotion-modal {
-  .modal__content {
-    max-height: 80vh;
-    overflow-y: auto;
-  }
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .promotion-form {

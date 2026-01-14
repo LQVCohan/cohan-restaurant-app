@@ -13,18 +13,20 @@
 }
 
 /* Modal container */
-.modal-container {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  width: 300px;
-  max-width: 100%;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-}
+.modal-overlay-delete {
+  .modal-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 300px;
+    max-width: 100%;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  }
 
-/* Title */
-.modal-container h2 {
-  margin-bottom: 15px;
+  /* Title */
+  .modal-container h2 {
+    margin-bottom: 15px;
+  }
 }
 
 /* Reason select box */
