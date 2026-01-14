@@ -129,6 +129,7 @@ export default function PosProvider({
   const {
     tables: allTables,
     refetchTables,
+    updateTable,
     setTableStatus,
     mergeTables,
     splitTables,
@@ -664,6 +665,7 @@ export default function PosProvider({
 
       tables,
       refetchTables,
+      updateTable,
       fetchTableByCode,
 
       tableSearch,
@@ -768,6 +770,7 @@ export default function PosProvider({
 
       tables,
       refetchTables,
+      updateTable,
       fetchTableByCode,
 
       tableSearch,
