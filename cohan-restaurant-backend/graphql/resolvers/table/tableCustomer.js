@@ -92,18 +92,14 @@ async function assertCanWriteRestaurant(user, restaurantId) {
 /* ============================ Queries ============================ */
 
 /**
- * Lấy thông tin khách cho 1 bàn / 1 orderCode
- * Ưu tiên: tableId > tableCode > orderCode
+ * Lấy thông tin khách cho 1 bàn
+ * Ưu tiên: tableId > tableCode
  */
-async function tableCustomer(
-  _,
-  { restaurantId, tableId, tableCode, orderCode },
-  { user }
-) {
+async function tableCustomer(_, { restaurantId, tableId, tableCode }, { user }) {
   await assertCanWriteRestaurant(user, restaurantId);
 
-  if (!tableId && !tableCode && !orderCode) {
-    throw badInput("tableId hoặc tableCode hoặc orderCode là bắt buộc");
+  if (!tableId && !tableCode) {
+    throw badInput("tableId hoặc tableCode là bắt buộc");
   }
 
   const rid = toObjectIdOrNull(restaurantId);
@@ -112,9 +108,7 @@ async function tableCustomer(
   const cond =
     tid != null
       ? { restaurantId: rid, tableId: tid }
-      : tableCode
-      ? { restaurantId: rid, tableCode: String(tableCode) }
-      : { restaurantId: rid, orderCode: String(orderCode) };
+      : { restaurantId: rid, tableCode: String(tableCode) };
 
   const doc = await TableCustomer.findOne(cond).lean();
 
@@ -141,7 +135,6 @@ async function upsertTableCustomer(_, { input }, _ctx) {
     restaurantId,
     tableId,
     tableCode,
-    orderCode,
     customerName,
     customerPhone,
     customerEmail,
@@ -153,27 +146,24 @@ async function upsertTableCustomer(_, { input }, _ctx) {
   // giống file tableDraft: truyền nguyên ctx vào assert
   await assertCanWriteRestaurant(_ctx, restaurantId);
 
-  if (!tableId && !tableCode && !orderCode) {
-    throw badInput("tableId hoặc tableCode hoặc orderCode là bắt buộc");
+  if (!tableId && !tableCode) {
+    throw badInput("tableId hoặc tableCode là bắt buộc");
   }
 
   const rid = toObjectIdOrNull(restaurantId);
   const tid = toObjectIdOrNull(tableId);
 
-  // Điều kiện unique: ưu tiên tableId > tableCode > orderCode
+  // Điều kiện unique: ưu tiên tableId > tableCode
   const cond =
     tid != null
       ? { restaurantId: rid, tableId: tid }
-      : tableCode
-      ? { restaurantId: rid, tableCode: String(tableCode) }
-      : { restaurantId: rid, orderCode: String(orderCode) };
+      : { restaurantId: rid, tableCode: String(tableCode) };
 
   const update = {
     $set: {
       restaurantId: rid,
       ...(tid != null ? { tableId: tid } : {}),
       ...(tableCode ? { tableCode: String(tableCode) } : {}),
-      ...(orderCode ? { orderCode: String(orderCode) } : {}),
 
       customerName: customerName ?? null,
       customerPhone: customerPhone ?? null,
@@ -200,12 +190,12 @@ async function upsertTableCustomer(_, { input }, _ctx) {
 
 async function deleteTableCustomer(
   _,
-  { restaurantId, tableId, tableCode, orderCode },
+  { restaurantId, tableId, tableCode },
   { user }
 ) {
   await assertCanWriteRestaurant(user, restaurantId);
-  if (!tableId && !tableCode && !orderCode) {
-    throw badInput("tableId hoặc tableCode hoặc orderCode là bắt buộc");
+  if (!tableId && !tableCode) {
+    throw badInput("tableId hoặc tableCode là bắt buộc");
   }
 
   const rid = toObjectIdOrNull(restaurantId);
@@ -214,9 +204,7 @@ async function deleteTableCustomer(
   const cond =
     tid != null
       ? { restaurantId: rid, tableId: tid }
-      : tableCode
-      ? { restaurantId: rid, tableCode: String(tableCode) }
-      : { restaurantId: rid, orderCode: String(orderCode) };
+      : { restaurantId: rid, tableCode: String(tableCode) };
 
   const res = await TableCustomer.deleteOne(cond);
   return res?.deletedCount > 0;
