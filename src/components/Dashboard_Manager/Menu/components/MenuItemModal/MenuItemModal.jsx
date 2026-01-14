@@ -286,7 +286,7 @@ const MenuItemModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title={editId ? "Chi tiết món ăn" : "Thêm món ăn"}
-      size="large"
+      size="lg"
       className="menu-item-modal"
     >
       <form onSubmit={handleSubmit} className="menu-item-form">

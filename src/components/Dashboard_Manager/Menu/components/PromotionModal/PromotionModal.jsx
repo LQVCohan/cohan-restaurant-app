@@ -152,7 +152,7 @@ const PromotionModal = ({ isOpen, onSave, onClose }) => {
       isOpen={isOpen}
       onClose={handleClose}
       title="Tạo khuyến mãi mới"
-      size="large"
+      size="lg"
       className="promotion-modal"
     >
       <form onSubmit={handleSubmit} className="promotion-form">

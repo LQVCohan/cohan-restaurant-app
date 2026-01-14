@@ -177,7 +177,8 @@ const CustomerModal = ({ isOpen, customer, onClose, onShowBill }) => {
     <Modal
       isOpen={isOpen} // Sử dụng prop isOpen được truyền vào
       onClose={onClose}
-      size="xl"
+      title="Chi tiết khách hàng"
+      size="full"
       closeOnOverlayClick
     >
       {/* 1. Header chuẩn của Modal mới */}
