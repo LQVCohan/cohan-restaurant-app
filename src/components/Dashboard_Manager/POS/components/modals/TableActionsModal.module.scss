@@ -155,7 +155,8 @@
 .tableInfo {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem;
+  justify-content: space-between;
   padding: 0.75rem 1rem;
   border-radius: 0.75rem;
   border: 1px solid var(--border-color);
@@ -164,6 +165,7 @@
 .kv {
   display: flex;
   flex-direction: column;
+  flex: 1;
   .k {
     font-size: 0.75rem;
     color: var(--text-gray);
@@ -189,6 +191,27 @@
   font-weight: 700;
   color: var(--text-main);
   margin-bottom: 0.25rem;
+}
+.groupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.toggleButton {
+  border: 1px solid var(--border-color);
+  background: #fff;
+  color: var(--text-main);
+  border-radius: var(--radius-pill);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
 }
 
 /* Inputs & Forms */
@@ -333,8 +356,8 @@
 
 /* Status Chips (Pastel) */
 .chips {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 0.5rem;
 }
 .chip {

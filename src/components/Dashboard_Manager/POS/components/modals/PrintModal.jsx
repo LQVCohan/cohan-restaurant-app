@@ -3,64 +3,58 @@ import s from "./PrintModal.module.scss";
 
 export function PrintModal({
   isOpen,
-  printTypes = ["kitchen", "bar", "temp-bill", "final-bill"],
-  selectedType = "kitchen",
+  mode = "temp",
+  modes = [
+    { id: "temp", label: "Tạm tính (in toàn bộ)" },
+    { id: "stations", label: "In theo quầy" },
+  ],
   printers = [],
   selectedPrinter,
-  preview,
-  onPickType,
+  tempPreview = "",
+  stationPreviews = [],
+  onChangeMode,
   onPickPrinter,
   onAddQueue,
   onPrintNow,
+  onOpenQueue,
   onClose,
 }) {
   if (!isOpen) return null;
-  const label = {
-    kitchen: "Đơn bếp",
-    bar: "Đơn bar",
-    "temp-bill": "Bill tạm",
-    "final-bill": "Bill cuối",
-  };
-  const icon = {
-    kitchen: "👨‍🍳",
-    bar: "🍹",
-    "temp-bill": "📄",
-    "final-bill": "🧾",
-  };
 
   return (
     <div className={s.backdrop}>
       <div className={s.modal} role="dialog" aria-modal>
         <div className={s.header}>
-          <h3 className={s.title}>Hệ thống in ấn</h3>
+          <h3 className={s.title}>In hóa đơn & phiếu bếp</h3>
           <button className={s.close} onClick={onClose}>
             ×
           </button>
         </div>
 
-        <div className={s.grid}>
-          <div>
-            <div className={s.opts}>
-              {printTypes.map((t) => (
-                <div
-                  key={t}
-                  className={`${s.opt} ${
-                    selectedType === t ? s.optActive : ""
-                  }`}
-                  onClick={() => onPickType?.(t)}
-                >
-                  <div style={{ fontSize: "2rem", marginBottom: ".5rem" }}>
-                    {icon[t]}
-                  </div>
-                  <div style={{ fontWeight: 600 }}>{label[t]}</div>
-                </div>
-              ))}
-            </div>
+        <div className={s.modes}>
+          {modes.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`${s.modeBtn} ${mode === item.id ? s.modeActive : ""}`}
+              onClick={() => onChangeMode?.(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={s.queueBtn}
+            onClick={onOpenQueue}
+          >
+            Hàng đợi in
+          </button>
+        </div>
 
-            <div style={{ marginTop: "1rem" }}>
-              <div style={{ fontWeight: 500, marginBottom: ".5rem" }}>
-                Chọn máy in:
-              </div>
+        {mode === "temp" ? (
+          <div className={s.grid}>
+            <div>
+              <div className={s.sectionTitle}>Chọn máy in tạm tính</div>
               <div className={s.printers}>
                 {printers.map((p) => (
                   <div
@@ -70,13 +64,8 @@ export function PrintModal({
                     }`}
                     onClick={() => onPickPrinter?.(p)}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <div style={{ fontWeight: 600 }}>{p.name}</div>
+                    <div className={s.cardHeader}>
+                      <div className={s.cardName}>{p.name}</div>
                       <span
                         className={`${s.status} ${
                           p.status === "online"
@@ -86,27 +75,53 @@ export function PrintModal({
                             : s.offline
                         }`}
                       >
-                        {p.status}
+                        {p.status === "online"
+                          ? "Sẵn sàng"
+                          : p.status === "busy"
+                          ? "Đang in"
+                          : "Ngoại tuyến"}
                       </span>
                     </div>
-                    <div style={{ fontSize: ".85rem", color: "#64748b" }}>
+                    <div className={s.cardMeta}>
                       IP: {p.ip} · {p.type}
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
 
-          <div>
-            <div style={{ fontWeight: 500, marginBottom: ".5rem" }}>
-              Xem trước:
-            </div>
-            <div className={s.preview}>
-              <pre style={{ whiteSpace: "pre-wrap" }}>{preview}</pre>
+            <div>
+              <div className={s.sectionTitle}>Xem trước tạm tính</div>
+              <div className={s.preview}>
+                <pre style={{ whiteSpace: "pre-wrap" }}>{tempPreview}</pre>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className={s.stationGrid}>
+            {stationPreviews.map((station) => (
+              <div key={station.id} className={s.stationCard}>
+                <div className={s.stationHeader}>
+                  <div>
+                    <div className={s.stationTitle}>{station.label}</div>
+                    <div className={s.stationMeta}>
+                      {station.printers.length
+                        ? `Máy in: ${station.printers
+                            .map((p) => p.name)
+                            .join(", ")}`
+                        : "Chưa gán máy in"}
+                    </div>
+                  </div>
+                </div>
+                <div className={s.preview}>
+                  <pre style={{ whiteSpace: "pre-wrap" }}>
+                    {station.preview || "Không có món để in"}
+                  </pre>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className={s.actions}>
           <button className={s.btn} onClick={onClose}>

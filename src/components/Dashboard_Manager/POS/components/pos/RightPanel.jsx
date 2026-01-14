@@ -10,11 +10,14 @@ import cls from "./RightPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { useNotification } from "../../../../../hooks/useNotification";
 import { formatPrice } from "@/utils/formatters";
+import { PRINT_STATIONS } from "@/utils/printStations";
 
 import PaymentModal from "../modals/PaymentModal";
 import ConfirmDeleteModal from "../modals/ConfirmDeleteModal";
 import MenuItemModal from "../modals/MenuItemModal";
 import OrderConfirmModal from "../modals/OrderConfirmModal";
+import { PrintModal } from "../modals/PrintModal";
+import { PrintQueueModal } from "../modals/PrintQueueModal";
 
 const IconDraft = () => (
   <svg
@@ -141,6 +144,13 @@ export default function RightPanel() {
     setTableStatus,
     setCurrentTable,
     preparePayment,
+    printers,
+    printStations,
+    setPrintQueue,
+    printQueue,
+    selectedPrinter,
+    setSelectedPrinter,
+    menuItems,
   } = usePos();
 
   const { showNotification } = useNotification?.() || {
@@ -162,6 +172,9 @@ export default function RightPanel() {
 
   const [isConfirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isPrintModalOpen, setPrintModalOpen] = useState(false);
+  const [isPrintQueueOpen, setPrintQueueOpen] = useState(false);
+  const [printMode, setPrintMode] = useState("temp");
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -179,6 +192,16 @@ export default function RightPanel() {
   };
 
   const hasItems = Array.isArray(currentOrder) && currentOrder.length > 0;
+  const printerList = useMemo(
+    () => Object.values(printers || {}),
+    [printers]
+  );
+
+  useEffect(() => {
+    if (!selectedPrinter && printerList.length) {
+      setSelectedPrinter(printerList[0]);
+    }
+  }, [printerList, selectedPrinter, setSelectedPrinter]);
 
   const { existingItems, newItems } = useMemo(() => {
     const ex = [];
@@ -471,16 +494,205 @@ export default function RightPanel() {
     setClearModalOpen(false);
   };
 
-  const handlePrint = (mode = "draft") => {
-    try {
-      showNotification(
-        mode === "final" ? "In hóa đơn..." : "In phiếu tạm tính...",
-        "info"
+  const resolveStationId = useCallback(
+    (item) => {
+      const itemId =
+        item?.menuItem?.id || item?.dishId || item?.id || item?.menuItemId;
+      const matched = (menuItems || []).find(
+        (m) => String(m.id) === String(itemId)
       );
-    } catch (e) {
-      showNotification("Không thể in. Vui lòng thử lại.", "error");
-    }
-  };
+      return matched?.printStationId || "kitchen";
+    },
+    [menuItems]
+  );
+
+  const buildPreview = useCallback((items, title) => {
+    const lines = [];
+    if (title) lines.push(title);
+    items.forEach((item) => {
+      const qty = Number(item.quantity || 0);
+      const name = item.name || item.menuItem?.name || "Món";
+      const note = item.note ? ` (${item.note})` : "";
+      lines.push(`${qty} x ${name}${note}`);
+    });
+    return lines.join("\n");
+  }, []);
+
+  const tempPreview = useMemo(() => {
+    if (!hasItems) return "Không có món để in.";
+    return buildPreview(currentOrder, "Tạm tính");
+  }, [buildPreview, currentOrder, hasItems]);
+
+  const stationPreviews = useMemo(() => {
+    const groups = {};
+    (currentOrder || []).forEach((item) => {
+      const stationId = resolveStationId(item);
+      if (!groups[stationId]) groups[stationId] = [];
+      groups[stationId].push(item);
+    });
+    return PRINT_STATIONS.map((station) => {
+      const items = groups[station.id] || [];
+      const mappedPrinters = (printStations?.[station.id] || [])
+        .map((pid) => printers?.[pid])
+        .filter(Boolean);
+      const fallbackPrinters = mappedPrinters.length
+        ? mappedPrinters
+        : printerList.filter((p) => p.location === station.id);
+      return {
+        id: station.id,
+        label: station.label,
+        preview: items.length
+          ? buildPreview(items, station.label)
+          : "",
+        printers: fallbackPrinters,
+        items,
+      };
+    });
+  }, [
+    buildPreview,
+    currentOrder,
+    printerList,
+    printers,
+    printStations,
+    resolveStationId,
+  ]);
+
+  const queuePrintJob = useCallback(
+    ({ label, printer, items, mode, status = "pending" }) => {
+      const id = `print_${Date.now()}_${Math.random()}`;
+      return {
+        id,
+        label,
+        printerId: printer?.id || null,
+        printerName: printer?.name || null,
+        count: items.length,
+        items,
+        table: currentTable?.code || "Đơn",
+        status,
+        type: mode,
+      };
+    },
+    [currentTable?.code]
+  );
+
+  const handleAddToQueue = useCallback(
+    (mode) => {
+      if (!hasItems) return;
+      if (mode === "temp") {
+        if (!selectedPrinter) {
+          showNotification("Vui lòng chọn máy in tạm tính.", "warning");
+          return;
+        }
+        const job = queuePrintJob({
+          label: "Tạm tính",
+          printer: selectedPrinter,
+          items: currentOrder || [],
+          mode: "temp",
+          status: "pending",
+        });
+        setPrintQueue((prev) => [...prev, job]);
+        showNotification("Đã thêm vào hàng đợi in.", "success");
+        return;
+      }
+
+      const jobs = [];
+      stationPreviews.forEach((station) => {
+        if (!station.items.length) return;
+        if (!station.printers.length) {
+          showNotification(
+            `Chưa gán máy in cho ${station.label}.`,
+            "warning"
+          );
+          return;
+        }
+        station.printers.forEach((printer) => {
+          jobs.push(
+            queuePrintJob({
+              label: station.label,
+              printer,
+              items: station.items,
+              mode: "station",
+              status: "pending",
+            })
+          );
+        });
+      });
+      if (!jobs.length) {
+        showNotification("Không có món để in.", "warning");
+        return;
+      }
+      setPrintQueue((prev) => [...prev, ...jobs]);
+      showNotification("Đã thêm đơn in theo quầy.", "success");
+    },
+    [
+      currentOrder,
+      hasItems,
+      queuePrintJob,
+      selectedPrinter,
+      setPrintQueue,
+      showNotification,
+      stationPreviews,
+    ]
+  );
+
+  const handlePrintNow = useCallback(
+    (mode) => {
+      if (!hasItems) return;
+      if (mode === "temp") {
+        if (!selectedPrinter) {
+          showNotification("Vui lòng chọn máy in tạm tính.", "warning");
+          return;
+        }
+        const job = queuePrintJob({
+          label: "Tạm tính",
+          printer: selectedPrinter,
+          items: currentOrder || [],
+          mode: "temp",
+          status: "printing",
+        });
+        setPrintQueue((prev) => [...prev, job]);
+        showNotification("Đang in tạm tính...", "info");
+        return;
+      }
+      const jobs = [];
+      stationPreviews.forEach((station) => {
+        if (!station.items.length) return;
+        if (!station.printers.length) {
+          showNotification(
+            `Chưa gán máy in cho ${station.label}.`,
+            "warning"
+          );
+          return;
+        }
+        station.printers.forEach((printer) => {
+          jobs.push(
+            queuePrintJob({
+              label: station.label,
+              printer,
+              items: station.items,
+              mode: "station",
+              status: "printing",
+            })
+          );
+        });
+      });
+      if (!jobs.length) {
+        showNotification("Không có món để in.", "warning");
+        return;
+      }
+      setPrintQueue((prev) => [...prev, ...jobs]);
+      showNotification("Đang in theo quầy...", "info");
+    },
+    [
+      currentOrder,
+      hasItems,
+      queuePrintJob,
+      selectedPrinter,
+      setPrintQueue,
+      showNotification,
+      stationPreviews,
+    ]
+  );
 
   const handleItemClick = (item) => {
     const modalItemData = {
@@ -968,13 +1180,36 @@ export default function RightPanel() {
 
           <button
             className={`${cls.btn} ${cls.warning}`}
-            onClick={() => handlePrint("draft")}
+            onClick={() => setPrintModalOpen(true)}
             disabled={!hasItems || saving}
           >
             In
           </button>
         </div>
       </div>
+
+      <PrintModal
+        isOpen={isPrintModalOpen}
+        mode={printMode}
+        printers={printerList}
+        selectedPrinter={selectedPrinter}
+        tempPreview={tempPreview}
+        stationPreviews={stationPreviews}
+        onChangeMode={setPrintMode}
+        onPickPrinter={setSelectedPrinter}
+        onAddQueue={() => handleAddToQueue(printMode)}
+        onPrintNow={() => handlePrintNow(printMode)}
+        onOpenQueue={() => setPrintQueueOpen(true)}
+        onClose={() => setPrintModalOpen(false)}
+      />
+
+      <PrintQueueModal
+        isOpen={isPrintQueueOpen}
+        queue={printQueue}
+        onClearAll={() => setPrintQueue([])}
+        onPrintAll={() => handlePrintNow("stations")}
+        onClose={() => setPrintQueueOpen(false)}
+      />
     </div>
   );
 }
