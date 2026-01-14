@@ -242,7 +242,7 @@ const CustomerModal = ({ customer, onClose, onShowBill }) => {
       isOpen={true}
       onClose={onClose}
       title="Chi tiết khách hàng"
-      size="xl"
+      size="full"
       closeOnOverlayClick
       closeOnEscape
     >
