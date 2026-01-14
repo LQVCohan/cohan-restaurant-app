@@ -355,7 +355,7 @@ const WorkHistoryModal = ({ isOpen, onClose, employee, workHistory = [] }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      size="large"
+      size="lg"
       className="work-history-modal"
     >
       <div className="modal-header">
