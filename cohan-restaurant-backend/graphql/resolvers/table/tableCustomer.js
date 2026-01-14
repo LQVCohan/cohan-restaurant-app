@@ -60,7 +60,7 @@ function isAdmin(user) {
 }
 
 async function isManager(user) {
-  const me = user.user;
+  const me = user;
   return (
     !!me &&
     (me.role?.name?.toLowerCase?.() === "manager" ||
