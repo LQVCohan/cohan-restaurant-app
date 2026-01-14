@@ -8,7 +8,6 @@ const Q_TABLE_CUSTOMERS = gql`
       restaurantId
       tableId
       tableCode
-      orderCode
       customerName
       customerPhone
       customerEmail

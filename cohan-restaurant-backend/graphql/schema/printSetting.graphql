@@ -1,0 +1,24 @@
+# src/graphql/schema/printSetting.graphql
+
+type PrintSetting {
+  id: ID!
+  restaurantId: ID!
+  printers: JSON
+  stations: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input UpsertPrintSettingInput {
+  restaurantId: ID!
+  printers: JSON
+  stations: JSON
+}
+
+extend type Query {
+  printSettings(restaurantId: ID!): PrintSetting
+}
+
+extend type Mutation {
+  upsertPrintSettings(input: UpsertPrintSettingInput!): PrintSetting!
+}

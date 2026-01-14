@@ -119,6 +119,17 @@ export const GET_CUSTOMERS = gql`
   }
 `;
 
+export const GET_CUSTOMERS_FOR_TABLE_INFO = gql`
+  query GetCustomersForTableInfo($search: String, $includeGuests: Boolean) {
+    customers(search: $search, includeGuests: $includeGuests) {
+      name: fullName
+      phone
+      email
+      note: noteInternal
+    }
+  }
+`;
+
 export const CREATE_USER = gql`
   mutation CreateUser($input: CreateUserInput!) {
     createUser(input: $input) {

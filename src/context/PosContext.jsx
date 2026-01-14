@@ -8,6 +8,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { gql, useLazyQuery, useMutation } from "@apollo/client";
 
 import useMenuManagement from "../hooks/useMenuManagement";
 import useFloorManagement from "../hooks/useFloorManagement";
@@ -15,6 +16,29 @@ import useTableManagement from "../hooks/useTableManagement";
 import useOrderManagement from "../hooks/useOrderManagement";
 import { useNotification } from "../hooks/useNotification";
 import useSocketOrder from "@/hooks/useSocketOrder";
+import { PRINT_STATIONS } from "@/utils/printStations";
+
+const Q_PRINT_SETTINGS = gql`
+  query PrintSettings($restaurantId: ID!) {
+    printSettings(restaurantId: $restaurantId) {
+      id
+      restaurantId
+      printers
+      stations
+    }
+  }
+`;
+
+const M_UPSERT_PRINT_SETTINGS = gql`
+  mutation UpsertPrintSettings($input: UpsertPrintSettingInput!) {
+    upsertPrintSettings(input: $input) {
+      id
+      restaurantId
+      printers
+      stations
+    }
+  }
+`;
 
 const PosContext = createContext(undefined);
 
@@ -51,6 +75,64 @@ export default function PosProvider({
   const [selectedPrintType, setSelectedPrintType] = useState("kitchen");
   const [printQueue, setPrintQueue] = useState([]);
   const [selectedPrinter, setSelectedPrinter] = useState(null);
+  const [printStations, setPrintStations] = useState({});
+  const printSettingsHydratingRef = useRef(false);
+  const printSettingsDebounceRef = useRef(null);
+
+  const [loadPrintSettings] = useLazyQuery(Q_PRINT_SETTINGS, {
+    fetchPolicy: "network-only",
+    onCompleted: (data) => {
+      const settings = data?.printSettings;
+      const printersList = Array.isArray(settings?.printers)
+        ? settings.printers
+        : [];
+      const printerMap = printersList.reduce((acc, printer) => {
+        if (!printer?.id) return acc;
+        acc[printer.id] = printer;
+        return acc;
+      }, {});
+      const fallbackStations = PRINT_STATIONS.reduce((acc, st) => {
+        acc[st.id] = [];
+        return acc;
+      }, {});
+      printSettingsHydratingRef.current = true;
+      setPrinters(printerMap);
+      setPrintStations(settings?.stations || fallbackStations);
+      setTimeout(() => {
+        printSettingsHydratingRef.current = false;
+      }, 0);
+    },
+  });
+
+  const [upsertPrintSettings] = useMutation(M_UPSERT_PRINT_SETTINGS);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    loadPrintSettings({ variables: { restaurantId } });
+  }, [restaurantId, loadPrintSettings]);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    if (printSettingsHydratingRef.current) return;
+    if (printSettingsDebounceRef.current) {
+      clearTimeout(printSettingsDebounceRef.current);
+    }
+    const list = Object.values(printers || {});
+    const fallbackStations = PRINT_STATIONS.reduce((acc, st) => {
+      acc[st.id] = [];
+      return acc;
+    }, {});
+    const payload = {
+      restaurantId,
+      printers: list,
+      stations: Object.keys(printStations || {}).length
+        ? printStations
+        : fallbackStations,
+    };
+    printSettingsDebounceRef.current = setTimeout(() => {
+      upsertPrintSettings({ variables: { input: payload } }).catch(() => {});
+    }, 400);
+  }, [restaurantId, printers, printStations]);
 
   // 🔹 Shipping + Customer cho off-premise (delivery/takeaway)
   const [shippingInfo, setShippingInfo] = useState({
@@ -736,6 +818,8 @@ export default function PosProvider({
       setPaymentMethod,
       printers,
       setPrinters,
+      printStations,
+      setPrintStations,
       selectedPrintType,
       setSelectedPrintType,
       printQueue,
@@ -838,6 +922,8 @@ export default function PosProvider({
       setPaymentMethod,
       printers,
       setPrinters,
+      printStations,
+      setPrintStations,
       selectedPrintType,
       setSelectedPrintType,
       printQueue,

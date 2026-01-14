@@ -19,6 +19,14 @@ export function PrintQueueModal({
         ? s.completed
         : s.error
     }`;
+  const statusLabel = (st) =>
+    st === "pending"
+      ? "Chờ in"
+      : st === "printing"
+      ? "Đang in"
+      : st === "completed"
+      ? "Hoàn tất"
+      : "Lỗi";
 
   return (
     <div className={s.backdrop}>
@@ -46,10 +54,16 @@ export function PrintQueueModal({
           ) : (
             queue.map((q) => (
               <div key={q.id} className={s.item}>
-                <span>
-                  {q.type} · {q.table || "N/A"}
-                </span>
-                <span className={badge(q.status)}>{q.status}</span>
+                <div className={s.itemInfo}>
+                  <div className={s.itemTitle}>
+                    {q.label || q.type} · {q.table || "N/A"}
+                  </div>
+                  <div className={s.itemMeta}>
+                    Máy in: {q.printerName || "Chưa gán"} ·{" "}
+                    {q.count || 0} món
+                  </div>
+                </div>
+                <span className={badge(q.status)}>{statusLabel(q.status)}</span>
               </div>
             ))
           )}

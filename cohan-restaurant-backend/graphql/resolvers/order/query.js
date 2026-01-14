@@ -104,20 +104,20 @@ async function attachCustomerInfoToOrders({ rid, orders }) {
   const tableCodes = [
     ...new Set(slice.map((o) => o.tableCode).filter(Boolean)),
   ];
-  const orderCodes = [
-    ...new Set(slice.map((o) => o.orderCode).filter(Boolean)),
+  const tableIds = [
+    ...new Set(slice.map((o) => o.tableId).filter(Boolean)),
   ];
 
   const customerDocs = await TableCustomer.find({
     restaurantId: rid,
     $or: [
       ...(tableCodes.length ? [{ tableCode: { $in: tableCodes } }] : []),
-      ...(orderCodes.length ? [{ orderCode: { $in: orderCodes } }] : []),
+      ...(tableIds.length ? [{ tableId: { $in: tableIds } }] : []),
     ],
   })
     .select({
       tableCode: 1,
-      orderCode: 1,
+      tableId: 1,
       customerName: 1,
       customerPhone: 1,
       customerEmail: 1,
@@ -128,15 +128,15 @@ async function attachCustomerInfoToOrders({ rid, orders }) {
     .lean();
 
   const byTableCode = new Map();
-  const byOrderCode = new Map();
+  const byTableId = new Map();
   for (const c of customerDocs) {
     if (c.tableCode) byTableCode.set(String(c.tableCode), c);
-    if (c.orderCode) byOrderCode.set(String(c.orderCode), c);
+    if (c.tableId) byTableId.set(String(c.tableId), c);
   }
 
   return slice.map((o) => {
     const tc =
-      (o.orderCode && byOrderCode.get(String(o.orderCode))) ||
+      (o.tableId && byTableId.get(String(o.tableId))) ||
       (o.tableCode && byTableCode.get(String(o.tableCode))) ||
       null;
 
@@ -416,27 +416,27 @@ export const OrderQuery = {
       ),
     ].map(toId);
 
-    // fetch customers per restaurant with OR tableCode/orderCode
+    // fetch customers per restaurant with OR tableCode/tableId
     const tableCodes = [
       ...new Set(slice.map((o) => o.tableCode).filter(Boolean)),
     ];
-    const orderCodes = [
-      ...new Set(slice.map((o) => o.orderCode).filter(Boolean)),
+    const tableIds = [
+      ...new Set(slice.map((o) => o.tableId).filter(Boolean)),
     ];
 
     let customerDocs = [];
-    if (restaurantIds.length && (tableCodes.length || orderCodes.length)) {
+    if (restaurantIds.length && (tableCodes.length || tableIds.length)) {
       customerDocs = await TableCustomer.find({
         restaurantId: { $in: restaurantIds },
         $or: [
           ...(tableCodes.length ? [{ tableCode: { $in: tableCodes } }] : []),
-          ...(orderCodes.length ? [{ orderCode: { $in: orderCodes } }] : []),
+          ...(tableIds.length ? [{ tableId: { $in: tableIds } }] : []),
         ],
       })
         .select({
           restaurantId: 1,
           tableCode: 1,
-          orderCode: 1,
+          tableId: 1,
           customerName: 1,
           customerPhone: 1,
           customerEmail: 1,
@@ -447,17 +447,17 @@ export const OrderQuery = {
         .lean();
     }
 
-    const byKey = new Map(); // `${rid}|${tableCode}` or `${rid}|${orderCode}`
+    const byKey = new Map(); // `${rid}|${tableCode}` or `${rid}|${tableId}`
     for (const c of customerDocs) {
       const rid = String(c.restaurantId);
       if (c.tableCode) byKey.set(`${rid}|TC:${String(c.tableCode)}`, c);
-      if (c.orderCode) byKey.set(`${rid}|OC:${String(c.orderCode)}`, c);
+      if (c.tableId) byKey.set(`${rid}|TI:${String(c.tableId)}`, c);
     }
 
     const edges = slice.map((o) => {
       const rid = String(o.restaurantId || "");
       const tc =
-        (o.orderCode && byKey.get(`${rid}|OC:${String(o.orderCode)}`)) ||
+        (o.tableId && byKey.get(`${rid}|TI:${String(o.tableId)}`)) ||
         (o.tableCode && byKey.get(`${rid}|TC:${String(o.tableCode)}`)) ||
         null;
 

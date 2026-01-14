@@ -16,12 +16,6 @@ const tableCustomerSchema = BaseSchemaModel({
   },
   tableCode: { type: String, index: true },
 
-  // ✅ Mới: gắn với mã order (batch) nếu có
-  orderCode: {
-    type: String,
-    index: true,
-  },
-
   // Thông tin khách hàng
   customerName: String,
   customerPhone: String,
@@ -47,15 +41,6 @@ tableCustomerSchema.index(
 tableCustomerSchema.index(
   { restaurantId: 1, tableCode: 1 },
   { unique: true, partialFilterExpression: { tableCode: { $type: "string" } } }
-);
-
-/**
- * Duy nhất theo (restaurantId + orderCode) nếu có orderCode
- * → một orderCode trong 1 nhà hàng chỉ map tới 1 bản ghi khách hàng
- */
-tableCustomerSchema.index(
-  { restaurantId: 1, orderCode: 1 },
-  { unique: true, partialFilterExpression: { orderCode: { $type: "string" } } }
 );
 
 export default mongoose.model("TableCustomer", tableCustomerSchema);

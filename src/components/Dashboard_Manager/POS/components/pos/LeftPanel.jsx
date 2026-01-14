@@ -3,7 +3,6 @@ import cls from "./LeftPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { TableActionsModal } from "../modals/TableActionsModal";
 import RegularCustomerModal from "../modals/RegularCustomerModal";
-import useTableCustomers from "../../../../../hooks/useTableCustomers";
 
 /* --- ICONS --- */
 const IconMulti = () => (
@@ -175,17 +174,6 @@ export default function LeftPanel() {
 
   const selectedCustomer = deliveryCustomer;
 
-  const { customers: tableCustomers } = useTableCustomers({ restaurantId });
-
-  const tableCustomerMap = useMemo(() => {
-    const map = new Map();
-    (tableCustomers || []).forEach((c) => {
-      if (c.tableId) map.set(String(c.tableId), c);
-      if (c.tableCode) map.set(String(c.tableCode).toLowerCase(), c);
-    });
-    return map;
-  }, [tableCustomers]);
-
   const filteredTables = useMemo(() => {
     let res = tables || [];
     if (currentFloorId !== "all") {
@@ -200,16 +188,12 @@ export default function LeftPanel() {
     if (q) {
       res = res.filter((t) => {
         const code = (t.code || "").toLowerCase();
-        const customer =
-          tableCustomerMap.get(String(t.id)) ||
-          tableCustomerMap.get(String(t.code || "").toLowerCase());
-        const customerName = (customer?.customerName || "").toLowerCase();
         if (hasTrailingSpace) return code === q;
-        return code.includes(q) || customerName.includes(q);
+        return code.includes(q);
       });
     }
     return res;
-  }, [tables, currentFloorId, statusFilter, searchTerm, tableCustomerMap]);
+  }, [tables, currentFloorId, statusFilter, searchTerm]);
 
   const hasUnsavedNewItems = useMemo(() => {
     return (

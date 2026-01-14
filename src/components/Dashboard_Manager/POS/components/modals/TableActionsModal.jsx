@@ -5,9 +5,35 @@ import s from "./TableActionsModal.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import useOrderManagement from "../../../../../hooks/useOrderManagement";
 import { useReservation } from "../../../../../hooks/useReservation";
-import useTableCustomers from "../../../../../hooks/useTableCustomers";
-import { GET_CUSTOMERS } from "../../../../../hooks/useUserManagement";
+import { GET_CUSTOMERS_FOR_TABLE_INFO } from "../../../../../hooks/useUserManagement";
 import { useNotification } from "../../../../../hooks/useNotification";
+
+const Q_TABLE_CUSTOMER = gql`
+  query TableCustomer(
+    $restaurantId: ID!
+    $tableId: ID
+    $tableCode: String
+  ) {
+    tableCustomer(
+      restaurantId: $restaurantId
+      tableId: $tableId
+      tableCode: $tableCode
+    ) {
+      id
+      restaurantId
+      tableId
+      tableCode
+      customerName
+      customerPhone
+      customerEmail
+      note
+      partySize
+      timeTo
+      createdAt
+      updatedAt
+    }
+  }
+`;
 
 const UPSERT_TABLE_CUSTOMER = gql`
   mutation UpsertTableCustomer($input: UpsertTableCustomerInput!) {
@@ -15,7 +41,6 @@ const UPSERT_TABLE_CUSTOMER = gql`
       id
       tableId
       tableCode
-      orderCode
       customerName
       customerPhone
       customerEmail
@@ -83,12 +108,15 @@ function TableActionsModalCore({
   const { changeOrderStatusByCode, updateOrderCustomerByCode } =
     useOrderManagement();
   const { findConfirmedByTable } = useReservation();
-  const { customers: tableCustomers, refetch: refetchTableCustomers } =
-    useTableCustomers({ restaurantId });
   const [upsertTableCustomer] = useMutation(UPSERT_TABLE_CUSTOMER);
+  const [
+    loadTableCustomer,
+    { data: tableCustomerData, refetch: refetchTableCustomer },
+  ] = useLazyQuery(Q_TABLE_CUSTOMER, { fetchPolicy: "network-only" });
   const { showNotification } = useNotification();
 
   const [orderCodeForTable, setOrderCodeForTable] = useState(null);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(true);
 
   // Local states
   const [code, setCode] = useState("");
@@ -147,9 +175,9 @@ function TableActionsModalCore({
   const suppressEmailSuggestRef = useRef(false);
 
   const [loadPhoneSuggestions, { loading: phoneSuggestionsLoading }] =
-    useLazyQuery(GET_CUSTOMERS, { fetchPolicy: "network-only" });
+    useLazyQuery(GET_CUSTOMERS_FOR_TABLE_INFO, { fetchPolicy: "network-only" });
   const [loadEmailSuggestions, { loading: emailSuggestionsLoading }] =
-    useLazyQuery(GET_CUSTOMERS, { fetchPolicy: "network-only" });
+    useLazyQuery(GET_CUSTOMERS_FOR_TABLE_INFO, { fetchPolicy: "network-only" });
 
   const [busy, setBusy] = useState({});
   const setBusyKey = (k, v) => setBusy((b) => ({ ...b, [k]: v }));
@@ -181,6 +209,9 @@ function TableActionsModalCore({
   const hydratedReservationFor = useRef(null);
   const hydratedOrderFor = useRef(null);
   const hydratedTableCustomerFor = useRef(null);
+  const loadedTableCustomerFor = useRef(null);
+  const baselineCustRef = useRef(null);
+  const baselineTableRef = useRef(null);
 
   useEffect(() => {
     if (table && reallyOpen) {
@@ -205,6 +236,7 @@ function TableActionsModalCore({
       hydratedReservationFor.current = null;
       hydratedOrderFor.current = null;
       hydratedTableCustomerFor.current = null;
+      loadedTableCustomerFor.current = null;
 
       setCust({
         name: "",
@@ -216,6 +248,22 @@ function TableActionsModalCore({
         checkinTimeTo: "",
         note: "",
       });
+      baselineCustRef.current = {
+        name: "",
+        phone: "",
+        email: "",
+        guests: 0,
+        checkinDate: getTodayLocal(),
+        checkinTime: "",
+        checkinTimeTo: "",
+        note: "",
+      };
+      baselineTableRef.current = {
+        code: table.code || "",
+        capacity: Number(table.capacity || 0),
+        type: table.type || "standard",
+        tags: Array.isArray(table.tags) ? table.tags.join(", ") : "",
+      };
     }
   }, [table, reallyOpen]);
 
@@ -350,7 +398,7 @@ function TableActionsModalCore({
           const r = res?.data ?? res?.reservation ?? res?.result ?? res ?? null;
           if (r && !cancelled) {
             const { date, time } = isoToDateTimeParts(r.timeTo);
-            setCustIfChanged({
+            const nextCust = {
               name: r.customerName ?? r.name ?? "",
               phone: r.customerPhone ?? r.phone ?? "",
               email: r.customerEmail ?? r.email ?? "",
@@ -358,12 +406,30 @@ function TableActionsModalCore({
               checkinDate: date || getTodayLocal(),
               checkinTime: time || "",
               note: r.note ?? "",
-            });
+            };
+            setCustIfChanged(nextCust);
+            baselineCustRef.current = buildCustSnapshot(nextCust);
           }
         } catch (e) {
           console.warn(e);
         } finally {
           hydratedReservationFor.current = table.id;
+        }
+      }
+
+      if (loadedTableCustomerFor.current !== table?.id) {
+        try {
+          await loadTableCustomer({
+            variables: {
+              restaurantId,
+              tableId: table?.id || undefined,
+              tableCode: table?.code || undefined,
+            },
+          });
+        } catch (e) {
+          console.warn(e);
+        } finally {
+          loadedTableCustomerFor.current = table?.id || null;
         }
       }
 
@@ -380,12 +446,14 @@ function TableActionsModalCore({
             setOrderCodeForTable(firstGroup.orderCode || null);
             const u = firstGroup.user || firstGroup.customer || null;
             if (u) {
-              setCustIfChanged({
+              const nextCust = {
                 name: u.fullName || u.name || "",
                 phone: u.phone || "",
                 email: u.email || "",
                 guests: Number(firstGroup.partySize || 0),
-              });
+              };
+              setCustIfChanged(nextCust);
+              baselineCustRef.current = buildCustSnapshot(nextCust);
             }
           }
         } catch (e) {
@@ -399,29 +467,19 @@ function TableActionsModalCore({
     return () => {
       cancelled = true;
     };
-  }, [reallyOpen, restaurantId, table?.id, table?.code, table?.status]);
+  }, [
+    loadTableCustomer,
+    reallyOpen,
+    restaurantId,
+    table?.id,
+    table?.code,
+    table?.status,
+  ]);
 
-  const matchedTableCustomer = useMemo(() => {
-    if (!table || !Array.isArray(tableCustomers)) return null;
-    const byId = table.id
-      ? tableCustomers.find((c) => String(c.tableId) === String(table.id))
-      : null;
-    if (byId) return byId;
-    const byCode = table.code
-      ? tableCustomers.find(
-          (c) =>
-            String(c.tableCode || "").toLowerCase() ===
-            String(table.code || "").toLowerCase()
-        )
-      : null;
-    if (byCode) return byCode;
-    const byOrder = orderCodeForTable
-      ? tableCustomers.find(
-          (c) => String(c.orderCode || "") === String(orderCodeForTable)
-        )
-      : null;
-    return byOrder || null;
-  }, [table, tableCustomers, orderCodeForTable]);
+  const matchedTableCustomer = useMemo(
+    () => tableCustomerData?.tableCustomer || null,
+    [tableCustomerData]
+  );
 
   useEffect(() => {
     if (!reallyOpen || !table?.id || !matchedTableCustomer) return;
@@ -430,7 +488,7 @@ function TableActionsModalCore({
     if (table?.status === "occupied" && orderCodeForTable) return;
 
     const { date, time } = isoToDateTimeParts(matchedTableCustomer.timeTo);
-    setCustIfChanged({
+    const nextCust = {
       name: matchedTableCustomer.customerName ?? "",
       phone: matchedTableCustomer.customerPhone ?? "",
       email: matchedTableCustomer.customerEmail ?? "",
@@ -438,7 +496,9 @@ function TableActionsModalCore({
       checkinDate: date || getTodayLocal(),
       checkinTimeTo: time || "",
       note: matchedTableCustomer.note ?? "",
-    });
+    };
+    setCustIfChanged(nextCust);
+    baselineCustRef.current = buildCustSnapshot(nextCust);
     hydratedTableCustomerFor.current = table.id;
   }, [
     matchedTableCustomer,
@@ -519,6 +579,52 @@ function TableActionsModalCore({
       guests: clampGuests((prev.guests || 0) + delta),
     }));
 
+  const statusLabels = {
+    available: "Trống",
+    occupied: "Đang phục vụ",
+    reserved: "Đã đặt",
+    cleaning: "Đang dọn",
+    offline: "Ngưng phục vụ",
+  };
+
+  const typeLabels = {
+    standard: "Tiêu chuẩn",
+    vip: "VIP",
+    outdoor: "Ngoài trời",
+  };
+
+  const buildCustSnapshot = (source) => ({
+    name: (source?.name || "").trim(),
+    phone: (source?.phone || "").trim(),
+    email: (source?.email || "").trim().toLowerCase(),
+    guests: Number(source?.guests || 0),
+    checkinDate: source?.checkinDate || "",
+    checkinTime: source?.checkinTime || "",
+    checkinTimeTo: source?.checkinTimeTo || "",
+    note: (source?.note || "").trim(),
+  });
+
+  const buildTableSnapshot = (source) => ({
+    code: (source?.code || "").trim(),
+    capacity: Number(source?.capacity || 0),
+    type: source?.type || "standard",
+    tags: (source?.tags || "").trim(),
+  });
+
+  const hasCustomerChanges = useMemo(() => {
+    if (!baselineCustRef.current) return false;
+    const current = buildCustSnapshot(cust);
+    const baseline = buildCustSnapshot(baselineCustRef.current);
+    return JSON.stringify(current) !== JSON.stringify(baseline);
+  }, [cust]);
+
+  const hasTableChanges = useMemo(() => {
+    if (!baselineTableRef.current) return false;
+    const current = buildTableSnapshot({ code, capacity, type, tags });
+    const baseline = buildTableSnapshot(baselineTableRef.current);
+    return JSON.stringify(current) !== JSON.stringify(baseline);
+  }, [code, capacity, type, tags]);
+
   const resolveCustomerIdentity = () => {
     const name = (cust.name || selectedCustomer?.name || "").trim();
     const phone = (cust.phone || selectedCustomer?.phone || "").trim();
@@ -595,6 +701,7 @@ function TableActionsModalCore({
           .map((t) => t.trim())
           .filter(Boolean),
       });
+      baselineTableRef.current = buildTableSnapshot({ code, capacity, type, tags });
       onUpdated?.();
       showNotification?.("Đã lưu thay đổi bàn.", "success");
     } catch (e) {
@@ -753,7 +860,6 @@ function TableActionsModalCore({
       restaurantId,
       tableId: table?.id || undefined,
       tableCode: table?.code || undefined,
-      orderCode: opts.orderCode || orderCodeForTable || undefined,
       customerName: identity.name || null,
       customerPhone: identity.phone || null,
       customerEmail: identity.email ? identity.email.toLowerCase() : null,
@@ -775,7 +881,17 @@ function TableActionsModalCore({
     if (!restaurantId || !table?.code) return;
     const input = buildTableCustomerInput(opts);
     await upsertTableCustomer({ variables: { input } });
-    refetchTableCustomers?.();
+    if (refetchTableCustomer) {
+      await refetchTableCustomer();
+    } else {
+      await loadTableCustomer({
+        variables: {
+          restaurantId,
+          tableId: table?.id || undefined,
+          tableCode: table?.code || undefined,
+        },
+      });
+    }
   };
 
   const saveCustomerInfo = async () => {
@@ -795,7 +911,17 @@ function TableActionsModalCore({
           orderCode: orderCodeForTable,
           customer,
         });
-        await persistTableCustomer({ orderCode: orderCodeForTable });
+        if (hasTableChanges) {
+          await handleSaveBasics();
+          baselineTableRef.current = buildTableSnapshot({
+            code,
+            capacity,
+            type,
+            tags,
+          });
+        }
+        await persistTableCustomer();
+        baselineCustRef.current = buildCustSnapshot(cust);
         if (res?.success) {
           showNotification?.("Đã cập nhật đơn hàng.", "success");
           onUpdated?.();
@@ -839,7 +965,17 @@ function TableActionsModalCore({
           durationMinutes,
         });
       }
+      if (hasTableChanges) {
+        await handleSaveBasics();
+        baselineTableRef.current = buildTableSnapshot({
+          code,
+          capacity,
+          type,
+          tags,
+        });
+      }
       await persistTableCustomer();
+      baselineCustRef.current = buildCustSnapshot(cust);
       showNotification?.("Đã lưu thông tin khách.", "success");
     } catch (e) {
       console.error(e);
@@ -905,7 +1041,9 @@ function TableActionsModalCore({
             </div>
             <div className={s.kv}>
               <span className={s.k}>Trạng thái</span>
-              <span className={s.v}>{table.status}</span>
+              <span className={s.v}>
+                {statusLabels[status] || status}
+              </span>
             </div>
           </div>
 
@@ -930,15 +1068,15 @@ function TableActionsModalCore({
                 value={type}
                 onChange={(e) => setType(e.target.value)}
               >
-                <option value="standard">Standard</option>
-                <option value="vip">VIP</option>
-                <option value="outdoor">Outdoor</option>
+                <option value="standard">{typeLabels.standard}</option>
+                <option value="vip">{typeLabels.vip}</option>
+                <option value="outdoor">{typeLabels.outdoor}</option>
               </select>
               <input
                 className={s.input}
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
-                placeholder="Tags..."
+                placeholder="Thẻ gắn..."
               />
             </div>
             <div className={s.actionsEnd}>
@@ -947,7 +1085,7 @@ function TableActionsModalCore({
                 onClick={handleSaveBasics}
                 disabled={busy.save}
               >
-                Lưu thay đổi
+                Lưu thông tin bàn
               </button>
             </div>
           </div>
@@ -964,7 +1102,7 @@ function TableActionsModalCore({
                     onClick={() => handleChangeStatus(st)}
                     disabled={busy.status}
                   >
-                    {st}
+                    {statusLabels[st] || st}
                   </button>
                 )
               )}
@@ -972,89 +1110,100 @@ function TableActionsModalCore({
           </div>
 
           <div className={s.group}>
-            <div className={s.label}>Thao tác nhanh</div>
-            <div className={s.twoCols}>
-              {/* Move & Swap */}
-              <div>
-                <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
-                  Chuyển tầng
-                </div>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <select
-                    className={s.select}
-                    value={moveLevel ?? ""}
-                    onChange={(e) => setMoveLevel(e.target.value)}
-                  >
-                    {floorsSorted.map((f) => (
-                      <option key={f.id} value={f.level}>
-                        Tầng {f.level}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    className={`${s.btn} ${s.ghost}`}
-                    onClick={handleMove}
-                    disabled={busy.move}
-                  >
-                    Chuyển
-                  </button>
-                </div>
-              </div>
-              <div>
-                <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
-                  Đổi vị trí (cùng tầng)
-                </div>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <input
-                    className={s.input}
-                    placeholder="Mã đích"
-                    value={swapWithCode}
-                    onChange={(e) => setSwapWithCode(e.target.value)}
-                  />
-                  <button
-                    className={`${s.btn} ${s.ghost}`}
-                    onClick={handleSwap}
-                    disabled={busy.swap}
-                  >
-                    Đổi
-                  </button>
-                </div>
-              </div>
-              {/* Merge & Split */}
-              <div>
-                <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
-                  Gộp bàn
-                </div>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <input
-                    className={s.input}
-                    placeholder="A1, A2..."
-                    value={mergeCodes}
-                    onChange={(e) => setMergeCodes(e.target.value)}
-                  />
-                  <button
-                    className={`${s.btn} ${s.ghost}`}
-                    onClick={handleMerge}
-                    disabled={busy.merge}
-                  >
-                    Gộp
-                  </button>
-                </div>
-              </div>
-              <div>
-                <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
-                  Tách bàn
-                </div>
-                <button
-                  className={`${s.btn} ${canSplit ? s.ghost : s.isDisabled}`}
-                  onClick={handleSplitOut}
-                  disabled={!canSplit || busy.split}
-                  style={{ width: "100%" }}
-                >
-                  Tách khỏi nhóm
-                </button>
-              </div>
+            <div className={s.groupHeader}>
+              <div className={s.label}>Thao tác nhanh</div>
+              <button
+                type="button"
+                className={s.toggleButton}
+                onClick={() => setQuickActionsOpen((prev) => !prev)}
+              >
+                {quickActionsOpen ? "Thu gọn" : "Mở rộng"}
+              </button>
             </div>
+            {quickActionsOpen && (
+              <div className={s.twoCols}>
+                {/* Move & Swap */}
+                <div>
+                  <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
+                    Chuyển tầng
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <select
+                      className={s.select}
+                      value={moveLevel ?? ""}
+                      onChange={(e) => setMoveLevel(e.target.value)}
+                    >
+                      {floorsSorted.map((f) => (
+                        <option key={f.id} value={f.level}>
+                          Tầng {f.level}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className={`${s.btn} ${s.ghost}`}
+                      onClick={handleMove}
+                      disabled={busy.move}
+                    >
+                      Chuyển
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
+                    Đổi vị trí (cùng tầng)
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <input
+                      className={s.input}
+                      placeholder="Mã đích"
+                      value={swapWithCode}
+                      onChange={(e) => setSwapWithCode(e.target.value)}
+                    />
+                    <button
+                      className={`${s.btn} ${s.ghost}`}
+                      onClick={handleSwap}
+                      disabled={busy.swap}
+                    >
+                      Đổi
+                    </button>
+                  </div>
+                </div>
+                {/* Merge & Split */}
+                <div>
+                  <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
+                    Gộp bàn
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <input
+                      className={s.input}
+                      placeholder="A1, A2..."
+                      value={mergeCodes}
+                      onChange={(e) => setMergeCodes(e.target.value)}
+                    />
+                    <button
+                      className={`${s.btn} ${s.ghost}`}
+                      onClick={handleMerge}
+                      disabled={busy.merge}
+                    >
+                      Gộp
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <div className={s.hint} style={{ marginBottom: "0.5rem" }}>
+                    Tách bàn
+                  </div>
+                  <button
+                    className={`${s.btn} ${canSplit ? s.ghost : s.isDisabled}`}
+                    onClick={handleSplitOut}
+                    disabled={!canSplit || busy.split}
+                    style={{ width: "100%" }}
+                  >
+                    Tách khỏi nhóm
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className={s.group}>
@@ -1279,7 +1428,9 @@ function TableActionsModalCore({
               <button
                 className={`${s.btn} ${s.primary}`}
                 onClick={saveCustomerInfo}
-                disabled={busy.saveCustomer}
+                disabled={
+                  busy.saveCustomer || (!hasCustomerChanges && !hasTableChanges)
+                }
               >
                 Lưu thông tin khách
               </button>
@@ -1305,7 +1456,7 @@ function TableActionsModalCore({
               onClick={handleSaveBasics}
               disabled={busy.save}
             >
-              Lưu thay đổi
+              Lưu thông tin bàn
             </button>
           </div>
         </div>

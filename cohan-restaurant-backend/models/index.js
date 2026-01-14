@@ -45,6 +45,7 @@ export { default as ReviewCommentReaction } from "./review-comment-reaction.mode
 export { default as Cart } from "./cart.model.js";
 export { default as CategoryMenu } from "./category-menu.model.js";
 export { default as OrderTracking } from "./order-tracking.model.js";
+export { default as PrintSetting } from "./printSetting.model.js";
 
 export { default as ShippingTracking } from "./order-shipping.model.js";
 export { default as IngredientRecent } from "./ingredient-recent.model.js";
