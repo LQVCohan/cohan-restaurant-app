@@ -110,47 +110,64 @@ const PromotionModal = ({ onClose }) => {
     } else {
       newSelection.push(id);
     }
+    setSelectedGroupIds(newSelection);
+  };
 
-    const groupNames = selectedGroups
-      .map((id) => customerGroups.find((g) => g.id === id)?.name)
-      .join(", ");
+  const handleSelectAll = () => {
+    if (selectedGroupIds.includes("all")) setSelectedGroupIds([]);
+    else setSelectedGroupIds(["all"]);
+  };
 
-    alert(
-      `✅ Đã gửi khuyến mãi "${selectedPromotion.title}" đến ${totalRecipients} khách hàng (${groupNames}) thành công!`
+  const handleSend = () => {
+    setIsSending(true);
+    // Simulate API call
+    setTimeout(() => {
+      setIsSending(false);
+      alert(
+        `✅ Đã gửi chiến dịch "${selectedPromo.title}" tới ${totalRecipients} khách hàng!`
+      );
+      onClose();
+    }, 1500);
+  };
+
+  // Render Steps
+  const renderStepIndicator = () => {
+    const steps = [
+      { num: 1, label: "Chọn Gói KM" },
+      { num: 2, label: "Đối Tượng" },
+      { num: 3, label: "Lên Lịch & Gửi" },
+    ];
+    return (
+      <div className="pm-steps">
+        {steps.map((s) => (
+          <div
+            key={s.num}
+            className={`step-item ${currentStep === s.num ? "active" : ""} ${
+              currentStep > s.num ? "completed" : ""
+            }`}
+          >
+            <div className="step-num">
+              {currentStep > s.num ? <Check size={14} /> : s.num}
+            </div>
+            <span>{s.label}</span>
+          </div>
+        ))}
+      </div>
     );
-    onClose();
-  };
-
-  const nextStep = () => {
-    if (currentStep < 3) setCurrentStep(currentStep + 1);
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
   return (
-    <Modal isOpen onClose={onClose} size="lg" className="promotion-modal">
-      <div className="promotion-modal__header">
-        <h2>Gửi Khuyến Mãi</h2>
-        <div className="step-indicator">
-          {[1, 2, 3].map((step) => (
-            <div
-              key={step}
-              className={`step ${currentStep >= step ? "active" : ""} ${
-                currentStep === step ? "current" : ""
-              }`}
-            >
-              <span className="step-number">{step}</span>
-              <span className="step-label">
-                {step === 1
-                  ? "Chọn KM"
-                  : step === 2
-                  ? "Chọn Khách"
-                  : "Lên Lịch"}
-              </span>
-            </div>
-          ))}
+    <Modal onClose={onClose} className="promotion-modal-wrapper">
+      <div className="pm-container">
+        {/* HEADER */}
+        <div className="pm-header">
+          <h2>
+            <Gift className="text-blue-500" />
+            Tạo Chiến Dịch Mới
+          </h2>
+          <button className="pm-close-btn" onClick={onClose}>
+            <X size={24} />
+          </button>
         </div>
 
         {/* STEPS */}
