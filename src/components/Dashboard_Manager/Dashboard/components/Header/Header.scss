@@ -1,202 +1,314 @@
-// --- LUXURY VARIABLES LOCAL ---
-$gold: #c5a47e;
-$charcoal: #1a1a1a;
-$slate: #64748b;
-$card-bg: #ffffff;
-$bg-hover: #faf9f6;
-$border-light: rgba(197, 164, 126, 0.15); // Viền vàng mờ đặc trưng
+// Variables
+$header-bg: #ffffff;
+$bg-body: #f3f4f6;
+$text-main: #111827;
+$text-secondary: #6b7280;
+$border-color: #e5e7eb;
+$brand-color: #d97706; // Amber
+$brand-hover: #b45309;
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+  0 4px 6px -2px rgba(0, 0, 0, 0.05);
 
-.header-toolbar {
-  // Layout Toolbar mở (Transparent Background)
+// Mixins
+@mixin flex-center {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  background: transparent;
-  font-family: "Be Vietnam Pro", sans-serif; // Áp dụng font mới toàn cục
+  justify-content: center;
+}
 
-  // --- 1. Location Selector Style ---
-  .location-wrapper {
+.dashboard-header {
+  background: transparent; // Để header nổi lên trên nền xám của dashboard
+  padding: 0 0 20px 0;
+  position: relative;
+  z-index: 50;
+
+  .header-content {
+    background: $header-bg;
+    border-radius: 16px;
+    box-shadow: $shadow-sm;
+    border: 1px solid $border-color;
+    padding: 12px 24px;
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    background: $card-bg;
-    padding: 10px 16px 10px 12px; // Padding rộng hơn chút cho dễ thở
-    border-radius: 12px;
+  }
 
-    // Style Luxury: Viền vàng mờ + Bóng nhẹ
-    border: 1px solid $border-light;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+  // --- LEFT: Location Selector ---
+  .location-dropdown-wrapper {
+    position: relative;
+    min-width: 260px;
 
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    min-width: 320px; // Tăng width một chút
-
-    // Hover Effect: Sáng viền vàng
-    &:hover {
-      border-color: rgba($gold, 0.5);
-      box-shadow: 0 10px 15px -3px rgba(197, 164, 126, 0.15);
-      transform: translateY(-2px); // Nhấc nhẹ
-
-      .location-icon {
-        background: $gold;
-        color: white;
-        transform: rotate(-10deg); // Xoay nhẹ icon
-      }
-    }
-
-    // Icon định vị bên trái
-    .location-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      background: rgba($gold, 0.1);
-      color: $gold;
+    .location-btn {
       display: flex;
       align-items: center;
-      justify-content: center;
-      margin-right: 14px;
-      transition: all 0.3s ease;
-      flex-shrink: 0;
-    }
+      gap: 12px;
+      background: transparent;
+      border: 1px solid transparent;
+      padding: 6px 12px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+      text-align: left;
 
-    .select-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-
-      .select-label {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        color: $slate;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        margin-bottom: 4px;
+      &:hover,
+      &.active {
+        background: $bg-body;
       }
 
-      .select-input-group {
-        position: relative;
+      .icon-box {
+        @include flex-center;
+        width: 36px;
+        height: 36px;
+        background: rgba($brand-color, 0.1);
+        color: $brand-color;
+        border-radius: 10px;
+      }
+
+      .location-info {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+
+        .label-tiny {
+          font-size: 11px;
+          color: $text-secondary;
+          font-weight: 500;
+        }
+
+        .label-main {
+          font-size: 14px;
+          color: $text-main;
+          font-weight: 600;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 180px;
+        }
+      }
+
+      .arrow-icon {
+        color: $text-secondary;
+        transition: transform 0.2s;
+        &.rotate {
+          transform: rotate(180deg);
+        }
+      }
+    }
+
+    // Dropdown Menu Styles
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      width: 100%;
+      min-width: 280px;
+      background: $header-bg;
+      border: 1px solid $border-color;
+      border-radius: 12px;
+      box-shadow: $shadow-lg;
+      padding: 8px;
+      animation: fadeInDown 0.2s ease-out;
+      transform-origin: top left;
+
+      .search-box {
         display: flex;
         align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-bottom: 1px solid $border-color;
+        margin-bottom: 4px;
 
-        // Custom Select Trick
-        .custom-select {
-          appearance: none;
-          -webkit-appearance: none;
-          width: 100%;
+        .search-icon {
+          color: $text-secondary;
+        }
+
+        input {
           border: none;
-          background: transparent;
+          outline: none;
+          width: 100%;
+          font-size: 13px;
+          color: $text-main;
+          &::placeholder {
+            color: #9ca3af;
+          }
+        }
+      }
 
-          // CẬP NHẬT FONT: Thay Playfair bằng Be Vietnam Pro
-          font-family: "Be Vietnam Pro", sans-serif;
-          font-size: 1rem;
-          font-weight: 700; // Bold để làm nổi bật tên chi nhánh
-          color: $charcoal;
+      .options-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        max-height: 200px;
+        overflow-y: auto;
 
+        &::-webkit-scrollbar {
+          width: 4px;
+        }
+        &::-webkit-scrollbar-thumb {
+          background: #e5e7eb;
+          border-radius: 4px;
+        }
+
+        .option-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 12px;
+          border-radius: 8px;
           cursor: pointer;
-          padding-right: 24px;
-          line-height: 1.2;
+          font-size: 13px;
+          color: $text-main;
+          transition: background 0.1s;
 
-          &:focus {
-            outline: none;
+          &:hover {
+            background: $bg-body;
+          }
+          &.selected {
+            background: rgba($brand-color, 0.05);
+            color: $brand-color;
+            font-weight: 600;
+          }
+
+          .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            &.online {
+              background: #10b981;
+            }
+            &.busy {
+              background: #f59e0b;
+            }
+            &.offline {
+              background: #ef4444;
+            }
+          }
+
+          .item-label {
+            flex: 1;
           }
         }
 
-        // Custom Arrow Icon
-        .arrow-icon {
-          position: absolute;
-          right: 0;
-          pointer-events: none;
-          color: $slate;
-          width: 16px;
-          height: 16px;
+        .no-result {
+          padding: 12px;
+          text-align: center;
+          color: $text-secondary;
+          font-size: 13px;
         }
       }
     }
   }
 
-  // --- 2. Action Buttons Style ---
-  .toolbar-actions {
+  // --- RIGHT: Actions & User ---
+  .header-right {
     display: flex;
-    gap: 12px;
+    align-items: center;
+    gap: 20px;
 
-    .btn {
+    .actions-group {
+      display: flex;
+      gap: 12px;
+
+      .btn-action {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+
+        &.secondary {
+          background: #ffffff;
+          border-color: $border-color;
+          color: $text-main;
+          &:hover {
+            background: $bg-body;
+            border-color: #d1d5db;
+          }
+        }
+
+        &.primary {
+          background: $text-main; // Dùng màu đen/xám đậm cho nút chính để sang trọng
+          color: #ffffff;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          &:hover {
+            background: lighten($text-main, 10%);
+            transform: translateY(-1px);
+          }
+
+          // Hoặc dùng màu Brand nếu muốn nổi bật hơn:
+          // background: $brand-color;
+          // &:hover { background: $brand-hover; }
+        }
+      }
+    }
+
+    .divider {
+      height: 24px;
+      width: 1px;
+      background: $border-color;
+    }
+
+    .user-nav {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 20px;
-      border-radius: 10px; // Bo góc mềm hơn chút
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      gap: 16px;
 
-      // CẬP NHẬT FONT: Thay Inter bằng Be Vietnam Pro
-      font-family: "Be Vietnam Pro", sans-serif;
-
-      // Nút phụ (Trắng)
-      &.btn-secondary {
-        background: $card-bg;
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        color: $slate;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+      .btn-icon-circle {
+        position: relative;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid transparent;
+        background: transparent;
+        color: $text-secondary;
+        @include flex-center;
+        cursor: pointer;
+        transition: all 0.2s;
 
         &:hover {
-          border-color: $gold;
-          color: $gold;
-          background: #fff;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 8px rgba(197, 164, 126, 0.15);
+          background: $bg-body;
+          color: $text-main;
+        }
+
+        .badge-dot {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          width: 8px;
+          height: 8px;
+          background: #ef4444;
+          border: 1px solid #fff;
+          border-radius: 50%;
         }
       }
 
-      // Nút chính (Đen Than + Chữ Vàng)
-      &.btn-primary {
-        background: $charcoal;
-        border: 1px solid $charcoal;
-        color: $gold; // Signature Luxury
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
 
-        &:hover {
-          background: lighten($charcoal, 5%); // Sáng lên 1 chút
-          transform: translateY(-2px);
-          box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
         }
-
-        // Icon trong nút chính
-        svg {
-          stroke-width: 2.5px;
-        }
-      }
-    }
-  }
-
-  // --- Mobile Responsive ---
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-    margin-bottom: 20px;
-
-    .location-wrapper {
-      width: 100%;
-      min-width: unset;
-    }
-
-    .toolbar-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr; // Chia đều 2 nút
-
-      .btn {
-        justify-content: center;
       }
     }
   }
 }
 
-// Animation
-.fade-in {
-  animation: fadeInDown 0.4s ease-out;
-}
-
+// Animation Keyframes
 @keyframes fadeInDown {
   from {
     opacity: 0;
@@ -206,4 +318,26 @@ $border-light: rgba(197, 164, 126, 0.15); // Viền vàng mờ đặc trưng
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+// Mobile Responsive
+@media (max-width: 768px) {
+  .dashboard-header .header-content {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .location-dropdown-wrapper {
+    width: 100%;
+  }
+  .header-right {
+    justify-content: space-between;
+  }
+  .actions-group {
+    flex: 1;
+    .btn-action span {
+      display: none;
+    }
+  } // Hide text on mobile
 }

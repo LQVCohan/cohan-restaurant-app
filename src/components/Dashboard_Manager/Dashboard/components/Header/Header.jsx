@@ -1,5 +1,13 @@
-import React from "react";
-import { Store, ChevronDown, Monitor, FileText, MapPin } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Monitor,
+  FileText,
+  MapPin,
+  ChevronDown,
+  Search,
+  Bell,
+  Check,
+} from "lucide-react";
 import "./Header.scss";
 
 const Header = ({
@@ -8,55 +16,139 @@ const Header = ({
   onSwitchToPOS,
   onGenerateReport,
 }) => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef(null);
+
+  // Mock Data: Thêm trạng thái hoạt động cho từng chi nhánh
   const restaurants = [
-    { value: "all", label: "Tất cả nhà hàng" },
-    { value: "hcm-center", label: "FoodHub Trung Tâm HCM" },
-    { value: "hcm-district7", label: "FoodHub Quận 7" },
-    { value: "hcm-thuduc", label: "FoodHub Thủ Đức" },
-    { value: "hanoi-center", label: "FoodHub Trung Tâm Hà Nội" },
-    { value: "hanoi-caugiay", label: "FoodHub Cầu Giấy" },
-    { value: "danang-center", label: "FoodHub Trung Tâm Đà Nẵng" },
+    { value: "all", label: "Tất cả hệ thống", status: "online" },
+    { value: "hcm-center", label: "FoodHub Trung Tâm HCM", status: "online" },
+    { value: "hcm-district7", label: "FoodHub Quận 7", status: "busy" },
+    { value: "hcm-thuduc", label: "FoodHub Thủ Đức", status: "online" },
+    { value: "hanoi-center", label: "FoodHub TT Hà Nội", status: "offline" },
+    { value: "hanoi-caugiay", label: "FoodHub Cầu Giấy", status: "online" },
+    { value: "danang-center", label: "FoodHub Đà Nẵng", status: "online" },
   ];
 
+  // Xử lý click outside để đóng dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Filter danh sách dựa trên từ khóa tìm kiếm
+  const filteredRestaurants = restaurants.filter((r) =>
+    r.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const currentRestaurantLabel =
+    restaurants.find((r) => r.value === selectedRestaurant)?.label ||
+    "Chọn chi nhánh";
+
+  const handleSelect = (value) => {
+    onRestaurantChange(value);
+    setIsDropdownOpen(false);
+  };
+
   return (
-    <div className="header-toolbar fade-in">
-      {/* Khu vực chọn chi nhánh (Location Selector) */}
-      <div className="location-wrapper">
-        <div className="location-icon">
-          <MapPin size={20} />
-        </div>
-        <div className="select-container">
-          <label className="select-label">Chi nhánh đang làm việc</label>
-          <div className="select-input-group">
-            <select
-              value={selectedRestaurant}
-              onChange={(e) => onRestaurantChange(e.target.value)}
-              className="custom-select"
+    <header className="dashboard-header">
+      <div className="header-content">
+        {/* Left Side: Brand & Location Selector */}
+        <div className="header-left">
+          {/* Custom Dropdown */}
+          <div className="location-dropdown-wrapper" ref={dropdownRef}>
+            <button
+              className={`location-btn ${isDropdownOpen ? "active" : ""}`}
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             >
-              {restaurants.map((restaurant) => (
-                <option key={restaurant.value} value={restaurant.value}>
-                  {restaurant.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="arrow-icon" size={16} />
+              <div className="icon-box">
+                <MapPin size={18} />
+              </div>
+              <div className="location-info">
+                <span className="label-tiny">Đang quản lý tại</span>
+                <span className="label-main">{currentRestaurantLabel}</span>
+              </div>
+              <ChevronDown
+                size={16}
+                className={`arrow-icon ${isDropdownOpen ? "rotate" : ""}`}
+              />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isDropdownOpen && (
+              <div className="dropdown-menu fade-in-down">
+                <div className="search-box">
+                  <Search size={14} className="search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Tìm chi nhánh..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <ul className="options-list custom-scrollbar">
+                  {filteredRestaurants.map((item) => (
+                    <li
+                      key={item.value}
+                      className={`option-item ${
+                        selectedRestaurant === item.value ? "selected" : ""
+                      }`}
+                      onClick={() => handleSelect(item.value)}
+                    >
+                      <span className={`status-dot ${item.status}`}></span>
+                      <span className="item-label">{item.label}</span>
+                      {selectedRestaurant === item.value && (
+                        <Check size={14} className="check-icon" />
+                      )}
+                    </li>
+                  ))}
+                  {filteredRestaurants.length === 0 && (
+                    <li className="no-result">Không tìm thấy kết quả</li>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Side: Actions & User */}
+        <div className="header-right">
+          <div className="actions-group">
+            <button className="btn-action secondary" onClick={onSwitchToPOS}>
+              <Monitor size={18} />
+              <span>POS Bán Hàng</span>
+            </button>
+
+            <button className="btn-action primary" onClick={onGenerateReport}>
+              <FileText size={18} />
+              <span>Xuất Báo Cáo</span>
+            </button>
+          </div>
+
+          <div className="divider"></div>
+
+          <div className="user-nav">
+            <button className="btn-icon-circle notification">
+              <Bell size={20} />
+              <span className="badge-dot"></span>
+            </button>
+            <div className="user-avatar">
+              <img
+                src="https://ui-avatars.com/api/?name=Admin+Manager&background=d97706&color=fff"
+                alt="Admin"
+              />
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Khu vực nút bấm (Actions) */}
-      <div className="toolbar-actions">
-        <button className="btn btn-secondary" onClick={onSwitchToPOS}>
-          <Monitor size={18} />
-          <span>POS Bán Hàng</span>
-        </button>
-
-        <button className="btn btn-primary" onClick={onGenerateReport}>
-          <FileText size={18} />
-          <span>Xuất Báo Cáo</span>
-        </button>
-      </div>
-    </div>
+    </header>
   );
 };
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -8,32 +8,67 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { ArrowUpRight, Calendar } from "lucide-react";
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  MoreHorizontal,
+  Calendar,
+} from "lucide-react";
 import "./Chart.scss";
 
-// Dữ liệu giả lập cho biểu đồ (Mock Data)
-const data = [
-  { name: "T2", value: 12500000 },
-  { name: "T3", value: 18000000 },
-  { name: "T4", value: 15000000 },
-  { name: "T5", value: 22000000 },
-  { name: "T6", value: 28500000 },
-  { name: "T7", value: 32000000 },
-  { name: "CN", value: 35000000 },
-];
+// Dữ liệu giả lập cho các mốc thời gian khác nhau
+const MOCK_DATA = {
+  "7days": {
+    data: [
+      { name: "T2", value: 12500000 },
+      { name: "T3", value: 18000000 },
+      { name: "T4", value: 15000000 },
+      { name: "T5", value: 22000000 },
+      { name: "T6", value: 28500000 },
+      { name: "T7", value: 32000000 },
+      { name: "CN", value: 38000000 },
+    ],
+    total: 166000000,
+    percent: 12.5,
+    isGrowth: true,
+  },
+  "30days": {
+    data: [
+      { name: "Tuần 1", value: 150000000 },
+      { name: "Tuần 2", value: 180000000 },
+      { name: "Tuần 3", value: 160000000 },
+      { name: "Tuần 4", value: 210000000 },
+    ],
+    total: 700000000,
+    percent: 5.2,
+    isGrowth: true,
+  },
+  year: {
+    data: [
+      { name: "Q1", value: 500000000 },
+      { name: "Q2", value: 450000000 },
+      { name: "Q3", value: 600000000 },
+      { name: "Q4", value: 800000000 },
+    ],
+    total: 2350000000,
+    percent: -2.4,
+    isGrowth: false,
+  },
+};
 
-// Custom Tooltip để hiển thị thông tin khi hover chuột vào biểu đồ
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="custom-chart-tooltip">
-        <p className="tooltip-label">{`Thứ ${label}`}</p>
+      <div className="chart-tooltip-card">
+        <p className="tooltip-label">{label}</p>
+        <div className="tooltip-divider"></div>
         <p className="tooltip-value">
           {new Intl.NumberFormat("vi-VN", {
             style: "currency",
             currency: "VND",
           }).format(payload[0].value)}
         </p>
+        <p className="tooltip-desc">Doanh thu thuần</p>
       </div>
     );
   }
@@ -43,85 +78,116 @@ const CustomTooltip = ({ active, payload, label }) => {
 const Chart = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("7days");
 
+  // Lấy data hiện tại dựa trên state
+  const currentData = useMemo(
+    () => MOCK_DATA[selectedPeriod],
+    [selectedPeriod]
+  );
+
   const periods = [
     { value: "7days", label: "7 ngày" },
     { value: "30days", label: "30 ngày" },
-    { value: "year", label: "Năm nay" },
+    { value: "year", label: "Năm" },
   ];
 
   return (
-    <div className="chart-wrapper fade-in">
-      <div className="chart-header">
-        <div className="title-group">
-          <h3 className="chart-title">Biểu Đồ Doanh Thu</h3>
-          <div className="chart-summary">
-            <ArrowUpRight size={16} className="trend-icon" />
-            <span className="trend-value">+24.5%</span>
-            <span className="trend-label">so với tuần trước</span>
+    <div className="dashboard-widget revenue-chart">
+      {/* Header Widget */}
+      <div className="widget-header">
+        <div className="header-left">
+          <h3 className="widget-title">Doanh Thu</h3>
+          <div className="total-revenue-group">
+            <h2 className="total-amount">
+              {new Intl.NumberFormat("vi-VN").format(currentData.total)}
+              <span className="currency-symbol">đ</span>
+            </h2>
+            <div
+              className={`trend-badge ${currentData.isGrowth ? "up" : "down"}`}
+            >
+              {currentData.isGrowth ? (
+                <ArrowUpRight size={14} />
+              ) : (
+                <ArrowDownRight size={14} />
+              )}
+              <span>{Math.abs(currentData.percent)}%</span>
+            </div>
           </div>
         </div>
 
-        {/* Tab chọn thời gian thay vì Select Dropdown */}
-        <div className="period-tabs">
-          {periods.map((period) => (
-            <button
-              key={period.value}
-              className={`tab-btn ${
-                selectedPeriod === period.value ? "active" : ""
-              }`}
-              onClick={() => setSelectedPeriod(period.value)}
-            >
-              {period.label}
-            </button>
-          ))}
+        <div className="header-actions">
+          {/* Segmented Control for Time */}
+          <div className="segmented-control">
+            {periods.map((period) => (
+              <button
+                key={period.value}
+                className={`segment-btn ${
+                  selectedPeriod === period.value ? "active" : ""
+                }`}
+                onClick={() => setSelectedPeriod(period.value)}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
+          <button className="btn-icon-more">
+            <MoreHorizontal size={20} />
+          </button>
         </div>
       </div>
 
-      <div className="chart-container">
-        <ResponsiveContainer width="100%" height={320}>
+      {/* Chart Content */}
+      <div className="chart-body">
+        <ResponsiveContainer width="100%" height={300}>
           <AreaChart
-            data={data}
-            margin={{ top: 10, right: 0, left: -20, bottom: 0 }}
+            data={currentData.data}
+            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
           >
             <defs>
               <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#c5a47e" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#c5a47e" stopOpacity={0} />
+                <stop offset="5%" stopColor="#d97706" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#d97706" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
-              stroke="#f1f5f9"
+              stroke="#f3f4f6"
             />
             <XAxis
               dataKey="name"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "#94a3b8", fontSize: 12 }}
+              tick={{ fill: "#6b7280", fontSize: 12, fontWeight: 500 }}
               dy={10}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "#94a3b8", fontSize: 12 }}
-              tickFormatter={(value) => `${value / 1000000}M`}
+              tick={{ fill: "#9ca3af", fontSize: 11 }}
+              tickFormatter={(value) => {
+                if (value >= 1000000000)
+                  return `${(value / 1000000000).toFixed(1)}B`;
+                if (value >= 1000000) return `${(value / 1000000).toFixed(0)}M`;
+                return value;
+              }}
             />
             <Tooltip
               content={<CustomTooltip />}
               cursor={{
-                stroke: "#c5a47e",
+                stroke: "#d97706",
                 strokeWidth: 1,
-                strokeDasharray: "5 5",
+                strokeDasharray: "4 4",
               }}
             />
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#c5a47e" // Màu Gold cho đường viền
+              stroke="#d97706"
               strokeWidth={3}
               fillOpacity={1}
-              fill="url(#colorRevenue)" // Gradient fill
+              fill="url(#colorRevenue)"
+              activeDot={{ r: 6, strokeWidth: 0, fill: "#d97706" }}
+              animationDuration={1500}
             />
           </AreaChart>
         </ResponsiveContainer>

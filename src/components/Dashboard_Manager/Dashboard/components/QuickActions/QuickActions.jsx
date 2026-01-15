@@ -1,241 +1,201 @@
 import React, { useState } from "react";
 import {
-  PlusCircle,
-  Package,
-  BarChart3,
-  Users,
-  MessageSquare,
-  Gift,
-  ArrowRight,
   Plus,
   X,
-  // Import thêm các icon dùng cho danh sách có sẵn
-  ClipboardList,
-  Settings,
-  ChefHat,
+  Search,
   LayoutDashboard,
+  ClipboardList,
+  ChefHat,
+  Package,
+  Users,
   Truck,
+  Settings,
+  MoreHorizontal,
+  ArrowUpRight,
 } from "lucide-react";
 import "./QuickActions.scss";
 
-// 1. CẤU HÌNH DANH SÁCH TRANG CÓ SẴN (System Config)
-// Người dùng chỉ thấy "name", hệ thống dùng "path" và "icon"
+// Cấu hình danh sách trang có sẵn với màu sắc đặc trưng
 const AVAILABLE_PAGES = [
-  {
-    id: "dashboard",
-    name: "Trang Chủ (Dashboard)",
-    path: "/manager#dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    id: "orders",
-    name: "Quản Lý Đơn Hàng",
-    path: "/manager#orders",
-    icon: ClipboardList,
-  },
-  {
-    id: "kitchen",
-    name: "Màn Hình Bếp",
-    path: "/manager#kitchen",
-    icon: ChefHat,
-  },
-  {
-    id: "inventory",
-    name: "Kho & Nguyên Vật Liệu",
-    path: "/manager#inventory",
-    icon: Package,
-  },
-  {
-    id: "staff",
-    name: "Quản Lý Nhân Viên",
-    path: "/manager#staff",
-    icon: Users,
-  },
-  {
-    id: "shipping",
-    name: "Giao Hàng & Ship",
-    path: "/manager#shipping",
-    icon: Truck,
-  },
-  {
-    id: "settings",
-    name: "Cài Đặt Hệ Thống",
-    path: "/manager#settings",
-    icon: Settings,
-  },
+  { id: "dashboard", name: "Tổng Quan", icon: LayoutDashboard, color: "blue" },
+  { id: "orders", name: "Đơn Hàng", icon: ClipboardList, color: "orange" },
+  { id: "kitchen", name: "Bếp & Bar", icon: ChefHat, color: "red" },
+  { id: "inventory", name: "Kho Hàng", icon: Package, color: "green" },
+  { id: "staff", name: "Nhân Sự", icon: Users, color: "purple" },
+  { id: "shipping", name: "Vận Chuyển", icon: Truck, color: "cyan" },
+  { id: "settings", name: "Cài Đặt", icon: Settings, color: "gray" },
 ];
 
-const ActionTile = ({
-  icon: Icon,
-  label,
-  onClick,
-  variant = "secondary",
-  isAddBtn = false,
-}) => (
-  <button
-    className={`action-tile ${variant} ${isAddBtn ? "add-new-tile" : ""}`}
-    onClick={onClick}
-  >
-    <div className="tile-content">
-      <div className="icon-wrapper">
-        <Icon size={24} strokeWidth={1.5} />
-      </div>
-      <span className="tile-label">{label}</span>
-    </div>
-
-    {variant === "secondary" && !isAddBtn && (
-      <div className="hover-indicator">
-        <ArrowRight size={16} />
-      </div>
-    )}
-  </button>
-);
-
 const QuickActions = () => {
-  // Danh sách actions ban đầu
+  // State danh sách actions hiện tại
   const [actions, setActions] = useState([
     {
-      icon: PlusCircle,
-      label: "Thêm Món Mới",
-      variant: "primary",
-      onClick: () => alert("Mở form thêm món..."),
+      id: "orders",
+      name: "Đơn Hàng",
+      icon: ClipboardList,
+      color: "orange",
+      path: "/manager#orders",
     },
     {
-      icon: BarChart3,
-      label: "Báo Cáo Ngày",
-      variant: "secondary",
-      onClick: () => (window.location.href = "/manager#reports"),
+      id: "kitchen",
+      name: "Bếp & Bar",
+      icon: ChefHat,
+      color: "red",
+      path: "/manager#kitchen",
+    },
+    {
+      id: "inventory",
+      name: "Kho Hàng",
+      icon: Package,
+      color: "green",
+      path: "/manager#inventory",
     },
   ]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // State form: Chỉ cần lưu Page ID và Custom Label
-  const [selectedPageId, setSelectedPageId] = useState(AVAILABLE_PAGES[0].id);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPageId, setSelectedPageId] = useState(null);
   const [customLabel, setCustomLabel] = useState("");
 
-  const openModal = () => setIsModalOpen(true);
+  // Filter danh sách trong modal
+  const filteredPages = AVAILABLE_PAGES.filter((p) =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleAddAction = () => {
+    if (!selectedPageId) return;
+
+    const pageConfig = AVAILABLE_PAGES.find((p) => p.id === selectedPageId);
+    if (pageConfig) {
+      const newAction = {
+        ...pageConfig,
+        name: customLabel || pageConfig.name, // Dùng tên tùy chỉnh nếu có
+      };
+      setActions([...actions, newAction]);
+      closeModal();
+    }
+  };
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setSelectedPageId(AVAILABLE_PAGES[0].id);
+    setSelectedPageId(null);
     setCustomLabel("");
-  };
-
-  const handleAddAction = (e) => {
-    e.preventDefault();
-
-    // 1. Tìm thông tin trang gốc dựa trên ID người dùng chọn
-    const selectedPageConfig = AVAILABLE_PAGES.find(
-      (p) => p.id === selectedPageId
-    );
-    if (!selectedPageConfig) return;
-
-    // 2. Tạo action mới
-    const newItem = {
-      icon: selectedPageConfig.icon, // Lấy icon chuẩn của trang đó
-      // Nếu người dùng nhập tên khác thì lấy, không thì lấy tên mặc định
-      label: customLabel || selectedPageConfig.name,
-      variant: "secondary",
-      onClick: () => {
-        console.log("Navigating to hidden URL:", selectedPageConfig.path);
-        // window.location.href = selectedPageConfig.path; // Uncomment để chạy thật
-      },
-    };
-
-    setActions((prev) => [...prev, newItem]);
-    closeModal();
+    setSearchTerm("");
   };
 
   return (
-    <div className="quick-actions-wrapper fade-in">
-      <div className="actions-header">
-        <h3 className="actions-title">Thao Tác Nhanh</h3>
-        <span className="subtitle">Lối tắt quản lý</span>
+    <div className="dashboard-widget quick-actions">
+      {/* Header */}
+      <div className="widget-header">
+        <h3 className="widget-title">Truy Cập Nhanh</h3>
+        <button className="btn-icon-more">
+          <MoreHorizontal size={20} />
+        </button>
       </div>
 
+      {/* Grid Actions */}
       <div className="actions-grid">
-        {actions.map((action, index) => (
-          <ActionTile
-            key={index}
-            icon={action.icon}
-            label={action.label}
-            variant={action.variant}
-            onClick={action.onClick}
-          />
-        ))}
+        {actions.map((action, index) => {
+          const Icon = action.icon;
+          return (
+            <button key={index} className={`action-card ${action.color}`}>
+              <div className="icon-wrapper">
+                <Icon size={24} strokeWidth={1.5} />
+              </div>
+              <span className="action-label">{action.name}</span>
+              <div className="hover-arrow">
+                <ArrowUpRight size={16} />
+              </div>
+            </button>
+          );
+        })}
 
-        <ActionTile
-          icon={Plus}
-          label="Thêm lối tắt"
-          variant="secondary"
-          isAddBtn={true}
-          onClick={openModal}
-        />
+        {/* Nút Thêm Mới */}
+        <button
+          className="action-card add-new"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <div className="icon-wrapper">
+            <Plus size={24} />
+          </div>
+          <span className="action-label">Thêm Lối Tắt</span>
+        </button>
       </div>
 
       {/* MODAL */}
       {isModalOpen && (
-        <div className="qa-modal-overlay">
-          <div className="qa-modal-content fade-in-up">
+        <div className="modal-overlay fade-in">
+          <div className="modal-content scale-up">
             <div className="modal-header">
-              <h4>Thêm Thao Tác Mới</h4>
-              <button className="close-btn" onClick={closeModal}>
+              <h4>Thêm Lối Tắt Mới</h4>
+              <button className="btn-close" onClick={closeModal}>
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleAddAction}>
-              {/* 1. Chọn Trang (Dropdown) */}
-              <div className="form-group">
-                <label>Chọn chức năng muốn thêm</label>
-                <div className="select-wrapper">
-                  <select
-                    value={selectedPageId}
-                    onChange={(e) => setSelectedPageId(e.target.value)}
-                    required
-                  >
-                    {AVAILABLE_PAGES.map((page) => (
-                      <option key={page.id} value={page.id}>
-                        {page.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <small className="hint-text">
-                  Hệ thống sẽ tự động liên kết đường dẫn.
-                </small>
-              </div>
-
-              {/* 2. Đặt tên hiển thị (Optional) */}
-              <div className="form-group">
-                <label>Tên hiển thị (Tùy chọn)</label>
+            <div className="modal-body">
+              {/* Search */}
+              <div className="search-box">
+                <Search size={16} className="search-icon" />
                 <input
                   type="text"
-                  placeholder={
-                    AVAILABLE_PAGES.find((p) => p.id === selectedPageId)?.name
-                  }
-                  value={customLabel}
-                  onChange={(e) => setCustomLabel(e.target.value)}
+                  placeholder="Tìm chức năng hệ thống..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  autoFocus
                 />
-                <small className="hint-text">
-                  Để trống sẽ dùng tên mặc định.
-                </small>
               </div>
 
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn-cancel"
-                  onClick={closeModal}
-                >
-                  Hủy
-                </button>
-                <button type="submit" className="btn-submit">
-                  Thêm Ngay
-                </button>
+              {/* Grid Selection */}
+              <div className="selection-grid custom-scrollbar">
+                {filteredPages.map((page) => {
+                  const PageIcon = page.icon;
+                  const isSelected = selectedPageId === page.id;
+                  return (
+                    <div
+                      key={page.id}
+                      className={`selection-item ${
+                        isSelected ? "selected" : ""
+                      }`}
+                      onClick={() => {
+                        setSelectedPageId(page.id);
+                        setCustomLabel(page.name); // Auto fill tên
+                      }}
+                    >
+                      <div className={`mini-icon ${page.color}`}>
+                        <PageIcon size={18} />
+                      </div>
+                      <span className="item-name">{page.name}</span>
+                    </div>
+                  );
+                })}
               </div>
-            </form>
+
+              {/* Input tên tùy chỉnh (chỉ hiện khi đã chọn) */}
+              {selectedPageId && (
+                <div className="custom-name-input fade-in">
+                  <label>Tên hiển thị trên Dashboard</label>
+                  <input
+                    type="text"
+                    value={customLabel}
+                    onChange={(e) => setCustomLabel(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={closeModal}>
+                Hủy bỏ
+              </button>
+              <button
+                className="btn-submit"
+                disabled={!selectedPageId}
+                onClick={handleAddAction}
+              >
+                Thêm ngay
+              </button>
+            </div>
           </div>
         </div>
       )}

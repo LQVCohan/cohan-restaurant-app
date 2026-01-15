@@ -2,12 +2,11 @@ import React, { useMemo } from "react";
 import { Calendar, Store } from "lucide-react";
 import { useDashboard } from "../../../hooks/useDashboard";
 
-// Import Components con
 import Header from "./components/Header";
 import StatsGrid from "./components/StatsGrid";
 import QuickActions from "./components/QuickActions";
-// Giả sử bạn đã tách các phần này ra như các bước trước
-import RevenueChart from "./components/RevenueChart"; // Thay cho MainGrid cũ
+
+import RevenueChart from "./components/RevenueChart";
 import RecentOrders from "./components/RecentOrders";
 import TopDishes from "./components/TopDishes";
 
