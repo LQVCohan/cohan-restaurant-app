@@ -1,0 +1,88 @@
+// Variables
+$gap-size: 24px;
+$radius: 16px;
+$breakpoint-tablet: 1024px;
+$breakpoint-mobile: 768px;
+
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  gap: $gap-size;
+  padding-bottom: 40px;
+  width: 100%;
+
+  // --- Common Grid Styles ---
+  .grid-row {
+    display: grid;
+    gap: $gap-size;
+    width: 100%;
+
+    // Mặc định các cột sẽ lấp đầy chiều cao của dòng
+    // Giúp ActivityFeed tự cao bằng Chart
+    align-items: stretch;
+  }
+
+  // --- ROW 1: Chart (70%) - Feed (30%) ---
+  .main-stats-row {
+    // Kỹ thuật minmax(0, 3fr) giúp Chart không bị tràn (overflow) ra khỏi Grid container
+    grid-template-columns: minmax(0, 2.8fr) minmax(0, 1.2fr);
+
+    .col-chart {
+      // Container của chart
+      min-height: 400px;
+    }
+
+    .col-feed {
+      // Container của feed
+      min-height: 400px;
+    }
+  }
+
+  // --- ROW 2: Orders (65%) - Dishes (35%) ---
+  .bottom-data-row {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+
+  // --- Responsive Design ---
+
+  // Tablet (iPad Pro, Laptop nhỏ): Giữ layout nhưng chỉnh tỉ lệ
+  @media (max-width: 1200px) {
+    .main-stats-row {
+      grid-template-columns: 2fr 1fr;
+    } // Chart nhỏ lại chút
+  }
+
+  // Tablet dọc (iPad Air): Chuyển hết về 1 cột
+  @media (max-width: $breakpoint-tablet) {
+    .main-stats-row,
+    .bottom-data-row {
+      grid-template-columns: 1fr; // Stack dọc
+    }
+
+    // Đảo thứ tự hiển thị nếu cần (ví dụ muốn Chart luôn đầu)
+    .col-chart {
+      order: 1;
+    }
+    .col-feed {
+      order: 2;
+      height: auto;
+      min-height: 300px;
+    } // Feed không cần quá cao khi ở mobile
+  }
+}
+
+// --- Animation ---
+.fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

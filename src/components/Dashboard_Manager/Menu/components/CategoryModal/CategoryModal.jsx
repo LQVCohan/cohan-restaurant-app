@@ -1,14 +1,16 @@
-// src/pages/Restaurant/MenuManagement/components/CategoryModal/CategoryModal.jsx
 import React, { useState, useEffect } from "react";
-import Modal from "../../../../common/Modal";
+import Modal from "../../../../common/Modal"; // Giả sử Modal này hỗ trợ render children
 import {
-  FiPlus,
-  FiEdit2,
-  FiTrash2,
-  FiArrowLeft,
-  FiSearch,
-  FiLayout,
-} from "react-icons/fi";
+  Plus,
+  Edit3,
+  Trash2,
+  ArrowLeft,
+  Search,
+  LayoutGrid,
+  Save,
+  X,
+  Check,
+} from "lucide-react";
 import { useCategoryManagement } from "../../../../../hooks/useCategoryManagement";
 import "./CategoryModal.scss";
 
@@ -50,7 +52,7 @@ const COMMON_ICONS = [
 const INITIAL_FORM = {
   id: null,
   name: "",
-  icon: "🍽️", // FE-only
+  icon: "🍽️",
   description: "",
 };
 
@@ -61,6 +63,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Hook giả lập logic (giữ nguyên logic của bạn)
   const {
     categoryMenus,
     categoryMenuLoading,
@@ -73,7 +76,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
     timeSlot,
     loadCategories: false,
     loadTopCategories: false,
-    loadCategoryMenus: isOpen, // chỉ query khi modal mở
+    loadCategoryMenus: isOpen,
   });
 
   useEffect(() => {
@@ -84,6 +87,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
     setSearchTerm("");
   }, [isOpen]);
 
+  // --- ACTIONS ---
   const switchToCreate = () => {
     setFormData(INITIAL_FORM);
     setErrors({});
@@ -94,8 +98,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
     setFormData({
       id: cat.id || cat._id,
       name: cat.name || "",
-      // BE không lưu icon, FE dùng default
-      icon: "🍽️",
+      icon: "🍽️", // Mặc định nếu BE không trả về
       description: cat.description || "",
     });
     setErrors({});
@@ -115,7 +118,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
   const validate = () => {
     const newErrors = {};
     if (!formData.name.trim()) {
-      newErrors.name = "Tên danh mục không được để trống";
+      newErrors.name = "Vui lòng nhập tên danh mục";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -124,31 +127,20 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-    if (!restaurantId) {
-      setErrors({ submit: "Thiếu thông tin nhà hàng (restaurantId)." });
-      return;
-    }
 
     setIsSubmitting(true);
     try {
       const payload = {
         name: formData.name.trim(),
         description: formData.description?.trim() || null,
+        // icon: formData.icon (Nếu BE hỗ trợ lưu icon thì thêm vào đây)
       };
 
       if (formData.id) {
-        await updateCategoryMenu({
-          id: formData.id,
-          ...payload,
-        });
+        await updateCategoryMenu({ id: formData.id, ...payload });
       } else {
-        await createCategoryMenu({
-          restaurantId,
-          ...payload,
-          // coverImage / isActive có thể thêm sau nếu cần
-        });
+        await createCategoryMenu({ restaurantId, ...payload });
       }
-
       switchToList();
     } catch (err) {
       console.error(err);
@@ -159,12 +151,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
   };
 
   const handleDelete = async (id) => {
-    if (
-      !window.confirm(
-        "Bạn có chắc muốn xóa danh mục này? Các menu liên quan có thể bị ảnh hưởng."
-      )
-    )
-      return;
+    if (!window.confirm("Bạn có chắc muốn xóa danh mục này?")) return;
     try {
       await deleteCategoryMenu(id);
     } catch (err) {
@@ -180,23 +167,27 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={
-        viewMode === "list"
-          ? "Quản lý Danh mục Menu (CategoryMenu)"
-          : formData.id
-          ? "Cập nhật Danh mục"
-          : "Tạo Danh mục mới"
-      }
+      title={null} // Tắt title mặc định để custom header đẹp hơn
       size="md"
-      className="category-modal"
+      className="modern-category-modal"
     >
-      <div className="category-modal__body">
-        {/* LIST VIEW */}
+      <div className="modal-container">
+        {/* --- VIEW: LIST --- */}
         {viewMode === "list" && (
-          <div className="view-list fade-in">
+          <div className="view-section fade-in-slide">
+            <div className="modal-header">
+              <div className="header-content">
+                <h3>Quản lý Danh mục</h3>
+                <p>Danh sách các nhóm món ăn trong thực đơn</p>
+              </div>
+              <button className="btn-close-modal" onClick={onClose}>
+                <X size={20} />
+              </button>
+            </div>
+
             <div className="list-toolbar">
               <div className="search-box">
-                <FiSearch className="search-icon" />
+                <Search size={18} className="search-icon" />
                 <input
                   type="text"
                   placeholder="Tìm kiếm danh mục..."
@@ -204,53 +195,55 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <button className="btn-add" onClick={switchToCreate}>
-                <FiPlus /> Mới
+              <button className="btn-primary" onClick={switchToCreate}>
+                <Plus size={18} />
+                <span>Thêm mới</span>
               </button>
             </div>
 
-            <div className="list-content custom-scrollbar">
+            <div className="list-body custom-scrollbar">
               {categoryMenuLoading ? (
-                <div className="state-text">Đang tải dữ liệu...</div>
-              ) : categoryMenuError ? (
-                <div className="state-text error">
-                  Lỗi: {categoryMenuError.message}
+                <div className="state-loading">
+                  <div className="spinner"></div>
+                  <span>Đang tải dữ liệu...</span>
                 </div>
               ) : filteredList.length === 0 ? (
                 <div className="state-empty">
-                  <div className="empty-icon">
-                    <FiLayout />
+                  <div className="empty-icon-bg">
+                    <LayoutGrid size={32} />
                   </div>
-                  <p>Chưa có danh mục nào.</p>
-                  <button onClick={switchToCreate}>Tạo ngay</button>
+                  <p className="main-text">Chưa có danh mục nào</p>
+                  <p className="sub-text">
+                    Hãy tạo danh mục đầu tiên cho thực đơn của bạn
+                  </p>
                 </div>
               ) : (
                 <div className="category-list">
                   {filteredList.map((cat) => (
-                    <div key={cat.id || cat._id} className="category-item">
-                      <div className="cat-info">
-                        <div className="cat-icon">🍽️</div>
-                        <div className="cat-text">
-                          <span className="cat-name">{cat.name}</span>
-                          {cat.description && (
-                            <span className="cat-desc">{cat.description}</span>
-                          )}
-                        </div>
+                    <div key={cat.id || cat._id} className="category-item-card">
+                      <div className="card-visual">
+                        <span>🍽️</span>
                       </div>
-                      <div className="cat-actions">
+                      <div className="card-info">
+                        <span className="cat-name">{cat.name}</span>
+                        <span className="cat-desc">
+                          {cat.description || "Chưa có mô tả"}
+                        </span>
+                      </div>
+                      <div className="card-actions">
                         <button
                           className="action-btn edit"
                           onClick={() => switchToEdit(cat)}
                           title="Chỉnh sửa"
                         >
-                          <FiEdit2 />
+                          <Edit3 size={16} />
                         </button>
                         <button
                           className="action-btn delete"
                           onClick={() => handleDelete(cat.id || cat._id)}
                           title="Xóa"
                         >
-                          <FiTrash2 />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     </div>
@@ -261,10 +254,22 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
           </div>
         )}
 
-        {/* FORM VIEW */}
+        {/* --- VIEW: FORM --- */}
         {viewMode === "form" && (
-          <form onSubmit={handleSubmit} className="view-form fade-in">
-            <div className="form-content custom-scrollbar">
+          <form onSubmit={handleSubmit} className="view-section fade-in-slide">
+            <div className="modal-header with-back">
+              <button type="button" className="btn-back" onClick={switchToList}>
+                <ArrowLeft size={20} />
+              </button>
+              <div className="header-content">
+                <h3>
+                  {formData.id ? "Cập nhật Danh mục" : "Tạo Danh mục mới"}
+                </h3>
+              </div>
+            </div>
+
+            <div className="form-body custom-scrollbar">
+              {/* Name Input */}
               <div className="form-group">
                 <label>
                   Tên danh mục <span className="req">*</span>
@@ -274,43 +279,13 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                   className={errors.name ? "error" : ""}
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="VD: Thực đơn chính, Menu khuyến mãi..."
+                  placeholder="VD: Món Khai Vị, Đồ uống..."
                   autoFocus
                 />
                 {errors.name && <span className="err-msg">{errors.name}</span>}
               </div>
 
-              <div className="form-group">
-                <label>Biểu tượng (chỉ hiển thị ở giao diện)</label>
-                <div className="icon-picker">
-                  <div className="icon-grid">
-                    {COMMON_ICONS.map((icon) => (
-                      <button
-                        key={icon}
-                        type="button"
-                        className={`icon-btn ${
-                          formData.icon === icon ? "active" : ""
-                        }`}
-                        onClick={() => handleInputChange("icon", icon)}
-                      >
-                        {icon}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="custom-icon-input">
-                    <span>Hoặc nhập icon khác:</span>
-                    <input
-                      type="text"
-                      value={formData.icon}
-                      onChange={(e) =>
-                        handleInputChange("icon", e.target.value)
-                      }
-                      maxLength={2}
-                    />
-                  </div>
-                </div>
-              </div>
-
+              {/* Description Input */}
               <div className="form-group">
                 <label>Mô tả ngắn</label>
                 <textarea
@@ -323,30 +298,71 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                 />
               </div>
 
+              {/* Icon Picker */}
+              <div className="form-group">
+                <label>Biểu tượng đại diện</label>
+                <div className="icon-picker-container">
+                  <div className="selected-preview">
+                    <span>{formData.icon}</span>
+                  </div>
+                  <div className="icon-grid custom-scrollbar">
+                    {COMMON_ICONS.map((icon) => (
+                      <button
+                        key={icon}
+                        type="button"
+                        className={`icon-option ${
+                          formData.icon === icon ? "active" : ""
+                        }`}
+                        onClick={() => handleInputChange("icon", icon)}
+                      >
+                        {icon}
+                        {formData.icon === icon && (
+                          <div className="check-mark">
+                            <Check size={10} />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="custom-icon-input">
+                  <span>Hoặc nhập ký tự/icon khác:</span>
+                  <input
+                    type="text"
+                    value={formData.icon}
+                    maxLength={2}
+                    onChange={(e) => handleInputChange("icon", e.target.value)}
+                  />
+                </div>
+              </div>
+
               {errors.submit && (
                 <div className="global-error">{errors.submit}</div>
               )}
             </div>
 
-            <div className="form-footer">
+            <div className="modal-footer">
               <button
                 type="button"
-                className="btn-back"
+                className="btn-cancel"
                 onClick={switchToList}
                 disabled={isSubmitting}
               >
-                <FiArrowLeft /> Quay lại
+                Hủy bỏ
               </button>
               <button
                 type="submit"
                 className="btn-save"
                 disabled={isSubmitting}
               >
-                {isSubmitting
-                  ? "Đang lưu..."
-                  : formData.id
-                  ? "Cập nhật"
-                  : "Tạo mới"}
+                {isSubmitting ? (
+                  <>Đang lưu...</>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    {formData.id ? "Lưu thay đổi" : "Tạo mới"}
+                  </>
+                )}
               </button>
             </div>
           </form>

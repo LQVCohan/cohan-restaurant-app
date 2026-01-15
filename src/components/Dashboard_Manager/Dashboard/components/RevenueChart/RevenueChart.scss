@@ -1,137 +1,236 @@
-// Variables (Đồng bộ với Dashboard)
-$gold: #c5a47e;
-$charcoal: #1a1a1a;
-$slate: #64748b;
-$bg-hover: #faf9f6;
+// Variables
+$primary-bg: #ffffff;
+$text-main: #111827;
+$text-secondary: #6b7280;
+$text-muted: #9ca3af;
+$brand-color: #d97706; // Amber
+$brand-light: #fef3c7;
+$border-color: #f3f4f6;
+$success: #10b981;
+$danger: #ef4444;
 
-.revenue-chart-container {
-  width: 100%;
-  height: 100%;
+.revenue-chart-widget {
+  background: $primary-bg;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  border: 1px solid #e5e7eb;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   display: flex;
   flex-direction: column;
-  // Font inherit from Dashboard
-  font-family: "Be Vietnam Pro", sans-serif;
+  gap: 20px;
 
-  // --- Header ---
-  .chart-header {
+  // 1. Header Styles
+  .widget-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 24px;
-    flex-wrap: wrap; // Cho mobile
-    gap: 16px;
 
-    .title-group {
-      h3 {
-        font-family: "Be Vietnam Pro", sans-serif; // Hoặc Playfair Display nếu muốn điệu
-        font-size: 1.125rem;
-        font-weight: 700;
-        color: $charcoal;
-        margin: 0 0 6px 0;
+    .header-info {
+      .widget-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: $text-secondary;
+        margin: 0 0 8px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
 
-      .growth-badge {
+      .total-value-group {
         display: flex;
         align-items: center;
-        gap: 6px;
-        font-size: 0.8125rem;
+        gap: 12px;
 
-        // Màu xanh cho tăng trưởng (hoặc màu Gold nếu muốn monochrome)
-        color: #15803d; // Green-700
-        font-weight: 600;
-
-        .text-muted {
-          color: $slate;
-          font-weight: 400;
-        }
-      }
-    }
-
-    // --- Filter Tabs (Style viên thuốc) ---
-    .filter-tabs {
-      display: flex;
-      background: #f1f5f9; // Nền xám nhạt cho cả cụm
-      padding: 4px;
-      border-radius: 8px;
-
-      .filter-btn {
-        border: none;
-        background: transparent;
-        color: $slate;
-        font-size: 0.75rem;
-        font-weight: 500;
-        padding: 6px 12px;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-
-        &:hover {
-          color: $charcoal;
+        .total-amount {
+          font-size: 28px;
+          font-weight: 700;
+          color: $text-main;
+          letter-spacing: -0.5px;
         }
 
-        &.active {
-          background: #ffffff; // Tab đang chọn màu trắng
-          color: $charcoal;
+        .growth-badge {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 8px;
+          border-radius: 20px;
+          font-size: 13px;
           font-weight: 600;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); // Bóng nhẹ
+
+          &.positive {
+            background: #ecfdf5;
+            color: $success;
+          }
+          &.negative {
+            background: #fef2f2;
+            color: $danger;
+          }
+        }
+      }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .filter-tabs {
+        background: $border-color;
+        padding: 4px;
+        border-radius: 8px;
+        display: flex;
+
+        .tab-btn {
+          border: none;
+          background: transparent;
+          padding: 6px 12px;
+          border-radius: 6px;
+          font-size: 13px;
+          font-weight: 500;
+          color: $text-secondary;
+          cursor: pointer;
+          transition: all 0.2s;
+
+          &.active {
+            background: #ffffff;
+            color: $text-main;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            font-weight: 600;
+          }
+
+          &:hover:not(.active) {
+            color: $text-main;
+          }
+        }
+      }
+
+      .btn-icon {
+        background: transparent;
+        border: 1px solid transparent;
+        color: $text-muted;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 8px;
+        &:hover {
+          background: $border-color;
+          color: $text-main;
         }
       }
     }
   }
 
-  // --- Chart Area ---
-  .chart-body {
-    flex: 1;
-    width: 100%;
-    min-height: 0; // Fix lỗi flexbox overflow trên Firefox
-
-    // Tùy chỉnh CSS nội tại của Recharts nếu cần
-    .recharts-cartesian-grid-horizontal line {
-      stroke: #e2e8f0; // Màu lưới mờ hơn
-    }
+  // 2. Chart Body Styles
+  .widget-body {
+    // Recharts overrides if necessary
   }
 
-  // --- Custom Tooltip Styling ---
+  // 3. Custom Tooltip Styles
   .custom-tooltip {
     background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba($gold, 0.3);
-    padding: 10px 14px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid $border-color;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    padding: 12px;
+    min-width: 200px;
     backdrop-filter: blur(4px);
 
-    .label {
-      font-size: 0.75rem;
-      color: $slate;
-      margin: 0 0 2px 0;
-      text-transform: capitalize;
+    .tooltip-label {
+      margin: 0 0 8px 0;
+      font-weight: 600;
+      color: $text-main;
+      border-bottom: 1px solid $border-color;
+      padding-bottom: 4px;
     }
 
-    .value {
-      font-family: "Be Vietnam Pro", sans-serif;
-      font-size: 1rem;
-      font-weight: 700;
-      color: $charcoal; // Hoặc $gold
-      margin: 0;
+    .tooltip-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+      font-size: 13px;
+      color: $text-secondary;
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        &.current {
+          background: $brand-color;
+        }
+        &.previous {
+          background: $text-muted;
+        }
+      }
+
+      .value {
+        margin-left: auto;
+        font-weight: 600;
+        color: $text-main;
+      }
+
+      &.highlight .value {
+        color: $brand-color;
+      }
+    }
+
+    .tooltip-diff {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed $border-color;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+
+      &.up {
+        color: $success;
+      }
+      &.down {
+        color: $danger;
+      }
+    }
+  }
+
+  // 4. Footer / Legend
+  .widget-footer {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-top: -10px; // Pull closer to chart
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: $text-secondary;
+
+      .dot {
+        width: 10px;
+        height: 3px; // Line style legend
+        border-radius: 2px;
+        &.current {
+          background: $brand-color;
+        }
+        &.previous {
+          background: $text-muted;
+        }
+      }
     }
   }
 }
 
-// Mobile Responsive
+// Responsive
 @media (max-width: 600px) {
-  .revenue-chart-container {
-    .chart-header {
-      flex-direction: column;
-      align-items: flex-start;
+  .widget-header {
+    flex-direction: column;
+    gap: 16px;
 
-      .filter-tabs {
-        width: 100%;
-        justify-content: space-between;
-
-        .filter-btn {
-          flex: 1;
-        }
-      }
+    .header-actions {
+      width: 100%;
+      justify-content: space-between;
     }
   }
 }

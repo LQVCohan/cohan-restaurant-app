@@ -1,117 +1,183 @@
-// Variables (Đồng bộ với Dashboard System)
-$primary-bg: #ffffff;
-$secondary-bg: #f8f9fa;
-$text-main: #111827;
-$text-secondary: #6b7280;
-$border-color: #e5e7eb;
-$brand-color: #d97706; // Amber
-$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-  0 2px 4px -1px rgba(0, 0, 0, 0.06);
+/* --- QuickActions.scss --- */
 
-// Color Palettes for Icons
-$colors: (
+// 1. Variables & Maps
+$bg-card: #ffffff;
+$radius: 16px;
+$text-main: #0f172a;
+$text-sub: #64748b;
+$border-light: #e2e8f0;
+$shadow-menu: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+  0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+  0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+// Bảng màu cho các icon (Background nhạt & Text đậm)
+$color-themes: (
   "blue": (
-    #dbeafe,
-    #1d4ed8,
+    #eff6ff,
+    #3b82f6,
   ),
   "orange": (
-    #ffedd5,
-    #c2410c,
+    #fff7ed,
+    #f97316,
   ),
   "red": (
-    #fee2e2,
-    #b91c1c,
+    #fef2f2,
+    #ef4444,
   ),
   "green": (
-    #dcfce7,
-    #15803d,
+    #f0fdf4,
+    #22c55e,
   ),
   "purple": (
-    #f3e8ff,
-    #7e22ce,
+    #faf5ff,
+    #a855f7,
   ),
   "cyan": (
-    #cffafe,
-    #0e7490,
+    #ecfeff,
+    #06b6d4,
   ),
   "gray": (
     #f3f4f6,
-    #4b5563,
+    #6b7280,
   ),
 );
 
-.dashboard-widget.quick-actions {
-  background: $primary-bg;
-  border-radius: 16px;
-  box-shadow: $shadow-md;
-  border: 1px solid $border-color;
-  padding: 24px;
+// 2. Main Container
+.quick-actions {
+  background: $bg-card;
+  border-radius: $radius;
+  padding: 20px;
+  height: 100%; // Để nó tự dãn bằng chiều cao cột cha
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  height: 100%; // Fill height if in grid
+  position: relative; // Context cho dropdown absolute
 
-  // 1. Header
+  // --- Header Section ---
   .widget-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 16px;
 
     .widget-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: $text-main;
       margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: $text-main;
     }
 
-    .btn-icon-more {
-      background: transparent;
-      border: none;
-      color: $text-secondary;
-      cursor: pointer;
-      padding: 4px;
-      border-radius: 6px;
-      &:hover {
-        background: $secondary-bg;
-        color: $text-main;
+    // Menu Container (Dropdown)
+    .header-menu-container {
+      position: relative;
+
+      .btn-icon-more {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 6px;
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+
+        &:hover,
+        &.active {
+          background: #f1f5f9;
+          color: $text-main;
+        }
+      }
+
+      .dropdown-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 8px;
+        background: white;
+        min-width: 180px;
+        border-radius: 12px;
+        box-shadow: $shadow-menu;
+        border: 1px solid $border-light;
+        z-index: 10;
+        padding: 6px;
+        animation: fadeIn 0.2s ease-out;
+
+        .menu-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          width: 100%;
+          padding: 10px 12px;
+          border: none;
+          background: transparent;
+          text-align: left;
+          font-size: 13px;
+          font-weight: 500;
+          color: $text-sub;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: background 0.1s;
+
+          &:hover {
+            background: #f8fafc;
+            color: $text-main;
+          }
+
+          &.active {
+            background: #eff6ff;
+            color: #3b82f6;
+          }
+
+          &.text-danger {
+            color: #ef4444;
+            &:hover {
+              background: #fef2f2;
+            }
+          }
+        }
       }
     }
   }
 
-  // 2. Grid System
+  // --- Action Grid Section ---
   .actions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(2, 1fr); // Mặc định 2 cột
+    gap: 12px;
+    flex: 1; // Để chiếm hết khoảng trống còn lại
 
     .action-card {
-      background: #fff;
-      border: 1px solid $border-color;
-      border-radius: 12px;
-      padding: 16px;
+      position: relative;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 12px;
+      padding: 16px 8px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: #f8fafc;
       cursor: pointer;
-      position: relative;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      min-height: 100px;
+      user-select: none;
 
+      // Common Elements
       .icon-wrapper {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
+        padding: 10px;
+        border-radius: 50%; // Tròn
+        margin-bottom: 8px;
+        transition: transform 0.2s ease;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: transform 0.2s;
       }
 
       .action-label {
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 600;
-        color: $text-main;
+        color: $text-sub;
         text-align: center;
       }
 
@@ -119,254 +185,339 @@ $colors: (
         position: absolute;
         top: 8px;
         right: 8px;
-        color: $text-secondary;
         opacity: 0;
         transform: translate(-4px, 4px);
-        transition: all 0.2s;
+        transition: all 0.2s ease;
+        color: #94a3b8;
       }
 
-      // Dynamic Colors
-      @each $name, $values in $colors {
+      // Generate Color Themes Loop
+      @each $name, $vals in $color-themes {
         &.#{$name} {
           .icon-wrapper {
-            background: nth($values, 1);
-            color: nth($values, 2);
+            background: nth($vals, 1);
+            color: nth($vals, 2);
+          }
+
+          &:hover:not(.shaking) {
+            // Chỉ hover khi ko ở chế độ sửa
+            background: white;
+            border-color: rgba(nth($vals, 2), 0.3);
+            box-shadow: 0 4px 12px rgba(nth($vals, 2), 0.15);
+            transform: translateY(-2px);
+
+            .action-label {
+              color: nth($vals, 2);
+            }
+
+            .hover-arrow {
+              opacity: 1;
+              transform: translate(0, 0);
+              color: nth($vals, 2);
+            }
           }
         }
       }
 
       // Add New Button Style
       &.add-new {
-        border: 1px dashed #d1d5db;
-        background: #f9fafb;
+        background: white;
+        border: 1px dashed #cbd5e1;
 
         .icon-wrapper {
-          background: #e5e7eb;
-          color: #6b7280;
-          border-radius: 50%; // Round for plus
-          width: 40px;
-          height: 40px;
-        }
-
-        .action-label {
-          color: $text-secondary;
-          font-weight: 500;
+          background: #f1f5f9;
+          color: #64748b;
         }
 
         &:hover {
-          border-color: $brand-color;
+          border-color: #94a3b8;
+          background: #f8fafc;
           .icon-wrapper {
-            background: rgba($brand-color, 0.1);
-            color: $brand-color;
-          }
-          .action-label {
-            color: $brand-color;
+            background: #e2e8f0;
+            color: $text-main;
+            transform: scale(1.1);
           }
         }
       }
 
-      // Hover Effect for Normal Cards
-      &:not(.add-new):hover {
-        transform: translateY(-4px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        border-color: transparent;
+      // --- EDIT MODE (Rung lắc & Xóa) ---
+      &.shaking {
+        animation: shake 0.3s infinite ease-in-out;
+        cursor: default;
+        background: #f1f5f9; // Làm tối đi chút để biết đang edit
 
-        .icon-wrapper {
-          transform: scale(1.1);
+        // Vô hiệu hóa hiệu ứng hover khi đang lắc
+        &:hover {
+          transform: none;
+          box-shadow: none;
+          border-color: transparent;
         }
-        .hover-arrow {
-          opacity: 1;
-          transform: translate(0, 0);
+
+        .delete-badge {
+          position: absolute;
+          top: -8px;
+          right: -8px;
+          width: 24px;
+          height: 24px;
+          background: white;
+          border-radius: 50%;
+          cursor: pointer;
+          z-index: 5;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          transition: transform 0.2s;
+
+          &:hover {
+            transform: scale(1.15);
+          }
         }
       }
     }
   }
 
-  // 3. Modal Styles
+  // --- MODAL OVERLAY (Fixed Position) ---
   .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.4); // Dark blue overlay
     backdrop-filter: blur(4px);
+    z-index: 9999; // Luôn trên cùng
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    padding: 16px;
 
+    // Modal Content
     .modal-content {
-      background: #fff;
-      width: 440px;
-      max-width: 90%;
+      background: white;
+      width: 100%;
+      max-width: 480px;
       border-radius: 16px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
+      box-shadow: $shadow-modal;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
+      animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 
       .modal-header {
-        padding: 16px 20px;
-        border-bottom: 1px solid $border-color;
+        padding: 16px 24px;
+        border-bottom: 1px solid $border-light;
         display: flex;
         justify-content: space-between;
         align-items: center;
 
         h4 {
           margin: 0;
-          font-size: 16px;
-          font-weight: 700;
+          font-size: 18px;
+          font-weight: 600;
           color: $text-main;
         }
+
         .btn-close {
           background: transparent;
           border: none;
           cursor: pointer;
-          color: $text-secondary;
+          color: #94a3b8;
+          padding: 4px;
+          border-radius: 50%;
+          display: flex;
           &:hover {
+            background: #f1f5f9;
             color: $text-main;
           }
         }
       }
 
       .modal-body {
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
+        padding: 24px;
 
+        // Search Input
         .search-box {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          background: $secondary-bg;
-          padding: 10px 12px;
-          border-radius: 8px;
+          position: relative;
+          margin-bottom: 20px;
 
           .search-icon {
-            color: $text-secondary;
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
           }
+
           input {
-            border: none;
-            background: transparent;
-            outline: none;
             width: 100%;
+            padding: 12px 12px 12px 40px;
+            border: 1px solid $border-light;
+            border-radius: 10px;
             font-size: 14px;
-            color: $text-main;
+            outline: none;
+            transition: border-color 0.2s;
+
+            &:focus {
+              border-color: #3b82f6;
+              box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
           }
         }
 
+        // Selection Grid inside Modal
         .selection-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
+          gap: 12px;
           max-height: 240px;
           overflow-y: auto;
+          margin-bottom: 20px;
+          padding-right: 4px; // Chừa chỗ cho scrollbar
 
           .selection-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px;
-            border: 1px solid $border-color;
-            border-radius: 8px;
+            gap: 12px;
+            padding: 12px;
+            border: 1px solid $border-light;
+            border-radius: 10px;
             cursor: pointer;
             transition: all 0.2s;
 
+            &:hover {
+              background: #f8fafc;
+              border-color: #cbd5e1;
+            }
+
+            &.selected {
+              background: #eff6ff;
+              border-color: #3b82f6;
+              box-shadow: 0 0 0 1px #3b82f6;
+            }
+
             .mini-icon {
-              width: 32px;
-              height: 32px;
+              width: 36px;
+              height: 36px;
               border-radius: 8px;
               display: flex;
               align-items: center;
               justify-content: center;
-              font-size: 12px;
-              // Apply colors from map
-              @each $name, $values in $colors {
-                &.#{$name} {
-                  background: nth($values, 1);
-                  color: nth($values, 2);
-                }
+              flex-shrink: 0;
+
+              // Tái sử dụng color logic
+              &.blue {
+                background: #eff6ff;
+                color: #3b82f6;
+              }
+              &.orange {
+                background: #fff7ed;
+                color: #f97316;
+              }
+              &.red {
+                background: #fef2f2;
+                color: #ef4444;
+              }
+              &.green {
+                background: #f0fdf4;
+                color: #22c55e;
+              }
+              &.purple {
+                background: #faf5ff;
+                color: #a855f7;
+              }
+              &.cyan {
+                background: #ecfeff;
+                color: #06b6d4;
+              }
+              &.gray {
+                background: #f3f4f6;
+                color: #6b7280;
               }
             }
 
             .item-name {
-              font-size: 13px;
+              font-size: 14px;
               font-weight: 500;
               color: $text-main;
             }
+          }
 
-            &:hover {
-              background: $secondary-bg;
-            }
-            &.selected {
-              border-color: $brand-color;
-              background: rgba($brand-color, 0.05);
-              .item-name {
-                color: $brand-color;
-                font-weight: 600;
-              }
-            }
+          .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 30px;
+            color: $text-sub;
+            font-size: 14px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border: 1px dashed $border-light;
           }
         }
 
+        // Custom Name Input
         .custom-name-input {
           label {
-            font-size: 12px;
-            color: $text-secondary;
-            font-weight: 500;
             display: block;
-            margin-bottom: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: $text-sub;
+            margin-bottom: 8px;
+            text-transform: uppercase;
           }
           input {
             width: 100%;
             padding: 10px;
+            border: 1px solid $border-light;
             border-radius: 8px;
-            border: 1px solid $border-color;
-            outline: none;
             font-size: 14px;
             &:focus {
-              border-color: $brand-color;
+              border-color: #3b82f6;
+              outline: none;
             }
           }
         }
       }
 
       .modal-footer {
-        padding: 16px 20px;
-        background: $secondary-bg;
-        border-top: 1px solid $border-color;
+        padding: 16px 24px;
+        background: #f8fafc;
+        border-top: 1px solid $border-light;
         display: flex;
         justify-content: flex-end;
-        gap: 10px;
+        gap: 12px;
 
         button {
-          padding: 8px 16px;
+          padding: 10px 20px;
           border-radius: 8px;
-          font-size: 13px;
-          font-weight: 600;
+          font-size: 14px;
+          font-weight: 500;
           cursor: pointer;
-          border: none;
+          transition: all 0.2s;
+        }
 
-          &.btn-cancel {
-            background: #fff;
-            border: 1px solid $border-color;
-            color: $text-secondary;
-            &:hover {
-              background: #f3f4f6;
-            }
+        .btn-cancel {
+          background: white;
+          border: 1px solid $border-light;
+          color: $text-sub;
+          &:hover {
+            background: #f1f5f9;
+            color: $text-main;
           }
-          &.btn-submit {
-            background: $brand-color;
-            color: #fff;
-            &:hover {
-              background: darken($brand-color, 10%);
-            }
-            &:disabled {
-              background: #d1d5db;
-              cursor: not-allowed;
-            }
+        }
+
+        .btn-submit {
+          background: #0f172a;
+          border: 1px solid #0f172a;
+          color: white;
+          &:hover {
+            background: #1e293b;
+          }
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #94a3b8;
+            border-color: #94a3b8;
           }
         }
       }
@@ -374,29 +525,60 @@ $colors: (
   }
 }
 
-// Animations
-.fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-.scale-up {
-  animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
+// 3. Animations & Utilities
 @keyframes fadeIn {
   from {
     opacity: 0;
+    transform: translateY(5px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
+
 @keyframes scaleUp {
   from {
-    transform: scale(0.9);
     opacity: 0;
+    transform: scale(0.95);
   }
   to {
-    transform: scale(1);
     opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shake {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(1.5deg);
+  }
+  50% {
+    transform: rotate(0deg);
+  }
+  75% {
+    transform: rotate(-1.5deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+// Custom scrollbar cho danh sách trong modal
+.custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+    &:hover {
+      background: #94a3b8;
+    }
   }
 }

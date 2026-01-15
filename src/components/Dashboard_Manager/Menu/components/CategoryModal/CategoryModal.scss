@@ -1,425 +1,508 @@
-// src/pages/Restaurant/MenuManagement/components/CategoryModal/CategoryModal.scss
+// Variables - Synchronized with Dashboard Theme
+$primary-color: #4f46e5; // Indigo 600
+$primary-hover: #4338ca; // Indigo 700
+$text-main: #0f172a; // Slate 900
+$text-sub: #64748b; // Slate 500
+$bg-light: #f8fafc; // Slate 50
+$border-color: #e2e8f0; // Slate 200
+$danger-color: #ef4444; // Red 500
+$radius: 12px;
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 
-$primary: #3b82f6;
-$primary-hover: #2563eb;
-$danger: #ef4444;
-$bg-gray: #f8fafc;
-$border-color: #e2e8f0;
-$text-main: #0f172a;
-$text-light: #64748b;
-$radius: 8px;
+.modern-category-modal {
+  // Override Modal Defaults if necessary
+  .modal-content {
+    border-radius: 16px;
+    overflow: hidden;
+    padding: 0; // Remove default padding to control layout manually
+  }
 
-.category-modal {
-  // Override Modal default width if needed
-  // max-width: 600px;
-
-  &__body {
-    min-height: 400px;
-    max-height: 70vh;
+  .modal-container {
+    height: 600px; // Fixed height for consistency
     display: flex;
     flex-direction: column;
-    overflow: hidden; // Prevent double scrollbar
+    background: white;
   }
 
-  // --- Animation ---
-  .fade-in {
-    animation: fadeIn 0.3s ease-out;
-  }
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(5px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  // --- Scrollbar Style ---
-  .custom-scrollbar {
-    &::-webkit-scrollbar {
-      width: 6px;
-    }
-    &::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 4px;
-    }
-    &::-webkit-scrollbar-track {
-      background: transparent;
-    }
-  }
-
-  // ================= VIEW: LIST =================
-  .view-list {
+  // --- Header Styles ---
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid $border-color;
     display: flex;
-    flex-direction: column;
-    height: 100%;
+    justify-content: space-between;
+    align-items: flex-start;
+    background: white;
 
-    .list-toolbar {
-      display: flex;
-      gap: 12px;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid $border-color;
-      margin-bottom: 1rem;
-
-      .search-box {
-        flex: 1;
-        position: relative;
-
-        .search-icon {
-          position: absolute;
-          left: 10px;
-          top: 50%;
-          transform: translateY(-50%);
-          color: $text-light;
-        }
-
-        input {
-          width: 100%;
-          padding: 8px 12px 8px 32px;
-          border: 1px solid $border-color;
-          border-radius: $radius;
-          font-size: 0.9rem;
-          outline: none;
-          transition: border 0.2s;
-
-          &:focus {
-            border-color: $primary;
-            box-shadow: 0 0 0 3px rgba($primary, 0.1);
-          }
-        }
-      }
-
-      .btn-add {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        background: $primary;
-        color: white;
-        border: none;
-        padding: 0 16px;
-        border-radius: $radius;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background 0.2s;
-        white-space: nowrap;
-
-        &:hover {
-          background: $primary-hover;
-        }
-      }
+    &.with-back {
+      align-items: center;
+      gap: 16px;
+      justify-content: flex-start;
     }
 
-    .list-content {
-      flex: 1;
-      overflow-y: auto;
-
-      .state-text {
-        text-align: center;
-        padding: 2rem;
-        color: $text-light;
-      }
-
-      .state-empty {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 3rem 1rem;
-        text-align: center;
-
-        .empty-icon {
-          font-size: 2.5rem;
-          color: #e2e8f0;
-          margin-bottom: 1rem;
-        }
-        p {
-          color: $text-light;
-          margin-bottom: 1rem;
-        }
-        button {
-          background: none;
-          border: 1px dashed $primary;
-          color: $primary;
-          padding: 6px 12px;
-          border-radius: 6px;
-          cursor: pointer;
-          &:hover {
-            background: #eff6ff;
-          }
-        }
-      }
-
-      .category-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .category-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px 12px;
-        border: 1px solid $border-color;
-        border-radius: $radius;
-        background: white;
-        transition: all 0.2s;
-
-        &:hover {
-          border-color: $primary;
-          background: #f8fafc;
-          transform: translateX(2px);
-
-          .cat-actions {
-            opacity: 1;
-          }
-        }
-
-        .cat-info {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-
-          .cat-icon {
-            width: 36px;
-            height: 36px;
-            background: #eff6ff;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-          }
-
-          .cat-text {
-            display: flex;
-            flex-direction: column;
-
-            .cat-name {
-              font-weight: 600;
-              color: $text-main;
-              font-size: 0.95rem;
-            }
-            .cat-desc {
-              font-size: 0.8rem;
-              color: $text-light;
-            }
-          }
-        }
-
-        .cat-actions {
-          display: flex;
-          gap: 6px;
-          opacity: 0; // Hide actions by default for cleaner look
-          transition: opacity 0.2s;
-
-          // On mobile, always show
-          @media (max-width: 768px) {
-            opacity: 1;
-          }
-
-          .action-btn {
-            width: 32px;
-            height: 32px;
-            border: none;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-
-            &.edit {
-              background: #f1f5f9;
-              color: $text-light;
-              &:hover {
-                background: $primary;
-                color: white;
-              }
-            }
-            &.delete {
-              background: #fee2e2;
-              color: $danger;
-              &:hover {
-                background: $danger;
-                color: white;
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // ================= VIEW: FORM =================
-  .view-form {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-
-    .form-content {
-      flex: 1;
-      overflow-y: auto;
-      padding-right: 4px;
-      padding-bottom: 1rem;
-    }
-
-    .form-group {
-      margin-bottom: 1.25rem;
-
-      label {
-        display: block;
+    .header-content {
+      h3 {
+        margin: 0;
+        font-size: 18px;
         font-weight: 600;
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
         color: $text-main;
+      }
+      p {
+        margin: 4px 0 0;
+        font-size: 13px;
+        color: $text-sub;
+      }
+    }
 
-        .req {
-          color: $danger;
-          margin-left: 2px;
-        }
+    .btn-close-modal,
+    .btn-back {
+      background: transparent;
+      border: none;
+      color: $text-sub;
+      padding: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &:hover {
+        background: $bg-light;
+        color: $text-main;
+      }
+    }
+  }
+
+  // --- Toolbar (Search + Add) ---
+  .list-toolbar {
+    padding: 16px 24px;
+    display: flex;
+    gap: 12px;
+    background: white;
+
+    .search-box {
+      flex: 1;
+      position: relative;
+
+      .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: $text-sub;
       }
 
-      input[type="text"],
-      textarea {
+      input {
         width: 100%;
-        padding: 10px;
+        padding: 10px 12px 10px 40px;
         border: 1px solid $border-color;
         border-radius: $radius;
-        font-size: 0.95rem;
+        font-size: 14px;
+        outline: none;
         transition: all 0.2s;
-        font-family: inherit;
 
         &:focus {
-          outline: none;
-          border-color: $primary;
-          box-shadow: 0 0 0 3px rgba($primary, 0.1);
+          border-color: $primary-color;
+          box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
         }
-
-        &.error {
-          border-color: $danger;
-          background: #fef2f2;
-        }
-      }
-
-      textarea {
-        resize: vertical;
-        min-height: 80px;
-      }
-
-      .err-msg {
-        display: block;
-        margin-top: 4px;
-        color: $danger;
-        font-size: 0.8rem;
       }
     }
 
-    .icon-picker {
-      border: 1px solid $border-color;
+    .btn-primary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: $primary-color;
+      color: white;
+      border: none;
+      padding: 0 16px;
       border-radius: $radius;
-      padding: 1rem;
-      background: $bg-gray;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
 
-      .icon-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
-        gap: 8px;
-        margin-bottom: 1rem;
+      &:hover {
+        background: $primary-hover;
+      }
+    }
+  }
 
-        .icon-btn {
-          height: 36px;
-          border: 1px solid transparent;
-          background: white;
+  // --- List Body ---
+  .list-body,
+  .form-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 24px 20px;
+    position: relative;
+  }
+
+  .state-empty,
+  .state-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: $text-sub;
+    text-align: center;
+    padding: 40px 0;
+
+    .empty-icon-bg {
+      width: 64px;
+      height: 64px;
+      background: $bg-light;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      color: #94a3b8;
+    }
+
+    .main-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: $text-main;
+      margin: 0 0 4px;
+    }
+
+    .sub-text {
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid $bg-light;
+      border-top-color: $primary-color;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 12px;
+    }
+  }
+
+  // --- Category Card Items ---
+  .category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .category-item-card {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      background: white;
+      border: 1px solid $border-color;
+      border-radius: 12px;
+      transition: all 0.2s;
+      gap: 16px;
+
+      &:hover {
+        border-color: #cbd5e1;
+        box-shadow: $shadow-sm;
+        transform: translateY(-1px);
+      }
+
+      .card-visual {
+        width: 48px;
+        height: 48px;
+        background: $bg-light;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        flex-shrink: 0;
+      }
+
+      .card-info {
+        flex: 1;
+        min-width: 0;
+
+        .cat-name {
+          display: block;
+          font-size: 14px;
+          font-weight: 600;
+          color: $text-main;
+          margin-bottom: 2px;
+        }
+        .cat-desc {
+          display: block;
+          font-size: 12px;
+          color: $text-sub;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+
+      .card-actions {
+        display: flex;
+        gap: 4px;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+
+        .action-btn {
+          width: 32px;
+          height: 32px;
+          border: none;
+          background: transparent;
           border-radius: 6px;
           cursor: pointer;
-          font-size: 1.2rem;
-          transition: transform 0.1s;
+          color: $text-sub;
           display: flex;
           align-items: center;
           justify-content: center;
 
           &:hover {
-            transform: scale(1.15);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-          }
-          &.active {
-            border-color: $primary;
-            background: #eff6ff;
-            box-shadow: 0 0 0 2px rgba($primary, 0.2);
+            background: $bg-light;
+
+            &.edit {
+              color: $primary-color;
+            }
+            &.delete {
+              color: $danger-color;
+              background: #fef2f2;
+            }
           }
         }
       }
 
-      .custom-icon-input {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 0.85rem;
-        color: $text-light;
+      &:hover .card-actions {
+        opacity: 1;
+      }
+    }
+  }
 
-        input {
-          width: 50px;
-          text-align: center;
-          padding: 6px;
-        }
+  // --- Form Styles ---
+  .form-body {
+    padding-top: 20px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: $text-main;
+      margin-bottom: 8px;
+
+      .req {
+        color: $danger-color;
+        margin-left: 2px;
       }
     }
 
-    .global-error {
-      padding: 10px;
-      background: #fee2e2;
-      color: $danger;
-      border-radius: $radius;
-      margin-bottom: 1rem;
-      font-size: 0.9rem;
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid $border-color;
+      border-radius: 10px;
+      font-size: 14px;
+      color: $text-main;
+      outline: none;
+      transition: all 0.2s;
+      background: white;
+
+      &:focus {
+        border-color: $primary-color;
+        box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+      }
+
+      &.error {
+        border-color: $danger-color;
+        &:focus {
+          box-shadow: 0 0 0 3px rgba($danger-color, 0.1);
+        }
+      }
+
+      &::placeholder {
+        color: #cbd5e1;
+      }
     }
 
-    .form-footer {
+    .err-msg {
+      font-size: 12px;
+      color: $danger-color;
+      margin-top: 4px;
+      display: block;
+    }
+  }
+
+  // --- Icon Picker Grid ---
+  .icon-picker-container {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+
+    .selected-preview {
+      width: 60px;
+      height: 60px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
       display: flex;
-      justify-content: space-between;
-      border-top: 1px solid $border-color;
-      padding-top: 1rem;
-      margin-top: auto;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      flex-shrink: 0;
+    }
 
-      button {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 10px 20px;
-        border-radius: $radius;
-        font-weight: 600;
-        cursor: pointer;
-        font-size: 0.9rem;
-        transition: all 0.2s;
-      }
+    .icon-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+      gap: 8px;
+      max-height: 140px;
+      overflow-y: auto;
+      padding-right: 4px;
+      background: $bg-light;
+      padding: 8px;
+      border-radius: 12px;
+      border: 1px solid $border-color;
 
-      .btn-back {
+      .icon-option {
+        width: 100%;
+        aspect-ratio: 1;
+        font-size: 20px;
+        border: 1px solid transparent;
         background: white;
-        border: 1px solid $border-color;
-        color: $text-light;
+        border-radius: 8px;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.1s;
+
         &:hover {
           background: #f1f5f9;
-          color: $text-main;
+          transform: scale(1.05);
         }
+
+        &.active {
+          border-color: $primary-color;
+          background: #eff6ff;
+
+          .check-mark {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: $primary-color;
+            color: white;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+        }
+      }
+    }
+  }
+
+  .custom-icon-input {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: $text-sub;
+
+    input {
+      width: 60px !important;
+      text-align: center;
+    }
+  }
+
+  // --- Footer ---
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid $border-color;
+    background: $bg-light;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-radius: 0 0 16px 16px;
+
+    button {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-cancel {
+      background: white;
+      border: 1px solid $border-color;
+      color: $text-sub;
+      &:hover {
+        background: #f1f5f9;
+        color: $text-main;
+      }
+    }
+
+    .btn-save {
+      background: $primary-main; // Fallback
+      background: #0f172a; // Dark Slate for main action
+      border: none;
+      color: white;
+
+      &:hover {
+        background: #1e293b;
       }
 
-      .btn-save {
-        background: $primary;
-        color: white;
-        border: none;
-        &:hover {
-          background: $primary-hover;
-          transform: translateY(-1px);
-        }
-        &:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-          transform: none;
-        }
+      &:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
       }
+    }
+  }
+}
+
+// Global Animation
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fade-in-slide {
+  animation: fadeInSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+    &:hover {
+      background: #94a3b8;
     }
   }
 }

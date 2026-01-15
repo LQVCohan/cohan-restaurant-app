@@ -1,14 +1,14 @@
 import React, { useMemo } from "react";
-import { Calendar, Store } from "lucide-react";
+import { Calendar, MapPin, Search } from "lucide-react";
 import { useDashboard } from "../../../hooks/useDashboard";
 
-import Header from "./components/Header";
+// Components (Đã được nâng cấp ở các bước trước)
+import Header from "./components/Header"; // Tên mới cho component Header cũ
 import StatsGrid from "./components/StatsGrid";
-import QuickActions from "./components/QuickActions";
-
 import RevenueChart from "./components/RevenueChart";
-import RecentOrders from "./components/RecentOrders";
+import RecentOrders from "./components/RecentOrders"; // Giả định đã có
 import TopDishes from "./components/TopDishes";
+import QuickActions from "./components/QuickActions"; // Component mới bên dưới
 
 import "./Dashboard.scss";
 
@@ -22,43 +22,49 @@ const Dashboard = () => {
     loading,
   } = useDashboard();
 
-  // Logic lời chào
-  const greeting = useMemo(() => {
+  // 1. Logic Lời chào thông minh
+  const greetingInfo = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Chào buổi sáng";
-    if (hour < 18) return "Chào buổi chiều";
-    return "Chào buổi tối";
-  }, []);
+    let text = "Chào buổi tối";
+    if (hour < 12) text = "Chào buổi sáng";
+    else if (hour < 18) text = "Chào buổi chiều";
 
-  const today = new Date().toLocaleDateString("vi-VN", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+    const dateStr = new Date().toLocaleDateString("vi-VN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    return { text, dateStr };
+  }, []);
 
   return (
     <div className="dashboard-container fade-in">
-      {/* 1. Top Bar: Greeting & Global Controls */}
-      <div className="dashboard-top-bar">
-        <div className="greeting-group">
-          <h1 className="greeting-title">
-            {greeting}, <span className="highlight">Quản lý</span>
+      {/* SECTION 1: TOP BAR (Sticky Header) */}
+      <header className="dashboard-header">
+        <div className="header-left">
+          <h1 className="greeting">
+            {greetingInfo.text}, <span className="highlight">Admin</span>
           </h1>
-          <div className="greeting-meta">
-            <span className="date">
-              <Calendar size={14} /> {today}
+          <div className="meta-info">
+            <span className="meta-item">
+              <Calendar size={14} /> {greetingInfo.dateStr}
             </span>
-            <span className="divider">•</span>
-            <span className="location">
-              <Store size={14} />{" "}
-              {selectedRestaurant?.name || "Tất cả chi nhánh"}
+            <span className="meta-item">
+              <MapPin size={14} /> {selectedRestaurant?.name || "Toàn hệ thống"}
             </span>
           </div>
         </div>
 
-        {/* Header Controls (POS btn, Export btn, Select Box) */}
-        <div className="controls-group">
+        <div className="header-right">
+          {/* Thanh tìm kiếm nhanh */}
+          <div className="search-bar">
+            <Search size={18} />
+            <input type="text" placeholder="Tìm đơn hàng, món ăn..." />
+          </div>
+
+          {/* Các nút chức năng (POS, Export...) */}
           <Header
             selectedRestaurant={selectedRestaurant}
             onRestaurantChange={handleRestaurantChange}
@@ -66,41 +72,36 @@ const Dashboard = () => {
             onGenerateReport={handleGenerateReport}
           />
         </div>
-      </div>
+      </header>
 
-      {/* 2. Stats Grid (Thống kê 4 ô) */}
-      <div className="section-stats">
+      {/* SECTION 2: STATS OVERVIEW */}
+      <section className="stats-section">
         <StatsGrid stats={stats} isLoading={loading} />
-      </div>
+      </section>
 
-      {/* 3. Quick Actions (Thanh thao tác nhanh) */}
-      <div className="section-quick-actions">
-        <QuickActions />
-      </div>
-
-      {/* 4. Main Content Grid (Layout 70/30) */}
-      <div className="dashboard-layout-grid">
-        {/* Cột trái (Lớn): Biểu đồ & Đơn hàng mới */}
-        <div className="main-column">
-          <div className="chart-wrapper">
-            {/* Component Biểu đồ doanh thu */}
+      {/* SECTION 3: MAIN GRID (BENTO LAYOUT) */}
+      <section className="main-content-grid">
+        {/* LEFT COLUMN (70%) - Dữ liệu chi tiết & Rộng */}
+        <div className="col-primary">
+          <div className="widget-wrapper chart-widget">
             <RevenueChart />
           </div>
-
-          <div className="recent-orders-wrapper-container">
-            {/* Component Đơn hàng gần đây */}
-            <RecentOrders />
+          <div className="widget-wrapper orders-widget">
+            {/* Truyền prop scrollable để table cuộn trong khung */}
+            <RecentOrders scrollable={true} />
           </div>
         </div>
 
-        {/* Cột phải (Nhỏ): Món bán chạy & Thông báo/Khác */}
-        <div className="side-column">
-          {/* Component Top món ăn */}
-          <TopDishes />
-
-          {/* Nếu có ActivityFeed hoặc Notifications thì đặt ở đây */}
+        {/* RIGHT COLUMN (30%) - Thông tin bổ trợ & Thao tác */}
+        <div className="col-secondary">
+          <div className="widget-wrapper actions-widget">
+            <QuickActions />
+          </div>
+          <div className="widget-wrapper dishes-widget">
+            <TopDishes />
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

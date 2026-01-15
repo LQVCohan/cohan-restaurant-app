@@ -1,178 +1,208 @@
-@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap");
-
-// --- Variables Luxury ---
-$gold: #c5a47e;
-$charcoal: #1a1a1a;
-$slate: #64748b;
-$bg-page: #f9f8f6; // Màu kem nền tổng thể
-$card-bg: #ffffff;
-$border-light: rgba(197, 164, 126, 0.15);
-
-// --- Mixins ---
-@mixin flex-center-between {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+// Variables
+$bg-app: #f8fafc; // Xám xanh rất nhạt (Modern Dashboard Background)
+$bg-white: #ffffff;
+$primary-color: #d97706; // Amber theme
+$text-main: #0f172a;
+$text-sub: #64748b;
+$border-color: #e2e8f0;
+$shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+$radius: 16px;
+$header-height: 80px;
 
 .dashboard-container {
-  font-family: "Be Vietnam Pro", sans-serif;
-  background-color: $bg-page;
+  background-color: $bg-app;
   min-height: 100vh;
-  padding: 32px 40px; // Padding rộng rãi hơn cho desktop
-  color: $charcoal;
-  max-width: 1600px;
-  margin: 0 auto;
+  padding: 24px 32px;
+  font-family: "Inter", sans-serif;
+  color: $text-main;
 
-  // Global Animation
-  &.fade-in {
-    animation: fadeIn 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
-  }
-
-  // --- 1. Top Bar Styling ---
-  .dashboard-top-bar {
-    @include flex-center-between;
+  // --- 1. HEADER STYLES ---
+  .dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 32px;
-    flex-wrap: wrap; // Cho phép xuống dòng trên màn hình nhỏ
-    gap: 20px;
 
-    .greeting-group {
-      .greeting-title {
-        font-size: 1.75rem; // Kích thước vừa phải, thanh lịch (Không quá to)
-        font-weight: 600;
-        color: $charcoal;
+    .header-left {
+      .greeting {
+        font-size: 24px;
+        font-weight: 700;
         margin: 0 0 8px 0;
-        letter-spacing: -0.5px;
 
         .highlight {
-          color: $slate; // "Quản lý" màu nhạt hơn chút hoặc giữ nguyên đen
-          font-weight: 400;
+          color: $primary-color;
         }
       }
 
-      .greeting-meta {
+      .meta-info {
         display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 0.875rem;
-        color: $slate;
+        gap: 16px;
+        color: $text-sub;
+        font-size: 13px;
         font-weight: 500;
 
-        .divider {
-          color: #cbd5e1;
-        }
-
-        .date,
-        .location {
+        .meta-item {
           display: flex;
           align-items: center;
           gap: 6px;
-
-          svg {
-            stroke-width: 2px;
-            color: $gold;
-          } // Icon màu vàng
-        }
-
-        .location {
-          color: $charcoal;
-          font-weight: 600;
         }
       }
     }
 
-    .controls-group {
-      // Container cho Header con
-      flex-shrink: 0;
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+
+      .search-bar {
+        background: $bg-white;
+        border: 1px solid $border-color;
+        border-radius: 12px;
+        padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 300px;
+        color: $text-sub;
+        transition: all 0.2s;
+
+        &:focus-within {
+          border-color: $primary-color;
+          box-shadow: 0 0 0 3px rgba($primary-color, 0.1);
+        }
+
+        input {
+          border: none;
+          outline: none;
+          background: transparent;
+          width: 100%;
+          font-size: 14px;
+          color: $text-main;
+          &::placeholder {
+            color: #94a3b8;
+          }
+        }
+      }
     }
   }
 
-  // --- 2. Sections Spacing ---
-  .section-stats {
+  // --- 2. STATS SECTION ---
+  .stats-section {
     margin-bottom: 24px;
   }
 
-  .section-quick-actions {
-    margin-bottom: 24px;
-    // Component QuickActions bên trong sẽ tự lo layout
-  }
-
-  // --- 3. Main Layout Grid (The Core) ---
-  .dashboard-layout-grid {
+  // --- 3. MAIN GRID LAYOUT (BENTO) ---
+  .main-content-grid {
     display: grid;
-    // Chia cột: 2.2 phần cho Main, 1 phần cho Side (~ 68% - 32%)
-    grid-template-columns: 2.2fr 1fr;
+    // Tỉ lệ vàng: Cột trái 2.5 phần - Cột phải 1 phần
+    grid-template-columns: minmax(0, 2.5fr) minmax(0, 1fr);
     gap: 24px;
     align-items: start; // Quan trọng: Để các cột không bị kéo giãn chiều cao ép buộc
 
-    .main-column {
+    // Cột Trái
+    .col-primary {
       display: flex;
       flex-direction: column;
       gap: 24px;
 
-      // Biểu đồ
-      .chart-wrapper {
-        background: $card-bg;
-        border-radius: 12px;
-        border: 1px solid $border-light;
-        padding: 24px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
-        min-height: 350px; // Chiều cao tối thiểu cho chart
-      }
+      .widget-wrapper {
+        background: $bg-white;
+        border-radius: $radius;
+        border: 1px solid $border-color;
+        box-shadow: $shadow-sm;
+        overflow: hidden;
 
-      // Đơn hàng (Không cần style thêm vì RecentOrders.scss đã lo)
-      .recent-orders-wrapper-container {
-        width: 100%;
+        &.orders-widget {
+          padding: 20px;
+          min-height: 400px;
+
+          .widget-header-simple {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            h3 {
+              font-size: 16px;
+              font-weight: 600;
+              margin: 0;
+            }
+            .btn-link {
+              background: none;
+              border: none;
+              color: $primary-color;
+              font-weight: 500;
+              cursor: pointer;
+              font-size: 13px;
+              &:hover {
+                text-decoration: underline;
+              }
+            }
+          }
+        }
       }
     }
 
-    .side-column {
+    // Cột Phải
+    .col-secondary {
       display: flex;
       flex-direction: column;
       gap: 24px;
-      // TopDishes.scss đã lo phần style card
+
+      .widget-wrapper {
+        background: $bg-white;
+        border-radius: $radius;
+        border: 1px solid $border-color;
+        box-shadow: $shadow-sm;
+
+        // Top Dishes
+        &.dishes-widget {
+          flex: 1; // Tự dãn để lấp đầy khoảng trống nếu cần
+        }
+      }
     }
   }
 
-  // --- Responsive Media Queries ---
-
-  // Tablet Vertical & Small Laptop
+  // --- RESPONSIVE ---
   @media (max-width: 1200px) {
-    padding: 24px;
+    .main-content-grid {
+      grid-template-columns: 1fr; // Chuyển về 1 cột dọc
 
-    .dashboard-layout-grid {
-      // Vẫn giữ 2 cột nhưng tỉ lệ 1:1 hoặc đổi sang dọc tùy nội dung
-      grid-template-columns: 1.5fr 1fr;
-    }
-  }
-
-  // Tablet & Mobile
-  @media (max-width: 992px) {
-    .dashboard-layout-grid {
-      grid-template-columns: 1fr; // Chuyển hết về 1 cột dọc
-    }
-
-    .dashboard-top-bar {
-      flex-direction: column;
-      align-items: flex-start;
-
-      .controls-group {
-        width: 100%;
-        // Header con bên trong nên set width 100%
+      .col-secondary {
+        flex-direction: row; // QuickAction và TopDish nằm ngang trên tablet
+        .widget-wrapper {
+          flex: 1;
+        }
       }
     }
   }
 
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     padding: 16px;
 
-    .greeting-title {
-      font-size: 1.5rem !important;
+    .dashboard-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+
+      .header-right {
+        width: 100%;
+        flex-direction: column-reverse; // Đưa search bar xuống dưới nút control
+        .search-bar {
+          width: 100%;
+        }
+      }
+    }
+
+    .col-secondary {
+      flex-direction: column; // Mobile: Dọc hết
     }
   }
 }
 
-// Animation Keyframes
+// Animation
+.fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
 @keyframes fadeIn {
   from {
     opacity: 0;
