@@ -7,6 +7,7 @@ import {
   FiImage,
   FiPlus,
   FiChevronDown,
+  FiSave,
 } from "react-icons/fi";
 import "./MenuModal.scss";
 
@@ -116,7 +117,6 @@ const MenuModal = ({
     return false;
   }, [formData, quickCatName]);
 
-  // ❗ FIXED — Move this hook ABOVE any return
   const selectedCategoryName = useMemo(() => {
     const found = categoryMenus.find(
       (c) => (c.id || c._id) === formData.categoryMenuId
@@ -124,7 +124,6 @@ const MenuModal = ({
     return found ? found.name : "";
   }, [categoryMenus, formData.categoryMenuId]);
 
-  // ❗ SAFE NOW — Early return happens AFTER all hooks
   if (!isOpen) return null;
 
   const handleFieldChange = (e) => {
@@ -227,95 +226,82 @@ const MenuModal = ({
   };
 
   return (
-    <div className="menu-modal__overlay">
-      <div className="menu-modal__container">
+    <div className="modern-modal-overlay">
+      <div className="modern-modal-container">
         {/* Header */}
-        <div className="menu-modal__header">
+        <div className="modal-header">
           <h2>{isEditMode ? "Cập nhật Menu" : "Thêm Menu mới"}</h2>
           <button
             type="button"
-            className="menu-modal__close-btn"
+            className="btn-close"
             onClick={handleRequestClose}
           >
-            <FiX />
+            <FiX size={20} />
           </button>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="menu-modal__form">
-          <div className="menu-modal__content">
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="modal-body">
             {/* Name */}
-            <div className="menu-modal__form-group">
-              <label className="menu-modal__label">
-                Tên Menu <span className="menu-modal__req">*</span>
+            <div className="form-group">
+              <label>
+                Tên Menu <span className="req">*</span>
               </label>
               <input
                 type="text"
                 name="name"
-                className={`menu-modal__input ${
-                  errors.name ? "menu-modal__input--error" : ""
-                }`}
+                className={`modern-input ${errors.name ? "error" : ""}`}
                 value={formData.name}
                 onChange={handleFieldChange}
-                placeholder="Ví dụ: Breakfast Menu"
+                placeholder="Ví dụ: Thực đơn sáng"
                 autoFocus
               />
-              {errors.name && (
-                <p className="menu-modal__error-text">{errors.name}</p>
-              )}
+              {errors.name && <p className="error-text">{errors.name}</p>}
             </div>
 
             {/* Row: Timeslot + Category Dropdown */}
-            <div className="menu-modal__row">
+            <div className="form-row-2">
               {/* Time Slot */}
-              <div className="menu-modal__form-group menu-modal__col">
-                <label className="menu-modal__label">
-                  Khung giờ <span className="menu-modal__req">*</span>
+              <div className="form-group">
+                <label>
+                  Khung giờ <span className="req">*</span>
                 </label>
-                <div className="menu-modal__select-wrapper">
-                  <select
-                    name="timeSlot"
-                    value={formData.timeSlot}
-                    onChange={handleFieldChange}
-                    disabled={isEditMode}
-                    className={
-                      errors.timeSlot ? "menu-modal__input--error" : ""
-                    }
-                  >
-                    {TIME_SLOTS.map((slot) => (
-                      <option key={slot.value} value={slot.value}>
-                        {slot.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <select
+                  name="timeSlot"
+                  value={formData.timeSlot}
+                  onChange={handleFieldChange}
+                  disabled={isEditMode}
+                  className={`modern-select ${errors.timeSlot ? "error" : ""}`}
+                >
+                  {TIME_SLOTS.map((slot) => (
+                    <option key={slot.value} value={slot.value}>
+                      {slot.label}
+                    </option>
+                  ))}
+                </select>
                 {errors.timeSlot && (
-                  <p className="menu-modal__error-text">{errors.timeSlot}</p>
+                  <p className="error-text">{errors.timeSlot}</p>
                 )}
               </div>
 
               {/* CategoryMenu Custom Dropdown */}
-              <div className="menu-modal__form-group menu-modal__col">
-                <label className="menu-modal__label">
-                  Danh mục gốc <span className="menu-modal__req">*</span>
+              <div className="form-group" ref={catDropdownRef}>
+                <label>
+                  Danh mục gốc <span className="req">*</span>
                 </label>
 
-                <div
-                  className="menu-modal__category-select"
-                  ref={catDropdownRef}
-                >
+                <div className="custom-select-wrapper">
                   <div
-                    className={`menu-modal__category-display ${
+                    className={`custom-select-trigger ${
                       !formData.categoryMenuId && errors.categoryMenuId
-                        ? "menu-modal__input--error"
+                        ? "error"
                         : ""
                     }`}
                     onClick={() => setIsCatDropdownOpen(!isCatDropdownOpen)}
                   >
                     <span
-                      style={{
-                        color: formData.categoryMenuId ? "#0f172a" : "#94a3b8",
-                      }}
+                      className={!selectedCategoryName ? "placeholder" : ""}
                     >
                       {selectedCategoryName || "-- Chọn danh mục --"}
                     </span>
@@ -330,12 +316,10 @@ const MenuModal = ({
                   </div>
 
                   {isCatDropdownOpen && (
-                    <div className="menu-modal__category-dropdown">
-                      <ul className="menu-modal__category-list">
+                    <div className="custom-dropdown-menu">
+                      <ul className="dropdown-list">
                         {categoryMenus.length === 0 && (
-                          <li className="menu-modal__category-empty">
-                            Chưa có danh mục nào
-                          </li>
+                          <li className="empty-state">Chưa có danh mục nào</li>
                         )}
 
                         {categoryMenus.map((cat) => {
@@ -344,9 +328,7 @@ const MenuModal = ({
                           return (
                             <li
                               key={val}
-                              className={`menu-modal__category-option ${
-                                isSelected ? "is-selected" : ""
-                              }`}
+                              className={isSelected ? "selected" : ""}
                               onClick={() => handleSelectCategory(val)}
                             >
                               {cat.name}
@@ -356,21 +338,20 @@ const MenuModal = ({
                         })}
                       </ul>
 
-                      {/* Add New Category */}
-                      <div className="menu-modal__category-add">
+                      {/* Add New Category Section */}
+                      <div className="quick-add-section">
                         {!isAddingNewCat ? (
                           <button
                             type="button"
-                            className="menu-modal__category-add-btn"
+                            className="btn-trigger-add"
                             onClick={handleStartAddCat}
                           >
                             <FiPlus /> Tạo danh mục mới
                           </button>
                         ) : (
-                          <div className="menu-modal__category-add-inline">
+                          <div className="inline-add-form">
                             <input
                               type="text"
-                              className="menu-modal__input menu-modal__input--sm"
                               placeholder="Tên danh mục..."
                               value={quickCatName}
                               onChange={(e) => setQuickCatName(e.target.value)}
@@ -385,18 +366,20 @@ const MenuModal = ({
 
                             <button
                               type="button"
-                              className="menu-modal__btn--sm primary"
+                              className="btn-save"
                               onClick={handleQuickCatSave}
                               disabled={quickCatSaving || !quickCatName.trim()}
+                              title="Lưu"
                             >
                               {quickCatSaving ? "..." : <FiCheck />}
                             </button>
 
                             <button
                               type="button"
-                              className="menu-modal__btn--sm ghost"
+                              className="btn-cancel"
                               onClick={handleCancelAddCat}
                               disabled={quickCatSaving}
+                              title="Hủy"
                             >
                               <FiX />
                             </button>
@@ -408,54 +391,50 @@ const MenuModal = ({
                 </div>
 
                 {errors.categoryMenuId && (
-                  <p className="menu-modal__error-text">
-                    {errors.categoryMenuId}
-                  </p>
+                  <p className="error-text">{errors.categoryMenuId}</p>
                 )}
               </div>
             </div>
 
             {/* Cover Image */}
-            <div className="menu-modal__form-group">
-              <label className="menu-modal__label">Link ảnh bìa (URL)</label>
-              <div className="menu-modal__image-row">
-                <div className="menu-modal__input-with-icon">
-                  <FiUploadCloud className="menu-modal__field-icon" />
+            <div className="form-group">
+              <label>Ảnh bìa (URL)</label>
+              <div className="image-input-group">
+                <div className="input-with-icon">
+                  <FiUploadCloud />
                   <input
                     type="url"
                     name="coverImage"
-                    className="menu-modal__input"
+                    className="modern-input"
                     value={formData.coverImage || ""}
                     onChange={handleFieldChange}
                     placeholder="https://example.com/image.jpg"
                   />
                 </div>
 
-                <div className="menu-modal__img-preview">
+                <div className="img-preview-box">
                   {formData.coverImage ? (
                     <img
                       src={formData.coverImage}
                       alt="Preview"
                       onError={(e) => {
                         e.target.src =
-                          "https://via.placeholder.com/120?text=No+Image";
+                          "https://via.placeholder.com/120?text=Error";
                       }}
                     />
                   ) : (
-                    <div className="menu-modal__img-placeholder">
-                      <FiImage />
-                    </div>
+                    <FiImage className="placeholder-icon" />
                   )}
                 </div>
               </div>
             </div>
 
             {/* Description */}
-            <div className="menu-modal__form-group">
-              <label className="menu-modal__label">Mô tả ngắn</label>
+            <div className="form-group">
+              <label>Mô tả ngắn</label>
               <textarea
                 name="description"
-                className="menu-modal__textarea"
+                className="modern-textarea"
                 value={formData.description || ""}
                 onChange={handleFieldChange}
                 rows={3}
@@ -463,19 +442,19 @@ const MenuModal = ({
               />
             </div>
 
-            {/* Status */}
-            <div className="menu-modal__form-group menu-modal__toggle-row">
-              <label className="menu-modal__switch">
+            {/* Status Switch */}
+            <div className="toggle-wrapper">
+              <label className="switch">
                 <input
                   type="checkbox"
                   name="isActive"
                   checked={!!formData.isActive}
                   onChange={handleFieldChange}
                 />
-                <span className="menu-modal__slider menu-modal__slider--round" />
+                <span className="slider"></span>
               </label>
 
-              <div className="menu-modal__toggle-text">
+              <div className="toggle-label">
                 <span>Kích hoạt menu này</span>
                 <small>Menu sẽ hiển thị trên ứng dụng của khách hàng</small>
               </div>
@@ -483,10 +462,10 @@ const MenuModal = ({
           </div>
 
           {/* Footer */}
-          <div className="menu-modal__footer">
+          <div className="modal-footer">
             <button
               type="button"
-              className="menu-modal__btn menu-modal__btn--ghost"
+              className="btn-ghost"
               onClick={handleRequestClose}
               disabled={isSubmitting}
             >
@@ -495,13 +474,11 @@ const MenuModal = ({
 
             <button
               type="submit"
-              className="menu-modal__btn menu-modal__btn--primary"
+              className="btn-primary"
               disabled={isSubmitting}
             >
-              <FiCheck />
-              <span style={{ marginLeft: 6 }}>
-                {isEditMode ? "Lưu thay đổi" : "Tạo Menu"}
-              </span>
+              <FiSave />
+              <span>{isEditMode ? "Lưu thay đổi" : "Tạo Menu"}</span>
             </button>
           </div>
         </form>

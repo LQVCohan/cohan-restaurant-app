@@ -14,10 +14,10 @@ import {
   FiClock,
   FiChevronUp,
   FiChevronDown,
-  FiTag, // Import thêm icon Tag nếu muốn đẹp hơn
 } from "react-icons/fi";
 import "./CompactMenuStrip.scss";
 
+// Không thay đổi config, chỉ đổi tên class bên dưới
 const SLOT_CONFIG = {
   breakfast: {
     label: "Sáng",
@@ -25,18 +25,8 @@ const SLOT_CONFIG = {
     bg: "#fffbeb",
     border: "#fde68a",
   },
-  lunch: {
-    label: "Trưa",
-    color: "#059669",
-    bg: "#ecfdf5",
-    border: "#a7f3d0",
-  },
-  dinner: {
-    label: "Tối",
-    color: "#4f46e5",
-    bg: "#eef2ff",
-    border: "#c7d2fe",
-  },
+  lunch: { label: "Trưa", color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
+  dinner: { label: "Tối", color: "#4f46e5", bg: "#eef2ff", border: "#c7d2fe" },
   late_night: {
     label: "Khuya",
     color: "#db2777",
@@ -54,22 +44,30 @@ const CompactMenuStrip = ({
   onAddMenu,
   onEditMenu,
   onDeleteMenu,
+  activeMenuId,
+  onSelectMenu,
 }) => {
   const scrollRef = useRef(null);
-  const [activeId, setActiveId] = useState(null);
+  const [internalActiveId, setInternalActiveId] = useState(null);
+  const currentActiveId =
+    activeMenuId !== undefined ? activeMenuId : internalActiveId;
 
   useEffect(() => {
-    if (menus.length > 0 && !activeId) {
-      setActiveId(menus[0].id);
+    if (menus.length > 0 && !currentActiveId && !activeMenuId) {
+      const firstId = menus[0].id;
+      setInternalActiveId(firstId);
+      onSelectMenu?.(menus[0]);
     }
-    if (!menus.length && activeId) {
-      setActiveId(null);
-    }
-  }, [menus, activeId]);
+  }, [menus, currentActiveId, activeMenuId, onSelectMenu]);
+
+  const handleCardClick = (menu) => {
+    setInternalActiveId(menu.id);
+    onSelectMenu?.(menu);
+  };
 
   const scroll = (direction) => {
     if (!scrollRef.current) return;
-    const scrollAmount = 320;
+    const scrollAmount = 300;
     scrollRef.current.scrollBy({
       left: direction === "left" ? -scrollAmount : scrollAmount,
       behavior: "smooth",
@@ -79,22 +77,22 @@ const CompactMenuStrip = ({
   const totalMenus = menus.length;
 
   return (
-    <div className={`compact-menu-strip ${isCollapsed ? "collapsed" : ""}`}>
+    <div className={`cms-container ${isCollapsed ? "is-collapsed" : ""}`}>
       {/* Header */}
-      <div className="strip-header">
-        <div className="header-info">
-          <div className="icon-wrapper">
+      <div className="cms-header">
+        <div className="cms-info">
+          <div className="cms-icon-box">
             <FiLayers size={22} />
           </div>
-          <div className="text-wrapper">
+          <div className="cms-title-box">
             <h3>Quản Lý Thực Đơn</h3>
             {!isCollapsed && (
               <>
                 {menusLoading ? (
-                  <p>Đang tải danh sách menu...</p>
+                  <p>Đang tải danh sách...</p>
                 ) : (
                   <p>
-                    Có <strong>{totalMenus}</strong> menu theo khung giờ
+                    Đã tạo <strong>{totalMenus}</strong> menu theo khung giờ
                   </p>
                 )}
               </>
@@ -102,25 +100,33 @@ const CompactMenuStrip = ({
           </div>
         </div>
 
-        <div className="header-actions">
+        <div className="cms-actions">
           {!isCollapsed && (
             <>
-              <div className="nav-group">
-                <button className="nav-btn" onClick={() => scroll("left")}>
+              <div className="cms-nav-group">
+                <button
+                  className="cms-nav-btn"
+                  onClick={() => scroll("left")}
+                  disabled={menus.length === 0}
+                >
                   <FiChevronLeft />
                 </button>
-                <button className="nav-btn" onClick={() => scroll("right")}>
+                <button
+                  className="cms-nav-btn"
+                  onClick={() => scroll("right")}
+                  disabled={menus.length === 0}
+                >
                   <FiChevronRight />
                 </button>
               </div>
-              <button className="btn-primary-add" onClick={() => onAddMenu?.()}>
-                <FiPlus /> <span className="text">Tạo Menu Mới</span>
+              <button className="cms-btn-add" onClick={() => onAddMenu?.()}>
+                <FiPlus /> <span className="text">Tạo Menu</span>
               </button>
             </>
           )}
 
           <button
-            className="toggle-collapse-btn"
+            className="cms-btn-toggle"
             onClick={() => onToggleCollapse?.()}
             title={isCollapsed ? "Mở rộng" : "Thu gọn"}
           >
@@ -134,59 +140,50 @@ const CompactMenuStrip = ({
       </div>
 
       {!isCollapsed && menusError && (
-        <div className="strip-error">
-          Lỗi khi tải menu: {menusError.message}
-        </div>
+        <div className="cms-error-msg">Lỗi: {menusError.message}</div>
       )}
 
-      {/* Cards */}
+      {/* Cards Viewport */}
       {!isCollapsed && (
-        <div className="cards-viewport">
-          <div className="cards-track" ref={scrollRef}>
+        <div className="cms-viewport">
+          <div className="cms-track" ref={scrollRef}>
             {!menusLoading &&
               menus.map((menu) => {
                 const slotStyle =
                   SLOT_CONFIG[menu.timeSlot] || SLOT_CONFIG.breakfast;
-                const isActiveCard =
-                  activeId === menu.id ||
-                  (!activeId && menus[0]?.id === menu.id);
-
+                const isActive = currentActiveId === menu.id;
                 const itemCount =
                   typeof menu.itemCount === "number" ? menu.itemCount : 0;
                 const rating =
                   typeof menu.rating === "number" ? menu.rating : 4.5;
-                const revenue = menu.revenue || "-";
-
-                // --- Lấy tên danh mục từ object categoryMenu ---
+                const revenue = menu.revenue || "0đ";
                 const categoryName = menu.categoryMenu?.name;
 
                 return (
                   <div
                     key={menu.id}
-                    className={`menu-card ${
-                      isActiveCard ? "is-selected" : ""
-                    } ${menu.isActive === false ? "is-disabled" : ""}`}
-                    onClick={() => setActiveId(menu.id)}
+                    className={`cms-card ${isActive ? "cms-active" : ""} ${
+                      menu.isActive === false ? "cms-disabled" : ""
+                    }`}
+                    onClick={() => handleCardClick(menu)}
                   >
-                    <div className="card-top">
-                      <div className="img-holder">
+                    {isActive && <div className="cms-indicator"></div>}
+
+                    <div className="cms-card-top">
+                      <div className="cms-img-box">
                         {menu.coverImage ? (
                           <img src={menu.coverImage} alt={menu.name} />
                         ) : (
-                          <div className="img-placeholder">📋</div>
+                          <div className="cms-placeholder">🍽️</div>
                         )}
-
-                        {/* --- HIỂN THỊ CATEGORY BADGE (GÓC PHẢI) --- */}
                         {categoryName && (
-                          <span className="category-overlay-badge">
-                            {categoryName}
-                          </span>
+                          <span className="cms-cate-badge">{categoryName}</span>
                         )}
                       </div>
 
-                      <div className="badges">
+                      <div className="cms-badges">
                         <span
-                          className="slot-badge"
+                          className="cms-slot-tag"
                           style={{
                             color: slotStyle.color,
                             background: slotStyle.bg,
@@ -197,43 +194,43 @@ const CompactMenuStrip = ({
                           {slotStyle.label}
                         </span>
                         {menu.isActive === false && (
-                          <span className="status-badge off">Đang ẩn</span>
+                          <span className="cms-status-off">Đang ẩn</span>
                         )}
                       </div>
 
                       <button
-                        className="more-opt"
+                        className="cms-more-btn"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <FiMoreVertical />
                       </button>
                     </div>
 
-                    <div className="card-body">
+                    <div className="cms-card-body">
                       <h3 title={menu.name}>{menu.name}</h3>
-                      {menu.description && (
-                        <p className="desc">{menu.description}</p>
-                      )}
+                      <p className="cms-desc">
+                        {menu.description || "Chưa có mô tả..."}
+                      </p>
 
-                      <div className="stats-row">
-                        <div className="stat" title="Số lượng món (mock)">
+                      <div className="cms-stats">
+                        <div className="cms-stat-item" title="Số món">
                           <FiLayers className="ic" />{" "}
                           <strong>{itemCount}</strong>
                         </div>
-                        <div className="stat" title="Đánh giá (mock)">
+                        <div className="cms-stat-item" title="Đánh giá">
                           <FiStar className="ic star" />{" "}
                           <strong>{rating}</strong>
                         </div>
-                        <div className="stat" title="Doanh thu (mock)">
+                        <div className="cms-stat-item" title="Doanh thu">
                           <FiTrendingUp className="ic grow" />{" "}
                           <strong>{revenue}</strong>
                         </div>
                       </div>
                     </div>
 
-                    <div className="action-toolbar">
+                    <div className="cms-toolbar">
                       <button
-                        className="tool-btn edit"
+                        className="cms-tool-btn is-edit"
                         title="Chỉnh sửa"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -242,16 +239,15 @@ const CompactMenuStrip = ({
                       >
                         <FiEdit3 /> <span>Sửa</span>
                       </button>
-                      <div className="divider"></div>
+                      <div className="cms-div"></div>
                       <button
-                        className="tool-btn icon-only"
-                        title="Nhân bản"
+                        className="cms-tool-btn"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <FiCopy />
                       </button>
                       <button
-                        className="tool-btn icon-only delete"
+                        className="cms-tool-btn is-delete"
                         title="Xóa"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -261,19 +257,14 @@ const CompactMenuStrip = ({
                         <FiTrash2 />
                       </button>
                     </div>
-
-                    {isActiveCard && <div className="active-indicator"></div>}
                   </div>
                 );
               })}
 
             {!menusLoading && (
-              <div
-                className="menu-card ghost-card"
-                onClick={() => onAddMenu?.()}
-              >
-                <div className="ghost-content">
-                  <div className="circle-plus">
+              <div className="cms-card cms-ghost" onClick={() => onAddMenu?.()}>
+                <div className="cms-ghost-inner">
+                  <div className="cms-ghost-circle">
                     <FiPlus size={24} />
                   </div>
                   <h4>Thêm Menu</h4>
@@ -281,7 +272,7 @@ const CompactMenuStrip = ({
               </div>
             )}
 
-            <div className="spacer-right"></div>
+            <div className="cms-spacer"></div>
           </div>
         </div>
       )}

@@ -1,323 +1,313 @@
-// src/pages/Restaurant/MenuManagement/MenuManagement.scss
+// --- VARIABLES (Soft Slate Theme) ---
+$mm-slate-50: #f8fafc;
+$mm-slate-100: #f1f5f9;
+$mm-slate-200: #e2e8f0;
+$mm-slate-300: #cbd5e1;
+$mm-slate-400: #94a3b8;
+$mm-slate-500: #64748b;
+$mm-slate-600: #475569;
+$mm-slate-800: #1e293b;
 
-// --- Variables Palette (Tailwind-inspired) ---
-$primary: #3b82f6; // Blue 500
-$primary-hover: #2563eb; // Blue 600
-$bg-body: #f8fafc; // Slate 50
-$bg-white: #ffffff;
-$border-color: #e2e8f0; // Slate 200
-$text-main: #0f172a; // Slate 900
-$text-sec: #64748b; // Slate 500
-$danger: #ef4444;
-$radius: 0.75rem;
-$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+$mm-indigo-50: #eef2ff;
+$mm-indigo-100: #e0e7ff;
+$mm-indigo-500: #6366f1;
+$mm-indigo-600: #4f46e5;
+
+$mm-white: #ffffff;
+$mm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$mm-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
   0 2px 4px -1px rgba(0, 0, 0, 0.06);
 
-// --- Base Layout ---
-.saas-container {
-  width: 100%;
+// --- MAIN LAYOUT ---
+.mm-page-container {
+  background-color: $mm-slate-50;
   min-height: 100vh;
-  background-color: $bg-body;
-  color: $text-main;
-  font-family: "Inter", system-ui, -apple-system, sans-serif;
-  padding: 1.5rem 2rem 3rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-
-  @media (max-width: 768px) {
-    padding: 1rem;
-    gap: 1rem;
-  }
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif; // Font hiện đại
 }
 
-// --- 1. Header Section ---
-.saas-header {
+// 1. Sticky Header
+.mm-header {
+  background: $mm-white;
+  padding: 16px 32px;
+  border-bottom: 1px solid $mm-slate-200;
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
-  gap: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid transparent; // Placeholder for potential sticky header
-
-  @media (max-width: 900px) {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+  align-items: center;
+  box-shadow: $mm-shadow-sm;
+  transition: all 0.3s ease;
 
   &__left {
-    .saas-header__title {
-      font-size: 1.75rem;
+    .mm-title {
+      font-size: 24px;
       font-weight: 700;
-      color: $text-main;
-      margin: 0;
-      letter-spacing: -0.02em;
+      color: $mm-slate-800;
+      margin: 0 0 4px 0;
+      letter-spacing: -0.5px;
     }
-    .saas-header__subtitle {
-      margin: 0.25rem 0 0;
-      color: $text-sec;
-      font-size: 0.9rem;
+    .mm-subtitle {
+      font-size: 14px;
+      color: $mm-slate-500;
+      margin: 0;
     }
   }
 
   &__right {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
+    gap: 16px;
 
-    @media (max-width: 600px) {
+    // Custom Global Selectors
+    .mm-global-filter {
+      display: flex;
+      gap: 12px;
+
+      .mm-select-wrapper {
+        position: relative;
+
+        .mm-icon {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: $mm-slate-400;
+          font-size: 16px;
+          pointer-events: none;
+        }
+
+        .mm-select {
+          appearance: none;
+          background: $mm-slate-50;
+          border: 1px solid $mm-slate-200;
+          padding: 10px 16px 10px 40px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          color: $mm-slate-600;
+          min-width: 180px;
+          cursor: pointer;
+          transition: all 0.2s;
+
+          &:hover {
+            border-color: $mm-slate-300;
+            background: $mm-white;
+          }
+          &:focus {
+            outline: none;
+            border-color: $mm-indigo-500;
+            box-shadow: 0 0 0 3px rgba($mm-indigo-500, 0.1);
+            background: $mm-white;
+          }
+        }
+      }
+    }
+
+    // Main Actions Buttons
+    .mm-actions {
+      display: flex;
+      gap: 12px;
+      border-left: 1px solid $mm-slate-200;
+      padding-left: 16px;
+
+      .mm-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+
+        &--secondary {
+          background: white;
+          border: 1px solid $mm-slate-200;
+          color: $mm-slate-600;
+          &:hover {
+            background: $mm-slate-50;
+            color: $mm-slate-800;
+            border-color: $mm-slate-300;
+          }
+        }
+
+        &--primary {
+          background: $mm-indigo-600;
+          color: white;
+          box-shadow: 0 2px 4px rgba($mm-indigo-600, 0.25);
+          &:hover {
+            background: $mm-indigo-500;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba($mm-indigo-600, 0.3);
+          }
+        }
+      }
+    }
+  }
+
+  @media (max-width: 992px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    position: relative; // Bỏ sticky trên mobile cho đỡ vướng
+
+    &__right {
       width: 100%;
       flex-direction: column;
       align-items: stretch;
+
+      .mm-global-filter {
+        flex-direction: column;
+        width: 100%;
+        .mm-select {
+          width: 100%;
+        }
+      }
+
+      .mm-actions {
+        border-left: none;
+        padding-left: 0;
+        padding-top: 12px;
+        border-top: 1px dashed $mm-slate-200;
+      }
     }
   }
 }
 
-// --- Filters & Selects ---
-.saas-filters {
-  display: flex;
-  gap: 0.75rem;
-
-  @media (max-width: 600px) {
-    flex-direction: column;
-  }
+// 2. Stats Section
+.mm-stats-section {
+  padding: 24px 32px 0;
+  margin-bottom: 8px;
+  animation: slideDown 0.4s ease-out;
 }
 
-.saas-select-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-
-  .saas-select-icon {
-    position: absolute;
-    left: 12px;
-    color: $text-sec;
-    z-index: 1;
-    pointer-events: none;
-  }
-
-  .saas-select {
-    appearance: none;
-    background-color: $bg-white;
-    border: 1px solid $border-color;
-    border-radius: $radius;
-    padding: 0.6rem 2rem 0.6rem 2.2rem; // Left padding for icon
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: $text-main;
-    min-width: 180px;
-    cursor: pointer;
-    box-shadow: $shadow-sm;
-    transition: all 0.2s;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.5rem center;
-    background-repeat: no-repeat;
-    background-size: 1.5em 1.5em;
-
-    &:hover {
-      border-color: darken($border-color, 10%);
-    }
-
-    &:focus {
-      outline: none;
-      border-color: $primary;
-      box-shadow: 0 0 0 3px rgba($primary, 0.1);
-    }
-  }
-}
-
-// --- Buttons ---
-.saas-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.saas-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1.25rem;
-  border-radius: $radius;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-
-  &--primary {
-    background-color: $primary;
-    color: white;
-    border: 1px solid transparent;
-    box-shadow: 0 2px 4px rgba($primary, 0.25);
-
-    &:hover {
-      background-color: $primary-hover;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 6px rgba($primary, 0.3);
-    }
-  }
-
-  &--secondary {
-    background-color: $bg-white;
-    color: $text-main;
-    border: 1px solid $border-color;
-    box-shadow: $shadow-sm;
-
-    &:hover {
-      background-color: #f1f5f9;
-      border-color: darken($border-color, 10%);
-    }
-  }
-
-  &--outline {
-    background: transparent;
-    border: 1px dashed $border-color;
-    color: $text-sec;
-    width: 100%;
-
-    &:hover {
-      border-color: $primary;
-      color: $primary;
-      background: #eff6ff;
-    }
-  }
-}
-
-// --- 2. Sections ---
-.saas-section {
-  width: 100%;
-  // CompactMenuStrip will handle its own internal styling
-}
-
-.saas-body {
+// 3. Main Content Body
+.mm-body {
+  flex: 1;
+  padding: 16px 32px 48px;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-
-  &__toolbar {
-    // Toolbar component container
-  }
+  gap: 24px;
 
   &__content {
-    min-height: 400px;
+    min-height: 300px;
   }
 }
 
-// --- 3. Grid Layout & Content ---
-.menu-grid-layout {
+// 4. Grid System
+.mm-grid {
+  display: grid;
+  gap: 24px;
+  width: 100%;
+
+  // Responsive Grid Logic
   &--grid {
-    display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.5rem;
   }
 
   &--list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    grid-template-columns: 1fr;
   }
 }
 
-.menu-item-wrapper {
-  // Optional animation on enter
-  animation: fadeIn 0.3s ease-out;
-}
-
-// --- 4. States (Empty, Loading, Error) ---
-.saas-empty-state {
+// 5. States (Loading, Error, Empty)
+.mm-state-box {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4rem 2rem;
-  background: $bg-white;
-  border-radius: 1rem;
-  border: 1px dashed $border-color;
+  padding: 60px;
+  background: $mm-white;
+  border-radius: 12px;
+  border: 1px dashed $mm-slate-300;
   text-align: center;
+  color: $mm-slate-500;
+  margin-top: 24px;
+
+  &.error {
+    color: #ef4444;
+    background: #fef2f2;
+    border-color: #fecaca;
+  }
+
+  .spinner-dots {
+    /* CSS Spinner styles here if needed, or stick to simple text */
+    width: 40px;
+    height: 40px;
+    border: 3px solid $mm-slate-200;
+    border-top-color: $mm-indigo-600;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+}
+
+.mm-empty-state {
+  @extend .mm-state-box;
+  background: transparent;
+  border: none;
 
   &__img {
-    font-size: 3.5rem;
-    margin-bottom: 1rem;
+    font-size: 64px;
+    margin-bottom: 16px;
     opacity: 0.8;
   }
 
   h3 {
-    margin: 0.5rem 0;
-    font-size: 1.25rem;
-    color: $text-main;
+    color: $mm-slate-800;
+    margin-bottom: 8px;
   }
-
   p {
-    color: $text-sec;
-    margin-bottom: 1.5rem;
     max-width: 400px;
+    margin: 0 auto 24px;
+    line-height: 1.5;
   }
 }
 
-.saas-state-box {
-  padding: 3rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  color: $text-sec;
-  background: $bg-white;
-  border-radius: 1rem;
-  border: 1px solid $border-color;
-
-  &.error {
-    color: $danger;
-  }
-}
-
-.saas-loading {
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: $primary;
-  font-weight: 500;
-}
-
-// --- 5. Pagination ---
-.saas-pagination {
-  margin-top: 2rem;
+.mm-pagination {
+  margin-top: 32px;
   display: flex;
   justify-content: center;
-}
 
-// --- Utilities ---
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+  .mm-btn-load-more {
+    padding: 10px 24px;
+    border: 1px solid $mm-slate-300;
+    background: white;
+    border-radius: 20px;
+    font-weight: 600;
+    color: $mm-slate-600;
+    cursor: pointer;
+    transition: 0.2s;
+
+    &:hover:not(:disabled) {
+      background: $mm-slate-50;
+      color: $mm-slate-800;
+      border-color: $mm-slate-400;
+    }
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid rgba($primary, 0.3);
-  border-radius: 50%;
-  border-top-color: $primary;
-  animation: spin 1s linear infinite;
-}
-
-.spinner-dots {
-  /* Simple dot loader styling if needed, or use .spinner */
-  @extend .spinner;
 }
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

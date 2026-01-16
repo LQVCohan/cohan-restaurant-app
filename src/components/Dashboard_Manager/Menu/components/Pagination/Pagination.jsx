@@ -1,4 +1,10 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import {
+  FiChevronLeft,
+  FiChevronRight,
+  FiMoreHorizontal,
+  FiCornerDownLeft, // Icon Enter
+} from "react-icons/fi";
 import "./Pagination.scss";
 
 const Pagination = ({
@@ -11,8 +17,16 @@ const Pagination = ({
   showItemsPerPage = true,
   showInfo = true,
 }) => {
+  // State cục bộ cho input "Go to" để tránh giật khi gõ
+  const [jumpPage, setJumpPage] = useState(currentPage);
+
+  // Đồng bộ state khi props thay đổi
+  useEffect(() => {
+    setJumpPage(currentPage);
+  }, [currentPage]);
+
   const getVisiblePages = () => {
-    const delta = 2;
+    const delta = 1; // Giảm delta xuống 1 để gọn hơn
     const range = [];
     const rangeWithDots = [];
 
@@ -35,32 +49,43 @@ const Pagination = ({
     if (currentPage + delta < totalPages - 1) {
       rangeWithDots.push("...", totalPages);
     } else {
-      rangeWithDots.push(totalPages);
+      if (totalPages > 1) {
+        rangeWithDots.push(totalPages);
+      }
     }
 
     return rangeWithDots;
   };
 
   const handlePageClick = (page) => {
-    if (
-      page !== "..." &&
-      page !== currentPage &&
-      page >= 1 &&
-      page <= totalPages
-    ) {
+    if (page !== "..." && page !== currentPage) {
       onPageChange(page);
     }
   };
 
   const handlePrevious = () => {
-    if (currentPage > 1) {
-      onPageChange(currentPage - 1);
-    }
+    if (currentPage > 1) onPageChange(currentPage - 1);
   };
 
   const handleNext = () => {
-    if (currentPage < totalPages) {
-      onPageChange(currentPage + 1);
+    if (currentPage < totalPages) onPageChange(currentPage + 1);
+  };
+
+  // Xử lý Jump Input
+  const handleJumpSubmit = (e) => {
+    // Submit khi nhấn Enter hoặc Blur
+    if (e.key === "Enter" || e.type === "blur") {
+      let page = parseInt(jumpPage);
+      if (isNaN(page)) page = currentPage;
+
+      // Validate range
+      if (page < 1) page = 1;
+      if (page > totalPages) page = totalPages;
+
+      setJumpPage(page); // Update UI lại số chuẩn
+      if (page !== currentPage) {
+        onPageChange(page);
+      }
     }
   };
 
@@ -70,104 +95,94 @@ const Pagination = ({
     return { start, end };
   };
 
-  if (totalPages <= 1) {
-    return null;
-  }
+  // Không render nếu không có trang nào (hoặc tùy logic dự án)
+  if (totalPages <= 0) return null;
 
   const { start, end } = getItemRange();
   const visiblePages = getVisiblePages();
 
   return (
-    <div className="pagination">
-      {/* Items per page selector */}
-      {showItemsPerPage && (
-        <div className="pagination__per-page">
-          <label className="per-page-label">
-            Hiển thị:
+    <div className="pgn-container">
+      {/* LEFT: Info & Page Size */}
+      <div className="pgn-left">
+        {showItemsPerPage && (
+          <div className="pgn-select-wrapper">
             <select
-              className="per-page-select"
               value={itemsPerPage}
               onChange={(e) => onItemsPerPageChange(parseInt(e.target.value))}
             >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
+              <option value={5}>5 / trang</option>
+              <option value={10}>10 / trang</option>
+              <option value={20}>20 / trang</option>
+              <option value={50}>50 / trang</option>
             </select>
-            món/trang
-          </label>
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Page info */}
-      {showInfo && (
-        <div className="pagination__info">
-          <span className="page-info">
-            Hiển thị {start}-{end} trong tổng số {totalItems} món
+        {showInfo && totalItems > 0 && (
+          <span className="pgn-info-text">
+            {start}-{end} của <strong>{totalItems}</strong>
           </span>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Page navigation */}
-      <div className="pagination__nav">
-        {/* Previous button */}
+      {/* MIDDLE: Pagination Buttons */}
+      <div className="pgn-nav">
         <button
-          className={`page-btn page-btn--prev ${
-            currentPage === 1 ? "page-btn--disabled" : ""
-          }`}
+          className="pgn-btn-arrow"
           onClick={handlePrevious}
           disabled={currentPage === 1}
+          title="Trang trước"
         >
-          ← Trước
+          <FiChevronLeft size={16} />
         </button>
 
-        {/* Page numbers */}
-        <div className="page-numbers">
-          {visiblePages.map((page, index) => (
+        {visiblePages.map((page, index) => {
+          if (page === "...") {
+            return (
+              <button key={`dots-${index}`} className="pgn-dots" disabled>
+                <FiMoreHorizontal />
+              </button>
+            );
+          }
+          return (
             <button
-              key={index}
-              className={`page-btn ${
-                page === currentPage ? "page-btn--active" : ""
-              } ${page === "..." ? "page-btn--dots" : ""}`}
+              key={page}
+              className={page === currentPage ? "is-active" : ""}
               onClick={() => handlePageClick(page)}
-              disabled={page === "..."}
             >
               {page}
             </button>
-          ))}
-        </div>
+          );
+        })}
 
-        {/* Next button */}
         <button
-          className={`page-btn page-btn--next ${
-            currentPage === totalPages ? "page-btn--disabled" : ""
-          }`}
+          className="pgn-btn-arrow"
           onClick={handleNext}
           disabled={currentPage === totalPages}
+          title="Trang sau"
         >
-          Sau →
+          <FiChevronRight size={16} />
         </button>
       </div>
 
-      {/* Quick jump */}
-      <div className="pagination__jump">
-        <span className="jump-label">Đến trang:</span>
-        <input
-          type="number"
-          className="jump-input"
-          min="1"
-          max={totalPages}
-          value={currentPage}
-          onChange={(e) => {
-            const page = parseInt(e.target.value);
-            if (page >= 1 && page <= totalPages) {
-              onPageChange(page);
-            }
-          }}
-        />
-        <span className="jump-total">/ {totalPages}</span>
-      </div>
+      {/* RIGHT: Quick Jump */}
+      {totalPages > 5 && (
+        <div className="pgn-right">
+          <div className="pgn-jump-box" title="Nhập số trang và nhấn Enter">
+            <span>Đến:</span>
+            <input
+              type="number"
+              min="1"
+              max={totalPages}
+              value={jumpPage}
+              onChange={(e) => setJumpPage(e.target.value)}
+              onKeyDown={handleJumpSubmit}
+              onBlur={handleJumpSubmit}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

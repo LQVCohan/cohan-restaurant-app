@@ -1,437 +1,322 @@
-// src/pages/Restaurant/MenuManagement/components/MenuItemModal/MenuItemModal.scss
-
-$primary: #3b82f6;
-$primary-hover: #2563eb;
+// --- VARIABLES: Soft Slate Theme (Dịu mắt, giảm stress) ---
+$slate-50: #f8fafc; // Nền cột phải (Rất nhạt)
+$slate-100: #f1f5f9; // Nền input/hover/preview
+$slate-200: #e2e8f0; // Border mềm
+$slate-500: #64748b; // Text phụ / Icon
+$slate-800: #1e293b; // Text chính
+$indigo-600: #4f46e5; // Màu chủ đạo (Primary)
+$indigo-50: #eef2ff; // Nền hover primary
+$white: #ffffff;
 $danger: #ef4444;
-$bg-body: #f8fafc;
-$border-color: #e2e8f0;
-$text-main: #0f172a;
-$text-sec: #64748b;
-$radius: 12px;
-$radius-sm: 8px;
+$radius: 8px;
 
-.menu-item-modal {
-  // Modal size override
-  // max-width: 900px;
-}
-
-.modal-body-layout {
-  display: flex;
-  height: 550px; // Fixed height for scrolling content inside
-  max-height: 80vh;
-  gap: 0;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    height: auto;
-    max-height: 90vh;
-  }
-}
-
-// --- LEFT SIDEBAR ---
-.modal-sidebar {
-  width: 240px;
-  background: $bg-body;
-  border-right: 1px solid $border-color;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  flex-shrink: 0;
-
-  @media (max-width: 768px) {
-    width: 100%;
-    flex-direction: row;
-    padding: 1rem;
-    align-items: center;
-    border-bottom: 1px solid $border-color;
-    border-right: none;
-  }
-
-  .img-preview-box {
-    width: 100%;
-    aspect-ratio: 1;
-    background: white;
-    border: 1px dashed $border-color;
-    border-radius: $radius;
-    overflow: hidden;
+.menu-item-modal-modern {
+  // --- 1. MODAL SHELL SETUP (Fix lỗi khoảng trắng thừa) ---
+  .modal-content {
+    max-height: 90vh; // Giới hạn chiều cao modal để không tràn màn hình
     display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
+    flex-direction: column;
+    overflow: hidden; // Ẩn scroll của khung ngoài
+  }
 
-    @media (max-width: 768px) {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-    }
+  .modal-body {
+    padding: 0 !important;
+    flex: 1; // Tự động chiếm hết không gian giữa Header và Footer
+    overflow: hidden; // Cấm scroll ở body, đẩy việc scroll vào từng cột
+    display: flex; // Để layout con bung ra
+    height: 100%;
+  }
 
-    img {
-      width: 100%;
+  // --- 2. SPLIT LAYOUT (Chia cột full chiều cao) ---
+  .modern-form-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr; // Cột phải rộng hơn
+    width: 100%;
+    height: 100%; // Bắt buộc full chiều cao để nền màu hiển thị đúng
+
+    // CỘT TRÁI: Thông tin chính (Nền Trắng)
+    .left-col {
+      background-color: $white;
+      padding: 24px;
+      border-right: 1px solid $slate-200;
+      overflow-y: auto; // Scroll riêng
       height: 100%;
-      object-fit: cover;
     }
 
-    .placeholder {
+    // CỘT PHẢI: Biến thể (Nền Xám dịu)
+    .right-col {
+      background-color: $slate-50; // Màu này sẽ phủ kín đáy
+      padding: 24px;
+      overflow-y: auto; // Scroll riêng
+      height: 100%;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      color: $text-sec;
-      font-size: 0.8rem;
-      gap: 0.5rem;
 
-      svg {
-        font-size: 2rem;
-        opacity: 0.5;
-      }
-      span {
-        @media (max-width: 768px) {
-          display: none;
+      // Header cột phải chứa nút thêm
+      .header-action {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+
+        .col-title {
+          margin: 0;
+          border: none;
+        }
+
+        .btn-add-variant {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: $white;
+          border: 1px solid $slate-200;
+          color: $indigo-600;
+          padding: 6px 12px;
+          border-radius: $radius;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+          transition: all 0.2s;
+          white-space: nowrap;
+
+          &:hover {
+            background: $indigo-50;
+            border-color: $indigo-600;
+          }
         }
       }
     }
   }
 
-  .nav-tabs {
+  // --- 3. TYPOGRAPHY & HEADER ALIGNMENT (Fix lỗi lệch dòng) ---
+  .col-title {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: $slate-500;
+    letter-spacing: 0.5px;
+
+    // Set cứng chiều cao để 2 bên luôn thẳng hàng nhau
+    height: 32px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+
+    // Icon trong title
+    svg {
+      color: $indigo-600;
+    }
+  }
+
+  // --- 4. FORM ELEMENTS ---
+  .form-group {
+    margin-bottom: 16px;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    flex: 1;
-
-    @media (max-width: 768px) {
-      flex-direction: row;
-      flex-wrap: wrap;
-    }
-
-    .tab-btn {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 14px;
-      border: none;
-      background: transparent;
-      color: $text-sec;
-      font-weight: 500;
-      border-radius: $radius-sm;
-      cursor: pointer;
-      text-align: left;
-      font-size: 0.9rem;
-      transition: all 0.2s;
-
-      svg {
-        font-size: 1.1rem;
-      }
-
-      &:hover {
-        background: rgba($primary, 0.05);
-        color: $primary;
-      }
-
-      &.active {
-        background: white;
-        color: $primary;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        font-weight: 600;
-      }
-    }
-  }
-}
-
-// --- RIGHT CONTENT ---
-.modal-content-form {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: white;
-  position: relative;
-  overflow: hidden;
-
-  .custom-scrollbar {
-    overflow-y: auto;
-    &::-webkit-scrollbar {
-      width: 6px;
-    }
-    &::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 4px;
-    }
-  }
-
-  .tab-content {
-    flex: 1;
-    padding: 1.5rem 2rem;
-    overflow-y: auto;
-
-    &.fade-in {
-      animation: fadeIn 0.3s ease-out;
-    }
-  }
-
-  // --- FORM ELEMENTS ---
-  .form-group-row {
-    display: flex;
-    gap: 1.5rem;
-    margin-bottom: 1.25rem;
-
-    .half {
-      flex: 1;
-    }
-    .full {
-      width: 100%;
-    }
-
-    @media (max-width: 600px) {
-      flex-direction: column;
-      gap: 1rem;
-    }
-  }
-
-  .form-group {
-    margin-bottom: 1.25rem;
+    gap: 6px;
 
     label {
-      display: block;
-      font-weight: 600;
-      color: $text-main;
-      margin-bottom: 0.5rem;
-      font-size: 0.9rem;
+      font-size: 13px;
+      font-weight: 500;
+      color: $slate-800;
       .req {
         color: $danger;
+        margin-left: 2px;
       }
-    }
-
-    input,
-    select,
-    textarea {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid $border-color;
-      border-radius: $radius-sm;
-      font-size: 0.95rem;
-      color: $text-main;
-      background: white;
-      transition: all 0.2s;
-      font-family: inherit;
-
-      &:focus {
-        outline: none;
-        border-color: $primary;
-        box-shadow: 0 0 0 3px rgba($primary, 0.1);
+      svg {
+        color: $slate-500;
+        margin-right: 4px;
+        vertical-align: middle;
       }
-    }
-
-    // Custom wrapper for inputs with icons
-    .input-icon-wrapper {
-      position: relative;
-      input {
-        padding-left: 36px;
-      }
-      .field-icon {
-        position: absolute;
-        left: 10px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: $text-sec;
-      }
-    }
-
-    .select-wrapper {
-      position: relative;
-      // Could add chevron icon here via ::after
     }
   }
 
-  // --- VARIANTS STYLES ---
-  .variants-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
+  .row-2-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
 
-    .hint-text {
-      font-size: 0.85rem;
-      color: $text-sec;
-      margin: 0;
-      max-width: 60%;
+  // Inputs/Selects/Textarea
+  .modern-input,
+  .modern-select,
+  .modern-textarea {
+    padding: 10px 12px;
+    border: 1px solid $slate-200;
+    border-radius: $radius;
+    font-size: 14px;
+    color: $slate-800;
+    background: $white;
+    transition: all 0.2s;
+    width: 100%;
+
+    &:focus {
+      outline: none;
+      border-color: $indigo-600;
+      box-shadow: 0 0 0 3px rgba($indigo-600, 0.1);
+      z-index: 2; // Nổi lên trên các element khác khi focus
+    }
+    &::placeholder {
+      color: #cbd5e1;
     }
 
-    .btn-add-variant {
+    &.small {
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+  }
+
+  .modern-textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  // --- 5. IMAGE INPUT GROUP (Fix lỗi rời rạc) ---
+  .image-input-wrapper {
+    display: flex;
+    align-items: stretch; // Kéo dãn bằng nhau
+    gap: 0; // Xóa khoảng cách
+
+    .modern-input {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+      border-right: none; // Bỏ viền phải để nối liền
+    }
+
+    .img-preview {
+      width: 48px;
+      min-height: 42px; // Chiều cao tối thiểu bằng input default
+      border: 1px solid $slate-200;
+      border-left: 1px solid $slate-200; // Trả lại viền ngăn cách nhẹ
+      border-top-right-radius: $radius;
+      border-bottom-right-radius: $radius;
+      background: $slate-100;
       display: flex;
       align-items: center;
-      gap: 6px;
-      background: #eff6ff;
-      color: $primary;
-      border: 1px dashed $primary;
-      padding: 8px 16px;
-      border-radius: $radius-sm;
-      font-weight: 600;
+      justify-content: center;
       cursor: pointer;
-      transition: all 0.2s;
+      flex-shrink: 0;
+      overflow: hidden;
 
-      &:hover {
-        background: $primary;
-        color: white;
-        border-style: solid;
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      // Icon placeholder
+      &.placeholder {
+        color: $slate-500;
+        flex-direction: column;
+        span {
+          font-size: 8px;
+          margin-top: 2px;
+          display: none;
+        } // Ẩn text cho gọn
       }
     }
   }
 
-  .variants-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .variant-card {
-    border: 1px solid $border-color;
-    border-radius: $radius-sm;
-    padding: 1rem;
-    background: #fcfcfc;
-    transition: all 0.2s;
+  // --- 6. METHOD CARDS (Card nổi trên nền xám) ---
+  .method-card {
+    background: $white;
+    border: 1px solid $slate-200;
+    border-radius: $radius;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
 
     &:hover {
-      background: white;
-      border-color: $primary;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      border-color: #cbd5e1;
+      transform: translateY(-1px);
     }
 
-    &__header {
+    .method-card-header {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 0.75rem;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed $slate-200;
 
-      .badge {
-        background: $text-sec;
-        color: white;
-        font-size: 0.7rem;
-        padding: 2px 6px;
-        border-radius: 4px;
+      .badge-index {
+        font-size: 11px;
+        font-weight: 700;
+        color: $slate-500;
+        background: $slate-100;
+        padding: 2px 8px;
+        border-radius: 12px;
       }
-
       .btn-remove {
-        background: none;
+        color: $slate-500;
+        background: transparent;
         border: none;
-        color: $text-sec;
         cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.2s;
         &:hover {
+          background: #fef2f2;
           color: $danger;
         }
       }
     }
 
-    &__body {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-
-      .v-row {
-        display: flex;
-        gap: 1rem;
-        @media (max-width: 600px) {
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-      }
-
-      .v-group {
-        flex: 1;
-        label {
-          font-size: 0.8rem;
-          color: $text-sec;
-          margin-bottom: 4px;
-          display: block;
-        }
-        input,
-        select {
-          padding: 8px;
-          font-size: 0.9rem;
-        }
-        .input-icon-wrapper input {
-          padding-left: 30px;
-        }
+    .method-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 10px;
+      .full-width {
+        grid-column: 1 / -1;
       }
     }
   }
 
-  // --- FOOTER ---
-  .form-footer {
-    padding: 1rem 2rem;
-    border-top: 1px solid $border-color;
-    background: white;
+  // --- 7. TOAST NOTIFICATION ---
+  .toast-wrapper {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100;
+    pointer-events: none;
 
-    .toasts-area {
-      flex: 1;
+    .toast-item {
+      pointer-events: auto;
+      padding: 10px 16px;
+      border-radius: $radius;
+      background: $slate-800;
+      color: $white;
+      font-size: 13px;
       display: flex;
-      flex-direction: column;
-      gap: 5px;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      animation: slideIn 0.3s ease-out;
 
-      .toast-msg {
-        font-size: 0.85rem;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-
-        &.success {
-          color: #10b981;
-        }
-        &.error {
-          color: $danger;
-        }
+      &.success svg {
+        color: #4ade80;
       }
-    }
-
-    .buttons {
-      display: flex;
-      gap: 1rem;
-    }
-
-    .btn-cancel {
-      background: white;
-      border: 1px solid $border-color;
-      padding: 10px 20px;
-      border-radius: $radius-sm;
-      cursor: pointer;
-      color: $text-sec;
-      font-weight: 500;
-      &:hover {
-        background: $bg-body;
-        color: $text-main;
-      }
-    }
-
-    .btn-save {
-      background: $primary;
-      border: none;
-      padding: 10px 24px;
-      border-radius: $radius-sm;
-      cursor: pointer;
-      color: white;
-      font-weight: 600;
-      box-shadow: 0 4px 6px rgba($primary, 0.2);
-      transition: all 0.2s;
-
-      &:hover {
-        background: $primary-hover;
-        transform: translateY(-1px);
-      }
-      &:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
+      &.error svg {
+        color: #f87171;
       }
     }
   }
-}
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }

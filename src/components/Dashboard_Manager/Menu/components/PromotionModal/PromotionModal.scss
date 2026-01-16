@@ -1,190 +1,522 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+// --- VARIABLES: Soft Slate Theme ---
+$pm-slate-50: #f8fafc;
+$pm-slate-100: #f1f5f9;
+$pm-slate-200: #e2e8f0;
+$pm-slate-300: #cbd5e1;
+$pm-slate-400: #94a3b8;
+$pm-slate-500: #64748b;
+$pm-slate-600: #475569;
+$pm-slate-700: #334155;
+$pm-slate-800: #1e293b;
 
+$pm-indigo-50: #eef2ff;
+$pm-indigo-100: #e0e7ff;
+$pm-indigo-500: #6366f1;
+$pm-indigo-600: #4f46e5;
+$pm-indigo-700: #4338ca;
+
+$pm-white: #ffffff;
+$pm-radius: 12px;
+$pm-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+  0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+// Reset CSS cho Modal Content để tránh xung đột với style chung
 .promotion-modal {
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.promotion-form {
-  .form-section {
-    margin-bottom: $spacing-xl;
-
-    &:last-of-type {
-      margin-bottom: $spacing-lg;
-    }
-  }
-
-  .section-title {
-    color: $text-primary;
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-    padding-bottom: $spacing-sm;
-    border-bottom: 2px solid $border-color;
-  }
-
-  .form-grid {
-    @include form-grid;
-    margin-bottom: 1rem;
-  }
-
-  .form-group {
-    margin-bottom: 1rem;
-  }
-
-  .form-label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-bottom: $spacing-sm;
-    color: #374151;
-  }
-
-  .form-input,
-  .form-select,
-  .form-textarea {
-    @include form-input;
-
-    &--error {
-      border-color: $error-600;
-      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-    }
-  }
-
-  .form-textarea {
-    resize: vertical;
-    min-height: 80px;
-  }
-
-  .form-error {
-    display: block;
-    color: $error-600;
-    font-size: 0.75rem;
-    margin-top: $spacing-xs;
+  .modal-content {
+    background: $pm-white;
+    padding: 0 !important; // Override padding mặc định
+    overflow: hidden;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: $pm-radius;
+    width: 1000px; // Tăng độ rộng mặc định để layout 2 cột thoải mái
+    max-width: 95vw;
   }
 }
 
-.checkbox-label {
+.pm-container {
   display: flex;
-  align-items: center;
-  gap: $spacing-sm;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 
-  .checkbox-input {
-    width: 18px;
-    height: 18px;
-    accent-color: $primary;
-  }
-
-  .checkbox-text {
-    color: #374151;
-  }
-}
-
-.promotion-preview {
-  padding: 1rem;
-  background: #f8fafc;
-  border-radius: $border-radius-sm;
-  border: 2px solid $border-color;
-}
-
-.preview-card {
-  background: white;
-  padding: $spacing-lg;
-  border-radius: $border-radius-sm;
-  box-shadow: $shadow-sm;
-
-  .preview-header {
+  // --- 1. HEADER ---
+  .pm-header {
+    padding: 16px 24px;
+    background: $pm-white;
+    border-bottom: 1px solid $pm-slate-200;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
-  }
+    flex-shrink: 0;
 
-  .preview-title {
-    color: $text-primary;
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin: 0;
-  }
+    h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: $pm-slate-800;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
 
-  .preview-status {
-    padding: 0.25rem $spacing-sm;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-
-    &--active {
-      background: $success-100;
-      color: $success-800;
+      svg {
+        color: $pm-indigo-600;
+      }
     }
 
-    &--inactive {
-      background: $error-50;
-      color: $error-800;
+    .close-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: $pm-slate-400;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border-radius: 50%;
+      transition: 0.2s;
+
+      &:hover {
+        background: $pm-slate-100;
+        color: $pm-slate-600;
+      }
     }
   }
 
-  .preview-description {
-    color: $text-gray;
-    margin-bottom: 1rem;
-    font-style: italic;
-  }
-
-  .preview-details {
+  // --- 2. BODY (Split Layout) ---
+  .pm-body {
     display: flex;
-    flex-direction: column;
-    gap: $spacing-xs;
-  }
+    flex: 1;
+    overflow: hidden; // Quan trọng để scroll hoạt động độc lập
 
-  .preview-detail {
-    font-size: 0.875rem;
-    color: #374151;
+    // LEFT: SCROLLABLE FORM
+    .pm-form-scroll {
+      flex: 1; // Chiếm phần còn lại
+      padding: 24px;
+      overflow-y: auto;
+      background: $pm-white;
 
-    strong {
-      color: $text-primary;
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+      &::-webkit-scrollbar-thumb {
+        background: $pm-slate-300;
+        border-radius: 4px;
+      }
+    }
+
+    // RIGHT: STICKY PREVIEW (FIXED WIDTH)
+    .pm-preview-sidebar {
+      flex: 0 0 380px; // CỐ ĐỊNH CHIỀU RỘNG, KHÔNG CO GIÃN
+      width: 380px;
+      background: $pm-indigo-50; // Màu nền sidebar
+      border-left: 1px solid $pm-indigo-100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+      overflow-y: auto;
+
+      .preview-label {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        color: $pm-indigo-600;
+        margin-bottom: 24px;
+        text-align: center;
+      }
     }
   }
-}
 
-.form-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  padding-top: $spacing-lg;
-  border-top: 2px solid $border-color;
+  // --- 3. FORM ELEMENTS ---
+  .pm-section {
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px dashed $pm-slate-200;
 
-  @media (max-width: 768px) {
-    flex-direction: column;
+    &:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .pm-section-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: $pm-slate-800;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      svg {
+        color: $pm-slate-500;
+      }
+    }
+  }
+
+  .pm-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .pm-group {
+    margin-bottom: 16px;
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: $pm-slate-600;
+      margin-bottom: 6px;
+
+      .req {
+        color: #ef4444;
+        margin-left: 2px;
+      }
+    }
+
+    .pm-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .pm-icon {
+        position: absolute;
+        left: 12px;
+        color: $pm-slate-400;
+        font-size: 16px;
+        pointer-events: none;
+      }
+
+      .pm-input,
+      .pm-select,
+      .pm-textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid $pm-slate-200;
+        border-radius: 8px;
+        font-size: 14px;
+        color: $pm-slate-800;
+        transition: all 0.2s;
+        outline: none;
+        background: $pm-slate-50;
+
+        // Nếu có icon thì padding trái phải lớn hơn
+        &.has-icon {
+          padding-left: 36px;
+        }
+
+        &:focus {
+          border-color: $pm-indigo-600;
+          background: $pm-white;
+          box-shadow: 0 0 0 3px rgba($pm-indigo-600, 0.1);
+        }
+
+        &::placeholder {
+          color: $pm-slate-400;
+        }
+
+        &.error {
+          border-color: #ef4444;
+          background: #fef2f2;
+        }
+      }
+
+      .pm-suffix {
+        position: absolute;
+        right: 12px;
+        color: $pm-slate-500;
+        font-size: 13px;
+        font-weight: 500;
+        pointer-events: none;
+        background: transparent;
+      }
+    }
+
+    .pm-textarea {
+      min-height: 80px;
+      resize: vertical;
+      font-family: inherit;
+    }
+
+    .pm-error-msg {
+      font-size: 12px;
+      color: #ef4444;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+
+  // Toggle Switch
+  .pm-toggle {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    gap: 12px;
+    background: $pm-slate-50;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid $pm-slate-200;
+
+    input {
+      display: none;
+    }
+
+    .slider {
+      width: 44px;
+      height: 24px;
+      background: $pm-slate-300;
+      border-radius: 20px;
+      position: relative;
+      transition: 0.3s;
+      flex-shrink: 0;
+
+      &::before {
+        content: "";
+        position: absolute;
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background: white;
+        border-radius: 50%;
+        transition: 0.3s;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+      }
+    }
+
+    input:checked + .slider {
+      background: $pm-indigo-600;
+    }
+    input:checked + .slider::before {
+      transform: translateX(20px);
+    }
+
+    .label-text {
+      font-size: 14px;
+      font-weight: 600;
+      color: $pm-slate-700;
+    }
+  }
+
+  // --- 4. TICKET PREVIEW DESIGN (FIXED) ---
+  .ticket-card {
+    background: white;
+    width: 320px; // Kích thước cố định giống thật
+    border-radius: 16px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+      0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden; // Để border radius hoạt động tốt
+
+    // Header gradient
+    .ticket-header {
+      background: linear-gradient(135deg, $pm-indigo-600, $pm-indigo-700);
+      height: 140px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      text-align: center;
+      padding: 20px;
+      position: relative;
+
+      .ticket-type {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 4px 10px;
+        border-radius: 20px;
+        margin-bottom: 8px;
+        letter-spacing: 1px;
+      }
+
+      .ticket-value {
+        font-size: 36px;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 4px;
+
+        span {
+          font-size: 18px;
+          font-weight: 500;
+          margin-left: 2px;
+        }
+        .buy-get-text {
+          font-size: 20px;
+          line-height: 1.3;
+        }
+      }
+
+      .ticket-sub {
+        font-size: 12px;
+        opacity: 0.9;
+        font-weight: 400;
+      }
+    }
+
+    // Body content
+    .ticket-body {
+      padding: 32px 24px 24px; // Top padding cao để tránh vết cắt
+      background: white;
+      position: relative;
+
+      // Vết cắt hình bán nguyệt (Pseudoelements)
+      &::before,
+      &::after {
+        content: "";
+        position: absolute;
+        top: -12px; // Nằm chính giữa ranh giới Header và Body
+        width: 24px;
+        height: 24px;
+        background: $pm-indigo-50; // MÀU NỀN CỦA SIDEBAR (Để tạo cảm giác trong suốt)
+        border-radius: 50%;
+        z-index: 10;
+      }
+      &::before {
+        left: -12px;
+      }
+      &::after {
+        right: -12px;
+      }
+
+      // Đường gạch đứt
+      &::first-line {
+        // Hacky way, dùng border top của div con thì tốt hơn
+      }
+
+      .dashed-line {
+        position: absolute;
+        top: 0;
+        left: 20px;
+        right: 20px;
+        border-top: 2px dashed $pm-slate-200;
+      }
+
+      .ticket-name {
+        font-size: 16px;
+        font-weight: 700;
+        color: $pm-slate-800;
+        text-align: center;
+        margin-bottom: 8px;
+        line-height: 1.4;
+      }
+
+      .ticket-desc {
+        font-size: 13px;
+        color: $pm-slate-500;
+        text-align: center;
+        line-height: 1.5;
+        margin-bottom: 20px;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid $pm-slate-100;
+        font-size: 12px;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .lbl {
+          color: $pm-slate-400;
+          font-weight: 500;
+        }
+        .val {
+          color: $pm-slate-700;
+          font-weight: 600;
+          text-align: right;
+        }
+      }
+    }
+
+    .ticket-footer {
+      background: $pm-slate-50;
+      padding: 12px;
+      text-align: center;
+      border-top: 1px solid $pm-slate-100;
+
+      .status-badge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 4px 12px;
+        border-radius: 12px;
+
+        &.active {
+          background: #dcfce7;
+          color: #15803d;
+        }
+        &.inactive {
+          background: $pm-slate-200;
+          color: $pm-slate-500;
+        }
+      }
+    }
+  }
+
+  // --- 5. FOOTER ACTIONS ---
+  .pm-footer-actions {
+    padding: 16px 24px;
+    background: $pm-white;
+    border-top: 1px solid $pm-slate-200;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-shrink: 0;
 
     .btn {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-}
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
 
-.btn {
-  @include button-base;
+      &--secondary {
+        background: $pm-white;
+        border: 1px solid $pm-slate-300;
+        color: $pm-slate-600;
+        &:hover {
+          background: $pm-slate-50;
+          color: $pm-slate-800;
+          border-color: $pm-slate-400;
+        }
+      }
 
-  &--primary {
-    background: $primary;
-    color: white;
-
-    &:hover {
-      background: $primary-hover;
-    }
-  }
-
-  &--secondary {
-    background: $text-gray;
-    color: white;
-
-    &:hover {
-      background: #4b5563;
+      &--primary {
+        background: $pm-indigo-600;
+        color: white;
+        &:hover {
+          background: $pm-indigo-500;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 6px -1px rgba($pm-indigo-600, 0.3);
+        }
+      }
     }
   }
 }

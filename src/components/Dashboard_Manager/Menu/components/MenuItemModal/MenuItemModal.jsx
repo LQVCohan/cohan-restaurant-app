@@ -1,5 +1,16 @@
-// src/pages/Restaurant/MenuManagement/components/MenuItemModal/MenuItemModal.jsx
 import React, { useState, useEffect, useMemo } from "react";
+import {
+  Save,
+  Plus,
+  Trash2,
+  Image as ImageIcon,
+  ChefHat,
+  DollarSign,
+  Clock,
+  Info,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 import Modal from "../../../../common/Modal";
 import "./MenuItemModal.scss";
 
@@ -16,35 +27,27 @@ const MenuItemModal = ({
   onSave,
   onClose,
 }) => {
+  // --- STATE ---
   const [formData, setFormData] = useState({
     name: "",
     categoryId: "",
     status: "available",
     thumbImage: "",
     description: "",
-    preparationMethods: [
-      {
-        key: "",
-        name: "",
-        price: "",
-        cookTime: "",
-        unit: "portion",
-        mode: "PORTION",
-        yieldQty: 1,
-        yieldUnit: "portion",
-      },
-    ],
+    preparationMethods: [],
   });
 
+  const [imgError, setImgError] = useState(false);
   const [toasts, setToasts] = useState([]);
 
-  const pushToast = (text, type = "success") =>
-    setToasts((t) => [
-      ...t,
-      { id: crypto?.randomUUID?.() || String(Math.random()), text, type },
-    ]);
+  // --- HELPER: Toast ---
+  const pushToast = (text, type = "success") => {
+    const id = Date.now();
+    setToasts((t) => [...t, { id, text, type }]);
+    setTimeout(() => setToasts((t) => t.filter((i) => i.id !== id)), 3000);
+  };
 
-  // Lấy item hiện tại từ list menuItems mà parent pass xuống
+  // --- DATA LOADING & HOOKS ---
   const currentItem = useMemo(
     () =>
       Array.isArray(menuItems) && editId
@@ -53,7 +56,6 @@ const MenuItemModal = ({
     [menuItems, editId]
   );
 
-  // Hook menu management (chỉ dùng mutation)
   const { updateMenuItem } = useMenuManagement({
     restaurantId,
     defaultTimeSlot: timeSlot,
@@ -61,125 +63,93 @@ const MenuItemModal = ({
     useConnection: false,
   });
 
-  // Hook recipes (dùng để upsert servingVariants)
   const { updateRecipe, loading: recipeLoading } = useRecipes(
     restaurantId,
     timeSlot,
     { search: null, categoryId: null }
   );
 
-  /* ===========================
-     Load dữ liệu khi mở modal
-     =========================== */
+  const defaultMethod = {
+    key: "",
+    name: "",
+    price: "",
+    cookTime: "",
+    unit: "portion",
+    mode: "PORTION",
+    yieldQty: 1,
+    yieldUnit: "portion",
+  };
 
+  // --- EFFECT: Load Data ---
   useEffect(() => {
-    if (editId && currentItem) {
-      const svList = Array.isArray(currentItem.servingVariants)
-        ? currentItem.servingVariants
-        : [];
+    if (isOpen) {
+      setImgError(false);
+      if (editId && currentItem) {
+        // ... (Logic giữ nguyên phần map data)
+        const svList = Array.isArray(currentItem.servingVariants)
+          ? currentItem.servingVariants
+          : [];
+        const methods =
+          svList.length > 0
+            ? svList.map((sv) => ({
+                key: sv.key || "",
+                name: sv.name || "",
+                price: typeof sv.price === "number" ? sv.price : "",
+                cookTime: currentItem.avgPrepTimeMin || "",
+                unit: sv.yieldUnit || "portion",
+                mode: sv.mode || "PORTION",
+                yieldQty: sv.yieldQty || 1,
+                yieldUnit: sv.yieldUnit || "portion",
+              }))
+            : [{ ...defaultMethod }];
 
-      const methods =
-        svList.length > 0
-          ? svList.map((sv) => ({
-              key: sv.key || "",
-              name: sv.name || "",
-              price:
-                typeof sv.price === "number" && !Number.isNaN(sv.price)
-                  ? sv.price
-                  : "",
-              cookTime:
-                typeof currentItem.avgPrepTimeMin === "number"
-                  ? currentItem.avgPrepTimeMin
-                  : "",
-              unit: sv.yieldUnit || "portion",
-              mode: sv.mode || "PORTION",
-              yieldQty:
-                typeof sv.yieldQty === "number" && sv.yieldQty > 0
-                  ? sv.yieldQty
-                  : 1,
-              yieldUnit: sv.yieldUnit || "portion",
-            }))
-          : [
-              {
-                key: "",
-                name: "",
-                price: "",
-                cookTime: "",
-                unit: "portion",
-                mode: "PORTION",
-                yieldQty: 1,
-                yieldUnit: "portion",
-              },
-            ];
-
-      setFormData({
-        name: currentItem.name || "",
-        categoryId:
-          currentItem.categoryId ||
-          currentItem.category?.id ||
-          currentItem.category ||
-          "",
-        status: currentItem.status || "available",
-        thumbImage: currentItem.thumbImage || "",
-        description: currentItem.description || "",
-        preparationMethods: methods,
-      });
-    } else if (!editId) {
-      // Flow tạo mới nếu sau này bạn muốn dùng:
-      setFormData({
-        name: "",
-        categoryId: "",
-        status: "available",
-        thumbImage: "",
-        description: "",
-        preparationMethods: [
-          {
-            key: "",
-            name: "",
-            price: "",
-            cookTime: "",
-            unit: "portion",
-            mode: "PORTION",
-            yieldQty: 1,
-            yieldUnit: "portion",
-          },
-        ],
-      });
+        setFormData({
+          name: currentItem.name || "",
+          categoryId:
+            currentItem.categoryId ||
+            currentItem.category?.id ||
+            currentItem.category ||
+            "",
+          status: currentItem.status || "available",
+          thumbImage: currentItem.thumbImage || "",
+          description: currentItem.description || "",
+          preparationMethods: methods,
+        });
+      } else {
+        setFormData({
+          name: "",
+          categoryId: "",
+          status: "available",
+          thumbImage: "",
+          description: "",
+          preparationMethods: [{ ...defaultMethod }],
+        });
+      }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId, currentItem, isOpen]);
 
-  /* ===========================
-     Handlers
-     =========================== */
-
-  const handleInputChange = (field, value) =>
+  // --- HANDLERS ---
+  const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === "thumbImage") setImgError(false);
+  };
 
-  const handlePMChange = (index, field, value) =>
+  const handlePMChange = (index, field, value) => {
     setFormData((prev) => ({
       ...prev,
       preparationMethods: prev.preparationMethods.map((m, i) =>
         i === index ? { ...m, [field]: value } : m
       ),
     }));
+  };
 
-  const addPM = () =>
+  const addPM = () => {
     setFormData((prev) => ({
       ...prev,
-      preparationMethods: [
-        ...prev.preparationMethods,
-        {
-          key: "",
-          name: "",
-          price: "",
-          cookTime: "",
-          unit: "portion",
-          mode: "PORTION",
-          yieldQty: 1,
-          yieldUnit: "portion",
-        },
-      ],
+      preparationMethods: [...prev.preparationMethods, { ...defaultMethod }],
     }));
+  };
 
   const removePM = (index) => {
     if (formData.preparationMethods.length > 1) {
@@ -189,41 +159,36 @@ const MenuItemModal = ({
           (_, i) => i !== index
         ),
       }));
+    } else {
+      pushToast("Cần ít nhất một cách chế biến", "error");
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!restaurantId || !editId) {
-      alert("Thiếu restaurantId hoặc editId.");
-      return;
-    }
-
-    if (!formData.name.trim() || !formData.categoryId) {
-      alert("Vui lòng điền đầy đủ tên món và danh mục");
-      return;
-    }
+    if (!restaurantId) return pushToast("Lỗi: Thiếu ID nhà hàng", "error");
+    if (!formData.name.trim() || !formData.categoryId)
+      return pushToast("Vui lòng nhập tên và chọn danh mục", "error");
 
     const validPM = formData.preparationMethods.filter(
-      (m) => m.name.trim() && m.price !== ""
+      (m) => m.name.trim() && m.price !== "" && m.price >= 0
     );
-    if (!validPM.length) {
-      alert("Vui lòng thêm ít nhất một cách chế biến (tên + giá).");
-      return;
-    }
+
+    if (!validPM.length)
+      return pushToast(
+        "Vui lòng nhập Tên và Giá cho ít nhất một biến thể.",
+        "error"
+      );
 
     const cookTimes = validPM
       .map((m) => parseInt(m.cookTime, 10))
       .filter((n) => Number.isFinite(n) && n >= 0);
-
     const avgPrepTimeMin =
       cookTimes.length > 0
         ? Math.round(cookTimes.reduce((a, b) => a + b, 0) / cookTimes.length)
         : undefined;
 
     try {
-      // 1) Update MenuItem bằng hook useMenuManagement
       const menuItemPayload = {
         id: editId,
         name: formData.name,
@@ -238,247 +203,280 @@ const MenuItemModal = ({
 
       await updateMenuItem(menuItemPayload);
 
-      // 2) Chuẩn hóa form -> form cho useRecipes.updateRecipe
       const recipeForm = {
         description: formData.description,
         servingVariants: formData.preparationMethods.map((m, idx) => {
           const isByWeight = m.mode === "BY_WEIGHT";
-
-          // Giữ key cũ nếu đã có, tránh tạo bản mới
           const fallbackKey =
             (m.name || "").toLowerCase().replace(/\s+/g, "_") || `sv_${idx}`;
-
           return {
             key: m.key || fallbackKey,
             mode: m.mode || "PORTION",
-            yieldQty:
-              typeof m.yieldQty === "number" && m.yieldQty > 0 ? m.yieldQty : 1,
+            yieldQty: m.yieldQty > 0 ? m.yieldQty : 1,
             yieldUnit: m.yieldUnit || (isByWeight ? "100g" : "portion"),
             preparationMethodName: m.name,
-            ingredients: [], // chưa edit nguyên liệu ở modal này
-            price:
-              m.price !== "" && !Number.isNaN(Number(m.price))
-                ? Number(m.price)
-                : 0,
+            ingredients: [],
+            price: Number(m.price) || 0,
           };
         }),
       };
 
-      // 3) Upsert recipe bằng hook useRecipes
-      await updateRecipe(editId, recipeForm);
+      if (editId) {
+        await updateRecipe(editId, recipeForm);
+      }
 
-      pushToast("Cập nhật món ăn thành công", "success");
+      pushToast("Lưu món ăn thành công!", "success");
       onSave?.();
     } catch (err) {
-      console.error("Update menu item / recipe error:", err);
-      pushToast(`Lỗi cập nhật món: ${err.message}`, "error");
+      console.error(err);
+      pushToast(`Lỗi: ${err.message}`, "error");
     }
   };
 
-  const isSaving = recipeLoading; // có thể kết hợp thêm state loading riêng nếu muốn
+  const isSaving = recipeLoading;
 
-  /* ===========================
-     Render
-     =========================== */
+  const renderImagePreview = () => {
+    if (formData.thumbImage && !imgError) {
+      return (
+        <div className="img-preview loaded">
+          <img
+            src={formData.thumbImage}
+            alt="Preview"
+            onError={() => setImgError(true)}
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="img-preview placeholder">
+        <ImageIcon size={20} className="icon" />
+        <span>URL Ảnh</span>
+      </div>
+    );
+  };
 
+  // --- RENDER ---
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={editId ? "Chi tiết món ăn" : "Thêm món ăn"}
-      size="lg"
-      className="menu-item-modal"
+      size="xl"
+      className="menu-item-modal-modern" // Kích hoạt style mới
     >
-      <form onSubmit={handleSubmit} className="menu-item-form">
-        {/* Thông tin cơ bản */}
-        <div className="form-section">
-          <div className="form-grid">
+      <Modal.Header onClose={onClose}>
+        {editId ? "Chỉnh sửa món ăn" : "Thêm món mới"}
+      </Modal.Header>
+
+      <Modal.Body>
+        <form
+          id="menu-form"
+          onSubmit={handleSubmit}
+          className="modern-form-layout"
+        >
+          {/* === CỘT TRÁI: THÔNG TIN CHUNG (NỀN TRẮNG) === */}
+          <div className="left-col">
+            <h4 className="col-title">
+              <Info size={18} /> Thông tin chung
+            </h4>
+
             <div className="form-group">
-              <label className="form-label">Tên món ăn *</label>
+              <label>
+                Tên món ăn <span className="req">*</span>
+              </label>
               <input
                 type="text"
-                className="form-input"
+                className="modern-input"
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
+                placeholder="Ví dụ: Phở Bò Tái"
                 required
+                autoFocus
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Danh mục *</label>
-              <select
-                className="form-select"
-                value={formData.categoryId}
-                onChange={(e) =>
-                  handleInputChange("categoryId", e.target.value)
-                }
-                required
-              >
-                <option value="">Chọn danh mục</option>
-                {Array.isArray(categories) &&
-                  categories.map((c) => (
-                    <option key={c.id || c._id || c.name} value={c.id || c._id}>
-                      {c.icon ? `${c.icon} ` : ""}
+            <div className="row-2-col">
+              <div className="form-group">
+                <label>
+                  Danh mục <span className="req">*</span>
+                </label>
+                <select
+                  className="modern-select"
+                  value={formData.categoryId}
+                  onChange={(e) =>
+                    handleInputChange("categoryId", e.target.value)
+                  }
+                  required
+                >
+                  <option value="">-- Chọn --</option>
+                  {categories?.map((c) => (
+                    <option key={c.id || c._id} value={c.id || c._id}>
                       {c.name}
                     </option>
                   ))}
-              </select>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Trạng thái</label>
+                <select
+                  className="modern-select"
+                  value={formData.status}
+                  onChange={(e) => handleInputChange("status", e.target.value)}
+                >
+                  <option value="available">Sẵn sàng</option>
+                  <option value="unavailable">Tạm hết</option>
+                </select>
+              </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Trạng thái</label>
-              <select
-                className="form-select"
-                value={formData.status}
-                onChange={(e) => handleInputChange("status", e.target.value)}
-              >
-                <option value="available">Có sẵn</option>
-                <option value="unavailable">Không có sẵn</option>
-              </select>
+              <label>Hình ảnh (URL)</label>
+              <div className="image-input-wrapper">
+                <input
+                  type="text"
+                  className="modern-input"
+                  value={formData.thumbImage}
+                  onChange={(e) =>
+                    handleInputChange("thumbImage", e.target.value)
+                  }
+                  placeholder="https://example.com/image.jpg"
+                />
+                {renderImagePreview()}
+              </div>
             </div>
 
             <div className="form-group">
-              <label className="form-label">Ảnh món ăn (URL/emoji)</label>
-              <input
-                type="text"
-                className="form-input"
-                value={formData.thumbImage}
+              <label>Mô tả</label>
+              <textarea
+                className="modern-textarea"
+                rows="4"
+                value={formData.description}
                 onChange={(e) =>
-                  handleInputChange("thumbImage", e.target.value)
+                  handleInputChange("description", e.target.value)
                 }
-                placeholder="URL ảnh hoặc emoji"
+                placeholder="Mô tả ngắn về hương vị, thành phần..."
               />
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Mô tả</label>
-            <textarea
-              className="form-textarea"
-              value={formData.description}
-              onChange={(e) => handleInputChange("description", e.target.value)}
-              rows="3"
-            />
-          </div>
-        </div>
+          {/* === CỘT PHẢI: BIẾN THỂ (NỀN SLATE DỊU MẮT) === */}
+          <div className="right-col">
+            <div className="header-action">
+              <h4 className="col-title">
+                <ChefHat size={18} /> Biến thể & Giá
+              </h4>
+              <button type="button" className="btn-add-variant" onClick={addPM}>
+                <Plus size={16} /> Thêm mới
+              </button>
+            </div>
 
-        {/* Cách chế biến */}
-        <div className="form-section">
-          <div className="section-header">
-            <h4 className="section-title">🍳 Cách chế biến</h4>
-            <button type="button" className="btn btn--primary" onClick={addPM}>
-              ➕ Thêm cách
-            </button>
-          </div>
-
-          <div className="methods-list">
-            {formData.preparationMethods.map((method, index) => (
-              <div key={index} className="method-item">
-                <div className="method-header">
-                  <h5 className="method-title">Cách chế biến {index + 1}</h5>
-                  {formData.preparationMethods.length > 1 && (
-                    <button
-                      type="button"
-                      className="btn btn--danger btn--small"
-                      onClick={() => removePM(index)}
-                    >
-                      🗑️ Xóa
-                    </button>
-                  )}
-                </div>
-
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Tên cách chế biến</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={method.name}
-                      onChange={(e) =>
-                        handlePMChange(index, "name", e.target.value)
-                      }
-                      required
-                    />
+            <div className="methods-scroll-container">
+              {formData.preparationMethods.map((method, index) => (
+                <div key={index} className="method-card">
+                  <div className="method-card-header">
+                    <span className="badge-index">#{index + 1}</span>
+                    {formData.preparationMethods.length > 1 && (
+                      <button
+                        type="button"
+                        className="btn-remove"
+                        onClick={() => removePM(index)}
+                        title="Xóa biến thể này"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">Giá (VNĐ)</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={method.price}
-                      onChange={(e) =>
-                        handlePMChange(index, "price", e.target.value)
-                      }
-                      required
-                    />
-                  </div>
+                  <div className="method-grid">
+                    <div className="form-group full-width">
+                      <label>
+                        Tên biến thể <span className="req">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="modern-input small"
+                        value={method.name}
+                        onChange={(e) =>
+                          handlePMChange(index, "name", e.target.value)
+                        }
+                        placeholder="VD: Size Lớn"
+                        required
+                      />
+                    </div>
 
-                  <div className="form-group">
-                    <label className="form-label">Thời gian nấu (phút)</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      value={method.cookTime}
-                      onChange={(e) =>
-                        handlePMChange(index, "cookTime", e.target.value)
-                      }
-                      required
-                    />
-                  </div>
+                    <div className="form-group">
+                      <label>
+                        <DollarSign size={12} /> Giá bán
+                      </label>
+                      <input
+                        type="number"
+                        className="modern-input small"
+                        value={method.price}
+                        onChange={(e) =>
+                          handlePMChange(index, "price", e.target.value)
+                        }
+                        placeholder="0"
+                        min="0"
+                        required
+                      />
+                    </div>
 
-                  <div className="form-group">
-                    <label className="form-label">Đơn vị tính</label>
-                    <select
-                      className="form-select"
-                      value={method.unit}
-                      onChange={(e) =>
-                        handlePMChange(index, "unit", e.target.value)
-                      }
-                    >
-                      <option value="portion">Phần</option>
-                      <option value="kg">Kg</option>
-                    </select>
+                    <div className="form-group">
+                      <label>
+                        <Clock size={12} /> Phút
+                      </label>
+                      <input
+                        type="number"
+                        className="modern-input small"
+                        value={method.cookTime}
+                        onChange={(e) =>
+                          handlePMChange(index, "cookTime", e.target.value)
+                        }
+                        placeholder="10"
+                        min="0"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        </form>
 
-        {/* Actions */}
-        <div className="form-actions">
-          <button
-            type="button"
-            className="btn btn--secondary"
-            onClick={onClose}
-          >
-            Hủy
-          </button>
-          <button
-            type="submit"
-            className="btn btn--primary"
-            disabled={isSaving}
-          >
-            {isSaving
-              ? "Đang lưu..."
-              : editId
-              ? "Cập nhật món ăn"
-              : "Lưu món ăn"}
-          </button>
-        </div>
-      </form>
-
-      {/* Toasts đơn giản */}
-      {toasts.length > 0 && (
-        <div className="toast-container">
+        {/* Toast Notification */}
+        <div className="toast-wrapper">
           {toasts.map((t) => (
-            <div key={t.id} className={`toast toast--${t.type || "success"}`}>
-              {t.text}
+            <div key={t.id} className={`toast-item ${t.type}`}>
+              {t.type === "success" ? (
+                <CheckCircle2 size={18} />
+              ) : (
+                <AlertCircle size={18} />
+              )}
+              <span>{t.text}</span>
             </div>
           ))}
         </div>
-      )}
+      </Modal.Body>
+
+      <Modal.Footer>
+        <button type="button" className="btn-secondary" onClick={onClose}>
+          Đóng
+        </button>
+        <button
+          type="submit"
+          form="menu-form"
+          className="btn-primary"
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            "Đang lưu..."
+          ) : (
+            <>
+              <Save size={18} /> {editId ? "Lưu thay đổi" : "Tạo món mới"}
+            </>
+          )}
+        </button>
+      </Modal.Footer>
     </Modal>
   );
 };

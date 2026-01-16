@@ -12,6 +12,9 @@ import {
   FiCheck,
   FiEyeOff,
   FiAlertCircle,
+  FiChevronDown,
+  FiDownload,
+  FiSliders, // Icon cho sort
 } from "react-icons/fi";
 import "./Toolbar.scss";
 
@@ -24,6 +27,8 @@ const Toolbar = ({
   onViewChange,
   statusFilter,
   onStatusFilterChange,
+  sortOption, // New prop
+  onSortChange, // New prop
   onPriceRangeChange,
   onBulkPriceEdit,
   onCreatePromotion,
@@ -34,6 +39,7 @@ const Toolbar = ({
   maxPrice,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
+  // Local state cho giá để tránh re-render liên tục khi gõ
   const [priceRange, setPriceRange] = useState({
     min: minPrice || "",
     max: maxPrice || "",
@@ -50,6 +56,8 @@ const Toolbar = ({
     onSearchChange("");
     onCategoryChange("");
     onStatusFilterChange("");
+    // Reset sort về mặc định nếu cần
+    if (onSortChange) onSortChange("default");
     setPriceRange({ min: "", max: "" });
     onPriceRangeChange({ minPrice: "", maxPrice: "" });
   };
@@ -57,7 +65,6 @@ const Toolbar = ({
   const hasActiveFilters =
     searchTerm || currentCategory || statusFilter || minPrice || maxPrice;
 
-  // Helper để format giá tiền
   const formatCurrency = (val) =>
     val ? parseInt(val).toLocaleString("vi-VN") + "đ" : "";
 
@@ -71,7 +78,7 @@ const Toolbar = ({
           <input
             type="text"
             className="search-input"
-            placeholder="Tìm kiếm món ăn..."
+            placeholder="Tìm kiếm món ăn, SKU..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
           />
@@ -89,18 +96,23 @@ const Toolbar = ({
             <button
               className={`toggle-btn ${currentView === "grid" ? "active" : ""}`}
               onClick={() => onViewChange("grid")}
-              title="Lưới"
+              title="Xem dạng Lưới"
             >
               <FiGrid />
             </button>
             <button
               className={`toggle-btn ${currentView === "list" ? "active" : ""}`}
               onClick={() => onViewChange("list")}
-              title="Danh sách"
+              title="Xem dạng Danh sách"
             >
               <FiList />
             </button>
           </div>
+
+          {/* New: Export Button (Placeholder for future feature) */}
+          <button className="btn btn-secondary" title="Xuất danh sách">
+            <FiDownload /> <span className="hide-mobile">Export</span>
+          </button>
 
           {/* Primary Actions */}
           <button className="btn btn-secondary" onClick={onBulkPriceEdit}>
@@ -110,16 +122,36 @@ const Toolbar = ({
             <FiGift /> <span className="hide-mobile">Khuyến mãi</span>
           </button>
           <button className="btn btn-primary" onClick={onAddCategory}>
-            <FiPlus /> <span className="hide-mobile">Thêm mới</span>
+            <FiPlus /> <span className="hide-mobile">Thêm món</span>
           </button>
         </div>
       </div>
 
-      {/* --- Middle Bar: Filters --- */}
+      {/* --- Middle Bar: Filters & Sort --- */}
       <div className="toolbar-filters">
         <div className="filter-row">
-          {/* Category Select */}
+          {/* 1. Sort Dropdown (New) */}
           <div className="select-wrapper">
+            <FiSliders className="select-icon" />
+            <select
+              className={`custom-select ${
+                sortOption !== "default" ? "active" : ""
+              }`}
+              value={sortOption}
+              onChange={(e) => onSortChange && onSortChange(e.target.value)}
+            >
+              <option value="default">Mặc định</option>
+              <option value="name_asc">Tên (A-Z)</option>
+              <option value="name_desc">Tên (Z-A)</option>
+              <option value="price_asc">Giá (Thấp - Cao)</option>
+              <option value="price_desc">Giá (Cao - Thấp)</option>
+            </select>
+            <FiChevronDown className="select-arrow" />
+          </div>
+
+          {/* 2. Category Select */}
+          <div className="select-wrapper">
+            <FiTag className="select-icon" />
             <select
               className={`custom-select ${currentCategory ? "active" : ""}`}
               value={currentCategory}
@@ -127,62 +159,61 @@ const Toolbar = ({
             >
               <option value="">Tất cả danh mục</option>
               {categories.map((cat) => (
-                <option key={cat.id} value={cat.name}>
+                <option key={cat.id || cat.name} value={cat.name}>
                   {cat.name}
                 </option>
               ))}
             </select>
-            <div className="select-arrow">
-              <FiTag size={14} />
-            </div>
+            <FiChevronDown className="select-arrow" />
           </div>
 
-          {/* Status Select */}
+          {/* 3. Status Select */}
           <div className="select-wrapper">
+            {statusFilter === "available" ? (
+              <FiCheck className="select-icon" />
+            ) : statusFilter === "hidden" ? (
+              <FiEyeOff className="select-icon" />
+            ) : statusFilter === "out_of_stock" ? (
+              <FiAlertCircle className="select-icon" />
+            ) : (
+              <FiCheck className="select-icon" style={{ opacity: 0.5 }} />
+            )}
             <select
               className={`custom-select ${statusFilter ? "active" : ""}`}
               value={statusFilter}
               onChange={(e) => onStatusFilterChange(e.target.value)}
             >
               <option value="">Tất cả trạng thái</option>
-              <option value="available">Có sẵn</option>
+              <option value="available">Đang bán</option>
               <option value="out_of_stock">Hết hàng</option>
               <option value="hidden">Đang ẩn</option>
             </select>
-            <div className="select-arrow">
-              {statusFilter === "available" ? (
-                <FiCheck size={14} />
-              ) : statusFilter === "hidden" ? (
-                <FiEyeOff size={14} />
-              ) : (
-                <FiAlertCircle size={14} />
-              )}
-            </div>
+            <FiChevronDown className="select-arrow" />
           </div>
 
-          {/* Advanced Filter Toggle */}
+          {/* 4. Advanced Filter Toggle */}
           <button
             className={`btn-filter-toggle ${
               showFilters || minPrice || maxPrice ? "active" : ""
             }`}
             onClick={() => setShowFilters(!showFilters)}
           >
-            <FiFilter /> Bộ lọc giá
+            <FiFilter /> Lọc giá
           </button>
         </div>
 
         <div className="result-count">
-          Hiển thị <strong>{itemCount}</strong> món
+          Hiển thị <strong>{itemCount}</strong> kết quả
         </div>
       </div>
 
       {/* --- Advanced Price Filter Slide --- */}
       <div className={`advanced-panel ${showFilters ? "open" : ""}`}>
         <div className="price-inputs">
-          <label>Khoảng giá:</label>
+          <label>Khoảng giá (VNĐ):</label>
           <input
             type="number"
-            placeholder="0"
+            placeholder="Thấp nhất"
             value={priceRange.min}
             onChange={(e) =>
               setPriceRange((p) => ({ ...p, min: e.target.value }))
@@ -191,7 +222,7 @@ const Toolbar = ({
           <span className="separator">-</span>
           <input
             type="number"
-            placeholder="∞"
+            placeholder="Cao nhất"
             value={priceRange.max}
             onChange={(e) =>
               setPriceRange((p) => ({ ...p, max: e.target.value }))
@@ -224,7 +255,7 @@ const Toolbar = ({
           {statusFilter && (
             <span className="chip">
               {statusFilter === "available"
-                ? "Có sẵn"
+                ? "Đang bán"
                 : statusFilter === "out_of_stock"
                 ? "Hết hàng"
                 : "Ẩn"}
@@ -246,7 +277,7 @@ const Toolbar = ({
           )}
 
           <button className="clear-all-text" onClick={clearFilters}>
-            Xóa tất cả
+            Xóa bộ lọc
           </button>
         </div>
       )}

@@ -9,15 +9,18 @@ import {
 } from "react-icons/fi";
 import "./MenuManagement.scss";
 
+// Sub-components
 import CompactMenuStrip from "./components/StatsSection/CompactMenuStrip";
 import Toolbar from "./components/Toolbar/Toolbar";
 import MenuItemCard from "./components/MenuItemCard/MenuItemCard";
+// Modals
 import MenuItemModal from "./components/MenuItemModal/MenuItemModal";
 import CategoryModal from "./components/CategoryModal/CategoryModal";
 import PriceEditModal from "./components/PriceEditModal/PriceEditModal";
 import PromotionModal from "./components/PromotionModal/PromotionModal";
 import MenuModal from "./components/MenuModal/MenuModal";
 
+// Logic
 import { AuthContext } from "../../../context/AuthContext";
 import { gql, useQuery } from "@apollo/client";
 import useMenuManagement from "../../../hooks/useMenuManagement";
@@ -61,11 +64,13 @@ const MenuManagement = () => {
   const auth = useContext(AuthContext);
   const managerId = auth?.user?.id;
 
+  // --- LOCAL STATE ---
   const [currentRestaurant, setCurrentRestaurant] = useState("");
   const [currentView, setCurrentView] = useState("grid");
   const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
+  const [sortOption, setSortOption] = useState("default"); // State cho sort
 
-  // Modals state
+  // Modals state object
   const [modals, setModals] = useState({
     menuItem: { isOpen: false, editId: null },
     menu: { isOpen: false, editingMenu: null },
@@ -76,7 +81,7 @@ const MenuManagement = () => {
 
   const [isSavingMenu, setIsSavingMenu] = useState(false);
 
-  /* DATA FETCHING LOGIC (Giữ nguyên) */
+  /* --- DATA FETCHING --- */
   const {
     data: mgrData,
     loading: mgrLoading,
@@ -98,6 +103,7 @@ const MenuManagement = () => {
     }
   }, [managerRestaurants, currentRestaurant]);
 
+  // Hook Menu Management (Core logic)
   const {
     menus,
     menusLoading,
@@ -125,8 +131,11 @@ const MenuManagement = () => {
     defaultTimeSlot: "breakfast",
     pageSize: 20,
     useConnection: true,
+    // (Optional) Pass sortOption to hook if backend supports it
+    // sort: sortOption
   });
 
+  // Hook Category Management
   const { categories, categoryMenus, createCategoryMenu, updateCategoryMenu } =
     useCategoryManagement({
       restaurantId: currentRestaurant || null,
@@ -137,41 +146,16 @@ const MenuManagement = () => {
       loadCategoryMenus: modals.menu.isOpen,
     });
 
-  /* HANDLERS (Giữ nguyên logic) */
-  const openMenuModalCreate = () =>
-    setModals((prev) => ({
-      ...prev,
-      menu: { isOpen: true, editingMenu: null },
-    }));
-  const openMenuModalEdit = (menu) =>
-    setModals((prev) => ({
-      ...prev,
-      menu: { isOpen: true, editingMenu: menu },
-    }));
-  const closeMenuModal = () =>
-    setModals((prev) => ({
-      ...prev,
-      menu: { isOpen: false, editingMenu: null },
-    }));
-  const openMenuItemModal = (editId = null) =>
-    setModals((prev) => ({ ...prev, menuItem: { isOpen: true, editId } }));
-  const closeMenuItemModal = () =>
-    setModals((prev) => ({
-      ...prev,
-      menuItem: { isOpen: false, editId: null },
-    }));
-  const openCategoryModal = () =>
-    setModals((prev) => ({ ...prev, category: { isOpen: true } }));
-  const closeCategoryModal = () =>
-    setModals((prev) => ({ ...prev, category: { isOpen: false } }));
-  const openPriceEditModal = () =>
-    setModals((prev) => ({ ...prev, priceEdit: { isOpen: true } }));
-  const closePriceEditModal = () =>
-    setModals((prev) => ({ ...prev, priceEdit: { isOpen: false } }));
-  const openPromotionModal = () =>
-    setModals((prev) => ({ ...prev, promotion: { isOpen: true } }));
-  const closePromotionModal = () =>
-    setModals((prev) => ({ ...prev, promotion: { isOpen: false } }));
+  /* --- HANDLERS --- */
+  // Modal toggle helpers
+  const toggleModal = (name, isOpen = true, data = null) => {
+    setModals((prev) => {
+      const newState = { ...prev, [name]: { ...prev[name], isOpen } };
+      if (name === "menuItem") newState.menuItem.editId = data;
+      if (name === "menu") newState.menu.editingMenu = data;
+      return newState;
+    });
+  };
 
   const handleSubmitMenu = async (form) => {
     if (!currentRestaurant) return;
@@ -187,7 +171,7 @@ const MenuManagement = () => {
         isActive: form.isActive || false,
       });
       await refetchMenus?.();
-      closeMenuModal();
+      toggleModal("menu", false);
     } catch (err) {
       alert(err?.message || "Lỗi khi lưu menu");
     } finally {
@@ -195,43 +179,60 @@ const MenuManagement = () => {
     }
   };
 
-  const handleDeleteMenu = () => {
-    alert("Chức năng xóa đang được phát triển.");
-  };
+  /* --- SORT LOGIC (Client-side example if backend not ready) --- */
+  // Nếu hook useMenuManagement chưa xử lý sort, ta có thể sort tạm ở đây:
+  const displayItems = useMemo(() => {
+    if (!items) return [];
+    let sorted = [...items];
+    if (sortOption === "name_asc")
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+    if (sortOption === "name_desc")
+      sorted.sort((a, b) => b.name.localeCompare(a.name));
+    if (sortOption === "price_asc")
+      sorted.sort((a, b) => a.basePrice - b.basePrice);
+    if (sortOption === "price_desc")
+      sorted.sort((a, b) => b.basePrice - a.basePrice);
+    return sorted;
+  }, [items, sortOption]);
 
-  /* RENDER START */
-  if (!managerId) return <div className="saas-loading">Đang xác thực...</div>;
+  /* --- RENDER --- */
+  if (!managerId)
+    return (
+      <div className="mm-state-box">
+        <div className="spinner-dots"></div>Đang xác thực...
+      </div>
+    );
   if (mgrLoading)
     return (
-      <div className="saas-loading">
-        <div className="spinner"></div>
+      <div className="mm-state-box">
+        <div className="spinner-dots"></div>
       </div>
     );
   if (mgrError)
     return (
-      <div className="saas-error">
+      <div className="mm-state-box error">
         <FiAlertCircle /> {mgrError.message}
       </div>
     );
 
   return (
-    <div className="saas-container">
-      {/* 1. Header Section */}
-      <header className="saas-header">
-        <div className="saas-header__left">
-          <h1 className="saas-header__title">Quản lý Thực Đơn</h1>
-          <p className="saas-header__subtitle">
-            Thiết lập món ăn, giá bán và danh mục cho nhà hàng
+    <div className="mm-page-container">
+      {/* 1. STICKY HEADER */}
+      <header className="mm-header">
+        <div className="mm-header__left">
+          <h1 className="mm-title">Quản lý Thực Đơn</h1>
+          <p className="mm-subtitle">
+            Thiết lập món ăn, giá bán và danh mục kinh doanh
           </p>
         </div>
 
-        <div className="saas-header__right">
-          {/* Global Filters */}
-          <div className="saas-filters">
-            <div className="saas-select-wrapper">
-              <FiMapPin className="saas-select-icon" />
+        <div className="mm-header__right">
+          {/* Global Context Filters */}
+          <div className="mm-global-filter">
+            <div className="mm-select-wrapper">
+              <FiMapPin className="mm-icon" />
               <select
-                className="saas-select"
+                className="mm-select"
                 value={currentRestaurant || ""}
                 onChange={(e) => setCurrentRestaurant(e.target.value)}
                 disabled={managerRestaurants.length <= 1}
@@ -244,10 +245,10 @@ const MenuManagement = () => {
               </select>
             </div>
 
-            <div className="saas-select-wrapper">
-              <FiClock className="saas-select-icon" />
+            <div className="mm-select-wrapper">
+              <FiClock className="mm-icon" />
               <select
-                className="saas-select"
+                className="mm-select"
                 value={selectedTimeSlot || "breakfast"}
                 onChange={(e) => setSelectedTimeSlot(e.target.value)}
               >
@@ -260,114 +261,116 @@ const MenuManagement = () => {
             </div>
           </div>
 
-          {/* Primary Actions */}
-          <div className="saas-actions">
+          {/* Primary Action Buttons */}
+          <div className="mm-actions">
             <button
-              className="saas-btn saas-btn--secondary"
-              onClick={openCategoryModal}
+              className="mm-btn mm-btn--secondary"
+              onClick={() => toggleModal("category", true)}
             >
               <FiFolderPlus /> Danh mục
             </button>
             <button
-              className="saas-btn saas-btn--primary"
-              onClick={() => openMenuItemModal()}
+              className="mm-btn mm-btn--primary"
+              onClick={() => toggleModal("menuItem", true)}
             >
-              <FiPlus /> Thêm món mới
+              <FiPlus /> Thêm món
             </button>
           </div>
         </div>
       </header>
 
-      {/* 2. Menu Strip (Context) */}
-      <section className="saas-section">
+      {/* 2. STATS & MENU STRIP */}
+      <section className="mm-stats-section">
         <CompactMenuStrip
           menus={menus}
           menusLoading={menusLoading}
           menusError={menusError}
           isCollapsed={isStatsCollapsed}
           onToggleCollapse={() => setIsStatsCollapsed((s) => !s)}
-          onAddMenu={openMenuModalCreate}
-          onEditMenu={openMenuModalEdit}
-          onDeleteMenu={handleDeleteMenu}
+          onAddMenu={() => toggleModal("menu", true)}
+          onEditMenu={(menu) => toggleModal("menu", true, menu)}
+          onDeleteMenu={() => alert("Coming soon...")}
         />
       </section>
 
-      {/* 3. Toolbar & Content */}
-      <section className="saas-body">
-        <div className="saas-body__toolbar">
-          <Toolbar
-            searchTerm={search}
-            onSearchChange={setSearch}
-            currentCategory={categoryId || ""}
-            onCategoryChange={setCategoryId}
-            currentView={currentView}
-            onViewChange={setCurrentView}
-            statusFilter={statusFilter || ""}
-            onStatusFilterChange={setStatusFilter}
-            onPriceRangeChange={setPriceRange}
-            onBulkPriceEdit={openPriceEditModal}
-            onCreatePromotion={openPromotionModal}
-            onAddCategory={openCategoryModal}
-            categories={categories}
-            itemCount={items.length}
-            minPrice={priceRange.minPrice ?? ""}
-            maxPrice={priceRange.maxPrice ?? ""}
-          />
-        </div>
+      {/* 3. MAIN BODY */}
+      <main className="mm-body">
+        {/* Toolbar Component */}
+        <Toolbar
+          searchTerm={search}
+          onSearchChange={setSearch}
+          currentCategory={categoryId || ""}
+          onCategoryChange={setCategoryId}
+          currentView={currentView}
+          onViewChange={setCurrentView}
+          statusFilter={statusFilter || ""}
+          onStatusFilterChange={setStatusFilter}
+          // Sort props
+          sortOption={sortOption}
+          onSortChange={setSortOption}
+          // Price props
+          onPriceRangeChange={setPriceRange}
+          onBulkPriceEdit={() => toggleModal("priceEdit", true)}
+          onCreatePromotion={() => toggleModal("promotion", true)}
+          onAddCategory={() => toggleModal("category", true)}
+          categories={categories}
+          itemCount={displayItems.length}
+          minPrice={priceRange.minPrice ?? ""}
+          maxPrice={priceRange.maxPrice ?? ""}
+        />
 
-        <div className="saas-body__content">
+        {/* Content Area */}
+        <div className="mm-body__content">
           {itemsError && (
-            <div className="saas-state-box error">
-              <FiAlertCircle size={24} />
-              <p>Lỗi tải dữ liệu: {itemsError.message}</p>
+            <div className="mm-state-box error">
+              <FiAlertCircle size={32} />
+              <p style={{ marginTop: 8 }}>
+                Lỗi tải dữ liệu: {itemsError.message}
+              </p>
             </div>
           )}
 
           {itemsLoading && items.length === 0 && (
-            <div className="saas-state-box loading">
+            <div className="mm-state-box">
               <div className="spinner-dots"></div>
               <p>Đang đồng bộ dữ liệu món ăn...</p>
             </div>
           )}
 
-          {!itemsLoading && items.length === 0 && !itemsError && (
-            <div className="saas-empty-state">
-              <div className="saas-empty-state__img">🍽️</div>
+          {!itemsLoading && displayItems.length === 0 && !itemsError && (
+            <div className="mm-empty-state">
+              <div className="mm-empty-state__img">🍽️</div>
               <h3>Chưa có món ăn nào</h3>
               <p>
-                Thực đơn của bạn đang trống. Hãy bắt đầu bằng cách thêm món ăn
-                mới.
+                Thực đơn của bạn đang trống hoặc không tìm thấy kết quả phù hợp.
               </p>
               <button
-                className="saas-btn saas-btn--primary"
-                onClick={() => openMenuItemModal()}
+                className="mm-btn mm-btn--primary"
+                onClick={() => toggleModal("menuItem", true)}
               >
                 Thêm món ngay
               </button>
             </div>
           )}
 
-          {items.length > 0 && (
+          {displayItems.length > 0 && (
             <>
-              <div
-                className={`menu-grid-layout menu-grid-layout--${currentView}`}
-              >
-                {items.map((item) => (
-                  <div key={item.id} className="menu-item-wrapper">
-                    <MenuItemCard
-                      item={item}
-                      onEdit={() => openMenuItemModal(item.id)}
-                      onDelete={() => {}}
-                      viewMode={currentView}
-                    />
-                  </div>
+              <div className={`mm-grid mm-grid--${currentView}`}>
+                {displayItems.map((item) => (
+                  <MenuItemCard
+                    key={item.id}
+                    item={item}
+                    onEdit={() => toggleModal("menuItem", true, item.id)}
+                    onDelete={() => {}}
+                    viewMode={currentView}
+                  />
                 ))}
               </div>
 
               {pageInfo?.hasNextPage && (
-                <div className="saas-pagination">
+                <div className="mm-pagination">
                   <button
-                    className="saas-btn saas-btn--outline"
+                    className="mm-btn-load-more"
                     onClick={fetchMoreItems}
                     disabled={itemsLoading}
                   >
@@ -378,49 +381,57 @@ const MenuManagement = () => {
             </>
           )}
         </div>
-      </section>
+      </main>
 
-      {/* Modals Injection */}
+      {/* --- MODALS INJECTION --- */}
       <MenuModal
         isOpen={modals.menu.isOpen}
         initialData={modals.menu.editingMenu}
         categoryMenus={categoryMenus}
-        onClose={closeMenuModal}
+        onClose={() => toggleModal("menu", false)}
         onSubmit={handleSubmitMenu}
         isSubmitting={isSavingMenu}
         createCategoryMenu={createCategoryMenu}
         updateCategoryMenu={updateCategoryMenu}
       />
+
       <MenuItemModal
         isOpen={modals.menuItem.isOpen}
         editId={modals.menuItem.editId}
-        onClose={closeMenuItemModal}
+        onClose={() => toggleModal("menuItem", false)}
         onSave={() => {
           refetchItems?.();
-          closeMenuItemModal();
+          toggleModal("menuItem", false);
         }}
         menuItems={items}
         categories={categories}
       />
+
       <CategoryModal
         restaurantId={currentRestaurant}
         isOpen={modals.category.isOpen}
-        onClose={closeCategoryModal}
-        onSave={closeCategoryModal}
+        onClose={() => toggleModal("category", false)}
+        onSave={() => toggleModal("category", false)}
       />
+
       <PriceEditModal
         isOpen={modals.priceEdit.isOpen}
-        onClose={closePriceEditModal}
+        onClose={() => toggleModal("priceEdit", false)}
         onSave={() => {
           refetchItems?.();
-          closePriceEditModal();
+          toggleModal("priceEdit", false);
         }}
         menuItems={items}
       />
+
       <PromotionModal
         isOpen={modals.promotion.isOpen}
-        onClose={closePromotionModal}
-        onSave={closePromotionModal}
+        onClose={() => toggleModal("promotion", false)}
+        onSave={(data) => {
+          console.log("Promo Data:", data);
+          toggleModal("promotion", false);
+        }}
+        menuItems={items} // Pass menuItems for scope selection
       />
     </div>
   );

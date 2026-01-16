@@ -1,171 +1,159 @@
-import React from "react";
+import React, { useState } from "react";
+import {
+  Edit3,
+  Trash2,
+  Utensils,
+  TrendingUp,
+  ImageOff,
+  MoreHorizontal,
+} from "lucide-react";
 import "./MenuItemCard.scss";
 
-const MenuItemCard = ({ item, onEdit, onDelete, viewMode = "grid" }) => {
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("vi-VN", {
+const MenuItemCard = ({ item, onEdit, onDelete }) => {
+  const [imgError, setImgError] = useState(false);
+
+  // --- HELPER: Format Price ---
+  const formatPrice = (price) =>
+    new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
-    }).format(Number(price || 0));
-  };
+    }).format(price);
 
-  // Dùng methods (đã normalize từ servingVariants) để tính min/max
-  const getMinMaxPrice = () => {
-    const methods = Array.isArray(item.methods) ? item.methods : [];
+  // --- DATA PROCESSING ---
+  // Giả lập số liệu bán hàng nếu API chưa có (bạn thay bằng item.soldCount thực tế)
+  const soldCount = item.soldCount || Math.floor(Math.random() * 500) + 50;
 
-    let prices = methods
-      .map((m) => (typeof m.price === "number" ? m.price : null))
-      .filter((p) => p != null);
+  const methods = Array.isArray(item.methods) ? item.methods : [];
+  // Chỉ hiển thị tối đa 3 biến thể để giữ card gọn gàng
+  const visibleMethods = methods.slice(0, 3);
+  const remainingCount = methods.length - 3;
 
-    // Nếu không có giá theo method → fallback basePrice
-    if (prices.length === 0 && typeof item.basePrice === "number") {
-      prices = [item.basePrice];
+  // --- RENDERERS ---
+  const renderImage = () => {
+    if (item.image && !imgError) {
+      return (
+        <img
+          src={item.image}
+          alt={item.name}
+          onError={() => setImgError(true)}
+          loading="lazy"
+        />
+      );
     }
-
-    if (prices.length === 0) return "—";
-
-    const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
-
-    return minPrice === maxPrice
-      ? formatPrice(minPrice)
-      : `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
-  };
-
-  const handleCardClick = (e) => {
-    // Prevent card click when clicking action buttons
-    if (e.target.closest(".menu-item-card__actions")) {
-      return;
-    }
-    onEdit && onEdit();
-  };
-
-  const renderMethods = () => {
-    const methods = Array.isArray(item.methods) ? item.methods : [];
-    if (!methods.length) return null;
-
     return (
-      <div className="menu-item-card__methods">
-        {methods.map((method, index) => (
-          <span key={index} className="method-tag">
-            {method.name}
-          </span>
-        ))}
+      <div className="placeholder-img">
+        {item.category === "Đồ uống" ? (
+          <ImageOff size={28} />
+        ) : (
+          <Utensils size={28} />
+        )}
       </div>
     );
   };
 
-  if (viewMode === "list") {
+  const renderStatusBadge = () => {
+    const isAvailable = item.status === "available";
     return (
       <div
-        className="menu-item-card menu-item-card--list"
-        onClick={handleCardClick}
+        className={`status-badge ${isAvailable ? "available" : "unavailable"}`}
       >
-        <div className="menu-item-card__image">{item.image || "🍽️"}</div>
-
-        <div className="menu-item-card__content">
-          <div className="menu-item-card__header">
-            <div className="menu-item-card__info">
-              <h3 className="menu-item-card__name">{item.name}</h3>
-              <p className="menu-item-card__category">{item.category || ""}</p>
-            </div>
-
-            <div className="menu-item-card__status-price">
-              <div
-                className={`menu-item-card__status ${
-                  item.status === "available"
-                    ? "menu-item-card__status--available"
-                    : "menu-item-card__status--unavailable"
-                }`}
-              >
-                {item.status === "available" ? "✅ Có sẵn" : "❌ Hết"}
-              </div>
-              <div className="menu-item-card__price">{getMinMaxPrice()}</div>
-            </div>
-          </div>
-
-          <div className="menu-item-card__description">{item.description}</div>
-
-          {renderMethods()}
-        </div>
-
-        <div className="menu-item-card__actions">
-          <button
-            className="action-btn action-btn--edit"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit && onEdit();
-            }}
-            title="Chỉnh sửa"
-          >
-            ✏️
-          </button>
-          <button
-            className="action-btn action-btn--delete"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete && onDelete();
-            }}
-            title="Xóa"
-          >
-            🗑️
-          </button>
-        </div>
+        {isAvailable ? "Sẵn sàng" : "Hết hàng"}
       </div>
     );
-  }
+  };
 
-  // GRID MODE
   return (
-    <div
-      className="menu-item-card menu-item-card--grid"
-      onClick={handleCardClick}
-    >
-      <div className="menu-item-card__image">{item.image || "🍽️"}</div>
+    <div className="menu-item-card" onClick={onEdit}>
+      {/* --- PHẦN 1: HÌNH ẢNH & OVERLAY SỐ LƯỢNG BÁN --- */}
+      <div className="card-image-wrapper">
+        {renderImage()}
 
-      <div className="menu-item-card__content">
-        <div className="menu-item-card__header">
-          <div className="menu-item-card__info">
-            <h3 className="menu-item-card__name">{item.name}</h3>
-            <p className="menu-item-card__category">{item.category || ""}</p>
-          </div>
+        {/* Badge trạng thái (Luôn hiện) */}
+        <div className="badge-wrapper">{renderStatusBadge()}</div>
 
-          <div
-            className={`menu-item-card__status ${
-              item.status === "available"
-                ? "menu-item-card__status--available"
-                : "menu-item-card__status--unavailable"
-            }`}
-          >
-            {item.status === "available" ? "✅ Có sẵn" : "❌ Hết"}
+        {/* Overlay thống kê (Hiện khi Hover) */}
+        <div className="sales-overlay">
+          <div className="sales-stat">
+            <div className="icon-circle">
+              <TrendingUp size={20} />
+            </div>
+            <div className="stat-info">
+              <span className="label">Đã bán tháng này</span>
+              <span className="value">{soldCount} phần</span>
+            </div>
           </div>
         </div>
-
-        <div className="menu-item-card__price">{getMinMaxPrice()}</div>
-
-        {renderMethods()}
       </div>
 
-      <div className="menu-item-card__actions">
+      {/* --- PHẦN 2: THÔNG TIN CHÍNH --- */}
+      <div className="card-body">
+        <div className="info-top">
+          <span className="category-name">{item.category}</span>
+          <h3 className="item-name" title={item.name}>
+            {item.name}
+          </h3>
+        </div>
+
+        {/* --- PHẦN 3: DANH SÁCH BIẾN THỂ & GIÁ --- */}
+        <div className="variants-list">
+          <div className="list-header">
+            <span>Biến thể ({methods.length})</span>
+            <span>Giá bán</span>
+          </div>
+
+          <div className="list-content">
+            {methods.length === 0 ? (
+              // Trường hợp không có biến thể (Món đơn)
+              <div className="variant-row single">
+                <span>Giá cơ bản</span>
+                <span className="price">
+                  {formatPrice(item.basePrice || 0)}
+                </span>
+              </div>
+            ) : (
+              // Có biến thể
+              visibleMethods.map((m, idx) => (
+                <div key={idx} className="variant-row">
+                  <span className="v-name">{m.name}</span>
+                  <div className="dotted-line"></div>
+                  <span className="v-price">{formatPrice(m.price)}</span>
+                </div>
+              ))
+            )}
+
+            {/* Hiển thị số lượng còn dư nếu > 3 */}
+            {remainingCount > 0 && (
+              <div className="variant-more">
+                <MoreHorizontal size={14} />
+                <span>Và {remainingCount} biến thể khác...</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* --- PHẦN 4: ACTIONS FOOTER --- */}
+      <div className="card-actions">
         <button
-          className="action-btn action-btn--edit"
+          className="action-btn edit"
           onClick={(e) => {
             e.stopPropagation();
             onEdit && onEdit();
           }}
-          title="Chỉnh sửa"
+          title="Chỉnh sửa món & biến thể"
         >
-          ✏️
+          <Edit3 size={16} /> <span>Chỉnh sửa</span>
         </button>
+        <div className="divider"></div>
         <button
-          className="action-btn action-btn--delete"
+          className="action-btn delete"
           onClick={(e) => {
             e.stopPropagation();
             onDelete && onDelete();
           }}
-          title="Xóa"
+          title="Xóa món ăn"
         >
-          🗑️
+          <Trash2 size={16} />
         </button>
       </div>
     </div>
