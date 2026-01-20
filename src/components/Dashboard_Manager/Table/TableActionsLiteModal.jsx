@@ -611,17 +611,17 @@ export default function TableActionsLiteModal({
         .talite-label{font-weight:600;margin-bottom:6px;color:#0f172a}
         .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
         .talite-input{width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:14px;outline:none}
-        .talite-input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+        .talite-input:focus{border-color:#b89365;box-shadow:0 0 0 3px rgba(184,147,101,.2)}
         .actions-end{display:flex;justify-content:flex-end;gap:8px}
         .btn{border:1px solid #cbd5e1;background:#fff;padding:8px 12px;border-radius:8px;font-weight:600;cursor:pointer}
-        .btn.primary{background:#3b82f6;border-color:#3b82f6;color:#fff}
+        .btn.primary{background:#b89365;border-color:#b89365;color:#fff}
         .btn.success{background:#10b981;border-color:#10b981;color:#fff}
         .btn.ghost{background:#fff}
         .btn.danger{background:#ef4444;border-color:#ef4444;color:#fff}
         .btn.disabled{opacity:.5;pointer-events:none}
         .chips{display:flex;flex-wrap:wrap;gap:8px}
         .chip{border:1px solid #e2e8f0;border-radius:999px;padding:6px 10px;background:#fff;cursor:pointer}
-        .chip.active{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+        .chip.active{border-color:#b89365;box-shadow:0 0 0 3px rgba(184,147,101,.2)}
         .hint{font-size:12px;color:#64748b;margin-top:4px}
         @media (max-width:680px){.grid2{grid-template-columns:1fr}}
         `}

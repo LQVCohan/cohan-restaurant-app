@@ -1,10 +1,12 @@
 @use "../../../styles/variables" as *;
 
 // --- Variables ---
-$tm-bg: #f1f5f9;
+$tm-bg: #f8fafc;
 $tm-white: #ffffff;
-$tm-border: #cbd5e1;
-$tm-primary: #2563eb;
+$tm-border: #e2e8f0;
+$tm-primary: #b89365;
+$tm-primary-light: #fdf8f3;
+$tm-primary-border: #f1e5d5;
 $tm-text: #0f172a;
 $tm-text-light: #64748b;
 $tm-radius: 12px;
@@ -16,9 +18,9 @@ $st-available-text: #15803d;
 $st-occupied-bg: #fef2f2;
 $st-occupied-border: #fca5a5;
 $st-occupied-text: #b91c1c;
-$st-reserved-bg: #eff6ff;
-$st-reserved-border: #93c5fd;
-$st-reserved-text: #1d4ed8;
+$st-reserved-bg: #fdf8f3;
+$st-reserved-border: #f1e5d5;
+$st-reserved-text: #b89365;
 $st-payment-bg: #fffbeb;
 $st-payment-border: #fcd34d;
 $st-payment-text: #b45309;
@@ -135,10 +137,10 @@ $st-cleaning-text: #7e22ce;
           background: #f8fafc;
         }
         &.active {
-          background: #eff6ff;
+          background: $tm-primary-light;
           color: $tm-primary;
           .count {
-            background: #dbeafe;
+            background: $tm-primary-border;
             color: $tm-primary;
           }
         }
@@ -156,7 +158,7 @@ $st-cleaning-text: #7e22ce;
         &:hover {
           border-color: $tm-primary;
           color: $tm-primary;
-          background: #eff6ff;
+          background: $tm-primary-light;
         }
       }
     }
@@ -287,10 +289,10 @@ $st-cleaning-text: #7e22ce;
           }
         }
         &.primary {
-          background: #3b82f6;
+          background: $tm-primary;
           color: white;
           &:hover {
-            background: #2563eb;
+            background: #a57c4f;
           }
         }
         &.secondary {

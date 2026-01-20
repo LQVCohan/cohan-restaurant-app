@@ -1,17 +1,17 @@
-// --- VARIABLES (Soft Slate Theme) ---
-$mm-slate-50: #f8fafc;
-$mm-slate-100: #f1f5f9;
-$mm-slate-200: #e2e8f0;
+// --- VARIABLES (Storage Theme Alignment) ---
+$mm-slate-50: #f8fafc; // $bg-body
+$mm-slate-100: #fdf8f3; // $gold-light
+$mm-slate-200: #e2e8f0; // $border-color
 $mm-slate-300: #cbd5e1;
 $mm-slate-400: #94a3b8;
-$mm-slate-500: #64748b;
-$mm-slate-600: #475569;
-$mm-slate-800: #1e293b;
+$mm-slate-500: #64748b; // $text-sub
+$mm-slate-600: #334155; // $charcoal-light
+$mm-slate-800: #1e293b; // $charcoal
 
-$mm-indigo-50: #eef2ff;
-$mm-indigo-100: #e0e7ff;
-$mm-indigo-500: #6366f1;
-$mm-indigo-600: #4f46e5;
+$mm-indigo-50: #fdf8f3; // $gold-light
+$mm-indigo-100: #f7efe6;
+$mm-indigo-500: #c5a47e; // $gold
+$mm-indigo-600: #b89365; // darker gold
 
 $mm-white: #ffffff;
 $mm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
