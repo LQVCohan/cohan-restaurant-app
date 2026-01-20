@@ -2,23 +2,26 @@
 @use "../../../../../styles/mixins" as *;
 
 // ==== CONFIG ====
-$h-bg-sidebar: #f8fafc;
-$h-bg-content: #ffffff;
-$h-border: #e2e8f0;
-$h-primary: $primary-blue;
-$h-text-main: $text-primary;
-$h-text-sub: $text-secondary;
+$staff-header-bg-sidebar: #f8fafc;
+$staff-header-bg-content: #ffffff;
+$staff-header-border: #e2e8f0;
+$staff-header-primary: #b89365;
+$staff-header-text-main: #0f172a;
+$staff-header-text-sub: #64748b;
+$staff-header-success: #16a34a;
+$staff-header-warning: #f59e0b;
+$staff-header-info: #6366f1;
 
 // Animation config
 $anim-speed: 0.4s;
 $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
 
-.header-card {
+.staff-header-card {
   @include card-base;
   padding: 0;
   margin-bottom: $spacing-xl;
-  background: $h-bg-content;
-  border: 1px solid $h-border;
+  background: $staff-header-bg-content;
+  border: 1px solid $staff-header-border;
   box-shadow: $shadow-sm;
   border-radius: 16px;
   width: 100%;
@@ -33,7 +36,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
   transition: max-height $anim-speed $anim-ease, box-shadow 0.3s;
 
   // NÚT TOGGLE (Cố định vị trí)
-  .header-toggle-btn {
+  .staff-header-toggle-btn {
     position: absolute;
     top: 1.5rem;
     right: 1.5rem;
@@ -41,8 +44,8 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
     height: 32px;
     border-radius: 50%;
     background: #fff;
-    border: 1px solid $h-border;
-    color: $h-text-sub;
+    border: 1px solid $staff-header-border;
+    color: $staff-header-text-sub;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -52,9 +55,9 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
     transition: all 0.2s;
 
     &:hover {
-      background: $h-primary;
+      background: $staff-header-primary;
       color: #fff;
-      border-color: $h-primary;
+      border-color: $staff-header-primary;
       transform: scale(1.1);
     }
   }
@@ -67,13 +70,13 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
     box-shadow: none;
 
     // Nút toggle chạy xuống giữa
-    .header-toggle-btn {
+    .staff-header-toggle-btn {
       top: 50%;
       transform: translateY(-50%);
     }
 
     // Xử lý Sidebar khi đóng
-    .header-sidebar {
+    .staff-header-sidebar {
       width: 100%; // Chiếm full width
       flex: 1;
       background: #fff;
@@ -85,19 +88,19 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
       align-items: center;
       justify-content: flex-start; // Căn trái nội dung
 
-      .sidebar-top {
+      .staff-sidebar-top {
         margin: 0;
         display: flex;
         align-items: center;
         width: 100%;
 
-        .title-block {
+        .staff-title-block {
           margin: 0;
           display: flex;
           align-items: center;
 
           // Ẩn chữ nhỏ
-          .eyebrow {
+          .staff-eyebrow {
             display: none;
           }
 
@@ -105,7 +108,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
           h1 {
             font-size: 1.25rem;
             margin: 0;
-            color: $h-text-main;
+            color: $staff-header-text-main;
             white-space: nowrap;
             opacity: 1;
             visibility: visible;
@@ -113,19 +116,19 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         // Ẩn widget thời gian
-        .time-widget {
+        .staff-time-widget {
           display: none;
         }
       }
 
       // Ẩn các nút điều khiển
-      .sidebar-controls {
+      .staff-sidebar-controls {
         display: none;
       }
     }
 
     // Ẩn cột phải
-    .header-content {
+    .staff-header-content {
       display: none;
     }
   }
@@ -134,10 +137,10 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
   // --- STYLE CHI TIẾT (KHI MỞ) ---
 
   // Cột trái
-  .header-sidebar {
+  .staff-header-sidebar {
     flex: 0 0 300px;
-    background: $h-bg-sidebar;
-    border-right: 1px solid $h-border;
+    background: $staff-header-bg-sidebar;
+    border-right: 1px solid $staff-header-border;
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
@@ -145,14 +148,14 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
     gap: 1.5rem;
     transition: background-color 0.3s;
 
-    .sidebar-top {
-      .title-block {
+    .staff-sidebar-top {
+      .staff-title-block {
         margin-bottom: 1rem;
-        .eyebrow {
+        .staff-eyebrow {
           font-size: 0.7rem;
           text-transform: uppercase;
           font-weight: 800;
-          color: $h-primary;
+          color: $staff-header-primary;
           margin-bottom: 0.25rem;
           transition: 0.2s;
         }
@@ -160,30 +163,30 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
           margin: 0;
           font-size: 1.5rem;
           font-weight: 800;
-          color: $h-text-main;
+          color: $staff-header-text-main;
           line-height: 1.1;
           transition: 0.2s;
         }
       }
-      .time-widget {
+      .staff-time-widget {
         background: #fff;
-        border: 1px solid $h-border;
+        border: 1px solid $staff-header-border;
         border-radius: 12px;
         padding: 0.75rem;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
         transition: opacity 0.2s;
-        .time-row {
+        .staff-time-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
           margin-bottom: 0.25rem;
-          .clock-time {
+          .staff-clock-time {
             font-size: 1.2rem;
             font-weight: 800;
-            color: $h-text-main;
+            color: $staff-header-text-main;
             font-variant-numeric: tabular-nums;
           }
-          .shift-badge {
+          .staff-shift-badge {
             font-size: 0.7rem;
             background: #fff7ed;
             color: #c2410c;
@@ -193,31 +196,31 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
             font-weight: 700;
           }
         }
-        .date-row {
+        .staff-date-row {
           font-size: 0.8rem;
-          color: $h-text-sub;
+          color: $staff-header-text-sub;
           text-transform: capitalize;
         }
       }
     }
 
-    .sidebar-controls {
+    .staff-sidebar-controls {
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
       transition: opacity 0.2s; // Fade out khi đóng
 
       // Tools Row (Search + Select)
-      .tools-row {
+      .staff-tools-row {
         display: flex;
         align-items: center;
         gap: 0.5rem;
         width: 100%;
 
-        .search-box {
+        .staff-search-box {
           position: relative;
           flex: 1;
-          .search-icon {
+          .staff-search-icon {
             position: absolute;
             left: 10px;
             top: 50%;
@@ -230,33 +233,33 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
             width: 100%;
             height: 40px;
             padding: 0 10px 0 32px;
-            border: 1px solid $h-border;
+            border: 1px solid $staff-header-border;
             border-radius: 8px;
             font-size: 0.85rem;
             background: #fff;
             transition: all 0.2s ease;
-            color: $h-text-main;
+            color: $staff-header-text-main;
             &:focus {
               outline: none;
-              border-color: $h-primary;
-              box-shadow: 0 0 0 3px rgba($h-primary, 0.1);
+              border-color: $staff-header-primary;
+              box-shadow: 0 0 0 3px rgba($staff-header-primary, 0.1);
             }
           }
         }
 
-        .branch-select-wrapper {
+        .staff-branch-select-wrapper {
           position: relative;
           flex: 1;
           min-width: 0;
-          .restaurant-selector {
+          .staff-restaurant-selector {
             width: 100%;
             height: 40px;
             padding: 0 24px 0 10px;
-            border: 1px solid $h-border;
+            border: 1px solid $staff-header-border;
             border-radius: 8px;
             font-size: 0.85rem;
             font-weight: 600;
-            color: $h-text-main;
+            color: $staff-header-text-main;
             background: #fff;
             cursor: pointer;
             appearance: none;
@@ -266,29 +269,29 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
             text-overflow: ellipsis;
             transition: all 0.2s ease;
             &:hover {
-              border-color: $h-primary;
+              border-color: $staff-header-primary;
             }
             &:focus {
               outline: none;
-              border-color: $h-primary;
+              border-color: $staff-header-primary;
             }
           }
-          .select-arrow {
+          .staff-select-arrow {
             position: absolute;
             right: 8px;
             top: 50%;
             transform: translateY(-50%);
             font-size: 0.6rem;
-            color: $h-text-sub;
+            color: $staff-header-text-sub;
             pointer-events: none;
           }
         }
       }
 
-      .action-group {
+      .staff-action-group {
         display: flex;
         gap: 0.5rem;
-        .btn {
+        .staff-btn {
           flex: 1;
           height: 40px;
           border-radius: 8px;
@@ -301,22 +304,22 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
           align-items: center;
           justify-content: center;
           gap: 0.3rem;
-          &.btn-ghost {
+          &.staff-btn-ghost {
             background: #fff;
-            border-color: $h-border;
-            color: $h-text-sub;
+            border-color: $staff-header-border;
+            color: $staff-header-text-sub;
             &:hover {
-              border-color: $h-primary;
-              color: $h-primary;
+              border-color: $staff-header-primary;
+              color: $staff-header-primary;
               background: #f8fafc;
             }
           }
-          &.btn-primary {
-            background: $h-primary;
+          &.staff-btn-primary {
+            background: $staff-header-primary;
             color: #fff;
-            box-shadow: 0 2px 5px rgba($h-primary, 0.25);
+            box-shadow: 0 2px 5px rgba($staff-header-primary, 0.25);
             &:hover {
-              background: darken($h-primary, 5%);
+              background: darken($staff-header-primary, 5%);
               transform: translateY(-1px);
             }
           }
@@ -326,7 +329,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
   }
 
   // Cột phải
-  .header-content {
+  .staff-header-content {
     flex: 1;
     padding: 1.5rem;
     display: flex;
@@ -338,14 +341,14 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
     background-size: 20px 20px;
     transition: opacity 0.2s;
 
-    .mini-stats-grid {
+    .staff-mini-stats-grid {
       width: 100%;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 1rem;
-      .mini-stat-item {
+      .staff-mini-stat-item {
         background: #fff;
-        border: 1px solid $h-border;
+        border: 1px solid $staff-header-border;
         border-radius: 12px;
         padding: 1rem;
         display: flex;
@@ -357,9 +360,9 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
         &:hover {
           transform: translateY(-3px);
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-          border-color: $h-primary;
+          border-color: $staff-header-primary;
         }
-        .stat-icon-box {
+        .staff-stat-icon-box {
           width: 2rem;
           height: 2rem;
           border-radius: 8px;
@@ -368,19 +371,19 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
           font-size: 1rem;
           margin-bottom: 0.5rem;
         }
-        .stat-value {
+        .staff-stat-value {
           font-size: 1.4rem;
           font-weight: 800;
-          color: $h-text-main;
+          color: $staff-header-text-main;
           line-height: 1;
           margin-bottom: 0.25rem;
         }
-        .stat-label {
+        .staff-stat-label {
           font-size: 0.8rem;
           font-weight: 600;
-          color: $h-text-sub;
+          color: $staff-header-text-sub;
         }
-        .stat-badge {
+        .staff-stat-badge {
           position: absolute;
           top: 1rem;
           right: 1rem;
@@ -389,48 +392,48 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
           padding: 2px 6px;
           border-radius: 4px;
         }
-        &.tone-primary {
-          .stat-icon-box,
-          .stat-badge {
-            background: rgba($primary-blue, 0.1);
-            color: $primary-blue;
+        &.staff-tone-primary {
+          .staff-stat-icon-box,
+          .staff-stat-badge {
+            background: rgba($staff-header-primary, 0.1);
+            color: $staff-header-primary;
           }
         }
-        &.tone-success {
-          .stat-icon-box,
-          .stat-badge {
-            background: rgba($status-active, 0.1);
-            color: $status-active;
+        &.staff-tone-success {
+          .staff-stat-icon-box,
+          .staff-stat-badge {
+            background: rgba($staff-header-success, 0.1);
+            color: $staff-header-success;
           }
         }
-        &.tone-warning {
-          .stat-icon-box,
-          .stat-badge {
-            background: rgba($status-break, 0.1);
-            color: $status-break;
+        &.staff-tone-warning {
+          .staff-stat-icon-box,
+          .staff-stat-badge {
+            background: rgba($staff-header-warning, 0.1);
+            color: $staff-header-warning;
           }
         }
-        &.tone-info {
-          .stat-icon-box,
-          .stat-badge {
-            background: rgba(#6366f1, 0.1);
-            color: #6366f1;
+        &.staff-tone-info {
+          .staff-stat-icon-box,
+          .staff-stat-badge {
+            background: rgba($staff-header-info, 0.1);
+            color: $staff-header-info;
           }
         }
       }
     }
 
     // QUICK ACTIONS (Đã fix)
-    .quick-actions-segment {
+    .staff-quick-actions-segment {
       display: flex;
       justify-content: center;
       align-items: center;
       gap: 0.8rem;
       padding: 0.75rem 0;
       margin-top: 1rem;
-      border-top: 1px dashed $h-border;
-      border-bottom: 1px dashed $h-border;
-      .quick-action-btn {
+      border-top: 1px dashed $staff-header-border;
+      border-bottom: 1px dashed $staff-header-border;
+      .staff-quick-action-btn {
         display: flex;
         align-items: center;
         justify-content: flex-start;
@@ -446,21 +449,21 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
         transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
           padding 0.3s ease, background-color 0.3s, border-color 0.3s,
           box-shadow 0.3s, transform 0.2s;
-        .action-icon {
+        .staff-action-icon {
           width: 42px;
           height: 42px;
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 1.2rem;
-          color: $h-text-sub;
+          color: $staff-header-text-sub;
           flex-shrink: 0;
           transition: color 0.3s, transform 0.3s;
         }
-        .action-label {
+        .staff-action-label {
           font-size: 0.9rem;
           font-weight: 600;
-          color: $h-text-main;
+          color: $staff-header-text-main;
           max-width: 0;
           opacity: 0;
           margin-left: 0;
@@ -470,14 +473,14 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
           width: auto;
           padding-right: 16px;
           background: #f0f9ff;
-          border-color: $h-primary;
-          box-shadow: 0 4px 12px rgba($h-primary, 0.15);
+          border-color: $staff-header-primary;
+          box-shadow: 0 4px 12px rgba($staff-header-primary, 0.15);
           transform: translateY(-2px);
-          .action-icon {
-            color: $h-primary;
+          .staff-action-icon {
+            color: $staff-header-primary;
             transform: scale(1.1);
           }
-          .action-label {
+          .staff-action-label {
             max-width: 150px;
             opacity: 1;
             margin-left: 0;
@@ -486,31 +489,31 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
       }
     }
 
-    .quick-info-bar {
+    .staff-quick-info-bar {
       display: flex;
       align-items: center;
       gap: 1.5rem;
       padding-top: 1rem;
       border-top: none;
-      .divider-vertical {
+      .staff-divider-vertical {
         width: 1px;
         height: 24px;
-        background: $h-border;
+        background: $staff-header-border;
       }
-      .info-group {
+      .staff-info-group {
         display: flex;
         align-items: center;
         gap: 0.8rem;
-        .label-text {
+        .staff-label-text {
           font-size: 0.85rem;
           font-weight: 600;
-          color: $h-text-sub;
+          color: $staff-header-text-sub;
         }
       }
-      .avatar-stack {
+      .staff-avatar-stack {
         display: flex;
         align-items: center;
-        .avatar-img {
+        .staff-avatar-img {
           width: 32px;
           height: 32px;
           border-radius: 50%;
@@ -525,7 +528,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
             z-index: 2;
           }
         }
-        .avatar-more {
+        .staff-avatar-more {
           width: 32px;
           height: 32px;
           border-radius: 50%;
@@ -540,10 +543,10 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
           z-index: 1;
         }
       }
-      .pending-tags {
+      .staff-pending-tags {
         display: flex;
         gap: 0.5rem;
-        .tag {
+        .staff-tag {
           font-size: 0.8rem;
           font-weight: 600;
           padding: 4px 10px;
@@ -553,12 +556,12 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
           &:hover {
             opacity: 0.8;
           }
-          &.warn {
+          &.staff-tag-warn {
             background: #fff7ed;
             color: #c2410c;
             border: 1px solid #ffedd5;
           }
-          &.info {
+          &.staff-tag-info {
             background: #eff6ff;
             color: #1d4ed8;
             border: 1px solid #dbeafe;
@@ -571,45 +574,45 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
 
 // RESPONSIVE
 @media (max-width: 1024px) {
-  .header-card {
+  .staff-header-card {
     flex-direction: column;
     max-height: none;
     &.collapsed {
       max-height: 80px;
     }
-    .header-sidebar {
+    .staff-header-sidebar {
       width: 100%;
       flex: none;
       border-right: none;
-      border-bottom: 1px solid $h-border;
+      border-bottom: 1px solid $staff-header-border;
       padding: 1.25rem;
       flex-direction: row;
       align-items: center;
       gap: 2rem;
     }
-    .sidebar-controls {
+    .staff-sidebar-controls {
       flex-direction: row;
       flex: 1;
-      .tools-row {
+      .staff-tools-row {
         flex: 1.5;
-        .branch-select-wrapper {
+        .staff-branch-select-wrapper {
           flex: 1;
         }
       }
-      .action-group {
+      .staff-action-group {
         flex: 1;
       }
     }
-    .header-content {
+    .staff-header-content {
       gap: 1.5rem;
-      .mini-stats-grid {
+      .staff-mini-stats-grid {
         grid-template-columns: repeat(2, 1fr);
       }
-      .quick-info-bar {
+      .staff-quick-info-bar {
         flex-direction: column;
         align-items: flex-start;
         gap: 1rem;
-        .divider-vertical {
+        .staff-divider-vertical {
           display: none;
         }
       }
@@ -617,17 +620,17 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
   }
 }
 @media (max-width: 640px) {
-  .header-card {
-    .header-sidebar {
+  .staff-header-card {
+    .staff-header-sidebar {
       flex-direction: column;
       align-items: stretch;
       gap: 1rem;
     }
-    .sidebar-controls {
+    .staff-sidebar-controls {
       flex-direction: column;
     }
-    .header-content {
-      .mini-stats-grid {
+    .staff-header-content {
+      .staff-mini-stats-grid {
         grid-template-columns: 1fr;
       }
     }
