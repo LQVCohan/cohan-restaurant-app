@@ -1,11 +1,11 @@
-// src/pages/StaffManagement/components/Header.jsx
+// src/pages/StaffManagement/components/StaffHeader.jsx
 import React, { useMemo, useState, useEffect } from "react";
-import "./Header.scss";
+import "./StaffHeader.scss";
 
 const formatNumber = (value) =>
   typeof value === "number" ? value.toLocaleString("vi-VN") : value;
 
-const Header = ({
+const StaffHeader = ({
   selectedRestaurant,
   onRestaurantChange,
   onAddEmployee,
@@ -115,10 +115,10 @@ const Header = ({
   ];
 
   return (
-    <div className={`header-card ${isCollapsed ? "collapsed" : ""}`}>
+    <div className={`staff-header-card ${isCollapsed ? "collapsed" : ""}`}>
       {/* NÚT TOGGLE - Luôn nằm góc trên phải */}
       <button
-        className="header-toggle-btn"
+        className="staff-header-toggle-btn"
         onClick={onToggle}
         title={isCollapsed ? "Mở rộng" : "Thu gọn"}
       >
@@ -126,33 +126,33 @@ const Header = ({
       </button>
 
       {/* CỘT TRÁI: SIDEBAR */}
-      <div className="header-sidebar">
-        <div className="sidebar-top">
-          <div className="title-block">
-            <div className="eyebrow">Bảng điều khiển</div>
+      <div className="staff-header-sidebar">
+        <div className="staff-sidebar-top">
+          <div className="staff-title-block">
+            <div className="staff-eyebrow">Bảng điều khiển</div>
             <h1>Quản Lý Nhân Sự</h1>
           </div>
 
-          <div className="time-widget">
-            <div className="time-row">
-              <span className="clock-time">{timeStr}</span>
-              <span className="shift-badge">
+          <div className="staff-time-widget">
+            <div className="staff-time-row">
+              <span className="staff-clock-time">{timeStr}</span>
+              <span className="staff-shift-badge">
                 {currentShift.icon} {currentShift.label}
               </span>
             </div>
-            <div className="date-row">{dateStr}</div>
+            <div className="staff-date-row">{dateStr}</div>
           </div>
         </div>
 
-        <div className="sidebar-controls">
-          <div className="tools-row">
-            <div className="search-box">
-              <span className="search-icon">🔍</span>
+        <div className="staff-sidebar-controls">
+          <div className="staff-tools-row">
+            <div className="staff-search-box">
+              <span className="staff-search-icon">🔍</span>
               <input type="text" placeholder="Tìm nhanh..." />
             </div>
-            <div className="branch-select-wrapper">
+            <div className="staff-branch-select-wrapper">
               <select
-                className="restaurant-selector"
+                className="staff-restaurant-selector"
                 value={selectedRestaurant}
                 onChange={(e) => onRestaurantChange(e.target.value)}
                 title="Lọc theo chi nhánh"
@@ -164,15 +164,15 @@ const Header = ({
                   </option>
                 ))}
               </select>
-              <span className="select-arrow">▼</span>
+              <span className="staff-select-arrow">▼</span>
             </div>
           </div>
 
-          <div className="action-group">
-            <button className="btn btn-ghost" onClick={onExportData}>
+          <div className="staff-action-group">
+            <button className="staff-btn staff-btn-ghost" onClick={onExportData}>
               📥 Xuất File
             </button>
-            <button className="btn btn-primary" onClick={onAddEmployee}>
+            <button className="staff-btn staff-btn-primary" onClick={onAddEmployee}>
               ➕ Thêm Mới
             </button>
           </div>
@@ -180,56 +180,59 @@ const Header = ({
       </div>
 
       {/* CỘT PHẢI: CONTENT AREA */}
-      <div className="header-content">
-        <div className="mini-stats-grid">
+      <div className="staff-header-content">
+        <div className="staff-mini-stats-grid">
           {statsData.map((item) => (
-            <div key={item.id} className={`mini-stat-item tone-${item.tone}`}>
-              <div className="stat-icon-box">{item.icon}</div>
-              <div className="stat-info">
-                <div className="stat-value">{item.value}</div>
-                <div className="stat-label">{item.label}</div>
+            <div
+              key={item.id}
+              className={`staff-mini-stat-item staff-tone-${item.tone}`}
+            >
+              <div className="staff-stat-icon-box">{item.icon}</div>
+              <div className="staff-stat-info">
+                <div className="staff-stat-value">{item.value}</div>
+                <div className="staff-stat-label">{item.label}</div>
               </div>
-              <div className="stat-badge">{item.badge}</div>
+              <div className="staff-stat-badge">{item.badge}</div>
             </div>
           ))}
         </div>
 
-        <div className="quick-actions-segment">
+        <div className="staff-quick-actions-segment">
           {quickActions.map((action, index) => (
             <button
               key={index}
-              className="quick-action-btn"
+              className="staff-quick-action-btn"
               onClick={action.onClick}
             >
-              <span className="action-icon">{action.icon}</span>
-              <span className="action-label">{action.label}</span>
+              <span className="staff-action-icon">{action.icon}</span>
+              <span className="staff-action-label">{action.label}</span>
             </button>
           ))}
         </div>
 
-        <div className="quick-info-bar">
-          <div className="info-group">
-            <span className="label-text">Đang trực:</span>
-            <div className="avatar-stack">
+        <div className="staff-quick-info-bar">
+          <div className="staff-info-group">
+            <span className="staff-label-text">Đang trực:</span>
+            <div className="staff-avatar-stack">
               {activeAvatars.map((user) => (
                 <img
                   key={user.id}
                   src={user.img}
                   alt={user.name}
-                  className="avatar-img"
+                  className="staff-avatar-img"
                 />
               ))}
-              <div className="avatar-more">
+              <div className="staff-avatar-more">
                 +{stats.activeStaff > 4 ? stats.activeStaff - 4 : 0}
               </div>
             </div>
           </div>
-          <div className="divider-vertical"></div>
-          <div className="info-group">
-            <span className="label-text">Cần xử lý:</span>
-            <div className="pending-tags">
-              <span className="tag warn">📝 2 Đơn nghỉ</span>
-              <span className="tag info">🔄 1 Đổi ca</span>
+          <div className="staff-divider-vertical"></div>
+          <div className="staff-info-group">
+            <span className="staff-label-text">Cần xử lý:</span>
+            <div className="staff-pending-tags">
+              <span className="staff-tag staff-tag-warn">📝 2 Đơn nghỉ</span>
+              <span className="staff-tag staff-tag-info">🔄 1 Đổi ca</span>
             </div>
           </div>
         </div>
@@ -238,4 +241,4 @@ const Header = ({
   );
 };
 
-export default Header;
+export default StaffHeader;
