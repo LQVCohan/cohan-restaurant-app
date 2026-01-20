@@ -5,9 +5,12 @@
 $staff-header-bg-sidebar: #f8fafc;
 $staff-header-bg-content: #ffffff;
 $staff-header-border: #e2e8f0;
-$staff-header-primary: $primary-blue;
-$staff-header-text-main: $text-primary;
-$staff-header-text-sub: $text-secondary;
+$staff-header-primary: #b89365;
+$staff-header-text-main: #0f172a;
+$staff-header-text-sub: #64748b;
+$staff-header-success: #16a34a;
+$staff-header-warning: #f59e0b;
+$staff-header-info: #6366f1;
 
 // Animation config
 $anim-speed: 0.4s;
@@ -399,22 +402,22 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
         &.staff-tone-success {
           .staff-stat-icon-box,
           .staff-stat-badge {
-            background: rgba($status-active, 0.1);
-            color: $status-active;
+            background: rgba($staff-header-success, 0.1);
+            color: $staff-header-success;
           }
         }
         &.staff-tone-warning {
           .staff-stat-icon-box,
           .staff-stat-badge {
-            background: rgba($status-break, 0.1);
-            color: $status-break;
+            background: rgba($staff-header-warning, 0.1);
+            color: $staff-header-warning;
           }
         }
         &.staff-tone-info {
           .staff-stat-icon-box,
           .staff-stat-badge {
-            background: rgba(#6366f1, 0.1);
-            color: #6366f1;
+            background: rgba($staff-header-info, 0.1);
+            color: $staff-header-info;
           }
         }
       }
