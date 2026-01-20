@@ -26,7 +26,7 @@ const SLOT_CONFIG = {
     border: "#fde68a",
   },
   lunch: { label: "Trưa", color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
-  dinner: { label: "Tối", color: "#4f46e5", bg: "#eef2ff", border: "#c7d2fe" },
+  dinner: { label: "Tối", color: "#b89365", bg: "#fdf8f3", border: "#f1e5d5" },
   late_night: {
     label: "Khuya",
     color: "#db2777",
