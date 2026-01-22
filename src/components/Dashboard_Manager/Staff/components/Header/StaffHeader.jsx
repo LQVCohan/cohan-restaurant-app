@@ -127,10 +127,13 @@ const StaffHeader = ({
 
       {/* CỘT TRÁI: SIDEBAR */}
       <div className="staff-header-sidebar">
-        <div className="staff-sidebar-top">
+        <div className="staff-sidebar-card">
           <div className="staff-title-block">
             <div className="staff-eyebrow">Bảng điều khiển</div>
             <h1>Quản Lý Nhân Sự</h1>
+            <p className="staff-subtitle">
+              Theo dõi nhân sự và cập nhật trạng thái theo thời gian thực.
+            </p>
           </div>
 
           <div className="staff-time-widget">
@@ -144,28 +147,34 @@ const StaffHeader = ({
           </div>
         </div>
 
-        <div className="staff-sidebar-controls">
+        <div className="staff-controls-card">
           <div className="staff-tools-row">
-            <div className="staff-search-box">
-              <span className="staff-search-icon">🔍</span>
-              <input type="text" placeholder="Tìm nhanh..." />
-            </div>
-            <div className="staff-branch-select-wrapper">
-              <select
-                className="staff-restaurant-selector"
-                value={selectedRestaurant}
-                onChange={(e) => onRestaurantChange(e.target.value)}
-                title="Lọc theo chi nhánh"
-              >
-                <option value="all">🏢 Toàn hệ thống</option>
-                {restaurantList.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-              <span className="staff-select-arrow">▼</span>
-            </div>
+            <label className="staff-field">
+              <span className="staff-field-label">Tìm kiếm</span>
+              <div className="staff-search-box">
+                <span className="staff-search-icon">🔍</span>
+                <input type="text" placeholder="Tên nhân viên, vị trí..." />
+              </div>
+            </label>
+            <label className="staff-field">
+              <span className="staff-field-label">Chi nhánh</span>
+              <div className="staff-branch-select-wrapper">
+                <select
+                  className="staff-restaurant-selector"
+                  value={selectedRestaurant}
+                  onChange={(e) => onRestaurantChange(e.target.value)}
+                  title="Lọc theo chi nhánh"
+                >
+                  <option value="all">🏢 Toàn hệ thống</option>
+                  {restaurantList.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="staff-select-arrow">▼</span>
+              </div>
+            </label>
           </div>
 
           <div className="staff-action-group">
