@@ -72,9 +72,9 @@ const EmployeeFormModal = ({
   const shiftOptions = [
     { value: "MORNING", label: "🌅 Sáng (6:00 - 14:00)" },
     { value: "AFTERNOON", label: "☀️ Chiều (14:00 - 22:00)" },
-    { value: "NIGHT", label: "🌙 Đêm (22:00 - 6:00)" },
-    { value: "FULL", label: "⏰ Full (8:00 - 17:00)" },
-    { value: "PART_TIME", label: "⏱️ Part-time" },
+    { value: "EVENING", label: "🌙 Tối (22:00 - 6:00)" },
+    { value: "FULL_DAY", label: "⏰ Full (8:00 - 17:00)" },
+    { value: "ROTATING", label: "🔁 Xoay ca" },
   ];
 
   const userTypeOptions = [
@@ -85,8 +85,9 @@ const EmployeeFormModal = ({
   const employmentTypeOptions = [
     { value: "FULL_TIME", label: "Toàn thời gian" },
     { value: "PART_TIME", label: "Bán thời gian" },
+    { value: "PROBATION", label: "Thử việc" },
     { value: "SEASONAL", label: "Thời vụ" },
-    { value: "INTERN", label: "Thực tập" },
+    { value: "CONTRACT", label: "Hợp đồng" },
   ];
 
   useEffect(() => {

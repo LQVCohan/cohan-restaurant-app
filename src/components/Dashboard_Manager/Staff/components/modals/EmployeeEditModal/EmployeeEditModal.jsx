@@ -4,7 +4,7 @@ import LoadingSpinner from "../../../../../common/LoadingSpinner";
 import Badge from "../../../../../common/Badge";
 import "./EmployeeEditModal.scss";
 
-const EmployeeEditModal = ({ isOpen, onClose, employee, onUpdate }) => {
+const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) => {
   const [formData, setFormData] = useState({});
   const [originalData, setOriginalData] = useState({});
   const [errors, setErrors] = useState({});
@@ -19,22 +19,30 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onUpdate }) => {
     { id: "salary", label: "💰 Lương", icon: "💰" },
   ];
 
+  const formatDateInput = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toISOString().split("T")[0];
+  };
+
   useEffect(() => {
     if (employee && isOpen) {
+      const source = employee.raw || employee;
       const data = {
-        name: employee.name || "",
-        role: employee.role || "",
-        department: employee.department || "service",
-        phone: employee.phone || "",
-        email: employee.email || "",
-        address: employee.address || "",
-        salary: employee.salary || "",
-        shift: employee.shift || "",
-        startDate: employee.startDate || "",
-        emergencyContact: employee.emergencyContact || "",
-        emergencyPhone: employee.emergencyPhone || "",
-        notes: employee.notes || "",
-        status: employee.status || "active",
+        fullName: source.fullName || employee.name || "",
+        positionTitle: source.positionTitle || employee.role || "",
+        department: source.department || employee.department || "service",
+        phone: source.phone || employee.phone || "",
+        email: source.email || employee.email || "",
+        address: source.address?.line1 || employee.address || "",
+        baseSalary: source.baseSalary || employee.salary || "",
+        shiftType: source.shiftType || employee.shift || "",
+        dateJoined: formatDateInput(source.dateJoined || employee.startDate),
+        employmentStatus: source.employmentStatus || "WORKING",
+        emergencyContact: source.emergencyContact?.name || "",
+        emergencyPhone: source.emergencyContact?.phone || "",
+        notes: source.noteInternal || "",
       };
       setFormData(data);
       setOriginalData(data);
@@ -59,16 +67,20 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onUpdate }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name?.trim()) newErrors.name = "Vui lòng nhập họ tên";
-    if (!formData.role?.trim()) newErrors.role = "Vui lòng nhập chức vụ";
-    if (!formData.phone?.trim()) {
-      newErrors.phone = "Vui lòng nhập số điện thoại";
-    } else if (!/^[0-9]{10,11}$/.test(formData.phone.replace(/\s/g, ""))) {
+    if (!formData.fullName?.trim()) newErrors.fullName = "Vui lòng nhập họ tên";
+    if (!formData.positionTitle?.trim())
+      newErrors.positionTitle = "Vui lòng nhập chức vụ";
+
+    const hasPhone = formData.phone?.trim();
+    const hasEmail = formData.email?.trim();
+    if (!hasPhone && !hasEmail) {
+      newErrors.phone = "Nhập số điện thoại hoặc email liên hệ";
+      newErrors.email = "Nhập số điện thoại hoặc email liên hệ";
+    }
+    if (hasPhone && !/^[0-9]{9,11}$/.test(formData.phone.replace(/\s/g, ""))) {
       newErrors.phone = "Số điện thoại không hợp lệ";
     }
-    if (!formData.email?.trim()) {
-      newErrors.email = "Vui lòng nhập email";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    if (hasEmail && !/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Email không hợp lệ";
     }
 
@@ -84,13 +96,37 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onUpdate }) => {
     setIsSubmitting(true);
 
     try {
-      const updatedEmployee = {
-        ...employee,
-        ...formData,
-        updatedAt: new Date().toISOString(),
+      const baseSalary = formData.baseSalary
+        ? Number(formData.baseSalary.toString().replace(/[^\d]/g, ""))
+        : undefined;
+
+      const payload = {
+        fullName: formData.fullName.trim(),
+        positionTitle: formData.positionTitle.trim(),
+        department: formData.department,
+        phone: formData.phone ? formData.phone.trim() : undefined,
+        email: formData.email ? formData.email.trim() : undefined,
+        address: formData.address ? { line1: formData.address } : undefined,
+        baseSalary,
+        shiftType: formData.shiftType || undefined,
+        dateJoined: formData.dateJoined
+          ? new Date(formData.dateJoined + "T00:00:00").toISOString()
+          : undefined,
+        employmentStatus: formData.employmentStatus,
+        noteInternal: formData.notes || undefined,
+        emergencyContact:
+          formData.emergencyContact || formData.emergencyPhone
+            ? {
+                name: formData.emergencyContact || undefined,
+                phone: formData.emergencyPhone || undefined,
+              }
+            : undefined,
       };
 
-      await onUpdate(updatedEmployee);
+      const handler = onSubmit || onUpdate;
+      if (handler) {
+        await handler(payload);
+      }
       setOriginalData(formData);
       setHasChanges(false);
       onClose();
@@ -122,12 +158,16 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onUpdate }) => {
     <div className="tab-content">
       <div className="employee-header">
         <div className="employee-avatar">
-          {formData.name?.charAt(0)?.toUpperCase() || "?"}
+          {formData.fullName?.charAt(0)?.toUpperCase() || "?"}
         </div>
         <div className="employee-info">
-          <h3>{formData.name || "Chưa có tên"}</h3>
-          <Badge variant={formData.status === "active" ? "success" : "danger"}>
-            {formData.status === "active" ? "✅ Đang làm việc" : "❌ Nghỉ việc"}
+          <h3>{formData.fullName || "Chưa có tên"}</h3>
+          <Badge
+            variant={formData.employmentStatus === "WORKING" ? "success" : "danger"}
+          >
+            {formData.employmentStatus === "WORKING"
+              ? "✅ Đang làm việc"
+              : "❌ Tạm nghỉ"}
           </Badge>
         </div>
       </div>
@@ -137,26 +177,30 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onUpdate }) => {
           <label className="form-label">Họ và tên *</label>
           <input
             type="text"
-            className={`form-input ${errors.name ? "error" : ""}`}
-            value={formData.name || ""}
-            onChange={(e) => handleInputChange("name", e.target.value)}
+            className={`form-input ${errors.fullName ? "error" : ""}`}
+            value={formData.fullName || ""}
+            onChange={(e) => handleInputChange("fullName", e.target.value)}
             placeholder="Nhập họ và tên"
             disabled={isSubmitting}
           />
-          {errors.name && <div className="error-message">{errors.name}</div>}
+          {errors.fullName && (
+            <div className="error-message">{errors.fullName}</div>
+          )}
         </div>
 
         <div className="form-group">
           <label className="form-label">Chức vụ *</label>
           <input
             type="text"
-            className={`form-input ${errors.role ? "error" : ""}`}
-            value={formData.role || ""}
-            onChange={(e) => handleInputChange("role", e.target.value)}
+            className={`form-input ${errors.positionTitle ? "error" : ""}`}
+            value={formData.positionTitle || ""}
+            onChange={(e) => handleInputChange("positionTitle", e.target.value)}
             placeholder="VD: Phục vụ, Bếp trưởng..."
             disabled={isSubmitting}
           />
-          {errors.role && <div className="error-message">{errors.role}</div>}
+          {errors.positionTitle && (
+            <div className="error-message">{errors.positionTitle}</div>
+          )}
         </div>
       </div>
 
@@ -182,14 +226,16 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onUpdate }) => {
           <label className="form-label">Trạng thái</label>
           <select
             className="form-select"
-            value={formData.status || "active"}
-            onChange={(e) => handleInputChange("status", e.target.value)}
+            value={formData.employmentStatus || "WORKING"}
+            onChange={(e) =>
+              handleInputChange("employmentStatus", e.target.value)
+            }
             disabled={isSubmitting}
           >
-            <option value="active">✅ Đang làm việc</option>
-            <option value="inactive">❌ Nghỉ việc</option>
-            <option value="probation">⏳ Thử việc</option>
-            <option value="leave">🏖️ Nghỉ phép</option>
+            <option value="WORKING">✅ Đang làm việc</option>
+            <option value="ON_LEAVE">🏖️ Nghỉ phép</option>
+            <option value="RESIGNED">❌ Nghỉ việc</option>
+            <option value="SUSPENDED">⛔ Tạm đình chỉ</option>
           </select>
         </div>
       </div>
@@ -199,8 +245,8 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onUpdate }) => {
         <input
           type="date"
           className="form-input"
-          value={formData.startDate || ""}
-          onChange={(e) => handleInputChange("startDate", e.target.value)}
+          value={formData.dateJoined || ""}
+          onChange={(e) => handleInputChange("dateJoined", e.target.value)}
           disabled={isSubmitting}
         />
       </div>
@@ -290,16 +336,16 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onUpdate }) => {
         <label className="form-label">Ca làm việc</label>
         <select
           className="form-select"
-          value={formData.shift || ""}
-          onChange={(e) => handleInputChange("shift", e.target.value)}
+          value={formData.shiftType || ""}
+          onChange={(e) => handleInputChange("shiftType", e.target.value)}
           disabled={isSubmitting}
         >
           <option value="">Chọn ca làm việc</option>
-          <option value="morning">🌅 Ca sáng (6:00 - 14:00)</option>
-          <option value="afternoon">☀️ Ca chiều (14:00 - 22:00)</option>
-          <option value="night">🌙 Ca đêm (22:00 - 6:00)</option>
-          <option value="full">⏰ Ca full (8:00 - 17:00)</option>
-          <option value="part-time">⏱️ Bán thời gian</option>
+          <option value="MORNING">🌅 Ca sáng (6:00 - 14:00)</option>
+          <option value="AFTERNOON">☀️ Ca chiều (14:00 - 22:00)</option>
+          <option value="EVENING">🌙 Ca tối (22:00 - 6:00)</option>
+          <option value="FULL_DAY">⏰ Ca full (8:00 - 17:00)</option>
+          <option value="ROTATING">🔁 Xoay ca</option>
         </select>
       </div>
 
@@ -323,7 +369,7 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onUpdate }) => {
         <div className="salary-card">
           <div className="salary-label">💰 Lương hiện tại</div>
           <div className="salary-value">
-            {formData.salary || "Chưa thiết lập"}
+            {formData.baseSalary || "Chưa thiết lập"}
           </div>
         </div>
       </div>
@@ -334,8 +380,8 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onUpdate }) => {
           <input
             type="text"
             className="form-input"
-            value={formData.salary || ""}
-            onChange={(e) => handleInputChange("salary", e.target.value)}
+            value={formData.baseSalary || ""}
+            onChange={(e) => handleInputChange("baseSalary", e.target.value)}
             placeholder="8000000"
             disabled={isSubmitting}
           />

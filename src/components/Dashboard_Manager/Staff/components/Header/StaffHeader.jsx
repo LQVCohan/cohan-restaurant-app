@@ -14,6 +14,8 @@ const StaffHeader = ({
   stats = {},
   loading = false,
   onPageChange,
+  searchValue = "",
+  onSearchChange,
   isCollapsed, // Props từ cha
   onToggle, // Props từ cha
 }) => {
@@ -127,10 +129,13 @@ const StaffHeader = ({
 
       {/* CỘT TRÁI: SIDEBAR */}
       <div className="staff-header-sidebar">
-        <div className="staff-sidebar-top">
+        <div className="staff-sidebar-card">
           <div className="staff-title-block">
             <div className="staff-eyebrow">Bảng điều khiển</div>
             <h1>Quản Lý Nhân Sự</h1>
+            <p className="staff-subtitle">
+              Theo dõi nhân sự và cập nhật trạng thái theo thời gian thực.
+            </p>
           </div>
 
           <div className="staff-time-widget">
@@ -144,28 +149,39 @@ const StaffHeader = ({
           </div>
         </div>
 
-        <div className="staff-sidebar-controls">
+        <div className="staff-controls-card">
           <div className="staff-tools-row">
-            <div className="staff-search-box">
-              <span className="staff-search-icon">🔍</span>
-              <input type="text" placeholder="Tìm nhanh..." />
-            </div>
-            <div className="staff-branch-select-wrapper">
-              <select
-                className="staff-restaurant-selector"
-                value={selectedRestaurant}
-                onChange={(e) => onRestaurantChange(e.target.value)}
-                title="Lọc theo chi nhánh"
-              >
-                <option value="all">🏢 Toàn hệ thống</option>
-                {restaurantList.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name}
-                  </option>
-                ))}
-              </select>
-              <span className="staff-select-arrow">▼</span>
-            </div>
+            <label className="staff-field">
+              <span className="staff-field-label">Tìm kiếm</span>
+              <div className="staff-search-box">
+                <span className="staff-search-icon">🔍</span>
+                <input
+                  type="text"
+                  placeholder="Tên nhân viên, vị trí..."
+                  value={searchValue}
+                  onChange={(e) => onSearchChange?.(e.target.value)}
+                />
+              </div>
+            </label>
+            <label className="staff-field">
+              <span className="staff-field-label">Chi nhánh</span>
+              <div className="staff-branch-select-wrapper">
+                <select
+                  className="staff-restaurant-selector"
+                  value={selectedRestaurant}
+                  onChange={(e) => onRestaurantChange(e.target.value)}
+                  title="Lọc theo chi nhánh"
+                >
+                  <option value="all">🏢 Toàn hệ thống</option>
+                  {restaurantList.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="staff-select-arrow">▼</span>
+              </div>
+            </label>
           </div>
 
           <div className="staff-action-group">
@@ -197,42 +213,47 @@ const StaffHeader = ({
           ))}
         </div>
 
-        <div className="staff-quick-actions-segment">
-          {quickActions.map((action, index) => (
-            <button
-              key={index}
-              className="staff-quick-action-btn"
-              onClick={action.onClick}
-            >
-              <span className="staff-action-icon">{action.icon}</span>
-              <span className="staff-action-label">{action.label}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="staff-quick-info-bar">
-          <div className="staff-info-group">
-            <span className="staff-label-text">Đang trực:</span>
-            <div className="staff-avatar-stack">
-              {activeAvatars.map((user) => (
-                <img
-                  key={user.id}
-                  src={user.img}
-                  alt={user.name}
-                  className="staff-avatar-img"
-                />
+        <div className="staff-header-lower">
+          <div className="staff-quick-actions-segment">
+            <span className="staff-section-label">Tác vụ nhanh</span>
+            <div className="staff-quick-actions-row">
+              {quickActions.map((action, index) => (
+                <button
+                  key={index}
+                  className="staff-quick-action-btn"
+                  onClick={action.onClick}
+                >
+                  <span className="staff-action-icon">{action.icon}</span>
+                  <span className="staff-action-label">{action.label}</span>
+                </button>
               ))}
-              <div className="staff-avatar-more">
-                +{stats.activeStaff > 4 ? stats.activeStaff - 4 : 0}
-              </div>
             </div>
           </div>
-          <div className="staff-divider-vertical"></div>
-          <div className="staff-info-group">
-            <span className="staff-label-text">Cần xử lý:</span>
-            <div className="staff-pending-tags">
-              <span className="staff-tag staff-tag-warn">📝 2 Đơn nghỉ</span>
-              <span className="staff-tag staff-tag-info">🔄 1 Đổi ca</span>
+
+          <div className="staff-quick-info-bar">
+            <div className="staff-info-group">
+              <span className="staff-label-text">Đang trực:</span>
+              <div className="staff-avatar-stack">
+                {activeAvatars.map((user) => (
+                  <img
+                    key={user.id}
+                    src={user.img}
+                    alt={user.name}
+                    className="staff-avatar-img"
+                  />
+                ))}
+                <div className="staff-avatar-more">
+                  +{stats.activeStaff > 4 ? stats.activeStaff - 4 : 0}
+                </div>
+              </div>
+            </div>
+            <div className="staff-divider-vertical"></div>
+            <div className="staff-info-group">
+              <span className="staff-label-text">Cần xử lý:</span>
+              <div className="staff-pending-tags">
+                <span className="staff-tag staff-tag-warn">📝 2 Đơn nghỉ</span>
+                <span className="staff-tag staff-tag-info">🔄 1 Đổi ca</span>
+              </div>
             </div>
           </div>
         </div>
