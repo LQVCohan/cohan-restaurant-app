@@ -312,8 +312,8 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    gap: 1.5rem;
+    justify-content: flex-start;
+    gap: 1.25rem;
     background: #ffffff;
     background-image: radial-gradient(#f1f5f9 1px, transparent 1px);
     background-size: 20px 20px;
@@ -324,6 +324,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 1rem;
+      align-items: stretch;
       .staff-mini-stat-item {
         background: #fff;
         border: 1px solid $staff-header-border;
@@ -332,7 +333,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        min-height: 100px;
+        min-height: 92px;
         position: relative;
         transition: all 0.2s ease;
         &:hover {
@@ -407,7 +408,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
       align-items: center;
       gap: 0.8rem;
       padding: 0.75rem 0;
-      margin-top: 1rem;
+      margin-top: 0;
       border-top: 1px dashed $staff-header-border;
       border-bottom: 1px dashed $staff-header-border;
       .staff-quick-action-btn {
@@ -470,7 +471,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
       display: flex;
       align-items: center;
       gap: 1.5rem;
-      padding-top: 1rem;
+      padding-top: 0.25rem;
       border-top: none;
       .staff-divider-vertical {
         width: 1px;
