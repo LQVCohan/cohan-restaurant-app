@@ -1,6 +1,6 @@
 // src/pages/StaffManagement/index.jsx
 import React, { useState, useEffect, useMemo, useContext } from "react";
-import Header from "./components/Header";
+import StaffHeader from "./components/Header";
 import PageNavigation from "./components/PageNavigation";
 import EmployeeDashboard from "./components/EmployeeDashboard";
 import AttendancePage from "./components/Attendance";
@@ -226,7 +226,7 @@ const StaffManagement = () => {
     <div className="staff-management-layout">
       {/* HEADER SECTION (COLLAPSIBLE) */}
       <div className={`header-section ${isHeaderCollapsed ? "collapsed" : ""}`}>
-        <Header
+        <StaffHeader
           selectedRestaurant={selectedRestaurant}
           onRestaurantChange={handleRestaurantChange}
           onAddEmployee={() => openModal("addEmployee")}
