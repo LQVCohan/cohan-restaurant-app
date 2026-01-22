@@ -34,8 +34,18 @@ const STAFF_FIELDS = gql`
       name
     }
 
+    address {
+      line1
+      line2
+      ward
+      district
+      city
+      country
+    }
+
     employeeCode
     positionTitle
+    department
     employmentType
     employmentStatus
     shiftType
@@ -44,6 +54,7 @@ const STAFF_FIELDS = gql`
     taxCode
     dateJoined
     dateLeft
+    baseSalary
 
     rate
     rateCount

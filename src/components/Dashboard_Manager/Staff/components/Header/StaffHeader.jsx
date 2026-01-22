@@ -14,6 +14,8 @@ const StaffHeader = ({
   stats = {},
   loading = false,
   onPageChange,
+  searchValue = "",
+  onSearchChange,
   isCollapsed, // Props từ cha
   onToggle, // Props từ cha
 }) => {
@@ -153,7 +155,12 @@ const StaffHeader = ({
               <span className="staff-field-label">Tìm kiếm</span>
               <div className="staff-search-box">
                 <span className="staff-search-icon">🔍</span>
-                <input type="text" placeholder="Tên nhân viên, vị trí..." />
+                <input
+                  type="text"
+                  placeholder="Tên nhân viên, vị trí..."
+                  value={searchValue}
+                  onChange={(e) => onSearchChange?.(e.target.value)}
+                />
               </div>
             </label>
             <label className="staff-field">

@@ -24,6 +24,7 @@ const StaffManagement = () => {
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [selectedRestaurant, setSelectedRestaurant] = useState("all");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [modals, setModals] = useState({
     addEmployee: false,
     editEmployee: false,
@@ -82,15 +83,21 @@ const StaffManagement = () => {
     setStaffEmploymentStatus,
     setStaffAccountStatus,
     rateStaff,
-    page,
-    setPage,
-    pageSize,
-    setPageSize,
+    setFilters,
     staffListLoading,
   } = useStaffManagement({
     page: 1,
     pageSize: 20,
   });
+
+  useEffect(() => {
+    setFilters((prev) => ({
+      ...prev,
+      restaurantId:
+        selectedRestaurant === "all" ? null : selectedRestaurant || null,
+      search: searchQuery,
+    }));
+  }, [selectedRestaurant, searchQuery, setFilters]);
 
   const { currentTime, currentDate } = useTime();
 
@@ -119,25 +126,78 @@ const StaffManagement = () => {
     });
   }, [staffList, selectedRestaurant, managedRestaurantIds]);
 
-  // --- PAGINATION ---
-  const totalItems = filteredStaff.length;
-  const totalPages = useMemo(
-    () => (pageSize > 0 ? Math.ceil(totalItems / pageSize) : 1),
-    [totalItems, pageSize]
+  const formatDate = (value) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString("vi-VN");
+  };
+
+  const buildAddressLabel = (address) => {
+    if (!address) return "";
+    const parts = [
+      address.line1,
+      address.line2,
+      address.ward,
+      address.district,
+      address.city,
+      address.country,
+    ].filter(Boolean);
+    return parts.join(", ");
+  };
+
+  const formatShiftLabel = (shiftType) => {
+    if (!shiftType) return "";
+    const key = shiftType.toString().toUpperCase();
+    const mapping = {
+      MORNING: "Ca sáng",
+      AFTERNOON: "Ca chiều",
+      EVENING: "Ca tối",
+      FULL_DAY: "Ca full",
+      ROTATING: "Xoay ca",
+    };
+    return mapping[key] || shiftType;
+  };
+
+  const mapStaffToEmployee = (staff) => {
+    const employmentStatus = staff.employmentStatus || "";
+    const accountStatus = staff.status || "";
+    const isInactive =
+      accountStatus !== "active" ||
+      ["RESIGNED", "SUSPENDED"].includes(employmentStatus);
+    const isOnLeave = employmentStatus === "ON_LEAVE";
+    const displayStatus = isInactive
+      ? "inactive"
+      : isOnLeave
+      ? "break"
+      : "active";
+
+    return {
+      id: staff.id,
+      name: staff.fullName,
+      code: staff.employeeCode,
+      role: staff.positionTitle || staff.roleName || staff.role?.name || "",
+      department: staff.department,
+      status: displayStatus,
+      email: staff.email,
+      phone: staff.phone,
+      address: buildAddressLabel(staff.address),
+      avatar: staff.avatarUrl,
+      startDate: formatDate(staff.dateJoined),
+      salary: staff.baseSalary,
+      shift: formatShiftLabel(staff.shiftType),
+      userType: staff.userType,
+      primaryRestaurantId: staff.primaryRestaurant?.id,
+      refRestaurantIds: staff.refRestaurants?.map((r) => r.id) || [],
+      employmentStatus,
+      raw: staff,
+    };
+  };
+
+  const mappedStaff = useMemo(
+    () => filteredStaff.map(mapStaffToEmployee),
+    [filteredStaff]
   );
-
-  const safePage = useMemo(() => {
-    if (totalPages === 0) return 1;
-    if (page > totalPages) return totalPages;
-    if (page < 1) return 1;
-    return page;
-  }, [page, totalPages]);
-
-  const paginatedStaff = useMemo(() => {
-    if (!pageSize || pageSize <= 0) return filteredStaff;
-    const start = (safePage - 1) * pageSize;
-    return filteredStaff.slice(start, start + pageSize);
-  }, [filteredStaff, safePage, pageSize]);
 
   // --- STATS CALCULATION ---
   const stats = useMemo(() => {
@@ -174,7 +234,6 @@ const StaffManagement = () => {
 
   const handleRestaurantChange = (restaurantId) => {
     setSelectedRestaurant(restaurantId);
-    setPage(1);
   };
 
   const handleEmployeeSelect = (employee) => {
@@ -235,6 +294,8 @@ const StaffManagement = () => {
           stats={stats}
           loading={anyLoading}
           onPageChange={handlePageChangeTab}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
           // 👇 Cần thêm dòng này
           isCollapsed={isHeaderCollapsed}
           onToggle={toggleHeader}
@@ -253,7 +314,7 @@ const StaffManagement = () => {
       <div className="content-section fade-in-up">
         {currentPage === "dashboard" && (
           <EmployeeDashboard
-            employees={paginatedStaff}
+            employees={mappedStaff}
             selectedEmployee={selectedEmployee}
             onEmployeeSelect={handleEmployeeSelect}
             onEditEmployee={() => openModal("editEmployee")}
@@ -264,12 +325,6 @@ const StaffManagement = () => {
             onLockAccount={handleLockAccount}
             onUnlockAccount={handleUnlockAccount}
             onRateStaff={handleRateStaff}
-            page={safePage}
-            pageSize={pageSize}
-            totalItems={totalItems}
-            totalPages={totalPages}
-            onChangePage={setPage}
-            onChangePageSize={setPageSize}
             loading={anyLoading}
           />
         )}
