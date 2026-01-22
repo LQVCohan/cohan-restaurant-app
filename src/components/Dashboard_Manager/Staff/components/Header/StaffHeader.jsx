@@ -206,42 +206,47 @@ const StaffHeader = ({
           ))}
         </div>
 
-        <div className="staff-quick-actions-segment">
-          {quickActions.map((action, index) => (
-            <button
-              key={index}
-              className="staff-quick-action-btn"
-              onClick={action.onClick}
-            >
-              <span className="staff-action-icon">{action.icon}</span>
-              <span className="staff-action-label">{action.label}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="staff-quick-info-bar">
-          <div className="staff-info-group">
-            <span className="staff-label-text">Đang trực:</span>
-            <div className="staff-avatar-stack">
-              {activeAvatars.map((user) => (
-                <img
-                  key={user.id}
-                  src={user.img}
-                  alt={user.name}
-                  className="staff-avatar-img"
-                />
+        <div className="staff-header-lower">
+          <div className="staff-quick-actions-segment">
+            <span className="staff-section-label">Tác vụ nhanh</span>
+            <div className="staff-quick-actions-row">
+              {quickActions.map((action, index) => (
+                <button
+                  key={index}
+                  className="staff-quick-action-btn"
+                  onClick={action.onClick}
+                >
+                  <span className="staff-action-icon">{action.icon}</span>
+                  <span className="staff-action-label">{action.label}</span>
+                </button>
               ))}
-              <div className="staff-avatar-more">
-                +{stats.activeStaff > 4 ? stats.activeStaff - 4 : 0}
-              </div>
             </div>
           </div>
-          <div className="staff-divider-vertical"></div>
-          <div className="staff-info-group">
-            <span className="staff-label-text">Cần xử lý:</span>
-            <div className="staff-pending-tags">
-              <span className="staff-tag staff-tag-warn">📝 2 Đơn nghỉ</span>
-              <span className="staff-tag staff-tag-info">🔄 1 Đổi ca</span>
+
+          <div className="staff-quick-info-bar">
+            <div className="staff-info-group">
+              <span className="staff-label-text">Đang trực:</span>
+              <div className="staff-avatar-stack">
+                {activeAvatars.map((user) => (
+                  <img
+                    key={user.id}
+                    src={user.img}
+                    alt={user.name}
+                    className="staff-avatar-img"
+                  />
+                ))}
+                <div className="staff-avatar-more">
+                  +{stats.activeStaff > 4 ? stats.activeStaff - 4 : 0}
+                </div>
+              </div>
+            </div>
+            <div className="staff-divider-vertical"></div>
+            <div className="staff-info-group">
+              <span className="staff-label-text">Cần xử lý:</span>
+              <div className="staff-pending-tags">
+                <span className="staff-tag staff-tag-warn">📝 2 Đơn nghỉ</span>
+                <span className="staff-tag staff-tag-info">🔄 1 Đổi ca</span>
+              </div>
             </div>
           </div>
         </div>
