@@ -1,7 +1,5 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
+// Scoped styles for StaffHeader (no shared tokens)
 
-// ==== CONFIG ====
 $staff-header-bg-sidebar: #f8fafc;
 $staff-header-bg-content: #ffffff;
 $staff-header-border: #e2e8f0;
@@ -11,31 +9,29 @@ $staff-header-text-sub: #64748b;
 $staff-header-success: #16a34a;
 $staff-header-warning: #f59e0b;
 $staff-header-info: #6366f1;
-
-// Animation config
+$staff-header-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+$staff-header-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+$staff-header-radius-lg: 16px;
+$staff-header-radius-md: 12px;
+$staff-header-radius-sm: 8px;
 $anim-speed: 0.4s;
 $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
 
 .staff-header-card {
-  @include card-base;
   padding: 0;
-  margin-bottom: $spacing-xl;
+  margin-bottom: 24px;
   background: $staff-header-bg-content;
   border: 1px solid $staff-header-border;
-  box-shadow: $shadow-sm;
-  border-radius: 16px;
+  box-shadow: $staff-header-shadow-sm;
+  border-radius: $staff-header-radius-lg;
   width: 100%;
   display: flex;
   position: relative;
-  overflow: hidden; // Cắt nội dung thừa
-
-  // --- TRẠNG THÁI MỞ (DEFAULT) ---
-  // Max-height lớn để chứa hết nội dung
+  overflow: hidden;
   max-height: 600px;
   opacity: 1;
   transition: max-height $anim-speed $anim-ease, box-shadow 0.3s;
 
-  // NÚT TOGGLE (Cố định vị trí)
   .staff-header-toggle-btn {
     position: absolute;
     top: 1.5rem;
@@ -62,31 +58,24 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
     }
   }
 
-  // ==========================================
-  // 🔥 TRẠNG THÁI THU GỌN (COLLAPSED)
-  // ==========================================
   &.collapsed {
-    max-height: 72px; // Chiều cao cứng khi đóng
+    max-height: 72px;
     box-shadow: none;
 
-    // Nút toggle chạy xuống giữa
     .staff-header-toggle-btn {
       top: 50%;
       transform: translateY(-50%);
     }
 
-    // Xử lý Sidebar khi đóng
     .staff-header-sidebar {
-      width: 100%; // Chiếm full width
+      width: 100%;
       flex: 1;
       background: #fff;
       border-right: none;
-      padding: 0 2rem; // Padding trái phải
-
-      // Đổi hướng Flex thành ngang để căn giữa Title
+      padding: 0 2rem;
       flex-direction: row;
       align-items: center;
-      justify-content: flex-start; // Căn trái nội dung
+      justify-content: flex-start;
 
       .staff-sidebar-top {
         margin: 0;
@@ -99,12 +88,10 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
           display: flex;
           align-items: center;
 
-          // Ẩn chữ nhỏ
           .staff-eyebrow {
             display: none;
           }
 
-          // HIỆN TIÊU ĐỀ TO
           h1 {
             font-size: 1.25rem;
             margin: 0;
@@ -115,28 +102,21 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
           }
         }
 
-        // Ẩn widget thời gian
         .staff-time-widget {
           display: none;
         }
       }
 
-      // Ẩn các nút điều khiển
       .staff-sidebar-controls {
         display: none;
       }
     }
 
-    // Ẩn cột phải
     .staff-header-content {
       display: none;
     }
   }
-  // ==========================================
 
-  // --- STYLE CHI TIẾT (KHI MỞ) ---
-
-  // Cột trái
   .staff-header-sidebar {
     flex: 0 0 300px;
     background: $staff-header-bg-sidebar;
@@ -171,9 +151,9 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
       .staff-time-widget {
         background: #fff;
         border: 1px solid $staff-header-border;
-        border-radius: 12px;
+        border-radius: $staff-header-radius-md;
         padding: 0.75rem;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
         transition: opacity 0.2s;
         .staff-time-row {
           display: flex;
@@ -208,9 +188,8 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
-      transition: opacity 0.2s; // Fade out khi đóng
+      transition: opacity 0.2s;
 
-      // Tools Row (Search + Select)
       .staff-tools-row {
         display: flex;
         align-items: center;
@@ -234,7 +213,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
             height: 40px;
             padding: 0 10px 0 32px;
             border: 1px solid $staff-header-border;
-            border-radius: 8px;
+            border-radius: $staff-header-radius-sm;
             font-size: 0.85rem;
             background: #fff;
             transition: all 0.2s ease;
@@ -256,7 +235,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
             height: 40px;
             padding: 0 24px 0 10px;
             border: 1px solid $staff-header-border;
-            border-radius: 8px;
+            border-radius: $staff-header-radius-sm;
             font-size: 0.85rem;
             font-weight: 600;
             color: $staff-header-text-main;
@@ -294,7 +273,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
         .staff-btn {
           flex: 1;
           height: 40px;
-          border-radius: 8px;
+          border-radius: $staff-header-radius-sm;
           font-weight: 600;
           font-size: 0.85rem;
           border: 1px solid transparent;
@@ -328,7 +307,6 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
     }
   }
 
-  // Cột phải
   .staff-header-content {
     flex: 1;
     padding: 1.5rem;
@@ -349,7 +327,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
       .staff-mini-stat-item {
         background: #fff;
         border: 1px solid $staff-header-border;
-        border-radius: 12px;
+        border-radius: $staff-header-radius-md;
         padding: 1rem;
         display: flex;
         flex-direction: column;
@@ -359,13 +337,13 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
         transition: all 0.2s ease;
         &:hover {
           transform: translateY(-3px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+          box-shadow: $staff-header-shadow-md;
           border-color: $staff-header-primary;
         }
         .staff-stat-icon-box {
           width: 2rem;
           height: 2rem;
-          border-radius: 8px;
+          border-radius: $staff-header-radius-sm;
           display: grid;
           place-items: center;
           font-size: 1rem;
@@ -423,7 +401,6 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
       }
     }
 
-    // QUICK ACTIONS (Đã fix)
     .staff-quick-actions-segment {
       display: flex;
       justify-content: center;
@@ -441,7 +418,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
         width: 44px;
         padding: 0;
         background: #fff;
-        border: 1px solid $h-border;
+        border: 1px solid $staff-header-border;
         border-radius: 99px;
         cursor: pointer;
         overflow: hidden;
@@ -534,7 +511,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
           border-radius: 50%;
           border: 2px solid #fff;
           background: #f1f5f9;
-          color: $h-text-sub;
+          color: $staff-header-text-sub;
           font-size: 0.75rem;
           font-weight: 700;
           display: grid;
@@ -572,7 +549,6 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
   }
 }
 
-// RESPONSIVE
 @media (max-width: 1024px) {
   .staff-header-card {
     flex-direction: column;
@@ -619,6 +595,7 @@ $anim-ease: cubic-bezier(0.25, 1, 0.5, 1);
     }
   }
 }
+
 @media (max-width: 640px) {
   .staff-header-card {
     .staff-header-sidebar {
