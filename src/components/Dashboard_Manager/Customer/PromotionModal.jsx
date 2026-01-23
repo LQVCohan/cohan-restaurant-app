@@ -2,8 +2,6 @@
 import React, { useState, useMemo } from "react";
 import {
   Gift,
-  Users,
-  Calendar,
   Check,
   ArrowRight,
   ArrowLeft,
@@ -18,7 +16,7 @@ import Modal from "../../common/Modal"; // Đảm bảo đường dẫn đúng
 import "./PromotionModal.scss";
 
 // Dữ liệu giả lập (Move outside component to avoid recreate)
-const PROMOTIONS_DATA = [
+const CAMPAIGN_DATA = [
   {
     id: "welcome",
     title: "Chào Bạn Mới",
@@ -28,6 +26,7 @@ const PROMOTIONS_DATA = [
     bgColor: "bg-green-100",
     validDays: 30,
     targetGroup: "Khách mới",
+    kind: "promotion",
   },
   {
     id: "vip",
@@ -38,6 +37,7 @@ const PROMOTIONS_DATA = [
     bgColor: "bg-yellow-100",
     validDays: 15,
     targetGroup: "Khách VIP",
+    kind: "promotion",
   },
   {
     id: "weekend",
@@ -47,6 +47,7 @@ const PROMOTIONS_DATA = [
     bgColor: "bg-purple-100",
     validDays: 3,
     targetGroup: "Tất cả khách",
+    kind: "promotion",
   },
   {
     id: "birthday",
@@ -57,6 +58,37 @@ const PROMOTIONS_DATA = [
     bgColor: "bg-pink-100",
     validDays: 30,
     targetGroup: "Sinh nhật",
+    kind: "promotion",
+  },
+  {
+    id: "tet-voucher",
+    title: "Voucher Tết Sum Vầy",
+    description: "Giảm 20% cho nhóm món ăn chính dịp Tết.",
+    icon: <Sparkles size={24} className="text-red-600" />,
+    bgColor: "bg-red-100",
+    validDays: 20,
+    targetGroup: "Tất cả khách",
+    kind: "voucher",
+  },
+  {
+    id: "shipping-voucher",
+    title: "Voucher Freeship",
+    description: "Miễn phí giao hàng cho đơn đủ điều kiện.",
+    icon: <Zap size={24} className="text-blue-600" />,
+    bgColor: "bg-blue-100",
+    validDays: 15,
+    targetGroup: "Khách đặt món",
+    kind: "voucher",
+  },
+  {
+    id: "newbie-pack",
+    title: "Gói Voucher Người Mới",
+    description: "Bao gồm voucher món ăn, đặt bàn và freeship.",
+    icon: <Gift size={24} className="text-emerald-600" />,
+    bgColor: "bg-emerald-100",
+    validDays: 45,
+    targetGroup: "Khách mới",
+    kind: "package",
   },
 ];
 
@@ -72,7 +104,7 @@ const CUSTOMER_GROUPS = [
 const PromotionModal = ({ onClose }) => {
   // State
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedPromo, setSelectedPromo] = useState(null);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [selectedGroupIds, setSelectedGroupIds] = useState([]);
   const [scheduleType, setScheduleType] = useState("now"); // 'now' | 'later'
   const [scheduleDate, setScheduleDate] = useState("");
@@ -124,7 +156,7 @@ const PromotionModal = ({ onClose }) => {
     setTimeout(() => {
       setIsSending(false);
       alert(
-        `✅ Đã gửi chiến dịch "${selectedPromo.title}" tới ${totalRecipients} khách hàng!`
+        `✅ Đã gửi chiến dịch "${selectedCampaign.title}" tới ${totalRecipients} khách hàng!`
       );
       onClose();
     }, 1500);
@@ -133,7 +165,7 @@ const PromotionModal = ({ onClose }) => {
   // Render Steps
   const renderStepIndicator = () => {
     const steps = [
-      { num: 1, label: "Chọn Gói KM" },
+      { num: 1, label: "Chọn ưu đãi/Voucher" },
       { num: 2, label: "Đối Tượng" },
       { num: 3, label: "Lên Lịch & Gửi" },
     ];
@@ -180,17 +212,17 @@ const PromotionModal = ({ onClose }) => {
 
         {/* BODY */}
         <div className="pm-body">
-          {/* STEP 1: CHỌN PROMOTION */}
+          {/* STEP 1: CHỌN CHIẾN DỊCH */}
           {currentStep === 1 && (
             <div className="step-content">
               <div className="promo-grid">
-                {PROMOTIONS_DATA.map((promo) => (
+                {CAMPAIGN_DATA.map((promo) => (
                   <div
                     key={promo.id}
                     className={`promo-card ${
-                      selectedPromo?.id === promo.id ? "selected" : ""
+                      selectedCampaign?.id === promo.id ? "selected" : ""
                     }`}
-                    onClick={() => setSelectedPromo(promo)}
+                    onClick={() => setSelectedCampaign(promo)}
                   >
                     <div className="check-mark">
                       <Check size={14} />
@@ -204,6 +236,13 @@ const PromotionModal = ({ onClose }) => {
                       <span>Hiệu lực: {promo.validDays} ngày</span>
                       <span>{promo.targetGroup}</span>
                     </div>
+                    <span className={`promo-tag type-${promo.kind}`}>
+                      {promo.kind === "voucher"
+                        ? "Voucher"
+                        : promo.kind === "package"
+                          ? "Gói voucher"
+                          : "Khuyến mãi"}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -316,7 +355,7 @@ const PromotionModal = ({ onClose }) => {
                 <h4>Xác nhận thông tin</h4>
                 <div className="sum-row">
                   <span className="label">Chiến dịch:</span>
-                  <span className="val">{selectedPromo?.title}</span>
+                  <span className="val">{selectedCampaign?.title}</span>
                 </div>
                 <div className="sum-row">
                   <span className="label">Đối tượng:</span>
@@ -362,7 +401,7 @@ const PromotionModal = ({ onClose }) => {
               className="btn-next"
               onClick={() => setCurrentStep((p) => p + 1)}
               disabled={
-                (currentStep === 1 && !selectedPromo) ||
+                (currentStep === 1 && !selectedCampaign) ||
                 (currentStep === 2 && selectedGroupIds.length === 0)
               }
             >
