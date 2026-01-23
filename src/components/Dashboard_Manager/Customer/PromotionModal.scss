@@ -213,6 +213,33 @@ $pm-radius: 12px;
         font-weight: 600;
       }
     }
+
+    .promo-tag {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+      background: #e2e8f0;
+      color: #475569;
+    }
+
+    .type-promotion {
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .type-voucher {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .type-package {
+      background: #d1fae5;
+      color: #047857;
+    }
   }
 
   /* Step 2: Customer Groups */
