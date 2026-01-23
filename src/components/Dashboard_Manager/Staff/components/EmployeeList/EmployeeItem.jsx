@@ -1,7 +1,16 @@
 import React from "react";
+import {
+  Phone,
+  Mail,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Briefcase,
+} from "lucide-react";
+import "./EmployeeItem.scss";
 
 const EmployeeItem = ({ employee, isSelected, onClick, onAction }) => {
-  // 1. Helper: Lấy màu nền cố định cho Avatar dựa trên tên
+  // --- HELPERS ---
   const getAvatarColor = (name) => {
     const colors = [
       "#3b82f6",
@@ -10,120 +19,105 @@ const EmployeeItem = ({ employee, isSelected, onClick, onAction }) => {
       "#ef4444",
       "#8b5cf6",
       "#ec4899",
-      "#6366f1",
     ];
-    // Lấy mã màu dựa trên độ dài tên để màu không bị đổi mỗi lần render
-    return colors[name.length % colors.length];
+    return colors[(name?.length || 0) % colors.length];
   };
 
-  // 2. Helper: Config hiển thị Trạng thái
-  const statusConfig = {
-    active: { label: "Đang làm", class: "status-active" },
-    break: { label: "Nghỉ ngơi", class: "status-break" },
-    inactive: { label: "Vắng mặt", class: "status-inactive" },
-  };
-  const statusInfo = statusConfig[employee.status] || statusConfig.active;
-
-  // 3. Helper: Config hiển thị Bộ phận
-  const getDeptLabel = (dept) => {
+  const getDeptConfig = (dept) => {
     const map = {
-      kitchen: "Bếp",
-      service: "Phục vụ",
-      cashier: "Thu ngân",
-      management: "Quản lý",
-      cleaning: "Vệ sinh",
+      kitchen: { label: "Bếp", color: "orange" },
+      service: { label: "Phục vụ", color: "blue" },
+      cashier: { label: "Thu ngân", color: "green" },
+      management: { label: "Quản lý", color: "purple" },
+      cleaning: { label: "Vệ sinh", color: "gray" },
     };
-    return map[dept] || "Khác";
+    return map[dept] || { label: "Khác", color: "gray" };
   };
 
-  // 4. Xử lý click nút hành động (Edit/Delete)
-  // Cần stopPropagation để không kích hoạt sự kiện chọn dòng (onClick của row)
   const handleActionClick = (e, type) => {
     e.stopPropagation();
-    if (onAction) {
-      onAction(e, type);
-    }
+    if (onAction) onAction(e, type);
   };
+
+  const deptInfo = getDeptConfig(employee.department);
+  const isInactive = employee.status === "inactive";
 
   return (
     <div
-      className={`employee-row-item ${isSelected ? "selected" : ""}`}
+      className={`employee-row-item ${isSelected ? "selected" : ""} ${isInactive ? "dimmed" : ""}`}
       onClick={onClick}
+      role="button"
+      tabIndex={0}
     >
-      {/* --- CỘT 1: THÔNG TIN CHÍNH --- */}
-      <div className="col col-info">
-        <div
-          className="avatar-circle"
-          style={{
-            backgroundImage: employee.avatar
-              ? `url(${employee.avatar})`
-              : "none",
-            backgroundColor: !employee.avatar
-              ? getAvatarColor(employee.name)
-              : "transparent",
-            // Style inline để hỗ trợ fallback khi không có ảnh
-            color: "#fff",
-            fontSize: "1.1rem",
-            fontWeight: "600",
-            border: "2px solid #fff",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-          }}
-        >
-          {/* Nếu không có ảnh thì hiện chữ cái đầu */}
-          {!employee.avatar && employee.name.charAt(0).toUpperCase()}
+      {/* 1. INFO COLUMN */}
+      <div className="col-main">
+        <div className="avatar-wrapper">
+          {employee.avatar ? (
+            <img
+              src={employee.avatar}
+              alt={employee.name}
+              className="avatar-img"
+            />
+          ) : (
+            <div
+              className="avatar-placeholder"
+              style={{ backgroundColor: getAvatarColor(employee.name) }}
+            >
+              {employee.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          {/* Status Indicator Dot */}
+          <span className={`status-dot ${employee.status}`} />
         </div>
 
-        <div className="info-text">
-          <div className="name" title={employee.name}>
-            {employee.name}
-          </div>
-          <div className="code-role">
-            <span className="code">{employee.code || "N/A"}</span>
-            <span className="role" title={employee.role}>
-              {employee.role}
-            </span>
-          </div>
+        <div className="info-content">
+          <h4 className="name">{employee.name}</h4>
+          <span className="code">{employee.code || "---"}</span>
         </div>
       </div>
 
-      {/* --- CỘT 2: LIÊN HỆ --- */}
-      <div className="col col-contact">
-        <div className="email" title={employee.email}>
-          {employee.email}
+      {/* 2. ROLE & DEPT COLUMN */}
+      <div className="col-role">
+        <div className="role-text">
+          <Briefcase size={12} className="icon" />
+          <span>{employee.role}</span>
         </div>
-        <div className="phone">{employee.phone}</div>
+        <span className={`dept-badge ${deptInfo.color}`}>{deptInfo.label}</span>
       </div>
 
-      {/* --- CỘT 3: BỘ PHẬN --- */}
-      <div className="col col-dept">
-        <span className={`dept-badge dept-${employee.department}`}>
-          {getDeptLabel(employee.department)}
-        </span>
+      {/* 3. CONTACT COLUMN (Desktop mostly) */}
+      <div className="col-contact">
+        <div className="contact-row" title={employee.email}>
+          <Mail size={12} />
+          <span>{employee.email}</span>
+        </div>
+        <div className="contact-row">
+          <Phone size={12} />
+          <span>{employee.phone}</span>
+        </div>
       </div>
 
-      {/* --- CỘT 4: TRẠNG THÁI --- */}
-      <div className="col col-status">
-        <span className={`status-pill ${statusInfo.class}`}>
-          <span className="dot"></span>
-          {statusInfo.label}
-        </span>
-      </div>
-
-      {/* --- CỘT 5: HÀNH ĐỘNG (Hover mới hiện) --- */}
-      <div className="col col-actions">
-        <button
-          className="action-btn edit"
-          onClick={(e) => handleActionClick(e, "edit")}
-          title="Chỉnh sửa"
-        >
-          ✏️
-        </button>
-        <button
-          className="action-btn delete"
-          onClick={(e) => handleActionClick(e, "delete")}
-          title="Xóa nhân viên"
-        >
-          🗑️
+      {/* 4. ACTIONS COLUMN */}
+      <div className="col-actions">
+        <div className="action-buttons">
+          <button
+            className="btn-icon edit"
+            onClick={(e) => handleActionClick(e, "edit")}
+            title="Chỉnh sửa"
+          >
+            <Edit size={16} />
+          </button>
+          <button
+            className="btn-icon delete"
+            onClick={(e) => handleActionClick(e, "delete")}
+            title="Xóa"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+        {/* Mobile menu trigger (optional) */}
+        <button className="btn-icon mobile-menu">
+          <MoreHorizontal size={18} />
         </button>
       </div>
     </div>

@@ -1,21 +1,27 @@
 import React, { useState, useMemo } from "react";
+import {
+  Search,
+  Filter,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+  SearchX,
+} from "lucide-react";
 import EmployeeItem from "./EmployeeItem";
 import "./EmployeeList.scss";
 
 const EmployeeList = ({ employees, selectedEmployee, onEmployeeSelect }) => {
   const dataSource = employees || [];
-
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all"); // Dùng cho Tabs
+  const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 6; // Số lượng hiển thị mỗi trang
+  const itemsPerPage = 6;
 
-  // --- LOGIC LỌC DỮ LIỆU ---
+  // --- LOGIC LỌC ---
   const filteredEmployees = useMemo(() => {
     return dataSource.filter((employee) => {
       const searchLower = searchQuery.toLowerCase();
-
       const matchesSearch =
         (employee.name && employee.name.toLowerCase().includes(searchLower)) ||
         (employee.role && employee.role.toLowerCase().includes(searchLower)) ||
@@ -35,51 +41,55 @@ const EmployeeList = ({ employees, selectedEmployee, onEmployeeSelect }) => {
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
   const paginatedEmployees = filteredEmployees.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
-  // Reset trang về 1 khi filter thay đổi
+  // Reset về trang 1 khi filter đổi
   useMemo(() => {
     setCurrentPage(1);
   }, [searchQuery, departmentFilter, statusFilter]);
 
   // --- HANDLERS ---
-  const handleActionClick = (e, employee, action) => {
-    e.stopPropagation(); // Ngăn chặn sự kiện click vào hàng
-    alert(`Thao tác: ${action.toUpperCase()} trên nhân viên ${employee.name}`);
-    // Ở đây bạn có thể gọi prop onEdit, onDelete truyền từ cha xuống
+  const handleActionClick = (e, type) => {
+    // Logic xử lý Edit/Delete gọi từ Item lên
+    console.log(`Action: ${type}`);
+    // Thực tế bạn sẽ gọi props onEdit/onDelete từ cha truyền xuống
   };
 
   return (
-    <div className="employee-list-card">
-      {/* 1. HEADER: TITLE & SEARCH */}
-      <div className="list-header-top">
-        <div className="header-left">
-          <h3 className="list-title">Danh Sách Nhân Sự</h3>
-          <span className="list-subtitle">
-            Quản lý {dataSource.length} hồ sơ nhân viên
-          </span>
+    <div className="employee-list-card fade-in">
+      {/* 1. HEADER & SEARCH BAR */}
+      <div className="list-header-wrapper">
+        <div className="header-title-box">
+          <div className="icon-box">
+            <Users size={20} />
+          </div>
+          <div>
+            <h3 className="title">Danh sách nhân sự</h3>
+            <p className="subtitle">{dataSource.length} hồ sơ nhân viên</p>
+          </div>
         </div>
-        <div className="search-wrapper">
-          <i className="search-icon">🔍</i>
+
+        <div className="search-box">
+          <Search className="search-icon" size={18} />
           <input
             type="text"
-            className="search-input"
-            placeholder="Tìm tên, mã NV, chức vụ..."
+            placeholder="Tìm theo tên, mã NV..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>
 
-      {/* 2. CONTROLS: TABS & DEPT FILTER */}
-      <div className="list-controls-bar">
+      {/* 2. FILTERS TOOLBAR */}
+      <div className="filters-toolbar">
+        {/* Tabs Status */}
         <div className="status-tabs">
           {[
             { key: "all", label: "Tất cả" },
             { key: "active", label: "Đang làm" },
-            { key: "break", label: "Nghỉ ngơi" },
-            { key: "inactive", label: "Vắng mặt" },
+            { key: "break", label: "Nghỉ" },
+            { key: "inactive", label: "Vắng" },
           ].map((tab) => (
             <button
               key={tab.key}
@@ -91,31 +101,33 @@ const EmployeeList = ({ employees, selectedEmployee, onEmployeeSelect }) => {
           ))}
         </div>
 
-        <select
-          className="dept-select"
-          value={departmentFilter}
-          onChange={(e) => setDepartmentFilter(e.target.value)}
-        >
-          <option value="all">🏢 Tất cả phòng ban</option>
-          <option value="kitchen">👨‍🍳 Bếp</option>
-          <option value="service">🍽️ Phục vụ</option>
-          <option value="cashier">💰 Thu ngân</option>
-          <option value="management">📊 Quản lý</option>
-          <option value="cleaning">🧹 Vệ sinh</option>
-        </select>
+        {/* Dept Filter Dropdown */}
+        <div className="filter-select-wrapper">
+          <Filter size={16} className="filter-icon" />
+          <select
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            className="custom-select"
+          >
+            <option value="all">Tất cả bộ phận</option>
+            <option value="kitchen">Bếp</option>
+            <option value="service">Phục vụ</option>
+            <option value="cashier">Thu ngân</option>
+            <option value="management">Quản lý</option>
+          </select>
+        </div>
       </div>
 
-      {/* 3. TABLE HEADER ROW */}
+      {/* 3. TABLE HEADER (Grid aligned with Item) */}
       <div className="table-header-row">
-        <div className="col col-info">Nhân viên</div>
-        <div className="col col-contact">Liên hệ</div>
-        <div className="col col-dept">Bộ phận</div>
-        <div className="col col-status">Trạng thái</div>
-        <div className="col col-actions"></div>
+        <div className="th col-main">Thông tin nhân viên</div>
+        <div className="th col-role">Vị trí</div>
+        <div className="th col-contact">Liên hệ</div>
+        <div className="th col-actions"></div>
       </div>
 
-      {/* 4. LIST BODY (SCROLLABLE) */}
-      <div className="employee-list-body">
+      {/* 4. LIST CONTENT */}
+      <div className="list-body custom-scrollbar">
         {paginatedEmployees.length > 0 ? (
           paginatedEmployees.map((employee) => (
             <EmployeeItem
@@ -123,43 +135,40 @@ const EmployeeList = ({ employees, selectedEmployee, onEmployeeSelect }) => {
               employee={employee}
               isSelected={selectedEmployee?.id === employee.id}
               onClick={() => onEmployeeSelect(employee)}
-              onAction={(e, action) => handleActionClick(e, employee, action)}
+              onAction={handleActionClick}
             />
           ))
         ) : (
           <div className="empty-state">
-            <div className="empty-icon">🕵️‍♀️</div>
-            <p>Không tìm thấy nhân viên nào phù hợp với bộ lọc.</p>
+            <div className="icon-wrapper">
+              <SearchX size={48} />
+            </div>
+            <h4>Không tìm thấy kết quả</h4>
+            <p>Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc.</p>
           </div>
         )}
       </div>
 
-      {/* 5. PAGINATION FOOTER */}
+      {/* 5. PAGINATION */}
       {totalPages > 1 && (
-        <div className="staff-pagination-footer">
-          <div className="staff-pagination">
+        <div className="list-footer">
+          <span className="page-info">
+            Trang <strong>{currentPage}</strong> / {totalPages}
+          </span>
+          <div className="pagination-controls">
             <button
-              className="staff-page-btn"
+              className="pagi-btn"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              title="Trang trước"
             >
-              ‹
+              <ChevronLeft size={18} />
             </button>
-
-            <div className="staff-page-info">
-              <span className="staff-page-number">{currentPage}</span>
-              <span className="staff-page-sep">/</span>
-              <span className="staff-page-number">{totalPages}</span>
-            </div>
-
             <button
-              className="staff-page-btn"
+              className="pagi-btn"
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              title="Trang sau"
             >
-              ›
+              <ChevronRight size={18} />
             </button>
           </div>
         </div>

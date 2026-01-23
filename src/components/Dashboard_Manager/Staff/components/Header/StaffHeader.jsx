@@ -1,7 +1,7 @@
-// src/pages/StaffManagement/components/StaffHeader.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import "./StaffHeader.scss";
 
+// Utility formatting
 const formatNumber = (value) =>
   typeof value === "number" ? value.toLocaleString("vi-VN") : value;
 
@@ -14,249 +14,244 @@ const StaffHeader = ({
   stats = {},
   loading = false,
   onPageChange,
-  searchValue = "",
-  onSearchChange,
-  isCollapsed, // Props từ cha
-  onToggle, // Props từ cha
+  isCollapsed,
+  onToggle,
 }) => {
-  // --- TIME LOGIC ---
+  // --- TIME & GREETING LOGIC ---
   const [currentTime, setCurrentTime] = useState(() => new Date());
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000); // cập nhật mỗi 60s
-
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
-  }, []); // chỉ chạy 1 lần khi mount -> tránh loop
+  }, []);
 
-  const getCurrentShift = (date) => {
-    const hour = date.getHours();
-    if (hour >= 6 && hour < 14) return { label: "Ca Sáng", icon: "🌅" };
-    if (hour >= 14 && hour < 22) return { label: "Ca Chiều", icon: "☀️" };
-    return { label: "Ca Đêm", icon: "🌙" };
+  const getShiftInfo = (date) => {
+    const h = date.getHours();
+    if (h >= 5 && h < 12)
+      return { label: "Ca Sáng", icon: "🌅", greeting: "Chào buổi sáng" };
+    if (h >= 12 && h < 18)
+      return { label: "Ca Chiều", icon: "☀️", greeting: "Chào buổi chiều" };
+    return { label: "Ca Tối", icon: "🌙", greeting: "Buổi tối tốt lành" };
   };
 
-  const currentShift = getCurrentShift(currentTime);
-
+  const shiftInfo = getShiftInfo(currentTime);
+  const timeStr = currentTime.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   const dateStr = currentTime.toLocaleDateString("vi-VN", {
     weekday: "long",
     day: "2-digit",
     month: "2-digit",
   });
 
-  const timeStr = currentTime.toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
   // --- STATS DATA ---
   const statsData = useMemo(() => {
     const avgRate = Math.round((stats.avgRate || 0) * 10) / 10;
-    const formattedAvgRate = Number.isFinite(avgRate)
-      ? avgRate.toFixed(1)
-      : "0.0";
-
     return [
       {
         id: "total",
         icon: "👥",
         label: "Tổng nhân sự",
-        value: loading ? "--" : formatNumber(stats.totalStaff || 0),
-        badge: "Toàn bộ",
+        value: stats.totalStaff || 0,
         tone: "primary",
+        trend: "+2",
       },
       {
         id: "active",
-        icon: "✅",
+        icon: "🟢",
         label: "Đang làm việc",
-        value: loading ? "--" : formatNumber(stats.activeStaff || 0),
-        badge: "Online",
+        value: stats.activeStaff || 0,
         tone: "success",
+        suffix: "Online",
       },
       {
         id: "leave",
-        icon: "☕",
+        icon: "📅",
         label: "Nghỉ phép",
-        value: loading ? "--" : formatNumber(stats.onLeaveStaff || 0),
-        badge: "Vắng",
+        value: stats.onLeaveStaff || 0,
         tone: "warning",
+        suffix: "Hôm nay",
       },
       {
         id: "rate",
         icon: "⭐",
-        label: "Đánh giá",
-        value: loading ? "--" : `${formattedAvgRate} / 5`,
-        badge: "Avg",
+        label: "Đánh giá TB",
+        value: avgRate ? avgRate.toFixed(1) : "0.0",
         tone: "info",
+        suffix: "/ 5.0",
       },
     ];
-  }, [stats, loading]);
+  }, [stats]);
 
   const activeAvatars = [
-    { id: 1, img: "https://i.pravatar.cc/100?img=1", name: "Nam" },
-    { id: 2, img: "https://i.pravatar.cc/100?img=5", name: "Hương" },
-    { id: 3, img: "https://i.pravatar.cc/100?img=8", name: "Tuấn" },
-    { id: 4, img: "https://i.pravatar.cc/100?img=12", name: "Linh" },
+    { id: 1, img: "https://i.pravatar.cc/100?img=11" },
+    { id: 2, img: "https://i.pravatar.cc/100?img=5" },
+    { id: 3, img: "https://i.pravatar.cc/100?img=8" },
   ];
 
-  // --- QUICK ACTIONS ---
   const quickActions = [
     {
       icon: "📝",
       label: "Điểm Danh",
       onClick: () => onPageChange("attendance"),
     },
-    { icon: "📅", label: "Lịch Làm", onClick: () => onPageChange("schedule") },
-    {
-      icon: "💰",
-      label: "Tính Lương",
-      onClick: () => alert("💰 Tính năng demo"),
-    },
+    { icon: "📅", label: "Xếp Ca", onClick: () => onPageChange("schedule") },
     { icon: "🏖️", label: "Nghỉ Phép", onClick: () => onPageChange("leave") },
   ];
 
   return (
-    <div className={`staff-header-card ${isCollapsed ? "collapsed" : ""}`}>
-      {/* NÚT TOGGLE - Luôn nằm góc trên phải */}
+    <div className={`premium-staff-header ${isCollapsed ? "collapsed" : ""}`}>
+      {/* BACKGROUND DECORATION */}
+      <div className="header-decor-circle"></div>
+
+      {/* TOGGLE BUTTON */}
       <button
-        className="staff-header-toggle-btn"
+        className="header-toggle-btn"
         onClick={onToggle}
-        title={isCollapsed ? "Mở rộng" : "Thu gọn"}
+        title="Thu gọn/Mở rộng"
       >
-        {isCollapsed ? "▼" : "▲"}
+        <span className="toggle-icon">{isCollapsed ? "▼" : "▲"}</span>
       </button>
 
-      {/* CỘT TRÁI: SIDEBAR */}
-      <div className="staff-header-sidebar">
-        <div className="staff-sidebar-card">
-          <div className="staff-title-block">
-            <div className="staff-eyebrow">Bảng điều khiển</div>
-            <h1>Quản Lý Nhân Sự</h1>
-            <p className="staff-subtitle">
-              Theo dõi nhân sự và cập nhật trạng thái theo thời gian thực.
-            </p>
-          </div>
+      {/* --- LEFT COLUMN: IDENTITY & CONTEXT --- */}
+      <div className="header-column col-identity">
+        <div className="identity-content">
+          <div className="brand-tag">HR Manager</div>
+          <h1 className="page-title">
+            {isCollapsed ? "Nhân Sự" : "Quản Lý Nhân Sự"}
+          </h1>
 
-          <div className="staff-time-widget">
-            <div className="staff-time-row">
-              <span className="staff-clock-time">{timeStr}</span>
-              <span className="staff-shift-badge">
-                {currentShift.icon} {currentShift.label}
-              </span>
-            </div>
-            <div className="staff-date-row">{dateStr}</div>
-          </div>
-        </div>
-
-        <div className="staff-controls-card">
-          <div className="staff-tools-row">
-            <label className="staff-field">
-              <span className="staff-field-label">Tìm kiếm</span>
-              <div className="staff-search-box">
-                <span className="staff-search-icon">🔍</span>
-                <input
-                  type="text"
-                  placeholder="Tên nhân viên, vị trí..."
-                  value={searchValue}
-                  onChange={(e) => onSearchChange?.(e.target.value)}
-                />
+          {!isCollapsed && (
+            <>
+              <div className="greeting-block">
+                <span className="greeting-text">
+                  {shiftInfo.greeting}, Admin!
+                </span>
+                <p className="sub-text">
+                  Theo dõi hoạt động nhân sự theo thời gian thực.
+                </p>
               </div>
-            </label>
-            <label className="staff-field">
-              <span className="staff-field-label">Chi nhánh</span>
-              <div className="staff-branch-select-wrapper">
-                <select
-                  className="staff-restaurant-selector"
-                  value={selectedRestaurant}
-                  onChange={(e) => onRestaurantChange(e.target.value)}
-                  title="Lọc theo chi nhánh"
-                >
-                  <option value="all">🏢 Toàn hệ thống</option>
-                  {restaurantList.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
-                <span className="staff-select-arrow">▼</span>
-              </div>
-            </label>
-          </div>
 
-          <div className="staff-action-group">
-            <button className="staff-btn staff-btn-ghost" onClick={onExportData}>
-              📥 Xuất File
-            </button>
-            <button className="staff-btn staff-btn-primary" onClick={onAddEmployee}>
-              ➕ Thêm Mới
-            </button>
-          </div>
+              <div className="time-widget-card">
+                <div className="time-display">
+                  <span className="clock">{timeStr}</span>
+                  <span className="date">{dateStr}</span>
+                </div>
+                <div className="shift-badge">
+                  {shiftInfo.icon} <span>{shiftInfo.label}</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* CỘT PHẢI: CONTENT AREA */}
-      <div className="staff-header-content">
-        <div className="staff-mini-stats-grid">
-          {statsData.map((item) => (
-            <div
-              key={item.id}
-              className={`staff-mini-stat-item staff-tone-${item.tone}`}
-            >
-              <div className="staff-stat-icon-box">{item.icon}</div>
-              <div className="staff-stat-info">
-                <div className="staff-stat-value">{item.value}</div>
-                <div className="staff-stat-label">{item.label}</div>
+      {/* --- RIGHT COLUMN: METRICS & TOOLS --- */}
+      <div className="header-column col-workspace">
+        {/* TOP ROW: STATS GRID */}
+        {!isCollapsed && (
+          <div className="stats-grid-row">
+            {statsData.map((item) => (
+              <div key={item.id} className={`stat-card tone-${item.tone}`}>
+                <div className="stat-icon-wrapper">{item.icon}</div>
+                <div className="stat-content">
+                  <span className="stat-label">{item.label}</span>
+                  <div className="stat-value-group">
+                    <span className="stat-value">
+                      {loading ? "--" : formatNumber(item.value)}
+                    </span>
+                    {item.suffix && (
+                      <span className="stat-suffix">{item.suffix}</span>
+                    )}
+                    {item.trend && (
+                      <span className="stat-trend success">↗ {item.trend}</span>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="staff-stat-badge">{item.badge}</div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        <div className="staff-header-lower">
-          <div className="staff-quick-actions-segment">
-            <span className="staff-section-label">Tác vụ nhanh</span>
-            <div className="staff-quick-actions-row">
-              {quickActions.map((action, index) => (
-                <button
-                  key={index}
-                  className="staff-quick-action-btn"
-                  onClick={action.onClick}
-                >
-                  <span className="staff-action-icon">{action.icon}</span>
-                  <span className="staff-action-label">{action.label}</span>
-                </button>
-              ))}
+        {/* BOTTOM ROW: TOOLBAR (SEARCH, FILTER, ACTIONS) */}
+        <div className="toolbar-row">
+          <div className="search-filter-group">
+            <div className="search-input-wrapper">
+              <span className="search-icon">🔍</span>
+              <input
+                type="text"
+                placeholder={
+                  isCollapsed ? "Tìm kiếm..." : "Tìm tên nhân viên, mã số..."
+                }
+              />
+            </div>
+
+            <div className="branch-select-wrapper">
+              <select
+                className="custom-select"
+                value={selectedRestaurant}
+                onChange={(e) => onRestaurantChange(e.target.value)}
+              >
+                <option value="all">🏢 Toàn hệ thống</option>
+                {restaurantList.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div className="staff-quick-info-bar">
-            <div className="staff-info-group">
-              <span className="staff-label-text">Đang trực:</span>
-              <div className="staff-avatar-stack">
-                {activeAvatars.map((user) => (
-                  <img
-                    key={user.id}
-                    src={user.img}
-                    alt={user.name}
-                    className="staff-avatar-img"
-                  />
+          <div className="actions-group">
+            {!isCollapsed && (
+              <div className="quick-nav">
+                {quickActions.map((action, idx) => (
+                  <button
+                    key={idx}
+                    className="quick-btn"
+                    onClick={action.onClick}
+                    title={action.label}
+                  >
+                    {action.icon}
+                  </button>
                 ))}
-                <div className="staff-avatar-more">
-                  +{stats.activeStaff > 4 ? stats.activeStaff - 4 : 0}
+              </div>
+            )}
+
+            <div className="divider-vertical"></div>
+
+            <button className="btn btn-secondary" onClick={onExportData}>
+              <span>📤 Export</span>
+            </button>
+            <button className="btn btn-primary" onClick={onAddEmployee}>
+              <span>➕ {isCollapsed ? "" : "Thêm Nhân Sự"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* INFO FOOTER (Only shown when expanded) */}
+        {!isCollapsed && (
+          <div className="info-footer-row">
+            <div className="active-users-stack">
+              <span className="footer-label">Đang trực tuyến:</span>
+              <div className="avatar-group">
+                {activeAvatars.map((u) => (
+                  <img key={u.id} src={u.img} alt="User" className="avatar" />
+                ))}
+                <div className="avatar-counter">
+                  +{stats.activeStaff > 3 ? stats.activeStaff - 3 : 0}
                 </div>
               </div>
             </div>
-            <div className="staff-divider-vertical"></div>
-            <div className="staff-info-group">
-              <span className="staff-label-text">Cần xử lý:</span>
-              <div className="staff-pending-tags">
-                <span className="staff-tag staff-tag-warn">📝 2 Đơn nghỉ</span>
-                <span className="staff-tag staff-tag-info">🔄 1 Đổi ca</span>
-              </div>
+
+            <div className="pending-tasks">
+              <span className="footer-label">Cần duyệt:</span>
+              <span className="task-badge warn">2 Nghỉ phép</span>
+              <span className="task-badge info">1 Ứng lương</span>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

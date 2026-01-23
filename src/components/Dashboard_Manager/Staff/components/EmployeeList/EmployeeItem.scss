@@ -1,0 +1,280 @@
+// Variables
+$bg-white: #ffffff;
+$bg-hover: #f8fafc;
+$bg-selected: #fffaf5; // Màu vàng nhạt khi chọn (theo tông gold)
+$border-color: #e2e8f0;
+$border-selected: #b89365; // Viền vàng gold
+$text-primary: #1e293b;
+$text-secondary: #64748b;
+
+// Status Colors
+$color-success: #10b981;
+$color-warning: #f59e0b;
+$color-danger: #ef4444;
+
+.employee-row-item {
+  display: grid;
+  // Grid layout: Info(35%) - Role(20%) - Contact(30%) - Actions(15%)
+  grid-template-columns: 1.5fr 1fr 1.2fr auto;
+  align-items: center;
+  gap: 16px;
+
+  background: $bg-white;
+  padding: 12px 16px;
+  border-bottom: 1px solid $border-color;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+
+  // --- HOVER STATE ---
+  &:hover {
+    background: $bg-hover;
+
+    // Show actions on hover
+    .col-actions .action-buttons {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  // --- SELECTED STATE ---
+  &.selected {
+    background: $bg-selected;
+    border-left: 3px solid $border-selected;
+    padding-left: 13px; // Bù trừ cho border để không bị lệch
+
+    .name {
+      color: darken($border-selected, 10%);
+    }
+  }
+
+  // --- DIMMED STATE (Inactive) ---
+  &.dimmed {
+    opacity: 0.6;
+    background: #f1f5f9;
+
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+
+  // ================= COLUMN STYLES =================
+
+  // 1. MAIN INFO (Avatar + Name)
+  .col-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow: hidden;
+
+    .avatar-wrapper {
+      position: relative;
+      flex-shrink: 0;
+
+      .avatar-img,
+      .avatar-placeholder {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid $bg-white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+
+      .status-dot {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid $bg-white;
+
+        &.active {
+          background-color: $color-success;
+        }
+        &.break {
+          background-color: $color-warning;
+        }
+        &.inactive {
+          background-color: #cbd5e1;
+        }
+      }
+    }
+
+    .info-content {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+
+      .name {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: $text-primary;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .code {
+        font-size: 0.75rem;
+        color: $text-secondary;
+        font-family: monospace;
+      }
+    }
+  }
+
+  // 2. ROLE & DEPT
+  .col-role {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+
+    .role-text {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      color: $text-primary;
+
+      .icon {
+        color: $text-secondary;
+      }
+    }
+
+    .dept-badge {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+      white-space: nowrap;
+
+      &.orange {
+        background: #ffedd5;
+        color: #c2410c;
+      } // Bếp
+      &.blue {
+        background: #dbeafe;
+        color: #1d4ed8;
+      } // Phục vụ
+      &.green {
+        background: #dcfce7;
+        color: #15803d;
+      } // Thu ngân
+      &.purple {
+        background: #f3e8ff;
+        color: #7e22ce;
+      } // Quản lý
+      &.gray {
+        background: #f1f5f9;
+        color: #475569;
+      } // Khác
+    }
+  }
+
+  // 3. CONTACT
+  .col-contact {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .contact-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: $text-secondary;
+
+      // Truncate email dài
+      span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px;
+      }
+    }
+  }
+
+  // 4. ACTIONS
+  .col-actions {
+    display: flex;
+    justify-content: flex-end;
+
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      opacity: 0; // Ẩn mặc định
+      transform: translateX(10px);
+      transition: all 0.2s ease;
+
+      // Trên mobile hoặc tablet thì luôn hiện
+      @media (max-width: 1024px) {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: transparent;
+
+      &.edit {
+        color: $text-secondary;
+        &:hover {
+          background: #eff6ff;
+          color: #3b82f6;
+        }
+      }
+
+      &.delete {
+        color: $text-secondary;
+        &:hover {
+          background: #fef2f2;
+          color: $color-danger;
+        }
+      }
+
+      &.mobile-menu {
+        display: none; // Chỉ hiện trên mobile
+      }
+    }
+  }
+}
+
+// RESPONSIVE
+@media (max-width: 768px) {
+  .employee-row-item {
+    grid-template-columns: 1fr auto; // Chuyển về 2 cột: Info + Actions
+    gap: 12px;
+
+    .col-role,
+    .col-contact {
+      display: none; // Ẩn bớt thông tin phụ trên mobile
+    }
+
+    .col-actions {
+      .action-buttons {
+        display: none;
+      } // Ẩn nút rời
+      .mobile-menu {
+        display: flex !important;
+      } // Hiện nút 3 chấm
+    }
+  }
+}

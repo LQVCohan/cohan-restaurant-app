@@ -1,144 +1,150 @@
-@use "../../../../../styles/variables" as *;
-@use "../../../../../styles/mixins" as *;
-
-// Đồng bộ biến màu với Header
-$nav-bg: #ffffff;
-$nav-border: #e2e8f0; // Slate-200
-$nav-text: #64748b; // Slate-500 (Inactive)
-$nav-text-active: #2563eb; // Blue-600 (Active Text)
-$nav-bg-active: #eff6ff; // Blue-50 (Active BG)
-$nav-bg-hover: #f8fafc; // Slate-50 (Hover)
+// Variables (Nên đồng bộ với theme chung)
+$nav-bg: rgba(255, 255, 255, 0.8);
+$nav-border: #e2e8f0;
+$nav-text-inactive: #64748b;
+$nav-text-active: #b89365; // Màu vàng đồng chủ đạo
+$nav-bg-active: #fffaf5; // Màu nền nhạt khi active
+$nav-shadow:
+  0 4px 6px -1px rgba(0, 0, 0, 0.05),
+  0 2px 4px -1px rgba(0, 0, 0, 0.03);
 
 .page-nav-container {
-  // Style giống hệt Header-card
-  @include card-base;
-  padding: 0.5rem; // Padding nhỏ cho container
-  margin-bottom: $spacing-xl;
-  background: $nav-bg;
-  border: 1px solid $nav-border;
-  border-radius: 16px; // Bo góc lớn đồng bộ Header
-  box-shadow: $shadow-sm;
+  width: 100%;
+  margin-bottom: 0; // Margin được handle bởi parent gap
 
-  // Wrapper để xử lý scroll trên mobile
-  .nav-scroll-wrapper {
+  .nav-inner-wrapper {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
+    padding: 6px;
+    background: $nav-bg;
+    backdrop-filter: blur(12px); // Hiệu ứng kính mờ
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 16px;
+    box-shadow: $nav-shadow;
+
+    // Xử lý scroll ngang trên mobile
     overflow-x: auto;
-
-    // Ẩn thanh cuộn nhưng vẫn scroll được
+    scrollbar-width: none; // Firefox
+    -ms-overflow-style: none; // IE 10+
     &::-webkit-scrollbar {
-      display: none;
+      display: none; // Chrome/Safari
     }
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+  }
+
+  .nav-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap; // Không xuống dòng
+    outline: none;
+
+    // Style text mặc định
+    color: $nav-text-inactive;
+    font-size: 0.9rem;
+    font-weight: 500;
+
+    // Icon wrapper để định vị badge
+    .icon-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2; // Nổi lên trên active-bg
+    }
+
+    .nav-label {
+      position: relative;
+      z-index: 2;
+    }
+
+    // Badge thông báo (chấm đỏ)
+    .badge-indicator {
+      position: absolute;
+      top: -6px;
+      right: -8px;
+      background-color: #ef4444;
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      height: 16px;
+      min-width: 16px;
+      padding: 0 4px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #fff; // Viền trắng để tách biệt icon
+    }
+
+    // --- HOVER STATE ---
+    &:hover:not(.active) {
+      background-color: rgba(0, 0, 0, 0.03);
+      color: darken($nav-text-inactive, 20%);
+    }
+
+    // --- ACTIVE STATE ---
+    &.active {
+      color: $nav-text-active;
+      font-weight: 600;
+      // Background giả lập bằng pseudo hoặc div riêng,
+      // nhưng ở đây ta dùng background trực tiếp cho đơn giản & hiệu quả
+      background-color: $nav-bg-active;
+      box-shadow: 0 2px 5px rgba(184, 147, 101, 0.15); // Shadow màu chủ đạo nhẹ
+
+      .icon-wrapper svg {
+        // Animation nhẹ cho icon khi active
+        animation: subtle-bounce 0.4s ease;
+      }
+    }
+
+    // Active background animation (nếu dùng framer-motion hoặc css transition nâng cao)
+    .active-bg {
+      position: absolute;
+      inset: 0;
+      background-color: $nav-bg-active;
+      border-radius: 12px;
+      z-index: 1;
+    }
   }
 }
 
-.nav-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.75rem 1.25rem;
-  border: none;
-  background: transparent;
-  border-radius: 12px; // Bo góc item nhỏ hơn container một chút
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-
-  // Font Style
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: $nav-text;
-
-  .nav-icon {
-    font-size: 1.1rem;
-    line-height: 1;
-    opacity: 0.7; // Icon hơi mờ khi chưa active
-    transition: 0.2s;
-  }
-
-  // --- HOVER STATE ---
-  &:hover {
-    background: $nav-bg-hover;
-    color: darken($nav-text, 10%);
-    .nav-icon {
-      opacity: 1;
-      transform: scale(1.1);
-    }
-  }
-
-  // --- ACTIVE STATE (Premium Style) ---
-  &.active {
-    background: $nav-bg-active;
-    color: $nav-text-active;
-
-    .nav-icon {
-      opacity: 1;
-    }
-
-    // Dấu chấm xanh trang trí (Optional)
-    .active-dot {
-      display: block;
-      width: 6px;
-      height: 6px;
-      background: $nav-text-active;
-      border-radius: 50%;
-      margin-left: 0.2rem;
-      box-shadow: 0 0 0 2px rgba($nav-text-active, 0.2);
-      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-  }
-}
-
-@keyframes popIn {
-  from {
-    transform: scale(0);
-    opacity: 0;
-  }
-  to {
+// Keyframes cho icon
+@keyframes subtle-bounce {
+  0% {
     transform: scale(1);
-    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
 // --- RESPONSIVE ---
 @media (max-width: 768px) {
-  // Tablet & Mobile
   .page-nav-container {
-    border-radius: 0; // Full width trên mobile
-    border-left: none;
-    border-right: none;
-    border-radius: 0;
-    margin-left: -1rem;
-    margin-right: -1rem; // Hack để full màn hình nếu cha có padding
-    padding: 0.5rem 1rem;
-  }
+    .nav-inner-wrapper {
+      border-radius: 12px; // Giảm radius trên mobile
+      padding: 4px;
+    }
 
-  .nav-item {
-    padding: 0.6rem 1rem;
-    flex-shrink: 0; // Không bị co lại
+    .nav-item {
+      padding: 8px 12px;
+      font-size: 0.85rem;
 
-    .nav-label {
-      display: block;
-    } // Vẫn hiện label trên tablet
-    .active-dot {
-      display: none;
-    } // Ẩn dot cho gọn
-  }
-}
-
-@media (max-width: 480px) {
-  // Mobile nhỏ
-  .nav-item {
-    padding: 0.6rem 0.8rem;
-    font-size: 0.85rem;
-
-    // Nếu muốn gọn hơn nữa thì ẩn label, chỉ hiện icon
-    // .nav-label { display: none; }
-    // .nav-icon { font-size: 1.2rem; margin: 0; }
+      .nav-label {
+        // Trên màn hình rất nhỏ có thể ẩn label nếu muốn
+        // display: none;
+      }
+    }
   }
 }
