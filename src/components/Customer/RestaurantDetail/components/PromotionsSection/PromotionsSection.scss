@@ -1,0 +1,64 @@
+.promo-section {
+  padding: 16px 0;
+}
+
+.promo-loading,
+.promo-error,
+.promo-empty {
+  padding: 20px;
+  background: #fff7ed;
+  border-radius: 12px;
+  color: #7c2d12;
+}
+
+.promo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.promo-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  background: #ffffff;
+  box-shadow: 0 6px 12px rgba(15, 23, 42, 0.05);
+
+  h4 {
+    margin: 10px 0 8px;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 0 0 12px;
+    color: #64748b;
+    font-size: 0.9rem;
+  }
+}
+
+.promo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.promo-scope {
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #475569;
+  font-weight: 600;
+}
+
+.promo-discount {
+  color: #f97316;
+  font-weight: 700;
+}
+
+.promo-footer {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}

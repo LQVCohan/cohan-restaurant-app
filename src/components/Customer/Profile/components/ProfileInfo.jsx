@@ -27,6 +27,22 @@ const UPDATE_USER = gql`
   }
 `;
 
+const CREATE_WALLET = gql`
+  mutation CreateMyWallet($input: CreateWalletInput!) {
+    createMyWallet(input: $input) {
+      id
+      wallet {
+        provider
+        status
+        balance
+        currency
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
 const DIETARY_OPTIONS = [
   "Không hành",
   "Không rau thơm",
@@ -40,6 +56,8 @@ const DIETARY_OPTIONS = [
 
 const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
   const [updateUser, { loading: updating }] = useMutation(UPDATE_USER);
+  const [createWallet, { loading: creatingWallet }] =
+    useMutation(CREATE_WALLET);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -189,6 +207,24 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
     } catch (err) {
       console.error(err);
       alert("Lỗi cập nhật: " + err.message);
+    }
+  };
+
+  const handleCreateWallet = async () => {
+    try {
+      await createWallet({
+        variables: {
+          input: {
+            provider: "internal",
+            currency: "VND",
+          },
+        },
+      });
+      alert("Đã tạo ví điện tử thành công!");
+      refetchUser();
+    } catch (err) {
+      console.error(err);
+      alert("Không thể tạo ví: " + err.message);
     }
   };
 
@@ -395,6 +431,45 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
               </option>
             ))}
           </select>
+        </div>
+      </div>
+
+      <div className="wallet-panel">
+        <div className="wallet-info">
+          <h3>Ví điện tử</h3>
+          {user?.wallet ? (
+            <div className="wallet-meta">
+              <div>
+                Trạng thái:{" "}
+                <strong>{user.wallet.status || "chưa kích hoạt"}</strong>
+              </div>
+              <div>
+                Số dư:{" "}
+                <strong>
+                  {Number(user.wallet.balance || 0).toLocaleString()}{" "}
+                  {user.wallet.currency || "VND"}
+                </strong>
+              </div>
+              <div>Nhà cung cấp: {user.wallet.provider || "Nội bộ"}</div>
+            </div>
+          ) : (
+            <p className="wallet-empty">
+              Bạn chưa có ví điện tử. Hãy tạo ví để thanh toán nhanh hơn.
+            </p>
+          )}
+        </div>
+        <div className="wallet-actions">
+          <button
+            className="btn-save"
+            onClick={handleCreateWallet}
+            disabled={creatingWallet || Boolean(user?.wallet)}
+          >
+            {user?.wallet
+              ? "Ví đã sẵn sàng"
+              : creatingWallet
+                ? "Đang tạo ví..."
+                : "Tạo ví điện tử"}
+          </button>
         </div>
       </div>
     </div>

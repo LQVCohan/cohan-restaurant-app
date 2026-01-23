@@ -183,6 +183,47 @@ export const UserMutation = {
     return { ...saved, roleName };
   },
 
+  // ========== Wallet ==========
+  async createMyWallet(_, { input }, ctx) {
+    const authUser = ctx?.user;
+    if (!authUser?.id) {
+      throw new GraphQLError("Unauthorized", {
+        extensions: { code: "UNAUTHENTICATED" },
+      });
+    }
+
+    const user = await User.findById(authUser.id).populate("role");
+    if (!user) {
+      throw new GraphQLError("User not found", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
+
+    if (user.wallet?.status === "active") {
+      return user.toObject();
+    }
+
+    const provider = input?.provider?.trim() || "internal";
+    const currency = input?.currency?.trim() || "VND";
+
+    user.wallet = {
+      provider,
+      status: "active",
+      balance: user.wallet?.balance || 0,
+      currency,
+      createdAt: user.wallet?.createdAt || new Date(),
+      updatedAt: new Date(),
+    };
+
+    await user.save();
+
+    const saved = await User.findById(user._id)
+      .populate("role")
+      .lean({ virtuals: true });
+    const roleName = (saved.role?.slug || saved.role?.name || "").toLowerCase();
+    return { ...saved, roleName };
+  },
+
   // ========== Register ==========
   createUser: async (_, { input }, ctx) => {
     const {

@@ -23,6 +23,8 @@ import reviewComment from "./review_comment/index.js";
 import cart from "./cart/index.js";
 import shippingTracking from "./shippingTracking/index.js";
 import supplier from "./supplier/index.js";
+import promotion from "./promotion/index.js";
+import coupon from "./coupon/index.js";
 import * as printSetting from "./printSetting/index.js";
 // 🆕 Thêm search module
 import search from "./search/index.js";
@@ -53,6 +55,8 @@ export default {
     ...(shippingTracking.Query || {}),
     ...(search.Query || {}),
     ...(supplier.Query || {}),
+    ...(promotion.Query || {}),
+    ...(coupon.Query || {}),
     ...(printSetting.Query || {}),
   },
 

@@ -31,6 +31,14 @@ const ME_QUERY = gql`
       totalOrders
       totalSpending
       createdAt
+      wallet {
+        provider
+        status
+        balance
+        currency
+        createdAt
+        updatedAt
+      }
     }
   }
 `;

@@ -83,6 +83,15 @@ type EmergencyContact {
   relation: String
 }
 
+type Wallet {
+  provider: String
+  status: String
+  balance: Float
+  currency: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
 # =========================
 # User Schema
 # =========================
@@ -138,6 +147,8 @@ type User {
   emergencyContact: EmergencyContact
   rate: Float
   rateCount: Int
+
+  wallet: Wallet
 }
 
 # =========================
@@ -201,6 +212,11 @@ input UpdateUserInput {
 input UpdateAvatarInput {
   fileBase64: String
   fileUrl: String
+}
+
+input CreateWalletInput {
+  provider: String
+  currency: String
 }
 
 input AssignRoleToUserInput {
@@ -298,6 +314,8 @@ type Mutation {
   softDeleteUser(userId: ID!): Boolean!
 
   createGuestUser(fullName: String, phone: String, expiresInDays: Int): User!
+
+  createMyWallet(input: CreateWalletInput!): User!
 
   updateCustomerMetrics(
     id: ID!

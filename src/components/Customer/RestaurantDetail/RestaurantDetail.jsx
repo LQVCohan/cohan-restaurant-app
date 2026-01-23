@@ -8,6 +8,7 @@ import MenuSection from "./components/MenuSection/MenuSection";
 import ReviewsSection from "./components/ReviewsSection/ReviewsSection";
 import PhotoGallery from "./components/PhotoGallery/PhotoGallery";
 import SimilarRestaurants from "./components/SimilarRestaurants/SimilarRestaurants";
+import PromotionsSection from "./components/PromotionsSection/PromotionsSection";
 
 // Icons
 import { ArrowLeft, Star, MapPin, Clock, Share2, Heart } from "lucide-react";
@@ -49,6 +50,7 @@ const RestaurantDetail = () => {
     { id: "info", label: "Thông tin" },
     { id: "menu", label: "Thực đơn" },
     { id: "reviews", label: "Đánh giá" },
+    { id: "promotions", label: "Khuyến mãi" },
     { id: "photos", label: "Hình ảnh" },
   ];
 
@@ -140,6 +142,9 @@ const RestaurantDetail = () => {
           {activeTab === "menu" && <MenuSection restaurantId={restaurant.id} />}
           {activeTab === "reviews" && (
             <ReviewsSection restaurantId={restaurant.id} />
+          )}
+          {activeTab === "promotions" && (
+            <PromotionsSection restaurantId={restaurant.id} />
           )}
           {activeTab === "photos" && (
             <PhotoGallery photos={restaurant.photos} />

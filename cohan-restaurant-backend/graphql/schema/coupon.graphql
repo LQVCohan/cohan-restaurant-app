@@ -1,0 +1,26 @@
+"""Voucher / coupon"""
+type Coupon {
+  id: ID!
+  code: String!
+  description: String
+  discountType: String
+  discountValue: Float
+  maxUsage: Int
+  used: Int
+  constraints: JSON
+  startAt: DateTime
+  endAt: DateTime
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+extend type Query {
+  coupons(
+    activeOnly: Boolean = true
+    limit: Int = 50
+    offset: Int = 0
+    now: DateTime
+  ): [Coupon!]!
+  couponByCode(code: String!): Coupon
+}
