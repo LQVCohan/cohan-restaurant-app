@@ -15,6 +15,22 @@ const addressSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const walletSchema = new mongoose.Schema(
+  {
+    provider: { type: String, trim: true },
+    status: {
+      type: String,
+      enum: ["active", "inactive", "blocked"],
+      default: "active",
+    },
+    balance: { type: Number, default: 0, min: 0 },
+    currency: { type: String, default: "VND" },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 /**
  * Tạo mật khẩu ngẫu nhiên có:
  * - Chữ hoa
@@ -125,6 +141,8 @@ const userSchema = BaseSchemaModel(
     },
 
     avatarUrl: { type: String },
+
+    wallet: walletSchema,
 
     emailVerified: { type: Boolean, default: false },
     emailVerifyToken: { type: String, default: null },

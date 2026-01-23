@@ -1,0 +1,28 @@
+"""Khuyến mãi cho nhà hàng"""
+type Promotion {
+  id: ID!
+  name: String!
+  description: String
+  scope: String
+  restaurantId: ID
+  categoryId: ID
+  itemId: ID
+  discountType: String
+  discountValue: Float
+  startAt: DateTime
+  endAt: DateTime
+  isActive: Boolean
+  stacking: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+extend type Query {
+  promotionsByRestaurant(
+    restaurantId: ID!
+    activeOnly: Boolean = true
+    limit: Int = 20
+    offset: Int = 0
+    now: DateTime
+  ): [Promotion!]!
+}

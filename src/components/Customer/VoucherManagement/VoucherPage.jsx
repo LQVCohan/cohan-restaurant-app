@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { gql, useQuery } from "@apollo/client";
 import {
   Search,
   Ticket,
@@ -15,6 +16,22 @@ import {
   Check,
 } from "lucide-react";
 import "./VoucherPage.scss";
+
+const GET_COUPONS = gql`
+  query Coupons($activeOnly: Boolean = true, $limit: Int = 50, $offset: Int = 0) {
+    coupons(activeOnly: $activeOnly, limit: $limit, offset: $offset) {
+      id
+      code
+      description
+      discountType
+      discountValue
+      startAt
+      endAt
+      isActive
+      constraints
+    }
+  }
+`;
 
 // --- MOCK DATA ---
 const USER_STATS = {
@@ -100,17 +117,49 @@ const LOCKED_ITEMS = [
 ];
 
 const VoucherPage = () => {
+  const { data: couponData } = useQuery(GET_COUPONS, {
+    variables: { activeOnly: true, limit: 50, offset: 0 },
+    fetchPolicy: "cache-and-network",
+  });
   const [activeTab, setActiveTab] = useState("all");
 
   // State quản lý Modal và Lưu Voucher
   const [selectedVoucher, setSelectedVoucher] = useState(null);
   const [savedVouchers, setSavedVouchers] = useState([]);
 
+  const apiVouchers = useMemo(() => {
+    const coupons = couponData?.coupons ?? [];
+    if (!coupons.length) return VOUCHERS;
+
+    return coupons.map((coupon) => {
+      const isPercent = coupon.discountType === "PERCENT";
+      return {
+        id: coupon.id,
+        code: coupon.code,
+        type: "partner",
+        title: isPercent
+          ? `Giảm ${coupon.discountValue}%`
+          : `Giảm ${Number(coupon.discountValue || 0).toLocaleString()}đ`,
+        subTitle: coupon.description || "Ưu đãi áp dụng theo điều kiện",
+        expiry: coupon.endAt
+          ? new Date(coupon.endAt).toLocaleDateString("vi-VN")
+          : "Không giới hạn",
+        percent: isPercent ? coupon.discountValue : 100,
+        progress: 100,
+        tag: "Ưu đãi",
+        color: "green",
+        conditions: Array.isArray(coupon.constraints?.conditions)
+          ? coupon.constraints.conditions
+          : ["Xem điều kiện áp dụng khi thanh toán."],
+      };
+    });
+  }, [couponData]);
+
   const filteredVouchers = useMemo(() => {
     return activeTab === "all"
-      ? VOUCHERS
-      : VOUCHERS.filter((v) => v.type === activeTab);
-  }, [activeTab]);
+      ? apiVouchers
+      : apiVouchers.filter((v) => v.type === activeTab);
+  }, [activeTab, apiVouchers]);
 
   // Xử lý Lưu / Bỏ lưu
   const handleToggleSave = (id) => {

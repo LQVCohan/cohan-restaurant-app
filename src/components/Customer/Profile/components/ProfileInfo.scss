@@ -217,6 +217,44 @@ $shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   }
 }
 
+.wallet-panel {
+  margin-top: 28px;
+  padding: 20px 24px;
+  border: 1px solid $border;
+  border-radius: $radius;
+  background: #fffaf5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  box-shadow: $shadow;
+
+  h3 {
+    margin: 0 0 8px;
+    font-size: 1.05rem;
+    color: $text-main;
+  }
+
+  .wallet-meta {
+    display: grid;
+    gap: 6px;
+    font-size: 0.95rem;
+    color: $text-sub;
+  }
+
+  .wallet-empty {
+    margin: 0;
+    color: $text-sub;
+    font-size: 0.95rem;
+  }
+
+  .wallet-actions {
+    display: flex;
+    align-items: center;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
