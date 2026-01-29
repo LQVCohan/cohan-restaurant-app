@@ -14,6 +14,7 @@ const F_TABLE_MIN = gql`
     floorLevel
     joinGroupId
     tags
+    vrUrl
     restaurantId
     position {
       x

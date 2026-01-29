@@ -1,0 +1,71 @@
+type EventPackageItem {
+  menuItemId: ID!
+  name: String!
+  menuId: ID
+  categoryId: ID
+  image: String
+  servingKey: String!
+  unitPrice: Int
+  quantity: Float
+  note: String
+}
+
+type EventPackage {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  description: String
+  promotionId: ID
+  promotionCode: String
+  price: Int
+  items: [EventPackageItem!]!
+  isActive: Boolean
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input EventPackageItemInput {
+  menuItemId: ID!
+  name: String!
+  menuId: ID
+  categoryId: ID
+  image: String
+  servingKey: String!
+  unitPrice: Int
+  quantity: Float
+  note: String
+}
+
+input CreateEventPackageInput {
+  restaurantId: ID!
+  name: String!
+  description: String
+  promotionId: ID
+  promotionCode: String
+  price: Int
+  items: [EventPackageItemInput!]!
+  isActive: Boolean
+}
+
+input UpdateEventPackageInput {
+  id: ID!
+  name: String
+  description: String
+  promotionId: ID
+  promotionCode: String
+  price: Int
+  items: [EventPackageItemInput!]
+  isActive: Boolean
+}
+
+extend type Query {
+  eventPackagesByRestaurant(
+    restaurantId: ID!
+    activeOnly: Boolean = true
+  ): [EventPackage!]!
+}
+
+extend type Mutation {
+  createEventPackage(input: CreateEventPackageInput!): EventPackage!
+  updateEventPackage(input: UpdateEventPackageInput!): EventPackage!
+}

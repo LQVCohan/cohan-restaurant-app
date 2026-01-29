@@ -25,6 +25,8 @@ import shippingTracking from "./shippingTracking/index.js";
 import supplier from "./supplier/index.js";
 import promotion from "./promotion/index.js";
 import coupon from "./coupon/index.js";
+import eventPackage from "./event_package/index.js";
+import tableEvent from "./table_event/index.js";
 import * as printSetting from "./printSetting/index.js";
 // 🆕 Thêm search module
 import search from "./search/index.js";
@@ -57,6 +59,8 @@ export default {
     ...(supplier.Query || {}),
     ...(promotion.Query || {}),
     ...(coupon.Query || {}),
+    ...(eventPackage.Query || {}),
+    ...(tableEvent.Query || {}),
     ...(printSetting.Query || {}),
   },
 
@@ -83,6 +87,8 @@ export default {
     ...(cart.Mutation || {}),
     ...(shippingTracking.Mutation || {}),
     ...(supplier.Mutation || {}),
+    ...(eventPackage.Mutation || {}),
+    ...(tableEvent.Mutation || {}),
     ...(printSetting.Mutation || {}),
   },
 
