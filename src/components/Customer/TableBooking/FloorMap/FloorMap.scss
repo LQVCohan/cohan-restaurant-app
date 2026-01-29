@@ -308,18 +308,18 @@ $wood-texture: #a16207;
     // 3. Occupied (Dark)
     &.occupied {
       .table-surface {
-        background: #f1f5f9;
-        border-color: #cbd5e1;
+        background: #fee2e2;
+        border-color: #ef4444;
         // Hatch pattern
         background-image: repeating-linear-gradient(
           45deg,
           transparent,
           transparent 5px,
-          rgba(0, 0, 0, 0.05) 5px,
-          rgba(0, 0, 0, 0.05) 10px
+          rgba(239, 68, 68, 0.15) 5px,
+          rgba(239, 68, 68, 0.15) 10px
         );
         .table-label {
-          color: #94a3b8;
+          color: #b91c1c;
         }
       }
       .chairs-wrapper {
@@ -330,10 +330,10 @@ $wood-texture: #a16207;
     // 4. Reserved (Orange tint)
     &.reserved {
       .table-surface {
-        background: #fff7ed;
-        border-color: #fb923c;
+        background: #fecaca;
+        border-color: #dc2626;
         .table-label {
-          color: #c2410c;
+          color: #b91c1c;
         }
       }
     }

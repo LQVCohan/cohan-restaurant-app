@@ -36,6 +36,7 @@ export default function TableActionsLiteModal({
   const [type, setType] = useState("standard"); // standard | vip | outdoor
   const [tags, setTags] = useState("");
   const [status, setStatusLocal] = useState("available");
+  const [vrUrl, setVrUrl] = useState("");
 
   const [moveLevel, setMoveLevel] = useState(null);
   const [swapWithCode, setSwapWithCode] = useState("");
@@ -62,6 +63,7 @@ export default function TableActionsLiteModal({
     setType(table?.type || "standard");
     setTags(Array.isArray(table?.tags) ? table.tags.join(", ") : "");
     setStatusLocal(table?.status || "available");
+    setVrUrl(table?.vrUrl || "");
     setMoveLevel(table?.floorLevel ?? null);
     setSwapWithCode("");
     setMergeCodes("");
@@ -112,6 +114,7 @@ export default function TableActionsLiteModal({
           .split(",")
           .map((t) => t.trim())
           .filter(Boolean),
+        vrUrl: vrUrl?.trim() || null,
       };
       await actions.updateTable(patch);
       await onUpdated?.();
@@ -341,6 +344,27 @@ export default function TableActionsLiteModal({
                   onChange={(e) => setTags(e.target.value)}
                   placeholder="VIP, sân vườn…"
                 />
+              </div>
+              <div>
+                <label className="talite-label">Link VR bàn</label>
+                <input
+                  className="talite-input"
+                  value={vrUrl}
+                  onChange={(e) => setVrUrl(e.target.value)}
+                  placeholder="https://..."
+                />
+                <div className="actions-end" style={{ marginTop: 6 }}>
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={() => {
+                      if (!vrUrl) return alert("Chưa có link VR.");
+                      window.open(vrUrl, "_blank", "noopener,noreferrer");
+                    }}
+                  >
+                    Mở VR bàn
+                  </button>
+                </div>
               </div>
             </div>
             <div className="actions-end">

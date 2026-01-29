@@ -1,5 +1,6 @@
 // src/components/Customer/RestaurantMenu/RestaurantMenu.jsx
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import "./RestaurantMenu.scss";
 import Cart from "../../Customer/Homepage_Client/components/Cart";
 import { useCart } from "../../../context/CartProvider";
@@ -11,8 +12,13 @@ import RestaurantCard from "./components/RestaurantCard";
 import MenuDetailView from "./components/MenuDetailView";
 
 const RestaurantMenu = () => {
+  const navigate = useNavigate();
+  const { search } = useLocation();
   const [selectedRes, setSelectedRes] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const searchParams = useMemo(() => new URLSearchParams(search), [search]);
+  const restaurantParam = searchParams.get("restaurantId");
+  const returnTo = searchParams.get("returnTo");
 
   // 👉 Dùng cart context
   const {
@@ -42,6 +48,22 @@ const RestaurantMenu = () => {
 
   const totalPrice = getTotalPrice();
   const totalCount = getTotalItems();
+
+  useEffect(() => {
+    if (!restaurantParam) return;
+    const found = MOCK_RESTAURANTS.find(
+      (res) => String(res.id) === String(restaurantParam)
+    );
+    if (found) setSelectedRes(found);
+  }, [restaurantParam]);
+
+  const handleCheckoutSuccess = () => {
+    if (returnTo === "booking" && restaurantParam) {
+      navigate(`/restaurant/${restaurantParam}/layout?fromMenu=1`);
+      return;
+    }
+    clearCart();
+  };
 
   return (
     <div className="restaurant-app">
@@ -91,7 +113,7 @@ const RestaurantMenu = () => {
         cart={cart}
         onUpdateQuantity={updateQuantity}
         totalPrice={totalPrice}
-        onCheckoutSuccess={clearCart}
+        onCheckoutSuccess={handleCheckoutSuccess}
         onClearCart={handleClearCart}
         onRemoveRestaurantItems={removeRestaurantItems}
       />

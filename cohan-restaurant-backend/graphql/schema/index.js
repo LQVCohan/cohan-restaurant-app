@@ -27,6 +27,8 @@ const files = [
   "printSetting.graphql",
   "review.graphql",
   "promotion.graphql",
+  "event_package.graphql",
+  "table_event.graphql",
   "coupon.graphql",
   "cart.graphql",
   "search.graphql",
