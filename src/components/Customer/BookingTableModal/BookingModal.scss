@@ -360,6 +360,389 @@ $danger: #ef4444;
     }
   }
 
+  .bkm-table-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .details-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      @media (max-width: 600px) {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .detail-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+
+      &.highlight {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        border-color: rgba($gold, 0.4);
+        background: rgba($gold, 0.08);
+      }
+
+      .detail-label {
+        font-size: 0.75rem;
+        color: $slate;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .detail-value {
+        font-weight: 600;
+        color: $charcoal;
+      }
+    }
+  }
+
+  .bkm-virtual-tour {
+    border: 1px solid rgba($gold, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    background: #fffaf5;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    .tour-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+
+      h4 {
+        margin: 0;
+        font-size: 1rem;
+        color: $charcoal;
+      }
+      p {
+        margin: 4px 0 0;
+        font-size: 0.85rem;
+        color: $slate;
+      }
+    }
+
+    .tour-body {
+      display: grid;
+      grid-template-columns: 1fr 180px;
+      gap: 16px;
+      @media (max-width: 600px) {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .tour-preview {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .tour-screen {
+      background: linear-gradient(135deg, #1f2937, #0f172a);
+      color: #f8fafc;
+      border-radius: 12px;
+      padding: 20px;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+
+      &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          circle at 30% 20%,
+          rgba(255, 255, 255, 0.15),
+          transparent 60%
+        );
+      }
+      .tour-badge {
+        font-size: 0.7rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: $gold-light;
+      }
+      .tour-title {
+        font-weight: 700;
+        font-size: 1rem;
+      }
+      .tour-sub {
+        font-size: 0.8rem;
+        color: #cbd5f5;
+      }
+    }
+
+    .tour-action {
+      border: none;
+      border-radius: 8px;
+      background: $charcoal;
+      color: $gold;
+      padding: 10px 14px;
+      font-weight: 600;
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .tour-table-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .tour-table {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      font-size: 0.85rem;
+
+      &.unavailable {
+        border-color: #fecaca;
+        background: #fee2e2;
+        color: #991b1b;
+        cursor: not-allowed;
+      }
+
+      &.active {
+        border-color: $gold;
+        background: rgba($gold, 0.15);
+        color: $charcoal;
+        font-weight: 600;
+      }
+
+      .status {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+    }
+  }
+
+  .bkm-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: $slate;
+    input {
+      width: 16px;
+      height: 16px;
+      accent-color: $gold-dark;
+    }
+  }
+
+  .bkm-requests {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .request-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .request-chip {
+      border: 1px solid #e2e8f0;
+      background: white;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      color: $charcoal;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+
+      input {
+        accent-color: $gold-dark;
+      }
+    }
+  }
+
+  .bkm-packages {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .package-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+    cursor: pointer;
+    transition: 0.2s;
+
+    &.active {
+      border-color: $gold;
+      box-shadow: 0 6px 18px rgba($gold, 0.2);
+    }
+
+    .pkg-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+    }
+    .pkg-price {
+      color: $gold-dark;
+      font-size: 0.85rem;
+    }
+    .pkg-desc {
+      margin: 0;
+      color: $slate;
+      font-size: 0.82rem;
+    }
+    .pkg-code {
+      font-size: 0.72rem;
+      color: $gold-dark;
+      font-weight: 600;
+    }
+  }
+
+  .package-empty {
+    grid-column: 1 / -1;
+    padding: 12px;
+    border-radius: 12px;
+    background: #fff7ed;
+    border: 1px dashed #fdba74;
+    color: #9a3412;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .bkm-package-fields {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 12px;
+    border: 1px dashed #e2e8f0;
+
+    .package-items {
+      margin-bottom: 12px;
+      .items-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: $slate;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 6px;
+      }
+      ul {
+        margin: 0;
+        padding-left: 18px;
+        color: $charcoal;
+        font-size: 0.85rem;
+        display: grid;
+        gap: 4px;
+      }
+    }
+
+    .field-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      label {
+        font-size: 0.8rem;
+        color: $slate;
+      }
+      input {
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+      }
+    }
+
+    .pkg-note {
+      margin: 0;
+      font-size: 0.85rem;
+      color: $slate;
+    }
+  }
+
+  .bkm-order-block {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: rgba($gold, 0.08);
+    border: 1px solid rgba($gold, 0.3);
+    border-radius: 12px;
+    padding: 14px;
+    flex-wrap: wrap;
+
+    .order-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.85rem;
+      color: $slate;
+    }
+    .order-title {
+      font-weight: 700;
+      color: $charcoal;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .order-deposit {
+      font-weight: 600;
+      color: $charcoal;
+    }
+  }
+
+  .bkm-policy {
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-size: 0.8rem;
+
+    .policy-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    ul {
+      padding-left: 18px;
+      margin: 0;
+      display: grid;
+      gap: 6px;
+    }
+  }
+
   // --- Time & Party Grid ---
   .bkm-row-grid {
     display: grid;
@@ -454,6 +837,34 @@ $danger: #ef4444;
     &:focus {
       border-color: $gold;
       outline: none;
+    }
+  }
+
+  .bkm-btn {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+
+    &.bkm-btn-gold {
+      background: $gold;
+      color: white;
+      box-shadow: 0 4px 10px rgba($gold, 0.3);
+    }
+
+    &.bkm-btn-ghost {
+      background: transparent;
+      color: $slate;
+      border: 1px solid #e2e8f0;
     }
   }
 

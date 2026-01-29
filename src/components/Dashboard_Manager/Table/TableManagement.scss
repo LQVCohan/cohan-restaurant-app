@@ -392,5 +392,9 @@ $st-cleaning-text: #7e22ce;
       justify-content: flex-end;
       gap: 10px;
     }
+    .hint {
+      font-size: 0.85rem;
+      color: $tm-text-light;
+    }
   }
 }

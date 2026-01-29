@@ -16,6 +16,7 @@ const restaurantSchema = BaseSchemaModel({
   avatar: String,
   coverImage: String,
   spaceImages: [String],
+  vrTourUrl: String,
   address: addressSchema,
   phone: String,
   email: String,
