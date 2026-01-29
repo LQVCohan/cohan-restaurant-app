@@ -175,6 +175,7 @@ const BookingModal = ({
   const { showNotification } = useNotification();
   const [createTableEvent] = useMutation(CREATE_TABLE_EVENT);
   const [createOrderForTable] = useMutation(CREATE_ORDER_FOR_TABLE);
+  const [showVirtualTour, setShowVirtualTour] = useState(false);
 
   // Khóa scroll body khi modal mở
   useEffect(() => {
@@ -237,7 +238,6 @@ const BookingModal = ({
   const [selectedPackageId, setSelectedPackageId] = useState(null);
   const [selectedRequests, setSelectedRequests] = useState([]);
   const [eventNote, setEventNote] = useState("");
-  const [showVirtualTour, setShowVirtualTour] = useState(false);
   const [errors, setErrors] = useState({});
   const [showSummary, setShowSummary] = useState(false);
   const [timeWarning, setTimeWarning] = useState(null);
