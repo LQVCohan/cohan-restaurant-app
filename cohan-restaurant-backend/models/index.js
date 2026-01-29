@@ -27,6 +27,8 @@ export { default as Invoice } from "./invoice.model.js";
 export { default as Review } from "./review.model.js";
 export { default as AuthProviderLink } from "./auth-provider-link.model.js";
 export { default as Promotion } from "./promotion.model.js";
+export { default as EventPackage } from "./event-package.model.js";
+export { default as TableEvent } from "./table-event.model.js";
 export { default as Coupon } from "./coupon.model.js";
 export { default as Shift } from "./shift.model.js";
 export { default as Timesheet } from "./timesheet.model.js";

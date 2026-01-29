@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, Info, Map as MapIcon, Layers } from "lucide-react"; // Dùng lucide-react cho đồng bộ
 
 import FloorMap from "./FloorMap/FloorMap";
@@ -10,11 +10,13 @@ import QRPaymentModal from "../QRPaymentModal/QRPaymentModal";
 import SuccessModal from "../SuccessModal/SuccessModal";
 
 import useFloorManagement from "../../../hooks/useFloorManagement";
+import { useCart } from "../../../context/CartProvider";
 import "./TableBooking.scss";
 
 const TableBooking = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { search } = useLocation();
   const restaurantId = id;
 
   const [selectedTable, setSelectedTable] = useState(null);
@@ -22,6 +24,8 @@ const TableBooking = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [bookingData, setBookingData] = useState(null);
+  const { cart } = useCart();
+  const fromMenu = new URLSearchParams(search).get("fromMenu") === "1";
 
   const {
     floors,
@@ -35,6 +39,15 @@ const TableBooking = () => {
     restaurantId,
     tableLimit: 200,
   });
+
+  const restaurantCartItems = (cart || []).filter(
+    (item) => item.restaurantId === restaurantId
+  );
+  const menuSubtotal = restaurantCartItems.reduce(
+    (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
+    0
+  );
+  const menuDeposit = Math.round(menuSubtotal * 0.5);
 
   const handleSelectTable = (table) => {
     // Chỉ cho chọn bàn trống
@@ -82,6 +95,13 @@ const TableBooking = () => {
           </div>
         </div>
       </header>
+
+      {fromMenu && (
+        <div className="booking-alert">
+          🛎️ Đã quay lại từ giỏ món. Hệ thống sẽ tính tiền cọc bàn + 50% cọc món
+          trong bước thanh toán.
+        </div>
+      )}
 
       <div className="booking-layout-grid">
         {/* LEFT COLUMN: Main Interaction Area */}
@@ -146,10 +166,19 @@ const TableBooking = () => {
                 <BookingSummary
                   selectedTable={selectedTable}
                   selectedFloorName={activeFloorData?.name}
+                  menuDeposit={menuDeposit}
+                  menuItemsCount={restaurantCartItems.length}
                   // Chúng ta sẽ ẩn nút mặc định của component con và dùng nút custom ở dưới nếu cần,
                   // hoặc style lại nút của component con qua CSS
                   onConfirm={() => selectedTable && setShowBookingModal(true)}
                   onCancel={() => setSelectedTable(null)}
+                  onOrderDishes={() =>
+                    navigate(
+                      `/cus-menu?restaurantId=${encodeURIComponent(
+                        restaurantId
+                      )}&returnTo=booking`
+                    )
+                  }
                 />
               </div>
             </div>

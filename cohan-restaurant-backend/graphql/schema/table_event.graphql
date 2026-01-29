@@ -1,0 +1,53 @@
+type TableEventItem {
+  menuItemId: ID
+  name: String
+  quantity: Float
+  unitPrice: Int
+}
+
+type TableEvent {
+  id: ID!
+  restaurantId: ID!
+  tableId: ID!
+  tableCode: String
+  eventPackageId: ID
+  eventName: String
+  promotionId: ID
+  promotionCode: String
+  orderId: ID
+  orderCode: String
+  status: String
+  items: [TableEventItem!]!
+  note: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+input TableEventItemInput {
+  menuItemId: ID
+  name: String
+  quantity: Float
+  unitPrice: Int
+}
+
+input CreateTableEventInput {
+  restaurantId: ID!
+  tableId: ID!
+  tableCode: String
+  eventPackageId: ID
+  eventName: String
+  promotionId: ID
+  promotionCode: String
+  orderId: ID
+  orderCode: String
+  items: [TableEventItemInput!]
+  note: String
+}
+
+extend type Query {
+  tableEventsByTable(restaurantId: ID!, tableId: ID!): [TableEvent!]!
+}
+
+extend type Mutation {
+  createTableEvent(input: CreateTableEventInput!): TableEvent!
+}
