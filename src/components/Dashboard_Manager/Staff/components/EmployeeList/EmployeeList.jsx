@@ -10,8 +10,135 @@ import {
 import EmployeeItem from "./EmployeeItem";
 import "./EmployeeList.scss";
 
+// --- DỮ LIỆU MẪU ĐỂ TEST GIAO DIỆN ---
+const SAMPLE_DATA = [
+  {
+    id: 1,
+    code: "NV001",
+    name: "Nguyễn Nhật Minh",
+    role: "Bếp Trưởng",
+    department: "kitchen",
+    status: "active",
+    phone: "0901234567",
+    email: "minh.nguyen@restaurant.com",
+    avatar: "https://i.pravatar.cc/150?img=11",
+    startDate: "2022-01-15",
+    salary: 15000000,
+    address: "Q1, TP.HCM",
+    shift: "Ca gãy (10:00 - 14:00 & 17:00 - 22:00)",
+  },
+  {
+    id: 2,
+    code: "NV002",
+    name: "Trần Thị Thu Hà",
+    role: "Quản Lý Nhà Hàng",
+    department: "management",
+    status: "active",
+    phone: "0909888777",
+    email: "ha.tran@restaurant.com",
+    avatar: "https://i.pravatar.cc/150?img=5",
+    startDate: "2021-05-20",
+    salary: 20000000,
+    address: "Q3, TP.HCM",
+    shift: "Hành chính",
+  },
+  {
+    id: 3,
+    code: "NV003",
+    name: "Phạm Văn Long",
+    role: "Phục Vụ",
+    department: "service",
+    status: "break",
+    phone: "0933444555",
+    email: "long.pham@restaurant.com",
+    avatar: null, // Test trường hợp không có avatar
+    startDate: "2023-03-10",
+    salary: 6000000,
+    address: "Q.Bình Thạnh, TP.HCM",
+    shift: "Ca sáng (06:00 - 14:00)",
+  },
+  {
+    id: 4,
+    code: "NV004",
+    name: "Lê Tuyết Mai",
+    role: "Thu Ngân",
+    department: "cashier",
+    status: "active",
+    phone: "0912333444",
+    email: "mai.le@restaurant.com",
+    avatar: "https://i.pravatar.cc/150?img=9",
+    startDate: "2023-06-01",
+    salary: 7000000,
+    address: "Q.Tân Bình, TP.HCM",
+    shift: "Ca chiều (14:00 - 22:00)",
+  },
+  {
+    id: 5,
+    code: "NV005",
+    name: "Hoàng Văn Nam",
+    role: "Phụ Bếp",
+    department: "kitchen",
+    status: "active",
+    phone: "0987654321",
+    email: "nam.hoang@restaurant.com",
+    avatar: "https://i.pravatar.cc/150?img=13",
+    startDate: "2023-08-15",
+    salary: 5500000,
+    address: "Q12, TP.HCM",
+    shift: "Full-time",
+  },
+  {
+    id: 6,
+    code: "NV006",
+    name: "Đỗ Thị Bích",
+    role: "Tạp Vụ",
+    department: "cleaning",
+    status: "inactive",
+    phone: "0911222333",
+    email: "bich.do@email.com",
+    avatar: null,
+    startDate: "2022-11-01",
+    salary: 5000000,
+    address: "Hóc Môn, TP.HCM",
+    shift: "Ca sáng",
+  },
+  {
+    id: 7,
+    code: "NV007",
+    name: "Vũ Tuấn Anh",
+    role: "Phục Vụ",
+    department: "service",
+    status: "active",
+    phone: "0944555666",
+    email: "anh.vu@restaurant.com",
+    avatar: "https://i.pravatar.cc/150?img=60",
+    startDate: "2023-09-05",
+    salary: 6000000,
+    address: "Q4, TP.HCM",
+    shift: "Ca tối",
+  },
+  {
+    id: 8,
+    code: "NV008",
+    name: "Ngô Thanh Vân",
+    role: "Pha Chế (Bartender)",
+    department: "service",
+    status: "break",
+    phone: "0977888999",
+    email: "van.ngo@restaurant.com",
+    avatar: "https://i.pravatar.cc/150?img=32",
+    startDate: "2023-02-20",
+    salary: 8000000,
+    address: "Q7, TP.HCM",
+    shift: "Ca tối",
+  },
+];
+
 const EmployeeList = ({ employees, selectedEmployee, onEmployeeSelect }) => {
-  const dataSource = employees || [];
+  // Ưu tiên dùng props, nếu không có thì dùng SAMPLE_DATA
+  const dataSource =
+    employees && employees.length > 0 ? employees : SAMPLE_DATA;
+
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -22,6 +149,7 @@ const EmployeeList = ({ employees, selectedEmployee, onEmployeeSelect }) => {
   const filteredEmployees = useMemo(() => {
     return dataSource.filter((employee) => {
       const searchLower = searchQuery.toLowerCase();
+      // Tìm kiếm an toàn (null check)
       const matchesSearch =
         (employee.name && employee.name.toLowerCase().includes(searchLower)) ||
         (employee.role && employee.role.toLowerCase().includes(searchLower)) ||
@@ -51,9 +179,8 @@ const EmployeeList = ({ employees, selectedEmployee, onEmployeeSelect }) => {
 
   // --- HANDLERS ---
   const handleActionClick = (e, type) => {
-    // Logic xử lý Edit/Delete gọi từ Item lên
-    console.log(`Action: ${type}`);
-    // Thực tế bạn sẽ gọi props onEdit/onDelete từ cha truyền xuống
+    console.log(`Action clicked: ${type}`);
+    // Thực tế sẽ gọi onEdit / onDelete từ props
   };
 
   return (
@@ -114,11 +241,12 @@ const EmployeeList = ({ employees, selectedEmployee, onEmployeeSelect }) => {
             <option value="service">Phục vụ</option>
             <option value="cashier">Thu ngân</option>
             <option value="management">Quản lý</option>
+            <option value="cleaning">Vệ sinh</option>
           </select>
         </div>
       </div>
 
-      {/* 3. TABLE HEADER (Grid aligned with Item) */}
+      {/* 3. TABLE HEADER */}
       <div className="table-header-row">
         <div className="th col-main">Thông tin nhân viên</div>
         <div className="th col-role">Vị trí</div>
