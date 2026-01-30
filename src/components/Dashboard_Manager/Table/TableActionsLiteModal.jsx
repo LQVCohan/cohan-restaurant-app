@@ -1,6 +1,11 @@
 // src/components/Table/TableActionsLiteModal.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  loadTableVrImage,
+  removeTableVrImage,
+  storeTableVrImage,
+} from "@/utils/vrStorage";
 
 export default function TableActionsLiteModal({
   open,
@@ -37,6 +42,7 @@ export default function TableActionsLiteModal({
   const [tags, setTags] = useState("");
   const [status, setStatusLocal] = useState("available");
   const [vrUrl, setVrUrl] = useState("");
+  const [vrUploadStatus, setVrUploadStatus] = useState("");
 
   const [moveLevel, setMoveLevel] = useState(null);
   const [swapWithCode, setSwapWithCode] = useState("");
@@ -63,7 +69,11 @@ export default function TableActionsLiteModal({
     setType(table?.type || "standard");
     setTags(Array.isArray(table?.tags) ? table.tags.join(", ") : "");
     setStatusLocal(table?.status || "available");
-    setVrUrl(table?.vrUrl || "");
+    const storedImage = loadTableVrImage(table?.id);
+    const fallbackVrUrl =
+      !table?.vrUrl && storedImage ? `/vr/table/${table?.id}` : "";
+    setVrUrl(table?.vrUrl || fallbackVrUrl);
+    setVrUploadStatus("");
     setMoveLevel(table?.floorLevel ?? null);
     setSwapWithCode("");
     setMergeCodes("");
@@ -99,6 +109,8 @@ export default function TableActionsLiteModal({
 
   if (!isOpen) return null;
 
+  const hasStoredImage = !!loadTableVrImage(table?.id);
+
   // ================= Actions =================
   const handleSaveBasics = async () => {
     if (!table?.id) return;
@@ -124,6 +136,42 @@ export default function TableActionsLiteModal({
     } finally {
       setBusyKey("save", false);
     }
+  };
+
+  const handleVrFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !table?.id) return;
+    if (!file.type.startsWith("image/")) {
+      alert("Vui lòng chọn file ảnh 360.");
+      return;
+    }
+    const maxSizeMb = 4;
+    if (file.size > maxSizeMb * 1024 * 1024) {
+      alert(`Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn ${maxSizeMb}MB.`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      if (typeof dataUrl !== "string") return;
+      const stored = storeTableVrImage(table.id, dataUrl);
+      if (!stored) {
+        alert("Không thể lưu ảnh 360. Vui lòng thử ảnh nhỏ hơn.");
+        return;
+      }
+      setVrUrl(`/vr/table/${table.id}`);
+      setVrUploadStatus("Đã lưu ảnh 360 vào Local Storage.");
+    };
+    reader.onerror = () => {
+      alert("Không thể đọc file ảnh.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveVrImage = () => {
+    if (!table?.id) return;
+    removeTableVrImage(table.id);
+    setVrUploadStatus("Đã xoá ảnh 360 khỏi Local Storage.");
   };
 
   const handleChangeStatus = async (next) => {
@@ -351,8 +399,34 @@ export default function TableActionsLiteModal({
                   className="talite-input"
                   value={vrUrl}
                   onChange={(e) => setVrUrl(e.target.value)}
-                  placeholder="https://..."
+                  placeholder="https://... hoặc /vr/table/123"
                 />
+                <div className="talite-upload">
+                  <label className="talite-label">Tải ảnh 360°</label>
+                  <input
+                    className="talite-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleVrFileChange}
+                  />
+                  <div className="hint">
+                    Ảnh 360 được lưu ở Local Storage (máy hiện tại). Nên dùng
+                    ảnh nhỏ hơn 4MB để tránh đầy bộ nhớ trình duyệt.
+                  </div>
+                  {vrUploadStatus && (
+                    <div className="hint">{vrUploadStatus}</div>
+                  )}
+                  {hasStoredImage && (
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      onClick={handleRemoveVrImage}
+                      style={{ marginTop: 6 }}
+                    >
+                      Xoá ảnh 360 đã lưu
+                    </button>
+                  )}
+                </div>
                 <div className="actions-end" style={{ marginTop: 6 }}>
                   <button
                     className="btn ghost"
