@@ -13,6 +13,7 @@ type Restaurant {
   avatar: String
   coverImage: String
   spaceImages: [String]
+  vrTourUrl: String
   address: Address
   phone: String
   email: String
@@ -95,6 +96,7 @@ input CreateRestaurantInput {
   avatar: String
   coverImage: String
   spaceImages: [String]
+  vrTourUrl: String
   address: AddressInput
   phone: String
   email: String
@@ -117,6 +119,7 @@ input UpdateRestaurantInput {
   avatar: String
   coverImage: String
   spaceImages: [String]
+  vrTourUrl: String
   address: AddressInput
   phone: String
   email: String

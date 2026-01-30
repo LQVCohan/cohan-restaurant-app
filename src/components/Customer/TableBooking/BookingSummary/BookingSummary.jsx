@@ -7,6 +7,9 @@ const BookingSummary = ({
   onConfirm,
   onCancel,
   selectedFloorName,
+  menuDeposit = 0,
+  menuItemsCount = 0,
+  onOrderDishes,
 }) => {
   // Helper: Format tiền tệ
   const formatPrice = (price) => {
@@ -80,6 +83,37 @@ const BookingSummary = ({
                     )}
                   </span>
                 </div>
+              </div>
+
+              <div className="bsm-info-item total">
+                <div className="icon-wrapper">
+                  <UtensilsCrossed size={18} />
+                </div>
+                <div className="details">
+                  <span className="label">Cọc món (50%)</span>
+                  <span className="value highlight">
+                    {menuDeposit > 0
+                      ? formatPrice(menuDeposit)
+                      : "Chưa có món"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bsm-info-item">
+                <div className="details">
+                  <span className="label">Món đã chọn</span>
+                  <span className="value">
+                    {menuItemsCount} món trong giỏ
+                  </span>
+                </div>
+                {onOrderDishes && (
+                  <button
+                    className="bsm-btn bsm-btn-secondary"
+                    onClick={onOrderDishes}
+                  >
+                    Order món
+                  </button>
+                )}
               </div>
             </div>
           </>

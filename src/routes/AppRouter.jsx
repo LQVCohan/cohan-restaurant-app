@@ -48,6 +48,7 @@ import VoucherPage from "@/components/Customer/VoucherManagement/VoucherPage";
 import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
 import AddressPage from "@/components/Customer/AddressPage/AddressPage";
 import HelpPage from "@/components/Customer/HelpPage/HelpPage";
+import VRViewer from "@/components/Customer/VRViewer/VRViewer";
 
 // =========================
 // 🔐 GraphQL Query: me
@@ -392,6 +393,7 @@ const AppRouter = () => {
           }
         />
         <Route path="/restaurant/:id/layout" element={<TableBooking />} />
+        <Route path="/vr/table/:tableId" element={<VRViewer />} />
         <Route path="/cus-menu" element={<RestaurantMenu />} />
         <Route path="/vouchers/:id" element={<VoucherPage />} />
         <Route path="/favorites/:id" element={<FavoritePage />} />

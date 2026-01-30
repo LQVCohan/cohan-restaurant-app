@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo } from "react";
 import { gql } from "@apollo/client";
-import { useQuery } from "@apollo/client/react";
+import { useQuery, useMutation } from "@apollo/client/react";
 import {
   X,
   User,
@@ -14,8 +14,16 @@ import {
   ChevronRight,
   Check,
   AlertCircle,
+  Sparkles,
+  Video,
+  Info,
+  Receipt,
+  ArrowUpRight,
+  Gift,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../../context/AuthContext";
+import { useCart } from "../../../context/CartProvider";
 import { useBookingTable } from "../../../hooks/useBookingTable";
 import { useNotification } from "../../../hooks/useNotification";
 import { formatCurrency, formatDateTime } from "../../../utils/formatters";
@@ -54,6 +62,60 @@ const GET_TABLES_BY_RESTAURANT = gql`
       status
       floorId
       deposit
+      type
+      vrUrl
+    }
+  }
+`;
+
+const GET_EVENT_PACKAGES = gql`
+  query EventPackagesByRestaurant($restaurantId: ID!, $activeOnly: Boolean) {
+    eventPackagesByRestaurant(
+      restaurantId: $restaurantId
+      activeOnly: $activeOnly
+    ) {
+      id
+      name
+      description
+      promotionId
+      promotionCode
+      price
+      items {
+        menuItemId
+        name
+        menuId
+        categoryId
+        image
+        servingKey
+        unitPrice
+        quantity
+        note
+      }
+    }
+  }
+`;
+
+const CREATE_TABLE_EVENT = gql`
+  mutation CreateTableEvent($input: CreateTableEventInput!) {
+    createTableEvent(input: $input) {
+      id
+      eventName
+      promotionCode
+      orderId
+      orderCode
+    }
+  }
+`;
+
+const CREATE_ORDER_FOR_TABLE = gql`
+  mutation CreateOrderForTable($input: CreateOrderForTableInput!) {
+    createOrderForTable(input: $input) {
+      isNewOrder
+      order {
+        id
+        orderCode
+        restaurantId
+      }
     }
   }
 `;
@@ -88,6 +150,13 @@ function calculateDurationMinutes(date, timeIn, timeOut) {
   return Math.floor(diffMs / 60000);
 }
 
+const POLICY_ITEMS = [
+  "Vui lòng đến đúng giờ; được phép trễ tối đa 15 phút.",
+  "Sau 15 phút không có thông báo, hệ thống tự hủy bàn.",
+  "Không hoàn tiền khi huỷ muộn hoặc không đến; tài khoản bị hạn chế đặt bàn 30 ngày.",
+  "Nếu có vấn đề, vui lòng gọi số 1900-888-999 hoặc nhắn chatbot để được hỗ trợ.",
+];
+
 /* ───────────────── Main Component ───────────────── */
 const BookingModal = ({
   isOpen,
@@ -100,8 +169,13 @@ const BookingModal = ({
   onBookingConfirmed,
 }) => {
   const { user } = useContext(AuthContext) || {};
+  const navigate = useNavigate();
+  const { cart } = useCart();
   const { createBooking, isLoading } = useBookingTable();
   const { showNotification } = useNotification();
+  const [createTableEvent] = useMutation(CREATE_TABLE_EVENT);
+  const [createOrderForTable] = useMutation(CREATE_ORDER_FOR_TABLE);
+  const [showVirtualTour, setShowVirtualTour] = useState(false);
 
   // Khóa scroll body khi modal mở
   useEffect(() => {
@@ -124,12 +198,29 @@ const BookingModal = ({
   const { data: tablesData, loading: tablesLoading } = useQuery(
     GET_TABLES_BY_RESTAURANT,
     {
-      variables: { restaurantId, status: "available", limit: 200 },
-      skip: !restaurantId || !needPickTable,
+      variables: {
+        restaurantId,
+        status: showVirtualTour ? null : "available",
+        limit: 200,
+      },
+      skip: !restaurantId || (!needPickTable && !showVirtualTour),
       fetchPolicy: "network-only",
     }
   );
   const tables = useMemo(() => tablesData?.tables ?? [], [tablesData]);
+  const selectableTables = useMemo(
+    () => tables.filter((t) => t.status === "available"),
+    [tables]
+  );
+  const { data: eventPackageData } = useQuery(GET_EVENT_PACKAGES, {
+    variables: { restaurantId, activeOnly: true },
+    skip: !restaurantId,
+    fetchPolicy: "network-only",
+  });
+  const eventPackages = useMemo(
+    () => eventPackageData?.eventPackagesByRestaurant ?? [],
+    [eventPackageData]
+  );
 
   // --- State ---
   const [pickedTable, setPickedTable] = useState(null);
@@ -141,8 +232,12 @@ const BookingModal = ({
     date: "",
     time: "",
     timeOut: "",
+    openEnded: false,
     notes: "",
   });
+  const [selectedPackageId, setSelectedPackageId] = useState(null);
+  const [selectedRequests, setSelectedRequests] = useState([]);
+  const [eventNote, setEventNote] = useState("");
   const [errors, setErrors] = useState({});
   const [showSummary, setShowSummary] = useState(false);
   const [timeWarning, setTimeWarning] = useState(null);
@@ -174,24 +269,50 @@ const BookingModal = ({
       partySize: Math.min(2, preTable?.capacity || 4),
       time: "",
       timeOut: "",
+      openEnded: false,
       customerName: autoName,
       customerPhone: autoPhone,
       customerEmail: autoEmail,
     }));
+    setSelectedPackageId(null);
+    setEventNote("");
+    setSelectedRequests([]);
+    setShowVirtualTour(false);
   }, [isOpen, needPickTable, tableId, tableCapacity, user]);
 
   useEffect(() => {
     if (!isOpen) return;
-    if (needPickTable && tables.length > 0 && !pickedTable?.id) {
-      setPickedTable(tables[0]);
+    if (needPickTable && selectableTables.length > 0 && !pickedTable?.id) {
+      setPickedTable(selectableTables[0]);
     }
-  }, [isOpen, needPickTable, tables, pickedTable]);
+  }, [isOpen, needPickTable, selectableTables, pickedTable]);
 
   const capacity = pickedTable?.capacity || tableCapacity || 4;
+  const tableType = pickedTable?.type || (capacity >= 8 ? "VIP" : "Standard");
+  const selectedPackage = useMemo(
+    () => eventPackages.find((pkg) => pkg.id === selectedPackageId) || null,
+    [eventPackages, selectedPackageId]
+  );
   const deposit = useMemo(
     () => getDepositFromTable(pickedTable, formData.partySize),
     [pickedTable, formData.partySize]
   );
+  const restaurantCartItems = useMemo(
+    () => (cart || []).filter((item) => item.restaurantId === restaurantId),
+    [cart, restaurantId]
+  );
+  const menuSubtotal = useMemo(
+    () =>
+      restaurantCartItems.reduce(
+        (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
+        0
+      ),
+    [restaurantCartItems]
+  );
+  const menuDeposit = Math.round(menuSubtotal * 0.5);
+  const totalDeposit = deposit + menuDeposit;
+  const packagePrice = Number(selectedPackage?.price || 0);
+  const totalDuePreview = totalDeposit;
 
   // --- Handlers ---
   const checkTimeWarning = (dateStr, timeStr) => {
@@ -217,6 +338,9 @@ const BookingModal = ({
       }
       if (field === "time") {
         checkTimeWarning(newData.date, value);
+        if (!newData.openEnded) newData.timeOut = "";
+      }
+      if (field === "openEnded") {
         newData.timeOut = "";
       }
       return newData;
@@ -237,7 +361,8 @@ const BookingModal = ({
     if (!pickedTable?.id) errs.table = "Vui lòng chọn bàn";
     if (!formData.date) errs.date = "Chọn ngày";
     if (!formData.time) errs.time = "Chọn giờ vào";
-    if (!formData.timeOut) errs.timeOut = "Chọn giờ ra";
+    if (!formData.openEnded && !formData.timeOut)
+      errs.timeOut = "Chọn giờ ra";
     if (timeWarning === "Đã qua.") errs.time = "Giờ không hợp lệ";
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -245,34 +370,125 @@ const BookingModal = ({
 
   const handleConfirm = async () => {
     if (!validate()) return;
-    const durationMinutes = calculateDurationMinutes(
-      formData.date,
-      formData.time,
-      formData.timeOut
-    );
+    const durationMinutes = formData.openEnded
+      ? 0
+      : calculateDurationMinutes(formData.date, formData.time, formData.timeOut);
     const timeToISO = localDateTimeToISO(formData.date, formData.time);
 
-    if (durationMinutes < 30) {
+    if (!formData.openEnded && durationMinutes < 30) {
       showNotification("Thời gian dùng bữa tối thiểu 30 phút.", "error");
       return;
     }
 
     try {
+      const noteParts = [
+        formData.notes,
+        selectedRequests.length
+          ? `Yêu cầu: ${selectedRequests.join(", ")}`
+          : "",
+        selectedPackage
+          ? `Gói sự kiện: ${selectedPackage?.name} (${
+              selectedPackage?.promotionCode || "N/A"
+            })`
+          : "",
+        selectedPackage && eventNote ? `Ghi chú sự kiện: ${eventNote}` : "",
+        formData.openEnded
+          ? "Không xác định giờ ra (bàn sẽ giữ cho đến khi set trống)."
+          : "",
+        menuSubtotal > 0
+          ? `Có đặt món trước: ${formatCurrency(
+              menuSubtotal
+            )} (cọc món 50%)`
+          : "",
+      ].filter(Boolean);
       const input = {
         restaurantId,
         tableId: pickedTable.id,
         timeTo: timeToISO,
-        durationMinutes: durationMinutes,
+        durationMinutes: durationMinutes || 0,
         partySize: Number(formData.partySize),
-        note: formData.notes || "",
+        note: noteParts.join(" | "),
         customerName: formData.customerName?.trim(),
         customerPhone: formData.customerPhone?.trim() || null,
         customerEmail: formData.customerEmail?.trim() || null,
-        depositAmount: deposit,
+        depositAmount: totalDeposit,
       };
 
       const reservation = await createBooking(input);
       if (reservation) {
+        let createdOrder = null;
+        if (selectedPackage && selectedPackage.items?.length) {
+          const invalidItem = selectedPackage.items.find(
+            (item) => !item.servingKey
+          );
+          if (invalidItem) {
+            showNotification(
+              "Gói sự kiện thiếu servingKey cho món đi kèm, vui lòng cập nhật trong event management.",
+              "warning"
+            );
+          } else {
+            const orderItems = selectedPackage.items.map((item) => ({
+              dishId: item.menuItemId,
+              menuId: item.menuId,
+              categoryId: item.categoryId,
+              name: item.name,
+              unit: "phần",
+              image: item.image,
+              basePrice: Number(item.unitPrice || 0),
+              servingKey: item.servingKey,
+              quantity: Number(item.quantity || 1),
+              note: item.note || null,
+            }));
+            const orderPayload = {
+              restaurantId,
+              tableId: pickedTable.id,
+              tableCode: pickedTable.code || tableCode || pickedTable.id,
+              parentOrderCode: reservation.orderCode || null,
+              items: orderItems,
+              note: `Order từ gói sự kiện: ${selectedPackage.name}`,
+              customer: {
+                fullName: formData.customerName?.trim(),
+                phone: formData.customerPhone?.trim() || null,
+                email: formData.customerEmail?.trim() || null,
+              },
+              clientMeta: {
+                source: "reservation_event_package",
+                reservationId: reservation.id,
+                promotionId: selectedPackage.promotionId || null,
+                promotionCode: selectedPackage.promotionCode || null,
+              },
+            };
+            const { data } = await createOrderForTable({
+              variables: { input: orderPayload },
+            });
+            createdOrder = data?.createOrderForTable?.order || null;
+          }
+        }
+
+        if (selectedPackage) {
+          await createTableEvent({
+            variables: {
+              input: {
+                restaurantId,
+                tableId: pickedTable.id,
+                tableCode: pickedTable.code || tableCode || pickedTable.id,
+                eventPackageId: selectedPackage.id,
+                eventName: selectedPackage.name,
+                promotionId: selectedPackage.promotionId || null,
+                promotionCode: selectedPackage.promotionCode || null,
+                orderId: createdOrder?.id || null,
+                orderCode: createdOrder?.orderCode || null,
+                items: (selectedPackage.items || []).map((item) => ({
+                  menuItemId: item.menuItemId,
+                  name: item.name,
+                  quantity: item.quantity || 1,
+                  unitPrice: item.unitPrice || 0,
+                })),
+                note: eventNote || null,
+              },
+            },
+          });
+        }
         onBookingConfirmed?.(reservation);
         onClose?.();
       }
@@ -282,11 +498,9 @@ const BookingModal = ({
   };
 
   if (!isOpen) return null;
-  const durationPreview = calculateDurationMinutes(
-    formData.date,
-    formData.time,
-    formData.timeOut
-  );
+  const durationPreview = formData.openEnded
+    ? 0
+    : calculateDurationMinutes(formData.date, formData.time, formData.timeOut);
 
   return (
     <div className="bkm-backdrop" onClick={onClose}>
@@ -357,7 +571,7 @@ const BookingModal = ({
           {needPickTable ? (
             <TablePicker
               loading={tablesLoading}
-              tables={tables}
+              tables={selectableTables}
               pickedTable={pickedTable}
               onPick={setPickedTable}
               error={errors.table}
@@ -370,6 +584,116 @@ const BookingModal = ({
             />
           )}
 
+          <div className="bkm-table-details">
+            <div className="details-row">
+              <div className="detail-card">
+                <span className="detail-label">Sức chứa tối đa</span>
+                <span className="detail-value">{capacity} khách</span>
+              </div>
+              <div className="detail-card">
+                <span className="detail-label">Loại bàn</span>
+                <span className="detail-value">{tableType}</span>
+              </div>
+              <div className="detail-card">
+                <span className="detail-label">Cọc bàn</span>
+                <span className="detail-value">
+                  {formatCurrency(deposit)}
+                </span>
+              </div>
+            </div>
+            <div className="detail-card highlight">
+              <div>
+                <div className="detail-label">Ưu đãi kèm theo</div>
+                <div className="detail-value">
+                  Miễn phí nước suối · Tặng 5% hóa đơn cho nhóm từ 6 khách
+                </div>
+              </div>
+              <button
+                type="button"
+                className="bkm-btn bkm-btn-ghost"
+                onClick={() => setShowVirtualTour(true)}
+              >
+                <Video size={16} /> Xem bàn (VR)
+              </button>
+            </div>
+          </div>
+
+          {showVirtualTour && (
+            <div className="bkm-virtual-tour">
+              <div className="tour-header">
+                <div>
+                  <h4>Trải nghiệm bàn 360°</h4>
+                  <p>
+                    Chạm chọn bàn ngay trong lúc xem. Bàn không khả dụng sẽ tô
+                    đỏ.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="bkm-btn bkm-btn-ghost"
+                  onClick={() => setShowVirtualTour(false)}
+                >
+                  <X size={16} /> Đóng
+                </button>
+              </div>
+              <div className="tour-body">
+                <div className="tour-preview">
+                  <div className="tour-screen">
+                    <span className="tour-badge">360°</span>
+                    <span className="tour-title">
+                      View bàn {pickedTable?.code || tableCode || "—"}
+                    </span>
+                    <span className="tour-sub">
+                      Mô phỏng góc nhìn quanh bàn · kéo để xoay
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="tour-action"
+                    onClick={() => {
+                      const target = pickedTable?.vrUrl;
+                      if (target) {
+                        window.open(target, "_blank", "noopener,noreferrer");
+                        return;
+                      }
+                      showNotification(
+                        "Bàn chưa có link VR, vui lòng chọn bàn khác.",
+                        "warning"
+                      );
+                    }}
+                  >
+                    <ArrowUpRight size={16} /> Mở toàn cảnh
+                  </button>
+                </div>
+                <div className="tour-table-list">
+                  {(tables.length ? tables : [pickedTable])
+                    .filter(Boolean)
+                    .map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className={`tour-table ${
+                          t.status !== "available" ? "unavailable" : ""
+                        } ${pickedTable?.id === t.id ? "active" : ""}`}
+                        onClick={() => {
+                          if (t.status !== "available") return;
+                          setPickedTable(t);
+                          showNotification(`Đã chọn bàn ${t.code}`, "success");
+                        }}
+                      >
+                        <span>Bàn {t.code}</span>
+                        <span className="status">
+                          {t.status === "available"
+                            ? "Trống"
+                            : "Không khả dụng"}
+                        </span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Time & Party Section */}
           <div className="bkm-row-grid">
             <PartySize
@@ -380,6 +704,7 @@ const BookingModal = ({
               date={formData.date}
               time={formData.time}
               timeOut={formData.timeOut}
+              openEnded={formData.openEnded}
               openingHours={restaurant?.openingHours}
               closingHours={restaurant?.closingHours}
               onChange={handleChange}
@@ -387,6 +712,17 @@ const BookingModal = ({
               warning={timeWarning}
             />
           </div>
+
+          <label className="bkm-checkbox">
+            <input
+              type="checkbox"
+              checked={formData.openEnded}
+              onChange={(e) => handleChange("openEnded", e.target.checked)}
+            />
+            <span>
+              Không xác định giờ ra (giữ bàn đến khi set trống)
+            </span>
+          </label>
 
           <div className="bkm-note-area">
             <textarea
@@ -397,11 +733,167 @@ const BookingModal = ({
             />
           </div>
 
+          <div className="bkm-requests">
+            <div className="bkm-section-title">Yêu cầu thêm</div>
+            <div className="request-grid">
+              {[
+                "Bàn gần cửa sổ",
+                "Ghế trẻ em",
+                "Không gian yên tĩnh",
+                "Ăn chay",
+                "Dị ứng hải sản",
+              ].map((req) => (
+                <label key={req} className="request-chip">
+                  <input
+                    type="checkbox"
+                    checked={selectedRequests.includes(req)}
+                    onChange={() =>
+                      setSelectedRequests((prev) =>
+                        prev.includes(req)
+                          ? prev.filter((r) => r !== req)
+                          : [...prev, req]
+                      )
+                    }
+                  />
+                  <span>{req}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="bkm-section-title">Gói sự kiện</div>
+          <div className="bkm-packages">
+            {eventPackages.length === 0 ? (
+              <div className="package-empty">
+                <Gift size={18} /> Chưa có gói sự kiện được cấu hình.
+              </div>
+            ) : (
+              eventPackages.map((pkg) => (
+                <button
+                  key={pkg.id}
+                  type="button"
+                  className={`package-card ${
+                    selectedPackageId === pkg.id ? "active" : ""
+                  }`}
+                  onClick={() =>
+                    setSelectedPackageId((prev) =>
+                      prev === pkg.id ? null : pkg.id
+                    )
+                  }
+                >
+                  <div className="pkg-header">
+                    <span className="pkg-title">{pkg.name}</span>
+                    <span className="pkg-price">
+                      {formatCurrency(pkg.price || 0)}
+                    </span>
+                  </div>
+                  <p className="pkg-desc">{pkg.description}</p>
+                  {pkg.promotionCode && (
+                    <span className="pkg-code">
+                      Mã khuyến mãi: {pkg.promotionCode}
+                    </span>
+                  )}
+                </button>
+              ))
+            )}
+            <button
+              type="button"
+              className={`package-card ${!selectedPackageId ? "active" : ""}`}
+              onClick={() => {
+                setSelectedPackageId(null);
+                setEventNote("");
+              }}
+            >
+              <div className="pkg-header">
+                <span className="pkg-title">Không chọn gói</span>
+                <span className="pkg-price">0đ</span>
+              </div>
+              <p className="pkg-desc">Tôi chỉ cần đặt bàn cơ bản</p>
+            </button>
+          </div>
+
+          {selectedPackage && (
+            <div className="bkm-package-fields">
+              <div className="package-items">
+                <div className="items-title">Món đi kèm</div>
+                {selectedPackage.items?.length ? (
+                  <ul>
+                    {selectedPackage.items.map((item) => (
+                      <li key={item.menuItemId}>
+                        {item.name} · {item.quantity || 1} món ·{" "}
+                        {formatCurrency(item.unitPrice || 0)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="pkg-note">
+                    Gói này chưa có món đi kèm được cấu hình.
+                  </p>
+                )}
+              </div>
+              <div className="field-item">
+                <label>Ghi chú gói sự kiện</label>
+                <input
+                  type="text"
+                  value={eventNote}
+                  onChange={(e) => setEventNote(e.target.value)}
+                  placeholder="Ví dụ: ghi tên lên bánh, bố trí bóng bay..."
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="bkm-section-title">Đặt món kèm</div>
+          <div className="bkm-order-block">
+            <div className="order-info">
+              <div className="order-title">
+                <Receipt size={16} /> Giỏ món hiện tại
+              </div>
+              <p>
+                {menuSubtotal > 0
+                  ? `Có ${restaurantCartItems.length} món · Tạm tính ${formatCurrency(
+                      menuSubtotal
+                    )}`
+                  : "Chưa có món trong giỏ của nhà hàng này."}
+              </p>
+              <div className="order-deposit">
+                Cọc món (50%): <strong>{formatCurrency(menuDeposit)}</strong>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="bkm-btn bkm-btn-gold"
+              onClick={() =>
+                navigate(
+                  `/cus-menu?restaurantId=${encodeURIComponent(
+                    restaurantId || ""
+                  )}&returnTo=booking`
+                )
+              }
+            >
+              <Sparkles size={16} /> Order món
+            </button>
+          </div>
+
+          <div className="bkm-policy">
+            <div className="policy-title">
+              <Info size={16} /> Chính sách & lưu ý
+            </div>
+            <ul>
+              {POLICY_ITEMS.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+
           {showSummary && (
             <BookingSummaryPreview
               formData={formData}
               tableCode={pickedTable?.code || pickedTable?.id}
-              deposit={deposit}
+              deposit={totalDeposit}
+              menuDeposit={menuDeposit}
+              packagePrice={packagePrice}
+              totalDue={totalDuePreview}
               duration={durationPreview}
             />
           )}
@@ -497,6 +989,7 @@ const TimeLogicSelection = ({
   date,
   time,
   timeOut,
+  openEnded,
   openingHours,
   closingHours,
   onChange,
@@ -508,7 +1001,7 @@ const TimeLogicSelection = ({
   }, [date, openingHours, closingHours]);
 
   const timeOutSlots = useMemo(() => {
-    if (!time) return [];
+    if (!time || openEnded) return [];
     const [h, m] = time.split(":").map(Number);
     let nextTotal = h * 60 + m + 30;
     const nextH = Math.floor(nextTotal / 60);
@@ -571,7 +1064,7 @@ const TimeLogicSelection = ({
             className={errors.timeOut ? "err-border" : ""}
             value={timeOut}
             onChange={(e) => onChange("timeOut", e.target.value)}
-            disabled={!time}
+            disabled={!time || openEnded}
           >
             <option value="">--:--</option>
             {timeOutSlots.length > 0 ? (
@@ -685,7 +1178,15 @@ const PartySize = ({ value, onButtonChange }) => (
   </div>
 );
 
-const BookingSummaryPreview = ({ formData, tableCode, deposit, duration }) => (
+const BookingSummaryPreview = ({
+  formData,
+  tableCode,
+  deposit,
+  menuDeposit,
+  packagePrice,
+  totalDue,
+  duration,
+}) => (
   <div className="bkm-receipt-preview">
     <div className="receipt-header">Xác nhận thông tin</div>
     <div className="receipt-row">
@@ -695,7 +1196,8 @@ const BookingSummaryPreview = ({ formData, tableCode, deposit, duration }) => (
     <div className="receipt-row">
       <span>Thời gian:</span>
       <strong>
-        {formatDateTime(formData.date, formData.time)} ({duration}p)
+        {formatDateTime(formData.date, formData.time)}{" "}
+        {formData.openEnded ? "(Không giờ ra)" : `(${duration}p)`}
       </strong>
     </div>
     <div className="receipt-row">
@@ -703,9 +1205,23 @@ const BookingSummaryPreview = ({ formData, tableCode, deposit, duration }) => (
       <strong>Bàn {tableCode}</strong>
     </div>
     <div className="receipt-divider"></div>
+    <div className="receipt-row">
+      <span>Tiền cọc bàn:</span>
+      <span>{formatCurrency(deposit - menuDeposit)}</span>
+    </div>
+    <div className="receipt-row">
+      <span>Tiền cọc món:</span>
+      <span>{formatCurrency(menuDeposit)}</span>
+    </div>
+    {packagePrice > 0 && (
+      <div className="receipt-row">
+        <span>Gói sự kiện (tính vào order):</span>
+        <span>{formatCurrency(packagePrice)}</span>
+      </div>
+    )}
     <div className="receipt-row total">
-      <span>Tiền cọc:</span>
-      <span className="money">{formatCurrency(deposit)}</span>
+      <span>Tổng cần thanh toán:</span>
+      <span className="money">{formatCurrency(totalDue)}</span>
     </div>
   </div>
 );

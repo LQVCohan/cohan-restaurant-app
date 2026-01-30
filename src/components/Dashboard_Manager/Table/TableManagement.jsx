@@ -6,6 +6,7 @@ import { AuthContext } from "@/context/AuthContext";
 import { useNotification } from "../../../hooks/useNotification";
 import useTableManagement from "@/hooks/useTableManagement";
 import useFloorManagement from "@/hooks/useFloorManagement";
+import { useRestaurant } from "@/hooks/useRestaurant";
 import TableActionsLiteModal from "./TableActionsLiteModal";
 import "./TableManagement.scss";
 
@@ -27,6 +28,11 @@ const TableManagement = () => {
   }, [restaurantList, selectedRestaurantId]);
 
   const restaurantId = selectedRestaurantId || null;
+  const {
+    restaurant,
+    updateRestaurant,
+    refetch: refetchRestaurant,
+  } = useRestaurant(restaurantId);
 
   // --- Hooks ---
   const {
@@ -71,6 +77,7 @@ const TableManagement = () => {
         status: t.status || "available",
         floorId: t.floorId != null ? String(t.floorId) : null,
         area: t.type || "standard",
+        vrUrl: t.vrUrl || "",
       })),
     [tablesRaw]
   );
@@ -88,6 +95,10 @@ const TableManagement = () => {
   const [liteTable, setLiteTable] = useState(null);
   const [showAddTableModal, setShowAddTableModal] = useState(false);
   const [showFloorModal, setShowFloorModal] = useState(false);
+  const [showVrModal, setShowVrModal] = useState(false);
+  const [vrForm, setVrForm] = useState({
+    vrTourUrl: "",
+  });
 
   // Forms State
   const [tableForm, setTableForm] = useState({
@@ -97,6 +108,7 @@ const TableManagement = () => {
     area: "standard",
   });
   const [floorForm, setFloorForm] = useState({ name: "" });
+  const [vrSaving, setVrSaving] = useState(false);
 
   // --- Auto Select Floor ---
   useEffect(() => {
@@ -107,6 +119,10 @@ const TableManagement = () => {
       if (targetId) setCurrentFloor(String(targetId));
     }
   }, [floors, activeLevel, currentFloor, getIdFromLevel]);
+
+  useEffect(() => {
+    setVrForm({ vrTourUrl: restaurant?.vrTourUrl || "" });
+  }, [restaurant]);
 
   const selectFloor = (floorId) => {
     setCurrentFloor(String(floorId));
@@ -181,6 +197,24 @@ const TableManagement = () => {
     }
   };
 
+  const handleSaveRestaurantVr = async () => {
+    if (!restaurantId) return;
+    setVrSaving(true);
+    try {
+      await updateRestaurant(restaurantId, {
+        vrTourUrl: vrForm.vrTourUrl?.trim() || null,
+      });
+      await refetchRestaurant?.();
+      showNotification("Đã cập nhật VR toàn quán.", "success");
+      setShowVrModal(false);
+    } catch (e) {
+      console.error(e);
+      showNotification("Không thể cập nhật VR toàn quán.", "error");
+    } finally {
+      setVrSaving(false);
+    }
+  };
+
   return (
     <div className="tm-container">
       {/* --- Header --- */}
@@ -208,6 +242,13 @@ const TableManagement = () => {
             onClick={() => navigate(`/manager/floor-map/${restaurantId}`)}
           >
             🗺️ Thiết kế Sơ đồ
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowVrModal(true)}
+          >
+            🕶️ VR toàn quán
           </Button>
           <Button
             variant="primary"
@@ -368,6 +409,7 @@ const TableManagement = () => {
             moveTable,
             deleteTable,
             fetchTableByCode,
+            getIdFromLevel,
           }}
           onUpdated={refetchTables}
           onClose={() => {
@@ -455,6 +497,33 @@ const TableManagement = () => {
               }}
             >
               Lưu
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 4. Restaurant VR Modal */}
+      <Modal
+        isOpen={showVrModal}
+        onClose={() => setShowVrModal(false)}
+        title="Cấu hình VR toàn quán"
+      >
+        <div className="tm-form">
+          <label>Link VR tổng quan (360/Google VR)</label>
+          <input
+            value={vrForm.vrTourUrl}
+            onChange={(e) =>
+              setVrForm({ ...vrForm, vrTourUrl: e.target.value })
+            }
+            placeholder="https://..."
+          />
+          <div className="hint">
+            Link này dùng để mở trải nghiệm VR toàn quán. Ảnh VR theo từng bàn
+            vẫn lưu ở field vrUrl của từng bàn.
+          </div>
+          <div className="modal-footer">
+            <Button variant="primary" onClick={handleSaveRestaurantVr}>
+              {vrSaving ? "Đang lưu..." : "Lưu VR"}
             </Button>
           </div>
         </div>

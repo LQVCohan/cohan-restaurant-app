@@ -10,6 +10,7 @@ const RESTAURANT_FIELDS = gql`
     avatar
     coverImage
     spaceImages
+    vrTourUrl
     address {
       line1
       line2
