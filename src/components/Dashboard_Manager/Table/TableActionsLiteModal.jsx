@@ -57,6 +57,11 @@ export default function TableActionsLiteModal({
     promo: null,
     turnover: null,
   });
+  const [aiLoading, setAiLoading] = useState({
+    merge: false,
+    promo: false,
+    turnover: false,
+  });
 
   const [moveLevel, setMoveLevel] = useState(null);
   const [swapWithCode, setSwapWithCode] = useState("");
@@ -70,6 +75,10 @@ export default function TableActionsLiteModal({
     vip: "VIP",
     outdoor: "Ngoài trời",
   };
+  const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:4000/graphql").replace(
+    /\/graphql$/i,
+    ""
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -356,42 +365,91 @@ export default function TableActionsLiteModal({
     setManualPerks((prev) => prev.filter((item) => item !== perk));
   };
 
-  const handleSuggestMerge = () => {
+
+  const buildAiPayload = () => ({
+    table: {
+      id: table?.id,
+      code: code?.trim(),
+      capacity,
+      status,
+      type,
+      floorLevel: table?.floorLevel,
+      floorId: table?.floorId,
+      zone: zoneLabel,
+      position:
+        posX !== "" && posY !== ""
+          ? { x: Number.parseFloat(posX), y: Number.parseFloat(posY) }
+          : table?.position,
+      depositAmount:
+        depositAmount === "" ? null : Number.parseFloat(depositAmount),
+      holdMinutes:
+        holdMinutes === "" ? null : Number.parseInt(holdMinutes, 10),
+      minSpend: minSpend === "" ? null : Number.parseFloat(minSpend),
+      cancelPolicy,
+      usageCount: table?.usageCount,
+    },
+    promotions: (allPromotions || []).map((promo) => ({
+      id: promo.id,
+      name: promo.name,
+      code: promo.code,
+      level: promo.level,
+      usageCount: promo.usageCount,
+    })),
+    history:
+      table?.usageHistory || table?.history || table?.reservationHistory || [],
+    tables: table?.tables || table?.nearbyTables || [],
+  });
+
+  const callAiEndpoint = async (path, key, fallback) => {
+    setAiLoading((prev) => ({ ...prev, [key]: true }));
+    try {
+      const res = await fetch(`${apiBase}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildAiPayload()),
+      });
+      if (!res.ok) throw new Error("AI request failed");
+      const data = await res.json();
+      const suggestion = data?.suggestion || fallback.detail;
+      setAiSuggestions((prev) => ({
+        ...prev,
+        [key]: { ...fallback, detail: suggestion },
+      }));
+    } catch (error) {
+      console.error(error);
+      setAiSuggestions((prev) => ({ ...prev, [key]: fallback }));
+    } finally {
+      setAiLoading((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const handleSuggestMergeAI = () => {
     const seatTarget = Math.max(4, capacity || 0) + 2;
-    setAiSuggestions((prev) => ({
-      ...prev,
-      merge: {
-        title: "Đề xuất ghép bàn",
-        detail: `Ưu tiên ghép bàn gần kề để đạt ${seatTarget} chỗ. Gợi ý: chọn 1-2 bàn trống cùng tầng.`,
-      },
-    }));
+    callAiEndpoint("/api/ai/table/merge-suggestion", "merge", {
+      title: "Đề xuất ghép bàn",
+      detail: `Ưu tiên ghép bàn gần kề để đạt ${seatTarget} chỗ. Gợi ý: chọn 1-2 bàn trống cùng tầng.`,
+    });
   };
 
-  const handleSuggestPromo = () => {
-    const topPromos = (allPromotions || []).slice(0, 2);
-    setAiSuggestions((prev) => ({
-      ...prev,
-      promo: {
-        title: "Đề xuất ưu đãi",
-        detail:
-          topPromos.length > 0
-            ? `Ưu tiên gắn: ${topPromos
-                .map((promo) => promo.name || promo.code)
-                .join(", ")}`
-            : "Chưa có promotion, nên dùng ưu đãi nhanh như tặng nước / tráng miệng.",
-      },
-    }));
+  const handleSuggestPromoAI = () => {
+    callAiEndpoint("/api/ai/table/promo-suggestion", "promo", {
+      title: "Đề xuất ưu đãi",
+      detail:
+        allPromotions?.length > 0
+          ? `Ưu tiên gắn: ${allPromotions
+              .slice(0, 2)
+              .map((promo) => promo.name || promo.code)
+              .join(", ")}`
+          : "Chưa có promotion, nên dùng ưu đãi nhanh như tặng nước / tráng miệng.",
+    });
   };
 
-  const handlePredictTurnover = () => {
+  const handlePredictTurnoverAI = () => {
     const base = status === "occupied" ? 60 : status === "reserved" ? 30 : 10;
-    setAiSuggestions((prev) => ({
-      ...prev,
-      turnover: {
-        title: "AI dự đoán bàn trống",
-        detail: `Ước lượng ${base}–${base + 20} phút để bàn trống (phụ thuộc số khách và món).`,
-      },
-    }));
+    callAiEndpoint("/api/ai/table/turnover-prediction", "turnover", {
+      title: "AI dự đoán bàn trống",
+      detail: `Ước lượng ${base}–${base + 20} phút để bàn trống (phụ thuộc số khách và món).`,
+    });
   };
 
   // ================= Render =================
@@ -935,14 +993,28 @@ export default function TableActionsLiteModal({
               </div>
             </div>
             <div className="talite-ai-grid">
-              <button className="btn ghost" onClick={handleSuggestMerge}>
-                Đề xuất ghép bàn
+              <button
+                className="btn ghost"
+                onClick={handleSuggestMergeAI}
+                disabled={aiLoading.merge}
+              >
+                {aiLoading.merge ? "Đang gợi ý..." : "Đề xuất ghép bàn"}
               </button>
-              <button className="btn ghost" onClick={handleSuggestPromo}>
-                Đề xuất ưu đãi
+              <button
+                className="btn ghost"
+                onClick={handleSuggestPromoAI}
+                disabled={aiLoading.promo}
+              >
+                {aiLoading.promo ? "Đang gợi ý..." : "Đề xuất ưu đãi"}
               </button>
-              <button className="btn ghost" onClick={handlePredictTurnover}>
-                AI dự đoán bàn trống & thời gian quay vòng
+              <button
+                className="btn ghost"
+                onClick={handlePredictTurnoverAI}
+                disabled={aiLoading.turnover}
+              >
+                {aiLoading.turnover
+                  ? "Đang dự đoán..."
+                  : "AI dự đoán bàn trống & thời gian quay vòng"}
               </button>
             </div>
             <div className="talite-ai-results">

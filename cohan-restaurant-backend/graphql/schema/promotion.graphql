@@ -9,6 +9,7 @@ type Promotion {
   itemId: ID
   discountType: String
   discountValue: Float
+  level: Int
   startAt: DateTime
   endAt: DateTime
   isActive: Boolean

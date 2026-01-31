@@ -25,6 +25,12 @@ const PromotionSchema = new Schema(
     endAt: Date,
     isActive: { type: Boolean, default: true },
     stacking: { type: Boolean, default: false },
+    level: {
+      type: Number,
+      min: 1,
+      max: 3,
+      default: 1,
+    },
   },
   baseOptions
 );
