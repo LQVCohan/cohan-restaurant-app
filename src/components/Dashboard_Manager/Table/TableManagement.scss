@@ -366,6 +366,41 @@ $st-cleaning-text: #7e22ce;
     flex-direction: column;
     gap: 16px;
     padding: 24px;
+    &.tm-form--add-table {
+      gap: 20px;
+    }
+    &.tm-form--vr {
+      gap: 20px;
+    }
+    .tm-form-header {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      h4 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: $tm-text;
+      }
+      p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: $tm-text-light;
+      }
+    }
+    .tm-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      @media (max-width: 680px) {
+        grid-template-columns: 1fr;
+      }
+    }
+    .tm-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
     label {
       font-weight: 600;
       font-size: 0.9rem;
@@ -395,6 +430,86 @@ $st-cleaning-text: #7e22ce;
     .hint {
       font-size: 0.85rem;
       color: $tm-text-light;
+    }
+  }
+
+  .tm-vr-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .tm-vr-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+    padding: 16px;
+    border-radius: 14px;
+    background: $tm-primary-light;
+    border: 1px solid $tm-primary-border;
+    align-items: flex-start;
+    .tm-vr-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      border: 1px solid $tm-primary-border;
+      font-size: 1.2rem;
+    }
+    .tm-vr-content {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tm-vr-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .tm-vr-status {
+      font-size: 0.85rem;
+      color: $tm-text-light;
+      font-weight: 600;
+    }
+  }
+
+  .tm-vr-tips {
+    display: grid;
+    gap: 12px;
+    .tm-vr-tip {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid $tm-border;
+      background: $tm-white;
+      .tip-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        background: $tm-primary-light;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+      }
+      strong {
+        display: block;
+        font-size: 0.95rem;
+        color: $tm-text;
+        margin-bottom: 2px;
+      }
+      p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: $tm-text-light;
+      }
     }
   }
 }
