@@ -12,6 +12,7 @@ const samplePromotions = [
     startDate: "2024-12-01T00:00",
     endDate: "2024-12-31T23:59",
     status: "active",
+    level: 2,
     usageLimit: 1000,
     usageCount: 234,
     targetAudience: "new",

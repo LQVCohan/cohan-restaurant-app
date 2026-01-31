@@ -14,6 +14,11 @@ import uploadRoutes from "./plugins/upload.route.js";
 import { createLoaders } from "../../graphql/loaders/index.js";
 import cron from "node-cron";
 import { autoCancelExpiredReservations } from "../services/reservationAutoCancel.service.js";
+import {
+  predictTableTurnover,
+  suggestTableMerge,
+  suggestTablePromo,
+} from "../services/ai/aiTable.service.js";
 
 export async function createServer() {
   const app = Fastify({
@@ -139,6 +144,26 @@ export async function createServer() {
     }
   });
   // ===== END REVERSE GEOCODE API =====
+
+  // ===== AI TABLE SUGGESTIONS =====
+  app.post("/api/ai/table/merge-suggestion", async (req, reply) => {
+    const payload = req.body || {};
+    const suggestion = await suggestTableMerge(payload);
+    return reply.send({ ok: true, suggestion });
+  });
+
+  app.post("/api/ai/table/promo-suggestion", async (req, reply) => {
+    const payload = req.body || {};
+    const suggestion = await suggestTablePromo(payload);
+    return reply.send({ ok: true, suggestion });
+  });
+
+  app.post("/api/ai/table/turnover-prediction", async (req, reply) => {
+    const payload = req.body || {};
+    const suggestion = await predictTableTurnover(payload);
+    return reply.send({ ok: true, suggestion });
+  });
+  // ===== END AI TABLE SUGGESTIONS =====
 
   app.get("/health", async () => ({ ok: true, ts: Date.now() }));
 
