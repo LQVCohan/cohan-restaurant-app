@@ -97,6 +97,19 @@ const useAuth = () => {
 
   useEffect(() => {
     if (error) {
+      const isNetworkError = Boolean(error.networkError);
+      const isUnauthenticated = (error.graphQLErrors || []).some(
+        (errItem) => errItem?.extensions?.code === "UNAUTHENTICATED"
+      );
+
+      if (isNetworkError && !isUnauthenticated) {
+        showNotification(
+          "Mất kết nối mạng. Bạn vẫn được giữ đăng nhập để tiếp tục khi có mạng.",
+          "warning"
+        );
+        return;
+      }
+
       showNotification(error.message, "error");
       localStorage.removeItem("token");
       sessionStorage.removeItem("token");
