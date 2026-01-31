@@ -527,20 +527,66 @@ const TableManagement = () => {
             <h4>Trải nghiệm VR toàn quán</h4>
             <p>Giúp khách xem tổng quan không gian trước khi chọn bàn.</p>
           </div>
-          <div className="tm-vr-card">
-            <div className="tm-vr-icon">🕶️</div>
-            <div className="tm-vr-content">
-              <label>Link VR tổng quan (360/Google VR)</label>
-              <input
-                value={vrForm.vrTourUrl}
-                onChange={(e) =>
-                  setVrForm({ ...vrForm, vrTourUrl: e.target.value })
-                }
-                placeholder="https://..."
-              />
-              <div className="hint">
-                Link này dùng để mở trải nghiệm VR toàn quán. Ảnh VR theo từng
-                bàn vẫn lưu ở field vrUrl của từng bàn.
+          <div className="tm-vr-panel">
+            <div className="tm-vr-card">
+              <div className="tm-vr-icon">🕶️</div>
+              <div className="tm-vr-content">
+                <label>Link VR tổng quan (360/Google VR)</label>
+                <input
+                  value={vrForm.vrTourUrl}
+                  onChange={(e) =>
+                    setVrForm({ ...vrForm, vrTourUrl: e.target.value })
+                  }
+                  placeholder="https://..."
+                />
+                <div className="hint">
+                  Link này dùng để mở trải nghiệm VR toàn quán. Ảnh VR theo từng
+                  bàn vẫn lưu ở field vrUrl của từng bàn.
+                </div>
+                <div className="tm-vr-actions">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      if (vrForm.vrTourUrl) {
+                        window.open(
+                          vrForm.vrTourUrl,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                      }
+                    }}
+                  >
+                    Mở thử VR
+                  </Button>
+                  <span className="tm-vr-status">
+                    {vrForm.vrTourUrl
+                      ? "Đã gắn link VR tổng quan"
+                      : "Chưa có link VR"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="tm-vr-tips">
+              <div className="tm-vr-tip">
+                <span className="tip-icon">✨</span>
+                <div>
+                  <strong>Gợi ý trải nghiệm</strong>
+                  <p>
+                    Dùng link 360/Google VR có chế độ xoay để khách dễ khám phá
+                    không gian.
+                  </p>
+                </div>
+              </div>
+              <div className="tm-vr-tip">
+                <span className="tip-icon">📌</span>
+                <div>
+                  <strong>Phân bổ theo bàn</strong>
+                  <p>
+                    Mỗi bàn vẫn có thể gắn VR riêng ở mục “Hành động bàn” để mô
+                    tả chi tiết vị trí.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
