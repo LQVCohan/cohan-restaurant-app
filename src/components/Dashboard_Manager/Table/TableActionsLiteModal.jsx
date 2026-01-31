@@ -393,14 +393,25 @@ export default function TableActionsLiteModal({
                   placeholder="VIP, sân vườn…"
                 />
               </div>
-              <div>
-                <label className="talite-label">Link VR bàn</label>
-                <input
-                  className="talite-input"
-                  value={vrUrl}
-                  onChange={(e) => setVrUrl(e.target.value)}
-                  placeholder="https://... hoặc /vr/table/123"
-                />
+              <div className="talite-vr-block">
+                <div className="talite-vr-header">
+                  <div>
+                    <div className="talite-vr-title">Cấu hình VR bàn</div>
+                    <div className="talite-vr-sub">
+                      Gắn link VR hoặc tải ảnh 360° để xem không gian bàn.
+                    </div>
+                  </div>
+                  <span className="talite-vr-badge">VR 360°</span>
+                </div>
+                <div className="talite-vr-field">
+                  <label className="talite-label">Link VR bàn</label>
+                  <input
+                    className="talite-input"
+                    value={vrUrl}
+                    onChange={(e) => setVrUrl(e.target.value)}
+                    placeholder="https://... hoặc /vr/table/123"
+                  />
+                </div>
                 <div className="talite-upload">
                   <label className="talite-label">Tải ảnh 360°</label>
                   <input
@@ -421,13 +432,12 @@ export default function TableActionsLiteModal({
                       className="btn ghost"
                       type="button"
                       onClick={handleRemoveVrImage}
-                      style={{ marginTop: 6 }}
                     >
                       Xoá ảnh 360 đã lưu
                     </button>
                   )}
                 </div>
-                <div className="actions-end" style={{ marginTop: 6 }}>
+                <div className="talite-vr-actions">
                   <button
                     className="btn ghost"
                     type="button"
@@ -710,6 +720,13 @@ export default function TableActionsLiteModal({
         .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
         .talite-input{width:100%;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:14px;outline:none}
         .talite-input:focus{border-color:#b89365;box-shadow:0 0 0 3px rgba(184,147,101,.2)}
+        .talite-vr-block{grid-column:1/-1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+        .talite-vr-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+        .talite-vr-title{font-weight:700;color:#0f172a}
+        .talite-vr-sub{font-size:12px;color:#64748b}
+        .talite-vr-badge{background:#fff;border:1px solid #b89365;color:#b89365;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+        .talite-upload{display:flex;flex-direction:column;gap:6px;background:#fff;border:1px dashed #e2e8f0;border-radius:10px;padding:10px}
+        .talite-vr-actions{display:flex;justify-content:flex-end}
         .actions-end{display:flex;justify-content:flex-end;gap:8px}
         .btn{border:1px solid #cbd5e1;background:#fff;padding:8px 12px;border-radius:8px;font-weight:600;cursor:pointer}
         .btn.primary{background:#b89365;border-color:#b89365;color:#fff}
