@@ -96,12 +96,7 @@ export default function TableActionsLiteModal({
     setMoveLevel(table?.floorLevel ?? null);
     setSwapWithCode("");
     setMergeCodes("");
-    setDepositAmount(
-      table?.depositAmount ??
-        table?.bookingDeposit ??
-        table?.reservationDeposit ??
-        ""
-    );
+    setDepositAmount(table?.deposit ?? "");
     setSelectedPromotions(
       Array.isArray(table?.promotionIds) ? table.promotionIds : []
     );
@@ -163,8 +158,7 @@ export default function TableActionsLiteModal({
           .map((t) => t.trim())
           .filter(Boolean),
         vrUrl: vrUrl?.trim() || null,
-        depositAmount:
-          depositAmount === "" ? null : Number.parseFloat(depositAmount),
+        deposit: depositAmount === "" ? null : Number.parseFloat(depositAmount),
         promotionIds: selectedPromotions,
         bookingPerks: manualPerks,
         zone: zoneLabel?.trim() || null,
@@ -380,8 +374,7 @@ export default function TableActionsLiteModal({
         posX !== "" && posY !== ""
           ? { x: Number.parseFloat(posX), y: Number.parseFloat(posY) }
           : table?.position,
-      depositAmount:
-        depositAmount === "" ? null : Number.parseFloat(depositAmount),
+      deposit: depositAmount === "" ? null : Number.parseFloat(depositAmount),
       holdMinutes:
         holdMinutes === "" ? null : Number.parseInt(holdMinutes, 10),
       minSpend: minSpend === "" ? null : Number.parseFloat(minSpend),

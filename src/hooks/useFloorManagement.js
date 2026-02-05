@@ -10,6 +10,7 @@ const Q_FLOORS = gql`
       description
       planImage
       isActive
+      isWatching
 
       # Dữ liệu layout (tường, cửa, bếp, quầy bar...)
       layout

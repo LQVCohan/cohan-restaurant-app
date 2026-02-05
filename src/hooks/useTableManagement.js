@@ -10,6 +10,7 @@ const F_TABLE_MIN = gql`
     capacity
     status
     type
+    deposit
     floorId
     floorLevel
     joinGroupId

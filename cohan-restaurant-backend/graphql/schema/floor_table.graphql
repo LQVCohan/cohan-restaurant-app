@@ -24,6 +24,7 @@ type Floor {
   description: String
   planImage: String
   isActive: Boolean
+  isWatching: Boolean
   # Dữ liệu layout (decor items) cho Floor Plan Designer
   layout: JSON
   meta: FloorMeta
@@ -48,6 +49,7 @@ input CreateFloorInput {
   description: String
   planImage: String
   isActive: Boolean
+  isWatching: Boolean
   # Cho phép gửi layout ngay khi tạo
   layout: JSON
   meta: FloorMetaInput
@@ -60,6 +62,7 @@ input UpdateFloorInput {
   description: String
   planImage: String
   isActive: Boolean
+  isWatching: Boolean
   # Cập nhật layout khi save từ Designer
   layout: JSON
   meta: FloorMetaInput
