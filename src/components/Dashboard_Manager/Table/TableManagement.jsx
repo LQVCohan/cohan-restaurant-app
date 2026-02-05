@@ -8,6 +8,7 @@ import useTableManagement from "@/hooks/useTableManagement";
 import useFloorManagement from "@/hooks/useFloorManagement";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import TableActionsLiteModal from "./TableActionsLiteModal";
+import { loadTableVrImage } from "@/utils/vrStorage";
 import "./TableManagement.scss";
 
 const TableManagement = () => {
@@ -78,6 +79,7 @@ const TableManagement = () => {
         floorId: t.floorId != null ? String(t.floorId) : null,
         area: t.type || "standard",
         vrUrl: t.vrUrl || "",
+        deposit: t.deposit ?? 0,
       })),
     [tablesRaw]
   );
@@ -149,6 +151,42 @@ const TableManagement = () => {
       private: "Riêng",
     }[area] || area);
 
+  const formatCurrency = (amount) =>
+    `${Number(amount || 0).toLocaleString("vi-VN")}đ`;
+
+  const findAvailablePosition = (floorId) => {
+    const existing = (tablesRaw || [])
+      .filter((t) => String(t.floorId) === String(floorId))
+      .map((t) => ({
+        x: t.position?.x ?? 0,
+        y: t.position?.y ?? 0,
+        w: 60,
+        h: 60,
+      }));
+    const isOverlapping = (x, y) =>
+      existing.some(
+        (t) =>
+          x < t.x + t.w + 10 &&
+          x + 60 + 10 > t.x &&
+          y < t.y + t.h + 10 &&
+          y + 60 + 10 > t.y
+      );
+    const startX = 50;
+    const startY = 50;
+    if (!isOverlapping(startX, startY)) return { x: startX, y: startY };
+    const step = 80;
+    for (let r = 1; r <= 10; r += 1) {
+      for (let dx = -r; dx <= r; dx += 1) {
+        for (let dy = -r; dy <= r; dy += 1) {
+          const x = startX + dx * step;
+          const y = startY + dy * step;
+          if (!isOverlapping(x, y)) return { x, y };
+        }
+      }
+    }
+    return { x: startX, y: startY };
+  };
+
   const getFilteredTables = () => {
     let filtered = [...tablesMapped];
     if (currentFloor)
@@ -180,6 +218,11 @@ const TableManagement = () => {
     if (!number || !seats || !floorId)
       return showNotification("Vui lòng điền đủ thông tin!", "error");
     try {
+      const position = findAvailablePosition(floorId);
+      const existingCount = (tablesRaw || []).filter(
+        (t) => String(t.floorId) === String(floorId)
+      ).length;
+      const floorName = floors.find((f) => f.id === String(floorId))?.name;
       await createTable({
         restaurantId,
         code: number,
@@ -187,11 +230,17 @@ const TableManagement = () => {
         floorId,
         type: area,
         status: "available",
-        position: { x: 50, y: 50 },
+        position: { x: position.x, y: position.y },
       });
       await refetchTables();
       setShowAddTableModal(false);
       showNotification("Thêm bàn thành công!", "success");
+      if (existingCount > 0) {
+        showNotification(
+          `Có bàn ở tầng ${floorName || ""} cần điều chỉnh vị trí.`,
+          "info"
+        );
+      }
     } catch {
       showNotification("Lỗi thêm bàn!", "error");
     }
@@ -319,6 +368,7 @@ const TableManagement = () => {
             <div className="tm-table-grid">
               {getFilteredTables().map((t) => {
                 const statusCfg = getStatusConfig(t.status);
+                const hasVr = !!t.vrUrl || !!loadTableVrImage(t.id);
                 return (
                   <div
                     key={t.id}
@@ -330,16 +380,22 @@ const TableManagement = () => {
                   >
                     <div className="card-top">
                       <span className="table-no">{t.number}</span>
-                      <span className={`status-badge ${statusCfg.color}`}>
-                        {statusCfg.text}
-                      </span>
+                      <div className="card-top-right">
+                        {hasVr && <span className="vr-badge">360°</span>}
+                        <span className={`status-badge ${statusCfg.color}`}>
+                          {statusCfg.text}
+                        </span>
+                      </div>
                     </div>
                     <div className="card-body">
                       <div className="info-row">
                         <span>👥</span> {t.seats} chỗ
                       </div>
                       <div className="info-row">
-                        <span>📍</span> {getAreaText(t.area)}
+                        <span>🏷️</span> {getAreaText(t.area)}
+                      </div>
+                      <div className="info-row">
+                        <span>💰</span> {formatCurrency(t.deposit)}
                       </div>
                     </div>
                     <div className="card-actions">
