@@ -238,6 +238,19 @@ $st-cleaning-text: #7e22ce;
         font-weight: 800;
         color: $tm-text;
       }
+      .card-top-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .vr-badge {
+        font-size: 0.65rem;
+        padding: 3px 6px;
+        border-radius: 999px;
+        background: #1d4ed8;
+        color: #fff;
+        font-weight: 700;
+      }
       .status-badge {
         font-size: 0.7rem;
         padding: 4px 8px;

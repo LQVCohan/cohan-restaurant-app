@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { ChevronLeft, Info, Map as MapIcon, Layers } from "lucide-react"; // Dùng lucide-react cho đồng bộ
+import { gql, useMutation } from "@apollo/client";
+import { ChevronLeft, Info, Layers } from "lucide-react"; // Dùng lucide-react cho đồng bộ
 
 import FloorMap from "./FloorMap/FloorMap";
 import FloorSelector from "./FloorSelector/FloorSelector";
@@ -11,13 +12,25 @@ import SuccessModal from "../SuccessModal/SuccessModal";
 
 import useFloorManagement from "../../../hooks/useFloorManagement";
 import { useCart } from "../../../context/CartProvider";
+import { AuthContext } from "../../../context/AuthContext";
 import "./TableBooking.scss";
+
+const UPDATE_FLOOR_WATCHING = gql`
+  mutation UpdateFloorWatching($id: ID!, $isWatching: Boolean) {
+    updateFloor(input: { id: $id, isWatching: $isWatching }) {
+      id
+      isWatching
+    }
+  }
+`;
 
 const TableBooking = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { search } = useLocation();
   const restaurantId = id;
+  const { user } = useContext(AuthContext) || {};
+  const lastWatchingFloorRef = useRef(null);
 
   const [selectedTable, setSelectedTable] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -26,6 +39,8 @@ const TableBooking = () => {
   const [bookingData, setBookingData] = useState(null);
   const { cart } = useCart();
   const fromMenu = new URLSearchParams(search).get("fromMenu") === "1";
+
+  const [updateFloorWatching] = useMutation(UPDATE_FLOOR_WATCHING);
 
   const {
     floors,
@@ -48,6 +63,38 @@ const TableBooking = () => {
     0
   );
   const menuDeposit = Math.round(menuSubtotal * 0.5);
+
+  const canToggleWatching = (() => {
+    const role = (user?.roleName || user?.role || "").toLowerCase();
+    return (
+      role.includes("customer") ||
+      role.includes("staff") ||
+      role.includes("nhân viên") ||
+      role.includes("nhan vien")
+    );
+  })();
+
+  useEffect(() => {
+    if (!canToggleWatching) return;
+    const currentFloorId = activeFloorData?.id;
+    if (!currentFloorId) return;
+    const prevFloorId = lastWatchingFloorRef.current;
+    if (prevFloorId && prevFloorId !== currentFloorId) {
+      updateFloorWatching({
+        variables: { id: prevFloorId, isWatching: false },
+      }).catch(() => {});
+    }
+    updateFloorWatching({
+      variables: { id: currentFloorId, isWatching: true },
+    }).catch(() => {});
+    lastWatchingFloorRef.current = currentFloorId;
+    return () => {
+      if (!currentFloorId) return;
+      updateFloorWatching({
+        variables: { id: currentFloorId, isWatching: false },
+      }).catch(() => {});
+    };
+  }, [activeFloorData?.id, canToggleWatching, updateFloorWatching]);
 
   const handleSelectTable = (table) => {
     // Chỉ cho chọn bàn trống
