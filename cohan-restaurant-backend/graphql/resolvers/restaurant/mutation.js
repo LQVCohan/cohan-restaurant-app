@@ -18,6 +18,36 @@ function toObjectId(id) {
   return new mongoose.Types.ObjectId(id);
 }
 
+function cleanAddressValue(value, fallback = "") {
+  const normalized = String(value ?? "").trim();
+  return normalized || fallback;
+}
+
+function normalizeRestaurantAddress(addressInput = {}) {
+  if (!addressInput || typeof addressInput !== "object") return undefined;
+
+  const lat =
+    typeof addressInput.lat === "number" && Number.isFinite(addressInput.lat)
+      ? addressInput.lat
+      : undefined;
+  const lng =
+    typeof addressInput.lng === "number" && Number.isFinite(addressInput.lng)
+      ? addressInput.lng
+      : undefined;
+
+  return {
+    line1: cleanAddressValue(addressInput.line1),
+    line2: cleanAddressValue(addressInput.line2),
+    ward: cleanAddressValue(addressInput.ward),
+    district: cleanAddressValue(addressInput.district),
+    city: cleanAddressValue(addressInput.city),
+    country: cleanAddressValue(addressInput.country, "Vietnam"),
+    postalCode: cleanAddressValue(addressInput.postalCode),
+    ...(lat !== undefined ? { lat } : {}),
+    ...(lng !== undefined ? { lng } : {}),
+  };
+}
+
 async function userHasRoleSlug(userDoc, slug) {
   if (!userDoc) return false;
   const want = String(slug).toLowerCase();
@@ -83,6 +113,9 @@ async function createRestaurant(_, { input }, { user }) {
   if (!admin && !manager) throw forbidden("Insufficient permission");
 
   const { managerId, ...rest } = input || {};
+  if (rest.address) {
+    rest.address = normalizeRestaurantAddress(rest.address);
+  }
   let finalManagerId = managerId;
 
   // Manager tự tạo thì bắt buộc assign chính họ (trừ khi admin)
@@ -114,6 +147,9 @@ async function updateRestaurant(_, { id, input }, { user }) {
   await assertCanMutateRestaurant(user, doc);
 
   const { managerId, ...rest } = input || {}; // chặn đổi manager ở mutation này
+  if (rest.address) {
+    rest.address = normalizeRestaurantAddress(rest.address);
+  }
   Object.assign(doc, rest);
   await doc.save();
   return doc.toObject();
