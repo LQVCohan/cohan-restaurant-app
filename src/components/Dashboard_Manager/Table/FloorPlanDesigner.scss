@@ -218,6 +218,15 @@ $c-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
       overflow: hidden;
       align-items: center;
       justify-content: center;
+
+      .palette-toggle-circle {
+        width: 100%;
+        height: 100%;
+        border: none;
+        border-radius: 999px;
+        box-shadow: none;
+      }
+
       .palette-header,
       .tool-group {
         display: none;
@@ -245,10 +254,18 @@ $c-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      color: $c-label;
+      color: #334155;
       box-shadow: $c-shadow-float;
       align-self: center;
       transition: 0.15s ease;
+
+      svg {
+        width: 18px;
+        height: 18px;
+        display: block;
+        stroke-width: 2.4;
+      }
+
       &:hover {
         color: $c-primary;
         transform: scale(1.04);
@@ -1044,6 +1061,10 @@ $c-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
       display: flex;
       justify-content: flex-end;
       gap: 10px;
+
+      &.fp-modal-actions--exit {
+        justify-content: space-between;
+      }
       .btn-secondary,
       .btn-primary {
         border-radius: 10px;
@@ -1151,6 +1172,10 @@ $c-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
       display: flex;
       justify-content: flex-end;
       gap: 10px;
+
+      &.fp-modal-actions--exit {
+        justify-content: space-between;
+      }
 
       .btn-secondary,
       .btn-primary {

@@ -206,9 +206,8 @@ const TableManagement = () => {
   const changeTableStatus = async (tableId, newStatus) => {
     try {
       await setTableStatus({ id: String(tableId), status: newStatus });
-      showNotification("Cập nhật trạng thái thành công", "success");
       await refetchTables();
-    } catch (e) {
+    } catch {
       showNotification("Lỗi đổi trạng thái!", "error");
     }
   };
