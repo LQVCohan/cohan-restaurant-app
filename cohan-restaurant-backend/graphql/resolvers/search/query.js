@@ -2,6 +2,26 @@
 
 import { User, MenuItem, Restaurant } from "../../../models/index.js";
 
+function compactAddressParts(address = {}) {
+  return [
+    address?.line1,
+    address?.line2,
+    address?.ward,
+    address?.district,
+    address?.city,
+    address?.country,
+  ]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean);
+}
+
+function toShortAddress(address = {}) {
+  return [address?.ward, address?.district, address?.city]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
 function normalizePhone(q) {
   if (!q) return "";
   return q.replace(/[^0-9]/g, "");
@@ -23,8 +43,13 @@ async function findRestaurantSuggestions(query, limit) {
 
   const or = [
     { name: regex },
+    { "address.line1": regex },
+    { "address.line2": regex },
+    { "address.ward": regex },
     { "address.district": regex },
     { "address.city": regex },
+    { "address.country": regex },
+    { "address.postalCode": regex },
     { cuisineType: regex },
   ];
 
@@ -52,12 +77,13 @@ async function findRestaurantSuggestions(query, limit) {
   return docs.map((r) => ({
     id: r._id.toString(),
     name: r.name,
-    shortAddress: [r?.address?.district, r?.address?.city]
-      .filter(Boolean)
-      .join(", "),
+    shortAddress: toShortAddress(r?.address),
+    fullAddress: compactAddressParts(r?.address).join(", "),
     phone: r.phone || null,
     avgRating: r.avgRating ?? 0,
     cuisineType: r.cuisineType || null,
+    lat: typeof r?.address?.lat === "number" ? r.address.lat : null,
+    lng: typeof r?.address?.lng === "number" ? r.address.lng : null,
   }));
 }
 
@@ -173,17 +199,27 @@ async function findLocationSuggestions(query, limit) {
       $match: {
         status: "active",
         $or: [
+          { "address.ward": { $regex: regex } },
           { "address.district": { $regex: regex } },
           { "address.city": { $regex: regex } },
+          { "address.line1": { $regex: regex } },
+          { "address.line2": { $regex: regex } },
+          { "address.country": { $regex: regex } },
+          { "address.postalCode": { $regex: regex } },
         ],
       },
     },
     {
       $group: {
         _id: {
+          ward: "$address.ward",
           district: "$address.district",
           city: "$address.city",
+          country: "$address.country",
+          postalCode: "$address.postalCode",
         },
+        lat: { $first: "$address.lat" },
+        lng: { $first: "$address.lng" },
         count: { $sum: 1 },
       },
     },
@@ -192,12 +228,20 @@ async function findLocationSuggestions(query, limit) {
   ]);
 
   return docs.map((d) => {
+    const ward = d._id.ward || "";
     const district = d._id.district || "";
     const city = d._id.city || "";
+    const country = d._id.country || "";
+    const postalCode = d._id.postalCode || "";
     return {
-      label: [district, city].filter(Boolean).join(", "),
+      label: [ward, district, city].filter(Boolean).join(", "),
+      ward: ward || null,
       district: district || null,
       city: city || null,
+      country: country || null,
+      postalCode: postalCode || null,
+      lat: typeof d.lat === "number" ? d.lat : null,
+      lng: typeof d.lng === "number" ? d.lng : null,
     };
   });
 }
@@ -233,8 +277,13 @@ async function fullSearch(query, filter, limit, offset) {
           const phoneDigits = normalizePhone(trimmed);
           const or = [
             { name: regex },
+            { "address.line1": regex },
+            { "address.line2": regex },
+            { "address.ward": regex },
             { "address.district": regex },
             { "address.city": regex },
+            { "address.country": regex },
+            { "address.postalCode": regex },
             { cuisineType: regex },
           ];
           if (phoneDigits.length >= 6) {
