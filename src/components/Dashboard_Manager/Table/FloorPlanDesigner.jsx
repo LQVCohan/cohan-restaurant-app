@@ -1404,6 +1404,7 @@ const FloorPlanDesigner = () => {
       <Modal
         isOpen={showSymbolModal}
         onClose={() => setShowSymbolModal(false)}
+        className="fp-modal-shell fp-modal-shell--symbol"
         title="Thêm ký hiệu"
       >
         <div className="fp-modal">
@@ -1441,9 +1442,16 @@ const FloorPlanDesigner = () => {
       <Modal
         isOpen={showAddTableModal}
         onClose={() => setShowAddTableModal(false)}
+        className="fp-modal-shell fp-modal-shell--table"
         title="Thêm bàn vào sơ đồ"
       >
         <div className="fp-modal">
+          <div className="fp-modal-intro">
+            <strong>Thêm bàn nhanh</strong>
+            <p>
+              Bàn mới sẽ được đặt ở vị trí gần nhất không chồng lấn trong sơ đồ.
+            </p>
+          </div>
           <div className="fp-modal-row">
             <label>Mã bàn</label>
             <input
@@ -1492,9 +1500,16 @@ const FloorPlanDesigner = () => {
       <Modal
         isOpen={showAiModal}
         onClose={() => setShowAiModal(false)}
+        className="fp-modal-shell fp-modal-shell--ai"
         title="Sơ đồ thông minh"
       >
         <div className="fp-modal">
+          <div className="fp-modal-intro">
+            <strong>Trợ lý tạo sơ đồ A.I</strong>
+            <p>
+              Chọn số bàn và thành phần cần có, hệ thống sẽ đề xuất bố cục cơ bản.
+            </p>
+          </div>
           <div className="fp-modal-row">
             <label>Số bàn</label>
             <input
