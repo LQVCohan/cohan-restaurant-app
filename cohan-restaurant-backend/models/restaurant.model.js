@@ -9,6 +9,9 @@ const addressSchema = new mongoose.Schema({
   district: String,
   city: String,
   country: String,
+  postalCode: String,
+  lat: Number,
+  lng: Number,
 });
 
 const restaurantSchema = BaseSchemaModel({
@@ -46,7 +49,9 @@ const restaurantSchema = BaseSchemaModel({
 
 restaurantSchema.index({ status: 1, avgRating: -1 });
 restaurantSchema.index({ "address.city": 1, "address.district": 1 });
+restaurantSchema.index({ "address.ward": 1, "address.postalCode": 1 });
 restaurantSchema.index({ cuisineType: 1 });
+restaurantSchema.index({ "address.lat": 1, "address.lng": 1 });
 
 /** 🔍 TEXT INDEX cho search nhà hàng + location */
 restaurantSchema.index({
@@ -57,6 +62,7 @@ restaurantSchema.index({
   "address.ward": "text",
   "address.district": "text",
   "address.city": "text",
+  "address.postalCode": "text",
 });
 
 export default mongoose.model("Restaurant", restaurantSchema);

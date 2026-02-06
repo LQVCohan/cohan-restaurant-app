@@ -4,8 +4,18 @@ import "../../../../styles/Homepage/DishGrid.scss";
 
 // --- GRAPHQL QUERY ---
 const GET_TOP_MENU_ITEMS = gql`
-  query GetTopMenuItems($limit: Int = 8) {
-    topMenuItems(limit: $limit) {
+  query GetTopMenuItems(
+    $limit: Int = 8
+    $categoryId: ID
+    $categoryName: String
+    $timeSlot: TimeSlot
+  ) {
+    topMenuItems(
+      limit: $limit
+      categoryId: $categoryId
+      categoryName: $categoryName
+      timeSlot: $timeSlot
+    ) {
       id
       name
       description
@@ -24,9 +34,19 @@ const GET_TOP_MENU_ITEMS = gql`
   }
 `;
 
-const DishGrid = ({ onAddToCart }) => {
+const DishGrid = ({
+  onAddToCart,
+  selectedCategoryId = null,
+  selectedCategoryName = "",
+  timeSlot = null,
+}) => {
   const { data, loading, error } = useQuery(GET_TOP_MENU_ITEMS, {
-    variables: { limit: 8 },
+    variables: {
+      limit: selectedCategoryId || selectedCategoryName ? 12 : 8,
+      categoryId: selectedCategoryId || undefined,
+      categoryName: selectedCategoryName || undefined,
+      timeSlot: timeSlot || undefined,
+    },
     fetchPolicy: "network-only",
   });
 
@@ -34,6 +54,9 @@ const DishGrid = ({ onAddToCart }) => {
   const [selectedMethodByDish, setSelectedMethodByDish] = useState({});
 
   const dishes = useMemo(() => data?.topMenuItems ?? [], [data]);
+  const safeDishes = Array.isArray(dishes) ? dishes : [];
+
+
   // Ảnh fallback nếu món chưa có ảnh
   const defaultImg =
     "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80";
@@ -97,7 +120,7 @@ const DishGrid = ({ onAddToCart }) => {
               ? Array.from({ length: 8 }).map((_, idx) => (
                   <SkeletonCard key={idx} />
                 ))
-              : dishes.map((dish) => {
+              : safeDishes.map((dish) => {
                   const method = getSelectedMethod(dish);
                   const price = getEffectivePrice(dish.basePrice, method);
                   const img = dish.thumbImage || defaultImg;
@@ -188,6 +211,18 @@ const DishGrid = ({ onAddToCart }) => {
                     </div>
                   );
                 })}
+
+            {!loading && safeDishes.length === 0 && selectedCategoryId && (
+              <div className="dish-grid__empty">
+                Không có món ăn thuộc danh mục này.
+              </div>
+            )}
+
+            {!loading && safeDishes.length === 0 && !selectedCategoryId && (
+              <div className="dish-grid__empty">
+                Không có món ăn để hiển thị.
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -18,18 +18,49 @@ const GET_TOP_RESTAURANTS = gql`
       closingHours
       avgRating
       address {
+        line1
+        line2
         ward
         district
         city
         country
+        lat
+        lng
       }
+    }
+  }
+`;
+
+const GET_MENU_ITEMS_BY_CATEGORY = gql`
+  query GetMenuItemsByCategory(
+    $limit: Int = 300
+    $categoryName: String
+    $timeSlot: TimeSlot
+  ) {
+    topMenuItems(
+      limit: $limit
+      categoryName: $categoryName
+      timeSlot: $timeSlot
+    ) {
+      id
+      restaurantId
     }
   }
 `;
 
 const formatAddress = (addr) => {
   if (!addr) return "";
-  const parts = [addr.ward, addr.district, addr.city].filter(Boolean);
+  const parts = [
+    addr.line1,
+    addr.line2,
+    addr.ward,
+    addr.district,
+    addr.city,
+    addr.country,
+  ]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean);
+
   return parts.join(", ");
 };
 
@@ -39,35 +70,185 @@ const formatHours = (opening, closing) => {
   return opening || closing;
 };
 
+const toRad = (deg) => (deg * Math.PI) / 180;
+
+const distanceInKm = (lat1, lng1, lat2, lng2) => {
+  const earthRadiusKm = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+};
+
+const RESTAURANT_FALLBACK_IMAGES = [
+  "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1200&q=80",
+];
+
+const isPlaceholderRestaurantImage = (url = "") => {
+  if (!url) return true;
+
+  const normalizedUrl = url.toLowerCase();
+  return (
+    normalizedUrl.includes("picsum.photos") ||
+    normalizedUrl.includes("source.unsplash") ||
+    normalizedUrl.includes("/random")
+  );
+};
+
 const RestaurantGrid = ({
   addressFilter = undefined,
+  restaurantFilter = undefined,
   title = "Nhà Hàng Nổi Bật",
   showViewAll = true,
 }) => {
   const navigate = useNavigate();
 
+  const effectiveFilter = restaurantFilter || addressFilter || {};
+  const nearbyCenter = effectiveFilter?.nearbyCenter;
+  const gqlFilter = { ...effectiveFilter };
+  delete gqlFilter.nearbyCenter;
+  delete gqlFilter.categoryId;
+  delete gqlFilter.categoryName;
+  delete gqlFilter.timeSlot;
+
+  const nearbyMode =
+    typeof nearbyCenter?.lat === "number" && typeof nearbyCenter?.lng === "number";
+  const selectedCategoryName =
+    typeof effectiveFilter?.categoryName === "string"
+      ? effectiveFilter.categoryName.trim()
+      : "";
+  const hasCategoryFilter = selectedCategoryName.length > 0;
+
+  const { data: categoryMenuData } = useQuery(GET_MENU_ITEMS_BY_CATEGORY, {
+    skip: !hasCategoryFilter,
+    variables: {
+      limit: 500,
+      categoryName: selectedCategoryName,
+      timeSlot: effectiveFilter?.timeSlot || undefined,
+    },
+    fetchPolicy: "network-only",
+  });
+
+  const categoryRestaurantIds = useMemo(() => {
+    if (!hasCategoryFilter) return [];
+
+    const ids = (categoryMenuData?.topMenuItems || [])
+      .map((item) => item?.restaurantId)
+      .filter(Boolean);
+
+    return [...new Set(ids)];
+  }, [hasCategoryFilter, categoryMenuData]);
+
   const { data, loading, error } = useQuery(GET_TOP_RESTAURANTS, {
-    variables: { limit: 6, addressFilter },
+    variables: {
+      limit: nearbyMode ? 50 : 6,
+      restaurantFilter:
+        nearbyMode
+          ? undefined
+          : {
+              ...gqlFilter,
+              ...(hasCategoryFilter ? { restaurantIds: categoryRestaurantIds } : {}),
+            },
+    },
     fetchPolicy: "cache-and-network",
   });
 
   const restaurants = useMemo(() => {
     const list = data?.restaurantsTop ?? [];
-    return list.map((node) => ({
-      id: node.id,
-      name: node.name ?? "Nhà hàng",
-      description: node.description ?? "Mô tả đang cập nhật...",
-      image:
-        node.coverImage ||
-        node.avatar ||
-        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
-      priceRange: node.priceRange ?? "",
-      hours: formatHours(node.openingHours, node.closingHours),
-      addressText: formatAddress(node.address),
-      avgRating:
-        typeof node.avgRating === "number" ? Number(node.avgRating) : 5.0,
-    }));
+    return list.map((node, index) => {
+      const candidateImage = node.coverImage || node.avatar || "";
+      const fallbackImage =
+        RESTAURANT_FALLBACK_IMAGES[
+          index % RESTAURANT_FALLBACK_IMAGES.length
+        ];
+
+      const lat = Number(node?.address?.lat);
+      const lng = Number(node?.address?.lng);
+
+      return {
+        id: node.id,
+        name: node.name ?? "Nhà hàng",
+        description: node.description ?? "Mô tả đang cập nhật...",
+        image: isPlaceholderRestaurantImage(candidateImage)
+          ? fallbackImage
+          : candidateImage,
+        priceRange: node.priceRange ?? "",
+        hours: formatHours(node.openingHours, node.closingHours),
+        addressText: formatAddress(node.address),
+        avgRating:
+          typeof node.avgRating === "number" ? Number(node.avgRating) : 5.0,
+        lat: Number.isFinite(lat) ? lat : null,
+        lng: Number.isFinite(lng) ? lng : null,
+      };
+    });
   }, [data]);
+
+  const restaurantsWithDistance = useMemo(() => {
+    if (!nearbyMode) return restaurants;
+
+    return restaurants
+      .map((restaurant) => {
+        if (
+          typeof restaurant.lat !== "number" ||
+          typeof restaurant.lng !== "number"
+        ) {
+          return { ...restaurant, distanceKm: null };
+        }
+
+        const distanceKm = distanceInKm(
+          nearbyCenter.lat,
+          nearbyCenter.lng,
+          restaurant.lat,
+          restaurant.lng
+        );
+
+        return { ...restaurant, distanceKm };
+      })
+      .sort((a, b) => {
+        if (typeof a.distanceKm !== "number") return 1;
+        if (typeof b.distanceKm !== "number") return -1;
+        return a.distanceKm - b.distanceKm;
+      });
+  }, [nearbyMode, nearbyCenter, restaurants]);
+
+  const nearestTopRestaurants = useMemo(() => {
+    if (!nearbyMode) return restaurantsWithDistance;
+
+    const nearestWithDistance = restaurantsWithDistance
+      .filter((restaurant) => typeof restaurant.distanceKm === "number")
+      .slice(0, 6);
+
+    if (nearestWithDistance.length > 0) {
+      return nearestWithDistance;
+    }
+
+    return restaurantsWithDistance.slice(0, 6);
+  }, [nearbyMode, restaurantsWithDistance]);
+
+
+  const restaurantsBySelectedCategory = useMemo(() => {
+    if (!hasCategoryFilter) return restaurants;
+
+    const restaurantIdSet = new Set(categoryRestaurantIds.map(String));
+    return restaurants.filter((restaurant) =>
+      restaurantIdSet.has(String(restaurant.id))
+    );
+  }, [hasCategoryFilter, categoryRestaurantIds, restaurants]);
+
+  const displayRestaurants = nearbyMode
+    ? nearestTopRestaurants
+    : restaurantsBySelectedCategory;
 
   const goDetail = (id) => navigate(`/restaurant/${id}`);
 
@@ -102,6 +283,18 @@ const RestaurantGrid = ({
           )}
         </div>
 
+        {nearbyMode && !loading && (
+          <div className="restaurant-grid__nearby-note">
+            📍 Đang hiển thị 6 nhà hàng gần nhất từ kết quả Top Restaurants và khoảng cách tới vị trí hiện tại của bạn.
+          </div>
+        )}
+
+        {hasCategoryFilter && !loading && (
+          <div className="restaurant-grid__nearby-note">
+            ✅ Đây là những nhà hàng có danh mục bạn đã chọn ({selectedCategoryName}) trong khung giờ hiện tại.
+          </div>
+        )}
+
         {/* Error State */}
         {error && (
           <div className="restaurant-grid__error">
@@ -115,7 +308,7 @@ const RestaurantGrid = ({
             ? Array.from({ length: 6 }).map((_, idx) => (
                 <SkeletonCard key={idx} />
               ))
-            : restaurants.map((r) => (
+            : displayRestaurants.map((r) => (
                 <div
                   key={r.id}
                   className="res-card"
@@ -150,6 +343,9 @@ const RestaurantGrid = ({
                       <p className="res-card__address" title={r.addressText}>
                         📍 {r.addressText || "Chưa cập nhật địa chỉ"}
                       </p>
+                      {typeof r.distanceKm === "number" && (
+                        <p className="res-card__address">🧭 Cách bạn {r.distanceKm.toFixed(1)} km</p>
+                      )}
                     </div>
 
                     <p className="res-card__desc">{r.description}</p>
@@ -175,9 +371,11 @@ const RestaurantGrid = ({
                 </div>
               ))}
 
-          {!loading && restaurants.length === 0 && (
+          {!loading && displayRestaurants.length === 0 && (
             <div className="restaurant-grid__empty">
-              Chưa có nhà hàng nào nổi bật.
+              {hasCategoryFilter
+                ? "Không tìm thấy nhà hàng nào có danh mục bạn đã chọn trong khung giờ này."
+                : "Chưa có nhà hàng nào nổi bật."}
             </div>
           )}
         </div>
