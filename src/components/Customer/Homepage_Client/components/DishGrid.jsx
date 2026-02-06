@@ -4,8 +4,18 @@ import "../../../../styles/Homepage/DishGrid.scss";
 
 // --- GRAPHQL QUERY ---
 const GET_TOP_MENU_ITEMS = gql`
-  query GetTopMenuItems($limit: Int = 8, $categoryId: ID) {
-    topMenuItems(limit: $limit, categoryId: $categoryId) {
+  query GetTopMenuItems(
+    $limit: Int = 8
+    $categoryId: ID
+    $categoryName: String
+    $timeSlot: TimeSlot
+  ) {
+    topMenuItems(
+      limit: $limit
+      categoryId: $categoryId
+      categoryName: $categoryName
+      timeSlot: $timeSlot
+    ) {
       id
       name
       description
@@ -24,11 +34,18 @@ const GET_TOP_MENU_ITEMS = gql`
   }
 `;
 
-const DishGrid = ({ onAddToCart, selectedCategoryId = null }) => {
+const DishGrid = ({
+  onAddToCart,
+  selectedCategoryId = null,
+  selectedCategoryName = "",
+  timeSlot = null,
+}) => {
   const { data, loading, error } = useQuery(GET_TOP_MENU_ITEMS, {
     variables: {
-      limit: selectedCategoryId ? 12 : 8,
+      limit: selectedCategoryId || selectedCategoryName ? 12 : 8,
       categoryId: selectedCategoryId || undefined,
+      categoryName: selectedCategoryName || undefined,
+      timeSlot: timeSlot || undefined,
     },
     fetchPolicy: "network-only",
   });

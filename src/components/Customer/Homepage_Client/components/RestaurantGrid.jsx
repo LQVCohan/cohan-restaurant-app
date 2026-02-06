@@ -31,6 +31,23 @@ const GET_TOP_RESTAURANTS = gql`
   }
 `;
 
+const GET_MENU_ITEMS_BY_CATEGORY = gql`
+  query GetMenuItemsByCategory(
+    $limit: Int = 300
+    $categoryName: String
+    $timeSlot: TimeSlot
+  ) {
+    topMenuItems(
+      limit: $limit
+      categoryName: $categoryName
+      timeSlot: $timeSlot
+    ) {
+      id
+      restaurantId
+    }
+  }
+`;
+
 const formatAddress = (addr) => {
   if (!addr) return "";
   const parts = [
@@ -101,14 +118,48 @@ const RestaurantGrid = ({
   const nearbyCenter = effectiveFilter?.nearbyCenter;
   const gqlFilter = { ...effectiveFilter };
   delete gqlFilter.nearbyCenter;
+  delete gqlFilter.categoryId;
+  delete gqlFilter.categoryName;
+  delete gqlFilter.timeSlot;
 
   const nearbyMode =
     typeof nearbyCenter?.lat === "number" && typeof nearbyCenter?.lng === "number";
+  const selectedCategoryName =
+    typeof effectiveFilter?.categoryName === "string"
+      ? effectiveFilter.categoryName.trim()
+      : "";
+  const hasCategoryFilter = selectedCategoryName.length > 0;
+
+  const { data: categoryMenuData } = useQuery(GET_MENU_ITEMS_BY_CATEGORY, {
+    skip: !hasCategoryFilter,
+    variables: {
+      limit: 500,
+      categoryName: selectedCategoryName,
+      timeSlot: effectiveFilter?.timeSlot || undefined,
+    },
+    fetchPolicy: "network-only",
+  });
+
+  const categoryRestaurantIds = useMemo(() => {
+    if (!hasCategoryFilter) return [];
+
+    const ids = (categoryMenuData?.topMenuItems || [])
+      .map((item) => item?.restaurantId)
+      .filter(Boolean);
+
+    return [...new Set(ids)];
+  }, [hasCategoryFilter, categoryMenuData]);
 
   const { data, loading, error } = useQuery(GET_TOP_RESTAURANTS, {
     variables: {
       limit: nearbyMode ? 50 : 6,
-      restaurantFilter: nearbyMode ? undefined : gqlFilter,
+      restaurantFilter:
+        nearbyMode
+          ? undefined
+          : {
+              ...gqlFilter,
+              ...(hasCategoryFilter ? { restaurantIds: categoryRestaurantIds } : {}),
+            },
     },
     fetchPolicy: "cache-and-network",
   });
@@ -185,7 +236,19 @@ const RestaurantGrid = ({
     return restaurantsWithDistance.slice(0, 6);
   }, [nearbyMode, restaurantsWithDistance]);
 
-  const displayRestaurants = nearbyMode ? nearestTopRestaurants : restaurants;
+
+  const restaurantsBySelectedCategory = useMemo(() => {
+    if (!hasCategoryFilter) return restaurants;
+
+    const restaurantIdSet = new Set(categoryRestaurantIds.map(String));
+    return restaurants.filter((restaurant) =>
+      restaurantIdSet.has(String(restaurant.id))
+    );
+  }, [hasCategoryFilter, categoryRestaurantIds, restaurants]);
+
+  const displayRestaurants = nearbyMode
+    ? nearestTopRestaurants
+    : restaurantsBySelectedCategory;
 
   const goDetail = (id) => navigate(`/restaurant/${id}`);
 
@@ -223,6 +286,12 @@ const RestaurantGrid = ({
         {nearbyMode && !loading && (
           <div className="restaurant-grid__nearby-note">
             📍 Đang hiển thị 6 nhà hàng gần nhất từ kết quả Top Restaurants và khoảng cách tới vị trí hiện tại của bạn.
+          </div>
+        )}
+
+        {hasCategoryFilter && !loading && (
+          <div className="restaurant-grid__nearby-note">
+            ✅ Đây là những nhà hàng có danh mục bạn đã chọn ({selectedCategoryName}) trong khung giờ hiện tại.
           </div>
         )}
 
@@ -304,7 +373,9 @@ const RestaurantGrid = ({
 
           {!loading && displayRestaurants.length === 0 && (
             <div className="restaurant-grid__empty">
-              Chưa có nhà hàng nào nổi bật.
+              {hasCategoryFilter
+                ? "Không tìm thấy nhà hàng nào có danh mục bạn đã chọn trong khung giờ này."
+                : "Chưa có nhà hàng nào nổi bật."}
             </div>
           )}
         </div>

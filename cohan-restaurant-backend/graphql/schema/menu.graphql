@@ -234,7 +234,13 @@ extend type Query {
     filter: MenuItemFilter!
   ): MenuItemConnection!
 
-  topMenuItems(limit: Int = 8, restaurantId: ID, categoryId: ID): [MenuItem!]!
+  topMenuItems(
+    limit: Int = 8
+    restaurantId: ID
+    categoryId: ID
+    categoryName: String
+    timeSlot: TimeSlot
+  ): [MenuItem!]!
 }
 
 extend type Mutation {

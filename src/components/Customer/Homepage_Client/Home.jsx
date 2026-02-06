@@ -47,8 +47,16 @@ const Home = () => {
   // --- HANDLERS ---
 
   // 1. Khi chọn Danh mục -> Cập nhật bộ lọc cho RestaurantGrid
-  const handleCategorySelect = useCallback((categoryId) => {
-    setFilterState((prev) => ({ ...prev, categoryId }));
+  const handleCategorySelect = useCallback((category) => {
+    const categoryId = typeof category === "string" ? category : category?.id;
+    const categoryName = typeof category === "object" ? category?.name : "";
+
+    setFilterState((prev) => ({
+      ...prev,
+      categoryId,
+      categoryName,
+      timeSlot,
+    }));
 
     // Scroll xuống phần món ăn để lọc theo danh mục
     const element = document.getElementById("menu");
@@ -59,7 +67,7 @@ const Home = () => {
         elementPosition + window.pageYOffset - headerOffset;
       window.scrollTo({ top: offsetPosition, behavior: "smooth" });
     }
-  }, []);
+  }, [timeSlot]);
 
   // 2. Khi tìm kiếm từ Hero -> Cập nhật bộ lọc text
   const handleSearch = useCallback((searchPayload) => {
@@ -129,6 +137,8 @@ const Home = () => {
         <DishGrid
           onAddToCart={handleAddToCart}
           selectedCategoryId={filterState.categoryId}
+          selectedCategoryName={filterState.categoryName}
+          timeSlot={timeSlot}
         />
 
         {/* RESTAURANT GRID: Fetch Nhà Hàng (Nhận filter từ Home) */}

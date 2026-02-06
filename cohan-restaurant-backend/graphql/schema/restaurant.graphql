@@ -44,6 +44,7 @@ input RestaurantFilter {
   minRating: Float
   priceRange: [String!]
   search: String
+  restaurantIds: [ID!]
 }
 
 type PageInfo {

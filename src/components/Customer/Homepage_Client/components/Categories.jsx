@@ -109,7 +109,9 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
                 <div
                   key={category.id}
                   className="categories__card"
-                  onClick={() => onCategorySelect?.(category.id)}
+                  onClick={() =>
+                    onCategorySelect?.({ id: category.id, name: category.name })
+                  }
                 >
                   <div className="categories__icon-wrapper">
                     <span className="categories__icon">
