@@ -143,7 +143,7 @@ const RestaurantGrid = ({
     });
   }, [data]);
 
-  const nearbyRestaurants = useMemo(() => {
+  const restaurantsWithDistance = useMemo(() => {
     if (!nearbyMode) return restaurants;
 
     return restaurants
@@ -164,14 +164,40 @@ const RestaurantGrid = ({
 
         return { ...restaurant, distanceKm };
       })
-      .filter((restaurant) =>
-        typeof restaurant.distanceKm === "number" ? restaurant.distanceKm <= 10 : false
-      )
-      .sort((a, b) => a.distanceKm - b.distanceKm);
+      .sort((a, b) => {
+        if (typeof a.distanceKm !== "number") return 1;
+        if (typeof b.distanceKm !== "number") return -1;
+        return a.distanceKm - b.distanceKm;
+      });
   }, [nearbyMode, nearbyCenter, restaurants]);
 
-  const fallbackToNormalResults = nearbyMode && !loading && nearbyRestaurants.length === 0;
-  const displayRestaurants = fallbackToNormalResults ? restaurants : nearbyRestaurants;
+  const nearbyRestaurants = useMemo(() => {
+    if (!nearbyMode) return restaurantsWithDistance;
+    return restaurantsWithDistance.filter(
+      (restaurant) =>
+        typeof restaurant.distanceKm === "number" && restaurant.distanceKm <= 10
+    );
+  }, [nearbyMode, restaurantsWithDistance]);
+
+  const nearestFallbackRestaurants = useMemo(() => {
+    if (!nearbyMode || nearbyRestaurants.length > 0) return [];
+
+    const nearestWithDistance = restaurantsWithDistance
+      .filter((restaurant) => typeof restaurant.distanceKm === "number")
+      .slice(0, 6);
+
+    if (nearestWithDistance.length > 0) {
+      return nearestWithDistance;
+    }
+
+    return restaurants.slice(0, 6);
+  }, [nearbyMode, nearbyRestaurants, restaurantsWithDistance, restaurants]);
+
+  const fallbackToNearestResults =
+    nearbyMode && !loading && nearbyRestaurants.length === 0;
+  const displayRestaurants = fallbackToNearestResults
+    ? nearestFallbackRestaurants
+    : nearbyRestaurants;
 
   const goDetail = (id) => navigate(`/restaurant/${id}`);
 
@@ -206,15 +232,15 @@ const RestaurantGrid = ({
           )}
         </div>
 
-        {nearbyMode && !loading && !fallbackToNormalResults && (
+        {nearbyMode && !loading && !fallbackToNearestResults && (
           <div className="restaurant-grid__nearby-note">
             📍 Đang hiển thị nhà hàng trong bán kính 10km từ vị trí bạn chọn.
           </div>
         )}
 
-        {fallbackToNormalResults && (
+        {fallbackToNearestResults && (
           <div className="restaurant-grid__nearby-note restaurant-grid__nearby-note--warning">
-            Không có nhà hàng trong phạm vi 10km. Đang hiển thị danh sách nhà hàng như bình thường.
+            Không có nhà hàng trong phạm vi 10km. Đang hiển thị 6 nhà hàng gần nhất từ kết quả Top Restaurants.
           </div>
         )}
 
