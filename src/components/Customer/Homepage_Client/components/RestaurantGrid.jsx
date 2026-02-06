@@ -108,7 +108,7 @@ const RestaurantGrid = ({
   const { data, loading, error } = useQuery(GET_TOP_RESTAURANTS, {
     variables: {
       limit: nearbyMode ? 50 : 6,
-      restaurantFilter: gqlFilter,
+      restaurantFilter: nearbyMode ? undefined : gqlFilter,
     },
     fetchPolicy: "cache-and-network",
   });
@@ -171,16 +171,8 @@ const RestaurantGrid = ({
       });
   }, [nearbyMode, nearbyCenter, restaurants]);
 
-  const nearbyRestaurants = useMemo(() => {
+  const nearestTopRestaurants = useMemo(() => {
     if (!nearbyMode) return restaurantsWithDistance;
-    return restaurantsWithDistance.filter(
-      (restaurant) =>
-        typeof restaurant.distanceKm === "number" && restaurant.distanceKm <= 10
-    );
-  }, [nearbyMode, restaurantsWithDistance]);
-
-  const nearestFallbackRestaurants = useMemo(() => {
-    if (!nearbyMode || nearbyRestaurants.length > 0) return [];
 
     const nearestWithDistance = restaurantsWithDistance
       .filter((restaurant) => typeof restaurant.distanceKm === "number")
@@ -190,14 +182,10 @@ const RestaurantGrid = ({
       return nearestWithDistance;
     }
 
-    return restaurants.slice(0, 6);
-  }, [nearbyMode, nearbyRestaurants, restaurantsWithDistance, restaurants]);
+    return restaurantsWithDistance.slice(0, 6);
+  }, [nearbyMode, restaurantsWithDistance]);
 
-  const fallbackToNearestResults =
-    nearbyMode && !loading && nearbyRestaurants.length === 0;
-  const displayRestaurants = fallbackToNearestResults
-    ? nearestFallbackRestaurants
-    : nearbyRestaurants;
+  const displayRestaurants = nearbyMode ? nearestTopRestaurants : restaurants;
 
   const goDetail = (id) => navigate(`/restaurant/${id}`);
 
@@ -232,15 +220,9 @@ const RestaurantGrid = ({
           )}
         </div>
 
-        {nearbyMode && !loading && !fallbackToNearestResults && (
+        {nearbyMode && !loading && (
           <div className="restaurant-grid__nearby-note">
-            📍 Đang hiển thị nhà hàng trong bán kính 10km từ vị trí bạn chọn.
-          </div>
-        )}
-
-        {fallbackToNearestResults && (
-          <div className="restaurant-grid__nearby-note restaurant-grid__nearby-note--warning">
-            Không có nhà hàng trong phạm vi 10km. Đang hiển thị 6 nhà hàng gần nhất từ kết quả Top Restaurants.
+            📍 Đang hiển thị 6 nhà hàng gần nhất từ kết quả Top Restaurants và khoảng cách tới vị trí hiện tại của bạn.
           </div>
         )}
 
