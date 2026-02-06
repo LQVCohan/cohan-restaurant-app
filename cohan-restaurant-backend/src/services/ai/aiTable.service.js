@@ -1,4 +1,5 @@
-const DEFAULT_MODEL = process.env.AI_MODEL || "gpt-4o-mini";
+import process from "process";
+const DEFAULT_MODEL = process.env.AI_MODEL || "gpt-5";
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
 const normalizeLevel = (value) => {
@@ -103,6 +104,132 @@ const fallbackSuggestion = (type, payload) => {
   return "Chưa có gợi ý phù hợp.";
 };
 
+
+const safeJsonParse = (raw) => {
+  if (!raw || typeof raw !== "string") return null;
+  const cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+};
+
+const normalizeLayoutFromAi = (layout, payload = {}) => {
+  const tableCount = Math.max(1, Number(payload?.tableCount || 8));
+  const prefix = String(payload?.codePrefix || "AI").trim() || "AI";
+  const selected = new Set((payload?.selectedComponents || []).map((i) => String(i || "").trim()));
+  const rawTables = Array.isArray(layout?.tables) ? layout.tables : [];
+  const rawDecor = Array.isArray(layout?.decor) ? layout.decor : [];
+
+  const tables = rawTables.slice(0, tableCount).map((table, index) => ({
+    code: String(table?.code || `${prefix}-${index + 1}`).trim(),
+    x: Number.isFinite(Number(table?.x)) ? Number(table.x) : index * 120,
+    y: Number.isFinite(Number(table?.y)) ? Number(table.y) : Math.floor(index / 4) * 120,
+    rotation: Number.isFinite(Number(table?.rotation)) ? Number(table.rotation) : 0,
+    capacity: Number.isFinite(Number(table?.capacity)) ? Number(table.capacity) : 4,
+    type: String(table?.type || "standard"),
+  }));
+
+  const decor = rawDecor
+    .filter((item) => item && selected.has(String(item.type || "")))
+    .map((item, idx) => ({
+      id: `ai_decor_${Date.now()}_${idx}`,
+      type: String(item.type || "plant"),
+      x: Number.isFinite(Number(item.x)) ? Number(item.x) : 0,
+      y: Number.isFinite(Number(item.y)) ? Number(item.y) : 0,
+      w: Number.isFinite(Number(item.w)) ? Number(item.w) : 60,
+      h: Number.isFinite(Number(item.h)) ? Number(item.h) : 60,
+      rotation: Number.isFinite(Number(item.rotation)) ? Number(item.rotation) : 0,
+      label: String(item.label || ""),
+      isRealTable: false,
+    }));
+
+  return { tables, decor };
+};
+
+const fallbackSmartLayout = (payload = {}) => {
+  const tableCount = Math.max(1, Number(payload?.tableCount || 8));
+  const prefix = String(payload?.codePrefix || "AI").trim() || "AI";
+  const selected = new Set((payload?.selectedComponents || []).map((i) => String(i || "").trim()));
+  const startX = Number(payload?.startX || 0);
+  const startY = Number(payload?.startY || 0);
+
+  const tables = Array.from({ length: tableCount }).map((_, idx) => ({
+    code: `${prefix}-${idx + 1}`,
+    x: startX + (idx % 4) * 120,
+    y: startY + Math.floor(idx / 4) * 120,
+    rotation: 0,
+    capacity: 4,
+    type: "standard",
+  }));
+
+  const decor = [];
+  if (selected.has("wall")) {
+    decor.push(
+      { id: `ai_wall_${Date.now()}_1`, type: "wall", x: startX - 80, y: startY - 60, w: 640, h: 10, rotation: 0, label: "Tường", isRealTable: false },
+      { id: `ai_wall_${Date.now()}_2`, type: "wall", x: startX - 80, y: startY + 420, w: 640, h: 10, rotation: 0, label: "Tường", isRealTable: false }
+    );
+  }
+  if (selected.has("plant")) {
+    decor.push(
+      { id: `ai_plant_${Date.now()}_1`, type: "plant", x: startX - 40, y: startY + 40, w: 40, h: 40, rotation: 0, label: "Cây", isRealTable: false },
+      { id: `ai_plant_${Date.now()}_2`, type: "plant", x: startX + 520, y: startY + 280, w: 40, h: 40, rotation: 0, label: "Cây", isRealTable: false }
+    );
+  }
+  if (selected.has("stairs")) {
+    decor.push({ id: `ai_stairs_${Date.now()}`, type: "stairs", x: startX + 500, y: startY - 20, w: 100, h: 60, rotation: 0, label: "Cầu thang", isRealTable: false });
+  }
+  const maybe = [
+    ["door", { type: "door", w: 70, h: 12, label: "Cửa" }],
+    ["window", { type: "window", w: 12, h: 80, label: "Cửa sổ" }],
+    ["cashier", { type: "cashier", w: 120, h: 50, label: "Thu ngân" }],
+    ["kitchen", { type: "kitchen", w: 140, h: 90, label: "Bếp" }],
+    ["buffet", { type: "buffet", w: 160, h: 70, label: "Buffet" }],
+    ["wc", { type: "wc", w: 80, h: 80, label: "WC" }],
+  ];
+  let offset = 0;
+  for (const [key, base] of maybe) {
+    if (!selected.has(key)) continue;
+    decor.push({
+      id: `ai_${key}_${Date.now()}_${offset}`,
+      x: startX + 480,
+      y: startY + offset * 72,
+      rotation: 0,
+      isRealTable: false,
+      ...base,
+    });
+    offset += 1;
+  }
+
+  return { tables, decor };
+};
+
+export const generateSmartFloorLayout = async (payload = {}) => {
+  const selected = payload?.selectedComponents || [];
+  const useAiModel = selected.length >= 3;
+  if (useAiModel) {
+    const prompt = [
+      "Bạn là trợ lý thiết kế sơ đồ nhà hàng.",
+      "Trả về JSON thuần với shape {tables:[], decor:[]}.",
+      "tables gồm: code,x,y,rotation,capacity,type.",
+      "decor gồm: type,x,y,w,h,rotation,label.",
+      "Không trả markdown.",
+      `Yêu cầu: ${JSON.stringify(payload)}`,
+    ].join("\n");
+
+    const ai = await callOpenAI(prompt);
+    const parsed = safeJsonParse(ai);
+    if (parsed) {
+      return normalizeLayoutFromAi(parsed, payload);
+    }
+  }
+  return fallbackSmartLayout(payload);
+};
 const callOpenAI = async (prompt) => {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { useNotification } from "../../../hooks/useNotification";
@@ -82,6 +82,12 @@ const CREATE_TABLE = gql`
   }
 `;
 
+const DELETE_TABLE = gql`
+  mutation DeleteTable($id: ID!) {
+    deleteTable(id: $id)
+  }
+`;
+
 /* --- PALETTE CONFIG --- */
 const PALETTE_ITEMS = [
   {
@@ -161,6 +167,7 @@ const FloorPlanDesigner = () => {
   const [updateFloor] = useMutation(UPDATE_FLOOR_LAYOUT);
   const [updateTable] = useMutation(UPDATE_TABLE_POSITION);
   const [createTable] = useMutation(CREATE_TABLE);
+  const [deleteTable] = useMutation(DELETE_TABLE);
 
   // State
   const [floors, setFloors] = useState([]);
@@ -184,10 +191,18 @@ const FloorPlanDesigner = () => {
     includeWalls: true,
     includePlants: true,
     includeStairs: false,
+    includeDoor: false,
+    includeWindow: false,
+    includeCashier: false,
+    includeKitchen: false,
+    includeBuffet: false,
+    includeWc: false,
   });
   const [isLocked, setIsLocked] = useState(false);
   const [lockMessage, setLockMessage] = useState("");
   const [canUndo, setCanUndo] = useState(false);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
+  const [isSavingBeforeExit, setIsSavingBeforeExit] = useState(false);
   const [containerSize, setContainerSize] = useState({
     width: 0,
     height: 0,
@@ -211,6 +226,7 @@ const FloorPlanDesigner = () => {
   const dragStartItemsRef = useRef(null);
   const dragMovedRef = useRef(false);
   const lockNotifiedRef = useRef(false);
+  const apiBase = (import.meta.env.VITE_API_URL || "http://localhost:4000/graphql").replace(/\/graphql$/i, "");
 
   // Init floors
   useEffect(() => {
@@ -245,7 +261,9 @@ const FloorPlanDesigner = () => {
       h: 60,
       rotation: t.position?.rotation || 0,
       label: t.code,
+      code: t.code,
       isRealTable: true,
+      isLocalOnly: false,
     }));
 
     setItems([...decorItems, ...tableItems]);
@@ -382,6 +400,8 @@ const FloorPlanDesigner = () => {
           x: Math.round(table.position?.x || 0),
           y: Math.round(table.position?.y || 0),
           rotation: table.position?.rotation || 0,
+          isLocalOnly: false,
+          code: table.code || "",
         },
       ])
     );
@@ -471,20 +491,33 @@ const FloorPlanDesigner = () => {
     });
   };
 
-  const deleteLocalItem = () => {
+  const deleteLocalItem = async () => {
     if (isLocked) {
       showNotification(lockMessage || "Không thể chỉnh sửa sơ đồ.", "warning");
       return;
     }
     if (!selectedId) return;
     const found = items.find((i) => i.id === selectedId);
-    if (found?.isRealTable) {
-      return showNotification("Không thể xóa bàn hệ thống!", "warning");
+    if (!found) return;
+
+    const label = found.isRealTable ? `bàn ${found.code || found.label}` : (found.label || found.type || "thành phần");
+    if (!window.confirm(`Bạn có chắc muốn xóa ${label}?`)) return;
+
+    if (found.isRealTable && !found.isLocalOnly) {
+      try {
+        await deleteTable({ variables: { id: found.id } });
+        await refetch();
+      } catch (err) {
+        console.error(err);
+        showNotification("Không thể xóa bàn.", "error");
+        return;
+      }
+    } else {
+      setItems((prev) => {
+        pushHistory(prev);
+        return prev.filter((i) => i.id !== selectedId);
+      });
     }
-    setItems((prev) => {
-      pushHistory(prev);
-      return prev.filter((i) => i.id !== selectedId);
-    });
     setSelectedId(null);
   };
 
@@ -507,11 +540,67 @@ const FloorPlanDesigner = () => {
     );
   };
 
+  const hasPendingChanges = useMemo(() => {
+    const decorItems = items.filter((i) => !i.isRealTable);
+    const tableItems = items.filter((i) => i.isRealTable);
+    const currentDecorMap = buildDecorMap(decorItems);
+    const currentTableMap = new Map(
+      tableItems.map((table) => [
+        table.id,
+        {
+          x: Math.round(table.x),
+          y: Math.round(table.y),
+          rotation: table.rotation,
+          isLocalOnly: !!table.isLocalOnly,
+          code: table.code || table.label || "",
+        },
+      ])
+    );
+
+    return (
+      hasMapChanges(currentDecorMap, savedSnapshotRef.current.decor) ||
+      hasMapChanges(currentTableMap, savedSnapshotRef.current.tables)
+    );
+  }, [items]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (!hasPendingChanges) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasPendingChanges]);
+
+  const requestExitFloorDesigner = () => {
+    if (!hasPendingChanges) {
+      navigate(-1);
+      return;
+    }
+    setShowExitConfirmModal(true);
+  };
+
+  const handleExitWithoutSaving = () => {
+    setShowExitConfirmModal(false);
+    navigate(-1);
+  };
+
+  const handleSaveBeforeExit = async () => {
+    setIsSavingBeforeExit(true);
+    const ok = await handleSave();
+    setIsSavingBeforeExit(false);
+    if (!ok) return;
+    setShowExitConfirmModal(false);
+    navigate(-1);
+  };
+
   const handleSave = async () => {
-    if (!activeFloorId) return;
+    if (!activeFloorId) return false;
     if (isLocked) {
       showNotification(lockMessage || "Không thể chỉnh sửa sơ đồ.", "warning");
-      return;
+      return false;
     }
     try {
       const decorItems = items.filter((i) => !i.isRealTable);
@@ -524,6 +613,8 @@ const FloorPlanDesigner = () => {
             x: Math.round(table.x),
             y: Math.round(table.y),
             rotation: table.rotation,
+            isLocalOnly: !!table.isLocalOnly,
+            code: table.code || table.label || "",
           },
         ])
       );
@@ -539,7 +630,7 @@ const FloorPlanDesigner = () => {
 
       if (!decorChanged && !tablesChanged) {
         showNotification("Không có thay đổi để lưu.", "info");
-        return;
+        return true;
       }
 
       if (decorChanged) {
@@ -549,7 +640,31 @@ const FloorPlanDesigner = () => {
       }
 
       if (tablesChanged) {
+        const localTables = tableItems.filter((table) => table.isLocalOnly);
+        if (localTables.length > 0) {
+          for (const table of localTables) {
+            await createTable({
+              variables: {
+                input: {
+                  restaurantId,
+                  floorId: activeFloorId,
+                  code: (table.code || table.label || "").trim(),
+                  capacity: Number(table.capacity) || 4,
+                  type: table.tableType || "standard",
+                  status: "available",
+                  position: {
+                    x: Math.round(table.x),
+                    y: Math.round(table.y),
+                    rotation: table.rotation,
+                  },
+                },
+              },
+            });
+          }
+        }
+
         const tablesToSave = tableItems
+          .filter((table) => !table.isLocalOnly)
           .filter((table) => {
             const prev = savedSnapshotRef.current.tables.get(table.id);
             if (!prev) return true;
@@ -573,15 +688,21 @@ const FloorPlanDesigner = () => {
         );
       }
 
-      await refetch();
+      const { data: refreshed } = await refetch();
+      const latestFloor = refreshed?.floors?.find((f) => f.id === activeFloorId);
+      const latestTables = (refreshed?.tables || []).filter(
+        (t) => t.floorId === activeFloorId
+      );
       savedSnapshotRef.current = {
-        decor: currentDecorMap,
-        tables: currentTableMap,
+        decor: buildDecorMap((latestFloor?.layout || []).map((item) => ({ ...item, isRealTable: false }))),
+        tables: buildTableMap(latestTables),
       };
       showNotification("✅ Đã lưu thiết kế!", "success");
+      return true;
     } catch (err) {
       console.error(err);
       showNotification("Lỗi khi lưu", "error");
+      return false;
     }
   };
 
@@ -623,7 +744,7 @@ const FloorPlanDesigner = () => {
   };
 
   const handleCreateTable = async () => {
-    if (!activeFloorId) return;
+    if (!activeFloorId) return false;
     if (isLocked) {
       showNotification(lockMessage || "Không thể chỉnh sửa sơ đồ.", "warning");
       return;
@@ -681,7 +802,7 @@ const FloorPlanDesigner = () => {
   };
 
   const handleGenerateSmartLayout = async () => {
-    if (!activeFloorId) return;
+    if (!activeFloorId) return false;
     if (isLocked) {
       showNotification(lockMessage || "Không thể chỉnh sửa sơ đồ.", "warning");
       return;
@@ -690,126 +811,101 @@ const FloorPlanDesigner = () => {
       showNotification("Số bàn phải lớn hơn 0.", "warning");
       return;
     }
-    const existingTables = items.filter((i) => i.isRealTable);
-    const newDecor = [];
     const container = containerRef.current;
     const centerX = (container?.clientWidth || 800) / 2;
     const centerY = (container?.clientHeight || 600) / 2;
     const startX = -view.x + centerX / view.scale - 300;
     const startY = -view.y + centerY / view.scale - 200;
-    const tablePositions = [];
 
-    for (let i = 0; i < aiForm.tableCount; i += 1) {
-      const pos = findAvailablePosition({
-        existing: [...existingTables, ...tablePositions],
-        startX: startX + (i % 4) * 120,
-        startY: startY + Math.floor(i / 4) * 120,
-        step: 80,
-      });
-      tablePositions.push({ x: pos.x, y: pos.y, w: 60, h: 60 });
-    }
+    const selectedComponents = [
+      aiForm.includeWalls && "wall",
+      aiForm.includePlants && "plant",
+      aiForm.includeStairs && "stairs",
+      aiForm.includeDoor && "door",
+      aiForm.includeWindow && "window",
+      aiForm.includeCashier && "cashier",
+      aiForm.includeKitchen && "kitchen",
+      aiForm.includeBuffet && "buffet",
+      aiForm.includeWc && "wc",
+    ].filter(Boolean);
 
-    if (aiForm.includeWalls) {
-      newDecor.push(
-        {
-          id: `ai_wall_${Date.now()}_1`,
-          type: "wall",
-          x: startX - 80,
-          y: startY - 60,
-          w: 640,
-          h: 10,
-          rotation: 0,
-          label: "Tường",
-          isRealTable: false,
-        },
-        {
-          id: `ai_wall_${Date.now()}_2`,
-          type: "wall",
-          x: startX - 80,
-          y: startY + 420,
-          w: 640,
-          h: 10,
-          rotation: 0,
-          label: "Tường",
-          isRealTable: false,
-        }
-      );
-    }
-
-    if (aiForm.includePlants) {
-      newDecor.push(
-        {
-          id: `ai_plant_${Date.now()}_1`,
-          type: "plant",
-          x: startX - 40,
-          y: startY + 40,
-          w: 40,
-          h: 40,
-          rotation: 0,
-          label: "Cây",
-          isRealTable: false,
-        },
-        {
-          id: `ai_plant_${Date.now()}_2`,
-          type: "plant",
-          x: startX + 520,
-          y: startY + 280,
-          w: 40,
-          h: 40,
-          rotation: 0,
-          label: "Cây",
-          isRealTable: false,
-        }
-      );
-    }
-
-    if (aiForm.includeStairs) {
-      newDecor.push({
-        id: `ai_stairs_${Date.now()}`,
-        type: "stairs",
-        x: startX + 500,
-        y: startY - 20,
-        w: 100,
-        h: 60,
-        rotation: 0,
-        label: "Cầu thang",
-        isRealTable: false,
-      });
-    }
-
-    const newTablesPayload = tablePositions.map((pos, index) => ({
-      code: `${aiForm.codePrefix || "AI"}-${index + 1}`,
-      position: { x: Math.round(pos.x), y: Math.round(pos.y), rotation: 0 },
-    }));
-
-    try {
-      pushHistory(items);
-      for (const t of newTablesPayload) {
-        await createTable({
-          variables: {
-            input: {
-              restaurantId,
-              floorId: activeFloorId,
-              code: t.code,
-              capacity: 4,
-              type: "standard",
-              status: "available",
-              position: t.position,
-            },
-          },
+    let layoutPayload = null;
+    if (selectedComponents.length >= 3) {
+      try {
+        const res = await fetch(`${apiBase}/api/ai/floor/generate-layout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tableCount: aiForm.tableCount,
+            codePrefix: aiForm.codePrefix,
+            selectedComponents,
+            startX,
+            startY,
+            floorId: activeFloorId,
+            restaurantId,
+          }),
         });
+        if (res.ok) {
+          const data = await res.json();
+          layoutPayload = data?.layout || null;
+        }
+      } catch (err) {
+        console.error(err);
       }
-      const nextDecor = [...items.filter((i) => !i.isRealTable), ...newDecor];
-      await updateFloor({
-        variables: { id: activeFloorId, layout: nextDecor },
-      });
-      await refetch();
-      showNotification("Đã tạo sơ đồ thông minh. Hãy kiểm tra lại bố cục.", "success");
-      setShowAiModal(false);
-    } catch (err) {
-      console.error(err);
-      showNotification("Không thể tạo sơ đồ thông minh.", "error");
     }
+
+    const generatedTables = layoutPayload?.tables || [];
+    const generatedDecor = layoutPayload?.decor || [];
+
+    const usedCodes = new Set(
+      items
+        .filter((item) => item.isRealTable)
+        .map((item) => String(item.code || item.label || "").trim().toUpperCase())
+        .filter(Boolean)
+    );
+
+    const sourceTables = generatedTables.length
+      ? generatedTables
+      : Array.from({ length: aiForm.tableCount }).map((_, i) => ({
+          code: `${aiForm.codePrefix || "AI"}-${i + 1}`,
+          x: startX + (i % 4) * 120,
+          y: startY + Math.floor(i / 4) * 120,
+          rotation: 0,
+          capacity: 4,
+          type: "standard",
+        }));
+
+    const newLocalTables = sourceTables.map((pos, index) => {
+      const baseCode = String(pos.code || `${aiForm.codePrefix || "AI"}-${index + 1}`).trim();
+      let code = baseCode;
+      let suffix = 1;
+      while (usedCodes.has(code.toUpperCase())) {
+        suffix += 1;
+        code = `${baseCode}-${suffix}`;
+      }
+      usedCodes.add(code.toUpperCase());
+
+      return {
+        id: `tmp_ai_${Date.now()}_${index}`,
+        type: "table",
+        x: Number(pos.x) || startX,
+        y: Number(pos.y) || startY,
+        w: 60,
+        h: 60,
+        rotation: Number(pos.rotation) || 0,
+        label: code,
+        code,
+        capacity: Number(pos.capacity) || 4,
+        tableType: pos.type || "standard",
+        isRealTable: true,
+        isLocalOnly: true,
+      };
+    });
+
+    pushHistory(items);
+    setItems((prev) => [...prev.filter((i) => !i.isLocalOnly), ...generatedDecor, ...newLocalTables]);
+    setShowAiModal(false);
+    showNotification(selectedComponents.length >= 3 ? "Đã tạo sơ đồ thông minh bằng AI. Nhấn Lưu để ghi nhận." : "Đã tạo sơ đồ thông minh. Nhấn Lưu để ghi nhận thay đổi.", "success");
   };
 
   // Mouse handlers
@@ -997,7 +1093,7 @@ const FloorPlanDesigner = () => {
       {/* HEADER */}
       <header className="fp-header">
         <div className="left-sect">
-          <button className="btn-icon" onClick={() => navigate(-1)}>
+          <button className="btn-icon" onClick={requestExitFloorDesigner}>
             <ArrowLeft size={20} />
           </button>
           <div className="file-info">
@@ -1274,7 +1370,7 @@ const FloorPlanDesigner = () => {
                       label: e.target.value,
                     }, true)
                   }
-                  disabled={selectedItem.isRealTable || isReadOnly}
+                  disabled={isReadOnly}
                 />
               </div>
               {selectedItem.type === "symbol" && (
@@ -1330,10 +1426,10 @@ const FloorPlanDesigner = () => {
               <button
                 className="btn-danger"
                 onClick={deleteLocalItem}
-                disabled={selectedItem.isRealTable || isReadOnly}
+                disabled={isReadOnly}
               >
                 <Trash2 size={16} />{" "}
-                {selectedItem.isRealTable ? "Không thể xóa" : "Xóa"}
+                Xóa
               </button>
             </div>
           </div>
@@ -1579,12 +1675,133 @@ const FloorPlanDesigner = () => {
               Có cầu thang
             </label>
           </div>
+          <div className="fp-modal-row checkbox">
+            <label>
+              <input
+                type="checkbox"
+                checked={aiForm.includeDoor}
+                onChange={(e) =>
+                  setAiForm((prev) => ({
+                    ...prev,
+                    includeDoor: e.target.checked,
+                  }))
+                }
+              />
+              Có cửa
+            </label>
+          </div>
+          <div className="fp-modal-row checkbox">
+            <label>
+              <input
+                type="checkbox"
+                checked={aiForm.includeWindow}
+                onChange={(e) =>
+                  setAiForm((prev) => ({
+                    ...prev,
+                    includeWindow: e.target.checked,
+                  }))
+                }
+              />
+              Có cửa sổ
+            </label>
+          </div>
+          <div className="fp-modal-row checkbox">
+            <label>
+              <input
+                type="checkbox"
+                checked={aiForm.includeCashier}
+                onChange={(e) =>
+                  setAiForm((prev) => ({
+                    ...prev,
+                    includeCashier: e.target.checked,
+                  }))
+                }
+              />
+              Có quầy thu ngân
+            </label>
+          </div>
+          <div className="fp-modal-row checkbox">
+            <label>
+              <input
+                type="checkbox"
+                checked={aiForm.includeKitchen}
+                onChange={(e) =>
+                  setAiForm((prev) => ({
+                    ...prev,
+                    includeKitchen: e.target.checked,
+                  }))
+                }
+              />
+              Có bếp
+            </label>
+          </div>
+          <div className="fp-modal-row checkbox">
+            <label>
+              <input
+                type="checkbox"
+                checked={aiForm.includeBuffet}
+                onChange={(e) =>
+                  setAiForm((prev) => ({
+                    ...prev,
+                    includeBuffet: e.target.checked,
+                  }))
+                }
+              />
+              Có buffet
+            </label>
+          </div>
+          <div className="fp-modal-row checkbox">
+            <label>
+              <input
+                type="checkbox"
+                checked={aiForm.includeWc}
+                onChange={(e) =>
+                  setAiForm((prev) => ({
+                    ...prev,
+                    includeWc: e.target.checked,
+                  }))
+                }
+              />
+              Có WC
+            </label>
+          </div>
           <div className="fp-modal-actions">
             <button className="btn-secondary" onClick={() => setShowAiModal(false)}>
               Hủy
             </button>
             <button className="btn-primary" onClick={handleGenerateSmartLayout}>
               Tạo sơ đồ
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showExitConfirmModal}
+        onClose={() => setShowExitConfirmModal(false)}
+        className="fp-modal-shell fp-modal-shell--exit"
+        title="Rời trang thiết kế"
+      >
+        <div className="fp-modal">
+          <div className="fp-modal-intro">
+            <strong>Bạn có thay đổi chưa lưu</strong>
+            <p>
+              Bạn muốn lưu trước khi thoát khỏi trang thiết kế sơ đồ không?
+            </p>
+          </div>
+          <div className="fp-modal-actions fp-modal-actions--exit">
+            <button className="btn-secondary" onClick={() => setShowExitConfirmModal(false)}>
+              Ở lại
+            </button>
+            <button className="btn-secondary" onClick={handleExitWithoutSaving}>
+              Thoát không lưu
+            </button>
+            <button
+              className="btn-primary"
+              onClick={handleSaveBeforeExit}
+              disabled={isSavingBeforeExit}
+            >
+              {isSavingBeforeExit ? "Đang lưu..." : "Lưu và thoát"}
             </button>
           </div>
         </div>
