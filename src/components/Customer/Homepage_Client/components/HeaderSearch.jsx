@@ -415,6 +415,7 @@ export default function HeaderSearch() {
                   item.data.name || item.data.fullName || item.data.label;
                 const subText =
                   item.data.address ||
+                  item.data.fullAddress ||
                   item.data.shortAddress ||
                   item.data.restaurantName ||
                   "";
