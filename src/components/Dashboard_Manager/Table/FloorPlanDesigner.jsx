@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { gql, useQuery, useMutation } from "@apollo/client";
 import { useNotification } from "../../../hooks/useNotification";
@@ -188,6 +188,8 @@ const FloorPlanDesigner = () => {
   const [isLocked, setIsLocked] = useState(false);
   const [lockMessage, setLockMessage] = useState("");
   const [canUndo, setCanUndo] = useState(false);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
+  const [isSavingBeforeExit, setIsSavingBeforeExit] = useState(false);
   const [containerSize, setContainerSize] = useState({
     width: 0,
     height: 0,
@@ -245,7 +247,9 @@ const FloorPlanDesigner = () => {
       h: 60,
       rotation: t.position?.rotation || 0,
       label: t.code,
+      code: t.code,
       isRealTable: true,
+      isLocalOnly: false,
     }));
 
     setItems([...decorItems, ...tableItems]);
@@ -382,6 +386,8 @@ const FloorPlanDesigner = () => {
           x: Math.round(table.position?.x || 0),
           y: Math.round(table.position?.y || 0),
           rotation: table.position?.rotation || 0,
+          isLocalOnly: false,
+          code: table.code || "",
         },
       ])
     );
@@ -507,11 +513,67 @@ const FloorPlanDesigner = () => {
     );
   };
 
+  const hasPendingChanges = useMemo(() => {
+    const decorItems = items.filter((i) => !i.isRealTable);
+    const tableItems = items.filter((i) => i.isRealTable);
+    const currentDecorMap = buildDecorMap(decorItems);
+    const currentTableMap = new Map(
+      tableItems.map((table) => [
+        table.id,
+        {
+          x: Math.round(table.x),
+          y: Math.round(table.y),
+          rotation: table.rotation,
+          isLocalOnly: !!table.isLocalOnly,
+          code: table.code || table.label || "",
+        },
+      ])
+    );
+
+    return (
+      hasMapChanges(currentDecorMap, savedSnapshotRef.current.decor) ||
+      hasMapChanges(currentTableMap, savedSnapshotRef.current.tables)
+    );
+  }, [items]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (!hasPendingChanges) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasPendingChanges]);
+
+  const requestExitFloorDesigner = () => {
+    if (!hasPendingChanges) {
+      navigate(-1);
+      return;
+    }
+    setShowExitConfirmModal(true);
+  };
+
+  const handleExitWithoutSaving = () => {
+    setShowExitConfirmModal(false);
+    navigate(-1);
+  };
+
+  const handleSaveBeforeExit = async () => {
+    setIsSavingBeforeExit(true);
+    const ok = await handleSave();
+    setIsSavingBeforeExit(false);
+    if (!ok) return;
+    setShowExitConfirmModal(false);
+    navigate(-1);
+  };
+
   const handleSave = async () => {
-    if (!activeFloorId) return;
+    if (!activeFloorId) return false;
     if (isLocked) {
       showNotification(lockMessage || "Không thể chỉnh sửa sơ đồ.", "warning");
-      return;
+      return false;
     }
     try {
       const decorItems = items.filter((i) => !i.isRealTable);
@@ -524,6 +586,8 @@ const FloorPlanDesigner = () => {
             x: Math.round(table.x),
             y: Math.round(table.y),
             rotation: table.rotation,
+            isLocalOnly: !!table.isLocalOnly,
+            code: table.code || table.label || "",
           },
         ])
       );
@@ -539,7 +603,7 @@ const FloorPlanDesigner = () => {
 
       if (!decorChanged && !tablesChanged) {
         showNotification("Không có thay đổi để lưu.", "info");
-        return;
+        return true;
       }
 
       if (decorChanged) {
@@ -549,7 +613,31 @@ const FloorPlanDesigner = () => {
       }
 
       if (tablesChanged) {
+        const localTables = tableItems.filter((table) => table.isLocalOnly);
+        if (localTables.length > 0) {
+          for (const table of localTables) {
+            await createTable({
+              variables: {
+                input: {
+                  restaurantId,
+                  floorId: activeFloorId,
+                  code: (table.code || table.label || "").trim(),
+                  capacity: Number(table.capacity) || 4,
+                  type: table.tableType || "standard",
+                  status: "available",
+                  position: {
+                    x: Math.round(table.x),
+                    y: Math.round(table.y),
+                    rotation: table.rotation,
+                  },
+                },
+              },
+            });
+          }
+        }
+
         const tablesToSave = tableItems
+          .filter((table) => !table.isLocalOnly)
           .filter((table) => {
             const prev = savedSnapshotRef.current.tables.get(table.id);
             if (!prev) return true;
@@ -573,15 +661,21 @@ const FloorPlanDesigner = () => {
         );
       }
 
-      await refetch();
+      const { data: refreshed } = await refetch();
+      const latestFloor = refreshed?.floors?.find((f) => f.id === activeFloorId);
+      const latestTables = (refreshed?.tables || []).filter(
+        (t) => t.floorId === activeFloorId
+      );
       savedSnapshotRef.current = {
-        decor: currentDecorMap,
-        tables: currentTableMap,
+        decor: buildDecorMap((latestFloor?.layout || []).map((item) => ({ ...item, isRealTable: false }))),
+        tables: buildTableMap(latestTables),
       };
       showNotification("✅ Đã lưu thiết kế!", "success");
+      return true;
     } catch (err) {
       console.error(err);
       showNotification("Lỗi khi lưu", "error");
+      return false;
     }
   };
 
@@ -623,7 +717,7 @@ const FloorPlanDesigner = () => {
   };
 
   const handleCreateTable = async () => {
-    if (!activeFloorId) return;
+    if (!activeFloorId) return false;
     if (isLocked) {
       showNotification(lockMessage || "Không thể chỉnh sửa sơ đồ.", "warning");
       return;
@@ -681,7 +775,7 @@ const FloorPlanDesigner = () => {
   };
 
   const handleGenerateSmartLayout = async () => {
-    if (!activeFloorId) return;
+    if (!activeFloorId) return false;
     if (isLocked) {
       showNotification(lockMessage || "Không thể chỉnh sửa sơ đồ.", "warning");
       return;
@@ -777,39 +871,44 @@ const FloorPlanDesigner = () => {
       });
     }
 
-    const newTablesPayload = tablePositions.map((pos, index) => ({
-      code: `${aiForm.codePrefix || "AI"}-${index + 1}`,
-      position: { x: Math.round(pos.x), y: Math.round(pos.y), rotation: 0 },
-    }));
+    const usedCodes = new Set(
+      items
+        .filter((item) => item.isRealTable)
+        .map((item) => String(item.code || item.label || "").trim().toUpperCase())
+        .filter(Boolean)
+    );
 
-    try {
-      pushHistory(items);
-      for (const t of newTablesPayload) {
-        await createTable({
-          variables: {
-            input: {
-              restaurantId,
-              floorId: activeFloorId,
-              code: t.code,
-              capacity: 4,
-              type: "standard",
-              status: "available",
-              position: t.position,
-            },
-          },
-        });
+    const newLocalTables = tablePositions.map((pos, index) => {
+      const baseCode = `${aiForm.codePrefix || "AI"}-${index + 1}`.trim();
+      let code = baseCode;
+      let suffix = 1;
+      while (usedCodes.has(code.toUpperCase())) {
+        suffix += 1;
+        code = `${baseCode}-${suffix}`;
       }
-      const nextDecor = [...items.filter((i) => !i.isRealTable), ...newDecor];
-      await updateFloor({
-        variables: { id: activeFloorId, layout: nextDecor },
-      });
-      await refetch();
-      showNotification("Đã tạo sơ đồ thông minh. Hãy kiểm tra lại bố cục.", "success");
-      setShowAiModal(false);
-    } catch (err) {
-      console.error(err);
-      showNotification("Không thể tạo sơ đồ thông minh.", "error");
-    }
+      usedCodes.add(code.toUpperCase());
+
+      return {
+        id: `tmp_ai_${Date.now()}_${index}`,
+        type: "table",
+        x: pos.x,
+        y: pos.y,
+        w: 60,
+        h: 60,
+        rotation: 0,
+        label: code,
+        code,
+        capacity: 4,
+        tableType: "standard",
+        isRealTable: true,
+        isLocalOnly: true,
+      };
+    });
+
+    pushHistory(items);
+    setItems((prev) => [...prev.filter((i) => !i.isLocalOnly), ...newDecor, ...newLocalTables]);
+    setShowAiModal(false);
+    showNotification("Đã tạo sơ đồ thông minh. Nhấn Lưu để ghi nhận thay đổi.", "success");
   };
 
   // Mouse handlers
@@ -997,7 +1096,7 @@ const FloorPlanDesigner = () => {
       {/* HEADER */}
       <header className="fp-header">
         <div className="left-sect">
-          <button className="btn-icon" onClick={() => navigate(-1)}>
+          <button className="btn-icon" onClick={requestExitFloorDesigner}>
             <ArrowLeft size={20} />
           </button>
           <div className="file-info">
@@ -1585,6 +1684,37 @@ const FloorPlanDesigner = () => {
             </button>
             <button className="btn-primary" onClick={handleGenerateSmartLayout}>
               Tạo sơ đồ
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showExitConfirmModal}
+        onClose={() => setShowExitConfirmModal(false)}
+        className="fp-modal-shell fp-modal-shell--exit"
+        title="Rời trang thiết kế"
+      >
+        <div className="fp-modal">
+          <div className="fp-modal-intro">
+            <strong>Bạn có thay đổi chưa lưu</strong>
+            <p>
+              Bạn muốn lưu trước khi thoát khỏi trang thiết kế sơ đồ không?
+            </p>
+          </div>
+          <div className="fp-modal-actions fp-modal-actions--exit">
+            <button className="btn-secondary" onClick={() => setShowExitConfirmModal(false)}>
+              Ở lại
+            </button>
+            <button className="btn-secondary" onClick={handleExitWithoutSaving}>
+              Thoát không lưu
+            </button>
+            <button
+              className="btn-primary"
+              onClick={handleSaveBeforeExit}
+              disabled={isSavingBeforeExit}
+            >
+              {isSavingBeforeExit ? "Đang lưu..." : "Lưu và thoát"}
             </button>
           </div>
         </div>
