@@ -261,3 +261,21 @@ $border-color: #e2e8f0;
     opacity: 1;
   }
 }
+
+.restaurant-grid {
+  &__nearby-note {
+    margin: 0 0 18px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    font-size: 0.92rem;
+
+    &--warning {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      color: #c2410c;
+    }
+  }
+}

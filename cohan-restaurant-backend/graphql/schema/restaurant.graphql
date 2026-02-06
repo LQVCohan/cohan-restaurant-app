@@ -5,6 +5,9 @@ type Address {
   district: String
   city: String
   country: String
+  postalCode: String
+  lat: Float
+  lng: Float
 }
 
 type Restaurant {
@@ -89,6 +92,9 @@ input AddressInput {
   district: String
   city: String
   country: String
+  postalCode: String
+  lat: Float
+  lng: Float
 }
 
 input CreateRestaurantInput {
