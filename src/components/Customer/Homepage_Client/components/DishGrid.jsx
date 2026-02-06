@@ -102,7 +102,7 @@ const DishGrid = ({ onAddToCart, selectedCategoryId = null }) => {
               ? Array.from({ length: 8 }).map((_, idx) => (
                   <SkeletonCard key={idx} />
                 ))
-              : dishes.map((dish) => {
+              : filteredDishes.map((dish) => {
                   const method = getSelectedMethod(dish);
                   const price = getEffectivePrice(dish.basePrice, method);
                   const img = dish.thumbImage || defaultImg;
