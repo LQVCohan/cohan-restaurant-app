@@ -25,7 +25,9 @@ function saveHistory(list) {
       HISTORY_KEY,
       JSON.stringify(list.slice(0, HISTORY_LIMIT))
     );
-  } catch {}
+  } catch {
+    // ignore localStorage write errors
+  }
 }
 
 // Helper để lấy icon và label đẹp hơn

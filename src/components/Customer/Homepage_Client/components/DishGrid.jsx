@@ -37,6 +37,7 @@ const DishGrid = ({ onAddToCart, selectedCategoryId = null }) => {
   const [selectedMethodByDish, setSelectedMethodByDish] = useState({});
 
   const dishes = useMemo(() => data?.topMenuItems ?? [], [data]);
+  const safeDishes = Array.isArray(dishes) ? dishes : [];
 
 
   // Ảnh fallback nếu món chưa có ảnh
@@ -102,7 +103,7 @@ const DishGrid = ({ onAddToCart, selectedCategoryId = null }) => {
               ? Array.from({ length: 8 }).map((_, idx) => (
                   <SkeletonCard key={idx} />
                 ))
-              : filteredDishes.map((dish) => {
+              : safeDishes.map((dish) => {
                   const method = getSelectedMethod(dish);
                   const price = getEffectivePrice(dish.basePrice, method);
                   const img = dish.thumbImage || defaultImg;
@@ -194,9 +195,15 @@ const DishGrid = ({ onAddToCart, selectedCategoryId = null }) => {
                   );
                 })}
 
-            {!loading && dishes.length === 0 && selectedCategoryId && (
+            {!loading && safeDishes.length === 0 && selectedCategoryId && (
               <div className="dish-grid__empty">
                 Không có món ăn thuộc danh mục này.
+              </div>
+            )}
+
+            {!loading && safeDishes.length === 0 && !selectedCategoryId && (
+              <div className="dish-grid__empty">
+                Không có món ăn để hiển thị.
               </div>
             )}
           </div>

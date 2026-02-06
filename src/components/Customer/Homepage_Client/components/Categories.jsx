@@ -70,7 +70,7 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
     { id: "fb-8", name: "Món Chay", menuItemCount: 15 },
   ];
 
-  const displayCategories = hasData ? dataFromBackend : error ? fallbackCategories : [];
+  const displayCategories = hasData ? dataFromBackend : fallbackCategories;
 
   return (
     <section className="categories">
