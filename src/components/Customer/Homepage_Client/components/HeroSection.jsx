@@ -83,15 +83,6 @@ const HeroSection = ({ onSearch }) => {
     }
   };
 
-  const cachePool = useMemo(() => {
-    const all = [];
-    for (const list of cacheRef.current.values()) {
-      all.push(...list);
-    }
-    const uniq = new Map();
-    all.forEach((item) => uniq.set(item.id, item));
-    return [...uniq.values()];
-  }, [addressSuggestions]);
 
   useEffect(() => {
     const q = address.trim().toLowerCase();
@@ -119,11 +110,20 @@ const HeroSection = ({ onSearch }) => {
     if (localSuggestions.length > 0) {
       setAddressSuggestions(localSuggestions);
       setSuggestionMessage("");
-    } else if (cachePool.length > 0) {
-      const fallbackPool = cachePool
-        .filter((item) => item.label.toLowerCase().includes(q))
-        .slice(0, 6);
-      setAddressSuggestions(fallbackPool);
+    } else {
+      const allCached = [];
+      for (const list of cacheRef.current.values()) {
+        allCached.push(...list);
+      }
+
+      if (allCached.length > 0) {
+        const uniq = new Map();
+        allCached.forEach((item) => uniq.set(item.id, item));
+        const fallbackPool = [...uniq.values()]
+          .filter((item) => item.label.toLowerCase().includes(q))
+          .slice(0, 6);
+        setAddressSuggestions(fallbackPool);
+      }
     }
 
     // Nếu đã có cache theo key chính xác thì không request nữa
@@ -174,7 +174,7 @@ const HeroSection = ({ onSearch }) => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [address, cachePool]);
+  }, [address]);
 
   const resolveLocationByQuery = async (query) => {
     const normalized = query.trim().toLowerCase();
