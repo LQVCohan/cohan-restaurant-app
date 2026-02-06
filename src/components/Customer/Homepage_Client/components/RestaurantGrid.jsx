@@ -18,6 +18,8 @@ const GET_TOP_RESTAURANTS = gql`
       closingHours
       avgRating
       address {
+        line1
+        line2
         ward
         district
         city
@@ -29,7 +31,17 @@ const GET_TOP_RESTAURANTS = gql`
 
 const formatAddress = (addr) => {
   if (!addr) return "";
-  const parts = [addr.ward, addr.district, addr.city].filter(Boolean);
+  const parts = [
+    addr.line1,
+    addr.line2,
+    addr.ward,
+    addr.district,
+    addr.city,
+    addr.country,
+  ]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean);
+
   return parts.join(", ");
 };
 
@@ -37,6 +49,26 @@ const formatHours = (opening, closing) => {
   if (!opening && !closing) return "";
   if (opening && closing) return `${opening} - ${closing}`;
   return opening || closing;
+};
+
+const RESTAURANT_FALLBACK_IMAGES = [
+  "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=1200&q=80",
+];
+
+const isPlaceholderRestaurantImage = (url = "") => {
+  if (!url) return true;
+
+  const normalizedUrl = url.toLowerCase();
+  return (
+    normalizedUrl.includes("picsum.photos") ||
+    normalizedUrl.includes("source.unsplash") ||
+    normalizedUrl.includes("/random")
+  );
 };
 
 const RestaurantGrid = ({
@@ -47,26 +79,33 @@ const RestaurantGrid = ({
   const navigate = useNavigate();
 
   const { data, loading, error } = useQuery(GET_TOP_RESTAURANTS, {
-    variables: { limit: 6, addressFilter },
+    variables: { limit: 6, restaurantFilter: addressFilter },
     fetchPolicy: "cache-and-network",
   });
 
   const restaurants = useMemo(() => {
     const list = data?.restaurantsTop ?? [];
-    return list.map((node) => ({
-      id: node.id,
-      name: node.name ?? "Nhà hàng",
-      description: node.description ?? "Mô tả đang cập nhật...",
-      image:
-        node.coverImage ||
-        node.avatar ||
-        "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
-      priceRange: node.priceRange ?? "",
-      hours: formatHours(node.openingHours, node.closingHours),
-      addressText: formatAddress(node.address),
-      avgRating:
-        typeof node.avgRating === "number" ? Number(node.avgRating) : 5.0,
-    }));
+    return list.map((node, index) => {
+      const candidateImage = node.coverImage || node.avatar || "";
+      const fallbackImage =
+        RESTAURANT_FALLBACK_IMAGES[
+          index % RESTAURANT_FALLBACK_IMAGES.length
+        ];
+
+      return {
+        id: node.id,
+        name: node.name ?? "Nhà hàng",
+        description: node.description ?? "Mô tả đang cập nhật...",
+        image: isPlaceholderRestaurantImage(candidateImage)
+          ? fallbackImage
+          : candidateImage,
+        priceRange: node.priceRange ?? "",
+        hours: formatHours(node.openingHours, node.closingHours),
+        addressText: formatAddress(node.address),
+        avgRating:
+          typeof node.avgRating === "number" ? Number(node.avgRating) : 5.0,
+      };
+    });
   }, [data]);
 
   const goDetail = (id) => navigate(`/restaurant/${id}`);
