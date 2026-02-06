@@ -38,13 +38,25 @@ const getIconForCategory = (name = "") => {
 };
 
 const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
-  const { categories, loading, error, isGlobal } = useCategoryManagement({
+  const {
+    categories,
+    categoriesLoading,
+    categoriesError,
+    topCategories,
+    topCategoriesLoading,
+    topCategoriesError,
+    isGlobal,
+  } = useCategoryManagement({
     restaurantId,
     timeSlot,
     limit: 8,
   });
 
-  const hasData = categories && categories.length > 0;
+  const dataFromBackend = isGlobal ? topCategories : categories;
+  const loading = isGlobal ? topCategoriesLoading : categoriesLoading;
+  const error = isGlobal ? topCategoriesError : categoriesError;
+
+  const hasData = Array.isArray(dataFromBackend) && dataFromBackend.length > 0;
 
   // Dữ liệu mẫu khi chưa có API hoặc lỗi
   const fallbackCategories = [
@@ -58,7 +70,7 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
     { id: "fb-8", name: "Món Chay", menuItemCount: 15 },
   ];
 
-  const displayCategories = hasData ? categories : fallbackCategories;
+  const displayCategories = hasData ? dataFromBackend : error ? fallbackCategories : [];
 
   return (
     <section className="categories">

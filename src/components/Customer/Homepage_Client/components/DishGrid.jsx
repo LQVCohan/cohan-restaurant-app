@@ -4,8 +4,8 @@ import "../../../../styles/Homepage/DishGrid.scss";
 
 // --- GRAPHQL QUERY ---
 const GET_TOP_MENU_ITEMS = gql`
-  query GetTopMenuItems($limit: Int = 8) {
-    topMenuItems(limit: $limit) {
+  query GetTopMenuItems($limit: Int = 8, $categoryId: ID) {
+    topMenuItems(limit: $limit, categoryId: $categoryId) {
       id
       name
       description
@@ -26,7 +26,10 @@ const GET_TOP_MENU_ITEMS = gql`
 
 const DishGrid = ({ onAddToCart, selectedCategoryId = null }) => {
   const { data, loading, error } = useQuery(GET_TOP_MENU_ITEMS, {
-    variables: { limit: selectedCategoryId ? 60 : 8 },
+    variables: {
+      limit: selectedCategoryId ? 12 : 8,
+      categoryId: selectedCategoryId || undefined,
+    },
     fetchPolicy: "network-only",
   });
 
@@ -35,10 +38,6 @@ const DishGrid = ({ onAddToCart, selectedCategoryId = null }) => {
 
   const dishes = useMemo(() => data?.topMenuItems ?? [], [data]);
 
-  const filteredDishes = useMemo(() => {
-    if (!selectedCategoryId) return dishes;
-    return dishes.filter((dish) => String(dish.categoryId) === String(selectedCategoryId));
-  }, [dishes, selectedCategoryId]);
 
   // Ảnh fallback nếu món chưa có ảnh
   const defaultImg =
@@ -195,7 +194,7 @@ const DishGrid = ({ onAddToCart, selectedCategoryId = null }) => {
                   );
                 })}
 
-            {!loading && filteredDishes.length === 0 && selectedCategoryId && (
+            {!loading && dishes.length === 0 && selectedCategoryId && (
               <div className="dish-grid__empty">
                 Không có món ăn thuộc danh mục này.
               </div>
