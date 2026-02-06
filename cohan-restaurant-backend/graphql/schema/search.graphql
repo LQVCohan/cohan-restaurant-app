@@ -9,9 +9,12 @@ type RestaurantSearchSuggestion {
   id: ID!
   name: String!
   shortAddress: String
+  fullAddress: String
   phone: String
   avgRating: Float
   cuisineType: String
+  lat: Float
+  lng: Float
 }
 
 type MenuItemSearchSuggestion {
@@ -34,8 +37,13 @@ type OwnerSearchSuggestion {
 
 type LocationSearchSuggestion {
   label: String!
+  ward: String
   district: String
   city: String
+  country: String
+  postalCode: String
+  lat: Float
+  lng: Float
 }
 
 type SearchSuggestions {
