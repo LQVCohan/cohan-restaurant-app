@@ -463,3 +463,58 @@ $max-width: 1440px; // Đồng bộ với Header
     transform: translate(-50%, -50%) rotate(360deg);
   }
 }
+
+.hero {
+  &__btn-location {
+    background: #edf2f7;
+    color: #2d3748;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 12px 18px;
+    border-radius: 99px;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &:hover {
+      background: #e2e8f0;
+    }
+  }
+
+  &__suggestions {
+    margin-top: 10px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+    max-height: 220px;
+    overflow-y: auto;
+    text-align: left;
+  }
+
+  &__suggestion-item {
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 10px 14px;
+    color: #2d3748;
+    border-bottom: 1px solid #f1f5f9;
+
+    &:hover {
+      background: #fff7ed;
+      color: #c2410c;
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  &__suggestion-state {
+    padding: 10px 14px;
+    color: #64748b;
+    font-size: 0.9rem;
+  }
+}

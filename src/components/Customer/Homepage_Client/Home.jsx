@@ -50,8 +50,8 @@ const Home = () => {
   const handleCategorySelect = useCallback((categoryId) => {
     setFilterState((prev) => ({ ...prev, categoryId }));
 
-    // Scroll xuống phần nhà hàng
-    const element = document.getElementById("restaurants");
+    // Scroll xuống phần món ăn để lọc theo danh mục
+    const element = document.getElementById("menu");
     if (element) {
       const headerOffset = 100;
       const elementPosition = element.getBoundingClientRect().top;
@@ -62,13 +62,24 @@ const Home = () => {
   }, []);
 
   // 2. Khi tìm kiếm từ Hero -> Cập nhật bộ lọc text
-  const handleSearch = useCallback((searchText) => {
-    if (searchText.trim()) {
-      setFilterState((prev) => ({ ...prev, search: searchText }));
-      document
-        .getElementById("restaurants")
-        ?.scrollIntoView({ behavior: "smooth" });
-    }
+  const handleSearch = useCallback((searchPayload) => {
+    const searchText =
+      typeof searchPayload === "string"
+        ? searchPayload
+        : searchPayload?.search || "";
+
+    if (!searchText.trim()) return;
+
+    const nearbyCenter =
+      typeof searchPayload === "object" ? searchPayload?.location || null : null;
+
+    setFilterState((prev) => ({
+      ...prev,
+      search: searchText,
+      nearbyCenter,
+    }));
+
+    document.getElementById("restaurants")?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   // 3. Xử lý thêm vào giỏ hàng (từ DishGrid)
@@ -115,7 +126,10 @@ const Home = () => {
         />
 
         {/* DISH GRID: Fetch Top Món Ăn (Không cần props data, tự fetch trong component) */}
-        <DishGrid onAddToCart={handleAddToCart} />
+        <DishGrid
+          onAddToCart={handleAddToCart}
+          selectedCategoryId={filterState.categoryId}
+        />
 
         {/* RESTAURANT GRID: Fetch Nhà Hàng (Nhận filter từ Home) */}
         {/* Lưu ý: Component RestaurantGrid cần xử lý prop `restaurantFilter` hoặc `addressFilter` để lọc */}
