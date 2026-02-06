@@ -12,6 +12,7 @@ const FloorSchema = BaseSchemaModel({
   description: { type: String },
   planImage: { type: String }, // ảnh sơ đồ tầng (nếu dùng ảnh nền tĩnh)
   isActive: { type: Boolean, default: true },
+  isWatching: { type: Boolean, default: false },
 
   layout: {
     type: [mongoose.Schema.Types.Mixed],
