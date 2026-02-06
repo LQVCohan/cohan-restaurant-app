@@ -25,7 +25,9 @@ function saveHistory(list) {
       HISTORY_KEY,
       JSON.stringify(list.slice(0, HISTORY_LIMIT))
     );
-  } catch {}
+  } catch {
+    // ignore localStorage write errors
+  }
 }
 
 // Helper để lấy icon và label đẹp hơn
@@ -415,6 +417,7 @@ export default function HeaderSearch() {
                   item.data.name || item.data.fullName || item.data.label;
                 const subText =
                   item.data.address ||
+                  item.data.fullAddress ||
                   item.data.shortAddress ||
                   item.data.restaurantName ||
                   "";

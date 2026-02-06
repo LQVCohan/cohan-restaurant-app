@@ -59,8 +59,13 @@ function buildFilter(restaurantFilter) {
       { name: sRx },
       { description: sRx },
       { cuisineType: sRx },
+      { "address.line1": sRx },
+      { "address.line2": sRx },
+      { "address.ward": sRx },
       { "address.city": sRx },
       { "address.district": sRx },
+      { "address.country": sRx },
+      { "address.postalCode": sRx },
     ];
   }
 
