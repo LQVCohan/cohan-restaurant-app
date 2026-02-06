@@ -18,6 +18,7 @@ import {
   predictTableTurnover,
   suggestTableMerge,
   suggestTablePromo,
+  generateSmartFloorLayout,
 } from "../services/ai/aiTable.service.js";
 
 export async function createServer() {
@@ -162,6 +163,11 @@ export async function createServer() {
     const payload = req.body || {};
     const suggestion = await predictTableTurnover(payload);
     return reply.send({ ok: true, suggestion });
+  });
+  app.post("/api/ai/floor/generate-layout", async (req, reply) => {
+    const payload = req.body || {};
+    const layout = await generateSmartFloorLayout(payload);
+    return reply.send({ ok: true, layout });
   });
   // ===== END AI TABLE SUGGESTIONS =====
 
