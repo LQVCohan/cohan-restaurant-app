@@ -1,5 +1,5 @@
 import process from "process";
-const DEFAULT_MODEL = process.env.AI_MODEL || "gpt-4o-mini";
+const DEFAULT_MODEL = process.env.AI_MODEL || "gpt-5";
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
 const normalizeLevel = (value) => {
