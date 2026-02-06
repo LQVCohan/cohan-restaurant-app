@@ -211,12 +211,12 @@ $c-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
     user-select: none;
 
     &.collapsed {
-      width: 80px;
-      padding: 12px 8px;
-
-      .palette-header span,
-      .group-label span,
-      .palette-label {
+      width: 64px;
+      padding: 12px;
+      align-items: center;
+      justify-content: flex-start;
+      .palette-header,
+      .tool-group {
         display: none;
       }
     }
@@ -232,11 +232,22 @@ $c-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
       border-bottom: 1px solid $c-border;
     }
 
-    .palette-toggle {
-      border: none;
-      background: transparent;
+    .palette-toggle-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid $c-border;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
       color: $c-label;
+      box-shadow: $c-shadow-float;
+      align-self: center;
+      &:hover {
+        color: $c-primary;
+      }
     }
 
     .group-label {

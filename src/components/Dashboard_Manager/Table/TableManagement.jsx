@@ -213,6 +213,35 @@ const TableManagement = () => {
     }
   };
 
+  const handleOpenFloorDesigner = () => {
+    const targetFloorId =
+      currentFloor || (floors.length ? floors[0].id : null);
+    if (!targetFloorId) {
+      showNotification("Chưa chọn tầng để chỉnh sửa sơ đồ.", "warning");
+      return;
+    }
+    const activeCount = (tablesRaw || []).filter(
+      (t) =>
+        String(t.floorId) === String(targetFloorId) &&
+        t.status &&
+        t.status !== "available"
+    ).length;
+    const floorWatching = (floorsRaw || []).find(
+      (f) => String(f.id) === String(targetFloorId)
+    )?.isWatching;
+    if (activeCount > 0 || floorWatching) {
+      const floorName =
+        floors.find((f) => String(f.id) === String(targetFloorId))?.name ||
+        "";
+      const message = floorWatching
+        ? `Tầng ${floorName} đang có khách xem sơ đồ, không thể chỉnh sửa.`
+        : `Có ${activeCount} bàn đang hoạt động ở tầng ${floorName}. Không thể chỉnh sửa sơ đồ.`;
+      showNotification(message, "warning");
+      return;
+    }
+    navigate(`/manager/floor-map/${restaurantId}`);
+  };
+
   const handleSaveTable = async () => {
     const { number, seats, floorId, area } = tableForm;
     if (!number || !seats || !floorId)
@@ -288,7 +317,7 @@ const TableManagement = () => {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => navigate(`/manager/floor-map/${restaurantId}`)}
+            onClick={handleOpenFloorDesigner}
           >
             🗺️ Thiết kế Sơ đồ
           </Button>

@@ -1094,75 +1094,80 @@ const FloorPlanDesigner = () => {
           className={`fp-palette ${isPaletteCollapsed ? "collapsed" : ""}`}
           onMouseDown={(e) => e.stopPropagation()}
         >
-          <div className="palette-header">
-            <span>Bộ công cụ</span>
-            <button
-              className="palette-toggle"
-              onClick={() => setIsPaletteCollapsed((prev) => !prev)}
-              title={isPaletteCollapsed ? "Mở rộng" : "Thu gọn"}
-            >
-              {isPaletteCollapsed ? (
-                <ChevronRight size={16} />
-              ) : (
-                <ChevronDown size={16} />
-              )}
-            </button>
-          </div>
-          {!isPaletteCollapsed &&
-            PALETTE_ITEMS.map((grp, i) => {
-              const isCollapsed = collapsedGroups.has(grp.category);
-              return (
-                <div key={i} className="tool-group">
-                  <button
-                    className="group-label"
-                    onClick={() => {
-                      setCollapsedGroups((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(grp.category)) {
-                          next.delete(grp.category);
-                        } else {
-                          next.add(grp.category);
-                        }
-                        return next;
-                      });
-                    }}
-                  >
-                    <span>{grp.category}</span>
-                    {isCollapsed ? (
-                      <ChevronRight size={14} />
-                    ) : (
-                      <ChevronDown size={14} />
-                    )}
-                  </button>
-                  {!isCollapsed && (
-                    <div className="group-grid">
-                      {grp.items.map((t, index) => (
-                        <button
-                          key={index}
-                          className="tool-btn"
-                          title={t.label}
-                          onMouseDown={(e) => {
-                            // tránh bôi đen khi giữ chuột trong sidebar
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                          onClick={() =>
-                            t.type === "symbol" ? handleAddSymbol() : addItem(t)
+          <button
+            className="palette-toggle-circle"
+            onClick={() => setIsPaletteCollapsed((prev) => !prev)}
+            title={isPaletteCollapsed ? "Mở rộng" : "Thu gọn"}
+          >
+            {isPaletteCollapsed ? (
+              <ChevronRight size={18} />
+            ) : (
+              <ChevronDown size={18} />
+            )}
+          </button>
+          {!isPaletteCollapsed && (
+            <>
+              <div className="palette-header">
+                <span>Bộ công cụ</span>
+              </div>
+              {PALETTE_ITEMS.map((grp, i) => {
+                const isCollapsed = collapsedGroups.has(grp.category);
+                return (
+                  <div key={i} className="tool-group">
+                    <button
+                      className="group-label"
+                      onClick={() => {
+                        setCollapsedGroups((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(grp.category)) {
+                            next.delete(grp.category);
+                          } else {
+                            next.add(grp.category);
                           }
-                        >
-                          <div
-                            className={`palette-swatch palette-${t.type}`
-                              .replace("half-wall", "halfwall")
-                              .replace("door-double", "door2")}
-                          />
-                          <span className="palette-label">{t.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                          return next;
+                        });
+                      }}
+                    >
+                      <span>{grp.category}</span>
+                      {isCollapsed ? (
+                        <ChevronRight size={14} />
+                      ) : (
+                        <ChevronDown size={14} />
+                      )}
+                    </button>
+                    {!isCollapsed && (
+                      <div className="group-grid">
+                        {grp.items.map((t, index) => (
+                          <button
+                            key={index}
+                            className="tool-btn"
+                            title={t.label}
+                            onMouseDown={(e) => {
+                              // tránh bôi đen khi giữ chuột trong sidebar
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            onClick={() =>
+                              t.type === "symbol"
+                                ? handleAddSymbol()
+                                : addItem(t)
+                            }
+                          >
+                            <div
+                              className={`palette-swatch palette-${t.type}`
+                                .replace("half-wall", "halfwall")
+                                .replace("door-double", "door2")}
+                            />
+                            <span className="palette-label">{t.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
 
         {/* PROPERTIES PANEL */}
