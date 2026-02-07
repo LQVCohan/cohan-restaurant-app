@@ -1,41 +1,8 @@
 import React from "react";
 import "../../../../styles/Homepage/Categories.scss";
 import { useCategoryManagement } from "../../../../hooks/useCategoryManagement";
+import { resolveCategoryIcon } from "../../../../utils/categoryIconMap";
 
-// Helper chọn icon dựa trên tên danh mục
-const getIconForCategory = (name = "") => {
-  const lower = name.toLowerCase();
-  if (lower.includes("khai") || lower.includes("starter")) return "🥗";
-  if (
-    lower.includes("việt") ||
-    lower.includes("vietnam") ||
-    lower.includes("phở")
-  )
-    return "🍜";
-  if (
-    lower.includes("fast") ||
-    lower.includes("burger") ||
-    lower.includes("gà")
-  )
-    return "🍔";
-  if (lower.includes("pizza") || lower.includes("ý")) return "🍕";
-  if (lower.includes("á") || lower.includes("asian") || lower.includes("cơm"))
-    return "🍱";
-  if (
-    lower.includes("tráng miệng") ||
-    lower.includes("dessert") ||
-    lower.includes("bánh")
-  )
-    return "🧁";
-  if (
-    lower.includes("uống") ||
-    lower.includes("drink") ||
-    lower.includes("trà")
-  )
-    return "🥤";
-  if (lower.includes("lẩu") || lower.includes("hotpot")) return "🍲";
-  return "🍽️";
-};
 
 const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
   const {
@@ -115,7 +82,7 @@ const Categories = ({ onCategorySelect, restaurantId, timeSlot }) => {
                 >
                   <div className="categories__icon-wrapper">
                     <span className="categories__icon">
-                      {getIconForCategory(category.name)}
+                      {resolveCategoryIcon(category.name)}
                     </span>
                   </div>
                   <div className="categories__info">

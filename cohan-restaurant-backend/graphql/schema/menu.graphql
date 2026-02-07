@@ -102,6 +102,8 @@ type MenuItem {
   status: MenuItemStatus!
   avgPrepTimeMin: Int
   point: Int
+  rate: Float
+  orderCounter: Int
   notes: String
 
   createdAt: DateTime
@@ -150,6 +152,8 @@ input CreateMenuItemInput {
   status: MenuItemStatus
   avgPrepTimeMin: Int
   point: Int
+  rate: Float
+  orderCounter: Int
   notes: String
 }
 
@@ -184,6 +188,8 @@ input UpdateMenuItemInput {
   status: MenuItemStatus
   avgPrepTimeMin: Int
   point: Int
+  rate: Float
+  orderCounter: Int
   notes: String
 }
 
@@ -213,6 +219,8 @@ input UpdateMenuItemBasicInput {
   status: MenuItemStatus
   avgPrepTimeMin: Int
   point: Int
+  rate: Float
+  orderCounter: Int
   notes: String
 }
 
