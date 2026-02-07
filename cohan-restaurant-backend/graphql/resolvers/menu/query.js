@@ -169,10 +169,6 @@ export const MenuQuery = {
       const categoryFilter = {
         name: new RegExp(`^${categoryName.trim()}$`, "i"),
       };
-      if (timeSlot) {
-        categoryFilter.timeSlot = timeSlot;
-      }
-
       const matchedCategories = await Category.find(categoryFilter)
         .select({ _id: 1 })
         .lean();

@@ -3,22 +3,16 @@ import { GraphQLError } from "graphql";
 import { Category, MenuItem, CategoryMenu } from "../../../models/index.js";
 
 export const CategoryMutation = {
-  /* ──────────────────────────────
-   * CATEGORY (THEO TIME SLOT)
-   * ────────────────────────────── */
-
   createCategory: async (_, { input }) => {
-    const { restaurantId, timeSlot, name, order = 0 } = input;
+    const { restaurantId, name, order = 0 } = input;
 
     const doc = await Category.findOneAndUpdate(
       {
-        timeSlot,
         name: { $regex: new RegExp(`^${String(name).trim()}$`, "i") },
       },
       {
         $setOnInsert: {
           restaurantId: restaurantId || null,
-          timeSlot,
           name,
           order,
           isActive: true,
@@ -50,10 +44,6 @@ export const CategoryMutation = {
     await Category.findByIdAndDelete(id);
     return true;
   },
-
-  /* ──────────────────────────────
-   * CATEGORY MENU (MENU GROUPS)
-   * ────────────────────────────── */
 
   createCategoryMenu: async (_, { input }) => {
     const {
@@ -89,7 +79,6 @@ export const CategoryMutation = {
   },
 
   deleteCategoryMenu: async (_, { id }) => {
-    // Nếu sau này categoryMenu được gắn với MenuItem thì thêm check tại đây
     await CategoryMenu.findByIdAndDelete(id);
     return true;
   },

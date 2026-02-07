@@ -7,13 +7,8 @@ import {
 } from "../../../models/index.js";
 
 export const CategoryQuery = {
-  /* ============================================
-        CATEGORY QUERY
-  ============================================ */
-
-  // A. CATEGORY BY TIMESLOT (GIỮ NGUYÊN)
   categories: async (_, { restaurantId, timeSlot }) => {
-    const categories = await Category.find({ timeSlot })
+    const categories = await Category.find({})
       .sort({ order: 1, name: 1 })
       .lean({ virtuals: true });
 
@@ -47,11 +42,11 @@ export const CategoryQuery = {
 
     return categories.map((cat) => ({
       ...cat,
+      timeSlot: timeSlot || null,
       menuItemCount: countMap[String(cat._id)] || 0,
     }));
   },
 
-  // B. TOP CATEGORY — GIỮ NGUYÊN
   topCategoriesByMenuItemCount: async (
     _,
     { restaurantId, timeSlot, limit = 6 }
@@ -82,7 +77,6 @@ export const CategoryQuery = {
 
     const categories = await Category.find({
       _id: { $in: categoryIds },
-      timeSlot,
     }).lean({ virtuals: true });
 
     const categoryMap = new Map(categories.map((c) => [String(c._id), c]));
@@ -91,7 +85,7 @@ export const CategoryQuery = {
       .map((c) => {
         const base = categoryMap.get(String(c._id));
         if (!base) return null;
-        return { ...base, menuItemCount: c.count };
+        return { ...base, timeSlot: timeSlot || null, menuItemCount: c.count };
       })
       .filter(Boolean);
   },
@@ -131,10 +125,9 @@ export const CategoryQuery = {
         },
       },
       { $unwind: "$category" },
-      ...(timeSlot ? [{ $match: { "category.timeSlot": timeSlot } }] : []),
       {
         $group: {
-          _id: { name: "$category.name", timeSlot: "$category.timeSlot" },
+          _id: "$category.name",
           menuItemCount: { $sum: 1 },
           sampleCategoryId: { $first: "$category._id" },
           sampleRestaurantId: { $first: "$category.restaurantId" },
@@ -146,19 +139,14 @@ export const CategoryQuery = {
 
     return rows.map((r) => ({
       id: String(r.sampleCategoryId),
-      restaurantId: String(r.sampleRestaurantId),
-      timeSlot: r._id.timeSlot,
-      name: r._id.name,
+      restaurantId: r.sampleRestaurantId ? String(r.sampleRestaurantId) : null,
+      timeSlot: timeSlot || null,
+      name: r._id,
       menuItemCount: r.menuItemCount,
       isActive: true,
     }));
   },
 
-  /* ============================================
-        CATEGORY MENU QUERY — NEW ⚡⚡⚡
-  ============================================ */
-
-  // 1. Lấy tất cả CategoryMenu của 1 restaurant
   categoryMenus: async (_, { restaurantId }) => {
     if (!restaurantId) return [];
     return CategoryMenu.find({ restaurantId })
@@ -166,7 +154,6 @@ export const CategoryQuery = {
       .lean({ virtuals: true });
   },
 
-  // 2. Lấy 1 CategoryMenu theo ID
   categoryMenu: async (_, { id }) => {
     return CategoryMenu.findById(id).lean({ virtuals: true });
   },
