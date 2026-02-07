@@ -149,11 +149,20 @@ const GET_INDEXES = gql`
     }
   }
 `;
-const REFRESH_INDEXES = gql`
-  mutation RefreshRestaurantCategoryIndexes($timeSlot: TimeSlot!) {
-    refreshRestaurantCategoryIndexes(timeSlot: $timeSlot)
+const UPDATE_INDEX = gql`
+  mutation UpdateRestaurantCategoryIndex(
+    $input: UpdateRestaurantCategoryIndexInput!
+  ) {
+    updateRestaurantCategoryIndex(input: $input) {
+      id
+      restaurantId
+      timeSlot
+      categoryIds
+      distinctCategoryCount
+    }
   }
 `;
+
 const GET_RESTAURANT_DETAIL = gql`
   query GetRestaurantDetail($id: ID!) {
     restaurant(id: $id) {
@@ -170,7 +179,6 @@ const GET_RESTAURANT_DETAIL = gql`
       amenities
       notesOnAmenities
       avgRating
-      website
       address {
         line1
         district
@@ -195,7 +203,6 @@ const UPDATE_RESTAURANT = gql`
       amenities
       notesOnAmenities
       avgRating
-      website
     }
   }
 `;
@@ -249,7 +256,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     cuisineType: "",
     priceRange: "",
     status: "active",
-    website: "",
     avgRating: 0,
     amenities: {
       wifi: false,
@@ -311,6 +317,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   useEffect(() => {
     const r = restaurantDetailData?.restaurant;
     if (!r) return;
+    const parsedCustomerInfo = parseCustomerInfo(r.notesOnAmenities);
     setRestaurantForm({
       name: r.name || "",
       phone: r.phone || "",
@@ -321,7 +328,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       cuisineType: r.cuisineType || "",
       priceRange: r.priceRange || "",
       status: r.status || "active",
-      website: r.website || "",
       avgRating: r.avgRating || 0,
       amenities: {
         wifi: Boolean(r.amenities?.wifi),
@@ -329,7 +335,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         card: Boolean(r.amenities?.card),
       },
       notesOnAmenities: r.notesOnAmenities || "",
-      customerInfo: parseCustomerInfo(r.notesOnAmenities),
+      customerInfo: {
+        ...parsedCustomerInfo,
+        website: parsedCustomerInfo?.website || "",
+      },
       line1: r.address?.line1 || "",
       district: r.address?.district || "",
       city: r.address?.city || "",
@@ -376,8 +385,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const topCategories = topCategoryData?.topCategoriesByMenuItemCount || [];
 
   // --- MUTATIONS ---
-  const [refreshIndexes, { loading: refreshing }] =
-    useMutation(REFRESH_INDEXES);
+  const [updateIndex, { loading: syncingIndex }] = useMutation(UPDATE_INDEX);
   const [updateRestaurant, { loading: savingRestaurant }] =
     useMutation(UPDATE_RESTAURANT);
   const [createCategory, { loading: creatingCategory }] =
@@ -389,12 +397,22 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   // --- HANDLERS ---
 
   const onRefresh = async () => {
+    if (!selectedRestaurantId) return;
     try {
-      await refreshIndexes({ variables: { timeSlot } });
-      await refetchIndexes();
-      message.success("Đã refresh index thành công");
+      const allCategoryIds = categories.map((item) => String(item.id));
+      await updateIndex({
+        variables: {
+          input: {
+            restaurantId: selectedRestaurantId,
+            timeSlot,
+            categoryIds: allCategoryIds,
+          },
+        },
+      });
+      await Promise.all([refetchIndexes(), refetchCategories()]);
+      message.success("Đã cập nhật số lượng category theo món ăn");
     } catch (error) {
-      message.error(error.message || "Lỗi refresh index");
+      message.error(error.message || "Lỗi cập nhật category");
     }
   };
 
@@ -415,7 +433,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             cuisineType: restaurantForm.cuisineType || null,
             priceRange: restaurantForm.priceRange || null,
             status: restaurantForm.status || "active",
-            website: restaurantForm.website || null,
             amenities: restaurantForm.amenities,
             notesOnAmenities: JSON.stringify(restaurantForm.customerInfo),
             address: {
@@ -737,11 +754,11 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                     <Form.Item label="Website khi khách bấm icon Globe">
                       <Input
                         placeholder="https://..."
-                        value={restaurantForm.website}
+                        value={restaurantForm.customerInfo?.website || ""}
                         onChange={(e) =>
                           setRestaurantForm((p) => ({
                             ...p,
-                            website: e.target.value,
+                            customerInfo: { ...p.customerInfo, website: e.target.value },
                           }))
                         }
                       />
@@ -1118,7 +1135,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                 <Col xs={24} md={12}>
                   <div className="preview-item">
                     <span className="label">Website icon</span>
-                    <strong>{restaurantForm.website || "Chưa cấu hình"}</strong>
+                    <strong>{restaurantForm.customerInfo?.website || "Chưa cấu hình"}</strong>
                   </div>
                 </Col>
                 <Col span={24}>
@@ -1196,7 +1213,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                   type="primary"
                   icon={<ReloadOutlined />}
                   onClick={onRefresh}
-                  loading={refreshing}
+                  loading={syncingIndex}
                 >
                   Cập nhật từ món ăn
                 </Button>
