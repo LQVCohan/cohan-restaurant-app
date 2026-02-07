@@ -1,7 +1,7 @@
 // src/resolvers/restaurant.query.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Restaurant, User } from "../../../models/index.js";
+import { Restaurant, User, RestaurantCategoryIndex, Menu, MenuItem, Order, Reservation, TableCustomer } from "../../../models/index.js";
 
 /* ============================ Helpers ============================ */
 
@@ -207,10 +207,130 @@ async function refRestaurants(_, { userId }) {
   return restaurants;
 }
 
+
+async function refreshRestaurantCategoryIndexes(_, { timeSlot }) {
+  if (!timeSlot) return 0;
+
+  const menus = await Menu.find({ timeSlot }).select({ _id: 1, restaurantId: 1 }).lean();
+  if (!menus.length) return 0;
+
+  const menuIds = menus.map((m) => m._id);
+  const grouped = await MenuItem.aggregate([
+    { $match: { menuId: { $in: menuIds } } },
+    {
+      $group: {
+        _id: { restaurantId: "$restaurantId", categoryId: "$categoryId" },
+        menuItemCount: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const byRestaurant = new Map();
+  for (const row of grouped) {
+    const rid = String(row._id.restaurantId);
+    if (!byRestaurant.has(rid)) byRestaurant.set(rid, []);
+    byRestaurant.get(rid).push({ categoryId: row._id.categoryId, menuItemCount: row.menuItemCount });
+  }
+
+  const restaurantIds = [...byRestaurant.keys()].map((id) => new mongoose.Types.ObjectId(id));
+  const [orders, reservations, tables] = await Promise.all([
+    Order.aggregate([{ $match: { restaurantId: { $in: restaurantIds } } }, { $group: { _id: "$restaurantId", count: { $sum: 1 } } }]),
+    Reservation.aggregate([{ $match: { restaurantId: { $in: restaurantIds } } }, { $group: { _id: "$restaurantId", count: { $sum: 1 } } }]),
+    TableCustomer.aggregate([{ $match: { restaurantId: { $in: restaurantIds } } }, { $group: { _id: "$restaurantId", count: { $sum: 1 } } }]),
+  ]);
+
+  const orderMap = new Map(orders.map((x) => [String(x._id), x.count]));
+  const reservationMap = new Map(reservations.map((x) => [String(x._id), x.count]));
+  const tableMap = new Map(tables.map((x) => [String(x._id), x.count]));
+
+  const ops = [];
+  for (const [rid, categories] of byRestaurant.entries()) {
+    const categoryIds = [...new Set(categories.map((c) => String(c.categoryId)))].map((id) => new mongoose.Types.ObjectId(id));
+    ops.push({
+      updateOne: {
+        filter: { restaurantId: new mongoose.Types.ObjectId(rid), timeSlot },
+        update: {
+          $set: {
+            categoryIds,
+            categories,
+            distinctCategoryCount: categoryIds.length,
+            orderCount: orderMap.get(rid) || 0,
+            reservationCount: reservationMap.get(rid) || 0,
+            tableParticipationCount: tableMap.get(rid) || 0,
+          },
+        },
+        upsert: true,
+      },
+    });
+  }
+
+  if (ops.length) await RestaurantCategoryIndex.bulkWrite(ops, { ordered: false });
+  return ops.length;
+}
+
+async function restaurantsByCategoryTimeSlot(_, { categoryId, timeSlot, limit = 12 }) {
+  if (!mongoose.isValidObjectId(categoryId)) return [];
+  const lim = clampLimit(limit, 1, 100);
+
+  await refreshRestaurantCategoryIndexes(_, { timeSlot });
+
+  const rows = await RestaurantCategoryIndex.find({
+    timeSlot,
+    categoryIds: new mongoose.Types.ObjectId(categoryId),
+  })
+    .sort({ reservationCount: -1, orderCount: -1, tableParticipationCount: -1, updatedAt: -1 })
+    .limit(300)
+    .lean();
+
+  if (!rows.length) return [];
+
+  const ids = rows.map((r) => r.restaurantId);
+  const restaurants = await Restaurant.find({ _id: { $in: ids }, status: "active" }).lean();
+  const restMap = new Map(restaurants.map((r) => [String(r._id), r]));
+
+  const enriched = rows
+    .map((row) => {
+      const rest = restMap.get(String(row.restaurantId));
+      if (!rest) return null;
+      return {
+        ...rest,
+        orderCount: row.orderCount || 0,
+        reservationCount: row.reservationCount || 0,
+        tableParticipationCount: row.tableParticipationCount || 0,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      const ra = Number(a.avgRating || 0);
+      const rb = Number(b.avgRating || 0);
+      if (rb !== ra) return rb - ra;
+      if ((b.reservationCount || 0) !== (a.reservationCount || 0)) {
+        return (b.reservationCount || 0) - (a.reservationCount || 0);
+      }
+      if ((b.orderCount || 0) !== (a.orderCount || 0)) {
+        return (b.orderCount || 0) - (a.orderCount || 0);
+      }
+      return (b.tableParticipationCount || 0) - (a.tableParticipationCount || 0);
+    });
+
+  return enriched.slice(0, lim);
+}
+
+async function restaurantCategoryIndexes(_, { restaurantId, timeSlot }) {
+  const q = {};
+  if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
+    q.restaurantId = new mongoose.Types.ObjectId(restaurantId);
+  }
+  if (timeSlot) q.timeSlot = timeSlot;
+  return RestaurantCategoryIndex.find(q).sort({ updatedAt: -1 }).lean();
+}
 export const RestaurantQuery = {
   restaurants,
   restaurant,
   restaurantsTop,
   restaurantsByManager,
   refRestaurants,
+  restaurantsByCategoryTimeSlot,
+  restaurantCategoryIndexes,
+  refreshRestaurantCategoryIndexes,
 };

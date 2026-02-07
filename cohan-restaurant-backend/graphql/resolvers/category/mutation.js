@@ -6,14 +6,17 @@ export const CategoryMutation = {
   createCategory: async (_, { input }) => {
     const { restaurantId, name, order = 0 } = input;
 
+    const normalizedName = String(name || "").trim();
+
     const doc = await Category.findOneAndUpdate(
       {
-        name: { $regex: new RegExp(`^${String(name).trim()}$`, "i") },
+        restaurantId: restaurantId || null,
+        name: { $regex: new RegExp(`^${normalizedName}$`, "i") },
       },
       {
         $setOnInsert: {
           restaurantId: restaurantId || null,
-          name,
+          name: normalizedName,
           order,
           isActive: true,
         },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import "./Styles/Sidebar.scss";
 
 const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
@@ -18,6 +18,12 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
         { id: "menu", icon: "📋", label: "Thực đơn", page: "Thực đơn" },
         { id: "inventory", icon: "📦", label: "Kho hàng", page: "Kho hàng" },
         { id: "tables", icon: "🪑", label: "Bàn ăn", page: "Bàn ăn" },
+        {
+          id: "restaurant-info-management",
+          icon: "🏪",
+          label: "Quản lý thông tin nhà hàng",
+          page: "Quản lý thông tin nhà hàng",
+        },
       ],
     },
     {

@@ -123,7 +123,8 @@ async function findMenuItemSuggestions(query, timeSlotDb, limit) {
     },
     {
       $sort: {
-        point: -1,
+        rate: -1,
+        orderCounter: -1,
         _id: 1,
       },
     },
@@ -133,7 +134,8 @@ async function findMenuItemSuggestions(query, timeSlotDb, limit) {
         name: 1,
         thumbImage: 1,
         basePrice: 1,
-        point: 1,
+        rate: 1,
+        orderCounter: 1,
         "restaurant._id": 1,
         "restaurant.name": 1,
         "menu.timeSlot": 1,
