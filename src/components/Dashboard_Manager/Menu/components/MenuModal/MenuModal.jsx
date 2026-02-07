@@ -10,6 +10,7 @@ import {
   FiSave,
 } from "react-icons/fi";
 import "./MenuModal.scss";
+import { hasIconInCategoryName, resolveCategoryIcon } from "../../../../../utils/categoryIconMap";
 
 const TIME_SLOTS = [
   { value: "breakfast", label: "Bữa Sáng" },
@@ -17,6 +18,14 @@ const TIME_SLOTS = [
   { value: "dinner", label: "Bữa Tối" },
   { value: "late_night", label: "Ăn Khuya" },
 ];
+
+
+const getCategoryLabelWithIcon = (name = "") => {
+  const safeName = String(name || "").trim();
+  if (!safeName) return "";
+  if (hasIconInCategoryName(safeName)) return safeName;
+  return `${resolveCategoryIcon(safeName)} ${safeName}`;
+};
 
 const INITIAL_STATE = {
   id: null,
@@ -303,7 +312,7 @@ const MenuModal = ({
                     <span
                       className={!selectedCategoryName ? "placeholder" : ""}
                     >
-                      {selectedCategoryName || "-- Chọn danh mục --"}
+                      {selectedCategoryName ? getCategoryLabelWithIcon(selectedCategoryName) : "-- Chọn danh mục --"}
                     </span>
                     <FiChevronDown
                       style={{
@@ -331,7 +340,7 @@ const MenuModal = ({
                               className={isSelected ? "selected" : ""}
                               onClick={() => handleSelectCategory(val)}
                             >
-                              {cat.name}
+                              {getCategoryLabelWithIcon(cat.name)}
                               {isSelected && <FiCheck />}
                             </li>
                           );

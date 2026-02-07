@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 import "../../../../styles/Homepage/RestaurantGrid.scss";
+import { hasIconInCategoryName, resolveCategoryIcon } from "../../../../utils/categoryIconMap";
 
 // --- GRAPHQL QUERY ---
 const GET_TOP_RESTAURANTS = gql`
@@ -129,6 +130,11 @@ const RestaurantGrid = ({
       ? effectiveFilter.categoryName.trim()
       : "";
   const hasCategoryFilter = selectedCategoryName.length > 0;
+  const displayCategoryName = hasCategoryFilter
+    ? hasIconInCategoryName(selectedCategoryName)
+      ? selectedCategoryName
+      : `${resolveCategoryIcon(selectedCategoryName)} ${selectedCategoryName}`
+    : "";
 
   const { data: categoryMenuData } = useQuery(GET_MENU_ITEMS_BY_CATEGORY, {
     skip: !hasCategoryFilter,
@@ -291,7 +297,7 @@ const RestaurantGrid = ({
 
         {hasCategoryFilter && !loading && (
           <div className="restaurant-grid__nearby-note">
-            ✅ Đây là những nhà hàng có danh mục bạn đã chọn ({selectedCategoryName}) trong khung giờ hiện tại.
+            ✅ Đây là những nhà hàng có danh mục bạn đã chọn ({displayCategoryName}) trong khung giờ hiện tại.
           </div>
         )}
 

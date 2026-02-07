@@ -13,8 +13,8 @@ const categorySchema = BaseSchemaModel({
   isActive: { type: Boolean, default: true },
 });
 
-// Category dùng chung theo name
-categorySchema.index({ name: 1 }, { unique: true });
+// Category theo từng nhà hàng (cho phép trùng tên giữa các nhà hàng)
+categorySchema.index({ restaurantId: 1, name: 1 }, { unique: true });
 categorySchema.index({ restaurantId: 1 });
 
 export const Category =
