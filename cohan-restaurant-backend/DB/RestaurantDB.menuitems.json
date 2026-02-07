@@ -1,0 +1,1442 @@
+[{
+  "_id": {
+    "$oid": "6927327d9f4e70ea0fe5daa3"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174004521aa428f95d23"
+  },
+  "categoryId": {
+    "$oid": "68f1f6a4c267922f0f98c198"
+  },
+  "name": "Bánh mì ốp la",
+  "description": "Món giá cố định theo phần. ok",
+  "basePrice": 0,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 10,
+  "point": 3,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:49.282Z"
+  },
+  "updatedAt": {
+    "$date": "2026-01-06T15:03:52.376Z"
+  },
+  "__v": 0,
+  "defaultServingKey": "sốt_chua_ngọt_copy",
+  "hasByWeightVariant": true
+},
+{
+  "_id": {
+    "$oid": "6927327e9f4e70ea0fe5dabc"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174004521aa428f95d23"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Phở bò tái",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 33507,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 11,
+  "point": 0,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:50.505Z"
+  },
+  "updatedAt": {
+    "$date": "2025-12-02T19:30:16.071Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6927327e9f4e70ea0fe5dac8"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174004521aa428f95d23"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Bún riêu",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 23637,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 13,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:50.741Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:50.741Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6927327f9f4e70ea0fe5dad3"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174004521aa428f95d23"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Xôi gà",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 34779,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 19,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:51.014Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:51.014Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6927327f9f4e70ea0fe5dadc"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174004521aa428f95d23"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Bánh cuốn",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 30667,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 11,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:51.219Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:51.219Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6927327f9f4e70ea0fe5dae4"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174004521aa428f95d23"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Cháo cá",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 65922,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 14,
+  "point": 5,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:51.526Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:51.526Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6927327f9f4e70ea0fe5daed"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174004521aa428f95d23"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Mì Quảng",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 88499,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 9,
+  "point": 2,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:51.756Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:51.756Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "6927327f9f4e70ea0fe5daf2"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174004521aa428f95d23"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Bún bò Huế",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 75608,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 20,
+  "point": 5,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:51.998Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:51.998Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732809f4e70ea0fe5daf7"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174004521aa428f95d23"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Bánh canh giò",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 62309,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 13,
+  "point": 2,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:52.363Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:52.363Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732809f4e70ea0fe5dafd"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174004521aa428f95d23"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Bánh mì thịt nướng",
+  "description": "Giá theo 100g. Tổng tiền = (gram/100) × giá chế biến.",
+  "basePrice": 0,
+  "byWeight": true,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 16,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:52.610Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:52.610Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732809f4e70ea0fe5db02"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e5417804521aa428f95d28"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Cơm gà xối mỡ",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 25416,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 14,
+  "point": 2,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:52.783Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:52.783Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732819f4e70ea0fe5db05"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e5417804521aa428f95d28"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Canh chua cá lóc",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 30261,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 14,
+  "point": 5,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:53.071Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:53.071Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732819f4e70ea0fe5db08"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e5417804521aa428f95d28"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Thịt kho tàu",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 29864,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 14,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:53.306Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:53.306Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732819f4e70ea0fe5db0b"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e5417804521aa428f95d28"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Gà kho gừng",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 49562,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 13,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:53.592Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:53.592Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732819f4e70ea0fe5db0e"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e5417804521aa428f95d28"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Rau muống xào tỏi",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 48728,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 10,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:53.837Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:53.837Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732829f4e70ea0fe5db11"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e5417804521aa428f95d28"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Mực ống xào chua ngọt",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 52874,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 20,
+  "point": 3,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:54.029Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:54.029Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732829f4e70ea0fe5db14"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e5417804521aa428f95d28"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Tôm sú rang me",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 58576,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 16,
+  "point": 3,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:54.284Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:54.284Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732829f4e70ea0fe5db17"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e5417804521aa428f95d28"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Cá hồi áp chảo",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 85540,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 20,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:54.534Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:54.534Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732829f4e70ea0fe5db1a"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e5417804521aa428f95d28"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Bò xào lá lốt",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 84300,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 19,
+  "point": 2,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:54.820Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:54.820Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732839f4e70ea0fe5db1d"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e5417804521aa428f95d28"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Đậu hũ sốt cà",
+  "description": "Giá theo 100g. Tổng tiền = (gram/100) × giá chế biến.",
+  "basePrice": 0,
+  "byWeight": true,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 11,
+  "point": 4,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:55.067Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:55.067Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732839f4e70ea0fe5db20"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174b04521aa428f95d24"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Lẩu hải sản",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 41686,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 20,
+  "point": 0,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:55.263Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:55.263Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732839f4e70ea0fe5db23"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174b04521aa428f95d24"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Cơm chiên Dương Châu",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 44620,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 11,
+  "point": 3,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:55.521Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:55.521Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732839f4e70ea0fe5db26"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174b04521aa428f95d24"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Gỏi cuốn tôm thịt",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 23446,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 20,
+  "point": 3,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:55.762Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:55.762Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732839f4e70ea0fe5db29"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174b04521aa428f95d24"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Lẩu kim chi",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 41746,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 18,
+  "point": 5,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:55.952Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:55.952Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732849f4e70ea0fe5db2c"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174b04521aa428f95d24"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Sườn nướng BBQ",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 24584,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 20,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:56.127Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:56.127Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732849f4e70ea0fe5db2f"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174b04521aa428f95d24"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Cá tầm nướng",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 75852,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 14,
+  "point": 2,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:56.293Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:56.293Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732849f4e70ea0fe5db32"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174b04521aa428f95d24"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Gà quay",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 81911,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 14,
+  "point": 4,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:56.459Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:56.459Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732849f4e70ea0fe5db35"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174b04521aa428f95d24"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Mì xào hải sản",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 63664,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 12,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:56.657Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:56.657Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732849f4e70ea0fe5db38"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174b04521aa428f95d24"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Nghêu hấp sả",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 41028,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 19,
+  "point": 0,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:56.845Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:56.845Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732859f4e70ea0fe5db3b"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e4174b04521aa428f95d24"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Sườn xào chua ngọt",
+  "description": "Giá theo 100g. Tổng tiền = (gram/100) × giá chế biến.",
+  "basePrice": 0,
+  "byWeight": true,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 13,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:57.023Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:57.023Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732859f4e70ea0fe5db3e"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e54d8604521aa428f95d29"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Cháo sườn",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 30066,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 9,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:57.258Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:57.258Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732859f4e70ea0fe5db41"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e54d8604521aa428f95d29"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Miến gà",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 28532,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 9,
+  "point": 0,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:57.671Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:57.671Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732859f4e70ea0fe5db44"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e54d8604521aa428f95d29"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Bánh mì bít tết",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 30051,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 14,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:57.933Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:57.933Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732869f4e70ea0fe5db47"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e54d8604521aa428f95d29"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Mì trứng",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 41671,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 11,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:58.217Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:58.217Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732869f4e70ea0fe5db4a"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e54d8604521aa428f95d29"
+  },
+  "categoryId": {
+    "$oid": "68e3ff9cd433d2c81f8803c6"
+  },
+  "name": "Hủ tiếu xương",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 39520,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 12,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:58.506Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:58.506Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732869f4e70ea0fe5db4d"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e54d8604521aa428f95d29"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Bạch tuộc nướng",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 84701,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 9,
+  "point": 1,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:58.752Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:58.752Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732869f4e70ea0fe5db50"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e54d8604521aa428f95d29"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Cánh gà chiên mắm",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 84116,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 9,
+  "point": 4,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:58.922Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:58.922Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732879f4e70ea0fe5db53"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e54d8604521aa428f95d29"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Mì hải sản",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 50417,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 16,
+  "point": 0,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:59.203Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:59.203Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732879f4e70ea0fe5db56"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e54d8604521aa428f95d29"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Khoai tây chiên",
+  "description": "Món giá cố định theo phần.",
+  "basePrice": 78026,
+  "byWeight": false,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 16,
+  "point": 4,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:59.466Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:59.466Z"
+  },
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "692732879f4e70ea0fe5db59"
+  },
+  "restaurantId": {
+    "$oid": "68e3fc0486dc90d60c7101dc"
+  },
+  "menuId": {
+    "$oid": "68e54d8604521aa428f95d29"
+  },
+  "categoryId": {
+    "$oid": "68e41860dfc9c2a967e29701"
+  },
+  "name": "Mì xào bò",
+  "description": "Giá theo 100g. Tổng tiền = (gram/100) × giá chế biến.",
+  "basePrice": 0,
+  "byWeight": true,
+  "thumbImage": null,
+  "mediaAssetIds": [],
+  "modifierGroupIds": [
+    {
+      "$oid": "68e4d89bca13bb3391858677"
+    }
+  ],
+  "status": "available",
+  "avgPrepTimeMin": 20,
+  "point": 4,
+  "notes": "",
+  "createdAt": {
+    "$date": "2025-11-26T17:01:59.735Z"
+  },
+  "updatedAt": {
+    "$date": "2025-11-26T17:01:59.735Z"
+  },
+  "__v": 0
+}]
