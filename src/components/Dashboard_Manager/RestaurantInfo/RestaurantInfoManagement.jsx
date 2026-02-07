@@ -156,19 +156,6 @@ const REFRESH_INDEXES = gql`
     refreshRestaurantCategoryIndexes(timeSlot: $timeSlot)
   }
 `;
-const UPDATE_INDEX = gql`
-  mutation UpdateRestaurantCategoryIndex(
-    $input: UpdateRestaurantCategoryIndexInput!
-  ) {
-    updateRestaurantCategoryIndex(input: $input) {
-      id
-      restaurantId
-      timeSlot
-      categoryIds
-      distinctCategoryCount
-    }
-  }
-`;
 const GET_RESTAURANT_DETAIL = gql`
   query GetRestaurantDetail($id: ID!) {
     restaurant(id: $id) {
@@ -212,7 +199,6 @@ const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
 const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [timeSlot, setTimeSlot] = useState("lunch");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
 
   const [catFormInstance] = Form.useForm();
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -299,7 +285,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
   const {
     data: indexData,
-    loading: indexLoading,
     refetch: refetchIndexes,
   } = useQuery(GET_INDEXES, {
     variables: { restaurantId: selectedRestaurantId || undefined, timeSlot },
@@ -314,9 +299,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     );
   }, [indexData, selectedRestaurantId]);
 
-  useEffect(() => {
-    setSelectedCategoryIds((activeIndex?.categoryIds || []).map(String));
-  }, [activeIndex?.id, activeIndex?.categoryIds]);
 
   const {
     data: categoryData,
@@ -343,7 +325,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   // --- MUTATIONS ---
   const [refreshIndexes, { loading: refreshing }] =
     useMutation(REFRESH_INDEXES);
-  const [updateIndex, { loading: savingIndex }] = useMutation(UPDATE_INDEX);
   const [updateRestaurant, { loading: savingRestaurant }] =
     useMutation(UPDATE_RESTAURANT);
   const [createCategory, { loading: creatingCategory }] =
@@ -353,11 +334,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [deleteCategory] = useMutation(DELETE_CATEGORY);
 
   // --- HANDLERS ---
-  const toggleCategory = (id) => {
-    setSelectedCategoryIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  };
 
   const onRefresh = async () => {
     try {
@@ -369,24 +345,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     }
   };
 
-  const onSaveIndex = async () => {
-    if (!selectedRestaurantId) return;
-    try {
-      await updateIndex({
-        variables: {
-          input: {
-            restaurantId: selectedRestaurantId,
-            timeSlot,
-            categoryIds: selectedCategoryIds,
-          },
-        },
-      });
-      await refetchIndexes();
-      message.success("Đã lưu Index Categories");
-    } catch {
-      message.error("Lỗi lưu index");
-    }
-  };
 
   const onSaveRestaurantInfo = async () => {
     if (!selectedRestaurantId) return;
@@ -488,9 +446,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             refetchTopCategories(),
             refetchIndexes(),
           ]);
-          setSelectedCategoryIds((prev) =>
-            prev.filter((x) => String(x) !== String(id)),
-          );
           message.success("Đã xoá category");
         } catch {
           message.error("Lỗi khi xoá category");
@@ -498,10 +453,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       },
     });
   };
-
-  const mapById = new Map(restaurantOptions.map((r) => [String(r.id), r.name]));
-  const restaurantName =
-    mapById.get(String(selectedRestaurantId)) || selectedRestaurantId;
 
   // --- RENDER HELPERS ---
   const renderRestaurantForm = () => (
@@ -703,57 +654,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     </Form>
   );
 
-  const indexColumns = [
-    {
-      title: "Nhà hàng",
-      key: "restaurant",
-      ellipsis: true,
-      render: (_, record) => (
-        <b>{mapById.get(String(record.restaurantId)) || record.restaurantId}</b>
-      ),
-    },
-    {
-      title: "TimeSlot",
-      dataIndex: "timeSlot",
-      key: "timeSlot",
-      render: (text) => <Tag color="blue">{text}</Tag>,
-    },
-    {
-      title: "Món",
-      dataIndex: "distinctCategoryCount",
-      key: "cats",
-      align: "center",
-    },
-    {
-      title: "Orders",
-      dataIndex: "orderCount",
-      key: "orders",
-      align: "center",
-      render: (v) => v || 0,
-    },
-    {
-      title: "Bookings",
-      dataIndex: "reservationCount",
-      key: "reservations",
-      align: "center",
-      render: (v) => v || 0,
-    },
-  ];
-
   const categoryColumns = [
-    {
-      title: "Chọn",
-      key: "select",
-      width: 60,
-      align: "center",
-      render: (_, record) => (
-        <Switch
-          size="small"
-          checked={selectedCategoryIds.includes(String(record.id))}
-          onChange={() => toggleCategory(String(record.id))}
-        />
-      ),
-    },
     {
       title: "Tên Category",
       dataIndex: "name",
@@ -886,14 +787,12 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       </div>
 
       <Row gutter={[20, 20]} style={{ marginTop: 20 }}>
-        {/* LEFT COLUMN: INFO & INDEX */}
-        <Col xs={24} lg={10} xl={9}>
+        <Col xs={24} xl={16}>
           <Space direction="vertical" size={20} style={{ width: "100%" }}>
-            {/* CARD 1: Restaurant Info */}
             <Card
               title={
                 <span>
-                  <ShopOutlined /> Hồ sơ nhà hàng
+                  <ShopOutlined /> Thông tin nhà hàng hiển thị cho khách
                 </span>
               }
               extra={
@@ -909,112 +808,74 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               className="saas-card"
             >
               {restaurantDetailLoading ? (
-                <Skeleton active paragraph={{ rows: 6 }} />
+                <Skeleton active paragraph={{ rows: 8 }} />
               ) : (
                 renderRestaurantForm()
               )}
             </Card>
 
-            {/* CARD 2: Index Stats */}
             <Card
-              title={
-                <span>
-                  <BarChartOutlined /> Tổng quan category ({timeSlot})
-                </span>
-              }
-              className="saas-card"
-              styles={{ body: { padding: "20px" } }}
-              extra={
-                <Button
-                  type="primary"
-                  icon={<ReloadOutlined />}
-                  onClick={onRefresh}
-                  loading={refreshing}
-                >
-                  Cập nhật category từ món ăn
-                </Button>
-              }
+              title="Bản xem nhanh thông tin khách hàng nhìn thấy"
+              className="saas-card customer-preview-card"
             >
-              <Text type="secondary">
-                Dữ liệu được tính tự động từ món ăn của nhà hàng để người dùng
-                dễ hiểu hơn, không cần chỉnh tay chỉ số index.
-              </Text>
-              <div className="index-overview-stats">
-                <Statistic
-                  title="Nhà hàng"
-                  value={restaurantName || "-"}
-                  valueStyle={{ fontSize: 16 }}
-                />
-                <Statistic
-                  title="Category hiện có"
-                  value={activeIndex?.distinctCategoryCount || 0}
-                  suffix="nhóm"
-                  valueStyle={{ fontSize: 18, color: "#1890ff" }}
-                />
-                <Statistic
-                  title="Đơn hàng / Đặt bàn"
-                  value={`${activeIndex?.orderCount || 0} / ${activeIndex?.reservationCount || 0}`}
-                  valueStyle={{ fontSize: 18 }}
-                />
-              </div>
-
-              <div className="index-category-preview">
-                {(activeIndex?.categoryIds || []).slice(0, 8).map((id) => (
-                  <Tag key={id} color="blue">
-                    {id}
-                  </Tag>
-                ))}
-                {(activeIndex?.categoryIds || []).length > 8 && (
-                  <Tag>+{activeIndex.categoryIds.length - 8}</Tag>
-                )}
-              </div>
-
-              <Collapse
-                size="small"
-                items={[
-                  {
-                    key: "advanced-index",
-                    label: "Chi tiết nâng cao",
-                    children: (
-                      <Space direction="vertical" size={12} style={{ width: "100%" }}>
-                        <Button
-                          type="default"
-                          size="small"
-                          icon={<SaveOutlined />}
-                          onClick={onSaveIndex}
-                          loading={savingIndex}
-                        >
-                          Lưu lựa chọn index thủ công
-                        </Button>
-                        <Table
-                          dataSource={indexData?.restaurantCategoryIndexes || []}
-                          columns={indexColumns}
-                          rowKey="id"
-                          size="small"
-                          pagination={false}
-                          loading={indexLoading}
-                          scroll={{ x: true }}
-                        />
-                      </Space>
-                    ),
-                  },
-                ]}
-              />
+              <Row gutter={[16, 16]}>
+                <Col xs={24} md={12}>
+                  <div className="preview-item">
+                    <span className="label">Tên nhà hàng</span>
+                    <strong>{restaurantForm.name || "Đang cập nhật"}</strong>
+                  </div>
+                </Col>
+                <Col xs={24} md={12}>
+                  <div className="preview-item">
+                    <span className="label">Loại ẩm thực</span>
+                    <strong>{restaurantForm.cuisineType || "Đang cập nhật"}</strong>
+                  </div>
+                </Col>
+                <Col xs={24} md={12}>
+                  <div className="preview-item">
+                    <span className="label">Điện thoại</span>
+                    <strong>{restaurantForm.phone || "Đang cập nhật"}</strong>
+                  </div>
+                </Col>
+                <Col xs={24} md={12}>
+                  <div className="preview-item">
+                    <span className="label">Giờ hoạt động</span>
+                    <strong>
+                      {restaurantForm.openingHours || "--:--"} - {restaurantForm.closingHours || "--:--"}
+                    </strong>
+                  </div>
+                </Col>
+                <Col span={24}>
+                  <div className="preview-item">
+                    <span className="label">Địa chỉ</span>
+                    <strong>
+                      {[restaurantForm.line1, restaurantForm.district, restaurantForm.city]
+                        .filter(Boolean)
+                        .join(", ") || "Đang cập nhật"}
+                    </strong>
+                  </div>
+                </Col>
+                <Col span={24}>
+                  <div className="preview-item">
+                    <span className="label">Mô tả</span>
+                    <p>{restaurantForm.description || "Chưa có mô tả hiển thị cho khách."}</p>
+                  </div>
+                </Col>
+              </Row>
             </Card>
           </Space>
         </Col>
 
-        {/* RIGHT COLUMN: CATEGORIES */}
-        <Col xs={24} lg={14} xl={15}>
-          <Card
-            className="saas-card full-height"
-            title={
-              <span>
-                <OrderedListOutlined /> Category nhà hàng
-              </span>
-            }
-            extra={
-              <Space>
+        <Col xs={24} xl={8}>
+          <Space direction="vertical" size={20} style={{ width: "100%" }}>
+            <Card
+              className="saas-card"
+              title={
+                <span>
+                  <OrderedListOutlined /> Category (gọn)
+                </span>
+              }
+              extra={
                 <Button
                   type="primary"
                   icon={<ReloadOutlined />}
@@ -1023,65 +884,66 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                 >
                   Cập nhật từ món ăn
                 </Button>
-                <Button
-                  icon={<PlusOutlined />}
-                  onClick={() => openCategoryModal(null)}
-                >
-                  Thêm mới
-                </Button>
-              </Space>
-            }
-            // FIX: Thay thế bodyStyle bằng styles
-            styles={{ body: { padding: 0 } }}
-          >
-            <div className="mini-dashboard compact">
-              <Text strong style={{ marginBottom: 8, display: "block" }}>
-                Danh mục đang hiển thị
-              </Text>
+              }
+            >
               <Text type="secondary">
-                Giao diện gọn để xem nhanh category theo món. Mở phần nâng cao
-                nếu cần chỉnh sửa chi tiết.
+                Category chỉ hiển thị ở mức tóm tắt để không chiếm nhiều không gian quản lý thông tin nhà hàng.
               </Text>
+
+              <div className="index-overview-stats compact">
+                <Statistic
+                  title="Tổng category"
+                  value={activeIndex?.distinctCategoryCount || categories.length || 0}
+                />
+                <Statistic
+                  title="Đơn hàng/Đặt bàn"
+                  value={`${activeIndex?.orderCount || 0}/${activeIndex?.reservationCount || 0}`}
+                />
+              </div>
+
               <Table
                 dataSource={categories}
                 columns={compactCategoryColumns}
                 rowKey="id"
                 loading={categoryLoading}
-                pagination={{ pageSize: 6, showSizeChanger: false }}
+                pagination={{ pageSize: 5, showSizeChanger: false }}
                 size="small"
                 style={{ marginTop: 12 }}
               />
+
               {topCategories.length > 0 && (
                 <div className="top-categories-inline">
-                  <Text type="secondary">Top category:</Text>
+                  <Text type="secondary">Top:</Text>
                   {topCategories.slice(0, 3).map((cat) => (
                     <Tag color="geekblue" key={cat.id}>
-                      {cat.name} ({cat.menuItemCount})
+                      {cat.name}
                     </Tag>
                   ))}
                 </div>
               )}
-            </div>
-            <Collapse
-              size="small"
-              items={[
-                {
-                  key: "advanced-categories",
-                  label: "Quản lý category nâng cao",
-                  children: (
-                    <Table
-                      dataSource={categories}
-                      columns={categoryColumns}
-                      rowKey="id"
-                      loading={categoryLoading}
-                      pagination={{ pageSize: 10, showSizeChanger: false }}
-                      scroll={{ y: "calc(100vh - 520px)" }}
-                    />
-                  ),
-                },
-              ]}
-            />
-          </Card>
+
+              <Collapse
+                size="small"
+                style={{ marginTop: 12 }}
+                items={[
+                  {
+                    key: "advanced-categories",
+                    label: "Mở quản lý category nâng cao",
+                    children: (
+                      <Table
+                        dataSource={categories}
+                        columns={categoryColumns}
+                        rowKey="id"
+                        loading={categoryLoading}
+                        pagination={{ pageSize: 8, showSizeChanger: false }}
+                        scroll={{ y: "calc(100vh - 560px)" }}
+                      />
+                    ),
+                  },
+                ]}
+              />
+            </Card>
+          </Space>
         </Col>
       </Row>
 
