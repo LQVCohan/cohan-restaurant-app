@@ -21,8 +21,7 @@ import {
   Skeleton,
   Badge,
   Tooltip,
-  Divider,
-  Empty,
+  Collapse,
 } from "antd";
 import {
   SaveOutlined,
@@ -384,7 +383,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       });
       await refetchIndexes();
       message.success("Đã lưu Index Categories");
-    } catch (error) {
+    } catch {
       message.error("Lỗi lưu index");
     }
   };
@@ -415,7 +414,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       });
       await refetchRestaurantDetail();
       message.success("Cập nhật thông tin nhà hàng thành công");
-    } catch (error) {
+    } catch {
       message.error("Không thể cập nhật thông tin");
     }
   };
@@ -469,7 +468,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         refetchTopCategories(),
         refetchIndexes(),
       ]);
-    } catch (error) {
+    } catch {
       // Form validation error or API error
     }
   };
@@ -493,7 +492,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             prev.filter((x) => String(x) !== String(id)),
           );
           message.success("Đã xoá category");
-        } catch (error) {
+        } catch {
           message.error("Lỗi khi xoá category");
         }
       },
@@ -501,6 +500,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   };
 
   const mapById = new Map(restaurantOptions.map((r) => [String(r.id), r.name]));
+  const restaurantName =
+    mapById.get(String(selectedRestaurantId)) || selectedRestaurantId;
 
   // --- RENDER HELPERS ---
   const renderRestaurantForm = () => (
@@ -816,6 +817,36 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     },
   ];
 
+  const compactCategoryColumns = [
+    {
+      title: "Category",
+      dataIndex: "name",
+      key: "name",
+      render: (text) => <span style={{ fontWeight: 500 }}>{text}</span>,
+    },
+    {
+      title: "Số món",
+      dataIndex: "menuItemCount",
+      key: "count",
+      align: "center",
+      render: (c) => (
+        <Badge count={c} showZero color={c > 0 ? "#52c41a" : "#d9d9d9"} />
+      ),
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "isActive",
+      key: "status",
+      align: "center",
+      render: (active) => (
+        <Badge
+          status={active ? "success" : "default"}
+          text={active ? "Hiện" : "Ẩn"}
+        />
+      ),
+    },
+  ];
+
   return (
     <div className="restaurant-management-container">
       {/* HEADER SECTION */}
@@ -888,65 +919,86 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             <Card
               title={
                 <span>
-                  <BarChartOutlined /> Chỉ số Index ({timeSlot})
+                  <BarChartOutlined /> Tổng quan category ({timeSlot})
                 </span>
               }
               className="saas-card"
-              // FIX: Thay thế bodyStyle bằng styles
-              styles={{ body: { padding: "12px 0" } }}
+              styles={{ body: { padding: "20px" } }}
               extra={
-                <Space size={8}>
-                  <Tooltip title="Cập nhật dữ liệu mới nhất">
-                    <Button
-                      icon={<ReloadOutlined />}
-                      onClick={onRefresh}
-                      loading={refreshing}
-                      shape="circle"
-                    />
-                  </Tooltip>
-                  <Button
-                    type="primary"
-                    ghost
-                    size="small"
-                    icon={<SaveOutlined />}
-                    onClick={onSaveIndex}
-                    loading={savingIndex}
-                  >
-                    Lưu Index
-                  </Button>
-                </Space>
+                <Button
+                  type="primary"
+                  icon={<ReloadOutlined />}
+                  onClick={onRefresh}
+                  loading={refreshing}
+                >
+                  Cập nhật category từ món ăn
+                </Button>
               }
             >
-              <div
-                style={{
-                  padding: "0 24px 16px",
-                  display: "flex",
-                  gap: 24,
-                  alignItems: "center",
-                }}
-              >
+              <Text type="secondary">
+                Dữ liệu được tính tự động từ món ăn của nhà hàng để người dùng
+                dễ hiểu hơn, không cần chỉnh tay chỉ số index.
+              </Text>
+              <div className="index-overview-stats">
                 <Statistic
-                  title="Đang chọn"
-                  value={selectedCategoryIds.length}
-                  suffix="cats"
+                  title="Nhà hàng"
+                  value={restaurantName || "-"}
+                  valueStyle={{ fontSize: 16 }}
+                />
+                <Statistic
+                  title="Category hiện có"
+                  value={activeIndex?.distinctCategoryCount || 0}
+                  suffix="nhóm"
                   valueStyle={{ fontSize: 18, color: "#1890ff" }}
                 />
-                <Divider type="vertical" style={{ height: 30 }} />
                 <Statistic
-                  title="Đã lưu Index"
-                  value={activeIndex?.distinctCategoryCount || 0}
-                  suffix="cats"
+                  title="Đơn hàng / Đặt bàn"
+                  value={`${activeIndex?.orderCount || 0} / ${activeIndex?.reservationCount || 0}`}
                   valueStyle={{ fontSize: 18 }}
                 />
               </div>
-              <Table
-                dataSource={indexData?.restaurantCategoryIndexes || []}
-                columns={indexColumns}
-                rowKey="id"
+
+              <div className="index-category-preview">
+                {(activeIndex?.categoryIds || []).slice(0, 8).map((id) => (
+                  <Tag key={id} color="blue">
+                    {id}
+                  </Tag>
+                ))}
+                {(activeIndex?.categoryIds || []).length > 8 && (
+                  <Tag>+{activeIndex.categoryIds.length - 8}</Tag>
+                )}
+              </div>
+
+              <Collapse
                 size="small"
-                pagination={false}
-                loading={indexLoading}
-                scroll={{ x: true }}
+                items={[
+                  {
+                    key: "advanced-index",
+                    label: "Chi tiết nâng cao",
+                    children: (
+                      <Space direction="vertical" size={12} style={{ width: "100%" }}>
+                        <Button
+                          type="default"
+                          size="small"
+                          icon={<SaveOutlined />}
+                          onClick={onSaveIndex}
+                          loading={savingIndex}
+                        >
+                          Lưu lựa chọn index thủ công
+                        </Button>
+                        <Table
+                          dataSource={indexData?.restaurantCategoryIndexes || []}
+                          columns={indexColumns}
+                          rowKey="id"
+                          size="small"
+                          pagination={false}
+                          loading={indexLoading}
+                          scroll={{ x: true }}
+                        />
+                      </Space>
+                    ),
+                  },
+                ]}
               />
             </Card>
           </Space>
@@ -958,60 +1010,76 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             className="saas-card full-height"
             title={
               <span>
-                <OrderedListOutlined /> Danh sách Category
+                <OrderedListOutlined /> Category nhà hàng
               </span>
             }
             extra={
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => openCategoryModal(null)}
-              >
-                Thêm mới
-              </Button>
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<ReloadOutlined />}
+                  onClick={onRefresh}
+                  loading={refreshing}
+                >
+                  Cập nhật từ món ăn
+                </Button>
+                <Button
+                  icon={<PlusOutlined />}
+                  onClick={() => openCategoryModal(null)}
+                >
+                  Thêm mới
+                </Button>
+              </Space>
             }
             // FIX: Thay thế bodyStyle bằng styles
             styles={{ body: { padding: 0 } }}
           >
-            {/* MINI DASHBOARD */}
-            <div className="mini-dashboard">
-              <Text strong style={{ marginBottom: 12, display: "block" }}>
-                Top Categories (theo số lượng món)
+            <div className="mini-dashboard compact">
+              <Text strong style={{ marginBottom: 8, display: "block" }}>
+                Danh mục đang hiển thị
               </Text>
-              <Row gutter={[12, 12]}>
-                {topCategories.length === 0 ? (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="Chưa có dữ liệu"
-                    style={{ margin: "10px auto" }}
-                  />
-                ) : (
-                  topCategories.map((cat, idx) => (
-                    <Col span={8} key={cat.id}>
-                      <div className="stat-box">
-                        <div className="stat-rank">#{idx + 1}</div>
-                        <div className="stat-info">
-                          <div className="stat-name">{cat.name}</div>
-                          <div className="stat-val">
-                            {cat.menuItemCount} món
-                          </div>
-                        </div>
-                      </div>
-                    </Col>
-                  ))
-                )}
-              </Row>
+              <Text type="secondary">
+                Giao diện gọn để xem nhanh category theo món. Mở phần nâng cao
+                nếu cần chỉnh sửa chi tiết.
+              </Text>
+              <Table
+                dataSource={categories}
+                columns={compactCategoryColumns}
+                rowKey="id"
+                loading={categoryLoading}
+                pagination={{ pageSize: 6, showSizeChanger: false }}
+                size="small"
+                style={{ marginTop: 12 }}
+              />
+              {topCategories.length > 0 && (
+                <div className="top-categories-inline">
+                  <Text type="secondary">Top category:</Text>
+                  {topCategories.slice(0, 3).map((cat) => (
+                    <Tag color="geekblue" key={cat.id}>
+                      {cat.name} ({cat.menuItemCount})
+                    </Tag>
+                  ))}
+                </div>
+              )}
             </div>
-            <Divider style={{ margin: 0 }} />
-
-            {/* MAIN TABLE */}
-            <Table
-              dataSource={categories}
-              columns={categoryColumns}
-              rowKey="id"
-              loading={categoryLoading}
-              pagination={{ pageSize: 10, showSizeChanger: false }}
-              scroll={{ y: "calc(100vh - 450px)" }}
+            <Collapse
+              size="small"
+              items={[
+                {
+                  key: "advanced-categories",
+                  label: "Quản lý category nâng cao",
+                  children: (
+                    <Table
+                      dataSource={categories}
+                      columns={categoryColumns}
+                      rowKey="id"
+                      loading={categoryLoading}
+                      pagination={{ pageSize: 10, showSizeChanger: false }}
+                      scroll={{ y: "calc(100vh - 520px)" }}
+                    />
+                  ),
+                },
+              ]}
             />
           </Card>
         </Col>

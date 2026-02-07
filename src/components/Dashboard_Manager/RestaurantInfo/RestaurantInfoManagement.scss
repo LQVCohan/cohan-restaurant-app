@@ -141,3 +141,34 @@ $box-shadow:
 ::-webkit-scrollbar-thumb:hover {
   background: #bfbfbf;
 }
+
+
+.index-overview-stats {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.index-category-preview {
+  margin: 12px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mini-dashboard.compact {
+  .ant-table-wrapper {
+    background: #fff;
+    border-radius: 8px;
+    padding: 0;
+  }
+}
+
+.top-categories-inline {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
