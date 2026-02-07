@@ -13,7 +13,7 @@ export const CategoryQuery = {
 
   // A. CATEGORY BY TIMESLOT (GIỮ NGUYÊN)
   categories: async (_, { restaurantId, timeSlot }) => {
-    const categories = await Category.find({ restaurantId, timeSlot })
+    const categories = await Category.find({ timeSlot })
       .sort({ order: 1, name: 1 })
       .lean({ virtuals: true });
 
@@ -82,7 +82,6 @@ export const CategoryQuery = {
 
     const categories = await Category.find({
       _id: { $in: categoryIds },
-      restaurantId,
       timeSlot,
     }).lean({ virtuals: true });
 
@@ -106,31 +105,53 @@ export const CategoryQuery = {
 
     const menuIds = menus.map((m) => m._id);
 
-    const counts = await MenuItem.aggregate([
-      { $match: { menuId: { $in: menuIds } } },
-      { $group: { _id: "$categoryId", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
+    const topDishes = await MenuItem.find({ menuId: { $in: menuIds } })
+      .select({ _id: 1 })
+      .sort({ point: -1, createdAt: -1, _id: 1 })
+      .limit(1000)
+      .lean();
+
+    if (!topDishes.length) return [];
+
+    const topDishIds = topDishes.map((dish) => dish._id);
+
+    const rows = await MenuItem.aggregate([
+      {
+        $match: {
+          _id: { $in: topDishIds },
+          menuId: { $in: menuIds },
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "categoryId",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      { $unwind: "$category" },
+      ...(timeSlot ? [{ $match: { "category.timeSlot": timeSlot } }] : []),
+      {
+        $group: {
+          _id: { name: "$category.name", timeSlot: "$category.timeSlot" },
+          menuItemCount: { $sum: 1 },
+          sampleCategoryId: { $first: "$category._id" },
+          sampleRestaurantId: { $first: "$category.restaurantId" },
+        },
+      },
+      { $sort: { menuItemCount: -1 } },
       { $limit: limit },
     ]);
 
-    if (!counts.length) return [];
-
-    const categoryIds = counts.map((c) => c._id);
-
-    const filter = { _id: { $in: categoryIds } };
-    if (timeSlot) filter.timeSlot = timeSlot;
-
-    const categories = await Category.find(filter).lean({ virtuals: true });
-
-    const categoryMap = new Map(categories.map((c) => [String(c._id), c]));
-
-    return counts
-      .map((c) => {
-        const base = categoryMap.get(String(c._id));
-        if (!base) return null;
-        return { ...base, menuItemCount: c.count };
-      })
-      .filter(Boolean);
+    return rows.map((r) => ({
+      id: String(r.sampleCategoryId),
+      restaurantId: String(r.sampleRestaurantId),
+      timeSlot: r._id.timeSlot,
+      name: r._id.name,
+      menuItemCount: r.menuItemCount,
+      isActive: true,
+    }));
   },
 
   /* ============================================

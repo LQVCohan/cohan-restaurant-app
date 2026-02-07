@@ -5,6 +5,9 @@ type Address {
   district: String
   city: String
   country: String
+  postalCode: String
+  lat: Float
+  lng: Float
 }
 
 type Restaurant {
@@ -41,6 +44,7 @@ input RestaurantFilter {
   minRating: Float
   priceRange: [String!]
   search: String
+  restaurantIds: [ID!]
 }
 
 type PageInfo {
@@ -89,6 +93,9 @@ input AddressInput {
   district: String
   city: String
   country: String
+  postalCode: String
+  lat: Float
+  lng: Float
 }
 
 input CreateRestaurantInput {

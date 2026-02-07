@@ -1,7 +1,7 @@
 // src/graphql/resolvers/menu/query.js (CLEAN + aligned with Recipe-as-source-of-truth)
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Menu, MenuItem } from "../../../models/index.js";
+import { Menu, MenuItem, Category } from "../../../models/index.js";
 
 const toObjectIdOrNull = (id) => {
   try {
@@ -140,15 +140,47 @@ export const MenuQuery = {
     };
   },
 
-  topMenuItems: async (_p, { limit = 8, restaurantId, categoryId }) => {
-    const LIM = Math.min(Math.max(limit, 1), 50);
+  topMenuItems: async (
+    _p,
+    { limit = 8, restaurantId, categoryId, categoryName, timeSlot }
+  ) => {
+    const LIM = Math.min(Math.max(limit, 1), 200);
 
     const q = {};
     if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
       q.restaurantId = restaurantId;
     }
+
+    if (timeSlot) {
+      const menuFilter = { timeSlot };
+      if (q.restaurantId) {
+        menuFilter.restaurantId = q.restaurantId;
+      }
+
+      const menus = await Menu.find(menuFilter).select({ _id: 1 }).lean();
+      if (!menus.length) return [];
+
+      q.menuId = { $in: menus.map((menu) => menu._id) };
+    }
+
     if (categoryId && mongoose.isValidObjectId(categoryId)) {
       q.categoryId = categoryId;
+    } else if (categoryName?.trim()) {
+      const categoryFilter = {
+        name: new RegExp(`^${categoryName.trim()}$`, "i"),
+      };
+      if (timeSlot) {
+        categoryFilter.timeSlot = timeSlot;
+      }
+
+      const matchedCategories = await Category.find(categoryFilter)
+        .select({ _id: 1 })
+        .lean();
+
+      const matchedIds = matchedCategories.map((c) => c._id);
+      if (!matchedIds.length) return [];
+
+      q.categoryId = { $in: matchedIds };
     }
 
     return MenuItem.find(q)
