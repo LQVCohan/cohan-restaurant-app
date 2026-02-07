@@ -134,7 +134,7 @@ const UPDATE_RESTAURANT = gql`
 `;
 
 
-const RestaurantCategoryManagementBase = ({ role = "manager" }) => {
+const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [timeSlot, setTimeSlot] = useState("lunch");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
@@ -488,12 +488,12 @@ const RestaurantCategoryManagementBase = ({ role = "manager" }) => {
   );
 };
 
-export const AdminRestaurantCategoryManagementPage = () => (
-  <RestaurantCategoryManagementBase role="admin" />
+export const AdminRestaurantInfoManagement = () => (
+  <RestaurantInfoManagement role="admin" />
 );
 
-export const ManagerRestaurantCategoryManagementPage = () => (
-  <RestaurantCategoryManagementBase role="manager" />
+export const ManagerRestaurantInfoManagement = () => (
+  <RestaurantInfoManagement role="manager" />
 );
 
-export default AdminRestaurantCategoryManagementPage;
+export default RestaurantInfoManagement;
