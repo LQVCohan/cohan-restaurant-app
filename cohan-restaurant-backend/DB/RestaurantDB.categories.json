@@ -1,0 +1,320 @@
+[{
+  "_id": {
+    "$oid": "6986fe9a03525d98191f1fa8"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:02.310Z"
+  },
+  "isActive": true,
+  "name": "Khai vị",
+  "order": 1,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:02.310Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9a03525d98191f1fa9"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:02.395Z"
+  },
+  "isActive": true,
+  "name": "Món Việt",
+  "order": 2,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:02.395Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9a03525d98191f1faa"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:02.467Z"
+  },
+  "isActive": true,
+  "name": "Phở & Bún",
+  "order": 3,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:02.467Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9a03525d98191f1fab"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:02.535Z"
+  },
+  "isActive": true,
+  "name": "Cơm văn phòng",
+  "order": 4,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:02.535Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9a03525d98191f1fac"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:02.607Z"
+  },
+  "isActive": true,
+  "name": "Fast Food",
+  "order": 5,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:02.607Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9a03525d98191f1fad"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:02.678Z"
+  },
+  "isActive": true,
+  "name": "Burger & Gà rán",
+  "order": 6,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:02.678Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9a03525d98191f1fae"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:02.745Z"
+  },
+  "isActive": true,
+  "name": "Pizza & Pasta",
+  "order": 7,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:02.745Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9a03525d98191f1faf"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:02.812Z"
+  },
+  "isActive": true,
+  "name": "Món Á",
+  "order": 8,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:02.812Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9a03525d98191f1fb0"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:02.880Z"
+  },
+  "isActive": true,
+  "name": "Món Nhật",
+  "order": 9,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:02.880Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9a03525d98191f1fb1"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:02.948Z"
+  },
+  "isActive": true,
+  "name": "Món Hàn",
+  "order": 10,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:02.948Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9b03525d98191f1fb2"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:03.013Z"
+  },
+  "isActive": true,
+  "name": "Món Thái",
+  "order": 11,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:03.013Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9b03525d98191f1fb3"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:03.081Z"
+  },
+  "isActive": true,
+  "name": "Lẩu & Hotpot",
+  "order": 12,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:03.081Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9b03525d98191f1fb4"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:03.148Z"
+  },
+  "isActive": true,
+  "name": "Nướng BBQ",
+  "order": 13,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:03.148Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9b03525d98191f1fb5"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:03.214Z"
+  },
+  "isActive": true,
+  "name": "Hải sản",
+  "order": 14,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:03.214Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9b03525d98191f1fb6"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:03.279Z"
+  },
+  "isActive": true,
+  "name": "Món chay",
+  "order": 15,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:03.279Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9b03525d98191f1fb7"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:03.343Z"
+  },
+  "isActive": true,
+  "name": "Healthy Salad",
+  "order": 16,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:03.343Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9b03525d98191f1fb8"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:03.408Z"
+  },
+  "isActive": true,
+  "name": "Tráng miệng",
+  "order": 17,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:03.408Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9b03525d98191f1fb9"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:03.473Z"
+  },
+  "isActive": true,
+  "name": "Bánh ngọt",
+  "order": 18,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:03.473Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9b03525d98191f1fba"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:03.538Z"
+  },
+  "isActive": true,
+  "name": "Đồ uống",
+  "order": 19,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:03.538Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6986fe9b03525d98191f1fbb"
+  },
+  "restaurantId": null,
+  "__v": 0,
+  "createdAt": {
+    "$date": "2026-02-07T08:58:03.704Z"
+  },
+  "isActive": true,
+  "name": "Trà sữa & Cà phê",
+  "order": 20,
+  "updatedAt": {
+    "$date": "2026-02-07T08:58:03.704Z"
+  }
+}]
