@@ -105,8 +105,23 @@ export const CategoryQuery = {
 
     const menuIds = menus.map((m) => m._id);
 
+    const topDishes = await MenuItem.find({ menuId: { $in: menuIds } })
+      .select({ _id: 1 })
+      .sort({ point: -1, createdAt: -1, _id: 1 })
+      .limit(1000)
+      .lean();
+
+    if (!topDishes.length) return [];
+
+    const topDishIds = topDishes.map((dish) => dish._id);
+
     const rows = await MenuItem.aggregate([
-      { $match: { menuId: { $in: menuIds } } },
+      {
+        $match: {
+          _id: { $in: topDishIds },
+          menuId: { $in: menuIds },
+        },
+      },
       {
         $lookup: {
           from: "categories",

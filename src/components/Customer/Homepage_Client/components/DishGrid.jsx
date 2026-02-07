@@ -212,17 +212,21 @@ const DishGrid = ({
                   );
                 })}
 
-            {!loading && safeDishes.length === 0 && selectedCategoryId && (
-              <div className="dish-grid__empty">
-                Không có món ăn thuộc danh mục này.
-              </div>
-            )}
+            {!loading &&
+              safeDishes.length === 0 &&
+              (selectedCategoryId || selectedCategoryName) && (
+                <div className="dish-grid__empty">
+                  Không có món ăn thuộc danh mục này.
+                </div>
+              )}
 
-            {!loading && safeDishes.length === 0 && !selectedCategoryId && (
-              <div className="dish-grid__empty">
-                Không có món ăn để hiển thị.
-              </div>
-            )}
+            {!loading &&
+              safeDishes.length === 0 &&
+              !(selectedCategoryId || selectedCategoryName) && (
+                <div className="dish-grid__empty">
+                  Không có món ăn để hiển thị.
+                </div>
+              )}
           </div>
         )}
       </div>

@@ -151,6 +151,18 @@ export const MenuQuery = {
       q.restaurantId = restaurantId;
     }
 
+    if (timeSlot) {
+      const menuFilter = { timeSlot };
+      if (q.restaurantId) {
+        menuFilter.restaurantId = q.restaurantId;
+      }
+
+      const menus = await Menu.find(menuFilter).select({ _id: 1 }).lean();
+      if (!menus.length) return [];
+
+      q.menuId = { $in: menus.map((menu) => menu._id) };
+    }
+
     if (categoryId && mongoose.isValidObjectId(categoryId)) {
       q.categoryId = categoryId;
     } else if (categoryName?.trim()) {
