@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import {
-  Layout,
   Card,
   Select,
   Input,
@@ -31,7 +30,6 @@ import {
   DeleteOutlined,
   ShopOutlined,
   ClockCircleOutlined,
-  BarChartOutlined,
   OrderedListOutlined,
   EnvironmentOutlined,
   InfoCircleOutlined,
@@ -169,6 +167,10 @@ const GET_RESTAURANT_DETAIL = gql`
       cuisineType
       priceRange
       status
+      amenities
+      notesOnAmenities
+      avgRating
+      website
       address {
         line1
         district
@@ -190,11 +192,44 @@ const UPDATE_RESTAURANT = gql`
       cuisineType
       priceRange
       status
+      amenities
+      notesOnAmenities
+      avgRating
+      website
     }
   }
 `;
 
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
+const DEFAULT_CUSTOMER_INFO = {
+  story: "",
+  chef: "",
+  dressCode: "",
+  parkingDetail: "",
+  suitableFor: [],
+  faqs: [
+    { q: "", a: "" },
+    { q: "", a: "" },
+    { q: "", a: "" },
+  ],
+};
+
+const parseCustomerInfo = (value) => {
+  if (!value) return DEFAULT_CUSTOMER_INFO;
+  try {
+    const parsed = JSON.parse(value);
+    return {
+      ...DEFAULT_CUSTOMER_INFO,
+      ...parsed,
+      suitableFor: Array.isArray(parsed?.suitableFor) ? parsed.suitableFor : [],
+      faqs: Array.isArray(parsed?.faqs) && parsed.faqs.length > 0
+        ? parsed.faqs.slice(0, 3)
+        : DEFAULT_CUSTOMER_INFO.faqs,
+    };
+  } catch {
+    return { ...DEFAULT_CUSTOMER_INFO, story: value };
+  }
+};
 
 const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [timeSlot, setTimeSlot] = useState("lunch");
@@ -214,6 +249,15 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     cuisineType: "",
     priceRange: "",
     status: "active",
+    website: "",
+    avgRating: 0,
+    amenities: {
+      wifi: false,
+      parking: false,
+      card: false,
+    },
+    notesOnAmenities: "",
+    customerInfo: DEFAULT_CUSTOMER_INFO,
     line1: "",
     district: "",
     city: "",
@@ -277,6 +321,15 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       cuisineType: r.cuisineType || "",
       priceRange: r.priceRange || "",
       status: r.status || "active",
+      website: r.website || "",
+      avgRating: r.avgRating || 0,
+      amenities: {
+        wifi: Boolean(r.amenities?.wifi),
+        parking: Boolean(r.amenities?.parking),
+        card: Boolean(r.amenities?.card),
+      },
+      notesOnAmenities: r.notesOnAmenities || "",
+      customerInfo: parseCustomerInfo(r.notesOnAmenities),
       line1: r.address?.line1 || "",
       district: r.address?.district || "",
       city: r.address?.city || "",
@@ -362,6 +415,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             cuisineType: restaurantForm.cuisineType || null,
             priceRange: restaurantForm.priceRange || null,
             status: restaurantForm.status || "active",
+            website: restaurantForm.website || null,
+            amenities: restaurantForm.amenities,
+            notesOnAmenities: JSON.stringify(restaurantForm.customerInfo),
             address: {
               line1: restaurantForm.line1 || null,
               district: restaurantForm.district || null,
@@ -451,6 +507,34 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           message.error("Lỗi khi xoá category");
         }
       },
+    });
+  };
+
+
+  const updateCustomerInfoField = (field, value) => {
+    setRestaurantForm((prev) => ({
+      ...prev,
+      customerInfo: {
+        ...prev.customerInfo,
+        [field]: value,
+      },
+    }));
+  };
+
+  const updateFaqField = (index, field, value) => {
+    setRestaurantForm((prev) => {
+      const nextFaqs = [...(prev.customerInfo?.faqs || DEFAULT_CUSTOMER_INFO.faqs)];
+      nextFaqs[index] = {
+        ...(nextFaqs[index] || { q: "", a: "" }),
+        [field]: value,
+      };
+      return {
+        ...prev,
+        customerInfo: {
+          ...prev.customerInfo,
+          faqs: nextFaqs,
+        },
+      };
     });
   };
 
@@ -606,47 +690,193 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               </span>
             ),
             children: (
-              <Row gutter={16}>
-                <Col span={8}>
-                  <Form.Item label="Giờ mở cửa">
-                    <Input
-                      value={restaurantForm.openingHours}
-                      onChange={(e) =>
-                        setRestaurantForm((p) => ({
-                          ...p,
-                          openingHours: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item label="Giờ đóng cửa">
-                    <Input
-                      value={restaurantForm.closingHours}
-                      onChange={(e) =>
-                        setRestaurantForm((p) => ({
-                          ...p,
-                          closingHours: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item label="Khoảng giá">
-                    <Input
-                      value={restaurantForm.priceRange}
-                      onChange={(e) =>
-                        setRestaurantForm((p) => ({
-                          ...p,
-                          priceRange: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
+              <>
+                <Row gutter={16}>
+                  <Col span={8}>
+                    <Form.Item label="Giờ mở cửa">
+                      <Input
+                        value={restaurantForm.openingHours}
+                        onChange={(e) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            openingHours: e.target.value,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item label="Giờ đóng cửa">
+                      <Input
+                        value={restaurantForm.closingHours}
+                        onChange={(e) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            closingHours: e.target.value,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item label="Khoảng giá">
+                      <Input
+                        value={restaurantForm.priceRange}
+                        onChange={(e) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            priceRange: e.target.value,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="Website khi khách bấm icon Globe">
+                      <Input
+                        placeholder="https://..."
+                        value={restaurantForm.website}
+                        onChange={(e) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            website: e.target.value,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Dress code">
+                      <Input
+                        value={restaurantForm.customerInfo?.dressCode}
+                        onChange={(e) =>
+                          updateCustomerInfoField("dressCode", e.target.value)
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Form.Item label="Tiện ích hiển thị cho khách">
+                  <Space size={24} wrap>
+                    <Space>
+                      <Switch
+                        checked={restaurantForm.amenities?.wifi}
+                        onChange={(checked) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            amenities: { ...p.amenities, wifi: checked },
+                          }))
+                        }
+                      />
+                      Wifi
+                    </Space>
+                    <Space>
+                      <Switch
+                        checked={restaurantForm.amenities?.parking}
+                        onChange={(checked) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            amenities: { ...p.amenities, parking: checked },
+                          }))
+                        }
+                      />
+                      Parking
+                    </Space>
+                    <Space>
+                      <Switch
+                        checked={restaurantForm.amenities?.card}
+                        onChange={(checked) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            amenities: { ...p.amenities, card: checked },
+                          }))
+                        }
+                      />
+                      Thanh toán thẻ
+                    </Space>
+                  </Space>
+                </Form.Item>
+              </>
+            ),
+          },
+          {
+            key: "4",
+            label: (
+              <span>
+                <InfoCircleOutlined />
+                Nội dung RestaurantInfo
+              </span>
+            ),
+            children: (
+              <>
+                <Form.Item label="Câu chuyện về chúng tôi">
+                  <TextArea
+                    rows={3}
+                    value={restaurantForm.customerInfo?.story}
+                    onChange={(e) => updateCustomerInfoField("story", e.target.value)}
+                    maxLength={700}
+                    showCount
+                  />
+                </Form.Item>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="Tên bếp trưởng">
+                      <Input
+                        value={restaurantForm.customerInfo?.chef}
+                        onChange={(e) => updateCustomerInfoField("chef", e.target.value)}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Thông tin bãi đỗ xe">
+                      <Input
+                        value={restaurantForm.customerInfo?.parkingDetail}
+                        onChange={(e) =>
+                          updateCustomerInfoField("parkingDetail", e.target.value)
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Form.Item label="Phù hợp cho (mỗi dòng 1 mục)">
+                  <TextArea
+                    rows={3}
+                    value={(restaurantForm.customerInfo?.suitableFor || []).join("\n")}
+                    onChange={(e) =>
+                      updateCustomerInfoField(
+                        "suitableFor",
+                        e.target.value
+                          .split("\n")
+                          .map((line) => line.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                  />
+                </Form.Item>
+                <Form.Item label="Thông tin hữu ích (FAQ)">
+                  <Space direction="vertical" style={{ width: "100%" }} size={10}>
+                    {[0, 1, 2].map((idx) => (
+                      <Card key={idx} size="small" title={`FAQ ${idx + 1}`}>
+                        <Space direction="vertical" style={{ width: "100%" }}>
+                          <Input
+                            placeholder="Câu hỏi"
+                            value={restaurantForm.customerInfo?.faqs?.[idx]?.q || ""}
+                            onChange={(e) => updateFaqField(idx, "q", e.target.value)}
+                          />
+                          <TextArea
+                            rows={2}
+                            placeholder="Câu trả lời"
+                            value={restaurantForm.customerInfo?.faqs?.[idx]?.a || ""}
+                            onChange={(e) => updateFaqField(idx, "a", e.target.value)}
+                          />
+                        </Space>
+                      </Card>
+                    ))}
+                  </Space>
+                </Form.Item>
+              </>
             ),
           },
         ]}
@@ -861,7 +1091,93 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                     <p>{restaurantForm.description || "Chưa có mô tả hiển thị cho khách."}</p>
                   </div>
                 </Col>
+                <Col span={24}>
+                  <div className="preview-item">
+                    <span className="label">Câu chuyện về chúng tôi</span>
+                    <p>{restaurantForm.customerInfo?.story || "Chưa cấu hình"}</p>
+                  </div>
+                </Col>
+                <Col xs={24} md={12}>
+                  <div className="preview-item">
+                    <span className="label">Bếp trưởng</span>
+                    <strong>{restaurantForm.customerInfo?.chef || "Chưa cấu hình"}</strong>
+                  </div>
+                </Col>
+                <Col xs={24} md={12}>
+                  <div className="preview-item">
+                    <span className="label">Dress code</span>
+                    <strong>{restaurantForm.customerInfo?.dressCode || "Chưa cấu hình"}</strong>
+                  </div>
+                </Col>
+                <Col xs={24} md={12}>
+                  <div className="preview-item">
+                    <span className="label">Phone icon</span>
+                    <strong>{restaurantForm.phone || "Chưa cấu hình"}</strong>
+                  </div>
+                </Col>
+                <Col xs={24} md={12}>
+                  <div className="preview-item">
+                    <span className="label">Website icon</span>
+                    <strong>{restaurantForm.website || "Chưa cấu hình"}</strong>
+                  </div>
+                </Col>
+                <Col span={24}>
+                  <div className="preview-item">
+                    <span className="label">Tiện ích</span>
+                    <div className="preview-tags">
+                      {restaurantForm.amenities?.wifi && <Tag color="blue">Wifi</Tag>}
+                      {restaurantForm.amenities?.parking && <Tag color="geekblue">Parking</Tag>}
+                      {restaurantForm.amenities?.card && <Tag color="cyan">Thanh toán thẻ</Tag>}
+                      {!restaurantForm.amenities?.wifi &&
+                        !restaurantForm.amenities?.parking &&
+                        !restaurantForm.amenities?.card && <Text type="secondary">Chưa bật tiện ích</Text>}
+                    </div>
+                  </div>
+                </Col>
+                <Col span={24}>
+                  <div className="preview-item">
+                    <span className="label">Thông tin hữu ích (FAQ)</span>
+                    <Space direction="vertical" style={{ width: "100%" }}>
+                      {(restaurantForm.customerInfo?.faqs || []).map((item, idx) => (
+                        <div className="faq-preview" key={`faq-preview-${idx}`}>
+                          <strong>{item?.q || `FAQ ${idx + 1}`}</strong>
+                          <p>{item?.a || "Chưa có nội dung"}</p>
+                        </div>
+                      ))}
+                    </Space>
+                  </div>
+                </Col>
               </Row>
+            </Card>
+
+            <Card title="Đánh giá chi tiết (chỉ xem)" className="saas-card customer-preview-card">
+              <Row gutter={[12, 12]}>
+                <Col xs={24} sm={12}>
+                  <div className="preview-item read-only">
+                    <span className="label">Hương vị</span>
+                    <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
+                  </div>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <div className="preview-item read-only">
+                    <span className="label">Phục vụ</span>
+                    <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
+                  </div>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <div className="preview-item read-only">
+                    <span className="label">Không gian</span>
+                    <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
+                  </div>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <div className="preview-item read-only">
+                    <span className="label">Giá trị</span>
+                    <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
+                  </div>
+                </Col>
+              </Row>
+              <Text type="secondary">Đánh giá là dữ liệu tổng hợp từ khách hàng, chỉ hiển thị kết quả và không thể chỉnh sửa tại màn hình này.</Text>
             </Card>
           </Space>
         </Col>
