@@ -1,21 +1,22 @@
 type Category {
   id: ID!
-  restaurantId: ID!
-  timeSlot: TimeSlot!
+  restaurantId: ID
+  timeSlot: TimeSlot
   name: String!
   order: Int
   isActive: Boolean
-  menuItemCount: Int! # ✅ mới thêm
+  menuItemCount: Int!
   createdAt: DateTime
   updatedAt: DateTime
 }
 
 input CreateCategoryInput {
-  restaurantId: ID!
-  timeSlot: TimeSlot!
+  restaurantId: ID
+  timeSlot: TimeSlot
   name: String!
   order: Int
 }
+
 type CategoryMenu {
   id: ID!
   restaurantId: ID!
@@ -26,6 +27,7 @@ type CategoryMenu {
   createdAt: DateTime
   updatedAt: DateTime
 }
+
 input UpdateCategoryInput {
   id: ID!
   name: String
@@ -41,14 +43,16 @@ extend type Query {
     timeSlot: TimeSlot!
     limit: Int = 6
   ): [Category!]!
+
   topGlobalCategoriesByMenuItemCount(
     timeSlot: TimeSlot
     limit: Int = 6
   ): [Category!]!
-  categoryMenus(restaurantId: ID!): [CategoryMenu!]!
 
+  categoryMenus(restaurantId: ID!): [CategoryMenu!]!
   categoryMenu(id: ID!): CategoryMenu
 }
+
 input CreateCategoryMenuInput {
   restaurantId: ID!
   name: String!
@@ -56,6 +60,7 @@ input CreateCategoryMenuInput {
   coverImage: String
   isActive: Boolean
 }
+
 input UpdateCategoryMenuInput {
   id: ID!
   name: String
@@ -63,10 +68,12 @@ input UpdateCategoryMenuInput {
   coverImage: String
   isActive: Boolean
 }
+
 extend type Mutation {
   createCategory(input: CreateCategoryInput!): Category!
   updateCategory(input: UpdateCategoryInput!): Category!
   deleteCategory(id: ID!): Boolean!
+
   createCategoryMenu(input: CreateCategoryMenuInput!): CategoryMenu!
   updateCategoryMenu(input: UpdateCategoryMenuInput!): CategoryMenu!
   deleteCategoryMenu(id: ID!): Boolean!

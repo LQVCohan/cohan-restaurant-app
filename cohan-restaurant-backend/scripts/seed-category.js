@@ -39,7 +39,6 @@ const CREATE_CATEGORY = gql`
     createCategory(input: $input) {
       id
       restaurantId
-      timeSlot
       name
       order
       isActive
@@ -133,7 +132,6 @@ async function createCategoryForAllSlots(restaurantId) {
       // Nếu chưa có → tạo
       const input = {
         restaurantId,
-        timeSlot: slot,
         name: fullName,
         order: i + 1,
       };

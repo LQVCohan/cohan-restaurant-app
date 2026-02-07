@@ -3,19 +3,24 @@ import { GraphQLError } from "graphql";
 import { Category, MenuItem, CategoryMenu } from "../../../models/index.js";
 
 export const CategoryMutation = {
-  /* ──────────────────────────────
-   * CATEGORY (THEO TIME SLOT)
-   * ────────────────────────────── */
-
   createCategory: async (_, { input }) => {
-    const { restaurantId, timeSlot, name, order = 0 } = input;
-    const doc = await Category.create({
-      restaurantId,
-      timeSlot,
-      name,
-      order,
-      isActive: true,
-    });
+    const { restaurantId, name, order = 0 } = input;
+
+    const doc = await Category.findOneAndUpdate(
+      {
+        name: { $regex: new RegExp(`^${String(name).trim()}$`, "i") },
+      },
+      {
+        $setOnInsert: {
+          restaurantId: restaurantId || null,
+          name,
+          order,
+          isActive: true,
+        },
+      },
+      { new: true, upsert: true }
+    );
+
     return doc.toObject();
   },
 
@@ -39,10 +44,6 @@ export const CategoryMutation = {
     await Category.findByIdAndDelete(id);
     return true;
   },
-
-  /* ──────────────────────────────
-   * CATEGORY MENU (MENU GROUPS)
-   * ────────────────────────────── */
 
   createCategoryMenu: async (_, { input }) => {
     const {
@@ -78,7 +79,6 @@ export const CategoryMutation = {
   },
 
   deleteCategoryMenu: async (_, { id }) => {
-    // Nếu sau này categoryMenu được gắn với MenuItem thì thêm check tại đây
     await CategoryMenu.findByIdAndDelete(id);
     return true;
   },

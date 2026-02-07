@@ -33,8 +33,15 @@ function buildFilter(restaurantFilter) {
   const f = {};
   if (!restaurantFilter) return f;
 
-  const { city, district, cuisineTypes, minRating, priceRange, search } =
-    restaurantFilter;
+  const {
+    city,
+    district,
+    cuisineTypes,
+    minRating,
+    priceRange,
+    search,
+    restaurantIds,
+  } = restaurantFilter;
 
   const cityRx = safeRegexContains(city);
   const districtRx = safeRegexContains(district);
@@ -53,14 +60,30 @@ function buildFilter(restaurantFilter) {
     f.priceRange = { $in: priceRange.filter(Boolean) };
   }
 
+
+  if (Array.isArray(restaurantIds) && restaurantIds.length > 0) {
+    const ids = restaurantIds
+      .filter((id) => mongoose.isValidObjectId(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    if (ids.length > 0) {
+      f._id = { $in: ids };
+    }
+  }
+
   const sRx = safeRegexContains(search);
   if (sRx) {
     f.$or = [
       { name: sRx },
       { description: sRx },
       { cuisineType: sRx },
+      { "address.line1": sRx },
+      { "address.line2": sRx },
+      { "address.ward": sRx },
       { "address.city": sRx },
       { "address.district": sRx },
+      { "address.country": sRx },
+      { "address.postalCode": sRx },
     ];
   }
 

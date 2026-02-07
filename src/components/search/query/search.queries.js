@@ -7,9 +7,12 @@ export const SEARCH_SUGGESTIONS = gql`
         id
         name
         shortAddress
+        fullAddress
         avgRating
         cuisineType
         phone
+        lat
+        lng
       }
       menuItems {
         id
@@ -29,8 +32,13 @@ export const SEARCH_SUGGESTIONS = gql`
       }
       locations {
         label
+        ward
         district
         city
+        country
+        postalCode
+        lat
+        lng
       }
     }
   }
