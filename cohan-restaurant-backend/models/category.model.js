@@ -6,20 +6,21 @@ const categorySchema = BaseSchemaModel({
   restaurantId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Restaurant",
-    required: true,
+    required: false,
   },
   timeSlot: {
     type: String,
     enum: ["breakfast", "lunch", "dinner", "late_night"],
-    required: true,
+    required: false,
   },
   name: { type: String, required: true, trim: true },
   order: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
 });
 
-// Tên category duy nhất trong cùng (restaurantId, timeSlot)
-categorySchema.index({ restaurantId: 1, timeSlot: 1 }, { unique: true });
+// Category dùng chung theo timeSlot + name
+categorySchema.index({ timeSlot: 1, name: 1 }, { unique: true });
+categorySchema.index({ restaurantId: 1, timeSlot: 1 });
 
 export const Category =
   mongoose.models.Category || mongoose.model("Category", categorySchema);

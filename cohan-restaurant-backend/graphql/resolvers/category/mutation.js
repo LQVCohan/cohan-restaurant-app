@@ -9,13 +9,24 @@ export const CategoryMutation = {
 
   createCategory: async (_, { input }) => {
     const { restaurantId, timeSlot, name, order = 0 } = input;
-    const doc = await Category.create({
-      restaurantId,
-      timeSlot,
-      name,
-      order,
-      isActive: true,
-    });
+
+    const doc = await Category.findOneAndUpdate(
+      {
+        timeSlot,
+        name: { $regex: new RegExp(`^${String(name).trim()}$`, "i") },
+      },
+      {
+        $setOnInsert: {
+          restaurantId: restaurantId || null,
+          timeSlot,
+          name,
+          order,
+          isActive: true,
+        },
+      },
+      { new: true, upsert: true }
+    );
+
     return doc.toObject();
   },
 
