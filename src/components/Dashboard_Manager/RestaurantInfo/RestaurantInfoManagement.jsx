@@ -1,6 +1,50 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
+import {
+  Layout,
+  Card,
+  Select,
+  Input,
+  Button,
+  Table,
+  Tag,
+  Row,
+  Col,
+  Form,
+  Switch,
+  Modal,
+  message,
+  Typography,
+  Space,
+  Statistic,
+  Tabs,
+  Skeleton,
+  Badge,
+  Tooltip,
+  Divider,
+  Empty,
+} from "antd";
+import {
+  SaveOutlined,
+  ReloadOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  ShopOutlined,
+  ClockCircleOutlined,
+  BarChartOutlined,
+  OrderedListOutlined,
+  EnvironmentOutlined,
+  InfoCircleOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
+import "./RestaurantInfoManagement.scss";
 
+const { Title, Text } = Typography;
+const { Option } = Select;
+const { TextArea } = Input;
+
+// --- GIỮ NGUYÊN PHẦN GRAPHQL QUERIES ---
 const ME_QUERY = gql`
   query Me {
     me {
@@ -9,7 +53,6 @@ const ME_QUERY = gql`
     }
   }
 `;
-
 const GET_MANAGER_RESTAURANTS = gql`
   query ManagerRestaurants($managerId: ID!, $limit: Int = 100, $cursor: ID) {
     restaurantsByManager(
@@ -26,7 +69,6 @@ const GET_MANAGER_RESTAURANTS = gql`
     }
   }
 `;
-
 const GET_ALL_RESTAURANTS = gql`
   query AllRestaurants($limit: Int = 100, $cursor: ID) {
     restaurants(limit: $limit, cursor: $cursor) {
@@ -39,7 +81,6 @@ const GET_ALL_RESTAURANTS = gql`
     }
   }
 `;
-
 const GET_CATEGORIES = gql`
   query GetCategories($restaurantId: ID!, $timeSlot: TimeSlot!) {
     categories(restaurantId: $restaurantId, timeSlot: $timeSlot) {
@@ -53,7 +94,6 @@ const GET_CATEGORIES = gql`
     }
   }
 `;
-
 const CREATE_CATEGORY = gql`
   mutation CreateCategory($input: CreateCategoryInput!) {
     createCategory(input: $input) {
@@ -62,7 +102,6 @@ const CREATE_CATEGORY = gql`
     }
   }
 `;
-
 const UPDATE_CATEGORY = gql`
   mutation UpdateCategory($input: UpdateCategoryInput!) {
     updateCategory(input: $input) {
@@ -73,13 +112,11 @@ const UPDATE_CATEGORY = gql`
     }
   }
 `;
-
 const DELETE_CATEGORY = gql`
   mutation DeleteCategory($id: ID!) {
     deleteCategory(id: $id)
   }
 `;
-
 const TOP_CATEGORIES_BY_RESTAURANT = gql`
   query TopCategoriesByRestaurant(
     $restaurantId: ID!
@@ -97,10 +134,12 @@ const TOP_CATEGORIES_BY_RESTAURANT = gql`
     }
   }
 `;
-
 const GET_INDEXES = gql`
   query GetRestaurantCategoryIndexes($restaurantId: ID, $timeSlot: TimeSlot) {
-    restaurantCategoryIndexes(restaurantId: $restaurantId, timeSlot: $timeSlot) {
+    restaurantCategoryIndexes(
+      restaurantId: $restaurantId
+      timeSlot: $timeSlot
+    ) {
       id
       restaurantId
       timeSlot
@@ -113,15 +152,15 @@ const GET_INDEXES = gql`
     }
   }
 `;
-
 const REFRESH_INDEXES = gql`
   mutation RefreshRestaurantCategoryIndexes($timeSlot: TimeSlot!) {
     refreshRestaurantCategoryIndexes(timeSlot: $timeSlot)
   }
 `;
-
 const UPDATE_INDEX = gql`
-  mutation UpdateRestaurantCategoryIndex($input: UpdateRestaurantCategoryIndexInput!) {
+  mutation UpdateRestaurantCategoryIndex(
+    $input: UpdateRestaurantCategoryIndexInput!
+  ) {
     updateRestaurantCategoryIndex(input: $input) {
       id
       restaurantId
@@ -131,7 +170,6 @@ const UPDATE_INDEX = gql`
     }
   }
 `;
-
 const GET_RESTAURANT_DETAIL = gql`
   query GetRestaurantDetail($id: ID!) {
     restaurant(id: $id) {
@@ -153,7 +191,6 @@ const GET_RESTAURANT_DETAIL = gql`
     }
   }
 `;
-
 const UPDATE_RESTAURANT = gql`
   mutation UpdateRestaurantInfo($id: ID!, $input: UpdateRestaurantInput!) {
     updateRestaurant(id: $id, input: $input) {
@@ -173,20 +210,14 @@ const UPDATE_RESTAURANT = gql`
 
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
 
-const defaultCategoryForm = {
-  id: "",
-  name: "",
-  order: 0,
-  isActive: true,
-};
-
 const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [timeSlot, setTimeSlot] = useState("lunch");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
-  const [notice, setNotice] = useState("");
-  const [errorText, setErrorText] = useState("");
-  const [categoryForm, setCategoryForm] = useState(defaultCategoryForm);
+
+  const [catFormInstance] = Form.useForm();
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
 
   const [restaurantForm, setRestaurantForm] = useState({
     name: "",
@@ -203,6 +234,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     city: "",
   });
 
+  // --- QUERY HOOKS ---
   const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "network-only" });
   const me = meData?.me;
 
@@ -219,16 +251,15 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       variables: { limit: 100 },
       skip: role !== "admin" && me?.roleName !== "admin",
       fetchPolicy: "network-only",
-    }
+    },
   );
 
   const restaurantOptions = useMemo(() => {
     if (role === "admin" || me?.roleName === "admin") {
       return (allRestaurantsData?.restaurants?.edges || []).map((e) => e.node);
     }
-
     return (managerRestaurantsData?.restaurantsByManager?.edges || []).map(
-      (e) => e.node
+      (e) => e.node,
     );
   }, [role, me, allRestaurantsData, managerRestaurantsData]);
 
@@ -267,20 +298,20 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     });
   }, [restaurantDetailData]);
 
-  const { data: indexData, loading: indexLoading, refetch: refetchIndexes } =
-    useQuery(GET_INDEXES, {
-      variables: {
-        restaurantId: selectedRestaurantId || undefined,
-        timeSlot,
-      },
-      skip: !timeSlot,
-      fetchPolicy: "network-only",
-    });
+  const {
+    data: indexData,
+    loading: indexLoading,
+    refetch: refetchIndexes,
+  } = useQuery(GET_INDEXES, {
+    variables: { restaurantId: selectedRestaurantId || undefined, timeSlot },
+    skip: !timeSlot,
+    fetchPolicy: "network-only",
+  });
 
   const activeIndex = useMemo(() => {
     const rows = indexData?.restaurantCategoryIndexes || [];
     return rows.find(
-      (row) => String(row.restaurantId) === String(selectedRestaurantId)
+      (row) => String(row.restaurantId) === String(selectedRestaurantId),
     );
   }, [indexData, selectedRestaurantId]);
 
@@ -304,13 +335,15 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       variables: { restaurantId: selectedRestaurantId, timeSlot, limit: 6 },
       skip: !selectedRestaurantId || !timeSlot,
       fetchPolicy: "network-only",
-    }
+    },
   );
 
   const categories = categoryData?.categories || [];
   const topCategories = topCategoryData?.topCategoriesByMenuItemCount || [];
 
-  const [refreshIndexes, { loading: refreshing }] = useMutation(REFRESH_INDEXES);
+  // --- MUTATIONS ---
+  const [refreshIndexes, { loading: refreshing }] =
+    useMutation(REFRESH_INDEXES);
   const [updateIndex, { loading: savingIndex }] = useMutation(UPDATE_INDEX);
   const [updateRestaurant, { loading: savingRestaurant }] =
     useMutation(UPDATE_RESTAURANT);
@@ -318,37 +351,27 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     useMutation(CREATE_CATEGORY);
   const [updateCategory, { loading: updatingCategory }] =
     useMutation(UPDATE_CATEGORY);
-  const [deleteCategory, { loading: deletingCategory }] =
-    useMutation(DELETE_CATEGORY);
+  const [deleteCategory] = useMutation(DELETE_CATEGORY);
 
-  const categoryMutationLoading =
-    creatingCategory || updatingCategory || deletingCategory;
-
-  const resetMessages = () => {
-    setNotice("");
-    setErrorText("");
-  };
-
+  // --- HANDLERS ---
   const toggleCategory = (id) => {
     setSelectedCategoryIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
 
   const onRefresh = async () => {
-    resetMessages();
     try {
       await refreshIndexes({ variables: { timeSlot } });
       await refetchIndexes();
-      setNotice("Đã refresh index theo khung giờ.");
+      message.success("Đã refresh index thành công");
     } catch (error) {
-      setErrorText(error.message || "Không thể refresh index.");
+      message.error(error.message || "Lỗi refresh index");
     }
   };
 
   const onSaveIndex = async () => {
     if (!selectedRestaurantId) return;
-    resetMessages();
     try {
       await updateIndex({
         variables: {
@@ -360,15 +383,14 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         },
       });
       await refetchIndexes();
-      setNotice("Đã lưu category vào index nhà hàng.");
+      message.success("Đã lưu Index Categories");
     } catch (error) {
-      setErrorText(error.message || "Không thể lưu index category.");
+      message.error("Lỗi lưu index");
     }
   };
 
   const onSaveRestaurantInfo = async () => {
     if (!selectedRestaurantId) return;
-    resetMessages();
     try {
       await updateRestaurant({
         variables: {
@@ -392,383 +414,653 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         },
       });
       await refetchRestaurantDetail();
-      setNotice("Đã lưu thông tin nhà hàng.");
+      message.success("Cập nhật thông tin nhà hàng thành công");
     } catch (error) {
-      setErrorText(error.message || "Không thể cập nhật thông tin nhà hàng.");
+      message.error("Không thể cập nhật thông tin");
     }
   };
 
-  const onSubmitCategory = async (e) => {
-    e.preventDefault();
-    if (!selectedRestaurantId || !categoryForm.name.trim()) return;
+  const openCategoryModal = (cat = null) => {
+    setEditingCategory(cat);
+    if (cat) {
+      catFormInstance.setFieldsValue({
+        name: cat.name,
+        order: cat.order,
+        isActive: cat.isActive,
+      });
+    } else {
+      catFormInstance.resetFields();
+      catFormInstance.setFieldsValue({ isActive: true, order: 0 });
+    }
+    setIsModalVisible(true);
+  };
 
-    resetMessages();
+  const handleCategoryOk = async () => {
     try {
-      if (categoryForm.id) {
+      const values = await catFormInstance.validateFields();
+      if (editingCategory) {
         await updateCategory({
           variables: {
             input: {
-              id: categoryForm.id,
-              name: categoryForm.name.trim(),
-              order: Number(categoryForm.order) || 0,
-              isActive: Boolean(categoryForm.isActive),
+              id: editingCategory.id,
+              name: values.name.trim(),
+              order: Number(values.order) || 0,
+              isActive: Boolean(values.isActive),
             },
           },
         });
-        setNotice("Đã cập nhật category.");
+        message.success("Đã cập nhật category");
       } else {
         await createCategory({
           variables: {
             input: {
               restaurantId: selectedRestaurantId,
               timeSlot,
-              name: categoryForm.name.trim(),
-              order: Number(categoryForm.order) || 0,
+              name: values.name.trim(),
+              order: Number(values.order) || 0,
             },
           },
         });
-        setNotice("Đã tạo category mới.");
+        message.success("Đã tạo category mới");
       }
-
-      setCategoryForm(defaultCategoryForm);
-      await Promise.all([refetchCategories(), refetchTopCategories(), refetchIndexes()]);
+      setIsModalVisible(false);
+      await Promise.all([
+        refetchCategories(),
+        refetchTopCategories(),
+        refetchIndexes(),
+      ]);
     } catch (error) {
-      setErrorText(error.message || "Không thể lưu category.");
+      // Form validation error or API error
     }
   };
 
-  const onEditCategory = (cat) => {
-    setCategoryForm({
-      id: cat.id,
-      name: cat.name || "",
-      order: cat.order || 0,
-      isActive: Boolean(cat.isActive),
+  const onDeleteCategory = (id) => {
+    Modal.confirm({
+      title: "Xoá Category?",
+      content: "Hành động này không thể hoàn tác.",
+      okText: "Xoá ngay",
+      okType: "danger",
+      cancelText: "Huỷ",
+      onOk: async () => {
+        try {
+          await deleteCategory({ variables: { id } });
+          await Promise.all([
+            refetchCategories(),
+            refetchTopCategories(),
+            refetchIndexes(),
+          ]);
+          setSelectedCategoryIds((prev) =>
+            prev.filter((x) => String(x) !== String(id)),
+          );
+          message.success("Đã xoá category");
+        } catch (error) {
+          message.error("Lỗi khi xoá category");
+        }
+      },
     });
-    resetMessages();
-  };
-
-  const onDeleteCategory = async (id) => {
-    if (!window.confirm("Bạn chắc chắn muốn xoá category này?")) return;
-
-    resetMessages();
-    try {
-      await deleteCategory({ variables: { id } });
-      await Promise.all([refetchCategories(), refetchTopCategories(), refetchIndexes()]);
-      setSelectedCategoryIds((prev) => prev.filter((x) => String(x) !== String(id)));
-      setNotice("Đã xoá category.");
-    } catch (error) {
-      setErrorText(error.message || "Không thể xoá category.");
-    }
   };
 
   const mapById = new Map(restaurantOptions.map((r) => [String(r.id), r.name]));
 
-  return (
-    <div style={{ padding: 20 }}>
-      <h2>Quản lý thông tin nhà hàng ({role})</h2>
-      <p>Quản lý hồ sơ nhà hàng, category theo time slot và category index.</p>
-
-      {notice ? <p style={{ color: "#0f7a35" }}>{notice}</p> : null}
-      {errorText ? <p style={{ color: "#c23030" }}>{errorText}</p> : null}
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div>
-          <label>Khung giờ</label>
-          <select
-            value={timeSlot}
-            onChange={(e) => setTimeSlot(e.target.value)}
-            style={{ width: "100%", marginTop: 4 }}
-          >
-            {TIME_SLOTS.map((slot) => (
-              <option key={slot} value={slot}>
-                {slot}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label>Nhà hàng</label>
-          <select
-            value={selectedRestaurantId}
-            onChange={(e) => setSelectedRestaurantId(e.target.value)}
-            style={{ width: "100%", marginTop: 4 }}
-            disabled={managerRestaurantsLoading || allRestaurantsLoading}
-          >
-            {restaurantOptions.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-        <button onClick={onRefresh} disabled={refreshing}>
-          {refreshing ? "Đang cập nhật..." : "Refresh index theo khung giờ"}
-        </button>
-        <button onClick={onSaveIndex} disabled={savingIndex || !selectedRestaurantId}>
-          {savingIndex
-            ? "Đang lưu..."
-            : `Lưu index category (${selectedCategoryIds.length} loại)`}
-        </button>
-      </div>
-
-      <div style={{ marginTop: 16 }}>
-        <h3>Quản lý thông tin nhà hàng</h3>
-        {restaurantDetailLoading ? (
-          <p>Đang tải thông tin nhà hàng...</p>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              gap: 8,
-            }}
-          >
-            <input
-              placeholder="Tên nhà hàng"
-              value={restaurantForm.name}
-              onChange={(e) =>
-                setRestaurantForm((p) => ({ ...p, name: e.target.value }))
-              }
-            />
-            <input
-              placeholder="Số điện thoại"
-              value={restaurantForm.phone}
-              onChange={(e) =>
-                setRestaurantForm((p) => ({ ...p, phone: e.target.value }))
-              }
-            />
-            <input
-              placeholder="Email"
-              value={restaurantForm.email}
-              onChange={(e) =>
-                setRestaurantForm((p) => ({ ...p, email: e.target.value }))
-              }
-            />
-            <input
-              placeholder="Loại ẩm thực"
-              value={restaurantForm.cuisineType}
-              onChange={(e) =>
-                setRestaurantForm((p) => ({ ...p, cuisineType: e.target.value }))
-              }
-            />
-            <input
-              placeholder="Giờ mở cửa"
-              value={restaurantForm.openingHours}
-              onChange={(e) =>
-                setRestaurantForm((p) => ({ ...p, openingHours: e.target.value }))
-              }
-            />
-            <input
-              placeholder="Giờ đóng cửa"
-              value={restaurantForm.closingHours}
-              onChange={(e) =>
-                setRestaurantForm((p) => ({ ...p, closingHours: e.target.value }))
-              }
-            />
-            <input
-              placeholder="Khoảng giá"
-              value={restaurantForm.priceRange}
-              onChange={(e) =>
-                setRestaurantForm((p) => ({ ...p, priceRange: e.target.value }))
-              }
-            />
-            <select
-              value={restaurantForm.status}
-              onChange={(e) =>
-                setRestaurantForm((p) => ({ ...p, status: e.target.value }))
-              }
-            >
-              <option value="active">active</option>
-              <option value="inactive">inactive</option>
-            </select>
-            <input
-              placeholder="Địa chỉ"
-              value={restaurantForm.line1}
-              onChange={(e) =>
-                setRestaurantForm((p) => ({ ...p, line1: e.target.value }))
-              }
-            />
-            <input
-              placeholder="Quận/Huyện"
-              value={restaurantForm.district}
-              onChange={(e) =>
-                setRestaurantForm((p) => ({ ...p, district: e.target.value }))
-              }
-            />
-            <input
-              placeholder="Thành phố"
-              value={restaurantForm.city}
-              onChange={(e) =>
-                setRestaurantForm((p) => ({ ...p, city: e.target.value }))
-              }
-            />
-            <textarea
-              placeholder="Mô tả"
-              value={restaurantForm.description}
-              onChange={(e) =>
-                setRestaurantForm((p) => ({ ...p, description: e.target.value }))
-              }
-              rows={3}
-              style={{ gridColumn: "1 / span 2" }}
-            />
-            <button
-              onClick={onSaveRestaurantInfo}
-              disabled={savingRestaurant || !selectedRestaurantId}
-              style={{ gridColumn: "1 / span 2" }}
-            >
-              {savingRestaurant
-                ? "Đang cập nhật thông tin..."
-                : "Lưu thông tin nhà hàng"}
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div style={{ marginTop: 16 }}>
-        <h3>Quản lý category ({timeSlot})</h3>
-        <form onSubmit={onSubmitCategory} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <input
-            placeholder="Tên category"
-            value={categoryForm.name}
-            onChange={(e) =>
-              setCategoryForm((p) => ({ ...p, name: e.target.value }))
-            }
-          />
-          <input
-            type="number"
-            placeholder="Order"
-            value={categoryForm.order}
-            onChange={(e) =>
-              setCategoryForm((p) => ({ ...p, order: Number(e.target.value) }))
-            }
-            style={{ width: 120 }}
-          />
-          <label style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <input
-              type="checkbox"
-              checked={Boolean(categoryForm.isActive)}
-              onChange={(e) =>
-                setCategoryForm((p) => ({ ...p, isActive: e.target.checked }))
-              }
-              disabled={!categoryForm.id}
-            />
-            Active
-          </label>
-          <button type="submit" disabled={categoryMutationLoading || !selectedRestaurantId}>
-            {categoryForm.id ? "Cập nhật category" : "Thêm category"}
-          </button>
-          {categoryForm.id ? (
-            <button type="button" onClick={() => setCategoryForm(defaultCategoryForm)}>
-              Huỷ sửa
-            </button>
-          ) : null}
-        </form>
-
-        {categoryLoading ? (
-          <p>Đang tải category...</p>
-        ) : categories.length === 0 ? (
-          <p>Chưa có category.</p>
-        ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-              gap: 8,
-              marginTop: 10,
-            }}
-          >
-            {categories.map((cat) => {
-              const checked = selectedCategoryIds.includes(String(cat.id));
-              return (
-                <div
-                  key={cat.id}
-                  style={{
-                    border: "1px solid #ddd",
-                    borderRadius: 8,
-                    padding: 8,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 6,
-                  }}
-                >
-                  <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleCategory(String(cat.id))}
+  // --- RENDER HELPERS ---
+  const renderRestaurantForm = () => (
+    <Form layout="vertical" className="saas-form">
+      <Tabs
+        defaultActiveKey="1"
+        items={[
+          {
+            key: "1",
+            label: (
+              <span>
+                <InfoCircleOutlined />
+                Thông tin chung
+              </span>
+            ),
+            children: (
+              <>
+                <Row gutter={16}>
+                  <Col span={16}>
+                    <Form.Item label="Tên nhà hàng">
+                      <Input
+                        value={restaurantForm.name}
+                        onChange={(e) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            name: e.target.value,
+                          }))
+                        }
+                        prefix={<ShopOutlined className="text-gray-400" />}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item label="Trạng thái">
+                      <Select
+                        value={restaurantForm.status}
+                        onChange={(v) =>
+                          setRestaurantForm((p) => ({ ...p, status: v }))
+                        }
+                      >
+                        <Option value="active">
+                          <Badge status="success" text="Hoạt động" />
+                        </Option>
+                        <Option value="inactive">
+                          <Badge status="error" text="Tạm dừng" />
+                        </Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="Điện thoại">
+                      <Input
+                        value={restaurantForm.phone}
+                        onChange={(e) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            phone: e.target.value,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Loại ẩm thực">
+                      <Input
+                        value={restaurantForm.cuisineType}
+                        onChange={(e) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            cuisineType: e.target.value,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Form.Item label="Mô tả">
+                  <TextArea
+                    rows={3}
+                    value={restaurantForm.description}
+                    onChange={(e) =>
+                      setRestaurantForm((p) => ({
+                        ...p,
+                        description: e.target.value,
+                      }))
+                    }
+                    showCount
+                    maxLength={500}
+                  />
+                </Form.Item>
+              </>
+            ),
+          },
+          {
+            key: "2",
+            label: (
+              <span>
+                <EnvironmentOutlined />
+                Địa chỉ
+              </span>
+            ),
+            children: (
+              <Form.Item
+                label="Địa chỉ chi tiết"
+                help="Nhập số nhà, tên đường, quận/huyện và thành phố"
+              >
+                {/* FIX: Sử dụng Space.Compact thay cho Input.Group */}
+                <Space.Compact block>
+                  <Input
+                    style={{ width: "40%" }}
+                    placeholder="Số nhà/Đường"
+                    value={restaurantForm.line1}
+                    onChange={(e) =>
+                      setRestaurantForm((p) => ({
+                        ...p,
+                        line1: e.target.value,
+                      }))
+                    }
+                  />
+                  <Input
+                    style={{ width: "30%" }}
+                    placeholder="Quận/Huyện"
+                    value={restaurantForm.district}
+                    onChange={(e) =>
+                      setRestaurantForm((p) => ({
+                        ...p,
+                        district: e.target.value,
+                      }))
+                    }
+                  />
+                  <Input
+                    style={{ width: "30%" }}
+                    placeholder="Thành phố"
+                    value={restaurantForm.city}
+                    onChange={(e) =>
+                      setRestaurantForm((p) => ({ ...p, city: e.target.value }))
+                    }
+                  />
+                </Space.Compact>
+              </Form.Item>
+            ),
+          },
+          {
+            key: "3",
+            label: (
+              <span>
+                <SettingOutlined />
+                Cấu hình
+              </span>
+            ),
+            children: (
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item label="Giờ mở cửa">
+                    <Input
+                      value={restaurantForm.openingHours}
+                      onChange={(e) =>
+                        setRestaurantForm((p) => ({
+                          ...p,
+                          openingHours: e.target.value,
+                        }))
+                      }
                     />
-                    <span>
-                      {cat.name} ({cat.menuItemCount || 0} món)
-                    </span>
-                  </label>
-                  <small>
-                    Order: {cat.order || 0} - Trạng thái: {cat.isActive ? "active" : "inactive"}
-                  </small>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button type="button" onClick={() => onEditCategory(cat)}>
-                      Sửa
-                    </button>
-                    <button type="button" onClick={() => onDeleteCategory(cat.id)}>
-                      Xoá
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item label="Giờ đóng cửa">
+                    <Input
+                      value={restaurantForm.closingHours}
+                      onChange={(e) =>
+                        setRestaurantForm((p) => ({
+                          ...p,
+                          closingHours: e.target.value,
+                        }))
+                      }
+                    />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item label="Khoảng giá">
+                    <Input
+                      value={restaurantForm.priceRange}
+                      onChange={(e) =>
+                        setRestaurantForm((p) => ({
+                          ...p,
+                          priceRange: e.target.value,
+                        }))
+                      }
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            ),
+          },
+        ]}
+      />
+    </Form>
+  );
+
+  const indexColumns = [
+    {
+      title: "Nhà hàng",
+      key: "restaurant",
+      ellipsis: true,
+      render: (_, record) => (
+        <b>{mapById.get(String(record.restaurantId)) || record.restaurantId}</b>
+      ),
+    },
+    {
+      title: "TimeSlot",
+      dataIndex: "timeSlot",
+      key: "timeSlot",
+      render: (text) => <Tag color="blue">{text}</Tag>,
+    },
+    {
+      title: "Món",
+      dataIndex: "distinctCategoryCount",
+      key: "cats",
+      align: "center",
+    },
+    {
+      title: "Orders",
+      dataIndex: "orderCount",
+      key: "orders",
+      align: "center",
+      render: (v) => v || 0,
+    },
+    {
+      title: "Bookings",
+      dataIndex: "reservationCount",
+      key: "reservations",
+      align: "center",
+      render: (v) => v || 0,
+    },
+  ];
+
+  const categoryColumns = [
+    {
+      title: "Chọn",
+      key: "select",
+      width: 60,
+      align: "center",
+      render: (_, record) => (
+        <Switch
+          size="small"
+          checked={selectedCategoryIds.includes(String(record.id))}
+          onChange={() => toggleCategory(String(record.id))}
+        />
+      ),
+    },
+    {
+      title: "Tên Category",
+      dataIndex: "name",
+      key: "name",
+      render: (text) => <span style={{ fontWeight: 500 }}>{text}</span>,
+    },
+    {
+      title: "SL Món",
+      dataIndex: "menuItemCount",
+      key: "count",
+      align: "center",
+      render: (c) => (
+        <Badge count={c} showZero color={c > 0 ? "#52c41a" : "#d9d9d9"} />
+      ),
+    },
+    {
+      title: "Vị trí",
+      dataIndex: "order",
+      key: "order",
+      align: "center",
+      render: (v) => <Tag>{v}</Tag>,
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "isActive",
+      key: "status",
+      align: "center",
+      render: (active) => (
+        <Badge
+          status={active ? "success" : "default"}
+          text={active ? "Hiện" : "Ẩn"}
+        />
+      ),
+    },
+    {
+      title: "",
+      key: "action",
+      width: 80,
+      align: "right",
+      render: (_, record) => (
+        <Space size={0}>
+          <Tooltip title="Sửa">
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => openCategoryModal(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Xoá">
+            <Button
+              type="text"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => onDeleteCategory(record.id)}
+            />
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div className="restaurant-management-container">
+      {/* HEADER SECTION */}
+      <div className="page-header">
+        <div className="header-title">
+          <Title level={3} style={{ margin: 0 }}>
+            Quản lý Nhà hàng & Menu
+          </Title>
+          <Text type="secondary">
+            Cấu hình thông tin và hiển thị món ăn theo khung giờ
+          </Text>
+        </div>
+        <Space>
+          <Select
+            value={timeSlot}
+            onChange={setTimeSlot}
+            style={{ width: 140 }}
+            suffixIcon={<ClockCircleOutlined />}
+            options={TIME_SLOTS.map((s) => ({ label: s, value: s }))}
+          />
+          <Select
+            showSearch
+            value={selectedRestaurantId}
+            onChange={setSelectedRestaurantId}
+            style={{ width: 220 }}
+            loading={managerRestaurantsLoading || allRestaurantsLoading}
+            placeholder="Chọn nhà hàng"
+            filterOption={(input, option) =>
+              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+            }
+            options={restaurantOptions.map((r) => ({
+              label: r.name,
+              value: r.id,
+            }))}
+          />
+        </Space>
       </div>
 
-      <div style={{ marginTop: 20 }}>
-        <h3>Top category theo số món ({timeSlot})</h3>
-        {topCategories.length === 0 ? (
-          <p>Chưa có dữ liệu top category.</p>
-        ) : (
-          <ol>
-            {topCategories.map((cat) => (
-              <li key={cat.id}>
-                {cat.name} - {cat.menuItemCount || 0} món
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
+      <Row gutter={[20, 20]} style={{ marginTop: 20 }}>
+        {/* LEFT COLUMN: INFO & INDEX */}
+        <Col xs={24} lg={10} xl={9}>
+          <Space direction="vertical" size={20} style={{ width: "100%" }}>
+            {/* CARD 1: Restaurant Info */}
+            <Card
+              title={
+                <span>
+                  <ShopOutlined /> Hồ sơ nhà hàng
+                </span>
+              }
+              extra={
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  loading={savingRestaurant}
+                  onClick={onSaveRestaurantInfo}
+                >
+                  Lưu hồ sơ
+                </Button>
+              }
+              className="saas-card"
+            >
+              {restaurantDetailLoading ? (
+                <Skeleton active paragraph={{ rows: 6 }} />
+              ) : (
+                renderRestaurantForm()
+              )}
+            </Card>
 
-      <div style={{ marginTop: 20 }}>
-        <h3>Tổng quan index đã lưu</h3>
-        {indexLoading ? (
-          <p>Đang tải...</p>
-        ) : (
-          <table border="1" cellPadding="8" style={{ width: "100%" }}>
-            <thead>
-              <tr>
-                <th>Nhà hàng</th>
-                <th>TimeSlot</th>
-                <th>Số category</th>
-                <th>Orders</th>
-                <th>Reservations</th>
-                <th>Table joins</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(indexData?.restaurantCategoryIndexes || []).map((row) => (
-                <tr key={row.id}>
-                  <td>{mapById.get(String(row.restaurantId)) || row.restaurantId}</td>
-                  <td>{row.timeSlot}</td>
-                  <td>{row.distinctCategoryCount}</td>
-                  <td>{row.orderCount || 0}</td>
-                  <td>{row.reservationCount || 0}</td>
-                  <td>{row.tableParticipationCount || 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+            {/* CARD 2: Index Stats */}
+            <Card
+              title={
+                <span>
+                  <BarChartOutlined /> Chỉ số Index ({timeSlot})
+                </span>
+              }
+              className="saas-card"
+              // FIX: Thay thế bodyStyle bằng styles
+              styles={{ body: { padding: "12px 0" } }}
+              extra={
+                <Space size={8}>
+                  <Tooltip title="Cập nhật dữ liệu mới nhất">
+                    <Button
+                      icon={<ReloadOutlined />}
+                      onClick={onRefresh}
+                      loading={refreshing}
+                      shape="circle"
+                    />
+                  </Tooltip>
+                  <Button
+                    type="primary"
+                    ghost
+                    size="small"
+                    icon={<SaveOutlined />}
+                    onClick={onSaveIndex}
+                    loading={savingIndex}
+                  >
+                    Lưu Index
+                  </Button>
+                </Space>
+              }
+            >
+              <div
+                style={{
+                  padding: "0 24px 16px",
+                  display: "flex",
+                  gap: 24,
+                  alignItems: "center",
+                }}
+              >
+                <Statistic
+                  title="Đang chọn"
+                  value={selectedCategoryIds.length}
+                  suffix="cats"
+                  valueStyle={{ fontSize: 18, color: "#1890ff" }}
+                />
+                <Divider type="vertical" style={{ height: 30 }} />
+                <Statistic
+                  title="Đã lưu Index"
+                  value={activeIndex?.distinctCategoryCount || 0}
+                  suffix="cats"
+                  valueStyle={{ fontSize: 18 }}
+                />
+              </div>
+              <Table
+                dataSource={indexData?.restaurantCategoryIndexes || []}
+                columns={indexColumns}
+                rowKey="id"
+                size="small"
+                pagination={false}
+                loading={indexLoading}
+                scroll={{ x: true }}
+              />
+            </Card>
+          </Space>
+        </Col>
+
+        {/* RIGHT COLUMN: CATEGORIES */}
+        <Col xs={24} lg={14} xl={15}>
+          <Card
+            className="saas-card full-height"
+            title={
+              <span>
+                <OrderedListOutlined /> Danh sách Category
+              </span>
+            }
+            extra={
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => openCategoryModal(null)}
+              >
+                Thêm mới
+              </Button>
+            }
+            // FIX: Thay thế bodyStyle bằng styles
+            styles={{ body: { padding: 0 } }}
+          >
+            {/* MINI DASHBOARD */}
+            <div className="mini-dashboard">
+              <Text strong style={{ marginBottom: 12, display: "block" }}>
+                Top Categories (theo số lượng món)
+              </Text>
+              <Row gutter={[12, 12]}>
+                {topCategories.length === 0 ? (
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description="Chưa có dữ liệu"
+                    style={{ margin: "10px auto" }}
+                  />
+                ) : (
+                  topCategories.map((cat, idx) => (
+                    <Col span={8} key={cat.id}>
+                      <div className="stat-box">
+                        <div className="stat-rank">#{idx + 1}</div>
+                        <div className="stat-info">
+                          <div className="stat-name">{cat.name}</div>
+                          <div className="stat-val">
+                            {cat.menuItemCount} món
+                          </div>
+                        </div>
+                      </div>
+                    </Col>
+                  ))
+                )}
+              </Row>
+            </div>
+            <Divider style={{ margin: 0 }} />
+
+            {/* MAIN TABLE */}
+            <Table
+              dataSource={categories}
+              columns={categoryColumns}
+              rowKey="id"
+              loading={categoryLoading}
+              pagination={{ pageSize: 10, showSizeChanger: false }}
+              scroll={{ y: "calc(100vh - 450px)" }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* MODAL FORM */}
+      <Modal
+        title={editingCategory ? "Cập nhật Category" : "Thêm Category Mới"}
+        open={isModalVisible}
+        onOk={handleCategoryOk}
+        onCancel={() => setIsModalVisible(false)}
+        confirmLoading={creatingCategory || updatingCategory}
+        centered
+        destroyOnClose
+      >
+        <Form
+          form={catFormInstance}
+          layout="vertical"
+          style={{ marginTop: 20 }}
+        >
+          <Form.Item
+            name="name"
+            label="Tên Category"
+            rules={[{ required: true, message: "Vui lòng nhập tên" }]}
+          >
+            <Input placeholder="Ví dụ: Món khai vị" size="large" />
+          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="order"
+                label="Thứ tự hiển thị"
+                tooltip="Số nhỏ xếp trước"
+              >
+                <Input type="number" style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="isActive"
+                label="Trạng thái"
+                valuePropName="checked"
+              >
+                <Switch checkedChildren="Hiện" unCheckedChildren="Ẩn" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
     </div>
   );
 };
@@ -776,9 +1068,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 export const AdminRestaurantInfoManagement = () => (
   <RestaurantInfoManagement role="admin" />
 );
-
 export const ManagerRestaurantInfoManagement = () => (
   <RestaurantInfoManagement role="manager" />
 );
-
 export default RestaurantInfoManagement;
