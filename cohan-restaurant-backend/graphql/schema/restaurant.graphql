@@ -35,6 +35,9 @@ type Restaurant {
   tables: [Table]
   categories: [Category]
   avgRating: Float
+  orderCount: Int
+  reservationCount: Int
+  tableParticipationCount: Int
 }
 
 input RestaurantFilter {
@@ -45,6 +48,26 @@ input RestaurantFilter {
   priceRange: [String!]
   search: String
   restaurantIds: [ID!]
+}
+
+
+
+type RestaurantCategoryIndexCategory {
+  categoryId: ID!
+  menuItemCount: Int!
+}
+
+type RestaurantCategoryIndex {
+  id: ID!
+  restaurantId: ID!
+  timeSlot: TimeSlot!
+  categoryIds: [ID!]!
+  categories: [RestaurantCategoryIndexCategory!]!
+  distinctCategoryCount: Int!
+  orderCount: Int
+  reservationCount: Int
+  tableParticipationCount: Int
+  updatedAt: DateTime
 }
 
 type PageInfo {
@@ -84,6 +107,20 @@ extend type Query {
   ): RestaurantConnection!
 
   refRestaurants(userId: ID!): [Restaurant!]!
+
+  restaurantsByCategoryTimeSlot(
+    categoryId: ID!
+    timeSlot: TimeSlot!
+    limit: Int = 12
+  ): [Restaurant!]!
+
+  restaurantCategoryIndexes(
+    restaurantId: ID
+    timeSlot: TimeSlot
+  ): [RestaurantCategoryIndex!]!
+
+  refreshRestaurantCategoryIndexes(timeSlot: TimeSlot!): Int!
+
 }
 
 input AddressInput {
@@ -148,11 +185,20 @@ input UpdateRestaurantManagerInput {
   managerId: ID!
 }
 
+
+
+input UpdateRestaurantCategoryIndexInput {
+  restaurantId: ID!
+  timeSlot: TimeSlot!
+  categoryIds: [ID!]!
+}
+
 extend type Mutation {
   createRestaurant(input: CreateRestaurantInput!): Restaurant!
   updateRestaurant(id: ID!, input: UpdateRestaurantInput!): Restaurant!
   deleteRestaurant(id: ID!): Boolean!
   updateRestaurantManager(input: UpdateRestaurantManagerInput!): Restaurant!
+  updateRestaurantCategoryIndex(input: UpdateRestaurantCategoryIndexInput!): RestaurantCategoryIndex!
 }
 
 type Category {

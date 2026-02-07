@@ -32,6 +32,10 @@ import OwnerProfilePage from "../components/Customer/OwnerProfilePage/OwnerProfi
 import ForYou from "@/components/Customer/ForYou/ForYou";
 import SearchPage from "../pages/SearchPage.jsx";
 import ContactPage from "@/pages/ContactPage.jsx";
+import {
+  AdminRestaurantInfoManagement,
+  ManagerRestaurantInfoManagement,
+} from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
 // ==== Manager/Admin ====
 import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
 import ManagerLayout from "../layouts/ManagerLayout";
@@ -245,6 +249,28 @@ const AppRouter = () => {
         element={
           <PrivateRoute allowedRoles={["manager", "admin"]}>
             <FloorPlanDesigner />
+          </PrivateRoute>
+        }
+      />
+
+
+      <Route
+        path="/manager/restaurants/categories"
+        element={
+          <PrivateRoute
+            allowedRoles={["manager", "admin"]}
+            requireVerifiedEmail
+          >
+            <ManagerRestaurantInfoManagement />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/admin/restaurants/categories"
+        element={
+          <PrivateRoute allowedRoles={["admin"]} requireVerifiedEmail>
+            <AdminRestaurantInfoManagement />
           </PrivateRoute>
         }
       />

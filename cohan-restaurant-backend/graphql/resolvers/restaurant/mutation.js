@@ -1,7 +1,7 @@
 // src/resolvers/restaurant.mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { User, Role, Restaurant } from "../../../models/index.js";
+import { User, Role, Restaurant, RestaurantCategoryIndex } from "../../../models/index.js";
 
 /* ========== Helpers chung cho Mutation ========== */
 function badInput(message) {
@@ -200,9 +200,51 @@ async function updateRestaurantManager(_, { input }, { user }) {
   return doc.toObject();
 }
 
+
+
+async function updateRestaurantCategoryIndex(_, { input }, { user }) {
+  if (!user) throw forbidden("Unauthorized");
+  const admin = isAdmin(user);
+  const manager = await isManager(user);
+  if (!admin && !manager) throw forbidden("Insufficient permission");
+
+  const { restaurantId, timeSlot, categoryIds = [] } = input || {};
+  if (!restaurantId || !timeSlot) {
+    throw badInput("restaurantId and timeSlot are required");
+  }
+
+  const rId = toObjectId(restaurantId);
+  const doc = await Restaurant.findById(rId);
+  if (!doc) throw notFound("Restaurant not found");
+  if (!admin) await assertCanMutateRestaurant(user, doc);
+
+  const validCategoryIds = categoryIds
+    .filter((id) => mongoose.isValidObjectId(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
+
+  const uniq = [...new Set(validCategoryIds.map((id) => String(id)))].map(
+    (id) => new mongoose.Types.ObjectId(id)
+  );
+
+  const updated = await RestaurantCategoryIndex.findOneAndUpdate(
+    { restaurantId: rId, timeSlot },
+    {
+      $set: {
+        categoryIds: uniq,
+        categories: uniq.map((categoryId) => ({ categoryId, menuItemCount: 0 })),
+        distinctCategoryCount: uniq.length,
+      },
+    },
+    { new: true, upsert: true }
+  ).lean();
+
+  return updated;
+}
+
 export const RestaurantMutation = {
   createRestaurant,
   updateRestaurant,
   deleteRestaurant,
   updateRestaurantManager,
+  updateRestaurantCategoryIndex,
 };

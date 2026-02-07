@@ -11,10 +11,11 @@ const categorySchema = BaseSchemaModel({
   name: { type: String, required: true, trim: true },
   order: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
+  menuItemCount: { type: Number, default: 0, min: 0 },
 });
 
-// Category dùng chung theo name
-categorySchema.index({ name: 1 }, { unique: true });
+// Category theo từng nhà hàng (cho phép trùng tên giữa các nhà hàng)
+categorySchema.index({ restaurantId: 1, name: 1 }, { unique: true });
 categorySchema.index({ restaurantId: 1 });
 
 export const Category =
