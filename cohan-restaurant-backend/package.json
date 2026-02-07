@@ -8,7 +8,8 @@
     "dev": "nodemon --es-module-specifier-resolution=node src/server/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed:admin": "node scripts/seed-admin.js",
-    "test:db": "node scripts/test-db.js"
+    "test:db": "node scripts/test-db.js",
+    "sync:menuitem-category-json": "node scripts/update-menuitem-category-from-db-json.js --dry-run"
   },
   "keywords": [],
   "author": "",
