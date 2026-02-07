@@ -16,6 +16,7 @@ import StorageManagement from "../components/Dashboard_Manager/Storage/StorageMa
 import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManagement";
 import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
 import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/PrintManagement";
+import { ManagerRestaurantInfoManagement } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
 const ManagerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -43,6 +44,7 @@ const ManagerLayout = () => {
         "backup",
         "reviews",
         "print-management",
+        "restaurant-info-management",
       ]),
     []
   );
@@ -150,6 +152,8 @@ const ManagerLayout = () => {
         return <ReviewManagement />;
       case "print-management":
         return <PrintManagement />;
+      case "restaurant-info-management":
+        return <ManagerRestaurantInfoManagement />;
       default:
         return <div>Content not found</div>;
     }
