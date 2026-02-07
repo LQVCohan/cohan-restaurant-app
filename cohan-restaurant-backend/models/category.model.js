@@ -11,6 +11,7 @@ const categorySchema = BaseSchemaModel({
   name: { type: String, required: true, trim: true },
   order: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true },
+  menuItemCount: { type: Number, default: 0, min: 0 },
 });
 
 // Category theo từng nhà hàng (cho phép trùng tên giữa các nhà hàng)

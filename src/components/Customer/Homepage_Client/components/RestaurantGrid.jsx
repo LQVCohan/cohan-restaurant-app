@@ -32,19 +32,31 @@ const GET_TOP_RESTAURANTS = gql`
   }
 `;
 
-const GET_MENU_ITEMS_BY_CATEGORY = gql`
-  query GetMenuItemsByCategory(
-    $limit: Int = 300
-    $categoryName: String
-    $timeSlot: TimeSlot
-  ) {
-    topMenuItems(
-      limit: $limit
-      categoryName: $categoryName
-      timeSlot: $timeSlot
-    ) {
+const GET_RESTAURANTS_BY_CATEGORY_TIME_SLOT = gql`
+  query GetRestaurantsByCategoryTimeSlot($categoryId: ID!, $timeSlot: TimeSlot!, $limit: Int = 50) {
+    restaurantsByCategoryTimeSlot(categoryId: $categoryId, timeSlot: $timeSlot, limit: $limit) {
       id
-      restaurantId
+      name
+      coverImage
+      avatar
+      description
+      priceRange
+      openingHours
+      closingHours
+      avgRating
+      orderCount
+      reservationCount
+      tableParticipationCount
+      address {
+        line1
+        line2
+        ward
+        district
+        city
+        country
+        lat
+        lng
+      }
     }
   }
 `;
@@ -136,25 +148,23 @@ const RestaurantGrid = ({
       : `${resolveCategoryIcon(selectedCategoryName)} ${selectedCategoryName}`
     : "";
 
-  const { data: categoryMenuData } = useQuery(GET_MENU_ITEMS_BY_CATEGORY, {
-    skip: !hasCategoryFilter,
-    variables: {
-      limit: 500,
-      categoryName: selectedCategoryName,
-      timeSlot: effectiveFilter?.timeSlot || undefined,
-    },
-    fetchPolicy: "network-only",
-  });
+  const selectedCategoryId =
+    typeof effectiveFilter?.categoryId === "string"
+      ? effectiveFilter.categoryId.trim()
+      : "";
 
-  const categoryRestaurantIds = useMemo(() => {
-    if (!hasCategoryFilter) return [];
-
-    const ids = (categoryMenuData?.topMenuItems || [])
-      .map((item) => item?.restaurantId)
-      .filter(Boolean);
-
-    return [...new Set(ids)];
-  }, [hasCategoryFilter, categoryMenuData]);
+  const { data: restaurantsByCategoryData } = useQuery(
+    GET_RESTAURANTS_BY_CATEGORY_TIME_SLOT,
+    {
+      skip: !hasCategoryFilter || !selectedCategoryId || !effectiveFilter?.timeSlot,
+      variables: {
+        categoryId: selectedCategoryId,
+        timeSlot: effectiveFilter?.timeSlot,
+        limit: 100,
+      },
+      fetchPolicy: "network-only",
+    }
+  );
 
   const { data, loading, error } = useQuery(GET_TOP_RESTAURANTS, {
     variables: {
@@ -164,7 +174,6 @@ const RestaurantGrid = ({
           ? undefined
           : {
               ...gqlFilter,
-              ...(hasCategoryFilter ? { restaurantIds: categoryRestaurantIds } : {}),
             },
     },
     fetchPolicy: "cache-and-network",
@@ -246,11 +255,36 @@ const RestaurantGrid = ({
   const restaurantsBySelectedCategory = useMemo(() => {
     if (!hasCategoryFilter) return restaurants;
 
-    const restaurantIdSet = new Set(categoryRestaurantIds.map(String));
-    return restaurants.filter((restaurant) =>
-      restaurantIdSet.has(String(restaurant.id))
-    );
-  }, [hasCategoryFilter, categoryRestaurantIds, restaurants]);
+    const direct = restaurantsByCategoryData?.restaurantsByCategoryTimeSlot || [];
+    if (direct.length) {
+      return direct.map((node, index) => {
+        const candidateImage = node.coverImage || node.avatar || "";
+        const fallbackImage =
+          RESTAURANT_FALLBACK_IMAGES[index % RESTAURANT_FALLBACK_IMAGES.length];
+
+        const lat = Number(node?.address?.lat);
+        const lng = Number(node?.address?.lng);
+
+        return {
+          id: node.id,
+          name: node.name ?? "Nhà hàng",
+          description: node.description ?? "Mô tả đang cập nhật...",
+          image: isPlaceholderRestaurantImage(candidateImage)
+            ? fallbackImage
+            : candidateImage,
+          priceRange: node.priceRange ?? "",
+          hours: formatHours(node.openingHours, node.closingHours),
+          addressText: formatAddress(node.address),
+          avgRating:
+            typeof node.avgRating === "number" ? Number(node.avgRating) : 5.0,
+          lat: Number.isFinite(lat) ? lat : null,
+          lng: Number.isFinite(lng) ? lng : null,
+        };
+      });
+    }
+
+    return [];
+  }, [hasCategoryFilter, restaurantsByCategoryData, restaurants]);
 
   const displayRestaurants = nearbyMode
     ? nearestTopRestaurants
