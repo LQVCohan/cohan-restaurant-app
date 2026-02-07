@@ -38,9 +38,7 @@ const buildBasePrompt = (payload, task) => {
     `- trạng thái: ${table.status || "unknown"}`,
     `- tầng: ${table.floorLevel ?? table.floorId ?? "?"}`,
     `- khu/zone: ${table.zone || "không rõ"}`,
-    `- vị trí: x=${table.position?.x ?? "?"}, y=${
-      table.position?.y ?? "?"
-    }`,
+    `- vị trí: x=${table.position?.x ?? "?"}, y=${table.position?.y ?? "?"}`,
     `- đặt cọc: ${table.depositAmount ?? "không có"}`,
     `- giữ bàn (phút): ${table.holdMinutes ?? table.reservationHoldMinutes ?? "?"}`,
     `- chi tiêu tối thiểu: ${table.minSpend ?? "không có"}`,
@@ -98,12 +96,12 @@ const fallbackSuggestion = (type, payload) => {
       durations.length > 0
         ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
         : null;
-    const base = avg ?? (status === "occupied" ? 60 : status === "reserved" ? 30 : 10);
+    const base =
+      avg ?? (status === "occupied" ? 60 : status === "reserved" ? 30 : 10);
     return `Ước lượng bàn trống sau ${base}–${base + 20} phút (phụ thuộc món và số khách).`;
   }
   return "Chưa có gợi ý phù hợp.";
 };
-
 
 const safeJsonParse = (raw) => {
   if (!raw || typeof raw !== "string") return null;
@@ -122,16 +120,24 @@ const safeJsonParse = (raw) => {
 const normalizeLayoutFromAi = (layout, payload = {}) => {
   const tableCount = Math.max(1, Number(payload?.tableCount || 8));
   const prefix = String(payload?.codePrefix || "AI").trim() || "AI";
-  const selected = new Set((payload?.selectedComponents || []).map((i) => String(i || "").trim()));
+  const selected = new Set(
+    (payload?.selectedComponents || []).map((i) => String(i || "").trim()),
+  );
   const rawTables = Array.isArray(layout?.tables) ? layout.tables : [];
   const rawDecor = Array.isArray(layout?.decor) ? layout.decor : [];
 
   const tables = rawTables.slice(0, tableCount).map((table, index) => ({
     code: String(table?.code || `${prefix}-${index + 1}`).trim(),
     x: Number.isFinite(Number(table?.x)) ? Number(table.x) : index * 120,
-    y: Number.isFinite(Number(table?.y)) ? Number(table.y) : Math.floor(index / 4) * 120,
-    rotation: Number.isFinite(Number(table?.rotation)) ? Number(table.rotation) : 0,
-    capacity: Number.isFinite(Number(table?.capacity)) ? Number(table.capacity) : 4,
+    y: Number.isFinite(Number(table?.y))
+      ? Number(table.y)
+      : Math.floor(index / 4) * 120,
+    rotation: Number.isFinite(Number(table?.rotation))
+      ? Number(table.rotation)
+      : 0,
+    capacity: Number.isFinite(Number(table?.capacity))
+      ? Number(table.capacity)
+      : 4,
     type: String(table?.type || "standard"),
   }));
 
@@ -144,7 +150,9 @@ const normalizeLayoutFromAi = (layout, payload = {}) => {
       y: Number.isFinite(Number(item.y)) ? Number(item.y) : 0,
       w: Number.isFinite(Number(item.w)) ? Number(item.w) : 60,
       h: Number.isFinite(Number(item.h)) ? Number(item.h) : 60,
-      rotation: Number.isFinite(Number(item.rotation)) ? Number(item.rotation) : 0,
+      rotation: Number.isFinite(Number(item.rotation))
+        ? Number(item.rotation)
+        : 0,
       label: String(item.label || ""),
       isRealTable: false,
     }));
@@ -155,7 +163,9 @@ const normalizeLayoutFromAi = (layout, payload = {}) => {
 const fallbackSmartLayout = (payload = {}) => {
   const tableCount = Math.max(1, Number(payload?.tableCount || 8));
   const prefix = String(payload?.codePrefix || "AI").trim() || "AI";
-  const selected = new Set((payload?.selectedComponents || []).map((i) => String(i || "").trim()));
+  const selected = new Set(
+    (payload?.selectedComponents || []).map((i) => String(i || "").trim()),
+  );
   const startX = Number(payload?.startX || 0);
   const startY = Number(payload?.startY || 0);
 
@@ -171,18 +181,68 @@ const fallbackSmartLayout = (payload = {}) => {
   const decor = [];
   if (selected.has("wall")) {
     decor.push(
-      { id: `ai_wall_${Date.now()}_1`, type: "wall", x: startX - 80, y: startY - 60, w: 640, h: 10, rotation: 0, label: "Tường", isRealTable: false },
-      { id: `ai_wall_${Date.now()}_2`, type: "wall", x: startX - 80, y: startY + 420, w: 640, h: 10, rotation: 0, label: "Tường", isRealTable: false }
+      {
+        id: `ai_wall_${Date.now()}_1`,
+        type: "wall",
+        x: startX - 80,
+        y: startY - 60,
+        w: 640,
+        h: 10,
+        rotation: 0,
+        label: "Tường",
+        isRealTable: false,
+      },
+      {
+        id: `ai_wall_${Date.now()}_2`,
+        type: "wall",
+        x: startX - 80,
+        y: startY + 420,
+        w: 640,
+        h: 10,
+        rotation: 0,
+        label: "Tường",
+        isRealTable: false,
+      },
     );
   }
   if (selected.has("plant")) {
     decor.push(
-      { id: `ai_plant_${Date.now()}_1`, type: "plant", x: startX - 40, y: startY + 40, w: 40, h: 40, rotation: 0, label: "Cây", isRealTable: false },
-      { id: `ai_plant_${Date.now()}_2`, type: "plant", x: startX + 520, y: startY + 280, w: 40, h: 40, rotation: 0, label: "Cây", isRealTable: false }
+      {
+        id: `ai_plant_${Date.now()}_1`,
+        type: "plant",
+        x: startX - 40,
+        y: startY + 40,
+        w: 40,
+        h: 40,
+        rotation: 0,
+        label: "Cây",
+        isRealTable: false,
+      },
+      {
+        id: `ai_plant_${Date.now()}_2`,
+        type: "plant",
+        x: startX + 520,
+        y: startY + 280,
+        w: 40,
+        h: 40,
+        rotation: 0,
+        label: "Cây",
+        isRealTable: false,
+      },
     );
   }
   if (selected.has("stairs")) {
-    decor.push({ id: `ai_stairs_${Date.now()}`, type: "stairs", x: startX + 500, y: startY - 20, w: 100, h: 60, rotation: 0, label: "Cầu thang", isRealTable: false });
+    decor.push({
+      id: `ai_stairs_${Date.now()}`,
+      type: "stairs",
+      x: startX + 500,
+      y: startY - 20,
+      w: 100,
+      h: 60,
+      rotation: 0,
+      label: "Cầu thang",
+      isRealTable: false,
+    });
   }
   const maybe = [
     ["door", { type: "door", w: 70, h: 12, label: "Cửa" }],
@@ -220,6 +280,9 @@ export const generateSmartFloorLayout = async (payload = {}) => {
       "decor gồm: type,x,y,w,h,rotation,label.",
       "Không trả markdown.",
       `Yêu cầu: ${JSON.stringify(payload)}`,
+      `Thiết kế đẹp, chuẩn logic và các thành phần nằm đúng vị trí, không chồng lấn.`,
+      `phải phủ tường bao trọn các bàn.`,
+      `phải có đủ cửa ra vào và cầu thang nếu có.`,
     ].join("\n");
 
     const ai = await callOpenAI(prompt);
@@ -265,14 +328,15 @@ const callOpenAI = async (prompt) => {
 export const suggestTableMerge = async (payload) => {
   const prompt = buildBasePrompt(
     payload,
-    "Đề xuất ghép bàn tối ưu cho nhóm khách."
+    "Đề xuất ghép bàn tối ưu cho nhóm khách.",
   );
   const ai = await callOpenAI(prompt);
   if (ai) return ai;
   const tables = payload?.tables || [];
   if (tables.length) {
     const targetId = payload?.table?.id;
-    const target = tables.find((t) => String(t.id) === String(targetId)) || payload?.table;
+    const target =
+      tables.find((t) => String(t.id) === String(targetId)) || payload?.table;
     const targetPos = target?.position || {};
     const enriched = tables
       .map((t) => ({
@@ -284,10 +348,13 @@ export const suggestTableMerge = async (payload) => {
         usageCount: t.usageCount ?? 0,
       }))
       .sort((a, b) => a.distance - b.distance || a.usageCount - b.usageCount);
-    const candidates = enriched.slice(0, 3).map((t) => t.code).filter(Boolean);
+    const candidates = enriched
+      .slice(0, 3)
+      .map((t) => t.code)
+      .filter(Boolean);
     if (candidates.length) {
       return `Gợi ý ghép bàn gần kề (ưu tiên bàn ít sử dụng) vào giờ cao điểm: ${candidates.join(
-        ", "
+        ", ",
       )}.`;
     }
   }
@@ -297,7 +364,7 @@ export const suggestTableMerge = async (payload) => {
 export const suggestTablePromo = async (payload) => {
   const prompt = buildBasePrompt(
     payload,
-    "Đề xuất promotion/ưu đãi phù hợp cho bàn đặt."
+    "Đề xuất promotion/ưu đãi phù hợp cho bàn đặt.",
   );
   const ai = await callOpenAI(prompt);
   return ai || fallbackSuggestion("promo", payload);
@@ -306,7 +373,7 @@ export const suggestTablePromo = async (payload) => {
 export const predictTableTurnover = async (payload) => {
   const prompt = buildBasePrompt(
     payload,
-    "Dự đoán thời gian bàn trống và thời gian quay vòng."
+    "Dự đoán thời gian bàn trống và thời gian quay vòng.",
   );
   const ai = await callOpenAI(prompt);
   if (ai) return ai;
