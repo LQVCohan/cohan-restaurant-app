@@ -3,7 +3,7 @@ import path from "path";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import process from "process";
-import { Category, MenuItem } from "../models/index.js";
+import { MenuItem } from "../models/index.js";
 
 dotenv.config();
 
@@ -34,6 +34,26 @@ const normalizeText = (value = "") =>
     .toLowerCase()
     .trim();
 
+const toHexObjectIdString = (raw) => {
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    return mongoose.isValidObjectId(s) ? s : null;
+  }
+
+  if (raw instanceof mongoose.Types.ObjectId) {
+    return String(raw);
+  }
+
+  if (typeof raw === "object") {
+    if (raw.$oid && mongoose.isValidObjectId(raw.$oid)) return String(raw.$oid);
+    if (raw._id && mongoose.isValidObjectId(raw._id)) return String(raw._id);
+    if (raw.id && mongoose.isValidObjectId(raw.id)) return String(raw.id);
+  }
+
+  return null;
+};
+
 function parseArg(name) {
   const prefix = `--${name}=`;
   const hit = process.argv.find((x) => x.startsWith(prefix));
@@ -48,8 +68,8 @@ function pickNameField(row = {}) {
   return row.name || row.dishName || row.menuItemName || row.tenMon || row.title || "";
 }
 
-function pickCategoryField(row = {}) {
-  return (
+function pickCategoryNameField(row = {}) {
+  const candidate =
     row.categoryName ||
     row.category ||
     row.category_type ||
@@ -57,7 +77,21 @@ function pickCategoryField(row = {}) {
     row.group ||
     row.loai ||
     row.type ||
-    ""
+    "";
+
+  if (typeof candidate === "string") return candidate;
+  if (candidate && typeof candidate === "object") {
+    return candidate.name || candidate.categoryName || candidate.loai || "";
+  }
+  return "";
+}
+
+function pickCategoryIdField(row = {}) {
+  return (
+    toHexObjectIdString(row.categoryId) ||
+    toHexObjectIdString(row.category_id) ||
+    toHexObjectIdString(row.category?.id) ||
+    toHexObjectIdString(row.category?._id)
   );
 }
 
@@ -96,18 +130,25 @@ function inferCategoryTypeFromDishName(dishName) {
 }
 
 function buildCategoryResolver(categoryRows = []) {
-  const rows = categoryRows.map((row) => {
-    const id = row.id || row._id;
-    const name = row.name || row.categoryName || row.tenDanhMuc;
-    return {
-      id: id ? String(id) : "",
-      name: String(name || "").trim(),
-      normalizedName: normalizeText(name || ""),
-      restaurantId: row.restaurantId ? String(row.restaurantId) : null,
-    };
-  }).filter((x) => x.id && x.name);
+  const rows = categoryRows
+    .map((row) => {
+      const id =
+        toHexObjectIdString(row.id) ||
+        toHexObjectIdString(row._id) ||
+        toHexObjectIdString(row.categoryId) ||
+        toHexObjectIdString(row.category_id);
+
+      const name = row.name || row.categoryName || row.tenDanhMuc;
+      return {
+        id: id || "",
+        name: String(name || "").trim(),
+        normalizedName: normalizeText(name || ""),
+      };
+    })
+    .filter((x) => x.id && x.name);
 
   const byExact = new Map(rows.map((r) => [r.normalizedName, r]));
+  const byId = new Map(rows.map((r) => [r.id, r]));
 
   const resolveByName = (inputName) => {
     const n = normalizeText(inputName);
@@ -121,13 +162,25 @@ function buildCategoryResolver(categoryRows = []) {
     return null;
   };
 
-  return { rows, resolveByName };
+  const resolveById = (inputId) => {
+    const id = toHexObjectIdString(inputId);
+    if (!id) return null;
+    return byId.get(id) || null;
+  };
+
+  return { resolveByName, resolveById };
 }
 
 function buildMenuItemQuery(dishRow) {
   const query = {};
-  const id = dishRow.id || dishRow._id || dishRow.menuItemId;
-  if (id && mongoose.isValidObjectId(id)) {
+
+  const id =
+    toHexObjectIdString(dishRow.id) ||
+    toHexObjectIdString(dishRow._id) ||
+    toHexObjectIdString(dishRow.menuItemId) ||
+    toHexObjectIdString(dishRow.menu_item_id);
+
+  if (id) {
     query._id = new mongoose.Types.ObjectId(id);
     return query;
   }
@@ -136,13 +189,13 @@ function buildMenuItemQuery(dishRow) {
   if (!name) return null;
   query.name = new RegExp(`^${String(name).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
 
-  const restaurantId = dishRow.restaurantId;
-  if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
+  const restaurantId = toHexObjectIdString(dishRow.restaurantId);
+  if (restaurantId) {
     query.restaurantId = new mongoose.Types.ObjectId(restaurantId);
   }
 
-  const menuId = dishRow.menuId;
-  if (menuId && mongoose.isValidObjectId(menuId)) {
+  const menuId = toHexObjectIdString(dishRow.menuId);
+  if (menuId) {
     query.menuId = new mongoose.Types.ObjectId(menuId);
   }
 
@@ -171,7 +224,7 @@ async function main() {
 
   const categoryRows = await readJsonArray(categoryFile);
   const dishRows = await readJsonArray(dishFile);
-  const { resolveByName } = buildCategoryResolver(categoryRows);
+  const { resolveByName, resolveById } = buildCategoryResolver(categoryRows);
 
   await mongoose.connect(MONGO_URI, { dbName: MONGO_DB });
   console.log("✅ Mongo connected");
@@ -180,6 +233,7 @@ async function main() {
   let skippedNoCategory = 0;
   let skippedNoDish = 0;
   let skippedNoMatch = 0;
+  let skippedInvalidCategoryId = 0;
 
   for (const dishRow of dishRows) {
     const dishName = pickNameField(dishRow);
@@ -188,19 +242,31 @@ async function main() {
       continue;
     }
 
-    const categoryFromJson = pickCategoryField(dishRow);
+    const categoryIdFromJson = pickCategoryIdField(dishRow);
+    const categoryFromJson = pickCategoryNameField(dishRow);
     const inferredType = inferCategoryTypeFromDishName(dishName);
     const desiredCategoryName = categoryFromJson || inferredType;
 
-    if (!desiredCategoryName) {
-      skippedNoCategory += 1;
+    const resolvedCategory = categoryIdFromJson
+      ? resolveById(categoryIdFromJson) || resolveByName(desiredCategoryName)
+      : resolveByName(desiredCategoryName);
+
+    if (!resolvedCategory) {
+      if (!desiredCategoryName && !categoryIdFromJson) {
+        skippedNoCategory += 1;
+      } else {
+        skippedNoMatch += 1;
+        console.log(
+          `⚠️ Không match category cho món "${dishName}" (categoryId=${categoryIdFromJson || "N/A"}, loại="${desiredCategoryName || "N/A"}")`
+        );
+      }
       continue;
     }
 
-    const resolvedCategory = resolveByName(desiredCategoryName);
-    if (!resolvedCategory) {
-      skippedNoMatch += 1;
-      console.log(`⚠️ Không match category cho món "${dishName}" với loại "${desiredCategoryName}"`);
+    const categoryObjectId = toHexObjectIdString(resolvedCategory.id);
+    if (!categoryObjectId) {
+      skippedInvalidCategoryId += 1;
+      console.log(`⚠️ Category id không hợp lệ: ${resolvedCategory.id} (${resolvedCategory.name})`);
       continue;
     }
 
@@ -217,21 +283,19 @@ async function main() {
       continue;
     }
 
-    if (String(item.categoryId) === String(resolvedCategory.id)) {
+    if (String(item.categoryId) === categoryObjectId) {
       continue;
     }
 
     if (!dryRun) {
       await MenuItem.updateOne(
         { _id: item._id },
-        { $set: { categoryId: new mongoose.Types.ObjectId(resolvedCategory.id) } }
+        { $set: { categoryId: new mongoose.Types.ObjectId(categoryObjectId) } }
       );
     }
 
     updated += 1;
-    console.log(
-      `${dryRun ? "🧪" : "✅"} ${item.name} -> ${resolvedCategory.name} (${resolvedCategory.id})`
-    );
+    console.log(`${dryRun ? "🧪" : "✅"} ${item.name} -> ${resolvedCategory.name} (${categoryObjectId})`);
   }
 
   console.log("\n===== KẾT QUẢ =====");
@@ -239,6 +303,7 @@ async function main() {
   console.log("Skipped (không có loại):", skippedNoCategory);
   console.log("Skipped (không xác định món):", skippedNoDish);
   console.log("Skipped (không match category):", skippedNoMatch);
+  console.log("Skipped (category id không hợp lệ):", skippedInvalidCategoryId);
 
   await mongoose.disconnect();
   console.log("👋 Done");
