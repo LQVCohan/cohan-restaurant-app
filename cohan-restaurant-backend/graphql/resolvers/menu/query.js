@@ -180,7 +180,7 @@ export const MenuQuery = {
     }
 
     return MenuItem.find(q)
-      .sort({ point: -1, createdAt: -1, _id: 1 })
+      .sort({ rate: -1, orderCounter: -1, createdAt: -1, _id: 1 })
       .limit(LIM)
       .lean({ virtuals: true });
   },

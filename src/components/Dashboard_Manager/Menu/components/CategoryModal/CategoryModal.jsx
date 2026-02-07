@@ -12,42 +12,8 @@ import {
   Check,
 } from "lucide-react";
 import { useCategoryManagement } from "../../../../../hooks/useCategoryManagement";
+import { COMMON_CATEGORY_ICONS, resolveCategoryIcon } from "../../../../../utils/categoryIconMap";
 import "./CategoryModal.scss";
-
-const COMMON_ICONS = [
-  "🥗",
-  "🍽️",
-  "🍰",
-  "🥤",
-  "🍜",
-  "🍚",
-  "🍲",
-  "🥖",
-  "🍕",
-  "🍔",
-  "🌮",
-  "🍣",
-  "🍤",
-  "🥘",
-  "🍖",
-  "🥩",
-  "🍗",
-  "🥓",
-  "🧀",
-  "🥞",
-  "🍳",
-  "🥯",
-  "🍞",
-  "🥨",
-  "🔥",
-  "❄️",
-  "🌱",
-  "🌶️",
-  "⭐",
-  "🆕",
-  "👨‍🍳",
-  "🍷",
-];
 
 const INITIAL_FORM = {
   id: null,
@@ -67,7 +33,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
   const {
     categoryMenus,
     categoryMenuLoading,
-    categoryMenuError,
+    categoryMenuError: _CATEGORY_MENU_ERROR,
     createCategoryMenu,
     updateCategoryMenu,
     deleteCategoryMenu,
@@ -98,7 +64,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
     setFormData({
       id: cat.id || cat._id,
       name: cat.name || "",
-      icon: "🍽️", // Mặc định nếu BE không trả về
+      icon: resolveCategoryIcon(cat.name || ""),
       description: cat.description || "",
     });
     setErrors({});
@@ -222,7 +188,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                   {filteredList.map((cat) => (
                     <div key={cat.id || cat._id} className="category-item-card">
                       <div className="card-visual">
-                        <span>🍽️</span>
+                        <span>{resolveCategoryIcon(cat.name || "")}</span>
                       </div>
                       <div className="card-info">
                         <span className="cat-name">{cat.name}</span>
@@ -306,7 +272,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                     <span>{formData.icon}</span>
                   </div>
                   <div className="icon-grid custom-scrollbar">
-                    {COMMON_ICONS.map((icon) => (
+                    {COMMON_CATEGORY_ICONS.map((icon) => (
                       <button
                         key={icon}
                         type="button"
