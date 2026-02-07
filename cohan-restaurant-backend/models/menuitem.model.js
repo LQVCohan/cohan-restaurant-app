@@ -58,6 +58,8 @@ const menuItemSchema = BaseSchemaModel({
 
   avgPrepTimeMin: { type: Number, default: 10, min: 0 },
   point: { type: Number, default: 0, min: 0 },
+  rate: { type: Number, default: 0, min: 0, max: 5, index: true },
+  orderCounter: { type: Number, default: 0, min: 0, index: true },
 
   notes: { type: String, trim: true },
 });
@@ -76,6 +78,8 @@ menuItemSchema.index(
 );
 
 menuItemSchema.index({ restaurantId: 1, status: 1, sortOrder: 1 });
+
+menuItemSchema.index({ rate: -1, orderCounter: -1, _id: 1 });
 
 menuItemSchema.index({
   name: "text",

@@ -121,6 +121,9 @@ export const MenuMutation = {
       modifierGroupIds,
       status,
       avgPrepTimeMin,
+      point,
+      rate,
+      orderCounter,
       notes,
     } = input || {};
 
@@ -141,6 +144,20 @@ export const MenuMutation = {
     const avgPrep = toNumOrUndef(avgPrepTimeMin);
     if (avgPrep !== undefined && avgPrep < 0) {
       throw new GraphQLError("avgPrepTimeMin must be >= 0");
+    }
+    const pointNum = toNumOrUndef(point);
+    if (pointNum !== undefined && pointNum < 0) {
+      throw new GraphQLError("point must be >= 0");
+    }
+
+    const rateNum = toNumOrUndef(rate);
+    if (rateNum !== undefined && (rateNum < 0 || rateNum > 5)) {
+      throw new GraphQLError("rate must be between 0 and 5");
+    }
+
+    const orderCounterNum = toNumOrUndef(orderCounter);
+    if (orderCounterNum !== undefined && orderCounterNum < 0) {
+      throw new GraphQLError("orderCounter must be >= 0");
     }
 
     const session = await mongoose.startSession();
@@ -177,6 +194,9 @@ export const MenuMutation = {
               modifierGroupIds,
               status: status || undefined,
               avgPrepTimeMin: avgPrep ?? undefined,
+              point: pointNum ?? undefined,
+              rate: rateNum ?? undefined,
+              orderCounter: orderCounterNum ?? undefined,
               notes,
               // byWeight: deprecated - derived from recipe variant mode
             },
@@ -261,6 +281,27 @@ export const MenuMutation = {
           if (n !== undefined && n < 0)
             throw new GraphQLError("avgPrepTimeMin must be >= 0");
           item.avgPrepTimeMin = n;
+        }
+
+        if (input.point !== undefined) {
+          const n = toNumOrUndef(input.point);
+          if (n !== undefined && n < 0)
+            throw new GraphQLError("point must be >= 0");
+          item.point = n;
+        }
+
+        if (input.rate !== undefined) {
+          const n = toNumOrUndef(input.rate);
+          if (n !== undefined && (n < 0 || n > 5))
+            throw new GraphQLError("rate must be between 0 and 5");
+          item.rate = n;
+        }
+
+        if (input.orderCounter !== undefined) {
+          const n = toNumOrUndef(input.orderCounter);
+          if (n !== undefined && n < 0)
+            throw new GraphQLError("orderCounter must be >= 0");
+          item.orderCounter = n;
         }
 
         // ❗ ignore byWeight updates (deprecated, derived from recipe)
@@ -360,6 +401,27 @@ export const MenuMutation = {
     if (typeof name === "string") patch.name = name;
     if (typeof description === "string") patch.description = description;
     if (categoryId) patch.categoryId = categoryId;
+
+    if (input.point !== undefined) {
+      const n = toNumOrUndef(input.point);
+      if (n !== undefined && n < 0) throw new GraphQLError("point must be >= 0");
+      patch.point = n;
+    }
+
+    if (input.rate !== undefined) {
+      const n = toNumOrUndef(input.rate);
+      if (n !== undefined && (n < 0 || n > 5)) {
+        throw new GraphQLError("rate must be between 0 and 5");
+      }
+      patch.rate = n;
+    }
+
+    if (input.orderCounter !== undefined) {
+      const n = toNumOrUndef(input.orderCounter);
+      if (n !== undefined && n < 0)
+        throw new GraphQLError("orderCounter must be >= 0");
+      patch.orderCounter = n;
+    }
 
     const doc = await MenuItem.findOneAndUpdate(
       { _id: menuItemId, restaurantId },
