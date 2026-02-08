@@ -175,6 +175,46 @@ $box-shadow:
 
 
 .customer-preview-card {
+  overflow: hidden;
+
+  .ant-card-body {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .customer-preview-embedded {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .restaurant-info-premium {
+    max-width: none;
+    margin: 0;
+    padding: 16px;
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    box-sizing: border-box;
+  }
+
+  .info-content,
+  .info-sidebar,
+  .info-sidebar .sidebar-sticky-content,
+  .info-sidebar .card {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .info-sidebar .sidebar-sticky-content {
+    position: static;
+    top: auto;
+  }
+
+  .info-content .dual-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
   .preview-item {
     background: #fafafa;
     border: 1px solid #f0f0f0;
@@ -262,5 +302,21 @@ $box-shadow:
   padding: 8px 10px;
   border: 1px solid #f0f0f0;
   border-radius: 8px;
+  background: #fff;
+}
+
+
+.restaurant-detail-full-preview {
+  .ant-card-body {
+    padding: 0;
+    overflow: hidden;
+  }
+}
+
+.restaurant-detail-preview-frame {
+  width: 100%;
+  height: 900px;
+  border: 0;
+  display: block;
   background: #fff;
 }
