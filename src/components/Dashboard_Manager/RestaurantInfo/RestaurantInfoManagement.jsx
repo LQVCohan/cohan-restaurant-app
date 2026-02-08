@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import {
-  Layout,
   Card,
   Select,
   Input,
@@ -21,8 +20,7 @@ import {
   Skeleton,
   Badge,
   Tooltip,
-  Divider,
-  Empty,
+  Collapse,
 } from "antd";
 import {
   SaveOutlined,
@@ -32,7 +30,6 @@ import {
   DeleteOutlined,
   ShopOutlined,
   ClockCircleOutlined,
-  BarChartOutlined,
   OrderedListOutlined,
   EnvironmentOutlined,
   InfoCircleOutlined,
@@ -94,46 +91,6 @@ const GET_CATEGORIES = gql`
     }
   }
 `;
-const CREATE_CATEGORY = gql`
-  mutation CreateCategory($input: CreateCategoryInput!) {
-    createCategory(input: $input) {
-      id
-      name
-    }
-  }
-`;
-const UPDATE_CATEGORY = gql`
-  mutation UpdateCategory($input: UpdateCategoryInput!) {
-    updateCategory(input: $input) {
-      id
-      name
-      order
-      isActive
-    }
-  }
-`;
-const DELETE_CATEGORY = gql`
-  mutation DeleteCategory($id: ID!) {
-    deleteCategory(id: $id)
-  }
-`;
-const TOP_CATEGORIES_BY_RESTAURANT = gql`
-  query TopCategoriesByRestaurant(
-    $restaurantId: ID!
-    $timeSlot: TimeSlot!
-    $limit: Int
-  ) {
-    topCategoriesByMenuItemCount(
-      restaurantId: $restaurantId
-      timeSlot: $timeSlot
-      limit: $limit
-    ) {
-      id
-      name
-      menuItemCount
-    }
-  }
-`;
 const GET_INDEXES = gql`
   query GetRestaurantCategoryIndexes($restaurantId: ID, $timeSlot: TimeSlot) {
     restaurantCategoryIndexes(
@@ -152,11 +109,6 @@ const GET_INDEXES = gql`
     }
   }
 `;
-const REFRESH_INDEXES = gql`
-  mutation RefreshRestaurantCategoryIndexes($timeSlot: TimeSlot!) {
-    refreshRestaurantCategoryIndexes(timeSlot: $timeSlot)
-  }
-`;
 const UPDATE_INDEX = gql`
   mutation UpdateRestaurantCategoryIndex(
     $input: UpdateRestaurantCategoryIndexInput!
@@ -170,6 +122,7 @@ const UPDATE_INDEX = gql`
     }
   }
 `;
+
 const GET_RESTAURANT_DETAIL = gql`
   query GetRestaurantDetail($id: ID!) {
     restaurant(id: $id) {
@@ -183,6 +136,9 @@ const GET_RESTAURANT_DETAIL = gql`
       cuisineType
       priceRange
       status
+      amenities
+      notesOnAmenities
+      avgRating
       address {
         line1
         district
@@ -204,20 +160,56 @@ const UPDATE_RESTAURANT = gql`
       cuisineType
       priceRange
       status
+      amenities
+      notesOnAmenities
+      avgRating
     }
   }
 `;
 
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
+const DEFAULT_CUSTOMER_INFO = {
+  story: "",
+  chef: "",
+  dressCode: "",
+  website: "",
+  extraAmenities: [],
+  parkingDetail: "",
+  suitableFor: [],
+  faqs: [
+    { q: "", a: "" },
+    { q: "", a: "" },
+    { q: "", a: "" },
+  ],
+};
+
+const DRAFT_STORAGE_KEY = "restaurant_info_drafts_v1";
+
+const parseCustomerInfo = (value) => {
+  if (!value) return DEFAULT_CUSTOMER_INFO;
+  try {
+    const parsed = JSON.parse(value);
+    return {
+      ...DEFAULT_CUSTOMER_INFO,
+      ...parsed,
+      suitableFor: Array.isArray(parsed?.suitableFor) ? parsed.suitableFor : [],
+      faqs: Array.isArray(parsed?.faqs) && parsed.faqs.length > 0
+        ? parsed.faqs.slice(0, 3)
+        : DEFAULT_CUSTOMER_INFO.faqs,
+    };
+  } catch {
+    return { ...DEFAULT_CUSTOMER_INFO, story: value };
+  }
+};
 
 const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [timeSlot, setTimeSlot] = useState("lunch");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState([]);
-
-  const [catFormInstance] = Form.useForm();
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
+  const [draftName, setDraftName] = useState("");
+  const [drafts, setDrafts] = useState([]);
+  const [extraAmenityInput, setExtraAmenityInput] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
+  const baselineRef = useRef("");
 
   const [restaurantForm, setRestaurantForm] = useState({
     name: "",
@@ -229,6 +221,14 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     cuisineType: "",
     priceRange: "",
     status: "active",
+    avgRating: 0,
+    amenities: {
+      wifi: false,
+      parking: false,
+      card: false,
+    },
+    notesOnAmenities: "",
+    customerInfo: DEFAULT_CUSTOMER_INFO,
     line1: "",
     district: "",
     city: "",
@@ -282,7 +282,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   useEffect(() => {
     const r = restaurantDetailData?.restaurant;
     if (!r) return;
-    setRestaurantForm({
+    const parsedCustomerInfo = parseCustomerInfo(r.notesOnAmenities);
+    const nextState = {
       name: r.name || "",
       phone: r.phone || "",
       email: r.email || "",
@@ -292,15 +293,60 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       cuisineType: r.cuisineType || "",
       priceRange: r.priceRange || "",
       status: r.status || "active",
+      avgRating: r.avgRating || 0,
+      amenities: {
+        wifi: Boolean(r.amenities?.wifi),
+        parking: Boolean(r.amenities?.parking),
+        card: Boolean(r.amenities?.card),
+      },
+      notesOnAmenities: r.notesOnAmenities || "",
+      customerInfo: {
+        ...parsedCustomerInfo,
+        website: parsedCustomerInfo?.website || "",
+        extraAmenities: Array.isArray(parsedCustomerInfo?.extraAmenities)
+          ? parsedCustomerInfo.extraAmenities
+          : [],
+      },
       line1: r.address?.line1 || "",
       district: r.address?.district || "",
       city: r.address?.city || "",
-    });
+    };
+    setRestaurantForm(nextState);
+    baselineRef.current = JSON.stringify(nextState);
+    setIsDirty(false);
   }, [restaurantDetailData]);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return;
+    try {
+      setDrafts(JSON.parse(raw));
+    } catch {
+      setDrafts([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(drafts));
+  }, [drafts]);
+
+  useEffect(() => {
+    if (!baselineRef.current) return;
+    setIsDirty(JSON.stringify(restaurantForm) !== baselineRef.current);
+  }, [restaurantForm]);
+
+  useEffect(() => {
+    const handler = (event) => {
+      if (!isDirty) return;
+      event.preventDefault();
+      event.returnValue = "Bạn có thay đổi chưa lưu. Bạn có chắc muốn thoát?";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
 
   const {
     data: indexData,
-    loading: indexLoading,
     refetch: refetchIndexes,
   } = useQuery(GET_INDEXES, {
     variables: { restaurantId: selectedRestaurantId || undefined, timeSlot },
@@ -315,13 +361,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     );
   }, [indexData, selectedRestaurantId]);
 
-  useEffect(() => {
-    setSelectedCategoryIds((activeIndex?.categoryIds || []).map(String));
-  }, [activeIndex?.id, activeIndex?.categoryIds]);
 
   const {
     data: categoryData,
-    loading: categoryLoading,
     refetch: refetchCategories,
   } = useQuery(GET_CATEGORIES, {
     variables: { restaurantId: selectedRestaurantId, timeSlot },
@@ -329,68 +371,124 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     fetchPolicy: "network-only",
   });
 
-  const { data: topCategoryData, refetch: refetchTopCategories } = useQuery(
-    TOP_CATEGORIES_BY_RESTAURANT,
-    {
-      variables: { restaurantId: selectedRestaurantId, timeSlot, limit: 6 },
-      skip: !selectedRestaurantId || !timeSlot,
-      fetchPolicy: "network-only",
-    },
-  );
 
   const categories = categoryData?.categories || [];
-  const topCategories = topCategoryData?.topCategoriesByMenuItemCount || [];
 
   // --- MUTATIONS ---
-  const [refreshIndexes, { loading: refreshing }] =
-    useMutation(REFRESH_INDEXES);
-  const [updateIndex, { loading: savingIndex }] = useMutation(UPDATE_INDEX);
+  const [updateIndex, { loading: syncingIndex }] = useMutation(UPDATE_INDEX);
   const [updateRestaurant, { loading: savingRestaurant }] =
     useMutation(UPDATE_RESTAURANT);
-  const [createCategory, { loading: creatingCategory }] =
-    useMutation(CREATE_CATEGORY);
-  const [updateCategory, { loading: updatingCategory }] =
-    useMutation(UPDATE_CATEGORY);
-  const [deleteCategory] = useMutation(DELETE_CATEGORY);
 
   // --- HANDLERS ---
-  const toggleCategory = (id) => {
-    setSelectedCategoryIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+
+  const saveDraftToLocal = (label = "Bản nháp thủ công") => {
+    const payload = {
+      id: `${Date.now()}`,
+      label,
+      restaurantId: selectedRestaurantId,
+      savedAt: new Date().toISOString(),
+      data: restaurantForm,
+    };
+    setDrafts((prev) => [payload, ...prev].slice(0, 20));
+    message.success("Đã lưu bản nháp");
+  };
+
+  const loadDraft = (id) => {
+    const found = drafts.find((item) => item.id === id);
+    if (!found) return;
+    setRestaurantForm(found.data);
+    setIsDirty(true);
+    message.success(`Đã nạp bản nháp: ${found.label}`);
+  };
+
+  const validateRestaurantForm = () => {
+    if (!restaurantForm.name?.trim()) return "Tên nhà hàng không được để trống";
+    if (restaurantForm.phone && !/^\+?[0-9]{9,12}$/.test(restaurantForm.phone)) {
+      return "Số điện thoại không hợp lệ";
+    }
+    if (restaurantForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(restaurantForm.email)) {
+      return "Email không hợp lệ";
+    }
+    if (
+      restaurantForm.customerInfo?.website &&
+      !/^https?:\/\//i.test(restaurantForm.customerInfo.website)
+    ) {
+      return "Website phải bắt đầu bằng http:// hoặc https://";
+    }
+    return null;
+  };
+
+  const generateAIDescription = () => {
+    const name = restaurantForm.name || "Nhà hàng";
+    const cuisine = restaurantForm.cuisineType || "ẩm thực phong phú";
+    const story = restaurantForm.customerInfo?.story || "hành trình ẩm thực đầy cảm hứng";
+    const chef = restaurantForm.customerInfo?.chef
+      ? `Dưới bàn tay dẫn dắt của ${restaurantForm.customerInfo.chef},`
+      : "";
+    const description = `${name} là điểm hẹn ${cuisine}, nơi thực khách không chỉ thưởng thức món ngon mà còn cảm nhận được ${story}. ${chef} mỗi chi tiết trong trải nghiệm đều được nâng niu để tạo nên dấu ấn tinh tế, sang trọng và đáng nhớ.`;
+    setRestaurantForm((prev) => ({ ...prev, description }));
+    setIsDirty(true);
+    message.success("A.I đã tạo mô tả văn hoa mỹ từ");
+  };
+
+  const fillCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      message.error("Trình duyệt không hỗ trợ định vị");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const lat = coords.latitude.toFixed(6);
+        const lng = coords.longitude.toFixed(6);
+        setRestaurantForm((prev) => ({
+          ...prev,
+          line1: prev.line1 || `Vị trí hiện tại (${lat}, ${lng})`,
+        }));
+        setIsDirty(true);
+        message.success("Đã lấy vị trí hiện tại, vui lòng bổ sung địa chỉ chi tiết");
+      },
+      () => message.error("Không thể lấy vị trí hiện tại"),
     );
   };
 
   const onRefresh = async () => {
-    try {
-      await refreshIndexes({ variables: { timeSlot } });
-      await refetchIndexes();
-      message.success("Đã refresh index thành công");
-    } catch (error) {
-      message.error(error.message || "Lỗi refresh index");
-    }
-  };
-
-  const onSaveIndex = async () => {
     if (!selectedRestaurantId) return;
     try {
+      const allCategoryIds = categories.map((item) => String(item.id));
       await updateIndex({
         variables: {
           input: {
             restaurantId: selectedRestaurantId,
             timeSlot,
-            categoryIds: selectedCategoryIds,
+            categoryIds: allCategoryIds,
           },
         },
       });
-      await refetchIndexes();
-      message.success("Đã lưu Index Categories");
+      await Promise.all([refetchIndexes(), refetchCategories()]);
+      message.success("Đã cập nhật số lượng category theo món ăn");
     } catch (error) {
-      message.error("Lỗi lưu index");
+      message.error(error.message || "Lỗi cập nhật category");
     }
   };
 
+
   const onSaveRestaurantInfo = async () => {
     if (!selectedRestaurantId) return;
+
+    const validationError = validateRestaurantForm();
+    if (validationError) {
+      message.error(validationError);
+      return;
+    }
+
+    const amenityList = [
+      restaurantForm.amenities?.wifi ? "wifi" : null,
+      restaurantForm.amenities?.parking ? "parking" : null,
+      restaurantForm.amenities?.card ? "card" : null,
+      ...(restaurantForm.customerInfo?.extraAmenities || []),
+    ].filter(Boolean);
+
     try {
       await updateRestaurant({
         variables: {
@@ -405,6 +503,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             cuisineType: restaurantForm.cuisineType || null,
             priceRange: restaurantForm.priceRange || null,
             status: restaurantForm.status || "active",
+            amenities: amenityList,
+            notesOnAmenities: JSON.stringify(restaurantForm.customerInfo),
             address: {
               line1: restaurantForm.line1 || null,
               district: restaurantForm.district || null,
@@ -414,93 +514,44 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         },
       });
       await refetchRestaurantDetail();
+      setIsDirty(false);
       message.success("Cập nhật thông tin nhà hàng thành công");
-    } catch (error) {
-      message.error("Không thể cập nhật thông tin");
+    } catch {
+      saveDraftToLocal("Bản nháp tự động khi lỗi mạng");
+      message.error("Không thể cập nhật thông tin. Đã lưu bản nháp cục bộ.");
     }
   };
 
-  const openCategoryModal = (cat = null) => {
-    setEditingCategory(cat);
-    if (cat) {
-      catFormInstance.setFieldsValue({
-        name: cat.name,
-        order: cat.order,
-        isActive: cat.isActive,
-      });
-    } else {
-      catFormInstance.resetFields();
-      catFormInstance.setFieldsValue({ isActive: true, order: 0 });
-    }
-    setIsModalVisible(true);
-  };
 
-  const handleCategoryOk = async () => {
-    try {
-      const values = await catFormInstance.validateFields();
-      if (editingCategory) {
-        await updateCategory({
-          variables: {
-            input: {
-              id: editingCategory.id,
-              name: values.name.trim(),
-              order: Number(values.order) || 0,
-              isActive: Boolean(values.isActive),
-            },
-          },
-        });
-        message.success("Đã cập nhật category");
-      } else {
-        await createCategory({
-          variables: {
-            input: {
-              restaurantId: selectedRestaurantId,
-              timeSlot,
-              name: values.name.trim(),
-              order: Number(values.order) || 0,
-            },
-          },
-        });
-        message.success("Đã tạo category mới");
-      }
-      setIsModalVisible(false);
-      await Promise.all([
-        refetchCategories(),
-        refetchTopCategories(),
-        refetchIndexes(),
-      ]);
-    } catch (error) {
-      // Form validation error or API error
-    }
-  };
 
-  const onDeleteCategory = (id) => {
-    Modal.confirm({
-      title: "Xoá Category?",
-      content: "Hành động này không thể hoàn tác.",
-      okText: "Xoá ngay",
-      okType: "danger",
-      cancelText: "Huỷ",
-      onOk: async () => {
-        try {
-          await deleteCategory({ variables: { id } });
-          await Promise.all([
-            refetchCategories(),
-            refetchTopCategories(),
-            refetchIndexes(),
-          ]);
-          setSelectedCategoryIds((prev) =>
-            prev.filter((x) => String(x) !== String(id)),
-          );
-          message.success("Đã xoá category");
-        } catch (error) {
-          message.error("Lỗi khi xoá category");
-        }
+
+
+  const updateCustomerInfoField = (field, value) => {
+    setRestaurantForm((prev) => ({
+      ...prev,
+      customerInfo: {
+        ...prev.customerInfo,
+        [field]: value,
       },
+    }));
+  };
+
+  const updateFaqField = (index, field, value) => {
+    setRestaurantForm((prev) => {
+      const nextFaqs = [...(prev.customerInfo?.faqs || DEFAULT_CUSTOMER_INFO.faqs)];
+      nextFaqs[index] = {
+        ...(nextFaqs[index] || { q: "", a: "" }),
+        [field]: value,
+      };
+      return {
+        ...prev,
+        customerInfo: {
+          ...prev.customerInfo,
+          faqs: nextFaqs,
+        },
+      };
     });
   };
-
-  const mapById = new Map(restaurantOptions.map((r) => [String(r.id), r.name]));
 
   // --- RENDER HELPERS ---
   const renderRestaurantForm = () => (
@@ -581,7 +632,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                 </Row>
                 <Form.Item label="Mô tả">
                   <TextArea
-                    rows={3}
+                    rows={4}
                     value={restaurantForm.description}
                     onChange={(e) =>
                       setRestaurantForm((p) => ({
@@ -590,8 +641,11 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       }))
                     }
                     showCount
-                    maxLength={500}
+                    maxLength={1000}
                   />
+                  <Button size="small" style={{ marginTop: 8 }} onClick={generateAIDescription}>
+                    Viết mô tả A.I văn hoa
+                  </Button>
                 </Form.Item>
               </>
             ),
@@ -608,6 +662,11 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               <Form.Item
                 label="Địa chỉ chi tiết"
                 help="Nhập số nhà, tên đường, quận/huyện và thành phố"
+                extra={
+                  <Button size="small" onClick={fillCurrentLocation}>
+                    Lấy địa chỉ hiện tại tự động
+                  </Button>
+                }
               >
                 {/* FIX: Sử dụng Space.Compact thay cho Input.Group */}
                 <Space.Compact block>
@@ -654,47 +713,239 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               </span>
             ),
             children: (
-              <Row gutter={16}>
-                <Col span={8}>
-                  <Form.Item label="Giờ mở cửa">
-                    <Input
-                      value={restaurantForm.openingHours}
-                      onChange={(e) =>
-                        setRestaurantForm((p) => ({
-                          ...p,
-                          openingHours: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item label="Giờ đóng cửa">
-                    <Input
-                      value={restaurantForm.closingHours}
-                      onChange={(e) =>
-                        setRestaurantForm((p) => ({
-                          ...p,
-                          closingHours: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item label="Khoảng giá">
-                    <Input
-                      value={restaurantForm.priceRange}
-                      onChange={(e) =>
-                        setRestaurantForm((p) => ({
-                          ...p,
-                          priceRange: e.target.value,
-                        }))
-                      }
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
+              <>
+                <Row gutter={16}>
+                  <Col span={8}>
+                    <Form.Item label="Giờ mở cửa">
+                      <Input
+                        value={restaurantForm.openingHours}
+                        onChange={(e) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            openingHours: e.target.value,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item label="Giờ đóng cửa">
+                      <Input
+                        value={restaurantForm.closingHours}
+                        onChange={(e) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            closingHours: e.target.value,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item label="Khoảng giá">
+                      <Input
+                        value={restaurantForm.priceRange}
+                        onChange={(e) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            priceRange: e.target.value,
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="Website khi khách bấm icon Globe">
+                      <Input
+                        placeholder="https://..."
+                        value={restaurantForm.customerInfo?.website || ""}
+                        onChange={(e) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            customerInfo: { ...p.customerInfo, website: e.target.value },
+                          }))
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Dress code">
+                      <Input
+                        value={restaurantForm.customerInfo?.dressCode}
+                        onChange={(e) =>
+                          updateCustomerInfoField("dressCode", e.target.value)
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Form.Item label="Tiện ích hiển thị cho khách">
+                  <Space size={24} wrap>
+                    <Space>
+                      <Switch
+                        checked={restaurantForm.amenities?.wifi}
+                        onChange={(checked) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            amenities: { ...p.amenities, wifi: checked },
+                          }))
+                        }
+                      />
+                      Wifi
+                    </Space>
+                    <Space>
+                      <Switch
+                        checked={restaurantForm.amenities?.parking}
+                        onChange={(checked) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            amenities: { ...p.amenities, parking: checked },
+                          }))
+                        }
+                      />
+                      Parking
+                    </Space>
+                    <Space>
+                      <Switch
+                        checked={restaurantForm.amenities?.card}
+                        onChange={(checked) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            amenities: { ...p.amenities, card: checked },
+                          }))
+                        }
+                      />
+                      Thanh toán thẻ
+                    </Space>
+                  </Space>
+                  <div style={{ marginTop: 10 }}>
+                    <Space.Compact style={{ width: "100%" }}>
+                      <Input
+                        placeholder="Thêm tiện ích tùy chỉnh"
+                        value={extraAmenityInput}
+                        onChange={(e) => setExtraAmenityInput(e.target.value)}
+                      />
+                      <Button
+                        onClick={() => {
+                          const value = extraAmenityInput.trim();
+                          if (!value) return;
+                          if ((restaurantForm.customerInfo?.extraAmenities || []).includes(value)) {
+                            message.warning("Tiện ích này đã tồn tại");
+                            return;
+                          }
+                          updateCustomerInfoField("extraAmenities", [
+                            ...(restaurantForm.customerInfo?.extraAmenities || []),
+                            value,
+                          ]);
+                          setExtraAmenityInput("");
+                          setIsDirty(true);
+                        }}
+                      >
+                        Thêm
+                      </Button>
+                    </Space.Compact>
+                    <div className="preview-tags" style={{ marginTop: 8 }}>
+                      {(restaurantForm.customerInfo?.extraAmenities || []).map((item) => (
+                        <Tag
+                          key={item}
+                          closable
+                          onClose={() => {
+                            updateCustomerInfoField(
+                              "extraAmenities",
+                              (restaurantForm.customerInfo?.extraAmenities || []).filter(
+                                (name) => name !== item,
+                              ),
+                            );
+                            setIsDirty(true);
+                          }}
+                        >
+                          {item}
+                        </Tag>
+                      ))}
+                    </div>
+                  </div>
+                </Form.Item>
+              </>
+            ),
+          },
+          {
+            key: "4",
+            label: (
+              <span>
+                <InfoCircleOutlined />
+                Nội dung RestaurantInfo
+              </span>
+            ),
+            children: (
+              <>
+                <Form.Item label="Câu chuyện về chúng tôi">
+                  <TextArea
+                    rows={3}
+                    value={restaurantForm.customerInfo?.story}
+                    onChange={(e) => updateCustomerInfoField("story", e.target.value)}
+                    maxLength={700}
+                    showCount
+                  />
+                </Form.Item>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="Tên bếp trưởng">
+                      <Input
+                        value={restaurantForm.customerInfo?.chef}
+                        onChange={(e) => updateCustomerInfoField("chef", e.target.value)}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Thông tin bãi đỗ xe">
+                      <Input
+                        value={restaurantForm.customerInfo?.parkingDetail}
+                        onChange={(e) =>
+                          updateCustomerInfoField("parkingDetail", e.target.value)
+                        }
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Form.Item label="Phù hợp cho (mỗi dòng 1 mục)">
+                  <TextArea
+                    rows={3}
+                    value={(restaurantForm.customerInfo?.suitableFor || []).join("\n")}
+                    onChange={(e) =>
+                      updateCustomerInfoField(
+                        "suitableFor",
+                        e.target.value
+                          .split("\n")
+                          .map((line) => line.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                  />
+                </Form.Item>
+                <Form.Item label="Thông tin hữu ích (FAQ)">
+                  <Space direction="vertical" style={{ width: "100%" }} size={10}>
+                    {[0, 1, 2].map((idx) => (
+                      <Card key={idx} size="small" title={`FAQ ${idx + 1}`}>
+                        <Space direction="vertical" style={{ width: "100%" }}>
+                          <Input
+                            placeholder="Câu hỏi"
+                            value={restaurantForm.customerInfo?.faqs?.[idx]?.q || ""}
+                            onChange={(e) => updateFaqField(idx, "q", e.target.value)}
+                          />
+                          <TextArea
+                            rows={2}
+                            placeholder="Câu trả lời"
+                            value={restaurantForm.customerInfo?.faqs?.[idx]?.a || ""}
+                            onChange={(e) => updateFaqField(idx, "a", e.target.value)}
+                          />
+                        </Space>
+                      </Card>
+                    ))}
+                  </Space>
+                </Form.Item>
+              </>
             ),
           },
         ]}
@@ -702,119 +953,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     </Form>
   );
 
-  const indexColumns = [
-    {
-      title: "Nhà hàng",
-      key: "restaurant",
-      ellipsis: true,
-      render: (_, record) => (
-        <b>{mapById.get(String(record.restaurantId)) || record.restaurantId}</b>
-      ),
-    },
-    {
-      title: "TimeSlot",
-      dataIndex: "timeSlot",
-      key: "timeSlot",
-      render: (text) => <Tag color="blue">{text}</Tag>,
-    },
-    {
-      title: "Món",
-      dataIndex: "distinctCategoryCount",
-      key: "cats",
-      align: "center",
-    },
-    {
-      title: "Orders",
-      dataIndex: "orderCount",
-      key: "orders",
-      align: "center",
-      render: (v) => v || 0,
-    },
-    {
-      title: "Bookings",
-      dataIndex: "reservationCount",
-      key: "reservations",
-      align: "center",
-      render: (v) => v || 0,
-    },
-  ];
-
-  const categoryColumns = [
-    {
-      title: "Chọn",
-      key: "select",
-      width: 60,
-      align: "center",
-      render: (_, record) => (
-        <Switch
-          size="small"
-          checked={selectedCategoryIds.includes(String(record.id))}
-          onChange={() => toggleCategory(String(record.id))}
-        />
-      ),
-    },
-    {
-      title: "Tên Category",
-      dataIndex: "name",
-      key: "name",
-      render: (text) => <span style={{ fontWeight: 500 }}>{text}</span>,
-    },
-    {
-      title: "SL Món",
-      dataIndex: "menuItemCount",
-      key: "count",
-      align: "center",
-      render: (c) => (
-        <Badge count={c} showZero color={c > 0 ? "#52c41a" : "#d9d9d9"} />
-      ),
-    },
-    {
-      title: "Vị trí",
-      dataIndex: "order",
-      key: "order",
-      align: "center",
-      render: (v) => <Tag>{v}</Tag>,
-    },
-    {
-      title: "Trạng thái",
-      dataIndex: "isActive",
-      key: "status",
-      align: "center",
-      render: (active) => (
-        <Badge
-          status={active ? "success" : "default"}
-          text={active ? "Hiện" : "Ẩn"}
-        />
-      ),
-    },
-    {
-      title: "",
-      key: "action",
-      width: 80,
-      align: "right",
-      render: (_, record) => (
-        <Space size={0}>
-          <Tooltip title="Sửa">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => openCategoryModal(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Xoá">
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => onDeleteCategory(record.id)}
-            />
-          </Tooltip>
-        </Space>
-      ),
-    },
-  ];
 
   return (
     <div className="restaurant-management-container">
@@ -822,13 +960,32 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       <div className="page-header">
         <div className="header-title">
           <Title level={3} style={{ margin: 0 }}>
-            Quản lý Nhà hàng & Menu
+            Quản lý Thông tin nhà hàng
           </Title>
           <Text type="secondary">
-            Cấu hình thông tin và hiển thị món ăn theo khung giờ
+            Cấu hình thông tin và hiển thị cho khách hàng
           </Text>
         </div>
-        <Space>
+        <Space wrap>
+          <Input
+            placeholder="Tên bản nháp"
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            style={{ width: 170 }}
+          />
+          <Button size="small" onClick={() => saveDraftToLocal(draftName || "Bản nháp thủ công")}>
+            Lưu bản nháp
+          </Button>
+          <Select
+            placeholder="Nạp bản nháp"
+            style={{ width: 240 }}
+            allowClear
+            options={drafts.map((item) => ({
+              value: item.id,
+              label: `${item.label} - ${new Date(item.savedAt).toLocaleString("vi-VN")}`,
+            }))}
+            onChange={(id) => id && loadDraft(id)}
+          />
           <Select
             value={timeSlot}
             onChange={setTimeSlot}
@@ -855,14 +1012,12 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       </div>
 
       <Row gutter={[20, 20]} style={{ marginTop: 20 }}>
-        {/* LEFT COLUMN: INFO & INDEX */}
-        <Col xs={24} lg={10} xl={9}>
+        <Col xs={24} xl={15}>
           <Space direction="vertical" size={20} style={{ width: "100%" }}>
-            {/* CARD 1: Restaurant Info */}
             <Card
               title={
                 <span>
-                  <ShopOutlined /> Hồ sơ nhà hàng
+                  <ShopOutlined /> Thông tin nhà hàng hiển thị cho khách
                 </span>
               }
               extra={
@@ -878,189 +1033,142 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               className="saas-card"
             >
               {restaurantDetailLoading ? (
-                <Skeleton active paragraph={{ rows: 6 }} />
+                <Skeleton active paragraph={{ rows: 8 }} />
               ) : (
                 renderRestaurantForm()
               )}
             </Card>
 
-            {/* CARD 2: Index Stats */}
-            <Card
-              title={
+            <Card className="saas-card" title="Danh mục (tóm gọn)">
+              <div className="category-compact-row">
                 <span>
-                  <BarChartOutlined /> Chỉ số Index ({timeSlot})
+                  Tổng category hiện có: <strong>{activeIndex?.distinctCategoryCount || categories.length || 0}</strong>
                 </span>
-              }
-              className="saas-card"
-              // FIX: Thay thế bodyStyle bằng styles
-              styles={{ body: { padding: "12px 0" } }}
-              extra={
-                <Space size={8}>
-                  <Tooltip title="Cập nhật dữ liệu mới nhất">
-                    <Button
-                      icon={<ReloadOutlined />}
-                      onClick={onRefresh}
-                      loading={refreshing}
-                      shape="circle"
-                    />
-                  </Tooltip>
-                  <Button
-                    type="primary"
-                    ghost
-                    size="small"
-                    icon={<SaveOutlined />}
-                    onClick={onSaveIndex}
-                    loading={savingIndex}
-                  >
-                    Lưu Index
-                  </Button>
-                </Space>
-              }
-            >
-              <div
-                style={{
-                  padding: "0 24px 16px",
-                  display: "flex",
-                  gap: 24,
-                  alignItems: "center",
-                }}
-              >
-                <Statistic
-                  title="Đang chọn"
-                  value={selectedCategoryIds.length}
-                  suffix="cats"
-                  valueStyle={{ fontSize: 18, color: "#1890ff" }}
-                />
-                <Divider type="vertical" style={{ height: 30 }} />
-                <Statistic
-                  title="Đã lưu Index"
-                  value={activeIndex?.distinctCategoryCount || 0}
-                  suffix="cats"
-                  valueStyle={{ fontSize: 18 }}
-                />
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  onClick={onRefresh}
+                  loading={syncingIndex}
+                >
+                  Cập nhật số lượng category
+                </Button>
               </div>
-              <Table
-                dataSource={indexData?.restaurantCategoryIndexes || []}
-                columns={indexColumns}
-                rowKey="id"
+
+              <Collapse
                 size="small"
-                pagination={false}
-                loading={indexLoading}
-                scroll={{ x: true }}
+                className="category-dropdown"
+                items={[
+                  {
+                    key: "category-list",
+                    label: "Mở danh sách category theo chiều dọc",
+                    children: (
+                      <div className="category-vertical-list">
+                        {categories.length === 0 ? (
+                          <Text type="secondary">Chưa có category.</Text>
+                        ) : (
+                          categories.map((cat) => (
+                            <div className="category-item" key={cat.id}>
+                              <span>{cat.name}</span>
+                              <Tag>{cat.menuItemCount || 0} món</Tag>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    ),
+                  },
+                ]}
               />
             </Card>
           </Space>
         </Col>
 
-        {/* RIGHT COLUMN: CATEGORIES */}
-        <Col xs={24} lg={14} xl={15}>
-          <Card
-            className="saas-card full-height"
-            title={
-              <span>
-                <OrderedListOutlined /> Danh sách Category
-              </span>
-            }
-            extra={
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={() => openCategoryModal(null)}
+        <Col xs={24} xl={9}>
+          <div className="customer-preview-sticky">
+            <Space direction="vertical" size={20} style={{ width: "100%" }}>
+              <Card
+                title="Bản xem nhanh thông tin khách hàng nhìn thấy"
+                className="saas-card customer-preview-card"
               >
-                Thêm mới
-              </Button>
-            }
-            // FIX: Thay thế bodyStyle bằng styles
-            styles={{ body: { padding: 0 } }}
-          >
-            {/* MINI DASHBOARD */}
-            <div className="mini-dashboard">
-              <Text strong style={{ marginBottom: 12, display: "block" }}>
-                Top Categories (theo số lượng món)
-              </Text>
-              <Row gutter={[12, 12]}>
-                {topCategories.length === 0 ? (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="Chưa có dữ liệu"
-                    style={{ margin: "10px auto" }}
-                  />
-                ) : (
-                  topCategories.map((cat, idx) => (
-                    <Col span={8} key={cat.id}>
-                      <div className="stat-box">
-                        <div className="stat-rank">#{idx + 1}</div>
-                        <div className="stat-info">
-                          <div className="stat-name">{cat.name}</div>
-                          <div className="stat-val">
-                            {cat.menuItemCount} món
-                          </div>
-                        </div>
-                      </div>
-                    </Col>
-                  ))
-                )}
-              </Row>
-            </div>
-            <Divider style={{ margin: 0 }} />
+                <Row gutter={[16, 16]}>
+                  <Col span={24}>
+                    <div className="preview-item">
+                      <span className="label">Tên nhà hàng</span>
+                      <strong>{restaurantForm.name || "Đang cập nhật"}</strong>
+                    </div>
+                  </Col>
+                  <Col span={24}>
+                    <div className="preview-item">
+                      <span className="label">Loại ẩm thực</span>
+                      <strong>{restaurantForm.cuisineType || "Đang cập nhật"}</strong>
+                    </div>
+                  </Col>
+                  <Col span={24}>
+                    <div className="preview-item">
+                      <span className="label">Điện thoại</span>
+                      <strong>{restaurantForm.phone || "Đang cập nhật"}</strong>
+                    </div>
+                  </Col>
+                  <Col span={24}>
+                    <div className="preview-item">
+                      <span className="label">Website</span>
+                      <strong>{restaurantForm.customerInfo?.website || "Chưa cấu hình"}</strong>
+                    </div>
+                  </Col>
+                  <Col span={24}>
+                    <div className="preview-item">
+                      <span className="label">Địa chỉ</span>
+                      <strong>
+                        {[restaurantForm.line1, restaurantForm.district, restaurantForm.city]
+                          .filter(Boolean)
+                          .join(", ") || "Đang cập nhật"}
+                      </strong>
+                    </div>
+                  </Col>
+                  <Col span={24}>
+                    <div className="preview-item">
+                      <span className="label">Mô tả</span>
+                      <p>{restaurantForm.description || "Chưa có mô tả hiển thị cho khách."}</p>
+                    </div>
+                  </Col>
+                </Row>
+              </Card>
 
-            {/* MAIN TABLE */}
-            <Table
-              dataSource={categories}
-              columns={categoryColumns}
-              rowKey="id"
-              loading={categoryLoading}
-              pagination={{ pageSize: 10, showSizeChanger: false }}
-              scroll={{ y: "calc(100vh - 450px)" }}
-            />
-          </Card>
+              <Card title="Đánh giá chi tiết (chỉ xem)" className="saas-card customer-preview-card">
+                <Row gutter={[12, 12]}>
+                  <Col xs={24} sm={12}>
+                    <div className="preview-item read-only">
+                      <span className="label">Hương vị</span>
+                      <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
+                    </div>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <div className="preview-item read-only">
+                      <span className="label">Phục vụ</span>
+                      <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
+                    </div>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <div className="preview-item read-only">
+                      <span className="label">Không gian</span>
+                      <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
+                    </div>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <div className="preview-item read-only">
+                      <span className="label">Giá trị</span>
+                      <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
+                    </div>
+                  </Col>
+                </Row>
+                <Text type="secondary">
+                  Đánh giá là dữ liệu tổng hợp từ khách hàng, chỉ hiển thị kết quả và không thể chỉnh sửa tại màn hình này.
+                </Text>
+              </Card>
+            </Space>
+          </div>
         </Col>
       </Row>
-
-      {/* MODAL FORM */}
-      <Modal
-        title={editingCategory ? "Cập nhật Category" : "Thêm Category Mới"}
-        open={isModalVisible}
-        onOk={handleCategoryOk}
-        onCancel={() => setIsModalVisible(false)}
-        confirmLoading={creatingCategory || updatingCategory}
-        centered
-        destroyOnClose
-      >
-        <Form
-          form={catFormInstance}
-          layout="vertical"
-          style={{ marginTop: 20 }}
-        >
-          <Form.Item
-            name="name"
-            label="Tên Category"
-            rules={[{ required: true, message: "Vui lòng nhập tên" }]}
-          >
-            <Input placeholder="Ví dụ: Món khai vị" size="large" />
-          </Form.Item>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="order"
-                label="Thứ tự hiển thị"
-                tooltip="Số nhỏ xếp trước"
-              >
-                <Input type="number" style={{ width: "100%" }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="isActive"
-                label="Trạng thái"
-                valuePropName="checked"
-              >
-                <Switch checkedChildren="Hiện" unCheckedChildren="Ẩn" />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-      </Modal>
     </div>
   );
 };

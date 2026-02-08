@@ -53,3 +53,5 @@ export { default as RestaurantCategoryIndex } from "./restaurant-category-index.
 
 export { default as ShippingTracking } from "./order-shipping.model.js";
 export { default as IngredientRecent } from "./ingredient-recent.model.js";
+
+export { default as RestaurantInfoDraft } from "./restaurant-info-draft.model.js";
