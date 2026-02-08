@@ -35,6 +35,7 @@ import {
   InfoCircleOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
+import RestaurantInfo from "../../Customer/RestaurantDetail/components/RestaurantInfo/RestaurantInfo";
 import "./RestaurantInfoManagement.scss";
 
 const { Title, Text } = Typography;
@@ -373,6 +374,34 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
 
   const categories = categoryData?.categories || [];
+
+  const customerPreviewData = useMemo(() => {
+    const customerInfo = restaurantForm.customerInfo || DEFAULT_CUSTOMER_INFO;
+    return {
+      name: restaurantForm.name,
+      cuisineType: restaurantForm.cuisineType,
+      phone: restaurantForm.phone,
+      website: customerInfo.website,
+      address: {
+        line1: restaurantForm.line1,
+        district: restaurantForm.district,
+        city: restaurantForm.city,
+      },
+      about: restaurantForm.description,
+      amenities: restaurantForm.amenities,
+      dressCode: customerInfo.dressCode,
+      chef: customerInfo.chef,
+      suitableFor: customerInfo.suitableFor,
+      parkingDetail: customerInfo.parkingDetail,
+      ratings: {
+        food: Number(restaurantForm.avgRating || 0),
+        service: Number(restaurantForm.avgRating || 0),
+        ambience: Number(restaurantForm.avgRating || 0),
+        value: Number(restaurantForm.avgRating || 0),
+      },
+      faqs: customerInfo.faqs,
+    };
+  }, [restaurantForm]);
 
   // --- MUTATIONS ---
   const [updateIndex, { loading: syncingIndex }] = useMutation(UPDATE_INDEX);
@@ -1079,90 +1108,18 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                   },
                 ]}
               />
+            </Card>
+          </Space>
+        </Col>
 
         <Col xs={24} xl={9}>
           <div className="customer-preview-sticky">
-            <Space direction="vertical" size={20} style={{ width: "100%" }}>
-              <Card
-                title="Bản xem nhanh thông tin khách hàng nhìn thấy"
-                className="saas-card customer-preview-card"
-              >
-                <Row gutter={[16, 16]}>
-                  <Col span={24}>
-                    <div className="preview-item">
-                      <span className="label">Tên nhà hàng</span>
-                      <strong>{restaurantForm.name || "Đang cập nhật"}</strong>
-                    </div>
-                  </Col>
-                  <Col span={24}>
-                    <div className="preview-item">
-                      <span className="label">Loại ẩm thực</span>
-                      <strong>{restaurantForm.cuisineType || "Đang cập nhật"}</strong>
-                    </div>
-                  </Col>
-                  <Col span={24}>
-                    <div className="preview-item">
-                      <span className="label">Điện thoại</span>
-                      <strong>{restaurantForm.phone || "Đang cập nhật"}</strong>
-                    </div>
-                  </Col>
-                  <Col span={24}>
-                    <div className="preview-item">
-                      <span className="label">Website</span>
-                      <strong>{restaurantForm.customerInfo?.website || "Chưa cấu hình"}</strong>
-                    </div>
-                  </Col>
-                  <Col span={24}>
-                    <div className="preview-item">
-                      <span className="label">Địa chỉ</span>
-                      <strong>
-                        {[restaurantForm.line1, restaurantForm.district, restaurantForm.city]
-                          .filter(Boolean)
-                          .join(", ") || "Đang cập nhật"}
-                      </strong>
-                    </div>
-                  </Col>
-                  <Col span={24}>
-                    <div className="preview-item">
-                      <span className="label">Mô tả</span>
-                      <p>{restaurantForm.description || "Chưa có mô tả hiển thị cho khách."}</p>
-                    </div>
-                  </Col>
-                </Row>
-              </Card>
-
-              <Card title="Đánh giá chi tiết (chỉ xem)" className="saas-card customer-preview-card">
-                <Row gutter={[12, 12]}>
-                  <Col xs={24} sm={12}>
-                    <div className="preview-item read-only">
-                      <span className="label">Hương vị</span>
-                      <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
-                    </div>
-                  </Col>
-                  <Col xs={24} sm={12}>
-                    <div className="preview-item read-only">
-                      <span className="label">Phục vụ</span>
-                      <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
-                    </div>
-                  </Col>
-                  <Col xs={24} sm={12}>
-                    <div className="preview-item read-only">
-                      <span className="label">Không gian</span>
-                      <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
-                    </div>
-                  </Col>
-                  <Col xs={24} sm={12}>
-                    <div className="preview-item read-only">
-                      <span className="label">Giá trị</span>
-                      <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
-                    </div>
-                  </Col>
-                </Row>
-                <Text type="secondary">
-                  Đánh giá là dữ liệu tổng hợp từ khách hàng, chỉ hiển thị kết quả và không thể chỉnh sửa tại màn hình này.
-                </Text>
-              </Card>
-            </Space>
+            <Card
+              title="Bản xem nhanh thông tin khách hàng nhìn thấy"
+              className="saas-card customer-preview-card"
+            >
+              <RestaurantInfo restaurant={customerPreviewData} />
+            </Card>
           </div>
         </Col>
       </Row>

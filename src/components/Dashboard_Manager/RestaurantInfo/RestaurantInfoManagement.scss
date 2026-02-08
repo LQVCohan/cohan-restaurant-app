@@ -175,6 +175,15 @@ $box-shadow:
 
 
 .customer-preview-card {
+  .ant-card-body {
+    padding: 0;
+  }
+
+  .restaurant-info-premium {
+    max-width: none;
+    margin: 0;
+  }
+
   .preview-item {
     background: #fafafa;
     border: 1px solid #f0f0f0;
