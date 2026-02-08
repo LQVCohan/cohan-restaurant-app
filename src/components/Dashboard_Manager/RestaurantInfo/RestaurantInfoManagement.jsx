@@ -1079,6 +1079,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                   },
                 ]}
               />
+            </Card>
+          </Space>
+        </Col>
 
         <Col xs={24} xl={9}>
           <div className="customer-preview-sticky">
