@@ -194,7 +194,6 @@ export const useRestaurant = (restaurantId) => {
   useEffect(() => {
     if (autoError) {
       setError(autoError);
-      console.log("error in useRestaurant hook: ", autoError);
     }
   }, [autoError]);
 
@@ -451,7 +450,9 @@ export const useRestaurant = (restaurantId) => {
         alert("Đã sao chép link vào clipboard!");
       }
     } catch (err) {
-      console.error("Share error:", err);
+      if (import.meta.env.DEV) {
+        console.warn("Share action was cancelled or failed.", err);
+      }
     }
   };
 
