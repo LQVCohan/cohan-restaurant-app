@@ -21,6 +21,7 @@ import {
   Badge,
   Tooltip,
   Collapse,
+  Progress,
 } from "antd";
 import {
   SaveOutlined,
@@ -36,6 +37,7 @@ import {
   SettingOutlined,
 } from "@ant-design/icons";
 import RestaurantInfo from "../../Customer/RestaurantDetail/components/RestaurantInfo/RestaurantInfo";
+import { useAvatarUploadLocal } from "../../../hooks/useAvatarUploadLocal";
 import "./RestaurantInfoManagement.scss";
 
 const { Title, Text } = Typography;
@@ -140,6 +142,8 @@ const GET_RESTAURANT_DETAIL = gql`
       amenities
       notesOnAmenities
       avgRating
+      avatar
+      coverImage
       address {
         line1
         district
@@ -164,6 +168,8 @@ const UPDATE_RESTAURANT = gql`
       amenities
       notesOnAmenities
       avgRating
+      avatar
+      coverImage
     }
   }
 `;
@@ -204,13 +210,18 @@ const parseCustomerInfo = (value) => {
 };
 
 const RestaurantInfoManagement = ({ role = "manager" }) => {
+  const { upload: uploadAsset } = useAvatarUploadLocal();
   const [timeSlot, setTimeSlot] = useState("lunch");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [draftName, setDraftName] = useState("");
   const [drafts, setDrafts] = useState([]);
   const [extraAmenityInput, setExtraAmenityInput] = useState("");
+  const [uploadingType, setUploadingType] = useState("");
+  const [uploadProgress, setUploadProgress] = useState({ avatar: 0, coverImage: 0 });
   const [isDirty, setIsDirty] = useState(false);
   const baselineRef = useRef("");
+  const avatarInputRef = useRef(null);
+  const coverInputRef = useRef(null);
 
   const [restaurantForm, setRestaurantForm] = useState({
     name: "",
@@ -230,6 +241,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     },
     notesOnAmenities: "",
     customerInfo: DEFAULT_CUSTOMER_INFO,
+    avatar: "",
+    coverImage: "",
     line1: "",
     district: "",
     city: "",
@@ -301,6 +314,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         card: Boolean(r.amenities?.card),
       },
       notesOnAmenities: r.notesOnAmenities || "",
+      avatar: r.avatar || "",
+      coverImage: r.coverImage || "",
       customerInfo: {
         ...parsedCustomerInfo,
         website: parsedCustomerInfo?.website || "",
@@ -481,6 +496,25 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     );
   };
 
+  const handleUploadRestaurantImage = async (type, file) => {
+    if (!file) return;
+    const fieldName = type === "avatar" ? "avatar" : "coverImage";
+    setUploadingType(fieldName);
+    setUploadProgress((prev) => ({ ...prev, [fieldName]: 0 }));
+    try {
+      const uploadedUrl = await uploadAsset(file, (percent) => {
+        setUploadProgress((prev) => ({ ...prev, [fieldName]: percent }));
+      });
+      setRestaurantForm((prev) => ({ ...prev, [fieldName]: uploadedUrl }));
+      setIsDirty(true);
+      message.success(`Tải ${fieldName === "avatar" ? "avatar" : "ảnh bìa"} thành công`);
+    } catch (error) {
+      message.error(error.message || "Upload ảnh thất bại");
+    } finally {
+      setUploadingType("");
+    }
+  };
+
   const onRefresh = async () => {
     if (!selectedRestaurantId) return;
     try {
@@ -532,6 +566,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             cuisineType: restaurantForm.cuisineType || null,
             priceRange: restaurantForm.priceRange || null,
             status: restaurantForm.status || "active",
+            avatar: restaurantForm.avatar || null,
+            coverImage: restaurantForm.coverImage || null,
             amenities: amenityList,
             notesOnAmenities: JSON.stringify(restaurantForm.customerInfo),
             address: {
@@ -784,6 +820,89 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                     </Form.Item>
                   </Col>
                 </Row>
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="Avatar nhà hàng">
+                      <Space direction="vertical" style={{ width: "100%" }}>
+                        <Input
+                          value={restaurantForm.avatar || ""}
+                          placeholder="URL avatar"
+                          onChange={(e) =>
+                            setRestaurantForm((p) => ({ ...p, avatar: e.target.value }))
+                          }
+                        />
+                        <Space>
+                          <input
+                            ref={avatarInputRef}
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(e) =>
+                              handleUploadRestaurantImage("avatar", e.target.files?.[0])
+                            }
+                          />
+                          <Button
+                            onClick={() => avatarInputRef.current?.click()}
+                            loading={uploadingType === "avatar"}
+                          >
+                            Tải avatar
+                          </Button>
+                          {restaurantForm.avatar ? (
+                            <img
+                              src={restaurantForm.avatar}
+                              alt="avatar preview"
+                              style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }}
+                            />
+                          ) : null}
+                        </Space>
+                        {uploadProgress.avatar > 0 && uploadingType === "avatar" ? (
+                          <Progress percent={uploadProgress.avatar} size="small" />
+                        ) : null}
+                      </Space>
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Ảnh bìa nhà hàng">
+                      <Space direction="vertical" style={{ width: "100%" }}>
+                        <Input
+                          value={restaurantForm.coverImage || ""}
+                          placeholder="URL ảnh bìa"
+                          onChange={(e) =>
+                            setRestaurantForm((p) => ({ ...p, coverImage: e.target.value }))
+                          }
+                        />
+                        <Space>
+                          <input
+                            ref={coverInputRef}
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            onChange={(e) =>
+                              handleUploadRestaurantImage("coverImage", e.target.files?.[0])
+                            }
+                          />
+                          <Button
+                            onClick={() => coverInputRef.current?.click()}
+                            loading={uploadingType === "coverImage"}
+                          >
+                            Tải ảnh bìa
+                          </Button>
+                        </Space>
+                        {restaurantForm.coverImage ? (
+                          <img
+                            src={restaurantForm.coverImage}
+                            alt="cover preview"
+                            style={{ width: "100%", maxHeight: 120, objectFit: "cover", borderRadius: 8 }}
+                          />
+                        ) : null}
+                        {uploadProgress.coverImage > 0 && uploadingType === "coverImage" ? (
+                          <Progress percent={uploadProgress.coverImage} size="small" />
+                        ) : null}
+                      </Space>
+                    </Form.Item>
+                  </Col>
+                </Row>
+
                 <Row gutter={16}>
                   <Col span={12}>
                     <Form.Item label="Website khi khách bấm icon Globe">
@@ -1118,11 +1237,29 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               title="Bản xem nhanh thông tin khách hàng nhìn thấy"
               className="saas-card customer-preview-card"
             >
-              <RestaurantInfo restaurant={customerPreviewData} />
+              <div className="customer-preview-embedded">
+                <RestaurantInfo restaurant={customerPreviewData} />
+              </div>
             </Card>
           </div>
         </Col>
       </Row>
+
+      <Card
+        style={{ marginTop: 20 }}
+        className="saas-card restaurant-detail-full-preview"
+        title="Xem trước toàn bộ trang RestaurantDetail"
+      >
+        {selectedRestaurantId ? (
+          <iframe
+            title="RestaurantDetail Preview"
+            src={`/restaurant/${selectedRestaurantId}`}
+            className="restaurant-detail-preview-frame"
+          />
+        ) : (
+          <Text type="secondary">Chọn nhà hàng để xem trước trang RestaurantDetail.</Text>
+        )}
+      </Card>
     </div>
   );
 };
