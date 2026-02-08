@@ -954,6 +954,36 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   );
 
 
+  const compactCategoryColumns = [
+    {
+      title: "Category",
+      dataIndex: "name",
+      key: "name",
+      render: (text) => <span style={{ fontWeight: 500 }}>{text}</span>,
+    },
+    {
+      title: "Số món",
+      dataIndex: "menuItemCount",
+      key: "count",
+      align: "center",
+      render: (c) => (
+        <Badge count={c} showZero color={c > 0 ? "#52c41a" : "#d9d9d9"} />
+      ),
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "isActive",
+      key: "status",
+      align: "center",
+      render: (active) => (
+        <Badge
+          status={active ? "success" : "default"}
+          text={active ? "Hiện" : "Ẩn"}
+        />
+      ),
+    },
+  ];
+
   return (
     <div className="restaurant-management-container">
       {/* HEADER SECTION */}
@@ -1079,9 +1109,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                   },
                 ]}
               />
-            </Card>
-          </Space>
-        </Col>
 
         <Col xs={24} xl={9}>
           <div className="customer-preview-sticky">
