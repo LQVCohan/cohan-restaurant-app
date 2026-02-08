@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import {
   Card,
@@ -91,46 +91,6 @@ const GET_CATEGORIES = gql`
     }
   }
 `;
-const CREATE_CATEGORY = gql`
-  mutation CreateCategory($input: CreateCategoryInput!) {
-    createCategory(input: $input) {
-      id
-      name
-    }
-  }
-`;
-const UPDATE_CATEGORY = gql`
-  mutation UpdateCategory($input: UpdateCategoryInput!) {
-    updateCategory(input: $input) {
-      id
-      name
-      order
-      isActive
-    }
-  }
-`;
-const DELETE_CATEGORY = gql`
-  mutation DeleteCategory($id: ID!) {
-    deleteCategory(id: $id)
-  }
-`;
-const TOP_CATEGORIES_BY_RESTAURANT = gql`
-  query TopCategoriesByRestaurant(
-    $restaurantId: ID!
-    $timeSlot: TimeSlot!
-    $limit: Int
-  ) {
-    topCategoriesByMenuItemCount(
-      restaurantId: $restaurantId
-      timeSlot: $timeSlot
-      limit: $limit
-    ) {
-      id
-      name
-      menuItemCount
-    }
-  }
-`;
 const GET_INDEXES = gql`
   query GetRestaurantCategoryIndexes($restaurantId: ID, $timeSlot: TimeSlot) {
     restaurantCategoryIndexes(
@@ -212,6 +172,8 @@ const DEFAULT_CUSTOMER_INFO = {
   story: "",
   chef: "",
   dressCode: "",
+  website: "",
+  extraAmenities: [],
   parkingDetail: "",
   suitableFor: [],
   faqs: [
@@ -220,6 +182,8 @@ const DEFAULT_CUSTOMER_INFO = {
     { q: "", a: "" },
   ],
 };
+
+const DRAFT_STORAGE_KEY = "restaurant_info_drafts_v1";
 
 const parseCustomerInfo = (value) => {
   if (!value) return DEFAULT_CUSTOMER_INFO;
@@ -241,10 +205,11 @@ const parseCustomerInfo = (value) => {
 const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [timeSlot, setTimeSlot] = useState("lunch");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
-
-  const [catFormInstance] = Form.useForm();
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [editingCategory, setEditingCategory] = useState(null);
+  const [draftName, setDraftName] = useState("");
+  const [drafts, setDrafts] = useState([]);
+  const [extraAmenityInput, setExtraAmenityInput] = useState("");
+  const [isDirty, setIsDirty] = useState(false);
+  const baselineRef = useRef("");
 
   const [restaurantForm, setRestaurantForm] = useState({
     name: "",
@@ -318,7 +283,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     const r = restaurantDetailData?.restaurant;
     if (!r) return;
     const parsedCustomerInfo = parseCustomerInfo(r.notesOnAmenities);
-    setRestaurantForm({
+    const nextState = {
       name: r.name || "",
       phone: r.phone || "",
       email: r.email || "",
@@ -338,12 +303,47 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       customerInfo: {
         ...parsedCustomerInfo,
         website: parsedCustomerInfo?.website || "",
+        extraAmenities: Array.isArray(parsedCustomerInfo?.extraAmenities)
+          ? parsedCustomerInfo.extraAmenities
+          : [],
       },
       line1: r.address?.line1 || "",
       district: r.address?.district || "",
       city: r.address?.city || "",
-    });
+    };
+    setRestaurantForm(nextState);
+    baselineRef.current = JSON.stringify(nextState);
+    setIsDirty(false);
   }, [restaurantDetailData]);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return;
+    try {
+      setDrafts(JSON.parse(raw));
+    } catch {
+      setDrafts([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(drafts));
+  }, [drafts]);
+
+  useEffect(() => {
+    if (!baselineRef.current) return;
+    setIsDirty(JSON.stringify(restaurantForm) !== baselineRef.current);
+  }, [restaurantForm]);
+
+  useEffect(() => {
+    const handler = (event) => {
+      if (!isDirty) return;
+      event.preventDefault();
+      event.returnValue = "Bạn có thay đổi chưa lưu. Bạn có chắc muốn thoát?";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
 
   const {
     data: indexData,
@@ -364,7 +364,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
   const {
     data: categoryData,
-    loading: categoryLoading,
     refetch: refetchCategories,
   } = useQuery(GET_CATEGORIES, {
     variables: { restaurantId: selectedRestaurantId, timeSlot },
@@ -372,29 +371,86 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     fetchPolicy: "network-only",
   });
 
-  const { data: topCategoryData, refetch: refetchTopCategories } = useQuery(
-    TOP_CATEGORIES_BY_RESTAURANT,
-    {
-      variables: { restaurantId: selectedRestaurantId, timeSlot, limit: 6 },
-      skip: !selectedRestaurantId || !timeSlot,
-      fetchPolicy: "network-only",
-    },
-  );
 
   const categories = categoryData?.categories || [];
-  const topCategories = topCategoryData?.topCategoriesByMenuItemCount || [];
 
   // --- MUTATIONS ---
   const [updateIndex, { loading: syncingIndex }] = useMutation(UPDATE_INDEX);
   const [updateRestaurant, { loading: savingRestaurant }] =
     useMutation(UPDATE_RESTAURANT);
-  const [createCategory, { loading: creatingCategory }] =
-    useMutation(CREATE_CATEGORY);
-  const [updateCategory, { loading: updatingCategory }] =
-    useMutation(UPDATE_CATEGORY);
-  const [deleteCategory] = useMutation(DELETE_CATEGORY);
 
   // --- HANDLERS ---
+
+  const saveDraftToLocal = (label = "Bản nháp thủ công") => {
+    const payload = {
+      id: `${Date.now()}`,
+      label,
+      restaurantId: selectedRestaurantId,
+      savedAt: new Date().toISOString(),
+      data: restaurantForm,
+    };
+    setDrafts((prev) => [payload, ...prev].slice(0, 20));
+    message.success("Đã lưu bản nháp");
+  };
+
+  const loadDraft = (id) => {
+    const found = drafts.find((item) => item.id === id);
+    if (!found) return;
+    setRestaurantForm(found.data);
+    setIsDirty(true);
+    message.success(`Đã nạp bản nháp: ${found.label}`);
+  };
+
+  const validateRestaurantForm = () => {
+    if (!restaurantForm.name?.trim()) return "Tên nhà hàng không được để trống";
+    if (restaurantForm.phone && !/^\+?[0-9]{9,12}$/.test(restaurantForm.phone)) {
+      return "Số điện thoại không hợp lệ";
+    }
+    if (restaurantForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(restaurantForm.email)) {
+      return "Email không hợp lệ";
+    }
+    if (
+      restaurantForm.customerInfo?.website &&
+      !/^https?:\/\//i.test(restaurantForm.customerInfo.website)
+    ) {
+      return "Website phải bắt đầu bằng http:// hoặc https://";
+    }
+    return null;
+  };
+
+  const generateAIDescription = () => {
+    const name = restaurantForm.name || "Nhà hàng";
+    const cuisine = restaurantForm.cuisineType || "ẩm thực phong phú";
+    const story = restaurantForm.customerInfo?.story || "hành trình ẩm thực đầy cảm hứng";
+    const chef = restaurantForm.customerInfo?.chef
+      ? `Dưới bàn tay dẫn dắt của ${restaurantForm.customerInfo.chef},`
+      : "";
+    const description = `${name} là điểm hẹn ${cuisine}, nơi thực khách không chỉ thưởng thức món ngon mà còn cảm nhận được ${story}. ${chef} mỗi chi tiết trong trải nghiệm đều được nâng niu để tạo nên dấu ấn tinh tế, sang trọng và đáng nhớ.`;
+    setRestaurantForm((prev) => ({ ...prev, description }));
+    setIsDirty(true);
+    message.success("A.I đã tạo mô tả văn hoa mỹ từ");
+  };
+
+  const fillCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      message.error("Trình duyệt không hỗ trợ định vị");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const lat = coords.latitude.toFixed(6);
+        const lng = coords.longitude.toFixed(6);
+        setRestaurantForm((prev) => ({
+          ...prev,
+          line1: prev.line1 || `Vị trí hiện tại (${lat}, ${lng})`,
+        }));
+        setIsDirty(true);
+        message.success("Đã lấy vị trí hiện tại, vui lòng bổ sung địa chỉ chi tiết");
+      },
+      () => message.error("Không thể lấy vị trí hiện tại"),
+    );
+  };
 
   const onRefresh = async () => {
     if (!selectedRestaurantId) return;
@@ -419,6 +475,20 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
   const onSaveRestaurantInfo = async () => {
     if (!selectedRestaurantId) return;
+
+    const validationError = validateRestaurantForm();
+    if (validationError) {
+      message.error(validationError);
+      return;
+    }
+
+    const amenityList = [
+      restaurantForm.amenities?.wifi ? "wifi" : null,
+      restaurantForm.amenities?.parking ? "parking" : null,
+      restaurantForm.amenities?.card ? "card" : null,
+      ...(restaurantForm.customerInfo?.extraAmenities || []),
+    ].filter(Boolean);
+
     try {
       await updateRestaurant({
         variables: {
@@ -433,7 +503,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             cuisineType: restaurantForm.cuisineType || null,
             priceRange: restaurantForm.priceRange || null,
             status: restaurantForm.status || "active",
-            amenities: restaurantForm.amenities,
+            amenities: amenityList,
             notesOnAmenities: JSON.stringify(restaurantForm.customerInfo),
             address: {
               line1: restaurantForm.line1 || null,
@@ -444,88 +514,16 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         },
       });
       await refetchRestaurantDetail();
+      setIsDirty(false);
       message.success("Cập nhật thông tin nhà hàng thành công");
     } catch {
-      message.error("Không thể cập nhật thông tin");
+      saveDraftToLocal("Bản nháp tự động khi lỗi mạng");
+      message.error("Không thể cập nhật thông tin. Đã lưu bản nháp cục bộ.");
     }
   };
 
-  const openCategoryModal = (cat = null) => {
-    setEditingCategory(cat);
-    if (cat) {
-      catFormInstance.setFieldsValue({
-        name: cat.name,
-        order: cat.order,
-        isActive: cat.isActive,
-      });
-    } else {
-      catFormInstance.resetFields();
-      catFormInstance.setFieldsValue({ isActive: true, order: 0 });
-    }
-    setIsModalVisible(true);
-  };
 
-  const handleCategoryOk = async () => {
-    try {
-      const values = await catFormInstance.validateFields();
-      if (editingCategory) {
-        await updateCategory({
-          variables: {
-            input: {
-              id: editingCategory.id,
-              name: values.name.trim(),
-              order: Number(values.order) || 0,
-              isActive: Boolean(values.isActive),
-            },
-          },
-        });
-        message.success("Đã cập nhật category");
-      } else {
-        await createCategory({
-          variables: {
-            input: {
-              restaurantId: selectedRestaurantId,
-              timeSlot,
-              name: values.name.trim(),
-              order: Number(values.order) || 0,
-            },
-          },
-        });
-        message.success("Đã tạo category mới");
-      }
-      setIsModalVisible(false);
-      await Promise.all([
-        refetchCategories(),
-        refetchTopCategories(),
-        refetchIndexes(),
-      ]);
-    } catch {
-      // Form validation error or API error
-    }
-  };
 
-  const onDeleteCategory = (id) => {
-    Modal.confirm({
-      title: "Xoá Category?",
-      content: "Hành động này không thể hoàn tác.",
-      okText: "Xoá ngay",
-      okType: "danger",
-      cancelText: "Huỷ",
-      onOk: async () => {
-        try {
-          await deleteCategory({ variables: { id } });
-          await Promise.all([
-            refetchCategories(),
-            refetchTopCategories(),
-            refetchIndexes(),
-          ]);
-          message.success("Đã xoá category");
-        } catch {
-          message.error("Lỗi khi xoá category");
-        }
-      },
-    });
-  };
 
 
   const updateCustomerInfoField = (field, value) => {
@@ -634,7 +632,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                 </Row>
                 <Form.Item label="Mô tả">
                   <TextArea
-                    rows={3}
+                    rows={4}
                     value={restaurantForm.description}
                     onChange={(e) =>
                       setRestaurantForm((p) => ({
@@ -643,8 +641,11 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       }))
                     }
                     showCount
-                    maxLength={500}
+                    maxLength={1000}
                   />
+                  <Button size="small" style={{ marginTop: 8 }} onClick={generateAIDescription}>
+                    Viết mô tả A.I văn hoa
+                  </Button>
                 </Form.Item>
               </>
             ),
@@ -661,6 +662,11 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               <Form.Item
                 label="Địa chỉ chi tiết"
                 help="Nhập số nhà, tên đường, quận/huyện và thành phố"
+                extra={
+                  <Button size="small" onClick={fillCurrentLocation}>
+                    Lấy địa chỉ hiện tại tự động
+                  </Button>
+                }
               >
                 {/* FIX: Sử dụng Space.Compact thay cho Input.Group */}
                 <Space.Compact block>
@@ -814,6 +820,52 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       Thanh toán thẻ
                     </Space>
                   </Space>
+                  <div style={{ marginTop: 10 }}>
+                    <Space.Compact style={{ width: "100%" }}>
+                      <Input
+                        placeholder="Thêm tiện ích tùy chỉnh"
+                        value={extraAmenityInput}
+                        onChange={(e) => setExtraAmenityInput(e.target.value)}
+                      />
+                      <Button
+                        onClick={() => {
+                          const value = extraAmenityInput.trim();
+                          if (!value) return;
+                          if ((restaurantForm.customerInfo?.extraAmenities || []).includes(value)) {
+                            message.warning("Tiện ích này đã tồn tại");
+                            return;
+                          }
+                          updateCustomerInfoField("extraAmenities", [
+                            ...(restaurantForm.customerInfo?.extraAmenities || []),
+                            value,
+                          ]);
+                          setExtraAmenityInput("");
+                          setIsDirty(true);
+                        }}
+                      >
+                        Thêm
+                      </Button>
+                    </Space.Compact>
+                    <div className="preview-tags" style={{ marginTop: 8 }}>
+                      {(restaurantForm.customerInfo?.extraAmenities || []).map((item) => (
+                        <Tag
+                          key={item}
+                          closable
+                          onClose={() => {
+                            updateCustomerInfoField(
+                              "extraAmenities",
+                              (restaurantForm.customerInfo?.extraAmenities || []).filter(
+                                (name) => name !== item,
+                              ),
+                            );
+                            setIsDirty(true);
+                          }}
+                        >
+                          {item}
+                        </Tag>
+                      ))}
+                    </div>
+                  </div>
                 </Form.Item>
               </>
             ),
@@ -901,69 +953,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     </Form>
   );
 
-  const categoryColumns = [
-    {
-      title: "Tên Category",
-      dataIndex: "name",
-      key: "name",
-      render: (text) => <span style={{ fontWeight: 500 }}>{text}</span>,
-    },
-    {
-      title: "SL Món",
-      dataIndex: "menuItemCount",
-      key: "count",
-      align: "center",
-      render: (c) => (
-        <Badge count={c} showZero color={c > 0 ? "#52c41a" : "#d9d9d9"} />
-      ),
-    },
-    {
-      title: "Vị trí",
-      dataIndex: "order",
-      key: "order",
-      align: "center",
-      render: (v) => <Tag>{v}</Tag>,
-    },
-    {
-      title: "Trạng thái",
-      dataIndex: "isActive",
-      key: "status",
-      align: "center",
-      render: (active) => (
-        <Badge
-          status={active ? "success" : "default"}
-          text={active ? "Hiện" : "Ẩn"}
-        />
-      ),
-    },
-    {
-      title: "",
-      key: "action",
-      width: 80,
-      align: "right",
-      render: (_, record) => (
-        <Space size={0}>
-          <Tooltip title="Sửa">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => openCategoryModal(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Xoá">
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              onClick={() => onDeleteCategory(record.id)}
-            />
-          </Tooltip>
-        </Space>
-      ),
-    },
-  ];
 
   const compactCategoryColumns = [
     {
@@ -1001,13 +990,32 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       <div className="page-header">
         <div className="header-title">
           <Title level={3} style={{ margin: 0 }}>
-            Quản lý Nhà hàng & Menu
+            Quản lý Thông tin nhà hàng
           </Title>
           <Text type="secondary">
-            Cấu hình thông tin và hiển thị món ăn theo khung giờ
+            Cấu hình thông tin và hiển thị cho khách hàng
           </Text>
         </div>
-        <Space>
+        <Space wrap>
+          <Input
+            placeholder="Tên bản nháp"
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            style={{ width: 170 }}
+          />
+          <Button size="small" onClick={() => saveDraftToLocal(draftName || "Bản nháp thủ công")}>
+            Lưu bản nháp
+          </Button>
+          <Select
+            placeholder="Nạp bản nháp"
+            style={{ width: 240 }}
+            allowClear
+            options={drafts.map((item) => ({
+              value: item.id,
+              label: `${item.label} - ${new Date(item.savedAt).toLocaleString("vi-VN")}`,
+            }))}
+            onChange={(id) => id && loadDraft(id)}
+          />
           <Select
             value={timeSlot}
             onChange={setTimeSlot}
@@ -1034,7 +1042,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       </div>
 
       <Row gutter={[20, 20]} style={{ marginTop: 20 }}>
-        <Col xs={24} xl={16}>
+        <Col xs={24} xl={15}>
           <Space direction="vertical" size={20} style={{ width: "100%" }}>
             <Card
               title={
@@ -1061,269 +1069,133 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               )}
             </Card>
 
-            <Card
-              title="Bản xem nhanh thông tin khách hàng nhìn thấy"
-              className="saas-card customer-preview-card"
-            >
-              <Row gutter={[16, 16]}>
-                <Col xs={24} md={12}>
-                  <div className="preview-item">
-                    <span className="label">Tên nhà hàng</span>
-                    <strong>{restaurantForm.name || "Đang cập nhật"}</strong>
-                  </div>
-                </Col>
-                <Col xs={24} md={12}>
-                  <div className="preview-item">
-                    <span className="label">Loại ẩm thực</span>
-                    <strong>{restaurantForm.cuisineType || "Đang cập nhật"}</strong>
-                  </div>
-                </Col>
-                <Col xs={24} md={12}>
-                  <div className="preview-item">
-                    <span className="label">Điện thoại</span>
-                    <strong>{restaurantForm.phone || "Đang cập nhật"}</strong>
-                  </div>
-                </Col>
-                <Col xs={24} md={12}>
-                  <div className="preview-item">
-                    <span className="label">Giờ hoạt động</span>
-                    <strong>
-                      {restaurantForm.openingHours || "--:--"} - {restaurantForm.closingHours || "--:--"}
-                    </strong>
-                  </div>
-                </Col>
-                <Col span={24}>
-                  <div className="preview-item">
-                    <span className="label">Địa chỉ</span>
-                    <strong>
-                      {[restaurantForm.line1, restaurantForm.district, restaurantForm.city]
-                        .filter(Boolean)
-                        .join(", ") || "Đang cập nhật"}
-                    </strong>
-                  </div>
-                </Col>
-                <Col span={24}>
-                  <div className="preview-item">
-                    <span className="label">Mô tả</span>
-                    <p>{restaurantForm.description || "Chưa có mô tả hiển thị cho khách."}</p>
-                  </div>
-                </Col>
-                <Col span={24}>
-                  <div className="preview-item">
-                    <span className="label">Câu chuyện về chúng tôi</span>
-                    <p>{restaurantForm.customerInfo?.story || "Chưa cấu hình"}</p>
-                  </div>
-                </Col>
-                <Col xs={24} md={12}>
-                  <div className="preview-item">
-                    <span className="label">Bếp trưởng</span>
-                    <strong>{restaurantForm.customerInfo?.chef || "Chưa cấu hình"}</strong>
-                  </div>
-                </Col>
-                <Col xs={24} md={12}>
-                  <div className="preview-item">
-                    <span className="label">Dress code</span>
-                    <strong>{restaurantForm.customerInfo?.dressCode || "Chưa cấu hình"}</strong>
-                  </div>
-                </Col>
-                <Col xs={24} md={12}>
-                  <div className="preview-item">
-                    <span className="label">Phone icon</span>
-                    <strong>{restaurantForm.phone || "Chưa cấu hình"}</strong>
-                  </div>
-                </Col>
-                <Col xs={24} md={12}>
-                  <div className="preview-item">
-                    <span className="label">Website icon</span>
-                    <strong>{restaurantForm.customerInfo?.website || "Chưa cấu hình"}</strong>
-                  </div>
-                </Col>
-                <Col span={24}>
-                  <div className="preview-item">
-                    <span className="label">Tiện ích</span>
-                    <div className="preview-tags">
-                      {restaurantForm.amenities?.wifi && <Tag color="blue">Wifi</Tag>}
-                      {restaurantForm.amenities?.parking && <Tag color="geekblue">Parking</Tag>}
-                      {restaurantForm.amenities?.card && <Tag color="cyan">Thanh toán thẻ</Tag>}
-                      {!restaurantForm.amenities?.wifi &&
-                        !restaurantForm.amenities?.parking &&
-                        !restaurantForm.amenities?.card && <Text type="secondary">Chưa bật tiện ích</Text>}
-                    </div>
-                  </div>
-                </Col>
-                <Col span={24}>
-                  <div className="preview-item">
-                    <span className="label">Thông tin hữu ích (FAQ)</span>
-                    <Space direction="vertical" style={{ width: "100%" }}>
-                      {(restaurantForm.customerInfo?.faqs || []).map((item, idx) => (
-                        <div className="faq-preview" key={`faq-preview-${idx}`}>
-                          <strong>{item?.q || `FAQ ${idx + 1}`}</strong>
-                          <p>{item?.a || "Chưa có nội dung"}</p>
-                        </div>
-                      ))}
-                    </Space>
-                  </div>
-                </Col>
-              </Row>
-            </Card>
-
-            <Card title="Đánh giá chi tiết (chỉ xem)" className="saas-card customer-preview-card">
-              <Row gutter={[12, 12]}>
-                <Col xs={24} sm={12}>
-                  <div className="preview-item read-only">
-                    <span className="label">Hương vị</span>
-                    <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
-                  </div>
-                </Col>
-                <Col xs={24} sm={12}>
-                  <div className="preview-item read-only">
-                    <span className="label">Phục vụ</span>
-                    <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
-                  </div>
-                </Col>
-                <Col xs={24} sm={12}>
-                  <div className="preview-item read-only">
-                    <span className="label">Không gian</span>
-                    <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
-                  </div>
-                </Col>
-                <Col xs={24} sm={12}>
-                  <div className="preview-item read-only">
-                    <span className="label">Giá trị</span>
-                    <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
-                  </div>
-                </Col>
-              </Row>
-              <Text type="secondary">Đánh giá là dữ liệu tổng hợp từ khách hàng, chỉ hiển thị kết quả và không thể chỉnh sửa tại màn hình này.</Text>
-            </Card>
-          </Space>
-        </Col>
-
-        <Col xs={24} xl={8}>
-          <Space direction="vertical" size={20} style={{ width: "100%" }}>
-            <Card
-              className="saas-card"
-              title={
+            <Card className="saas-card" title="Danh mục (tóm gọn)">
+              <div className="category-compact-row">
                 <span>
-                  <OrderedListOutlined /> Category (gọn)
+                  Tổng category hiện có: <strong>{activeIndex?.distinctCategoryCount || categories.length || 0}</strong>
                 </span>
-              }
-              extra={
                 <Button
                   type="primary"
+                  size="small"
                   icon={<ReloadOutlined />}
                   onClick={onRefresh}
                   loading={syncingIndex}
                 >
-                  Cập nhật từ món ăn
+                  Cập nhật số lượng category
                 </Button>
-              }
-            >
-              <Text type="secondary">
-                Category chỉ hiển thị ở mức tóm tắt để không chiếm nhiều không gian quản lý thông tin nhà hàng.
-              </Text>
-
-              <div className="index-overview-stats compact">
-                <Statistic
-                  title="Tổng category"
-                  value={activeIndex?.distinctCategoryCount || categories.length || 0}
-                />
-                <Statistic
-                  title="Đơn hàng/Đặt bàn"
-                  value={`${activeIndex?.orderCount || 0}/${activeIndex?.reservationCount || 0}`}
-                />
               </div>
-
-              <Table
-                dataSource={categories}
-                columns={compactCategoryColumns}
-                rowKey="id"
-                loading={categoryLoading}
-                pagination={{ pageSize: 5, showSizeChanger: false }}
-                size="small"
-                style={{ marginTop: 12 }}
-              />
-
-              {topCategories.length > 0 && (
-                <div className="top-categories-inline">
-                  <Text type="secondary">Top:</Text>
-                  {topCategories.slice(0, 3).map((cat) => (
-                    <Tag color="geekblue" key={cat.id}>
-                      {cat.name}
-                    </Tag>
-                  ))}
-                </div>
-              )}
 
               <Collapse
                 size="small"
-                style={{ marginTop: 12 }}
+                className="category-dropdown"
                 items={[
                   {
-                    key: "advanced-categories",
-                    label: "Mở quản lý category nâng cao",
+                    key: "category-list",
+                    label: "Mở danh sách category theo chiều dọc",
                     children: (
-                      <Table
-                        dataSource={categories}
-                        columns={categoryColumns}
-                        rowKey="id"
-                        loading={categoryLoading}
-                        pagination={{ pageSize: 8, showSizeChanger: false }}
-                        scroll={{ y: "calc(100vh - 560px)" }}
-                      />
+                      <div className="category-vertical-list">
+                        {categories.length === 0 ? (
+                          <Text type="secondary">Chưa có category.</Text>
+                        ) : (
+                          categories.map((cat) => (
+                            <div className="category-item" key={cat.id}>
+                              <span>{cat.name}</span>
+                              <Tag>{cat.menuItemCount || 0} món</Tag>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     ),
                   },
                 ]}
               />
-            </Card>
-          </Space>
+
+        <Col xs={24} xl={9}>
+          <div className="customer-preview-sticky">
+            <Space direction="vertical" size={20} style={{ width: "100%" }}>
+              <Card
+                title="Bản xem nhanh thông tin khách hàng nhìn thấy"
+                className="saas-card customer-preview-card"
+              >
+                <Row gutter={[16, 16]}>
+                  <Col span={24}>
+                    <div className="preview-item">
+                      <span className="label">Tên nhà hàng</span>
+                      <strong>{restaurantForm.name || "Đang cập nhật"}</strong>
+                    </div>
+                  </Col>
+                  <Col span={24}>
+                    <div className="preview-item">
+                      <span className="label">Loại ẩm thực</span>
+                      <strong>{restaurantForm.cuisineType || "Đang cập nhật"}</strong>
+                    </div>
+                  </Col>
+                  <Col span={24}>
+                    <div className="preview-item">
+                      <span className="label">Điện thoại</span>
+                      <strong>{restaurantForm.phone || "Đang cập nhật"}</strong>
+                    </div>
+                  </Col>
+                  <Col span={24}>
+                    <div className="preview-item">
+                      <span className="label">Website</span>
+                      <strong>{restaurantForm.customerInfo?.website || "Chưa cấu hình"}</strong>
+                    </div>
+                  </Col>
+                  <Col span={24}>
+                    <div className="preview-item">
+                      <span className="label">Địa chỉ</span>
+                      <strong>
+                        {[restaurantForm.line1, restaurantForm.district, restaurantForm.city]
+                          .filter(Boolean)
+                          .join(", ") || "Đang cập nhật"}
+                      </strong>
+                    </div>
+                  </Col>
+                  <Col span={24}>
+                    <div className="preview-item">
+                      <span className="label">Mô tả</span>
+                      <p>{restaurantForm.description || "Chưa có mô tả hiển thị cho khách."}</p>
+                    </div>
+                  </Col>
+                </Row>
+              </Card>
+
+              <Card title="Đánh giá chi tiết (chỉ xem)" className="saas-card customer-preview-card">
+                <Row gutter={[12, 12]}>
+                  <Col xs={24} sm={12}>
+                    <div className="preview-item read-only">
+                      <span className="label">Hương vị</span>
+                      <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
+                    </div>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <div className="preview-item read-only">
+                      <span className="label">Phục vụ</span>
+                      <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
+                    </div>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <div className="preview-item read-only">
+                      <span className="label">Không gian</span>
+                      <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
+                    </div>
+                  </Col>
+                  <Col xs={24} sm={12}>
+                    <div className="preview-item read-only">
+                      <span className="label">Giá trị</span>
+                      <strong>{Number(restaurantForm.avgRating || 0).toFixed(1)}/5</strong>
+                    </div>
+                  </Col>
+                </Row>
+                <Text type="secondary">
+                  Đánh giá là dữ liệu tổng hợp từ khách hàng, chỉ hiển thị kết quả và không thể chỉnh sửa tại màn hình này.
+                </Text>
+              </Card>
+            </Space>
+          </div>
         </Col>
       </Row>
-
-      {/* MODAL FORM */}
-      <Modal
-        title={editingCategory ? "Cập nhật Category" : "Thêm Category Mới"}
-        open={isModalVisible}
-        onOk={handleCategoryOk}
-        onCancel={() => setIsModalVisible(false)}
-        confirmLoading={creatingCategory || updatingCategory}
-        centered
-        destroyOnClose
-      >
-        <Form
-          form={catFormInstance}
-          layout="vertical"
-          style={{ marginTop: 20 }}
-        >
-          <Form.Item
-            name="name"
-            label="Tên Category"
-            rules={[{ required: true, message: "Vui lòng nhập tên" }]}
-          >
-            <Input placeholder="Ví dụ: Món khai vị" size="large" />
-          </Form.Item>
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="order"
-                label="Thứ tự hiển thị"
-                tooltip="Số nhỏ xếp trước"
-              >
-                <Input type="number" style={{ width: "100%" }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="isActive"
-                label="Trạng thái"
-                valuePropName="checked"
-              >
-                <Switch checkedChildren="Hiện" unCheckedChildren="Ẩn" />
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-      </Modal>
     </div>
   );
 };

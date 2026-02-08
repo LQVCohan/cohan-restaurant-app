@@ -1,0 +1,35 @@
+{
+  "id": "draft-id",
+  "restaurantId": "restaurant-id",
+  "label": "Bản nháp thủ công",
+  "savedAt": "2026-01-01T08:30:00.000Z",
+  "data": {
+    "name": "",
+    "phone": "",
+    "email": "",
+    "description": "",
+    "openingHours": "",
+    "closingHours": "",
+    "cuisineType": "",
+    "priceRange": "",
+    "status": "active",
+    "amenities": {
+      "wifi": false,
+      "parking": false,
+      "card": false
+    },
+    "customerInfo": {
+      "story": "",
+      "chef": "",
+      "dressCode": "",
+      "parkingDetail": "",
+      "website": "",
+      "extraAmenities": [],
+      "suitableFor": [],
+      "faqs": []
+    },
+    "line1": "",
+    "district": "",
+    "city": ""
+  }
+}
