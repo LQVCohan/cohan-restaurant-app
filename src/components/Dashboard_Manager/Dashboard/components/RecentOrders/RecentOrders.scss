@@ -1,4 +1,6 @@
 // Variables
+@use "sass:list";
+@use "sass:color";
 $primary-bg: #ffffff;
 $secondary-bg: #f9fafb;
 $text-main: #111827;
@@ -270,8 +272,8 @@ $status-colors: (
 
           @each $name, $values in $status-colors {
             &.#{$name} {
-              background: nth($values, 1);
-              color: nth($values, 2);
+              background: list.nth($values, 1);
+              color: list.nth($values, 2);
             }
           }
         }
@@ -327,7 +329,7 @@ $status-colors: (
             color: #fff;
             border: none;
             &:hover {
-              background: lighten($text-main, 10%);
+              background: color.adjust($text-main, $lightness: 10%);
             }
           }
         }

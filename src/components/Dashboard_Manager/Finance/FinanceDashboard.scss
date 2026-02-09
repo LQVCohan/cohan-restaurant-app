@@ -75,7 +75,7 @@ $border: #e2e8f0;
         background: $primary;
         color: white;
         &:hover {
-          background: darken($primary, 5%);
+          background: color.adjust($primary, $lightness: -5%);
         }
       }
     }
@@ -591,13 +591,13 @@ $border: #e2e8f0;
               &.income {
                 background: $success;
                 &:hover {
-                  background: darken($success, 5%);
+                  background: color.adjust($success, $lightness: -5%);
                 }
               }
               &.expense {
                 background: $danger;
                 &:hover {
-                  background: darken($danger, 5%);
+                  background: color.adjust($danger, $lightness: -5%);
                 }
               }
             }

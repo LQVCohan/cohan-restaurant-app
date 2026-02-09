@@ -1,3 +1,4 @@
+@use "sass:color";
 /* --- Supply Card Unique Variables --- */
 $sc-gold-primary: #c5a47e; // Màu chủ đạo (Vàng đất)
 $sc-gold-hover: #b08d66; // Màu khi hover
@@ -201,7 +202,7 @@ $sc-state-danger: #ef4444;
 
     // Highlight giá bán
     &.highlight {
-      color: darken($sc-gold-primary, 15%);
+      color: color.adjust($sc-gold-primary, $lightness: -15%);
     }
   }
 }
@@ -246,12 +247,12 @@ $sc-state-danger: #ef4444;
 
   // Ghost Primary Style
   &.variant-ghost {
-    color: darken($sc-gold-primary, 10%);
+    color: color.adjust($sc-gold-primary, $lightness: -10%);
     background: rgba($sc-gold-primary, 0.08);
 
     &:hover {
       background: rgba($sc-gold-primary, 0.15);
-      color: darken($sc-gold-primary, 20%);
+      color: color.adjust($sc-gold-primary, $lightness: -20%);
     }
   }
 
@@ -262,7 +263,7 @@ $sc-state-danger: #ef4444;
     border: 1px solid $sc-border;
 
     &:hover {
-      border-color: darken($sc-border, 10%);
+      border-color: color.adjust($sc-border, $lightness: -10%);
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
     }
 

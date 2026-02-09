@@ -1,3 +1,4 @@
+@use "sass:color";
 /* src/pages/OrderManagement/components/NewOrderModal.scss */
 
 // --- Variables (Theme Gold & Charcoal) ---
@@ -207,7 +208,7 @@ $danger: #ef4444;
   position: relative;
 
   &:hover {
-    background-color: lighten($charcoal, 5%);
+    background-color: color.adjust($charcoal, $lightness: 5%);
   }
   &:disabled {
     opacity: 0.5;
@@ -410,7 +411,7 @@ $danger: #ef4444;
     &:hover {
       border-color: $gold;
       background: $gold-light;
-      color: darken($gold, 20%);
+      color: color.adjust($gold, $lightness: -20%);
     }
   }
 
@@ -650,7 +651,7 @@ $danger: #ef4444;
   box-shadow: 0 4px 6px -1px rgba($gold, 0.4);
 
   &:hover {
-    background: darken($gold, 5%);
+    background: color.adjust($gold, $lightness: -5%);
     transform: translateY(-1px);
   }
 

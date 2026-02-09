@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../../../../styles/variables.scss" as *;
 
 // --- Premium Palette ---
@@ -297,7 +298,7 @@ $wood-texture: #a16207;
         }
       }
       .chairs-wrapper .chair {
-        background: darken($gold, 10%);
+        background: color.adjust($gold, $lightness: -10%);
       }
       .capacity-pill {
         background: white;

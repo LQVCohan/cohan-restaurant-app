@@ -1,3 +1,4 @@
+@use "sass:color";
 /* --- VARIABLES --- */
 $c-bg: #ffffff;
 $c-border: #e2e8f0;
@@ -34,7 +35,7 @@ $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   &:hover {
     transform: translateY(-4px);
     box-shadow: $shadow-hover;
-    border-color: darken($c-border, 10%);
+    border-color: color.adjust($c-border, $lightness: -10%);
   }
 
   /* Status Colors (Left Strip & Time Badge logic) */
@@ -372,7 +373,7 @@ $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     background: $c-primary;
     color: white;
     &:hover {
-      background: darken($c-primary, 5%);
+      background: color.adjust($c-primary, $lightness: -5%);
     }
   }
   &.primary-outline {
@@ -395,7 +396,7 @@ $shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     background: $c-success;
     color: white;
     &:hover {
-      background: darken($c-success, 5%);
+      background: color.adjust($c-success, $lightness: -5%);
     }
   }
 

@@ -1,3 +1,4 @@
+@use "sass:color";
 /* --- VARIABLES & THEME --- */
 $font-heading: "Playfair Display", serif; // Cần import font này từ Google Fonts
 $font-body: "Inter", sans-serif;
@@ -390,7 +391,7 @@ $radius: 16px;
       margin-bottom: 12px;
 
       &:hover {
-        background: lighten($color-dark, 10%);
+        background: color.adjust($color-dark, $lightness: 10%);
         transform: translateY(-1px);
       }
     }

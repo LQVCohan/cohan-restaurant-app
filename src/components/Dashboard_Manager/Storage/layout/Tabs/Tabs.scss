@@ -1,3 +1,4 @@
+@use "sass:color";
 /* src/components/Dashboard_Manager/Storage/layout/Tabs/Tabs.scss */
 
 // Variables đồng bộ
@@ -66,7 +67,7 @@ $shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
   /* --- Hover State (Inactive) --- */
   &:hover:not(.active) {
     background-color: $slate-100;
-    color: darken($slate-400, 20%);
+    color: color.adjust($slate-400, $lightness: -20%);
 
     .tab-icon {
       transform: scale(1.1);

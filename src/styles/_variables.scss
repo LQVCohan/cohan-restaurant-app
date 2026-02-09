@@ -7,6 +7,7 @@
 // --------------------------------
 
 // Brand (FoodHub)
+@use "sass:color";
 $primary: #0284c7; // alias để tương thích code cũ
 $primary-hover: #0369a1; // alias
 $primary-light: #f0f9ff; // alias
@@ -633,12 +634,12 @@ $grey-900: $gray-900 !default;
 $secondary-500: #3356cc !default;
 
 // Tạo các bậc sáng/tối từ màu gốc
-$secondary-300: lighten($secondary-500, 15%) !default;
-$secondary-700: darken($secondary-500, 12%) !default;
+$secondary-300: color.adjust($secondary-500, $lightness: 15%) !default;
+$secondary-700: color.adjust($secondary-500, $lightness: -12%) !default;
 
 // Các token “trộn” (dùng cho icon/status,...)
-$secondary-300-500: mix($secondary-300, $secondary-500, 50%) !default;
-$secondary-300-700: mix($secondary-300, $secondary-700, 50%) !default;
+$secondary-300-500: color.mix($secondary-300, $secondary-500, 50%) !default;
+$secondary-300-700: color.mix($secondary-300, $secondary-700, 50%) !default;
 $orange-50: #fff7ed; // Cam rất nhạt (dùng làm nền)
 $orange-100: #ffedd5;
 $orange-200: #fed7aa;

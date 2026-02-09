@@ -1,11 +1,11 @@
 // src/components/Customer/RestaurantMenu/styles/RestaurantCard.scss
-@import "./variables";
+@use "./variables" as rm;
 
 .res-card {
-  background: $bg-card;
+  background: rm.$bg-card;
   border-radius: 16px;
   overflow: visible;
-  box-shadow: $shadow-sm;
+  box-shadow: rm.$shadow-sm;
   border: 1px solid rgba(0, 0, 0, 0.04);
   position: relative;
   cursor: pointer;
@@ -13,8 +13,8 @@
 
   &:hover {
     transform: translateY(-8px);
-    box-shadow: $shadow-hover;
-    border-color: rgba($primary, 0.2);
+    box-shadow: rm.$shadow-hover;
+    border-color: rgba(rm.$primary, 0.2);
     .cover img {
       transform: scale(1.08);
     }
@@ -41,7 +41,7 @@
       border-radius: 20px;
       font-size: 0.75rem;
       font-weight: 700;
-      color: $text-main;
+      color: rm.$text-main;
     }
   }
 
@@ -54,7 +54,7 @@
     background: white;
     border-radius: 50%;
     padding: 3px;
-    box-shadow: $shadow-md;
+    box-shadow: rm.$shadow-md;
     z-index: 10;
     img {
       width: 100%;
@@ -76,10 +76,10 @@
       display: flex;
       gap: 0.8rem;
       font-size: 0.85rem;
-      color: $text-sub;
+      color: rm.$text-sub;
       margin-bottom: 1rem;
       .rating {
-        color: $primary;
+        color: rm.$primary;
         font-weight: 700;
         background: #fff7ed;
         padding: 2px 6px;
@@ -88,14 +88,14 @@
     }
     .res-footer {
       padding-top: 1rem;
-      border-top: 1px dashed $border-color;
+      border-top: 1px dashed rm.$border-color;
       display: flex;
       gap: 6px;
       font-size: 0.85rem;
-      color: $text-sub;
+      color: rm.$text-sub;
       svg {
         width: 16px;
-        color: $primary-dark;
+        color: rm.$primary-dark;
       }
     }
   }

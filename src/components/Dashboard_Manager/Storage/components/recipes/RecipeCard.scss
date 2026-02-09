@@ -1,3 +1,4 @@
+@use "sass:color";
 /* --- Recipe Card Variables --- */
 $rc-primary: #c5a47e; // Gold
 $rc-bg: #ffffff;
@@ -23,7 +24,7 @@ $rc-radius: 12px;
   &:hover {
     transform: translateY(-4px);
     box-shadow: 0 12px 20px -10px rgba(0, 0, 0, 0.1);
-    border-color: darken($rc-border, 5%);
+    border-color: color.adjust($rc-border, $lightness: -5%);
 
     .rc-icon-box {
       background: $rc-primary;
@@ -116,7 +117,7 @@ $rc-radius: 12px;
 
     .rc-stat-label {
       font-size: 10px;
-      color: lighten($rc-text-sub, 10%);
+      color: color.adjust($rc-text-sub, $lightness: 10%);
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-top: 2px;
@@ -125,7 +126,7 @@ $rc-radius: 12px;
     &.is-cost {
       .rc-stat-icon,
       .rc-stat-value {
-        color: darken($rc-primary, 5%);
+        color: color.adjust($rc-primary, $lightness: -5%);
       }
       background: rgba($rc-primary, 0.03);
     }
@@ -186,7 +187,7 @@ $rc-radius: 12px;
 
     &:hover {
       color: $rc-text-main;
-      background: darken(#f1f5f9, 5%);
+      background: color.adjust(#f1f5f9, $lightness: -5%);
     }
   }
 
@@ -210,7 +211,7 @@ $rc-radius: 12px;
   }
 
   .rc-btn-delete:hover {
-    border-color: lighten($rc-danger, 20%);
+    border-color: color.adjust($rc-danger, $lightness: 20%);
     color: $rc-danger;
     background: #fef2f2;
   }
