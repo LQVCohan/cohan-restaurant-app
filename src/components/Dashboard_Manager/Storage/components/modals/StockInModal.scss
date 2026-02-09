@@ -1,3 +1,4 @@
+@use "sass:color";
 /* --- Stock In Modal Unique Variables --- */
 $si-primary: #c5a47e; // Gold theme
 $si-primary-dark: #b08d66;
@@ -110,7 +111,7 @@ $si-danger: #ef4444;
     transition: all 0.2s ease-in-out;
 
     &::placeholder {
-      color: lighten($si-text-sub, 20%);
+      color: color.adjust($si-text-sub, $lightness: 20%);
     }
 
     &:focus {
@@ -123,7 +124,7 @@ $si-danger: #ef4444;
     &.si-input-lg {
       font-size: 16px;
       font-weight: 600;
-      color: darken($si-primary, 20%);
+      color: color.adjust($si-primary, $lightness: -20%);
       background: #fffdfa; // slight tint
     }
   }

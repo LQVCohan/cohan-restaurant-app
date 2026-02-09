@@ -1,4 +1,5 @@
 // src/pages/StaffManagement/components/modals/EmployeeFormModal.scss
+@use "sass:color";
 @use "../../../../../../styles/variables" as *;
 @use "../../../../../../styles/mixins" as *;
 
@@ -575,7 +576,7 @@ $radius: 10px;
       border: none;
       box-shadow: 0 2px 4px rgba($c-primary, 0.3);
       &:hover:not(:disabled) {
-        background: darken($c-primary, 5%);
+        background: color.adjust($c-primary, $lightness: -5%);
         transform: translateY(-1px);
       }
       &:disabled {

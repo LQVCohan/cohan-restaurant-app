@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
 
@@ -44,7 +45,7 @@ $border-light: #e2e8f0;
         background: linear-gradient(
           135deg,
           $primary-blue,
-          darken($primary-blue, 20%)
+          color.adjust($primary-blue, $lightness: -20%)
         );
         border-radius: 12px;
         display: flex;

@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../../../../styles/variables.scss" as *;
 
 // --- Premium Palette ---
@@ -63,7 +64,7 @@ $border-color: rgba($gold, 0.25);
       align-items: center;
       justify-content: center;
       text-align: center;
-      color: lighten($slate, 20%);
+      color: color.adjust($slate, $lightness: 20%);
       border: 1px dashed $border-color;
       border-radius: 8px;
       margin: 10px 0;

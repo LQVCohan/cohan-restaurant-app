@@ -1,3 +1,4 @@
+@use "sass:color";
 /* src/pages/OrderManagement/components/OrderModal.scss */
 
 // --- Variables ---
@@ -179,7 +180,7 @@ $st-cancelled-text: #b91c1c;
       cursor: pointer;
       &:hover {
         text-decoration: underline;
-        color: darken($gold, 10%);
+        color: color.adjust($gold, $lightness: -10%);
       }
     }
   }
@@ -436,7 +437,7 @@ $st-cancelled-text: #b91c1c;
     background: $gold;
     color: white;
     &:hover {
-      background: darken($gold, 8%);
+      background: color.adjust($gold, $lightness: -8%);
     }
   }
   &.icon-only {

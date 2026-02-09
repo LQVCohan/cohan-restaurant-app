@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../styles/variables.scss" as *; // Import biến màu nếu có
 
 // --- Variables ---
@@ -79,7 +80,7 @@ $sp-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         cursor: pointer;
         transition: 0.2s;
         &:hover {
-          background: darken($sp-primary, 5%);
+          background: color.adjust($sp-primary, $lightness: -5%);
         }
       }
     }

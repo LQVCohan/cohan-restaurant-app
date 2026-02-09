@@ -197,7 +197,7 @@ $shadow-float: 0 10px 15px -3px rgba(0, 0, 0, 0.05),
           }
 
           &:hover {
-            border-color: darken($border-color, 10%);
+            border-color: color.adjust($border-color, $lightness: -10%);
           }
 
           &:focus {
@@ -278,7 +278,7 @@ $shadow-float: 0 10px 15px -3px rgba(0, 0, 0, 0.05),
 
             &:hover {
               background: $bg-body;
-              border-color: darken($border-color, 10%);
+              border-color: color.adjust($border-color, $lightness: -10%);
             }
 
             &:focus {
@@ -388,7 +388,7 @@ $shadow-float: 0 10px 15px -3px rgba(0, 0, 0, 0.05),
 
           &:hover {
             background: $bg-body;
-            border-color: darken($border-color, 15%);
+            border-color: color.adjust($border-color, $lightness: -15%);
             transform: translateY(-1px);
             box-shadow: $shadow-md;
           }

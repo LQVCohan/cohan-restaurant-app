@@ -1,3 +1,4 @@
+@use "sass:map";
 @use "sass:color";
 
 // --- Variables ---
@@ -127,12 +128,12 @@ $colors: (
   @each $name, $map in $colors {
     &.#{$name} {
       .stat-icon-wrapper {
-        background-color: map-get($map, bg);
-        color: map-get($map, text);
+        background-color: map.get($map, bg);
+        color: map.get($map, text);
       }
 
       // Optional: Border trái màu highlight để nhấn mạnh
-      border-left: 4px solid map-get($map, bg);
+      border-left: 4px solid map.get($map, bg);
     }
   }
 }

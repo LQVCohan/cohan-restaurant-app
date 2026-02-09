@@ -1,4 +1,5 @@
 // --- VARIABLES ---
+@use "sass:color";
 $primary-color: #ff6b00; // Màu cam F&B đặc trưng
 $primary-light: #fff0e5;
 $bg-color: #f9fafb;
@@ -320,7 +321,7 @@ $shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
       transition: background 0.2s;
 
       &:active {
-        background: darken($primary-color, 5%);
+        background: color.adjust($primary-color, $lightness: -5%);
       }
     }
   }

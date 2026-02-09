@@ -1,3 +1,4 @@
+@use "sass:color";
 $orange-primary: #f97316;
 $orange-dark: #c2410c;
 $orange-light: #fff7ed;
@@ -586,7 +587,7 @@ $gray-slate-900: #0f172a;
   background: $orange-primary;
 
   &:hover:not(:disabled) {
-    background: darken($orange-primary, 5%);
+    background: color.adjust($orange-primary, $lightness: -5%);
   }
 }
 
@@ -594,7 +595,7 @@ $gray-slate-900: #0f172a;
   background: $green-success;
 
   &:hover:not(:disabled) {
-    background: darken($green-success, 5%);
+    background: color.adjust($green-success, $lightness: -5%);
   }
 }
 
@@ -602,7 +603,7 @@ $gray-slate-900: #0f172a;
   background: $orange-warning;
 
   &:hover:not(:disabled) {
-    background: darken($orange-warning, 5%);
+    background: color.adjust($orange-warning, $lightness: -5%);
   }
 }
 
