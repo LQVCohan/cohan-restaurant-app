@@ -200,6 +200,11 @@ const AppRouter = () => {
       <Route path="/403" element={<ForbiddenPage />} />
       <Route path="/logout" element={<Navigate to="/login" replace />} />
 
+      <Route
+        path="/preview/restaurant/:id"
+        element={<RestaurantDetail />}
+      />
+
       {/* =============================================
           GROUP 2: STAFF, MANAGER, ADMIN (Layout Riêng)
           =============================================
