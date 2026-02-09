@@ -1,0 +1,497 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
+
+/* ==========================================================================
+   LOGIN PAGE SCOPE
+   Mọi style đều nằm trong class này để tránh ảnh hưởng trang khác
+   ========================================================================== */
+.login-page-wrapper {
+  // --- UNIQUE VARIABLES (ĐỊNH DANH RIÊNG CHO LOGIN) ---
+  --login-primary-gradient: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  --login-primary-solid: #ff6b6b;
+  --login-text-main: #2d3436;
+  --login-text-light: #636e72;
+  --login-bg-input: #f4f8f7;
+  --login-white: #ffffff;
+
+  // Shadows & Radius
+  --login-shadow-card:
+    0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+  --login-shadow-btn: 0 4px 10px rgba(255, 107, 107, 0.3);
+  --login-radius-card: 20px;
+  --login-radius-input: 12px;
+  --login-radius-btn: 50px;
+
+  // --- GLOBAL RESET (LOCAL SCOPE) ---
+  font-family: "Poppins", sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+
+  * {
+    box-sizing: border-box;
+  }
+
+  // --- 1. BACKGROUND FULL SCREEN ---
+  background: url("https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070&auto=format&fit=crop")
+    no-repeat center center fixed;
+  background-size: cover;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  overflow-x: hidden;
+
+  // Lớp phủ tối (Dark Overlay) cho background chính
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 0;
+  }
+
+  // --- 2. MAIN CARD (CONTAINER) ---
+  .container {
+    background: var(--login-white);
+    border-radius: var(--login-radius-card);
+    box-shadow: var(--login-shadow-card);
+    position: relative;
+    overflow: hidden;
+    width: 900px;
+    max-width: 95%;
+    min-height: 680px;
+    z-index: 1;
+
+    @media (max-width: 768px) {
+      min-height: auto;
+      padding-bottom: 30px;
+      display: flex;
+      flex-direction: column;
+      margin-top: 20px;
+    }
+  }
+
+  // --- 3. FORM LOGIC & ANIMATION ---
+  .form-container {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    transition: all 0.6s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 40px;
+    background: var(--login-white);
+
+    form {
+      background: var(--login-white);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      width: 100%;
+      text-align: center;
+    }
+
+    // Mobile Reset
+    @media (max-width: 768px) {
+      position: static;
+      width: 100% !important;
+      transform: none !important;
+      opacity: 1 !important;
+      pointer-events: all !important;
+      padding: 20px;
+
+      &.mobile-hidden {
+        display: none;
+      }
+    }
+  }
+
+  /* --- TRẠNG THÁI SIGN IN (MẶC ĐỊNH) --- */
+  .sign-in-container {
+    left: 0;
+    width: 50%;
+    z-index: 2;
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .sign-up-container {
+    left: 0;
+    width: 50%;
+    opacity: 0;
+    z-index: 1;
+    pointer-events: none; // Vô hiệu hóa click khi ẩn
+  }
+
+  /* --- TRẠNG THÁI SIGN UP (ACTIVE - KHI SLIDE SANG PHẢI) --- */
+  .container.right-panel-active .sign-in-container {
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .container.right-panel-active .sign-up-container {
+    transform: translateX(100%);
+    opacity: 1;
+    z-index: 5;
+    pointer-events: all;
+    animation: loginShow 0.6s;
+  }
+
+  @keyframes loginShow {
+    0%,
+    49.99% {
+      opacity: 0;
+      z-index: 1;
+    }
+    50%,
+    100% {
+      opacity: 1;
+      z-index: 5;
+    }
+  }
+
+  // --- 4. UI ELEMENTS ---
+  h1 {
+    font-weight: 700;
+    margin: 0 0 5px 0;
+    color: var(--login-text-main);
+    font-size: 2rem;
+    line-height: 1.2;
+  }
+
+  p.social-text {
+    font-size: 0.85rem;
+    color: var(--login-text-light);
+    margin: 10px 0 15px;
+  }
+
+  .social-container {
+    margin: 10px 0;
+    display: flex;
+    gap: 10px;
+
+    a.social {
+      border: 1px solid #ddd;
+      border-radius: 50%;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      height: 40px;
+      width: 40px;
+      color: #333;
+      font-size: 1.1rem;
+      transition: 0.3s;
+      text-decoration: none;
+
+      &:hover {
+        background: #eee;
+        border-color: var(--login-primary-solid);
+        color: var(--login-primary-solid);
+        transform: translateY(-2px);
+      }
+    }
+  }
+
+  .input-wrapper {
+    position: relative;
+    width: 100%;
+    margin: 8px 0;
+
+    input {
+      background-color: var(--login-bg-input);
+      border: 1px solid transparent;
+      padding: 12px 15px 12px 45px;
+      width: 100%;
+      border-radius: var(--login-radius-input);
+      outline: none;
+      font-size: 0.9rem;
+      font-family: "Poppins", sans-serif;
+      transition: 0.3s;
+      color: var(--login-text-main);
+
+      &::placeholder {
+        color: #a4b0be;
+      }
+
+      &:focus {
+        background-color: var(--login-white);
+        border-color: var(--login-primary-solid);
+        box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+      }
+    }
+
+    .field-icon {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #a4b0be;
+      font-size: 1rem;
+      transition: 0.3s;
+    }
+
+    input:focus ~ .field-icon {
+      color: var(--login-primary-solid);
+    }
+
+    .toggle-pw-btn {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #a4b0be;
+      padding: 0;
+      &:hover {
+        color: var(--login-text-main);
+      }
+    }
+  }
+
+  // CAPTCHA
+  .captcha-container {
+    margin: 15px 0;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    transform: scale(0.9);
+    transform-origin: center;
+  }
+
+  // BUTTON
+  button.btn-primary {
+    border-radius: var(--login-radius-btn);
+    border: none;
+    background: var(--login-primary-gradient);
+    color: var(--login-white);
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 12px 45px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: 0.3s;
+    cursor: pointer;
+    margin-top: 5px;
+    box-shadow: var(--login-shadow-btn);
+
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 15px rgba(255, 107, 107, 0.4);
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+  }
+
+  // ==========================================
+  // 5. OVERLAY (PANEL MÀU CAM & HỌA TIẾT)
+  // ==========================================
+  .overlay-container {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 50%;
+    height: 100%;
+    overflow: hidden;
+    transition: transform 0.6s ease-in-out;
+    z-index: 100;
+    border-radius: 0 var(--login-radius-card) var(--login-radius-card) 0;
+
+    @media (max-width: 768px) {
+      display: none;
+    }
+  }
+
+  .container.right-panel-active .overlay-container {
+    transform: translateX(-100%);
+    border-radius: var(--login-radius-card) 0 0 var(--login-radius-card);
+  }
+
+  .overlay {
+    background: var(--login-primary-gradient);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: 0 0;
+    color: var(--login-white);
+    position: relative;
+    left: -100%;
+    height: 100%;
+    width: 200%;
+    transform: translateX(0);
+    transition: transform 0.6s ease-in-out;
+
+    // --- CẤU HÌNH PATTERN CHUNG ---
+    &::before,
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-repeat: repeat;
+      z-index: 0; // Nằm dưới chữ
+
+      // Kỹ thuật biến Emoji thành Icon trắng phẳng (Silhouette)
+      // Grayscale: mất màu -> Brightness 0: thành đen -> Invert 1: thành trắng
+      filter: grayscale(100%) brightness(0) invert(1);
+
+      opacity: 0.15; // Độ mờ của icon
+      transition: opacity 0.6s ease-in-out;
+      pointer-events: none;
+
+      // Animation trôi chéo vô tận
+      animation: floatingPattern 45s linear infinite;
+    }
+
+    // --- LỚP 1: FOOD PATTERN (Dùng khi đang hiện Form Đăng nhập) ---
+    // SVG Data URI chứa: Burger, Pizza, Đùi gà, Nước
+    &::before {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Ctext x='10' y='40' font-size='35'%3E🍔%3C/text%3E%3Ctext x='70' y='40' font-size='35'%3E🍕%3C/text%3E%3Ctext x='40' y='90' font-size='35'%3E🍗%3C/text%3E%3Ctext x='90' y='90' font-size='30'%3E🥤%3C/text%3E%3C/svg%3E");
+      background-size: 120px;
+      opacity: 0.15; // Mặc định hiện
+    }
+
+    // --- LỚP 2: WRITING PATTERN (Dùng khi đang hiện Form Đăng ký) ---
+    // SVG Data URI chứa: Bút, Giấy, Sách, Ghim
+    &::after {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Ctext x='10' y='40' font-size='35'%3E📝%3C/text%3E%3Ctext x='70' y='40' font-size='35'%3E🖊️%3C/text%3E%3Ctext x='40' y='90' font-size='35'%3E📚%3C/text%3E%3Ctext x='90' y='90' font-size='30'%3E📎%3C/text%3E%3C/svg%3E");
+      background-size: 120px;
+      opacity: 0; // Mặc định ẩn
+    }
+  }
+
+  // --- LOGIC CHUYỂN ĐỔI PATTERN ---
+  .container.right-panel-active .overlay {
+    transform: translateX(50%);
+
+    &::before {
+      opacity: 0;
+    } // Ẩn đồ ăn
+    &::after {
+      opacity: 0.15;
+    } // Hiện bút viết
+  }
+
+  @keyframes floatingPattern {
+    0% {
+      background-position: 0 0;
+    }
+    100% {
+      background-position: 100% 100%;
+    }
+  }
+
+  .overlay-panel {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 0 40px;
+    text-align: center;
+    top: 0;
+    height: 100%;
+    width: 50%;
+    transform: translateX(0);
+    transition: transform 0.6s ease-in-out;
+    z-index: 2; // Quan trọng: Nổi lên trên lớp Pattern
+
+    h1 {
+      color: var(--login-white);
+      margin-bottom: 10px;
+    }
+    p {
+      font-size: 0.95rem;
+      font-weight: 300;
+      line-height: 1.5;
+      margin-bottom: 30px;
+      color: var(--login-white);
+    }
+  }
+
+  .overlay-left {
+    transform: translateX(-20%);
+  }
+  .container.right-panel-active .overlay-left {
+    transform: translateX(0);
+  }
+
+  .overlay-right {
+    right: 0;
+    transform: translateX(0);
+  }
+  .container.right-panel-active .overlay-right {
+    transform: translateX(20%);
+  }
+
+  // NÚT GHOST (TRONG SUỐT)
+  button.ghost {
+    background-color: transparent;
+    border: 2px solid var(--login-white);
+    border-radius: var(--login-radius-btn);
+    color: var(--login-white);
+    padding: 12px 45px;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: 0.3s;
+    z-index: 3;
+
+    &:hover {
+      background-color: var(--login-white);
+      color: var(--login-primary-solid);
+      transform: scale(1.05);
+    }
+  }
+
+  // --- 6. MOBILE SWITCHER (NÚT CHUYỂN TAB TRÊN ĐIỆN THOẠI) ---
+  .mobile-switcher {
+    display: none;
+    width: 90%;
+    max-width: 350px;
+    background: var(--login-white);
+    padding: 5px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+
+    @media (max-width: 768px) {
+      display: flex;
+      gap: 5px;
+    }
+
+    button {
+      flex: 1;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--login-text-light);
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.3s;
+
+      &.active {
+        background: var(--login-primary-gradient);
+        color: var(--login-white);
+        box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
+      }
+    }
+  }
+}
