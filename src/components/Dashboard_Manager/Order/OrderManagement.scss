@@ -1,3 +1,4 @@
+@use "sass:color";
 /* src/pages/OrderManagement/OrderManagement.scss */
 
 // --- Variables (Theme Gold & Charcoal) ---
@@ -224,7 +225,7 @@ $danger: #ef4444;
   border: none;
 
   &:hover {
-    background: lighten($charcoal, 10%);
+    background: color.adjust($charcoal, $lightness: 10%);
   }
 
   /* Focus Active: Red to exit */
@@ -397,7 +398,7 @@ $danger: #ef4444;
   transition: all 0.2s;
 
   &:hover {
-    background: darken($gold, 8%);
+    background: color.adjust($gold, $lightness: -8%);
     transform: translateY(-1px);
   }
   &:disabled {

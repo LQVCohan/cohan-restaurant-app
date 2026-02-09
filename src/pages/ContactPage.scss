@@ -1,4 +1,5 @@
 // --- VARIABLES (Tone Cam đồng bộ) ---
+@use "sass:color";
 $primary: #ff6600;
 $primary-dark: #e65c00;
 $primary-light: #fff5eb;
@@ -208,7 +209,7 @@ $shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
 
 .contact-info-card {
   background: $primary; // Nền cam nổi bật cho phần info
-  background: linear-gradient(135deg, $primary, darken($primary, 10%));
+  background: linear-gradient(135deg, $primary, color.adjust($primary, $lightness: -10%));
   color: white;
   border-radius: $radius;
   padding: 32px;

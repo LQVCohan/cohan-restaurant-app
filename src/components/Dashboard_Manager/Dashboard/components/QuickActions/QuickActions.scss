@@ -1,3 +1,4 @@
+@use "sass:list";
 /* --- QuickActions.scss --- */
 
 // 1. Variables & Maps
@@ -195,25 +196,25 @@ $color-themes: (
       @each $name, $vals in $color-themes {
         &.#{$name} {
           .icon-wrapper {
-            background: nth($vals, 1);
-            color: nth($vals, 2);
+            background: list.nth($vals, 1);
+            color: list.nth($vals, 2);
           }
 
           &:hover:not(.shaking) {
             // Chỉ hover khi ko ở chế độ sửa
             background: white;
-            border-color: rgba(nth($vals, 2), 0.3);
-            box-shadow: 0 4px 12px rgba(nth($vals, 2), 0.15);
+            border-color: rgba(list.nth($vals, 2), 0.3);
+            box-shadow: 0 4px 12px rgba(list.nth($vals, 2), 0.15);
             transform: translateY(-2px);
 
             .action-label {
-              color: nth($vals, 2);
+              color: list.nth($vals, 2);
             }
 
             .hover-arrow {
               opacity: 1;
               transform: translate(0, 0);
-              color: nth($vals, 2);
+              color: list.nth($vals, 2);
             }
           }
         }

@@ -1,4 +1,5 @@
 // Variables
+@use "sass:color";
 $bg-white: #ffffff;
 $bg-hover: #f8fafc;
 $bg-selected: #fffaf5;
@@ -46,7 +47,7 @@ $danger: #ef4444;
     border-left-color: $border-selected; // Chỉ đổi màu border
 
     .name {
-      color: darken($border-selected, 10%);
+      color: color.adjust($border-selected, $lightness: -10%);
     }
   }
 

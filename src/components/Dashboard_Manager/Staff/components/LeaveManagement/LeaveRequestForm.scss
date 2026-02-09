@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
 
@@ -141,7 +142,7 @@ $bg-input: #f8fafc;
 
       &:hover {
         background: $bg-input;
-        border-color: darken($border, 10%);
+        border-color: color.adjust($border, $lightness: -10%);
       }
       &.selected {
         border-color: $primary;
@@ -219,7 +220,7 @@ $bg-input: #f8fafc;
         border: 1px solid $border;
         color: $text-main;
         &:hover {
-          background: darken($bg-input, 5%);
+          background: color.adjust($bg-input, $lightness: -5%);
         }
       }
       &.btn-primary {
@@ -227,7 +228,7 @@ $bg-input: #f8fafc;
         color: #fff;
         box-shadow: 0 2px 4px rgba($primary, 0.2);
         &:hover {
-          background: darken($primary, 5%);
+          background: color.adjust($primary, $lightness: -5%);
           transform: translateY(-1px);
         }
       }

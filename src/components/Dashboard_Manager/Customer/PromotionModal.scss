@@ -1,5 +1,6 @@
 // src/pages/CustomerManagement/PromotionModal.scss
 
+@use "sass:color";
 $pm-primary: #3b82f6; // Blue 500
 $pm-bg: #f8fafc; // Slate 50
 $pm-border: #e2e8f0; // Slate 200
@@ -495,7 +496,7 @@ $pm-radius: 12px;
         background: $pm-primary;
         color: white;
         &:hover {
-          background: darken($pm-primary, 5%);
+          background: color.adjust($pm-primary, $lightness: -5%);
         }
         &:disabled {
           background: #cbd5e1;
@@ -507,7 +508,7 @@ $pm-radius: 12px;
         background: #10b981;
         color: white;
         &:hover {
-          background: darken(#10b981, 5%);
+          background: color.adjust(#10b981, $lightness: -5%);
         }
         &:disabled {
           opacity: 0.7;

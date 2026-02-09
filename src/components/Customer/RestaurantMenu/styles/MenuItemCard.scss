@@ -1,5 +1,5 @@
 // src/components/Customer/RestaurantMenu/styles/MenuItemCard.scss
-@import "./variables";
+@use "./variables" as *;
 
 .item-card {
   background: #ffffff;
