@@ -2,9 +2,6 @@ import React, { useState, useContext, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
-import { useRouter } from "../hooks/useRouter";
-import "../styles/login.scss";
-import process from "process";
 import ReCAPTCHA from "react-google-recaptcha";
 import { useNotification } from "@/hooks/useNotification"; // Hook thông báo (tuỳ project bạn)
 import {
