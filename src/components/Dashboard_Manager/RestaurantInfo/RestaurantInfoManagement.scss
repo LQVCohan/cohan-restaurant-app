@@ -315,30 +315,50 @@ $radius-lg: 16px;
     position: sticky;
     top: 20px;
     width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
 
     .preview-label {
-      margin-bottom: 12px;
       font-weight: 600;
       color: $secondary-color;
       display: flex;
       gap: 8px;
     }
+
+    .preview-stage {
+      .desktop-preview-card,
+      .mock-phone {
+        display: none;
+      }
+
+      &.mobile .mock-phone {
+        display: block;
+      }
+
+      &.desktop .desktop-preview-card {
+        display: block;
+      }
+    }
   }
 
   .mock-phone {
     width: min(100%, 320px);
+    margin: 0 auto;
     aspect-ratio: 1 / 2;
-    height: min(640px, calc(100vh - 180px));
+    height: min(640px, calc(100vh - 210px));
     background: #000;
     border-radius: 40px;
-    padding: 12px; // Bezel
+    padding: 12px;
     box-shadow:
       0 0 0 2px #333,
-      // Outer frame
-      0 20px 40px rgba(0, 0, 0, 0.4); // Deep shadow
+      0 20px 40px rgba(0, 0, 0, 0.4);
     position: relative;
 
     .camera-notch {
@@ -361,17 +381,12 @@ $radius-lg: 16px;
       border-radius: 32px;
       overflow: hidden;
       position: relative;
-      display: flex;
-      justify-content: flex-start;
-      align-items: flex-start;
 
       .app-iframe {
-        width: 390px;
-        height: 844px;
+        width: 100%;
+        height: 100%;
         border: none;
         background: #fff;
-        transform-origin: top left;
-        transform: scale(min(calc(100% / 390), calc(100% / 844)));
       }
 
       .empty-preview {
@@ -386,25 +401,13 @@ $radius-lg: 16px;
     }
   }
 
-
-
   .desktop-preview-card {
-    margin-top: 20px;
     width: 100%;
     border: 1px solid $border-color;
     border-radius: 16px;
     background: #fff;
     overflow: hidden;
     box-shadow: $shadow-sm;
-
-    .desktop-preview-label {
-      padding: 10px 14px;
-      border-bottom: 1px solid $border-color;
-      color: $secondary-color;
-      font-weight: 600;
-      font-size: 13px;
-      background: #f8fafc;
-    }
 
     .desktop-iframe {
       width: 100%;
@@ -469,13 +472,11 @@ $radius-lg: 16px;
 
       .screen-content {
         border-radius: 22px;
-
-        .app-iframe {
-          width: 375px;
-          height: 812px;
-          transform: scale(min(calc(100% / 375), calc(100% / 812)));
-        }
       }
+    }
+
+    .desktop-preview-card .desktop-iframe {
+      height: 60vh;
     }
 
     .hero-uploader-section .cover-image-area {

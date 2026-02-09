@@ -19,6 +19,7 @@ import {
   Collapse,
   Progress,
   Divider,
+  Segmented,
 } from "antd";
 import {
   SaveOutlined,
@@ -219,6 +220,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [drafts, setDrafts] = useState([]);
   const [extraAmenityInput, setExtraAmenityInput] = useState("");
   const [uploadingType, setUploadingType] = useState("");
+  const [previewMode, setPreviewMode] = useState("mobile");
   const [uploadProgress, setUploadProgress] = useState({
     avatar: 0,
     coverImage: 0,
@@ -1202,44 +1204,55 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         </Col>
 
         <Col xs={24} xl={10} xxl={9}>
-          {/* MOBILE PREVIEW MOCKUP */}
+          {/* LIVE PREVIEW */}
           <div className="mobile-preview-wrapper">
-            <div className="preview-label">
-              <FileTextOutlined /> Xem trước (Live Preview)
+            <div className="preview-header">
+              <div className="preview-label">
+                <FileTextOutlined /> Xem trước (Live Preview)
+              </div>
+              <Segmented
+                value={previewMode}
+                onChange={setPreviewMode}
+                options={[
+                  { label: "Điện thoại", value: "mobile" },
+                  { label: "Desktop", value: "desktop" },
+                ]}
+              />
             </div>
-            <div className="mock-phone">
-              <div className="camera-notch"></div>
-              <div className="screen-content">
+
+            <div className={`preview-stage ${previewMode}`}>
+              <div className="mock-phone">
+                <div className="camera-notch"></div>
+                <div className="screen-content">
+                  {selectedRestaurantId ? (
+                    <iframe
+                      title="RestaurantDetail Mobile Preview"
+                      src={`/preview/restaurant/${selectedRestaurantId}?preview=1`}
+                      className="app-iframe"
+                    />
+                  ) : (
+                    <div className="empty-preview">
+                      <ShopOutlined style={{ fontSize: 48, color: "#ccc" }} />
+                      <p>Vui lòng chọn nhà hàng</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="desktop-preview-card">
                 {selectedRestaurantId ? (
                   <iframe
-                    title="RestaurantDetail Preview"
+                    title="RestaurantDetail Desktop Preview"
                     src={`/preview/restaurant/${selectedRestaurantId}?preview=1`}
-                    className="app-iframe"
+                    className="desktop-iframe"
                   />
                 ) : (
                   <div className="empty-preview">
-                    <ShopOutlined style={{ fontSize: 48, color: "#ccc" }} />
+                    <ShopOutlined style={{ fontSize: 32, color: "#ccc" }} />
                     <p>Vui lòng chọn nhà hàng</p>
                   </div>
                 )}
               </div>
-            </div>
-            <div className="phone-reflection"></div>
-
-            <div className="desktop-preview-card">
-              <div className="desktop-preview-label">Desktop Preview</div>
-              {selectedRestaurantId ? (
-                <iframe
-                  title="RestaurantDetail Desktop Preview"
-                  src={`/preview/restaurant/${selectedRestaurantId}?preview=1`}
-                  className="desktop-iframe"
-                />
-              ) : (
-                <div className="empty-preview">
-                  <ShopOutlined style={{ fontSize: 32, color: "#ccc" }} />
-                  <p>Vui lòng chọn nhà hàng</p>
-                </div>
-              )}
             </div>
           </div>
         </Col>
