@@ -19,7 +19,6 @@ import {
   Collapse,
   Progress,
   Divider,
-  Upload,
 } from "antd";
 import {
   SaveOutlined,
@@ -34,7 +33,6 @@ import {
   CarOutlined,
   WifiOutlined,
   CreditCardOutlined,
-  CloudUploadOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
 import { useAvatarUploadLocal } from "../../../hooks/useAvatarUploadLocal";
