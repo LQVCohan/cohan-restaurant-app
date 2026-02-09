@@ -1,11 +1,11 @@
 // src/components/Customer/RestaurantMenu/styles/RestaurantMenu.scss
-@use "./styles/variables" as *;
+@use "./styles/variables" as rm;
 
 .restaurant-app {
   min-height: 100vh;
-  background-color: $bg-body;
+  background-color: rm.$bg-body;
   font-family: "Inter", sans-serif;
-  color: $text-main;
+  color: rm.$text-main;
   padding-bottom: 5rem;
   position: relative;
   padding-top: 4rem;
@@ -14,20 +14,20 @@
   .hero-section {
     text-align: center;
     padding: 4rem 1rem 3rem;
-    background: linear-gradient(to bottom, white, $bg-body);
+    background: linear-gradient(to bottom, white, rm.$bg-body);
     h1 {
       font-size: 2.2rem;
       font-weight: 800;
-      color: $text-main;
+      color: rm.$text-main;
       margin-bottom: 0.5rem;
       span {
-        background: linear-gradient(135deg, $primary, $primary-dark);
+        background: linear-gradient(135deg, rm.$primary, rm.$primary-dark);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
       }
     }
     p {
-      color: $text-sub;
+      color: rm.$text-sub;
       font-size: 1.1rem;
       max-width: 600px;
       margin: 0 auto;
@@ -54,7 +54,7 @@
   bottom: 2rem;
   right: 2rem;
   z-index: 900;
-  background: linear-gradient(135deg, $primary, $primary-dark);
+  background: linear-gradient(135deg, rm.$primary, rm.$primary-dark);
   color: white;
   border: none;
   border-radius: 50px;
@@ -63,7 +63,7 @@
   box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.5);
   cursor: pointer;
 
-  @include flex-center;
+  @include rm.flex-center;
   gap: 12px;
 
   font-weight: 700;
@@ -83,7 +83,7 @@
   }
   .cart-count {
     background: white;
-    color: $primary;
+    color: rm.$primary;
     padding: 2px 8px;
     border-radius: 12px;
     font-size: 0.85rem;

@@ -1,23 +1,23 @@
 // src/components/Customer/RestaurantMenu/styles/MenuItemCard.scss
-@use "./variables" as *;
+@use "./variables" as rm;
 
 .item-card {
   background: #ffffff;
   border-radius: 12px;
-  border: 1px solid $border-color;
+  border: 1px solid rm.$border-color;
   display: flex;
   flex-direction: column;
   height: auto !important;
   min-height: 420px;
   position: relative;
   overflow: hidden;
-  box-shadow: $shadow-sm;
+  box-shadow: rm.$shadow-sm;
   transition: all 0.3s;
   cursor: pointer;
 
   &:hover {
     transform: translateY(-5px);
-    box-shadow: $shadow-hover;
+    box-shadow: rm.$shadow-hover;
     z-index: 5;
   }
 
@@ -90,7 +90,7 @@
     .bottom {
       margin-top: auto;
       padding-top: 1rem;
-      border-top: 1px dashed $border-color;
+      border-top: 1px dashed rm.$border-color;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -106,7 +106,7 @@
         border: none;
         background: #1f2937;
         color: white;
-        @include flex-center;
+        @include rm.flex-center;
         font-size: 1.5rem;
         cursor: pointer;
         transition: background 0.2s;
