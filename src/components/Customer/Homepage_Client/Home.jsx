@@ -9,7 +9,7 @@ import Cart from "./components/Cart";
 import TableBooking from "./components/TableBooking";
 
 import { useCart } from "../../../context/CartProvider";
-import "../../../styles/Homepage/Home.scss";
+import "../../../styles/Homepage/home.scss";
 
 // Hàm tiện ích lấy khung giờ (để lọc Category nếu cần)
 const getCurrentTimeSlot = () => {

@@ -11,7 +11,7 @@ import { gql } from "@apollo/client";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { AuthContext } from "../context/AuthContext";
 import { useRouter } from "../hooks/useRouter";
-import "../styles/Login.scss";
+import "../styles/login.scss";
 import process from "process";
 import ReCAPTCHA from "react-google-recaptcha";
 import { useNotification } from "@/hooks/useNotification";

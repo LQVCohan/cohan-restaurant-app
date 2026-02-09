@@ -17,7 +17,7 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
   padding-bottom: 80px; // Cho mobile button
 }
 
-.container {
+.restaurant-detail-page .container {
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 24px;
@@ -108,6 +108,7 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
         display: flex;
         align-items: center;
         gap: 12px;
+        flex-wrap: wrap;
         font-size: 0.95rem;
         margin-bottom: 12px;
         .rating {
@@ -355,6 +356,54 @@ $shadow-card: 0 4px 20px rgba(0, 0, 0, 0.08);
 .mobile-only {
   @media (min-width: 993px) {
     display: none;
+  }
+}
+
+
+@media (max-width: 576px) {
+  .restaurant-detail-page {
+    .container {
+      padding: 0 12px;
+    }
+
+    .rd-hero {
+      .hero-cover {
+        height: 220px;
+      }
+
+      .res-info-card {
+        margin-top: -28px;
+        padding: 16px;
+
+        .info-text {
+          .res-name {
+            font-size: 1.6rem;
+          }
+
+          .res-meta {
+            gap: 8px;
+
+            .dot {
+              display: none;
+            }
+          }
+        }
+
+        .action-group {
+          align-self: flex-start;
+        }
+      }
+    }
+
+    .rd-container {
+      gap: 16px;
+      padding-top: 20px;
+    }
+
+    .main-content {
+      padding: 16px;
+      min-height: auto;
+    }
   }
 }
 
