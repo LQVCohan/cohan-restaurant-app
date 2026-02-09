@@ -1213,7 +1213,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                 {selectedRestaurantId ? (
                   <iframe
                     title="RestaurantDetail Preview"
-                    src={`/restaurant/${selectedRestaurantId}?preview=1`}
+                    src={`/preview/restaurant/${selectedRestaurantId}?preview=1`}
                     className="app-iframe"
                   />
                 ) : (
@@ -1225,6 +1225,22 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               </div>
             </div>
             <div className="phone-reflection"></div>
+
+            <div className="desktop-preview-card">
+              <div className="desktop-preview-label">Desktop Preview</div>
+              {selectedRestaurantId ? (
+                <iframe
+                  title="RestaurantDetail Desktop Preview"
+                  src={`/preview/restaurant/${selectedRestaurantId}?preview=1`}
+                  className="desktop-iframe"
+                />
+              ) : (
+                <div className="empty-preview">
+                  <ShopOutlined style={{ fontSize: 32, color: "#ccc" }} />
+                  <p>Vui lòng chọn nhà hàng</p>
+                </div>
+              )}
+            </div>
           </div>
         </Col>
       </Row>
