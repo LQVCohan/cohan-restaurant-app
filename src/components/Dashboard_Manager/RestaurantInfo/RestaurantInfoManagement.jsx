@@ -606,6 +606,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         type="file"
         accept="image/*"
         hidden
+        style={{ display: "none" }}
+        aria-hidden="true"
+        tabIndex={-1}
         onChange={(e) =>
           handleUploadRestaurantImage("coverImage", e.target.files?.[0])
         }
@@ -615,6 +618,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         type="file"
         accept="image/*"
         hidden
+        style={{ display: "none" }}
+        aria-hidden="true"
+        tabIndex={-1}
         onChange={(e) =>
           handleUploadRestaurantImage("avatar", e.target.files?.[0])
         }
