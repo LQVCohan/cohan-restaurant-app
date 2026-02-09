@@ -1,5 +1,5 @@
 // src/components/Customer/RestaurantMenu/styles/ProductModal.scss
-@import "./variables";
+@use "./variables" as *;
 
 .modal-menu-overlay {
   position: fixed;

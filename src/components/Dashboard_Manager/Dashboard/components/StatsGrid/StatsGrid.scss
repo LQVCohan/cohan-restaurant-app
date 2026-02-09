@@ -1,4 +1,5 @@
 // Variables
+@use "sass:list";
 $bg-card: #ffffff;
 $text-main: #111827;
 $text-sub: #6b7280;
@@ -138,11 +139,11 @@ $colors: (
     @each $name, $vals in $colors {
       &.#{$name} {
         .icon-wrapper {
-          background: nth($vals, 1);
-          color: nth($vals, 2);
+          background: list.nth($vals, 1);
+          color: list.nth($vals, 2);
         }
         // Màu cho chart SVG (dùng 'currentColor')
-        color: nth($vals, 2);
+        color: list.nth($vals, 2);
       }
     }
 
