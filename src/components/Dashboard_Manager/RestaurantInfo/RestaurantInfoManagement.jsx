@@ -5,45 +5,46 @@ import {
   Select,
   Input,
   Button,
-  Table,
   Tag,
   Row,
   Col,
   Form,
   Switch,
-  Modal,
   message,
   Typography,
   Space,
-  Statistic,
   Tabs,
   Skeleton,
   Badge,
-  Tooltip,
   Collapse,
   Progress,
+  Divider,
+  Upload,
 } from "antd";
 import {
   SaveOutlined,
   ReloadOutlined,
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
   ShopOutlined,
   ClockCircleOutlined,
-  OrderedListOutlined,
   EnvironmentOutlined,
   InfoCircleOutlined,
   SettingOutlined,
+  CameraOutlined,
+  GlobalOutlined,
+  CarOutlined,
+  WifiOutlined,
+  CreditCardOutlined,
+  CloudUploadOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 import { useAvatarUploadLocal } from "../../../hooks/useAvatarUploadLocal";
 import "./RestaurantInfoManagement.scss";
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
-// --- GIỮ NGUYÊN PHẦN GRAPHQL QUERIES ---
+// --- GIỮ NGUYÊN PHẦN GRAPHQL QUERIES (KHÔNG THAY ĐỔI) ---
 const ME_QUERY = gql`
   query Me {
     me {
@@ -199,9 +200,10 @@ const parseCustomerInfo = (value) => {
       ...DEFAULT_CUSTOMER_INFO,
       ...parsed,
       suitableFor: Array.isArray(parsed?.suitableFor) ? parsed.suitableFor : [],
-      faqs: Array.isArray(parsed?.faqs) && parsed.faqs.length > 0
-        ? parsed.faqs.slice(0, 3)
-        : DEFAULT_CUSTOMER_INFO.faqs,
+      faqs:
+        Array.isArray(parsed?.faqs) && parsed.faqs.length > 0
+          ? parsed.faqs.slice(0, 3)
+          : DEFAULT_CUSTOMER_INFO.faqs,
     };
   } catch {
     return { ...DEFAULT_CUSTOMER_INFO, story: value };
@@ -216,7 +218,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [drafts, setDrafts] = useState([]);
   const [extraAmenityInput, setExtraAmenityInput] = useState("");
   const [uploadingType, setUploadingType] = useState("");
-  const [uploadProgress, setUploadProgress] = useState({ avatar: 0, coverImage: 0 });
+  const [uploadProgress, setUploadProgress] = useState({
+    avatar: 0,
+    coverImage: 0,
+  });
   const [isDirty, setIsDirty] = useState(false);
   const baselineRef = useRef("");
   const avatarInputRef = useRef(null);
@@ -360,10 +365,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
-  const {
-    data: indexData,
-    refetch: refetchIndexes,
-  } = useQuery(GET_INDEXES, {
+  const { data: indexData, refetch: refetchIndexes } = useQuery(GET_INDEXES, {
     variables: { restaurantId: selectedRestaurantId || undefined, timeSlot },
     skip: !timeSlot,
     fetchPolicy: "network-only",
@@ -376,16 +378,14 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     );
   }, [indexData, selectedRestaurantId]);
 
-
-  const {
-    data: categoryData,
-    refetch: refetchCategories,
-  } = useQuery(GET_CATEGORIES, {
-    variables: { restaurantId: selectedRestaurantId, timeSlot },
-    skip: !selectedRestaurantId || !timeSlot,
-    fetchPolicy: "network-only",
-  });
-
+  const { data: categoryData, refetch: refetchCategories } = useQuery(
+    GET_CATEGORIES,
+    {
+      variables: { restaurantId: selectedRestaurantId, timeSlot },
+      skip: !selectedRestaurantId || !timeSlot,
+      fetchPolicy: "network-only",
+    },
+  );
 
   const categories = categoryData?.categories || [];
 
@@ -418,10 +418,16 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
   const validateRestaurantForm = () => {
     if (!restaurantForm.name?.trim()) return "Tên nhà hàng không được để trống";
-    if (restaurantForm.phone && !/^\+?[0-9]{9,12}$/.test(restaurantForm.phone)) {
+    if (
+      restaurantForm.phone &&
+      !/^\+?[0-9]{9,12}$/.test(restaurantForm.phone)
+    ) {
       return "Số điện thoại không hợp lệ";
     }
-    if (restaurantForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(restaurantForm.email)) {
+    if (
+      restaurantForm.email &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(restaurantForm.email)
+    ) {
       return "Email không hợp lệ";
     }
     if (
@@ -436,7 +442,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const generateAIDescription = () => {
     const name = restaurantForm.name || "Nhà hàng";
     const cuisine = restaurantForm.cuisineType || "ẩm thực phong phú";
-    const story = restaurantForm.customerInfo?.story || "hành trình ẩm thực đầy cảm hứng";
+    const story =
+      restaurantForm.customerInfo?.story || "hành trình ẩm thực đầy cảm hứng";
     const chef = restaurantForm.customerInfo?.chef
       ? `Dưới bàn tay dẫn dắt của ${restaurantForm.customerInfo.chef},`
       : "";
@@ -461,7 +468,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           line1: prev.line1 || `Vị trí hiện tại (${lat}, ${lng})`,
         }));
         setIsDirty(true);
-        message.success("Đã lấy vị trí hiện tại, vui lòng bổ sung địa chỉ chi tiết");
+        message.success(
+          "Đã lấy vị trí hiện tại, vui lòng bổ sung địa chỉ chi tiết",
+        );
       },
       () => message.error("Không thể lấy vị trí hiện tại"),
     );
@@ -478,7 +487,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       });
       setRestaurantForm((prev) => ({ ...prev, [fieldName]: uploadedUrl }));
       setIsDirty(true);
-      message.success(`Tải ${fieldName === "avatar" ? "avatar" : "ảnh bìa"} thành công`);
+      message.success(
+        `Tải ${fieldName === "avatar" ? "avatar" : "ảnh bìa"} thành công`,
+      );
     } catch (error) {
       message.error(error.message || "Upload ảnh thất bại");
     } finally {
@@ -505,7 +516,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       message.error(error.message || "Lỗi cập nhật category");
     }
   };
-
 
   const onSaveRestaurantInfo = async () => {
     if (!selectedRestaurantId) return;
@@ -558,10 +568,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     }
   };
 
-
-
-
-
   const updateCustomerInfoField = (field, value) => {
     setRestaurantForm((prev) => ({
       ...prev,
@@ -574,7 +580,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
   const updateFaqField = (index, field, value) => {
     setRestaurantForm((prev) => {
-      const nextFaqs = [...(prev.customerInfo?.faqs || DEFAULT_CUSTOMER_INFO.faqs)];
+      const nextFaqs = [
+        ...(prev.customerInfo?.faqs || DEFAULT_CUSTOMER_INFO.faqs),
+      ];
       nextFaqs[index] = {
         ...(nextFaqs[index] || { q: "", a: "" }),
         [field]: value,
@@ -590,636 +598,624 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   };
 
   // --- RENDER HELPERS ---
-  const renderRestaurantForm = () => (
-    <Form layout="vertical" className="saas-form">
-      <Tabs
-        defaultActiveKey="1"
-        items={[
-          {
-            key: "1",
-            label: (
-              <span>
-                <InfoCircleOutlined />
-                Thông tin chung
-              </span>
-            ),
-            children: (
-              <>
-                <Row gutter={16}>
-                  <Col span={16}>
-                    <Form.Item label="Tên nhà hàng">
-                      <Input
-                        value={restaurantForm.name}
-                        onChange={(e) =>
-                          setRestaurantForm((p) => ({
-                            ...p,
-                            name: e.target.value,
-                          }))
-                        }
-                        prefix={<ShopOutlined className="text-gray-400" />}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item label="Trạng thái">
-                      <Select
-                        value={restaurantForm.status}
-                        onChange={(v) =>
-                          setRestaurantForm((p) => ({ ...p, status: v }))
-                        }
-                      >
-                        <Option value="active">
-                          <Badge status="success" text="Hoạt động" />
-                        </Option>
-                        <Option value="inactive">
-                          <Badge status="error" text="Tạm dừng" />
-                        </Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item label="Điện thoại">
-                      <Input
-                        value={restaurantForm.phone}
-                        onChange={(e) =>
-                          setRestaurantForm((p) => ({
-                            ...p,
-                            phone: e.target.value,
-                          }))
-                        }
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Loại ẩm thực">
-                      <Input
-                        value={restaurantForm.cuisineType}
-                        onChange={(e) =>
-                          setRestaurantForm((p) => ({
-                            ...p,
-                            cuisineType: e.target.value,
-                          }))
-                        }
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Form.Item label="Mô tả">
-                  <TextArea
-                    rows={4}
-                    value={restaurantForm.description}
-                    onChange={(e) =>
-                      setRestaurantForm((p) => ({
-                        ...p,
-                        description: e.target.value,
-                      }))
-                    }
-                    showCount
-                    maxLength={1000}
-                  />
-                  <Button size="small" style={{ marginTop: 8 }} onClick={generateAIDescription}>
-                    Viết mô tả A.I văn hoa
-                  </Button>
-                </Form.Item>
-              </>
-            ),
-          },
-          {
-            key: "2",
-            label: (
-              <span>
-                <EnvironmentOutlined />
-                Địa chỉ
-              </span>
-            ),
-            children: (
-              <Form.Item
-                label="Địa chỉ chi tiết"
-                help="Nhập số nhà, tên đường, quận/huyện và thành phố"
-                extra={
-                  <Button size="small" onClick={fillCurrentLocation}>
-                    Lấy địa chỉ hiện tại tự động
-                  </Button>
-                }
-              >
-                {/* FIX: Sử dụng Space.Compact thay cho Input.Group */}
-                <Space.Compact block>
-                  <Input
-                    style={{ width: "40%" }}
-                    placeholder="Số nhà/Đường"
-                    value={restaurantForm.line1}
-                    onChange={(e) =>
-                      setRestaurantForm((p) => ({
-                        ...p,
-                        line1: e.target.value,
-                      }))
-                    }
-                  />
-                  <Input
-                    style={{ width: "30%" }}
-                    placeholder="Quận/Huyện"
-                    value={restaurantForm.district}
-                    onChange={(e) =>
-                      setRestaurantForm((p) => ({
-                        ...p,
-                        district: e.target.value,
-                      }))
-                    }
-                  />
-                  <Input
-                    style={{ width: "30%" }}
-                    placeholder="Thành phố"
-                    value={restaurantForm.city}
-                    onChange={(e) =>
-                      setRestaurantForm((p) => ({ ...p, city: e.target.value }))
-                    }
-                  />
-                </Space.Compact>
-              </Form.Item>
-            ),
-          },
-          {
-            key: "3",
-            label: (
-              <span>
-                <SettingOutlined />
-                Cấu hình
-              </span>
-            ),
-            children: (
-              <>
-                <Row gutter={16}>
-                  <Col span={8}>
-                    <Form.Item label="Giờ mở cửa">
-                      <Input
-                        value={restaurantForm.openingHours}
-                        onChange={(e) =>
-                          setRestaurantForm((p) => ({
-                            ...p,
-                            openingHours: e.target.value,
-                          }))
-                        }
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item label="Giờ đóng cửa">
-                      <Input
-                        value={restaurantForm.closingHours}
-                        onChange={(e) =>
-                          setRestaurantForm((p) => ({
-                            ...p,
-                            closingHours: e.target.value,
-                          }))
-                        }
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item label="Khoảng giá">
-                      <Input
-                        value={restaurantForm.priceRange}
-                        onChange={(e) =>
-                          setRestaurantForm((p) => ({
-                            ...p,
-                            priceRange: e.target.value,
-                          }))
-                        }
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item label="Avatar nhà hàng">
-                      <Space direction="vertical" style={{ width: "100%" }}>
-                        <Input
-                          value={restaurantForm.avatar || ""}
-                          placeholder="URL avatar"
-                          onChange={(e) =>
-                            setRestaurantForm((p) => ({ ...p, avatar: e.target.value }))
-                          }
-                        />
-                        <Space>
-                          <input
-                            ref={avatarInputRef}
-                            type="file"
-                            accept="image/*"
-                            hidden
-                            onChange={(e) =>
-                              handleUploadRestaurantImage("avatar", e.target.files?.[0])
-                            }
-                          />
-                          <Button
-                            onClick={() => avatarInputRef.current?.click()}
-                            loading={uploadingType === "avatar"}
-                          >
-                            Tải avatar
-                          </Button>
-                          {restaurantForm.avatar ? (
-                            <img
-                              src={restaurantForm.avatar}
-                              alt="avatar preview"
-                              style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }}
-                            />
-                          ) : null}
-                        </Space>
-                        {uploadProgress.avatar > 0 && uploadingType === "avatar" ? (
-                          <Progress percent={uploadProgress.avatar} size="small" />
-                        ) : null}
-                      </Space>
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Ảnh bìa nhà hàng">
-                      <Space direction="vertical" style={{ width: "100%" }}>
-                        <Input
-                          value={restaurantForm.coverImage || ""}
-                          placeholder="URL ảnh bìa"
-                          onChange={(e) =>
-                            setRestaurantForm((p) => ({ ...p, coverImage: e.target.value }))
-                          }
-                        />
-                        <Space>
-                          <input
-                            ref={coverInputRef}
-                            type="file"
-                            accept="image/*"
-                            hidden
-                            onChange={(e) =>
-                              handleUploadRestaurantImage("coverImage", e.target.files?.[0])
-                            }
-                          />
-                          <Button
-                            onClick={() => coverInputRef.current?.click()}
-                            loading={uploadingType === "coverImage"}
-                          >
-                            Tải ảnh bìa
-                          </Button>
-                        </Space>
-                        {restaurantForm.coverImage ? (
-                          <img
-                            src={restaurantForm.coverImage}
-                            alt="cover preview"
-                            style={{ width: "100%", maxHeight: 120, objectFit: "cover", borderRadius: 8 }}
-                          />
-                        ) : null}
-                        {uploadProgress.coverImage > 0 && uploadingType === "coverImage" ? (
-                          <Progress percent={uploadProgress.coverImage} size="small" />
-                        ) : null}
-                      </Space>
-                    </Form.Item>
-                  </Col>
-                </Row>
 
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item label="Website khi khách bấm icon Globe">
-                      <Input
-                        placeholder="https://..."
-                        value={restaurantForm.customerInfo?.website || ""}
+  // New Visual Image Uploader
+  const renderVisualImageUploader = () => (
+    <div className="hero-uploader-section">
+      {/* Hidden Inputs */}
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) =>
+          handleUploadRestaurantImage("coverImage", e.target.files?.[0])
+        }
+      />
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) =>
+          handleUploadRestaurantImage("avatar", e.target.files?.[0])
+        }
+      />
+
+      {/* Cover Image Area */}
+      <div
+        className="cover-image-area"
+        style={{
+          backgroundImage: `url(${restaurantForm.coverImage || "https://via.placeholder.com/800x250?text=Cover+Image"})`,
+        }}
+      >
+        <div className="cover-overlay">
+          <Button
+            type="primary"
+            ghost
+            icon={<CameraOutlined />}
+            onClick={() => coverInputRef.current?.click()}
+            loading={uploadingType === "coverImage"}
+          >
+            Thay ảnh bìa
+          </Button>
+        </div>
+        {uploadingType === "coverImage" && (
+          <Progress
+            percent={uploadProgress.coverImage}
+            showInfo={false}
+            className="upload-progress-bar"
+            strokeColor="#52c41a"
+          />
+        )}
+      </div>
+
+      {/* Avatar Area */}
+      <div className="avatar-image-area">
+        <div className="avatar-wrapper">
+          <img
+            src={restaurantForm.avatar || "https://via.placeholder.com/150"}
+            alt="avatar"
+          />
+          <div
+            className="avatar-overlay"
+            onClick={() => avatarInputRef.current?.click()}
+          >
+            <CameraOutlined style={{ fontSize: 20, color: "#fff" }} />
+          </div>
+          {uploadingType === "avatar" && (
+            <div className="avatar-progress">
+              <Progress
+                type="circle"
+                percent={uploadProgress.avatar}
+                width={40}
+              />
+            </div>
+          )}
+        </div>
+        <div className="restaurant-title-preview">
+          <Title level={4}>{restaurantForm.name || "Tên Nhà Hàng"}</Title>
+          <Text type="secondary">
+            {restaurantForm.cuisineType || "Loại ẩm thực"}
+          </Text>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderRestaurantForm = () => (
+    <Form layout="vertical" className="saas-form modern-form">
+      {renderVisualImageUploader()}
+
+      <div className="form-content-padding">
+        <Tabs
+          defaultActiveKey="1"
+          type="line"
+          className="modern-tabs"
+          items={[
+            {
+              key: "1",
+              label: (
+                <span>
+                  <InfoCircleOutlined /> Thông tin chính
+                </span>
+              ),
+              children: (
+                <>
+                  <Row gutter={24}>
+                    <Col span={16}>
+                      <Form.Item label="Tên nhà hàng" required>
+                        <Input
+                          size="large"
+                          value={restaurantForm.name}
+                          onChange={(e) =>
+                            setRestaurantForm((p) => ({
+                              ...p,
+                              name: e.target.value,
+                            }))
+                          }
+                          prefix={<ShopOutlined />}
+                          placeholder="Nhập tên nhà hàng"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item label="Trạng thái kinh doanh">
+                        <Select
+                          size="large"
+                          value={restaurantForm.status}
+                          onChange={(v) =>
+                            setRestaurantForm((p) => ({ ...p, status: v }))
+                          }
+                        >
+                          <Option value="active">
+                            <Badge status="success" text="Đang hoạt động" />
+                          </Option>
+                          <Option value="inactive">
+                            <Badge status="error" text="Tạm đóng cửa" />
+                          </Option>
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={24}>
+                    <Col span={8}>
+                      <Form.Item label="Số điện thoại">
+                        <Input
+                          value={restaurantForm.phone}
+                          onChange={(e) =>
+                            setRestaurantForm((p) => ({
+                              ...p,
+                              phone: e.target.value,
+                            }))
+                          }
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item label="Email liên hệ">
+                        <Input
+                          value={restaurantForm.email}
+                          onChange={(e) =>
+                            setRestaurantForm((p) => ({
+                              ...p,
+                              email: e.target.value,
+                            }))
+                          }
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={8}>
+                      <Form.Item label="Website">
+                        <Input
+                          prefix={<GlobalOutlined />}
+                          value={restaurantForm.customerInfo?.website}
+                          onChange={(e) =>
+                            updateCustomerInfoField("website", e.target.value)
+                          }
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Form.Item label="Câu chuyện thương hiệu (Story)">
+                    <div className="ai-textarea-wrapper">
+                      <TextArea
+                        rows={4}
+                        value={restaurantForm.description}
                         onChange={(e) =>
                           setRestaurantForm((p) => ({
                             ...p,
-                            customerInfo: { ...p.customerInfo, website: e.target.value },
+                            description: e.target.value,
                           }))
                         }
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Dress code">
-                      <Input
-                        value={restaurantForm.customerInfo?.dressCode}
-                        onChange={(e) =>
-                          updateCustomerInfoField("dressCode", e.target.value)
-                        }
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Form.Item label="Tiện ích hiển thị cho khách">
-                  <Space size={24} wrap>
-                    <Space>
-                      <Switch
-                        checked={restaurantForm.amenities?.wifi}
-                        onChange={(checked) =>
-                          setRestaurantForm((p) => ({
-                            ...p,
-                            amenities: { ...p.amenities, wifi: checked },
-                          }))
-                        }
-                      />
-                      Wifi
-                    </Space>
-                    <Space>
-                      <Switch
-                        checked={restaurantForm.amenities?.parking}
-                        onChange={(checked) =>
-                          setRestaurantForm((p) => ({
-                            ...p,
-                            amenities: { ...p.amenities, parking: checked },
-                          }))
-                        }
-                      />
-                      Parking
-                    </Space>
-                    <Space>
-                      <Switch
-                        checked={restaurantForm.amenities?.card}
-                        onChange={(checked) =>
-                          setRestaurantForm((p) => ({
-                            ...p,
-                            amenities: { ...p.amenities, card: checked },
-                          }))
-                        }
-                      />
-                      Thanh toán thẻ
-                    </Space>
-                  </Space>
-                  <div style={{ marginTop: 10 }}>
-                    <Space.Compact style={{ width: "100%" }}>
-                      <Input
-                        placeholder="Thêm tiện ích tùy chỉnh"
-                        value={extraAmenityInput}
-                        onChange={(e) => setExtraAmenityInput(e.target.value)}
+                        showCount
+                        maxLength={1000}
+                        placeholder="Mô tả về nhà hàng của bạn..."
                       />
                       <Button
-                        onClick={() => {
-                          const value = extraAmenityInput.trim();
-                          if (!value) return;
-                          if ((restaurantForm.customerInfo?.extraAmenities || []).includes(value)) {
-                            message.warning("Tiện ích này đã tồn tại");
-                            return;
-                          }
-                          updateCustomerInfoField("extraAmenities", [
-                            ...(restaurantForm.customerInfo?.extraAmenities || []),
-                            value,
-                          ]);
-                          setExtraAmenityInput("");
-                          setIsDirty(true);
-                        }}
+                        type="dashed"
+                        size="small"
+                        className="ai-btn"
+                        onClick={generateAIDescription}
                       >
-                        Thêm
+                        ✨ AI Rewrite
                       </Button>
-                    </Space.Compact>
-                    <div className="preview-tags" style={{ marginTop: 8 }}>
-                      {(restaurantForm.customerInfo?.extraAmenities || []).map((item) => (
-                        <Tag
-                          key={item}
-                          closable
-                          onClose={() => {
-                            updateCustomerInfoField(
-                              "extraAmenities",
-                              (restaurantForm.customerInfo?.extraAmenities || []).filter(
-                                (name) => name !== item,
-                              ),
-                            );
-                            setIsDirty(true);
-                          }}
-                        >
-                          {item}
-                        </Tag>
-                      ))}
                     </div>
-                  </div>
-                </Form.Item>
-              </>
-            ),
-          },
-          {
-            key: "4",
-            label: (
-              <span>
-                <InfoCircleOutlined />
-                Nội dung RestaurantInfo
-              </span>
-            ),
-            children: (
-              <>
-                <Form.Item label="Câu chuyện về chúng tôi">
-                  <TextArea
-                    rows={3}
-                    value={restaurantForm.customerInfo?.story}
-                    onChange={(e) => updateCustomerInfoField("story", e.target.value)}
-                    maxLength={700}
-                    showCount
-                  />
-                </Form.Item>
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item label="Tên bếp trưởng">
-                      <Input
-                        value={restaurantForm.customerInfo?.chef}
-                        onChange={(e) => updateCustomerInfoField("chef", e.target.value)}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Thông tin bãi đỗ xe">
-                      <Input
-                        value={restaurantForm.customerInfo?.parkingDetail}
-                        onChange={(e) =>
-                          updateCustomerInfoField("parkingDetail", e.target.value)
-                        }
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-                <Form.Item label="Phù hợp cho (mỗi dòng 1 mục)">
-                  <TextArea
-                    rows={3}
-                    value={(restaurantForm.customerInfo?.suitableFor || []).join("\n")}
-                    onChange={(e) =>
-                      updateCustomerInfoField(
-                        "suitableFor",
-                        e.target.value
-                          .split("\n")
-                          .map((line) => line.trim())
-                          .filter(Boolean),
-                      )
+                  </Form.Item>
+                </>
+              ),
+            },
+            {
+              key: "2",
+              label: (
+                <span>
+                  <EnvironmentOutlined /> Địa điểm & Thời gian
+                </span>
+              ),
+              children: (
+                <>
+                  <Card
+                    size="small"
+                    title="Địa chỉ hiển thị"
+                    extra={
+                      <Button
+                        type="link"
+                        size="small"
+                        onClick={fillCurrentLocation}
+                      >
+                        Lấy vị trí hiện tại
+                      </Button>
                     }
-                  />
-                </Form.Item>
-                <Form.Item label="Thông tin hữu ích (FAQ)">
-                  <Space direction="vertical" style={{ width: "100%" }} size={10}>
-                    {[0, 1, 2].map((idx) => (
-                      <Card key={idx} size="small" title={`FAQ ${idx + 1}`}>
+                  >
+                    <Row gutter={16}>
+                      <Col span={12}>
+                        <Form.Item label="Số nhà / Đường">
+                          <Input
+                            value={restaurantForm.line1}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                line1: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                        <Form.Item label="Quận / Huyện">
+                          <Input
+                            value={restaurantForm.district}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                district: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                        <Form.Item label="Tỉnh / Thành phố">
+                          <Input
+                            value={restaurantForm.city}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                city: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </Card>
+
+                  <div style={{ marginTop: 20 }}>
+                    <Row gutter={24}>
+                      <Col span={8}>
+                        <Form.Item label="Giờ mở cửa">
+                          <Input
+                            prefix={<ClockCircleOutlined />}
+                            value={restaurantForm.openingHours}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                openingHours: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item label="Giờ đóng cửa">
+                          <Input
+                            prefix={<ClockCircleOutlined />}
+                            value={restaurantForm.closingHours}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                closingHours: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item label="Khoảng giá trung bình">
+                          <Input
+                            prefix="₫"
+                            value={restaurantForm.priceRange}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                priceRange: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </div>
+                </>
+              ),
+            },
+            {
+              key: "3",
+              label: (
+                <span>
+                  <SettingOutlined /> Tiện ích & FAQ
+                </span>
+              ),
+              children: (
+                <>
+                  <Form.Item label="Tiện ích cơ bản">
+                    <div className="amenities-grid">
+                      <div
+                        className={`amenity-card ${restaurantForm.amenities?.wifi ? "active" : ""}`}
+                        onClick={() =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            amenities: {
+                              ...p.amenities,
+                              wifi: !p.amenities.wifi,
+                            },
+                          }))
+                        }
+                      >
+                        <WifiOutlined /> <span>Free Wifi</span>
+                      </div>
+                      <div
+                        className={`amenity-card ${restaurantForm.amenities?.parking ? "active" : ""}`}
+                        onClick={() =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            amenities: {
+                              ...p.amenities,
+                              parking: !p.amenities.parking,
+                            },
+                          }))
+                        }
+                      >
+                        <CarOutlined /> <span>Đỗ xe</span>
+                      </div>
+                      <div
+                        className={`amenity-card ${restaurantForm.amenities?.card ? "active" : ""}`}
+                        onClick={() =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            amenities: {
+                              ...p.amenities,
+                              card: !p.amenities.card,
+                            },
+                          }))
+                        }
+                      >
+                        <CreditCardOutlined /> <span>Thẻ VISA/Master</span>
+                      </div>
+                    </div>
+                  </Form.Item>
+
+                  <Row gutter={24}>
+                    <Col span={12}>
+                      <Form.Item label="Tiện ích mở rộng (Nhập & Enter)">
+                        <Input
+                          placeholder="VD: Ghế trẻ em, Phòng riêng..."
+                          value={extraAmenityInput}
+                          onChange={(e) => setExtraAmenityInput(e.target.value)}
+                          onPressEnter={() => {
+                            const val = extraAmenityInput.trim();
+                            if (!val) return;
+                            updateCustomerInfoField("extraAmenities", [
+                              ...(restaurantForm.customerInfo?.extraAmenities ||
+                                []),
+                              val,
+                            ]);
+                            setExtraAmenityInput("");
+                          }}
+                        />
+                        <div className="tags-container">
+                          {(
+                            restaurantForm.customerInfo?.extraAmenities || []
+                          ).map((tag) => (
+                            <Tag
+                              closable
+                              onClose={() =>
+                                updateCustomerInfoField(
+                                  "extraAmenities",
+                                  restaurantForm.customerInfo.extraAmenities.filter(
+                                    (t) => t !== tag,
+                                  ),
+                                )
+                              }
+                            >
+                              {tag}
+                            </Tag>
+                          ))}
+                        </div>
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item label="Dress Code & Note">
+                        <Input
+                          value={restaurantForm.customerInfo?.dressCode}
+                          onChange={(e) =>
+                            updateCustomerInfoField("dressCode", e.target.value)
+                          }
+                          placeholder="VD: Smart Casual"
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+
+                  <Divider orientation="left">FAQ - Câu hỏi thường gặp</Divider>
+                  <Collapse
+                    ghost
+                    items={[0, 1, 2].map((idx) => ({
+                      key: idx,
+                      label:
+                        restaurantForm.customerInfo?.faqs?.[idx]?.q ||
+                        `Câu hỏi ${idx + 1}`,
+                      children: (
                         <Space direction="vertical" style={{ width: "100%" }}>
                           <Input
                             placeholder="Câu hỏi"
-                            value={restaurantForm.customerInfo?.faqs?.[idx]?.q || ""}
-                            onChange={(e) => updateFaqField(idx, "q", e.target.value)}
+                            value={restaurantForm.customerInfo?.faqs?.[idx]?.q}
+                            onChange={(e) =>
+                              updateFaqField(idx, "q", e.target.value)
+                            }
                           />
                           <TextArea
+                            placeholder="Trả lời"
                             rows={2}
-                            placeholder="Câu trả lời"
-                            value={restaurantForm.customerInfo?.faqs?.[idx]?.a || ""}
-                            onChange={(e) => updateFaqField(idx, "a", e.target.value)}
+                            value={restaurantForm.customerInfo?.faqs?.[idx]?.a}
+                            onChange={(e) =>
+                              updateFaqField(idx, "a", e.target.value)
+                            }
                           />
                         </Space>
-                      </Card>
-                    ))}
-                  </Space>
-                </Form.Item>
-              </>
-            ),
-          },
-        ]}
-      />
+                      ),
+                    }))}
+                  />
+                </>
+              ),
+            },
+          ]}
+        />
+      </div>
     </Form>
   );
 
-
   return (
     <div className="restaurant-management-container">
-      {/* HEADER SECTION */}
-      <div className="page-header">
-        <div className="header-title">
-          <Title level={3} style={{ margin: 0 }}>
-            Quản lý Thông tin nhà hàng
-          </Title>
+      {/* HEADER SECTION - Modern Style */}
+      <div className="page-header-modern">
+        <div className="header-left">
+          <Title level={2}>Hồ sơ nhà hàng</Title>
           <Text type="secondary">
-            Cấu hình thông tin và hiển thị cho khách hàng
+            Quản lý hình ảnh và thông tin hiển thị trên ứng dụng khách hàng
           </Text>
         </div>
-        <Space wrap>
-          <Input
-            placeholder="Tên bản nháp"
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            style={{ width: 170 }}
-          />
-          <Button size="small" onClick={() => saveDraftToLocal(draftName || "Bản nháp thủ công")}>
-            Lưu bản nháp
-          </Button>
-          <Select
-            placeholder="Nạp bản nháp"
-            style={{ width: 240 }}
-            allowClear
-            options={drafts.map((item) => ({
-              value: item.id,
-              label: `${item.label} - ${new Date(item.savedAt).toLocaleString("vi-VN")}`,
-            }))}
-            onChange={(id) => id && loadDraft(id)}
-          />
-          <Select
-            value={timeSlot}
-            onChange={setTimeSlot}
-            style={{ width: 140 }}
-            suffixIcon={<ClockCircleOutlined />}
-            options={TIME_SLOTS.map((s) => ({ label: s, value: s }))}
-          />
-          <Select
-            showSearch
-            value={selectedRestaurantId}
-            onChange={setSelectedRestaurantId}
-            style={{ width: 220 }}
-            loading={managerRestaurantsLoading || allRestaurantsLoading}
-            placeholder="Chọn nhà hàng"
-            filterOption={(input, option) =>
-              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-            }
-            options={restaurantOptions.map((r) => ({
-              label: r.name,
-              value: r.id,
-            }))}
-          />
-        </Space>
+
+        <div className="header-actions">
+          <Space size="middle">
+            <div className="draft-control">
+              <Select
+                placeholder="Lịch sử bản nháp"
+                style={{ width: 180 }}
+                allowClear
+                bordered={false}
+                options={drafts.map((item) => ({
+                  value: item.id,
+                  label: `${item.label}`,
+                }))}
+                onChange={(id) => id && loadDraft(id)}
+              />
+              <Button
+                type="text"
+                icon={<SaveOutlined />}
+                onClick={() => saveDraftToLocal()}
+              >
+                Lưu nháp
+              </Button>
+            </div>
+
+            <Divider type="vertical" style={{ height: 24 }} />
+
+            <Select
+              value={selectedRestaurantId}
+              onChange={setSelectedRestaurantId}
+              style={{ width: 200 }}
+              loading={managerRestaurantsLoading || allRestaurantsLoading}
+              placeholder="Chọn chi nhánh"
+              options={restaurantOptions.map((r) => ({
+                label: r.name,
+                value: r.id,
+              }))}
+            />
+
+            <Button
+              type="primary"
+              size="large"
+              icon={<SaveOutlined />}
+              loading={savingRestaurant}
+              onClick={onSaveRestaurantInfo}
+              className="save-btn-gradient"
+            >
+              Lưu thay đổi
+            </Button>
+          </Space>
+        </div>
       </div>
 
-      <Row gutter={[20, 20]} style={{ marginTop: 20 }}>
-        <Col xs={24} xl={15}>
-          <Space direction="vertical" size={20} style={{ width: "100%" }}>
-            <Card
-              title={
-                <span>
-                  <ShopOutlined /> Thông tin nhà hàng hiển thị cho khách
-                </span>
-              }
-              extra={
-                <Button
-                  type="primary"
-                  icon={<SaveOutlined />}
-                  loading={savingRestaurant}
-                  onClick={onSaveRestaurantInfo}
-                >
-                  Lưu hồ sơ
-                </Button>
-              }
-              className="saas-card"
-            >
-              {restaurantDetailLoading ? (
+      <Row gutter={[24, 24]} className="main-layout">
+        <Col xs={24} xl={14} xxl={15}>
+          <Card
+            className="saas-card edit-card"
+            bordered={false}
+            bodyStyle={{ padding: 0 }}
+          >
+            {restaurantDetailLoading ? (
+              <div style={{ padding: 24 }}>
                 <Skeleton active paragraph={{ rows: 8 }} />
-              ) : (
-                renderRestaurantForm()
-              )}
-            </Card>
+              </div>
+            ) : (
+              renderRestaurantForm()
+            )}
+          </Card>
 
-            <Card className="saas-card" title="Danh mục (tóm gọn)">
-              <div className="category-compact-row">
-                <span>
-                  Tổng category hiện có: <strong>{activeIndex?.distinctCategoryCount || categories.length || 0}</strong>
-                </span>
+          {/* Category Status Section */}
+          <Card
+            className="saas-card category-card"
+            title="Trạng thái thực đơn"
+            bordered={false}
+          >
+            <Row justify="space-between" align="middle">
+              <Col>
+                <Space>
+                  <Select
+                    value={timeSlot}
+                    onChange={setTimeSlot}
+                    style={{ width: 120 }}
+                    options={TIME_SLOTS.map((t) => ({ value: t, label: t }))}
+                  />
+                  <Text>
+                    Đang có{" "}
+                    <strong>
+                      {activeIndex?.distinctCategoryCount ||
+                        categories.length ||
+                        0}
+                    </strong>{" "}
+                    danh mục
+                  </Text>
+                </Space>
+              </Col>
+              <Col>
                 <Button
-                  type="primary"
-                  size="small"
                   icon={<ReloadOutlined />}
                   onClick={onRefresh}
                   loading={syncingIndex}
                 >
-                  Cập nhật số lượng category
+                  Đồng bộ
                 </Button>
-              </div>
-
-              <Collapse
-                size="small"
-                className="category-dropdown"
-                items={[
-                  {
-                    key: "category-list",
-                    label: "Mở danh sách category theo chiều dọc",
-                    children: (
-                      <div className="category-vertical-list">
-                        {categories.length === 0 ? (
-                          <Text type="secondary">Chưa có category.</Text>
-                        ) : (
-                          categories.map((cat) => (
-                            <div className="category-item" key={cat.id}>
-                              <span>{cat.name}</span>
-                              <Tag>{cat.menuItemCount || 0} món</Tag>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    ),
-                  },
-                ]}
-              />
-            </Card>
-          </Space>
+              </Col>
+            </Row>
+            <div className="category-chips">
+              {categories.map((cat) => (
+                <Tag key={cat.id} color="blue">
+                  {cat.name}{" "}
+                  <span style={{ opacity: 0.7 }}>({cat.menuItemCount})</span>
+                </Tag>
+              ))}
+            </div>
+          </Card>
         </Col>
 
-        <Col xs={24} xl={9}>
-          <div className="customer-preview-sticky">
-            <Card
-              title="Xem trước toàn bộ trang RestaurantDetail"
-              className="saas-card customer-preview-card"
-            >
-              {selectedRestaurantId ? (
-                <iframe
-                  title="RestaurantDetail Preview"
-                  src={`/restaurant/${selectedRestaurantId}?preview=1`}
-                  className="restaurant-detail-preview-frame"
-                />
-              ) : (
-                <Text type="secondary">
-                  Chọn nhà hàng để xem trước trang RestaurantDetail.
-                </Text>
-              )}
-            </Card>
+        <Col xs={24} xl={10} xxl={9}>
+          {/* MOBILE PREVIEW MOCKUP */}
+          <div className="mobile-preview-wrapper">
+            <div className="preview-label">
+              <FileTextOutlined /> Xem trước (Live Preview)
+            </div>
+            <div className="mock-phone">
+              <div className="camera-notch"></div>
+              <div className="screen-content">
+                {selectedRestaurantId ? (
+                  <iframe
+                    title="RestaurantDetail Preview"
+                    src={`/restaurant/${selectedRestaurantId}?preview=1`}
+                    className="app-iframe"
+                  />
+                ) : (
+                  <div className="empty-preview">
+                    <ShopOutlined style={{ fontSize: 48, color: "#ccc" }} />
+                    <p>Vui lòng chọn nhà hàng</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="phone-reflection"></div>
           </div>
         </Col>
       </Row>
