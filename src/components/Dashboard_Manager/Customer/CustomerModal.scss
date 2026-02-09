@@ -1,3 +1,4 @@
+@use "sass:color";
 /* src/components/CustomerManagement/CustomerModal.scss */
 
 /* --- Palette Refined for Depth --- */
@@ -23,7 +24,7 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   .cm-header-modern {
     // CHANGE: Sử dụng nền gradient nhẹ màu ấm để tạo cảm giác cao cấp, không còn là trắng phẳng
     background: linear-gradient(to right, #fffbf8, #fff);
-    border: 1px solid darken($cm-border, 2%);
+    border: 1px solid color.adjust($cm-border, $lightness: -2%);
     border-radius: 16px;
     padding: 20px;
     display: flex;

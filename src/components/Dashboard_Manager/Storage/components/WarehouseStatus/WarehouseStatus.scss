@@ -1,5 +1,6 @@
 // src/components/Dashboard_Manager/Storage/layout/WarehouseStatus/WarehouseStatus.scss
 
+@use "sass:color";
 @use "../../../../../styles/variables" as *; // Import file chứa biến màu nếu cần
 
 $green-safe: #10b981;
@@ -37,7 +38,7 @@ $gold: #c5a47e;
   /* --- Trạng thái: An toàn --- */
   &.safe .status-badge {
     background-color: $green-bg;
-    color: darken($green-safe, 10%);
+    color: color.adjust($green-safe, $lightness: -10%);
     border-color: rgba($green-safe, 0.2);
 
     .safe-icon {
@@ -57,7 +58,7 @@ $gold: #c5a47e;
       padding-right: 12px;
 
       &:hover {
-        background-color: darken($red-bg, 3%);
+        background-color: color.adjust($red-bg, $lightness: -3%);
         box-shadow: 0 4px 12px rgba($red-warning, 0.15);
       }
     }
@@ -194,7 +195,7 @@ $gold: #c5a47e;
       font-size: 0.85rem;
       cursor: pointer;
       &:hover {
-        background: lighten($charcoal, 10%);
+        background: color.adjust($charcoal, $lightness: 10%);
       }
     }
   }

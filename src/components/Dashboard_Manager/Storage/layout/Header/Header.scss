@@ -1,3 +1,4 @@
+@use "sass:color";
 /* src/components/Dashboard_Manager/Storage/layout/Header/Header.scss */
 
 // Variables (Đồng bộ với StorageManagement.scss)
@@ -116,7 +117,7 @@ $bg-input: #f8fafc;
     background: $charcoal;
     color: $gold;
     &:hover {
-      background: lighten($charcoal, 5%);
+      background: color.adjust($charcoal, $lightness: 5%);
       box-shadow: 0 4px 12px rgba($charcoal, 0.2);
     }
   }

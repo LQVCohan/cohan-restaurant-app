@@ -1,3 +1,4 @@
+@use "sass:color";
 /* --- Stock Out Modal Unique Variables --- */
 $so-primary: #c5a47e; // Gold theme
 $so-primary-dark: #b08d66;
@@ -47,7 +48,7 @@ $so-danger: #ef4444; // Dùng màu đỏ nhẹ nếu muốn nhấn mạnh tính 
       align-items: center;
       gap: 6px;
       font-size: 12px;
-      color: darken($so-primary, 10%);
+      color: color.adjust($so-primary, $lightness: -10%);
       background: rgba($so-primary, 0.1);
       padding: 6px 10px;
       border-radius: 6px;

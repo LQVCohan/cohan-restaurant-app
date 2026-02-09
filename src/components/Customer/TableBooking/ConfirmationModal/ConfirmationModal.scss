@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../../../../styles/variables.scss" as *;
 @use "../../../../styles/mixins.scss" as *;
 
@@ -89,7 +90,7 @@ $danger: #ef4444;
     // Message Body
     .confirmation-modal__message {
       font-size: 0.95rem;
-      color: lighten($slate, 10%);
+      color: color.adjust($slate, $lightness: 10%);
       line-height: 1.6;
       margin-bottom: 32px;
       padding: 0 10px;
@@ -143,7 +144,7 @@ $danger: #ef4444;
           &.danger {
             background: $danger;
             &:hover {
-              background: darken($danger, 10%);
+              background: color.adjust($danger, $lightness: -10%);
               transform: translateY(-1px);
             }
           }

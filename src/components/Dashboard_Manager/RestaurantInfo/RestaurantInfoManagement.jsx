@@ -36,7 +36,6 @@ import {
   InfoCircleOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
-import RestaurantInfo from "../../Customer/RestaurantDetail/components/RestaurantInfo/RestaurantInfo";
 import { useAvatarUploadLocal } from "../../../hooks/useAvatarUploadLocal";
 import "./RestaurantInfoManagement.scss";
 
@@ -389,34 +388,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
 
   const categories = categoryData?.categories || [];
-
-  const customerPreviewData = useMemo(() => {
-    const customerInfo = restaurantForm.customerInfo || DEFAULT_CUSTOMER_INFO;
-    return {
-      name: restaurantForm.name,
-      cuisineType: restaurantForm.cuisineType,
-      phone: restaurantForm.phone,
-      website: customerInfo.website,
-      address: {
-        line1: restaurantForm.line1,
-        district: restaurantForm.district,
-        city: restaurantForm.city,
-      },
-      about: restaurantForm.description,
-      amenities: restaurantForm.amenities,
-      dressCode: customerInfo.dressCode,
-      chef: customerInfo.chef,
-      suitableFor: customerInfo.suitableFor,
-      parkingDetail: customerInfo.parkingDetail,
-      ratings: {
-        food: Number(restaurantForm.avgRating || 0),
-        service: Number(restaurantForm.avgRating || 0),
-        ambience: Number(restaurantForm.avgRating || 0),
-        value: Number(restaurantForm.avgRating || 0),
-      },
-      faqs: customerInfo.faqs,
-    };
-  }, [restaurantForm]);
 
   // --- MUTATIONS ---
   const [updateIndex, { loading: syncingIndex }] = useMutation(UPDATE_INDEX);
@@ -1234,32 +1205,24 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         <Col xs={24} xl={9}>
           <div className="customer-preview-sticky">
             <Card
-              title="Bản xem nhanh thông tin khách hàng nhìn thấy"
+              title="Xem trước toàn bộ trang RestaurantDetail"
               className="saas-card customer-preview-card"
             >
-              <div className="customer-preview-embedded">
-                <RestaurantInfo restaurant={customerPreviewData} />
-              </div>
+              {selectedRestaurantId ? (
+                <iframe
+                  title="RestaurantDetail Preview"
+                  src={`/restaurant/${selectedRestaurantId}?preview=1`}
+                  className="restaurant-detail-preview-frame"
+                />
+              ) : (
+                <Text type="secondary">
+                  Chọn nhà hàng để xem trước trang RestaurantDetail.
+                </Text>
+              )}
             </Card>
           </div>
         </Col>
       </Row>
-
-      <Card
-        style={{ marginTop: 20 }}
-        className="saas-card restaurant-detail-full-preview"
-        title="Xem trước toàn bộ trang RestaurantDetail"
-      >
-        {selectedRestaurantId ? (
-          <iframe
-            title="RestaurantDetail Preview"
-            src={`/restaurant/${selectedRestaurantId}`}
-            className="restaurant-detail-preview-frame"
-          />
-        ) : (
-          <Text type="secondary">Chọn nhà hàng để xem trước trang RestaurantDetail.</Text>
-        )}
-      </Card>
     </div>
   );
 };

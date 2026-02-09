@@ -1,4 +1,5 @@
 // Variables
+@use "sass:color";
 $header-bg: #ffffff;
 $bg-body: #f3f4f6;
 $text-main: #111827;
@@ -238,7 +239,7 @@ $shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
           color: #ffffff;
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
           &:hover {
-            background: lighten($text-main, 10%);
+            background: color.adjust($text-main, $lightness: 10%);
             transform: translateY(-1px);
           }
 

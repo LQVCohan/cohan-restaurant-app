@@ -5,6 +5,8 @@ import Footer from "../components/Customer/Homepage_Client/components/Footer";
 
 export default function MainLayout({ children }) {
   const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const isRestaurantDetailPreview = searchParams.get("preview") === "1";
 
   // Các đường dẫn KHÔNG hiển thị header/footer
   const hiddenRoutes = [
@@ -20,7 +22,7 @@ export default function MainLayout({ children }) {
     location.pathname.startsWith(path)
   );
 
-  if (shouldHideLayout) {
+  if (shouldHideLayout || isRestaurantDetailPreview) {
     return <>{children}</>; // chỉ render nội dung con
   }
 

@@ -101,7 +101,7 @@ $radius-lg: 16px;
       transition: all 0.2s;
 
       &:hover {
-        background: darken($primary, 5%);
+        background: color.adjust($primary, $lightness: -5%);
         transform: translateY(-2px);
         box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
       }

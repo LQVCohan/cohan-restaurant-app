@@ -1,4 +1,5 @@
 // Variables (Nếu chưa có global)
+@use "sass:color";
 $primary-color: #d97706; // Amber
 $success-color: #10b981; // Emerald
 $text-main: #0f172a;
@@ -49,7 +50,7 @@ $border-color: #e2e8f0;
 
         &:hover {
           color: $text-main;
-          background: darken($bg-hover, 5%);
+          background: color.adjust($bg-hover, $lightness: -5%);
         }
       }
 

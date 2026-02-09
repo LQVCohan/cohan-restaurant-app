@@ -1,4 +1,5 @@
 // --- VARIABLES & THEME ---
+@use "sass:color";
 $primary-color: #b89365; // Tone vàng giữ nguyên
 $primary-dark: #96764d;
 $primary-light: #f3ebd6;
@@ -449,7 +450,7 @@ $radius-md: 8px;
           background: linear-gradient(
             135deg,
             $primary-color,
-            darken($primary-color, 10%)
+            color.adjust($primary-color, $lightness: -10%)
           );
           border: none;
           color: #fff;

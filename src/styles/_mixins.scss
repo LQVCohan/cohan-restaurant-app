@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "./variables" as v;
 
 // ===============
@@ -136,10 +137,10 @@
   box-shadow: 0 8px 25px rgba(v.$red-600, 0.25);
 
   &:hover:not(:disabled) {
-    background: mix(v.$white, v.$red-600, 10%);
+    background: color.mix(v.$white, v.$red-600, 10%);
   }
   &:active:not(:disabled) {
-    background: mix(black, v.$red-600, 10%);
+    background: color.mix(black, v.$red-600, 10%);
     transform: translateY(1px);
   }
   &:focus-visible {
@@ -281,6 +282,8 @@
 }
 
 @mixin loading-spinner {
+  animation: spin 1s linear infinite;
+
   @keyframes spin {
     0% {
       transform: rotate(0deg);
@@ -289,7 +292,6 @@
       transform: rotate(360deg);
     }
   }
-  animation: spin 1s linear infinite;
 }
 
 @mixin glass-effect {
@@ -320,13 +322,11 @@
 }
 
 // Color helpers
-@function custom-darken($color, $amount) {
-  $l: lightness($color) - $amount;
-  @return hsl(hue($color), saturation($color), max(0, min(100%, $l)));
+@function custom-darken($color-value, $amount) {
+  @return color.adjust($color-value, $lightness: -$amount);
 }
-@function custom-lighten($color, $amount) {
-  $l: lightness($color) + $amount;
-  @return hsl(hue($color), saturation($color), max(0, min(100%, $l)));
+@function custom-lighten($color-value, $amount) {
+  @return color.adjust($color-value, $lightness: $amount);
 }
 
 // Grids

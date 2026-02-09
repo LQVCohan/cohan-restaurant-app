@@ -1,4 +1,5 @@
 // Variables
+@use "sass:color";
 $primary-bg: #ffffff;
 $secondary-bg: #f9fafb;
 $text-main: #111827;
@@ -327,7 +328,7 @@ $status-colors: (
             color: #fff;
             border: none;
             &:hover {
-              background: lighten($text-main, 10%);
+              background: color.adjust($text-main, $lightness: 10%);
             }
           }
         }

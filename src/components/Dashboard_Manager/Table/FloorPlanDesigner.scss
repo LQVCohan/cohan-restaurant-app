@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../../../styles/variables.scss" as *;
 
 // base colors
@@ -152,7 +153,7 @@ $c-shadow-float: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
         font-weight: 600;
         cursor: pointer;
         &:hover {
-          background: darken($c-primary, 5%);
+          background: color.adjust($c-primary, $lightness: -5%);
         }
         &:disabled {
           opacity: 0.6;
