@@ -42,6 +42,9 @@ const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
 
+const COVER_PLACEHOLDER = "linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%)";
+const AVATAR_PLACEHOLDER = "/default-avatar.png";
+
 // --- GIỮ NGUYÊN PHẦN GRAPHQL QUERIES (KHÔNG THAY ĐỔI) ---
 const ME_QUERY = gql`
   query Me {
@@ -630,7 +633,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       <div
         className="cover-image-area"
         style={{
-          backgroundImage: `url(${restaurantForm.coverImage || "https://via.placeholder.com/800x250?text=Cover+Image"})`,
+          backgroundImage: restaurantForm.coverImage
+            ? `url(${restaurantForm.coverImage})`
+            : COVER_PLACEHOLDER,
         }}
       >
         <div className="cover-overlay">
@@ -658,7 +663,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       <div className="avatar-image-area">
         <div className="avatar-wrapper">
           <img
-            src={restaurantForm.avatar || "https://via.placeholder.com/150"}
+            src={restaurantForm.avatar || AVATAR_PLACEHOLDER}
             alt="avatar"
           />
           <div
@@ -1089,7 +1094,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                 placeholder="Lịch sử bản nháp"
                 style={{ width: 180 }}
                 allowClear
-                bordered={false}
+                variant="borderless"
                 options={drafts.map((item) => ({
                   value: item.id,
                   label: `${item.label}`,
@@ -1105,7 +1110,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               </Button>
             </div>
 
-            <Divider type="vertical" style={{ height: 24 }} />
+            <Divider orientation="vertical" style={{ height: 24 }} />
 
             <Select
               value={selectedRestaurantId}
@@ -1137,8 +1142,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         <Col xs={24} xl={14} xxl={15}>
           <Card
             className="saas-card edit-card"
-            bordered={false}
-            bodyStyle={{ padding: 0 }}
+            variant="borderless"
+            styles={{ body: { padding: 0 } }}
           >
             {restaurantDetailLoading ? (
               <div style={{ padding: 24 }}>
@@ -1153,7 +1158,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           <Card
             className="saas-card category-card"
             title="Trạng thái thực đơn"
-            bordered={false}
+            variant="borderless"
           >
             <Row justify="space-between" align="middle">
               <Col>
