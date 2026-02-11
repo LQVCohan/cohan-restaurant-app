@@ -535,7 +535,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     ].filter(Boolean);
 
     try {
-      await updateRestaurant({
+      const updateResult = await updateRestaurant({
         variables: {
           id: selectedRestaurantId,
           input: {
@@ -560,12 +560,49 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           },
         },
       });
-      await refetchRestaurantDetail();
+
+      const gqlError = updateResult?.errors?.[0]?.message;
+      const updatedRestaurant = updateResult?.data?.updateRestaurant;
+      if (gqlError || !updatedRestaurant) {
+        throw new Error(gqlError || "Mutation updateRestaurant không trả về dữ liệu");
+      }
+
+      const latest = await refetchRestaurantDetail();
+      const latestRestaurant = latest?.data?.restaurant;
+      const hasMismatch = latestRestaurant
+        ? [
+            ["name", restaurantForm.name?.trim(), latestRestaurant.name || ""],
+            ["phone", restaurantForm.phone?.trim() || "", latestRestaurant.phone || ""],
+            ["email", restaurantForm.email?.trim() || "", latestRestaurant.email || ""],
+            ["description", restaurantForm.description?.trim() || "", latestRestaurant.description || ""],
+            ["openingHours", restaurantForm.openingHours || "", latestRestaurant.openingHours || ""],
+            ["closingHours", restaurantForm.closingHours || "", latestRestaurant.closingHours || ""],
+            ["cuisineType", restaurantForm.cuisineType || "", latestRestaurant.cuisineType || ""],
+            ["priceRange", restaurantForm.priceRange || "", latestRestaurant.priceRange || ""],
+            ["status", restaurantForm.status || "", latestRestaurant.status || ""],
+            ["avatar", restaurantForm.avatar || "", latestRestaurant.avatar || ""],
+            ["coverImage", restaurantForm.coverImage || "", latestRestaurant.coverImage || ""],
+            ["address.line1", restaurantForm.line1 || "", latestRestaurant.address?.line1 || ""],
+            ["address.district", restaurantForm.district || "", latestRestaurant.address?.district || ""],
+            ["address.city", restaurantForm.city || "", latestRestaurant.address?.city || ""],
+          ].some(([, expected, actual]) => (expected || "") !== (actual || ""))
+        : false;
+
+      if (hasMismatch) {
+        message.warning(
+          "Đã gửi yêu cầu lưu nhưng dữ liệu trả về chưa đồng bộ. Vui lòng tải lại trang hoặc kiểm tra lại API.",
+        );
+        setIsDirty(true);
+        return;
+      }
+
       setIsDirty(false);
       message.success("Cập nhật thông tin nhà hàng thành công");
-    } catch {
+    } catch (error) {
       saveDraftToLocal("Bản nháp tự động khi lỗi mạng");
-      message.error("Không thể cập nhật thông tin. Đã lưu bản nháp cục bộ.");
+      message.error(
+        error?.message || "Không thể cập nhật thông tin. Đã lưu bản nháp cục bộ.",
+      );
     }
   };
 
