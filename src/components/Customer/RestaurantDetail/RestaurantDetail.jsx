@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useRestaurant } from "../../../hooks/useRestaurant";
 
 // Components (Tách nhỏ để dễ quản lý)
@@ -18,6 +18,8 @@ import "./RestaurantDetail.scss";
 const RestaurantDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isPreviewMode = new URLSearchParams(location.search).get("preview") === "1";
   const { restaurant, loading, error } = useRestaurant(id);
 
   const [activeTab, setActiveTab] = useState("info");
@@ -44,7 +46,10 @@ const RestaurantDetail = () => {
   const imgThumbUrl =
     restaurant.coverImage || restaurant.imgThumbUrl || "/default-cover.jpg";
 
-  const handleBookTable = () => navigate(`/restaurant/${restaurant.id}/layout`);
+  const handleBookTable = () => {
+    if (isPreviewMode) return;
+    navigate(`/restaurant/${restaurant.id}/layout`);
+  };
 
   const tabs = [
     { id: "info", label: "Thông tin" },
@@ -63,7 +68,14 @@ const RestaurantDetail = () => {
           style={{ backgroundImage: `url(${imgThumbUrl})` }}
         >
           <div className="overlay"></div>
-          <button className="btn-back" onClick={() => navigate(-1)}>
+          <button
+            className="btn-back"
+            onClick={() => {
+              if (isPreviewMode) return;
+              navigate(-1);
+            }}
+            disabled={isPreviewMode}
+          >
             <ArrowLeft size={24} />
           </button>
         </div>
@@ -103,15 +115,16 @@ const RestaurantDetail = () => {
             </div>
 
             <div className="action-group">
-              <button className="btn-icon">
+              <button className="btn-icon" disabled={isPreviewMode}>
                 <Heart size={20} />
               </button>
-              <button className="btn-icon">
+              <button className="btn-icon" disabled={isPreviewMode}>
                 <Share2 size={20} />
               </button>
               <button
                 className="btn-book desktop-only"
                 onClick={handleBookTable}
+                disabled={isPreviewMode}
               >
                 Đặt bàn ngay
               </button>
@@ -127,7 +140,8 @@ const RestaurantDetail = () => {
             <button
               key={tab.id}
               className={`tab-item ${activeTab === tab.id ? "active" : ""}`}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => !isPreviewMode && setActiveTab(tab.id)}
+              disabled={isPreviewMode}
             >
               {tab.label}
             </button>
@@ -149,7 +163,9 @@ const RestaurantDetail = () => {
           {activeTab === "photos" && (
             <PhotoGallery photos={restaurant.photos} />
           )}
-          {activeTab === "info" && <RestaurantInfo restaurant={restaurant} />}
+          {activeTab === "info" && (
+            <RestaurantInfo restaurant={restaurant} isPreviewMode={isPreviewMode} />
+          )}
         </div>
 
         {/* Right Sidebar (Sticky) */}
@@ -160,7 +176,7 @@ const RestaurantDetail = () => {
             <div className="time-picker-mock">
               <Clock size={16} /> 19:00, Hôm nay
             </div>
-            <button className="btn-book-full" onClick={handleBookTable}>
+            <button className="btn-book-full" onClick={handleBookTable} disabled={isPreviewMode}>
               Tiếp tục đặt bàn
             </button>
           </div>
@@ -179,7 +195,7 @@ const RestaurantDetail = () => {
 
       {/* Mobile Floating Button */}
       <div className="mobile-action-bar mobile-only">
-        <button className="btn-book-mobile" onClick={handleBookTable}>
+        <button className="btn-book-mobile" onClick={handleBookTable} disabled={isPreviewMode}>
           Đặt bàn ngay
         </button>
       </div>
