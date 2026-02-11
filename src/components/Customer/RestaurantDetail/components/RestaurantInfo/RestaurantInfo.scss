@@ -285,6 +285,11 @@ $radius: 16px;
         gap: 6px;
         cursor: pointer;
         color: $color-dark;
+
+        &:disabled {
+          cursor: not-allowed;
+          opacity: 0.6;
+        }
       }
     }
     .card-body {
@@ -394,6 +399,13 @@ $radius: 16px;
         background: color.adjust($color-dark, $lightness: 10%);
         transform: translateY(-1px);
       }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+        transform: none;
+      }
+
     }
 
     .secondary-actions {
@@ -414,6 +426,13 @@ $radius: 16px;
           color: $color-gold;
           background: $color-white;
         }
+
+        &.is-disabled {
+          pointer-events: none;
+          opacity: 0.55;
+          cursor: not-allowed;
+        }
+
       }
     }
   }
