@@ -101,9 +101,52 @@
     transition: left 0.3s ease, width 0.3s ease; // Smooth transition like header
 
     .manager-page-shell {
+      --manager-accent-a: #6366f1;
+      --manager-accent-b: #0ea5e9;
+      --manager-soft-accent: rgba(99, 102, 241, 0.14);
       display: flex;
       flex-direction: column;
       gap: 1rem;
+
+      &--inventory,
+      &--tables,
+      &--orders,
+      &--menu,
+      &--restaurant-info-management,
+      &--staff,
+      &--schedules,
+      &--payroll,
+      &--customers,
+      &--promotions,
+      &--reviews,
+      &--analytics,
+      &--finance,
+      &--print-management {
+        --manager-accent-a: #4f46e5;
+        --manager-accent-b: #0284c7;
+        --manager-soft-accent: rgba(79, 70, 229, 0.14);
+      }
+
+      &--inventory {
+        --manager-accent-a: #2563eb;
+        --manager-accent-b: #0ea5e9;
+      }
+
+      &--tables {
+        --manager-accent-a: #7c3aed;
+        --manager-accent-b: #3b82f6;
+      }
+
+      &--orders {
+        --manager-accent-a: #ea580c;
+        --manager-accent-b: #f59e0b;
+      }
+
+      &--menu,
+      &--restaurant-info-management {
+        --manager-accent-a: #0f766e;
+        --manager-accent-b: #14b8a6;
+      }
 
       &__hero {
         display: grid;
@@ -112,9 +155,9 @@
         gap: 14px;
         padding: 18px 22px;
         border-radius: 18px;
-        border: 1px solid rgba(99, 102, 241, 0.18);
+        border: 1px solid color-mix(in srgb, var(--manager-accent-a) 24%, white);
         background:
-          radial-gradient(circle at top right, rgba(59, 130, 246, 0.2), transparent 40%),
+          radial-gradient(circle at top right, color-mix(in srgb, var(--manager-accent-b) 24%, white), transparent 40%),
           linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(243, 247, 255, 0.98));
         box-shadow: 0 14px 30px rgba(30, 41, 59, 0.08);
       }
@@ -127,8 +170,8 @@
         place-items: center;
         font-size: 20px;
         color: #fff;
-        background: linear-gradient(135deg, #6366f1 0%, #0ea5e9 100%);
-        box-shadow: 0 8px 18px rgba(79, 70, 229, 0.35);
+        background: linear-gradient(135deg, var(--manager-accent-a) 0%, var(--manager-accent-b) 100%);
+        box-shadow: 0 8px 18px color-mix(in srgb, var(--manager-accent-a) 35%, transparent);
       }
 
       .hero-text {
@@ -157,9 +200,12 @@
           border-radius: 999px;
           font-size: 0.76rem;
           font-weight: 600;
-          color: #3730a3;
-          background: rgba(99, 102, 241, 0.12);
-          border: 1px solid rgba(99, 102, 241, 0.2);
+          color: color-mix(in srgb, var(--manager-accent-a) 78%, #0f172a);
+          background: var(--manager-soft-accent);
+          border: 1px solid color-mix(in srgb, var(--manager-accent-a) 28%, white);
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
           white-space: nowrap;
         }
       }
