@@ -19,7 +19,8 @@ import {
   Collapse,
   Progress,
   Divider,
-  Segmented,
+  Modal,
+  List,
 } from "antd";
 import {
   SaveOutlined,
@@ -176,6 +177,21 @@ const UPDATE_RESTAURANT = gql`
   }
 `;
 
+const GET_STAFF_LIST = gql`
+  query StaffListForChefPicker($restaurantId: ID, $search: String) {
+    staffList(restaurantId: $restaurantId, search: $search) {
+      id
+      fullName
+      roleName
+      positionTitle
+      primaryRestaurant {
+        id
+        name
+      }
+    }
+  }
+`;
+
 const TIME_SLOTS = ["breakfast", "lunch", "dinner", "late_night"];
 const DEFAULT_CUSTOMER_INFO = {
   story: "",
@@ -194,21 +210,47 @@ const DEFAULT_CUSTOMER_INFO = {
 
 const DRAFT_STORAGE_KEY = "restaurant_info_drafts_v1";
 
+const normalizeCustomerInfo = (value = {}) => {
+  const source = value || {};
+
+  const extraAmenities = Array.from(
+    new Set(
+      (source.extraAmenities || [])
+        .map((item) => (item || "").trim())
+        .filter(Boolean),
+    ),
+  );
+
+  const incomingFaqs = Array.isArray(source.faqs) ? source.faqs : [];
+  const faqs = [0, 1, 2].map((index) => {
+    const row = incomingFaqs[index] || {};
+    return {
+      q: (row.q || "").trim(),
+      a: (row.a || "").trim(),
+    };
+  });
+
+  return {
+    ...DEFAULT_CUSTOMER_INFO,
+    ...source,
+    story: (source.story || "").trimStart(),
+    chef: (source.chef || "").trimStart(),
+    dressCode: (source.dressCode || "").trim(),
+    website: (source.website || "").trim(),
+    parkingDetail: (source.parkingDetail || "").trim(),
+    suitableFor: Array.isArray(source.suitableFor) ? source.suitableFor : [],
+    extraAmenities,
+    faqs,
+  };
+};
+
 const parseCustomerInfo = (value) => {
   if (!value) return DEFAULT_CUSTOMER_INFO;
   try {
     const parsed = JSON.parse(value);
-    return {
-      ...DEFAULT_CUSTOMER_INFO,
-      ...parsed,
-      suitableFor: Array.isArray(parsed?.suitableFor) ? parsed.suitableFor : [],
-      faqs:
-        Array.isArray(parsed?.faqs) && parsed.faqs.length > 0
-          ? parsed.faqs.slice(0, 3)
-          : DEFAULT_CUSTOMER_INFO.faqs,
-    };
+    return normalizeCustomerInfo(parsed);
   } catch {
-    return { ...DEFAULT_CUSTOMER_INFO, story: value };
+    return normalizeCustomerInfo({ story: value });
   }
 };
 
@@ -220,15 +262,17 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [drafts, setDrafts] = useState([]);
   const [extraAmenityInput, setExtraAmenityInput] = useState("");
   const [uploadingType, setUploadingType] = useState("");
-  const [previewMode, setPreviewMode] = useState("mobile");
   const [uploadProgress, setUploadProgress] = useState({
     avatar: 0,
     coverImage: 0,
   });
+  const [chefPickerOpen, setChefPickerOpen] = useState(false);
+  const [chefSearch, setChefSearch] = useState("");
   const [isDirty, setIsDirty] = useState(false);
   const baselineRef = useRef("");
   const avatarInputRef = useRef(null);
   const coverInputRef = useRef(null);
+  const previewIframeRef = useRef(null);
 
   const [restaurantForm, setRestaurantForm] = useState({
     name: "",
@@ -271,6 +315,18 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     {
       variables: { limit: 100 },
       skip: role !== "admin" && me?.roleName !== "admin",
+      fetchPolicy: "network-only",
+    },
+  );
+
+  const { data: staffListData, loading: staffListLoading } = useQuery(
+    GET_STAFF_LIST,
+    {
+      variables: {
+        restaurantId: selectedRestaurantId || undefined,
+        search: chefSearch.trim() || undefined,
+      },
+      skip: !selectedRestaurantId,
       fetchPolicy: "network-only",
     },
   );
@@ -323,13 +379,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       notesOnAmenities: r.notesOnAmenities || "",
       avatar: r.avatar || "",
       coverImage: r.coverImage || "",
-      customerInfo: {
-        ...parsedCustomerInfo,
-        website: parsedCustomerInfo?.website || "",
-        extraAmenities: Array.isArray(parsedCustomerInfo?.extraAmenities)
-          ? parsedCustomerInfo.extraAmenities
-          : [],
-      },
+      customerInfo: normalizeCustomerInfo(parsedCustomerInfo),
       line1: r.address?.line1 || "",
       district: r.address?.district || "",
       city: r.address?.city || "",
@@ -391,6 +441,23 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   );
 
   const categories = categoryData?.categories || [];
+
+  const chefCandidates = useMemo(() => {
+    const rows = staffListData?.staffList || [];
+    const isChef = (staff) => {
+      const roleText = `${staff?.roleName || ""} ${staff?.positionTitle || ""}`
+        .toLowerCase()
+        .trim();
+      return (
+        roleText.includes("chef") ||
+        roleText.includes("bếp") ||
+        roleText.includes("bep")
+      );
+    };
+
+    const picked = rows.filter(isChef);
+    return picked.length > 0 ? picked : rows;
+  }, [staffListData]);
 
   // --- MUTATIONS ---
   const [updateIndex, { loading: syncingIndex }] = useMutation(UPDATE_INDEX);
@@ -500,6 +567,61 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     }
   };
 
+  const previewRestaurantData = useMemo(() => {
+    const normalizedCustomerInfo = normalizeCustomerInfo(restaurantForm.customerInfo);
+    const normalizedStatus = restaurantForm.status === "active" ? "open" : "closed";
+    const district = restaurantForm.district || "";
+    const city = restaurantForm.city || "";
+    const line1 = restaurantForm.line1 || "";
+    return {
+      id: selectedRestaurantId || null,
+      name: restaurantForm.name || "",
+      avatar: restaurantForm.avatar || "",
+      coverImage: restaurantForm.coverImage || "",
+      cuisine: restaurantForm.cuisineType || "",
+      cuisineType: restaurantForm.cuisineType || "",
+      status: normalizedStatus,
+      rating: Number(restaurantForm.avgRating) || 0,
+      avgRating: Number(restaurantForm.avgRating) || 0,
+      district,
+      addressText: [line1, district, city].filter(Boolean).join(", "),
+      address: {
+        line1,
+        district,
+        city,
+      },
+      phone: restaurantForm.phone || "",
+      email: restaurantForm.email || "",
+      description: restaurantForm.description || "",
+      about: normalizedCustomerInfo.story || "",
+      chef: normalizedCustomerInfo.chef || "",
+      suitableFor: normalizedCustomerInfo.suitableFor || [],
+      amenities: {
+        wifi: Boolean(restaurantForm.amenities?.wifi),
+        parking: Boolean(restaurantForm.amenities?.parking),
+        card: Boolean(restaurantForm.amenities?.card),
+      },
+      notesOnAmenities: JSON.stringify(normalizedCustomerInfo),
+    };
+  }, [restaurantForm, selectedRestaurantId]);
+
+  const pushPreviewUpdate = (payload) => {
+    const iframeWindow = previewIframeRef.current?.contentWindow;
+    if (!iframeWindow || !payload) return;
+    iframeWindow.postMessage(
+      {
+        type: "restaurant-preview:update",
+        payload,
+      },
+      window.location.origin,
+    );
+  };
+
+  useEffect(() => {
+    if (!selectedRestaurantId) return;
+    pushPreviewUpdate(previewRestaurantData);
+  }, [previewRestaurantData, selectedRestaurantId]);
+
   const onRefresh = async () => {
     if (!selectedRestaurantId) return;
     try {
@@ -529,15 +651,19 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       return;
     }
 
+    const normalizedCustomerInfo = normalizeCustomerInfo(
+      restaurantForm.customerInfo,
+    );
+
     const amenityList = [
       restaurantForm.amenities?.wifi ? "wifi" : null,
       restaurantForm.amenities?.parking ? "parking" : null,
       restaurantForm.amenities?.card ? "card" : null,
-      ...(restaurantForm.customerInfo?.extraAmenities || []),
+      ...normalizedCustomerInfo.extraAmenities,
     ].filter(Boolean);
 
     try {
-      await updateRestaurant({
+      const updateResult = await updateRestaurant({
         variables: {
           id: selectedRestaurantId,
           input: {
@@ -553,7 +679,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             avatar: restaurantForm.avatar || null,
             coverImage: restaurantForm.coverImage || null,
             amenities: amenityList,
-            notesOnAmenities: JSON.stringify(restaurantForm.customerInfo),
+            notesOnAmenities: JSON.stringify(normalizedCustomerInfo),
             address: {
               line1: restaurantForm.line1 || null,
               district: restaurantForm.district || null,
@@ -562,12 +688,56 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           },
         },
       });
-      await refetchRestaurantDetail();
+
+      const gqlError = updateResult?.errors?.[0]?.message;
+      const updatedRestaurant = updateResult?.data?.updateRestaurant;
+      if (gqlError || !updatedRestaurant) {
+        throw new Error(gqlError || "Mutation updateRestaurant không trả về dữ liệu");
+      }
+
+      const latest = await refetchRestaurantDetail();
+      const latestRestaurant = latest?.data?.restaurant;
+      const expectedNotes = JSON.stringify(normalizedCustomerInfo);
+      const expectedAmenities = Array.from(new Set(amenityList)).sort();
+      const actualAmenities = Array.isArray(latestRestaurant?.amenities)
+        ? Array.from(new Set(latestRestaurant.amenities)).sort()
+        : [];
+      const hasMismatch = latestRestaurant
+        ? [
+            ["name", restaurantForm.name?.trim(), latestRestaurant.name || ""],
+            ["phone", restaurantForm.phone?.trim() || "", latestRestaurant.phone || ""],
+            ["email", restaurantForm.email?.trim() || "", latestRestaurant.email || ""],
+            ["description", restaurantForm.description?.trim() || "", latestRestaurant.description || ""],
+            ["openingHours", restaurantForm.openingHours || "", latestRestaurant.openingHours || ""],
+            ["closingHours", restaurantForm.closingHours || "", latestRestaurant.closingHours || ""],
+            ["cuisineType", restaurantForm.cuisineType || "", latestRestaurant.cuisineType || ""],
+            ["priceRange", restaurantForm.priceRange || "", latestRestaurant.priceRange || ""],
+            ["status", restaurantForm.status || "", latestRestaurant.status || ""],
+            ["avatar", restaurantForm.avatar || "", latestRestaurant.avatar || ""],
+            ["coverImage", restaurantForm.coverImage || "", latestRestaurant.coverImage || ""],
+            ["address.line1", restaurantForm.line1 || "", latestRestaurant.address?.line1 || ""],
+            ["address.district", restaurantForm.district || "", latestRestaurant.address?.district || ""],
+            ["address.city", restaurantForm.city || "", latestRestaurant.address?.city || ""],
+            ["notesOnAmenities", expectedNotes, latestRestaurant.notesOnAmenities || ""],
+            ["amenities", JSON.stringify(expectedAmenities), JSON.stringify(actualAmenities)],
+          ].some(([, expected, actual]) => (expected || "") !== (actual || ""))
+        : false;
+
+      if (hasMismatch) {
+        message.warning(
+          "Đã gửi yêu cầu lưu nhưng dữ liệu trả về chưa đồng bộ. Vui lòng tải lại trang hoặc kiểm tra lại API.",
+        );
+        setIsDirty(true);
+        return;
+      }
+
       setIsDirty(false);
       message.success("Cập nhật thông tin nhà hàng thành công");
-    } catch {
+    } catch (error) {
       saveDraftToLocal("Bản nháp tự động khi lỗi mạng");
-      message.error("Không thể cập nhật thông tin. Đã lưu bản nháp cục bộ.");
+      message.error(
+        error?.message || "Không thể cập nhật thông tin. Đã lưu bản nháp cục bộ.",
+      );
     }
   };
 
@@ -598,6 +768,13 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         },
       };
     });
+  };
+
+  const onSelectChef = (staff) => {
+    if (!staff) return;
+    updateCustomerInfoField("chef", staff.fullName || "");
+    setChefPickerOpen(false);
+    message.success(`Đã chọn bếp trưởng: ${staff.fullName}`);
   };
 
   // --- RENDER HELPERS ---
@@ -790,7 +967,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                     </Col>
                   </Row>
 
-                  <Form.Item label="Câu chuyện thương hiệu (Story)">
+                  <Form.Item label="Mô tả ngắn hiển thị">
                     <div className="ai-textarea-wrapper">
                       <TextArea
                         rows={4}
@@ -814,6 +991,34 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         ✨ AI Rewrite
                       </Button>
                     </div>
+                  </Form.Item>
+
+                  <Form.Item label="Câu chuyện thương hiệu (Story)">
+                    <TextArea
+                      rows={4}
+                      value={restaurantForm.customerInfo?.story}
+                      onChange={(e) =>
+                        updateCustomerInfoField("story", e.target.value)
+                      }
+                      showCount
+                      maxLength={1200}
+                      placeholder="Nhập câu chuyện thương hiệu hiển thị ở phần 'Về chúng tôi'"
+                    />
+                  </Form.Item>
+
+                  <Form.Item label="Bếp trưởng điều hành">
+                    <Space.Compact style={{ width: "100%" }}>
+                      <Input
+                        value={restaurantForm.customerInfo?.chef || ""}
+                        onChange={(e) =>
+                          updateCustomerInfoField("chef", e.target.value)
+                        }
+                        placeholder="Chọn từ nhân viên hoặc nhập tên bếp trưởng"
+                      />
+                      <Button onClick={() => setChefPickerOpen(true)}>
+                        Chọn từ nhân viên
+                      </Button>
+                    </Space.Compact>
                   </Form.Item>
                 </>
               ),
@@ -1011,6 +1216,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                             restaurantForm.customerInfo?.extraAmenities || []
                           ).map((tag) => (
                             <Tag
+                              key={tag}
                               closable
                               onClose={() =>
                                 updateCustomerInfoField(
@@ -1205,46 +1411,22 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
         <Col xs={24} xl={10} xxl={9}>
           {/* LIVE PREVIEW */}
-          <div className="mobile-preview-wrapper">
+          <div className="preview-wrapper">
             <div className="preview-header">
               <div className="preview-label">
                 <FileTextOutlined /> Xem trước (Live Preview)
               </div>
-              <Segmented
-                value={previewMode}
-                onChange={setPreviewMode}
-                options={[
-                  { label: "Điện thoại", value: "mobile" },
-                  { label: "Desktop", value: "desktop" },
-                ]}
-              />
             </div>
 
-            <div className={`preview-stage ${previewMode}`}>
-              <div className="mock-phone">
-                <div className="camera-notch"></div>
-                <div className="screen-content">
-                  {selectedRestaurantId ? (
-                    <iframe
-                      title="RestaurantDetail Mobile Preview"
-                      src={`/preview/restaurant/${selectedRestaurantId}?preview=1`}
-                      className="app-iframe"
-                    />
-                  ) : (
-                    <div className="empty-preview">
-                      <ShopOutlined style={{ fontSize: 48, color: "#ccc" }} />
-                      <p>Vui lòng chọn nhà hàng</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
+            <div className="preview-stage">
               <div className="desktop-preview-card">
                 {selectedRestaurantId ? (
                   <iframe
-                    title="RestaurantDetail Desktop Preview"
+                    ref={previewIframeRef}
+                    title="RestaurantDetail Preview"
                     src={`/preview/restaurant/${selectedRestaurantId}?preview=1`}
                     className="desktop-iframe"
+                    onLoad={() => pushPreviewUpdate(previewRestaurantData)}
                   />
                 ) : (
                   <div className="empty-preview">
@@ -1257,6 +1439,50 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           </div>
         </Col>
       </Row>
+
+      <Modal
+        title="Chọn bếp trưởng từ danh sách nhân viên"
+        open={chefPickerOpen}
+        onCancel={() => setChefPickerOpen(false)}
+        footer={null}
+      >
+        <Space direction="vertical" style={{ width: "100%" }} size="middle">
+          <Input.Search
+            allowClear
+            placeholder="Tìm theo tên, vai trò, chức danh"
+            value={chefSearch}
+            onChange={(e) => setChefSearch(e.target.value)}
+          />
+
+          <List
+            loading={staffListLoading}
+            locale={{
+              emptyText: "Không có nhân viên phù hợp trong nhà hàng này",
+            }}
+            dataSource={chefCandidates}
+            renderItem={(staff) => (
+              <List.Item
+                actions={[
+                  <Button
+                    key={staff.id}
+                    type="primary"
+                    onClick={() => onSelectChef(staff)}
+                  >
+                    Chọn
+                  </Button>,
+                ]}
+              >
+                <List.Item.Meta
+                  title={staff.fullName}
+                  description={`${staff.positionTitle || "Nhân viên"} · ${
+                    staff.roleName || "Không rõ vai trò"
+                  }`}
+                />
+              </List.Item>
+            )}
+          />
+        </Space>
+      </Modal>
     </div>
   );
 };

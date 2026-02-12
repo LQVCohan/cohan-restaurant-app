@@ -89,8 +89,25 @@ const Icons = {
   takeaway: <ShoppingBag size={18} />,
 };
 
-const RestaurantInfo = ({ restaurant }) => {
-  const fullData = { ...EXTENDED_INFO, ...restaurant };
+const RestaurantInfo = ({ restaurant, isPreviewMode = false }) => {
+  const parsedNotes = useMemo(() => {
+    if (!restaurant?.notesOnAmenities) return {};
+    try {
+      return JSON.parse(restaurant.notesOnAmenities);
+    } catch {
+      return {};
+    }
+  }, [restaurant?.notesOnAmenities]);
+
+  const fullData = {
+    ...EXTENDED_INFO,
+    ...restaurant,
+    about: restaurant?.about || parsedNotes.story || EXTENDED_INFO.about,
+    chef: restaurant?.chef || parsedNotes.chef || EXTENDED_INFO.chef,
+    suitableFor:
+      restaurant?.suitableFor || parsedNotes.suitableFor || EXTENDED_INFO.suitableFor,
+    faqs: restaurant?.faqs || parsedNotes.faqs || EXTENDED_INFO.faqs,
+  };
   const { status, text: statusText } = checkOpenStatus();
 
   // Amenities Configuration
@@ -222,12 +239,14 @@ const RestaurantInfo = ({ restaurant }) => {
               <div className="overlay">
                 <button
                   className="btn-direction"
-                  onClick={() =>
+                  onClick={() => {
+                    if (isPreviewMode) return;
                     window.open(
                       `http://maps.google.com/?q=${fullData.address}`,
                       "_blank"
-                    )
-                  }
+                    );
+                  }}
+                  disabled={isPreviewMode}
                 >
                   <MapPin size={16} /> Chỉ đường
                 </button>
@@ -268,18 +287,25 @@ const RestaurantInfo = ({ restaurant }) => {
               <span className="value">{fullData.dressCode}</span>
             </div>
             <div className="divider"></div>
-            <button className="btn-primary-action">
+            <button className="btn-primary-action" disabled={isPreviewMode}>
               <Calendar size={18} /> Đặt bàn ngay
             </button>
             <div className="secondary-actions">
-              <a href={`tel:${fullData.phone}`} className="btn-icon">
+              <a
+                href={isPreviewMode ? undefined : `tel:${fullData.phone}`}
+                className={`btn-icon ${isPreviewMode ? "is-disabled" : ""}`}
+                onClick={(event) => isPreviewMode && event.preventDefault()}
+                aria-disabled={isPreviewMode}
+              >
                 <Phone size={18} />
               </a>
               <a
-                href={fullData.website}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-icon"
+                href={isPreviewMode ? undefined : fullData.website}
+                target={isPreviewMode ? undefined : "_blank"}
+                rel={isPreviewMode ? undefined : "noreferrer"}
+                className={`btn-icon ${isPreviewMode ? "is-disabled" : ""}`}
+                onClick={(event) => isPreviewMode && event.preventDefault()}
+                aria-disabled={isPreviewMode}
               >
                 <Globe size={18} />
               </a>
