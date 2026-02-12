@@ -24,6 +24,8 @@ const RestaurantDetail = () => {
 
   const [activeTab, setActiveTab] = useState("info");
   const [isScrolled, setIsScrolled] = useState(false);
+  const [previewRestaurantOverride, setPreviewRestaurantOverride] =
+    useState(null);
 
   // Xử lý hiệu ứng scroll cho Navbar
   useEffect(() => {
@@ -31,6 +33,19 @@ const RestaurantDetail = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    if (!isPreviewMode) return;
+
+    const onPreviewMessage = (event) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "restaurant-preview:update") return;
+      setPreviewRestaurantOverride(event.data.payload || null);
+    };
+
+    window.addEventListener("message", onPreviewMessage);
+    return () => window.removeEventListener("message", onPreviewMessage);
+  }, [isPreviewMode]);
 
   if (loading)
     return (
@@ -41,14 +56,57 @@ const RestaurantDetail = () => {
   if (error || !restaurant)
     return <div className="detail-error">Không tìm thấy nhà hàng.</div>;
 
+  const resolvedRestaurant = (() => {
+    if (!previewRestaurantOverride) return restaurant;
+
+    const mergedAddress = {
+      ...(restaurant.address || {}),
+      ...(previewRestaurantOverride.address || {}),
+    };
+
+    const merged = {
+      ...restaurant,
+      ...previewRestaurantOverride,
+      address: mergedAddress,
+    };
+
+    if (!merged.addressText) {
+      merged.addressText = [
+        mergedAddress.line1,
+        mergedAddress.district,
+        mergedAddress.city,
+      ]
+        .filter(Boolean)
+        .join(", ");
+    }
+
+    if (!merged.district) {
+      merged.district = mergedAddress.district || "";
+    }
+
+    if (!merged.cuisine) {
+      merged.cuisine = merged.cuisineType || "";
+    }
+
+    if (merged.rating == null && merged.avgRating != null) {
+      merged.rating = merged.avgRating;
+    }
+
+    return merged;
+  })();
+
   const imgAvaUrl =
-    restaurant.avatar || restaurant.imgAvaUrl || "/default-avatar.png";
+    resolvedRestaurant.avatar ||
+    resolvedRestaurant.imgAvaUrl ||
+    "/default-avatar.png";
   const imgThumbUrl =
-    restaurant.coverImage || restaurant.imgThumbUrl || "/default-cover.jpg";
+    resolvedRestaurant.coverImage ||
+    resolvedRestaurant.imgThumbUrl ||
+    "/default-cover.jpg";
 
   const handleBookTable = () => {
     if (isPreviewMode) return;
-    navigate(`/restaurant/${restaurant.id}/layout`);
+    navigate(`/restaurant/${resolvedRestaurant.id}/layout`);
   };
 
   const tabs = [
@@ -83,34 +141,36 @@ const RestaurantDetail = () => {
         <div className="hero-content container">
           <div className="res-info-card">
             <div className="avatar-wrapper">
-              <img src={imgAvaUrl} alt={restaurant.name} />
+              <img src={imgAvaUrl} alt={resolvedRestaurant.name} />
             </div>
 
             <div className="info-text">
               <div className="bread-crumbs">
-                Trang chủ / Nhà hàng / {restaurant.district}
+                Trang chủ / Nhà hàng / {resolvedRestaurant.district}
               </div>
-              <h1 className="res-name">{restaurant.name}</h1>
+              <h1 className="res-name">{resolvedRestaurant.name}</h1>
 
               <div className="res-meta">
                 <span className="rating">
                   <Star size={16} fill="#f59e0b" stroke="none" />
-                  <strong>{restaurant.rating}</strong> (500+ đánh giá)
+                  <strong>{resolvedRestaurant.rating}</strong> (500+ đánh giá)
                 </span>
                 <span className="dot">•</span>
-                <span className="cuisine">{restaurant.cuisine}</span>
+                <span className="cuisine">{resolvedRestaurant.cuisine}</span>
                 <span className="dot">•</span>
                 <span
                   className={`status ${
-                    restaurant.status === "open" ? "open" : "closed"
+                    resolvedRestaurant.status === "open" ? "open" : "closed"
                   }`}
                 >
-                  {restaurant.status === "open" ? "Đang mở cửa" : "Đóng cửa"}
+                  {resolvedRestaurant.status === "open"
+                    ? "Đang mở cửa"
+                    : "Đóng cửa"}
                 </span>
               </div>
 
               <div className="res-address">
-                <MapPin size={16} /> {restaurant.addressText}
+                <MapPin size={16} /> {resolvedRestaurant.addressText}
               </div>
             </div>
 
@@ -153,18 +213,23 @@ const RestaurantDetail = () => {
       <div className="rd-container container">
         {/* Left Content */}
         <div className="main-content">
-          {activeTab === "menu" && <MenuSection restaurantId={restaurant.id} />}
+          {activeTab === "menu" && (
+            <MenuSection restaurantId={resolvedRestaurant.id} />
+          )}
           {activeTab === "reviews" && (
-            <ReviewsSection restaurantId={restaurant.id} />
+            <ReviewsSection restaurantId={resolvedRestaurant.id} />
           )}
           {activeTab === "promotions" && (
-            <PromotionsSection restaurantId={restaurant.id} />
+            <PromotionsSection restaurantId={resolvedRestaurant.id} />
           )}
           {activeTab === "photos" && (
-            <PhotoGallery photos={restaurant.photos} />
+            <PhotoGallery photos={resolvedRestaurant.photos} />
           )}
           {activeTab === "info" && (
-            <RestaurantInfo restaurant={restaurant} isPreviewMode={isPreviewMode} />
+            <RestaurantInfo
+              restaurant={resolvedRestaurant}
+              isPreviewMode={isPreviewMode}
+            />
           )}
         </div>
 
@@ -185,9 +250,9 @@ const RestaurantDetail = () => {
           <div className="similar-widget">
             <h3>Có thể bạn thích</h3>
             <SimilarRestaurants
-              currentRestaurantId={restaurant.id}
-              cuisine={restaurant.cuisine}
-              district={restaurant.district}
+              currentRestaurantId={resolvedRestaurant.id}
+              cuisine={resolvedRestaurant.cuisine}
+              district={resolvedRestaurant.district}
             />
           </div>
         </aside>

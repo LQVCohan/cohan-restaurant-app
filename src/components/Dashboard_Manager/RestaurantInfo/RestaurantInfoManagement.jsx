@@ -227,6 +227,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const baselineRef = useRef("");
   const avatarInputRef = useRef(null);
   const coverInputRef = useRef(null);
+  const previewIframeRef = useRef(null);
 
   const [restaurantForm, setRestaurantForm] = useState({
     name: "",
@@ -497,6 +498,57 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       setUploadingType("");
     }
   };
+
+  const previewRestaurantData = useMemo(() => {
+    const normalizedStatus = restaurantForm.status === "active" ? "open" : "closed";
+    const district = restaurantForm.district || "";
+    const city = restaurantForm.city || "";
+    const line1 = restaurantForm.line1 || "";
+    return {
+      id: selectedRestaurantId || null,
+      name: restaurantForm.name || "",
+      avatar: restaurantForm.avatar || "",
+      coverImage: restaurantForm.coverImage || "",
+      cuisine: restaurantForm.cuisineType || "",
+      cuisineType: restaurantForm.cuisineType || "",
+      status: normalizedStatus,
+      rating: Number(restaurantForm.avgRating) || 0,
+      avgRating: Number(restaurantForm.avgRating) || 0,
+      district,
+      addressText: [line1, district, city].filter(Boolean).join(", "),
+      address: {
+        line1,
+        district,
+        city,
+      },
+      phone: restaurantForm.phone || "",
+      email: restaurantForm.email || "",
+      description: restaurantForm.description || "",
+      amenities: {
+        wifi: Boolean(restaurantForm.amenities?.wifi),
+        parking: Boolean(restaurantForm.amenities?.parking),
+        card: Boolean(restaurantForm.amenities?.card),
+      },
+      notesOnAmenities: JSON.stringify(restaurantForm.customerInfo || {}),
+    };
+  }, [restaurantForm, selectedRestaurantId]);
+
+  const pushPreviewUpdate = (payload) => {
+    const iframeWindow = previewIframeRef.current?.contentWindow;
+    if (!iframeWindow || !payload) return;
+    iframeWindow.postMessage(
+      {
+        type: "restaurant-preview:update",
+        payload,
+      },
+      window.location.origin,
+    );
+  };
+
+  useEffect(() => {
+    if (!selectedRestaurantId) return;
+    pushPreviewUpdate(previewRestaurantData);
+  }, [previewRestaurantData, selectedRestaurantId]);
 
   const onRefresh = async () => {
     if (!selectedRestaurantId) return;
@@ -1251,9 +1303,11 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               <div className="desktop-preview-card">
                 {selectedRestaurantId ? (
                   <iframe
+                    ref={previewIframeRef}
                     title="RestaurantDetail Preview"
                     src={`/preview/restaurant/${selectedRestaurantId}?preview=1`}
                     className="desktop-iframe"
+                    onLoad={() => pushPreviewUpdate(previewRestaurantData)}
                   />
                 ) : (
                   <div className="empty-preview">
