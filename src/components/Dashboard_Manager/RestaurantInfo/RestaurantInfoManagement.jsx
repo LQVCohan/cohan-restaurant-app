@@ -1292,6 +1292,18 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           <Text type="secondary">
             Quản lý hình ảnh và thông tin hiển thị trên ứng dụng khách hàng
           </Text>
+          <div className="status-pill-row">
+            <Tag color={restaurantForm.status === "active" ? "green" : "orange"}>
+              {restaurantForm.status === "active"
+                ? "Đang hoạt động"
+                : "Tạm ngưng"}
+            </Tag>
+            {isDirty ? (
+              <Tag color="gold">Có thay đổi chưa lưu</Tag>
+            ) : (
+              <Tag color="blue">Đã đồng bộ</Tag>
+            )}
+          </div>
         </div>
 
         <div className="header-actions">
@@ -1343,6 +1355,28 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             </Button>
           </Space>
         </div>
+      </div>
+
+      <div className="quick-metrics-grid">
+        <Card variant="borderless" className="metric-card">
+          <Badge color="#6366f1" />
+          <Text type="secondary">Đánh giá trung bình</Text>
+          <Title level={4}>{Number(restaurantForm.avgRating || 0).toFixed(1)} / 5</Title>
+        </Card>
+        <Card variant="borderless" className="metric-card">
+          <Badge color="#0ea5e9" />
+          <Text type="secondary">Danh mục hiển thị</Text>
+          <Title level={4}>
+            {activeIndex?.distinctCategoryCount || categories.length || 0}
+          </Title>
+        </Card>
+        <Card variant="borderless" className="metric-card">
+          <Badge color="#f59e0b" />
+          <Text type="secondary">Tiện ích đã bật</Text>
+          <Title level={4}>
+            {Object.values(restaurantForm.amenities || {}).filter(Boolean).length}
+          </Title>
+        </Card>
       </div>
 
       <Row gutter={[24, 24]} className="main-layout">
