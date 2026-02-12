@@ -379,7 +379,10 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       notesOnAmenities: r.notesOnAmenities || "",
       avatar: r.avatar || "",
       coverImage: r.coverImage || "",
-      customerInfo: normalizeCustomerInfo(parsedCustomerInfo),
+      customerInfo: normalizeCustomerInfo({
+        ...parsedCustomerInfo,
+        story: parsedCustomerInfo?.story || r.description || "",
+      }),
       line1: r.address?.line1 || "",
       district: r.address?.district || "",
       city: r.address?.city || "",
@@ -518,7 +521,14 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       ? `Dưới bàn tay dẫn dắt của ${restaurantForm.customerInfo.chef},`
       : "";
     const description = `${name} là điểm hẹn ${cuisine}, nơi thực khách không chỉ thưởng thức món ngon mà còn cảm nhận được ${story}. ${chef} mỗi chi tiết trong trải nghiệm đều được nâng niu để tạo nên dấu ấn tinh tế, sang trọng và đáng nhớ.`;
-    setRestaurantForm((prev) => ({ ...prev, description }));
+    setRestaurantForm((prev) => ({
+      ...prev,
+      description,
+      customerInfo: {
+        ...prev.customerInfo,
+        story: description,
+      },
+    }));
     setIsDirty(true);
     message.success("A.I đã tạo mô tả văn hoa mỹ từ");
   };
@@ -592,7 +602,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       },
       phone: restaurantForm.phone || "",
       email: restaurantForm.email || "",
-      description: restaurantForm.description || "",
+      description:
+        normalizeCustomerInfo(restaurantForm.customerInfo).story || "",
       about: normalizedCustomerInfo.story || "",
       chef: normalizedCustomerInfo.chef || "",
       suitableFor: normalizedCustomerInfo.suitableFor || [],
@@ -670,7 +681,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             name: restaurantForm.name,
             phone: restaurantForm.phone || null,
             email: restaurantForm.email || null,
-            description: restaurantForm.description || null,
+            description: normalizedCustomerInfo.story || null,
             openingHours: restaurantForm.openingHours || null,
             closingHours: restaurantForm.closingHours || null,
             cuisineType: restaurantForm.cuisineType || null,
@@ -707,7 +718,11 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             ["name", restaurantForm.name?.trim(), latestRestaurant.name || ""],
             ["phone", restaurantForm.phone?.trim() || "", latestRestaurant.phone || ""],
             ["email", restaurantForm.email?.trim() || "", latestRestaurant.email || ""],
-            ["description", restaurantForm.description?.trim() || "", latestRestaurant.description || ""],
+            [
+              "description",
+              normalizedCustomerInfo.story || "",
+              latestRestaurant.description || "",
+            ],
             ["openingHours", restaurantForm.openingHours || "", latestRestaurant.openingHours || ""],
             ["closingHours", restaurantForm.closingHours || "", latestRestaurant.closingHours || ""],
             ["cuisineType", restaurantForm.cuisineType || "", latestRestaurant.cuisineType || ""],
@@ -971,16 +986,13 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                     <div className="ai-textarea-wrapper">
                       <TextArea
                         rows={4}
-                        value={restaurantForm.description}
+                        value={restaurantForm.customerInfo?.story}
                         onChange={(e) =>
-                          setRestaurantForm((p) => ({
-                            ...p,
-                            description: e.target.value,
-                          }))
+                          updateCustomerInfoField("story", e.target.value)
                         }
                         showCount
-                        maxLength={1000}
-                        placeholder="Mô tả về nhà hàng của bạn..."
+                        maxLength={1200}
+                        placeholder="Nhập câu chuyện thương hiệu hiển thị ở phần 'Về chúng tôi'"
                       />
                       <Button
                         type="dashed"
@@ -991,19 +1003,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                         ✨ AI Rewrite
                       </Button>
                     </div>
-                  </Form.Item>
-
-                  <Form.Item label="Câu chuyện thương hiệu (Story)">
-                    <TextArea
-                      rows={4}
-                      value={restaurantForm.customerInfo?.story}
-                      onChange={(e) =>
-                        updateCustomerInfoField("story", e.target.value)
-                      }
-                      showCount
-                      maxLength={1200}
-                      placeholder="Nhập câu chuyện thương hiệu hiển thị ở phần 'Về chúng tôi'"
-                    />
                   </Form.Item>
 
                   <Form.Item label="Bếp trưởng điều hành">
