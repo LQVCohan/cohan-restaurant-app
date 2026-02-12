@@ -17,6 +17,85 @@ import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManag
 import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
 import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/PrintManagement";
 import { ManagerRestaurantInfoManagement } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
+import {
+  BarChartOutlined,
+  ShopOutlined,
+  TableOutlined,
+  ShoppingCartOutlined,
+  TeamOutlined,
+  AppstoreOutlined,
+  InboxOutlined,
+  StarOutlined,
+  DollarOutlined,
+} from "@ant-design/icons";
+const PAGE_META = {
+  dashboard: {
+    title: "Tổng quan vận hành",
+    subtitle: "Theo dõi dữ liệu nhà hàng theo thời gian thực với giao diện quản trị hiện đại.",
+    icon: <BarChartOutlined />,
+  },
+  tables: {
+    title: "Quản lý bàn",
+    subtitle: "Kiểm soát sơ đồ bàn, trạng thái sử dụng và tốc độ phục vụ trực tiếp.",
+    icon: <TableOutlined />,
+  },
+  orders: {
+    title: "Quản lý đơn hàng",
+    subtitle: "Tập trung xử lý đơn, đồng bộ trạng thái và tối ưu thời gian phản hồi.",
+    icon: <ShoppingCartOutlined />,
+  },
+  menu: {
+    title: "Quản lý thực đơn",
+    subtitle: "Cập nhật món ăn, giá bán và danh mục theo chuẩn hiển thị mới.",
+    icon: <AppstoreOutlined />,
+  },
+  inventory: {
+    title: "Quản lý kho",
+    subtitle: "Theo dõi tồn kho, nguyên liệu và cảnh báo nhập hàng trong một màn hình.",
+    icon: <InboxOutlined />,
+  },
+  staff: {
+    title: "Quản lý nhân sự",
+    subtitle: "Quản lý thông tin nhân viên, phân quyền và hiệu suất làm việc đồng bộ.",
+    icon: <TeamOutlined />,
+  },
+  customers: {
+    title: "Quản lý khách hàng",
+    subtitle: "Nâng cao trải nghiệm khách thân thiết bằng dữ liệu tập trung và trực quan.",
+    icon: <TeamOutlined />,
+  },
+  analytics: {
+    title: "Phân tích vận hành",
+    subtitle: "Đọc số liệu kinh doanh sâu hơn với dashboard nhiều lớp thông tin.",
+    icon: <BarChartOutlined />,
+  },
+  finance: {
+    title: "Quản lý tài chính",
+    subtitle: "Theo dõi doanh thu, chi phí và dòng tiền với cấu trúc dễ kiểm soát.",
+    icon: <DollarOutlined />,
+  },
+  promotions: {
+    title: "Quản lý khuyến mãi",
+    subtitle: "Tạo ưu đãi linh hoạt để thúc đẩy chuyển đổi và tăng lượt quay lại.",
+    icon: <StarOutlined />,
+  },
+  reviews: {
+    title: "Quản lý đánh giá",
+    subtitle: "Theo dõi phản hồi khách hàng để cải thiện chất lượng dịch vụ tức thời.",
+    icon: <StarOutlined />,
+  },
+  "print-management": {
+    title: "Quản lý in ấn",
+    subtitle: "Cấu hình thiết bị in và quy trình phát lệnh nhanh, ổn định.",
+    icon: <AppstoreOutlined />,
+  },
+  "restaurant-info-management": {
+    title: "Hồ sơ nhà hàng",
+    subtitle: "Quản lý hình ảnh, thương hiệu và thông tin hiển thị chuẩn trải nghiệm mới.",
+    icon: <ShopOutlined />,
+  },
+};
+
 const ManagerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -111,6 +190,12 @@ const ManagerLayout = () => {
     setSidebarOpen((prev) => !prev);
   };
 
+  const currentMeta = PAGE_META[currentPage] || {
+    title: "Trang quản lý",
+    subtitle: "Không gian quản trị tập trung theo tiêu chuẩn giao diện mới.",
+    icon: <ShopOutlined />,
+  };
+
   const closeSidebar = () => {
     setSidebarOpen(false);
   };
@@ -191,7 +276,23 @@ const ManagerLayout = () => {
         </div>
 
         {/* Content */}
-        <main className="manager-layout__content">{renderContent()}</main>
+        <main className="manager-layout__content">
+          <section className="manager-page-shell">
+            <div className="manager-page-shell__hero">
+              <div className="hero-badge">{currentMeta.icon}</div>
+              <div className="hero-text">
+                <h1>{currentMeta.title}</h1>
+                <p>{currentMeta.subtitle}</p>
+              </div>
+              <div className="hero-chips">
+                <span>Design System mới</span>
+                <span>Live Data Ready</span>
+                <span>Responsive UX</span>
+              </div>
+            </div>
+            <div className="manager-page-shell__body">{renderContent()}</div>
+          </section>
+        </main>
       </div>
     </div>
   );
