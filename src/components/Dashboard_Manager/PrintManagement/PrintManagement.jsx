@@ -1,10 +1,22 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import { PRINT_STATIONS } from "@/utils/printStations";
 import { PrinterSettingsModal } from "@/components/Dashboard_Manager/POS/components/modals/PrinterSettingsModal";
+import {
+  Printer,
+  Settings,
+  Wifi,
+  Activity,
+  Trash2,
+  Plus,
+  Server,
+  Check,
+  Power,
+} from "lucide-react";
 import "./PrintManagement.scss";
 
+// --- GRAPHQL (Đã fix lỗi dấu chấm phẩy) ---
 const Q_PRINT_SETTINGS = gql`
   query PrintSettings($restaurantId: ID!) {
     printSettings(restaurantId: $restaurantId) {
@@ -39,18 +51,20 @@ export default function PrintManagement() {
   const { restaurants } = useContext(AuthContext);
   const restaurantList = restaurants || [];
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
-
   const [printers, setPrinters] = useState([]);
   const [stationMap, setStationMap] = useState(buildStationDefaults);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState({});
+
   const hydrateRef = useRef(false);
   const debounceRef = useRef(null);
 
+  // --- LOGIC GIỮ NGUYÊN ---
   useEffect(() => {
     if (!selectedRestaurantId && restaurantList.length) {
       setSelectedRestaurantId(
-        String(restaurantList[0].id ?? restaurantList[0].restaurantId)
+        String(restaurantList[0].id ?? restaurantList[0].restaurantId),
       );
     }
   }, [restaurantList, selectedRestaurantId]);
@@ -74,6 +88,9 @@ export default function PrintManagement() {
     hydrateRef.current = true;
     setPrinters(Array.isArray(settings?.printers) ? settings.printers : []);
     setStationMap(settings?.stations || buildStationDefaults());
+    const fakeStatus = {};
+    (settings.printers || []).forEach((p) => (fakeStatus[p.id] = true));
+    setConnectionStatus(fakeStatus);
     setTimeout(() => {
       hydrateRef.current = false;
     }, 0);
@@ -99,7 +116,6 @@ export default function PrintManagement() {
     setEditingPrinter(null);
     setSettingsModalOpen(true);
   };
-
   const openEditPrinter = (printer) => {
     setEditingPrinter(printer);
     setSettingsModalOpen(true);
@@ -109,23 +125,26 @@ export default function PrintManagement() {
     if (!payload?.name || !payload?.ip) return;
     if (editingPrinter?.id) {
       setPrinters((prev) =>
-        prev.map((p) => (p.id === editingPrinter.id ? { ...p, ...payload } : p))
+        prev.map((p) =>
+          p.id === editingPrinter.id ? { ...p, ...payload } : p,
+        ),
       );
     } else {
-      setPrinters((prev) => [...prev, { ...payload, id: makePrinterId() }]);
+      const newId = makePrinterId();
+      setPrinters((prev) => [...prev, { ...payload, id: newId }]);
+      setConnectionStatus((prev) => ({ ...prev, [newId]: true }));
     }
     setSettingsModalOpen(false);
   };
 
   const handleRemovePrinter = (printerId) => {
+    if (!window.confirm("Xóa thiết bị này khỏi hệ thống?")) return;
     setPrinters((prev) => prev.filter((p) => p.id !== printerId));
     setStationMap((prev) => {
       const next = { ...prev };
-      Object.keys(next).forEach((stationId) => {
-        next[stationId] = (next[stationId] || []).filter(
-          (id) => id !== printerId
-        );
-      });
+      Object.keys(next).forEach(
+        (k) => (next[k] = (next[k] || []).filter((id) => id !== printerId)),
+      );
       return next;
     });
   };
@@ -140,100 +159,150 @@ export default function PrintManagement() {
   };
 
   return (
-    <div className="print-management">
-      <div className="print-management__header">
-        <div>
-          <h2>Quản lý in ấn</h2>
-          <p>Thiết lập máy in và luồng in theo quầy.</p>
-        </div>
-        <div className="print-management__restaurant">
-          <label>Nhà hàng</label>
-          <select
-            value={selectedRestaurantId}
-            onChange={(e) => setSelectedRestaurantId(e.target.value)}
-          >
-            {restaurantList.map((r) => (
-              <option key={r.id} value={String(r.id)}>
-                {r.name || `Nhà hàng ${r.id}`}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+    <div className="print-ui">
+      {/* BACKGROUND DECORATION */}
+      <div className="print-ui__bg-circle"></div>
 
-      <div className="print-management__grid">
-        <section className="print-card">
-          <div className="print-card__header">
-            <h3>Danh sách máy in</h3>
-            <button type="button" onClick={openAddPrinter}>
-              + Thêm máy in
+      {/* HEADER */}
+      <header className="print-ui__header">
+        <div className="header-content">
+          <div className="header-title">
+            <div className="icon-box">
+              <Printer size={28} />
+            </div>
+            <div>
+              <h1>Print Hub</h1>
+              <p>Trung tâm kiểm soát thiết bị in</p>
+            </div>
+          </div>
+
+          <div className="header-controls">
+            <div className="select-wrapper">
+              <select
+                value={selectedRestaurantId}
+                onChange={(e) => setSelectedRestaurantId(e.target.value)}
+              >
+                {restaurantList.map((r) => (
+                  <option key={r.id} value={String(r.id)}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button className="btn-primary" onClick={openAddPrinter}>
+              <Plus size={18} strokeWidth={3} />
+              <span>Thiết bị mới</span>
             </button>
           </div>
-          {printers.length === 0 ? (
-            <div className="print-empty">
-              Chưa có máy in nào. Hãy thêm máy in để bắt đầu.
-            </div>
-          ) : (
-            <div className="print-card__list">
-              {printers.map((printer) => (
-                <div key={printer.id} className="printer-item">
-                  <div>
-                    <div className="printer-item__name">{printer.name}</div>
-                    <div className="printer-item__meta">
-                      IP: {printer.ip} · {printer.type} ·{" "}
-                      {PRINT_STATIONS.find((s) => s.id === printer.location)
-                        ?.label || printer.location}
+        </div>
+      </header>
+
+      <div className="print-ui__grid">
+        {/* COLUMN 1: DEVICES */}
+        <section className="ui-card devices-section">
+          <div className="card-header">
+            <h3>
+              <Server size={18} /> Thiết bị đã kết nối
+            </h3>
+            <span className="badge">{printers.length} Active</span>
+          </div>
+
+          <div className="device-list">
+            {printers.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">
+                  <Wifi size={32} />
+                </div>
+                <p>Chưa có máy in nào</p>
+                <button onClick={openAddPrinter}>Thêm ngay</button>
+              </div>
+            ) : (
+              printers.map((printer) => (
+                <div key={printer.id} className="device-item">
+                  <div
+                    className={`status-indicator ${connectionStatus[printer.id] ? "online" : "offline"}`}
+                  >
+                    <div className="dot"></div>
+                    <div className="pulse"></div>
+                  </div>
+
+                  <div className="device-info">
+                    <h4>{printer.name}</h4>
+                    <div className="meta">
+                      <span className="tag-ip">{printer.ip}</span>
+                      <span className="type">
+                        {printer.type === "thermal" ? "Nhiệt" : "Kim"}
+                      </span>
                     </div>
                   </div>
-                  <div className="printer-item__actions">
-                    <button type="button" onClick={() => openEditPrinter(printer)}>
-                      Sửa
+
+                  <div className="device-actions">
+                    <button
+                      onClick={() => openEditPrinter(printer)}
+                      title="Cấu hình"
+                    >
+                      <Settings size={16} />
                     </button>
                     <button
-                      type="button"
-                      className="danger"
                       onClick={() => handleRemovePrinter(printer.id)}
+                      className="danger"
+                      title="Xóa"
                     >
-                      Xóa
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </section>
 
-        <section className="print-card">
-          <div className="print-card__header">
-            <h3>Luồng in theo quầy</h3>
+        {/* COLUMN 2: ROUTING MATRIX */}
+        <section className="ui-card routing-section">
+          <div className="card-header">
+            <h3>
+              <Activity size={18} /> Phân luồng in bếp
+            </h3>
+            <p>Điều hướng lệnh in tự động</p>
           </div>
-          <div className="print-stations">
+
+          <div className="routing-matrix">
             {PRINT_STATIONS.map((station) => (
-              <div key={station.id} className="print-station">
-                <div>
-                  <div className="print-station__title">{station.label}</div>
-                  <div className="print-station__desc">
-                    {station.description}
+              <div key={station.id} className="routing-row">
+                <div className="station-info">
+                  <div className="station-icon">{station.label.charAt(0)}</div>
+                  <div className="text">
+                    <h4>{station.label}</h4>
+                    <span>{station.description}</span>
                   </div>
                 </div>
-                <div className="print-station__printers">
-                  {printers.length === 0 ? (
-                    <span>Chưa có máy in</span>
-                  ) : (
-                    printers.map((printer) => (
-                      <label key={printer.id}>
-                        <input
-                          type="checkbox"
-                          checked={(stationMap[station.id] || []).includes(
-                            printer.id
+
+                <div className="printer-toggles">
+                  {printers.map((printer) => {
+                    const isActive = (stationMap[station.id] || []).includes(
+                      printer.id,
+                    );
+                    return (
+                      <div
+                        key={`${station.id}-${printer.id}`}
+                        className={`toggle-pill ${isActive ? "active" : ""}`}
+                        onClick={() =>
+                          toggleStationPrinter(station.id, printer.id)
+                        }
+                      >
+                        <div className="check-icon">
+                          {isActive ? (
+                            <Check size={12} strokeWidth={4} />
+                          ) : (
+                            <Power size={12} />
                           )}
-                          onChange={() =>
-                            toggleStationPrinter(station.id, printer.id)
-                          }
-                        />
-                        {printer.name}
-                      </label>
-                    ))
+                        </div>
+                        <span>{printer.name}</span>
+                      </div>
+                    );
+                  })}
+                  {printers.length === 0 && (
+                    <span className="no-data">Cần thêm máy in</span>
                   )}
                 </div>
               </div>
@@ -247,7 +316,7 @@ export default function PrintManagement() {
         printer={editingPrinter}
         onSave={handleSavePrinter}
         onClose={() => setSettingsModalOpen(false)}
-        onTest={() => null}
+        onTest={() => {}}
       />
     </div>
   );

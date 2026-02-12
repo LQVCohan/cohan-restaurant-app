@@ -982,7 +982,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                     </Col>
                   </Row>
 
-                  <Form.Item label="Câu chuyện thương hiệu (Story)">
+                  <Form.Item label="Mô tả ngắn hiển thị">
                     <div className="ai-textarea-wrapper">
                       <TextArea
                         rows={4}
