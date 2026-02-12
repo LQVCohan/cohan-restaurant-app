@@ -1,156 +1,462 @@
-.print-management {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding: 1.5rem;
-}
+// --- VARIABLES & THEME ---
+$primary: #4f46e5; // Indigo 600 - Màu chủ đạo hiện đại
+$primary-glow: rgba(79, 70, 229, 0.4);
+$secondary: #64748b;
+$bg-app: #f3f4f6; // Nền xám nhạt tinh tế
+$card-bg: #ffffff;
+$success: #10b981;
+$danger: #ef4444;
+$text-dark: #1e293b;
+$border-radius: 16px; // Bo góc lớn theo trend Apple/iOS
 
-.print-management__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
-  h2 {
-    margin: 0 0 0.25rem;
-    font-size: 1.5rem;
+// --- ANIMATIONS ---
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
   }
-  p {
-    margin: 0;
-    color: #64748b;
-  }
-}
-
-.print-management__restaurant {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  label {
-    font-size: 0.85rem;
-    color: #475569;
-  }
-  select {
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    border: 1px solid #e2e8f0;
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
   }
 }
 
-.print-management__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1.5rem;
-}
-
-.print-card {
-  background: #fff;
-  border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.print-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  h3 {
-    margin: 0;
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-  button {
-    padding: 0.45rem 0.85rem;
-    border-radius: 999px;
-    border: 1px solid #f97316;
-    background: #fff7ed;
-    color: #c2410c;
-    cursor: pointer;
-    font-weight: 600;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-.print-empty {
-  color: #64748b;
-  padding: 0.5rem 0;
-}
+.print-ui {
+  font-family:
+    "Inter",
+    -apple-system,
+    sans-serif;
+  background-color: $bg-app;
+  min-height: 100vh;
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
 
-.print-card__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.printer-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem;
-  border-radius: 0.6rem;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-}
-
-.printer-item__name {
-  font-weight: 700;
-}
-
-.printer-item__meta {
-  color: #64748b;
-  font-size: 0.85rem;
-}
-
-.printer-item__actions {
-  display: flex;
-  gap: 0.5rem;
-  button {
-    padding: 0.35rem 0.7rem;
-    border-radius: 0.5rem;
-    border: 1px solid #e2e8f0;
-    background: #fff;
-    cursor: pointer;
-    font-weight: 600;
-  }
-  .danger {
-    border-color: #fecaca;
-    color: #b91c1c;
+  // Background decoration (Vòng tròn mờ phía sau)
+  &__bg-circle {
+    position: absolute;
+    top: -100px;
+    right: -100px;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(
+      circle,
+      rgba($primary, 0.1) 0%,
+      rgba(255, 255, 255, 0) 70%
+    );
+    z-index: 0;
+    pointer-events: none;
   }
 }
 
-.print-stations {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
+// --- HEADER ---
+.print-ui__header {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 40px;
 
-.print-station {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border-radius: 0.6rem;
-  border: 1px dashed #e2e8f0;
-}
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
 
-.print-station__title {
-  font-weight: 700;
-}
-
-.print-station__desc {
-  font-size: 0.85rem;
-  color: #64748b;
-}
-
-.print-station__printers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  label {
+  .header-title {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
-    font-size: 0.9rem;
+    gap: 16px;
+
+    .icon-box {
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, $primary, darken($primary, 10%));
+      color: white;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 16px $primary-glow;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 800;
+      color: $text-dark;
+      letter-spacing: -0.5px;
+    }
+    p {
+      margin: 4px 0 0;
+      color: $secondary;
+      font-size: 14px;
+    }
+  }
+
+  .header-controls {
+    display: flex;
+    gap: 16px;
+
+    select {
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      background: white;
+      font-weight: 600;
+      color: $text-dark;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+      transition: all 0.2s;
+      &:hover {
+        border-color: $primary;
+      }
+      &:focus {
+        outline: none;
+        border-color: $primary;
+        box-shadow: 0 0 0 3px $primary-glow;
+      }
+    }
+
+    .btn-primary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: $text-dark; // Đen tạo sự sang trọng
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+      &:hover {
+        background: lighten($text-dark, 10%);
+        transform: translateY(-2px);
+      }
+    }
+  }
+}
+
+// --- GRID LAYOUT ---
+.print-ui__grid {
+  display: grid;
+  grid-template-columns: 380px 1fr; // Cột trái cố định
+  gap: 32px;
+  position: relative;
+  z-index: 1;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// --- CARD GENERAL STYLE ---
+.ui-card {
+  background: $card-bg;
+  border-radius: $border-radius;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04); // Bóng mờ rất nhẹ
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  animation: slide-up 0.5s ease-out;
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f1f5f9;
+
+    h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: $text-dark;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: $secondary;
+      font-weight: normal;
+    }
+
+    .badge {
+      background: #eff6ff;
+      color: $primary;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+  }
+}
+
+// --- DEVICE LIST (Left Column) ---
+.device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.device-item {
+  position: relative;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+
+  &:hover {
+    border-color: $primary;
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.05);
+    transform: translateY(-2px);
+  }
+
+  // Thanh màu bên trái
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #e2e8f0;
+    transition: background 0.2s;
+  }
+  &:hover::before {
+    background: $primary;
+  }
+
+  // Status Pulse
+  .status-indicator {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    margin-left: 8px; // Cách thanh màu
+
+    .dot {
+      width: 100%;
+      height: 100%;
+      background: #cbd5e1;
+      border-radius: 50%;
+      position: relative;
+      z-index: 2;
+    }
+    .pulse {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      z-index: 1;
+    }
+
+    &.online {
+      .dot {
+        background: $success;
+        box-shadow: 0 0 0 2px rgba($success, 0.2);
+      }
+      .pulse {
+        border: 3px solid $success;
+        animation: pulse-ring 2s infinite;
+      }
+    }
+  }
+
+  .device-info {
+    flex: 1;
+    h4 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .meta {
+      display: flex;
+      gap: 8px;
+
+      .tag-ip {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 11px;
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: $secondary;
+      }
+      .type {
+        font-size: 11px;
+        color: $secondary;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+  }
+
+  .device-actions {
+    display: flex;
+    gap: 8px;
+    opacity: 0.5; // Ẩn nhẹ
+    transition: opacity 0.2s;
+
+    button {
+      background: transparent;
+      border: 1px solid #e2e8f0;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: $secondary;
+      transition: all 0.2s;
+
+      &:hover {
+        background: $primary;
+        color: white;
+        border-color: $primary;
+      }
+      &.danger:hover {
+        background: $danger;
+        color: white;
+        border-color: $danger;
+      }
+    }
+  }
+
+  &:hover .device-actions {
+    opacity: 1;
+  } // Hiện rõ khi hover
+}
+
+// --- ROUTING MATRIX (Right Column) ---
+.routing-section {
+  .routing-row {
+    display: flex;
+    align-items: center; // Căn giữa theo chiều dọc
+    justify-content: space-between;
+    padding: 20px;
+    margin-bottom: 12px;
+    background: #f8fafc;
+    border-radius: 12px;
+    transition: background 0.2s;
+
+    &:hover {
+      background: #f1f5f9;
+    }
+  }
+
+  .station-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 200px; // Cố định chiều rộng title
+    flex-shrink: 0;
+
+    .station-icon {
+      width: 40px;
+      height: 40px;
+      background: white;
+      border-radius: 10px;
+      color: $primary;
+      font-weight: 800;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .text {
+      h4 {
+        margin: 0;
+        font-size: 15px;
+        color: $text-dark;
+      }
+      span {
+        font-size: 12px;
+        color: $secondary;
+      }
+    }
+  }
+
+  .printer-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  // Nút Toggle dạng "Viên thuốc" cao cấp
+  .toggle-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px 8px 12px;
+    background: white;
+    border: 2px solid #e2e8f0; // Viền dày hơn
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.5, 1, 0.89, 1);
+    user-select: none;
+
+    .check-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s;
+    }
+
+    span {
+      font-size: 13px;
+      font-weight: 500;
+      color: $secondary;
+    }
+
+    &:hover {
+      border-color: darken(#e2e8f0, 10%);
+    }
+
+    // State: ACTIVE
+    &.active {
+      border-color: $primary;
+      background: rgba($primary, 0.05);
+
+      .check-icon {
+        background: $primary;
+        transform: scale(1.1);
+      }
+
+      span {
+        color: $primary;
+        font-weight: 600;
+      }
+    }
   }
 }
