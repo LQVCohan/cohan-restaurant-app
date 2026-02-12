@@ -19,7 +19,6 @@ import {
   Collapse,
   Progress,
   Divider,
-  Segmented,
 } from "antd";
 import {
   SaveOutlined,
@@ -220,7 +219,6 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const [drafts, setDrafts] = useState([]);
   const [extraAmenityInput, setExtraAmenityInput] = useState("");
   const [uploadingType, setUploadingType] = useState("");
-  const [previewMode, setPreviewMode] = useState("mobile");
   const [uploadProgress, setUploadProgress] = useState({
     avatar: 0,
     coverImage: 0,
@@ -229,6 +227,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const baselineRef = useRef("");
   const avatarInputRef = useRef(null);
   const coverInputRef = useRef(null);
+  const previewIframeRef = useRef(null);
 
   const [restaurantForm, setRestaurantForm] = useState({
     name: "",
@@ -500,6 +499,57 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     }
   };
 
+  const previewRestaurantData = useMemo(() => {
+    const normalizedStatus = restaurantForm.status === "active" ? "open" : "closed";
+    const district = restaurantForm.district || "";
+    const city = restaurantForm.city || "";
+    const line1 = restaurantForm.line1 || "";
+    return {
+      id: selectedRestaurantId || null,
+      name: restaurantForm.name || "",
+      avatar: restaurantForm.avatar || "",
+      coverImage: restaurantForm.coverImage || "",
+      cuisine: restaurantForm.cuisineType || "",
+      cuisineType: restaurantForm.cuisineType || "",
+      status: normalizedStatus,
+      rating: Number(restaurantForm.avgRating) || 0,
+      avgRating: Number(restaurantForm.avgRating) || 0,
+      district,
+      addressText: [line1, district, city].filter(Boolean).join(", "),
+      address: {
+        line1,
+        district,
+        city,
+      },
+      phone: restaurantForm.phone || "",
+      email: restaurantForm.email || "",
+      description: restaurantForm.description || "",
+      amenities: {
+        wifi: Boolean(restaurantForm.amenities?.wifi),
+        parking: Boolean(restaurantForm.amenities?.parking),
+        card: Boolean(restaurantForm.amenities?.card),
+      },
+      notesOnAmenities: JSON.stringify(restaurantForm.customerInfo || {}),
+    };
+  }, [restaurantForm, selectedRestaurantId]);
+
+  const pushPreviewUpdate = (payload) => {
+    const iframeWindow = previewIframeRef.current?.contentWindow;
+    if (!iframeWindow || !payload) return;
+    iframeWindow.postMessage(
+      {
+        type: "restaurant-preview:update",
+        payload,
+      },
+      window.location.origin,
+    );
+  };
+
+  useEffect(() => {
+    if (!selectedRestaurantId) return;
+    pushPreviewUpdate(previewRestaurantData);
+  }, [previewRestaurantData, selectedRestaurantId]);
+
   const onRefresh = async () => {
     if (!selectedRestaurantId) return;
     try {
@@ -537,7 +587,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     ].filter(Boolean);
 
     try {
-      await updateRestaurant({
+      const updateResult = await updateRestaurant({
         variables: {
           id: selectedRestaurantId,
           input: {
@@ -562,12 +612,49 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
           },
         },
       });
-      await refetchRestaurantDetail();
+
+      const gqlError = updateResult?.errors?.[0]?.message;
+      const updatedRestaurant = updateResult?.data?.updateRestaurant;
+      if (gqlError || !updatedRestaurant) {
+        throw new Error(gqlError || "Mutation updateRestaurant không trả về dữ liệu");
+      }
+
+      const latest = await refetchRestaurantDetail();
+      const latestRestaurant = latest?.data?.restaurant;
+      const hasMismatch = latestRestaurant
+        ? [
+            ["name", restaurantForm.name?.trim(), latestRestaurant.name || ""],
+            ["phone", restaurantForm.phone?.trim() || "", latestRestaurant.phone || ""],
+            ["email", restaurantForm.email?.trim() || "", latestRestaurant.email || ""],
+            ["description", restaurantForm.description?.trim() || "", latestRestaurant.description || ""],
+            ["openingHours", restaurantForm.openingHours || "", latestRestaurant.openingHours || ""],
+            ["closingHours", restaurantForm.closingHours || "", latestRestaurant.closingHours || ""],
+            ["cuisineType", restaurantForm.cuisineType || "", latestRestaurant.cuisineType || ""],
+            ["priceRange", restaurantForm.priceRange || "", latestRestaurant.priceRange || ""],
+            ["status", restaurantForm.status || "", latestRestaurant.status || ""],
+            ["avatar", restaurantForm.avatar || "", latestRestaurant.avatar || ""],
+            ["coverImage", restaurantForm.coverImage || "", latestRestaurant.coverImage || ""],
+            ["address.line1", restaurantForm.line1 || "", latestRestaurant.address?.line1 || ""],
+            ["address.district", restaurantForm.district || "", latestRestaurant.address?.district || ""],
+            ["address.city", restaurantForm.city || "", latestRestaurant.address?.city || ""],
+          ].some(([, expected, actual]) => (expected || "") !== (actual || ""))
+        : false;
+
+      if (hasMismatch) {
+        message.warning(
+          "Đã gửi yêu cầu lưu nhưng dữ liệu trả về chưa đồng bộ. Vui lòng tải lại trang hoặc kiểm tra lại API.",
+        );
+        setIsDirty(true);
+        return;
+      }
+
       setIsDirty(false);
       message.success("Cập nhật thông tin nhà hàng thành công");
-    } catch {
+    } catch (error) {
       saveDraftToLocal("Bản nháp tự động khi lỗi mạng");
-      message.error("Không thể cập nhật thông tin. Đã lưu bản nháp cục bộ.");
+      message.error(
+        error?.message || "Không thể cập nhật thông tin. Đã lưu bản nháp cục bộ.",
+      );
     }
   };
 
@@ -1205,46 +1292,22 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
 
         <Col xs={24} xl={10} xxl={9}>
           {/* LIVE PREVIEW */}
-          <div className="mobile-preview-wrapper">
+          <div className="preview-wrapper">
             <div className="preview-header">
               <div className="preview-label">
                 <FileTextOutlined /> Xem trước (Live Preview)
               </div>
-              <Segmented
-                value={previewMode}
-                onChange={setPreviewMode}
-                options={[
-                  { label: "Điện thoại", value: "mobile" },
-                  { label: "Desktop", value: "desktop" },
-                ]}
-              />
             </div>
 
-            <div className={`preview-stage ${previewMode}`}>
-              <div className="mock-phone">
-                <div className="camera-notch"></div>
-                <div className="screen-content">
-                  {selectedRestaurantId ? (
-                    <iframe
-                      title="RestaurantDetail Mobile Preview"
-                      src={`/preview/restaurant/${selectedRestaurantId}?preview=1`}
-                      className="app-iframe"
-                    />
-                  ) : (
-                    <div className="empty-preview">
-                      <ShopOutlined style={{ fontSize: 48, color: "#ccc" }} />
-                      <p>Vui lòng chọn nhà hàng</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
+            <div className="preview-stage">
               <div className="desktop-preview-card">
                 {selectedRestaurantId ? (
                   <iframe
-                    title="RestaurantDetail Desktop Preview"
+                    ref={previewIframeRef}
+                    title="RestaurantDetail Preview"
                     src={`/preview/restaurant/${selectedRestaurantId}?preview=1`}
                     className="desktop-iframe"
+                    onLoad={() => pushPreviewUpdate(previewRestaurantData)}
                   />
                 ) : (
                   <div className="empty-preview">
