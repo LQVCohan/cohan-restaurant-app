@@ -90,7 +90,24 @@ const Icons = {
 };
 
 const RestaurantInfo = ({ restaurant, isPreviewMode = false }) => {
-  const fullData = { ...EXTENDED_INFO, ...restaurant };
+  const parsedNotes = useMemo(() => {
+    if (!restaurant?.notesOnAmenities) return {};
+    try {
+      return JSON.parse(restaurant.notesOnAmenities);
+    } catch {
+      return {};
+    }
+  }, [restaurant?.notesOnAmenities]);
+
+  const fullData = {
+    ...EXTENDED_INFO,
+    ...restaurant,
+    about: restaurant?.about || parsedNotes.story || EXTENDED_INFO.about,
+    chef: restaurant?.chef || parsedNotes.chef || EXTENDED_INFO.chef,
+    suitableFor:
+      restaurant?.suitableFor || parsedNotes.suitableFor || EXTENDED_INFO.suitableFor,
+    faqs: restaurant?.faqs || parsedNotes.faqs || EXTENDED_INFO.faqs,
+  };
   const { status, text: statusText } = checkOpenStatus();
 
   // Amenities Configuration
