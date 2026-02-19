@@ -9,6 +9,25 @@ const __dirname = path.dirname(__filename);
 
 const REQUIRED_ENV_VARS = ["MONGO_URI", "JWT_SECRET"];
 
+function normalizeMongoEnvVars() {
+  const mongoUriCandidates = [
+    process.env.MONGO_URI,
+    process.env.MONGODB_URI,
+    process.env.DATABASE_URL,
+  ];
+
+  const mongoUri = mongoUriCandidates.find((v) => v && String(v).trim());
+  if (mongoUri && !process.env.MONGO_URI) {
+    process.env.MONGO_URI = String(mongoUri).trim();
+  }
+
+  if (!process.env.MONGO_DB || !String(process.env.MONGO_DB).trim()) {
+    const dbNameCandidates = [process.env.MONGODB_DB, process.env.DB_NAME];
+    const dbName = dbNameCandidates.find((v) => v && String(v).trim());
+    if (dbName) process.env.MONGO_DB = String(dbName).trim();
+  }
+}
+
 const CONDITIONAL_REQUIRED = [
   {
     when: (env) => String(env.ENABLE_RECAPTCHA || "").toLowerCase() === "true",
@@ -53,6 +72,8 @@ export function loadEnv() {
 
 
 function applyDevelopmentDefaults() {
+  normalizeMongoEnvVars();
+
   if ((process.env.NODE_ENV || "development") === "production") return;
 
   if (!process.env.JWT_SECRET || !String(process.env.JWT_SECRET).trim()) {
@@ -63,9 +84,6 @@ function applyDevelopmentDefaults() {
     process.env.MONGO_URI = "mongodb://127.0.0.1:27017/RestaurantDB";
   }
 
-  if (!process.env.MONGO_DB || !String(process.env.MONGO_DB).trim()) {
-    process.env.MONGO_DB = "RestaurantDB";
-  }
 }
 
 export function validateEnv() {
