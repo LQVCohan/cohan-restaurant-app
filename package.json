@@ -4,10 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --mode development",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:staging": "vite --mode staging",
+    "dev:production": "vite --mode production",
+    "build:staging": "vite build --mode staging",
+    "build:production": "vite build --mode production"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
