@@ -148,12 +148,13 @@ const useAuth = () => {
 // =========================
 // 🔐 PrivateRoute
 // =========================
-const PrivateRoute = ({
+export const PrivateRoute = ({
   children,
   allowedRoles,
   requireVerifiedEmail = false,
+  authState,
 }) => {
-  const { token, role, emailVerified, loading } = useAuth();
+  const { token, role, emailVerified, loading } = authState || useAuth();
   const location = useLocation();
 
   if (loading) return null;
