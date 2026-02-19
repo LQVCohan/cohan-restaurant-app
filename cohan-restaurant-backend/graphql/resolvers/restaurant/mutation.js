@@ -1,7 +1,12 @@
 // src/resolvers/restaurant.mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { User, Role, Restaurant, RestaurantCategoryIndex } from "../../../models/index.js";
+import {
+  User,
+  Role,
+  Restaurant,
+  RestaurantCategoryIndex,
+} from "../../../models/index.js";
 
 /* ========== Helpers chung cho Mutation ========== */
 function badInput(message) {
@@ -97,7 +102,7 @@ async function assertCanMutateRestaurant(user, restaurantDoc) {
   if (isAdmin(user)) return true;
   const manager = await isManager(user);
   if (!manager) throw forbidden("Insufficient permission");
-  if (String(restaurantDoc.managerId) !== String(user._id)) {
+  if (String(restaurantDoc.managerId) !== String(user.id)) {
     throw forbidden("You can only modify your own restaurant");
   }
   return true;
@@ -143,6 +148,7 @@ async function updateRestaurant(_, { id, input }, { user }) {
   const _id = toObjectId(id);
 
   const doc = await Restaurant.findById(_id);
+  console.log(doc);
   if (!doc) throw notFound("Restaurant not found");
   await assertCanMutateRestaurant(user, doc);
 
@@ -200,8 +206,6 @@ async function updateRestaurantManager(_, { input }, { user }) {
   return doc.toObject();
 }
 
-
-
 async function updateRestaurantCategoryIndex(_, { input }, { user }) {
   if (!user) throw forbidden("Unauthorized");
   const admin = isAdmin(user);
@@ -223,7 +227,7 @@ async function updateRestaurantCategoryIndex(_, { input }, { user }) {
     .map((id) => new mongoose.Types.ObjectId(id));
 
   const uniq = [...new Set(validCategoryIds.map((id) => String(id)))].map(
-    (id) => new mongoose.Types.ObjectId(id)
+    (id) => new mongoose.Types.ObjectId(id),
   );
 
   const updated = await RestaurantCategoryIndex.findOneAndUpdate(
@@ -231,11 +235,14 @@ async function updateRestaurantCategoryIndex(_, { input }, { user }) {
     {
       $set: {
         categoryIds: uniq,
-        categories: uniq.map((categoryId) => ({ categoryId, menuItemCount: 0 })),
+        categories: uniq.map((categoryId) => ({
+          categoryId,
+          menuItemCount: 0,
+        })),
         distinctCategoryCount: uniq.length,
       },
     },
-    { new: true, upsert: true }
+    { new: true, upsert: true },
   ).lean();
 
   return updated;
