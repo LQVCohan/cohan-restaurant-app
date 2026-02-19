@@ -372,34 +372,76 @@ export const UserMutation = {
     const normalizedUsername = username?.trim().toLowerCase();
     const normalizedPhone = phone ? normalizePhone(phone.trim()) : null;
 
-    const q = {
-      $or: [
-        ...(normalizedEmail
-          ? [
-              { email: normalizedEmail },
-              { email: { $regex: buildTrimmedExactRegex(normalizedEmail) } },
-            ]
-          : []),
-        ...(normalizedUsername
-          ? [
-              { username: normalizedUsername },
-              {
-                username: {
-                  $regex: buildTrimmedExactRegex(normalizedUsername),
-                },
+    const baseLookupOr = [
+      ...(normalizedEmail
+        ? [
+            { email: normalizedEmail },
+            { email: { $regex: buildTrimmedExactRegex(normalizedEmail) } },
+          ]
+        : []),
+      ...(normalizedUsername
+        ? [
+            { username: normalizedUsername },
+            {
+              username: {
+                $regex: buildTrimmedExactRegex(normalizedUsername),
               },
-            ]
-          : []),
-        ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
-      ],
-    };
-    if (q.$or.length === 0) {
+            },
+          ]
+        : []),
+      ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
+    ];
+
+    if (baseLookupOr.length === 0) {
       throw new GraphQLError("Provide one of email/username/phone", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
 
-    const user = await User.findOne(q).populate("role");
+    let user = await User.findOne({ $or: baseLookupOr }).populate("role");
+
+    // Fallback for legacy/imported records that may keep odd whitespace/casing.
+    if (!user) {
+      const normalizedLookupOr = [
+        ...(normalizedEmail
+          ? [
+              {
+                $expr: {
+                  $eq: [
+                    {
+                      $toLower: {
+                        $trim: { input: { $ifNull: ["$email", ""] } },
+                      },
+                    },
+                    normalizedEmail,
+                  ],
+                },
+              },
+            ]
+          : []),
+        ...(normalizedUsername
+          ? [
+              {
+                $expr: {
+                  $eq: [
+                    {
+                      $toLower: {
+                        $trim: { input: { $ifNull: ["$username", ""] } },
+                      },
+                    },
+                    normalizedUsername,
+                  ],
+                },
+              },
+            ]
+          : []),
+      ];
+
+      if (normalizedLookupOr.length > 0) {
+        user = await User.findOne({ $or: normalizedLookupOr }).populate("role");
+      }
+    }
+
     if (!user)
       throw new GraphQLError("Invalid credentials", {
         extensions: { code: "UNAUTHENTICATED" },
