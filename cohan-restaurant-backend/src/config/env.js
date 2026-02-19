@@ -46,10 +46,12 @@ function candidateEnvPaths() {
   const backendRoot = path.resolve(__dirname, "../..");
   const repoRoot = path.resolve(backendRoot, "..");
 
+  // Priority (low -> high): repo root, current cwd, backend root.
+  // backend/.env must win to avoid accidentally using frontend/root values.
   return [
+    path.resolve(repoRoot, ".env"),
     path.resolve(process.cwd(), ".env"),
     path.resolve(backendRoot, ".env"),
-    path.resolve(repoRoot, ".env"),
   ];
 }
 
@@ -63,7 +65,7 @@ export function loadEnv() {
 
     if (!fs.existsSync(envPath)) continue;
 
-    const result = dotenv.config({ path: envPath, override: false });
+    const result = dotenv.config({ path: envPath, override: true });
     if (!result.error) loadedFrom.push(envPath);
   }
 
