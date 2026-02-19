@@ -1,3 +1,5 @@
+@use "sass:color";
+
 // --- VARIABLES & THEME ---
 $primary: #4f46e5; // Indigo 600 - Màu chủ đạo hiện đại
 $primary-glow: rgba(79, 70, 229, 0.4);
@@ -80,7 +82,7 @@ $border-radius: 16px; // Bo góc lớn theo trend Apple/iOS
     .icon-box {
       width: 52px;
       height: 52px;
-      background: linear-gradient(135deg, $primary, darken($primary, 10%));
+      background: linear-gradient(135deg, $primary, color.adjust($primary, $lightness: -10%));
       color: white;
       border-radius: 14px;
       display: flex;
@@ -142,7 +144,7 @@ $border-radius: 16px; // Bo góc lớn theo trend Apple/iOS
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 
       &:hover {
-        background: lighten($text-dark, 10%);
+        background: color.adjust($text-dark, $lightness: 10%);
         transform: translateY(-2px);
       }
     }
@@ -440,7 +442,7 @@ $border-radius: 16px; // Bo góc lớn theo trend Apple/iOS
     }
 
     &:hover {
-      border-color: darken(#e2e8f0, 10%);
+      border-color: color.adjust(#e2e8f0, $lightness: -10%);
     }
 
     // State: ACTIVE
