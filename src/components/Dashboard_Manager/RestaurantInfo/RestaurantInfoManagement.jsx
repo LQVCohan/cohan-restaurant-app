@@ -1360,20 +1360,20 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       <div className="quick-metrics-grid">
         <Card variant="borderless" className="metric-card">
           <Badge color="#6366f1" />
-          <Text type="secondary">Đánh giá trung bình</Text>
-          <Title level={4}>{Number(restaurantForm.avgRating || 0).toFixed(1)} / 5</Title>
+          <Text type="secondary" className="metric-subtitle">Đánh giá trung bình</Text>
+          <Title level={4} className="metric-value">{Number(restaurantForm.avgRating || 0).toFixed(1)} / 5</Title>
         </Card>
         <Card variant="borderless" className="metric-card">
           <Badge color="#0ea5e9" />
-          <Text type="secondary">Danh mục hiển thị</Text>
-          <Title level={4}>
+          <Text type="secondary" className="metric-subtitle">Danh mục hiển thị</Text>
+          <Title level={4} className="metric-value">
             {activeIndex?.distinctCategoryCount || categories.length || 0}
           </Title>
         </Card>
         <Card variant="borderless" className="metric-card">
           <Badge color="#f59e0b" />
-          <Text type="secondary">Tiện ích đã bật</Text>
-          <Title level={4}>
+          <Text type="secondary" className="metric-subtitle">Tiện ích đã bật</Text>
+          <Title level={4} className="metric-value">
             {Object.values(restaurantForm.amenities || {}).filter(Boolean).length}
           </Title>
         </Card>
