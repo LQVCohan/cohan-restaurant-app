@@ -48,6 +48,7 @@ import StaffOrder from "../components/StaffOrder";
 // ==== Layouts ====
 import MainLayout from "../layouts/MainLayout";
 import { useNotification } from "@/hooks/useNotification";
+import { hasAllowedRole, resolveRoleName } from "@/routes/routeGuard";
 import VoucherPage from "@/components/Customer/VoucherManagement/VoucherPage";
 import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
 import AddressPage from "@/components/Customer/AddressPage/AddressPage";
@@ -63,21 +64,9 @@ const ME_QUERY = gql`
       id
       fullName
       email
+      roleName
       role {
-        id
-        name
         slug
-        description
-        parentRole {
-          id
-        }
-        isSystem
-        permissions {
-          id
-          name
-        }
-        createdAt
-        updatedAt
       }
       emailVerified
     }
@@ -122,7 +111,7 @@ const useAuth = () => {
     }
   }, [error, navigate, showNotification]);
 
-  const role = data?.me?.roleName || null;
+  const role = resolveRoleName(data?.me);
   const emailVerified = data?.me?.emailVerified ?? false;
 
   useEffect(() => {
@@ -161,7 +150,7 @@ const PrivateRoute = ({
   if (!token)
     return <Navigate to="/login" state={{ from: location }} replace />;
 
-  if (allowedRoles && role && !allowedRoles.includes(role))
+  if (!hasAllowedRole(allowedRoles, role))
     return <Navigate to="/403" replace />;
 
   if (requireVerifiedEmail && !emailVerified)
