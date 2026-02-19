@@ -1,16 +1,27 @@
 # Cohan Restaurant App
 
-## Vận hành & quan sát hệ thống
+## Quick start (local development)
 
-- Runbook: `src/docs/runbook-operations.md`
-- Backend health endpoints:
-  - `/health/live`
-  - `/health/ready`
-- Backend metrics endpoint:
-  - `/metrics`
+### 1) Tạo env local
+```bash
+npm run env:local
+```
 
-## Frontend (Vite)
-
+### 2) Chạy frontend
 ```bash
 npm run dev
 ```
+
+### 3) Chạy backend
+```bash
+npm run dev --prefix cohan-restaurant-backend
+```
+
+## Tài liệu
+- Environment setup: `docs-environment.md`
+- Upload migration note: `cohan-restaurant-backend/docs/upload-storage-migration.md`
+- Health endpoints:
+  - `/health/live`
+  - `/health/ready`
+- Metrics endpoint:
+  - `/metrics`
