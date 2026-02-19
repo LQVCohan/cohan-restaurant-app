@@ -182,7 +182,7 @@ export async function createServer() {
       message: "Route not found",
       method: req.method,
       url: req.url,
-      hint: "Expected POST /api/upload for uploads.",
+      hint: "Expected POST /upload (local) or POST /upload/sign (S3 mode).",
     });
   });
 
