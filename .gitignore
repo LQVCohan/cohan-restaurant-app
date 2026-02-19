@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files (never commit secrets)
+.env
+.env.*
+cohan-restaurant-backend/.env
+cohan-restaurant-backend/.env.*
+
+!.env.example
+!cohan-restaurant-backend/.env.example

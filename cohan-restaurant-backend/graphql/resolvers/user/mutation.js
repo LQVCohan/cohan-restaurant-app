@@ -22,7 +22,7 @@ const signToken = (user) => {
     email: user.email,
     role: (user.role?.slug || user.role?.name || "").toLowerCase(),
   };
-  return jwt.sign(payload, process.env.JWT_SECRET || "dev_secret", {
+  return jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
     issuer: process.env.JWT_ISSUER || "foodhub-system",
   });
