@@ -62,8 +62,39 @@ const normalizePhone = (p) =>
 const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const ZERO_WIDTH_OR_WS_CLASS = "[\\s\\u200B-\\u200D\\uFEFF]";
+
 const buildTrimmedExactRegex = (value = "") =>
-  new RegExp(`^\\s*${escapeRegex(value)}\\s*$`, "i");
+  new RegExp(
+    `^${ZERO_WIDTH_OR_WS_CLASS}*${escapeRegex(value)}${ZERO_WIDTH_OR_WS_CLASS}*$`,
+    "i"
+  );
+
+const buildNormalizedFieldExpr = (field) => ({
+  $toLower: {
+    $trim: {
+      input: {
+        $replaceAll: {
+          input: {
+            $replaceAll: {
+              input: {
+                $replaceAll: {
+                  input: { $ifNull: [field, ""] },
+                  find: "\u200B",
+                  replacement: "",
+                },
+              },
+              find: "\u200C",
+              replacement: "",
+            },
+          },
+          find: "\uFEFF",
+          replacement: "",
+        },
+      },
+    },
+  },
+});
 
 /* ===== Loyalty helpers (đồng bộ với FE rule) ===== */
 const computePointsFromSpending = (spending) =>
@@ -408,11 +439,7 @@ export const UserMutation = {
               {
                 $expr: {
                   $eq: [
-                    {
-                      $toLower: {
-                        $trim: { input: { $ifNull: ["$email", ""] } },
-                      },
-                    },
+                    buildNormalizedFieldExpr("$email"),
                     normalizedEmail,
                   ],
                 },
@@ -424,11 +451,7 @@ export const UserMutation = {
               {
                 $expr: {
                   $eq: [
-                    {
-                      $toLower: {
-                        $trim: { input: { $ifNull: ["$username", ""] } },
-                      },
-                    },
+                    buildNormalizedFieldExpr("$username"),
                     normalizedUsername,
                   ],
                 },
