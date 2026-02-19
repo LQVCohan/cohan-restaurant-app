@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -6,48 +6,63 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ⚠️ Nếu bạn đổi sang link loca.lt khác, cập nhật biến này cho khớp
+const toNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      // ❌ KHÔNG thêm alias thủ công cho @apollo/client
-    },
-  },
-  css: {
-    preprocessorOptions: {
-      scss: {
-        additionalData:
-          `@use "@/styles/_variables.scss" as *; ` +
-          `@use "@/styles/_mixins.scss" as *; ` +
-          `@use "@/styles/_tokens.scss" as *;`,
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const mergedEnv = { ...process.env, ...env };
+
+  const devBindHost = mergedEnv.VITE_DEV_BIND_HOST || "127.0.0.1";
+  const devHost = mergedEnv.VITE_DEV_HOST || "localhost";
+  const devOrigin =
+    mergedEnv.VITE_DEV_ORIGIN || `http://${devHost}:${mergedEnv.VITE_DEV_PORT || "5173"}`;
+  const devPort = toNumber(mergedEnv.VITE_DEV_PORT, 5173);
+  const devHmrProtocol = mergedEnv.VITE_DEV_HMR_PROTOCOL || "ws";
+  const devHmrClientPort = toNumber(mergedEnv.VITE_DEV_HMR_CLIENT_PORT, devPort);
+  const allowedHosts = (mergedEnv.VITE_DEV_ALLOWED_HOSTS || devHost)
+    .split(",")
+    .map((host) => host.trim())
+    .filter(Boolean);
+
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
       },
     },
-  },
-  server: {
-    host: true,
-    port: 5173,
-    allowedHosts: [
-      "intersubjective-unenterprisingly-jemma.ngrok-free.dev",
-      /.*\.ngrok(-free)?\.(app|dev)$/, // regex bao gồm cả .app và .dev
-    ],
-    origin: "https://intersubjective-unenterprisingly-jemma.ngrok-free.dev",
-    hmr: {
-      host: "intersubjective-unenterprisingly-jemma.ngrok-free.dev",
-      protocol: "wss",
-      clientPort: 443,
+    css: {
+      preprocessorOptions: {
+        scss: {
+          additionalData:
+            `@use "@/styles/_variables.scss" as *; ` +
+            `@use "@/styles/_mixins.scss" as *; ` +
+            `@use "@/styles/_tokens.scss" as *;`,
+        },
+      },
     },
-  },
-
-  optimizeDeps: {
-    include: [
-      "@fortawesome/fontawesome-svg-core",
-      "@fortawesome/free-solid-svg-icons",
-      "@fortawesome/react-fontawesome",
-      "chart.js/auto",
-      "@apollo/client", // 👉 thêm nếu gặp lỗi useMutation/useQuery
-    ],
-  },
+    server: {
+      host: devBindHost,
+      port: devPort,
+      allowedHosts,
+      origin: devOrigin,
+      hmr: {
+        host: devHost,
+        protocol: devHmrProtocol,
+        clientPort: devHmrClientPort,
+      },
+    },
+    optimizeDeps: {
+      include: [
+        "@fortawesome/fontawesome-svg-core",
+        "@fortawesome/free-solid-svg-icons",
+        "@fortawesome/react-fontawesome",
+        "chart.js/auto",
+        "@apollo/client",
+      ],
+    },
+  };
 });
