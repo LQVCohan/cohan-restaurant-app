@@ -1,4 +1,11 @@
+import fs from "node:fs";
+import path from "node:path";
 import process from "process";
+import { fileURLToPath } from "node:url";
+import dotenv from "dotenv";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const REQUIRED_ENV_VARS = ["MONGO_URI", "JWT_SECRET"];
 
@@ -16,7 +23,54 @@ const CONDITIONAL_REQUIRED = [
   },
 ];
 
+function candidateEnvPaths() {
+  const backendRoot = path.resolve(__dirname, "../..");
+  const repoRoot = path.resolve(backendRoot, "..");
+
+  return [
+    path.resolve(process.cwd(), ".env"),
+    path.resolve(backendRoot, ".env"),
+    path.resolve(repoRoot, ".env"),
+  ];
+}
+
+export function loadEnv() {
+  const loadedFrom = [];
+  const seen = new Set();
+
+  for (const envPath of candidateEnvPaths()) {
+    if (seen.has(envPath)) continue;
+    seen.add(envPath);
+
+    if (!fs.existsSync(envPath)) continue;
+
+    const result = dotenv.config({ path: envPath, override: false });
+    if (!result.error) loadedFrom.push(envPath);
+  }
+
+  return loadedFrom;
+}
+
+
+function applyDevelopmentDefaults() {
+  if ((process.env.NODE_ENV || "development") === "production") return;
+
+  if (!process.env.JWT_SECRET || !String(process.env.JWT_SECRET).trim()) {
+    process.env.JWT_SECRET = "dev_jwt_secret_change_me";
+  }
+
+  if (!process.env.MONGO_URI || !String(process.env.MONGO_URI).trim()) {
+    process.env.MONGO_URI = "mongodb://127.0.0.1:27017/RestaurantDB";
+  }
+
+  if (!process.env.MONGO_DB || !String(process.env.MONGO_DB).trim()) {
+    process.env.MONGO_DB = "RestaurantDB";
+  }
+}
+
 export function validateEnv() {
+  applyDevelopmentDefaults();
+
   const missing = [];
 
   for (const key of REQUIRED_ENV_VARS) {
