@@ -57,6 +57,10 @@ export default async function buildContext(request, reply) {
     }
   }
 
+
+  if (user?.id) {
+    request.userId = user.id;
+  }
   if (user) {
     request.log?.info({ userId: user.id, role: user.roleName }, "Context user");
   } else {
