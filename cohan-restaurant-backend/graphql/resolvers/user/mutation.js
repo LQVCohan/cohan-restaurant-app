@@ -59,6 +59,9 @@ function saveBase64Avatar(base64, userId) {
 const normalizePhone = (p) =>
   p ? p.replace(/\s+/g, "").replace(/^\+84/, "0") : p;
 
+const escapeRegex = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 /* ===== Loyalty helpers (đồng bộ với FE rule) ===== */
 const computePointsFromSpending = (spending) =>
   Math.max(0, Math.floor((Number(spending) || 0) / 1000));
@@ -362,11 +365,30 @@ export const UserMutation = {
       }
     }
 
+    const normalizedEmail = email?.toLowerCase().trim();
+    const normalizedUsername = username?.trim().toLowerCase();
+    const normalizedPhone = phone ? normalizePhone(phone.trim()) : null;
+
     const q = {
       $or: [
-        ...(email ? [{ email: email.toLowerCase().trim() }] : []),
-        ...(username ? [{ username: username.trim().toLowerCase() }] : []),
-        ...(phone ? [{ phone: normalizePhone(phone.trim()) }] : []),
+        ...(normalizedEmail
+          ? [
+              { email: normalizedEmail },
+              { email: { $regex: `^\s*${escapeRegex(normalizedEmail)}\s*$`, $options: "i" } },
+            ]
+          : []),
+        ...(normalizedUsername
+          ? [
+              { username: normalizedUsername },
+              {
+                username: {
+                  $regex: `^\s*${escapeRegex(normalizedUsername)}\s*$`,
+                  $options: "i",
+                },
+              },
+            ]
+          : []),
+        ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
       ],
     };
     if (q.$or.length === 0) {

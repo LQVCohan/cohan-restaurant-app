@@ -55,9 +55,18 @@ describe('User resolvers integration', () => {
     const { UserMutation } = await import('../../graphql/resolvers/user/mutation.js');
     await UserMutation.login(null, { username: 'Manager01', password: 'secret' }, {});
 
-    expect(modelMocks.User.findOne).toHaveBeenCalledWith({
-      $or: [{ username: 'manager01' }],
-    });
+    const queryArg = modelMocks.User.findOne.mock.calls[0][0];
+    expect(queryArg.$or).toEqual(
+      expect.arrayContaining([
+        { username: 'manager01' },
+        {
+          username: {
+            $regex: '^\\s*manager01\\s*$',
+            $options: 'i',
+          },
+        },
+      ]),
+    );
   });
 
 
