@@ -435,6 +435,11 @@ $radius-lg: 16px;
       gap: 10px;
     }
 
+    .quick-metrics-grid {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
     .page-header-modern {
       flex-direction: column;
       align-items: flex-start;
