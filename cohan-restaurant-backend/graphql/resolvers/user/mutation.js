@@ -62,6 +62,9 @@ const normalizePhone = (p) =>
 const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const buildTrimmedExactRegex = (value = "") =>
+  new RegExp(`^\\s*${escapeRegex(value)}\\s*$`, "i");
+
 /* ===== Loyalty helpers (đồng bộ với FE rule) ===== */
 const computePointsFromSpending = (spending) =>
   Math.max(0, Math.floor((Number(spending) || 0) / 1000));
@@ -374,7 +377,7 @@ export const UserMutation = {
         ...(normalizedEmail
           ? [
               { email: normalizedEmail },
-              { email: { $regex: `^\s*${escapeRegex(normalizedEmail)}\s*$`, $options: "i" } },
+              { email: { $regex: buildTrimmedExactRegex(normalizedEmail) } },
             ]
           : []),
         ...(normalizedUsername
@@ -382,8 +385,7 @@ export const UserMutation = {
               { username: normalizedUsername },
               {
                 username: {
-                  $regex: `^\s*${escapeRegex(normalizedUsername)}\s*$`,
-                  $options: "i",
+                  $regex: buildTrimmedExactRegex(normalizedUsername),
                 },
               },
             ]
