@@ -17,7 +17,7 @@ export default async function buildContext(request, reply) {
     try {
       const payload = jwt.verify(
         token,
-        process.env.JWT_SECRET || "dev_secret5"
+        process.env.JWT_SECRET
       );
 
       // chấp nhận id ở nhiều key: id | sub | userId
@@ -57,6 +57,10 @@ export default async function buildContext(request, reply) {
     }
   }
 
+
+  if (user?.id) {
+    request.userId = user.id;
+  }
   if (user) {
     request.log?.info({ userId: user.id, role: user.roleName }, "Context user");
   } else {

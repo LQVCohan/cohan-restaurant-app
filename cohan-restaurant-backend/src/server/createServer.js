@@ -20,12 +20,17 @@ import {
   suggestTablePromo,
   generateSmartFloorLayout,
 } from "../services/ai/aiTable.service.js";
+import { registerObservability } from "../observability/observability.js";
+import { initBackendSentry } from "../observability/sentry.js";
 
 export async function createServer() {
   const app = Fastify({
     logger: { level: process.env.LOG_LEVEL || "debug" },
     trustProxy: true,
   });
+
+  const sentry = await initBackendSentry(app.log);
+  registerObservability(app, { sentry });
 
   await app.register(cors, {
     origin: (process.env.CORS_ORIGINS || "http://localhost:5173")
@@ -170,8 +175,6 @@ export async function createServer() {
     return reply.send({ ok: true, layout });
   });
   // ===== END AI TABLE SUGGESTIONS =====
-
-  app.get("/health", async () => ({ ok: true, ts: Date.now() }));
 
   app.setNotFoundHandler((req, reply) => {
     reply.code(404).type("application/json").send({
