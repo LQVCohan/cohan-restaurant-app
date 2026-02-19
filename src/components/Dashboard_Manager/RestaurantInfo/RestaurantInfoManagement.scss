@@ -1,5 +1,5 @@
 // Variables
-$primary-color: #3b82f6; // Modern Blue
+$primary-color: #4f46e5; // Indigo
 $secondary-color: #64748b;
 $bg-color: #f8fafc;
 $card-bg: #ffffff;
@@ -15,9 +15,13 @@ $radius-md: 12px;
 $radius-lg: 16px;
 
 .restaurant-management-container {
-  padding: 24px 32px;
+  margin-top: 10px;
+  padding: 20px 28px;
   overflow-x: hidden;
-  background-color: $bg-color;
+  background:
+    radial-gradient(circle at top right, rgba(79, 70, 229, 0.08), transparent 35%),
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.08), transparent 42%),
+    $bg-color;
   min-height: 100vh;
   font-family:
     "Inter",
@@ -30,18 +34,26 @@ $radius-lg: 16px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin-bottom: 32px;
+    margin-bottom: 24px;
 
     .header-left {
       h2 {
         margin: 0;
         font-weight: 700;
         color: #1e293b;
-        font-size: 28px;
+        font-size: clamp(24px, 2.6vw, 34px);
+        letter-spacing: -0.02em;
       }
       span {
         color: $secondary-color;
         font-size: 14px;
+      }
+
+      .status-pill-row {
+        margin-top: 10px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
       }
     }
 
@@ -51,31 +63,73 @@ $radius-lg: 16px;
       gap: 16px;
 
       .draft-control {
-        background: #fff;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
         padding: 4px 12px;
         border-radius: 50px;
         box-shadow: $shadow-sm;
         display: flex;
         align-items: center;
+        border: 1px solid #e2e8f0;
       }
 
       .save-btn-gradient {
-        background: linear-gradient(135deg, $primary-color 0%, #2563eb 100%);
+        background: linear-gradient(135deg, #6366f1 0%, #2563eb 55%, #0ea5e9 100%);
         border: none;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        box-shadow: 0 10px 24px rgba(79, 70, 229, 0.28);
         &:hover {
-          box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+          box-shadow: 0 12px 28px rgba(79, 70, 229, 0.38);
           transform: translateY(-1px);
         }
       }
     }
   }
 
+  .quick-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+
+    .metric-card {
+      border-radius: 14px;
+      border: 1px solid #dbeafe;
+      background: linear-gradient(165deg, #ffffff 0%, #f8fbff 100%);
+      box-shadow: 0 6px 18px rgba(30, 41, 59, 0.06);
+
+      .ant-card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 14px 18px;
+      }
+
+      .ant-typography {
+        margin-bottom: 0;
+      }
+
+      .metric-value {
+        margin: 0;
+        font-size: 32px;
+        line-height: 1.1;
+      }
+
+      .metric-subtitle {
+        font-size: 13px;
+      }
+
+      h4 {
+        margin: 0;
+      }
+    }
+  }
+
   // Card & Form Styling
   .saas-card {
-    background: $card-bg;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
     border-radius: $radius-lg;
-    box-shadow: $shadow-md;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
     overflow: hidden;
 
     &.edit-card {
@@ -167,10 +221,6 @@ $radius-lg: 16px;
         width: 120px;
         height: 120px;
 
-        @media (max-width: 768px) {
-          width: 88px;
-          height: 88px;
-        }
         border-radius: 50%;
         border: 4px solid #fff;
         box-shadow: $shadow-md;
@@ -302,6 +352,11 @@ $radius-lg: 16px;
 
   .category-card {
     margin-top: 24px;
+
+    .ant-card-head-title {
+      font-weight: 700;
+    }
+
     .category-chips {
       margin-top: 16px;
       display: flex;
@@ -312,7 +367,7 @@ $radius-lg: 16px;
 
   .preview-wrapper {
     position: sticky;
-    top: 20px;
+    top: 16px;
     width: 100%;
 
     .preview-header {
@@ -340,11 +395,11 @@ $radius-lg: 16px;
 
   .desktop-preview-card {
     width: 100%;
-    border: 1px solid $border-color;
-    border-radius: 16px;
-    background: #fff;
+    border: 1px solid #dbeafe;
+    border-radius: 20px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
     overflow: hidden;
-    box-shadow: $shadow-sm;
+    box-shadow: 0 16px 30px rgba(37, 99, 235, 0.12);
 
     .desktop-iframe {
       width: 100%;
@@ -373,6 +428,12 @@ $radius-lg: 16px;
 
   @media (max-width: 992px) {
     padding: 16px;
+    margin-top: 6px;
+
+    .quick-metrics-grid {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
 
     .page-header-modern {
       flex-direction: column;
