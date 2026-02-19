@@ -38,6 +38,38 @@ describe('User resolvers integration', () => {
     expect(result).toEqual(userDoc);
   });
 
+  it('login normalizes username to lowercase before querying', async () => {
+    const loginUser = {
+      _id: '67a1f8f6a2df3b17f0c12345',
+      passwordHash: 'hash',
+      status: 'active',
+      role: { slug: 'manager' },
+      checkPassword: vi.fn(async () => true),
+    };
+
+    modelMocks.User.findOne.mockReturnValue({ populate: async () => loginUser });
+    modelMocks.User.findById.mockReturnValue({
+      populate: () => ({ lean: async () => ({ _id: loginUser._id, username: 'manager01', role: { slug: 'manager' } }) }),
+    });
+
+    const { UserMutation } = await import('../../graphql/resolvers/user/mutation.js');
+    await UserMutation.login(null, { username: 'Manager01', password: 'secret' }, {});
+
+    const queryArg = modelMocks.User.findOne.mock.calls[0][0];
+    expect(queryArg.$or).toEqual(
+      expect.arrayContaining([
+        { username: 'manager01' },
+        {
+          username: {
+            $regex: '^\\s*manager01\\s*$',
+            $options: 'i',
+          },
+        },
+      ]),
+    );
+  });
+
+
   it('login returns token and user roleName', async () => {
     const loginUser = {
       _id: '67a1f8f6a2df3b17f0c12345',
