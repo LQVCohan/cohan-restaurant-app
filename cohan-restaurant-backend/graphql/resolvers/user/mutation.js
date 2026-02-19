@@ -365,7 +365,7 @@ export const UserMutation = {
     const q = {
       $or: [
         ...(email ? [{ email: email.toLowerCase().trim() }] : []),
-        ...(username ? [{ username: username.trim() }] : []),
+        ...(username ? [{ username: username.trim().toLowerCase() }] : []),
         ...(phone ? [{ phone: normalizePhone(phone.trim()) }] : []),
       ],
     };
