@@ -62,7 +62,8 @@ const normalizePhone = (p) =>
 const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const ZERO_WIDTH_OR_WS_CLASS = "[\\s\\u200B-\\u200D\\uFEFF]";
+const ZERO_WIDTH_CHARS = "​‌‍﻿";
+const ZERO_WIDTH_OR_WS_CLASS = `[\\s${ZERO_WIDTH_CHARS}]`;
 
 const buildTrimmedExactRegex = (value = "") =>
   new RegExp(
