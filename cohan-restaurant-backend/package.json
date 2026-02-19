@@ -6,12 +6,13 @@
   "scripts": {
     "start": "node --es-module-specifier-resolution=node src/server/server.js",
     "dev": "nodemon --es-module-specifier-resolution=node src/server/server.js",
-    "test": "node --test",
+    "test": "vitest run",
     "seed:admin": "node scripts/seed-admin.js",
     "test:db": "node scripts/test-db.js",
     "sync:menuitem-category-json": "node scripts/update-menuitem-category-from-db-json.js --dry-run",
     "lint": "node --check src/server/server.js",
-    "build": "node -e \"console.log('Backend build step: no transpilation required.')\""
+    "build": "node -e \"console.log('Backend build step: no transpilation required.')\"",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",

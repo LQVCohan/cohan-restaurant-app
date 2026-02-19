@@ -1,11 +1,19 @@
 // src/lib/mailer.js
 import nodemailer from "nodemailer";
 import process from "process";
+
+let warnedMissingSmtp = false;
+
+function hasSmtpCredentials() {
+  const { SMTP_USER, SMTP_PASS } = process.env;
+  return Boolean(SMTP_USER && SMTP_PASS);
+}
+
 function makeTransport() {
   const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env;
 
-  if (!SMTP_USER || !SMTP_PASS) {
-    throw new Error("[Mailer] Missing SMTP_USER/SMTP_PASS");
+  if (!hasSmtpCredentials()) {
+    return null;
   }
 
   // Nếu có HOST/PORT -> dùng SMTP chuẩn (Mailtrap, SendGrid,...)
@@ -34,8 +42,20 @@ function makeTransport() {
 
 const transporter = makeTransport();
 
+export const isMailerConfigured = hasSmtpCredentials();
+
 export const mailer = {
   async sendMail({ to, subject, html, text }) {
+    if (!transporter) {
+      if (!warnedMissingSmtp) {
+        warnedMissingSmtp = true;
+        console.warn(
+          "[Mailer] SMTP_USER/SMTP_PASS is missing. Email sending is disabled."
+        );
+      }
+      return { accepted: [], rejected: [to], messageId: null, skipped: true };
+    }
+
     const from = process.env.MAIL_FROM || process.env.SMTP_USER;
     return transporter.sendMail({ from, to, subject, html, text });
   },

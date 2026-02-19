@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Local environment files (never commit secrets)
+.env
+.env.*
+!.env.example
+!.env.development
+!.env.staging
+!.env.production
+cohan-restaurant-backend/.env
+cohan-restaurant-backend/.env.*
+!cohan-restaurant-backend/.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
