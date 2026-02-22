@@ -12,7 +12,8 @@
     "sync:menuitem-category-json": "node scripts/update-menuitem-category-from-db-json.js --dry-run",
     "lint": "node --check src/server/server.js",
     "build": "node -e \"console.log('Backend build step: no transpilation required.')\"",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check:user-email": "node scripts/check-user-by-email.js"
   },
   "keywords": [],
   "author": "",

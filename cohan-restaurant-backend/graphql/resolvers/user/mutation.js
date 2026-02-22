@@ -381,7 +381,7 @@ export const UserMutation = {
   // ========== Login ==========
   login: async (_, { email, username, phone, password, captchaToken }, ctx) => {
     if (!password) {
-      throw new GraphQLError("Password is required", {
+      throw new GraphQLError("Missing required field: password", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
@@ -403,6 +403,13 @@ export const UserMutation = {
     const normalizedEmail = email?.toLowerCase().trim();
     const normalizedUsername = username?.trim().toLowerCase();
     const normalizedPhone = phone ? normalizePhone(phone.trim()) : null;
+    const loginIdentifier = normalizedUsername
+      ? "username"
+      : normalizedEmail
+        ? "email"
+        : normalizedPhone
+          ? "phone"
+          : "username";
 
     const baseLookupOr = [
       ...(normalizedEmail
@@ -425,12 +432,24 @@ export const UserMutation = {
     ];
 
     if (baseLookupOr.length === 0) {
-      throw new GraphQLError("Provide one of email/username/phone", {
-        extensions: { code: "BAD_USER_INPUT" },
-      });
+      throw new GraphQLError(
+        "Missing login identifier: provide email, username, or phone",
+        {
+          extensions: { code: "BAD_USER_INPUT" },
+        }
+      );
     }
 
     let user = await User.findOne({ $or: baseLookupOr }).populate("role");
+
+    console.log("[login] primary user lookup", {
+      loginIdentifier,
+      normalizedEmail,
+      normalizedUsername,
+      normalizedPhone,
+      foundUserId: user?._id ? String(user._id) : null,
+      foundUserEmail: user?.email || null,
+    });
 
     // Fallback for legacy/imported records that may keep odd whitespace/casing.
     if (!user) {
@@ -463,27 +482,44 @@ export const UserMutation = {
 
       if (normalizedLookupOr.length > 0) {
         user = await User.findOne({ $or: normalizedLookupOr }).populate("role");
+
+        console.log("[login] fallback normalized user lookup", {
+          loginIdentifier,
+          normalizedEmail,
+          normalizedUsername,
+          foundUserId: user?._id ? String(user._id) : null,
+          foundUserEmail: user?.email || null,
+        });
       }
     }
 
     if (!user)
-      throw new GraphQLError("Invalid credentials", {
-        extensions: { code: "UNAUTHENTICATED" },
-      });
+      throw new GraphQLError(
+        `Invalid credentials ( ${loginIdentifier} / password )`,
+        {
+          extensions: { code: "UNAUTHENTICATED" },
+        }
+      );
     if (!user.passwordHash)
-      throw new GraphQLError("User has no password", {
-        extensions: { code: "UNAUTHENTICATED" },
-      });
+      throw new GraphQLError(
+        "This account does not support password login",
+        {
+          extensions: { code: "UNAUTHENTICATED" },
+        }
+      );
     if (user.status !== "active")
-      throw new GraphQLError("User is not active", {
+      throw new GraphQLError(`Login blocked: user status is ${user.status}`, {
         extensions: { code: "FORBIDDEN" },
       });
 
     const ok = user.checkPassword ? await user.checkPassword(password) : false;
     if (!ok)
-      throw new GraphQLError("Invalid credentials", {
-        extensions: { code: "UNAUTHENTICATED" },
-      });
+      throw new GraphQLError(
+        `Invalid credentials ( ${loginIdentifier} / password )`,
+        {
+          extensions: { code: "UNAUTHENTICATED" },
+        }
+      );
 
     const userObj = await User.findById(user._id)
       .populate("role")
