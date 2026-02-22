@@ -68,7 +68,7 @@ const ZERO_WIDTH_OR_WS_CLASS = `[\\s${ZERO_WIDTH_CHARS}]`;
 const buildTrimmedExactRegex = (value = "") =>
   new RegExp(
     `^${ZERO_WIDTH_OR_WS_CLASS}*${escapeRegex(value)}${ZERO_WIDTH_OR_WS_CLASS}*$`,
-    "i"
+    "i",
   );
 
 const buildNormalizedFieldExpr = (field) => ({
@@ -167,7 +167,7 @@ export const UserMutation = {
         `Weak password: ${
           policy.reason || "Password does not meet requirements"
         }`,
-        { extensions: { code: "BAD_USER_INPUT" } }
+        { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
 
@@ -290,7 +290,7 @@ export const UserMutation = {
         `Weak password: ${
           policy.reason || "Password does not meet requirements"
         }`,
-        { extensions: { code: "BAD_USER_INPUT" } }
+        { extensions: { code: "BAD_USER_INPUT" } },
       );
     }
 
@@ -304,7 +304,7 @@ export const UserMutation = {
           recaptcha.reason || "reCAPTCHA verification failed",
           {
             extensions: { code: "BAD_USER_INPUT" },
-          }
+          },
         );
       }
     }
@@ -395,7 +395,7 @@ export const UserMutation = {
           recaptcha.reason || "reCAPTCHA verification failed",
           {
             extensions: { code: "BAD_USER_INPUT" },
-          }
+          },
         );
       }
     }
@@ -458,10 +458,7 @@ export const UserMutation = {
           ? [
               {
                 $expr: {
-                  $eq: [
-                    buildNormalizedFieldExpr("$email"),
-                    normalizedEmail,
-                  ],
+                  $eq: [buildNormalizedFieldExpr("$email"), normalizedEmail],
                 },
               },
             ]
@@ -774,7 +771,7 @@ export const UserMutation = {
       updates.guestExpiresAt = new Date(input.guestExpiresAt);
     if (Array.isArray(input.refRestaurantIds)) {
       updates.refRestaurants = input.refRestaurantIds.map(
-        (id) => new mongoose.Types.ObjectId(id)
+        (id) => new mongoose.Types.ObjectId(id),
       );
     }
 
@@ -820,7 +817,7 @@ export const UserMutation = {
     const saved = await User.findByIdAndUpdate(
       userId,
       { status: s },
-      { new: true }
+      { new: true },
     ).lean();
     if (!saved) {
       throw new GraphQLError("User not found", {
@@ -841,7 +838,7 @@ export const UserMutation = {
     const saved = await User.findByIdAndUpdate(
       userId,
       { status: "inactive" },
-      { new: true }
+      { new: true },
     ).lean();
     if (!saved) {
       throw new GraphQLError("User not found", {
@@ -858,7 +855,7 @@ export const UserMutation = {
   async updateCustomerMetrics(
     _,
     { id, loyaltyPoints, customerType },
-    { user: authUser }
+    { user: authUser },
   ) {
     requireRole(authUser, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(id)) {
@@ -880,7 +877,7 @@ export const UserMutation = {
         loyaltyPoints: lp,
         customerType: ct,
       },
-      { new: true }
+      { new: true },
     )
       .populate("role")
       .lean({ virtuals: true });
