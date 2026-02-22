@@ -436,11 +436,20 @@ export const UserMutation = {
         "Missing login identifier: provide email, username, or phone",
         {
           extensions: { code: "BAD_USER_INPUT" },
-        },
+        }
       );
     }
 
     let user = await User.findOne({ $or: baseLookupOr }).populate("role");
+
+    console.log("[login] primary user lookup", {
+      loginIdentifier,
+      normalizedEmail,
+      normalizedUsername,
+      normalizedPhone,
+      foundUserId: user?._id ? String(user._id) : null,
+      foundUserEmail: user?.email || null,
+    });
 
     // Fallback for legacy/imported records that may keep odd whitespace/casing.
     if (!user) {
@@ -470,6 +479,14 @@ export const UserMutation = {
 
       if (normalizedLookupOr.length > 0) {
         user = await User.findOne({ $or: normalizedLookupOr }).populate("role");
+
+        console.log("[login] fallback normalized user lookup", {
+          loginIdentifier,
+          normalizedEmail,
+          normalizedUsername,
+          foundUserId: user?._id ? String(user._id) : null,
+          foundUserEmail: user?.email || null,
+        });
       }
     }
 
@@ -478,12 +495,15 @@ export const UserMutation = {
         `Invalid credentials ( ${loginIdentifier} / password )`,
         {
           extensions: { code: "UNAUTHENTICATED" },
-        },
+        }
       );
     if (!user.passwordHash)
-      throw new GraphQLError("This account does not support password login", {
-        extensions: { code: "UNAUTHENTICATED" },
-      });
+      throw new GraphQLError(
+        "This account does not support password login",
+        {
+          extensions: { code: "UNAUTHENTICATED" },
+        }
+      );
     if (user.status !== "active")
       throw new GraphQLError(`Login blocked: user status is ${user.status}`, {
         extensions: { code: "FORBIDDEN" },
@@ -492,10 +512,10 @@ export const UserMutation = {
     const ok = user.checkPassword ? await user.checkPassword(password) : false;
     if (!ok)
       throw new GraphQLError(
-        `Invalid credentialss (${loginIdentifier}/password)`,
+        `Invalid credentials ( ${loginIdentifier} / password )`,
         {
           extensions: { code: "UNAUTHENTICATED" },
-        },
+        }
       );
 
     const userObj = await User.findById(user._id)
