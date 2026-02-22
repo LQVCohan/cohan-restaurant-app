@@ -478,7 +478,7 @@ export const UserMutation = {
 
     if (!user)
       throw new GraphQLError(
-        `Invalid credentials (${loginIdentifier}/password)`,
+        `Invalid credentials ( ${loginIdentifier} / password )`,
         {
           extensions: { code: "UNAUTHENTICATED" },
         }
@@ -498,7 +498,7 @@ export const UserMutation = {
     const ok = user.checkPassword ? await user.checkPassword(password) : false;
     if (!ok)
       throw new GraphQLError(
-        `Invalid credentials (${loginIdentifier}/password)`,
+        `Invalid credentials ( ${loginIdentifier} / password )`,
         {
           extensions: { code: "UNAUTHENTICATED" },
         }
