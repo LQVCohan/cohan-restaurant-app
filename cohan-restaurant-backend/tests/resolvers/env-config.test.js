@@ -21,6 +21,19 @@ describe('env config normalization', () => {
     expect(process.env.MONGO_URI).toBe('mongodb://127.0.0.1:27017');
   });
 
+
+  it('does not silently default MONGO_URI in development', async () => {
+    process.env.NODE_ENV = 'development';
+    delete process.env.MONGO_URI;
+    delete process.env.MONGODB_URI;
+    delete process.env.DATABASE_URL;
+    process.env.JWT_SECRET = 'secret';
+
+    const { validateEnv } = await import('../../src/config/env.js');
+
+    expect(() => validateEnv()).toThrow(/MONGO_URI/);
+  });
+
   it('maps DB_NAME to MONGO_DB when MONGO_DB is missing', async () => {
     process.env.NODE_ENV = 'production';
     process.env.MONGO_URI = 'mongodb://127.0.0.1:27017';

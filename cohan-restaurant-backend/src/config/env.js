@@ -81,11 +81,6 @@ function applyDevelopmentDefaults() {
   if (!process.env.JWT_SECRET || !String(process.env.JWT_SECRET).trim()) {
     process.env.JWT_SECRET = "dev_jwt_secret_change_me";
   }
-
-  if (!process.env.MONGO_URI || !String(process.env.MONGO_URI).trim()) {
-    process.env.MONGO_URI = "mongodb://127.0.0.1:27017/RestaurantDB";
-  }
-
 }
 
 export function validateEnv() {
