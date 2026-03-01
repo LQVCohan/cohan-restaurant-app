@@ -48,9 +48,34 @@ Backend tự load env theo thứ tự:
 - ignore `.env`, `.env.*`
 - cho phép commit file mẫu `*.example` và profile mẫu an toàn
 
+## 5.1) Có thể dùng `.env.example` thay cho `.env` không?
+
+Không. Backend/frontend trong dự án này chỉ tự load file tên **`.env`** ở các vị trí đã khai báo.
+
+- `.env.example` chỉ là **template** để tham khảo key cần có.
+- Muốn chạy app, bạn cần tạo `.env` thật (có thể copy từ `.env.example` rồi điền giá trị).
+- Để tiện nhất, dùng `npm run env:local` để bootstrap `.env` local an toàn.
+
+> Về bảo mật: commit `.env.example` (không chứa secret thật), nhưng **không commit `.env`**.
+
 ## 6) Khi cần thêm biến mới trong tương lai
 
 1. Thêm vào `.env.example` (frontend/backend)
 2. Nếu là biến bắt buộc, thêm validate trong `cohan-restaurant-backend/src/config/env.js`
 3. Cập nhật file local `.env` tương ứng
 4. Không commit giá trị secret thật
+
+## 7) Nếu lỡ commit secret thật trong `.env.example` thì làm gì ngay?
+
+1. **Rotate/Revoke ngay lập tức** toàn bộ secret đã lộ:
+   - MongoDB Atlas user/password (`MONGO_URI`)
+   - SMTP password/API key
+   - JWT secret
+   - reCAPTCHA secret (nếu dùng key thật)
+2. **Cập nhật secret mới** vào nơi triển khai thật (CI/CD, server, secret manager).
+3. **Sửa repo**: thay mọi giá trị nhạy cảm trong `*.example` bằng placeholder an toàn.
+4. Nếu repo public hoặc có nhiều người đã pull, cân nhắc **rewrite git history** để giảm phơi lộ lâu dài (ví dụ `git filter-repo` hoặc BFG), sau đó force-push theo quy trình của team.
+5. Kiểm tra log/alert của nhà cung cấp (Atlas, SMTP) để phát hiện truy cập bất thường.
+
+> Quan trọng: chỉ xóa secret khỏi file hiện tại **không đủ** nếu secret đã từng push; bạn vẫn phải rotate.
+
