@@ -1,41 +1,113 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
+import { gql, useQuery } from "@apollo/client";
 
 import "./ReviewsSection.scss";
 
+const GET_RESTAURANT_REVIEWS = gql`
+  query GetRestaurantReviews(
+    $restaurantId: ID!
+    $minRating: Int
+    $maxRating: Int
+    $limit: Int = 100
+    $skip: Int = 0
+  ) {
+    reviews(
+      restaurantId: $restaurantId
+      targetType: "restaurant"
+      status: "published"
+      minRating: $minRating
+      maxRating: $maxRating
+      limit: $limit
+      skip: $skip
+    ) {
+      total
+      items {
+        id
+        customerName
+        customerAvatar
+        rating
+        title
+        content
+        images
+        tags
+        createdAt
+        likesCount
+        helpfulCount
+        commentsCount
+        verifiedPurchase
+      }
+    }
+  }
+`;
+
+const GET_RESTAURANT_REVIEW_STATS = gql`
+  query GetRestaurantReviewStats($restaurantId: ID!) {
+    reviewStats(restaurantId: $restaurantId, targetType: "restaurant") {
+      total
+      avgRating
+      pending
+      ratingBreakdown
+    }
+  }
+`;
+
+const parseJsonArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    return JSON.parse(value);
+  } catch {
+    return [];
+  }
+};
+
 const ReviewsSection = ({ restaurantId }) => {
-  const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState("newest");
   const [filterRating, setFilterRating] = useState("all");
   const [showWriteReview, setShowWriteReview] = useState(false);
 
-  useEffect(() => {
-    const fetchReviews = async () => {
-      setLoading(true);
-      try {
-        // const reviewsData = await getReviewsByRestaurantId(restaurantId);
-        // setReviews(reviewsData);
-      } catch (error) {
-        console.error("Error fetching reviews:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const minRating = filterRating === "all" ? undefined : Number(filterRating);
 
-    fetchReviews();
-  }, [restaurantId]);
+  const { data, loading } = useQuery(GET_RESTAURANT_REVIEWS, {
+    variables: {
+      restaurantId,
+      minRating,
+      maxRating: 5,
+      limit: 100,
+      skip: 0,
+    },
+    skip: !restaurantId,
+    fetchPolicy: "cache-and-network",
+  });
 
-  const filteredAndSortedReviews = React.useMemo(() => {
-    let filtered = reviews;
+  const { data: statsData } = useQuery(GET_RESTAURANT_REVIEW_STATS, {
+    variables: { restaurantId },
+    skip: !restaurantId,
+  });
 
-    // Filter by rating
-    if (filterRating !== "all") {
-      filtered = filtered.filter(
-        (review) => review.rating >= parseInt(filterRating)
-      );
-    }
+  const reviews = useMemo(() => {
+    return (data?.reviews?.items || []).map((review) => ({
+      id: review.id,
+      rating: review.rating,
+      date: review.createdAt,
+      comment: review.content,
+      title: review.title || "",
+      likes: review.likesCount || 0,
+      helpful: review.helpfulCount || 0,
+      replies: review.commentsCount || 0,
+      verifiedPurchase: Boolean(review.verifiedPurchase),
+      photos: parseJsonArray(review.images),
+      tags: parseJsonArray(review.tags),
+      user: {
+        name: review.customerName,
+        avatar: review.customerAvatar || "/default-avatar.png",
+      },
+    }));
+  }, [data]);
 
-    // Sort reviews
+  const filteredAndSortedReviews = useMemo(() => {
+    const filtered = [...reviews];
+
     switch (sortBy) {
       case "newest":
         filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -54,28 +126,20 @@ const ReviewsSection = ({ restaurantId }) => {
     }
 
     return filtered;
-  }, [reviews, sortBy, filterRating]);
+  }, [reviews, sortBy]);
 
-  const averageRating =
-    reviews.length > 0
-      ? (
-          reviews.reduce((sum, review) => sum + review.rating, 0) /
-          reviews.length
-        ).toFixed(1)
-      : 0;
+  const stats = statsData?.reviewStats;
+  const averageRating = Number(stats?.avgRating || 0).toFixed(1);
 
-  const ratingDistribution = [5, 4, 3, 2, 1].map((rating) => ({
-    rating,
-    count: reviews.filter((review) => review.rating === rating).length,
-    percentage:
-      reviews.length > 0
-        ? (
-            (reviews.filter((review) => review.rating === rating).length /
-              reviews.length) *
-            100
-          ).toFixed(0)
-        : 0,
-  }));
+  const ratingDistribution = [5, 4, 3, 2, 1].map((rating) => {
+    const count = Number(stats?.ratingBreakdown?.[rating] || 0);
+    const total = Number(stats?.total || 0);
+    return {
+      rating,
+      count,
+      percentage: total > 0 ? ((count / total) * 100).toFixed(0) : 0,
+    };
+  });
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -120,15 +184,14 @@ const ReviewsSection = ({ restaurantId }) => {
         </button>
       </div>
 
-      {/* Reviews Summary */}
       <div className="reviews-summary">
         <div className="rating-overview">
           <div className="rating-score">
             <span className="score-number">{averageRating}</span>
             <div className="score-stars">
-              {renderStars(Math.round(averageRating))}
+              {renderStars(Math.round(Number(averageRating)))}
             </div>
-            <span className="score-count">({reviews.length} đánh giá)</span>
+            <span className="score-count">({stats?.total || 0} đánh giá)</span>
           </div>
         </div>
 
@@ -137,10 +200,7 @@ const ReviewsSection = ({ restaurantId }) => {
             <div key={rating} className="rating-bar">
               <span className="rating-label">{rating} sao</span>
               <div className="rating-progress">
-                <div
-                  className="rating-fill"
-                  style={{ width: `${percentage}%` }}
-                ></div>
+                <div className="rating-fill" style={{ width: `${percentage}%` }}></div>
               </div>
               <span className="rating-count">({count})</span>
             </div>
@@ -148,7 +208,6 @@ const ReviewsSection = ({ restaurantId }) => {
         </div>
       </div>
 
-      {/* Filters and Sort */}
       <div className="reviews-controls">
         <div className="reviews-filters">
           <select
@@ -177,11 +236,10 @@ const ReviewsSection = ({ restaurantId }) => {
         </div>
 
         <div className="reviews-count">
-          Hiển thị {filteredAndSortedReviews.length} / {reviews.length} đánh giá
+          Hiển thị {filteredAndSortedReviews.length} / {stats?.total || 0} đánh giá
         </div>
       </div>
 
-      {/* Reviews List */}
       <div className="reviews-list">
         {filteredAndSortedReviews.length === 0 ? (
           <div className="reviews-empty">
@@ -200,12 +258,11 @@ const ReviewsSection = ({ restaurantId }) => {
                   <div className="reviewer-details">
                     <h4 className="reviewer-name">{review.user.name}</h4>
                     <div className="review-meta">
-                      <div className="review-rating">
-                        {renderStars(review.rating)}
-                      </div>
-                      <span className="review-date">
-                        {formatDate(review.date)}
-                      </span>
+                      <div className="review-rating">{renderStars(review.rating)}</div>
+                      <span className="review-date">{formatDate(review.date)}</span>
+                      {review.verifiedPurchase && (
+                        <span className="review-verified">✓ Đã xác thực</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -214,13 +271,17 @@ const ReviewsSection = ({ restaurantId }) => {
                   <button className="review-action" aria-label="Thích">
                     👍 {review.likes || 0}
                   </button>
-                  <button className="review-action" aria-label="Báo cáo">
-                    🚩
+                  <button className="review-action" aria-label="Hữu ích">
+                    🤝 {review.helpful || 0}
+                  </button>
+                  <button className="review-action" aria-label="Bình luận">
+                    💬 {review.replies || 0}
                   </button>
                 </div>
               </div>
 
               <div className="review-content">
+                {review.title && <h4 className="review-title">{review.title}</h4>}
                 <p className="review-text">{review.comment}</p>
 
                 {review.photos && review.photos.length > 0 && (
@@ -233,37 +294,19 @@ const ReviewsSection = ({ restaurantId }) => {
                   </div>
                 )}
 
-                {review.visitType && (
+                {review.tags.length > 0 && (
                   <div className="review-tags">
-                    <span className="review-tag">
-                      {review.visitType === "family" && "👨‍👩‍👧‍👦 Gia đình"}
-                      {review.visitType === "couple" && "💑 Cặp đôi"}
-                      {review.visitType === "friends" && "👥 Bạn bè"}
-                      {review.visitType === "business" && "💼 Công việc"}
-                      {review.visitType === "solo" && "🙋‍♂️ Một mình"}
-                    </span>
+                    {review.tags.map((tag) => (
+                      <span key={tag} className="review-tag">#{tag}</span>
+                    ))}
                   </div>
                 )}
               </div>
-
-              {review.response && (
-                <div className="restaurant-response">
-                  <div className="response-header">
-                    <span className="response-icon">🏪</span>
-                    <span className="response-label">Phản hồi từ nhà hàng</span>
-                    <span className="response-date">
-                      {formatDate(review.response.date)}
-                    </span>
-                  </div>
-                  <p className="response-text">{review.response.text}</p>
-                </div>
-              )}
             </div>
           ))
         )}
       </div>
 
-      {/* Write Review Modal */}
       {showWriteReview && (
         <div
           className="review-modal-overlay"

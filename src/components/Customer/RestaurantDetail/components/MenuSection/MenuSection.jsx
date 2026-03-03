@@ -76,6 +76,23 @@ const GET_MENU_ITEMS_BY_CATEGORY = gql`
   }
 `;
 
+const GET_FOOD_REVIEWS = gql`
+  query GetFoodReviewsByRestaurant($restaurantId: ID!, $limit: Int = 500) {
+    reviews(
+      restaurantId: $restaurantId
+      targetType: "food"
+      status: "published"
+      limit: $limit
+      skip: 0
+    ) {
+      items {
+        targetId
+        rating
+      }
+    }
+  }
+`;
+
 const MenuSection = ({ restaurantId }) => {
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("breakfast");
   const [categories, setCategories] = useState([]);
@@ -126,6 +143,27 @@ const MenuSection = ({ restaurantId }) => {
     skip: !activeCategory,
     fetchPolicy: "network-only",
   });
+
+  const { data: foodReviewsData } = useQuery(GET_FOOD_REVIEWS, {
+    variables: { restaurantId, limit: 500 },
+    skip: !restaurantId,
+    fetchPolicy: "cache-first",
+  });
+
+  const foodReviewMap = React.useMemo(() => {
+    const map = new Map();
+    const items = foodReviewsData?.reviews?.items || [];
+
+    items.forEach((review) => {
+      const key = String(review.targetId);
+      const current = map.get(key) || { total: 0, sum: 0 };
+      current.total += 1;
+      current.sum += Number(review.rating || 0);
+      map.set(key, current);
+    });
+
+    return map;
+  }, [foodReviewsData]);
 
   useEffect(() => {
     if (!menuData?.menuItemsConnection) return;
@@ -273,6 +311,14 @@ const MenuSection = ({ restaurantId }) => {
               {menuItems.map((item) => {
                 const img = item.thumbImage || "/default-dishes.jpg";
                 const variants = item.servingVariants || [];
+                const reviewSummary =
+                  foodReviewMap.get(String(item.id)) ||
+                  foodReviewMap.get(item.id) ||
+                  null;
+                const dishAvgRating = reviewSummary
+                  ? (reviewSummary.sum / reviewSummary.total).toFixed(1)
+                  : null;
+                const dishReviewCount = reviewSummary?.total || 0;
 
                 // Logic hiển thị giá và variant đang chọn
                 const selectedKey =
@@ -290,7 +336,14 @@ const MenuSection = ({ restaurantId }) => {
                     <div className="dish-info">
                       <div className="info-top">
                         <div className="header-row">
-                          <h4 className="dish-name">{item.name}</h4>
+                          <div className="dish-head-main">
+                            <h4 className="dish-name">{item.name}</h4>
+                            {dishAvgRating && (
+                              <div className="dish-rating">
+                                ⭐ {dishAvgRating} ({dishReviewCount})
+                              </div>
+                            )}
+                          </div>
                           <span className="price">
                             {formatPrice(displayPrice)}
                           </span>
