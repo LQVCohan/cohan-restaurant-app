@@ -178,12 +178,26 @@ $shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 4px;
+
+        .dish-head-main {
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+        }
+
         .dish-name {
           font-size: 1.1rem;
           font-weight: 700;
           color: $text-main;
           margin: 0;
         }
+
+        .dish-rating {
+          font-size: 0.82rem;
+          color: #f59e0b;
+          font-weight: 600;
+        }
+
         .price {
           font-size: 1.1rem;
           font-weight: 700;

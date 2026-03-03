@@ -1,5 +1,5 @@
-// src/pages/Reviews/ReviewManagement.jsx
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback } from "react";
+import { gql, useMutation, useQuery } from "@apollo/client";
 
 import "./ReviewManagement.scss";
 
@@ -9,77 +9,123 @@ import ReviewsSidebarFilters from "./components/ReviewsSidebarFilters";
 import ReviewsList from "./components/ReviewsList";
 import ReviewModal from "./components/ReviewModal";
 
-// CONFIG MẶC ĐỊNH
-const defaultConfig = {
-  restaurant_name: "FoodHub Restaurant",
-  welcome_message: "Quản lý đánh giá khách hàng",
-  contact_info: "support@foodhub.com",
-};
+const GET_REVIEWS = gql`
+  query GetReviews(
+    $restaurantId: ID
+    $targetType: String
+    $status: String
+    $minRating: Int
+    $maxRating: Int
+  ) {
+    reviews(
+      restaurantId: $restaurantId
+      targetType: $targetType
+      status: $status
+      minRating: $minRating
+      maxRating: $maxRating
+      limit: 200
+      skip: 0
+    ) {
+      total
+      items {
+        id
+        targetType
+        targetId
+        targetName
+        restaurantId
+        restaurantName
+        customerName
+        customerAvatar
+        rating
+        title
+        content
+        images
+        location
+        verifiedPurchase
+        tags
+        status
+        likesCount
+        commentsCount
+        helpfulCount
+        reactions {
+          like
+          love
+          care
+          haha
+          wow
+          sad
+          angry
+          total
+        }
+        createdAt
+      }
+    }
+  }
+`;
 
-// REVIEW DEMO
-const sampleReviews = [
-  {
-    id: "review_001",
-    type: "restaurant",
-    target_name: "FoodHub Restaurant - Chi nhánh chính",
-    restaurant_id: "foodhub_main",
-    restaurant_name: "FoodHub Restaurant - Chi nhánh chính",
-    customer_name: "Nguyễn Văn An",
-    rating: 5,
-    title: "Trải nghiệm tuyệt vời!",
-    content:
-      "Nhà hàng có không gian đẹp, phục vụ tận tình. Món ăn ngon, giá cả hợp lý.",
-    images:
-      '["https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=300"]',
-    likes: 12,
-    replies: 1,
-    status: "published",
-    created_at: new Date().toISOString(),
-    location: "Hà Nội",
-    verified_purchase: true,
-    helpful_count: 8,
-    tags: '["Phục vụ tốt", "Không gian đẹp"]',
-  },
-  {
-    id: "review_002",
-    type: "food",
-    target_name: "Phở bò tái",
-    restaurant_id: "foodhub_district1",
-    customer_name: "Trần Thị Bình",
-    rating: 4,
-    title: "Phở ngon, nước dùng đậm đà",
-    content:
-      "Phở có vị nước dùng đậm đà, thịt tái tươi. Thời gian chờ hơi lâu.",
-    images:
-      '["https://images.unsplash.com/photo-1555126634-323283e090fa?w=300"]',
-    likes: 8,
-    replies: 0,
-    status: "published",
-    created_at: new Date().toISOString(),
-    location: "TP.HCM",
-    verified_purchase: true,
-    helpful_count: 5,
-    tags: '["Ngon", "Nước dùng đậm đà"]',
-  },
-];
+const GET_REVIEW_STATS = gql`
+  query GetReviewStats($restaurantId: ID, $targetType: String) {
+    reviewStats(restaurantId: $restaurantId, targetType: $targetType) {
+      total
+      avgRating
+      pending
+    }
+  }
+`;
 
-// FORMAT NGÀY
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleString("vi-VN");
-}
+const CREATE_REVIEW = gql`
+  mutation CreateReview($input: ReviewInput!) {
+    createReview(input: $input) {
+      id
+    }
+  }
+`;
 
-// THÔNG BÁO TẠM
+const DELETE_REVIEW = gql`
+  mutation DeleteReview($id: ID!) {
+    deleteReview(id: $id)
+  }
+`;
+
+const SET_REVIEW_STATUS = gql`
+  mutation SetReviewStatus($id: ID!, $status: String!) {
+    setReviewStatus(id: $id, status: $status) {
+      id
+      status
+    }
+  }
+`;
+
+const normalizeReview = (review) => ({
+  id: review.id,
+  type: review.targetType,
+  target_id: review.targetId,
+  target_name: review.targetName,
+  restaurant_id: review.restaurantId,
+  restaurant_name: review.restaurantName,
+  customer_name: review.customerName,
+  customer_avatar: review.customerAvatar,
+  rating: review.rating,
+  title: review.title || "(Không tiêu đề)",
+  content: review.content,
+  images: JSON.stringify(review.images || []),
+  status: review.status,
+  location: review.location || "Không rõ",
+  verified_purchase: Boolean(review.verifiedPurchase),
+  tags: JSON.stringify(review.tags || []),
+  likes: review.likesCount || 0,
+  replies: review.commentsCount || 0,
+  helpful_count: review.helpfulCount || 0,
+  reactions: review.reactions || {},
+  created_at: review.createdAt,
+});
+
 function showNotification(msg) {
-  alert(msg);
+  window.alert(msg);
 }
 
 const ReviewManagement = () => {
-  const [config, setConfig] = useState(defaultConfig);
-
   const [currentTab, setCurrentTab] = useState("all");
-  const [reviews, setReviews] = useState([]);
-
   const [filters, setFilters] = useState({
     ratings: [5, 4, 3, 2, 1],
     status: "",
@@ -88,123 +134,174 @@ const ReviewManagement = () => {
     restaurant: "",
     verified: "",
   });
-
   const [searchTerm, setSearchTerm] = useState("");
-
   const [modalVisible, setModalVisible] = useState(false);
   const [modalMode, setModalMode] = useState("view");
   const [selectedReview, setSelectedReview] = useState(null);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const gqlTargetType = currentTab === "all" || currentTab === "pending" ? undefined : currentTab;
+  const gqlStatus = currentTab === "pending" ? "pending" : filters.status || undefined;
+  const gqlMinRating = filters.ratings?.length ? Math.min(...filters.ratings) : undefined;
+  const gqlMaxRating = filters.ratings?.length ? Math.max(...filters.ratings) : undefined;
 
-  // INIT DATA
-  useEffect(() => {
-    setReviews(sampleReviews);
-  }, []);
+  const { data, loading, refetch } = useQuery(GET_REVIEWS, {
+    variables: {
+      restaurantId: filters.restaurant || undefined,
+      targetType: gqlTargetType,
+      status: gqlStatus,
+      minRating: gqlMinRating,
+      maxRating: gqlMaxRating,
+    },
+    fetchPolicy: "cache-and-network",
+  });
 
-  // FILTER
+  const { data: statsData } = useQuery(GET_REVIEW_STATS, {
+    variables: {
+      restaurantId: filters.restaurant || undefined,
+      targetType: gqlTargetType,
+    },
+  });
+
+  const [createReview, { loading: creating }] = useMutation(CREATE_REVIEW);
+  const [deleteReview] = useMutation(DELETE_REVIEW);
+  const [setReviewStatus] = useMutation(SET_REVIEW_STATUS);
+
+  const reviews = useMemo(
+    () => (data?.reviews?.items || []).map(normalizeReview),
+    [data]
+  );
+
   const filteredReviews = useMemo(() => {
     let list = [...reviews];
 
-    if (currentTab !== "all") {
-      list = list.filter((r) => r.type === currentTab);
-    }
-
-    if (filters.restaurant) {
-      list = list.filter((r) => r.restaurant_id === filters.restaurant);
+    if (filters.ratings?.length) {
+      list = list.filter((r) => filters.ratings.includes(r.rating));
     }
 
     if (filters.time) {
       const now = new Date();
       const cutoff = new Date();
-
       if (filters.time === "today") cutoff.setHours(0, 0, 0, 0);
       if (filters.time === "week") cutoff.setDate(now.getDate() - 7);
       if (filters.time === "month") cutoff.setMonth(now.getMonth() - 1);
       if (filters.time === "quarter") cutoff.setMonth(now.getMonth() - 3);
-
       list = list.filter((r) => new Date(r.created_at) >= cutoff);
     }
 
-    if (searchTerm.trim() !== "") {
+    if (filters.image === "with-images") {
+      list = list.filter((r) => JSON.parse(r.images || "[]").length > 0);
+    }
+    if (filters.image === "no-images") {
+      list = list.filter((r) => JSON.parse(r.images || "[]").length === 0);
+    }
+
+    if (filters.verified === "verified") {
+      list = list.filter((r) => r.verified_purchase);
+    }
+    if (filters.verified === "unverified") {
+      list = list.filter((r) => !r.verified_purchase);
+    }
+
+    if (searchTerm.trim()) {
       const t = searchTerm.toLowerCase();
       list = list.filter(
         (r) =>
           r.customer_name.toLowerCase().includes(t) ||
           r.title.toLowerCase().includes(t) ||
-          r.content.toLowerCase().includes(t)
+          r.content.toLowerCase().includes(t) ||
+          (r.target_name || "").toLowerCase().includes(t)
       );
     }
 
     return list;
-  }, [reviews, currentTab, filters, searchTerm]);
+  }, [reviews, filters, searchTerm]);
 
-  // STATS
   const stats = useMemo(() => {
+    const apiStats = statsData?.reviewStats;
+    if (apiStats) {
+      return {
+        total: apiStats.total,
+        avg: Number(apiStats.avgRating || 0).toFixed(1),
+        pending: apiStats.pending,
+      };
+    }
+
     const total = reviews.length;
-    const avg =
-      total > 0
-        ? (reviews.reduce((s, r) => s + r.rating, 0) / total).toFixed(1)
-        : "0.0";
+    const avg = total ? (reviews.reduce((s, r) => s + r.rating, 0) / total).toFixed(1) : "0.0";
     const pending = reviews.filter((r) => r.status === "pending").length;
-
     return { total, avg, pending };
-  }, [reviews]);
+  }, [reviews, statsData]);
 
-  // OPEN VIEW MODAL
-  const handleViewReview = (review) => {
+  const handleViewReview = useCallback((review) => {
     setSelectedReview(review);
     setModalMode("view");
     setModalVisible(true);
-  };
+  }, []);
 
-  // DELETE
-  const handleDeleteReview = (review) => {
-    const ok = window.confirm("Xóa đánh giá này?");
-    if (!ok) return;
+  const handleDeleteReview = useCallback(
+    async (review) => {
+      if (!window.confirm("Xóa đánh giá này?")) return;
+      await deleteReview({ variables: { id: review.id } });
+      await refetch();
+      showNotification("Đã xóa đánh giá");
+    },
+    [deleteReview, refetch]
+  );
 
-    setReviews((prev) => prev.filter((r) => r.id !== review.id));
-    showNotification("Đã xóa đánh giá");
-  };
+  const handleSaveNewReview = useCallback(
+    async (formData) => {
+      await createReview({
+        variables: {
+          input: {
+            targetType: formData.type,
+            targetId: formData.target_id,
+            targetName: formData.target_name,
+            restaurantId: formData.restaurant_id,
+            restaurantName: formData.restaurant_name,
+            customerName: formData.customer_name,
+            customerAvatar: formData.customer_avatar,
+            rating: formData.rating,
+            title: formData.title,
+            content: formData.content,
+            images: [],
+            location: formData.location,
+            verifiedPurchase: formData.verified_purchase,
+            tags: [],
+          },
+        },
+      });
+      await refetch();
+      showNotification("Đã tạo đánh giá mới (trạng thái chờ duyệt)");
+    },
+    [createReview, refetch]
+  );
 
-  // ADD REVIEW
-  const handleSaveNewReview = (data) => {
-    setReviews((prev) => [
-      {
-        ...data,
-        id: `review_${Date.now()}`,
-        created_at: new Date().toISOString(),
-      },
-      ...prev,
-    ]);
-    showNotification("Đã thêm đánh giá");
-  };
+  const handleModerate = useCallback(
+    async (review, status) => {
+      await setReviewStatus({ variables: { id: review.id, status } });
+      await refetch();
+      showNotification(
+        status === "published" ? "Đã duyệt đánh giá" : "Đã chuyển đánh giá sang trạng thái ẩn"
+      );
+    },
+    [refetch, setReviewStatus]
+  );
 
-  // EXPORT CSV
   const handleExport = () => {
     const csv = filteredReviews
       .map((r) =>
-        [
-          r.id,
-          r.customer_name,
-          r.rating,
-          `"${r.title}"`,
-          `"${r.content}"`,
-          formatDate(r.created_at),
-        ].join(",")
+        [r.id, r.customer_name, r.rating, `"${r.title}"`, `"${r.content}"`, new Date(r.created_at).toLocaleString("vi-VN")].join(",")
       )
       .join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-
     a.href = url;
     a.download = "reviews_export.csv";
     a.click();
   };
 
-  // TITLE FOR TAB
   const titleMap = {
     all: "Tất cả đánh giá",
     restaurant: "Đánh giá nhà hàng",
@@ -216,16 +313,8 @@ const ReviewManagement = () => {
   return (
     <div className="reviews-page">
       <div className="reviews-container">
-        <ReviewsHeader
-          total={stats.total}
-          avg={stats.avg}
-          pending={stats.pending}
-        />
-        <ReviewsNavTabs
-          currentTab={currentTab}
-          onChangeTab={setCurrentTab}
-          pendingCount={stats.pending}
-        />
+        <ReviewsHeader total={stats.total} avg={stats.avg} pending={stats.pending} />
+        <ReviewsNavTabs currentTab={currentTab} onChangeTab={setCurrentTab} pendingCount={stats.pending} />
 
         <main className="reviews-main-content">
           <div className="reviews-content-grid">
@@ -233,15 +322,11 @@ const ReviewManagement = () => {
 
             <section className="reviews-content-area">
               <div className="reviews-content-header">
-                <h2 className="reviews-content-header__title">
-                  {titleMap[currentTab]}
-                </h2>
+                <h2 className="reviews-content-header__title">{titleMap[currentTab]}</h2>
 
                 <div className="reviews-content-header__actions">
                   <div className="reviews-content-header__search-box">
-                    <span className="reviews-content-header__search-box-icon">
-                      🔍
-                    </span>
+                    <span className="reviews-content-header__search-box-icon">🔍</span>
                     <input
                       type="text"
                       className="reviews-content-header__search-box-input"
@@ -251,10 +336,7 @@ const ReviewManagement = () => {
                     />
                   </div>
 
-                  <button
-                    className="reviews-btn reviews-btn-secondary"
-                    onClick={handleExport}
-                  >
+                  <button className="reviews-btn reviews-btn-secondary" onClick={handleExport}>
                     📊 Xuất báo cáo
                   </button>
                   <button
@@ -271,12 +353,12 @@ const ReviewManagement = () => {
               </div>
 
               <ReviewsList
-                isLoading={isLoading}
+                isLoading={loading || creating}
                 reviews={filteredReviews}
                 currentTab={currentTab}
                 onView={handleViewReview}
                 onDelete={handleDeleteReview}
-                onEdit={() => showNotification("Đang phát triển")}
+                onEdit={handleModerate}
               />
             </section>
           </div>
