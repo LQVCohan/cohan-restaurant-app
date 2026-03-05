@@ -5,6 +5,7 @@ import ProfileInfo from "./components/ProfileInfo";
 import OrderHistory from "./components/OrderHistory";
 import SecuritySettings from "./components/SecuritySettings";
 import FoodPreferences from "./components/FoodPreferences";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import "./ProfilePage.scss";
 
 // GraphQL Main Query
@@ -54,7 +55,7 @@ const ProfilePage = () => {
   if (loading)
     return (
       <div className="profile-loading">
-        <div className="spinner"></div>
+        <LoadingSpinner size="large" />
       </div>
     );
   if (error)

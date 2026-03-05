@@ -194,7 +194,7 @@ const FoodDetail = () => {
     const payload = makeCartPayload();
     if (!payload || !payload.restaurantId) return;
     addToCart(payload);
-    navigate("/cus-menu?checkout=1");
+    navigate("/checkout", { state: { from: "/food/" + foodId } });
   };
 
   if (menuLoading && !foundDish) {

@@ -8,6 +8,7 @@ import { useCart } from "../../../../../hooks/useCart";
 
 // Icons
 import { ShoppingCart, Plus, ChevronDown } from "lucide-react";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 // Utils
 const formatPrice = (value) =>
@@ -283,7 +284,7 @@ const MenuSection = ({ restaurantId }) => {
           <h3 className="sidebar-header">Thực đơn</h3>
           <div className="category-list">
             {catLoading ? (
-              <div className="spinner-sm"></div>
+              <LoadingSpinner size="small" />
             ) : (
               categories.map((cat) => (
                 <button
@@ -304,7 +305,7 @@ const MenuSection = ({ restaurantId }) => {
         <main className="menu-content">
           {menuLoading && menuItems.length === 0 ? (
             <div className="loading-state">
-              <div className="spinner"></div>
+              <LoadingSpinner size="large" />
             </div>
           ) : menuItems.length > 0 ? (
             <div className="dish-list">

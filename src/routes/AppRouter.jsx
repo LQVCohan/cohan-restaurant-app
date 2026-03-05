@@ -32,6 +32,7 @@ import OwnerProfilePage from "../components/Customer/OwnerProfilePage/OwnerProfi
 import ForYou from "@/components/Customer/ForYou/ForYou";
 import SearchPage from "../pages/SearchPage.jsx";
 import ContactPage from "@/pages/ContactPage.jsx";
+import CheckoutPage from "@/pages/CheckoutPage.jsx";
 import {
   AdminRestaurantInfoManagement,
   ManagerRestaurantInfoManagement,
@@ -431,6 +432,7 @@ const AppRouter = () => {
         <Route path="/restaurant/:id/layout" element={<TableBooking />} />
         <Route path="/vr/table/:tableId" element={<VRViewer />} />
         <Route path="/cus-menu" element={<RestaurantMenu />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/food/:foodId" element={<FoodDetail />} />
         <Route path="/vouchers/:id" element={<VoucherPage />} />
         <Route path="/favorites/:id" element={<FavoritePage />} />

@@ -10,6 +10,7 @@ import ReviewsSection from "./components/ReviewsSection/ReviewsSection";
 import PhotoGallery from "./components/PhotoGallery/PhotoGallery";
 import SimilarRestaurants from "./components/SimilarRestaurants/SimilarRestaurants";
 import PromotionsSection from "./components/PromotionsSection/PromotionsSection";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 // Icons
 import { ArrowLeft, Star, MapPin, Clock, Share2, Heart } from "lucide-react";
@@ -64,7 +65,7 @@ const RestaurantDetail = () => {
   if (loading)
     return (
       <div className="detail-loading">
-        <div className="spinner"></div>
+        <LoadingSpinner size="large" />
       </div>
     );
   if (error || !restaurant)
