@@ -18,11 +18,9 @@ const RestaurantMenu = () => {
   const [selectedRes, setSelectedRes] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isDirectCheckoutOpen, setIsDirectCheckoutOpen] = useState(false);
-  const [isCheckoutBooting, setIsCheckoutBooting] = useState(false);
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
   const restaurantParam = searchParams.get("restaurantId");
   const returnTo = searchParams.get("returnTo");
-  const openCart = searchParams.get("openCart");
   const checkout = searchParams.get("checkout");
 
   // 👉 Dùng cart context
@@ -53,24 +51,13 @@ const RestaurantMenu = () => {
   }, [restaurantParam]);
 
   useEffect(() => {
-    if (checkout === "1") return;
-    if (openCart === "1") setIsCartOpen(true);
-  }, [openCart, checkout]);
-
-  useEffect(() => {
     if (checkout === "1") {
-      setIsCheckoutBooting(true);
       setIsCartOpen(false);
-
-      const timer = setTimeout(() => {
-        setIsDirectCheckoutOpen(true);
-        setIsCheckoutBooting(false);
-      }, 250);
-
-      return () => clearTimeout(timer);
+      setIsDirectCheckoutOpen(true);
+      return;
     }
 
-    setIsCheckoutBooting(false);
+    setIsDirectCheckoutOpen(false);
   }, [checkout]);
 
   const handleOpenFoodDetail = (foodId) => {
@@ -150,14 +137,6 @@ const RestaurantMenu = () => {
         onSuccess={handleCheckoutSuccess}
       />
 
-      {isCheckoutBooting && (
-        <div className="checkout-loading-overlay" role="status" aria-live="polite">
-          <div className="checkout-loading-card">
-            <div className="checkout-spinner" />
-            <p>Đang mở thanh toán...</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
