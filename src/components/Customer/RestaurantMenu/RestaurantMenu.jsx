@@ -19,6 +19,8 @@ const RestaurantMenu = () => {
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
   const restaurantParam = searchParams.get("restaurantId");
   const returnTo = searchParams.get("returnTo");
+  const openCart = searchParams.get("openCart");
+  const checkout = searchParams.get("checkout");
 
   // 👉 Dùng cart context
   const {
@@ -46,6 +48,10 @@ const RestaurantMenu = () => {
     );
     if (found) setSelectedRes(found);
   }, [restaurantParam]);
+
+  useEffect(() => {
+    if (openCart === "1") setIsCartOpen(true);
+  }, [openCart]);
 
   const handleOpenFoodDetail = (foodId) => {
     navigate(`/food/${foodId}`);
@@ -110,6 +116,7 @@ const RestaurantMenu = () => {
         onCheckoutSuccess={handleCheckoutSuccess}
         onClearCart={handleClearCart}
         onRemoveRestaurantItems={removeRestaurantItems}
+        autoOpenCheckout={checkout === "1"}
       />
     </div>
   );

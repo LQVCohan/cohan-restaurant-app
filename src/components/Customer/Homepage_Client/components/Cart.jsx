@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import "../../../../styles/Homepage/Cart.scss";
 import OrderSummaryModal from "../../BookingDishesModal/OrderSummaryModal";
 import { gql } from "@apollo/client";
@@ -100,8 +100,15 @@ const Cart = ({
   onCheckoutSuccess,
   onClearCart,
   onRemoveRestaurantItems,
+  autoOpenCheckout = false,
 }) => {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  useEffect(() => {
+    if (isOpen && autoOpenCheckout) {
+      setIsOrderModalOpen(true);
+    }
+  }, [isOpen, autoOpenCheckout]);
+
   const formatVND = useCallback(
     (v) => (v || 0).toLocaleString("vi-VN") + "đ",
     []
