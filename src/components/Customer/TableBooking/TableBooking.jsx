@@ -13,6 +13,7 @@ import SuccessModal from "../SuccessModal/SuccessModal";
 import useFloorManagement from "../../../hooks/useFloorManagement";
 import { useCart } from "../../../context/CartProvider";
 import { AuthContext } from "../../../context/AuthContext";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 import "./TableBooking.scss";
 
 const UPDATE_FLOOR_WATCHING = gql`
@@ -118,7 +119,7 @@ const TableBooking = () => {
   if (floorsLoading)
     return (
       <div className="booking-loading-premium">
-        <div className="loader-logo"></div>
+        <LoadingSpinner size="large" className="booking-loading-spinner" />
         <p>Đang chuẩn bị không gian...</p>
       </div>
     );
@@ -170,7 +171,10 @@ const TableBooking = () => {
           {/* Map Viewport */}
           <div className="map-viewport-frame">
             {tablesLoading ? (
-              <div className="map-state-msg">Đang tải dữ liệu bàn...</div>
+              <div className="map-state-msg">
+                <LoadingSpinner size="medium" />
+                <span>Đang tải dữ liệu bàn...</span>
+              </div>
             ) : (
               <>
                 <div className="floor-name-watermark">

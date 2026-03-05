@@ -347,28 +347,9 @@ $shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
     display: block;
   }
 }
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid #ffe4cc;
-  border-top-color: $primary;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+.loading-state .loading-spinner,
+.category-list .loading-spinner {
   margin: 0 auto;
-}
-.spinner-sm {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #ffe4cc;
-  border-top-color: $primary;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 /* FLOATING CART */
