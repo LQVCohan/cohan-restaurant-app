@@ -1,46 +1,12 @@
 import React, { useState, useMemo } from "react";
-import { Check, CheckCircle2, Trash2, Bell, CheckCheck } from "lucide-react";
+import { Trash2, Bell, CheckCheck } from "lucide-react";
 import "./NotificationsPage.scss";
-
-// Dùng chung mock data (thêm vài dòng để test cho trực quan)
-const INITIAL_NOTIFICATIONS = [
-  {
-    id: 1,
-    image: "https://cdn-icons-png.flaticon.com/512/7541/7541900.png",
-    text: "Đơn hàng #DH001 của bạn đã được giao thành công. Chúc bạn ngon miệng!",
-    time: "5 phút trước",
-    isRead: false,
-    type: "order",
-  },
-  {
-    id: 2,
-    image: "https://cdn-icons-png.flaticon.com/512/879/879757.png",
-    text: "Mã giảm giá 'SALE50' sắp hết hạn vào ngày mai. Sử dụng ngay!",
-    time: "1 giờ trước",
-    isRead: false,
-    type: "promotion",
-  },
-  {
-    id: 3,
-    image: "https://cdn-icons-png.flaticon.com/512/1046/1046857.png",
-    text: "Nhà hàng Pizza Company vừa thêm món mới. Khám phá ngay!",
-    time: "2 giờ trước",
-    isRead: true,
-    type: "system",
-  },
-  {
-    id: 4,
-    image: "https://cdn-icons-png.flaticon.com/512/7541/7541900.png",
-    text: "Đơn hàng #DH002 đang được chuẩn bị.",
-    time: "1 ngày trước",
-    isRead: true,
-    type: "order",
-  },
-];
+import { useCustomerNotifications } from "@/context/CustomerNotificationContext";
 
 const NotificationsPage = () => {
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [filter, setFilter] = useState("all"); // 'all' hoặc 'unread'
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } =
+    useCustomerNotifications();
 
   // Lọc thông báo dựa trên tab đang chọn
   const displayedNotifications = useMemo(() => {
@@ -50,30 +16,6 @@ const NotificationsPage = () => {
     return notifications;
   }, [notifications, filter]);
 
-  // Đếm số lượng chưa đọc
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-
-  // Xử lý: Đánh dấu tất cả là đã đọc
-  const handleMarkAllAsRead = () => {
-    setNotifications((prev) =>
-      prev.map((notif) => ({ ...notif, isRead: true })),
-    );
-  };
-
-  // Xử lý: Click vào 1 thông báo để đánh dấu đã đọc
-  const handleMarkAsRead = (id) => {
-    setNotifications((prev) =>
-      prev.map((notif) =>
-        notif.id === id ? { ...notif, isRead: true } : notif,
-      ),
-    );
-  };
-
-  // Xử lý: Xóa 1 thông báo
-  const handleDelete = (id, e) => {
-    e.stopPropagation(); // Ngăn chặn sự kiện click lan ra ngoài thẻ cha (tránh trigger handleMarkAsRead)
-    setNotifications((prev) => prev.filter((notif) => notif.id !== id));
-  };
 
   return (
     <div className="notifications-page">
@@ -89,7 +31,7 @@ const NotificationsPage = () => {
 
           <button
             className="btn-mark-all"
-            onClick={handleMarkAllAsRead}
+            onClick={markAllAsRead}
             disabled={unreadCount === 0}
           >
             <CheckCheck size={18} />
@@ -128,7 +70,7 @@ const NotificationsPage = () => {
               <div
                 key={notif.id}
                 className={`notif-card ${!notif.isRead ? "unread" : ""}`}
-                onClick={() => handleMarkAsRead(notif.id)}
+                onClick={() => markAsRead(notif.id)}
               >
                 <div className="notif-icon">
                   <img src={notif.image} alt="icon" />
@@ -144,7 +86,10 @@ const NotificationsPage = () => {
 
                   <button
                     className="btn-delete"
-                    onClick={(e) => handleDelete(notif.id, e)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteNotification(notif.id);
+                    }}
                     title="Xóa thông báo"
                   >
                     <Trash2 size={18} />
