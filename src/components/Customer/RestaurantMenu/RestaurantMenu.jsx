@@ -125,6 +125,7 @@ const RestaurantMenu = () => {
         onCheckoutSuccess={handleCheckoutSuccess}
         onClearCart={handleClearCart}
         onRemoveRestaurantItems={removeRestaurantItems}
+        autoOpenCheckout={checkout === "1"}
       />
 
       <OrderSummaryModal
