@@ -55,6 +55,7 @@ import AddressPage from "@/components/Customer/AddressPage/AddressPage";
 import HelpPage from "@/components/Customer/HelpPage/HelpPage";
 import VRViewer from "@/components/Customer/VRViewer/VRViewer";
 import NotificationsPage from "@/components/Customer/NotifyModal/NotificationsPage";
+import FoodDetail from "@/components/Customer/Food/FoodDetail";
 
 // =========================
 // 🔐 GraphQL Query: me
@@ -430,6 +431,7 @@ const AppRouter = () => {
         <Route path="/restaurant/:id/layout" element={<TableBooking />} />
         <Route path="/vr/table/:tableId" element={<VRViewer />} />
         <Route path="/cus-menu" element={<RestaurantMenu />} />
+        <Route path="/food/:foodId" element={<FoodDetail />} />
         <Route path="/vouchers/:id" element={<VoucherPage />} />
         <Route path="/favorites/:id" element={<FavoritePage />} />
         <Route path="/address-book/:id" element={<AddressPage />} />
