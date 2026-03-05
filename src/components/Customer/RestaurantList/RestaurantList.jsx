@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import DiscoveryHero from "./components/DiscoveryHero/DiscoveryHero";
 import FiltersSidebar from "./components/FiltersSidebar/FiltersSidebar";
 import RestaurantCard from "./components/RestaurantCard/RestaurantCard";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 import { useRestaurants } from "../../../hooks/useRestaurants";
 
@@ -256,7 +257,7 @@ const RestaurantList = ({ restaurantFilter }) => {
             {/* List Content */}
             {loading && accumulated.length === 0 && (
               <div className="state-box loading">
-                <div className="spinner"></div>
+                <LoadingSpinner size="large" />
               </div>
             )}
 

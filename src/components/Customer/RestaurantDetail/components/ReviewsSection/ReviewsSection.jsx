@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
 
 import "./ReviewsSection.scss";
 
@@ -165,7 +166,7 @@ const ReviewsSection = ({ restaurantId }) => {
     return (
       <div className="reviews-section">
         <div className="reviews-loading">
-          <div className="spinner"></div>
+          <LoadingSpinner size="large" />
           <p>Đang tải đánh giá...</p>
         </div>
       </div>
