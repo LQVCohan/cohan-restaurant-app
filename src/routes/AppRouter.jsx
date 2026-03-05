@@ -54,6 +54,7 @@ import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
 import AddressPage from "@/components/Customer/AddressPage/AddressPage";
 import HelpPage from "@/components/Customer/HelpPage/HelpPage";
 import VRViewer from "@/components/Customer/VRViewer/VRViewer";
+import NotificationsPage from "@/components/Customer/NotifyModal/NotificationsPage";
 
 // =========================
 // 🔐 GraphQL Query: me
@@ -433,6 +434,17 @@ const AppRouter = () => {
         <Route path="/favorites/:id" element={<FavoritePage />} />
         <Route path="/address-book/:id" element={<AddressPage />} />
         <Route path="/help-center/:id" element={<HelpPage />} />
+        <Route
+          path="/notifications"
+          element={
+            <PrivateRoute
+              allowedRoles={["customer", "manager", "staff", "admin"]}
+              requireVerifiedEmail
+            >
+              <NotificationsPage />
+            </PrivateRoute>
+          }
+        />
         {/* Profile */}
         <Route
           path="/profile"

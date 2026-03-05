@@ -10,6 +10,7 @@ import ScrollToTop from "./components/common/ScrollToTop";
 import NotificationContainer from "./components/common/NotificationContainer";
 import NotificationProvider from "./context/NotificationProvider";
 import { CartProvider } from "./context/CartProvider";
+import { CustomerNotificationProvider } from "./context/CustomerNotificationContext";
 function App() {
   return (
     <ApolloProvider client={apolloClient}>
@@ -17,9 +18,11 @@ function App() {
         <AuthProvider>
           <NotificationProvider>
             <ScrollToTop />
-            <CartProvider>
-              <AppRouter />
-            </CartProvider>
+            <CustomerNotificationProvider>
+              <CartProvider>
+                <AppRouter />
+              </CartProvider>
+            </CustomerNotificationProvider>
             <NotificationContainer />
           </NotificationProvider>
         </AuthProvider>
