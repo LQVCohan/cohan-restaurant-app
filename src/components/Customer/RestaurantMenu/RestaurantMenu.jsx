@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./RestaurantMenu.scss";
 import Cart from "../../Customer/Homepage_Client/components/Cart";
+import OrderSummaryModal from "../BookingDishesModal/OrderSummaryModal";
 import { useCart } from "../../../context/CartProvider";
 import { MOCK_RESTAURANTS } from "./menuData";
 import { formatCurrency } from "../../../utils/formatters";
@@ -13,12 +14,16 @@ import MenuDetailView from "./components/MenuDetailView";
 
 const RestaurantMenu = () => {
   const navigate = useNavigate();
-  const { search } = useLocation();
+  const { search, pathname } = useLocation();
   const [selectedRes, setSelectedRes] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isDirectCheckoutOpen, setIsDirectCheckoutOpen] = useState(false);
+  const [isCheckoutBooting, setIsCheckoutBooting] = useState(false);
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
   const restaurantParam = searchParams.get("restaurantId");
   const returnTo = searchParams.get("returnTo");
+  const openCart = searchParams.get("openCart");
+  const checkout = searchParams.get("checkout");
 
   // 👉 Dùng cart context
   const {
@@ -46,6 +51,27 @@ const RestaurantMenu = () => {
     );
     if (found) setSelectedRes(found);
   }, [restaurantParam]);
+
+  useEffect(() => {
+    if (checkout === "1") return;
+    if (openCart === "1") setIsCartOpen(true);
+  }, [openCart, checkout]);
+
+  useEffect(() => {
+    if (checkout === "1") {
+      setIsCheckoutBooting(true);
+      setIsCartOpen(false);
+
+      const timer = setTimeout(() => {
+        setIsDirectCheckoutOpen(true);
+        setIsCheckoutBooting(false);
+      }, 250);
+
+      return () => clearTimeout(timer);
+    }
+
+    setIsCheckoutBooting(false);
+  }, [checkout]);
 
   const handleOpenFoodDetail = (foodId) => {
     navigate(`/food/${foodId}`);
@@ -111,6 +137,28 @@ const RestaurantMenu = () => {
         onClearCart={handleClearCart}
         onRemoveRestaurantItems={removeRestaurantItems}
       />
+
+      <OrderSummaryModal
+        isOpen={isDirectCheckoutOpen}
+        onClose={() => {
+          setIsDirectCheckoutOpen(false);
+          setIsCheckoutBooting(false);
+          if (checkout === "1") {
+            navigate(pathname, { replace: true });
+          }
+        }}
+        items={cart}
+        onSuccess={handleCheckoutSuccess}
+      />
+
+      {isCheckoutBooting && (
+        <div className="checkout-loading-overlay" role="status" aria-live="polite">
+          <div className="checkout-loading-card">
+            <div className="checkout-spinner" />
+            <p>Đang mở thanh toán...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

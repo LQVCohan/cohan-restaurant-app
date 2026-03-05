@@ -101,8 +101,8 @@ const DishGrid = ({
     onAddToCart?.(payload);
   };
 
-  const handleOpenFoodDetail = (dishId) => {
-    navigate(`/food/${dishId}`);
+  const handleOpenFoodDetail = (dish) => {
+    navigate(`/food/${dish.id}`, { state: { dish } });
   };
 
   return (
@@ -136,13 +136,13 @@ const DishGrid = ({
                     <div
                       key={dish.id}
                       className="dish-card"
-                      onClick={() => handleOpenFoodDetail(dish.id)}
+                      onClick={() => handleOpenFoodDetail(dish)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          handleOpenFoodDetail(dish.id);
+                          handleOpenFoodDetail(dish);
                         }
                       }}
                     >
