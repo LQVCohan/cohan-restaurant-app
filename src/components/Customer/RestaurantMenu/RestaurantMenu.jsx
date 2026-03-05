@@ -136,26 +136,12 @@ const RestaurantMenu = () => {
         onCheckoutSuccess={handleCheckoutSuccess}
         onClearCart={handleClearCart}
         onRemoveRestaurantItems={removeRestaurantItems}
-        autoOpenCheckout={checkout === "1"}
       />
 
       <OrderSummaryModal
         isOpen={isDirectCheckoutOpen}
         onClose={() => {
           setIsDirectCheckoutOpen(false);
-          if (checkout === "1") {
-            navigate(pathname, { replace: true });
-          }
-        }}
-        items={cart}
-        onSuccess={handleCheckoutSuccess}
-      />
-
-      <OrderSummaryModal
-        isOpen={isDirectCheckoutOpen}
-        onClose={() => {
-          setIsDirectCheckoutOpen(false);
-          setIsCheckoutBooting(false);
           if (checkout === "1") {
             navigate(pathname, { replace: true });
           }
