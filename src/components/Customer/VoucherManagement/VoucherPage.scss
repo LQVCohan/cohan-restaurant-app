@@ -1,101 +1,85 @@
-/* --- VARIABLES --- */
+// --- VARIABLES ---
 $primary: #ff6600;
 $primary-dark: #e65c00;
 $primary-light: #fff5eb;
 $blue: #007bff;
 $green: #28a745;
 
-// Màu nền mới: Ấm hơn, không còn là trắng tinh
 $bg-page: #fffbf8;
 $bg-white: #ffffff;
 
 $text-dark: #1f2937;
 $text-gray: #6b7280;
-$border-color: #eee;
+$border-color: #f3f4f6;
 
-// Shadow mới: Mềm mại, lan tỏa hơn
 $shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.04);
 $shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
-$shadow-hover: 0 12px 32px rgba(255, 102, 0, 0.12); // Shadow màu cam nhẹ khi hover
+$shadow-hover: 0 12px 32px rgba(255, 102, 0, 0.15); // Cam lan tỏa
+
+// --- GLOBAL MIXINS & RESETS ---
+* {
+  box-sizing: border-box;
+}
 
 .voucher-page {
-  /* 1. NỀN TRANG MỚI: Tạo chiều sâu với gradient đốm sáng */
   background-color: $bg-page;
-  background-image: radial-gradient(
-      circle at 10% 20%,
-      rgba(255, 102, 0, 0.06) 0%,
-      transparent 40%
-    ),
-    radial-gradient(
-      circle at 90% 10%,
-      rgba(255, 213, 79, 0.12) 0%,
-      transparent 40%
-    ),
-    radial-gradient(
-      circle at 50% 80%,
-      rgba(255, 102, 0, 0.04) 0%,
-      transparent 50%
-    );
-  background-attachment: fixed;
   min-height: 100vh;
-  padding: 40px 0 80px;
-  font-family: "Segoe UI", sans-serif;
-
+  color: $text-dark;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  padding-top: 100px; /* CỘNG THÊM KHOẢNG TRỐNG NÀY ĐỂ TRÁNH HEADER */
+  padding-bottom: 24px;
+  padding-left: 16px;
+  padding-right: 16px;
   .voucher-container {
-    max-width: 1100px;
+    max-width: 800px;
     margin: 0 auto;
-    padding: 0 20px;
-    position: relative;
-    z-index: 1;
   }
 }
 
-/* HEADER & STATS */
+/* --- DASHBOARD HEADER --- */
 .dashboard-header {
+  background: linear-gradient(135deg, $primary 0%, $primary-dark 100%);
+  border-radius: 20px;
+  padding: 24px;
+  color: #fff;
   display: flex;
   justify-content: space-between;
-  align-items: center; // Canh giữa theo chiều dọc
-  margin-bottom: 32px;
-  background: $bg-white;
-  padding: 24px 32px;
-  border-radius: 20px; // Bo góc mềm hơn
-  box-shadow: $shadow-sm;
-  // Thêm viền nhẹ để tách khỏi nền
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px); // Hiệu ứng kính mờ nhẹ (nếu trình duyệt hỗ trợ)
+  align-items: center;
+  box-shadow: $shadow-md;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
 
   .welcome-text {
     h1 {
-      font-size: 26px;
-      font-weight: 800;
-      color: $text-dark;
-      margin: 0 0 8px;
+      margin: 0 0 8px 0;
+      font-size: 24px;
+      font-weight: 700;
     }
     p {
-      color: $text-gray;
-      font-size: 15px;
       margin: 0;
+      font-size: 14px;
+      opacity: 0.9;
     }
   }
 
   .stats-card {
-    display: flex;
-    gap: 24px;
-    align-items: center;
-    background: #f8f9fa; // Nền xám rất nhạt cho khối stats
-    padding: 12px 24px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
     border-radius: 16px;
-    // border: 1px solid $border-color; // Bỏ border cứng
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 
-    .divider {
-      width: 1px;
-      height: 36px;
-      background: #e0e0e0;
-    }
     .stat-item {
       display: flex;
       align-items: center;
       gap: 12px;
+
       .icon-circle {
         width: 40px;
         height: 40px;
@@ -103,73 +87,77 @@ $shadow-hover: 0 12px 32px rgba(255, 102, 0, 0.12); // Shadow màu cam nhẹ khi
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05); // Shadow nhẹ cho icon
-        &.bg-yellow {
-          background: #fff7d6;
-          color: #d97706;
-        }
-        &.bg-blue {
-          background: #e6f0ff;
-          color: #0066ff;
-        }
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
       }
-      div {
-        display: flex;
-        flex-direction: column;
-        .value {
-          font-weight: 800;
-          font-size: 18px;
-          color: $text-dark;
-          line-height: 1.2;
-        }
-        .label {
-          font-size: 12px;
-          color: $text-gray;
-          font-weight: 500;
-        }
+
+      .value {
+        display: block;
+        font-weight: 700;
+        font-size: 18px;
       }
+      .label {
+        font-size: 12px;
+        opacity: 0.8;
+      }
+    }
+
+    .divider {
+      width: 1px;
+      height: 30px;
+      background: rgba(255, 255, 255, 0.3);
     }
   }
 }
 
-/* SEARCH & CATEGORIES */
+/* --- SEARCH & FILTER --- */
 .action-bar {
-  margin-bottom: 24px;
-}
-.search-box {
-  display: flex;
-  align-items: center;
-  background: $bg-white;
-  padding: 6px 6px 6px 18px;
-  border-radius: 50px;
-  box-shadow: $shadow-sm;
-  max-width: 500px;
-  border: 1px solid transparent;
-  transition: all 0.2s;
-  // Hiệu ứng khi focus vào ô tìm kiếm
-  &:focus-within {
-    border-color: rgba(255, 102, 0, 0.3);
-    box-shadow: 0 4px 12px rgba(255, 102, 0, 0.1);
-  }
+  margin-bottom: 20px;
+  .search-box {
+    display: flex;
+    align-items: center;
+    background: $bg-white;
+    border-radius: 12px;
+    padding: 8px 12px;
+    box-shadow: $shadow-sm;
+    border: 1px solid $border-color;
+    transition: all 0.3s ease;
 
-  input {
-    border: none;
-    outline: none;
-    flex: 1;
-    font-size: 15px;
-    color: $text-dark;
-  }
-  button {
-    background: $primary;
-    color: white;
-    border: none;
-    padding: 10px 28px;
-    border-radius: 30px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s;
-    &:hover {
-      background: $primary-dark;
+    &:focus-within {
+      border-color: $primary;
+      box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
+    }
+
+    .search-icon {
+      color: $text-gray;
+      margin-right: 8px;
+    }
+
+    input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 15px;
+      background: transparent;
+      color: $text-dark;
+      &::placeholder {
+        color: #9ca3af;
+      }
+    }
+
+    button {
+      background: $primary-light;
+      color: $primary;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      &:hover {
+        background: $primary;
+        color: #fff;
+      }
     }
   }
 }
@@ -177,327 +165,445 @@ $shadow-hover: 0 12px 32px rgba(255, 102, 0, 0.12); // Shadow màu cam nhẹ khi
 .categories-wrapper {
   display: flex;
   gap: 12px;
-  margin-bottom: 36px;
   overflow-x: auto;
-  padding: 4px;
+  padding-bottom: 8px;
+  margin-bottom: 24px;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
   .cat-pill {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 20px;
     background: $bg-white;
     border: 1px solid $border-color;
-    border-radius: 12px;
-    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 24px;
+    font-weight: 500;
     color: $text-gray;
     cursor: pointer;
-    transition: all 0.2s ease;
     white-space: nowrap;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s ease;
+    box-shadow: $shadow-sm;
 
     &:hover {
+      border-color: $primary-light;
       color: $primary;
-      border-color: $primary;
-      background: $primary-light;
-      transform: translateY(-2px);
     }
+
     &.active {
       background: $primary;
-      color: white;
+      color: #fff;
       border-color: $primary;
-      box-shadow: 0 6px 16px rgba(255, 102, 0, 0.25);
-      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 102, 0, 0.25);
     }
   }
 }
 
+/* --- VOUCHER LIST --- */
 .section-title {
-  margin-bottom: 24px;
-  &.mt-5 {
-    margin-top: 48px;
-  }
+  margin-bottom: 16px;
   h3 {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     color: $text-dark;
     margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
   }
 }
 
-/* === TICKET CARD DESIGN (VISUAL UPGRADE) === */
 .voucher-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 28px; // Tăng khoảng cách giữa các thẻ
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
 }
 
+/* TICKET CARD STYLING */
 .ticket-card {
   display: flex;
-  height: 170px;
   background: $bg-white;
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow: $shadow-sm; // Shadow mềm mặc định
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border-radius: 16px;
+  box-shadow: $shadow-sm;
   position: relative;
-  cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.8); // Viền siêu mỏng để tăng độ sắc nét
+  overflow: hidden;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
+  border: 1px solid $border-color;
 
-  // Hiệu ứng Hover: Nổi lên cao hơn và shadow màu cam lan tỏa
   &:hover {
-    transform: translateY(-6px);
+    transform: translateY(-2px);
     box-shadow: $shadow-hover;
   }
 
-  /* Left Side */
+  /* Colors based on mock data */
+  &.color-primary .ticket-left {
+    background: $primary-light;
+    color: $primary;
+  }
+  &.color-orange .ticket-left {
+    background: #fff1e6;
+    color: #fd7e14;
+  }
+  &.color-green .ticket-left {
+    background: #e8f5e9;
+    color: $green;
+  }
+  &.color-blue .ticket-left {
+    background: #e3f2fd;
+    color: $blue;
+  }
+
   .ticket-left {
-    width: 110px;
-    position: relative;
+    width: 100px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    flex-shrink: 0;
+    position: relative;
 
-    // Làm mềm hiệu ứng cắt góc
-    .cutout {
-      position: absolute;
-      right: -11px;
-      width: 22px;
-      height: 22px;
-      background: $bg-page; // Màu phải trùng với nền trang mới
-      border-radius: 50%;
+    .ticket-icon {
       z-index: 2;
-      box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.05); // Tạo độ sâu nhẹ bên trong lỗ cắt
-      &.top {
-        top: -11px;
-      }
-      &.bottom {
-        bottom: -11px;
-      }
     }
-    // Làm mềm đường nét đứt
+
     .vertical-dashed {
       position: absolute;
       right: 0;
-      top: 12px;
-      bottom: 12px;
-      border-right: 2px dashed rgba(255, 255, 255, 0.4); // Màu nhạt hơn
+      top: 10px;
+      bottom: 10px;
+      width: 1px;
+      border-right: 2px dashed #d1d5db;
+    }
+
+    /* Tạo hiệu ứng khoét lỗ */
+    .cutout {
+      position: absolute;
+      right: -8px;
+      width: 16px;
+      height: 16px;
+      background-color: $bg-page;
+      border-radius: 50%;
+      z-index: 3;
+      border-left: 1px solid $border-color;
+
+      &.top {
+        top: -8px;
+        border-bottom: 1px solid $border-color;
+        transform: rotate(-45deg);
+      }
+      &.bottom {
+        bottom: -8px;
+        border-top: 1px solid $border-color;
+        transform: rotate(45deg);
+      }
     }
   }
 
-  // Gradient màu sắc tươi tắn hơn
-  &.color-blue .ticket-left {
-    background: linear-gradient(135deg, #4facfe, #00f2fe);
-  }
-  &.color-orange .ticket-left {
-    background: linear-gradient(135deg, #ff9a44, #fc6076);
-  }
-  &.color-green .ticket-left {
-    background: linear-gradient(135deg, #43e97b, #38f9d7);
-  }
-
-  /* Right Side (TĂNG PADDING & KHÔNG GIAN) */
   .ticket-right {
     flex: 1;
-    padding: 20px 24px; // Padding rộng rãi hơn
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    min-width: 0;
+    justify-content: center;
 
     .ticket-header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
       margin-bottom: 8px;
+
       .tag {
-        // Tag style mới
-        background: rgba(255, 102, 0, 0.1);
-        color: $primary;
-        font-size: 10px;
-        font-weight: 800;
-        padding: 3px 8px;
-        border-radius: 20px;
+        background: #ffebe0;
+        color: $primary-dark;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 8px;
+        border-radius: 4px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
       }
       .expiry {
         font-size: 12px;
         color: $text-gray;
-        font-weight: 500;
       }
     }
 
     .ticket-body {
-      flex: 1;
       .t-title {
-        font-size: 17px;
+        margin: 0 0 4px 0;
+        font-size: 16px;
         font-weight: 700;
         color: $text-dark;
-        margin: 0 0 6px;
         line-height: 1.3;
       }
       .t-sub {
+        margin: 0 0 12px 0;
         font-size: 13px;
         color: $text-gray;
-        margin: 0 0 12px;
-        display: -webkit-box;
-        -webkit-line-clamp: 1;
-        overflow: hidden;
-        -webkit-box-orient: vertical;
       }
+    }
 
-      .progress-area {
-        margin-top: auto;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        .progress-bg {
-          flex: 1;
-          height: 8px;
-          background: #f1f2f4;
-          border-radius: 4px;
-          overflow: hidden;
-        }
+    .progress-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+
+      .progress-bg {
+        flex: 1;
+        height: 6px;
+        background: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+
         .progress-fill {
           height: 100%;
+          background: linear-gradient(90deg, $primary 0%, #ff8c33 100%);
           border-radius: 4px;
-          background: linear-gradient(90deg, #ff9a9e 0%, $primary 100%);
         }
-        .progress-text {
-          font-size: 11px;
-          color: $text-gray;
-          font-weight: 600;
-          white-space: nowrap;
-        }
+      }
+      .progress-text {
+        font-size: 12px;
+        color: $primary;
+        font-weight: 600;
       }
     }
 
     .ticket-footer {
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
       align-items: center;
       gap: 12px;
-      margin-top: 16px;
 
-      .btn-detail {
-        background: none;
-        border: none;
-        color: $text-gray;
+      button {
+        flex: 1;
+        padding: 8px 0;
+        border-radius: 8px;
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        transition: color 0.2s;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+
+      .btn-detail {
+        background: transparent;
+        border: 1px solid $border-color;
+        color: $text-dark;
         &:hover {
-          color: $primary;
-          text-decoration: underline;
+          background: #f9fafb;
+          border-color: #d1d5db;
         }
       }
 
       .btn-save {
         background: $primary;
-        color: white;
-        border: none;
-        padding: 8px 20px;
-        border-radius: 30px;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        box-shadow: 0 4px 12px rgba(255, 102, 0, 0.2); // Shadow cho nút
-
+        border: 1px solid $primary;
+        color: #fff;
         &:hover {
           background: $primary-dark;
-          transform: translateY(-2px);
-          box-shadow: 0 6px 16px rgba(255, 102, 0, 0.3);
+          box-shadow: 0 4px 12px rgba(255, 102, 0, 0.3);
         }
-
-        /* Trạng thái đã lưu */
         &.saved {
-          background: #f1f2f4;
-          color: $text-gray;
-          box-shadow: none;
-          &:hover {
-            background: #e5e7eb;
-            transform: none;
-          }
+          background: $primary-light;
+          color: $primary;
+          border-color: $primary-light;
         }
       }
     }
   }
 
-  /* Locked Style (Làm đẹp hơn) */
   &.is-locked {
-    background: #f9fafb;
-    cursor: default;
-    border: 1px solid $border-color;
-    box-shadow: none;
-    &:hover {
-      transform: none;
-      box-shadow: none;
-    }
-
+    opacity: 0.7;
+    filter: grayscale(20%);
     .ticket-left {
-      background: #e5e7eb;
+      background: #f3f4f6;
       color: #9ca3af;
     }
-    .ticket-right {
-      opacity: 0.7;
-      .t-title {
-        color: #6b7280;
-      }
-    }
     .lock-badge {
-      display: inline-block;
-      background: #e5e7eb;
-      color: #6b7280;
       font-size: 12px;
-      padding: 4px 10px;
-      border-radius: 20px;
+      color: #d97706;
+      background: #fef3c7;
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-bottom: 12px;
       font-weight: 600;
-      margin-top: 10px;
     }
     .btn-locked {
-      width: 100%;
       background: #e5e7eb;
       color: #9ca3af;
       border: none;
-      padding: 8px;
-      border-radius: 30px;
-      margin-top: auto;
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
       font-weight: 600;
+      cursor: not-allowed;
     }
   }
 }
 
-// ... (Phần Modal giữ nguyên hoặc điều chỉnh nhẹ màu sắc nếu muốn) ...
-/* === MODAL STYLE (Giữ nguyên cấu trúc, chỉ cập nhật biến màu nếu cần) === */
-.modal-overlay {
-  // ... (code cũ)
+/* --- MODAL POPUP --- */
+.modal-voucher-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: fadeIn 0.2s ease;
+
   .modal-content {
-    // ... (code cũ)
+    background: $bg-white;
+    width: 100%;
+    max-width: 400px;
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+    .close-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(255, 255, 255, 0.8);
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      color: $text-dark;
+      &:hover {
+        background: #fff;
+      }
+    }
+
     .modal-header {
-      // Cập nhật gradient cho modal header để đồng bộ
-      &.color-blue {
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
+      padding: 40px 24px 24px;
+      text-align: center;
+
+      &.color-primary {
+        background: $primary-light;
+        color: $primary;
       }
       &.color-orange {
-        background: linear-gradient(135deg, #ff9a44, #fc6076);
+        background: #fff1e6;
+        color: #fd7e14;
       }
       &.color-green {
-        background: linear-gradient(135deg, #43e97b, #38f9d7);
+        background: #e8f5e9;
+        color: $green;
       }
-      // ...
+      &.color-blue {
+        background: #e3f2fd;
+        color: $blue;
+      }
+
+      .modal-icon-large {
+        margin-bottom: 16px;
+        display: inline-flex;
+      }
+
+      h3 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        color: $text-dark;
+      }
+
+      .modal-code {
+        display: inline-block;
+        background: #fff;
+        border: 1px dashed currentcolor;
+        padding: 6px 16px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-family: monospace;
+        font-size: 16px;
+        letter-spacing: 1px;
+      }
     }
-    // ...
+
+    .modal-body {
+      padding: 24px;
+
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        .label {
+          color: $text-gray;
+          font-size: 14px;
+        }
+        .val {
+          font-weight: 600;
+          color: $text-dark;
+        }
+      }
+
+      .divider {
+        height: 1px;
+        background: $border-color;
+        margin: 16px 0;
+      }
+
+      h4 {
+        margin: 0 0 12px;
+        font-size: 15px;
+        color: $text-dark;
+      }
+
+      .condition-list {
+        margin: 0;
+        padding-left: 20px;
+        color: $text-gray;
+        font-size: 14px;
+        line-height: 1.6;
+        li {
+          margin-bottom: 6px;
+        }
+      }
+    }
+
+    .modal-footer-action {
+      padding: 16px 24px 24px;
+
+      .btn-full {
+        width: 100%;
+        background: $primary;
+        color: #fff;
+        border: none;
+        padding: 14px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          background: $primary-dark;
+          box-shadow: $shadow-hover;
+        }
+      }
+    }
   }
 }
+
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -506,6 +612,7 @@ $shadow-hover: 0 12px 32px rgba(255, 102, 0, 0.12); // Shadow màu cam nhẹ khi
     opacity: 1;
   }
 }
+
 @keyframes slideUp {
   from {
     transform: translateY(20px);

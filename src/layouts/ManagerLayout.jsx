@@ -31,158 +31,6 @@ import {
   CheckCircleOutlined,
   RocketOutlined,
 } from "@ant-design/icons";
-const PAGE_META = {
-  dashboard: {
-    title: "Tổng quan vận hành",
-    subtitle: "Theo dõi dữ liệu nhà hàng theo thời gian thực với giao diện quản trị hiện đại.",
-    icon: <BarChartOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Realtime KPI" },
-      { icon: <CheckCircleOutlined />, label: "Health Check" },
-      { icon: <RocketOutlined />, label: "Auto Insights" },
-    ],
-  },
-  tables: {
-    title: "Quản lý bàn",
-    subtitle: "Kiểm soát sơ đồ bàn, trạng thái sử dụng và tốc độ phục vụ trực tiếp.",
-    icon: <TableOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Table Live" },
-      { icon: <CheckCircleOutlined />, label: "Occupancy" },
-      { icon: <RocketOutlined />, label: "Flow Optimized" },
-    ],
-  },
-  orders: {
-    title: "Quản lý đơn hàng",
-    subtitle: "Tập trung xử lý đơn, đồng bộ trạng thái và tối ưu thời gian phản hồi.",
-    icon: <ShoppingCartOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Order Stream" },
-      { icon: <CheckCircleOutlined />, label: "SLA Tracking" },
-      { icon: <RocketOutlined />, label: "Quick Dispatch" },
-    ],
-  },
-  menu: {
-    title: "Quản lý thực đơn",
-    subtitle: "Cập nhật món ăn, giá bán và danh mục theo chuẩn hiển thị mới.",
-    icon: <AppstoreOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Menu Sync" },
-      { icon: <CheckCircleOutlined />, label: "Quality Gate" },
-      { icon: <RocketOutlined />, label: "Visual Ready" },
-    ],
-  },
-  inventory: {
-    title: "Quản lý kho",
-    subtitle: "Theo dõi tồn kho, nguyên liệu và cảnh báo nhập hàng trong một màn hình.",
-    icon: <InboxOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Stock Pulse" },
-      { icon: <CheckCircleOutlined />, label: "Low-stock Alerts" },
-      { icon: <RocketOutlined />, label: "Demand Forecast" },
-    ],
-  },
-  staff: {
-    title: "Quản lý nhân sự",
-    subtitle: "Quản lý thông tin nhân viên, phân quyền và hiệu suất làm việc đồng bộ.",
-    icon: <TeamOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Shift Live" },
-      { icon: <CheckCircleOutlined />, label: "Role Matrix" },
-      { icon: <RocketOutlined />, label: "Performance View" },
-    ],
-  },
-  customers: {
-    title: "Quản lý khách hàng",
-    subtitle: "Nâng cao trải nghiệm khách thân thiết bằng dữ liệu tập trung và trực quan.",
-    icon: <TeamOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Customer 360" },
-      { icon: <CheckCircleOutlined />, label: "Retention Signals" },
-      { icon: <RocketOutlined />, label: "Campaign Ready" },
-    ],
-  },
-  analytics: {
-    title: "Phân tích vận hành",
-    subtitle: "Đọc số liệu kinh doanh sâu hơn với dashboard nhiều lớp thông tin.",
-    icon: <BarChartOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Deep Analytics" },
-      { icon: <CheckCircleOutlined />, label: "Trend Matrix" },
-      { icon: <RocketOutlined />, label: "Smart Compare" },
-    ],
-  },
-  schedules: {
-    title: "Lịch làm việc",
-    subtitle: "Điều phối ca trực hiệu quả với hiển thị theo thời gian và nhân sự.",
-    icon: <TeamOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Shift Planner" },
-      { icon: <CheckCircleOutlined />, label: "Conflict Guard" },
-      { icon: <RocketOutlined />, label: "Auto Allocation" },
-    ],
-  },
-  payroll: {
-    title: "Lương thưởng",
-    subtitle: "Theo dõi bảng lương minh bạch, nhất quán và dễ kiểm soát.",
-    icon: <DollarOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Payroll Flow" },
-      { icon: <CheckCircleOutlined />, label: "Audit Ready" },
-      { icon: <RocketOutlined />, label: "Smart Export" },
-    ],
-  },
-  finance: {
-    title: "Quản lý tài chính",
-    subtitle: "Theo dõi doanh thu, chi phí và dòng tiền với cấu trúc dễ kiểm soát.",
-    icon: <DollarOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Cashflow Live" },
-      { icon: <CheckCircleOutlined />, label: "Margin Watch" },
-      { icon: <RocketOutlined />, label: "Forecast Engine" },
-    ],
-  },
-  promotions: {
-    title: "Quản lý khuyến mãi",
-    subtitle: "Tạo ưu đãi linh hoạt để thúc đẩy chuyển đổi và tăng lượt quay lại.",
-    icon: <StarOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Promo Builder" },
-      { icon: <CheckCircleOutlined />, label: "ROI Focus" },
-      { icon: <RocketOutlined />, label: "Funnel Boost" },
-    ],
-  },
-  reviews: {
-    title: "Quản lý đánh giá",
-    subtitle: "Theo dõi phản hồi khách hàng để cải thiện chất lượng dịch vụ tức thời.",
-    icon: <StarOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Sentiment Live" },
-      { icon: <CheckCircleOutlined />, label: "Response SLA" },
-      { icon: <RocketOutlined />, label: "Reputation Lift" },
-    ],
-  },
-  "print-management": {
-    title: "Quản lý in ấn",
-    subtitle: "Cấu hình thiết bị in và quy trình phát lệnh nhanh, ổn định.",
-    icon: <AppstoreOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Printer Health" },
-      { icon: <CheckCircleOutlined />, label: "Queue Monitor" },
-      { icon: <RocketOutlined />, label: "Fast Dispatch" },
-    ],
-  },
-  "restaurant-info-management": {
-    title: "Hồ sơ nhà hàng",
-    subtitle: "Quản lý hình ảnh, thương hiệu và thông tin hiển thị chuẩn trải nghiệm mới.",
-    icon: <ShopOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Brand Consistency" },
-      { icon: <CheckCircleOutlined />, label: "Profile QA" },
-      { icon: <RocketOutlined />, label: "Preview Sync" },
-    ],
-  },
-};
 
 const ManagerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -213,7 +61,7 @@ const ManagerLayout = () => {
         "print-management",
         "restaurant-info-management",
       ]),
-    []
+    [],
   );
   useEffect(() => {
     const hash = window.location.hash?.replace("#", "");
@@ -276,17 +124,6 @@ const ManagerLayout = () => {
 
   const toggleSidebar = () => {
     setSidebarOpen((prev) => !prev);
-  };
-
-  const currentMeta = PAGE_META[currentPage] || {
-    title: "Trang quản lý",
-    subtitle: "Không gian quản trị tập trung theo tiêu chuẩn giao diện mới.",
-    icon: <ShopOutlined />,
-    highlights: [
-      { icon: <ThunderboltOutlined />, label: "Unified UX" },
-      { icon: <CheckCircleOutlined />, label: "Consistent State" },
-      { icon: <RocketOutlined />, label: "Modern Ready" },
-    ],
   };
 
   const closeSidebar = () => {
@@ -370,21 +207,9 @@ const ManagerLayout = () => {
 
         {/* Content */}
         <main className="manager-layout__content">
-          <section className={`manager-page-shell manager-page-shell--${currentPage}`}>
-            <div className="manager-page-shell__hero">
-              <div className="hero-badge">{currentMeta.icon}</div>
-              <div className="hero-text">
-                <h1>{currentMeta.title}</h1>
-                <p>{currentMeta.subtitle}</p>
-              </div>
-              <div className="hero-chips">
-                {currentMeta.highlights.map((item) => (
-                  <span key={item.label}>
-                    {item.icon} {item.label}
-                  </span>
-                ))}
-              </div>
-            </div>
+          <section
+            className={`manager-page-shell manager-page-shell--${currentPage}`}
+          >
             <div className="manager-page-shell__body">{renderContent()}</div>
           </section>
         </main>

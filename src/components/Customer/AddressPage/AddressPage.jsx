@@ -67,7 +67,6 @@ const INITIAL_ADDRESSES = [
     phone: "0909 123 456",
     fullAddress:
       "123 Đường Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh",
-    // Lưu trữ các trường riêng lẻ để Edit lại được
     specificAddress: "123 Đường Nguyễn Huệ",
     province: "79",
     district: "760",
@@ -91,7 +90,7 @@ const AddressPage = () => {
     phone: "",
     note: "",
     isDefault: false,
-    specificAddress: "", // Số nhà, đường
+    specificAddress: "",
   });
 
   // State riêng cho Địa lý
@@ -136,7 +135,6 @@ const AddressPage = () => {
       isDefault: item.isDefault,
       specificAddress: item.specificAddress || "",
     });
-    // Load lại geo nếu có, nếu không để trống
     setGeo({
       province: item.province || "",
       district: item.district || "",
@@ -157,7 +155,7 @@ const AddressPage = () => {
       isDefault: addr.id === id,
     }));
     updated.sort((x, y) =>
-      x.isDefault === y.isDefault ? 0 : x.isDefault ? -1 : 1
+      x.isDefault === y.isDefault ? 0 : x.isDefault ? -1 : 1,
     );
     setAddresses(updated);
   };
@@ -181,13 +179,13 @@ const AddressPage = () => {
 
     const newAddressObj = {
       ...formData,
-      ...geo, // Lưu lại ID để sau này edit
-      fullAddress: fullAddressString, // Chuỗi hiển thị
+      ...geo,
+      fullAddress: fullAddressString,
     };
 
     if (isEditing) {
       setAddresses(
-        addresses.map((a) => (a.id === formData.id ? newAddressObj : a))
+        addresses.map((a) => (a.id === formData.id ? newAddressObj : a)),
       );
     } else {
       const isFirst = addresses.length === 0;
@@ -205,19 +203,18 @@ const AddressPage = () => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setTimeout(() => {
-            // Demo fill dữ liệu giả định
             setFormData((prev) => ({
               ...prev,
               specificAddress: "20 Cộng Hòa",
             }));
-            setGeo({ province: "79", district: "761", ward: "Phường 12" }); // Fill TP.HCM, Bình Thạnh...
+            setGeo({ province: "79", district: "761", ward: "Phường 12" });
             setLoadingLoc(false);
           }, 1000);
         },
         () => {
           alert("Không thể lấy vị trí.");
           setLoadingLoc(false);
-        }
+        },
       );
     } else {
       setLoadingLoc(false);
@@ -262,22 +259,23 @@ const AddressPage = () => {
             <p>Hãy thêm địa chỉ để chúng tôi giao hàng nhanh nhất nhé!</p>
           </div>
         ) : (
-          <div className="addr-grid">
+          <div className="address-list-wrapper">
             {addresses.map((item) => (
               <div
                 key={item.id}
-                className={`addr-card ${item.isDefault ? "active" : ""}`}
+                className={`address-card-item ${item.isDefault ? "active" : ""}`}
               >
                 {item.isDefault && (
                   <div className="badge-corner">
                     <Star size={12} fill="currentColor" /> Mặc định
                   </div>
                 )}
-                <div className="card-body">
-                  <div className={`icon-box ${item.label}`}>
+
+                <div className="address-card-body">
+                  <div className={`address-icon-box ${item.label}`}>
                     {getIconByLabel(item.label)}
                   </div>
-                  <div className="info-box">
+                  <div className="address-info-box">
                     <div className="user-line">
                       <span className="name">{item.name}</span>
                       <span className="phone">{item.phone}</span>
@@ -286,7 +284,8 @@ const AddressPage = () => {
                     {item.note && <p className="note-text">📝 {item.note}</p>}
                   </div>
                 </div>
-                <div className="card-footer">
+
+                <div className="address-card-footer">
                   <div className="actions-left">
                     {!item.isDefault && (
                       <button
@@ -320,7 +319,7 @@ const AddressPage = () => {
         )}
       </div>
 
-      {/* --- PROFESSIONAL MODAL --- */}
+      {/* --- MODAL THÊM / CẬP NHẬT --- */}
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="addr-modal" onClick={(e) => e.stopPropagation()}>
@@ -369,7 +368,7 @@ const AddressPage = () => {
                 </div>
               </div>
 
-              {/* Row 2: Địa chỉ hành chính (Cascading Selects) */}
+              {/* Row 2: Địa chỉ hành chính */}
               <div className="form-section">
                 <div className="geo-header">
                   <label>Khu vực vận chuyển</label>
@@ -383,7 +382,6 @@ const AddressPage = () => {
                 </div>
 
                 <div className="geo-grid">
-                  {/* TỈNH/THÀNH */}
                   <div className="select-wrapper">
                     <select
                       value={geo.province}
@@ -399,7 +397,6 @@ const AddressPage = () => {
                     <ChevronDown size={16} className="select-arrow" />
                   </div>
 
-                  {/* QUẬN/HUYỆN */}
                   <div
                     className={`select-wrapper ${
                       !geo.province ? "disabled" : ""
@@ -417,13 +414,12 @@ const AddressPage = () => {
                             <option key={key} value={key}>
                               {LOCATION_DATA[geo.province].districts[key].name}
                             </option>
-                          )
+                          ),
                         )}
                     </select>
                     <ChevronDown size={16} className="select-arrow" />
                   </div>
 
-                  {/* PHƯỜNG/XÃ */}
                   <div
                     className={`select-wrapper ${
                       !geo.district ? "disabled" : ""
@@ -448,7 +444,6 @@ const AddressPage = () => {
                   </div>
                 </div>
 
-                {/* ĐỊA CHỈ CỤ THỂ */}
                 <div className="input-group mt-3">
                   <div className="input-wrapper textarea-wrapper">
                     <MapPin size={18} className="mt-1" />
@@ -501,8 +496,8 @@ const AddressPage = () => {
                           {type === "home"
                             ? "Nhà riêng"
                             : type === "office"
-                            ? "Văn phòng"
-                            : "Khác"}
+                              ? "Văn phòng"
+                              : "Khác"}
                         </span>
                       </button>
                     ))}
