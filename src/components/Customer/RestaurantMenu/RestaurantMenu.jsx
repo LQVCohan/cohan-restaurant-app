@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./RestaurantMenu.scss";
 import Cart from "../../Customer/Homepage_Client/components/Cart";
-import OrderSummaryModal from "../BookingDishesModal/OrderSummaryModal";
 import { useCart } from "../../../context/CartProvider";
 import { MOCK_RESTAURANTS } from "./menuData";
 import { formatCurrency } from "../../../utils/formatters";
@@ -14,14 +13,12 @@ import MenuDetailView from "./components/MenuDetailView";
 
 const RestaurantMenu = () => {
   const navigate = useNavigate();
-  const { search, pathname } = useLocation();
+  const { search } = useLocation();
   const [selectedRes, setSelectedRes] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isDirectCheckoutOpen, setIsDirectCheckoutOpen] = useState(false);
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
   const restaurantParam = searchParams.get("restaurantId");
   const returnTo = searchParams.get("returnTo");
-  const checkout = searchParams.get("checkout");
 
   // 👉 Dùng cart context
   const {
@@ -49,16 +46,6 @@ const RestaurantMenu = () => {
     );
     if (found) setSelectedRes(found);
   }, [restaurantParam]);
-
-  useEffect(() => {
-    if (checkout === "1") {
-      setIsCartOpen(false);
-      setIsDirectCheckoutOpen(true);
-      return;
-    }
-
-    setIsDirectCheckoutOpen(false);
-  }, [checkout]);
 
   const handleOpenFoodDetail = (foodId) => {
     navigate(`/food/${foodId}`);
@@ -124,19 +111,6 @@ const RestaurantMenu = () => {
         onClearCart={handleClearCart}
         onRemoveRestaurantItems={removeRestaurantItems}
       />
-
-      <OrderSummaryModal
-        isOpen={isDirectCheckoutOpen}
-        onClose={() => {
-          setIsDirectCheckoutOpen(false);
-          if (checkout === "1") {
-            navigate(pathname, { replace: true });
-          }
-        }}
-        items={cart}
-        onSuccess={handleCheckoutSuccess}
-      />
-
     </div>
   );
 };
