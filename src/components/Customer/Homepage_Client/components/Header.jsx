@@ -3,41 +3,21 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { AuthContext } from "@/context/AuthContext";
 import "../../../../styles/Homepage/Header.scss";
 import HeaderSearch from "./HeaderSearch.jsx";
+import { useCustomerNotifications } from "@/context/CustomerNotificationContext";
 
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 1,
-    image: "https://cdn-icons-png.flaticon.com/512/7541/7541900.png",
-    text: "Đơn hàng #DH001 của bạn đã được giao thành công. Chúc bạn ngon miệng!",
-    time: "5 phút trước",
-    isRead: false,
-  },
-  {
-    id: 2,
-    image: "https://cdn-icons-png.flaticon.com/512/879/879757.png",
-    text: "Mã giảm giá 'SALE50' sắp hết hạn vào ngày mai. Sử dụng ngay!",
-    time: "1 giờ trước",
-    isRead: false,
-  },
-  {
-    id: 3,
-    image: "https://cdn-icons-png.flaticon.com/512/1046/1046857.png",
-    text: "Nhà hàng Pizza Company vừa thêm món mới. Khám phá ngay!",
-    time: "2 giờ trước",
-    isRead: true,
-  },
-];
 
 const Header = ({ onCartToggle, cartItemCount = 0 }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useContext(AuthContext) || {};
+  const { notifications, unreadCount, markAsRead, markAllAsRead } =
+    useCustomerNotifications();
 
   const counts = {
     vouchers: 3,
     orders: 2,
     favorites: 0,
-    notifications: 2,
+    notifications: unreadCount,
   };
 
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -161,13 +141,19 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
               <div className="header__notify-dropdown">
                 <div className="header__notify-header">
                   <h3>Thông báo</h3>
-                  <button className="mark-read">Đánh dấu đã đọc</button>
+                  <button className="mark-read" onClick={markAllAsRead}>
+                    Đánh dấu đã đọc
+                  </button>
                 </div>
                 <div className="header__notify-list">
-                  {MOCK_NOTIFICATIONS.map((notif) => (
+                  {notifications.length === 0 ? (
+                    <p className="notify-item__empty">Không có thông báo</p>
+                  ) : (
+                    notifications.map((notif) => (
                     <div
                       key={notif.id}
                       className={`notify-item ${!notif.isRead ? "unread" : ""}`}
+                      onClick={() => markAsRead(notif.id)}
                     >
                       <div className="notify-item__img">
                         <img src={notif.image} alt="icon" />
@@ -180,7 +166,8 @@ const Header = ({ onCartToggle, cartItemCount = 0 }) => {
                         <div className="notify-item__dot"></div>
                       )}
                     </div>
-                  ))}
+                  ))
+                  )}
                 </div>
                 <div className="header__notify-footer">
                   <button onClick={() => goto("/notifications")}>
