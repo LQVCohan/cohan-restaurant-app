@@ -17,6 +17,7 @@ import {
   Store,
 } from "lucide-react";
 import { useCart } from "../../../context/CartProvider";
+import Cart from "../Homepage_Client/components/Cart";
 import "./FoodDetail.scss";
 
 const GET_TOP_MENU_ITEMS = gql`
@@ -30,6 +31,8 @@ const GET_TOP_MENU_ITEMS = gql`
       point
       avgPrepTimeMin
       restaurantId
+      menuId
+      categoryId
       servingVariants {
         key
         name
@@ -65,7 +68,15 @@ const FoodDetail = () => {
   const location = useLocation();
   const preloadedDish = location.state?.dish || null;
 
-  const { addToCart } = useCart();
+  const {
+    cart,
+    addToCart,
+    updateQuantity,
+    clearCart,
+    removeRestaurantItems,
+    getTotalItems,
+    getTotalPrice,
+  } = useCart();
 
   const {
     data: menuData,
@@ -120,6 +131,8 @@ const FoodDetail = () => {
   const [selectedSize, setSelectedSize] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("detail");
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isAnimatingCart, setIsAnimatingCart] = useState(false);
 
   useEffect(() => {
     if (foundDish?.thumbImage) {
@@ -145,35 +158,41 @@ const FoodDetail = () => {
 
   const makeCartPayload = () => {
     if (!foundDish) return null;
+
     const selectedVariantName =
       selectedSize?.name && selectedSize.name !== "Phần tiêu chuẩn"
         ? selectedSize.name
-        : null;
+        : "Phần tiêu chuẩn";
 
     return {
       id: selectedSize?.key
         ? `${foundDish.id}_${selectedSize.key}`
         : String(foundDish.id),
       dishId: foundDish.id,
-      restaurantId: foundDish.restaurantId,
+      restaurantId: String(foundDish.restaurantId || restaurant?.id || ""),
+      menuId: foundDish.menuId || null,
+      categoryId: foundDish.categoryId || null,
+      variantKey: selectedSize?.key || "standard",
       name: foundDish.name,
       price: currentUnitPrice,
       image: foundDish.thumbImage || "/default-dishes.jpg",
       method: selectedVariantName,
       quantity,
+      restaurantName: restaurant?.name || null,
     };
   };
 
   const handleAddToCart = () => {
     const payload = makeCartPayload();
-    if (!payload) return;
+    if (!payload || !payload.restaurantId) return;
     addToCart(payload);
-    window.alert("Đã thêm món vào giỏ hàng! 🛒");
+    setIsAnimatingCart(true);
+    setTimeout(() => setIsAnimatingCart(false), 600);
   };
 
   const handleBuyNow = () => {
     const payload = makeCartPayload();
-    if (!payload) return;
+    if (!payload || !payload.restaurantId) return;
     addToCart(payload);
     navigate("/cus-menu?openCart=1&checkout=1");
   };
@@ -409,6 +428,32 @@ const FoodDetail = () => {
             )}
           </div>
         </div>
+
+      <Cart
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        cart={cart}
+        onUpdateQuantity={updateQuantity}
+        totalPrice={getTotalPrice()}
+        onCheckoutSuccess={clearCart}
+        onClearCart={clearCart}
+        onRemoveRestaurantItems={removeRestaurantItems}
+      />
+
+      {cart.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setIsCartOpen(!isCartOpen)}
+          className={`fd-cart-floating-btn ${isAnimatingCart ? "fd-cart-animating" : ""}`}
+          aria-label="Xem giỏ hàng"
+        >
+          <span className="fd-cart-floating-btn__icon">🛒</span>
+          <span className="fd-cart-floating-btn__count">
+            {getTotalItems() > 99 ? "99+" : getTotalItems()}
+          </span>
+        </button>
+      )}
+
       </div>
     </div>
   );
