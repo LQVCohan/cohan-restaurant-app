@@ -1,18 +1,20 @@
 // src/components/Customer/RestaurantMenu/components/MenuDetailView.jsx
 import React, { useState, useMemo, useEffect } from "react";
 import MenuItemCard from "./MenuItemCard";
-import ProductModal from "./ProductModal";
 import { MOCK_MENU_ITEMS, MOCK_CATEGORIES } from "../menuData"; // Import mock data
 import "../styles/MenuDetailView.scss";
 const ITEMS_PER_PAGE = 8;
 
-const MenuDetailView = ({ restaurant, onBack, onAddToCart }) => {
+const MenuDetailView = ({
+  restaurant,
+  onBack,
+  onOpenFoodDetail,
+}) => {
   const [timeSlot, setTimeSlot] = useState("lunch");
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedItem, setSelectedItem] = useState(null);
 
   const filteredItems = useMemo(() => {
     return MOCK_MENU_ITEMS.filter((item) => {
@@ -125,7 +127,9 @@ const MenuDetailView = ({ restaurant, onBack, onAddToCart }) => {
                 <MenuItemCard
                   key={item.id}
                   item={item}
-                  onClick={setSelectedItem}
+                  onClick={(clickedItem) => {
+                    onOpenFoodDetail?.(clickedItem?.id);
+                  }}
                 />
               ))}
             </div>
@@ -158,13 +162,6 @@ const MenuDetailView = ({ restaurant, onBack, onAddToCart }) => {
         )}
       </div>
 
-      {selectedItem && (
-        <ProductModal
-          item={selectedItem}
-          onClose={() => setSelectedItem(null)}
-          onAddToCart={onAddToCart}
-        />
-      )}
     </div>
   );
 };

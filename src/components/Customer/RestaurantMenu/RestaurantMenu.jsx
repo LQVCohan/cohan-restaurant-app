@@ -23,22 +23,12 @@ const RestaurantMenu = () => {
   // 👉 Dùng cart context
   const {
     cart,
-    addToCart,
     updateQuantity,
     clearCart,
     removeRestaurantItems,
     getTotalItems,
     getTotalPrice,
   } = useCart();
-
-  const handleAddToCart = (newItem) => {
-    addToCart(newItem);
-    const btn = document.querySelector(".floating-cart-btn");
-    if (btn) {
-      btn.style.transform = "scale(1.2)";
-      setTimeout(() => (btn.style.transform = "scale(1)"), 200);
-    }
-  };
 
   const handleClearCart = () => {
     if (window.confirm("Bạn muốn xóa toàn bộ giỏ hàng?")) {
@@ -56,6 +46,10 @@ const RestaurantMenu = () => {
     );
     if (found) setSelectedRes(found);
   }, [restaurantParam]);
+
+  const handleOpenFoodDetail = (foodId) => {
+    navigate(`/food/${foodId}`);
+  };
 
   const handleCheckoutSuccess = () => {
     if (returnTo === "booking" && restaurantParam) {
@@ -80,7 +74,7 @@ const RestaurantMenu = () => {
         <MenuDetailView
           restaurant={selectedRes}
           onBack={() => setSelectedRes(null)}
-          onAddToCart={handleAddToCart}
+          onOpenFoodDetail={handleOpenFoodDetail}
         />
       ) : (
         <div className="grid-container res-grid">

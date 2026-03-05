@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
+import { useNavigate } from "react-router-dom";
 import "../../../../styles/Homepage/DishGrid.scss";
 
 // --- GRAPHQL QUERY ---
@@ -40,6 +41,7 @@ const DishGrid = ({
   selectedCategoryName = "",
   timeSlot = null,
 }) => {
+  const navigate = useNavigate();
   const { data, loading, error } = useQuery(GET_TOP_MENU_ITEMS, {
     variables: {
       limit: selectedCategoryId || selectedCategoryName ? 12 : 8,
@@ -99,6 +101,10 @@ const DishGrid = ({
     onAddToCart?.(payload);
   };
 
+  const handleOpenFoodDetail = (dishId) => {
+    navigate(`/food/${dishId}`);
+  };
+
   return (
     <section id="menu" className="dish-grid">
       <div className="dish-grid__container">
@@ -127,7 +133,19 @@ const DishGrid = ({
                   const hasVariants = dish.servingVariants?.length > 0;
 
                   return (
-                    <div key={dish.id} className="dish-card">
+                    <div
+                      key={dish.id}
+                      className="dish-card"
+                      onClick={() => handleOpenFoodDetail(dish.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleOpenFoodDetail(dish.id);
+                        }
+                      }}
+                    >
                       {/* Image Area */}
                       <div className="dish-card__image-wrapper">
                         <img
@@ -202,7 +220,10 @@ const DishGrid = ({
 
                           <button
                             className="dish-card__btn-add"
-                            onClick={() => handleAdd(dish)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAdd(dish);
+                            }}
                           >
                             + Thêm
                           </button>
