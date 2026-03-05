@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { gql, useQuery } from "@apollo/client";
 import { useRestaurant } from "../../../hooks/useRestaurant";
 
 // Components (Tách nhỏ để dễ quản lý)
@@ -15,12 +16,25 @@ import { ArrowLeft, Star, MapPin, Clock, Share2, Heart } from "lucide-react";
 
 import "./RestaurantDetail.scss";
 
+const GET_RESTAURANT_REVIEW_STATS = gql`
+  query GetRestaurantReviewStatsForHeader($restaurantId: ID!) {
+    reviewStats(restaurantId: $restaurantId, targetType: "restaurant") {
+      total
+      avgRating
+    }
+  }
+`;
+
 const RestaurantDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const isPreviewMode = new URLSearchParams(location.search).get("preview") === "1";
   const { restaurant, loading, error } = useRestaurant(id);
+  const { data: reviewStatsData } = useQuery(GET_RESTAURANT_REVIEW_STATS, {
+    variables: { restaurantId: id },
+    skip: !id,
+  });
 
   const [activeTab, setActiveTab] = useState("info");
   const [isScrolled, setIsScrolled] = useState(false);
@@ -104,6 +118,12 @@ const RestaurantDetail = () => {
     resolvedRestaurant.imgThumbUrl ||
     "/default-cover.jpg";
 
+  const reviewStats = reviewStatsData?.reviewStats;
+  const headerRating = Number(
+    reviewStats?.avgRating ?? resolvedRestaurant.rating ?? 0
+  ).toFixed(1);
+  const headerReviewCount = reviewStats?.total ?? 0;
+
   const handleBookTable = () => {
     if (isPreviewMode) return;
     navigate(`/restaurant/${resolvedRestaurant.id}/layout`);
@@ -153,7 +173,7 @@ const RestaurantDetail = () => {
               <div className="res-meta">
                 <span className="rating">
                   <Star size={16} fill="#f59e0b" stroke="none" />
-                  <strong>{resolvedRestaurant.rating}</strong> (500+ đánh giá)
+                  <strong>{headerRating}</strong> ({headerReviewCount} đánh giá)
                 </span>
                 <span className="dot">•</span>
                 <span className="cuisine">{resolvedRestaurant.cuisine}</span>

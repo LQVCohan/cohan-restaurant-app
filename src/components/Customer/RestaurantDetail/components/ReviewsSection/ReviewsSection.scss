@@ -255,6 +255,12 @@
   }
 }
 
+.review-verified {
+  color: #16a34a;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .review-rating {
   display: flex;
   gap: 2px;
@@ -304,6 +310,13 @@
 }
 
 .review-content {
+  .review-title {
+    margin: 0 0 0.5rem;
+    color: $gray-800;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+
   .review-text {
     font-size: 1rem;
     line-height: 1.6;

@@ -2,7 +2,6 @@ import React from "react";
 import EmptyState from "./EmptyState";
 import "./ReviewsList.scss";
 
-/* Helpers cục bộ (giống bản HTML gốc) */
 function formatDate(dateString) {
   const date = new Date(dateString);
   const now = new Date();
@@ -45,14 +44,17 @@ function parseTags(tagsString) {
   }
 }
 
-const ReviewsList = ({
-  isLoading,
-  reviews,
-  currentTab,
-  onView,
-  onDelete,
-  onEdit,
-}) => {
+const reactionMeta = [
+  ["like", "👍"],
+  ["love", "❤️"],
+  ["care", "🤗"],
+  ["haha", "😆"],
+  ["wow", "😮"],
+  ["sad", "😢"],
+  ["angry", "😡"],
+];
+
+const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit }) => {
   if (isLoading) {
     return (
       <div className="reviews-loading">
@@ -65,11 +67,7 @@ const ReviewsList = ({
     return (
       <EmptyState
         type={
-          currentTab === "service"
-            ? "service"
-            : currentTab === "pending"
-            ? "pending"
-            : "default"
+          currentTab === "service" ? "service" : currentTab === "pending" ? "pending" : "default"
         }
       />
     );
@@ -80,6 +78,7 @@ const ReviewsList = ({
       {reviews.map((review) => {
         const images = parseImages(review.images);
         const tags = parseTags(review.tags);
+        const activeReactions = reactionMeta.filter(([key]) => Number(review.reactions?.[key] || 0) > 0);
 
         const statusClass =
           review.status === "published"
@@ -92,83 +91,47 @@ const ReviewsList = ({
 
         return (
           <article key={review.id} className="reviews-review-card">
-            {/* Header */}
             <div className="reviews-review-card__header">
               <div className="reviews-review-card__reviewer">
                 <div className="reviews-review-card__avatar">
-                  {review.customer_avatar ? (
-                    <img
-                      src={review.customer_avatar}
-                      alt={review.customer_name}
-                    />
-                  ) : (
-                    getInitials(review.customer_name)
-                  )}
+                  {review.customer_avatar ? <img src={review.customer_avatar} alt={review.customer_name} /> : getInitials(review.customer_name)}
                 </div>
                 <div>
-                  <div className="reviews-review-card__name">
-                    {review.customer_name}
-                  </div>
+                  <div className="reviews-review-card__name">{review.customer_name}</div>
                   <div className="reviews-review-card__meta">
                     <span>📍 {review.location}</span>
                     <span>•</span>
                     <span>🕒 {formatDate(review.created_at)}</span>
-                    {review.verified_purchase && (
-                      <span className="reviews-review-card__verified">
-                        ✓ Đã xác thực
-                      </span>
-                    )}
+                    {review.verified_purchase && <span className="reviews-review-card__verified">✓ Đã xác thực</span>}
                   </div>
                 </div>
               </div>
 
               <div className="reviews-review-card__actions">
-                <button
-                  type="button"
-                  className="reviews-review-card__action-btn"
-                  title="Xem chi tiết"
-                  onClick={() => onView(review)}
-                >
+                <button type="button" className="reviews-review-card__action-btn" title="Xem chi tiết" onClick={() => onView(review)}>
                   👁️
                 </button>
-                <button
-                  type="button"
-                  className="reviews-review-card__action-btn"
-                  title="Chỉnh sửa"
-                  onClick={() => onEdit(review)}
-                >
-                  ✏️
-                </button>
-                <button
-                  type="button"
-                  className="reviews-review-card__action-btn"
-                  title="Xóa"
-                  onClick={() => onDelete(review)}
-                >
+                {review.status !== "published" && (
+                  <button type="button" className="reviews-review-card__action-btn" title="Duyệt" onClick={() => onEdit(review, "published")}>✅</button>
+                )}
+                {review.status !== "hidden" && (
+                  <button type="button" className="reviews-review-card__action-btn" title="Ẩn" onClick={() => onEdit(review, "hidden")}>🙈</button>
+                )}
+                <button type="button" className="reviews-review-card__action-btn" title="Xóa" onClick={() => onDelete(review)}>
                   🗑️
                 </button>
               </div>
             </div>
 
-            {/* Rating row */}
             <div className="reviews-review-card__rating-row">
               <div className="reviews-review-card__stars">
                 <span className="star">{getStarRating(review.rating)}</span>
               </div>
-              <span className="reviews-review-card__rating-number">
-                {review.rating}/5
-              </span>
-              <span className="reviews-review-card__target">
-                {review.target_name}
-              </span>
-              {review.restaurant_name && (
-                <span className="reviews-review-card__restaurant">
-                  🏪 {review.restaurant_name}
-                </span>
-              )}
+              <span className="reviews-review-card__rating-number">{review.rating}/5</span>
+              <span className="reviews-review-card__target">{review.target_name}</span>
+              {review.restaurant_name && <span className="reviews-review-card__restaurant">🏪 {review.restaurant_name}</span>}
             </div>
 
-            {/* Content */}
             <div className="reviews-review-card__content">
               <h3 className="reviews-review-card__title">{review.title}</h3>
               <p className="reviews-review-card__text">{review.content}</p>
@@ -176,12 +139,7 @@ const ReviewsList = ({
               {images.length > 0 && (
                 <div className="reviews-review-card__images">
                   {images.map((img) => (
-                    <img
-                      key={img}
-                      src={img}
-                      alt="Review"
-                      className="reviews-review-card__image"
-                    />
+                    <img key={img} src={img} alt="Review" className="reviews-review-card__image" />
                   ))}
                 </div>
               )}
@@ -197,20 +155,19 @@ const ReviewsList = ({
               )}
             </div>
 
-            {/* Footer */}
             <footer className="reviews-review-card__footer">
               <div className="reviews-review-card__stats">
                 <div className="reviews-review-card__stat">
-                  <span>👍</span>
-                  <span>{review.likes} lượt thích</span>
-                </div>
-                <div className="reviews-review-card__stat">
                   <span>💬</span>
-                  <span>{review.replies} phản hồi</span>
+                  <span>{review.replies} bình luận</span>
                 </div>
                 <div className="reviews-review-card__stat">
                   <span>🤝</span>
                   <span>{review.helpful_count} hữu ích</span>
+                </div>
+                <div className="reviews-review-card__stat">
+                  <span>📣</span>
+                  <span>{review.likes} tương tác</span>
                 </div>
               </div>
 
@@ -224,6 +181,16 @@ const ReviewsList = ({
                   : review.status}
               </div>
             </footer>
+
+            {!!activeReactions.length && (
+              <div className="reviews-review-card__meta" style={{ marginTop: 8 }}>
+                {activeReactions.map(([key, emoji]) => (
+                  <span key={key}>
+                    {emoji} {review.reactions?.[key]}
+                  </span>
+                ))}
+              </div>
+            )}
           </article>
         );
       })}
