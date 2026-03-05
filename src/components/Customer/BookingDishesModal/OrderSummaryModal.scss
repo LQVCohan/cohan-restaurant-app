@@ -1,117 +1,162 @@
-/* OrderSummaryModal.scss */
-
-// Variables - Premium Theme
-$primary-color: #2563eb; // Royal Blue
-$primary-dark: #1e40af;
-$success-color: #10b981;
-$bg-color: #f8fafc; // Slate 50
-$card-bg: #ffffff;
-$text-main: #1e293b; // Slate 800
-$text-secondary: #64748b; // Slate 500
-$border-color: #e2e8f0;
-$radius-lg: 16px;
-$radius-md: 12px;
-$radius-sm: 8px;
-$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
-  0 2px 4px -1px rgba(0, 0, 0, 0.03);
-$shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05),
-  0 4px 6px -2px rgba(0, 0, 0, 0.025);
+/* --- Variables Theme FoodHub --- */
+$primary: #ff6600;
+$primary-dark: #e65c00;
+$primary-light: #fff5eb;
+$text-main: #1f2937;
+$text-muted: #6b7280;
+$border-color: #e5e7eb;
+$bg-body: #f9fafb;
+$white: #ffffff;
+$green: #10b981;
+$red: #ef4444;
 
 .order-summary-modal {
-  max-width: 1000px; // Mở rộng chiều rộng để chứa bố cục 2 cột
-  border-radius: $radius-lg;
-  overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-  background: $bg-color;
+  /* Override Modal mặc định nếu cần */
+  .modal-content {
+    background-color: $bg-body;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+}
+
+.modal-title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: $text-main;
+  font-weight: 700;
+
+  svg {
+    color: $primary;
+  }
 }
 
 .order-summary-wrapper {
   display: flex;
   flex-direction: column;
-  height: 85vh;
-  background-color: $bg-color;
+  height: 100%;
+  max-height: 80vh;
+  background: $bg-body;
 }
 
 .order-summary-content {
   flex: 1;
   overflow-y: auto;
-  padding: 32px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 
-  // Custom Scrollbar
   &::-webkit-scrollbar {
     width: 6px;
   }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
   &::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: #d1d5db;
     border-radius: 10px;
-    &:hover {
-      background: #94a3b8;
+  }
+}
+
+/* --- SECTIONS --- */
+.section {
+  background: $white;
+  border: 1px solid $border-color;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+
+  &.section-highlight {
+    background: $primary-light;
+    border-color: #ffd8b3;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: $text-main;
+    margin: 0 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    svg {
+      color: $primary;
     }
   }
 }
 
-/* --- Layout Grid (Desktop) --- */
-.summary-grid {
-  display: grid;
-  grid-template-columns: 1fr 400px; // Cột trái linh hoạt, cột phải cố định
-  gap: 32px;
-  align-items: start;
+.empty-text {
+  color: $text-muted;
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+}
 
-  @media (max-width: 900px) {
-    grid-template-columns: 1fr; // Mobile về 1 cột
+/* --- INFO RESTAURANT --- */
+.restaurant-info {
+  .restaurant-name {
+    margin: 0 0 8px;
+    font-size: 18px;
+    color: $primary-dark;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .restaurant-address {
+    margin: 0 0 16px;
+    color: $text-muted;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .order-info-boxes {
+    display: flex;
+    gap: 16px;
+
+    .info-box {
+      background: $white;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 1px solid #ffe4cc;
+      display: flex;
+      flex-direction: column;
+
+      .label {
+        font-size: 12px;
+        color: $text-muted;
+        margin-bottom: 4px;
+      }
+      .value {
+        font-size: 14px;
+        font-weight: 600;
+        color: $text-main;
+      }
+    }
   }
 }
 
-.left-column,
-.right-column {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-/* --- Cards & Sections --- */
-.section {
-  background: $card-bg;
-  border-radius: $radius-lg;
-  padding: 24px;
-  box-shadow: $shadow-sm;
-  border: 1px solid transparent;
-  transition: all 0.3s ease;
-
-  &:hover {
-    box-shadow: $shadow-md;
-    border-color: rgba($primary-color, 0.1);
-  }
-}
-
-.section-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: $text-main;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  svg,
-  span.icon {
-    color: $primary-color;
-    font-size: 1.2em;
-  }
-}
-
-/* --- Forms (Premium Inputs) --- */
+/* --- FORMS --- */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  @media (max-width: 600px) {
+  gap: 32px;
+
+  @media (max-width: 768px) {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
+}
+
+.form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
 .form-field {
@@ -120,429 +165,503 @@ $shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05),
   gap: 8px;
 
   .form-label {
-    font-size: 0.85rem;
+    font-size: 14px;
     font-weight: 600;
     color: $text-main;
-    margin-left: 2px;
   }
 
   .form-input,
-  .form-textarea,
-  select {
+  .form-textarea {
     width: 100%;
     padding: 12px 16px;
     border: 1px solid $border-color;
-    border-radius: $radius-md;
-    font-size: 0.95rem;
-    background: #f9fafb;
-    transition: all 0.2s ease;
+    border-radius: 10px;
+    font-size: 14px;
     color: $text-main;
+    background: $bg-body;
+    transition: all 0.2s;
+    outline: none;
 
     &:focus {
-      background: #fff;
-      border-color: $primary-color;
-      box-shadow: 0 0 0 4px rgba($primary-color, 0.1);
-      outline: none;
+      background: $white;
+      border-color: $primary;
+      box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
     }
-
+    &:disabled {
+      background: #f3f4f6;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
     &.is-invalid {
-      border-color: #ef4444;
+      border-color: $red;
       background: #fef2f2;
     }
   }
 
   .form-error {
-    color: #ef4444;
-    font-size: 0.8rem;
-    margin-left: 2px;
+    font-size: 12px;
+    color: $red;
+    margin-top: 2px;
   }
 }
 
-/* --- Segmented Control (Pill Style) --- */
+/* --- SEGMENTED CONTROL (Toggle Buttons) --- */
 .segmented {
   display: flex;
-  background: #f1f5f9;
+  background: #f3f4f6;
+  border-radius: 10px;
   padding: 4px;
-  border-radius: $radius-md;
-  width: fit-content;
+  gap: 4px;
 
-  .segmented__option {
-    padding: 8px 16px;
-    border-radius: $radius-sm;
-    border: none;
+  &__option {
+    flex: 1;
     background: transparent;
-    color: $text-secondary;
+    border: none;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
     font-weight: 600;
-    font-size: 0.85rem;
+    color: $text-muted;
     cursor: pointer;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
 
     &:hover {
       color: $text-main;
     }
 
     &.is-active {
-      background: #fff;
-      color: $primary-color;
-      box-shadow: $shadow-sm;
+      background: $white;
+      color: $primary;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
   }
 }
 
-/* --- Restaurant Info --- */
-.restaurant-info {
-  background: linear-gradient(135deg, $primary-color 0%, $primary-dark 100%);
-  color: white;
-  border-radius: $radius-lg;
-  padding: 24px;
-  position: relative;
+/* --- ORDER ITEMS --- */
+.restaurant-group-card {
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  margin-bottom: 20px;
   overflow: hidden;
 
-  &::before {
-    content: "";
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 200px;
-    height: 200px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-  }
-
-  .restaurant-name {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
-
-  .restaurant-address {
-    opacity: 0.9;
-    font-size: 0.9rem;
-    margin-bottom: 16px;
-  }
-
-  .order-meta {
+  .restaurant-group-header {
+    background: #f9fafb;
+    padding: 12px 16px;
+    border-bottom: 1px solid $border-color;
     display: flex;
-    gap: 16px;
-    font-size: 0.85rem;
-    background: rgba(0, 0, 0, 0.1);
-    padding: 8px 12px;
-    border-radius: $radius-md;
-    width: fit-content;
-
-    span {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    align-items: center;
+    gap: 8px;
+    color: $text-main;
+    h4 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
     }
   }
 }
 
-/* --- Order Items (Compact & Clean) --- */
-.restaurant-group__title {
-  font-size: 1rem;
-  color: $text-secondary;
-  margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 700;
+.order-items-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .order-item {
   display: flex;
-  padding: 16px 0;
+  gap: 16px;
+  padding-bottom: 16px;
   border-bottom: 1px dashed $border-color;
 
   &:last-child {
     border-bottom: none;
     padding-bottom: 0;
   }
-  &:first-child {
-    padding-top: 0;
-  }
 
   .item-image {
     width: 64px;
     height: 64px;
-    border-radius: $radius-md;
+    border-radius: 8px;
     overflow: hidden;
+    background: #f3f4f6;
     flex-shrink: 0;
-    margin-right: 16px;
-    box-shadow: $shadow-sm;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     img {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
+    .img-placeholder {
+      color: #d1d5db;
+    }
   }
 
   .item-details {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
 
-  .item-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 4px;
-  }
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 4px;
 
-  .item-name {
-    font-weight: 600;
-    color: $text-main;
-    font-size: 0.95rem;
-    margin: 0;
-  }
-
-  .item-price-total {
-    font-weight: 700;
-    color: $text-main;
-    font-size: 0.95rem;
-  }
-
-  .item-desc {
-    font-size: 0.85rem;
-    color: $text-secondary;
-    line-height: 1.4;
-    margin-bottom: 4px;
-  }
-
-  .modifier-tag {
-    display: inline-block;
-    font-size: 0.75rem;
-    background: #f1f5f9;
-    color: $text-secondary;
-    padding: 2px 8px;
-    border-radius: 4px;
-    margin-right: 4px;
-    margin-bottom: 4px;
-  }
-
-  .item-controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 8px;
-
-    .qty-badge {
-      font-size: 0.8rem;
-      font-weight: 600;
-      background: #eff6ff;
-      color: $primary-color;
-      padding: 4px 10px;
-      border-radius: 20px;
+      .item-name {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: $text-main;
+        line-height: 1.4;
+        .cooking-method {
+          color: $primary;
+          font-weight: 500;
+        }
+      }
+      .item-total-price {
+        font-weight: 700;
+        color: $text-main;
+      }
     }
 
-    .edit-btn {
-      font-size: 0.8rem;
-      color: $primary-color;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-weight: 500;
-      &:hover {
-        text-decoration: underline;
+    .item-description {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: $text-muted;
+    }
+
+    .item-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      margin-bottom: 8px;
+      .item-quantity {
+        font-weight: 600;
+        color: $primary;
+        background: $primary-light;
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
+      .item-unit-price {
+        color: $text-muted;
+      }
+    }
+
+    .item-modifiers {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+      .modifier-tag {
+        font-size: 12px;
+        background: #f3f4f6;
+        color: $text-gray;
+        padding: 4px 8px;
+        border-radius: 6px;
+      }
+    }
+
+    .item-actions {
+      .add-modifier-btn {
+        background: transparent;
+        border: 1px solid $border-color;
+        color: $text-main;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: 0.2s;
+        &:hover {
+          border-color: $primary;
+          color: $primary;
+          background: $primary-light;
+        }
       }
     }
   }
 }
 
-/* --- Price Breakdown --- */
+/* --- PRICE BREAKDOWN --- */
 .price-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &.group-breakdown {
+    padding: 16px;
+    background: #fafafa;
+    border-top: 1px solid $border-color;
+  }
+
   .price-row {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 12px;
-    font-size: 0.95rem;
-    color: $text-secondary;
+    font-size: 14px;
+    color: $text-muted;
 
-    .price-val {
+    .price-value {
       color: $text-main;
       font-weight: 500;
     }
+    .text-green {
+      color: $green;
+      font-weight: 600;
+    }
 
-    &.total {
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 2px solid $border-color;
-      font-size: 1.25rem;
+    &.total,
+    &.grand-total {
+      margin-top: 8px;
+      padding-top: 12px;
+      border-top: 1px dashed $border-color;
+      font-size: 16px;
+      font-weight: 700;
       color: $text-main;
-      font-weight: 800;
-
-      .price-val {
-        color: $primary-color;
+      .price-value {
+        color: $primary;
+      }
+    }
+    &.grand-total {
+      font-size: 18px;
+      .price-value {
+        font-size: 20px;
       }
     }
   }
 }
 
-/* --- Payment Methods (Cards) --- */
-.payment-methods {
+/* --- PAYMENT METHODS --- */
+.payment-methods-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+
+  @media (max-width: 576px) {
+    grid-template-columns: 1fr;
+  }
 }
 
-.payment-method {
+.payment-method-card {
   display: flex;
   align-items: center;
+  gap: 16px;
   padding: 16px;
-  border: 2px solid $border-color;
-  border-radius: $radius-md;
+  border: 1px solid $border-color;
+  border-radius: 12px;
   cursor: pointer;
-  background: #fff;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
   position: relative;
 
+  .payment-icon {
+    color: $text-muted;
+    transition: 0.2s;
+  }
+  .payment-info {
+    flex: 1;
+    .payment-name {
+      margin: 0 0 4px;
+      font-size: 15px;
+      font-weight: 600;
+      color: $text-main;
+    }
+    .payment-desc {
+      margin: 0;
+      font-size: 12px;
+      color: $text-muted;
+    }
+  }
+  .check-circle {
+    color: transparent;
+    transition: 0.2s;
+  }
+
   &:hover {
-    border-color: #cbd5e1;
+    border-color: #d1d5db;
   }
 
   &.selected {
-    border-color: $primary-color;
-    background: #eff6ff;
-
-    &::after {
-      content: "✓";
-      position: absolute;
-      right: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: $primary-color;
-      font-weight: bold;
-      font-size: 1.2rem;
+    border-color: $primary;
+    background: $primary-light;
+    .payment-icon {
+      color: $primary;
     }
-  }
-
-  .payment-icon {
-    font-size: 1.8rem;
-    margin-right: 16px;
-    width: 40px;
-    text-align: center;
-  }
-
-  .payment-name {
-    font-weight: 600;
-    color: $text-main;
-    margin: 0;
-  }
-
-  .payment-desc {
-    font-size: 0.85rem;
-    color: $text-secondary;
-    margin: 2px 0 0 0;
+    .check-circle {
+      color: $primary;
+    }
   }
 }
 
-/* --- Footer (Action Bar) --- */
+/* --- MODAL FOOTER --- */
 .modal-footer {
-  padding: 20px 32px;
-  background: #fff;
+  padding: 16px 24px;
   border-top: 1px solid $border-color;
+  background: $white;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  z-index: 10;
-}
 
-.btn {
-  padding: 12px 24px;
-  border-radius: $radius-md;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: transform 0.1s, box-shadow 0.2s;
-  font-size: 0.95rem;
+  .btn {
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 
-  &:active {
-    transform: scale(0.98);
-  }
-
-  &--secondary {
-    background: #f1f5f9;
-    color: $text-main;
-    &:hover {
-      background: #e2e8f0;
+    &--secondary {
+      background: #f3f4f6;
+      color: $text-main;
+      &:hover {
+        background: #e5e7eb;
+      }
     }
-  }
-
-  &--primary {
-    background: $primary-color;
-    color: white;
-    &:hover {
-      background: $primary-dark;
-      box-shadow: 0 4px 12px rgba($primary-color, 0.3);
+    &--primary {
+      background: $primary-light;
+      color: $primary;
+      &:hover {
+        background: #ffe4cc;
+      }
     }
-  }
-
-  &--success {
-    background: $success-color;
-    color: white;
-    &:hover {
-      background: #059669;
-      box-shadow: 0 4px 12px rgba($success-color, 0.3);
-    }
-
-    &:disabled {
-      background: #94a3b8;
-      cursor: not-allowed;
-      box-shadow: none;
+    &--success {
+      background: $primary;
+      color: $white;
+      box-shadow: 0 4px 12px rgba(255, 102, 0, 0.2);
+      &:hover:not(:disabled) {
+        background: $primary-dark;
+        transform: translateY(-2px);
+      }
+      &:disabled {
+        background: #d1d5db;
+        color: #9ca3af;
+        box-shadow: none;
+        cursor: not-allowed;
+      }
     }
   }
 }
 
-/* --- Success & QR Screens --- */
-.success-screen,
-.qr-payment {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+/* --- SUCCESS & QR SCREENS --- */
+.text-center {
   text-align: center;
-  padding: 48px 0;
-  height: 100%;
+}
+.mt-4 {
+  margin-top: 24px;
 }
 
-.success-icon {
-  font-size: 5rem;
-  margin-bottom: 24px;
-  animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.success-title {
-  font-size: 2rem;
-  font-weight: 800;
-  color: $text-main;
-  margin-bottom: 12px;
-}
-
-.success-message {
-  color: $text-secondary;
-  max-width: 400px;
-  line-height: 1.6;
-}
-
-.qr-code {
-  background: white;
-  padding: 20px;
-  border-radius: $radius-lg;
-  box-shadow: $shadow-lg;
-  margin: 24px 0;
-  border: 1px solid $border-color;
-  font-size: 8rem;
-}
-
-@keyframes popIn {
-  from {
-    opacity: 0;
-    transform: scale(0.5);
+.success-screen {
+  padding: 40px 20px;
+  .success-icon-large {
+    color: $green;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    animation: scaleIn 0.5s ease;
   }
-  to {
-    opacity: 1;
+  .success-title {
+    font-size: 24px;
+    color: $text-main;
+    margin: 0 0 12px;
+  }
+  .success-message {
+    color: $text-muted;
+    line-height: 1.5;
+    font-size: 15px;
+  }
+}
+
+.qr-payment-screen {
+  padding: 20px;
+  max-width: 400px;
+  margin: 0 auto;
+
+  .qr-title {
+    font-size: 20px;
+    color: $text-main;
+    margin: 0 0 8px;
+  }
+  .qr-subtitle {
+    color: $text-muted;
+    font-size: 14px;
+    margin: 0 0 24px;
+  }
+
+  .qr-code-box {
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 24px;
+    background: $white;
+    border: 1px solid $border-color;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $text-main;
+  }
+
+  .qr-amount-box {
+    background: $primary-light;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    .label {
+      font-size: 14px;
+      color: $primary-dark;
+    }
+    .amount {
+      font-size: 24px;
+      font-weight: 700;
+      color: $primary;
+    }
+  }
+
+  .qr-instructions {
+    text-align: left;
+    background: #fafafa;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px dashed $border-color;
+    h4 {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0 0 12px;
+      color: $text-main;
+      font-size: 15px;
+    }
+    ol {
+      margin: 0;
+      padding-left: 20px;
+      color: $text-muted;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+  }
+}
+
+@keyframes scaleIn {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  100% {
     transform: scale(1);
+    opacity: 1;
   }
 }

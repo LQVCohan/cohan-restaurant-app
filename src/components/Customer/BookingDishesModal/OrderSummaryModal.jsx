@@ -13,6 +13,22 @@ import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
 import SuccessModal from "../SuccessModal/SuccessModal";
 import { AuthContext } from "../../../context/AuthContext";
+import {
+  Store,
+  MapPin,
+  Clock,
+  Truck,
+  ShoppingBag,
+  Utensils,
+  CreditCard,
+  Banknote,
+  QrCode,
+  CheckCircle,
+  PlusCircle,
+  CalendarDays,
+  Receipt,
+  AlertCircle,
+} from "lucide-react";
 
 const DEFAULT_SHIPPING = (prefill = {}) => ({
   fullName: prefill.fullName || "",
@@ -70,7 +86,7 @@ const OrderSummaryModal = ({
   const { user, isAuthenticated } = useContext(AuthContext);
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
-  const [currentView, setCurrentView] = useState("summary"); // summary | qr | success
+  const [currentView, setCurrentView] = useState("summary");
   const [currentEditingItem, setCurrentEditingItem] = useState(null);
   const [isModifierModalOpen, setIsModifierModalOpen] = useState(false);
   const [orderData, setOrderData] = useState([]);
@@ -82,14 +98,14 @@ const OrderSummaryModal = ({
   const [shipping, setShipping] = useState(DEFAULT_SHIPPING());
   const [shippingTouched, setShippingTouched] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
-  // Success modal data
 
   const [receipt, setReceipt] = useState(null);
+
   const handleCloseAll = () => {
-    setIsSuccessOpen(false); // hoặc currentView = "summary"
-    onClose?.(); // đóng OrderSummaryModal
+    setIsSuccessOpen(false);
+    onClose?.();
   };
-  // Chuẩn hóa items
+
   const mappedOrderData = useMemo(
     () =>
       (items || []).map((it) => ({
@@ -110,10 +126,9 @@ const OrderSummaryModal = ({
         menuId: it.menuId,
         categoryId: it.categoryId,
       })),
-    [items]
+    [items],
   );
 
-  // Group theo nhà hàng
   const groupedByRestaurant = useMemo(() => {
     const map = new Map();
     for (const item of orderData) {
@@ -126,7 +141,7 @@ const OrderSummaryModal = ({
 
   const restaurantCount = useMemo(
     () => new Set(orderData.map((i) => i.restaurantId || "unknown")).size,
-    [orderData]
+    [orderData],
   );
 
   useEffect(() => {
@@ -177,7 +192,6 @@ const OrderSummaryModal = ({
     return { subtotal, modifiersTotal, tax, finalTotal };
   }, []);
 
-  // Validate: name >=2, phone OR email, address if delivery, schedule ok
   const handleShippingChange = useCallback((field, value) => {
     setShipping((prev) => ({ ...prev, [field]: value }));
     setShippingTouched(true);
@@ -185,21 +199,16 @@ const OrderSummaryModal = ({
 
   const isShippingValid = useMemo(() => {
     const nameOk = (shipping.fullName || "").trim().length >= 2;
-
     const phoneRaw = (shipping.phone || "").trim();
     const emailRaw = (shipping.email || "").trim();
-
     const phoneOk = phoneRaw ? /^(\+?\d{7,15})$/.test(phoneRaw) : false;
     const emailOk = emailRaw
       ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)
       : false;
-
-    const contactOk = phoneOk || emailOk; // ✅ ít nhất 1 trong 2
-
+    const contactOk = phoneOk || emailOk;
     const needAddress = shipping.deliveryMethod === "delivery";
     const addressOk =
       !needAddress || (shipping.address || "").trim().length > 5;
-
     const scheduleOk =
       shipping.deliveryTime === "asap" ||
       (shipping.scheduleDate && shipping.scheduleTime);
@@ -254,8 +263,8 @@ const OrderSummaryModal = ({
               modifiers: newModifiers,
               modifiersPrice: newModifiersPrice,
             }
-          : item
-      )
+          : item,
+      ),
     );
   };
 
@@ -265,7 +274,6 @@ const OrderSummaryModal = ({
     return "delivery";
   };
 
-  // Tạo một orderCode chung cho whole checkout
   const genOrderCode = () =>
     "OC" + Math.random().toString(36).slice(2, 8).toUpperCase();
 
@@ -298,7 +306,6 @@ const OrderSummaryModal = ({
           })),
         })),
       };
-      // nếu đã login -> server tự lấy ctx.user, else -> gửi customer để tạo guest
       if (!isAuthenticated) {
         base.customer = {
           fullName: shippingArg?.fullName || undefined,
@@ -308,7 +315,7 @@ const OrderSummaryModal = ({
       }
       return base;
     },
-    [isAuthenticated]
+    [isAuthenticated],
   );
 
   const persistAllOrders = useCallback(
@@ -321,22 +328,22 @@ const OrderSummaryModal = ({
             items,
             shipping,
             paymentMethod,
-            code
+            code,
           );
           return createOrder({ variables: { input } });
-        }
+        },
       );
       const results = await Promise.all(calls);
       const created = results.map((r) => r?.data?.createOrder).filter(Boolean);
       return { orderCode: code, orders: created };
     },
-    [groupedByRestaurant, buildInputForRestaurant, shipping, createOrder]
+    [groupedByRestaurant, buildInputForRestaurant, shipping, createOrder],
   );
 
   const setAndShowSuccess = (createdOrders) => {
     const totalPaid = createdOrders.reduce(
       (s, o) => s + (o?.totals?.grandTotal || 0),
-      0
+      0,
     );
     setReceipt({
       customerName: shipping.fullName,
@@ -463,8 +470,7 @@ const OrderSummaryModal = ({
             >
               {isProcessingPayment ? (
                 <>
-                  <span className="loading-spinner" />
-                  Đang xử lý...
+                  <span className="loading-spinner" /> Đang xử lý...
                 </>
               ) : (
                 "Tôi đã thanh toán"
@@ -494,13 +500,13 @@ const OrderSummaryModal = ({
               }
               title={
                 !isShippingValid
-                  ? "Vui lòng nhập đầy đủ thông tin giao hàng (tên + SĐT hoặc email)"
+                  ? "Vui lòng nhập đầy đủ thông tin giao hàng"
                   : !selectedPaymentMethod
-                  ? "Chọn phương thức thanh toán"
-                  : undefined
+                    ? "Chọn phương thức thanh toán"
+                    : undefined
               }
             >
-              {isProcessingPayment ? "Đang lưu đơn..." : "Xác nhận thanh toán"}
+              {isProcessingPayment ? "Đang lưu đơn..." : "Xác nhận đặt hàng"}
             </button>
           </Modal.Footer>
         );
@@ -512,7 +518,11 @@ const OrderSummaryModal = ({
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title="📦 Xác nhận đơn hàng"
+        title={
+          <div className="modal-title-with-icon">
+            <Receipt size={24} /> Xác nhận đơn hàng
+          </div>
+        }
         size="lg"
         className="order-summary-modal"
       >
@@ -530,7 +540,6 @@ const OrderSummaryModal = ({
         restaurantId={currentEditingItem?.restaurantId ?? restaurantId}
       />
 
-      {/* Success modal tổng hợp đơn (nhiều nhà hàng) */}
       <SuccessModal
         isOpen={isSuccessOpen}
         onClose={handleCloseAll}
@@ -590,13 +599,23 @@ const RestaurantInfo = ({ orderInfo, orderData, restaurantCount }) => {
 
   if (restaurantCount <= 1) {
     return (
-      <div className="section">
+      <div className="section section-highlight">
         <div className="restaurant-info">
-          <h3 className="restaurant-name">🏪 {singleName}</h3>
-          <p className="restaurant-address">📍 —</p>
-          <div className="order-info">
-            <span className="order-id">Mã đơn tạm: #{orderInfo.id}</span>
-            <span className="order-time">{orderInfo.time}</span>
+          <h3 className="restaurant-name">
+            <Store size={20} /> {singleName}
+          </h3>
+          <p className="restaurant-address">
+            <MapPin size={16} /> Địa chỉ nhà hàng đang cập nhật
+          </p>
+          <div className="order-info-boxes">
+            <div className="info-box">
+              <span className="label">Mã đơn tạm</span>
+              <span className="value">#{orderInfo.id}</span>
+            </div>
+            <div className="info-box">
+              <span className="label">Thời gian</span>
+              <span className="value">{orderInfo.time}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -604,15 +623,23 @@ const RestaurantInfo = ({ orderInfo, orderData, restaurantCount }) => {
   }
 
   return (
-    <div className="section">
+    <div className="section section-highlight">
       <div className="restaurant-info">
-        <h3 className="restaurant-name">🏪 Đơn hàng nhiều nhà hàng</h3>
+        <h3 className="restaurant-name">
+          <Store size={20} /> Đơn hàng nhiều nhà hàng
+        </h3>
         <p className="restaurant-address">
-          Hệ thống sẽ điều phối phù hợp theo từng nhà hàng.
+          <MapPin size={16} /> Hệ thống sẽ điều phối phù hợp theo từng nhà hàng.
         </p>
-        <div className="order-info">
-          <span className="order-id">Mã giao dịch tạm: #{orderInfo.id}</span>
-          <span className="order-time">{orderInfo.time}</span>
+        <div className="order-info-boxes">
+          <div className="info-box">
+            <span className="label">Mã giao dịch</span>
+            <span className="value">#{orderInfo.id}</span>
+          </div>
+          <div className="info-box">
+            <span className="label">Thời gian</span>
+            <span className="value">{orderInfo.time}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -634,7 +661,9 @@ const ShippingForm = ({ value, errors = {}, onChange }) => {
 
   return (
     <div className="section">
-      <h3 className="section-title">🚚 Thông tin giao hàng</h3>
+      <h3 className="section-title">
+        <Truck size={20} /> Thông tin giao hàng
+      </h3>
 
       <div className="form-grid">
         <div className="form-col">
@@ -644,7 +673,7 @@ const ShippingForm = ({ value, errors = {}, onChange }) => {
               <input
                 className={`form-input ${errors.fullName ? "is-invalid" : ""}`}
                 type="text"
-                placeholder="Nguyễn Văn A"
+                placeholder="VD: Nguyễn Văn A"
                 value={fullName}
                 onChange={(e) => onChange("fullName", e.target.value)}
               />
@@ -665,28 +694,26 @@ const ShippingForm = ({ value, errors = {}, onChange }) => {
             </div>
           </div>
 
-          <div className="form-row">
-            <div className="form-field">
-              <label className="form-label">Email</label>
-              <input
-                className={`form-input ${errors.contact ? "is-invalid" : ""}`}
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => onChange("email", e.target.value)}
-              />
-              {errors.contact && (
-                <div className="form-error">{errors.contact}</div>
-              )}
-            </div>
+          <div className="form-field">
+            <label className="form-label">Email</label>
+            <input
+              className={`form-input ${errors.contact ? "is-invalid" : ""}`}
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => onChange("email", e.target.value)}
+            />
+            {errors.contact && (
+              <div className="form-error">{errors.contact}</div>
+            )}
           </div>
 
           <div className="form-field">
-            <label className="form-label">Địa chỉ</label>
+            <label className="form-label">Địa chỉ nhận hàng</label>
             <input
               className={`form-input ${errors.address ? "is-invalid" : ""}`}
               type="text"
-              placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành"
+              placeholder="Số nhà, đường, phường/xã, quận/huyện..."
               value={address}
               onChange={(e) => onChange("address", e.target.value)}
               disabled={deliveryMethod !== "delivery"}
@@ -697,10 +724,10 @@ const ShippingForm = ({ value, errors = {}, onChange }) => {
           </div>
 
           <div className="form-field">
-            <label className="form-label">Ghi chú</label>
+            <label className="form-label">Ghi chú cho tài xế/quán</label>
             <textarea
               className="form-textarea"
-              placeholder="Ví dụ: ít cay, giao tới cổng..."
+              placeholder="Ví dụ: ít cay, gọi khi tới nơi..."
               rows={2}
               value={note}
               onChange={(e) => onChange("note", e.target.value)}
@@ -714,30 +741,24 @@ const ShippingForm = ({ value, errors = {}, onChange }) => {
             <div className="segmented">
               <button
                 type="button"
-                className={`segmented__option ${
-                  deliveryMethod === "delivery" ? "is-active" : ""
-                }`}
+                className={`segmented__option ${deliveryMethod === "delivery" ? "is-active" : ""}`}
                 onClick={() => onChange("deliveryMethod", "delivery")}
               >
-                🚚 Giao tận nơi
+                <Truck size={16} /> Giao tận nơi
               </button>
               <button
                 type="button"
-                className={`segmented__option ${
-                  deliveryMethod === "pickup" ? "is-active" : ""
-                }`}
+                className={`segmented__option ${deliveryMethod === "pickup" ? "is-active" : ""}`}
                 onClick={() => onChange("deliveryMethod", "pickup")}
               >
-                🛍️ Tự đến lấy
+                <ShoppingBag size={16} /> Tự đến lấy
               </button>
               <button
                 type="button"
-                className={`segmented__option ${
-                  deliveryMethod === "dinein" ? "is-active" : ""
-                }`}
+                className={`segmented__option ${deliveryMethod === "dinein" ? "is-active" : ""}`}
                 onClick={() => onChange("deliveryMethod", "dinein")}
               >
-                🍽️ Dùng tại chỗ
+                <Utensils size={16} /> Dùng tại chỗ
               </button>
             </div>
           </div>
@@ -747,21 +768,17 @@ const ShippingForm = ({ value, errors = {}, onChange }) => {
             <div className="segmented">
               <button
                 type="button"
-                className={`segmented__option ${
-                  deliveryTime === "asap" ? "is-active" : ""
-                }`}
+                className={`segmented__option ${deliveryTime === "asap" ? "is-active" : ""}`}
                 onClick={() => onChange("deliveryTime", "asap")}
               >
-                Ngay khi có thể
+                <Clock size={16} /> Ngay khi có thể
               </button>
               <button
                 type="button"
-                className={`segmented__option ${
-                  deliveryTime === "schedule" ? "is-active" : ""
-                }`}
+                className={`segmented__option ${deliveryTime === "schedule" ? "is-active" : ""}`}
                 onClick={() => onChange("deliveryTime", "schedule")}
               >
-                Hẹn giờ
+                <CalendarDays size={16} /> Hẹn giờ
               </button>
             </div>
           </div>
@@ -771,9 +788,7 @@ const ShippingForm = ({ value, errors = {}, onChange }) => {
               <div className="form-field">
                 <label className="form-label">Ngày</label>
                 <input
-                  className={`form-input ${
-                    errors.schedule ? "is-invalid" : ""
-                  }`}
+                  className={`form-input ${errors.schedule ? "is-invalid" : ""}`}
                   type="date"
                   value={scheduleDate}
                   onChange={(e) => onChange("scheduleDate", e.target.value)}
@@ -782,9 +797,7 @@ const ShippingForm = ({ value, errors = {}, onChange }) => {
               <div className="form-field">
                 <label className="form-label">Giờ</label>
                 <input
-                  className={`form-input ${
-                    errors.schedule ? "is-invalid" : ""
-                  }`}
+                  className={`form-input ${errors.schedule ? "is-invalid" : ""}`}
                   type="time"
                   value={scheduleTime}
                   onChange={(e) => onChange("scheduleTime", e.target.value)}
@@ -809,15 +822,19 @@ const OrderItems = ({
   if (!groupedByRestaurant || groupedByRestaurant.size === 0) {
     return (
       <div className="section">
-        <h3 className="section-title">🛒 Chi tiết đơn hàng</h3>
-        <p>Chưa có món nào.</p>
+        <h3 className="section-title">
+          <Receipt size={20} /> Chi tiết đơn hàng
+        </h3>
+        <p className="empty-text">Chưa có món nào trong giỏ hàng.</p>
       </div>
     );
   }
 
   return (
     <div className="section">
-      <h3 className="section-title">🛒 Chi tiết đơn hàng</h3>
+      <h3 className="section-title">
+        <Receipt size={20} /> Chi tiết đơn hàng
+      </h3>
       {Array.from(groupedByRestaurant.entries()).map(([rid, items]) => (
         <RestaurantGroup
           key={rid}
@@ -841,15 +858,19 @@ const RestaurantGroup = ({
   const groupTotals = calcGroupTotals(items);
 
   return (
-    <div className="restaurant-group">
-      <h4 className="restaurant-group__title">🏪 {rName}</h4>
-      <div className="order-items">
+    <div className="restaurant-group-card">
+      <div className="restaurant-group-header">
+        <Store size={18} />
+        <h4>{rName}</h4>
+      </div>
+
+      <div className="order-items-list">
         {items.map((item) => (
           <OrderItem key={item.id} item={item} onAddModifier={onAddModifier} />
         ))}
       </div>
 
-      <div className="price-breakdown group">
+      <div className="price-breakdown group-breakdown">
         <div className="price-row">
           <span className="price-label">Tổng món ăn ({rName})</span>
           <span className="price-value">
@@ -867,7 +888,7 @@ const RestaurantGroup = ({
           <span className="price-value">{formatCurrency(groupTotals.tax)}</span>
         </div>
         <div className="price-row total">
-          <span className="price-label">Tổng {rName}</span>
+          <span className="price-label">Tạm tính {rName}</span>
           <span className="price-value">
             {formatCurrency(groupTotals.finalTotal)}
           </span>
@@ -887,21 +908,35 @@ const OrderItem = ({ item, onAddModifier }) => {
         {typeof item.image === "string" ? (
           <img src={item.image} alt={item.name} />
         ) : (
-          item.image
+          item.image || (
+            <div className="img-placeholder">
+              <Utensils size={24} />
+            </div>
+          )
         )}
       </div>
 
       <div className="item-details">
-        <h4 className="item-name">
-          <span>{item.name}</span>
-          {item.cookingMethod && (
-            <span className="cooking-method"> — {item.cookingMethod}</span>
-          )}
-        </h4>
+        <div className="item-header">
+          <h4 className="item-name">
+            {item.name}
+            {item.cookingMethod && (
+              <span className="cooking-method"> • {item.cookingMethod}</span>
+            )}
+          </h4>
+          <span className="item-total-price">{formatCurrency(itemTotal)}</span>
+        </div>
 
         {item.description && (
           <p className="item-description">{item.description}</p>
         )}
+
+        <div className="item-meta">
+          <span className="item-quantity">
+            {formatQuantity(item.quantity, item.unit)}
+          </span>
+          <span className="item-unit-price">x {formatCurrency(unitPrice)}</span>
+        </div>
 
         {item.modifiers && item.modifiers.length > 0 && (
           <div className="item-modifiers">
@@ -914,24 +949,12 @@ const OrderItem = ({ item, onAddModifier }) => {
           </div>
         )}
 
-        <div className="item-quantity-price">
-          <span className="item-quantity">
-            {formatQuantity(item.quantity, item.unit)}
-          </span>
-          <span className="item-price">
-            {formatCurrency(itemTotal)}
-            <span className="item-unit-price">
-              ({formatCurrency(unitPrice)}/{item.unit})
-            </span>
-          </span>
-        </div>
-
         <div className="item-actions">
           <button
             className="add-modifier-btn"
             onClick={() => onAddModifier(item.id)}
           >
-            ➕ Thêm tùy chọn
+            <PlusCircle size={14} /> Thêm ghi chú / tùy chọn
           </button>
         </div>
       </div>
@@ -940,8 +963,10 @@ const OrderItem = ({ item, onAddModifier }) => {
 };
 
 const PriceBreakdown = ({ subtotals }) => (
-  <div className="section">
-    <h3 className="section-title">💳 Chi tiết thanh toán</h3>
+  <div className="section final-breakdown">
+    <h3 className="section-title">
+      <CreditCard size={20} /> Tổng thanh toán
+    </h3>
     <div className="price-breakdown">
       <div className="price-row">
         <span className="price-label">Tổng tiền món ăn</span>
@@ -961,10 +986,10 @@ const PriceBreakdown = ({ subtotals }) => (
       </div>
       <div className="price-row">
         <span className="price-label">Phí giao hàng</span>
-        <span className="price-value">Miễn phí</span>
+        <span className="price-value text-green">Miễn phí</span>
       </div>
-      <div className="price-row total">
-        <span className="price-label">Tổng thanh toán</span>
+      <div className="price-row grand-total">
+        <span className="price-label">Tổng cộng</span>
         <span className="price-value">
           {formatCurrency(subtotals.finalTotal)}
         </span>
@@ -975,30 +1000,39 @@ const PriceBreakdown = ({ subtotals }) => (
 
 const PaymentMethods = ({ selectedMethod, onSelect }) => (
   <div className="section">
-    <h3 className="section-title">💳 Phương thức thanh toán</h3>
-    <div className="payment-methods">
+    <h3 className="section-title">
+      <CreditCard size={20} /> Phương thức thanh toán
+    </h3>
+    <div className="payment-methods-grid">
       <div
-        className={`payment-method ${
-          selectedMethod === "cash" ? "selected" : ""
-        }`}
+        className={`payment-method-card ${selectedMethod === "cash" ? "selected" : ""}`}
         onClick={() => onSelect("cash")}
       >
-        <div className="payment-icon">💵</div>
+        <div className="payment-icon">
+          <Banknote size={28} />
+        </div>
         <div className="payment-info">
           <h4 className="payment-name">Tiền mặt</h4>
           <p className="payment-desc">Thanh toán khi nhận hàng</p>
         </div>
+        <div className="check-circle">
+          <CheckCircle size={20} />
+        </div>
       </div>
+
       <div
-        className={`payment-method ${
-          selectedMethod === "transfer" ? "selected" : ""
-        }`}
+        className={`payment-method-card ${selectedMethod === "transfer" ? "selected" : ""}`}
         onClick={() => onSelect("transfer")}
       >
-        <div className="payment-icon">🏦</div>
+        <div className="payment-icon">
+          <QrCode size={28} />
+        </div>
         <div className="payment-info">
-          <h4 className="payment-name">Chuyển khoản</h4>
-          <p className="payment-desc">Quét mã QR để thanh toán</p>
+          <h4 className="payment-name">Chuyển khoản / QR</h4>
+          <p className="payment-desc">Quét mã QR qua ứng dụng ngân hàng</p>
+        </div>
+        <div className="check-circle">
+          <CheckCircle size={20} />
         </div>
       </div>
     </div>
@@ -1006,46 +1040,54 @@ const PaymentMethods = ({ selectedMethod, onSelect }) => (
 );
 
 const SuccessScreen = ({ onNewOrder }) => (
-  <div className="section">
+  <div className="section text-center">
     <div className="success-screen">
-      <div className="success-icon">🎉</div>
+      <div className="success-icon-large">
+        <CheckCircle size={64} />
+      </div>
       <h3 className="success-title">Đặt hàng thành công!</h3>
       <p className="success-message">
-        Cảm ơn bạn đã đặt hàng. Chúng tôi sẽ chuẩn bị món ăn và giao đến bạn
-        trong thời gian sớm nhất.
+        Cảm ơn bạn đã đặt hàng tại FoodHub. Nhà hàng đang chuẩn bị món và sẽ
+        giao đến bạn trong thời gian sớm nhất.
       </p>
-      <button className="btn btn--primary" onClick={onNewOrder}>
-        Đóng
+      <button className="btn btn--primary mt-4" onClick={onNewOrder}>
+        Hoàn tất & Đóng
       </button>
     </div>
   </div>
 );
 
 const QRPaymentScreen = ({ amount, onConfirm, isProcessing }) => (
-  <div className="section">
-    <div className="qr-payment">
+  <div className="section text-center">
+    <div className="qr-payment-screen">
       <h3 className="qr-title">Quét mã QR để thanh toán</h3>
-      <p className="qr-subtitle">Sử dụng ứng dụng ngân hàng để quét mã</p>
-      <div className="qr-code">📱</div>
-      <p className="qr-amount">Số tiền: {formatCurrency(amount)}</p>
+      <p className="qr-subtitle">
+        Sử dụng ứng dụng ngân hàng hoặc ví điện tử để quét mã
+      </p>
+
+      <div className="qr-code-box">
+        <QrCode size={120} strokeWidth={1} />
+      </div>
+
+      <div className="qr-amount-box">
+        <span className="label">Số tiền cần thanh toán</span>
+        <span className="amount">{formatCurrency(amount)}</span>
+      </div>
+
       <div className="qr-instructions">
-        <h4>⚠️ Hướng dẫn thanh toán:</h4>
+        <h4>
+          <AlertCircle size={16} /> Hướng dẫn thanh toán:
+        </h4>
         <ol>
           <li>Mở ứng dụng ngân hàng trên điện thoại</li>
-          <li>Chọn tính năng "Quét mã QR"</li>
-          <li>Quét mã QR phía trên</li>
-          <li>Xác nhận thông tin và thanh toán</li>
-          <li>Chờ xác nhận từ hệ thống</li>
+          <li>
+            Chọn tính năng <strong>Quét mã QR</strong>
+          </li>
+          <li>Hướng camera vào mã QR phía trên</li>
+          <li>
+            Kiểm tra số tiền và <strong>Xác nhận</strong>
+          </li>
         </ol>
-      </div>
-      <div style={{ marginTop: 12 }}>
-        <button
-          className="btn btn--success"
-          onClick={onConfirm}
-          disabled={isProcessing}
-        >
-          {isProcessing ? "Đang lưu đơn..." : "Tôi đã thanh toán"}
-        </button>
       </div>
     </div>
   </div>
