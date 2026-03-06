@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { gql, useMutation } from "@apollo/client";
 import { ChevronLeft, Info, Layers } from "lucide-react"; // Dùng lucide-react cho đồng bộ
 
-import FloorMap from "./FloorMap/FloorMap";
+import FloorMap from "../../../../FloorMap/FloorMap";
 import FloorSelector from "./FloorSelector/FloorSelector";
 import BookingSummary from "./BookingSummary/BookingSummary";
 import BookingModal from "../BookingTableModal/BookingModal";
@@ -57,11 +57,11 @@ const TableBooking = () => {
   });
 
   const restaurantCartItems = (cart || []).filter(
-    (item) => item.restaurantId === restaurantId
+    (item) => item.restaurantId === restaurantId,
   );
   const menuSubtotal = restaurantCartItems.reduce(
     (sum, item) => sum + (item.price || 0) * (item.quantity || 1),
-    0
+    0,
   );
   const menuDeposit = Math.round(menuSubtotal * 0.5);
 
@@ -226,8 +226,8 @@ const TableBooking = () => {
                   onOrderDishes={() =>
                     navigate(
                       `/cus-menu?restaurantId=${encodeURIComponent(
-                        restaurantId
-                      )}&returnTo=booking`
+                        restaurantId,
+                      )}&returnTo=booking`,
                     )
                   }
                 />

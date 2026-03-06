@@ -1,0 +1,224 @@
+$noti-bg-dark: #111827;
+$noti-bg-card: #1f2937;
+$noti-bg-hover: #374151;
+$noti-text-light: #f9fafb;
+$noti-text-muted: #9ca3af;
+$noti-orange: #ff6600;
+$noti-border: #374151;
+
+.staff-notification-container {
+  position: relative;
+  z-index: 1000;
+}
+
+.bell-trigger-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .bell-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background-color: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 5px;
+    border-radius: 10px;
+    border: 2px solid $noti-bg-card;
+    min-width: 18px;
+    text-align: center;
+  }
+}
+
+.notification-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99;
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: 50px;
+  right: -10px;
+  width: 340px;
+  max-width: 90vw;
+  background-color: $noti-bg-card;
+  border: 1px solid $noti-border;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  overflow: hidden;
+  animation: slideDown 0.2s ease-out forwards;
+  .noti-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid $noti-border;
+    h3 {
+      margin: 0;
+      font-size: 16px;
+      color: $noti-text-light;
+    }
+    .btn-mark-read {
+      background: none;
+      border: none;
+      color: $noti-orange;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+  .noti-tabs {
+    display: flex;
+    border-bottom: 1px solid $noti-border;
+    button {
+      flex: 1;
+      background: none;
+      border: none;
+      padding: 10px 0;
+      color: $noti-text-muted;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: 0.2s;
+      &.active {
+        color: $noti-orange;
+        border-bottom-color: $noti-orange;
+      }
+      &:hover:not(.active) {
+        color: $noti-text-light;
+      }
+    }
+  }
+  .noti-list {
+    max-height: 350px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: #4b5563;
+      border-radius: 4px;
+    }
+    .noti-empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: $noti-text-muted;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .noti-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      cursor: pointer;
+      transition: background 0.2s;
+      &:hover {
+        background: $noti-bg-hover;
+      }
+      &.unread {
+        background: rgba(255, 102, 0, 0.05);
+      }
+      .noti-icon-wrapper {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        flex-shrink: 0;
+        &.order {
+          background: #3b82f6;
+        }
+        &.kitchen {
+          background: #10b981;
+        }
+        &.system {
+          background: #ef4444;
+        }
+      }
+      .noti-content {
+        flex: 1;
+        .noti-title {
+          margin: 0 0 6px 0;
+          font-size: 13px;
+          color: $noti-text-light;
+          line-height: 1.4;
+        }
+        .noti-time {
+          margin: 0;
+          font-size: 11px;
+          color: $noti-text-muted;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+      }
+      .noti-dot {
+        width: 8px;
+        height: 8px;
+        background-color: $noti-orange;
+        border-radius: 50%;
+        margin-top: 6px;
+        flex-shrink: 0;
+      }
+    }
+  }
+  .noti-footer {
+    padding: 12px;
+    border-top: 1px solid $noti-border;
+    text-align: center;
+    button {
+      background: none;
+      border: none;
+      color: $noti-text-muted;
+      font-size: 13px;
+      cursor: pointer;
+      &:hover {
+        color: $noti-text-light;
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

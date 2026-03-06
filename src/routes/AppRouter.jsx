@@ -19,6 +19,7 @@ import Login from "../components/Login";
 import VerifyEmailPending from "../pages/VerifyEmailPending";
 import VerifyEmailConfirm from "../pages/VerifyEmailConfirm";
 import ForbiddenPage from "../pages/ForbiddenPage";
+import StaffOrdering from "../components/Staff/StaffOrdering";
 
 // ==== Customer ====
 import RestaurantsList from "../components/Customer/RestaurantList/RestaurantList";
@@ -83,7 +84,7 @@ const useAuth = () => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   const [token, setToken] = useState(
-    () => localStorage.getItem("token") || sessionStorage.getItem("token")
+    () => localStorage.getItem("token") || sessionStorage.getItem("token"),
   );
 
   const { data, loading, error, refetch } = useQuery(ME_QUERY, {
@@ -95,13 +96,13 @@ const useAuth = () => {
     if (error) {
       const isNetworkError = Boolean(error.networkError);
       const isUnauthenticated = (error.graphQLErrors || []).some(
-        (errItem) => errItem?.extensions?.code === "UNAUTHENTICATED"
+        (errItem) => errItem?.extensions?.code === "UNAUTHENTICATED",
       );
 
       if (isNetworkError && !isUnauthenticated) {
         showNotification(
           "Mất kết nối mạng. Bạn vẫn được giữ đăng nhập để tiếp tục khi có mạng.",
-          "warning"
+          "warning",
         );
         return;
       }
@@ -187,16 +188,14 @@ const AppRouter = () => {
           GROUP 1: PUBLIC & AUTH PAGES (KHÔNG Layout) 
           =============================================
       */}
+      <Route path="/staff-ordering" element={<StaffOrdering />} />
       <Route path="/login" element={<Login />} />
       <Route path="/verify-email" element={<VerifyEmailPending />} />
       <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
       <Route path="/403" element={<ForbiddenPage />} />
       <Route path="/logout" element={<Navigate to="/login" replace />} />
 
-      <Route
-        path="/preview/restaurant/:id"
-        element={<RestaurantDetail />}
-      />
+      <Route path="/preview/restaurant/:id" element={<RestaurantDetail />} />
 
       {/* =============================================
           GROUP 2: STAFF, MANAGER, ADMIN (Layout Riêng)
@@ -250,7 +249,6 @@ const AppRouter = () => {
           </PrivateRoute>
         }
       />
-
 
       <Route
         path="/manager/restaurants/categories"
