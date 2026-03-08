@@ -1,0 +1,368 @@
+// Variables
+$primary: #3b82f6;
+$success: #10b981;
+$warning: #f59e0b;
+$danger: #ef4444;
+$bg-main: #f3f4f6;
+$bg-card: #ffffff;
+$text-main: #1f2937;
+$text-sub: #6b7280;
+$border-color: #e5e7eb;
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-lg: 0 -4px 16px rgba(0, 0, 0, 0.1);
+
+.staff-pos-cart-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px); // Hiệu ứng mờ nền đẹp mắt
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end; // Đẩy sheet xuống đáy
+  animation: fadeIn 0.2s ease-out;
+
+  .staff-pos-cart-sheet {
+    background: $bg-main;
+    width: 100%;
+    max-width: 600px;
+    height: 92vh; // Chiếm 92% màn hình trên mobile
+    border-radius: 24px 24px 0 0;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: $shadow-lg;
+
+    // Drag Handle Indicator
+    .drag-indicator {
+      display: flex;
+      justify-content: center;
+      padding: 12px 0 4px;
+      background: $bg-card;
+      border-radius: 24px 24px 0 0;
+
+      .drag-handle {
+        width: 40px;
+        height: 5px;
+        background: #d1d5db;
+        border-radius: 10px;
+      }
+    }
+
+    .sheet-header {
+      background: $bg-card;
+      padding: 8px 20px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid $border-color;
+
+      .header-info {
+        h3 {
+          margin: 0;
+          font-size: 18px;
+          font-weight: 700;
+          color: $text-main;
+        }
+        .subtitle {
+          margin: 4px 0 0;
+          font-size: 13px;
+          color: $primary;
+          font-weight: 500;
+        }
+      }
+
+      .btn-close {
+        background: #f3f4f6;
+        border: none;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: $text-sub;
+        cursor: pointer;
+        transition: 0.2s;
+        &:active {
+          background: #e5e7eb;
+        }
+      }
+    }
+
+    .sheet-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: $bg-main;
+
+      // Trạng thái trống
+      .empty-cart {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: $text-sub;
+
+        .empty-icon-wrap {
+          width: 80px;
+          height: 80px;
+          background: rgba($primary, 0.1);
+          color: $primary;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 16px;
+        }
+        p {
+          font-size: 15px;
+          font-weight: 500;
+        }
+      }
+
+      .cart-item {
+        background: $bg-card;
+        border-radius: 16px;
+        padding: 14px;
+        box-shadow: $shadow-sm;
+
+        .item-main {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 12px;
+
+          .item-info-left {
+            display: flex;
+            gap: 12px;
+
+            .qty {
+              background: rgba($primary, 0.1);
+              color: $primary;
+              font-weight: 700;
+              font-size: 14px;
+              min-width: 28px;
+              height: 28px;
+              border-radius: 8px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+
+            .name-wrap {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+              .name {
+                font-size: 15px;
+                font-weight: 600;
+                color: $text-main;
+                line-height: 1.3;
+              }
+              .prep-text {
+                font-size: 12px;
+                color: $text-sub;
+              }
+            }
+          }
+
+          .item-price {
+            font-weight: 700;
+            color: $text-main;
+            font-size: 15px;
+          }
+        }
+
+        .item-tools {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          border-top: 1px dashed $border-color;
+          padding-top: 12px;
+
+          .status-badges {
+            display: flex;
+            gap: 6px;
+            .badge {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              font-size: 11px;
+              font-weight: 600;
+              padding: 4px 8px;
+              border-radius: 6px;
+
+              &.badge-warning {
+                background: rgba($warning, 0.1);
+                color: $warning;
+              }
+              &.badge-cooking {
+                background: rgba($success, 0.1);
+                color: $success;
+              }
+              &.badge-void {
+                background: rgba($danger, 0.1);
+                color: $danger;
+              }
+              &.badge-printed {
+                background: $bg-main;
+                color: $text-sub;
+              }
+            }
+          }
+
+          .actions {
+            display: flex;
+            gap: 8px;
+
+            .btn-icon {
+              width: 32px;
+              height: 32px;
+              border-radius: 8px;
+              border: none;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: $bg-main;
+              color: $text-sub;
+              transition: 0.2s;
+
+              &.active-cam {
+                color: $success;
+                background: rgba($success, 0.1);
+              }
+              &.btn-minus {
+                color: $warning;
+                background: rgba($warning, 0.1);
+              }
+              &.btn-void {
+                color: $danger;
+                background: rgba($danger, 0.1);
+              }
+
+              &:active {
+                transform: scale(0.95);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    .sheet-footer {
+      background: $bg-card;
+      padding: 16px 20px 24px; // Padding bottom to hơn để chừa chỗ cho Safe Area (vạch vuốt iPhone)
+      border-radius: 20px 20px 0 0;
+      box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.03);
+
+      .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+
+        .summary-label {
+          font-size: 15px;
+          color: $text-sub;
+          font-weight: 500;
+        }
+        .summary-total {
+          font-size: 20px;
+          color: $danger;
+          font-weight: 800;
+        }
+      }
+
+      .billing-actions {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+
+        .btn-sub {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 8px 4px;
+          background: white;
+          border: 1px solid $border-color;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 600;
+          color: $text-main;
+          cursor: pointer;
+
+          &:active {
+            background: $bg-main;
+          }
+        }
+      }
+
+      .main-actions {
+        display: flex;
+        gap: 12px;
+
+        .btn-primary {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 14px;
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: 15px;
+          border: none;
+          color: white;
+          cursor: pointer;
+          transition: 0.2s;
+
+          &.btn-send-kitchen {
+            background: $primary;
+          }
+          &.btn-checkout {
+            background: $success;
+          }
+
+          &:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            opacity: 0.7;
+          }
+          &:not(:disabled):active {
+            transform: scale(0.98);
+          }
+        }
+      }
+    }
+  }
+}
+
+// Animations
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

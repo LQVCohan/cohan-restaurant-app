@@ -1,0 +1,286 @@
+// Variables
+$primary: #3b82f6;
+$success: #10b981;
+$warning: #f59e0b;
+$danger: #ef4444;
+$bg-main: #f3f4f6;
+$bg-card: #ffffff;
+$text-main: #1f2937;
+$text-sub: #6b7280;
+$border-color: #e5e7eb;
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+
+.staff-pos-tables {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+
+  // Tiêu đề
+  .floor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .floor-stats {
+      h3 {
+        margin: 0 0 4px;
+        font-size: 20px;
+        font-weight: 700;
+        color: $text-main;
+      }
+      p {
+        margin: 0;
+        font-size: 14px;
+        color: $text-sub;
+      }
+      strong {
+        color: $primary;
+        font-weight: 700;
+      }
+    }
+  }
+
+  // Scroll Tầng
+  .floor-selector-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+
+    .floor-chip {
+      white-space: nowrap;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid $border-color;
+      background: $bg-card;
+      color: $text-sub;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &.active {
+        background: $text-main;
+        color: white;
+        border-color: $text-main;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+      }
+      &:active {
+        transform: scale(0.95);
+      }
+    }
+  }
+
+  // Lưới Bàn
+  .table-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); // 2 cột trên mobile
+    gap: 14px;
+    padding-bottom: 24px;
+    align-items: flex-start;
+
+    @media (min-width: 600px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .table-card-wrapper {
+      background: $bg-card;
+      border-radius: 16px;
+      border: 2px solid transparent;
+      box-shadow: $shadow-sm;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+      cursor: pointer;
+
+      // Xử lý màu sắc theo trạng thái
+      &.status-empty {
+        border-color: $border-color;
+        .status-indicator {
+          background: #d1d5db;
+        }
+        .table-status-text {
+          color: $text-sub;
+        }
+      }
+
+      &.status-serving {
+        background: #f0fdf4; // Light Green
+        border-color: rgba($success, 0.3);
+        .status-indicator {
+          background: $success;
+          box-shadow: 0 0 8px rgba($success, 0.6);
+        }
+        .table-status-text {
+          color: $success;
+        }
+        .guest-count {
+          color: #065f46;
+        }
+      }
+
+      &.status-checkout {
+        background: #fffbeb; // Light Yellow
+        border-color: rgba($warning, 0.4);
+        .status-indicator {
+          background: $warning;
+          box-shadow: 0 0 8px rgba($warning, 0.6);
+        }
+        .table-status-text {
+          color: #b45309;
+        }
+        .guest-count {
+          color: #92400e;
+        }
+      }
+
+      // Khi được chọn
+      &.selected {
+        border-color: $primary;
+        transform: translateY(-2px);
+        box-shadow: $shadow-md;
+      }
+
+      .table-card-main {
+        padding: 14px;
+
+        .table-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+
+          .table-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: $text-main;
+          }
+          .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+          }
+        }
+
+        .table-body {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          min-height: 48px; // Giữ layout không bị nhảy khi có/không có thẻ customer
+
+          .guest-count {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: $text-sub;
+          }
+
+          .customer-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba($primary, 0.1);
+            color: $primary;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            width: fit-content;
+            max-width: 100%;
+
+            .star-icon {
+              flex-shrink: 0;
+            }
+            .truncate {
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+          }
+        }
+
+        .table-status-text {
+          margin-top: 12px;
+          font-size: 12px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+      }
+
+      // Animation mượt mà cho phần Actions
+      .table-quick-actions {
+        display: grid;
+        grid-template-rows: 0fr; // Kỹ thuật CSS Grid animation mới
+        transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: white;
+
+        &.expanded {
+          grid-template-rows: 1fr;
+          border-top: 1px dashed $border-color;
+        }
+
+        .actions-container {
+          overflow: hidden;
+          display: flex;
+          justify-content: space-between;
+          padding: 0 8px; // Padding ngang khi mở ra
+
+          .action-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 12px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            color: $text-sub;
+            transition: 0.2s;
+
+            .icon-wrap {
+              width: 32px;
+              height: 32px;
+              border-radius: 50%;
+              background: $bg-main;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: 0.2s;
+            }
+
+            span {
+              font-size: 11px;
+              font-weight: 500;
+            }
+
+            &:active .icon-wrap {
+              transform: scale(0.9);
+              background: #e5e7eb;
+            }
+
+            &.btn-checkout {
+              color: $primary;
+              .icon-wrap {
+                background: rgba($primary, 0.1);
+              }
+              &:active .icon-wrap {
+                background: rgba($primary, 0.2);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

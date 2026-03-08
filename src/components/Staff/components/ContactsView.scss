@@ -1,0 +1,254 @@
+// Variables
+$primary: #3b82f6;
+$success: #10b981;
+$warning: #f59e0b;
+$danger: #ef4444;
+$bg-main: #f3f4f6;
+$bg-card: #ffffff;
+$text-main: #1f2937;
+$text-sub: #6b7280;
+$border-color: #e5e7eb;
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+.staff-pos-contacts {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  // Search Bar Styling
+  .search-section {
+    padding-bottom: 12px;
+
+    .search-bar {
+      position: relative;
+      display: flex;
+      align-items: center;
+
+      .search-icon {
+        position: absolute;
+        left: 14px;
+        color: #9ca3af;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px 16px 12px 42px;
+        border-radius: 16px; // Bo góc mềm mại
+        border: 1px solid transparent;
+        background-color: #e5e7eb; // Màu xám nhạt native
+        font-size: 15px;
+        outline: none;
+        transition: 0.2s;
+
+        &:focus {
+          background-color: $bg-card;
+          border-color: $primary;
+          box-shadow: 0 0 0 3px rgba($primary, 0.1);
+        }
+
+        &::placeholder {
+          color: #9ca3af;
+        }
+      }
+    }
+  }
+
+  // Horizontal Filter Chips
+  .filter-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    margin-bottom: 4px;
+
+    // Ẩn scrollbar
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+
+    .filter-chip {
+      white-space: nowrap;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid $border-color;
+      background: $bg-card;
+      color: $text-sub;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &.active {
+        background: $primary;
+        color: white;
+        border-color: $primary;
+        box-shadow: 0 4px 10px rgba($primary, 0.25);
+      }
+
+      &:active {
+        transform: scale(0.95);
+      }
+    }
+  }
+
+  // Contact List
+  .contact-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-bottom: 24px; // Chừa chỗ cho cuộn ở cuối
+
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: $text-sub;
+      font-size: 14px;
+      background: $bg-card;
+      border-radius: 16px;
+    }
+
+    .contact-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: $bg-card;
+      padding: 14px;
+      border-radius: 16px;
+      box-shadow: $shadow-sm;
+      transition: background 0.2s;
+
+      &:active {
+        background: #f9fafb;
+      }
+
+      .contact-info-wrap {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex: 1;
+        overflow: hidden; // Để text truncate hoạt động nếu dài quá
+
+        .avatar-wrapper {
+          position: relative;
+
+          .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px; // Hơi vuông bo góc giống iOS
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+
+            // Các lớp màu thay thế Tailwind (nếu project không có sẵn Tailwind)
+            &.bg-blue-100 {
+              background: #dbeafe;
+            }
+            &.text-blue-600 {
+              color: #2563eb;
+            }
+            &.bg-orange-100 {
+              background: #ffedd5;
+            }
+            &.text-orange-600 {
+              color: #ea580c;
+            }
+            &.bg-emerald-100 {
+              background: #d1fae5;
+            }
+            &.text-emerald-600 {
+              color: #059669;
+            }
+            &.bg-gray-200 {
+              background: #e5e7eb;
+            }
+            &.text-gray-600 {
+              color: #4b5563;
+            }
+          }
+
+          .status-indicator {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid $bg-card; // Viền trắng tạo độ cắt với avatar
+
+            &.online {
+              background: $success;
+            }
+            &.busy {
+              background: $danger;
+            }
+            &.offline {
+              background: #9ca3af;
+            }
+          }
+        }
+
+        .info-text {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          flex: 1;
+
+          h4 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: $text-main;
+          }
+          .role {
+            font-size: 12px;
+            color: $primary;
+            font-weight: 500;
+          }
+          .last-msg {
+            margin: 2px 0 0;
+            font-size: 13px;
+            color: $text-sub;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 160px; // Tránh đẩy UI trên máy màn nhỏ
+          }
+        }
+      }
+
+      .contact-actions {
+        display: flex;
+        gap: 8px;
+
+        .action-btn {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s;
+
+          &.btn-chat {
+            background: rgba($primary, 0.1);
+            color: $primary;
+          }
+          &.btn-call {
+            background: rgba($success, 0.1);
+            color: $success;
+          }
+
+          &:active {
+            transform: scale(0.92);
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,467 @@
+// Variables
+$primary: #3b82f6;
+$primary-hover: #2563eb;
+$success: #10b981;
+$warning: #f59e0b;
+$danger: #ef4444;
+$bg-main: #f3f4f6;
+$bg-card: #ffffff;
+$text-main: #1f2937;
+$text-sub: #6b7280;
+$border-color: #e5e7eb;
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+$shadow-lg: 0 -4px 16px rgba(0, 0, 0, 0.1);
+
+// TRẠNG THÁI CHƯA CHỌN BÀN
+.staff-pos-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 70vh;
+  text-align: center;
+  color: $text-sub;
+
+  .empty-icon-wrapper {
+    width: 80px;
+    height: 80px;
+    background: rgba($text-sub, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    color: #9ca3af;
+  }
+
+  h3 {
+    margin: 0 0 8px;
+    font-size: 18px;
+    color: $text-main;
+    font-weight: 600;
+  }
+  p {
+    margin: 0;
+    font-size: 14px;
+    max-width: 250px;
+    line-height: 1.5;
+  }
+}
+
+.staff-pos-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  // Banner Bàn
+  .table-status-banner {
+    background: $bg-card;
+    padding: 12px 16px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: $shadow-sm;
+    border-left: 4px solid $primary;
+
+    .table-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      .label {
+        font-size: 12px;
+        color: $text-sub;
+        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+      }
+      .table-name {
+        font-size: 16px;
+        font-weight: 700;
+        color: $text-main;
+      }
+    }
+    .icon-right {
+      color: #d1d5db;
+    }
+  }
+
+  // Thẻ Khách Hàng (VIP)
+  .customer-vip-card {
+    background: linear-gradient(145deg, #ffffff, #f9fafb);
+    border: 1px solid rgba($primary, 0.2);
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: 0 4px 12px rgba($primary, 0.05);
+
+    .cus-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .text-primary {
+        color: $primary;
+      }
+
+      .cus-details {
+        flex: 1;
+        h4 {
+          margin: 0 0 4px;
+          font-size: 15px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        p {
+          margin: 0;
+          font-size: 13px;
+          color: $text-sub;
+        }
+
+        .rank-badge {
+          background: rgba($warning, 0.1);
+          color: $warning;
+          padding: 2px 6px 2px 4px;
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+        }
+      }
+
+      .btn-remove-cus {
+        background: #f3f4f6;
+        border: none;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: $text-sub;
+        cursor: pointer;
+        &:active {
+          background: #e5e7eb;
+        }
+      }
+    }
+
+    .cus-warning {
+      margin-top: 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      font-size: 13px;
+      color: #b91c1c; // Dark Red
+      background: #fef2f2;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border-left: 3px solid $danger;
+    }
+  }
+
+  .customer-empty-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: $bg-card;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    color: $text-sub;
+    border: 1px dashed #d1d5db;
+  }
+
+  // Filter Danh Mục
+  .category-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+
+    .filter-chip {
+      white-space: nowrap;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid $border-color;
+      background: $bg-card;
+      color: $text-sub;
+      cursor: pointer;
+      transition: 0.2s;
+
+      &.active {
+        background: $primary;
+        color: white;
+        border-color: $primary;
+        box-shadow: 0 4px 10px rgba($primary, 0.2);
+      }
+      &:active {
+        transform: scale(0.95);
+      }
+    }
+  }
+
+  // Lưới Món Ăn (2 cột)
+  .menu-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding-bottom: 24px;
+
+    .menu-item-card {
+      background: $bg-card;
+      border: 1px solid $border-color;
+      border-radius: 16px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 110px;
+      box-shadow: $shadow-sm;
+      cursor: pointer;
+      transition: 0.2s;
+
+      &:active:not(.out-of-stock) {
+        transform: scale(0.97);
+      }
+
+      &.out-of-stock {
+        opacity: 0.6;
+        background: #f9fafb;
+        cursor: not-allowed;
+        filter: grayscale(100%);
+      }
+
+      .item-content {
+        .item-name {
+          margin: 0;
+          font-size: 14px;
+          font-weight: 600;
+          color: $text-main;
+          line-height: 1.3;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .item-price {
+          margin: 6px 0 0;
+          color: $primary;
+          font-weight: 700;
+          font-size: 15px;
+        }
+      }
+
+      .item-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+
+        .stock-badge {
+          font-size: 11px;
+          font-weight: 600;
+          padding: 2px 6px;
+          border-radius: 4px;
+          &.in {
+            background: rgba($success, 0.1);
+            color: $success;
+          }
+          &.out {
+            background: rgba($danger, 0.1);
+            color: $danger;
+          }
+        }
+
+        .btn-add-quick {
+          background: $primary;
+          color: white;
+          border: none;
+          width: 24px;
+          height: 24px;
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+    }
+  }
+}
+
+// BOTTOM SHEET MODAL (Chọn Options)
+.item-options-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+
+  .item-options-sheet {
+    background: $bg-main;
+    width: 100%;
+    max-width: 500px;
+    border-radius: 24px 24px 0 0;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: $shadow-lg;
+
+    .drag-indicator {
+      display: flex;
+      justify-content: center;
+      padding: 12px 0 4px;
+      background: $bg-card;
+      border-radius: 24px 24px 0 0;
+      .drag-handle {
+        width: 40px;
+        height: 5px;
+        background: #d1d5db;
+        border-radius: 10px;
+      }
+    }
+
+    .sheet-header {
+      background: $bg-card;
+      padding: 8px 20px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid $border-color;
+
+      .header-info {
+        h3 {
+          margin: 0;
+          font-size: 18px;
+          font-weight: 700;
+        }
+        .price-text {
+          margin: 4px 0 0;
+          font-size: 15px;
+          font-weight: 600;
+          color: $primary;
+        }
+      }
+      .btn-close {
+        background: #f3f4f6;
+        border: none;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: $text-sub;
+        cursor: pointer;
+      }
+    }
+
+    .sheet-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      max-height: 60vh;
+      overflow-y: auto;
+
+      .option-group {
+        .group-label {
+          display: block;
+          font-weight: 700;
+          font-size: 15px;
+          margin-bottom: 12px;
+          color: $text-main;
+        }
+
+        .chips-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+
+          .option-chip {
+            padding: 10px 16px;
+            border: 1px solid $border-color;
+            border-radius: 12px;
+            background: $bg-card;
+            font-size: 14px;
+            font-weight: 500;
+            color: $text-main;
+            cursor: pointer;
+            transition: 0.2s;
+
+            &.selected {
+              background: rgba($primary, 0.1);
+              color: $primary;
+              border-color: $primary;
+              font-weight: 600;
+            }
+            &:active {
+              transform: scale(0.96);
+            }
+          }
+        }
+      }
+    }
+
+    .sheet-footer {
+      background: $bg-card;
+      padding: 16px 20px 24px;
+      border-top: 1px solid $border-color;
+
+      .btn-confirm-add {
+        width: 100%;
+        padding: 16px;
+        background: $primary;
+        color: white;
+        border: none;
+        border-radius: 14px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 0.2s;
+        box-shadow: 0 4px 12px rgba($primary, 0.3);
+
+        &:active {
+          transform: scale(0.98);
+        }
+      }
+    }
+  }
+}
+
+// Keyframes
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
