@@ -170,6 +170,11 @@ export const AuthProvider = ({ children }) => {
     skip: !managerId || roleName === "customer",
   });
 
+  const { data: staffRestaurantData } = useQuery(GET_STAFF_RESTAURANT, {
+    variables: { staffId: managerId },
+    skip: !managerId || roleName !== "staff",
+  });
+
   useEffect(() => {
     if (roleName === "staff") {
       const staffRestaurantId = user?.restaurantForStaff;
