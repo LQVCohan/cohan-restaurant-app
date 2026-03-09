@@ -11,6 +11,7 @@ interface UserLike {
   roleName?: string;
   role?: string;
   emailVerified?: boolean;
+  restaurantForStaff?: string;
   [k: string]: unknown;
 }
 

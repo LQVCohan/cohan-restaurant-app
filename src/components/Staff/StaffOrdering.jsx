@@ -30,14 +30,10 @@ const PRIORITY_LABELS = {
 };
 
 const FALLBACK_RESTAURANTS_QUERY = gql`
-  query StaffOrderingRestaurantsFallback($managerId: ID!, $limit: Int = 20) {
-    restaurantsByManager(managerId: $managerId, limit: $limit) {
-      edges {
-        node {
-          id
-          name
-        }
-      }
+  query StaffOrderingRestaurantsFallback($staffId: ID!) {
+    restaurantByStaff(staffId: $staffId) {
+      id
+      name
     }
   }
 `;
@@ -53,7 +49,7 @@ export default function StaffOrdering() {
   useEffect(() => {
     const hasRestaurants = Array.isArray(restaurants) && restaurants.length > 0;
     if (hasRestaurants || !user?.id) return;
-    loadFallbackRestaurants({ variables: { managerId: user.id, limit: 20 } });
+    loadFallbackRestaurants({ variables: { staffId: user.id } });
   }, [loadFallbackRestaurants, restaurants, user?.id]);
 
   const effectiveRestaurants = useMemo(() => {
@@ -61,8 +57,8 @@ export default function StaffOrdering() {
       return restaurants;
     }
 
-    const fallbackEdges = fallbackData?.restaurantsByManager?.edges || [];
-    return fallbackEdges.map((edge) => edge?.node).filter(Boolean);
+    const fallbackRestaurant = fallbackData?.restaurantByStaff;
+    return fallbackRestaurant ? [fallbackRestaurant] : [];
   }, [fallbackData, restaurants]);
 
   const restaurantId = useMemo(() => {
