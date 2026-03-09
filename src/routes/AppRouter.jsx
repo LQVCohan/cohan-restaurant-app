@@ -19,7 +19,6 @@ import Login from "../components/Login";
 import VerifyEmailPending from "../pages/VerifyEmailPending";
 import VerifyEmailConfirm from "../pages/VerifyEmailConfirm";
 import ForbiddenPage from "../pages/ForbiddenPage";
-import StaffOrdering from "../components/Staff/StaffOrdering";
 
 // ==== Customer ====
 import RestaurantsList from "../components/Customer/RestaurantList/RestaurantList";
@@ -188,7 +187,7 @@ const AppRouter = () => {
           GROUP 1: PUBLIC & AUTH PAGES (KHÔNG Layout) 
           =============================================
       */}
-      <Route path="/staff-ordering" element={<StaffOrdering />} />
+      <Route path="/staff-ordering" element={<StaffOrder />} />
       <Route path="/login" element={<Login />} />
       <Route path="/verify-email" element={<VerifyEmailPending />} />
       <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />

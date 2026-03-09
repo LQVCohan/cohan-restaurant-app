@@ -23,6 +23,7 @@ const CREATE_ORDER_FOR_TABLE = gql`
         tableCode
         currentStatus
         restaurantId
+        priority
         user {
           id
           fullName
@@ -174,6 +175,7 @@ const ORDERS_GROUPED_BY_TABLE = gql`
         tableCode
         currentStatus
         restaurantId
+        priority
         note
         user {
           id
@@ -243,6 +245,7 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
           tableCode
           currentStatus
           restaurantId
+          priority
           note
           user {
             id
@@ -318,6 +321,7 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
           tableCode
           currentStatus
           restaurantId
+          priority
           user {
             id
             fullName
@@ -375,6 +379,7 @@ const GET_ORDER = gql`
       orderCode
       tableCode
       currentStatus
+      priority
       items {
         dishId
         menuId
@@ -449,6 +454,7 @@ const UPDATE_ORDER_STATUS = gql`
       orderCode
       tableCode
       restaurantId
+      priority
       currentStatus
       totals {
         subtotal
