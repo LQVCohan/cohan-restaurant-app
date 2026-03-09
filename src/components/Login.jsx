@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef, useEffect } from "react";
+import React, { useState, useContext, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
@@ -156,7 +156,7 @@ const LoginPage = () => {
       onCompleted: (data) => {
         const { token, user } = data.login;
         // Lưu token vào Context/LocalStorage
-        authLogin(token, user.roleName || "customer", null, loginForm.remember);
+        authLogin(token, user, null, loginForm.remember);
         showNotification(
           `Chào mừng ${user.fullName || user.username}!`,
           "success",
