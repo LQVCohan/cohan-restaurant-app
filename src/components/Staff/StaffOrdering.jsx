@@ -1,4 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { gql, useLazyQuery } from "@apollo/client";
 import { AuthContext } from "../../context/AuthContext";
 import useOrderManagement from "../../hooks/useOrderManagement";
 
@@ -28,9 +29,47 @@ const PRIORITY_LABELS = {
   LOW: "Thấp",
 };
 
+const FALLBACK_RESTAURANTS_QUERY = gql`
+  query StaffOrderingRestaurantsFallback($managerId: ID!, $limit: Int = 20) {
+    restaurantsByManager(managerId: $managerId, limit: $limit) {
+      edges {
+        node {
+          id
+          name
+        }
+      }
+    }
+  }
+`;
+
 export default function StaffOrdering() {
-  const { restaurants } = useContext(AuthContext) || {};
-  const restaurantId = restaurants?.[0]?.id || null;
+  const { user, restaurants } = useContext(AuthContext) || {};
+
+  const [loadFallbackRestaurants, { data: fallbackData, loading: fallbackLoading }] =
+    useLazyQuery(FALLBACK_RESTAURANTS_QUERY, {
+      fetchPolicy: "network-only",
+    });
+
+  useEffect(() => {
+    const hasRestaurants = Array.isArray(restaurants) && restaurants.length > 0;
+    if (hasRestaurants || !user?.id) return;
+    loadFallbackRestaurants({ variables: { managerId: user.id, limit: 20 } });
+  }, [loadFallbackRestaurants, restaurants, user?.id]);
+
+  const effectiveRestaurants = useMemo(() => {
+    if (Array.isArray(restaurants) && restaurants.length > 0) {
+      return restaurants;
+    }
+
+    const fallbackEdges = fallbackData?.restaurantsByManager?.edges || [];
+    return fallbackEdges.map((edge) => edge?.node).filter(Boolean);
+  }, [fallbackData, restaurants]);
+
+  const restaurantId = useMemo(() => {
+    const firstRestaurant = effectiveRestaurants?.[0];
+    if (typeof firstRestaurant === "string") return firstRestaurant;
+    return firstRestaurant?.id || null;
+  }, [effectiveRestaurants]);
 
   const {
     loadOrdersAll,
@@ -122,10 +161,21 @@ export default function StaffOrdering() {
     [ordersAll]
   );
 
+  const isResolvingRestaurant =
+    !restaurantId && fallbackLoading && (!restaurants || restaurants.length === 0);
+
+  if (isResolvingRestaurant) {
+    return (
+      <div className="staff-pos-layout" style={{ padding: 20 }}>
+        Đang tải nhà hàng được liên kết...
+      </div>
+    );
+  }
+
   if (!restaurantId) {
     return (
       <div className="staff-pos-layout" style={{ padding: 20 }}>
-        Không tìm thấy nhà hàng để tải order.
+        Bạn chưa được liên kết với nhà hàng nào.
       </div>
     );
   }
