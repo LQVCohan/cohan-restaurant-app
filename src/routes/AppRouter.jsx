@@ -45,7 +45,6 @@ import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDes
 
 // ==== Staff ====
 import StaffOrdering from "../components/Staff/StaffOrdering";
-import StaffOrder from "../components/StaffOrder";
 
 // ==== Layouts ====
 import MainLayout from "../layouts/MainLayout";
@@ -188,7 +187,7 @@ const AppRouter = () => {
           GROUP 1: PUBLIC & AUTH PAGES (KHÔNG Layout) 
           =============================================
       */}
-      <Route path="/staff-ordering" element={<StaffOrder />} />
+
       <Route path="/login" element={<Login />} />
       <Route path="/verify-email" element={<VerifyEmailPending />} />
       <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
@@ -206,8 +205,11 @@ const AppRouter = () => {
       <Route
         path="/staff/orders"
         element={
-          <PrivateRoute allowedRoles={["staff"]} requireVerifiedEmail>
-            <StaffOrder />
+          <PrivateRoute
+            allowedRoles={["manager", "admin"]}
+            requireVerifiedEmail
+          >
+            <StaffOrdering />
           </PrivateRoute>
         }
       />
