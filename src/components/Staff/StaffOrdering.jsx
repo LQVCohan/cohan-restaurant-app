@@ -30,7 +30,12 @@ const PRIORITY_LABELS = {
 
 export default function StaffOrdering() {
   const { restaurants } = useContext(AuthContext) || {};
-  const restaurantId = restaurants?.[0]?.id || null;
+
+  const restaurantId = useMemo(() => {
+    const firstRestaurant = restaurants?.[0];
+    if (typeof firstRestaurant === "string") return firstRestaurant;
+    return firstRestaurant?.id || null;
+  }, [restaurants]);
 
   const {
     loadOrdersAll,
