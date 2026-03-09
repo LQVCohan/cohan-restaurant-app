@@ -72,6 +72,7 @@ const ME_QUERY = gql`
         slug
       }
       emailVerified
+      restaurantForStaff
     }
   }
 `;

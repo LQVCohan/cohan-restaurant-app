@@ -108,6 +108,7 @@ type User {
   provider: String
   avatarUrl: String
   refRestaurants: [Restaurant]
+  restaurantForStaff: ID
   point: Int
   loyaltyPoints: Int
   roleName: String
@@ -181,6 +182,7 @@ input CreateUserInput {
   status: String
   roleId: ID
   refRestaurantIds: [ID!]
+  restaurantForStaff: ID
   customerType: CustomerType
   captchaToken: String
 
@@ -239,6 +241,7 @@ input AdminUpdateUserInput {
   isGuest: Boolean
   guestExpiresAt: String
   refRestaurantIds: [ID!]
+  restaurantForStaff: ID
   roleId: ID
 
   userType: UserType
