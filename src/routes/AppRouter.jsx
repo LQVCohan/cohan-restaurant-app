@@ -19,7 +19,6 @@ import Login from "../components/Login";
 import VerifyEmailPending from "../pages/VerifyEmailPending";
 import VerifyEmailConfirm from "../pages/VerifyEmailConfirm";
 import ForbiddenPage from "../pages/ForbiddenPage";
-import StaffOrdering from "../components/Staff/StaffOrdering";
 
 // ==== Customer ====
 import RestaurantsList from "../components/Customer/RestaurantList/RestaurantList";
@@ -45,6 +44,7 @@ import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayo
 import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDesigner";
 
 // ==== Staff ====
+import StaffOrdering from "../components/Staff/StaffOrdering";
 import StaffOrder from "../components/StaffOrder";
 
 // ==== Layouts ====
@@ -188,7 +188,7 @@ const AppRouter = () => {
           GROUP 1: PUBLIC & AUTH PAGES (KHÔNG Layout) 
           =============================================
       */}
-      <Route path="/staff-ordering" element={<StaffOrdering />} />
+      <Route path="/staff-ordering" element={<StaffOrder />} />
       <Route path="/login" element={<Login />} />
       <Route path="/verify-email" element={<VerifyEmailPending />} />
       <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />

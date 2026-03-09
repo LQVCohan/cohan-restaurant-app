@@ -1,320 +1,270 @@
-import React, { useState, useMemo } from "react";
-import {
-  Search,
-  Grid,
-  Coffee,
-  MessageSquare,
-  UserCircle,
-  ShoppingCart,
-  Bell,
-  Star,
-  UserPlus,
-  X,
-} from "lucide-react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AuthContext } from "../../context/AuthContext";
+import useOrderManagement from "../../hooks/useOrderManagement";
 
 import "./StaffOrdering.scss";
-// Giữ nguyên import của bạn
-import NotificationBell from "./NotificationBell";
 
-import { MOCK_CUSTOMERS, INITIAL_TABLES } from "./data/mockData";
+const STATUS_OPTIONS = [
+  "ORDER_PLACED",
+  "ORDER_CONFIRMED",
+  "PREPARING",
+  "READY",
+  "SERVED",
+  "ORDER_COMPLETED",
+  "ORDER_CANCELLED",
+];
 
-// Components con
-import TableMap from "./components/TableMap";
-import MenuOrdering from "./components/MenuOrdering";
-import CartBottomSheet from "./components/CartBottomSheet";
-import ContactsView from "./components/ContactsView";
-import NotificationsView from "./components/NotificationsView";
-import StaffProfile from "./components/StaffProfile";
+const ITEM_STATUS_OPTIONS = [
+  "PENDING",
+  "PREPARING",
+  "READY",
+  "SERVED",
+  "CANCELLED",
+];
+
+const PRIORITY_LABELS = {
+  HIGH: "Cao",
+  MEDIUM: "Trung bình",
+  LOW: "Thấp",
+};
 
 export default function StaffOrdering() {
-  const [activeTab, setActiveTab] = useState("tables");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const [tables, setTables] = useState(INITIAL_TABLES);
-  const [selectedTableId, setSelectedTableId] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState("Tất cả");
+  const { restaurants } = useContext(AuthContext) || {};
+  const restaurantId = restaurants?.[0]?.id || null;
 
-  const selectedTable = useMemo(
-    () => tables.find((t) => t.id === selectedTableId),
-    [tables, selectedTableId],
+  const {
+    loadOrdersAll,
+    ordersAll,
+    ordersAllLoading,
+    ordersAllError,
+    fetchOrderById,
+    changeOrderStatus,
+    changeOrderItemStatus,
+  } = useOrderManagement({ restaurantId });
+
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [updating, setUpdating] = useState(false);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    loadOrdersAll({ variables: { restaurantId, limit: 100 } });
+  }, [restaurantId, loadOrdersAll]);
+
+  const refreshSelectedOrder = useCallback(
+    async (orderId) => {
+      if (!orderId) return;
+      const res = await fetchOrderById(orderId);
+      if (res?.success) setSelectedOrder(res.data || null);
+    },
+    [fetchOrderById]
   );
 
-  const [cart, setCart] = useState([
-    {
-      id: "C1",
-      itemId: "M2",
-      name: "Lẩu Thái Tomyum",
-      prep: "Ít cay",
-      serveOrder: "Mang ra cùng lúc",
-      quantity: 1,
-      price: 350000,
-      status: "cooking",
-      printed: true,
-      hasPhoto: true,
+  const handleSelectOrder = useCallback(
+    async (order) => {
+      setSelectedOrderId(order.id);
+      await refreshSelectedOrder(order.id);
     },
-    {
-      id: "C2",
-      itemId: "M4",
-      name: "Salad Cá Hồi",
-      prep: "Sốt chanh dây",
-      serveOrder: "Khai vị (Mang ra trước)",
-      quantity: 1,
-      price: 120000,
-      status: "pending",
-      printed: false,
-      hasPhoto: false,
+    [refreshSelectedOrder]
+  );
+
+  const handleUpdateOrderStatus = useCallback(
+    async (status) => {
+      if (!restaurantId || !selectedOrderId || !status) return;
+      setUpdating(true);
+      try {
+        const res = await changeOrderStatus({
+          restaurantId,
+          orderId: selectedOrderId,
+          status,
+        });
+        if (!res?.success) {
+          alert(res?.message || "Cập nhật trạng thái order thất bại");
+        }
+        await loadOrdersAll({ variables: { restaurantId, limit: 100 } });
+        await refreshSelectedOrder(selectedOrderId);
+      } finally {
+        setUpdating(false);
+      }
     },
-  ]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
+    [changeOrderStatus, loadOrdersAll, refreshSelectedOrder, restaurantId, selectedOrderId]
+  );
 
-  const customerResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    return MOCK_CUSTOMERS.filter(
-      (c) =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.phone.includes(searchQuery),
-    );
-  }, [searchQuery]);
+  const handleUpdateItemStatus = useCallback(
+    async (item, status) => {
+      if (!restaurantId || !selectedOrderId || !item?.dishId || !status) return;
+      setUpdating(true);
+      try {
+        const res = await changeOrderItemStatus({
+          restaurantId,
+          orderId: selectedOrderId,
+          dishId: item.dishId,
+          status,
+        });
+        if (!res?.success) {
+          alert(res?.message || "Cập nhật trạng thái món thất bại");
+        }
+        await refreshSelectedOrder(selectedOrderId);
+      } finally {
+        setUpdating(false);
+      }
+    },
+    [changeOrderItemStatus, refreshSelectedOrder, restaurantId, selectedOrderId]
+  );
 
-  const handleAssignCustomer = (customer) => {
-    if (!selectedTableId)
-      return alert("Vui lòng chọn 1 bàn trước khi gán khách!");
-    setTables((prev) =>
-      prev.map((t) =>
-        t.id === selectedTableId
-          ? {
-              ...t,
-              customer,
-              status: t.status === "empty" ? "serving" : t.status,
-            }
-          : t,
+  const sortedOrders = useMemo(
+    () =>
+      [...(ordersAll || [])].sort(
+        (a, b) =>
+          new Date(b.updatedAt || b.createdAt || 0) -
+          new Date(a.updatedAt || a.createdAt || 0)
       ),
+    [ordersAll]
+  );
+
+  if (!restaurantId) {
+    return (
+      <div className="staff-pos-layout" style={{ padding: 20 }}>
+        Không tìm thấy nhà hàng để tải order.
+      </div>
     );
-    setSearchQuery("");
-    setShowSearchResults(false);
-  };
-
-  const handleRemoveCustomer = () => {
-    if (window.confirm("Bỏ gán khách hàng khỏi bàn này?")) {
-      setTables((prev) =>
-        prev.map((t) =>
-          t.id === selectedTableId ? { ...t, customer: null } : t,
-        ),
-      );
-    }
-  };
-
-  const handleAddToCart = (item, prep, serveOrder) => {
-    if (item.stock <= 0) return alert("Món này đã hết hàng!");
-    const newItem = {
-      id: "C" + Date.now(),
-      itemId: item.id,
-      name: item.name,
-      prep: prep || "Mặc định",
-      serveOrder,
-      quantity: 1,
-      price: item.price,
-      status: "pending",
-      printed: false,
-      hasPhoto: false,
-    };
-    setCart([newItem, ...cart]);
-  };
-
-  const handleTableAction = (action) => {
-    if (action === "move")
-      alert(`Đang chuyển bàn cho ${selectedTable.name}...`);
-    if (action === "merge") alert(`Đang gộp bàn cho ${selectedTable.name}...`);
-    if (action === "checkout") setIsCartOpen(true);
-  };
-
-  const pendingCount = cart.filter((c) => c.status === "pending").length;
+  }
 
   return (
-    <div className="staff-pos-layout">
-      {/* HEADER TÌM KIẾM */}
-      <header className="staff-pos-header">
+    <div className="staff-pos-layout" style={{ padding: 20 }}>
+      <h2>Staff Ordering - Danh sách đơn hàng</h2>
+      <p style={{ color: "#666" }}>
+        Dữ liệu thật được lấy/cập nhật qua các hàm có sẵn trong useOrderManagement.
+      </p>
+
+      <div style={{ display: "flex", gap: 20 }}>
         <div
-          className={`search-container ${showSearchResults ? "active" : ""}`}
+          style={{
+            width: "45%",
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            maxHeight: "75vh",
+            overflowY: "auto",
+            background: "#fff",
+          }}
         >
-          <div className="search-input-wrapper">
-            <Search size={20} className="icon-search" />
-            <input
-              type="text"
-              placeholder="Tìm khách (Tên/SĐT), món..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setShowSearchResults(true);
-              }}
-              onFocus={() => setShowSearchResults(true)}
-            />
-            {searchQuery && (
-              <button className="btn-clear" onClick={() => setSearchQuery("")}>
-                <X size={16} />
-              </button>
-            )}
+          <div style={{ padding: 10, borderBottom: "1px solid #eee", fontWeight: 600 }}>
+            Orders ({sortedOrders.length})
           </div>
 
-          {/* Kết quả tìm kiếm dạng Dropdown hiện đại */}
-          {showSearchResults && customerResults.length > 0 && (
-            <div className="search-results-dropdown">
-              <div className="dropdown-title">Khách hàng thành viên</div>
-              <div className="results-list">
-                {customerResults.map((cus) => (
+          {ordersAllLoading && <div style={{ padding: 10 }}>Đang tải orders...</div>}
+          {ordersAllError && (
+            <div style={{ padding: 10, color: "red" }}>Lỗi: {ordersAllError.message}</div>
+          )}
+
+          {sortedOrders.map((order) => (
+            <button
+              key={order.id}
+              onClick={() => handleSelectOrder(order)}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: 12,
+                background: selectedOrderId === order.id ? "#eff6ff" : "#fff",
+                border: "none",
+                borderBottom: "1px solid #f3f4f6",
+                cursor: "pointer",
+              }}
+            >
+              <div style={{ fontWeight: 600 }}>{order.orderCode}</div>
+              <div style={{ fontSize: 13, color: "#555" }}>
+                Bàn: {order.tableCode || "-"} • {order.currentStatus}
+              </div>
+              <div style={{ fontSize: 12, color: "#777" }}>
+                Priority: {PRIORITY_LABELS[(order.priority || "").toUpperCase()] || order.priority || "MEDIUM"}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div
+          style={{
+            width: "55%",
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            padding: 12,
+            background: "#fff",
+          }}
+        >
+          {!selectedOrder ? (
+            <div>Chọn một order để xem chi tiết.</div>
+          ) : (
+            <>
+              <h3 style={{ marginTop: 0 }}>{selectedOrder.orderCode}</h3>
+              <p>
+                Trạng thái: <strong>{selectedOrder.currentStatus}</strong>
+              </p>
+              <p>
+                Priority: <strong>{PRIORITY_LABELS[(selectedOrder.priority || "").toUpperCase()] || selectedOrder.priority || "MEDIUM"}</strong>
+              </p>
+              <p>
+                Tổng tiền: <strong>{Number(selectedOrder.totals?.grandTotal || 0).toLocaleString()}đ</strong>
+              </p>
+
+              <div style={{ marginBottom: 12 }}>
+                <label htmlFor="order-status-select" style={{ fontWeight: 600 }}>
+                  Cập nhật trạng thái order:
+                </label>
+                <select
+                  id="order-status-select"
+                  disabled={updating}
+                  defaultValue=""
+                  onChange={(e) => handleUpdateOrderStatus(e.target.value)}
+                  style={{ marginLeft: 8 }}
+                >
+                  <option value="" disabled>
+                    Chọn trạng thái
+                  </option>
+                  {STATUS_OPTIONS.map((st) => (
+                    <option key={st} value={st}>
+                      {st}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <h4>Món trong đơn</h4>
+              <div style={{ display: "grid", gap: 10 }}>
+                {selectedOrder.items?.map((item, idx) => (
                   <div
-                    key={cus.id}
-                    className="search-result-item"
-                    onClick={() => handleAssignCustomer(cus)}
+                    key={`${item.dishId || item.name}_${idx}`}
+                    style={{ border: "1px solid #f0f0f0", borderRadius: 6, padding: 10 }}
                   >
-                    <div className="cus-avatar">
-                      <UserCircle size={24} />
+                    <div style={{ fontWeight: 600 }}>{item.name}</div>
+                    <div style={{ fontSize: 13, color: "#555" }}>
+                      SL: {item.quantity} • Giá: {Number(item.unitPrice || item.price || 0).toLocaleString()}đ
                     </div>
-                    <div className="cus-info">
-                      <span className="cus-name">{cus.name}</span>
-                      <span className="cus-phone">{cus.phone}</span>
+                    <div style={{ fontSize: 13, color: "#555" }}>Ghi chú: {item.note || "-"}</div>
+                    <div style={{ fontSize: 13, color: "#555" }}>
+                      Trạng thái món: {item.status || "PENDING"}
                     </div>
-                    <div className="cus-rank-badge">
-                      <Star size={10} className="icon-star" /> Hạng {cus.rank}
-                    </div>
+
+                    <select
+                      disabled={updating || !item.dishId}
+                      defaultValue=""
+                      onChange={(e) => handleUpdateItemStatus(item, e.target.value)}
+                    >
+                      <option value="" disabled>
+                        Đổi trạng thái món
+                      </option>
+                      {ITEM_STATUS_OPTIONS.map((st) => (
+                        <option key={st} value={st}>
+                          {st}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 ))}
               </div>
-            </div>
+            </>
           )}
         </div>
-
-        {/* Nút chuông thông báo */}
-        <div className="header-actions">
-          {/* Giả sử component NotificationBell của bạn render một icon chuông, nếu không có bạn có thể thay bằng thẻ <button> */}
-          <NotificationBell onViewAll={() => setActiveTab("notifications")} />
-        </div>
-      </header>
-
-      {/* OVERLAY KHI TÌM KIẾM */}
-      {showSearchResults && (
-        <div
-          className="search-overlay"
-          onClick={() => setShowSearchResults(false)}
-        ></div>
-      )}
-
-      {/* VÙNG NỘI DUNG CHÍNH (Scrollable) */}
-      <main className="staff-pos-main">
-        {activeTab === "tables" && (
-          <TableMap
-            tables={tables}
-            onSelect={(t) => setSelectedTableId(t.id)}
-            selectedTable={selectedTable}
-            onTableAction={handleTableAction}
-          />
-        )}
-        {activeTab === "menu" && (
-          <MenuOrdering
-            onAdd={handleAddToCart}
-            searchQuery={searchQuery}
-            selectedTable={selectedTable}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-            onRemoveCustomer={handleRemoveCustomer}
-          />
-        )}
-        {activeTab === "contacts" && <ContactsView />}
-        {activeTab === "notifications" && <NotificationsView />}
-        {activeTab === "profile" && <StaffProfile />}
-      </main>
-
-      {/* GIỎ HÀNG NỔI (FLOATING CART BAR) */}
-      {(activeTab === "menu" || activeTab === "tables") && selectedTable && (
-        <div className="floating-cart-wrapper">
-          <button
-            className="btn-floating-cart"
-            onClick={() => setIsCartOpen(true)}
-          >
-            <div className="cart-left">
-              <div className="icon-cart-wrap">
-                <ShoppingCart size={20} />
-                {cart.length > 0 && (
-                  <span className="cart-badge">{cart.length}</span>
-                )}
-              </div>
-              <div className="cart-text">
-                <span className="table-info">
-                  {selectedTable.name}{" "}
-                  {selectedTable.customer && `• ${selectedTable.customer.name}`}
-                </span>
-                <span className="status-info">
-                  {pendingCount > 0
-                    ? `${pendingCount} món đang chờ`
-                    : "Xem Order / Tính tiền"}
-                </span>
-              </div>
-            </div>
-            <div className="cart-right">
-              <span className="total-text">Xem</span>
-            </div>
-          </button>
-        </div>
-      )}
-
-      {/* BOTTOM NAVIGATION */}
-      <nav className="staff-pos-bottom-nav">
-        <button
-          className={`nav-item ${activeTab === "tables" ? "active" : ""}`}
-          onClick={() => setActiveTab("tables")}
-        >
-          <div className="nav-icon-wrap">
-            <Grid size={22} />
-          </div>
-          <span>Bàn</span>
-        </button>
-        <button
-          className={`nav-item ${activeTab === "menu" ? "active" : ""}`}
-          onClick={() => setActiveTab("menu")}
-        >
-          <div className="nav-icon-wrap">
-            <Coffee size={22} />
-          </div>
-          <span>Menu</span>
-        </button>
-        <button
-          className={`nav-item ${activeTab === "contacts" ? "active" : ""}`}
-          onClick={() => setActiveTab("contacts")}
-        >
-          <div className="nav-icon-wrap">
-            <MessageSquare size={22} />
-          </div>
-          <span>Liên lạc</span>
-        </button>
-        <button
-          className={`nav-item ${activeTab === "notifications" ? "active" : ""}`}
-          onClick={() => setActiveTab("notifications")}
-        >
-          <div className="nav-icon-wrap">
-            <Bell size={22} />
-          </div>
-          <span>Thông báo</span>
-        </button>
-        <button
-          className={`nav-item ${activeTab === "profile" ? "active" : ""}`}
-          onClick={() => setActiveTab("profile")}
-        >
-          <div className="nav-icon-wrap">
-            <UserCircle size={22} />
-          </div>
-          <span>Cá nhân</span>
-        </button>
-      </nav>
-
-      {/* BOTTOM SHEET GIỎ HÀNG */}
-      {isCartOpen && (
-        <CartBottomSheet
-          cart={cart}
-          setCart={setCart}
-          onClose={() => setIsCartOpen(false)}
-          table={selectedTable}
-        />
-      )}
+      </div>
     </div>
   );
 }
