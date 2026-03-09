@@ -1,149 +1,228 @@
-import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import axios from "axios";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AuthContext } from "../context/AuthContext";
+import useOrderManagement from "../hooks/useOrderManagement";
 
-const StaffOrder = () => {
-  const { id: restaurantId } = useParams();
-  const [orders, setOrders] = useState([]);
+const STATUS_OPTIONS = [
+  "ORDER_PLACED",
+  "ORDER_CONFIRMED",
+  "PREPARING",
+  "READY",
+  "SERVED",
+  "ORDER_COMPLETED",
+  "ORDER_CANCELLED",
+];
+
+const ITEM_STATUS_OPTIONS = ["PENDING", "PREPARING", "READY", "SERVED", "CANCELLED"];
+
+const PRIORITY_LABELS = {
+  HIGH: "Cao",
+  MEDIUM: "Trung bình",
+  LOW: "Thấp",
+};
+
+export default function StaffOrder() {
+  const { restaurants } = useContext(AuthContext) || {};
+  const restaurantId = restaurants?.[0]?.id || null;
+
+  const {
+    loadOrdersAll,
+    ordersAll,
+    ordersAllLoading,
+    ordersAllError,
+    fetchOrderById,
+    changeOrderStatus,
+    changeOrderItemStatus,
+  } = useOrderManagement({ restaurantId });
+
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [image, setImage] = useState(null);
-  const token =
-    localStorage.getItem("token") || sessionStorage.getItem("token");
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
-    const fetchOrders = async () => {
+    if (!restaurantId) return;
+    loadOrdersAll({ variables: { restaurantId, limit: 100 } });
+  }, [restaurantId, loadOrdersAll]);
+
+  const refreshSelectedOrder = useCallback(
+    async (orderId) => {
+      if (!orderId) return;
+      const res = await fetchOrderById(orderId);
+      if (res?.success) setSelectedOrder(res.data || null);
+    },
+    [fetchOrderById]
+  );
+
+  const handleSelectOrder = useCallback(
+    async (order) => {
+      setSelectedOrderId(order.id);
+      await refreshSelectedOrder(order.id);
+    },
+    [refreshSelectedOrder]
+  );
+
+  const handleUpdateOrderStatus = useCallback(
+    async (status) => {
+      if (!restaurantId || !selectedOrderId || !status) return;
+      setUpdating(true);
       try {
-        const res = await axios.get(`/api/orders/all`, {
-          headers: { Authorization: `Bearer ${token}` },
+        const res = await changeOrderStatus({
+          restaurantId,
+          orderId: selectedOrderId,
+          status,
         });
-        setOrders(
-          res.data.filter((o) => o.restaurantId.toString() === restaurantId)
-        );
-      } catch (err) {
-        console.error("Lỗi khi lấy danh sách order:", err);
+        if (!res?.success) {
+          alert(res?.message || "Cập nhật trạng thái order thất bại");
+        }
+        await loadOrdersAll({ variables: { restaurantId, limit: 100 } });
+        await refreshSelectedOrder(selectedOrderId);
+      } finally {
+        setUpdating(false);
       }
-    };
-    fetchOrders();
-  }, [restaurantId, token]);
+    },
+    [changeOrderStatus, loadOrdersAll, refreshSelectedOrder, restaurantId, selectedOrderId]
+  );
 
-  const handleSelectOrder = (order) => {
-    setSelectedOrder(order);
-    setImage(order.items.find((i) => i.image)?.image || null);
-  };
-
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    setImage(URL.createObjectURL(file));
-    // Gửi hình ảnh lên server (cần API riêng)
-  };
-
-  const handleConfirmOrder = async () => {
-    if (selectedOrder) {
-      const hasKgItem = selectedOrder.items.some((i) =>
-        i.itemName.includes("kg")
-      );
-      if (hasKgItem && !image) {
-        alert("Vui lòng tải lên hình ảnh minh chứng!");
-        return;
-      }
+  const handleUpdateItemStatus = useCallback(
+    async (item, status) => {
+      if (!restaurantId || !selectedOrderId || !item?.dishId || !status) return;
+      setUpdating(true);
       try {
-        const updatedOrder = { ...selectedOrder, status: "confirmed", image };
-        await axios.put(`/api/orders/${selectedOrder._id}`, updatedOrder, {
-          headers: { Authorization: `Bearer ${token}` },
+        const res = await changeOrderItemStatus({
+          restaurantId,
+          orderId: selectedOrderId,
+          dishId: item.dishId,
+          status,
         });
-        setSelectedOrder(null);
-        setImage(null);
-      } catch (err) {
-        console.error("Lỗi khi xác nhận order:", err);
+        if (!res?.success) {
+          alert(res?.message || "Cập nhật trạng thái món thất bại");
+        }
+        await refreshSelectedOrder(selectedOrderId);
+      } finally {
+        setUpdating(false);
       }
-    }
-  };
+    },
+    [changeOrderItemStatus, refreshSelectedOrder, restaurantId, selectedOrderId]
+  );
 
-  const handleRequestPayment50 = async () => {
-    if (selectedOrder) {
-      try {
-        await axios.put(
-          `/api/orders/pay50/${selectedOrder._id}`,
-          { status: "paid50" },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-      } catch (err) {
-        console.error("Lỗi khi yêu cầu thanh toán 50%:", err);
-      }
-    }
-  };
+  const sortedOrders = useMemo(() => {
+    return [...(ordersAll || [])].sort(
+      (a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)
+    );
+  }, [ordersAll]);
+
+  if (!restaurantId) {
+    return <div style={{ padding: 20 }}>Không tìm thấy nhà hàng để tải order.</div>;
+  }
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Danh sách Đơn hàng</h2>
-      <div style={{ display: "flex", gap: "20px" }}>
-        <div
-          style={{
-            width: "50%",
-            border: "1px solid #ccc",
-            padding: "10px",
-            maxHeight: "70vh",
-            overflowY: "auto",
-          }}
-        >
-          {orders.map((order) => (
-            <div
-              key={order._id}
+    <div style={{ padding: 20 }}>
+      <h2>Staff Ordering - Danh sách đơn hàng</h2>
+      <p style={{ color: "#666" }}>Đã kết nối dữ liệu thật qua các hàm sẵn có của useOrderManagement.</p>
+
+      <div style={{ display: "flex", gap: 20 }}>
+        <div style={{ width: "45%", border: "1px solid #ddd", borderRadius: 8, maxHeight: "75vh", overflowY: "auto" }}>
+          <div style={{ padding: 10, borderBottom: "1px solid #eee", fontWeight: 600 }}>
+            Orders ({sortedOrders.length})
+          </div>
+
+          {ordersAllLoading && <div style={{ padding: 10 }}>Đang tải orders...</div>}
+          {ordersAllError && <div style={{ padding: 10, color: "red" }}>Lỗi: {ordersAllError.message}</div>}
+
+          {sortedOrders.map((order) => (
+            <button
+              key={order.id}
               onClick={() => handleSelectOrder(order)}
               style={{
+                width: "100%",
+                textAlign: "left",
+                padding: 12,
+                background: selectedOrderId === order.id ? "#eff6ff" : "#fff",
+                border: "none",
+                borderBottom: "1px solid #f3f4f6",
                 cursor: "pointer",
-                padding: "10px",
-                borderBottom: "1px solid #ccc",
               }}
             >
-              Bàn {order.tableId} - {order.status}
-            </div>
+              <div style={{ fontWeight: 600 }}>{order.orderCode}</div>
+              <div style={{ fontSize: 13, color: "#555" }}>
+                Bàn: {order.tableCode || "-"} • {order.currentStatus}
+              </div>
+              <div style={{ fontSize: 12, color: "#777" }}>
+                Priority: {PRIORITY_LABELS[(order.priority || "").toUpperCase()] || order.priority || "MEDIUM"}
+              </div>
+            </button>
           ))}
         </div>
-        {selectedOrder && (
-          <div
-            style={{ width: "50%", border: "1px solid #ccc", padding: "10px" }}
-          >
-            <h3>Chi tiết Đơn hàng</h3>
-            {selectedOrder.items.map((item, index) => (
-              <div key={index}>
-                {item.itemName} x{item.quantity} - ${item.price * item.quantity}{" "}
-                <span>!</span>
+
+        <div style={{ width: "55%", border: "1px solid #ddd", borderRadius: 8, padding: 12 }}>
+          {!selectedOrder ? (
+            <div>Chọn một order để xem chi tiết.</div>
+          ) : (
+            <>
+              <h3 style={{ marginTop: 0 }}>{selectedOrder.orderCode}</h3>
+              <p>
+                Trạng thái: <strong>{selectedOrder.currentStatus}</strong>
+              </p>
+              <p>
+                Priority: <strong>{PRIORITY_LABELS[(selectedOrder.priority || "").toUpperCase()] || selectedOrder.priority || "MEDIUM"}</strong>
+              </p>
+              <p>
+                Tổng tiền: <strong>{Number(selectedOrder.totals?.grandTotal || 0).toLocaleString()}đ</strong>
+              </p>
+
+              <div style={{ marginBottom: 12 }}>
+                <label htmlFor="order-status-select" style={{ fontWeight: 600 }}>
+                  Cập nhật trạng thái order:
+                </label>
+                <select
+                  id="order-status-select"
+                  disabled={updating}
+                  defaultValue=""
+                  onChange={(e) => handleUpdateOrderStatus(e.target.value)}
+                  style={{ marginLeft: 8 }}
+                >
+                  <option value="" disabled>
+                    Chọn trạng thái
+                  </option>
+                  {STATUS_OPTIONS.map((st) => (
+                    <option key={st} value={st}>
+                      {st}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ))}
-            <p>Tổng: ${selectedOrder.totalAmount}</p>
-            <p>
-              Thời gian đến:{" "}
-              {new Date(selectedOrder.arrivalTime).toLocaleString()}
-            </p>
-            {selectedOrder.items.some((i) => i.itemName.includes("kg")) && (
-              <div>
-                <input type="file" onChange={handleImageUpload} />
-                {image && (
-                  <img
-                    src={image}
-                    alt="Minh chứng"
-                    style={{ maxWidth: "200px" }}
-                  />
-                )}
+
+              <h4>Món trong đơn</h4>
+              <div style={{ display: "grid", gap: 10 }}>
+                {selectedOrder.items?.map((item, idx) => (
+                  <div key={`${item.dishId || item.name}_${idx}`} style={{ border: "1px solid #f0f0f0", borderRadius: 6, padding: 10 }}>
+                    <div style={{ fontWeight: 600 }}>{item.name}</div>
+                    <div style={{ fontSize: 13, color: "#555" }}>
+                      SL: {item.quantity} • Giá: {Number(item.unitPrice || item.price || 0).toLocaleString()}đ
+                    </div>
+                    <div style={{ fontSize: 13, color: "#555" }}>Ghi chú: {item.note || "-"}</div>
+                    <div style={{ fontSize: 13, color: "#555" }}>Trạng thái món: {item.status || "PENDING"}</div>
+
+                    <select
+                      disabled={updating || !item.dishId}
+                      defaultValue=""
+                      onChange={(e) => handleUpdateItemStatus(item, e.target.value)}
+                    >
+                      <option value="" disabled>
+                        Đổi trạng thái món
+                      </option>
+                      {ITEM_STATUS_OPTIONS.map((st) => (
+                        <option key={st} value={st}>
+                          {st}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
               </div>
-            )}
-            <button onClick={handleConfirmOrder} style={{ marginTop: "10px" }}>
-              Xác nhận
-            </button>
-            <button
-              onClick={handleRequestPayment50}
-              style={{ marginTop: "10px" }}
-            >
-              Yêu cầu 50%
-            </button>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
-};
-
-export default StaffOrder;
+}

@@ -19,7 +19,6 @@ import Login from "../components/Login";
 import VerifyEmailPending from "../pages/VerifyEmailPending";
 import VerifyEmailConfirm from "../pages/VerifyEmailConfirm";
 import ForbiddenPage from "../pages/ForbiddenPage";
-import StaffOrdering from "../components/Staff/StaffOrdering";
 
 // ==== Customer ====
 import RestaurantsList from "../components/Customer/RestaurantList/RestaurantList";
@@ -45,6 +44,7 @@ import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayo
 import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDesigner";
 
 // ==== Staff ====
+import StaffOrdering from "../components/Staff/StaffOrdering";
 import StaffOrder from "../components/StaffOrder";
 
 // ==== Layouts ====
