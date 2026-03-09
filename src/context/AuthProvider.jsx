@@ -43,6 +43,20 @@ const GET_MANAGER_RESTAURANTS = gql`
     }
   }
 `;
+
+const GET_STAFF_RESTAURANT = gql`
+  query StaffRestaurant($staffId: ID!) {
+    restaurantByStaff(staffId: $staffId) {
+      id
+      name
+      avatar
+      address {
+        city
+      }
+    }
+  }
+`;
+
 // GraphQL query: thông tin người dùng
 const ME_QUERY = gql`
   query Me {
@@ -53,6 +67,7 @@ const ME_QUERY = gql`
       roleName
       emailVerified
       refRestaurant
+      restaurantForStaff
     }
   }
 `;
@@ -114,16 +129,28 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
     fallbackUser?.role?.slug ||
     "customer";
 
+  const restaurantForStaff =
+    rawUser?.restaurantForStaff?.id ||
+    rawUser?.restaurantForStaff ||
+    fallbackUser?.restaurantForStaff?.id ||
+    fallbackUser?.restaurantForStaff ||
+    null;
+
   const baseUser = {
     ...(fallbackUser || {}),
     ...(typeof rawUser === "object" && rawUser ? rawUser : {}),
     roleName,
     avatar: avatar ?? rawUser?.avatar ?? rawUser?.avatarUrl ?? fallbackUser?.avatar ?? null,
     status: rawUser?.status || fallbackUser?.status || "active",
+    restaurantForStaff,
   };
 
   if (roleName !== "customer") {
     delete baseUser.refRestaurant;
+  }
+
+  if (roleName !== "staff") {
+    delete baseUser.restaurantForStaff;
   }
 
   return baseUser;
@@ -156,7 +183,22 @@ export const AuthProvider = ({ children }) => {
     skip: !managerId || roleName === "customer",
   });
 
+  const { data: staffRestaurantData } = useQuery(GET_STAFF_RESTAURANT, {
+    variables: { staffId: managerId },
+    skip: !managerId || roleName !== "staff",
+  });
+
   useEffect(() => {
+    if (roleName === "staff") {
+      const staffRestaurant = staffRestaurantData?.restaurantByStaff;
+      if (staffRestaurant) {
+        setRestaurants([staffRestaurant]);
+        return;
+      }
+      setRestaurants([]);
+      return;
+    }
+
     if (mgrData?.restaurantsByManager) {
       setRestaurants(mgrData.restaurantsByManager.edges.map((e) => e.node));
       return;
@@ -164,7 +206,7 @@ export const AuthProvider = ({ children }) => {
     if (roleName !== "customer") {
       setRestaurants([]);
     }
-  }, [mgrData, roleName]);
+  }, [mgrData, roleName, staffRestaurantData]);
 
   useEffect(() => {
     if (roleName !== "customer") {
