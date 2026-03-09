@@ -775,6 +775,20 @@ export const UserMutation = {
       );
     }
 
+    if (Object.prototype.hasOwnProperty.call(input, "restaurantForStaff")) {
+      if (!input.restaurantForStaff) {
+        updates.restaurantForStaff = null;
+      } else if (!mongoose.isValidObjectId(input.restaurantForStaff)) {
+        throw new GraphQLError("Invalid restaurantForStaff", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      } else {
+        updates.restaurantForStaff = new mongoose.Types.ObjectId(
+          input.restaurantForStaff,
+        );
+      }
+    }
+
     if (input.roleId) {
       if (!mongoose.isValidObjectId(input.roleId)) {
         throw new GraphQLError("Invalid roleId", {

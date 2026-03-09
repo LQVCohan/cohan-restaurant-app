@@ -1,5 +1,4 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { gql, useLazyQuery } from "@apollo/client";
 import { AuthContext } from "../../context/AuthContext";
 import useOrderManagement from "../../hooks/useOrderManagement";
 
@@ -29,37 +28,21 @@ const PRIORITY_LABELS = {
   LOW: "Thấp",
 };
 
-const FALLBACK_RESTAURANTS_QUERY = gql`
-  query StaffOrderingRestaurantsFallback($staffId: ID!) {
-    restaurantByStaff(staffId: $staffId) {
-      id
-      name
-    }
-  }
-`;
 
 export default function StaffOrdering() {
-  const { user, restaurants } = useContext(AuthContext) || {};
-
-  const [loadFallbackRestaurants, { data: fallbackData, loading: fallbackLoading }] =
-    useLazyQuery(FALLBACK_RESTAURANTS_QUERY, {
-      fetchPolicy: "network-only",
-    });
-
-  useEffect(() => {
-    const hasRestaurants = Array.isArray(restaurants) && restaurants.length > 0;
-    if (hasRestaurants || !user?.id) return;
-    loadFallbackRestaurants({ variables: { staffId: user.id } });
-  }, [loadFallbackRestaurants, restaurants, user?.id]);
+  const { user, restaurants, loading } = useContext(AuthContext) || {};
 
   const effectiveRestaurants = useMemo(() => {
     if (Array.isArray(restaurants) && restaurants.length > 0) {
       return restaurants;
     }
 
-    const fallbackRestaurant = fallbackData?.restaurantByStaff;
-    return fallbackRestaurant ? [fallbackRestaurant] : [];
-  }, [fallbackData, restaurants]);
+    if (user?.restaurantForStaff) {
+      return [{ id: user.restaurantForStaff }];
+    }
+
+    return [];
+  }, [restaurants, user?.restaurantForStaff]);
 
   const restaurantId = useMemo(() => {
     const firstRestaurant = effectiveRestaurants?.[0];
@@ -157,8 +140,7 @@ export default function StaffOrdering() {
     [ordersAll]
   );
 
-  const isResolvingRestaurant =
-    !restaurantId && fallbackLoading && (!restaurants || restaurants.length === 0);
+  const isResolvingRestaurant = loading && !restaurantId;
 
   if (isResolvingRestaurant) {
     return (

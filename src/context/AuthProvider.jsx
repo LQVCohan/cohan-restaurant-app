@@ -44,19 +44,6 @@ const GET_MANAGER_RESTAURANTS = gql`
   }
 `;
 
-const GET_STAFF_RESTAURANT = gql`
-  query StaffRestaurant($staffId: ID!) {
-    restaurantByStaff(staffId: $staffId) {
-      id
-      name
-      avatar
-      address {
-        city
-      }
-    }
-  }
-`;
-
 // GraphQL query: thông tin người dùng
 const ME_QUERY = gql`
   query Me {
@@ -190,9 +177,9 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (roleName === "staff") {
-      const staffRestaurant = staffRestaurantData?.restaurantByStaff;
-      if (staffRestaurant) {
-        setRestaurants([staffRestaurant]);
+      const staffRestaurantId = user?.restaurantForStaff;
+      if (staffRestaurantId) {
+        setRestaurants([{ id: staffRestaurantId }]);
         return;
       }
       setRestaurants([]);
@@ -206,7 +193,7 @@ export const AuthProvider = ({ children }) => {
     if (roleName !== "customer") {
       setRestaurants([]);
     }
-  }, [mgrData, roleName, staffRestaurantData]);
+  }, [mgrData, roleName, user?.restaurantForStaff]);
 
   useEffect(() => {
     if (roleName !== "customer") {
