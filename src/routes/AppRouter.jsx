@@ -44,6 +44,7 @@ import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayo
 import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDesigner";
 
 // ==== Staff ====
+import StaffOrdering from "../components/Staff/StaffOrdering";
 import StaffOrder from "../components/StaffOrder";
 
 // ==== Layouts ====
