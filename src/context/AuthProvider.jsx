@@ -106,6 +106,29 @@ function clearStoredAuth() {
   });
 }
 
+function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
+  const roleName =
+    rawUser?.roleName ||
+    rawUser?.role?.slug ||
+    fallbackUser?.roleName ||
+    fallbackUser?.role?.slug ||
+    "customer";
+
+  const baseUser = {
+    ...(fallbackUser || {}),
+    ...(typeof rawUser === "object" && rawUser ? rawUser : {}),
+    roleName,
+    avatar: avatar ?? rawUser?.avatar ?? rawUser?.avatarUrl ?? fallbackUser?.avatar ?? null,
+    status: rawUser?.status || fallbackUser?.status || "active",
+  };
+
+  if (roleName !== "customer") {
+    delete baseUser.refRestaurant;
+  }
+
+  return baseUser;
+}
+
 export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
@@ -118,30 +141,39 @@ export const AuthProvider = ({ children }) => {
     const { token: t, user: u } = readStoredAuth();
     if (t) {
       setToken(t);
-      setUser(u);
+      setUser(normalizeUserModel(u));
     }
     setLoading(false);
   }, []);
 
   const isAuthenticated = !!token;
+  const roleName = user?.roleName || user?.role?.slug;
   const managerId = user?.id;
   const {
     data: mgrData,
-    loading: mgrLoading,
-    error: mgrError,
   } = useQuery(GET_MANAGER_RESTAURANTS, {
     variables: { managerId, limit: 50 },
-    skip: !managerId,
+    skip: !managerId || roleName === "customer",
   });
 
   useEffect(() => {
-    if (mgrData && mgrData.restaurantsByManager) {
+    if (mgrData?.restaurantsByManager) {
       setRestaurants(mgrData.restaurantsByManager.edges.map((e) => e.node));
+      return;
     }
-  }, [mgrData]);
+    if (roleName !== "customer") {
+      setRestaurants([]);
+    }
+  }, [mgrData, roleName]);
+
+  useEffect(() => {
+    if (roleName !== "customer") {
+      setRefRestaurant([]);
+    }
+  }, [roleName]);
+
   const {
     data: urrData,
-    loading: urrLoading,
     error: urrError,
   } = useQuery(GET_USER_REFRESTAURANTS, {
     variables: { userId: user?.id },
@@ -165,12 +197,9 @@ export const AuthProvider = ({ children }) => {
   // ✅ Hàm login được gọi từ LoginPage
   const login = useCallback(
     (newToken, roleOrUser, avatar = null, remember = true) => {
-      const roleName =
-        typeof roleOrUser === "string"
-          ? roleOrUser
-          : roleOrUser?.roleName || roleOrUser?.role?.slug || "customer";
-      const status = roleOrUser?.status || "active";
-      const newUser = { ...(user || {}), roleName, avatar, status };
+      const rawUser =
+        typeof roleOrUser === "string" ? { roleName: roleOrUser } : roleOrUser;
+      const newUser = normalizeUserModel(rawUser, user, avatar);
 
       setToken(newToken);
       setUser(newUser);
