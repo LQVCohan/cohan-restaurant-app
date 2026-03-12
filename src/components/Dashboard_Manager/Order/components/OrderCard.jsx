@@ -40,6 +40,8 @@ const formatCurrency = (v) =>
     minimumFractionDigits: 0,
   });
 
+const PRIORITY_LABELS = { HIGH: "Ưu tiên cao", MEDIUM: "Ưu tiên vừa", LOW: "Ưu tiên thấp" };
+
 const minutesSince = (createdAt) => {
   if (!createdAt) return 0;
   const d = new Date(createdAt);
@@ -215,6 +217,12 @@ const OrderCard = ({
           </span>
         </div>
         <TimeBadge minutes={ageMinutes} />
+      </div>
+      <div className="oc-info-section">
+        <div className="oc-guest">
+          <AlertTriangle size={12} />
+          <span className="name">{PRIORITY_LABELS[(order?.priority || "MEDIUM").toUpperCase()] || "Ưu tiên vừa"}</span>
+        </div>
       </div>
 
       {/* 3. INFO & NOTES */}

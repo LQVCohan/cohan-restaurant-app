@@ -27,6 +27,8 @@ const ItemStatusEnum = [
   "returned",
 ];
 
+const PriorityEnum = ["LOW", "MEDIUM", "HIGH"];
+
 const ModifierPriceRuleEnum = ["DELTA", "SET"];
 const ModifierInventoryRuleEnum = [
   "NONE",
@@ -179,6 +181,8 @@ const OrderItemSchema = new Schema(
 
     note: { type: String },
 
+    priority: { type: String, enum: PriorityEnum, default: "MEDIUM" },
+
     status: { type: String, default: "pending", enum: ItemStatusEnum },
   },
   { timestamps: false }
@@ -276,6 +280,7 @@ const OrderSchema = BaseSchemaModel({
   ],
 
   currentStatus: { type: String, default: "confirmed", enum: OrderStatusEnum },
+  priority: { type: String, enum: PriorityEnum, default: "MEDIUM" },
   note: { type: String },
 
   clientMeta: { type: Schema.Types.Mixed },
@@ -294,10 +299,32 @@ function qtyForPricing(item) {
   return soldAmount / sellQty; // price per (sellQty sellUnit)
 }
 
+function normalizePriorityLevel(value) {
+  const key = String(value || "").toUpperCase();
+  if (PriorityEnum.includes(key)) return key;
+  return "MEDIUM";
+}
+
+function deriveOrderPriorityFromItems(items = []) {
+  let next = "LOW";
+  let hasAnyActiveItem = false;
+
+  for (const item of items || []) {
+    if (["cancelled", "returned"].includes(item?.status)) continue;
+    hasAnyActiveItem = true;
+    const p = normalizePriorityLevel(item?.priority);
+    if (p === "HIGH") return "HIGH";
+    if (p === "MEDIUM") next = "MEDIUM";
+  }
+
+  return hasAnyActiveItem ? next : "MEDIUM";
+}
+
 OrderSchema.methods.calculateTotals = function () {
   let subtotal = 0;
 
   for (const item of this.items || []) {
+    item.priority = normalizePriorityLevel(item.priority);
     const q = qtyForPricing(item);
 
     // recompute modifiersPricePerUnit in case unitPrice/baseUnitPrice edited
@@ -329,6 +356,7 @@ OrderSchema.methods.calculateTotals = function () {
   this.totals.grandTotal = Math.round(
     beforeTax + this.totals.tax + shippingFee
   );
+  this.priority = deriveOrderPriorityFromItems(this.items || []);
 
   return this;
 };

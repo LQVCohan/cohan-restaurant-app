@@ -5,21 +5,21 @@ import useOrderManagement from "../../hooks/useOrderManagement";
 import "./StaffOrdering.scss";
 
 const STATUS_OPTIONS = [
-  "ORDER_PLACED",
-  "ORDER_CONFIRMED",
-  "PREPARING",
-  "READY",
-  "SERVED",
-  "ORDER_COMPLETED",
-  "ORDER_CANCELLED",
+  "pending",
+  "confirmed",
+  "preparing",
+  "ready",
+  "served",
+  "completed",
+  "cancelled",
 ];
 
 const ITEM_STATUS_OPTIONS = [
-  "PENDING",
-  "PREPARING",
-  "READY",
-  "SERVED",
-  "CANCELLED",
+  "pending",
+  "preparing",
+  "ready",
+  "served",
+  "cancelled",
 ];
 
 const PRIORITY_LABELS = {
@@ -27,6 +27,8 @@ const PRIORITY_LABELS = {
   MEDIUM: "Trung bình",
   LOW: "Thấp",
 };
+
+const PRIORITY_OPTIONS = ["HIGH", "MEDIUM", "LOW"];
 
 
 export default function StaffOrdering() {
@@ -58,6 +60,7 @@ export default function StaffOrdering() {
     fetchOrderById,
     changeOrderStatus,
     changeOrderItemStatus,
+    changeOrderItemPriority,
   } = useOrderManagement({ restaurantId });
 
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -110,13 +113,14 @@ export default function StaffOrdering() {
 
   const handleUpdateItemStatus = useCallback(
     async (item, status) => {
-      if (!restaurantId || !selectedOrderId || !item?.dishId || !status) return;
+      const itemKey = item?._id || item?.dishId;
+      if (!restaurantId || !selectedOrderId || !itemKey || !status) return;
       setUpdating(true);
       try {
         const res = await changeOrderItemStatus({
           restaurantId,
           orderId: selectedOrderId,
-          dishId: item.dishId,
+          itemKey,
           status,
         });
         if (!res?.success) {
@@ -128,6 +132,37 @@ export default function StaffOrdering() {
       }
     },
     [changeOrderItemStatus, refreshSelectedOrder, restaurantId, selectedOrderId]
+  );
+
+
+  const handleUpdateItemPriority = useCallback(
+    async (item, priority) => {
+      const itemKey = item?._id || item?.dishId;
+      if (!restaurantId || !selectedOrderId || !itemKey || !priority) return;
+      setUpdating(true);
+      try {
+        const res = await changeOrderItemPriority({
+          restaurantId,
+          orderId: selectedOrderId,
+          itemKey,
+          priority,
+        });
+        if (!res?.success) {
+          alert(res?.message || "Cập nhật ưu tiên món thất bại");
+        }
+        await refreshSelectedOrder(selectedOrderId);
+        await loadOrdersAll({ variables: { restaurantId, limit: 100 } });
+      } finally {
+        setUpdating(false);
+      }
+    },
+    [
+      changeOrderItemPriority,
+      loadOrdersAll,
+      refreshSelectedOrder,
+      restaurantId,
+      selectedOrderId,
+    ]
   );
 
   const sortedOrders = useMemo(
@@ -269,7 +304,10 @@ export default function StaffOrdering() {
                     </div>
                     <div style={{ fontSize: 13, color: "#555" }}>Ghi chú: {item.note || "-"}</div>
                     <div style={{ fontSize: 13, color: "#555" }}>
-                      Trạng thái món: {item.status || "PENDING"}
+                      Trạng thái món: {item.status || "pending"}
+                    </div>
+                    <div style={{ fontSize: 13, color: "#555" }}>
+                      Ưu tiên món: {PRIORITY_LABELS[(item.priority || "").toUpperCase()] || "Trung bình"}
                     </div>
 
                     <select
@@ -283,6 +321,21 @@ export default function StaffOrdering() {
                       {ITEM_STATUS_OPTIONS.map((st) => (
                         <option key={st} value={st}>
                           {st}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      disabled={updating || !item._id}
+                      defaultValue=""
+                      onChange={(e) => handleUpdateItemPriority(item, e.target.value)}
+                    >
+                      <option value="" disabled>
+                        Đổi ưu tiên món
+                      </option>
+                      {PRIORITY_OPTIONS.map((lv) => (
+                        <option key={lv} value={lv}>
+                          {PRIORITY_LABELS[lv]}
                         </option>
                       ))}
                     </select>

@@ -34,6 +34,13 @@ function assertInteger(n, field) {
   return x;
 }
 
+
+function normalizePriority(value) {
+  const key = String(value || "").toUpperCase();
+  if (["LOW", "MEDIUM", "HIGH"].includes(key)) return key;
+  return "MEDIUM";
+}
+
 function normalizeServingKey(raw) {
   const k = raw == null ? "" : String(raw).trim();
   return k || null;
@@ -159,6 +166,7 @@ export function normalizeItem(input) {
 
     modifiers,
     note: input.note || null,
+    priority: normalizePriority(input.priority),
     status: input.status || "pending",
   };
 }

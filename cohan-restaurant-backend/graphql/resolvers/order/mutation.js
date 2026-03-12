@@ -35,6 +35,12 @@ const COMMIT_STATUSES = ["preparing", "ready", "served", "completed"];
 
 const CANCELLED_ITEM_STATUSES = ["cancelled", "returned"];
 
+function normalizePriorityLevel(value) {
+  const key = String(value || "").toUpperCase();
+  if (["LOW", "MEDIUM", "HIGH"].includes(key)) return key;
+  return "MEDIUM";
+}
+
 /** =========================
  * Guards
  * ========================= */
@@ -1329,6 +1335,48 @@ export const OrderMutation = {
         statusFrom: prevItemStatus,
         statusTo: status,
         note,
+      },
+    });
+
+    return { order: order.toJSON() };
+  },
+
+  /** =========================================
+   * UPDATE ORDER ITEM PRIORITY
+   * ========================================= */
+  async updateOrderItemPriority(_, { input }, ctx) {
+    const { restaurantId, orderId, itemKey, priority } = input || {};
+    const oid = toId(orderId);
+    if (!oid) throw new Error("Invalid orderId");
+    if (!itemKey) throw new Error("Missing itemKey");
+
+    const filter = { _id: oid };
+    if (restaurantId) {
+      const rid = toId(restaurantId);
+      if (!rid) throw new Error("Invalid restaurantId");
+      filter.restaurantId = rid;
+    }
+
+    const order = await Order.findOne(filter);
+    if (!order) throw new Error("Order not found");
+
+    const idx = order.items.findIndex(
+      (it, i) =>
+        String(it._id) === String(itemKey) ||
+        String(it.dishId) === String(itemKey) ||
+        String(i) === String(itemKey)
+    );
+    if (idx === -1) throw new Error("Item not found");
+
+    order.items[idx].priority = normalizePriorityLevel(priority);
+    await order.save();
+
+    await emitOrderEvent(ctx, order.restaurantId, "ORDER_ITEM_PRIORITY_CHANGED", {
+      order,
+      meta: {
+        itemId: order.items[idx]?._id,
+        itemName: order.items[idx]?.name,
+        priority: order.items[idx]?.priority,
       },
     });
 
