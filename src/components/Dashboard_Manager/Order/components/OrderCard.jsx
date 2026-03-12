@@ -72,7 +72,6 @@ const OrderCard = ({
   onViewOrder,
   isFocusMode = false,
   onViewItem, // Callback khi click vào món
-  onQuickItemDone, // Callback tick nhanh món xong (nếu có)
 }) => {
   const [isActionLoading, setIsActionLoading] = useState(false);
 
