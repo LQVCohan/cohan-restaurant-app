@@ -170,10 +170,32 @@ export const AuthProvider = ({ children }) => {
     skip: !managerId || roleName === "customer",
   });
 
-  const { data: staffRestaurantData } = useQuery(GET_STAFF_RESTAURANT, {
-    variables: { staffId: managerId },
-    skip: !managerId || roleName !== "staff",
+  const { loading: meLoading } = useQuery(ME_QUERY, {
+    skip: !token,
+    fetchPolicy: "network-only",
+    onCompleted: (data) => {
+      const me = data?.me;
+      if (!me) return;
+      setUser((prev) => {
+        const merged = normalizeUserModel(me, prev);
+        try {
+          const storage = localStorage.getItem(TOKEN_KEYS.token)
+            ? localStorage
+            : sessionStorage;
+          storage.setItem(TOKEN_KEYS.user, JSON.stringify(merged));
+        } catch {}
+        return merged;
+      });
+    },
+    onError: () => {
+      clearStoredAuth();
+      setToken(null);
+      setUser(null);
+      setRestaurants([]);
+      setRefRestaurant([]);
+    },
   });
+
 
   useEffect(() => {
     if (roleName === "staff") {
@@ -253,7 +275,7 @@ export const AuthProvider = ({ children }) => {
     () => ({
       token,
       user,
-      loading,
+      loading: loading || (!!token && meLoading),
       isAuthenticated,
       login,
       logout,
@@ -264,6 +286,7 @@ export const AuthProvider = ({ children }) => {
       token,
       user,
       loading,
+      meLoading,
       isAuthenticated,
       login,
       logout,
