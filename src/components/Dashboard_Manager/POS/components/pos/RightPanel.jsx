@@ -124,6 +124,12 @@ const IconOrderList = () => (
 
 const DRAFT_KEY_PREFIX = "pos_draft_items_v1";
 
+const PRIORITY_LABELS = {
+  HIGH: "Ưu tiên cao",
+  MEDIUM: "Ưu tiên vừa",
+  LOW: "Ưu tiên thấp",
+};
+
 export default function RightPanel() {
   const navigate = useNavigate();
   const {
@@ -983,13 +989,18 @@ export default function RightPanel() {
                     </button>
                   </div>
 
-                  {(item.method || item.cookingOption || item.note) && (
+                  {(item.method || item.cookingOption || item.note || item.priority) && (
                     <div className={cls.rowNote}>
                       {item.method || item.cookingOption ? (
                         <span className={cls.tagMethod}>
                           {item.method || item.cookingOption}
                         </span>
                       ) : null}
+                      {item.priority && (
+                        <span className={cls.tagMethod}>
+                          {PRIORITY_LABELS[String(item.priority).toUpperCase()] || item.priority}
+                        </span>
+                      )}
                       {item.note && (
                         <span className={cls.textNote}>{item.note}</span>
                       )}
@@ -1060,11 +1071,16 @@ export default function RightPanel() {
                     )}
                   </div>
 
-                  {(item.note || item.method || item.cookingOption) && (
+                  {(item.note || item.method || item.cookingOption || item.priority) && (
                     <div className={cls.rowNote}>
                       {(item.method || item.cookingOption) && (
                         <span className={cls.tagMethod}>
                           {item.method || item.cookingOption}
+                        </span>
+                      )}
+                      {item.priority && (
+                        <span className={cls.tagMethod}>
+                          {PRIORITY_LABELS[String(item.priority).toUpperCase()] || item.priority}
                         </span>
                       )}
                       {item.note && (

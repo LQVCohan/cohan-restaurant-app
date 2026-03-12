@@ -29,6 +29,7 @@ const CREATE_ORDER_FOR_TABLE = gql`
           fullName
         }
         items {
+          _id
           dishId
           menuId
           categoryId
@@ -48,6 +49,7 @@ const CREATE_ORDER_FOR_TABLE = gql`
           unitPrice
           lineSubtotal
           note
+          priority
           quantity
           weightGrams
           status
@@ -86,6 +88,7 @@ const CREATE_OFF_PREMISE_ORDER = gql`
         orderType
         tableCode
         currentStatus
+        priority
         note
         shipping {
           fullName
@@ -107,6 +110,7 @@ const CREATE_OFF_PREMISE_ORDER = gql`
           timeTo
         }
         items {
+          _id
           dishId
           menuId
           categoryId
@@ -126,6 +130,7 @@ const CREATE_OFF_PREMISE_ORDER = gql`
           unitPrice
           lineSubtotal
           note
+          priority
           quantity
           weightGrams
           status
@@ -184,6 +189,7 @@ const ORDERS_GROUPED_BY_TABLE = gql`
           phone
         }
         items {
+          _id
           dishId
           menuId
           categoryId
@@ -203,6 +209,7 @@ const ORDERS_GROUPED_BY_TABLE = gql`
           unitPrice
           lineSubtotal
           note
+          priority
           quantity
           weightGrams
           status
@@ -254,6 +261,7 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             phone
           }
           items {
+            _id
             dishId
             menuId
             categoryId
@@ -273,6 +281,7 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             unitPrice
             lineSubtotal
             note
+            priority
             quantity
             weightGrams
             status
@@ -327,6 +336,7 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
             fullName
           }
           items {
+            _id
             dishId
             menuId
             categoryId
@@ -346,6 +356,7 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
             unitPrice
             lineSubtotal
             note
+            priority
             quantity
             weightGrams
             status
@@ -381,6 +392,7 @@ const GET_ORDER = gql`
       currentStatus
       priority
       items {
+        _id
         dishId
         menuId
         categoryId
@@ -400,6 +412,7 @@ const GET_ORDER = gql`
         unitPrice
         lineSubtotal
         note
+        priority
         quantity
         weightGrams
         status
@@ -479,6 +492,7 @@ const UPDATE_ORDER_ITEM_STATUS = gql`
         restaurantId
         currentStatus
         items {
+          _id
           dishId
           name
           status
@@ -489,6 +503,30 @@ const UPDATE_ORDER_ITEM_STATUS = gql`
             key
             name
           }
+        }
+        updatedAt
+      }
+    }
+  }
+`;
+
+
+/** ✅ Cập nhật ưu tiên 1 item trong 1 order theo ID */
+const UPDATE_ORDER_ITEM_PRIORITY = gql`
+  mutation UpdateOrderItemPriority($input: UpdateOrderItemPriorityInput!) {
+    updateOrderItemPriority(input: $input) {
+      order {
+        id
+        orderCode
+        tableCode
+        restaurantId
+        priority
+        items {
+          _id
+          dishId
+          name
+          priority
+          status
         }
         updatedAt
       }
@@ -551,6 +589,7 @@ export default function useOrderManagement(pos = null) {
   );
   const [mutUpdateOrderStatus] = useMutation(UPDATE_ORDER_STATUS);
   const [mutUpdateOrderItemStatus] = useMutation(UPDATE_ORDER_ITEM_STATUS);
+  const [mutUpdateOrderItemPriority] = useMutation(UPDATE_ORDER_ITEM_PRIORITY);
   const [mutUpdateOrderCustomerByCode] = useMutation(
     UPDATE_ORDER_CUSTOMER_BY_CODE
   );
@@ -842,6 +881,7 @@ export default function useOrderManagement(pos = null) {
       unit,
       basePrice: hasServingVariant ? null : Math.round(it.price || 0),
       note: it.description || it.note || "",
+      priority: String(it.priority || "MEDIUM").toUpperCase(),
       quantity,
       proofImages: it.proofImages || [],
       servingKey,
@@ -876,6 +916,7 @@ export default function useOrderManagement(pos = null) {
             orderCode
             tableCode
             currentStatus
+            priority
             restaurantId
             updatedAt
             totals {
@@ -909,6 +950,7 @@ export default function useOrderManagement(pos = null) {
               unitPrice
               lineSubtotal
               note
+              priority
               quantity
               weightGrams
               status
@@ -1287,6 +1329,59 @@ export default function useOrderManagement(pos = null) {
       currentOrderType,
       loadGroupsForTable,
       writeOrderIntoCache,
+    ]
+  );
+
+  const changeOrderItemPriority = useCallback(
+    async ({ restaurantId, orderId, itemKey, priority, afterSuccess }) => {
+      if (!orderId)
+        return { success: false, message: "Thiếu orderId để đổi mức ưu tiên." };
+      if (!itemKey && itemKey !== 0)
+        return { success: false, message: "Thiếu itemKey." };
+
+      try {
+        const { data } = await mutUpdateOrderItemPriority({
+          variables: {
+            input: {
+              orderId,
+              restaurantId: restaurantId || undefined,
+              itemKey: String(itemKey),
+              priority: String(priority || "MEDIUM").toUpperCase(),
+            },
+          },
+        });
+
+        const serverOrder = data?.updateOrderItemPriority?.order || null;
+        if (serverOrder) writeOrderIntoCache(serverOrder);
+
+        if (
+          currentOrderType === "dine_in" &&
+          (currentTable?.id || currentTable?.code) &&
+          restaurantId
+        ) {
+          await loadGroupsForTable({
+            restaurantId,
+            tableId: currentTable.id,
+            tableCode: currentTable.code,
+          });
+        }
+
+        await afterSuccess?.(serverOrder);
+        return { success: true, data: serverOrder };
+      } catch (err) {
+        return {
+          success: false,
+          message: err?.message || "Đổi mức ưu tiên món thất bại.",
+        };
+      }
+    },
+    [
+      mutUpdateOrderItemPriority,
+      writeOrderIntoCache,
+      currentOrderType,
+      currentTable?.id,
+      currentTable?.code,
+      loadGroupsForTable,
     ]
   );
 
@@ -2142,6 +2237,7 @@ export default function useOrderManagement(pos = null) {
     // status by ID
     changeOrderStatus,
     changeOrderItemStatus,
+    changeOrderItemPriority,
 
     // back-compat
     updateItemStatus,

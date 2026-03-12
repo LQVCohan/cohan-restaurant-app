@@ -207,7 +207,7 @@ const AppRouter = () => {
         path="/staff/orders"
         element={
           <PrivateRoute
-            allowedRoles={["manager", "admin"]}
+            allowedRoles={["staff", "manager", "admin"]}
             requireVerifiedEmail
           >
             <StaffOrdering />

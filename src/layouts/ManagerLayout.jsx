@@ -3,6 +3,7 @@ import Sidebar from "../components/Dashboard_Manager/Sidebar";
 import Header from "../components/Dashboard_Manager/Header";
 import Dashboard from "../components/Dashboard_Manager/Dashboard";
 import ManagerAnalyst from "../components/Dashboard_Manager/Analyst/ManagerAnalyst";
+import ReportsManagement from "../components/Dashboard_Manager/Reports/ReportsManagement";
 import StaffManagement from "../components/Dashboard_Manager/Staff/StaffManagement";
 import ScheduleManagement from "../components/Dashboard_Manager/Schedule/ScheduleManagement";
 import OrderManagement from "../components/Dashboard_Manager/Order/OrderManagement";
@@ -149,7 +150,8 @@ const ManagerLayout = () => {
         return <ManagerAnalyst />;
 
       // case "transactions": return <Transactions />;
-      // case "reports": return <Reports />;
+      case "reports":
+        return <ReportsManagement />;
       case "finance":
         return <FinanceDashboard />;
       case "settings":

@@ -306,6 +306,7 @@ export default function LeftPanel() {
       modifiersPrice: it.modifiersPrice,
       method: it.method,
       note: it.note,
+      priority: it.priority,
       quantity: it.quantity,
       status: it.status,
       proofImages: it.proofImages || [],

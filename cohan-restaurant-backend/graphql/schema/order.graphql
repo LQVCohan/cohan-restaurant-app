@@ -30,6 +30,12 @@ enum OrderType {
   delivery
 }
 
+enum OrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 enum ServingMode {
   PORTION
   BY_WEIGHT
@@ -229,6 +235,7 @@ type OrderItem {
   ingredientsSnapshot: [OrderIngredientSnapshot!]!
 
   note: String
+  priority: OrderPriority
   status: ItemStatus
 }
 
@@ -252,6 +259,7 @@ input OrderItemInput {
   selectedModifiers: [OrderModifierSelectionInput!]
 
   note: String
+  priority: OrderPriority
   status: ItemStatus
 }
 
@@ -347,6 +355,7 @@ type Order {
 
   statusTimeline: [StatusEvent!]!
   currentStatus: OrderStatus!
+  priority: OrderPriority
 
   note: String
   createdAt: DateTime!
@@ -423,6 +432,17 @@ input UpdateOrderCustomerByCodeInput {
 }
 
 type UpdateOrderItemStatusPayload {
+  order: Order!
+}
+
+input UpdateOrderItemPriorityInput {
+  orderId: ID!
+  restaurantId: ID
+  itemKey: String!
+  priority: OrderPriority
+}
+
+type UpdateOrderItemPriorityPayload {
   order: Order!
 }
 
@@ -533,6 +553,10 @@ extend type Mutation {
   updateOrderItemStatus(
     input: UpdateOrderItemStatusInput!
   ): UpdateOrderItemStatusPayload!
+
+  updateOrderItemPriority(
+    input: UpdateOrderItemPriorityInput!
+  ): UpdateOrderItemPriorityPayload!
 
   updateOrderCustomerByCode(
     input: UpdateOrderCustomerByCodeInput!
