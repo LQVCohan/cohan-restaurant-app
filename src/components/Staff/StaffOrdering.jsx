@@ -67,6 +67,7 @@ export default function StaffOrdering() {
   ]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
+<<<<<<< HEAD
   const customerResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     return MOCK_CUSTOMERS.filter(
@@ -88,6 +89,84 @@ export default function StaffOrdering() {
               status: t.status === "empty" ? "serving" : t.status,
             }
           : t,
+=======
+  const resolveItemKey = useCallback((item, idx) => {
+    if (item?._id) return item._id;
+    if (item?.dishId) return item.dishId;
+    if (Number.isInteger(idx)) return String(idx);
+    return null;
+  }, []);
+
+  const handleUpdateItemStatus = useCallback(
+    async (item, status, idx) => {
+      const itemKey = resolveItemKey(item, idx);
+      if (!restaurantId || !selectedOrderId || !itemKey || !status) return;
+      setUpdating(true);
+      try {
+        const res = await changeOrderItemStatus({
+          restaurantId,
+          orderId: selectedOrderId,
+          itemKey,
+          status,
+        });
+        if (!res?.success) {
+          alert(res?.message || "Cập nhật trạng thái món thất bại");
+        }
+        await loadOrdersAll({ variables: { restaurantId, limit: 100 } });
+        await refreshSelectedOrder(selectedOrderId);
+      } finally {
+        setUpdating(false);
+      }
+    },
+    [
+      changeOrderItemStatus,
+      loadOrdersAll,
+      refreshSelectedOrder,
+      resolveItemKey,
+      restaurantId,
+      selectedOrderId,
+    ]
+  );
+
+
+  const handleUpdateItemPriority = useCallback(
+    async (item, priority, idx) => {
+      const itemKey = resolveItemKey(item, idx);
+      if (!restaurantId || !selectedOrderId || !itemKey || !priority) return;
+      setUpdating(true);
+      try {
+        const res = await changeOrderItemPriority({
+          restaurantId,
+          orderId: selectedOrderId,
+          itemKey,
+          priority,
+        });
+        if (!res?.success) {
+          alert(res?.message || "Cập nhật ưu tiên món thất bại");
+        }
+        await refreshSelectedOrder(selectedOrderId);
+        await loadOrdersAll({ variables: { restaurantId, limit: 100 } });
+      } finally {
+        setUpdating(false);
+      }
+    },
+    [
+      changeOrderItemPriority,
+      loadOrdersAll,
+      refreshSelectedOrder,
+      resolveItemKey,
+      restaurantId,
+      selectedOrderId,
+    ]
+  );
+
+  const sortedOrders = useMemo(
+    () =>
+      [...(ordersAll || [])].sort(
+        (a, b) =>
+          new Date(b.updatedAt || b.createdAt || 0) -
+          new Date(a.updatedAt || a.createdAt || 0)
+>>>>>>> 8f97da67b5c88d1a71b2523578d8580bb0386098
       ),
     );
     setSearchQuery("");
@@ -177,6 +256,39 @@ export default function StaffOrdering() {
                     <div className="cus-rank-badge">
                       <Star size={10} className="icon-star" /> Hạng {cus.rank}
                     </div>
+<<<<<<< HEAD
+=======
+
+                    <select
+                      disabled={updating || !resolveItemKey(item, idx)}
+                      defaultValue=""
+                      onChange={(e) => handleUpdateItemStatus(item, e.target.value, idx)}
+                    >
+                      <option value="" disabled>
+                        Đổi trạng thái món
+                      </option>
+                      {ITEM_STATUS_OPTIONS.map((st) => (
+                        <option key={st} value={st}>
+                          {st}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      disabled={updating || !resolveItemKey(item, idx)}
+                      defaultValue=""
+                      onChange={(e) => handleUpdateItemPriority(item, e.target.value, idx)}
+                    >
+                      <option value="" disabled>
+                        Đổi ưu tiên món
+                      </option>
+                      {PRIORITY_OPTIONS.map((lv) => (
+                        <option key={lv} value={lv}>
+                          {PRIORITY_LABELS[lv]}
+                        </option>
+                      ))}
+                    </select>
+>>>>>>> 8f97da67b5c88d1a71b2523578d8580bb0386098
                   </div>
                 ))}
               </div>
