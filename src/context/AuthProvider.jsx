@@ -53,7 +53,10 @@ const ME_QUERY = gql`
       email
       roleName
       emailVerified
-      refRestaurant
+      refRestaurants {
+        id
+        name
+      }
       restaurantForStaff
     }
   }
@@ -123,6 +126,9 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
     fallbackUser?.restaurantForStaff ||
     null;
 
+  const customerRefRestaurants =
+    rawUser?.refRestaurants || fallbackUser?.refRestaurants || [];
+
   const baseUser = {
     ...(fallbackUser || {}),
     ...(typeof rawUser === "object" && rawUser ? rawUser : {}),
@@ -130,9 +136,11 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
     avatar: avatar ?? rawUser?.avatar ?? rawUser?.avatarUrl ?? fallbackUser?.avatar ?? null,
     status: rawUser?.status || fallbackUser?.status || "active",
     restaurantForStaff,
+    refRestaurants: customerRefRestaurants,
   };
 
   if (roleName !== "customer") {
+    delete baseUser.refRestaurants;
     delete baseUser.refRestaurant;
   }
 
@@ -167,7 +175,7 @@ export const AuthProvider = ({ children }) => {
     data: mgrData,
   } = useQuery(GET_MANAGER_RESTAURANTS, {
     variables: { managerId, limit: 50 },
-    skip: !managerId || roleName === "customer",
+    skip: !managerId || !["manager", "admin"].includes(roleName),
   });
 
   const { loading: meLoading } = useQuery(ME_QUERY, {
@@ -183,7 +191,9 @@ export const AuthProvider = ({ children }) => {
             ? localStorage
             : sessionStorage;
           storage.setItem(TOKEN_KEYS.user, JSON.stringify(merged));
-        } catch {}
+        } catch (storageError) {
+          console.warn("Failed to persist auth user", storageError);
+        }
         return merged;
       });
     },
