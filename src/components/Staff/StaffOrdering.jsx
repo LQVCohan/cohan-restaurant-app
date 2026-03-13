@@ -111,9 +111,16 @@ export default function StaffOrdering() {
     [changeOrderStatus, loadOrdersAll, refreshSelectedOrder, restaurantId, selectedOrderId]
   );
 
+  const resolveItemKey = useCallback((item, idx) => {
+    if (item?._id) return item._id;
+    if (item?.dishId) return item.dishId;
+    if (Number.isInteger(idx)) return String(idx);
+    return null;
+  }, []);
+
   const handleUpdateItemStatus = useCallback(
-    async (item, status) => {
-      const itemKey = item?._id || item?.dishId;
+    async (item, status, idx) => {
+      const itemKey = resolveItemKey(item, idx);
       if (!restaurantId || !selectedOrderId || !itemKey || !status) return;
       setUpdating(true);
       try {
@@ -126,18 +133,26 @@ export default function StaffOrdering() {
         if (!res?.success) {
           alert(res?.message || "Cập nhật trạng thái món thất bại");
         }
+        await loadOrdersAll({ variables: { restaurantId, limit: 100 } });
         await refreshSelectedOrder(selectedOrderId);
       } finally {
         setUpdating(false);
       }
     },
-    [changeOrderItemStatus, refreshSelectedOrder, restaurantId, selectedOrderId]
+    [
+      changeOrderItemStatus,
+      loadOrdersAll,
+      refreshSelectedOrder,
+      resolveItemKey,
+      restaurantId,
+      selectedOrderId,
+    ]
   );
 
 
   const handleUpdateItemPriority = useCallback(
-    async (item, priority) => {
-      const itemKey = item?._id || item?.dishId;
+    async (item, priority, idx) => {
+      const itemKey = resolveItemKey(item, idx);
       if (!restaurantId || !selectedOrderId || !itemKey || !priority) return;
       setUpdating(true);
       try {
@@ -160,6 +175,7 @@ export default function StaffOrdering() {
       changeOrderItemPriority,
       loadOrdersAll,
       refreshSelectedOrder,
+      resolveItemKey,
       restaurantId,
       selectedOrderId,
     ]
@@ -311,9 +327,9 @@ export default function StaffOrdering() {
                     </div>
 
                     <select
-                      disabled={updating || !item.dishId}
+                      disabled={updating || !resolveItemKey(item, idx)}
                       defaultValue=""
-                      onChange={(e) => handleUpdateItemStatus(item, e.target.value)}
+                      onChange={(e) => handleUpdateItemStatus(item, e.target.value, idx)}
                     >
                       <option value="" disabled>
                         Đổi trạng thái món
@@ -326,9 +342,9 @@ export default function StaffOrdering() {
                     </select>
 
                     <select
-                      disabled={updating || !item._id}
+                      disabled={updating || !resolveItemKey(item, idx)}
                       defaultValue=""
-                      onChange={(e) => handleUpdateItemPriority(item, e.target.value)}
+                      onChange={(e) => handleUpdateItemPriority(item, e.target.value, idx)}
                     >
                       <option value="" disabled>
                         Đổi ưu tiên món
