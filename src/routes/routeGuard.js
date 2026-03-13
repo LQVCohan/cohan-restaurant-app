@@ -1,13 +1,20 @@
+const normalizeRole = (role) => {
+  if (typeof role !== "string") return null;
+  const normalized = role.trim().toLowerCase();
+  return normalized || null;
+};
+
 export const resolveRoleName = (me) => {
   if (!me || typeof me !== "object") return null;
 
-  if (typeof me.roleName === "string" && me.roleName.trim()) {
-    return me.roleName;
-  }
+  const directRole = normalizeRole(me.roleName);
+  if (directRole) return directRole;
 
-  if (typeof me.role?.slug === "string" && me.role.slug.trim()) {
-    return me.role.slug;
-  }
+  const slugRole = normalizeRole(me.role?.slug);
+  if (slugRole) return slugRole;
+
+  const nameRole = normalizeRole(me.role?.name);
+  if (nameRole) return nameRole;
 
   return null;
 };
@@ -17,9 +24,20 @@ export const hasAllowedRole = (allowedRoles, roleName) => {
     return true;
   }
 
-  if (!roleName || typeof roleName !== "string") {
+  const normalizedRole = normalizeRole(roleName);
+  if (!normalizedRole) {
     return false;
   }
 
-  return allowedRoles.includes(roleName);
+  return allowedRoles
+    .map((role) => normalizeRole(role))
+    .filter(Boolean)
+    .includes(normalizedRole);
+};
+
+export const getRoleHomeRoute = (roleName) => {
+  const role = normalizeRole(roleName);
+  if (role === "admin" || role === "manager") return "/manager";
+  if (role === "staff") return "/staff/orders";
+  return "/";
 };

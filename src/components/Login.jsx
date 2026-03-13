@@ -1,9 +1,10 @@
-import React, { useState, useContext, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useContext, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
 import ReCAPTCHA from "react-google-recaptcha";
 import { useNotification } from "@/hooks/useNotification"; // Hook thông báo (tuỳ project bạn)
+import { getRoleHomeRoute, resolveRoleName } from "@/routes/routeGuard";
 import {
   UserOutlined,
   LockOutlined,
@@ -106,12 +107,17 @@ function splitIdentifier(val) {
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { login: authLogin } = useContext(AuthContext);
+  const { login: authLogin, user, isAuthenticated, loading } = useContext(AuthContext);
   const { showNotification } = useNotification();
 
-  // Lấy đường dẫn trước đó để redirect sau khi login
-  const fromPath = location.state?.from?.pathname || "/";
+
+
+  useEffect(() => {
+    if (loading) return;
+    if (!isAuthenticated) return;
+
+    navigate(getRoleHomeRoute(resolveRoleName(user)), { replace: true });
+  }, [isAuthenticated, loading, navigate, user]);
 
   // --- STATE ---
   const [isRightPanelActive, setIsRightPanelActive] = useState(false); // Controls Sliding Animation
@@ -161,7 +167,7 @@ const LoginPage = () => {
           `Chào mừng ${user.fullName || user.username}!`,
           "success",
         );
-        navigate(fromPath, { replace: true });
+        navigate(getRoleHomeRoute(resolveRoleName(user)), { replace: true });
       },
     },
   );
