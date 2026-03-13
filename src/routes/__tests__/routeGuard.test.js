@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasAllowedRole, resolveRoleName } from "../routeGuard.js";
+import {
+  getRoleHomeRoute,
+  hasAllowedRole,
+  resolveRoleName,
+} from "../routeGuard.js";
 
 test("resolveRoleName returns null when me payload has no role", () => {
   assert.equal(resolveRoleName(null), null);
@@ -31,4 +35,23 @@ test("hasAllowedRole từ chối token + role không hợp lệ", () => {
 
 test("hasAllowedRole từ chối token + role null khi route yêu cầu role", () => {
   assert.equal(hasAllowedRole(["admin"], null), false);
+});
+
+
+test("resolveRoleName chuẩn hoá lowercase", () => {
+  const me = { roleName: "Admin" };
+  assert.equal(resolveRoleName(me), "admin");
+});
+
+test("hasAllowedRole so khớp không phân biệt hoa thường", () => {
+  assert.equal(hasAllowedRole(["ADMIN", "Manager"], "manager"), true);
+  assert.equal(hasAllowedRole(["staff"], "Staff"), true);
+});
+
+test("getRoleHomeRoute mapping đúng theo role", () => {
+  assert.equal(getRoleHomeRoute("admin"), "/manager");
+  assert.equal(getRoleHomeRoute("manager"), "/manager");
+  assert.equal(getRoleHomeRoute("staff"), "/staff/orders");
+  assert.equal(getRoleHomeRoute("customer"), "/");
+  assert.equal(getRoleHomeRoute("unknown"), "/");
 });

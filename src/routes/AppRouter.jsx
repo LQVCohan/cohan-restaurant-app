@@ -84,7 +84,11 @@ const useAuth = () => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   const [token, setToken] = useState(
-    () => localStorage.getItem("token") || sessionStorage.getItem("token"),
+    () =>
+      localStorage.getItem("auth_token") ||
+      sessionStorage.getItem("auth_token") ||
+      localStorage.getItem("token") ||
+      sessionStorage.getItem("token"),
   );
 
   const { data, loading, error, refetch } = useQuery(ME_QUERY, {
@@ -108,8 +112,12 @@ const useAuth = () => {
       }
 
       showNotification(error.message, "error");
+      localStorage.removeItem("auth_token");
+      sessionStorage.removeItem("auth_token");
       localStorage.removeItem("token");
       sessionStorage.removeItem("token");
+      localStorage.removeItem("auth_user");
+      sessionStorage.removeItem("auth_user");
       setToken(null);
       navigate("/login");
     }
@@ -121,7 +129,10 @@ const useAuth = () => {
   useEffect(() => {
     const handleStorageChange = () => {
       const newToken =
-        localStorage.getItem("token") || sessionStorage.getItem("token");
+        localStorage.getItem("auth_token") ||
+        sessionStorage.getItem("auth_token") ||
+        localStorage.getItem("token") ||
+        sessionStorage.getItem("token");
       if (newToken !== token) {
         setToken(newToken);
         if (newToken) refetch?.();
@@ -147,7 +158,9 @@ export const PrivateRoute = ({
   requireVerifiedEmail = false,
   authState,
 }) => {
-  const { token, role, emailVerified, loading } = authState || useAuth();
+  const fallbackAuthState = useAuth();
+  const { token, role, emailVerified, loading } =
+    authState || fallbackAuthState;
   const location = useLocation();
 
   if (loading) return null;
@@ -175,13 +188,20 @@ const CustomerLayout = () => {
   );
 };
 
+const LogoutHandler = () => {
+  const { logout } = useContext(AuthContext);
+
+  useEffect(() => {
+    logout?.();
+  }, [logout]);
+
+  return null;
+};
+
 // =========================
 // 🌐 App Router
 // =========================
 const AppRouter = () => {
-  const { refRestaurant, restaurants } = useContext(AuthContext);
-  console.log("refRestaurant, restaurants", refRestaurant, restaurants);
-
   return (
     <Routes>
       {/* =============================================
@@ -193,7 +213,7 @@ const AppRouter = () => {
       <Route path="/verify-email" element={<VerifyEmailPending />} />
       <Route path="/verify-email/confirm" element={<VerifyEmailConfirm />} />
       <Route path="/403" element={<ForbiddenPage />} />
-      <Route path="/logout" element={<Navigate to="/login" replace />} />
+      <Route path="/logout" element={<LogoutHandler />} />
 
       <Route path="/preview/restaurant/:id" element={<RestaurantDetail />} />
 

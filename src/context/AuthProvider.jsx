@@ -112,12 +112,15 @@ function clearStoredAuth() {
 }
 
 function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
-  const roleName =
+  const roleName = String(
     rawUser?.roleName ||
-    rawUser?.role?.slug ||
-    fallbackUser?.roleName ||
-    fallbackUser?.role?.slug ||
-    "customer";
+      rawUser?.role?.slug ||
+      fallbackUser?.roleName ||
+      fallbackUser?.role?.slug ||
+      "customer",
+  )
+    .trim()
+    .toLowerCase();
 
   const restaurantForStaff =
     rawUser?.restaurantForStaff?.id ||
@@ -169,7 +172,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const isAuthenticated = !!token;
-  const roleName = user?.roleName || user?.role?.slug;
+  const roleName = String(user?.roleName || user?.role?.slug || "").toLowerCase();
   const managerId = user?.id;
   const {
     data: mgrData,
