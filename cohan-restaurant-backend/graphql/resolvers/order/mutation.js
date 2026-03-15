@@ -1330,7 +1330,11 @@ export const OrderMutation = {
         if (lines.length) {
           const wasReservable = RESERVABLE_STATUSES.includes(prevStatus);
 
-          if (wasReservable && COMMIT_STATUSES.includes(status)) {
+          const shouldCommitNow =
+            (wasReservable && COMMIT_STATUSES.includes(status)) ||
+            (status === "confirmed" && ["delivery", "takeaway"].includes(order.orderType));
+
+          if (shouldCommitNow) {
             const whId = await resolveWarehouseIdOrDefault(
               order.restaurantId,
               warehouseId,
