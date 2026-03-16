@@ -1,28 +1,23 @@
-// graphql/reservation/mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import {
   Reservation,
   Restaurant,
   Table,
-  Customer,
+  User,
+  PaymentTransaction,
+  EventLog,
 } from "../../../models/index.js";
 
-const { Types } = mongoose;
+const ACTIVE_STATUSES = ["pending_payment", "confirmed", "seated", "pending_change"];
 
-function toObjectId(id) {
+function toObjectId(id, field = "ID") {
   if (!id || !mongoose.isValidObjectId(id)) {
-    throw new GraphQLError("Invalid ID", {
+    throw new GraphQLError(`Invalid ${field}`, {
       extensions: { code: "BAD_USER_INPUT" },
     });
   }
-  return new Types.ObjectId(id);
-}
-
-function atLeastPhoneOrEmail(phone, email) {
-  const phoneOk = !!(phone && String(phone).trim());
-  const emailOk = !!(email && String(email).trim());
-  return phoneOk || emailOk;
+  return new mongoose.Types.ObjectId(id);
 }
 
 function parseHHMM(s, fallback = [23, 0]) {
@@ -32,606 +27,471 @@ function parseHHMM(s, fallback = [23, 0]) {
   return fallback;
 }
 
-async function getRestaurantOrThrow(
-  restaurantId,
-  fields = "name openingHours closingHours"
-) {
-  const r = await Restaurant.findById(toObjectId(restaurantId))
-    .select(fields)
-    .lean();
-  if (!r) {
-    throw new GraphQLError("Restaurant not found", {
-      extensions: { code: "NOT_FOUND" },
+function userCanUseUnlimited(user) {
+  const rank = String(user?.loyaltyRank || "basic").toLowerCase();
+  return ["silver", "gold", "platinum"].includes(rank);
+}
+
+function normalizeDuration({ durationMinutes, isUnlimitedTime }) {
+  if (isUnlimitedTime) return 0;
+  const d = Number(durationMinutes || 60);
+  if (!Number.isFinite(d) || d < 30) {
+    throw new GraphQLError("durationMinutes phải >= 30 phút", {
+      extensions: { code: "BAD_USER_INPUT" },
     });
   }
+  return Math.floor(d);
+}
+
+function calcEnd(start, durationMinutes, isUnlimitedTime) {
+  if (isUnlimitedTime) return null;
+  return new Date(start.getTime() + durationMinutes * 60 * 1000);
+}
+
+async function getRestaurantOrThrow(restaurantId) {
+  const r = await Restaurant.findById(toObjectId(restaurantId, "restaurantId")).lean();
+  if (!r) throw new GraphQLError("Restaurant not found", { extensions: { code: "NOT_FOUND" } });
   return r;
 }
 
 async function getTableOrThrow(tableId, restaurantId) {
   const t = await Table.findOne({
-    _id: toObjectId(tableId),
-    restaurantId: toObjectId(restaurantId),
+    _id: toObjectId(tableId, "tableId"),
+    restaurantId: toObjectId(restaurantId, "restaurantId"),
   }).lean();
-  if (!t) {
-    throw new GraphQLError("Table not found in this restaurant", {
-      extensions: { code: "NOT_FOUND" },
-    });
-  }
+  if (!t) throw new GraphQLError("Table not found in this restaurant", { extensions: { code: "NOT_FOUND" } });
   return t;
 }
 
-/**
- * Kiểm tra bàn có bị trùng khoảng thời gian với các Reservation active khác không.
- * Khoảng thời gian = [timeTo, timeTo + durationMinutes].
- * Các status gây xung đột: pending_payment, confirmed, seated
- * (bỏ qua cancelled, completed, no_show, deleted).
- */
-async function ensureTableAvailableForTime(
-  tableId,
-  timeTo,
-  durationMinutes,
-  exceptReservationId = null
-) {
-  const table = await Table.findById(toObjectId(tableId)).lean();
-  if (!table) {
-    throw new GraphQLError("Table not found", {
-      extensions: { code: "NOT_FOUND" },
-    });
-  }
-
-  // Không cho book bàn offline
-  if (table.status === "offline") {
-    throw new GraphQLError("Table is offline and cannot be reserved.", {
-      extensions: { code: "TABLE_UNAVAILABLE" },
-    });
-  }
-
-  const start = new Date(timeTo);
-  const dur =
-    typeof durationMinutes === "number" && durationMinutes > 0
-      ? durationMinutes
-      : 90;
-  const end = new Date(start.getTime() + dur * 60 * 1000);
-
-  // Lấy các reservation cùng bàn, còn active, có timeTo trước newEnd
-  const query = {
-    tableId: toObjectId(tableId),
-    status: { $in: ["pending_payment", "confirmed", "seated"] },
-    timeTo: { $lt: end }, // coarse filter
-  };
-
-  if (exceptReservationId) {
-    query._id = { $ne: toObjectId(exceptReservationId) };
-  }
-
-  const candidates = await Reservation.find(query)
-    .select({ timeTo: 1, durationMinutes: 1 })
-    .lean();
-
-  const conflict = candidates.some((r) => {
-    const rStart = new Date(r.timeTo);
-    const rDur =
-      typeof r.durationMinutes === "number" && r.durationMinutes > 0
-        ? r.durationMinutes
-        : 90;
-    const rEnd = new Date(rStart.getTime() + rDur * 60 * 1000);
-
-    // Overlap nếu: rStart < newEnd && newStart < rEnd
-    return rStart < end && start < rEnd;
-  });
-
-  if (conflict) {
-    throw new GraphQLError(
-      "This table is already booked in the selected time range.",
-      {
-        extensions: { code: "TIME_CONFLICT" },
-      }
-    );
-  }
-}
-
-function validateAgainstClosingHours(restaurant, arrivalISO) {
-  const arrival = new Date(arrivalISO);
+function validateOpenClose(restaurant, arrival, durationMinutes, isUnlimitedTime) {
+  const [openH, openM] = parseHHMM(restaurant.openingHours, [7, 0]);
   const [closeH, closeM] = parseHHMM(restaurant.closingHours, [23, 0]);
-  const closingTime = new Date(arrival);
-  closingTime.setHours(closeH, closeM, 0, 0);
 
-  const diffMinutes = (closingTime - arrival) / (1000 * 60);
-  if (diffMinutes < 0) {
-    throw new GraphQLError("Arrival time exceeds restaurant closing hours.", {
+  const open = new Date(arrival);
+  open.setHours(openH, openM, 0, 0);
+  const close = new Date(arrival);
+  close.setHours(closeH, closeM, 0, 0);
+
+  if (arrival < open || arrival > close) {
+    throw new GraphQLError("Thời gian đặt ngoài giờ mở cửa của nhà hàng", {
       extensions: { code: "BAD_USER_INPUT" },
     });
   }
-  return {
-    arrival,
-    closingTime,
-    diffMinutes,
-    isLateBooking: diffMinutes < 120,
+
+  if (!isUnlimitedTime) {
+    const end = calcEnd(arrival, durationMinutes, false);
+    if (end > close) {
+      throw new GraphQLError("Thời lượng sử dụng vượt quá giờ đóng cửa", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+  }
+}
+
+async function ensureNoTableConflict({ tableId, timeTo, durationMinutes, isUnlimitedTime, exceptId = null }) {
+  const start = new Date(timeTo);
+  const end = calcEnd(start, durationMinutes, isUnlimitedTime);
+
+  const q = {
+    tableId: toObjectId(tableId, "tableId"),
+    status: { $in: ACTIVE_STATUSES },
   };
+  if (exceptId) q._id = { $ne: toObjectId(exceptId, "reservationId") };
+
+  const candidates = await Reservation.find(q)
+    .select({ timeTo: 1, durationMinutes: 1, isUnlimitedTime: 1 })
+    .lean();
+
+  for (const c of candidates) {
+    const cStart = new Date(c.timeTo);
+    const cEnd = calcEnd(cStart, Number(c.durationMinutes || 60), !!c.isUnlimitedTime);
+
+    if (isUnlimitedTime || c.isUnlimitedTime) {
+      const latestStart = cStart > start ? cStart : start;
+      const earliestFiniteEnd = cEnd && end ? (cEnd < end ? cEnd : end) : null;
+      if (!earliestFiniteEnd || latestStart < earliestFiniteEnd) {
+        throw new GraphQLError("Bàn đã có reservation xung đột thời gian", {
+          extensions: { code: "TIME_CONFLICT" },
+        });
+      }
+      continue;
+    }
+
+    if (cStart < end && start < cEnd) {
+      throw new GraphQLError("Bàn đã có reservation xung đột thời gian", {
+        extensions: { code: "TIME_CONFLICT" },
+      });
+    }
+  }
 }
 
-/**
- * User guest chỉ dựa vào 3 trường: name/phone/email.
- */
-async function resolveUserIdFromContact({
-  customerName,
-  customerPhone,
-  customerEmail,
-}) {
-  if (customerPhone) {
-    const foundByPhone = await Customer.findOne({
-      phone: customerPhone?.trim(),
-    }).select({ _id: 1 });
-    if (foundByPhone) return foundByPhone._id;
+async function ensureNoActiveViewLock(tableId, requesterUserId) {
+  const table = await Table.findById(toObjectId(tableId, "tableId")).lean();
+  if (!table) throw new GraphQLError("Table not found", { extensions: { code: "NOT_FOUND" } });
+  const lock = table.viewLock;
+  const now = new Date();
+  if (!lock?.expiresAt || new Date(lock.expiresAt) <= now) return;
+  if (String(lock.userId) !== String(requesterUserId)) {
+    throw new GraphQLError("Bàn đang được khách khác xem, vui lòng thử lại sau", {
+      extensions: { code: "TABLE_VIEW_LOCKED" },
+    });
   }
-
-  if (customerEmail) {
-    const foundByEmail = await Customer.findOne({
-      email: customerEmail?.trim(),
-    }).select({ _id: 1 });
-    if (foundByEmail) return foundByEmail._id;
-  }
-
-  const guest = new Customer({
-    fullName: (customerName || "Guest").trim(),
-    phone: customerPhone?.trim() || undefined,
-    email: customerEmail?.trim() || undefined,
-    isGuest: true,
-    status: "active",
-    guestExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  });
-  await guest.save();
-  return guest.id;
 }
 
-/** Đánh dấu bàn đã được đặt (reserved hoặc payment_pending) */
-async function markTableReserved(tableId, status = "payment_pending") {
-  await Table.findByIdAndUpdate(
-    toObjectId(tableId),
-    { status }, // "payment_pending" hoặc "reserved"
-    { new: true }
+async function updateTableStatusByReservation(tableId) {
+  const active = await Reservation.exists({ tableId, status: { $in: ["pending_payment", "confirmed", "seated"] } });
+  await Table.updateOne(
+    { _id: tableId },
+    { $set: { status: active ? "reserved" : "available" } }
   );
 }
 
-/** Thử giải phóng bàn: nếu không còn reservation active nào thì set available */
-async function tryReleaseTable(tableId) {
-  const hasActive = await Reservation.exists({
-    tableId: toObjectId(tableId),
-    status: { $in: ["pending_payment", "confirmed", "seated"] },
-  });
-
-  if (!hasActive) {
-    await Table.findByIdAndUpdate(
-      toObjectId(tableId),
-      { status: "available" },
-      { new: true }
-    );
-  }
+function computeDeposit({ baseDeposit, linkedMenuSubtotal, menuDepositPercent }) {
+  const menuPart = Math.round(Math.max(0, Number(linkedMenuSubtotal || 0)) * (Math.max(0, Number(menuDepositPercent || 50)) / 100));
+  return Math.max(0, Number(baseDeposit || 0)) + menuPart;
 }
 
 export const ReservationMutation = {
-  /* ───────────────── createReservation ───────────────── */
-  async createReservation(_, { input }) {
+  async createReservation(_, { input }, ctx) {
+    const session = await mongoose.startSession();
     try {
-      const {
-        restaurantId,
-        tableId,
-        timeTo, // bắt buộc
-        durationMinutes, // thời lượng (phút)
-        partySize = 2,
-        note,
-        customerName,
-        customerPhone,
-        customerEmail,
-        depositAmount = 0,
-        paid = false, // <<< NEW: flag đã thanh toán
-      } = input || {};
-
-      if (!restaurantId || !tableId) {
-        throw new GraphQLError("Missing restaurantId or tableId.", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
-      if (!atLeastPhoneOrEmail(customerPhone, customerEmail)) {
-        throw new GraphQLError("phone or email are required.", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
-      if (!timeTo) {
-        throw new GraphQLError("Missing arrival time (timeTo).", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
-
-      const restaurant = await getRestaurantOrThrow(restaurantId);
-      const { isLateBooking } = validateAgainstClosingHours(restaurant, timeTo);
-
-      const table = await getTableOrThrow(tableId, restaurantId);
-      if (!table) {
-        throw new GraphQLError("This restaurant doesn't have this table", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
-
-      // Check sức chứa
-      if (partySize > table.capacity) {
-        throw new GraphQLError(
-          `Party size (${partySize}) exceeds table capacity (${table.capacity}).`,
-          { extensions: { code: "CAPACITY_EXCEEDED" } }
-        );
-      }
-
-      const effectiveDuration =
-        typeof durationMinutes === "number" && durationMinutes > 0
-          ? durationMinutes
-          : 90;
-
-      await ensureTableAvailableForTime(
-        tableId,
-        timeTo,
-        effectiveDuration,
-        null
-      );
-
-      const userId = await resolveUserIdFromContact({
-        customerName,
-        customerPhone,
-        customerEmail,
-      });
-
-      // Xác định trạng thái đơn & cọc dựa trên paid + depositAmount
-      let depositStatus;
-      let reservationStatus;
-
-      if (paid === true) {
-        // Đã thanh toán
-        depositStatus = "paid";
-        reservationStatus = "confirmed";
-      } else if (depositAmount > 0) {
-        // Có cọc nhưng chưa thanh toán
-        depositStatus = "pending";
-        reservationStatus = "pending_payment";
-      } else {
-        // Không cọc
-        depositStatus = "unpaid";
-        reservationStatus = "confirmed";
-      }
-
-      const doc = new Reservation({
-        restaurantId: toObjectId(restaurantId),
-        restaurantName: restaurant.name || "",
-        tableId: toObjectId(tableId),
-        userId,
-
-        timeTo: new Date(timeTo),
-        durationMinutes: effectiveDuration,
-
-        partySize,
-        note: note || "",
-        customerName: customerName?.trim(),
-        customerPhone: customerPhone?.trim() || null,
-        customerEmail: customerEmail?.trim() || null,
-
-        depositAmount,
-        depositStatus,
-        status: reservationStatus,
-        // orderCode, pendingPaymentExpiresAt sẽ do pre-save trong model tự xử lý
-      });
-
-      const saved = await doc.save();
-
-      // Đánh dấu bàn đã được đặt:
-      // - Nếu đã paid => "reserved"
-      // - Nếu chưa paid => "payment_pending" (hành vi cũ)
-      await markTableReserved(tableId, paid ? "reserved" : "payment_pending");
-
-      if (isLateBooking) {
-        saved._warning =
-          "⏰ Giờ đến gần giờ đóng cửa — thời gian phục vụ có thể bị giới hạn.";
-      }
-      return saved;
-    } catch (err) {
-      if (err instanceof GraphQLError) throw err;
-      throw new GraphQLError(err.message || "Failed to create reservation", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
-    }
-  },
-
-  /* ───────────────── updateReservation (sửa thông tin) ───────────────── */
-  async updateReservation(_, { input }, _ctx) {
-    try {
-      const {
-        id,
-        timeTo,
-        durationMinutes,
-        partySize,
-        note,
-        customerName,
-        customerPhone,
-        customerEmail,
-      } = input || {};
-
-      if (!id) {
-        throw new GraphQLError("Missing reservation id", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
-
-      const current = await Reservation.findById(toObjectId(id));
-      if (!current) {
-        throw new GraphQLError("Reservation not found", {
-          extensions: { code: "NOT_FOUND" },
-        });
-      }
-
-      const table = await Table.findById(current.tableId).lean();
-      if (!table) {
-        throw new GraphQLError("Table not found", {
-          extensions: { code: "NOT_FOUND" },
-        });
-      }
-
-      const update = {};
-      let nextTimeTo = current.timeTo;
-      let nextDuration =
-        typeof current.durationMinutes === "number" &&
-        current.durationMinutes > 0
-          ? current.durationMinutes
-          : 90;
-      let nextPartySize = current.partySize;
-
-      if (typeof partySize === "number" && partySize > 0) {
-        nextPartySize = partySize;
-        update.partySize = partySize;
-      }
-      if (typeof note === "string") update.note = note;
-      if (typeof customerName === "string")
-        update.customerName = customerName.trim();
-      if (typeof customerPhone === "string")
-        update.customerPhone = customerPhone.trim();
-      if (typeof customerEmail === "string")
-        update.customerEmail = customerEmail.trim();
-      if (typeof durationMinutes === "number" && durationMinutes > 0) {
-        nextDuration = durationMinutes;
-        update.durationMinutes = durationMinutes;
-      }
-      if (timeTo) {
-        nextTimeTo = new Date(timeTo);
-        update.timeTo = nextTimeTo;
-      }
-
-      // Check capacity nếu partySize thay đổi
-      if (nextPartySize > table.capacity) {
-        throw new GraphQLError(
-          `Party size (${nextPartySize}) exceeds table capacity (${table.capacity}).`,
-          { extensions: { code: "CAPACITY_EXCEEDED" } }
-        );
-      }
-
-      // Nếu timeTo hoặc durationMinutes thay đổi → check conflict
-      if (timeTo || durationMinutes) {
-        const restaurant = await getRestaurantOrThrow(current.restaurantId);
-        validateAgainstClosingHours(restaurant, nextTimeTo);
-        await ensureTableAvailableForTime(
-          current.tableId,
-          nextTimeTo,
-          nextDuration,
-          current._id
-        );
-      }
-
-      const saved = await Reservation.findByIdAndUpdate(current._id, update, {
-        new: true,
-        runValidators: true,
-      });
-
-      return saved;
-    } catch (err) {
-      if (err instanceof GraphQLError) throw err;
-      throw new GraphQLError(err.message || "Failed to update reservation", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
-    }
-  },
-
-  /* ───────────────── changeReservationTable (đổi bàn) ───────────────── */
-  async changeReservationTable(_, { input }, _ctx) {
-    try {
-      const {
-        id,
-        newRestaurantId,
-        newTableId,
-        acceptPenalty = false,
-        note,
-      } = input || {};
-      if (!id || !newTableId) {
-        throw new GraphQLError("Missing id or newTableId", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
-
-      const current = await Reservation.findById(toObjectId(id));
-      if (!current) {
-        throw new GraphQLError("Reservation not found", {
-          extensions: { code: "NOT_FOUND" },
-        });
-      }
-
-      const targetRestaurantId = newRestaurantId || current.restaurantId;
-
-      const restaurant = await getRestaurantOrThrow(targetRestaurantId);
-      validateAgainstClosingHours(restaurant, current.timeTo);
-
-      const newTable = await getTableOrThrow(newTableId, targetRestaurantId);
-
-      // Check capacity: số người hiện tại phải <= sức chứa bàn mới
-      if (current.partySize > newTable.capacity) {
-        throw new GraphQLError(
-          `Party size (${current.partySize}) exceeds new table capacity (${newTable.capacity}).`,
-          { extensions: { code: "CAPACITY_EXCEEDED" } }
-        );
-      }
-
-      const effectiveDuration =
-        typeof current.durationMinutes === "number" &&
-        current.durationMinutes > 0
-          ? current.durationMinutes
-          : 90;
-
-      // Bàn mới phải rảnh trong khoảng thời gian của reservation hiện tại
-      await ensureTableAvailableForTime(
-        newTable._id,
-        current.timeTo,
-        effectiveDuration,
-        current._id
-      );
-
-      const isChangeRestaurant =
-        String(targetRestaurantId) !== String(current.restaurantId);
-
-      const update = {
-        tableId: toObjectId(newTableId),
-        restaurantId: toObjectId(targetRestaurantId),
-        restaurantName: restaurant.name || current.restaurantName,
-      };
-
-      let appendedNote = note ? note.trim() : "";
-
-      update.status = "pending_change";
-      appendedNote +=
-        (appendedNote ? " " : "") +
-        (isChangeRestaurant
-          ? acceptPenalty
-            ? "Khách đã chấp nhận điều kiện đổi nhà hàng: có thể khấu trừ 50% tiền cọc khi xác nhận."
-            : "Yêu cầu đổi sang nhà hàng khác. Khi nhà hàng xác nhận đổi có thể áp dụng khấu trừ 50% tiền cọc."
-          : "Yêu cầu đổi bàn trong cùng nhà hàng. Vui lòng đợi nhà hàng xác nhận.");
-
-      if (appendedNote) {
-        update.note = current.note
-          ? `${current.note}\n${appendedNote}`
-          : appendedNote;
-      }
-
-      const oldTableId = current.tableId;
-
-      const saved = await Reservation.findByIdAndUpdate(current._id, update, {
-        new: true,
-        runValidators: true,
-      });
-
-      // Đánh dấu bàn mới reserved (mặc định vẫn payment_pending)
-      await markTableReserved(newTableId);
-      await tryReleaseTable(oldTableId);
-
-      return saved;
-    } catch (err) {
-      if (err instanceof GraphQLError) throw err;
-      throw new GraphQLError(err.message || "Failed to change table", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
-    }
-  },
-
-  /* ───────────────── updateReservationStatus (trạng thái đơn & cọc) ───────────────── */
-  async updateReservationStatus(_, { input }, _ctx) {
-    try {
-      const { id, status, depositStatus, depositTxnId } = input || {};
-      if (!id) {
-        throw new GraphQLError("Missing reservation id", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
-
-      const update = {};
-      if (status) update.status = status;
-      if (depositStatus) update.depositStatus = depositStatus;
-      if (depositTxnId) update.depositTxnId = toObjectId(depositTxnId);
-
-      const saved = await Reservation.findByIdAndUpdate(
-        toObjectId(id),
-        update,
-        {
-          new: true,
-          runValidators: true,
+      let created = null;
+      await session.withTransaction(async () => {
+        const userId = ctx?.user?.id;
+        if (!mongoose.isValidObjectId(userId)) {
+          throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
         }
-      );
 
-      if (!saved) {
-        throw new GraphQLError("Reservation not found", {
-          extensions: { code: "NOT_FOUND" },
+        const user = await User.findById(userId).lean();
+        if (!user) throw new GraphQLError("User not found", { extensions: { code: "NOT_FOUND" } });
+
+        const restaurant = await getRestaurantOrThrow(input.restaurantId);
+        const table = await getTableOrThrow(input.tableId, input.restaurantId);
+
+        if (["offline", "occupied", "cleaning"].includes(table.status)) {
+          throw new GraphQLError("Table is not available", { extensions: { code: "TABLE_UNAVAILABLE" } });
+        }
+
+        if (Number(input.partySize || 2) > Number(table.capacity || 0)) {
+          throw new GraphQLError("Số lượng khách vượt sức chứa của bàn", {
+            extensions: { code: "CAPACITY_EXCEEDED" },
+          });
+        }
+
+        const isUnlimitedTime = !!input.isUnlimitedTime;
+        if (isUnlimitedTime && !userCanUseUnlimited(user)) {
+          throw new GraphQLError("Tài khoản basic không được phép chọn không giới hạn thời gian", {
+            extensions: { code: "FORBIDDEN" },
+          });
+        }
+
+        const arrival = new Date(input.timeTo);
+        if (!input.timeTo || Number.isNaN(arrival.getTime())) {
+          throw new GraphQLError("timeTo không hợp lệ", { extensions: { code: "BAD_USER_INPUT" } });
+        }
+
+        const durationMinutes = normalizeDuration({
+          durationMinutes: input.durationMinutes,
+          isUnlimitedTime,
         });
-      }
 
-      return saved;
-    } catch (err) {
-      if (err instanceof GraphQLError) throw err;
-      throw new GraphQLError(err.message || "Failed to update reservation", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
+        validateOpenClose(restaurant, arrival, durationMinutes, isUnlimitedTime);
+
+        await ensureNoActiveViewLock(input.tableId, userId);
+        await ensureNoTableConflict({
+          tableId: input.tableId,
+          timeTo: arrival,
+          durationMinutes,
+          isUnlimitedTime,
+        });
+
+        const policy = restaurant?.reservationSettings || {};
+        const depositAmount =
+          Number(input.depositAmount) > 0
+            ? Number(input.depositAmount)
+            : computeDeposit({
+                baseDeposit: policy.baseDepositAmount || table.deposit || 0,
+                linkedMenuSubtotal: input.linkedMenuSubtotal || 0,
+                menuDepositPercent: policy.menuDepositPercent || 50,
+              });
+
+        const paymentMethod = String(input.paymentMethod || "transfer");
+        const paidNow = paymentMethod === "cash" && depositAmount > 0;
+
+        created = await Reservation.create(
+          [
+            {
+              restaurantId: toObjectId(input.restaurantId, "restaurantId"),
+              restaurantName: restaurant.name || "",
+              tableId: toObjectId(input.tableId, "tableId"),
+              userId: toObjectId(userId, "userId"),
+              timeTo: arrival,
+              durationMinutes,
+              isUnlimitedTime,
+              customerName: input.customerName || user.fullName || "",
+              customerPhone: input.customerPhone || user.phone || "",
+              customerEmail: input.customerEmail || user.email || "",
+              partySize: Number(input.partySize || 2),
+              note: input.note || "",
+              linkedMenuSubtotal: Number(input.linkedMenuSubtotal || 0),
+              depositAmount,
+              depositStatus:
+                depositAmount <= 0 ? "unpaid" : paidNow ? "paid" : "pending",
+              paymentMethod,
+              paymentReference: input.paymentReference || null,
+              status:
+                depositAmount <= 0 || paidNow ? "confirmed" : "pending_payment",
+            },
+          ],
+          { session }
+        ).then((x) => x[0]);
+
+        await Table.updateOne(
+          { _id: created.tableId },
+          { $set: { status: created.status === "pending_payment" ? "payment_pending" : "reserved" }, $unset: { viewLock: 1 } },
+          { session }
+        );
+
+        await EventLog.log(
+          {
+            restaurantId: created.restaurantId,
+            verb: "reservation.create",
+            actorUserId: userId,
+            object: { kind: "Reservation", id: created._id },
+            target: { kind: "Table", id: created.tableId },
+            source: "customer_app",
+            status: "success",
+            meta: {
+              orderCode: created.orderCode,
+              tableId: String(created.tableId),
+              depositAmount: created.depositAmount,
+              paymentMethod,
+              isUnlimitedTime,
+            },
+          },
+          { session }
+        );
       });
+
+      return created;
+    } finally {
+      await session.endSession();
     }
   },
 
-  /* ───────────────── cancelReservation ───────────────── */
-  async cancelReservation(_, { id }, _ctx) {
-    try {
-      if (!id) {
-        throw new GraphQLError("Missing reservation id", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
+  async updateReservation(_, { input }, ctx) {
+    const current = await Reservation.findById(toObjectId(input.id, "reservationId"));
+    if (!current) throw new GraphQLError("Reservation not found", { extensions: { code: "NOT_FOUND" } });
 
-      const current = await Reservation.findById(toObjectId(id));
-      if (!current) {
-        throw new GraphQLError("Reservation not found", {
-          extensions: { code: "NOT_FOUND" },
-        });
-      }
+    const userId = ctx?.user?.id;
+    if (!userId || String(current.userId) !== String(userId)) {
+      throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
+    }
 
-      current.status = "cancelled";
-      const saved = await current.save();
+    const restaurant = await getRestaurantOrThrow(current.restaurantId);
+    const table = await getTableOrThrow(current.tableId, current.restaurantId);
 
-      // Thử giải phóng bàn (nếu không còn reservation active nào khác)
-      await tryReleaseTable(current.tableId);
-
-      return saved;
-    } catch (err) {
-      if (err instanceof GraphQLError) throw err;
-      throw new GraphQLError(err.message || "Failed to cancel reservation", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
+    const isUnlimitedTime = input.isUnlimitedTime ?? current.isUnlimitedTime;
+    const user = await User.findById(userId).lean();
+    if (isUnlimitedTime && !userCanUseUnlimited(user)) {
+      throw new GraphQLError("Tài khoản basic không được phép chọn không giới hạn thời gian", {
+        extensions: { code: "FORBIDDEN" },
       });
     }
+
+    const nextTimeTo = input.timeTo ? new Date(input.timeTo) : new Date(current.timeTo);
+    const durationMinutes = normalizeDuration({ durationMinutes: input.durationMinutes ?? current.durationMinutes, isUnlimitedTime });
+
+    if (Number(input.partySize ?? current.partySize) > Number(table.capacity || 0)) {
+      throw new GraphQLError("Số lượng khách vượt sức chứa của bàn", { extensions: { code: "CAPACITY_EXCEEDED" } });
+    }
+
+    validateOpenClose(restaurant, nextTimeTo, durationMinutes, isUnlimitedTime);
+    await ensureNoTableConflict({
+      tableId: current.tableId,
+      timeTo: nextTimeTo,
+      durationMinutes,
+      isUnlimitedTime,
+      exceptId: current._id,
+    });
+
+    Object.assign(current, {
+      timeTo: nextTimeTo,
+      durationMinutes,
+      isUnlimitedTime,
+      partySize: input.partySize ?? current.partySize,
+      note: input.note ?? current.note,
+      customerName: input.customerName ?? current.customerName,
+      customerPhone: input.customerPhone ?? current.customerPhone,
+      customerEmail: input.customerEmail ?? current.customerEmail,
+    });
+
+    await current.save();
+    return current;
   },
 
-  /* ───────────────── deleteReservation ───────────────── */
-  async deleteReservation(_, { id }, _ctx) {
-    try {
-      if (!id) {
-        throw new GraphQLError("Missing reservation id", {
-          extensions: { code: "BAD_USER_INPUT" },
-        });
-      }
+  async changeReservationTable(_, { input }, ctx) {
+    const current = await Reservation.findById(toObjectId(input.id, "reservationId"));
+    if (!current) throw new GraphQLError("Reservation not found", { extensions: { code: "NOT_FOUND" } });
 
-      const current = await Reservation.findById(toObjectId(id));
-      if (!current) {
-        throw new GraphQLError("Reservation not found", {
-          extensions: { code: "NOT_FOUND" },
-        });
-      }
-
-      // Change status to 'deleted'
-      current.status = "no_show";
-      const saved = await current.save();
-
-      // Try to release the table if no other active reservations exist
-      await tryReleaseTable(current.tableId);
-
-      return saved;
-    } catch (err) {
-      if (err instanceof GraphQLError) throw err;
-      throw new GraphQLError(err.message || "Failed to delete reservation", {
-        extensions: { code: "INTERNAL_SERVER_ERROR" },
-      });
+    const userId = ctx?.user?.id;
+    if (!userId || String(current.userId) !== String(userId)) {
+      throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
     }
+
+    const targetRestaurantId = input.newRestaurantId || current.restaurantId;
+    const targetTable = await getTableOrThrow(input.newTableId, targetRestaurantId);
+    if (current.partySize > targetTable.capacity) {
+      throw new GraphQLError("Số lượng khách vượt sức chứa của bàn mới", { extensions: { code: "CAPACITY_EXCEEDED" } });
+    }
+
+    await ensureNoTableConflict({
+      tableId: targetTable._id,
+      timeTo: current.timeTo,
+      durationMinutes: current.durationMinutes,
+      isUnlimitedTime: current.isUnlimitedTime,
+      exceptId: current._id,
+    });
+
+    const restaurant = await getRestaurantOrThrow(targetRestaurantId);
+    const fee = Number(restaurant?.reservationSettings?.changeTableFee || 0);
+
+    current.changeRequestType = "table";
+    current.changeRequestStatus = "requested";
+    current.changeRequestFee = fee;
+    current.requestedTableId = targetTable._id;
+    current.note = [current.note, input.note].filter(Boolean).join("\n");
+    current.status = "pending_change";
+
+    await current.save();
+    return current;
+  },
+
+  async requestReservationChange(_, { input }, ctx) {
+    const current = await Reservation.findById(toObjectId(input.reservationId, "reservationId"));
+    if (!current) throw new GraphQLError("Reservation not found", { extensions: { code: "NOT_FOUND" } });
+
+    const userId = ctx?.user?.id;
+    if (!userId || String(current.userId) !== String(userId)) {
+      throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } });
+    }
+
+    const restaurant = await getRestaurantOrThrow(current.restaurantId);
+
+    const type = String(input.type || "").toLowerCase();
+    if (!['time', 'table'].includes(type)) {
+      throw new GraphQLError("type must be 'time' or 'table'", { extensions: { code: "BAD_USER_INPUT" } });
+    }
+
+    current.changeRequestType = type;
+    current.changeRequestStatus = "requested";
+    current.changeRequestFee = Number(
+      type === "time"
+        ? restaurant?.reservationSettings?.changeTimeFee || 0
+        : restaurant?.reservationSettings?.changeTableFee || 0
+    );
+
+    if (type === "time") {
+      if (!input.requestedTimeTo) {
+        throw new GraphQLError("requestedTimeTo is required for time change", { extensions: { code: "BAD_USER_INPUT" } });
+      }
+      current.requestedTimeTo = new Date(input.requestedTimeTo);
+      current.requestedDurationMinutes = Number(input.requestedDurationMinutes || current.durationMinutes || 60);
+    } else {
+      if (!input.requestedTableId || !mongoose.isValidObjectId(input.requestedTableId)) {
+        throw new GraphQLError("requestedTableId is required for table change", { extensions: { code: "BAD_USER_INPUT" } });
+      }
+      current.requestedTableId = toObjectId(input.requestedTableId, "requestedTableId");
+    }
+
+    current.note = [current.note, input.note].filter(Boolean).join("\n");
+    current.status = "pending_change";
+    await current.save();
+    return current;
+  },
+
+  async updateReservationStatus(_, { input }) {
+    const current = await Reservation.findById(toObjectId(input.id, "reservationId"));
+    if (!current) throw new GraphQLError("Reservation not found", { extensions: { code: "NOT_FOUND" } });
+
+    if (input.status) current.status = input.status;
+    if (input.depositStatus) current.depositStatus = input.depositStatus;
+    if (input.depositTxnId) current.depositTxnId = toObjectId(input.depositTxnId, "depositTxnId");
+    if (input.paymentMethod) current.paymentMethod = input.paymentMethod;
+    if (input.paymentReference) current.paymentReference = input.paymentReference;
+
+    await current.save();
+    await updateTableStatusByReservation(current.tableId);
+    return current;
+  },
+
+  async submitReservationPayment(_, { input }, ctx) {
+    const { reservationId, method, paymentStatus, externalRef } = input || {};
+    const reservation = await Reservation.findById(toObjectId(reservationId, "reservationId"));
+    if (!reservation) throw new GraphQLError("Reservation not found", { extensions: { code: "NOT_FOUND" } });
+
+    const normMethod = String(method || "transfer").toLowerCase();
+    const pStatus = String(paymentStatus || "pending").toLowerCase();
+
+    reservation.paymentMethod = normMethod;
+    reservation.paymentReference = externalRef || null;
+
+    if (pStatus === "paid") {
+      reservation.depositStatus = "paid";
+      reservation.status = "confirmed";
+    } else if (pStatus === "pending") {
+      reservation.depositStatus = "pending";
+      reservation.status = "pending_payment";
+    } else {
+      reservation.depositStatus = "failed";
+      reservation.status = "cancelled";
+    }
+
+    await reservation.save();
+
+    if (pStatus === "paid") {
+      await Table.updateOne({ _id: reservation.tableId }, { $set: { status: "reserved" } });
+    } else if (pStatus === "failed") {
+      await updateTableStatusByReservation(reservation.tableId);
+    } else {
+      await Table.updateOne({ _id: reservation.tableId }, { $set: { status: "payment_pending" } });
+    }
+
+    if (pStatus === "paid") {
+      const trx = await PaymentTransaction.create({
+        restaurantId: reservation.restaurantId,
+        orderIds: [],
+        paidAmount: reservation.depositAmount,
+        method: normMethod,
+        status: "SUCCESS",
+        paidAt: new Date(),
+        note: `Reservation deposit ${reservation.orderCode}`,
+        externalRef,
+        createdBy: ctx?.user?.id,
+      });
+      reservation.depositTxnId = trx._id;
+      await reservation.save();
+    }
+
+    return reservation;
+  },
+
+  async cancelReservation(_, { id }) {
+    const current = await Reservation.findById(toObjectId(id, "reservationId"));
+    if (!current) throw new GraphQLError("Reservation not found", { extensions: { code: "NOT_FOUND" } });
+    current.status = "cancelled";
+    if (current.depositStatus === "pending") current.depositStatus = "cancelled";
+    await current.save();
+    await updateTableStatusByReservation(current.tableId);
+    return current;
+  },
+
+  async deleteReservation(_, { id }) {
+    const current = await Reservation.findById(toObjectId(id, "reservationId"));
+    if (!current) throw new GraphQLError("Reservation not found", { extensions: { code: "NOT_FOUND" } });
+    current.status = "no_show";
+    await current.save();
+    await updateTableStatusByReservation(current.tableId);
+    return current;
   },
 };

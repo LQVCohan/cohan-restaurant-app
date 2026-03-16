@@ -14,6 +14,15 @@ const addressSchema = new mongoose.Schema({
   lng: Number,
 });
 
+const reservationSettingsSchema = new mongoose.Schema({
+  baseDepositAmount: { type: Number, default: 0, min: 0 },
+  menuDepositPercent: { type: Number, default: 50, min: 0, max: 100 },
+  changeTimeFee: { type: Number, default: 0, min: 0 },
+  changeTableFee: { type: Number, default: 0, min: 0 },
+  vatRate: { type: Number, default: 0, min: 0, max: 1 },
+  serviceFee: { type: Number, default: 0, min: 0 },
+}, { _id: false });
+
 const restaurantSchema = BaseSchemaModel({
   name: { type: String, required: true },
   avatar: String,
@@ -40,6 +49,8 @@ const restaurantSchema = BaseSchemaModel({
     default: 0,
   },
   status: { type: String, enum: ["active", "inactive"], default: "active" },
+  reservationSettings: { type: reservationSettingsSchema, default: () => ({}) },
+
   managerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",

@@ -30,6 +30,10 @@ type Floor {
   meta: FloorMeta
   createdAt: DateTime
   updatedAt: DateTime
+  viewLockUserId: ID
+  viewLockExpiresAt: DateTime
+  isViewingLocked: Boolean
+  viewLockViewerName: String
 }
 
 type FloorMeta {
@@ -107,6 +111,10 @@ type Table {
   joinGroupId: String
   createdAt: DateTime
   updatedAt: DateTime
+  viewLockUserId: ID
+  viewLockExpiresAt: DateTime
+  isViewingLocked: Boolean
+  viewLockViewerName: String
 }
 
 input CreateTableInput {
@@ -247,4 +255,18 @@ extend type Mutation {
   setTableStatus(input: SetTableStatusInput!): Table! # đổi trạng thái nhanh
   swapTableCodes(input: SwapTableCodesInput!): Boolean! # hoán đổi code giữa 2 bàn
   bulkUpsertTables(input: BulkUpsertTablesInput!): Int! # trả về số bàn upsert
+}
+
+
+input AcquireTableViewLockInput {
+  tableId: ID!
+  userId: ID
+  sessionId: String
+  viewerName: String
+}
+
+input ReleaseTableViewLockInput {
+  tableId: ID!
+  userId: ID
+  sessionId: String
 }

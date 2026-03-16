@@ -45,6 +45,10 @@ const Q_TABLES = gql`
         y
       }
       status
+      isViewingLocked
+      viewLockUserId
+      viewLockExpiresAt
+      viewLockViewerName
     }
   }
 `;

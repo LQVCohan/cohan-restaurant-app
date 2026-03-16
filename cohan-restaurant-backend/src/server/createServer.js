@@ -13,7 +13,7 @@ import buildContext from "../../graphql/context.js";
 import uploadRoutes from "./plugins/upload.route.js";
 import { createLoaders } from "../../graphql/loaders/index.js";
 import cron from "node-cron";
-import { autoCancelExpiredReservations } from "../services/reservationAutoCancel.service.js";
+import { autoCancelExpiredReservations, cleanupExpiredTableViewLocks } from "../services/reservationAutoCancel.service.js";
 import { cleanupExpiredCartHolds } from "../services/cartHoldCleanup.service.js";
 import {
   predictTableTurnover,
@@ -318,6 +318,7 @@ export async function createServer() {
   cron.schedule("* * * * *", async () => {
     try {
       const result = await autoCancelExpiredReservations();
+      await cleanupExpiredTableViewLocks();
       if (result?.modifiedCount) {
         app.log.info(
           `[Reservation AutoCancel] Cancelled ${result.modifiedCount} expired reservations`
