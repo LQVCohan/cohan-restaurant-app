@@ -440,6 +440,51 @@ async function findLowStocks({
   return q3.lean({ virtuals: true });
 }
 
+
+export async function checkAvailabilityForLinesTx({
+  restaurantId,
+  warehouseId,
+  lines,
+  session,
+}) {
+  return withOptionalTransaction(session, async (sesh) => {
+    const normalizedLines = Array.isArray(lines) ? lines : [];
+    if (!normalizedLines.length) return { isAvailable: true, maxAvailable: 0, shortages: [] };
+
+    const needs = await buildNeeds({ restaurantId, lines: normalizedLines, session: sesh });
+    const ingredientIds = Array.from(needs.keys());
+    if (!ingredientIds.length) return { isAvailable: true, maxAvailable: Number.MAX_SAFE_INTEGER, shortages: [] };
+
+    let q = StockItem.find({ restaurantId, warehouseId, ingredientId: { $in: ingredientIds } }).select({ ingredientId: 1, onHand: 1, reserved: 1 });
+    if (sesh) q = q.session(sesh);
+    const stocks = await q.lean();
+    const stockMap = new Map(stocks.map((st) => [String(st.ingredientId), st]));
+
+    let maxAvailable = Number.MAX_SAFE_INTEGER;
+    const shortages = [];
+
+    for (const [ingredientId, info] of needs) {
+      const need = Number(info.total || 0);
+      if (!(need > 0)) continue;
+      const st = stockMap.get(String(ingredientId));
+      const available = Math.max(0, Number(st?.onHand || 0) - Number(st?.reserved || 0));
+      const maxByIngredient = Math.floor(available / need);
+      if (maxByIngredient < maxAvailable) maxAvailable = maxByIngredient;
+      if (available < need) {
+        shortages.push({ ingredientId, available, required: need, missing: need - available });
+      }
+    }
+
+    if (maxAvailable === Number.MAX_SAFE_INTEGER) maxAvailable = 0;
+
+    return {
+      isAvailable: shortages.length === 0,
+      maxAvailable,
+      shortages,
+    };
+  });
+}
+
 /* ---------------- Public APIs ---------------- */
 
 // Reserve: reserved += needInt

@@ -10,6 +10,26 @@ type Address {
   lng: Float
 }
 
+
+
+type ReservationSettings {
+  baseDepositAmount: Float
+  menuDepositPercent: Float
+  changeTimeFee: Float
+  changeTableFee: Float
+  vatRate: Float
+  serviceFee: Float
+}
+
+input ReservationSettingsInput {
+  baseDepositAmount: Float
+  menuDepositPercent: Float
+  changeTimeFee: Float
+  changeTableFee: Float
+  vatRate: Float
+  serviceFee: Float
+}
+
 type Restaurant {
   id: ID!
   name: String!
@@ -38,6 +58,7 @@ type Restaurant {
   orderCount: Int
   reservationCount: Int
   tableParticipationCount: Int
+  reservationSettings: ReservationSettings
 }
 
 input RestaurantFilter {
@@ -156,6 +177,7 @@ input CreateRestaurantInput {
   cuisineType: String
   status: String
   managerId: ID!
+  reservationSettings: ReservationSettingsInput
 }
 
 input UpdateRestaurantInput {
@@ -178,11 +200,13 @@ input UpdateRestaurantInput {
   notesOnAmenities: String
   cuisineType: String
   status: String
+  reservationSettings: ReservationSettingsInput
 }
 
 input UpdateRestaurantManagerInput {
   restaurantId: ID!
   managerId: ID!
+  reservationSettings: ReservationSettingsInput
 }
 
 

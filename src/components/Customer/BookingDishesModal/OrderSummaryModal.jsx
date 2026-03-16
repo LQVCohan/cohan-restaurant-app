@@ -53,16 +53,24 @@ const RESTAURANT_BY_ID = gql`
   }
 `;
 
-const CREATE_ORDER = gql`
-  mutation CreateOrder($input: CreateOrderInput!) {
-    createOrder(input: $input) {
-      id
-      orderCode
-      restaurantId
-      totals {
+const CREATE_CHECKOUT_ORDERS = gql`
+  mutation CreateCheckoutOrders($input: CreateCheckoutOrdersInput!) {
+    createCheckoutOrders(input: $input) {
+      checkout {
+        checkoutCode
         grandTotal
+        orderIds
       }
-      currentStatus
+      orders {
+        id
+        orderCode
+        parentOrderCode
+        restaurantId
+        totals {
+          grandTotal
+        }
+        currentStatus
+      }
     }
   }
 `;
@@ -93,7 +101,7 @@ const OrderSummaryModal = ({
   const [orderInfo, setOrderInfo] = useState({ id: "", time: "" });
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  const [createOrder] = useMutation(CREATE_ORDER);
+  const [createCheckoutOrders] = useMutation(CREATE_CHECKOUT_ORDERS);
 
   const [shipping, setShipping] = useState(DEFAULT_SHIPPING());
   const [shippingTouched, setShippingTouched] = useState(false);
@@ -274,70 +282,50 @@ const OrderSummaryModal = ({
     return "delivery";
   };
 
-  const genOrderCode = () =>
-    "OC" + Math.random().toString(36).slice(2, 8).toUpperCase();
 
-  const buildInputForRestaurant = useCallback(
-    (rid, itemsOfGroup, shippingArg, paymentMethod, orderCode) => {
-      const base = {
-        orderCode,
-        restaurantId: rid,
-        orderType: mapDeliveryToOrderType(shippingArg?.deliveryMethod),
-        shipping: shippingArg,
-        paymentMethod,
-        items: itemsOfGroup.map((i) => ({
-          dishId: i.dishId,
-          menuId: i.menuId,
-          categoryId: i.categoryId,
-          name: i.name,
-          unit: i.unit || "phần",
-          image: typeof i.image === "string" ? i.image : undefined,
-          price: i.price,
-          modifiersPrice: i.modifiersPrice || 0,
-          method: i.cookingMethod || "",
-          methodDelta: i.methodDelta || 0,
-          description: i.description || "",
-          quantity: i.quantity,
-          modifiers: (i.modifiers || []).map((m) => ({
-            optionId: m.optionId,
-            optionName: m.optionName,
-            groupId: m.groupId,
-            price: m.price || 0,
-          })),
-        })),
-      };
-      if (!isAuthenticated) {
-        base.customer = {
-          fullName: shippingArg?.fullName || undefined,
-          phone: shippingArg?.phone || undefined,
-          email: shippingArg?.email || undefined,
-        };
-      }
-      return base;
-    },
-    [isAuthenticated],
-  );
 
   const persistAllOrders = useCallback(
     async (paymentMethod) => {
-      const code = genOrderCode();
-      const calls = Array.from(groupedByRestaurant.entries()).map(
-        ([rid, items]) => {
-          const input = buildInputForRestaurant(
-            rid,
-            items,
-            shipping,
-            paymentMethod,
-            code,
-          );
-          return createOrder({ variables: { input } });
-        },
-      );
-      const results = await Promise.all(calls);
-      const created = results.map((r) => r?.data?.createOrder).filter(Boolean);
-      return { orderCode: code, orders: created };
+      const checkoutItems = orderData.map((i) => ({
+        restaurantId: i.restaurantId,
+        dishId: i.dishId,
+        menuId: i.menuId,
+        categoryId: i.categoryId,
+        name: i.name,
+        unit: i.unit || "phần",
+        image: typeof i.image === "string" ? i.image : undefined,
+        quantity: i.quantity,
+        servingKey: i.servingKey || "portion",
+        note: i.description || undefined,
+        selectedModifiers: (i.modifiers || []).map((m) => ({
+          groupId: m.groupId,
+          optionId: m.optionId,
+        })),
+      }));
+
+      const input = {
+        orderType: mapDeliveryToOrderType(shipping?.deliveryMethod),
+        items: checkoutItems,
+        shipping,
+        paymentMethod,
+        pricing: { taxRate: ORDER_VAT_RATE },
+        note: shipping?.note || undefined,
+        idempotencyKey: `checkout-${orderInfo.id}`,
+      };
+
+      if (!isAuthenticated) {
+        input.customer = {
+          fullName: shipping?.fullName || undefined,
+          phone: shipping?.phone || undefined,
+          email: shipping?.email || undefined,
+        };
+      }
+
+      const res = await createCheckoutOrders({ variables: { input } });
+      const created = res?.data?.createCheckoutOrders?.orders || [];
+      return { orderCode: res?.data?.createCheckoutOrders?.checkout?.checkoutCode, orders: created };
     },
-    [groupedByRestaurant, buildInputForRestaurant, shipping, createOrder],
+    [orderData, shipping, isAuthenticated, createCheckoutOrders, orderInfo.id],
   );
 
   const setAndShowSuccess = (createdOrders) => {
@@ -1057,7 +1045,7 @@ const SuccessScreen = ({ onNewOrder }) => (
   </div>
 );
 
-const QRPaymentScreen = ({ amount, onConfirm, isProcessing }) => (
+const QRPaymentScreen = ({ amount }) => (
   <div className="section text-center">
     <div className="qr-payment-screen">
       <h3 className="qr-title">Quét mã QR để thanh toán</h3>

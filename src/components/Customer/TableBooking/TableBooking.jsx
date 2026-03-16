@@ -16,6 +16,26 @@ import { AuthContext } from "../../../context/AuthContext";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import "./TableBooking.scss";
 
+const ACQUIRE_TABLE_VIEW_LOCK = gql`
+  mutation AcquireTableViewLock($input: AcquireTableViewLockInput!) {
+    acquireTableViewLock(input: $input) {
+      id
+      isViewingLocked
+      viewLockUserId
+      viewLockExpiresAt
+      viewLockViewerName
+    }
+  }
+`;
+
+const RELEASE_TABLE_VIEW_LOCK = gql`
+  mutation ReleaseTableViewLock($input: ReleaseTableViewLockInput!) {
+    releaseTableViewLock(input: $input) {
+      id
+    }
+  }
+`;
+
 const UPDATE_FLOOR_WATCHING = gql`
   mutation UpdateFloorWatching($id: ID!, $isWatching: Boolean) {
     updateFloor(input: { id: $id, isWatching: $isWatching }) {
@@ -42,6 +62,8 @@ const TableBooking = () => {
   const fromMenu = new URLSearchParams(search).get("fromMenu") === "1";
 
   const [updateFloorWatching] = useMutation(UPDATE_FLOOR_WATCHING);
+  const [acquireTableViewLock] = useMutation(ACQUIRE_TABLE_VIEW_LOCK);
+  const [releaseTableViewLock] = useMutation(RELEASE_TABLE_VIEW_LOCK);
 
   const {
     floors,
@@ -97,16 +119,51 @@ const TableBooking = () => {
     };
   }, [activeFloorData?.id, canToggleWatching, updateFloorWatching]);
 
-  const handleSelectTable = (table) => {
-    // Chỉ cho chọn bàn trống
-    if (table.status === "available") {
+  const handleSelectTable = async (table) => {
+    if (table.status !== "available") return;
+
+    const lockedByOther =
+      table.isViewingLocked &&
+      table.viewLockUserId &&
+      String(table.viewLockUserId) !== String(user?.id || "");
+
+    if (lockedByOther) {
+      alert(`Bàn đang được ${table.viewLockViewerName || "khách khác"} xem trong 5 phút.`);
+      return;
+    }
+
+    try {
+      await acquireTableViewLock({
+        variables: {
+          input: {
+            tableId: table.id,
+            userId: user?.id,
+            viewerName: user?.fullName || user?.username || "Khách",
+          },
+        },
+      });
       setSelectedTable(table);
+    } catch (err) {
+      alert(err?.message || "Bàn đang được khách khác xem.");
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (selectedTable?.id && user?.id) {
+        releaseTableViewLock({
+          variables: { input: { tableId: selectedTable.id, userId: user.id } },
+        }).catch(() => {});
+      }
+    };
+  }, [selectedTable?.id, user?.id, releaseTableViewLock]);
 
   const handleBookingConfirmed = (reservation) => {
     setBookingData(reservation);
     setShowBookingModal(false);
+    if (selectedTable?.id && user?.id) {
+      releaseTableViewLock({ variables: { input: { tableId: selectedTable.id, userId: user.id } } }).catch(() => {});
+    }
     const needDeposit = Number(reservation?.depositAmount || 0) > 0;
     needDeposit ? setShowPaymentModal(true) : setShowSuccessModal(true);
   };

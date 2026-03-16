@@ -399,6 +399,8 @@ input CreateOffPremiseOrderInput {
   note: String
   customer: CustomerInput
   shipping: ShippingInput
+  paymentMethod: String
+  pricing: CheckoutPricingInput
   userId: ID
   clientMeta: JSON
   warehouseId: ID
@@ -406,6 +408,58 @@ input CreateOffPremiseOrderInput {
 
 type CreateOffPremiseOrderPayload {
   order: Order!
+}
+
+
+input CheckoutCartItemInput {
+  restaurantId: ID!
+  dishId: ID
+  menuId: ID
+  categoryId: ID
+  name: String!
+  unit: String
+  image: String
+  proofImages: [String]
+  servingKey: String!
+  quantity: Float!
+  weightGrams: Int
+  selectedModifiers: [OrderModifierSelectionInput!]
+  note: String
+  priority: OrderPriority
+}
+
+input CheckoutPricingInput {
+  taxRate: Float
+  serviceRate: Float
+  shippingFee: Int
+  promotionDiscount: Int
+  voucherDiscount: Int
+  voucherCode: String
+}
+
+input CreateCheckoutOrdersInput {
+  orderType: OrderType!
+  items: [CheckoutCartItemInput!]!
+  customer: CustomerInput
+  shipping: ShippingInput
+  paymentMethod: String
+  idempotencyKey: String
+  pricing: CheckoutPricingInput
+  note: String
+  userId: ID
+  clientMeta: JSON
+  warehouseId: ID
+}
+
+type CheckoutSession {
+  checkoutCode: String!
+  orderIds: [ID!]!
+  grandTotal: Int!
+}
+
+type CreateCheckoutOrdersPayload {
+  checkout: CheckoutSession!
+  orders: [Order!]!
 }
 
 input UpdateOrderStatusInput {
@@ -547,6 +601,10 @@ extend type Mutation {
   createOffPremiseOrder(
     input: CreateOffPremiseOrderInput!
   ): CreateOffPremiseOrderPayload!
+
+  createCheckoutOrders(
+    input: CreateCheckoutOrdersInput!
+  ): CreateCheckoutOrdersPayload!
 
   updateOrderStatus(input: UpdateOrderStatusInput!): Order!
 
