@@ -10,6 +10,7 @@ import {
   Recipe,
   Ingredient,
   ModifierGroup,
+  CheckoutSession,
 } from "../../../models/index.js";
 
 import { normalizeItem, toId } from "./helper/orderUtils.js";
@@ -622,7 +623,7 @@ async function hydrateOrderItems({ restaurantId, items, session }) {
 /** =========================
  * Totals from hydrated items
  * ========================= */
-function computeTotalsFromHydratedItems(items = []) {
+function computeTotalsFromHydratedItems(items = [], pricing = {}) {
   let subtotal = 0;
 
   for (const it of items) {
@@ -633,14 +634,14 @@ function computeTotalsFromHydratedItems(items = []) {
 
   subtotal = Math.round(subtotal);
 
-  // NOTE: giữ serviceRate/taxRate/discount/shippingFee như hiện trạng trong model của bạn
-  // Nếu FE/BE có rate riêng, có thể set vào totals trước khi gọi hàm này.
-  const serviceRate = 0;
-  const taxRate = 0;
-  const discount = 0;
-  const shippingFee = 0;
+  const serviceRate = Math.max(0, Number(pricing.serviceRate || 0));
+  const taxRate = Math.max(0, Number(pricing.taxRate || 0));
+  const promotionDiscount = Math.max(0, Number(pricing.promotionDiscount || 0));
+  const voucherDiscount = Math.max(0, Number(pricing.voucherDiscount || 0));
+  const shippingFee = Math.max(0, Number(pricing.shippingFee || 0));
 
   const service = Math.round(subtotal * serviceRate);
+  const discount = Math.min(subtotal + service, promotionDiscount + voucherDiscount);
   const beforeTax = Math.max(0, subtotal + service - discount);
   const tax = Math.round(beforeTax * taxRate);
   const grandTotal = Math.round(beforeTax + tax + shippingFee);
@@ -654,6 +655,7 @@ function computeTotalsFromHydratedItems(items = []) {
     grandTotal,
     taxRate,
     serviceRate,
+    voucherCode: pricing.voucherCode || undefined,
   };
 }
 
@@ -1016,6 +1018,8 @@ export const OrderMutation = {
       userId,
       warehouseId,
       clientMeta,
+      paymentMethod,
+      pricing,
     } = input || {};
 
     const rid = toId(restaurantId);
@@ -1067,7 +1071,7 @@ export const OrderMutation = {
               note,
 
               currentStatus: "pending",
-              payment: { method: "cash", status: "pending" },
+              payment: { method: paymentMethod || "cash", status: paymentMethod === "transfer" ? "pending" : "pending" },
               statusTimeline: [
                 {
                   status: "pending",
@@ -1123,6 +1127,175 @@ export const OrderMutation = {
     return { order: createdOrderDoc.toJSON() };
   },
 
+  async createCheckoutOrders(_, { input }, ctx) {
+    const {
+      orderType,
+      items,
+      note,
+      customer,
+      shipping,
+      userId,
+      warehouseId,
+      clientMeta,
+      paymentMethod,
+      idempotencyKey,
+      pricing,
+    } = input || {};
+
+    if (!orderType || !["takeaway", "delivery"].includes(orderType)) {
+      throw new Error("orderType must be 'takeaway' or 'delivery'");
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error("items is required");
+    }
+
+    if (idempotencyKey) {
+      const existing = await CheckoutSession.findOne({ idempotencyKey }).lean();
+      if (existing?.orderIds?.length) {
+        const existingOrders = await Order.find({ _id: { $in: existing.orderIds } }).lean({ virtuals: true });
+        return {
+          checkout: {
+            checkoutCode: existing.checkoutCode,
+            orderIds: existing.orderIds.map(String),
+            grandTotal: Math.round(existing?.totals?.grandTotal || 0),
+          },
+          orders: existingOrders,
+        };
+      }
+    }
+
+    const grouped = new Map();
+    for (const rawItem of items) {
+      const rid = toId(rawItem?.restaurantId);
+      if (!rid) throw new Error("Each checkout item must include valid restaurantId");
+      const normalized = normalizeItem(rawItem);
+      const key = String(rid);
+      if (!grouped.has(key)) grouped.set(key, { restaurantId: rid, items: [] });
+      grouped.get(key).items.push(normalized);
+    }
+
+    const checkoutCode = generateOrderCode("CHK", new Date(), null);
+    const finalUserId = await ensureUserForOrder(userId, customer);
+    const createdOrders = [];
+
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        for (const g of grouped.values()) {
+          await hydrateOrderItems({
+            restaurantId: g.restaurantId,
+            items: g.items,
+            session,
+          });
+
+          const totals = computeTotalsFromHydratedItems(g.items, pricing || {});
+          if (pricing?.voucherCode) totals.voucherCode = pricing.voucherCode;
+
+          const shippingObj = buildShippingForOffPremise(orderType, shipping, customer);
+          if (orderType === "delivery" && grouped.size > 1) {
+            shippingObj.shippingFee = Math.round((Number(pricing?.shippingFee || 0)) / grouped.size);
+            totals.shippingFee = shippingObj.shippingFee;
+            totals.grandTotal = Math.round(
+              totals.subtotal - totals.discount + totals.service + totals.tax + totals.shippingFee
+            );
+          }
+
+          const prefix = orderType === "delivery" ? "DEL" : "TAKE";
+          const childOrderCode = generateOrderCode(prefix, new Date(), null);
+
+          const [order] = await Order.create([
+            {
+              restaurantId: g.restaurantId,
+              userId: finalUserId ? toId(finalUserId) : undefined,
+              orderCode: childOrderCode,
+              parentOrderCode: checkoutCode,
+              orderType,
+              shipping: shippingObj,
+              items: g.items,
+              totals,
+              note,
+              currentStatus: paymentMethod === "transfer" ? "pending" : "pending",
+              payment: { method: paymentMethod || "cash", status: paymentMethod === "transfer" ? "pending" : "pending" },
+              statusTimeline: [
+                {
+                  status: "pending",
+                  at: new Date(),
+                  byUserId: finalUserId ? toId(finalUserId) : undefined,
+                  note: `Created from checkout ${checkoutCode}`,
+                },
+              ],
+              clientMeta: { ...(clientMeta || {}), checkoutCode },
+            },
+          ], { session });
+
+          createdOrders.push(order);
+
+          const lines = buildInventoryLinesFromItems(g.items);
+          if (lines.length) {
+            const whId = await resolveWarehouseIdOrDefault(g.restaurantId, warehouseId, session);
+            await reserveForOrderTx({
+              restaurantId: g.restaurantId,
+              warehouseId: whId,
+              orderCode: childOrderCode,
+              lines,
+              session,
+            });
+          }
+        }
+
+        await CheckoutSession.create([
+          {
+            checkoutCode,
+            idempotencyKey: idempotencyKey || undefined,
+            userId: finalUserId ? toId(finalUserId) : undefined,
+            customer: customer || undefined,
+            orderIds: createdOrders.map((o) => o._id),
+            restaurantIds: createdOrders.map((o) => o.restaurantId),
+            payment: { method: paymentMethod || "cash", status: paymentMethod === "transfer" ? "pending" : "pending" },
+            totals: createdOrders.reduce(
+              (acc, o) => {
+                acc.subtotal += Number(o.totals?.subtotal || 0);
+                acc.promotionDiscount += 0;
+                acc.voucherDiscount += 0;
+                acc.tax += Number(o.totals?.tax || 0);
+                acc.shippingFee += Number(o.totals?.shippingFee || 0);
+                acc.grandTotal += Number(o.totals?.grandTotal || 0);
+                return acc;
+              },
+              { subtotal: 0, promotionDiscount: 0, voucherDiscount: 0, tax: 0, shippingFee: 0, grandTotal: 0 }
+            ),
+          },
+        ], { session });
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    for (const order of createdOrders) {
+      if (order.orderType === "delivery") {
+        await createOrderTrackingEvent({
+          order,
+          restaurantId: order.restaurantId,
+          eventType: "status_changed",
+          ctx,
+          payload: { statusFrom: null, statusTo: "pending", note: `Delivery order created from ${checkoutCode}` },
+        });
+      }
+      await emitOrderEvent(ctx, order.restaurantId, "ORDER_CREATED", order);
+    }
+
+    const grandTotal = createdOrders.reduce((sum, o) => sum + Number(o.totals?.grandTotal || 0), 0);
+
+    return {
+      checkout: {
+        checkoutCode,
+        orderIds: createdOrders.map((o) => String(o._id)),
+        grandTotal: Math.round(grandTotal),
+      },
+      orders: createdOrders.map((o) => o.toJSON()),
+    };
+  },
+
   /** =========================================
    * UPDATE ORDER STATUS
    * - inventory commit/cancel + order save in ONE transaction
@@ -1157,7 +1330,11 @@ export const OrderMutation = {
         if (lines.length) {
           const wasReservable = RESERVABLE_STATUSES.includes(prevStatus);
 
-          if (wasReservable && COMMIT_STATUSES.includes(status)) {
+          const shouldCommitNow =
+            (wasReservable && COMMIT_STATUSES.includes(status)) ||
+            (status === "confirmed" && ["delivery", "takeaway"].includes(order.orderType));
+
+          if (shouldCommitNow) {
             const whId = await resolveWarehouseIdOrDefault(
               order.restaurantId,
               warehouseId,

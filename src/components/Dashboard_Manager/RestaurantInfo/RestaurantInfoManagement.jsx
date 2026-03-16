@@ -152,6 +152,14 @@ const GET_RESTAURANT_DETAIL = gql`
         district
         city
       }
+      reservationSettings {
+        baseDepositAmount
+        menuDepositPercent
+        changeTimeFee
+        changeTableFee
+        vatRate
+        serviceFee
+      }
     }
   }
 `;
@@ -173,6 +181,14 @@ const UPDATE_RESTAURANT = gql`
       avgRating
       avatar
       coverImage
+      reservationSettings {
+        baseDepositAmount
+        menuDepositPercent
+        changeTimeFee
+        changeTableFee
+        vatRate
+        serviceFee
+      }
     }
   }
 `;
@@ -258,7 +274,7 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const { upload: uploadAsset } = useAvatarUploadLocal();
   const [timeSlot, setTimeSlot] = useState("lunch");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
-  const [draftName, setDraftName] = useState("");
+  const [_draftName, _setDraftName] = useState("");
   const [drafts, setDrafts] = useState([]);
   const [extraAmenityInput, setExtraAmenityInput] = useState("");
   const [uploadingType, setUploadingType] = useState("");
@@ -297,6 +313,14 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     line1: "",
     district: "",
     city: "",
+    reservationSettings: {
+      baseDepositAmount: 0,
+      menuDepositPercent: 50,
+      changeTimeFee: 0,
+      changeTableFee: 0,
+      vatRate: 0,
+      serviceFee: 0,
+    },
   });
 
   // --- QUERY HOOKS ---
@@ -386,6 +410,14 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       line1: r.address?.line1 || "",
       district: r.address?.district || "",
       city: r.address?.city || "",
+      reservationSettings: {
+        baseDepositAmount: Number(r.reservationSettings?.baseDepositAmount || 0),
+        menuDepositPercent: Number(r.reservationSettings?.menuDepositPercent || 50),
+        changeTimeFee: Number(r.reservationSettings?.changeTimeFee || 0),
+        changeTableFee: Number(r.reservationSettings?.changeTableFee || 0),
+        vatRate: Number(r.reservationSettings?.vatRate || 0),
+        serviceFee: Number(r.reservationSettings?.serviceFee || 0),
+      },
     };
     setRestaurantForm(nextState);
     baselineRef.current = JSON.stringify(nextState);
@@ -695,6 +727,14 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               line1: restaurantForm.line1 || null,
               district: restaurantForm.district || null,
               city: restaurantForm.city || null,
+            },
+            reservationSettings: {
+              baseDepositAmount: Number(restaurantForm.reservationSettings?.baseDepositAmount || 0),
+              menuDepositPercent: Number(restaurantForm.reservationSettings?.menuDepositPercent || 50),
+              changeTimeFee: Number(restaurantForm.reservationSettings?.changeTimeFee || 0),
+              changeTableFee: Number(restaurantForm.reservationSettings?.changeTableFee || 0),
+              vatRate: Number(restaurantForm.reservationSettings?.vatRate || 0),
+              serviceFee: Number(restaurantForm.reservationSettings?.serviceFee || 0),
             },
           },
         },

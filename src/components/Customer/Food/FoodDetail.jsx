@@ -1,5 +1,6 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { gql, useQuery } from "@apollo/client";
+import { io } from "socket.io-client";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Star,
@@ -38,6 +39,21 @@ const GET_TOP_MENU_ITEMS = gql`
         name
         price
       }
+    }
+  }
+`;
+
+
+const MENU_ITEM_LIVE_STATE = gql`
+  query MenuItemLiveState($input: MenuItemLiveStateInput!) {
+    menuItemLiveState(input: $input) {
+      viewerCount
+      maxAvailableQty
+      outOfStock
+      blocked
+      blockedUntil
+      abuseWarning
+      policyMessage
     }
   }
 `;
@@ -99,6 +115,21 @@ const FoodDetail = () => {
     skip: !foundDish?.restaurantId,
   });
 
+
+  const { data: liveStateData, refetch: refetchLiveState } = useQuery(MENU_ITEM_LIVE_STATE, {
+    variables: {
+      input: {
+        restaurantId: foundDish?.restaurantId,
+        menuItemId: foundDish?.id,
+        servingVariantKey: selectedSize?.key || "portion",
+      },
+    },
+    skip: !foundDish?.restaurantId || !foundDish?.id,
+    fetchPolicy: "network-only",
+    pollInterval: 10000,
+  });
+
+  const liveState = liveStateData?.menuItemLiveState;
   const sizes = useMemo(() => {
     if (!foundDish) return [];
     const variants = foundDish.servingVariants || [];
@@ -144,7 +175,30 @@ const FoodDetail = () => {
     if (sizes.length) setSelectedSize(sizes[0]);
   }, [sizes]);
 
-  const currentUnitPrice = selectedSize?.price ?? Number(foundDish?.basePrice) ?? 0;
+
+  const socketRef = useRef(null);
+
+  useEffect(() => {
+    if (!foundDish?.restaurantId || !foundDish?.id) return;
+    const socket = io("http://localhost:4000", { transports: ["websocket"] });
+    socketRef.current = socket;
+    socket.on("connect", () => {
+      socket.emit("joinRestaurant", foundDish.restaurantId);
+      socket.emit("joinMenuItemView", { restaurantId: foundDish.restaurantId, menuItemId: foundDish.id });
+    });
+    socket.on("inventoryEvents", (evt) => {
+      if (!evt) return;
+      if (String(evt.menuItemId || "") === String(foundDish.id)) {
+        refetchLiveState?.();
+      }
+    });
+    return () => {
+      socket.emit("leaveMenuItemView", { restaurantId: foundDish.restaurantId, menuItemId: foundDish.id });
+      socket.disconnect();
+    };
+  }, [foundDish?.restaurantId, foundDish?.id, refetchLiveState]);
+
+  const currentUnitPrice = selectedSize?.price ?? Number(foundDish?.basePrice || 0);
   const totalPrice = currentUnitPrice * quantity;
 
   const restaurant = restaurantData?.restaurant;
@@ -185,6 +239,14 @@ const FoodDetail = () => {
   const handleAddToCart = () => {
     const payload = makeCartPayload();
     if (!payload || !payload.restaurantId) return;
+    if (liveState?.blocked) {
+      alert("Bạn đang bị tạm chặn do giữ chỗ quá nhiều lần.");
+      return;
+    }
+    if (liveState?.outOfStock || Number(liveState?.maxAvailableQty || 0) < 1) {
+      alert("Món đã hết hàng.");
+      return;
+    }
     addToCart(payload);
     setIsAnimatingCart(true);
     setTimeout(() => setIsAnimatingCart(false), 600);
@@ -283,6 +345,19 @@ const FoodDetail = () => {
               <ul className="promo-list">
                 <li>Giảm giá theo chương trình của nhà hàng</li>
                 <li>Giá thực tế sẽ được xác nhận tại bước thanh toán</li>
+              </ul>
+            </div>
+
+
+            <div className="promo-box">
+              <div className="promo-title">
+                <Info size={16} /> Trạng thái realtime:
+              </div>
+              <ul className="promo-list">
+                <li>Người đang xem món: <b>{liveState?.viewerCount ?? 0}</b></li>
+                <li>Tồn khả dụng: <b>{liveState?.maxAvailableQty ?? 0}</b></li>
+                <li>{liveState?.policyMessage || ""}</li>
+                {liveState?.abuseWarning ? <li style={{ color: "#b45309" }}>{liveState.abuseWarning}</li> : null}
               </ul>
             </div>
 

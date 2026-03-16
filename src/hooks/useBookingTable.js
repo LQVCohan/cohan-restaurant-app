@@ -12,8 +12,10 @@ const CREATE_RESERVATION = gql`
       tableId
       userId
       timeTo
-      timeTo
       durationMinutes
+      isUnlimitedTime
+      orderCode
+      paymentMethod
       customerName
       customerPhone
       customerEmail
