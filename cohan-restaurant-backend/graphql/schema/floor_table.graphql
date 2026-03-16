@@ -255,6 +255,22 @@ extend type Mutation {
   setTableStatus(input: SetTableStatusInput!): Table! # đổi trạng thái nhanh
   swapTableCodes(input: SwapTableCodesInput!): Boolean! # hoán đổi code giữa 2 bàn
   bulkUpsertTables(input: BulkUpsertTablesInput!): Int! # trả về số bàn upsert
+  acquireTableViewLock(input: AcquireTableViewLockInput!): Table!
+  releaseTableViewLock(input: ReleaseTableViewLockInput!): Table
+}
+
+
+input AcquireTableViewLockInput {
+  tableId: ID!
+  userId: ID
+  sessionId: String
+  viewerName: String
+}
+
+input ReleaseTableViewLockInput {
+  tableId: ID!
+  userId: ID
+  sessionId: String
 }
 
 
