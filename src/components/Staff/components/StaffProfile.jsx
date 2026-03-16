@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   ChefHat,
   Banknote,
@@ -16,8 +16,14 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import "./StaffProfile.scss";
+import { AuthContext } from "../../../context/AuthContext";
 
 export default function StaffProfile() {
+  const { user, logout } = useContext(AuthContext) || {};
+  const displayName = user?.fullName || user?.username || "Nhân viên";
+  const roleLabel = user?.roleName ? String(user.roleName) : "Nhân viên Order";
+  const contactPhone = user?.phone || "—";
+  const contactEmail = user?.email || "—";
   // Demo state cho các cài đặt nhanh
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
@@ -38,14 +44,14 @@ export default function StaffProfile() {
         </div>
 
         <div className="user-info">
-          <h2>Nguyễn Văn B</h2>
+          <h2>{displayName}</h2>
           <div className="role-tags">
             <span className="tag-role">
-              <Shield size={12} /> Nhân viên Order
+              <Shield size={12} /> {roleLabel}
             </span>
             <span className="tag-shift">Ca Sáng</span>
           </div>
-          <p className="contact-info">0901 234 567 • nguyenvanb@pos.vn</p>
+          <p className="contact-info">{contactPhone} • {contactEmail}</p>
         </div>
       </div>
 
@@ -164,7 +170,7 @@ export default function StaffProfile() {
               </div>
               <ChevronRight size={18} className="icon-right" />
             </button>
-            <button className="menu-item text-danger">
+            <button className="menu-item text-danger" onClick={logout}>
               <div className="item-left">
                 <div className="menu-icon bg-danger-light">
                   <LogOut size={20} />

@@ -142,8 +142,12 @@ const buildCartFromServerOrders = (orders = []) => {
 };
 
 export default function StaffOrdering() {
-  const { user } = useContext(AuthContext) || {};
-  const restaurantId = user?.restaurantForStaff || user?.primaryRestaurant?.id || null;
+  const { user, restaurants } = useContext(AuthContext) || {};
+  const restaurantId =
+    user?.restaurantForStaff ||
+    user?.primaryRestaurant?.id ||
+    restaurants?.[0]?.id ||
+    null;
 
   const [activeTab, setActiveTab] = useState("tables");
   const [searchQuery, setSearchQuery] = useState("");
