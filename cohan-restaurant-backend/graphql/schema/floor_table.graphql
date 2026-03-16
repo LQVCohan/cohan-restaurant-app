@@ -272,17 +272,3 @@ input ReleaseTableViewLockInput {
   userId: ID
   sessionId: String
 }
-
-
-input AcquireTableViewLockInput {
-  tableId: ID!
-  userId: ID
-  sessionId: String
-  viewerName: String
-}
-
-input ReleaseTableViewLockInput {
-  tableId: ID!
-  userId: ID
-  sessionId: String
-}
