@@ -66,6 +66,8 @@ const MY_RESERVATIONS = gql`
       durationMinutes
       partySize
       depositAmount
+      depositStatus
+      isUnlimitedTime
       status
       createdAt
     }
@@ -193,7 +195,7 @@ export default function OrdersPage() {
       const isCancelled = ["cancelled", "rejected", "expired"].includes(
         (r.status || "").toLowerCase()
       );
-      const isCompleted = (r.status || "").toLowerCase() === "checked_in";
+      const isCompleted = ["completed", "seated"].includes((r.status || "").toLowerCase());
 
       const actions = [];
 

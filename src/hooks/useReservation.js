@@ -220,7 +220,7 @@ export function useReservation() {
     customer = {},
     partySize = 2,
     timeTo = null,
-    durationMinutes = 90,
+    durationMinutes = 60,
     note = "",
     restaurantName = "",
     maxCapacity = null,
@@ -270,7 +270,7 @@ export function useReservation() {
       customerName: fullName || null,
       customerPhone: trimOrNull(phone),
       customerEmail: trimOrNull(email),
-      durationMinutes: safeInt(durationMinutes, 90),
+      durationMinutes: safeInt(durationMinutes, 60),
       depositAmount: safeInt(depositAmount, 0),
     };
 
