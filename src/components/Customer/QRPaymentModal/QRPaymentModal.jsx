@@ -1,13 +1,27 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Modal from "@/components/common/Modal";
 import { gql } from "@apollo/client";
-import { useLazyQuery } from "@apollo/client/react";
+import { useLazyQuery, useMutation } from "@apollo/client/react";
 import { usePaymentTimer } from "../../../hooks/usePaymentTimer";
 import { useNotification } from "../../../hooks/useNotification";
 import { formatCurrency } from "../../../utils/formatters";
 import "./QRPaymentModal.scss";
 
 /* ───────────────── GraphQL ──────────────── */
+const SUBMIT_RESERVATION_PAYMENT = gql`
+  mutation SubmitReservationPayment($input: SubmitReservationPaymentInput!) {
+    submitReservationPayment(input: $input) {
+      id
+      status
+      depositStatus
+      depositTxnId
+      paymentMethod
+      paymentReference
+      updatedAt
+    }
+  }
+`;
+
 const GET_RESERVATION_STATUS = gql`
   query ReservationStatus($id: ID, $orderCode: String) {
     reservation(id: $id, orderCode: $orderCode) {
@@ -46,6 +60,10 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
     fetchPolicy: "network-only",
   });
 
+  const [submitReservationPayment] = useMutation(SUBMIT_RESERVATION_PAYMENT);
+
+
+
   useEffect(() => {
     if (isOpen && booking) {
       resetTimer(600);
@@ -60,8 +78,18 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
   useEffect(() => {
     if (!isOpen) return;
     if (timeLeft === 0) {
+      submitReservationPayment({
+        variables: {
+          input: {
+            reservationId: booking?.id,
+            method: "transfer",
+            paymentStatus: "failed",
+            externalRef: booking?.orderCode || null,
+          },
+        },
+      }).catch(() => {});
       showNotification(
-        "⏰ Hết thời gian thanh toán! Đặt cọc sẽ bị hủy.",
+        "⏰ Hết thời gian thanh toán! Đặt cọc đã bị hủy và bàn được trả về trạng thái trống.",
         "error"
       );
       onClose?.();
@@ -75,7 +103,7 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
   }, [timeLeft]);
 
   const handleConfirmPaid = async () => {
-    if (!orderCode) {
+    if (!orderCode && !booking?.id) {
       showNotification("Không có thông tin mã đặt bàn để kiểm tra.", "error");
       return;
     }
@@ -84,12 +112,22 @@ const QRPaymentModal = ({ isOpen, onClose, booking, onPaymentConfirmed }) => {
     try {
       const variables = { orderCode };
 
+      await submitReservationPayment({
+        variables: {
+          input: {
+            reservationId: booking?.id,
+            method: "transfer",
+            paymentStatus: "pending",
+            externalRef: booking?.orderCode || null,
+          },
+        },
+      });
+
       const { data } = await fetchStatus({ variables });
       const rs = data?.reservation;
       const isPaid = rs?.depositStatus === "paid";
       const isPending = rs?.depositStatus === "pending";
-      const isFailed =
-        rs?.depositStatus === ["failed", "cancelled", "refunded"].includes();
+      const isFailed = ["failed", "cancelled", "refunded"].includes(rs?.depositStatus);
       if (!rs) {
         showNotification("Không tìm thấy đơn đặt bàn để kiểm tra.", "error");
         return;

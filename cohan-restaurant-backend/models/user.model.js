@@ -129,6 +129,13 @@ const userSchema = BaseSchemaModel(
       default: "CUSTOMER",
     },
 
+    loyaltyRank: {
+      type: String,
+      enum: ["basic", "silver", "gold", "platinum"],
+      default: "basic",
+      index: true,
+    },
+
     role: { type: mongoose.Schema.Types.ObjectId, ref: "Role" },
 
     refRestaurants: [
