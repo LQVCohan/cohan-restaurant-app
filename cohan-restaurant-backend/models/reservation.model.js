@@ -1,91 +1,98 @@
 import mongoose from "mongoose";
 import BaseSchemaModel from "./baseSchemaModel.js";
+import generateOrderCode from "../utils/generateOrderCode.js";
 
 const { Types } = mongoose;
 
-/**
- * Reservation Schema (Đặt bàn)
- * - Tự động có createdAt, updatedAt và virtual id
- * - Dùng BaseSchemaModel để đồng nhất cấu trúc
- */
 const ReservationSchema = BaseSchemaModel(
   {
-    // --- Thông tin cơ bản ---
-    restaurantId: {
-      type: Types.ObjectId,
-      ref: "Restaurant",
-      required: true,
-    },
+    restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true, index: true },
     restaurantName: { type: String, default: "" },
-    tableId: {
-      type: Types.ObjectId,
-      ref: "Table",
-      required: true,
-    },
+    tableId: { type: Types.ObjectId, ref: "Table", required: true, index: true },
+    userId: { type: Types.ObjectId, ref: "User", required: true, index: true },
 
-    userId: {
-      type: Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
+    orderCode: { type: String, index: true },
 
-    // --- Thời gian ---
-    timeTo: { type: Date, required: true },
-    durationMinutes: { type: Number, default: 90 },
+    timeTo: { type: Date, required: true, index: true },
+    durationMinutes: { type: Number, default: 60, min: 0 },
+    isUnlimitedTime: { type: Boolean, default: false },
 
-    // --- Thông tin khách hàng ---
     customerName: { type: String, trim: true },
     customerPhone: { type: String, trim: true },
     customerEmail: { type: String, trim: true },
 
-    // --- Số lượng và ghi chú ---
-    partySize: { type: Number, default: 2 },
+    partySize: { type: Number, default: 2, min: 1 },
     note: { type: String, trim: true },
 
-    // --- Đặt cọc / thanh toán ---
-    depositAmount: { type: Number, default: 0 },
+    linkedMenuSubtotal: { type: Number, default: 0, min: 0 },
+    depositAmount: { type: Number, default: 0, min: 0 },
     depositTxnId: { type: Types.ObjectId, ref: "PaymentTransaction" },
     depositStatus: {
       type: String,
-      enum: ["unpaid", "pending", "paid", "refunded", "cancelled"],
+      enum: ["unpaid", "pending", "paid", "failed", "refunded", "cancelled"],
       default: "pending",
+      index: true,
     },
 
-    // --- Trạng thái đặt bàn ---
+    paymentMethod: { type: String, default: "transfer" },
+    paymentReference: { type: String },
+
     status: {
       type: String,
       enum: [
-        "pending_payment", // chờ thanh toán trong 10p
-        "confirmed", // đã cọc
-        "seated", // khách đã đến
-        "cancelled", // khách hủy hoặc hệ thống tự hủy
-        "completed", // kết thúc
-        "no_show", // không đến
+        "pending_payment",
+        "confirmed",
+        "seated",
+        "pending_change",
+        "cancelled",
+        "completed",
+        "no_show",
       ],
       default: "pending_payment",
+      index: true,
     },
 
-    // --- Tự động hủy nếu quá hạn ---
-    pendingPaymentExpiresAt: {
-      type: Date,
-    },
+    pendingPaymentExpiresAt: { type: Date, index: true },
 
+    changeRequestType: { type: String, enum: ["time", "table", "none"], default: "none" },
+    changeRequestStatus: {
+      type: String,
+      enum: ["none", "requested", "approved", "rejected"],
+      default: "none",
+    },
+    changeRequestFee: { type: Number, default: 0, min: 0 },
+    requestedTimeTo: { type: Date },
+    requestedDurationMinutes: { type: Number, min: 0 },
+    requestedTableId: { type: Types.ObjectId, ref: "Table" },
   },
-  {
-    collection: "reservations",
-  }
+  { collection: "reservations" }
 );
 
-// ─────────────────────────────────────────────────────────────
-// Indexes
-// ─────────────────────────────────────────────────────────────
+ReservationSchema.pre("validate", function (next) {
+  if (!this.orderCode) {
+    this.orderCode = generateOrderCode("RSV", new Date(), null);
+  }
 
-ReservationSchema.index({ restaurantId: 1, timeTo: 1 });
-ReservationSchema.index({ userId: 1 });
-ReservationSchema.index({ status: 1 });
-ReservationSchema.index({ pendingPaymentExpiresAt: 1, status: 1 });
-// Khi reservation hết TTL, MongoDB tự xóa document → FE có thể query thất bại = đã hết hạn
-// hoặc BE có cron check trước khi xóa để cập nhật status = "cancelled"
+  if (this.isUnlimitedTime) {
+    this.durationMinutes = 0;
+  } else if (!this.durationMinutes || this.durationMinutes <= 0) {
+    this.durationMinutes = 60;
+  }
+
+  if (this.status === "pending_payment" && !this.pendingPaymentExpiresAt) {
+    this.pendingPaymentExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  }
+
+  if (this.status !== "pending_payment") {
+    this.pendingPaymentExpiresAt = null;
+  }
+
+  next();
+});
+
+ReservationSchema.index({ restaurantId: 1, tableId: 1, timeTo: 1 });
+ReservationSchema.index({ userId: 1, createdAt: -1 });
+ReservationSchema.index({ orderCode: 1 });
 
 export const Reservation = mongoose.model("Reservation", ReservationSchema);
 export default Reservation;

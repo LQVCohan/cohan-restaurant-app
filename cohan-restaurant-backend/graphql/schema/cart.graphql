@@ -15,6 +15,8 @@ type CartItem {
   thumbImage: String
   note: String
   servingVariantKey: String
+  holdExpiresAt: DateTime
+  holdStatus: String
 
   "Resolve từ CartItemFieldResolvers.restaurant"
   restaurant: Restaurant
@@ -65,6 +67,8 @@ input AddCartItemInput {
   thumbImage: String
   note: String
   servingVariantKey: String
+  holdExpiresAt: DateTime
+  holdStatus: String
 }
 
 "Cập nhật 1 item trong giỏ (theo cartId + itemId)"
@@ -92,6 +96,7 @@ input ClearCartInput {
 extend type Query {
   "Lấy giỏ hàng active của user. Nếu userId không truyền thì BE có thể lấy từ ctx.user.id"
   myCart(userId: ID): Cart
+  menuItemLiveState(input: MenuItemLiveStateInput!): MenuItemLiveState!
 }
 
 # --------------------------
@@ -103,4 +108,31 @@ extend type Mutation {
   updateCartItem(input: UpdateCartItemInput!): Cart!
   removeCartItem(input: RemoveCartItemInput!): Cart!
   clearCart(input: ClearCartInput!): Boolean!
+  releaseMyCartHolds(input: ReleaseMyCartHoldsInput): Boolean!
+}
+
+
+type MenuItemLiveState {
+  menuItemId: ID!
+  restaurantId: ID!
+  servingVariantKey: String
+  viewerCount: Int!
+  maxAvailableQty: Int!
+  outOfStock: Boolean!
+  blocked: Boolean!
+  blockedUntil: DateTime
+  abuseWarning: String
+  policyMessage: String!
+}
+
+input MenuItemLiveStateInput {
+  restaurantId: ID!
+  menuItemId: ID!
+  servingVariantKey: String
+  userId: ID
+}
+
+input ReleaseMyCartHoldsInput {
+  userId: ID
+  reason: String
 }

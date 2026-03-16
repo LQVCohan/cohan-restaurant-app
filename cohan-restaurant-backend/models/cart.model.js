@@ -28,6 +28,9 @@ const CartItemSchema = new Schema(
     // Serving variant (nếu có)
     servingKey: { type: String, trim: true }, // vd: "portion" | "byWeight"
     servingName: { type: String, trim: true }, // vd: "1 phần", "100g"
+
+    holdExpiresAt: { type: Date, index: true },
+    holdStatus: { type: String, enum: ["active", "released", "ordered"], default: "active" },
   },
   { _id: true }
 );
@@ -51,6 +54,14 @@ const CartSchema = BaseSchemaModel({
     type: [CartItemSchema],
     default: [],
   },
+
+  abuse: {
+    timeoutReleaseCount: { type: Number, default: 0 },
+    exitReleaseCount: { type: Number, default: 0 },
+    warningCount: { type: Number, default: 0 },
+    blockedUntil: { type: Date },
+    lastViolationAt: { type: Date },
+  },
 });
 
 // Một user chỉ có 1 cart active
@@ -70,6 +81,8 @@ CartSchema.virtual("totalPrice").get(function () {
     0
   );
 });
+
+CartSchema.index({ status: 1, "items.holdExpiresAt": 1 });
 
 export const Cart = mongoose.models.Cart || mongoose.model("Cart", CartSchema);
 
