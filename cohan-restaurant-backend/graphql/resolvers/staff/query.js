@@ -1,5 +1,23 @@
 // src/graphql/staff/query.js
-import { Staff } from "../../../models/index.js";
+import mongoose from "mongoose";
+import { Staff, Shift, Timesheet, Order, Table } from "../../../models/index.js";
+
+function toObjectId(id) {
+  if (!id || !mongoose.isValidObjectId(id)) return null;
+  return new mongoose.Types.ObjectId(id);
+}
+
+async function resolveStaffDoc(staffId, ctx) {
+  const fallbackId = ctx?.user?.id;
+  const targetId = staffId || fallbackId;
+  const oid = toObjectId(targetId);
+  if (!oid) return null;
+
+  return Staff.findById(oid)
+    .populate("role")
+    .populate("refRestaurants")
+    .populate("primaryRestaurant");
+}
 
 export default {
   // =========================
@@ -48,5 +66,140 @@ export default {
       .populate("refRestaurants")
       .populate("primaryRestaurant")
       .sort({ fullName: 1 });
+  },
+
+  staffAccountOverview: async (_, { staffId }, ctx) => {
+    const staff = await resolveStaffDoc(staffId, ctx);
+    if (!staff || staff.userType !== "STAFF") return null;
+
+    const restaurantId =
+      staff?.restaurantForStaff || staff?.primaryRestaurant?._id || null;
+    const rid = toObjectId(restaurantId);
+
+    let floorAssigned = [];
+    let tableList = [];
+    let tableCount = 0;
+
+    if (rid) {
+      const tables = await Table.find({ restaurantId: rid })
+        .select({ code: 1, floorLevel: 1 })
+        .lean();
+      tableCount = tables.length;
+      tableList = tables.map((t) => t.code).filter(Boolean);
+      floorAssigned = Array.from(
+        new Set(
+          tables
+            .map((t) =>
+              t?.floorLevel != null ? `Tầng ${Number(t.floorLevel)}` : null
+            )
+            .filter(Boolean)
+        )
+      );
+    }
+
+    const orderFilter = {
+      userId: staff._id,
+      currentStatus: { $in: ["served", "completed", "paid"] },
+    };
+    if (rid) orderFilter.restaurantId = rid;
+
+    const [ordersServedCount, shiftDocs] = await Promise.all([
+      Order.countDocuments(orderFilter),
+      Shift.find({ employeeId: staff._id })
+        .sort({ startTime: -1 })
+        .limit(2)
+        .lean(),
+    ]);
+
+    const shiftsWorkedCount = await Shift.countDocuments({ employeeId: staff._id });
+
+    return {
+      staffId: String(staff._id),
+      fullName: staff.fullName || null,
+      email: staff.email || null,
+      phone: staff.phone || null,
+      avatarUrl: staff.avatarUrl || staff.avatar || null,
+      roleName:
+        staff?.positionTitle || staff?.roleName || staff?.role?.name || "Nhân viên",
+      positionTitle: staff.positionTitle || null,
+      employeeCode: staff.employeeCode || null,
+      employmentStatus: String(staff.employmentStatus || "working").toUpperCase(),
+      primaryRestaurant: staff.primaryRestaurant || null,
+      restaurantForStaff: staff.restaurantForStaff || null,
+      floorAssigned,
+      tableCount,
+      tableList,
+      ordersServedCount,
+      shiftsWorkedCount,
+      currentShift: shiftDocs?.[0]?.shiftType || null,
+      lastShift: shiftDocs?.[1]?.shiftType || shiftDocs?.[0]?.shiftType || null,
+    };
+  },
+
+  staffSalarySummary: async (_, { staffId }, ctx) => {
+    const staff = await resolveStaffDoc(staffId, ctx);
+    if (!staff || staff.userType !== "STAFF") return null;
+
+    const shifts = await Shift.find({ employeeId: staff._id })
+      .select({ _id: 1 })
+      .lean();
+    const shiftIds = shifts.map((s) => s._id);
+
+    if (!shiftIds.length) {
+      return {
+        staffId: String(staff._id),
+        baseSalary: Number(staff.baseSalary || 0),
+        totalHours: 0,
+        totalWage: 0,
+        totalAmount: 0,
+        timesheetCount: 0,
+      };
+    }
+
+    const agg = await Timesheet.aggregate([
+      { $match: { shiftId: { $in: shiftIds } } },
+      {
+        $group: {
+          _id: null,
+          totalHours: { $sum: { $ifNull: ["$hours", 0] } },
+          totalWage: { $sum: { $ifNull: ["$wage", 0] } },
+          totalAmount: { $sum: { $ifNull: ["$amount", 0] } },
+          timesheetCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const row = agg?.[0] || {};
+    return {
+      staffId: String(staff._id),
+      baseSalary: Number(staff.baseSalary || 0),
+      totalHours: Number(row.totalHours || 0),
+      totalWage: Number(row.totalWage || 0),
+      totalAmount: Number(row.totalAmount || 0),
+      timesheetCount: Number(row.timesheetCount || 0),
+    };
+  },
+
+  staffShiftHistory: async (_, { staffId, limit = 20 }, ctx) => {
+    const staff = await resolveStaffDoc(staffId, ctx);
+    if (!staff || staff.userType !== "STAFF") return [];
+
+    const rows = await Shift.find({ employeeId: staff._id })
+      .sort({ startTime: -1 })
+      .limit(Math.max(1, Math.min(Number(limit || 20), 100)))
+      .populate("restaurantId", "name")
+      .lean();
+
+    return rows.map((r) => ({
+      id: String(r._id),
+      restaurant: r.restaurantId
+        ? { id: String(r.restaurantId._id || r.restaurantId.id), name: r.restaurantId.name }
+        : null,
+      shiftType: r.shiftType || null,
+      startTime: r.startTime || null,
+      endTime: r.endTime || null,
+      status: r.status || null,
+      notes: r.notes || null,
+    }));
   },
 };
