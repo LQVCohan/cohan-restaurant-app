@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import process from "process";
+import { Buffer } from "buffer";
 import { User, Role, Customer } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
 import dayjs from "dayjs";
@@ -15,6 +16,12 @@ import { fileURLToPath } from "url";
 import emailVerificationMutation, {
   issueAndSendVerificationForUser,
 } from "../auth/emailVerification.mutation.js";
+import {
+  getLoginAttemptState,
+  recordFailedLoginAttempt,
+  resetLoginAttempts,
+  logAuthAuditEvent,
+} from "../../../src/security/loginSecurity.js";
 
 const signToken = (user) => {
   const payload = {
@@ -98,9 +105,9 @@ const buildNormalizedFieldExpr = (field) => ({
 });
 
 /* ===== Loyalty helpers (đồng bộ với FE rule) ===== */
-const computePointsFromSpending = (spending) =>
+const _computePointsFromSpending = (spending) =>
   Math.max(0, Math.floor((Number(spending) || 0) / 1000));
-const computeTypeFromPoints = (points) => {
+const _computeTypeFromPoints = (points) => {
   if (points < 5000) return "NEW";
   if (points <= 15000) return "OFTEN";
   return "VIP";
@@ -375,6 +382,7 @@ export const UserMutation = {
       userObj.role?.name ||
       ""
     ).toLowerCase();
+
     return { token, user: { ...userObj, roleName } };
   },
 
@@ -440,16 +448,28 @@ export const UserMutation = {
       );
     }
 
-    let user = await User.findOne({ $or: baseLookupOr }).populate("role");
+    const requestIp =
+      ctx?.request?.ip ||
+      ctx?.request?.headers?.["x-forwarded-for"] ||
+      "unknown";
 
-    console.log("[login] primary user lookup", {
-      loginIdentifier,
-      normalizedEmail,
-      normalizedUsername,
-      normalizedPhone,
-      foundUserId: user?._id ? String(user._id) : null,
-      foundUserEmail: user?.email || null,
+    const throttle = getLoginAttemptState({
+      identifier: normalizedEmail || normalizedUsername || normalizedPhone || "unknown",
+      ip: requestIp,
     });
+
+    if (throttle.blocked) {
+      logAuthAuditEvent(ctx, "login_rate_limited", {
+        ip: requestIp,
+        identifierType: loginIdentifier,
+        retryAfterMs: throttle.retryAfterMs,
+      });
+      throw new GraphQLError("Too many failed attempts. Please try again later.", {
+        extensions: { code: "TOO_MANY_REQUESTS" },
+      });
+    }
+
+    let user = await User.findOne({ $or: baseLookupOr }).populate("role");
 
     // Fallback for legacy/imported records that may keep odd whitespace/casing.
     if (!user) {
@@ -480,43 +500,55 @@ export const UserMutation = {
       if (normalizedLookupOr.length > 0) {
         user = await User.findOne({ $or: normalizedLookupOr }).populate("role");
 
-        console.log("[login] fallback normalized user lookup", {
-          loginIdentifier,
-          normalizedEmail,
-          normalizedUsername,
-          foundUserId: user?._id ? String(user._id) : null,
-          foundUserEmail: user?.email || null,
-        });
       }
     }
 
-    if (!user)
-      throw new GraphQLError(
-        `Invalid credentials ( ${loginIdentifier} / password )`,
-        {
-          extensions: { code: "UNAUTHENTICATED" },
-        }
-      );
-    if (!user.passwordHash)
-      throw new GraphQLError(
-        "This account does not support password login",
-        {
-          extensions: { code: "UNAUTHENTICATED" },
-        }
-      );
-    if (user.status !== "active")
-      throw new GraphQLError(`Login blocked: user status is ${user.status}`, {
-        extensions: { code: "FORBIDDEN" },
+    const identifierForThrottle =
+      normalizedEmail || normalizedUsername || normalizedPhone || "unknown";
+
+    const failLogin = async (reason = "invalid_credentials", code = "UNAUTHENTICATED", message = "Invalid credentials") => {
+      const nextState = recordFailedLoginAttempt({
+        identifier: identifierForThrottle,
+        ip: requestIp,
       });
 
+      logAuthAuditEvent(ctx, "login_failed", {
+        ip: requestIp,
+        identifierType: loginIdentifier,
+        reason,
+        attempts: nextState.attempts,
+      });
+
+      const delayMs = Math.min(1500, 200 + nextState.attempts * 150);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+
+      throw new GraphQLError(message, {
+        extensions: { code },
+      });
+    };
+
+    if (!user) await failLogin();
+    if (!user.passwordHash) await failLogin("password_login_not_supported");
+
+    if (user.status !== "active") {
+      logAuthAuditEvent(ctx, "login_blocked_status", {
+        ip: requestIp,
+        identifierType: loginIdentifier,
+        userId: String(user._id),
+        status: user.status,
+      });
+      throw new GraphQLError("Login is not available for this account", {
+        extensions: { code: "FORBIDDEN" },
+      });
+    }
+
     const ok = user.checkPassword ? await user.checkPassword(password) : false;
-    if (!ok)
-      throw new GraphQLError(
-        `Invalid credentials ( ${loginIdentifier} / password )`,
-        {
-          extensions: { code: "UNAUTHENTICATED" },
-        }
-      );
+    if (!ok) await failLogin();
+
+    resetLoginAttempts({
+      identifier: identifierForThrottle,
+      ip: requestIp,
+    });
 
     const userObj = await User.findById(user._id)
       .populate("role")
@@ -527,6 +559,14 @@ export const UserMutation = {
       userObj.role?.name ||
       ""
     ).toLowerCase();
+
+    logAuthAuditEvent(ctx, "login_success", {
+      ip: requestIp,
+      identifierType: loginIdentifier,
+      userId: String(userObj._id),
+      roleName,
+    });
+
     return { token, user: { ...userObj, roleName } };
   },
 

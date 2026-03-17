@@ -24,6 +24,16 @@ import {
 import { registerObservability } from "../observability/observability.js";
 import { initBackendSentry } from "../observability/sentry.js";
 
+const parseAllowedOrigins = () => {
+  const rawOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const filtered = rawOrigins.filter((origin) => origin !== "*");
+  return filtered.length > 0 ? filtered : ["http://localhost:5173"];
+};
+
 export async function createServer() {
   const app = Fastify({
     logger: { level: process.env.LOG_LEVEL || "debug" },
@@ -33,10 +43,10 @@ export async function createServer() {
   const sentry = await initBackendSentry(app.log);
   registerObservability(app, { sentry });
 
+  const allowedOrigins = parseAllowedOrigins();
+
   await app.register(cors, {
-    origin: (process.env.CORS_ORIGINS || "http://localhost:5173")
-      .split(",")
-      .map((s) => s.trim()),
+    origin: allowedOrigins,
     credentials: true,
     exposedHeaders: ["Content-Disposition"],
   });
@@ -190,9 +200,7 @@ export async function createServer() {
 
   const io = new SocketIOServer(app.server, {
     cors: {
-      origin: (process.env.CORS_ORIGINS || "http://localhost:5173")
-        .split(",")
-        .map((s) => s.trim()),
+      origin: allowedOrigins,
       methods: ["GET", "POST"],
       credentials: true,
     },
