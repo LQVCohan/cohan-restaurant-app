@@ -1,3 +1,4 @@
+import process from "process";
 // src/graphql/context.js
 import jwt from "jsonwebtoken";
 import { User } from "../models/index.js";
@@ -53,18 +54,13 @@ export default async function buildContext(request, reply) {
       }
     } catch (err) {
       // token không hợp lệ/hết hạn → user = null
-      request.log?.warn({ err }, "JWT verify failed; user = null");
+      request.log?.warn({ code: err?.name || "JWT_VERIFY_FAILED" }, "JWT verify failed; user = null");
     }
   }
 
 
   if (user?.id) {
     request.userId = user.id;
-  }
-  if (user) {
-    request.log?.info({ userId: user.id, role: user.roleName }, "Context user");
-  } else {
-    request.log?.info("Context user = null");
   }
 
   return {

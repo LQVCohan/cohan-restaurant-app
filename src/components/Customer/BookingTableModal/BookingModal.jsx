@@ -169,6 +169,7 @@ const BookingModal = ({
   onBookingConfirmed,
 }) => {
   const { user } = useContext(AuthContext) || {};
+  const canUseUnlimitedTime = ["silver", "gold", "platinum"].includes(String(user?.loyaltyRank || "basic").toLowerCase());
   const navigate = useNavigate();
   const { cart } = useCart();
   const { createBooking, isLoading } = useBookingTable();
@@ -338,10 +339,16 @@ const BookingModal = ({
       }
       if (field === "time") {
         checkTimeWarning(newData.date, value);
-        if (!newData.openEnded) newData.timeOut = "";
+        if (!newData.openEnded && value) {
+          const [h,m]=String(value).split(":").map(Number);
+          const total=(h*60+m+60)%(24*60);
+          const nh=String(Math.floor(total/60)).padStart(2,"0");
+          const nm=String(total%60).padStart(2,"0");
+          newData.timeOut = `${nh}:${nm}`;
+        }
       }
       if (field === "openEnded") {
-        newData.timeOut = "";
+        newData.timeOut = value ? "" : newData.timeOut;
       }
       return newData;
     });
@@ -363,6 +370,8 @@ const BookingModal = ({
     if (!formData.time) errs.time = "Chọn giờ vào";
     if (!formData.openEnded && !formData.timeOut)
       errs.timeOut = "Chọn giờ ra";
+    if (formData.openEnded && !canUseUnlimitedTime)
+      errs.openEnded = "Tài khoản của bạn không có quyền chọn không giới hạn thời gian";
     if (timeWarning === "Đã qua.") errs.time = "Giờ không hợp lệ";
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -372,7 +381,7 @@ const BookingModal = ({
     if (!validate()) return;
     const durationMinutes = formData.openEnded
       ? 0
-      : calculateDurationMinutes(formData.date, formData.time, formData.timeOut);
+      : calculateDurationMinutes(formData.date, formData.time, formData.timeOut) || 60;
     const timeToISO = localDateTimeToISO(formData.date, formData.time);
 
     if (!formData.openEnded && durationMinutes < 30) {
@@ -412,6 +421,9 @@ const BookingModal = ({
         customerPhone: formData.customerPhone?.trim() || null,
         customerEmail: formData.customerEmail?.trim() || null,
         depositAmount: totalDeposit,
+        linkedMenuSubtotal: menuSubtotal,
+        isUnlimitedTime: !!formData.openEnded,
+        paymentMethod: "transfer",
       };
 
       const reservation = await createBooking(input);
@@ -717,7 +729,7 @@ const BookingModal = ({
             <input
               type="checkbox"
               checked={formData.openEnded}
-              onChange={(e) => handleChange("openEnded", e.target.checked)}
+              onChange={(checked) => handleChange("openEnded", checked)}
             />
             <span>
               Không xác định giờ ra (giữ bàn đến khi set trống)

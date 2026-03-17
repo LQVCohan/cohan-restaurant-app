@@ -22,9 +22,13 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (
     token: string,
-    role?: string,
+    role?: string | object,
     avatar?: string | null,
-    remember?: boolean
+    options?: {
+      persistSession?: boolean;
+      rememberIdentifier?: boolean;
+      identifier?: string;
+    }
   ) => void;
   logout: () => void;
 }

@@ -75,6 +75,13 @@ const TableSchema = BaseSchemaModel({
   isJoinable: { type: Boolean, default: false },
   joinGroupId: { type: String },
   deposit: { type: Number, default: 1 },
+
+  viewLock: {
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    expiresAt: { type: Date },
+    sessionId: { type: String },
+    viewerName: { type: String },
+  },
 });
 
 // Không trùng code trong cùng floor của cùng nhà hàng
@@ -82,5 +89,6 @@ TableSchema.index({ restaurantId: 1, floorId: 1, code: 1 }, { unique: true });
 // Truy vấn nhanh theo status/capacity/type
 TableSchema.index({ restaurantId: 1, status: 1, capacity: 1 });
 TableSchema.index({ restaurantId: 1, type: 1 });
+TableSchema.index({ "viewLock.expiresAt": 1 });
 
 export default mongoose.model("Table", TableSchema);

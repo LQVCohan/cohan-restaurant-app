@@ -1,5 +1,5 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
 import ReCAPTCHA from "react-google-recaptcha";
@@ -105,9 +105,23 @@ function splitIdentifier(val) {
 // 3. MAIN COMPONENT
 // ==========================================
 
+const safeRedirectPath = (candidate, fallback) => {
+  if (typeof candidate !== "string") return fallback;
+  if (!candidate.startsWith("/")) return fallback;
+  if (candidate.startsWith("//")) return fallback;
+  return candidate;
+};
+
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login: authLogin, user, isAuthenticated, loading } = useContext(AuthContext);
+  const location = useLocation();
+  const {
+    login: authLogin,
+    user,
+    isAuthenticated,
+    loading,
+    rememberedLoginIdentifier,
+  } = useContext(AuthContext);
   const { showNotification } = useNotification();
 
 
@@ -116,8 +130,17 @@ const LoginPage = () => {
     if (loading) return;
     if (!isAuthenticated) return;
 
-    navigate(getRoleHomeRoute(resolveRoleName(user)), { replace: true });
-  }, [isAuthenticated, loading, navigate, user]);
+    const redirectTo = safeRedirectPath(location?.state?.from?.pathname, getRoleHomeRoute(resolveRoleName(user)));
+    navigate(redirectTo, { replace: true });
+  }, [isAuthenticated, loading, location, navigate, user]);
+
+  useEffect(() => {
+    if (!rememberedLoginIdentifier) return;
+    setLoginForm((prev) => ({
+      ...prev,
+      identifier: prev.identifier || rememberedLoginIdentifier,
+    }));
+  }, [rememberedLoginIdentifier]);
 
   // --- STATE ---
   const [isRightPanelActive, setIsRightPanelActive] = useState(false); // Controls Sliding Animation
@@ -127,7 +150,8 @@ const LoginPage = () => {
   const [loginForm, setLoginForm] = useState({
     identifier: "",
     password: "",
-    remember: true,
+    rememberSession: true,
+    rememberIdentifier: true,
   });
   const [registerForm, setRegisterForm] = useState({
     fullName: "",
@@ -155,19 +179,24 @@ const LoginPage = () => {
   const [loginMutation, { loading: loginLoading }] = useMutation(
     LOGIN_MUTATION,
     {
-      onError: (err) => {
-        showNotification(err.message || "Đăng nhập thất bại", "error");
+      onError: () => {
+        showNotification("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.", "error");
         resetCaptcha();
       },
       onCompleted: (data) => {
         const { token, user } = data.login;
         // Lưu token vào Context/LocalStorage
-        authLogin(token, user, null, loginForm.remember);
+        authLogin(token, user, null, {
+          persistSession: loginForm.rememberSession,
+          rememberIdentifier: loginForm.rememberIdentifier,
+          identifier: loginForm.identifier,
+        });
         showNotification(
           `Chào mừng ${user.fullName || user.username}!`,
           "success",
         );
-        navigate(getRoleHomeRoute(resolveRoleName(user)), { replace: true });
+        const redirectTo = safeRedirectPath(location?.state?.from?.pathname, getRoleHomeRoute(resolveRoleName(user)));
+    navigate(redirectTo, { replace: true });
       },
     },
   );
@@ -175,8 +204,8 @@ const LoginPage = () => {
   const [registerMutation, { loading: registerLoading }] = useMutation(
     CREATE_USER_MUTATION,
     {
-      onError: (err) => {
-        showNotification(err.message || "Đăng ký thất bại", "error");
+      onError: () => {
+        showNotification("Đăng ký thất bại", "error");
         resetCaptcha();
       },
       onCompleted: () => {
@@ -521,6 +550,29 @@ const LoginPage = () => {
                 size="normal"
                 onChange={setCaptchaToken}
               />
+            </div>
+
+            <div style={{ width: "100%", margin: "8px 0", fontSize: 13, color: "#444" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={loginForm.rememberSession}
+                  onChange={(e) =>
+                    setLoginForm({ ...loginForm, rememberSession: e.target.checked })
+                  }
+                />
+                Duy trì đăng nhập tối đa 30 ngày trên thiết bị này
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={loginForm.rememberIdentifier}
+                  onChange={(e) =>
+                    setLoginForm({ ...loginForm, rememberIdentifier: e.target.checked })
+                  }
+                />
+                Ghi nhớ tài khoản (chỉ lưu email/tên đăng nhập/số điện thoại)
+              </label>
             </div>
 
             <button className="btn-primary" disabled={loginLoading}>
