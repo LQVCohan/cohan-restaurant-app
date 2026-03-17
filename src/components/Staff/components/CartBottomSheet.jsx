@@ -21,6 +21,8 @@ export default function CartBottomSheet({
   setCart,
   onClose,
   table,
+  onSendKitchen,
+  sending = false,
 }) {
   const handleRequestVoid = (item) => {
     const reason = window.prompt(`Nhập lý do hủy món [${item.name}]:`);
@@ -122,7 +124,15 @@ export default function CartBottomSheet({
                       <button
                         className="btn-icon btn-minus"
                         onClick={() =>
-                          setCart(cart.filter((c) => c.id !== item.id))
+                          setCart((prev) =>
+                            (prev || []).flatMap((c) => {
+                              if (c.id !== item.id) return [c];
+                              const nextQty = Number(c.quantity || 1) - 1;
+                              return nextQty > 0
+                                ? [{ ...c, quantity: nextQty }]
+                                : [];
+                            })
+                          )
                         }
                       >
                         <Minus size={16} />
@@ -168,9 +178,10 @@ export default function CartBottomSheet({
           <div className="main-actions">
             <button
               className="btn-primary btn-send-kitchen"
-              disabled={cart.length === 0}
+              disabled={cart.length === 0 || sending}
+            onClick={onSendKitchen}
             >
-              <CheckCircle2 size={20} /> Gửi Bếp
+              <CheckCircle2 size={20} /> {sending ? "Đang gửi..." : "Gửi Bếp"}
             </button>
             <button
               className="btn-primary btn-checkout"

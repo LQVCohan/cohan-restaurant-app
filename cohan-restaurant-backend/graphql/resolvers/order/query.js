@@ -72,7 +72,7 @@ function groupOrdersByRootCode(orders = []) {
   const map = new Map();
 
   for (const ord of orders) {
-    const key = String(ord.orderCode || ord._id);
+    const key = String(getRootCode(ord) || ord._id);
     if (!map.has(key)) map.set(key, []);
     map.get(key).push(ord);
   }

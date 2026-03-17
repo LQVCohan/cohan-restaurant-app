@@ -51,6 +51,10 @@ const ME_QUERY = gql`
       id
       fullName
       email
+      phone
+      username
+      avatar
+      avatarUrl
       roleName
       emailVerified
       refRestaurants {

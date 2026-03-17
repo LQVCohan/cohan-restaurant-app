@@ -4,6 +4,7 @@ type Reservation {
   restaurantName: String
   tableId: ID!
   userId: ID!
+  orderCode: String
 
   timeTo: DateTime
   customerName: String
@@ -17,6 +18,12 @@ type Reservation {
   status: String!
   pendingPaymentExpiresAt: DateTime
   durationMinutes: Int
+  isUnlimitedTime: Boolean
+  paymentMethod: String
+  paymentReference: String
+  changeRequestType: String
+  changeRequestStatus: String
+  changeRequestFee: Int
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -32,13 +39,26 @@ input CreateReservationInput {
   customerPhone: String
   customerEmail: String
   depositAmount: Int
+  linkedMenuSubtotal: Int
   durationMinutes: Int
+  isUnlimitedTime: Boolean
+  paymentMethod: String
+  paymentReference: String
+  changeRequestType: String
+  changeRequestStatus: String
+  changeRequestFee: Int
 }
 
 input UpdateReservationInput {
   id: ID!
   timeTo: DateTime
   durationMinutes: Int
+  isUnlimitedTime: Boolean
+  paymentMethod: String
+  paymentReference: String
+  changeRequestType: String
+  changeRequestStatus: String
+  changeRequestFee: Int
   partySize: Int
   note: String
   customerName: String
@@ -51,6 +71,8 @@ input UpdateReservationStatusInput {
   status: String!
   depositStatus: String
   depositTxnId: ID
+  paymentMethod: String
+  paymentReference: String
 }
 
 input changeReservationTableInput {
@@ -62,7 +84,7 @@ input changeReservationTableInput {
 }
 
 extend type Query {
-  reservation(id: ID): Reservation
+  reservation(id: ID, orderCode: String): Reservation
   myReservations(limit: Int = 20, cursor: ID): [Reservation!]!
   confirmedReservationByTable(restaurantId: ID!, tableId: ID!): Reservation
 }
@@ -74,4 +96,23 @@ extend type Mutation {
   updateReservationStatus(input: UpdateReservationStatusInput!): Reservation!
   cancelReservation(id: ID!): Reservation!
   deleteReservation(id: ID!): Reservation!
+  submitReservationPayment(input: SubmitReservationPaymentInput!): Reservation!
+  requestReservationChange(input: RequestReservationChangeInput!): Reservation!
+}
+
+
+input SubmitReservationPaymentInput {
+  reservationId: ID!
+  method: String!
+  paymentStatus: String!
+  externalRef: String
+}
+
+input RequestReservationChangeInput {
+  reservationId: ID!
+  type: String!
+  requestedTimeTo: DateTime
+  requestedDurationMinutes: Int
+  requestedTableId: ID
+  note: String
 }

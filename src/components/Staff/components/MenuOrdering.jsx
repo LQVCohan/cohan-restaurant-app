@@ -19,6 +19,8 @@ export default function MenuOrdering({
   selectedCategory,
   setSelectedCategory,
   onRemoveCustomer,
+  menuItems = MOCK_MENU,
+  categories = MENU_CATEGORIES,
 }) {
   const [selectedItem, setSelectedItem] = useState(null);
   const [prepChoice, setPrepChoice] = useState("");
@@ -37,7 +39,7 @@ export default function MenuOrdering({
     );
   }
 
-  const filteredMenu = MOCK_MENU.filter(
+  const filteredMenu = (menuItems || []).filter(
     (m) =>
       m.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
       (selectedCategory === "Tất cả" || m.category === selectedCategory),
@@ -102,7 +104,7 @@ export default function MenuOrdering({
 
       {/* Thanh Lọc Danh Mục (Scroll ngang) */}
       <div className="category-scroll">
-        {MENU_CATEGORIES.map((cat) => (
+        {(categories || MENU_CATEGORIES).map((cat) => (
           <button
             key={cat}
             className={`filter-chip ${selectedCategory === cat ? "active" : ""}`}
@@ -178,7 +180,7 @@ export default function MenuOrdering({
                   1. Cách chế biến / Ghi chú
                 </label>
                 <div className="chips-container">
-                  {selectedItem.prep.map((p) => (
+                  {(selectedItem.prep || ["Mặc định"]).map((p) => (
                     <button
                       key={p}
                       className={`option-chip ${prepChoice === p ? "selected" : ""}`}

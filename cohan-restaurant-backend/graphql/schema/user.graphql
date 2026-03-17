@@ -112,6 +112,7 @@ type User {
   point: Int
   loyaltyPoints: Int
   roleName: String
+  loyaltyRank: String
 
   customerType: CustomerType
   totalOrders: Int
@@ -209,6 +210,7 @@ input UpdateUserInput {
   phone: String
   address: AddressInput
   avatarUrl: String
+  loyaltyRank: String
 }
 
 input UpdateAvatarInput {
@@ -270,6 +272,46 @@ type AuthPayload {
   user: User!
 }
 
+type StaffAccountOverview {
+  staffId: ID!
+  fullName: String
+  email: String
+  phone: String
+  avatarUrl: String
+  roleName: String
+  positionTitle: String
+  employeeCode: String
+  employmentStatus: EmploymentStatus
+  primaryRestaurant: Restaurant
+  restaurantForStaff: ID
+  floorAssigned: [String!]!
+  tableCount: Int!
+  tableList: [String!]!
+  ordersServedCount: Int!
+  shiftsWorkedCount: Int!
+  currentShift: String
+  lastShift: String
+}
+
+type StaffSalarySummary {
+  staffId: ID!
+  baseSalary: Float
+  totalHours: Float!
+  totalWage: Float!
+  totalAmount: Float!
+  timesheetCount: Int!
+}
+
+type StaffShiftHistoryItem {
+  id: ID!
+  restaurant: Restaurant
+  shiftType: String
+  startTime: DateTime
+  endTime: DateTime
+  status: String
+  notes: String
+}
+
 # =========================
 # Queries
 # =========================
@@ -287,6 +329,9 @@ type Query {
     search: String
     employmentStatus: EmploymentStatus
   ): [User!]!
+  staffAccountOverview(staffId: ID): StaffAccountOverview
+  staffSalarySummary(staffId: ID): StaffSalarySummary
+  staffShiftHistory(staffId: ID, limit: Int = 20): [StaffShiftHistoryItem!]!
 }
 
 # =========================
