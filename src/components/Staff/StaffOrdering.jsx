@@ -64,6 +64,18 @@ const MENU_ITEMS_QUERY = gql`
   }
 `;
 
+// NOTE:
+// Giữ lại hằng query này để tránh lỗi runtime trong môi trường HMR/cache
+// khi bundle cũ vẫn còn tham chiếu STAFF_ACCOUNT_OVERVIEW.
+// Không dùng để render statistics bar nữa.
+const STAFF_ACCOUNT_OVERVIEW = gql`
+  query StaffAccountOverviewSafe($staffId: ID) {
+    staffAccountOverview(staffId: $staffId) {
+      staffId
+    }
+  }
+`;
+
 const SEARCH_CUSTOMERS = gql`
   query StaffCustomerSearch($search: String, $includeGuests: Boolean) {
     customers(search: $search, includeGuests: $includeGuests) {
