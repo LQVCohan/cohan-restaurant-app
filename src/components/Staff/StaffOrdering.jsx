@@ -159,7 +159,9 @@ export default function StaffOrdering() {
   const [cartByTable, setCartByTable] = useState({});
   const [orderCodeByTable, setOrderCodeByTable] = useState({});
 
-  const [createOrderForTable, { loading: savingOrder }] = useMutation(CREATE_ORDER_FOR_TABLE);
+  const [createOrderForTable, { loading: savingOrder }] = useMutation(
+    CREATE_ORDER_FOR_TABLE,
+  );
   const [loadOrdersForTable] = useLazyQuery(ORDERS_GROUPED_BY_TABLE, {
     fetchPolicy: "network-only",
   });
@@ -198,9 +200,12 @@ export default function StaffOrdering() {
   const menuItems = useMemo(() => {
     const rows = menuData?.menuItems || [];
     return rows.map((m) => {
-      const variants = Array.isArray(m.servingVariants) ? m.servingVariants : [];
+      const variants = Array.isArray(m.servingVariants)
+        ? m.servingVariants
+        : [];
       const firstVariant = variants[0] || null;
-      const defaultVariant = variants.find((v) => v?.key === m.defaultServingKey) || firstVariant;
+      const defaultVariant =
+        variants.find((v) => v?.key === m.defaultServingKey) || firstVariant;
       return {
         id: m.id,
         dishId: m.id,
@@ -209,8 +214,12 @@ export default function StaffOrdering() {
         name: m.name,
         price: Number(defaultVariant?.price ?? m.basePrice ?? 0),
         stock: m.status === "active" ? 99 : 0,
-        category: m.categoryId ? `Danh mục ${String(m.categoryId).slice(-4)}` : "Khác",
-        prep: variants.length ? variants.map((v) => v.name).filter(Boolean) : ["Mặc định"],
+        category: m.categoryId
+          ? `Danh mục ${String(m.categoryId).slice(-4)}`
+          : "Khác",
+        prep: variants.length
+          ? variants.map((v) => v.name).filter(Boolean)
+          : ["Mặc định"],
         servingKey: m.defaultServingKey || defaultVariant?.key || "portion",
         thumbImage: m.thumbImage || null,
       };
@@ -232,18 +241,24 @@ export default function StaffOrdering() {
 
   useEffect(() => {
     if (!selectedTable || !restaurantId) return;
-    const hasDraft = Array.isArray(cartByTable[selectedTable.id]) && cartByTable[selectedTable.id].some((x) => !x.persisted);
+    const hasDraft =
+      Array.isArray(cartByTable[selectedTable.id]) &&
+      cartByTable[selectedTable.id].some((x) => !x.persisted);
     if (hasDraft) return;
 
     loadOrdersForTable({
-      variables: { restaurantId, tableCode: selectedTable.tableCode || selectedTable.name },
+      variables: {
+        restaurantId,
+        tableCode: selectedTable.tableCode || selectedTable.name,
+      },
     })
       .then(({ data }) => {
         const groups = data?.ordersGroupedByTable || [];
         const latest = groups[0] || null;
         setOrderCodeByTable((prev) => ({
           ...prev,
-          [selectedTable.id]: latest?.orderCode || prev[selectedTable.id] || null,
+          [selectedTable.id]:
+            latest?.orderCode || prev[selectedTable.id] || null,
         }));
         setCartByTable((prev) => ({
           ...prev,
@@ -251,7 +266,12 @@ export default function StaffOrdering() {
         }));
       })
       .catch(() => {});
-  }, [selectedTable?.id, selectedTable?.tableCode, selectedTable?.name, restaurantId]);
+  }, [
+    selectedTable?.id,
+    selectedTable?.tableCode,
+    selectedTable?.name,
+    restaurantId,
+  ]);
 
   const customerResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -294,20 +314,25 @@ export default function StaffOrdering() {
     if (!selectedTable?.id) return;
     setCartByTable((prev) => {
       const prevCart = prev[selectedTable.id] || [];
-      const nextCart = typeof updater === "function" ? updater(prevCart) : updater;
+      const nextCart =
+        typeof updater === "function" ? updater(prevCart) : updater;
       return { ...prev, [selectedTable.id]: nextCart };
     });
   };
 
   const handleAddToCart = (item, prep, serveOrder) => {
     if (item.stock <= 0) return alert("Món này đã hết hàng!");
-    if (!selectedTable?.id) return alert("Vui lòng chọn bàn trước khi thêm món");
+    if (!selectedTable?.id)
+      return alert("Vui lòng chọn bàn trước khi thêm món");
 
     const nextPriority = mapItemPriorityFromServeOrder(serveOrder);
     const signature = `${item.id}__${prep || ""}__${serveOrder || ""}`;
 
     setCartForSelectedTable((prev) => {
-      const idx = prev.findIndex((x) => x.signature === signature && x.status === "pending" && !x.persisted);
+      const idx = prev.findIndex(
+        (x) =>
+          x.signature === signature && x.status === "pending" && !x.persisted,
+      );
       if (idx >= 0) {
         return prev.map((x, i) =>
           i === idx
@@ -350,7 +375,9 @@ export default function StaffOrdering() {
     }
 
     const currentCart = cartByTable[selectedTable.id] || [];
-    const pendingItems = currentCart.filter((x) => x.status === "pending" && !x.persisted);
+    const pendingItems = currentCart.filter(
+      (x) => x.status === "pending" && !x.persisted,
+    );
     if (!pendingItems.length) {
       alert("Không có món mới để gửi bếp.");
       return;
@@ -383,11 +410,17 @@ export default function StaffOrdering() {
 
       const orderCode = data?.createOrderForTable?.order?.orderCode || null;
       if (orderCode) {
-        setOrderCodeByTable((prev) => ({ ...prev, [selectedTable.id]: orderCode }));
+        setOrderCodeByTable((prev) => ({
+          ...prev,
+          [selectedTable.id]: orderCode,
+        }));
       }
 
       const refreshed = await loadOrdersForTable({
-        variables: { restaurantId, tableCode: selectedTable.tableCode || selectedTable.name },
+        variables: {
+          restaurantId,
+          tableCode: selectedTable.tableCode || selectedTable.name,
+        },
         fetchPolicy: "network-only",
       });
       const groups = refreshed?.data?.ordersGroupedByTable || [];

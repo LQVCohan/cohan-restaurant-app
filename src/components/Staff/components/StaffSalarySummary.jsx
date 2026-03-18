@@ -1,0 +1,59 @@
+import React from "react";
+import { ArrowLeft, Wallet, Clock, Calendar, CheckCircle } from "lucide-react";
+import "./StaffProfileDetails.scss";
+
+const fmtMoney = (v) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(Number(v || 0));
+
+export default function StaffSalarySummary({ data, onBack }) {
+  return (
+    <div className="detail-page-wrapper">
+      <div className="detail-header">
+        <button className="btn-back" onClick={onBack}>
+          <ArrowLeft size={24} className="icon-back" /> Lương & Thưởng
+        </button>
+      </div>
+
+      <div className="detail-content">
+        <div className="salary-hero-card">
+          <div className="hero-label">Tổng thu nhập tạm tính</div>
+          <h2 className="hero-amount">{fmtMoney(data?.totalAmount)}</h2>
+        </div>
+
+        <div className="info-card">
+          <h3 className="card-title">Chi tiết lương</h3>
+          <div className="info-row">
+            <div className="label-group">
+              <Wallet size={18} /> Lương cơ bản
+            </div>
+            <div className="value">{fmtMoney(data?.baseSalary)}</div>
+          </div>
+          <div className="info-row">
+            <div className="label-group">
+              <Clock size={18} /> Tổng giờ công
+            </div>
+            <div className="value">
+              {Number(data?.totalHours || 0).toFixed(1)} giờ
+            </div>
+          </div>
+          <div className="info-row">
+            <div className="label-group">
+              <Wallet size={18} /> Tổng lương giờ
+            </div>
+            <div className="value">{fmtMoney(data?.totalWage)}</div>
+          </div>
+          <div className="info-row">
+            <div className="label-group">
+              <Calendar size={18} /> Số bảng công (Timesheet)
+            </div>
+            <div className="value">{data?.timesheetCount ?? 0} phiếu</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

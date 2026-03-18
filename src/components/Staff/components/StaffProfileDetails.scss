@@ -1,0 +1,304 @@
+// Variables
+$primary: #3b82f6;
+$success: #10b981;
+$warning: #f59e0b;
+$danger: #ef4444;
+$bg-main: #f3f4f6;
+$bg-card: #ffffff;
+$text-main: #1f2937;
+$text-sub: #6b7280;
+$border-color: #e5e7eb;
+
+.detail-page-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: $bg-main;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
+
+  // Header
+  .detail-header {
+    background: $bg-card;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    z-index: 10;
+
+    .btn-back {
+      background: transparent;
+      border: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      color: $text-main;
+      cursor: pointer;
+      padding: 0;
+
+      .icon-back {
+        color: $primary;
+      }
+      &:active {
+        opacity: 0.7;
+      }
+    }
+  }
+
+  // Content Area
+  .detail-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  // Common Card Style
+  .info-card {
+    background: $bg-card;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: $text-sub;
+      text-transform: uppercase;
+      margin: 0 0 12px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid $border-color;
+    }
+
+    .info-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #f3f4f6;
+      &:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+
+      .label-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: $text-sub;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .value {
+        font-size: 14px;
+        font-weight: 600;
+        color: $text-main;
+        text-align: right;
+      }
+    }
+  }
+
+  // Specific: Salary Summary
+  .salary-hero-card {
+    background: linear-gradient(135deg, $primary, #2563eb);
+    color: white;
+    border-radius: 16px;
+    padding: 24px 16px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba($primary, 0.3);
+
+    .hero-label {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 8px;
+    }
+    .hero-amount {
+      font-size: 32px;
+      font-weight: 800;
+      margin: 0;
+    }
+  }
+
+  // Specific: Shift History
+  .shift-card {
+    background: $bg-card;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .shift-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+
+      .shift-title-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        .shift-type {
+          font-weight: 700;
+          font-size: 15px;
+          color: $text-main;
+          text-transform: capitalize;
+        }
+        .shift-location {
+          font-size: 12px;
+          color: $text-sub;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+      }
+
+      .status-badge {
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        &.completed {
+          background: #d1fae5;
+          color: #059669;
+        }
+        &.pending {
+          background: #fef3c7;
+          color: #d97706;
+        }
+        &.default {
+          background: #f3f4f6;
+          color: #4b5563;
+        }
+      }
+    }
+
+    .shift-time {
+      background: #f8fafc;
+      padding: 10px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: $text-main;
+      font-weight: 600;
+    }
+    .shift-notes {
+      font-size: 13px;
+      color: $text-sub;
+      font-style: italic;
+    }
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+/* --- THÊM VÀO CUỐI FILE StaffProfileDetails.scss --- */
+
+// Header Flex Layout
+.detail-header.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+// Nút Action trên Header (Cập nhật, Lưu, Hủy)
+.btn-action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+
+  &.edit {
+    background-color: #e0e7ff; // Xanh nhạt
+    color: #4f46e5;
+    &:hover {
+      background-color: #c7d2fe;
+    }
+  }
+
+  &.save {
+    background-color: #10b981; // Xanh lá
+    color: white;
+    &:hover {
+      background-color: #059669;
+    }
+  }
+
+  &.cancel {
+    background-color: #f3f4f6; // Xám nhạt
+    color: #4b5563;
+    &:hover {
+      background-color: #e5e7eb;
+    }
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.action-group {
+  display: flex;
+  gap: 8px;
+}
+
+// Input Mode Edit
+.edit-input {
+  flex: 1;
+  max-width: 60%;
+  text-align: right;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #1f2937;
+  outline: none;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  background-color: #fff;
+
+  &:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  &::placeholder {
+    color: #9ca3af;
+  }
+}
+
+// Row bị disable (chỉ đọc) khi đang edit
+.info-row.disabled-row {
+  .text-muted {
+    color: #9ca3af; // Màu xám nhạt để báo hiệu không sửa được
+  }
+}
