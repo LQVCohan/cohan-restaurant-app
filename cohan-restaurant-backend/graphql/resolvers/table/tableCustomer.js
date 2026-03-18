@@ -59,6 +59,19 @@ function isAdmin(user) {
   );
 }
 
+async function isStaff(userDoc) {
+  if (!userDoc) return false;
+  const roleName = String(
+    userDoc?.roleName ||
+      userDoc?.role?.slug ||
+      userDoc?.role?.name ||
+      userDoc?.userType ||
+      ""
+  ).toLowerCase();
+  if (roleName === "staff") return true;
+  return userHasRoleSlug(userDoc, "staff");
+}
+
 async function isManager(user) {
   const me = user;
   return (
@@ -69,17 +82,25 @@ async function isManager(user) {
 }
 
 async function assertCanWriteRestaurant(user, restaurantId) {
-  console.log("----------------------");
-  console.log("ctx/user in TableCustomer: ", user);
-  console.log("----------------------");
   if (!user) throw forbidden("Unauthorized");
   if (isAdmin(user)) return true;
 
-  const manager = await isManager(user);
-  if (!manager) throw forbidden("Insufficient permission");
-
   const rid = toObjectIdOrNull(restaurantId);
   if (!rid) throw badInput("Invalid restaurantId");
+
+  const staff = await isStaff(user);
+  if (staff) {
+    const scopedRid =
+      user?.restaurantForStaff || user?.primaryRestaurantId || null;
+    if (!scopedRid) throw forbidden("Staff chưa được phân nhà hàng");
+    if (String(scopedRid) !== String(rid)) {
+      throw forbidden("You can only modify your assigned restaurant");
+    }
+    return true;
+  }
+
+  const manager = await isManager(user);
+  if (!manager) throw forbidden("Insufficient permission");
 
   const r = await Restaurant.findById(rid).lean();
   if (!r) throw notFound("Restaurant not found");
@@ -138,13 +159,15 @@ async function upsertTableCustomer(_, { input }, _ctx) {
     customerName,
     customerPhone,
     customerEmail,
+    customerUserId,
     note,
+    dietaryNotes,
+    customerPreferences,
     partySize,
     timeTo,
   } = input || {};
 
-  // giống file tableDraft: truyền nguyên ctx vào assert
-  await assertCanWriteRestaurant(_ctx, restaurantId);
+  await assertCanWriteRestaurant(_ctx?.user, restaurantId);
 
   if (!tableId && !tableCode) {
     throw badInput("tableId hoặc tableCode là bắt buộc");
@@ -168,7 +191,10 @@ async function upsertTableCustomer(_, { input }, _ctx) {
       customerName: customerName ?? null,
       customerPhone: customerPhone ?? null,
       customerEmail: customerEmail ?? null,
+      customerUserId: toObjectIdOrNull(customerUserId),
       note: note ?? null,
+      dietaryNotes: dietaryNotes ?? null,
+      customerPreferences: customerPreferences ?? null,
       partySize: partySize ?? null,
       timeTo: timeTo ? new Date(timeTo) : null,
 

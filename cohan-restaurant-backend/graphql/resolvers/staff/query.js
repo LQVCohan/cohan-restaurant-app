@@ -1,6 +1,14 @@
 // src/graphql/staff/query.js
 import mongoose from "mongoose";
-import { Staff, Shift, Timesheet, Order, Table } from "../../../models/index.js";
+import {
+  Staff,
+  Shift,
+  Timesheet,
+  Order,
+  Table,
+  Category,
+  Promotion,
+} from "../../../models/index.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -23,7 +31,7 @@ export default {
   // =========================
   // GET ONE STAFF
   // =========================
-  staff: async (_, { id }, ctx) => {
+  staff: async (_, { id }) => {
     const user = await Staff.findById(id)
       .populate("role")
       .populate("refRestaurants")
@@ -41,8 +49,7 @@ export default {
   // =========================
   staffList: async (
     _,
-    { restaurantId, roleId, search, employmentStatus },
-    ctx
+    { restaurantId, roleId, search, employmentStatus }
   ) => {
     const filter = {};
 
@@ -79,11 +86,16 @@ export default {
     let floorAssigned = [];
     let tableList = [];
     let tableCount = 0;
+    let floorCount = 0;
+    let categoryCount = 0;
+    let promotionCount = 0;
 
     if (rid) {
-      const tables = await Table.find({ restaurantId: rid })
-        .select({ code: 1, floorLevel: 1 })
-        .lean();
+      const [tables, categoryAgg, promoAgg] = await Promise.all([
+        Table.find({ restaurantId: rid }).select({ code: 1, floorLevel: 1 }).lean(),
+        Category.countDocuments({ restaurantId: rid }),
+        Promotion.countDocuments({ restaurantId: rid, isActive: true }),
+      ]);
       tableCount = tables.length;
       tableList = tables.map((t) => t.code).filter(Boolean);
       floorAssigned = Array.from(
@@ -95,6 +107,9 @@ export default {
             .filter(Boolean)
         )
       );
+      floorCount = floorAssigned.length;
+      categoryCount = Number(categoryAgg || 0);
+      promotionCount = Number(promoAgg || 0);
     }
 
     const orderFilter = {
@@ -127,7 +142,10 @@ export default {
       primaryRestaurant: staff.primaryRestaurant || null,
       restaurantForStaff: staff.restaurantForStaff || null,
       floorAssigned,
+      floorCount,
       tableCount,
+      categoryCount,
+      promotionCount,
       tableList,
       ordersServedCount,
       shiftsWorkedCount,
@@ -146,12 +164,15 @@ export default {
     const shiftIds = shifts.map((s) => s._id);
 
     if (!shiftIds.length) {
+      const baseSalary = Number(staff.baseSalary || 0);
       return {
         staffId: String(staff._id),
-        baseSalary: Number(staff.baseSalary || 0),
+        baseSalary,
         totalHours: 0,
         totalWage: 0,
         totalAmount: 0,
+        bonusAmount: 0,
+        coefficient: 0,
         timesheetCount: 0,
       };
     }
@@ -170,12 +191,19 @@ export default {
     ]);
 
     const row = agg?.[0] || {};
+    const totalWage = Number(row.totalWage || 0);
+    const totalAmount = Number(row.totalAmount || 0);
+    const baseSalary = Number(staff.baseSalary || 0);
+    const bonusAmount = Math.max(0, totalAmount - totalWage);
+    const coefficient = baseSalary > 0 ? totalWage / baseSalary : 0;
     return {
       staffId: String(staff._id),
-      baseSalary: Number(staff.baseSalary || 0),
+      baseSalary,
       totalHours: Number(row.totalHours || 0),
-      totalWage: Number(row.totalWage || 0),
-      totalAmount: Number(row.totalAmount || 0),
+      totalWage,
+      totalAmount,
+      bonusAmount,
+      coefficient: Number(coefficient.toFixed(2)),
       timesheetCount: Number(row.timesheetCount || 0),
     };
   },
