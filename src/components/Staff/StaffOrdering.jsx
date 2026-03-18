@@ -270,6 +270,12 @@ export default function StaffOrdering() {
     fetchPolicy: "network-only",
   });
 
+  const { data: overviewData } = useQuery(STAFF_ACCOUNT_OVERVIEW, {
+    variables: { staffId: user?.id || null },
+    skip: !user?.id,
+    fetchPolicy: "network-only",
+  });
+
   useEffect(() => {
     if (!tablesData?.tables) return;
     const mapped = tablesData.tables.map((t) => ({
