@@ -6,44 +6,7 @@ export default function ContactsView() {
   const [activeTab, setActiveTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const staffContacts = [
-    {
-      id: 1,
-      role: "Quản lý",
-      dept: "management",
-      name: "Anh Tuấn",
-      status: "online",
-      lastMsg: "Khách VIP sắp tới nhé.",
-      avatarColor: "bg-blue-100 text-blue-600",
-    },
-    {
-      id: 2,
-      role: "Bếp trưởng",
-      dept: "kitchen",
-      name: "Chú Hải",
-      status: "busy",
-      lastMsg: "Đang kẹt 5 bill lẩu.",
-      avatarColor: "bg-orange-100 text-orange-600",
-    },
-    {
-      id: 3,
-      role: "Thu ngân",
-      dept: "cashier",
-      name: "Chị Mai",
-      status: "online",
-      lastMsg: "Đã nhận tiền bàn 03.",
-      avatarColor: "bg-emerald-100 text-emerald-600",
-    },
-    {
-      id: 4,
-      role: "Bảo vệ",
-      dept: "security",
-      name: "Chú Dũng",
-      status: "offline",
-      lastMsg: "Xe khách hết chỗ.",
-      avatarColor: "bg-gray-200 text-gray-600",
-    },
-  ];
+  const staffContacts = [];
 
   // Hàm lấy chữ cái đầu làm Avatar
   const getInitials = (name) => {
@@ -98,7 +61,9 @@ export default function ContactsView() {
       {/* Danh sách Liên lạc */}
       <div className="contact-list">
         {filteredContacts.length === 0 ? (
-          <div className="empty-state">Không tìm thấy liên lạc nào.</div>
+          <div className="empty-state">
+            Chưa có danh bạ nội bộ cho nhà hàng này.
+          </div>
         ) : (
           filteredContacts.map((c) => (
             <div key={c.id} className="contact-card">

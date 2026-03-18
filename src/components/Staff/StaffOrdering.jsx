@@ -1,4 +1,11 @@
-import React, { useState, useMemo, useEffect, useContext } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useContext,
+  useRef,
+  useCallback,
+} from "react";
 import {
   Search,
   Grid,
@@ -9,13 +16,12 @@ import {
   Bell,
   Star,
   X,
+  AlertCircle,
 } from "lucide-react";
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 
 import "./StaffOrdering.scss";
 import NotificationBell from "./NotificationBell";
-
-import { MOCK_CUSTOMERS, INITIAL_TABLES } from "./data/mockData";
 
 import TableMap from "./components/TableMap";
 import MenuOrdering from "./components/MenuOrdering";
@@ -55,6 +61,80 @@ const MENU_ITEMS_QUERY = gql`
         price
       }
     }
+  }
+`;
+
+// NOTE:
+// Giữ lại hằng query này để tránh lỗi runtime trong môi trường HMR/cache
+// khi bundle cũ vẫn còn tham chiếu STAFF_ACCOUNT_OVERVIEW.
+// Không dùng để render statistics bar nữa.
+const STAFF_ACCOUNT_OVERVIEW = gql`
+  query StaffAccountOverviewSafe($staffId: ID) {
+    staffAccountOverview(staffId: $staffId) {
+      staffId
+    }
+  }
+`;
+
+const SEARCH_CUSTOMERS = gql`
+  query StaffCustomerSearch($search: String, $includeGuests: Boolean) {
+    customers(search: $search, includeGuests: $includeGuests) {
+      id
+      fullName
+      phone
+      email
+      loyaltyRank
+      customerType
+      totalOrders
+      totalSpending
+      noteInternal
+    }
+  }
+`;
+
+const GET_TABLE_CUSTOMER = gql`
+  query StaffTableCustomer($restaurantId: ID!, $tableCode: String!) {
+    tableCustomer(restaurantId: $restaurantId, tableCode: $tableCode) {
+      id
+      tableCode
+      customerName
+      customerPhone
+      customerEmail
+      customerUserId
+      note
+      dietaryNotes
+      customerPreferences
+      updatedAt
+    }
+  }
+`;
+
+const UPSERT_TABLE_CUSTOMER = gql`
+  mutation StaffUpsertTableCustomer($input: UpsertTableCustomerInput!) {
+    upsertTableCustomer(input: $input) {
+      id
+      tableCode
+      customerName
+      customerPhone
+      customerEmail
+      customerUserId
+      note
+      dietaryNotes
+      customerPreferences
+      updatedAt
+    }
+  }
+`;
+
+const DELETE_TABLE_CUSTOMER = gql`
+  mutation StaffDeleteTableCustomer(
+    $restaurantId: ID!
+    $tableCode: String
+  ) {
+    deleteTableCustomer(
+      restaurantId: $restaurantId
+      tableCode: $tableCode
+    )
   }
 `;
 
@@ -110,6 +190,17 @@ const mapItemPriorityFromServeOrder = (serveOrder) => {
   return "MEDIUM";
 };
 
+const toCustomerLabel = (row) => ({
+  id: row?.id,
+  name: row?.fullName || "Khách lẻ",
+  phone: row?.phone || "",
+  email: row?.email || "",
+  rank: row?.loyaltyRank || row?.customerType || "THƯỜNG",
+  totalOrders: Number(row?.totalOrders || 0),
+  totalSpending: Number(row?.totalSpending || 0),
+  noteInternal: row?.noteInternal || "",
+});
+
 const buildCartFromServerOrders = (orders = []) => {
   const result = [];
   for (const order of orders) {
@@ -151,42 +242,55 @@ export default function StaffOrdering() {
 
   const [activeTab, setActiveTab] = useState("tables");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [tables, setTables] = useState(INITIAL_TABLES);
+  const [tables, setTables] = useState([]);
   const [selectedTableId, setSelectedTableId] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("Tất cả");
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [cartByTable, setCartByTable] = useState({});
   const [orderCodeByTable, setOrderCodeByTable] = useState({});
+  const [tableCustomerMap, setTableCustomerMap] = useState({});
+  const [showCustomerNoteModal, setShowCustomerNoteModal] = useState(false);
+
+  const searchTimerRef = useRef(null);
 
   const [createOrderForTable, { loading: savingOrder }] = useMutation(
     CREATE_ORDER_FOR_TABLE,
   );
+  const [upsertTableCustomer] = useMutation(UPSERT_TABLE_CUSTOMER);
+  const [deleteTableCustomer] = useMutation(DELETE_TABLE_CUSTOMER);
   const [loadOrdersForTable] = useLazyQuery(ORDERS_GROUPED_BY_TABLE, {
     fetchPolicy: "network-only",
   });
+  const [loadTableCustomer] = useLazyQuery(GET_TABLE_CUSTOMER, {
+    fetchPolicy: "network-only",
+  });
+  const [loadCustomers, customerSearchState] = useLazyQuery(SEARCH_CUSTOMERS, {
+    fetchPolicy: "network-only",
+  });
 
-  const { data: tablesData } = useQuery(TABLES_QUERY, {
+  const { data: tablesData, loading: tablesLoading } = useQuery(TABLES_QUERY, {
     variables: { restaurantId, limit: 200 },
     skip: !restaurantId,
     fetchPolicy: "network-only",
   });
 
-  const { data: menuData } = useQuery(MENU_ITEMS_QUERY, {
+  const { data: menuData, loading: menuLoading } = useQuery(MENU_ITEMS_QUERY, {
     variables: { restaurantId, limit: 300 },
     skip: !restaurantId,
     fetchPolicy: "network-only",
   });
 
   useEffect(() => {
-    if (!tablesData?.tables?.length) return;
+    if (!tablesData?.tables) return;
     const mapped = tablesData.tables.map((t) => ({
       id: t.id,
       tableCode: t.code,
       name: t.code,
       floor: `Tầng ${t.floorLevel || 1}`,
       status: mapTableStatusToUi(t.status),
-      guests: 0,
+      guests: Number(t.capacity || 0),
       customer: null,
     }));
     setTables(mapped);
@@ -239,12 +343,55 @@ export default function StaffOrdering() {
 
   const cart = selectedTable ? cartByTable[selectedTable.id] || [] : [];
 
+  const customerResults = useMemo(
+    () =>
+      (customerSearchState?.data?.customers || []).map((c) =>
+        toCustomerLabel(c),
+      ),
+    [customerSearchState?.data?.customers],
+  );
+
+  const hydrateTableCustomer = useCallback(
+    async (table) => {
+      if (!table?.tableCode || !restaurantId) return;
+      try {
+        const { data } = await loadTableCustomer({
+          variables: {
+            restaurantId,
+            tableCode: table.tableCode,
+          },
+        });
+        const tc = data?.tableCustomer || null;
+        if (!tc) return;
+
+        const customer = {
+          id: tc.customerUserId || `${table.id}_linked`,
+          name: tc.customerName || "Khách liên kết",
+          phone: tc.customerPhone || "",
+          email: tc.customerEmail || "",
+          rank: "THÀNH VIÊN",
+          noteInternal: tc.note || tc.dietaryNotes || tc.customerPreferences || "",
+        };
+
+        setTableCustomerMap((prev) => ({ ...prev, [table.id]: tc }));
+        setTables((prev) =>
+          prev.map((t) => (t.id === table.id ? { ...t, customer } : t)),
+        );
+      } catch {
+        // Ignore hydration error, keep UI stable
+      }
+    },
+    [loadTableCustomer, restaurantId],
+  );
+
   useEffect(() => {
     if (!selectedTable || !restaurantId) return;
     const hasDraft =
       Array.isArray(cartByTable[selectedTable.id]) &&
       cartByTable[selectedTable.id].some((x) => !x.persisted);
     if (hasDraft) return;
+
+    hydrateTableCustomer(selectedTable);
 
     loadOrdersForTable({
       variables: {
@@ -257,8 +404,7 @@ export default function StaffOrdering() {
         const latest = groups[0] || null;
         setOrderCodeByTable((prev) => ({
           ...prev,
-          [selectedTable.id]:
-            latest?.orderCode || prev[selectedTable.id] || null,
+          [selectedTable.id]: latest?.orderCode || prev[selectedTable.id] || null,
         }));
         setCartByTable((prev) => ({
           ...prev,
@@ -266,47 +412,94 @@ export default function StaffOrdering() {
         }));
       })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedTable?.id,
     selectedTable?.tableCode,
     selectedTable?.name,
     restaurantId,
+    hydrateTableCustomer,
   ]);
 
-  const customerResults = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    return MOCK_CUSTOMERS.filter(
-      (c) =>
-        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.phone.includes(searchQuery),
-    );
-  }, [searchQuery]);
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    const keyword = searchQuery.trim();
+    if (!keyword || keyword.length < 2 || !showSearchResults) return;
+    searchTimerRef.current = setTimeout(() => {
+      setSearchTerm(keyword);
+      loadCustomers({ variables: { search: keyword, includeGuests: true } });
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [searchQuery, loadCustomers, showSearchResults]);
 
-  const handleAssignCustomer = (customer) => {
-    if (!selectedTableId)
-      return alert("Vui lòng chọn 1 bàn trước khi gán khách!");
-    setTables((prev) =>
-      prev.map((t) =>
-        t.id === selectedTableId
-          ? {
-              ...t,
-              customer,
-              status: t.status === "empty" ? "serving" : t.status,
-            }
-          : t,
-      ),
-    );
-    setSearchQuery("");
-    setShowSearchResults(false);
+  const handleAssignCustomer = async (customer) => {
+    if (!selectedTableId || !selectedTable || !restaurantId) {
+      alert("Vui lòng chọn 1 bàn trước khi gán khách!");
+      return;
+    }
+
+    const input = {
+      restaurantId,
+      tableCode: selectedTable.tableCode || selectedTable.name,
+      customerUserId: customer.id,
+      customerName: customer.name,
+      customerPhone: customer.phone || null,
+      customerEmail: customer.email || null,
+      note: customer.noteInternal || null,
+      dietaryNotes: customer.noteInternal || null,
+      customerPreferences: customer.noteInternal || null,
+    };
+
+    try {
+      const { data } = await upsertTableCustomer({ variables: { input } });
+      const saved = data?.upsertTableCustomer;
+      setTableCustomerMap((prev) => ({
+        ...prev,
+        [selectedTable.id]: saved || input,
+      }));
+      setTables((prev) =>
+        prev.map((t) =>
+          t.id === selectedTableId
+            ? {
+                ...t,
+                customer,
+                status: t.status === "empty" ? "serving" : t.status,
+              }
+            : t,
+        ),
+      );
+      setSearchQuery("");
+      setShowSearchResults(false);
+    } catch (error) {
+      alert(error?.message || "Không thể liên kết khách cho bàn này.");
+    }
   };
 
-  const handleRemoveCustomer = () => {
-    if (window.confirm("Bỏ gán khách hàng khỏi bàn này?")) {
+  const handleRemoveCustomer = async () => {
+    if (!selectedTable || !restaurantId) return;
+    if (!window.confirm("Bỏ gán khách hàng khỏi bàn này?")) return;
+
+    try {
+      await deleteTableCustomer({
+        variables: {
+          restaurantId,
+          tableCode: selectedTable.tableCode || selectedTable.name,
+        },
+      });
+      setTableCustomerMap((prev) => {
+        const next = { ...prev };
+        delete next[selectedTable.id];
+        return next;
+      });
       setTables((prev) =>
         prev.map((t) =>
           t.id === selectedTableId ? { ...t, customer: null } : t,
         ),
       );
+    } catch (error) {
+      alert(error?.message || "Không thể xóa liên kết khách ở bàn này.");
     }
   };
 
@@ -444,7 +637,7 @@ export default function StaffOrdering() {
   };
 
   const pendingCount = cart.filter((c) => c.status === "pending").length;
-
+  const linkedTableCustomer = selectedTable ? tableCustomerMap[selectedTable.id] : null;
   return (
     <div className="staff-pos-layout">
       <header className="staff-pos-header">
@@ -455,7 +648,7 @@ export default function StaffOrdering() {
             <Search size={20} className="icon-search" />
             <input
               type="text"
-              placeholder="Tìm khách (Tên/SĐT), món..."
+              placeholder="Tìm khách quen (Tên/SĐT)..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -470,9 +663,15 @@ export default function StaffOrdering() {
             )}
           </div>
 
-          {showSearchResults && customerResults.length > 0 && (
+          {showSearchResults && (
             <div className="search-results-dropdown">
               <div className="dropdown-title">Khách hàng thành viên</div>
+              {customerSearchState.loading && (
+                <div className="search-state">Đang tải gợi ý...</div>
+              )}
+              {!customerSearchState.loading && searchTerm.length >= 2 && customerResults.length === 0 && (
+                <div className="search-state">Không tìm thấy khách phù hợp.</div>
+              )}
               <div className="results-list">
                 {customerResults.map((cus) => (
                   <div
@@ -485,10 +684,10 @@ export default function StaffOrdering() {
                     </div>
                     <div className="cus-info">
                       <span className="cus-name">{cus.name}</span>
-                      <span className="cus-phone">{cus.phone}</span>
+                      <span className="cus-phone">{cus.phone || "Không có SĐT"}</span>
                     </div>
                     <div className="cus-rank-badge">
-                      <Star size={10} className="icon-star" /> Hạng {cus.rank}
+                      <Star size={10} className="icon-star" /> {cus.rank}
                     </div>
                   </div>
                 ))}
@@ -510,6 +709,13 @@ export default function StaffOrdering() {
       )}
 
       <main className="staff-pos-main">
+        {(tablesLoading || menuLoading) && (
+          <div className="staff-inline-state">Đang tải dữ liệu nhà hàng...</div>
+        )}
+        {!tablesLoading && !menuLoading && restaurantId && tables.length === 0 && (
+          <div className="staff-inline-state">Nhà hàng chưa có bàn để thao tác.</div>
+        )}
+
         {activeTab === "tables" && (
           <TableMap
             tables={tables}
@@ -565,6 +771,16 @@ export default function StaffOrdering() {
               <span className="total-text">Xem</span>
             </div>
           </button>
+
+          {linkedTableCustomer && (
+            <button
+              type="button"
+              className="btn-customer-note"
+              onClick={() => setShowCustomerNoteModal(true)}
+            >
+              <AlertCircle size={14} /> Lưu ý khách
+            </button>
+          )}
         </div>
       )}
 
@@ -625,6 +841,21 @@ export default function StaffOrdering() {
           onSendKitchen={handleSendKitchen}
           sending={savingOrder}
         />
+      )}
+
+      {showCustomerNoteModal && linkedTableCustomer && (
+        <div className="customer-note-modal" onClick={() => setShowCustomerNoteModal(false)}>
+          <div className="customer-note-content" onClick={(e) => e.stopPropagation()}>
+            <h3>Lưu ý ăn uống của khách</h3>
+            <p><strong>Khách:</strong> {linkedTableCustomer.customerName || "—"}</p>
+            <p><strong>SĐT:</strong> {linkedTableCustomer.customerPhone || "—"}</p>
+            <p><strong>Dietary notes:</strong> {linkedTableCustomer.dietaryNotes || linkedTableCustomer.note || "Chưa có"}</p>
+            <p><strong>Thói quen ăn uống:</strong> {linkedTableCustomer.customerPreferences || linkedTableCustomer.note || "Chưa có"}</p>
+            <button type="button" onClick={() => setShowCustomerNoteModal(false)}>
+              Đóng
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
