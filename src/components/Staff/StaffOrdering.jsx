@@ -64,22 +64,6 @@ const MENU_ITEMS_QUERY = gql`
   }
 `;
 
-const STAFF_ACCOUNT_OVERVIEW = gql`
-  query StaffAccountOverviewLite($staffId: ID) {
-    staffAccountOverview(staffId: $staffId) {
-      staffId
-      tableCount
-      floorCount
-      categoryCount
-      promotionCount
-      primaryRestaurant {
-        id
-        name
-      }
-    }
-  }
-`;
-
 const SEARCH_CUSTOMERS = gql`
   query StaffCustomerSearch($search: String, $includeGuests: Boolean) {
     customers(search: $search, includeGuests: $includeGuests) {
@@ -648,8 +632,6 @@ export default function StaffOrdering() {
 
   const pendingCount = cart.filter((c) => c.status === "pending").length;
   const linkedTableCustomer = selectedTable ? tableCustomerMap[selectedTable.id] : null;
-  const overview = overviewData?.staffAccountOverview;
-
   return (
     <div className="staff-pos-layout">
       <header className="staff-pos-header">
@@ -721,25 +703,6 @@ export default function StaffOrdering() {
       )}
 
       <main className="staff-pos-main">
-        <section className="ops-summary">
-          <div className="ops-item">
-            <span>Danh mục</span>
-            <strong>{overview?.categoryCount ?? dynamicCategories.length - 1}</strong>
-          </div>
-          <div className="ops-item">
-            <span>Bàn</span>
-            <strong>{overview?.tableCount ?? tables.length}</strong>
-          </div>
-          <div className="ops-item">
-            <span>Tầng</span>
-            <strong>{overview?.floorCount ?? floors.length}</strong>
-          </div>
-          <div className="ops-item">
-            <span>Khuyến mãi</span>
-            <strong>{overview?.promotionCount ?? 0}</strong>
-          </div>
-        </section>
-
         {(tablesLoading || menuLoading) && (
           <div className="staff-inline-state">Đang tải dữ liệu nhà hàng...</div>
         )}

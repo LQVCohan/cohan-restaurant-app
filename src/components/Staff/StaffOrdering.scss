@@ -190,31 +190,6 @@ $border-color: #e5e7eb;
   }
 }
 
-.ops-summary {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 12px;
-
-  .ops-item {
-    background: $bg-card;
-    border: 1px solid $border-color;
-    border-radius: 12px;
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    span {
-      color: $text-sub;
-      font-size: 11px;
-    }
-    strong {
-      color: $text-main;
-      font-size: 14px;
-    }
-  }
-}
-
 .staff-inline-state {
   padding: 10px 12px;
   border-radius: 10px;
@@ -432,19 +407,12 @@ $border-color: #e5e7eb;
   }
 }
 
-@media (max-width: 520px) {
-  .ops-summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (prefers-color-scheme: dark) {
   .staff-pos-layout {
     background: #0f172a;
   }
   .staff-pos-header,
   .staff-pos-bottom-nav,
-  .ops-summary .ops-item,
   .floating-cart-wrapper .btn-customer-note,
   .customer-note-modal .customer-note-content {
     background: #111827;
