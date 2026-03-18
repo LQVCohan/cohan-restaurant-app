@@ -16,22 +16,10 @@ import {
 } from "lucide-react";
 import "./StaffProfileDetails.scss";
 
-// --- GRAPHQL MUTATION (Mẫu) ---
-// Bạn có thể điều chỉnh tên mutation và field cho khớp với Backend của bạn
 const UPDATE_STAFF_PROFILE = gql`
-  mutation UpdateStaffProfile(
-    $staffId: ID!
-    $fullName: String
-    $phone: String
-    $email: String
-  ) {
-    updateStaffProfile(
-      staffId: $staffId
-      fullName: $fullName
-      phone: $phone
-      email: $email
-    ) {
-      staffId
+  mutation UpdateStaffProfile($input: UpdateUserInput!) {
+    updateUser(input: $input) {
+      id
       fullName
       phone
       email
@@ -86,10 +74,11 @@ export default function StaffPersonalInfo({ data, user, onBack }) {
     // Gọi API cập nhật
     updateProfile({
       variables: {
-        staffId: user?.id,
-        fullName: formData.fullName,
-        phone: formData.phone,
-        email: formData.email,
+        input: {
+          fullName: formData.fullName,
+          phone: formData.phone,
+          email: formData.email,
+        },
       },
     });
   };

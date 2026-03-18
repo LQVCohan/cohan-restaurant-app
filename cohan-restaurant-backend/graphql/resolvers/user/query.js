@@ -98,15 +98,32 @@ export const UserQuery = {
   // Kết quả = users có role=customer UNION (isGuest = true nếu includeGuests)
   async customers(_, { search, includeGuests = true }, { user: authUser }) {
     try {
-      // Cho phép admin & manager
-      requireRole(authUser, ["admin", "manager"]);
+      // Cho phép admin, manager, staff
+      requireRole(authUser, ["admin", "manager", "staff"]);
 
       // Tìm role "customer"
       const customerRole = await Role.findOne({ slug: "customer" }).lean();
+      const staffRestaurantId =
+        authUser?.restaurantForStaff || authUser?.primaryRestaurantId || null;
+      const isStaff = String(authUser?.roleName || "").toLowerCase() === "staff";
+
+      const restaurantScopeCond =
+        isStaff && mongoose.isValidObjectId(staffRestaurantId)
+          ? {
+              refRestaurants: {
+                $in: [toObjectId(staffRestaurantId)],
+              },
+            }
+          : {};
+
       if (!customerRole?._id) {
         // Không có role "customer" thì chỉ có thể trả về guest (nếu includeGuests)
         const s = buildSearchCond(search);
-        const guestOnlyCond = { isGuest: true, ...(s || {}) };
+        const guestOnlyCond = {
+          isGuest: true,
+          ...(s || {}),
+          ...restaurantScopeCond,
+        };
         const guestOnly = includeGuests
           ? await Customer.find(guestOnlyCond)
               .populate({ path: "role", select: "name slug" })
@@ -119,7 +136,11 @@ export const UserQuery = {
       const s = buildSearchCond(search);
 
       // 1) Customers theo role
-      const customerCond = { role: customerRole._id, ...(s || {}) };
+      const customerCond = {
+        role: customerRole._id,
+        ...(s || {}),
+        ...restaurantScopeCond,
+      };
       const roleCustomers = await Customer.find(customerCond)
         .populate({ path: "role", select: "name slug" })
         .sort({ createdAt: -1 })
@@ -128,7 +149,11 @@ export const UserQuery = {
       // 2) Guests nếu cần
       let guests = [];
       if (includeGuests) {
-        const guestCond = { isGuest: true, ...(s || {}) };
+        const guestCond = {
+          isGuest: true,
+          ...(s || {}),
+          ...restaurantScopeCond,
+        };
         guests = await Customer.find(guestCond)
           .populate({ path: "role", select: "name slug" })
           .sort({ createdAt: -1 })

@@ -12,32 +12,7 @@ import "./NotificationsView.scss";
 
 export default function NotificationsView() {
   const [filter, setFilter] = useState("all");
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      from: "Quản lý",
-      type: "management",
-      text: "Bàn VIP 1 khách sắp tới, set up kỹ nhé.",
-      time: "10:30",
-      isRead: false,
-    },
-    {
-      id: 2,
-      from: "Bếp",
-      type: "kitchen",
-      text: "Bò Wagyu hiện tại hết size lớn, báo khách giúp bếp.",
-      time: "11:15",
-      isRead: false,
-    },
-    {
-      id: 3,
-      from: "Hệ thống",
-      type: "system",
-      text: "Cập nhật menu thành công. Đã thêm 2 món mới.",
-      time: "09:00",
-      isRead: true,
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
 
   const unreadCount = messages.filter((m) => !m.isRead).length;
   const displayedMessages =

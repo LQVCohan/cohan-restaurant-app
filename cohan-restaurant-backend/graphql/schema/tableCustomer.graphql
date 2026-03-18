@@ -9,7 +9,10 @@ type TableCustomer {
   customerName: String
   customerPhone: String
   customerEmail: String
+  customerUserId: ID
   note: String
+  dietaryNotes: String
+  customerPreferences: String
   partySize: Int
   timeTo: DateTime
 
@@ -25,7 +28,10 @@ input UpsertTableCustomerInput {
   customerName: String
   customerPhone: String
   customerEmail: String
+  customerUserId: ID
   note: String
+  dietaryNotes: String
+  customerPreferences: String
   partySize: Int
   timeTo: DateTime
 }
