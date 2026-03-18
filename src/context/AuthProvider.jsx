@@ -61,7 +61,6 @@ const ME_QUERY = gql`
       email
       phone
       username
-      avatar
       avatarUrl
       roleName
       emailVerified
