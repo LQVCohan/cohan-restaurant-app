@@ -43,7 +43,10 @@ const STAFF_ACCOUNT_OVERVIEW = gql`
         name
       }
       floorAssigned
+      floorCount
       tableCount
+      categoryCount
+      promotionCount
       tableList
       ordersServedCount
       shiftsWorkedCount
@@ -61,6 +64,8 @@ const STAFF_SALARY_SUMMARY = gql`
       totalHours
       totalWage
       totalAmount
+      bonusAmount
+      coefficient
       timesheetCount
     }
   }
