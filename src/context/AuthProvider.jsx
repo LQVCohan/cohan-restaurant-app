@@ -4,7 +4,15 @@ import { AuthContext } from "./AuthContext";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 
-const TOKEN_KEYS = { token: "auth_token", legacy: "token", user: "auth_user" };
+const TOKEN_KEYS = {
+  token: "auth_token",
+  legacy: "token",
+  user: "auth_user",
+  rememberUntil: "auth_remember_until",
+  rememberedIdentifier: "remembered_login_identifier",
+};
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 // GraphQL query để lấy danh sách nhà hàng của người quản lý
 const GET_USER_REFRESTAURANTS = gql`
@@ -51,6 +59,9 @@ const ME_QUERY = gql`
       id
       fullName
       email
+      phone
+      username
+      avatarUrl
       roleName
       emailVerified
       refRestaurants {
@@ -63,6 +74,13 @@ const ME_QUERY = gql`
 `;
 
 function readStoredAuth() {
+  const rememberUntil = Number(localStorage.getItem(TOKEN_KEYS.rememberUntil) || 0);
+  if (rememberUntil && Date.now() > rememberUntil) {
+    localStorage.removeItem(TOKEN_KEYS.token);
+    localStorage.removeItem(TOKEN_KEYS.legacy);
+    localStorage.removeItem(TOKEN_KEYS.user);
+    localStorage.removeItem(TOKEN_KEYS.rememberUntil);
+  }
   const token =
     localStorage.getItem(TOKEN_KEYS.token) ||
     sessionStorage.getItem(TOKEN_KEYS.token) ||
@@ -91,16 +109,30 @@ function readStoredAuth() {
   return { token, user, storage };
 }
 
-function writeStoredAuth(token, user, remember) {
-  const storage = remember ? localStorage : sessionStorage;
+function writeStoredAuth(token, user, options = {}) {
+  const { persistSession = true, rememberIdentifier = false, identifier = "" } = options;
+  const storage = persistSession ? localStorage : sessionStorage;
   [localStorage, sessionStorage].forEach((s) => {
     s.removeItem(TOKEN_KEYS.token);
     s.removeItem(TOKEN_KEYS.legacy);
     s.removeItem(TOKEN_KEYS.user);
+    s.removeItem(TOKEN_KEYS.rememberUntil);
   });
   storage.setItem(TOKEN_KEYS.token, token);
   storage.setItem(TOKEN_KEYS.legacy, token);
   storage.setItem(TOKEN_KEYS.user, JSON.stringify(user || {}));
+
+  if (persistSession) {
+    localStorage.setItem(TOKEN_KEYS.rememberUntil, String(Date.now() + THIRTY_DAYS_MS));
+  } else {
+    localStorage.removeItem(TOKEN_KEYS.rememberUntil);
+  }
+
+  if (rememberIdentifier && identifier) {
+    localStorage.setItem(TOKEN_KEYS.rememberedIdentifier, String(identifier).trim());
+  } else {
+    localStorage.removeItem(TOKEN_KEYS.rememberedIdentifier);
+  }
 }
 
 function clearStoredAuth() {
@@ -108,6 +140,7 @@ function clearStoredAuth() {
     s.removeItem(TOKEN_KEYS.token);
     s.removeItem(TOKEN_KEYS.legacy);
     s.removeItem(TOKEN_KEYS.user);
+    s.removeItem(TOKEN_KEYS.rememberUntil);
   });
 }
 
@@ -194,8 +227,8 @@ export const AuthProvider = ({ children }) => {
             ? localStorage
             : sessionStorage;
           storage.setItem(TOKEN_KEYS.user, JSON.stringify(merged));
-        } catch (storageError) {
-          console.warn("Failed to persist auth user", storageError);
+        } catch {
+          // ignore storage write error (quota/private mode)
         }
         return merged;
       });
@@ -260,14 +293,14 @@ export const AuthProvider = ({ children }) => {
 
   // ✅ Hàm login được gọi từ LoginPage
   const login = useCallback(
-    (newToken, roleOrUser, avatar = null, remember = true) => {
+    (newToken, roleOrUser, avatar = null, options = {}) => {
       const rawUser =
         typeof roleOrUser === "string" ? { roleName: roleOrUser } : roleOrUser;
       const newUser = normalizeUserModel(rawUser, user, avatar);
 
       setToken(newToken);
       setUser(newUser);
-      writeStoredAuth(newToken, newUser, remember);
+      writeStoredAuth(newToken, newUser, options);
     },
     [user]
   );
@@ -294,6 +327,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       restaurants,
       refRestaurant,
+      rememberedLoginIdentifier: localStorage.getItem(TOKEN_KEYS.rememberedIdentifier) || "",
     }),
     [
       token,

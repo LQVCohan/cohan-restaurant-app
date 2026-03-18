@@ -1,17 +1,15 @@
 // src/AppRouter.jsx
-import React, { useState, useEffect, useContext } from "react";
+import React, { useEffect, useContext } from "react";
 import {
   Routes,
   Route,
   Navigate,
   useLocation,
-  useNavigate,
   Outlet, // ✅ Thêm Outlet
 } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
 // ✅ Apollo Client
-import { gql, useQuery } from "@apollo/client";
 
 // ==== Public Components ====
 import Home from "../components/Customer/Homepage_Client/Home";
@@ -48,7 +46,6 @@ import StaffOrdering from "../components/Staff/StaffOrdering";
 
 // ==== Layouts ====
 import MainLayout from "../layouts/MainLayout";
-import { useNotification } from "@/hooks/useNotification";
 import { hasAllowedRole, resolveRoleName } from "@/routes/routeGuard";
 import VoucherPage from "@/components/Customer/VoucherManagement/VoucherPage";
 import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
@@ -59,94 +56,19 @@ import NotificationsPage from "@/components/Customer/NotifyModal/NotificationsPa
 import FoodDetail from "@/components/Customer/Food/FoodDetail";
 
 // =========================
-// 🔐 GraphQL Query: me
-// =========================
-const ME_QUERY = gql`
-  query Me {
-    me {
-      id
-      fullName
-      email
-      roleName
-      role {
-        slug
-      }
-      emailVerified
-      restaurantForStaff
-    }
-  }
-`;
-
-// =========================
 // 🔒 Auth Hook
 // =========================
 const useAuth = () => {
-  const navigate = useNavigate();
-  const { showNotification } = useNotification();
-  const [token, setToken] = useState(
-    () =>
-      localStorage.getItem("auth_token") ||
-      sessionStorage.getItem("auth_token") ||
-      localStorage.getItem("token") ||
-      sessionStorage.getItem("token"),
-  );
-
-  const { data, loading, error, refetch } = useQuery(ME_QUERY, {
-    skip: !token,
-    fetchPolicy: "network-only",
-  });
-
-  useEffect(() => {
-    if (error) {
-      const isNetworkError = Boolean(error.networkError);
-      const isUnauthenticated = (error.graphQLErrors || []).some(
-        (errItem) => errItem?.extensions?.code === "UNAUTHENTICATED",
-      );
-
-      if (isNetworkError && !isUnauthenticated) {
-        showNotification(
-          "Mất kết nối mạng. Bạn vẫn được giữ đăng nhập để tiếp tục khi có mạng.",
-          "warning",
-        );
-        return;
-      }
-
-      showNotification(error.message, "error");
-      localStorage.removeItem("auth_token");
-      sessionStorage.removeItem("auth_token");
-      localStorage.removeItem("token");
-      sessionStorage.removeItem("token");
-      localStorage.removeItem("auth_user");
-      sessionStorage.removeItem("auth_user");
-      setToken(null);
-      navigate("/login");
-    }
-  }, [error, navigate, showNotification]);
-
-  const role = resolveRoleName(data?.me);
-  const emailVerified = data?.me?.emailVerified ?? false;
-
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const newToken =
-        localStorage.getItem("auth_token") ||
-        sessionStorage.getItem("auth_token") ||
-        localStorage.getItem("token") ||
-        sessionStorage.getItem("token");
-      if (newToken !== token) {
-        setToken(newToken);
-        if (newToken) refetch?.();
-      }
-    };
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, [token, refetch]);
-
-  useEffect(() => {
-    if (!token) navigate("/login");
-  }, [token, navigate]);
-
-  return { token, role, emailVerified, loading, error };
+  const { token, user, loading, isAuthenticated } = useContext(AuthContext);
+  const role = resolveRoleName(user);
+  const emailVerified = user?.emailVerified ?? false;
+  return {
+    token,
+    role,
+    emailVerified,
+    loading,
+    isAuthenticated,
+  };
 };
 
 // =========================
@@ -159,13 +81,13 @@ export const PrivateRoute = ({
   authState,
 }) => {
   const fallbackAuthState = useAuth();
-  const { token, role, emailVerified, loading } =
+  const { token, role, emailVerified, loading, isAuthenticated } =
     authState || fallbackAuthState;
   const location = useLocation();
 
   if (loading) return null;
 
-  if (!token)
+  if (!isAuthenticated || !token)
     return <Navigate to="/login" state={{ from: location }} replace />;
 
   if (!hasAllowedRole(allowedRoles, role))

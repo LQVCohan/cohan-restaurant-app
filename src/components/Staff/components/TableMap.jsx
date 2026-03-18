@@ -15,8 +15,15 @@ export default function TableMap({
   onSelect,
   selectedTable,
   onTableAction,
+  floors = MOCK_FLOORS,
 }) {
-  const [floor, setFloor] = useState(MOCK_FLOORS[0]);
+  const [floor, setFloor] = useState((floors && floors[0]) || MOCK_FLOORS[0]);
+
+
+  React.useEffect(() => {
+    if (!floor && floors?.length) setFloor(floors[0]);
+    if (floor && floors?.length && !floors.includes(floor)) setFloor(floors[0]);
+  }, [floors, floor]);
 
   // Lọc bàn theo tầng
   const currentFloorTables = tables.filter((t) => t.floor === floor);
@@ -44,7 +51,7 @@ export default function TableMap({
 
       {/* Chọn Tầng (Cuộn ngang) */}
       <div className="floor-selector-scroll">
-        {MOCK_FLOORS.map((f) => (
+        {(floors || MOCK_FLOORS).map((f) => (
           <button
             key={f}
             className={`floor-chip ${floor === f ? "active" : ""}`}

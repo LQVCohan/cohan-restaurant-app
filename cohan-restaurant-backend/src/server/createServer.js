@@ -13,7 +13,8 @@ import buildContext from "../../graphql/context.js";
 import uploadRoutes from "./plugins/upload.route.js";
 import { createLoaders } from "../../graphql/loaders/index.js";
 import cron from "node-cron";
-import { autoCancelExpiredReservations } from "../services/reservationAutoCancel.service.js";
+import { autoCancelExpiredReservations, cleanupExpiredTableViewLocks } from "../services/reservationAutoCancel.service.js";
+import { cleanupExpiredCartHolds } from "../services/cartHoldCleanup.service.js";
 import {
   predictTableTurnover,
   suggestTableMerge,
@@ -22,6 +23,16 @@ import {
 } from "../services/ai/aiTable.service.js";
 import { registerObservability } from "../observability/observability.js";
 import { initBackendSentry } from "../observability/sentry.js";
+
+const parseAllowedOrigins = () => {
+  const rawOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const filtered = rawOrigins.filter((origin) => origin !== "*");
+  return filtered.length > 0 ? filtered : ["http://localhost:5173"];
+};
 
 export async function createServer() {
   const app = Fastify({
@@ -32,10 +43,10 @@ export async function createServer() {
   const sentry = await initBackendSentry(app.log);
   registerObservability(app, { sentry });
 
+  const allowedOrigins = parseAllowedOrigins();
+
   await app.register(cors, {
-    origin: (process.env.CORS_ORIGINS || "http://localhost:5173")
-      .split(",")
-      .map((s) => s.trim()),
+    origin: allowedOrigins,
     credentials: true,
     exposedHeaders: ["Content-Disposition"],
   });
@@ -71,6 +82,7 @@ export async function createServer() {
         ...baseContext,
         loaders: createLoaders(),
         io: app.io,
+        menuPresenceStore: app.menuPresenceStore,
       };
     },
   });
@@ -188,9 +200,7 @@ export async function createServer() {
 
   const io = new SocketIOServer(app.server, {
     cors: {
-      origin: (process.env.CORS_ORIGINS || "http://localhost:5173")
-        .split(",")
-        .map((s) => s.trim()),
+      origin: allowedOrigins,
       methods: ["GET", "POST"],
       credentials: true,
     },
@@ -198,8 +208,10 @@ export async function createServer() {
   });
 
   app.decorate("io", io);
+  app.decorate("menuPresenceStore", new Map());
 
   io.on("connection", (socket) => {
+    const joinedMenuKeys = new Set();
     app.log.info(`🔌 Client connected: ${socket.id}`);
 
     socket.on("joinRestaurant", (restaurantId) => {
@@ -232,7 +244,49 @@ export async function createServer() {
       app.log.info(`🚪 Socket ${socket.id} left order room ${roomName}`);
     });
 
+
+    socket.on("joinMenuItemView", ({ restaurantId, menuItemId }) => {
+      if (!restaurantId || !menuItemId) return;
+      const key = `${restaurantId}:${menuItemId}`;
+      joinedMenuKeys.add(key);
+      const cur = Number(app.menuPresenceStore.get(key) || 0) + 1;
+      app.menuPresenceStore.set(key, cur);
+      io.to(`restaurant_${restaurantId}`).emit("inventoryEvents", {
+        type: "MENU_VIEWERS_UPDATED",
+        restaurantId: String(restaurantId),
+        menuItemId: String(menuItemId),
+        viewerCount: cur,
+      });
+    });
+
+    socket.on("leaveMenuItemView", ({ restaurantId, menuItemId }) => {
+      if (!restaurantId || !menuItemId) return;
+      const key = `${restaurantId}:${menuItemId}`;
+      const cur = Math.max(0, Number(app.menuPresenceStore.get(key) || 0) - 1);
+      if (cur === 0) app.menuPresenceStore.delete(key);
+      else app.menuPresenceStore.set(key, cur);
+      joinedMenuKeys.delete(key);
+      io.to(`restaurant_${restaurantId}`).emit("inventoryEvents", {
+        type: "MENU_VIEWERS_UPDATED",
+        restaurantId: String(restaurantId),
+        menuItemId: String(menuItemId),
+        viewerCount: cur,
+      });
+    });
+
     socket.on("disconnect", (reason) => {
+      for (const key of joinedMenuKeys) {
+        const [restaurantId, menuItemId] = String(key).split(":");
+        const cur = Math.max(0, Number(app.menuPresenceStore.get(key) || 0) - 1);
+        if (cur === 0) app.menuPresenceStore.delete(key);
+        else app.menuPresenceStore.set(key, cur);
+        io.to(`restaurant_${restaurantId}`).emit("inventoryEvents", {
+          type: "MENU_VIEWERS_UPDATED",
+          restaurantId: String(restaurantId),
+          menuItemId: String(menuItemId),
+          viewerCount: cur,
+        });
+      }
       app.log.warn(`❌ Socket ${socket.id} disconnected: ${reason}`);
     });
   });
@@ -272,10 +326,16 @@ export async function createServer() {
   cron.schedule("* * * * *", async () => {
     try {
       const result = await autoCancelExpiredReservations();
+      await cleanupExpiredTableViewLocks();
       if (result?.modifiedCount) {
         app.log.info(
           `[Reservation AutoCancel] Cancelled ${result.modifiedCount} expired reservations`
         );
+      }
+
+      const holdResult = await cleanupExpiredCartHolds(app.io);
+      if (holdResult?.released) {
+        app.log.info(`[CartHold Cleanup] Released ${holdResult.released} expired holds`);
       }
     } catch (err) {
       app.log.error(

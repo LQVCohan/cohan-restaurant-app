@@ -1,12 +1,20 @@
 import mongoose from "mongoose";
 import Table from "../../../models/table.model.js";
 
+async function cleanupExpiredViewLocks(restaurantId) {
+  const now = new Date();
+  const q = { "viewLock.expiresAt": { $lte: now } };
+  if (restaurantId && mongoose.isValidObjectId(restaurantId)) q.restaurantId = restaurantId;
+  await Table.updateMany(q, { $unset: { viewLock: 1 } }).catch(() => {});
+}
+
 export default {
   tables: async (
     _p,
     { restaurantId, floorId, status, type, search, limit }
   ) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await cleanupExpiredViewLocks(restaurantId);
     const q = { restaurantId };
 
     if (floorId && mongoose.isValidObjectId(floorId)) q.floorId = floorId;
@@ -21,7 +29,7 @@ export default {
     }
 
     return Table.find(q)
-      .select({ __v: 0 })
+      .select({ __v: 0, viewLock: 1, status: 1, capacity: 1, code: 1, floorId: 1, floorLevel: 1, position: 1, restaurantId: 1, type: 1, deposit: 1, vrUrl: 1, notes: 1, tags: 1, isJoinable: 1, joinGroupId: 1 })
       .sort({ floorLevel: 1, code: 1 })
       .limit(Math.min(limit ?? 200, 500))
       .lean({ virtuals: true });
@@ -33,6 +41,7 @@ export default {
       !mongoose.isValidObjectId(floorId)
     )
       return null;
+    await cleanupExpiredViewLocks(restaurantId);
     return Table.findOne({ restaurantId, floorId, code }).lean({
       virtuals: true,
     });

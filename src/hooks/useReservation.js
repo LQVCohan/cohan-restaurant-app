@@ -90,7 +90,7 @@ export const UPDATE_RESERVATION_STATUS = gql`
 `;
 
 export const CHANGE_RESERVATION_TABLE = gql`
-  mutation ChangeReservationTable($input: ChangeReservationTableInput!) {
+  mutation ChangeReservationTable($input: changeReservationTableInput!) {
     changeReservationTable(input: $input) {
       id
       status
@@ -220,12 +220,11 @@ export function useReservation() {
     customer = {},
     partySize = 2,
     timeTo = null,
-    durationMinutes = 90,
+    durationMinutes = 60,
     note = "",
     restaurantName = "",
     maxCapacity = null,
     depositAmount = 0,
-    autoRecoverIfTableUnavailable = true, // ✅ sửa lỗi người dùng gặp
   } = {}) => {
     if (!restaurantId || !tableId) {
       return { success: false, message: "Missing restaurantId/tableId" };
@@ -271,7 +270,7 @@ export function useReservation() {
       customerName: fullName || null,
       customerPhone: trimOrNull(phone),
       customerEmail: trimOrNull(email),
-      durationMinutes: safeInt(durationMinutes, 90),
+      durationMinutes: safeInt(durationMinutes, 60),
       depositAmount: safeInt(depositAmount, 0),
     };
 
@@ -286,51 +285,10 @@ export function useReservation() {
       // 1) Gọi BE tạo reservation (không đụng trạng thái bàn trước)
       const resv = await tryCreate();
 
-      // 2) Sau khi tạo thành công mới set trạng thái bàn -> reserved (best-effort)
-      try {
-        await mutSetTableStatus({
-          variables: { input: { id: resv.tableId, status: "reserved" } },
-        });
-      } catch {
-        // bỏ qua
-      }
-
       return { success: true, data: resv };
     } catch (err) {
       const raw = err?.message || "";
 
-      // Trường hợp bàn đang không "available" (thường do bị set reserved sớm)
-      if (
-        autoRecoverIfTableUnavailable &&
-        /Table is not available|TABLE_UNAVAILABLE/i.test(raw)
-      ) {
-        try {
-          // Khôi phục về available rồi retry 1 lần
-          await mutSetTableStatus({
-            variables: { input: { id: tableId, status: "available" } },
-          });
-
-          const resv = await tryCreate();
-
-          // Sau khi tạo xong -> reserved (best-effort)
-          try {
-            await mutSetTableStatus({
-              variables: { input: { id: resv.tableId, status: "reserved" } },
-            });
-          } catch {}
-
-          return { success: true, data: resv };
-        } catch (retryErr) {
-          const msg = retryErr?.message || raw;
-          if (/TIME_CONFLICT/i.test(msg)) {
-            return {
-              success: false,
-              message: "Khung giờ này bàn đã có khách đặt.",
-            };
-          }
-          return { success: false, message: msg || "Create failed" };
-        }
-      }
 
       if (/Customer name/i.test(raw) && /required/i.test(raw)) {
         return {
@@ -377,7 +335,9 @@ export function useReservation() {
           await mutSetTableStatus({
             variables: { input: { id: resv.tableId, status: "occupied" } },
           });
-        } catch {}
+        } catch (tableErr) {
+          console.warn("setTableStatus occupied failed", tableErr);
+        }
       }
 
       return { success: true, data: resv };
@@ -503,7 +463,9 @@ export function useReservation() {
           onPaid?.(r);
           return;
         }
-      } catch {}
+      } catch (pollErr) {
+        console.warn("reservation status polling failed", pollErr);
+      }
       if (!stopped) timer = setTimeout(tick, intervalMs);
     };
 

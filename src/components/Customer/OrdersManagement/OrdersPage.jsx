@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useContext, useEffect } from "react";
+import React, { useMemo, useState, useContext } from "react";
 import "./OrdersPage.scss";
 import OrderItem from "./OrderItem"; // Import OrderItem mới
 import Toast from "../../ui/Toast";
@@ -66,6 +66,8 @@ const MY_RESERVATIONS = gql`
       durationMinutes
       partySize
       depositAmount
+      depositStatus
+      isUnlimitedTime
       status
       createdAt
     }
@@ -89,13 +91,19 @@ const CANCEL_RESERVATION = gql`
     }
   }
 `;
-const CREATE_RESERVATION = gql`
-  mutation CreateReservation($input: CreateReservationInput!) {
-    createReservation(input: $input) {
+const REQUEST_RESERVATION_CHANGE = gql`
+  mutation RequestReservationChange($input: RequestReservationChangeInput!) {
+    requestReservationChange(input: $input) {
       id
+      status
+      changeRequestType
+      changeRequestStatus
+      changeRequestFee
+      updatedAt
     }
   }
 `;
+
 const DELETE_RESERVATION = gql`
   mutation DeleteReservation($id: ID!) {
     deleteReservation(id: $id) {
@@ -163,12 +171,13 @@ export default function OrdersPage() {
       refetchReservations();
     },
   });
-  const [createReservation] = useMutation(CREATE_RESERVATION, {
+  const [requestReservationChange] = useMutation(REQUEST_RESERVATION_CHANGE, {
     onCompleted: () => {
-      pushToast("Đặt bàn thành công!");
+      pushToast("Đã gửi yêu cầu thay đổi tới nhà hàng");
       refetchReservations();
     },
   });
+
   const [deleteReservationMutation] = useMutation(DELETE_RESERVATION, {
     onCompleted: () => {
       pushToast("Đã xóa lịch sử");
@@ -186,7 +195,7 @@ export default function OrdersPage() {
       const isCancelled = ["cancelled", "rejected", "expired"].includes(
         (r.status || "").toLowerCase()
       );
-      const isCompleted = (r.status || "").toLowerCase() === "checked_in";
+      const isCompleted = ["completed", "seated"].includes((r.status || "").toLowerCase());
 
       const actions = [];
 
@@ -249,6 +258,8 @@ export default function OrdersPage() {
           },
           { label: "Số khách", value: `${r.partySize} người` },
           { label: "Tiền cọc", value: fmtMoney(r.depositAmount) },
+          { label: "Thời lượng", value: r.isUnlimitedTime ? "Không giới hạn" : `${r.durationMinutes || 60} phút` },
+          { label: "TT thanh toán", value: r.depositStatus || "--" },
         ],
         actions: actions,
         raw: r,
@@ -406,7 +417,17 @@ export default function OrdersPage() {
         isOpen={!!changeTimeTarget}
         onClose={() => setChangeTimeTarget(null)}
         onSubmit={(v) => {
-          createReservation({ variables: { input: { ...v } } });
+          requestReservationChange({
+            variables: {
+              input: {
+                reservationId: changeTimeTarget?.id,
+                type: "time",
+                requestedTimeTo: v?.timeTo || null,
+                requestedDurationMinutes: v?.durationMinutes || null,
+                note: "Khách yêu cầu đổi giờ từ trang tài khoản",
+              },
+            },
+          });
           setChangeTimeTarget(null);
         }}
       />
@@ -438,8 +459,17 @@ export default function OrdersPage() {
       <ChangeTableModal
         isOpen={!!changeTableOpen}
         onClose={() => setChangeTableOpen(null)}
-        onSubmit={() => {
-          pushToast("Đã gửi yêu cầu đổi bàn");
+        onSubmit={(payload) => {
+          requestReservationChange({
+            variables: {
+              input: {
+                reservationId: changeTableOpen?.id,
+                type: "table",
+                requestedTableId: payload?.tableId || null,
+                note: "Khách yêu cầu đổi bàn từ trang tài khoản",
+              },
+            },
+          });
           setChangeTableOpen(null);
         }}
       />

@@ -303,4 +303,91 @@ export default {
     const affected = (res.upsertedCount || 0) + (res.modifiedCount || 0);
     return affected;
   },
+
+
+  acquireTableViewLock: async (_p, { input }, ctx) => {
+    const { tableId, userId, sessionId, viewerName } = input || {};
+    if (!mongoose.isValidObjectId(tableId)) throw new GraphQLError("Invalid tableId");
+
+    const uid = userId || ctx?.user?.id;
+    if (!mongoose.isValidObjectId(uid)) throw new GraphQLError("Invalid userId");
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
+
+    const table = await Table.findById(tableId).lean();
+    if (!table) throw new GraphQLError("Table not found");
+
+    const lock = table.viewLock || null;
+    const lockActive = lock?.expiresAt && new Date(lock.expiresAt) > now;
+    if (lockActive && String(lock.userId) !== String(uid)) {
+      throw new GraphQLError("Bàn đang được khách khác xem trong 5 phút.", {
+        extensions: { code: "TABLE_VIEW_LOCKED" },
+      });
+    }
+
+    const updated = await Table.findOneAndUpdate(
+      {
+        _id: tableId,
+        $or: [
+          { "viewLock.userId": new mongoose.Types.ObjectId(uid) },
+          { "viewLock.expiresAt": { $lte: now } },
+          { viewLock: { $exists: false } },
+        ],
+      },
+      {
+        $set: {
+          viewLock: {
+            userId: new mongoose.Types.ObjectId(uid),
+            expiresAt,
+            sessionId: sessionId || null,
+            viewerName: viewerName || null,
+          },
+        },
+      },
+      { new: true }
+    ).lean({ virtuals: true });
+
+    if (!updated) {
+      throw new GraphQLError("Bàn đang được khách khác xem trong 5 phút.", {
+        extensions: { code: "TABLE_VIEW_LOCKED" },
+      });
+    }
+
+    if (ctx?.io) {
+      ctx.io.to(`restaurant_${updated.restaurantId}`).emit("tableViewEvents", {
+        type: "TABLE_VIEW_LOCKED",
+        tableId: String(updated._id),
+        userId: String(uid),
+        expiresAt: expiresAt.toISOString(),
+      });
+    }
+
+    return updated;
+  },
+
+  releaseTableViewLock: async (_p, { input }, ctx) => {
+    const { tableId, userId } = input || {};
+    if (!mongoose.isValidObjectId(tableId)) throw new GraphQLError("Invalid tableId");
+    const uid = userId || ctx?.user?.id;
+    if (!mongoose.isValidObjectId(uid)) throw new GraphQLError("Invalid userId");
+
+    const updated = await Table.findOneAndUpdate(
+      { _id: tableId, "viewLock.userId": new mongoose.Types.ObjectId(uid) },
+      { $unset: { viewLock: 1 } },
+      { new: true }
+    ).lean({ virtuals: true });
+
+    const table = updated || (await Table.findById(tableId).lean({ virtuals: true }));
+
+    if (ctx?.io && table?.restaurantId) {
+      ctx.io.to(`restaurant_${table.restaurantId}`).emit("tableViewEvents", {
+        type: "TABLE_VIEW_RELEASED",
+        tableId: String(tableId),
+        userId: String(uid),
+      });
+    }
+
+    return table;
+  },
 };
