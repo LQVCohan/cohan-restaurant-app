@@ -29,7 +29,23 @@ export default {
     }
 
     return Table.find(q)
-      .select({ __v: 0, viewLock: 1, status: 1, capacity: 1, code: 1, floorId: 1, floorLevel: 1, position: 1, restaurantId: 1, type: 1, deposit: 1, vrUrl: 1, notes: 1, tags: 1, isJoinable: 1, joinGroupId: 1 })
+      .select({
+        viewLock: 1,
+        status: 1,
+        capacity: 1,
+        code: 1,
+        floorId: 1,
+        floorLevel: 1,
+        position: 1,
+        restaurantId: 1,
+        type: 1,
+        deposit: 1,
+        vrUrl: 1,
+        notes: 1,
+        tags: 1,
+        isJoinable: 1,
+        joinGroupId: 1,
+      })
       .sort({ floorLevel: 1, code: 1 })
       .limit(Math.min(limit ?? 200, 500))
       .lean({ virtuals: true });

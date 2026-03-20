@@ -20,7 +20,14 @@ const tableCustomerSchema = BaseSchemaModel({
   customerName: String,
   customerPhone: String,
   customerEmail: String,
+  customerUserId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    index: true,
+  },
   note: String,
+  dietaryNotes: String,
+  customerPreferences: String,
 
   // Thông tin thêm cho bàn/khách
   partySize: Number,

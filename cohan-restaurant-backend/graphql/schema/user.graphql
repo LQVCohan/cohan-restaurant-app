@@ -285,7 +285,10 @@ type StaffAccountOverview {
   primaryRestaurant: Restaurant
   restaurantForStaff: ID
   floorAssigned: [String!]!
+  floorCount: Int!
   tableCount: Int!
+  categoryCount: Int!
+  promotionCount: Int!
   tableList: [String!]!
   ordersServedCount: Int!
   shiftsWorkedCount: Int!
@@ -299,6 +302,8 @@ type StaffSalarySummary {
   totalHours: Float!
   totalWage: Float!
   totalAmount: Float!
+  bonusAmount: Float!
+  coefficient: Float!
   timesheetCount: Int!
 }
 

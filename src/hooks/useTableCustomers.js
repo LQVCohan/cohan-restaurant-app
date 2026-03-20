@@ -11,7 +11,10 @@ const Q_TABLE_CUSTOMERS = gql`
       customerName
       customerPhone
       customerEmail
+      customerUserId
       note
+      dietaryNotes
+      customerPreferences
       partySize
       timeTo
       createdAt

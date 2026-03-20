@@ -48,6 +48,18 @@ export default function StaffSalarySummary({ data, onBack }) {
           </div>
           <div className="info-row">
             <div className="label-group">
+              <CheckCircle size={18} /> Thưởng
+            </div>
+            <div className="value">{fmtMoney(data?.bonusAmount)}</div>
+          </div>
+          <div className="info-row">
+            <div className="label-group">
+              <Clock size={18} /> Hệ số lương
+            </div>
+            <div className="value">{Number(data?.coefficient || 0).toFixed(2)}</div>
+          </div>
+          <div className="info-row">
+            <div className="label-group">
               <Calendar size={18} /> Số bảng công (Timesheet)
             </div>
             <div className="value">{data?.timesheetCount ?? 0} phiếu</div>
