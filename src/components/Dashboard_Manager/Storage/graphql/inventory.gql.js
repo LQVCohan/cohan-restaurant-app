@@ -269,7 +269,7 @@ export const ADJUST_STOCK = gql`
     $restaurantId: ID!
     $warehouseId: ID!
     $ingredientId: ID!
-    $qty: Float!
+    $qty: Int!
     $reason: String
   ) {
     adjustStock(
