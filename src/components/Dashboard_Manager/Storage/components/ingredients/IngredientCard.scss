@@ -71,7 +71,7 @@ $il-info: #3b82f6;
       align-items: center;
       gap: 4px;
       font-size: 0.75rem;
-      color: $il-text-sub;
+      color: #94a3b8;
 
       svg {
         opacity: 0.7;
@@ -107,7 +107,7 @@ $il-info: #3b82f6;
     }
     &.status-unknown {
       background: #f1f5f9;
-      color: $il-text-sub;
+      color: #94a3b8;
     }
   }
 
@@ -144,7 +144,7 @@ $il-info: #3b82f6;
 
       .il-stat-label {
         font-size: 0.75rem;
-        color: $il-text-sub;
+        color: #94a3b8;
         margin-bottom: 4px;
         display: flex;
         align-items: center;
@@ -167,7 +167,7 @@ $il-info: #3b82f6;
 
         .il-stat-unit {
           font-size: 0.7rem;
-          color: $il-text-sub;
+          color: #94a3b8;
         }
       }
     }
@@ -194,7 +194,7 @@ $il-info: #3b82f6;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      color: $il-text-sub;
+      color: #94a3b8;
       transition: all 0.2s;
 
       svg {
@@ -212,15 +212,29 @@ $il-info: #3b82f6;
       }
 
       &:disabled {
-        opacity: 0.45;
+        opacity: 1;
         cursor: not-allowed;
         background: #f1f5f9;
         border-color: transparent;
+        color: #94a3b8 !important;
       }
 
       &:disabled:hover {
         box-shadow: none;
-        color: $il-text-sub;
+        color: #94a3b8;
+      }
+
+      &.il-btn-edit {
+        color: $il-info;
+      }
+      &.il-btn-stock {
+        color: $il-success;
+      }
+      &.il-btn-view {
+        color: $il-warning;
+      }
+      &.il-btn-delete {
+        color: $il-danger;
       }
 
       &.il-btn-edit:hover {
@@ -270,7 +284,7 @@ $il-info: #3b82f6;
         left: 10px;
         top: 50%;
         transform: translateY(-50%);
-        color: $il-text-sub;
+        color: #94a3b8;
       }
 
       .il-input {
@@ -290,7 +304,7 @@ $il-info: #3b82f6;
 
     .il-hint {
       font-size: 0.8rem;
-      color: $il-text-sub;
+      color: #94a3b8;
       margin-top: 6px;
     }
   }
@@ -316,7 +330,7 @@ $il-info: #3b82f6;
 
   .il-btn-secondary {
     background: transparent;
-    color: $il-text-sub;
+    color: #94a3b8;
     margin-right: 8px;
     &:hover {
       background: #f1f5f9;
