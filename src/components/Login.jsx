@@ -101,6 +101,38 @@ function splitIdentifier(val) {
   return { username: val };
 }
 
+function resolveLoginErrorMessage(error) {
+  const gqlErrors = error?.graphQLErrors || [];
+  const first = gqlErrors[0];
+  const code = first?.extensions?.code || "";
+  const msg = String(first?.message || "").toLowerCase();
+
+  if (
+    code === "UNAUTHENTICATED" ||
+    msg.includes("invalid credentials")
+  ) {
+    return "Sai tài khoản hoặc mật khẩu.";
+  }
+
+  if (code === "TOO_MANY_REQUESTS") {
+    return "Bạn đăng nhập sai quá nhiều lần. Vui lòng thử lại sau.";
+  }
+
+  if (code === "FORBIDDEN") {
+    return "Tài khoản hiện không thể đăng nhập.";
+  }
+
+  if (code === "BAD_USER_INPUT") {
+    return first?.message || "Dữ liệu đăng nhập chưa hợp lệ.";
+  }
+
+  if (error?.networkError) {
+    return "Không thể kết nối máy chủ. Vui lòng thử lại.";
+  }
+
+  return "Máy chủ đang gặp sự cố. Vui lòng thử lại sau.";
+}
+
 // ==========================================
 // 3. MAIN COMPONENT
 // ==========================================
@@ -179,8 +211,8 @@ const LoginPage = () => {
   const [loginMutation, { loading: loginLoading }] = useMutation(
     LOGIN_MUTATION,
     {
-      onError: () => {
-        showNotification("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.", "error");
+      onError: (error) => {
+        showNotification(resolveLoginErrorMessage(error), "error");
         resetCaptcha();
       },
       onCompleted: (data) => {
