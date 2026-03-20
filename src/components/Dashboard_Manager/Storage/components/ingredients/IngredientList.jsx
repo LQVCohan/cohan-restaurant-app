@@ -261,7 +261,7 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
                 onEdit={() => openEdit(ingredient)}
                 onDelete={handleDelete}
                 onAddStock={handleAddStock}
-                onShowUsage={() => {}}
+                onShowUsage={undefined}
                 getStockStatus={getStockStatus}
                 onUpdateCostPerBaseUnit={updateCostPerBaseUnit}
               />

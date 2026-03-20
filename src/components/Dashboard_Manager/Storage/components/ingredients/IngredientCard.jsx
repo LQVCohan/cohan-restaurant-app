@@ -32,6 +32,11 @@ const IngredientCard = ({
     return { text: "—", class: "status-unknown" };
   }, [statusObj]);
 
+  const canEdit = typeof onEdit === "function";
+  const canAddStock = typeof onAddStock === "function";
+  const canShowUsage = typeof onShowUsage === "function";
+  const canDelete = typeof onDelete === "function";
+
   // --- Price Modal State ---
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
   const [priceInput, setPriceInput] = useState(
@@ -49,9 +54,7 @@ const IngredientCard = ({
     if (!Number.isFinite(numericPrice) || numericPrice < 0) return;
 
     if (onUpdateCostPerBaseUnit) {
-      await onUpdateCostPerBaseUnit(ingredient.id, {
-        costPerBaseUnit: numericPrice,
-      });
+      await onUpdateCostPerBaseUnit(ingredient.id, numericPrice);
     } else if (onEdit) {
       onEdit({ ...ingredient, costPerBaseUnit: numericPrice });
     }
@@ -93,7 +96,7 @@ const IngredientCard = ({
             <div className="il-stat-box">
               <span className="il-stat-label">Tồn kho</span>
               <div className="il-stat-value-group">
-                <span className="il-stat-value">{stockQty}</span>
+                <span className="il-stat-value">{ingredient.availableStock ?? stockQty}</span>
                 <span className="il-stat-unit">{baseUnit}</span>
               </div>
             </div>
@@ -123,9 +126,11 @@ const IngredientCard = ({
               className="il-action-btn il-btn-edit"
               onClick={(e) => {
                 e.stopPropagation();
+                if (!canEdit) return;
                 onEdit?.(ingredient);
               }}
-              title="Chỉnh sửa thông tin"
+              disabled={!canEdit}
+              title={canEdit ? "Chỉnh sửa thông tin" : "Tính năng chưa khả dụng"}
             >
               <Pencil size={16} />
             </button>
@@ -134,9 +139,11 @@ const IngredientCard = ({
               className="il-action-btn il-btn-stock"
               onClick={(e) => {
                 e.stopPropagation();
+                if (!canAddStock) return;
                 onAddStock?.(ingredient.id);
               }}
-              title="Nhập thêm hàng"
+              disabled={!canAddStock}
+              title={canAddStock ? "Nhập thêm hàng" : "Tính năng chưa khả dụng"}
             >
               <PackagePlus size={16} />
             </button>
@@ -145,9 +152,11 @@ const IngredientCard = ({
               className="il-action-btn il-btn-view"
               onClick={(e) => {
                 e.stopPropagation();
+                if (!canShowUsage) return;
                 onShowUsage?.(ingredient.id);
               }}
-              title="Xem món ăn sử dụng"
+              disabled={!canShowUsage}
+              title={canShowUsage ? "Xem món ăn sử dụng" : "Tính năng đang phát triển"}
             >
               <Eye size={16} />
             </button>
@@ -158,9 +167,11 @@ const IngredientCard = ({
               className="il-action-btn il-btn-delete"
               onClick={(e) => {
                 e.stopPropagation();
+                if (!canDelete) return;
                 onDelete?.(ingredient.id);
               }}
-              title="Xóa nguyên liệu"
+              disabled={!canDelete}
+              title={canDelete ? "Xóa nguyên liệu" : "Tính năng chưa khả dụng"}
             >
               <Trash2 size={16} />
             </button>

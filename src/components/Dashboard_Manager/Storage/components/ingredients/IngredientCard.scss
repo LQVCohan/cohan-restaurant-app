@@ -188,18 +188,39 @@ $il-info: #3b82f6;
       width: 32px;
       height: 32px;
       border-radius: 6px;
-      border: none;
-      background: transparent;
+      border: 1px solid transparent;
+      background: #fff;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       color: $il-text-sub;
       transition: all 0.2s;
 
+      svg {
+        width: 16px;
+        height: 16px;
+        stroke-width: 2.25;
+        display: block;
+        color: currentColor;
+      }
+
       &:hover {
+        border-color: rgba($il-primary, 0.25);
         background: #fff;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+
+      &:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        background: #f1f5f9;
+        border-color: transparent;
+      }
+
+      &:disabled:hover {
+        box-shadow: none;
+        color: $il-text-sub;
       }
 
       &.il-btn-edit:hover {
