@@ -17,6 +17,7 @@ import SupplyList from "./components/supplies/SupplyList";
 import RecipeList from "./components/recipes/RecipeList";
 import WarehouseStatus from "./components/WarehouseStatus/WarehouseStatus"; // Import Component Status
 import QuickStockModal from "./components/ingredients/QuickStockModal";
+import InventoryAuditTab from "./components/inventory/InventoryAuditTab";
 
 // Hooks & Icons
 import { useRecipes } from "@/hooks/useRecipes";
@@ -137,7 +138,12 @@ const StorageManagement = () => {
 
   const stockItems = useMemo(() => stockData?.stockItems || [], [stockData]);
 
-  const { refetch: refetchMovements } = useQuery(STOCK_MOVEMENTS_QUERY, {
+  const {
+    data: movementData,
+    loading: movementLoading,
+    error: movementError,
+    refetch: refetchMovements,
+  } = useQuery(STOCK_MOVEMENTS_QUERY, {
     variables: {
       restaurantId: currentRestaurant,
       warehouseId: warehouseFilterId,
@@ -149,6 +155,8 @@ const StorageManagement = () => {
   });
 
   // ==== 5) Recipes ====
+  const movements = useMemo(() => movementData?.stockMovements || [], [movementData]);
+
   const [recipeTimeSlot, setRecipeTimeSlot] = useState(null);
   const [recipeSearch, setRecipeSearch] = useState(null);
   const [recipeCategoryId, setRecipeCategoryId] = useState(null);
@@ -217,7 +225,7 @@ const StorageManagement = () => {
       component: (
         <IngredientList
           restaurantId={currentRestaurant}
-          warehouseId={warehouseFilterId}
+          selectedWarehouseId={warehouseFilterId}
           data={ingredients}
           stockItems={stockItems}
           loading={ingLoading || stockLoading}
@@ -279,9 +287,13 @@ const StorageManagement = () => {
       label: "Kiểm kê",
       icon: <ClipboardList size={18} />,
       component: (
-        <div className="sm-dev-placeholder">
-          Tính năng kiểm kê đang phát triển...
-        </div>
+        <InventoryAuditTab
+          ingredients={ingredients}
+          stockItems={stockItems}
+          movements={movements}
+          loading={stockLoading || movementLoading}
+          error={stockError || movementError}
+        />
       ),
     },
   ];
