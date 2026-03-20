@@ -49,9 +49,7 @@ const IngredientCard = ({
     if (!Number.isFinite(numericPrice) || numericPrice < 0) return;
 
     if (onUpdateCostPerBaseUnit) {
-      await onUpdateCostPerBaseUnit(ingredient.id, {
-        costPerBaseUnit: numericPrice,
-      });
+      await onUpdateCostPerBaseUnit(ingredient.id, numericPrice);
     } else if (onEdit) {
       onEdit({ ...ingredient, costPerBaseUnit: numericPrice });
     }
@@ -93,7 +91,7 @@ const IngredientCard = ({
             <div className="il-stat-box">
               <span className="il-stat-label">Tồn kho</span>
               <div className="il-stat-value-group">
-                <span className="il-stat-value">{stockQty}</span>
+                <span className="il-stat-value">{ingredient.availableStock ?? stockQty}</span>
                 <span className="il-stat-unit">{baseUnit}</span>
               </div>
             </div>
