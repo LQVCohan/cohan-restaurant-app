@@ -594,6 +594,38 @@ type DashboardLowStockItem {
   reserved: Float!
 }
 
+type DashboardFeedbackItem {
+  id: ID!
+  customerName: String!
+  rating: Int!
+  content: String!
+  createdAt: DateTime
+  sentiment: String!
+}
+
+type DashboardFeedbackSummary {
+  avgRating: Float!
+  total: Int!
+  negative: Int!
+  positive: Int!
+}
+
+type DashboardOccupancyPoint {
+  dayLabel: String!
+  hourLabel: String!
+  occupancyRate: Float!
+  staffRequired: Int!
+}
+
+type DashboardStaffPerformance {
+  staffId: ID!
+  fullName: String!
+  role: String
+  status: String!
+  ordersHandled: Int!
+  efficiency: Float!
+}
+
 type ManagerDashboard {
   restaurantId: ID!
   revenue: Float!
@@ -609,6 +641,10 @@ type ManagerDashboard {
   topDishes: [DashboardTopDish!]!
   recentOrders: [DashboardRecentOrder!]!
   lowStockItems: [DashboardLowStockItem!]!
+  feedbackSummary: DashboardFeedbackSummary!
+  feedbackItems: [DashboardFeedbackItem!]!
+  occupancyHeatmap: [DashboardOccupancyPoint!]!
+  staffPerformance: [DashboardStaffPerformance!]!
 }
 
 # =========================================================

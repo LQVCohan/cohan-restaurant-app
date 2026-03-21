@@ -10,6 +10,7 @@ import {
   Supply,
   Promotion,
   Staff,
+  Review,
 } from "../../../models/index.js";
 import { toId } from "../order/helper/orderUtils.js";
 import { resolveTableSafe } from "../order/helper/tableUtils.js";
@@ -633,6 +634,91 @@ export const OrderQuery = {
         reserved: Number(s.reserved || 0),
       }));
 
+    const reviews = await Review.find({ restaurantId: rid, status: "published" })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
+    const totalReviews = reviews.length;
+    const avgRating =
+      totalReviews > 0
+        ? Number(
+            (
+              reviews.reduce((sum, r) => sum + Number(r.rating || 0), 0) /
+              totalReviews
+            ).toFixed(2)
+          )
+        : 0;
+    const feedbackItems = reviews.slice(0, 8).map((r) => ({
+      id: String(r._id),
+      customerName: r.customerName || "Khách",
+      rating: Number(r.rating || 0),
+      content: r.content || "",
+      createdAt: r.createdAt || null,
+      sentiment: Number(r.rating || 0) <= 2 ? "negative" : Number(r.rating || 0) >= 4 ? "positive" : "neutral",
+    }));
+    const feedbackSummary = {
+      avgRating,
+      total: totalReviews,
+      negative: feedbackItems.filter((x) => x.sentiment === "negative").length,
+      positive: feedbackItems.filter((x) => x.sentiment === "positive").length,
+    };
+
+    const hourSlots = [10, 12, 14, 16, 18, 20, 22];
+    const dayLabels = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+    const occupancyMap = new Map();
+    for (const o of ordersInRange) {
+      const d = new Date(o.createdAt);
+      if (!Number.isFinite(d.getTime())) continue;
+      const day = d.getDay() === 0 ? 6 : d.getDay() - 1;
+      const hour = d.getHours();
+      const slot = hourSlots.reduce((best, h) => (Math.abs(h - hour) < Math.abs(best - hour) ? h : best), hourSlots[0]);
+      const key = `${day}-${slot}`;
+      occupancyMap.set(key, (occupancyMap.get(key) || 0) + 1);
+    }
+    const peakOrders = Math.max(...occupancyMap.values(), 1);
+    const occupancyHeatmap = dayLabels.flatMap((dayLabel, dayIndex) =>
+      hourSlots.map((hour) => {
+        const count = occupancyMap.get(`${dayIndex}-${hour}`) || 0;
+        const occupancyRate = count / peakOrders;
+        return {
+          dayLabel,
+          hourLabel: `${hour}:00`,
+          occupancyRate,
+          staffRequired: Math.max(2, Math.ceil(occupancyRate * 10)),
+        };
+      })
+    );
+
+    const staffDocs = await Staff.find({ primaryRestaurant: rid })
+      .select({ _id: 1, fullName: 1, positionTitle: 1, employmentStatus: 1 })
+      .lean();
+    const staffPerfMap = new Map(
+      staffDocs.map((s) => [
+        String(s._id),
+        {
+          staffId: String(s._id),
+          fullName: s.fullName || "Nhân viên",
+          role: s.positionTitle || "Staff",
+          status: s.employmentStatus || "working",
+          ordersHandled: 0,
+          efficiency: 0,
+        },
+      ])
+    );
+    for (const o of ordersInRange) {
+      const uid = o.createdBy ? String(o.createdBy) : null;
+      if (!uid || !staffPerfMap.has(uid)) continue;
+      const row = staffPerfMap.get(uid);
+      row.ordersHandled += 1;
+    }
+    const staffPerformance = [...staffPerfMap.values()]
+      .map((s) => ({
+        ...s,
+        efficiency: Number(Math.min(100, (s.ordersHandled / Math.max(1, ordersInRange.length)) * 100).toFixed(1)),
+      }))
+      .sort((a, b) => b.ordersHandled - a.ordersHandled)
+      .slice(0, 8);
+
     return {
       restaurantId: String(rid),
       revenue,
@@ -648,6 +734,10 @@ export const OrderQuery = {
       topDishes,
       recentOrders,
       lowStockItems,
+      feedbackSummary,
+      feedbackItems,
+      occupancyHeatmap,
+      staffPerformance,
     };
   },
 };

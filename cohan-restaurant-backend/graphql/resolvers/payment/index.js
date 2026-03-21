@@ -1,14 +1,13 @@
-// src/resolvers/index.ts (ví dụ)
-import { OrderQuery } from "./query.js";
-import { payOrdersByTableId } from "./mutation.js";
+import { PaymentQuery } from "./query.js";
+import PaymentMutation from "./mutation.js";
+import { PaymentResolvers } from "./types.js";
 
 export default {
   Query: {
-    // ...các query khác
-    ...OrderQuery,
+    ...PaymentQuery,
   },
   Mutation: {
-    // ...các mutation khác
-    payOrdersByTableId,
+    ...PaymentMutation,
   },
+  ...PaymentResolvers,
 };

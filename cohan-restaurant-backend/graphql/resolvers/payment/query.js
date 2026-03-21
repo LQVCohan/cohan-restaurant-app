@@ -1,156 +1,274 @@
-// src/graphql/order/query.js
 import mongoose from "mongoose";
-import { Order } from "../../../models/index.js";
+import dayjs from "dayjs";
+import {
+  Invoice,
+  PaymentTransaction,
+  Cashflow,
+} from "../../../models/index.js";
 
 const toObjectId = (id) =>
   id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
 
-function buildFilter(filter = {}) {
-  const q = {};
+const toRange = (range = "MONTH") => String(range || "MONTH").toUpperCase();
 
-  if (filter.restaurantId) {
-    const rid = toObjectId(filter.restaurantId);
-    if (rid) q.restaurantId = rid;
+function resolveDateRange({ range, dateFrom, dateTo }) {
+  if (dateFrom || dateTo) {
+    return {
+      from: dateFrom ? dayjs(dateFrom).startOf("day").toDate() : null,
+      to: dateTo ? dayjs(dateTo).endOf("day").toDate() : null,
+      mode: "day",
+      format: "DD/MM",
+    };
   }
 
-  if (filter.tableCode) {
-    q.tableCode = filter.tableCode;
-  }
+  const now = dayjs();
+  const normalized = toRange(range);
 
-  if (filter.orderCode) {
-    q.orderCode = filter.orderCode;
+  switch (normalized) {
+    case "WEEK":
+      return {
+        from: now.startOf("week").toDate(),
+        to: now.endOf("week").toDate(),
+        mode: "day",
+        format: "DD/MM",
+      };
+    case "QUARTER":
+      return {
+        from: now.month(Math.floor(now.month() / 3) * 3).startOf("month").toDate(),
+        to: now.month(Math.floor(now.month() / 3) * 3 + 2).endOf("month").toDate(),
+        mode: "week",
+        format: "[W]WW",
+      };
+    case "YEAR":
+      return {
+        from: now.startOf("year").toDate(),
+        to: now.endOf("year").toDate(),
+        mode: "month",
+        format: "MM/YYYY",
+      };
+    case "CUSTOM":
+      return {
+        from: now.startOf("month").toDate(),
+        to: now.endOf("month").toDate(),
+        mode: "day",
+        format: "DD/MM",
+      };
+    case "MONTH":
+    default:
+      return {
+        from: now.startOf("month").toDate(),
+        to: now.endOf("month").toDate(),
+        mode: "day",
+        format: "DD/MM",
+      };
   }
-
-  if (
-    filter.statuses &&
-    Array.isArray(filter.statuses) &&
-    filter.statuses.length
-  ) {
-    q.currentStatus = { $in: filter.statuses };
-  } else if (filter.status) {
-    q.currentStatus = filter.status;
-  }
-
-  // date range
-  if (filter.dateFrom || filter.dateTo) {
-    q.createdAt = {};
-    if (filter.dateFrom) q.createdAt.$gte = new Date(filter.dateFrom);
-    if (filter.dateTo) q.createdAt.$lte = new Date(filter.dateTo);
-  }
-
-  // keyword: tìm sơ bộ theo orderCode / tableCode
-  if (filter.keyword) {
-    const kw = filter.keyword.trim();
-    q.$or = [
-      { orderCode: { $regex: kw, $options: "i" } },
-      { tableCode: { $regex: kw, $options: "i" } },
-    ];
-  }
-
-  return q;
 }
 
-export const OrderQuery = {
-  // GET /order?id=...
-  async order(_, { id }) {
-    if (!mongoose.isValidObjectId(id)) return null;
-    const doc = await Order.findById(id).lean({ virtuals: true });
-    return doc || null;
+function safeNote(note) {
+  return String(note || "").toLowerCase();
+}
+
+function classifyCost(note = "") {
+  const n = safeNote(note);
+  if (
+    n.includes("nguyên liệu") ||
+    n.includes("ingredient") ||
+    n.includes("supply")
+  )
+    return "cogs";
+  if (n.includes("lương") || n.includes("nhân sự") || n.includes("salary"))
+    return "labor";
+  if (
+    n.includes("điện") ||
+    n.includes("nước") ||
+    n.includes("gas") ||
+    n.includes("vận hành") ||
+    n.includes("mặt bằng")
+  )
+    return "operations";
+  return "other";
+}
+
+function buildBuckets({ from, to, mode, format }) {
+  const labels = [];
+  const cursor = dayjs(from);
+  const end = dayjs(to);
+
+  while (cursor.isBefore(end) || cursor.isSame(end, mode)) {
+    labels.push(cursor.format(format));
+    if (mode === "month") cursor.add(1, "month");
+    else if (mode === "week") cursor.add(1, "week");
+    else cursor.add(1, "day");
+  }
+
+  return labels;
+}
+
+export const PaymentQuery = {
+  async paymentTransactionsByOrder(_, { orderId }) {
+    if (!mongoose.isValidObjectId(orderId)) return [];
+    const id = new mongoose.Types.ObjectId(orderId);
+
+    return PaymentTransaction.find({
+      $or: [{ orderId: id }, { orderIds: id }],
+    })
+      .sort({ paidAt: -1 })
+      .lean();
   },
 
-  // ✅ cái client của bạn đang gọi đây
-  async orders(_, { filter = {}, limit = 50, offset = 0 }) {
-    const q = buildFilter(filter);
-    const [items, totalCount] = await Promise.all([
-      Order.find(q)
-        .sort({ createdAt: -1 })
-        .skip(offset)
-        .limit(limit)
-        .lean({ virtuals: true }),
-      Order.countDocuments(q),
+  async invoicesByOrder(_, { orderId }) {
+    if (!mongoose.isValidObjectId(orderId)) return [];
+    const id = new mongoose.Types.ObjectId(orderId);
+
+    return Invoice.find({
+      $or: [{ orderId: id }, { orderIds: id }],
+    })
+      .sort({ issuedAt: -1 })
+      .lean();
+  },
+
+  async financeDashboard(_, { input }) {
+    const { restaurantId, range, dateFrom, dateTo } = input || {};
+    const rid = toObjectId(restaurantId);
+    if (!rid) throw new Error("Invalid restaurantId");
+
+    const { from, to, mode, format } = resolveDateRange({ range, dateFrom, dateTo });
+    const cashflowFilter = {
+      restaurantId: rid,
+      occurredAt: {},
+    };
+    if (from) cashflowFilter.occurredAt.$gte = from;
+    if (to) cashflowFilter.occurredAt.$lte = to;
+
+    const invoiceFilter = {
+      restaurantId: rid,
+      issuedAt: {},
+    };
+    if (from) invoiceFilter.issuedAt.$gte = from;
+    if (to) invoiceFilter.issuedAt.$lte = to;
+
+    const transactionFilter = {
+      restaurantId: rid,
+      paidAt: {},
+    };
+    if (from) transactionFilter.paidAt.$gte = from;
+    if (to) transactionFilter.paidAt.$lte = to;
+
+    const [cashflows, invoices, debtInvoices, payments] = await Promise.all([
+      Cashflow.find(cashflowFilter).sort({ occurredAt: -1 }).lean(),
+      Invoice.find(invoiceFilter).sort({ issuedAt: -1 }).lean(),
+      Invoice.find({ restaurantId: rid, status: { $in: ["UNPAID", "PARTIAL"] } }).lean(),
+      PaymentTransaction.find(transactionFilter).sort({ paidAt: -1 }).lean(),
     ]);
 
-    return {
-      items,
-      totalCount,
-    };
-  },
+    const revenue = cashflows
+      .filter((x) => x.type === "INFLOW")
+      .reduce((s, x) => s + Number(x.amount || 0), 0);
 
-  // Giữ nguyên dạng connection cũ
-  async ordersByRestaurant(_, { restaurantId, limit = 20, cursor }) {
-    if (!mongoose.isValidObjectId(restaurantId)) {
-      throw new Error("Invalid restaurantId");
+    const expense = cashflows
+      .filter((x) => x.type === "OUTFLOW")
+      .reduce((s, x) => s + Number(x.amount || 0), 0);
+
+    const payment = payments
+      .filter((x) => x.status === "SUCCESS")
+      .reduce((s, x) => s + Number(x.paidAmount || 0), 0);
+
+    const refund = cashflows
+      .filter((x) => x.type === "OUTFLOW")
+      .filter(
+        (x) =>
+          safeNote(x.note).includes("refund") ||
+          safeNote(x.note).includes("hoàn") ||
+          safeNote(x.ref?.kind).includes("refund")
+      )
+      .reduce((s, x) => s + Number(x.amount || 0), 0);
+
+    const debt = debtInvoices.reduce((s, inv) => {
+      const total = Number(inv?.totals?.grandTotal || 0);
+      const paid = Number(inv?.paid || 0);
+      return s + Math.max(total - paid, 0);
+    }, 0);
+
+    const settlement = invoices
+      .filter((inv) => inv.status === "PAID")
+      .reduce((s, inv) => s + Number(inv.paid || 0), 0);
+
+    const costBreakdown = cashflows
+      .filter((x) => x.type === "OUTFLOW")
+      .reduce(
+        (acc, x) => {
+          const bucket = classifyCost(x.note);
+          acc[bucket] += Number(x.amount || 0);
+          return acc;
+        },
+        { cogs: 0, labor: 0, operations: 0, other: 0 }
+      );
+
+    const labels = buildBuckets({ from, to, mode, format });
+    const trendMap = new Map(
+      labels.map((label) => [label, { key: label, revenue: 0, expense: 0, profit: 0 }])
+    );
+
+    for (const cf of cashflows) {
+      const key = dayjs(cf.occurredAt).format(format);
+      if (!trendMap.has(key)) continue;
+      const entry = trendMap.get(key);
+      if (cf.type === "INFLOW") entry.revenue += Number(cf.amount || 0);
+      if (cf.type === "OUTFLOW") entry.expense += Number(cf.amount || 0);
+      entry.profit = entry.revenue - entry.expense;
     }
-    const f = { restaurantId: new mongoose.Types.ObjectId(restaurantId) };
-    if (cursor && mongoose.isValidObjectId(cursor)) {
-      f._id = { $gt: new mongoose.Types.ObjectId(cursor) };
+
+    const transactionMap = new Map();
+    for (const cf of cashflows.slice(0, 120)) {
+      transactionMap.set(String(cf._id), {
+        id: String(cf._id),
+        occurredAt: cf.occurredAt,
+        description: cf.note || (cf.type === "INFLOW" ? "Thu tiền" : "Chi tiền"),
+        category: classifyCost(cf.note),
+        type: cf.type,
+        amount: Number(cf.amount || 0),
+        method: null,
+        status: "completed",
+        source: "Hệ thống",
+        referenceType: cf.ref?.kind || null,
+        referenceId: cf.ref?.id ? String(cf.ref.id) : null,
+      });
     }
 
-    const docs = await Order.find(f)
-      .sort({ _id: 1 })
-      .limit(limit + 1)
-      .lean({ virtuals: true });
+    const transactions = Array.from(transactionMap.values())
+      .sort((a, b) => new Date(b.occurredAt) - new Date(a.occurredAt))
+      .slice(0, 30);
 
-    const hasNextPage = docs.length > limit;
-    const slice = hasNextPage ? docs.slice(0, -1) : docs;
+    const debts = debtInvoices
+      .map((inv) => ({
+        id: String(inv._id),
+        supplier: `Hóa đơn ${inv.number || String(inv._id).slice(-6)}`,
+        amount: Math.max(
+          Number(inv?.totals?.grandTotal || 0) - Number(inv?.paid || 0),
+          0
+        ),
+        dueDate: inv.updatedAt || inv.issuedAt,
+        status: inv.status,
+      }))
+      .filter((x) => x.amount > 0)
+      .slice(0, 10);
 
     return {
-      edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
-      pageInfo: {
-        endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
-        hasNextPage,
+      summary: {
+        revenue,
+        expense,
+        profit: revenue - expense,
+        debt,
+        payment,
+        refund,
+        settlement,
+        cashIn: revenue,
+        cashOut: expense,
       },
+      trend: Array.from(trendMap.values()),
+      transactions,
+      debts,
+      costBreakdown,
     };
-  },
-
-  async ordersByUser(_, { userId, limit = 20, cursor }) {
-    if (!mongoose.isValidObjectId(userId)) {
-      throw new Error("Invalid userId");
-    }
-    const f = { userId: new mongoose.Types.ObjectId(userId) };
-    if (cursor && mongoose.isValidObjectId(cursor)) {
-      f._id = { $gt: new mongoose.Types.ObjectId(cursor) };
-    }
-
-    const docs = await Order.find(f)
-      .sort({ _id: 1 })
-      .limit(limit + 1)
-      .lean({ virtuals: true });
-
-    const hasNextPage = docs.length > limit;
-    const slice = hasNextPage ? docs.slice(0, -1) : docs;
-
-    return {
-      edges: slice.map((d) => ({ node: d, cursor: String(d._id) })),
-      pageInfo: {
-        endCursor: slice.length ? String(slice[slice.length - 1]._id) : null,
-        hasNextPage,
-      },
-    };
-  },
-
-  // 👇 cái bạn hỏi "orderByTableCode khai báo ở schema như thế nào"
-  // đây chính là resolver của nó
-  async ordersByTableCode(
-    _,
-    { restaurantId, tableCode, limit = 20, offset = 0 }
-  ) {
-    if (!mongoose.isValidObjectId(restaurantId)) {
-      throw new Error("Invalid restaurantId");
-    }
-    const q = {
-      restaurantId: new mongoose.Types.ObjectId(restaurantId),
-      tableCode,
-    };
-    const [items, totalCount] = await Promise.all([
-      Order.find(q)
-        .sort({ createdAt: -1 })
-        .skip(offset)
-        .limit(limit)
-        .lean({ virtuals: true }),
-      Order.countDocuments(q),
-    ]);
-
-    return { items, totalCount };
   },
 };
