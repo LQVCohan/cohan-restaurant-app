@@ -556,6 +556,61 @@ type OrderList {
   totalCount: Int!
 }
 
+type DashboardTrend {
+  key: String!
+  current: Float!
+  previous: Float!
+}
+
+type DashboardStatusCounts {
+  pending: Int!
+  preparing: Int!
+  completed: Int!
+  cancelled: Int!
+}
+
+type DashboardTopDish {
+  dishName: String!
+  quantity: Int!
+  revenue: Float!
+}
+
+type DashboardRecentOrder {
+  id: ID!
+  orderCode: String
+  customerName: String
+  orderType: String
+  tableCode: String
+  status: String
+  total: Float!
+  createdAt: DateTime
+  itemNames: [String!]!
+}
+
+type DashboardLowStockItem {
+  id: ID!
+  name: String!
+  onHand: Float!
+  reserved: Float!
+}
+
+type ManagerDashboard {
+  restaurantId: ID!
+  revenue: Float!
+  orders: Int!
+  customers: Int!
+  tables: Int!
+  menuItems: Int!
+  activePromotions: Int!
+  workingStaff: Int!
+  statusCounts: DashboardStatusCounts!
+  revenueTrend: [DashboardTrend!]!
+  orderTrend: [DashboardTrend!]!
+  topDishes: [DashboardTopDish!]!
+  recentOrders: [DashboardRecentOrder!]!
+  lowStockItems: [DashboardLowStockItem!]!
+}
+
 # =========================================================
 # ROOT
 # =========================================================
@@ -591,6 +646,7 @@ extend type Query {
     tableId: ID
     tableCode: String
   ): [OrderGroup!]!
+  managerDashboard(restaurantId: ID!, range: String = "week"): ManagerDashboard!
 }
 
 extend type Mutation {

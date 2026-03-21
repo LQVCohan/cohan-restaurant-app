@@ -12,6 +12,7 @@ import "./Header.scss";
 
 const Header = ({
   selectedRestaurant,
+  restaurants = [],
   onRestaurantChange,
   onSwitchToPOS,
   onGenerateReport,
@@ -20,16 +21,11 @@ const Header = ({
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
 
-  // Mock Data: Thêm trạng thái hoạt động cho từng chi nhánh
-  const restaurants = [
-    { value: "all", label: "Tất cả hệ thống", status: "online" },
-    { value: "hcm-center", label: "FoodHub Trung Tâm HCM", status: "online" },
-    { value: "hcm-district7", label: "FoodHub Quận 7", status: "busy" },
-    { value: "hcm-thuduc", label: "FoodHub Thủ Đức", status: "online" },
-    { value: "hanoi-center", label: "FoodHub TT Hà Nội", status: "offline" },
-    { value: "hanoi-caugiay", label: "FoodHub Cầu Giấy", status: "online" },
-    { value: "danang-center", label: "FoodHub Đà Nẵng", status: "online" },
-  ];
+  const restaurantOptions = restaurants.map((r) => ({
+    value: r.id,
+    label: r.name,
+    status: "online",
+  }));
 
   // Xử lý click outside để đóng dropdown
   useEffect(() => {
@@ -43,12 +39,12 @@ const Header = ({
   }, []);
 
   // Filter danh sách dựa trên từ khóa tìm kiếm
-  const filteredRestaurants = restaurants.filter((r) =>
+  const filteredRestaurants = restaurantOptions.filter((r) =>
     r.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const currentRestaurantLabel =
-    restaurants.find((r) => r.value === selectedRestaurant)?.label ||
+    restaurantOptions.find((r) => r.value === selectedRestaurant)?.label ||
     "Chọn chi nhánh";
 
   const handleSelect = (value) => {

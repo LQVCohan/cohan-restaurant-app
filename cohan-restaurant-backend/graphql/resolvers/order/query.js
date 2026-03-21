@@ -1,6 +1,16 @@
 // graphql/resolvers/order/query.js
 import mongoose from "mongoose";
-import { Order, User, Table } from "../../../models/index.js";
+import {
+  Order,
+  User,
+  Table,
+  Customer,
+  MenuItem,
+  StockItem,
+  Supply,
+  Promotion,
+  Staff,
+} from "../../../models/index.js";
 import { toId } from "../order/helper/orderUtils.js";
 import { resolveTableSafe } from "../order/helper/tableUtils.js";
 import TableCustomer from "../../../models/tableCustomer.model.js";
@@ -488,6 +498,156 @@ export const OrderQuery = {
         endCursor: lastCursor,
         hasNextPage,
       },
+    };
+  },
+
+  async managerDashboard(_, { restaurantId, range = "week" }) {
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new Error("Invalid restaurantId");
+    }
+    const rid = toId(restaurantId);
+
+    const now = new Date();
+    const days = String(range).toLowerCase() === "month" ? 30 : 7;
+    const start = new Date(now);
+    start.setDate(start.getDate() - (days - 1));
+    start.setHours(0, 0, 0, 0);
+    const prevStart = new Date(start);
+    prevStart.setDate(prevStart.getDate() - days);
+
+    const [ordersInRange, ordersPrevRange, allOrders, tableCount, menuCount, customerCount, promoCount, staffCount, stockItems] =
+      await Promise.all([
+        Order.find({ restaurantId: rid, createdAt: { $gte: start, $lte: now } }).lean(),
+        Order.find({ restaurantId: rid, createdAt: { $gte: prevStart, $lt: start } }).lean(),
+        Order.find({ restaurantId: rid }).sort({ createdAt: -1 }).limit(20).lean(),
+        Table.countDocuments({ restaurantId: rid }),
+        MenuItem.countDocuments({ restaurantId: rid }),
+        Customer.countDocuments({ refRestaurants: { $in: [rid] } }),
+        Promotion.countDocuments({
+          restaurantId: rid,
+          isActive: true,
+          $or: [{ endAt: null }, { endAt: { $gte: now } }],
+        }),
+        Staff.countDocuments({
+          primaryRestaurant: rid,
+          employmentStatus: { $in: ["working", "on_leave"] },
+        }),
+        StockItem.find({ restaurantId: rid }).limit(200).lean(),
+      ]);
+
+    const statusCounts = {
+      pending: 0,
+      preparing: 0,
+      completed: 0,
+      cancelled: 0,
+    };
+    let revenue = 0;
+    for (const o of ordersInRange) {
+      const st = String(o.currentStatus || "");
+      if (["pending", "confirmed", "customer_attached"].includes(st)) statusCounts.pending += 1;
+      if (["preparing", "ready", "served"].includes(st)) statusCounts.preparing += 1;
+      if (st === "completed") statusCounts.completed += 1;
+      if (st === "cancelled") statusCounts.cancelled += 1;
+      if (st === "completed" && ["paid", "partially_refunded", "refunded"].includes(String(o?.payment?.status || ""))) {
+        revenue += Number(o?.totals?.grandTotal || 0);
+      }
+    }
+
+    const bucketCount = String(range).toLowerCase() === "month" ? 4 : 7;
+    const revenueBuckets = Array.from({ length: bucketCount }, (_, i) => ({
+      key: String(range).toLowerCase() === "month" ? `W${i + 1}` : `${i + 1}`,
+      current: 0,
+      previous: 0,
+    }));
+    const assignBucket = (dateValue, isPrevious) => {
+      const d = new Date(dateValue);
+      if (!Number.isFinite(d.getTime())) return -1;
+      if (String(range).toLowerCase() === "month") {
+        const refStart = isPrevious ? prevStart : start;
+        const diff = Math.floor((d.getTime() - refStart.getTime()) / (1000 * 60 * 60 * 24));
+        return Math.max(0, Math.min(3, Math.floor(diff / 7)));
+      }
+      return d.getDay() === 0 ? 6 : d.getDay() - 1;
+    };
+    const orderBuckets = revenueBuckets.map((x) => ({ ...x, current: 0, previous: 0 }));
+    for (const o of ordersInRange) {
+      const bi = assignBucket(o.createdAt, false);
+      if (bi < 0) continue;
+      revenueBuckets[bi].current += Number(o?.totals?.grandTotal || 0);
+      orderBuckets[bi].current += 1;
+    }
+    for (const o of ordersPrevRange) {
+      const bi = assignBucket(o.createdAt, true);
+      if (bi < 0) continue;
+      revenueBuckets[bi].previous += Number(o?.totals?.grandTotal || 0);
+      orderBuckets[bi].previous += 1;
+    }
+
+    const dishMap = new Map();
+    for (const o of ordersInRange) {
+      for (const item of o.items || []) {
+        const name = item?.name?.trim();
+        if (!name) continue;
+        const qty = Number(item?.quantity || 1);
+        const rev = Number(item?.lineSubtotal || 0);
+        const prev = dishMap.get(name) || { quantity: 0, revenue: 0 };
+        dishMap.set(name, { quantity: prev.quantity + qty, revenue: prev.revenue + rev });
+      }
+    }
+    const topDishes = [...dishMap.entries()]
+      .map(([dishName, v]) => ({ dishName, quantity: v.quantity, revenue: v.revenue }))
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5);
+
+    const userIds = [...new Set(allOrders.map((o) => (o.userId ? String(o.userId) : null)).filter(Boolean))];
+    const users = userIds.length
+      ? await User.find({ _id: { $in: userIds } }).select({ _id: 1, fullName: 1 }).lean()
+      : [];
+    const userMap = new Map(users.map((u) => [String(u._id), u.fullName || null]));
+
+    const recentOrders = allOrders.slice(0, 8).map((o) => ({
+      id: String(o._id),
+      orderCode: o.orderCode || null,
+      customerName: (o.userId && userMap.get(String(o.userId))) || "Khách vãng lai",
+      orderType: o.orderType || null,
+      tableCode: o.tableCode || null,
+      status: o.currentStatus || null,
+      total: Number(o?.totals?.grandTotal || 0),
+      createdAt: o.createdAt || null,
+      itemNames: (o.items || []).map((x) => x.name).filter(Boolean),
+    }));
+
+    const supplyIds = [...new Set(stockItems.map((x) => (x.supplyId ? String(x.supplyId) : null)).filter(Boolean))];
+    const supplies = supplyIds.length
+      ? await Supply.find({ _id: { $in: supplyIds } }).select({ _id: 1, name: 1 }).lean()
+      : [];
+    const supplyMap = new Map(supplies.map((s) => [String(s._id), s.name || "Supply"]));
+
+    const lowStockItems = stockItems
+      .filter((s) => Number(s.onHand || 0) - Number(s.reserved || 0) <= 10)
+      .slice(0, 8)
+      .map((s) => ({
+        id: String(s._id),
+        name: (s.supplyId && supplyMap.get(String(s.supplyId))) || "Nguyên liệu",
+        onHand: Number(s.onHand || 0),
+        reserved: Number(s.reserved || 0),
+      }));
+
+    return {
+      restaurantId: String(rid),
+      revenue,
+      orders: ordersInRange.length,
+      customers: customerCount,
+      tables: tableCount,
+      menuItems: menuCount,
+      activePromotions: promoCount,
+      workingStaff: staffCount,
+      statusCounts,
+      revenueTrend: revenueBuckets,
+      orderTrend: orderBuckets,
+      topDishes,
+      recentOrders,
+      lowStockItems,
     };
   },
 };
