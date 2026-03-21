@@ -997,7 +997,7 @@ const RecipeModal = ({
         title={hasExistingRecipe ? "Cập nhật công thức" : "Thêm công thức"}
         size="xl"
       >
-        <form onSubmit={handleSubmit}>
+        <form className="recipe-modal-form" onSubmit={handleSubmit}>
           <Modal.Body>
           {/* ===== Dish (read-only) ===== */}
           <div className="recipe-section">
