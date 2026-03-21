@@ -1,5 +1,5 @@
 // src/hooks/useUserManagement.js
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 
 /* ========================= GraphQL ========================= */
@@ -53,6 +53,10 @@ export const GET_USERS = gql`
       totalOrders
       totalSpending
       emailVerified
+      isOnline
+      loyaltyDurationScore
+      lastLoginAt
+      noteInternal
       isGuest
       guestExpiresAt
       createdAt
@@ -105,6 +109,10 @@ export const GET_CUSTOMERS = gql`
       totalOrders
       totalSpending
       emailVerified
+      isOnline
+      loyaltyDurationScore
+      lastLoginAt
+      noteInternal
       isGuest
       guestExpiresAt
       createdAt
@@ -416,7 +424,7 @@ const avatarEmojiFromType = (customerType) => {
 
 /* === Loyalty compute (chuẩn hoá theo yêu cầu) === */
 const computePointsFromSpending = (spending) =>
-  Math.max(0, Math.floor((Number(spending) || 0) / 1000));
+  Math.max(0, Math.floor((Number(spending) || 0) / 1000000));
 const computeTypeFromPoints = (points) => {
   if (points < 5000) return "NEW";
   if (points <= 15000) return "OFTEN";
@@ -512,7 +520,7 @@ const useUserManagement = () => {
     if (!purpose) return;
     if (purpose === "allUsers") fetchUsers({ variables });
     else if (purpose === "customers") fetchCustomers({ variables });
-  }, [fetchUsers, fetchCustomers]); // eslint-disable-line
+  }, [fetchUsers, fetchCustomers]);
 
   /* ===== Fetch ===== */
 
@@ -546,51 +554,6 @@ const useUserManagement = () => {
     [fetchCustomers, searchQuery]
   );
 
-  /* ===== Auto-sync loyalty (theo FE rule) =====
-     - Tính points từ totalSpending
-     - Tính customerType từ points
-     - Nếu khác DB ⇒ gọi adminUpdateUser để đồng bộ
-     - Giới hạn mỗi đợt tối đa 10 user để tránh spam
-  */
-  useEffect(() => {
-    if (!usersCache?.length) return;
-    const candidates = [];
-    for (const u of usersCache) {
-      const computedPoints = computePointsFromSpending(u?.totalSpending || 0);
-      const computedType = computeTypeFromPoints(computedPoints);
-      const dbPoints = Number(u?.loyaltyPoints || 0);
-      const dbType = (u?.customerType || "").toUpperCase();
-
-      if (computedPoints !== dbPoints || computedType !== dbType) {
-        candidates.push({
-          id: u.id,
-          loyaltyPoints: computedPoints,
-          customerType: computedType,
-        });
-        if (candidates.length >= 10) break; // throttle
-      }
-    }
-    if (!candidates.length) return;
-
-    (async () => {
-      try {
-        for (const c of candidates) {
-          await adminUpdateUserMut({
-            variables: {
-              userId: c.id,
-              input: {
-                loyaltyPoints: c.loyaltyPoints,
-                customerType: c.customerType,
-              },
-            },
-          });
-        }
-      } catch {
-        // im lặng — không block UI
-      }
-    })();
-  }, [usersCache, adminUpdateUserMut]);
-
   /* ===== Derived ===== */
 
   const allUsers = usersCache;
@@ -607,19 +570,25 @@ const useUserManagement = () => {
 
     return merged.map((u) => {
       const totalSpending = Number(u.totalSpending || 0);
-      const computedPoints = computePointsFromSpending(totalSpending);
-      const computedType = computeTypeFromPoints(computedPoints);
+      const computedPoints = Number(u.loyaltyPoints ?? 0);
+      const computedType = (u.customerType || computeTypeFromPoints(computedPoints)).toUpperCase();
       return {
         name: u.fullName || u.username || "Khách hàng",
-        avatar: avatarEmojiFromType(computedType),
-        status: statusToCardStatus(u.status),
+        avatar: u.avatarUrl || avatarEmojiFromType(computedType),
+        status: u.isOnline ? "online" : statusToCardStatus(u.status),
         customerType: toVietnamCustomerType(computedType),
         totalSpent: totalSpending,
         totalOrders: u.totalOrders || 0,
         email: u.email || null,
         phone: u.phone || null,
-        currentActivity: "Đang hoạt động",
+        verificationStatus: u.emailVerified ? "verified" : "unverified",
+        currentActivity: u.isOnline ? "Online" : "Offline",
         loyaltyPoints: computedPoints,
+        loyaltyDurationScore: Number(u.loyaltyDurationScore || 0),
+        online: !!u.isOnline,
+        lastLoginAt: u.lastLoginAt || null,
+        noteInternal: u.noteInternal || "",
+        refRestaurants: u.refRestaurants || [],
         joinDate: toISODateOrNull(u.createdAt),
         favoriteItems: Array.isArray(u.favoriteItems) ? u.favoriteItems : [],
         recentOrders: Array.isArray(u.recentOrders) ? u.recentOrders : [],

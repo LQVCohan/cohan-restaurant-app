@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
+import { gql, useMutation, useQuery } from "@apollo/client";
 import {
   Users,
   Search,
@@ -10,6 +11,7 @@ import {
   Sparkles,
   Zap,
   UserCheck,
+  BarChart3,
 } from "lucide-react";
 
 // Components
@@ -26,6 +28,35 @@ import { AuthContext } from "../../../context/AuthContext";
 
 // Styles
 import "./CustomerManagement.scss";
+
+const GET_CUSTOMER_RANK_SETTINGS = gql`
+  query GetCustomerRankSettings($restaurantId: ID!) {
+    customerRankSettings(restaurantId: $restaurantId) {
+      restaurantId
+      ranks {
+        name
+        minPoints
+        benefits
+      }
+    }
+  }
+`;
+
+const UPSERT_CUSTOMER_RANK_SETTINGS = gql`
+  mutation UpsertCustomerRankSettings(
+    $restaurantId: ID!
+    $ranks: [RankThresholdInput!]!
+  ) {
+    upsertCustomerRankSettings(restaurantId: $restaurantId, ranks: $ranks) {
+      restaurantId
+      ranks {
+        name
+        minPoints
+        benefits
+      }
+    }
+  }
+`;
 
 /* ================== Helpers ================== */
 
@@ -55,6 +86,21 @@ const buildRecentOrdersForUser = (orders = []) =>
     items: (o.items || []).map((it) => it.name).filter(Boolean),
     raw: o,
   }));
+
+const buildTopDishes = (orders = []) => {
+  const dishCount = new Map();
+  for (const order of orders) {
+    for (const item of order.items || []) {
+      const name = item?.name?.trim();
+      if (!name) continue;
+      dishCount.set(name, (dishCount.get(name) || 0) + Number(item.quantity || 1));
+    }
+  }
+  return [...dishCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([dishName]) => dishName);
+};
 
 // Định dạng số lượng hiển thị trên nút lọc (VD: 1.2k)
 const formatCompactCount = (n) =>
@@ -93,6 +139,19 @@ const CustomerManagement = () => {
   // Filter & Search States
   const [activeFilter, setActiveFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [rankDraft, setRankDraft] = useState([]);
+
+  const { data: rankSettingsData, refetch: refetchRankSettings } = useQuery(
+    GET_CUSTOMER_RANK_SETTINGS,
+    {
+      skip: !selectedRestaurantId,
+      variables: { restaurantId: selectedRestaurantId },
+      fetchPolicy: "network-only",
+    }
+  );
+  const [saveRankSettings, { loading: savingRank }] = useMutation(
+    UPSERT_CUSTOMER_RANK_SETTINGS
+  );
 
   // --- 2. Effects ---
 
@@ -138,9 +197,10 @@ const CustomerManagement = () => {
   };
 
   const handleFilter = (filterKey) => {
+    if (typeof filterKey === "object" && filterKey?.category) {
+      filterKey = filterKey.category;
+    }
     setActiveFilter(filterKey);
-    // Logic mapping filterKey sang params của API hoặc hàm lọc local
-    // Ở đây giả sử filterCustomers nhận key tương ứng
     filterCustomers(filterKey);
   };
 
@@ -151,6 +211,21 @@ const CustomerManagement = () => {
 
   const handleCustomerClick = (customer) => {
     setSelectedCustomer(customer);
+  };
+
+  const handleSaveRankSettings = async () => {
+    if (!selectedRestaurantId || !rankDraft.length) return;
+    await saveRankSettings({
+      variables: {
+        restaurantId: selectedRestaurantId,
+        ranks: rankDraft.map((r) => ({
+          name: r.name,
+          minPoints: Number(r.minPoints || 0),
+          benefits: r.benefits || "",
+        })),
+      },
+    });
+    await refetchRankSettings();
   };
 
   // --- 4. Data Processing (Memoized) ---
@@ -182,15 +257,22 @@ const CustomerManagement = () => {
       const uid = c.id;
       const userOrders = (uid && ordersByUserId.get(uid)) || [];
       const recentOrders = buildRecentOrdersForUser(userOrders);
+      const topDishes = buildTopDishes(userOrders);
       return {
         ...c,
         displayName: c.name || "Khách hàng",
         recentOrders,
-        // Logic badge Guest nếu cần xử lý ở cấp độ list
+        favoriteItems: c.favoriteItems?.length ? c.favoriteItems : topDishes,
+        topDishes,
         isGuestBadge: c.isGuest ? "GUEST" : "",
       };
     });
   }, [filteredCustomers, ordersByUserId]);
+
+  const onlineCount = useMemo(
+    () => customersDecorated.filter((c) => c.online).length,
+    [customersDecorated]
+  );
 
   // Tính toán số lượng cho các bộ lọc nhanh (Quick Filters)
   const quickFilters = useMemo(() => {
@@ -225,6 +307,11 @@ const CustomerManagement = () => {
 
   const loading = usersLoading || ordersAllLoading;
 
+  useEffect(() => {
+    const ranks = rankSettingsData?.customerRankSettings?.ranks || [];
+    setRankDraft(ranks);
+  }, [rankSettingsData]);
+
   // --- 5. Render ---
 
   return (
@@ -256,7 +343,7 @@ const CustomerManagement = () => {
         <div className="cm-header-right">
           <div className="cm-stat-badge">
             <span className="cm-dot-pulse" />
-            <span>24 Online</span>
+            <span>{onlineCount} Online</span>
           </div>
 
           <button
@@ -322,6 +409,13 @@ const CustomerManagement = () => {
             <Gift size={18} className="text-yellow-600" />
             <span className="text-yellow-700">Gửi Ưu Đãi</span>
           </button>
+          <button
+            className="cm-btn cm-btn-secondary"
+            onClick={() => (window.location.hash = "#customer-analytics")}
+          >
+            <BarChart3 size={18} />
+            <span>Phân tích người dùng</span>
+          </button>
         </div>
       </div>
 
@@ -338,10 +432,50 @@ const CustomerManagement = () => {
         {/* Sidebar Filter Panel (Animated) */}
         <aside className="cm-sidebar">
           {showRightSidebar && (
-            <CustomerFilters
-              onClose={() => setShowRightSidebar(false)}
-              onApplyFilters={filterCustomers}
-            />
+            <>
+              <CustomerFilters
+                onClose={() => setShowRightSidebar(false)}
+                onApplyFilters={handleFilter}
+              />
+              <div className="cm-rank-settings">
+                <h4>Cài đặt mốc rank</h4>
+                {rankDraft.map((rank, idx) => (
+                  <div key={`${rank.name}-${idx}`} className="cm-rank-row">
+                    <input
+                      value={rank.name}
+                      onChange={(e) =>
+                        setRankDraft((prev) =>
+                          prev.map((item, i) =>
+                            i === idx ? { ...item, name: e.target.value } : item
+                          )
+                        )
+                      }
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      value={rank.minPoints}
+                      onChange={(e) =>
+                        setRankDraft((prev) =>
+                          prev.map((item, i) =>
+                            i === idx
+                              ? { ...item, minPoints: Number(e.target.value || 0) }
+                              : item
+                          )
+                        )
+                      }
+                    />
+                  </div>
+                ))}
+                <button
+                  className="cm-btn cm-btn-primary"
+                  onClick={handleSaveRankSettings}
+                  disabled={savingRank}
+                >
+                  Lưu mốc rank
+                </button>
+              </div>
+            </>
           )}
         </aside>
       </main>
