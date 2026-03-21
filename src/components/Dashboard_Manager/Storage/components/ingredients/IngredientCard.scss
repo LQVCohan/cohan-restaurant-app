@@ -1,6 +1,5 @@
-// src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCard.scss
+/* src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCard.scss */
 
-/* Copy lại Variables để đảm bảo tính độc lập nếu chưa import global */
 $il-bg-surface: #ffffff;
 $il-border-color: #e2e8f0;
 $il-primary: #c5a47e;
@@ -27,7 +26,7 @@ $il-info: #3b82f6;
     border-color: rgba($il-primary, 0.4);
 
     .il-card__actions {
-      background-color: #f8fafc; // Highlight toolbar khi hover card
+      background-color: #f8fafc;
     }
   }
 
@@ -43,18 +42,31 @@ $il-info: #3b82f6;
   &__icon-wrapper {
     width: 40px;
     height: 40px;
-    background: #fdf8f6; // Màu nền nhạt của primary
+    background: #fdf8f6;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     color: $il-primary;
+
+    svg,
+    .lucide {
+      width: 24px;
+      height: 24px;
+      display: block;
+      flex-shrink: 0;
+      color: currentColor;
+      stroke: currentColor;
+      fill: none;
+      opacity: 1;
+      visibility: visible;
+    }
   }
 
   &__title-group {
     flex: 1;
-    min-width: 0; // Để text-overflow hoạt động
+    min-width: 0;
 
     .il-card__title {
       font-size: 1rem;
@@ -73,8 +85,17 @@ $il-info: #3b82f6;
       font-size: 0.75rem;
       color: #94a3b8;
 
-      svg {
+      svg,
+      .lucide {
+        width: 12px;
+        height: 12px;
+        display: block;
+        flex-shrink: 0;
+        color: currentColor;
+        stroke: currentColor;
+        fill: none;
         opacity: 0.7;
+        visibility: visible;
       }
     }
   }
@@ -93,18 +114,21 @@ $il-info: #3b82f6;
       color: $il-success;
       border: 1px solid rgba($il-success, 0.2);
     }
+
     &.status-low-stock,
     &.warning {
       background: #fffbeb;
       color: $il-warning;
       border: 1px solid rgba($il-warning, 0.2);
     }
+
     &.status-out-of-stock,
     &.danger {
       background: #fef2f2;
       color: $il-danger;
       border: 1px solid rgba($il-danger, 0.2);
     }
+
     &.status-unknown {
       background: #f1f5f9;
       color: #94a3b8;
@@ -135,6 +159,7 @@ $il-info: #3b82f6;
 
       &.il-stat-box--interactive {
         cursor: pointer;
+
         &:hover {
           background: #fff;
           border-color: $il-primary;
@@ -177,16 +202,21 @@ $il-info: #3b82f6;
   &__actions {
     display: flex;
     align-items: center;
-    justify-content: space-between; // Dàn đều nút
+    justify-content: space-between;
     background: #f8fafc;
     border-radius: 8px;
     padding: 6px;
-    margin-top: auto; // Đẩy xuống đáy nếu card bị kéo giãn
+    margin-top: auto;
     transition: background 0.2s;
 
     .il-action-btn {
+      appearance: none;
+      -webkit-appearance: none;
       width: 32px;
+      min-width: 32px;
       height: 32px;
+      min-height: 32px;
+      padding: 0;
       border-radius: 6px;
       border: 1px solid transparent;
       background: #fff;
@@ -194,15 +224,28 @@ $il-info: #3b82f6;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      flex: 0 0 auto;
+      overflow: visible;
+      line-height: 1;
       color: #94a3b8;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
 
-      svg {
-        width: 16px;
-        height: 16px;
-        stroke-width: 2.25;
+      svg,
+      .lucide {
+        width: 16px !important;
+        height: 16px !important;
+        min-width: 16px;
+        min-height: 16px;
         display: block;
-        color: currentColor;
+        flex-shrink: 0;
+        overflow: visible;
+        color: currentColor !important;
+        stroke: currentColor !important;
+        fill: none !important;
+        stroke-width: 2.25;
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: none;
       }
 
       &:hover {
@@ -211,28 +254,36 @@ $il-info: #3b82f6;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
       }
 
+      &:focus-visible {
+        outline: 2px solid rgba($il-primary, 0.35);
+        outline-offset: 2px;
+      }
+
       &:disabled {
         opacity: 1;
         cursor: not-allowed;
         background: #f1f5f9;
         border-color: transparent;
-        color: #94a3b8 !important;
       }
 
-      &:disabled:hover {
-        box-shadow: none;
-        color: #94a3b8;
+      &:disabled svg,
+      &:disabled .lucide {
+        opacity: 1 !important;
+        visibility: visible !important;
       }
 
       &.il-btn-edit {
         color: $il-info;
       }
+
       &.il-btn-stock {
         color: $il-success;
       }
+
       &.il-btn-view {
         color: $il-warning;
       }
+
       &.il-btn-delete {
         color: $il-danger;
       }
@@ -240,15 +291,35 @@ $il-info: #3b82f6;
       &.il-btn-edit:hover {
         color: $il-info;
       }
+
       &.il-btn-stock:hover {
         color: $il-success;
       }
+
       &.il-btn-view:hover {
         color: $il-warning;
       }
+
       &.il-btn-delete:hover {
         color: $il-danger;
         background: #fef2f2;
+      }
+
+      /* giữ icon vẫn hiện ngay cả khi disabled */
+      &.il-btn-edit:disabled {
+        color: rgba($il-info, 0.65) !important;
+      }
+
+      &.il-btn-stock:disabled {
+        color: rgba($il-success, 0.65) !important;
+      }
+
+      &.il-btn-view:disabled {
+        color: rgba($il-warning, 0.75) !important;
+      }
+
+      &.il-btn-delete:disabled {
+        color: rgba($il-danger, 0.65) !important;
       }
     }
 
@@ -257,6 +328,7 @@ $il-info: #3b82f6;
       height: 20px;
       background: $il-border-color;
       margin: 0 4px;
+      flex-shrink: 0;
     }
   }
 }
@@ -309,7 +381,6 @@ $il-info: #3b82f6;
     }
   }
 
-  /* Modal Buttons */
   .il-btn-primary,
   .il-btn-secondary {
     padding: 8px 16px;
@@ -323,6 +394,7 @@ $il-info: #3b82f6;
   .il-btn-primary {
     background: $il-text-main;
     color: #fff;
+
     &:hover {
       opacity: 0.9;
     }
@@ -332,6 +404,7 @@ $il-info: #3b82f6;
     background: transparent;
     color: #94a3b8;
     margin-right: 8px;
+
     &:hover {
       background: #f1f5f9;
     }
