@@ -151,6 +151,54 @@ type User {
   rateCount: Int
 
   wallet: Wallet
+  isOnline: Boolean
+  loyaltyDurationScore: Int
+}
+
+type CustomerTopDish {
+  dishName: String!
+  quantity: Int!
+}
+
+type CustomerDetailAnalytics {
+  userId: ID!
+  favoriteFoods: [String!]!
+  recentOrderCodes: [String!]!
+  topDishes: [CustomerTopDish!]!
+  loyaltyDurationScore: Int!
+  rankPoints: Int!
+}
+
+type CustomerAnalyticsDay {
+  date: String!
+  orderCount: Int!
+}
+
+type CustomerAnalyticsSummary {
+  restaurantId: ID!
+  mostPopularDishes: [CustomerTopDish!]!
+  busiestDays: [CustomerAnalyticsDay!]!
+  averageMembershipDays: Int!
+  activeCustomerCount: Int!
+  returningCustomerCount: Int!
+}
+
+type RankThreshold {
+  name: String!
+  minPoints: Int!
+  benefits: String
+}
+
+input RankThresholdInput {
+  name: String!
+  minPoints: Int!
+  benefits: String
+}
+
+type CustomerRankSettings {
+  restaurantId: ID!
+  ranks: [RankThreshold!]!
+  updatedAt: DateTime
 }
 
 # =========================
@@ -326,6 +374,9 @@ type Query {
   roleList: [Role!]!
   users(roleId: ID, search: String, isGuest: Boolean): [User!]!
   customers(search: String, includeGuests: Boolean): [User!]!
+  customerDetailAnalytics(userId: ID!, restaurantId: ID): CustomerDetailAnalytics!
+  customerAnalytics(restaurantId: ID!): CustomerAnalyticsSummary!
+  customerRankSettings(restaurantId: ID!): CustomerRankSettings!
 
   staff(id: ID!): User
   staffList(
@@ -375,6 +426,10 @@ type Mutation {
     loyaltyPoints: Int!
     customerType: CustomerType!
   ): User!
+  upsertCustomerRankSettings(
+    restaurantId: ID!
+    ranks: [RankThresholdInput!]!
+  ): CustomerRankSettings!
 
   createStaff(input: CreateUserInput!): User!
   updateStaff(userId: ID!, input: AdminUpdateUserInput!): User!

@@ -1,6 +1,5 @@
 // src/components/CustomerManagement/CustomerModal.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { gql, useMutation } from "@apollo/client";
+import React, { useMemo, useState } from "react";
 import {
   Mail,
   Phone,
@@ -17,7 +16,7 @@ import {
   CreditCard,
   User,
   MessageSquare,
-  X,
+  UserCheck,
 } from "lucide-react";
 import Modal from "../../../components/common/Modal";
 import "./CustomerModal.scss";
@@ -80,26 +79,6 @@ const STATUS_CONFIG = {
   default: { label: "Khác", color: "#475569", bg: "#f1f5f9" },
 };
 
-/* ===== GraphQL ===== */
-const UPDATE_CUSTOMER_METRICS = gql`
-  mutation UpdateCustomerMetrics(
-    $id: ID!
-    $loyaltyPoints: Int!
-    $customerType: CustomerType!
-  ) {
-    updateCustomerMetrics(
-      id: $id
-      loyaltyPoints: $loyaltyPoints
-      customerType: $customerType
-    ) {
-      id
-      loyaltyPoints
-      customerType
-      updatedAt
-    }
-  }
-`;
-
 // Thêm prop isOpen vào đây để điều khiển modal
 const CustomerModal = ({ isOpen, customer, onClose, onShowBill }) => {
   const [notes, setNotes] = useState(customer?.notes || "");
@@ -116,14 +95,14 @@ const CustomerModal = ({ isOpen, customer, onClose, onShowBill }) => {
       0
     );
     const avg = count > 0 ? totalRaw / count : 0;
-    const pts = Math.floor(totalRaw / 1000);
+    const pts = Number(customer?.loyaltyPoints || 0);
 
     let type = "NEW";
     if (pts > 15000) type = "VIP";
     else if (pts > 5000) type = "OFTEN";
 
     return { count, total: totalRaw, avg, points: pts, type };
-  }, [recentOrders]);
+  }, [recentOrders, customer?.loyaltyPoints]);
 
   const topItems = useMemo(() => {
     if (customer?.favoriteItems?.length > 0) return customer.favoriteItems;
@@ -147,23 +126,6 @@ const CustomerModal = ({ isOpen, customer, onClose, onShowBill }) => {
     if (isActive) return { label: "Đang hoạt động", cls: "active" };
     return { label: "Chưa kích hoạt", cls: "inactive" };
   }, [customer]);
-
-  // Sync Data
-  const [mutUpdateMetrics] = useMutation(UPDATE_CUSTOMER_METRICS);
-  useEffect(() => {
-    if (!customer?.id) return;
-    const currentPts = Number(customer.loyaltyPoints || 0);
-    const currentType = (customer.customerType || "NEW").toUpperCase();
-    if (currentPts !== stats.points || currentType !== stats.type) {
-      mutUpdateMetrics({
-        variables: {
-          id: customer.id,
-          loyaltyPoints: stats.points,
-          customerType: stats.type,
-        },
-      }).catch((err) => console.error(err));
-    }
-  }, [customer?.id, stats.points, stats.type, mutUpdateMetrics]);
 
   const tier = CUSTOMER_TIERS[stats.type] || CUSTOMER_TIERS.NEW;
   const joinDate = formatDate(customer?.joinDate);
@@ -248,6 +210,15 @@ const CustomerModal = ({ isOpen, customer, onClose, onShowBill }) => {
               <div className="stat-value">{joinDate}</div>
               <div className="stat-label">Ngày tham gia</div>
             </div>
+            <div className="stat-item">
+              <div className="stat-icon bg-emerald-100 text-emerald-600">
+                <Clock size={18} />
+              </div>
+              <div className="stat-value">
+                {Number(customer?.loyaltyDurationScore || 0)} ngày
+              </div>
+              <div className="stat-label">Điểm gắn bó</div>
+            </div>
           </div>
 
           {/* Insights Row */}
@@ -257,6 +228,21 @@ const CustomerModal = ({ isOpen, customer, onClose, onShowBill }) => {
                 <User size={14} /> Thông tin cá nhân
               </div>
               <div className="contact-list">
+                <div className="c-item" title="Trạng thái">
+                  <span
+                    className="icon"
+                    style={{ color: customer?.online ? "#16a34a" : "#64748b" }}
+                  >
+                    ●
+                  </span>{" "}
+                  {customer?.online ? "Online" : "Offline"}
+                </div>
+                <div className="c-item" title="Xác minh">
+                  <UserCheck size={14} className="icon" />{" "}
+                  {customer?.verificationStatus === "verified"
+                    ? "Đã xác minh"
+                    : "Chưa xác minh"}
+                </div>
                 <div className="c-item" title="Email">
                   <Mail size={14} className="icon" /> {customer?.email || "—"}
                 </div>
@@ -295,8 +281,11 @@ const CustomerModal = ({ isOpen, customer, onClose, onShowBill }) => {
                 <Tag size={14} /> Nhãn (Tags)
               </div>
               <div className="chips-container">
-                <span className="chip">Khách văn phòng</span>
-                <span className="chip">Thích cay</span>
+                {(customer?.refRestaurants || []).slice(0, 2).map((r) => (
+                  <span className="chip" key={r.id || r.name}>
+                    {r.name}
+                  </span>
+                ))}
               </div>
             </div>
           </div>

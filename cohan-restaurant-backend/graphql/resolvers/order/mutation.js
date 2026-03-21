@@ -11,6 +11,7 @@ import {
   Ingredient,
   ModifierGroup,
   CheckoutSession,
+  Customer,
 } from "../../../models/index.js";
 
 import { normalizeItem, toId } from "./helper/orderUtils.js";
@@ -33,6 +34,7 @@ const RESERVABLE_STATUSES = [
   "customer_attached",
 ];
 const COMMIT_STATUSES = ["preparing", "ready", "served", "completed"];
+const RANK_POINT_DIVISOR = 1_000_000;
 
 const CANCELLED_ITEM_STATUSES = ["cancelled", "returned"];
 
@@ -40,6 +42,37 @@ function normalizePriorityLevel(value) {
   const key = String(value || "").toUpperCase();
   if (["LOW", "MEDIUM", "HIGH"].includes(key)) return key;
   return "MEDIUM";
+}
+
+async function syncCustomerMetricsByOrderUser(userId) {
+  if (!userId || !mongoose.isValidObjectId(userId)) return;
+  const uid = toId(userId);
+  if (!uid) return;
+
+  const completedOrders = await Order.find({
+    userId: uid,
+    currentStatus: "completed",
+    "payment.status": { $in: ["paid", "partially_refunded", "refunded"] },
+  }).lean();
+
+  const totalSpending = completedOrders.reduce(
+    (sum, o) => sum + Number(o?.totals?.grandTotal || 0),
+    0
+  );
+  const totalOrders = completedOrders.length;
+  const loyaltyPoints = Math.max(
+    0,
+    Math.floor((Number(totalSpending) || 0) / RANK_POINT_DIVISOR)
+  );
+  const customerType =
+    loyaltyPoints >= 20 ? "VIP" : loyaltyPoints >= 5 ? "OFTEN" : "NEW";
+
+  await Customer.findByIdAndUpdate(uid, {
+    totalSpending,
+    totalOrders,
+    loyaltyPoints,
+    customerType,
+  });
 }
 
 /** =========================
@@ -1399,6 +1432,10 @@ export const OrderMutation = {
       order,
       meta: { statusFrom: prevStatus, statusTo: status, note },
     });
+
+    if (["completed", "cancelled", "failed"].includes(status)) {
+      await syncCustomerMetricsByOrderUser(order?.userId);
+    }
 
     return order.toJSON();
   },
