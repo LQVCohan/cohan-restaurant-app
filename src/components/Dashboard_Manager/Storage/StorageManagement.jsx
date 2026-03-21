@@ -21,6 +21,7 @@ import InventoryAuditTab from "./components/inventory/InventoryAuditTab";
 
 // Hooks & Icons
 import { useRecipes } from "@/hooks/useRecipes";
+import { useNotification } from "@/hooks/useNotification";
 import {
   Carrot,
   Package,
@@ -44,6 +45,7 @@ import {
 } from "./graphql/inventory.gql";
 
 const StorageManagement = () => {
+  const { showNotification } = useNotification();
   const { user } = useContext(AuthContext);
   const managerId = user?.id;
 
@@ -366,7 +368,10 @@ const StorageManagement = () => {
                 lowStockItems={lowStockItems}
                 onCreatePO={() => {
                   if (!warehouseFilterId) {
-                    alert("Vui lòng chọn kho cụ thể trước khi nhập kho.");
+                    showNotification(
+                      "Vui lòng chọn kho cụ thể trước khi nhập kho.",
+                      "warning"
+                    );
                     return;
                   }
                   setPoEntries(
@@ -401,9 +406,17 @@ const StorageManagement = () => {
         onClose={() => setPoOpen(false)}
         entries={poEntries}
         onSubmit={async (rows) => {
-          try {
-            for (const row of rows) {
-              await adjustStockMu({
+          if (!warehouseFilterId) {
+            throw new Error("Vui lòng chọn kho cụ thể để nhập kho.");
+          }
+
+          if (!rows?.length) {
+            throw new Error("Danh sách nhập kho đang trống.");
+          }
+
+          await Promise.all(
+            rows.map((row) =>
+              adjustStockMu({
                 variables: {
                   restaurantId: currentRestaurant,
                   warehouseId: warehouseFilterId,
@@ -411,13 +424,16 @@ const StorageManagement = () => {
                   qty: row.qty,
                   reason: buildReason(row),
                 },
-              });
-            }
-            setPoOpen(false);
-            await reloadIngredientsAndStock();
-          } catch (e) {
-            alert(e?.message || "Có lỗi khi nhập kho");
-          }
+              })
+            )
+          );
+
+          setPoOpen(false);
+          await reloadIngredientsAndStock();
+          showNotification(
+            `Nhập kho thành công ${rows.length} nguyên liệu.`,
+            "success"
+          );
         }}
       />
     </div>

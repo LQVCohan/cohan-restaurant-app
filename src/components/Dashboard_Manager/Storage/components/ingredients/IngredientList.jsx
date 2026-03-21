@@ -13,9 +13,11 @@ import IngredientCard from "./IngredientCard";
 import IngredientModal from "./IngredientModal";
 import QuickStockModal from "./QuickStockModal";
 import { useIngredients } from "@/hooks/useIngredients";
+import { useNotification } from "@/hooks/useNotification";
 import "./IngredientList.scss";
 
 const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
+  const { showNotification } = useNotification();
   const {
     loading,
     error,
@@ -81,8 +83,9 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa nguyên liệu này?")) return;
     try {
       await deleteIngredient(id);
+      showNotification("Đã xoá nguyên liệu thành công.", "success");
     } catch (e) {
-      alert(e?.message || "Có lỗi khi xóa nguyên liệu");
+      showNotification(e?.message || "Có lỗi khi xóa nguyên liệu", "error");
     }
   };
 
@@ -107,13 +110,15 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
       setSaving(true);
       if (isEditing && id) {
         await updateIngredient(id, { payload });
+        showNotification("Đã cập nhật nguyên liệu.", "success");
       } else {
         await addIngredient({ payload, initialStockQty });
+        showNotification("Đã thêm nguyên liệu mới.", "success");
       }
       setShowModal(false);
       setEditingItem(null);
     } catch (e) {
-      alert(e?.message || "Có lỗi khi lưu nguyên liệu");
+      showNotification(e?.message || "Có lỗi khi lưu nguyên liệu", "error");
     } finally {
       setSaving(false);
     }
@@ -301,14 +306,20 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
         onClose={() => setQuickStockOpen(false)}
         entries={quickEntries}
         onSubmit={async (rows) => {
-          try {
-            for (const row of rows) {
-              await addStock(row.id, row.qty, buildReason(row));
-            }
-            setQuickStockOpen(false);
-          } catch (e) {
-            alert(e?.message || "Có lỗi khi nhập kho");
+          if (!rows?.length) {
+            showNotification("Danh sách nhập kho đang trống.", "warning");
+            return;
           }
+
+          await Promise.all(
+            rows.map((row) => addStock(row.id, row.qty, buildReason(row)))
+          );
+
+          setQuickStockOpen(false);
+          showNotification(
+            `Nhập kho thành công ${rows.length} nguyên liệu.`,
+            "success"
+          );
         }}
       />
     </div>
