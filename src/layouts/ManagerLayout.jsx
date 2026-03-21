@@ -33,48 +33,58 @@ import {
   RocketOutlined,
 } from "@ant-design/icons";
 
+const VALID_MANAGER_PAGES = new Set([
+  "dashboard",
+  "tables",
+  "orders",
+  "menu",
+  "inventory",
+  "staff",
+  "customers",
+  "analytics",
+  "transactions",
+  "reports",
+  "settings",
+  "schedules",
+  "promotions",
+  "rates",
+  "finance",
+  "setting",
+  "payroll",
+  "backup",
+  "reviews",
+  "print-management",
+  "restaurant-info-management",
+]);
+
+const resolveInitialManagerPage = () => {
+  const hash = window.location.hash?.replace("#", "");
+  if (hash && VALID_MANAGER_PAGES.has(hash)) return hash;
+
+  const saved = localStorage.getItem("manager.currentPage");
+  if (saved && VALID_MANAGER_PAGES.has(saved)) return saved;
+
+  return "dashboard";
+};
+
 const ManagerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState("dashboard");
+  const [currentPage, setCurrentPage] = useState(resolveInitialManagerPage);
+  const validPages = useMemo(() => VALID_MANAGER_PAGES, []);
 
-  const validPages = useMemo(
-    () =>
-      new Set([
-        "dashboard",
-        "tables",
-        "orders",
-        "menu",
-        "inventory",
-        "staff",
-        "customers",
-        "analytics",
-        "transactions",
-        "reports",
-        "settings",
-        "schedules",
-        "promotions",
-        "rates",
-        "finance",
-        "setting",
-        "payroll",
-        "backup",
-        "reviews",
-        "print-management",
-        "restaurant-info-management",
-      ]),
-    [],
-  );
   useEffect(() => {
-    const hash = window.location.hash?.replace("#", "");
-    if (hash && validPages.has(hash)) {
-      setCurrentPage(hash);
-      return;
-    }
-    const saved = localStorage.getItem("manager.currentPage");
-    if (saved && validPages.has(saved)) {
-      setCurrentPage(saved);
-    }
+    const syncFromHash = () => {
+      const hash = window.location.hash?.replace("#", "");
+      if (hash && validPages.has(hash)) {
+        setCurrentPage(hash);
+      }
+    };
+
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
   }, [validPages]);
+
   useEffect(() => {
     if (validPages.has(currentPage)) {
       localStorage.setItem("manager.currentPage", currentPage);

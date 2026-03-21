@@ -5,6 +5,13 @@
    Recipe Modal (Clean + Modern)
    ========================= */
 
+.recipe-modal-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
 .recipe-section {
   margin-bottom: $spacing-xl;
 
@@ -240,6 +247,10 @@
   margin-bottom: 8px;
 }
 
+.ingredientSelectField {
+  position: relative;
+}
+
 .finalDisplay {
   margin-top: 6px;
   font-size: 12px;
@@ -373,6 +384,11 @@ input[type="number"] {
   box-shadow: 0 12px 24px rgba(2, 8, 23, 0.08);
   max-height: 240px;
   overflow-y: auto;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 44px;
+  z-index: 20;
 }
 
 .ingredientSuggestItem {
