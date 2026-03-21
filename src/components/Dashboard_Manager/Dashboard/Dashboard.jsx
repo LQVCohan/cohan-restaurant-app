@@ -15,11 +15,20 @@ import "./Dashboard.scss";
 const Dashboard = () => {
   const {
     selectedRestaurant,
+    restaurants,
+    selectedRestaurantId,
     stats,
     handleRestaurantChange,
     handleSwitchToPOS,
     handleGenerateReport,
     loading,
+    error,
+    range,
+    setRange,
+    revenueTrend,
+    recentOrders,
+    topDishes,
+    lowStockItems,
   } = useDashboard();
 
   // 1. Logic Lời chào thông minh
@@ -66,13 +75,15 @@ const Dashboard = () => {
 
           {/* Các nút chức năng (POS, Export...) */}
           <Header
-            selectedRestaurant={selectedRestaurant}
+            selectedRestaurant={selectedRestaurantId}
+            restaurants={restaurants}
             onRestaurantChange={handleRestaurantChange}
             onSwitchToPOS={handleSwitchToPOS}
             onGenerateReport={handleGenerateReport}
           />
         </div>
       </header>
+      {error ? <div className="dashboard-error">Không tải được dữ liệu dashboard.</div> : null}
 
       {/* SECTION 2: STATS OVERVIEW */}
       <section className="stats-section">
@@ -84,11 +95,15 @@ const Dashboard = () => {
         {/* LEFT COLUMN (70%) - Dữ liệu chi tiết & Rộng */}
         <div className="col-primary">
           <div className="widget-wrapper chart-widget">
-            <RevenueChart />
+            <RevenueChart
+              data={revenueTrend}
+              loading={loading}
+              range={range}
+              onRangeChange={setRange}
+            />
           </div>
           <div className="widget-wrapper orders-widget">
-            {/* Truyền prop scrollable để table cuộn trong khung */}
-            <RecentOrders scrollable={true} />
+            <RecentOrders orders={recentOrders} loading={loading} />
           </div>
         </div>
 
@@ -98,7 +113,7 @@ const Dashboard = () => {
             <QuickActions />
           </div>
           <div className="widget-wrapper dishes-widget">
-            <TopDishes />
+            <TopDishes data={topDishes} lowStockItems={lowStockItems} loading={loading} />
           </div>
         </div>
       </section>

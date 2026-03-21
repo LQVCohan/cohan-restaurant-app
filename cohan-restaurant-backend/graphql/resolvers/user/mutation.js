@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import process from "process";
 import { Buffer } from "buffer";
-import { User, Role, Customer } from "../../../models/index.js";
+import { User, Role, Customer, CustomerRankSetting } from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
 import dayjs from "dayjs";
 
@@ -106,7 +106,7 @@ const buildNormalizedFieldExpr = (field) => ({
 
 /* ===== Loyalty helpers (đồng bộ với FE rule) ===== */
 const _computePointsFromSpending = (spending) =>
-  Math.max(0, Math.floor((Number(spending) || 0) / 1000));
+  Math.max(0, Math.floor((Number(spending) || 0) / 1_000_000));
 const _computeTypeFromPoints = (points) => {
   if (points < 5000) return "NEW";
   if (points <= 15000) return "OFTEN";
@@ -941,6 +941,49 @@ export const UserMutation = {
         extensions: { code: "NOT_FOUND" },
       });
     }
+    return saved;
+  },
+
+  async upsertCustomerRankSettings(
+    _,
+    { restaurantId, ranks },
+    { user: authUser },
+  ) {
+    requireRole(authUser, ["admin", "manager"]);
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new GraphQLError("Invalid restaurantId", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const normalizedRanks = (Array.isArray(ranks) ? ranks : [])
+      .map((r) => ({
+        name: String(r?.name || "").trim(),
+        minPoints: Math.max(0, Number(r?.minPoints || 0)),
+        benefits: String(r?.benefits || "").trim(),
+      }))
+      .filter((r) => r.name);
+
+    if (!normalizedRanks.length) {
+      throw new GraphQLError("Ranks cannot be empty", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+
+    normalizedRanks.sort((a, b) => a.minPoints - b.minPoints);
+
+    const saved = await CustomerRankSetting.findOneAndUpdate(
+      { restaurantId: new mongoose.Types.ObjectId(restaurantId) },
+      {
+        $set: {
+          ranks: normalizedRanks,
+          updatedBy: authUser?.id
+            ? new mongoose.Types.ObjectId(authUser.id)
+            : undefined,
+        },
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    ).lean();
+
     return saved;
   },
 

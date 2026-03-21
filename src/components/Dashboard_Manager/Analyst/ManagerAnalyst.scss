@@ -90,6 +90,15 @@ $gap: 24px; // Khoảng cách chuẩn giữa các widget
     }
   }
 
+  .analyst-error {
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
+
   // --- COMMON GRID ITEM ---
   .grid-item {
     background: $white;
