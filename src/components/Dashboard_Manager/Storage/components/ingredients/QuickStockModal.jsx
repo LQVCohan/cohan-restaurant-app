@@ -26,6 +26,8 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
 
   const [formRows, setFormRows] = useState([]);
   const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -41,6 +43,8 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
       }))
     );
     setErrors({});
+    setSubmitError("");
+    setSubmitting(false);
   }, [isOpen, normalized]);
 
   if (!isOpen) return null;
@@ -69,8 +73,10 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
     return Object.keys(nextErrors).length === 0;
   };
 
-  const submit = () => {
+  const submit = async () => {
+    if (submitting) return;
     if (!validate()) return;
+    setSubmitError("");
     const payload = formRows.map((row) => ({
       id: row.id,
       type: row.type,
@@ -80,7 +86,14 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
       note: row.note?.trim() || null,
       datetime: row.datetime ? new Date(row.datetime).toISOString() : null,
     }));
-    onSubmit?.(payload);
+    try {
+      setSubmitting(true);
+      await onSubmit?.(payload);
+    } catch (e) {
+      setSubmitError(e?.message || "Không thể nhập kho. Vui lòng thử lại.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -91,6 +104,7 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
       size="lg"
     >
       <div className="qsm-wrapper">
+        {submitError ? <div className="qsm-error">{submitError}</div> : null}
         <div className="qsm-list">
           {formRows.map((row, idx) => (
             <div className="qsm-item" key={`${row.id}-${idx}`}>
@@ -165,8 +179,12 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
         <button className="qsm-btn qsm-btn--secondary" onClick={onClose}>
           Huỷ
         </button>
-        <button className="qsm-btn qsm-btn--primary" onClick={submit}>
-          Xác nhận nhập kho
+        <button
+          className="qsm-btn qsm-btn--primary"
+          onClick={submit}
+          disabled={submitting}
+        >
+          {submitting ? "Đang nhập..." : "Xác nhận nhập kho"}
         </button>
       </Modal.Footer>
     </Modal>

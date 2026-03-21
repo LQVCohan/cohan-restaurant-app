@@ -12,6 +12,7 @@ import Button from "../../../../common/Button";
 import SupplyCard from "./SupplyCard";
 import SupplyModal from "./SupplyModal";
 import useSupply from "../../../../../hooks/useSupply";
+import { useNotification } from "@/hooks/useNotification";
 import StockOutModal from "../modals/StockOutModal";
 import StockTransferModal from "../modals/StockTransferModal";
 import QuickStockModal from "../ingredients/QuickStockModal";
@@ -23,6 +24,7 @@ const SupplyList = ({
   warehouses = [],
   warehousesLoading = false,
 }) => {
+  const { showNotification } = useNotification();
   const {
     supplies,
     getStockItem,
@@ -45,7 +47,6 @@ const SupplyList = ({
   const [mode, setMode] = useState(null); // 'in' | 'out' | 'transfer'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [quickStockOpen, setQuickStockOpen] = useState(false);
   const [quickEntries, setQuickEntries] = useState([]);
 
   // Reset filter khi đổi nhà hàng/kho
@@ -97,8 +98,10 @@ const SupplyList = ({
 
   const requireWarehouse = () => {
     if (!warehouseId) {
-      // Có thể thay bằng Toast notification
-      alert("Vui lòng chọn kho cụ thể để thực hiện nhập/xuất.");
+      showNotification(
+        "Vui lòng chọn kho cụ thể để thực hiện nhập/xuất.",
+        "warning"
+      );
       return false;
     }
     return true;
@@ -116,7 +119,6 @@ const SupplyList = ({
         unit: s.unit,
       },
     ]);
-    setQuickStockOpen(true);
   };
   const openOut = (s) => {
     if (requireWarehouse()) {
@@ -310,13 +312,16 @@ const SupplyList = ({
           onClose={closeStockModal}
           entries={quickEntries}
           onSubmit={async (rows) => {
-            for (const row of rows) {
-              await submitInbound({
-                qty: row.qty,
-                supplier: row.supplier,
-                reason: buildReason(row),
-              });
-            }
+            await Promise.all(
+              rows.map((row) =>
+                submitInbound({
+                  qty: row.qty,
+                  supplier: row.supplier,
+                  reason: buildReason(row),
+                })
+              )
+            );
+            showNotification("Nhập kho vật tư thành công.", "success");
             closeStockModal();
           }}
         />

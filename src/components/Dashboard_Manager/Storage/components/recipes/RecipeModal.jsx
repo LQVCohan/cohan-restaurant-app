@@ -998,6 +998,7 @@ const RecipeModal = ({
         size="xl"
       >
         <form onSubmit={handleSubmit}>
+          <Modal.Body>
           {/* ===== Dish (read-only) ===== */}
           <div className="recipe-section">
             <div className="section-header" style={{ marginBottom: 8 }}>
@@ -1402,6 +1403,7 @@ const RecipeModal = ({
                         <div className="form-row-3">
                           <FormGroup>
                             <FormLabel>Nguyên liệu</FormLabel>
+                            <div className="ingredientSelectField">
 
                             <input
                               className="ingredientSearchInput"
@@ -1567,6 +1569,7 @@ const RecipeModal = ({
                                 BaseUnit (BE): <strong>{ing.baseUnit}</strong>
                               </div>
                             ) : null}
+                            </div>
                           </FormGroup>
 
                           <FormGroup>
@@ -1834,8 +1837,9 @@ const RecipeModal = ({
               </Card>
             )}
           </div>
-
-          <div className="form-actions">
+          </Modal.Body>
+          <Modal.Footer>
+            <div className="form-actions">
             <Button
               type="button"
               variant="secondary"
@@ -1864,7 +1868,8 @@ const RecipeModal = ({
             >
               {saving ? "Đang lưu..." : "Lưu"}
             </Button>
-          </div>
+            </div>
+          </Modal.Footer>
         </form>
       </Modal>
 
