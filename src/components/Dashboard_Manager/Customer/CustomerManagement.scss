@@ -322,6 +322,36 @@ $cm-text-sub: #64748b; // Slate 500
       border: 1px solid $cm-border;
     }
   }
+
+  .cm-rank-settings {
+    margin-top: 12px;
+    background: #fff;
+    border: 1px solid $cm-border;
+    border-radius: 12px;
+    padding: 12px;
+    h4 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .cm-rank-row {
+      display: grid;
+      grid-template-columns: 1fr 110px;
+      gap: 8px;
+      margin-bottom: 8px;
+      input {
+        border: 1px solid $cm-border;
+        border-radius: 8px;
+        padding: 8px;
+        font-size: 13px;
+      }
+    }
+    .cm-btn {
+      width: 100%;
+      justify-content: center;
+      margin-top: 4px;
+    }
+  }
 }
 
 @keyframes pulse-green {

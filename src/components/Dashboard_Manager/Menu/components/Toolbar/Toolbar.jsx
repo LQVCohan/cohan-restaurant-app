@@ -13,8 +13,7 @@ import {
   FiEyeOff,
   FiAlertCircle,
   FiChevronDown,
-  FiDownload,
-  FiSliders, // Icon cho sort
+  FiSliders,
 } from "react-icons/fi";
 import "./Toolbar.scss";
 
@@ -27,8 +26,8 @@ const Toolbar = ({
   onViewChange,
   statusFilter,
   onStatusFilterChange,
-  sortOption, // New prop
-  onSortChange, // New prop
+  sortOption,
+  onSortChange,
   onPriceRangeChange,
   onBulkPriceEdit,
   onCreatePromotion,
@@ -39,7 +38,6 @@ const Toolbar = ({
   maxPrice,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
-  // Local state cho giá để tránh re-render liên tục khi gõ
   const [priceRange, setPriceRange] = useState({
     min: minPrice || "",
     max: maxPrice || "",
@@ -56,7 +54,6 @@ const Toolbar = ({
     onSearchChange("");
     onCategoryChange("");
     onStatusFilterChange("");
-    // Reset sort về mặc định nếu cần
     if (onSortChange) onSortChange("default");
     setPriceRange({ min: "", max: "" });
     onPriceRangeChange({ minPrice: "", maxPrice: "" });
@@ -66,19 +63,17 @@ const Toolbar = ({
     searchTerm || currentCategory || statusFilter || minPrice || maxPrice;
 
   const formatCurrency = (val) =>
-    val ? parseInt(val).toLocaleString("vi-VN") + "đ" : "";
+    val ? parseInt(val, 10).toLocaleString("vi-VN") + "đ" : "";
 
   return (
     <div className="toolbar-container">
-      {/* --- Top Bar: Search & Main Actions --- */}
       <div className="toolbar-top">
-        {/* Search Input */}
         <div className="search-wrapper">
           <FiSearch className="search-icon" />
           <input
             type="text"
             className="search-input"
-            placeholder="Tìm kiếm món ăn, SKU..."
+            placeholder="Tìm kiếm món ăn..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
           />
@@ -89,9 +84,7 @@ const Toolbar = ({
           )}
         </div>
 
-        {/* Action Group Right */}
         <div className="actions-group">
-          {/* View Toggle */}
           <div className="view-toggle">
             <button
               className={`toggle-btn ${currentView === "grid" ? "active" : ""}`}
@@ -109,34 +102,26 @@ const Toolbar = ({
             </button>
           </div>
 
-          {/* New: Export Button (Placeholder for future feature) */}
-          <button className="btn btn-secondary" title="Xuất danh sách">
-            <FiDownload /> <span className="hide-mobile">Export</span>
-          </button>
-
-          {/* Primary Actions */}
           <button className="btn btn-secondary" onClick={onBulkPriceEdit}>
             <FiDollarSign /> <span className="hide-mobile">Sửa giá</span>
           </button>
-          <button className="btn btn-secondary" onClick={onCreatePromotion}>
-            <FiGift /> <span className="hide-mobile">Khuyến mãi</span>
-          </button>
+          {onCreatePromotion && (
+            <button className="btn btn-secondary" onClick={onCreatePromotion}>
+              <FiGift /> <span className="hide-mobile">Khuyến mãi</span>
+            </button>
+          )}
           <button className="btn btn-primary" onClick={onAddCategory}>
-            <FiPlus /> <span className="hide-mobile">Thêm món</span>
+            <FiPlus /> <span className="hide-mobile">Danh mục</span>
           </button>
         </div>
       </div>
 
-      {/* --- Middle Bar: Filters & Sort --- */}
       <div className="toolbar-filters">
         <div className="filter-row">
-          {/* 1. Sort Dropdown (New) */}
           <div className="select-wrapper">
             <FiSliders className="select-icon" />
             <select
-              className={`custom-select ${
-                sortOption !== "default" ? "active" : ""
-              }`}
+              className={`custom-select ${sortOption !== "default" ? "active" : ""}`}
               value={sortOption}
               onChange={(e) => onSortChange && onSortChange(e.target.value)}
             >
@@ -149,7 +134,6 @@ const Toolbar = ({
             <FiChevronDown className="select-arrow" />
           </div>
 
-          {/* 2. Category Select */}
           <div className="select-wrapper">
             <FiTag className="select-icon" />
             <select
@@ -159,7 +143,7 @@ const Toolbar = ({
             >
               <option value="">Tất cả danh mục</option>
               {categories.map((cat) => (
-                <option key={cat.id || cat.name} value={cat.name}>
+                <option key={cat.id} value={cat.id}>
                   {cat.name}
                 </option>
               ))}
@@ -167,7 +151,6 @@ const Toolbar = ({
             <FiChevronDown className="select-arrow" />
           </div>
 
-          {/* 3. Status Select */}
           <div className="select-wrapper">
             {statusFilter === "available" ? (
               <FiCheck className="select-icon" />
@@ -191,11 +174,8 @@ const Toolbar = ({
             <FiChevronDown className="select-arrow" />
           </div>
 
-          {/* 4. Advanced Filter Toggle */}
           <button
-            className={`btn-filter-toggle ${
-              showFilters || minPrice || maxPrice ? "active" : ""
-            }`}
+            className={`btn-filter-toggle ${showFilters || minPrice || maxPrice ? "active" : ""}`}
             onClick={() => setShowFilters(!showFilters)}
           >
             <FiFilter /> Lọc giá
@@ -207,7 +187,6 @@ const Toolbar = ({
         </div>
       </div>
 
-      {/* --- Advanced Price Filter Slide --- */}
       <div className={`advanced-panel ${showFilters ? "open" : ""}`}>
         <div className="price-inputs">
           <label>Khoảng giá (VNĐ):</label>
@@ -215,18 +194,14 @@ const Toolbar = ({
             type="number"
             placeholder="Thấp nhất"
             value={priceRange.min}
-            onChange={(e) =>
-              setPriceRange((p) => ({ ...p, min: e.target.value }))
-            }
+            onChange={(e) => setPriceRange((p) => ({ ...p, min: e.target.value }))}
           />
           <span className="separator">-</span>
           <input
             type="number"
             placeholder="Cao nhất"
             value={priceRange.max}
-            onChange={(e) =>
-              setPriceRange((p) => ({ ...p, max: e.target.value }))
-            }
+            onChange={(e) => setPriceRange((p) => ({ ...p, max: e.target.value }))}
           />
           <button className="btn-apply" onClick={handlePriceRangeSubmit}>
             Áp dụng
@@ -234,24 +209,19 @@ const Toolbar = ({
         </div>
       </div>
 
-      {/* --- Active Filters Chips --- */}
       {hasActiveFilters && (
         <div className="active-chips-area">
           <span className="label">Đang lọc:</span>
-
           {searchTerm && (
             <span className="chip">
               Tìm: "{searchTerm}" <FiX onClick={() => onSearchChange("")} />
             </span>
           )}
-
           {currentCategory && (
             <span className="chip">
-              Danh mục: {currentCategory}{" "}
-              <FiX onClick={() => onCategoryChange("")} />
+              Danh mục đã chọn <FiX onClick={() => onCategoryChange("")} />
             </span>
           )}
-
           {statusFilter && (
             <span className="chip">
               {statusFilter === "available"
@@ -262,11 +232,9 @@ const Toolbar = ({
               <FiX onClick={() => onStatusFilterChange("")} />
             </span>
           )}
-
           {(minPrice || maxPrice) && (
             <span className="chip">
-              Giá: {formatCurrency(minPrice) || "0"} -{" "}
-              {formatCurrency(maxPrice) || "∞"}
+              Giá: {formatCurrency(minPrice) || "0"} - {formatCurrency(maxPrice) || "∞"}
               <FiX
                 onClick={() => {
                   setPriceRange({ min: "", max: "" });
@@ -275,7 +243,6 @@ const Toolbar = ({
               />
             </span>
           )}
-
           <button className="clear-all-text" onClick={clearFilters}>
             Xóa bộ lọc
           </button>

@@ -1,5 +1,11 @@
 // src/graphql/resolvers/user/query.js
-import { User, Role, Customer } from "../../../models/index.js";
+import {
+  User,
+  Role,
+  Customer,
+  Order,
+  CustomerRankSetting,
+} from "../../../models/index.js";
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { requireRole } from "../../../utils/authz.js";
@@ -19,6 +25,23 @@ function buildSearchCond(search) {
       { username: new RegExp(q, "i") },
     ],
   };
+}
+
+const ONLINE_MINUTES = 5;
+const VND_PER_RANK_POINT = 1_000_000;
+
+function computeLoyaltyDurationScore(createdAt) {
+  const createdMs = new Date(createdAt || 0).getTime();
+  if (!Number.isFinite(createdMs) || createdMs <= 0) return 0;
+  const days = Math.max(
+    0,
+    Math.floor((Date.now() - createdMs) / (1000 * 60 * 60 * 24))
+  );
+  return days;
+}
+
+function computeRankPoints(totalSpending) {
+  return Math.max(0, Math.floor((Number(totalSpending) || 0) / VND_PER_RANK_POINT));
 }
 
 export const UserQuery = {
@@ -177,5 +200,140 @@ export const UserQuery = {
         extensions: { code: "INTERNAL_SERVER_ERROR" },
       });
     }
+  },
+
+  async customerDetailAnalytics(_, { userId, restaurantId }, { user: authUser }) {
+    requireRole(authUser, ["admin", "manager", "staff"]);
+    if (!mongoose.isValidObjectId(userId)) {
+      throw new GraphQLError("Invalid userId", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+
+    const cond = {
+      userId: toObjectId(userId),
+    };
+    if (restaurantId) {
+      if (!mongoose.isValidObjectId(restaurantId)) {
+        throw new GraphQLError("Invalid restaurantId", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      cond.restaurantId = toObjectId(restaurantId);
+    }
+
+    const orders = await Order.find(cond)
+      .sort({ createdAt: -1 })
+      .limit(30)
+      .lean();
+
+    const dishMap = new Map();
+    for (const o of orders) {
+      for (const item of o.items || []) {
+        const name = item?.name?.trim();
+        if (!name) continue;
+        const qty = Number(item?.quantity || 1);
+        dishMap.set(name, (dishMap.get(name) || 0) + qty);
+      }
+    }
+
+    const topDishes = [...dishMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([dishName, quantity]) => ({ dishName, quantity }));
+
+    const userDoc = await User.findById(userId).lean();
+    const loyaltyDurationScore = computeLoyaltyDurationScore(userDoc?.createdAt);
+    const rankPoints = computeRankPoints(userDoc?.totalSpending);
+
+    return {
+      userId,
+      favoriteFoods: topDishes.map((x) => x.dishName),
+      recentOrderCodes: orders.slice(0, 5).map((x) => x.orderCode).filter(Boolean),
+      topDishes,
+      loyaltyDurationScore,
+      rankPoints,
+    };
+  },
+
+  async customerAnalytics(_, { restaurantId }, { user: authUser }) {
+    requireRole(authUser, ["admin", "manager", "staff"]);
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new GraphQLError("Invalid restaurantId", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const rid = toObjectId(restaurantId);
+
+    const orders = await Order.find({ restaurantId: rid }).lean();
+    const dishes = new Map();
+    const daily = new Map();
+    const customerCountByUserId = new Map();
+    for (const o of orders) {
+      for (const item of o.items || []) {
+        const name = item?.name?.trim();
+        if (!name) continue;
+        dishes.set(name, (dishes.get(name) || 0) + Number(item.quantity || 1));
+      }
+      const d = new Date(o.createdAt);
+      if (Number.isFinite(d.getTime())) {
+        const key = d.toISOString().slice(0, 10);
+        daily.set(key, (daily.get(key) || 0) + 1);
+      }
+      if (o.userId) {
+        const key = String(o.userId);
+        customerCountByUserId.set(key, (customerCountByUserId.get(key) || 0) + 1);
+      }
+    }
+
+    const scopedCustomers = await Customer.find({
+      refRestaurants: { $in: [rid] },
+    }).lean();
+    const membershipDays =
+      scopedCustomers.reduce(
+        (sum, c) => sum + computeLoyaltyDurationScore(c.createdAt),
+        0
+      ) || 0;
+
+    return {
+      restaurantId,
+      mostPopularDishes: [...dishes.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([dishName, quantity]) => ({ dishName, quantity })),
+      busiestDays: [...daily.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 7)
+        .map(([date, orderCount]) => ({ date, orderCount })),
+      averageMembershipDays:
+        scopedCustomers.length > 0
+          ? Math.round(membershipDays / scopedCustomers.length)
+          : 0,
+      activeCustomerCount: customerCountByUserId.size,
+      returningCustomerCount: [...customerCountByUserId.values()].filter(
+        (v) => v >= 2
+      ).length,
+    };
+  },
+
+  async customerRankSettings(_, { restaurantId }, { user: authUser }) {
+    requireRole(authUser, ["admin", "manager"]);
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new GraphQLError("Invalid restaurantId", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const rid = toObjectId(restaurantId);
+    const doc = await CustomerRankSetting.findOne({ restaurantId: rid }).lean();
+    return (
+      doc || {
+        restaurantId,
+        ranks: [
+          { name: "Mới", minPoints: 0, benefits: "" },
+          { name: "Thân thiết", minPoints: 5, benefits: "Ưu đãi dịp đặc biệt" },
+          { name: "VIP", minPoints: 20, benefits: "Ưu tiên đặt bàn" },
+        ],
+      }
+    );
   },
 };

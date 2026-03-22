@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
-import useOrderManagement from "@/hooks/useOrderManagement";
+import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import "./ReportsManagement.scss";
 
@@ -20,16 +20,49 @@ const ORDER_TYPE_LABELS = {
   delivery: "Giao hàng",
 };
 
+const Q_REPORTS_OVERVIEW = gql`
+  query ReportsOverview($restaurantId: ID!, $startAt: DateTime, $endAt: DateTime, $limit: Int) {
+    reportsOverview(restaurantId: $restaurantId, startAt: $startAt, endAt: $endAt, limit: $limit) {
+      totalOrders
+      grossRevenue
+      byStatus {
+        key
+        label
+        count
+      }
+      byOrderType {
+        key
+        label
+        count
+      }
+      topDishes {
+        name
+        quantity
+        revenue
+      }
+      revenueByDay {
+        date
+        grossRevenue
+        orders
+      }
+    }
+  }
+`;
+
+const toInputDateTime = (d) => (d ? `${d}T00:00:00.000Z` : null);
+
 export default function ReportsManagement() {
   const { restaurants = [] } = useContext(AuthContext) || {};
   const [restaurantId, setRestaurantId] = useState("");
-
-  const {
-    loadOrdersAll,
-    ordersAll,
-    ordersAllLoading,
-    ordersAllError,
-  } = useOrderManagement({ restaurantId });
+  const [dateRange, setDateRange] = useState(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 30);
+    return {
+      start: start.toISOString().slice(0, 10),
+      end: end.toISOString().slice(0, 10),
+    };
+  });
 
   useEffect(() => {
     if (!restaurantId && restaurants.length > 0) {
@@ -37,89 +70,90 @@ export default function ReportsManagement() {
     }
   }, [restaurantId, restaurants]);
 
-  useEffect(() => {
-    if (!restaurantId) return;
-    loadOrdersAll({
-      variables: { restaurantId, limit: 200 },
-      fetchPolicy: "network-only",
-    });
-  }, [restaurantId, loadOrdersAll]);
+  const { data, loading, error } = useQuery(Q_REPORTS_OVERVIEW, {
+    variables: {
+      restaurantId,
+      startAt: toInputDateTime(dateRange.start),
+      endAt: toInputDateTime(dateRange.end),
+      limit: 2000,
+    },
+    skip: !restaurantId,
+    fetchPolicy: "network-only",
+  });
 
-  const summary = useMemo(() => {
-    const rows = Array.isArray(ordersAll) ? ordersAll : [];
-    const result = {
-      totalOrders: rows.length,
-      grossRevenue: 0,
-      byStatus: {},
-      byOrderType: {},
-      topDishes: [],
-    };
+  const summary = useMemo(
+    () =>
+      data?.reportsOverview || {
+        totalOrders: 0,
+        grossRevenue: 0,
+        byStatus: [],
+        byOrderType: [],
+        topDishes: [],
+        revenueByDay: [],
+      },
+    [data]
+  );
 
-    const dishMap = new Map();
-    for (const order of rows) {
-      const status = String(order?.currentStatus || "pending");
-      const orderType = String(order?.orderType || "dine_in");
-      const isCancelled = ["cancelled", "failed"].includes(status);
-      const grandTotal = Number(order?.totals?.grandTotal || 0);
-
-      result.byStatus[status] = (result.byStatus[status] || 0) + 1;
-      result.byOrderType[orderType] = (result.byOrderType[orderType] || 0) + 1;
-
-      if (!isCancelled) {
-        result.grossRevenue += grandTotal;
-      }
-
-      for (const item of order?.items || []) {
-        if (["cancelled", "returned"].includes(item?.status)) continue;
-        const key = `${item?.dishId || item?.name || "unknown"}`;
-        const prev = dishMap.get(key) || {
-          name: item?.name || "Món không tên",
-          qty: 0,
-        };
-        prev.qty += Number(item?.quantity || 0);
-        dishMap.set(key, prev);
-      }
-    }
-
-    result.topDishes = [...dishMap.values()]
-      .sort((a, b) => b.qty - a.qty)
-      .slice(0, 8);
-    return result;
-  }, [ordersAll]);
+  const exportCsv = () => {
+    const headers = ["date", "orders", "grossRevenue"];
+    const rows = summary.revenueByDay || [];
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => [r.date, r.orders, Math.round(r.grossRevenue || 0)].join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `reports_${restaurantId}_${dateRange.start}_${dateRange.end}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="manager-reports-page">
       <div className="manager-reports-page__header">
         <h2>Báo cáo tổng hợp vận hành</h2>
-        <select
-          value={restaurantId}
-          onChange={(e) => setRestaurantId(e.target.value)}
-          disabled={restaurants.length === 0}
-        >
-          {restaurants.length === 0 ? (
-            <option value="">Không có nhà hàng</option>
-          ) : (
-            restaurants.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name || r.id}
-              </option>
-            ))
-          )}
-        </select>
+        <div className="manager-reports-page__filters">
+          <select
+            value={restaurantId}
+            onChange={(e) => setRestaurantId(e.target.value)}
+            disabled={restaurants.length === 0}
+          >
+            {restaurants.length === 0 ? (
+              <option value="">Không có nhà hàng</option>
+            ) : (
+              restaurants.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name || r.id}
+                </option>
+              ))
+            )}
+          </select>
+          <input
+            type="date"
+            value={dateRange.start}
+            onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
+          />
+          <input
+            type="date"
+            value={dateRange.end}
+            onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
+          />
+          <button onClick={exportCsv} disabled={loading || summary.revenueByDay.length === 0}>
+            Xuất CSV
+          </button>
+        </div>
       </div>
 
-      {ordersAllLoading && (
-        <div className="manager-reports-page__state">
-          Đang tải dữ liệu báo cáo...
-        </div>
-      )}
-      {ordersAllError && (
+      {loading && <div className="manager-reports-page__state">Đang tải dữ liệu báo cáo...</div>}
+      {error && (
         <div className="manager-reports-page__state manager-reports-page__state--error">
-          Lỗi tải báo cáo: {ordersAllError.message}
+          Lỗi tải báo cáo: {error.message}
         </div>
       )}
 
-      {!ordersAllLoading && !ordersAllError && (
+      {!loading && !error && (
         <>
           <div className="manager-reports-page__cards">
             <article>
@@ -131,8 +165,8 @@ export default function ReportsManagement() {
               <strong>{Math.round(summary.grossRevenue).toLocaleString()}đ</strong>
             </article>
             <article>
-              <p>Loại đơn</p>
-              <strong>{Object.keys(summary.byOrderType).length}</strong>
+              <p>Số ngày có doanh thu</p>
+              <strong>{summary.revenueByDay.length}</strong>
             </article>
           </div>
 
@@ -140,10 +174,10 @@ export default function ReportsManagement() {
             <section>
               <h3>Phân bổ trạng thái</h3>
               <ul>
-                {Object.entries(summary.byStatus).map(([status, count]) => (
-                  <li key={status}>
-                    <span>{STATUS_LABELS[status] || status}</span>
-                    <b>{count}</b>
+                {summary.byStatus.map((row) => (
+                  <li key={row.key}>
+                    <span>{STATUS_LABELS[row.key] || row.label || row.key}</span>
+                    <b>{row.count}</b>
                   </li>
                 ))}
               </ul>
@@ -152,10 +186,10 @@ export default function ReportsManagement() {
             <section>
               <h3>Phân bổ loại đơn</h3>
               <ul>
-                {Object.entries(summary.byOrderType).map(([type, count]) => (
-                  <li key={type}>
-                    <span>{ORDER_TYPE_LABELS[type] || type}</span>
-                    <b>{count}</b>
+                {summary.byOrderType.map((row) => (
+                  <li key={row.key}>
+                    <span>{ORDER_TYPE_LABELS[row.key] || row.label || row.key}</span>
+                    <b>{row.count}</b>
                   </li>
                 ))}
               </ul>
@@ -170,7 +204,23 @@ export default function ReportsManagement() {
                   {summary.topDishes.map((dish) => (
                     <li key={dish.name}>
                       <span>{dish.name}</span>
-                      <b>{dish.qty}</b>
+                      <b>{dish.quantity}</b>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section>
+              <h3>Doanh thu theo ngày</h3>
+              {summary.revenueByDay.length === 0 ? (
+                <p>Không có dữ liệu theo kỳ đã chọn.</p>
+              ) : (
+                <ul>
+                  {summary.revenueByDay.slice(-10).map((row) => (
+                    <li key={row.date}>
+                      <span>{row.date}</span>
+                      <b>{Math.round(row.grossRevenue || 0).toLocaleString()}đ</b>
                     </li>
                   ))}
                 </ul>

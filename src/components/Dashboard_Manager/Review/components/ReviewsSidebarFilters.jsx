@@ -9,7 +9,7 @@ const ratingOptions = [
   { value: 1, label: "(1 sao)" },
 ];
 
-const ReviewsSidebarFilters = ({ filters, onChange }) => {
+const ReviewsSidebarFilters = ({ filters, onChange, restaurantOptions = [] }) => {
   const handleRatingToggle = (value) => {
     const current = filters.ratings || [];
     const exists = current.includes(value);
@@ -106,13 +106,25 @@ const ReviewsSidebarFilters = ({ filters, onChange }) => {
           onChange={handleSelectChange("restaurant")}
         >
           <option value="">Tất cả nhà hàng</option>
-          <option value="foodhub_main">
-            FoodHub Restaurant - Chi nhánh chính
-          </option>
-          <option value="foodhub_district1">FoodHub Restaurant - Quận 1</option>
-          <option value="foodhub_district3">FoodHub Restaurant - Quận 3</option>
-          <option value="foodhub_hanoi">FoodHub Restaurant - Hà Nội</option>
-          <option value="foodhub_danang">FoodHub Restaurant - Đà Nẵng</option>
+          {restaurantOptions.map((restaurant) => (
+            <option key={restaurant.id} value={restaurant.id}>
+              {restaurant.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="reviews-sidebar__group">
+        <label className="reviews-sidebar__label">Sắp xếp</label>
+        <select
+          className="reviews-sidebar__select"
+          value={filters.sort || "newest"}
+          onChange={handleSelectChange("sort")}
+        >
+          <option value="newest">Mới nhất</option>
+          <option value="oldest">Cũ nhất</option>
+          <option value="rating_desc">Điểm cao trước</option>
+          <option value="rating_asc">Điểm thấp trước</option>
         </select>
       </div>
 

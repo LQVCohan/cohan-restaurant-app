@@ -9,6 +9,47 @@ import ReviewsSidebarFilters from "./components/ReviewsSidebarFilters";
 import ReviewsList from "./components/ReviewsList";
 import ReviewModal from "./components/ReviewModal";
 
+const ME_QUERY = gql`
+  query Me {
+    me {
+      id
+      fullName
+      avatarUrl
+      roleName
+    }
+  }
+`;
+
+const GET_MANAGER_RESTAURANTS = gql`
+  query ManagerRestaurants($managerId: ID!, $limit: Int = 100, $cursor: ID) {
+    restaurantsByManager(
+      managerId: $managerId
+      limit: $limit
+      cursor: $cursor
+    ) {
+      edges {
+        node {
+          id
+          name
+        }
+      }
+    }
+  }
+`;
+
+const GET_ALL_RESTAURANTS = gql`
+  query AllRestaurants($limit: Int = 100, $cursor: ID) {
+    restaurants(limit: $limit, cursor: $cursor) {
+      edges {
+        node {
+          id
+          name
+        }
+      }
+    }
+  }
+`;
+
 const GET_REVIEWS = gql`
   query GetReviews(
     $restaurantId: ID
@@ -34,6 +75,7 @@ const GET_REVIEWS = gql`
         targetName
         restaurantId
         restaurantName
+        customerId
         customerName
         customerAvatar
         rating
@@ -46,6 +88,7 @@ const GET_REVIEWS = gql`
         status
         likesCount
         commentsCount
+        reportsCount
         helpfulCount
         reactions {
           like
@@ -69,14 +112,7 @@ const GET_REVIEW_STATS = gql`
       total
       avgRating
       pending
-    }
-  }
-`;
-
-const CREATE_REVIEW = gql`
-  mutation CreateReview($input: ReviewInput!) {
-    createReview(input: $input) {
-      id
+      ratingBreakdown
     }
   }
 `;
@@ -103,6 +139,7 @@ const normalizeReview = (review) => ({
   target_name: review.targetName,
   restaurant_id: review.restaurantId,
   restaurant_name: review.restaurantName,
+  customer_id: review.customerId,
   customer_name: review.customerName,
   customer_avatar: review.customerAvatar,
   rating: review.rating,
@@ -115,6 +152,7 @@ const normalizeReview = (review) => ({
   tags: JSON.stringify(review.tags || []),
   likes: review.likesCount || 0,
   replies: review.commentsCount || 0,
+  reports_count: review.reportsCount || 0,
   helpful_count: review.helpfulCount || 0,
   reactions: review.reactions || {},
   created_at: review.createdAt,
@@ -133,18 +171,48 @@ const ReviewManagement = () => {
     image: "",
     restaurant: "",
     verified: "",
+    sort: "newest",
   });
   const [searchTerm, setSearchTerm] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalMode, setModalMode] = useState("view");
   const [selectedReview, setSelectedReview] = useState(null);
 
-  const gqlTargetType = currentTab === "all" || currentTab === "pending" ? undefined : currentTab;
-  const gqlStatus = currentTab === "pending" ? "pending" : filters.status || undefined;
+  const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "network-only" });
+  const me = meData?.me;
+
+  const { data: managerRestaurantsData } = useQuery(GET_MANAGER_RESTAURANTS, {
+    variables: { managerId: me?.id, limit: 100 },
+    skip: !me?.id || (me?.roleName !== "manager" && me?.roleName !== "staff"),
+    fetchPolicy: "network-only",
+  });
+
+  const { data: allRestaurantsData } = useQuery(GET_ALL_RESTAURANTS, {
+    variables: { limit: 100 },
+    skip: me?.roleName !== "admin",
+    fetchPolicy: "network-only",
+  });
+
+  const restaurantOptions = useMemo(() => {
+    if (me?.roleName === "admin") {
+      return (allRestaurantsData?.restaurants?.edges || []).map((edge) => edge.node);
+    }
+    return (managerRestaurantsData?.restaurantsByManager?.edges || []).map(
+      (edge) => edge.node,
+    );
+  }, [allRestaurantsData, managerRestaurantsData, me?.roleName]);
+
+  const gqlTargetType = currentTab === "all" || currentTab === "pending" || currentTab === "reported"
+    ? undefined
+    : currentTab;
+  const gqlStatus = currentTab === "pending"
+    ? "pending"
+    : currentTab === "reported"
+      ? "reported"
+      : filters.status || undefined;
   const gqlMinRating = filters.ratings?.length ? Math.min(...filters.ratings) : undefined;
   const gqlMaxRating = filters.ratings?.length ? Math.max(...filters.ratings) : undefined;
 
-  const { data, loading, refetch } = useQuery(GET_REVIEWS, {
+  const { data, loading, error, refetch } = useQuery(GET_REVIEWS, {
     variables: {
       restaurantId: filters.restaurant || undefined,
       targetType: gqlTargetType,
@@ -162,13 +230,12 @@ const ReviewManagement = () => {
     },
   });
 
-  const [createReview, { loading: creating }] = useMutation(CREATE_REVIEW);
   const [deleteReview] = useMutation(DELETE_REVIEW);
   const [setReviewStatus] = useMutation(SET_REVIEW_STATUS);
 
   const reviews = useMemo(
     () => (data?.reviews?.items || []).map(normalizeReview),
-    [data]
+    [data],
   );
 
   const filteredReviews = useMemo(() => {
@@ -203,18 +270,29 @@ const ReviewManagement = () => {
     }
 
     if (searchTerm.trim()) {
-      const t = searchTerm.toLowerCase();
+      const term = searchTerm.toLowerCase();
       list = list.filter(
         (r) =>
-          r.customer_name.toLowerCase().includes(t) ||
-          r.title.toLowerCase().includes(t) ||
-          r.content.toLowerCase().includes(t) ||
-          (r.target_name || "").toLowerCase().includes(t)
+          (r.customer_name || "").toLowerCase().includes(term) ||
+          (r.title || "").toLowerCase().includes(term) ||
+          (r.content || "").toLowerCase().includes(term) ||
+          (r.target_name || "").toLowerCase().includes(term) ||
+          (r.restaurant_name || "").toLowerCase().includes(term),
       );
     }
 
+    if (filters.sort === "oldest") {
+      list.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    } else if (filters.sort === "rating_desc") {
+      list.sort((a, b) => b.rating - a.rating);
+    } else if (filters.sort === "rating_asc") {
+      list.sort((a, b) => a.rating - b.rating);
+    } else {
+      list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
     return list;
-  }, [reviews, filters, searchTerm]);
+  }, [filters, reviews, searchTerm]);
 
   const stats = useMemo(() => {
     const apiStats = statsData?.reviewStats;
@@ -227,14 +305,13 @@ const ReviewManagement = () => {
     }
 
     const total = reviews.length;
-    const avg = total ? (reviews.reduce((s, r) => s + r.rating, 0) / total).toFixed(1) : "0.0";
+    const avg = total ? (reviews.reduce((sum, r) => sum + r.rating, 0) / total).toFixed(1) : "0.0";
     const pending = reviews.filter((r) => r.status === "pending").length;
     return { total, avg, pending };
   }, [reviews, statsData]);
 
   const handleViewReview = useCallback((review) => {
     setSelectedReview(review);
-    setModalMode("view");
     setModalVisible(true);
   }, []);
 
@@ -245,35 +322,7 @@ const ReviewManagement = () => {
       await refetch();
       showNotification("Đã xóa đánh giá");
     },
-    [deleteReview, refetch]
-  );
-
-  const handleSaveNewReview = useCallback(
-    async (formData) => {
-      await createReview({
-        variables: {
-          input: {
-            targetType: formData.type,
-            targetId: formData.target_id,
-            targetName: formData.target_name,
-            restaurantId: formData.restaurant_id,
-            restaurantName: formData.restaurant_name,
-            customerName: formData.customer_name,
-            customerAvatar: formData.customer_avatar,
-            rating: formData.rating,
-            title: formData.title,
-            content: formData.content,
-            images: [],
-            location: formData.location,
-            verifiedPurchase: formData.verified_purchase,
-            tags: [],
-          },
-        },
-      });
-      await refetch();
-      showNotification("Đã tạo đánh giá mới (trạng thái chờ duyệt)");
-    },
-    [createReview, refetch]
+    [deleteReview, refetch],
   );
 
   const handleModerate = useCallback(
@@ -281,25 +330,36 @@ const ReviewManagement = () => {
       await setReviewStatus({ variables: { id: review.id, status } });
       await refetch();
       showNotification(
-        status === "published" ? "Đã duyệt đánh giá" : "Đã chuyển đánh giá sang trạng thái ẩn"
+        status === "published"
+          ? "Đã duyệt đánh giá"
+          : status === "reported"
+            ? "Đã chuyển về trạng thái bị báo cáo"
+            : "Đã chuyển đánh giá sang trạng thái ẩn",
       );
     },
-    [refetch, setReviewStatus]
+    [refetch, setReviewStatus],
   );
 
   const handleExport = () => {
     const csv = filteredReviews
       .map((r) =>
-        [r.id, r.customer_name, r.rating, `"${r.title}"`, `"${r.content}"`, new Date(r.created_at).toLocaleString("vi-VN")].join(",")
+        [
+          r.id,
+          r.customer_name,
+          r.rating,
+          `"${r.title}"`,
+          `"${r.content}"`,
+          new Date(r.created_at).toLocaleString("vi-VN"),
+        ].join(","),
       )
       .join("\n");
 
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "reviews_export.csv";
-    a.click();
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "reviews_export.csv";
+    link.click();
   };
 
   const titleMap = {
@@ -308,17 +368,26 @@ const ReviewManagement = () => {
     food: "Đánh giá món ăn",
     service: "Đánh giá dịch vụ",
     pending: "Chờ duyệt",
+    reported: "Báo cáo",
   };
 
   return (
     <div className="reviews-page">
       <div className="reviews-container">
         <ReviewsHeader total={stats.total} avg={stats.avg} pending={stats.pending} />
-        <ReviewsNavTabs currentTab={currentTab} onChangeTab={setCurrentTab} pendingCount={stats.pending} />
+        <ReviewsNavTabs
+          currentTab={currentTab}
+          onChangeTab={setCurrentTab}
+          pendingCount={stats.pending}
+        />
 
         <main className="reviews-main-content">
           <div className="reviews-content-grid">
-            <ReviewsSidebarFilters filters={filters} onChange={setFilters} />
+            <ReviewsSidebarFilters
+              filters={filters}
+              onChange={setFilters}
+              restaurantOptions={restaurantOptions}
+            />
 
             <section className="reviews-content-area">
               <div className="reviews-content-header">
@@ -330,7 +399,7 @@ const ReviewManagement = () => {
                     <input
                       type="text"
                       className="reviews-content-header__search-box-input"
-                      placeholder="Tìm kiếm đánh giá, khách hàng..."
+                      placeholder="Tìm khách hàng, tiêu đề, nội dung..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -339,27 +408,23 @@ const ReviewManagement = () => {
                   <button className="reviews-btn reviews-btn-secondary" onClick={handleExport}>
                     📊 Xuất báo cáo
                   </button>
-                  <button
-                    className="reviews-btn reviews-btn-primary"
-                    onClick={() => {
-                      setModalMode("add");
-                      setSelectedReview(null);
-                      setModalVisible(true);
-                    }}
-                  >
-                    ➕ Thêm đánh giá
-                  </button>
                 </div>
               </div>
 
-              <ReviewsList
-                isLoading={loading || creating}
-                reviews={filteredReviews}
-                currentTab={currentTab}
-                onView={handleViewReview}
-                onDelete={handleDeleteReview}
-                onEdit={handleModerate}
-              />
+              {error ? (
+                <div className="reviews-error-box">
+                  Không thể tải dữ liệu đánh giá. Vui lòng thử lại.
+                </div>
+              ) : (
+                <ReviewsList
+                  isLoading={loading}
+                  reviews={filteredReviews}
+                  currentTab={currentTab}
+                  onView={handleViewReview}
+                  onDelete={handleDeleteReview}
+                  onEdit={handleModerate}
+                />
+              )}
             </section>
           </div>
         </main>
@@ -367,10 +432,9 @@ const ReviewManagement = () => {
 
       <ReviewModal
         visible={modalVisible}
-        mode={modalMode}
         review={selectedReview}
+        me={me}
         onClose={() => setModalVisible(false)}
-        onSaveNew={handleSaveNewReview}
       />
     </div>
   );

@@ -56,7 +56,7 @@ const MenuItemModal = ({
     [menuItems, editId]
   );
 
-  const { updateMenuItem } = useMenuManagement({
+  const { createMenuItem, updateMenuItem } = useMenuManagement({
     restaurantId,
     defaultTimeSlot: timeSlot,
     pageSize: 1,
@@ -74,10 +74,10 @@ const MenuItemModal = ({
     name: "",
     price: "",
     cookTime: "",
-    unit: "portion",
     mode: "PORTION",
-    yieldQty: 1,
-    yieldUnit: "portion",
+    sellQty: 1,
+    sellUnit: "portion",
+    isDefault: true,
   };
 
   // --- EFFECT: Load Data ---
@@ -96,10 +96,11 @@ const MenuItemModal = ({
                 name: sv.name || "",
                 price: typeof sv.price === "number" ? sv.price : "",
                 cookTime: currentItem.avgPrepTimeMin || "",
-                unit: sv.yieldUnit || "portion",
+                unit: sv.sellUnit || "portion",
                 mode: sv.mode || "PORTION",
-                yieldQty: sv.yieldQty || 1,
-                yieldUnit: sv.yieldUnit || "portion",
+                sellQty: sv.sellQty || 1,
+                sellUnit: sv.sellUnit || "portion",
+                isDefault: !!sv.isDefault,
               }))
             : [{ ...defaultMethod }];
 
@@ -190,7 +191,6 @@ const MenuItemModal = ({
 
     try {
       const menuItemPayload = {
-        id: editId,
         name: formData.name,
         categoryId: formData.categoryId,
         status: formData.status,
@@ -201,28 +201,37 @@ const MenuItemModal = ({
           : {}),
       };
 
-      await updateMenuItem(menuItemPayload);
+      let targetMenuItemId = editId;
+      if (editId) {
+        await updateMenuItem({ id: editId, ...menuItemPayload });
+      } else {
+        const created = await createMenuItem({
+          ...menuItemPayload,
+          timeSlot,
+        });
+        targetMenuItemId = created?.id;
+      }
 
       const recipeForm = {
         description: formData.description,
         servingVariants: formData.preparationMethods.map((m, idx) => {
-          const isByWeight = m.mode === "BY_WEIGHT";
           const fallbackKey =
             (m.name || "").toLowerCase().replace(/\s+/g, "_") || `sv_${idx}`;
           return {
             key: m.key || fallbackKey,
             mode: m.mode || "PORTION",
-            yieldQty: m.yieldQty > 0 ? m.yieldQty : 1,
-            yieldUnit: m.yieldUnit || (isByWeight ? "100g" : "portion"),
-            preparationMethodName: m.name,
+            sellQty: Number(m.sellQty || 1),
+            sellUnit: m.sellUnit || (m.mode === "BY_WEIGHT" ? "kg" : "portion"),
+            name: m.name,
             ingredients: [],
             price: Number(m.price) || 0,
+            isDefault: idx === 0 || m.isDefault,
           };
         }),
       };
 
-      if (editId) {
-        await updateRecipe(editId, recipeForm);
+      if (targetMenuItemId) {
+        await updateRecipe(targetMenuItemId, recipeForm);
       }
 
       pushToast("Lưu món ăn thành công!", "success");

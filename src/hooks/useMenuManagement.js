@@ -15,6 +15,7 @@ const FRAG_MENU = gql`
     isActive
     createdAt
     updatedAt
+    itemCount
     categoryMenu {
       id
       name
@@ -494,7 +495,7 @@ export default function useMenuManagement({
   });
 
   const [deleteItemMut] = useMutation(M_DELETE_ITEM, {
-    optimisticResponse: ({ id }) => ({ deleteMenuItem: true }),
+    optimisticResponse: () => ({ deleteMenuItem: true }),
     update(cache, { variables }) {
       const id = variables?.id;
       if (!id) return;

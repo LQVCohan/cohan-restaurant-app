@@ -155,7 +155,7 @@ const DishCard = ({ dish, onAdd }) => {
 // ---------------------- Main Modal Component ----------------------
 const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
   const { showNotification } = useNotification?.() || {
-    showNotification: (msg, type) => console.log(type, msg),
+    showNotification: () => {},
   };
 
   // State
@@ -183,7 +183,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
   const { addToOrder, updateItemQty, removeItem, saveOrder, totals } =
     useOrderManagement(posContext);
 
-  const { floors, floorsLoading, activeLevel, setActiveLevel } =
+  const { floors, floorsLoading: _FLOORS_LOADING, activeLevel, setActiveLevel } =
     useFloorManagement({ restaurantId });
 
   const { tables, tablesLoading } = useTableManagement({ restaurantId });
