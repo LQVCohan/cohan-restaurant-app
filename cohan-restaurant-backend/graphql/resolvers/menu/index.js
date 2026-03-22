@@ -3,7 +3,7 @@
 import mongoose from "mongoose";
 import { MenuQuery } from "./query.js";
 import { MenuMutation } from "./mutation.js";
-import { CategoryMenu, Recipe } from "../../../models/index.js";
+import { CategoryMenu, Recipe, MenuItem } from "../../../models/index.js";
 
 export default {
   Query: {
@@ -41,15 +41,14 @@ export default {
 
   Menu: {
     async categoryMenu(parent) {
-      console.log(
-        "🔥 [Menu.categoryMenu] id=",
-        parent.id || parent._id,
-        "categoryMenuId=",
-        parent.categoryMenuId
-      );
       const id = parent.categoryMenuId;
       if (!id) return null;
       return CategoryMenu.findById(id).lean({ virtuals: true });
+    },
+    async itemCount(parent) {
+      const id = parent._id || parent.id;
+      if (!id || !mongoose.isValidObjectId(id)) return 0;
+      return MenuItem.countDocuments({ menuId: id });
     },
   },
 };

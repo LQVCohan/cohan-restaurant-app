@@ -462,3 +462,139 @@ $border-radius: 16px; // Bo góc lớn theo trend Apple/iOS
     }
   }
 }
+
+.print-ui__stack {
+  margin-top: 24px;
+  display: grid;
+  gap: 24px;
+}
+
+.template-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.template-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+
+  &.active {
+    border-color: $primary;
+  }
+
+  .template-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 80px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px;
+    resize: vertical;
+    margin-bottom: 8px;
+  }
+
+  .template-toggle,
+  .template-test {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+}
+
+.jobs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.job-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+
+  &.job-failed {
+    border-color: rgba($danger, 0.5);
+    background: rgba($danger, 0.04);
+  }
+  &.job-completed {
+    border-color: rgba($success, 0.45);
+    background: rgba($success, 0.04);
+  }
+}
+
+.job-meta {
+  margin-top: 4px;
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: $secondary;
+}
+
+.job-error {
+  color: $danger;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.retry-btn {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.save-hint {
+  margin-top: 10px;
+  color: $secondary;
+  font-size: 12px;
+}
+
+.no-data {
+  color: $secondary;
+  font-size: 13px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .print-ui {
+    background: #0f172a;
+    color: #e2e8f0;
+  }
+
+  .ui-card,
+  .template-card,
+  .job-item,
+  .routing-section .routing-row,
+  .device-item {
+    background: #111827;
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+
+  .template-card textarea,
+  .template-toggle,
+  .template-test,
+  .retry-btn {
+    background: #0b1220;
+    color: #e2e8f0;
+    border-color: #334155;
+  }
+}

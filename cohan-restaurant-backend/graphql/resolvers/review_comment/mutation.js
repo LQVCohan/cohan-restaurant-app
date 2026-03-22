@@ -122,15 +122,14 @@ export default {
   // -------------------------------------------------
   reactReviewComment: async (_, { id, reaction }, ctx) => {
     const valid = ["like", "love", "care", "haha", "wow", "sad", "angry"];
-    if (!valid.includes(reaction)) throw new Error("Reaction không hợp lệ");
+    const key = (reaction || "").toLowerCase();
+    if (!valid.includes(key)) throw new Error("Reaction không hợp lệ");
 
     const comment = await ReviewComment.findById(id);
     if (!comment) throw new Error("Comment không tồn tại");
 
-    const incField = `reactionsCount.${reaction}`;
-
     await comment.updateOne({
-      $inc: { [incField]: 1, "reactionsCount.total": 1 },
+      $inc: { [`reactions.${key}`]: 1, likesCount: key === "like" ? 1 : 0 },
     });
 
     const updated = await ReviewComment.findById(id);
@@ -140,7 +139,7 @@ export default {
       verb: "review.comment.reaction",
       object: { kind: "ReviewComment", id },
       actorUserId: ctx?.user?.id,
-      meta: { reaction },
+      meta: { reaction: key },
     });
 
     return updated;

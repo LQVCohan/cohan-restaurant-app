@@ -30,11 +30,17 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
       const changes = menuItems.map((item) => ({
         itemId: item.id,
         itemName: item.name,
-        category: item.categoryMenu?.name || item.category || "Khác", // Handle nested category obj if needed
-        methods: item.methods.map((method) => ({
-          name: method.name,
-          originalPrice: method.price,
-          newPrice: method.price,
+        category: item.categoryName || item.categoryId || "Khác",
+        methods: (Array.isArray(item.servingVariants) && item.servingVariants.length
+          ? item.servingVariants
+          : [{ key: "default", name: "Mặc định", price: item.basePrice || 0, mode: "PORTION", sellQty: 1, sellUnit: "portion" }]).map((method) => ({
+          key: method.key || method.name,
+          name: method.name || method.key || "Mặc định",
+          mode: method.mode || "PORTION",
+          sellQty: method.sellQty || 1,
+          sellUnit: method.sellUnit || "portion",
+          originalPrice: Number(method.price || 0),
+          newPrice: Number(method.price || 0),
           changed: false,
         })),
       }));
@@ -167,15 +173,15 @@ const PriceEditModal = ({ isOpen, menuItems, onSave, onClose }) => {
         methods: item.methods.map((method) => {
           // Find original method details safely
           const originalItem = menuItems.find((mi) => mi.id === item.itemId);
-          const originalMethod = originalItem?.methods.find(
-            (m) => m.name === method.name
-          );
+          const originalMethod = (originalItem?.servingVariants || []).find((m) => (m.key || m.name) === (method.key || method.name));
 
           return {
+            key: method.key || method.name,
             name: method.name,
+            mode: method.mode || originalMethod?.mode || "PORTION",
+            sellQty: method.sellQty || originalMethod?.sellQty || 1,
+            sellUnit: method.sellUnit || originalMethod?.sellUnit || "portion",
             price: method.newPrice,
-            cookTime: originalMethod?.cookTime || 0, // Fallback safe
-            unit: originalMethod?.unit || "phần",
           };
         }),
       },

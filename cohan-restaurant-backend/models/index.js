@@ -30,6 +30,7 @@ export { default as Promotion } from "./promotion.model.js";
 export { default as EventPackage } from "./event-package.model.js";
 export { default as TableEvent } from "./table-event.model.js";
 export { default as Coupon } from "./coupon.model.js";
+export { default as VoucherPackage } from "./voucher-package.model.js";
 export { default as Shift } from "./shift.model.js";
 export { default as Timesheet } from "./timesheet.model.js";
 export { default as Notification } from "./notification.model.js";

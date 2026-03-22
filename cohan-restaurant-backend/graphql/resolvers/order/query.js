@@ -740,6 +740,79 @@ export const OrderQuery = {
       staffPerformance,
     };
   },
+
+  async reportsOverview(_, { restaurantId, startAt, endAt, limit = 500 }) {
+    if (!restaurantId || !mongoose.isValidObjectId(restaurantId)) {
+      throw new Error("Invalid restaurantId");
+    }
+
+    const rid = toId(restaurantId);
+    const safeLimit = Math.max(1, Math.min(Number(limit || 500), 2000));
+    const query = { restaurantId: rid };
+    if (startAt || endAt) {
+      query.createdAt = {};
+      if (startAt) query.createdAt.$gte = new Date(startAt);
+      if (endAt) query.createdAt.$lte = new Date(endAt);
+    }
+
+    const rows = await Order.find(query)
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(safeLimit)
+      .select({
+        currentStatus: 1,
+        orderType: 1,
+        createdAt: 1,
+        totals: 1,
+        items: 1,
+      })
+      .lean({ virtuals: true });
+
+    let grossRevenue = 0;
+    const byStatus = new Map();
+    const byOrderType = new Map();
+    const dishMap = new Map();
+    const byDay = new Map();
+
+    for (const order of rows) {
+      const status = String(order?.currentStatus || "pending");
+      const orderType = String(order?.orderType || "dine_in");
+      byStatus.set(status, (byStatus.get(status) || 0) + 1);
+      byOrderType.set(orderType, (byOrderType.get(orderType) || 0) + 1);
+
+      const isCancelled = ["cancelled", "failed"].includes(status);
+      const grandTotal = Number(order?.totals?.grandTotal || 0);
+      if (!isCancelled) grossRevenue += grandTotal;
+
+      const createdAt = order?.createdAt ? new Date(order.createdAt) : null;
+      if (createdAt && Number.isFinite(createdAt.getTime())) {
+        const dayKey = createdAt.toISOString().slice(0, 10);
+        const prev = byDay.get(dayKey) || { date: dayKey, grossRevenue: 0, orders: 0 };
+        prev.orders += 1;
+        if (!isCancelled) prev.grossRevenue += grandTotal;
+        byDay.set(dayKey, prev);
+      }
+
+      for (const item of order?.items || []) {
+        if (["cancelled", "returned"].includes(item?.status)) continue;
+        const name = item?.name || "Món không tên";
+        const quantity = Number(item?.quantity || 0);
+        const lineSubtotal = Number(item?.lineSubtotal || 0);
+        const prev = dishMap.get(name) || { name, quantity: 0, revenue: 0 };
+        prev.quantity += quantity;
+        prev.revenue += lineSubtotal;
+        dishMap.set(name, prev);
+      }
+    }
+
+    return {
+      totalOrders: rows.length,
+      grossRevenue,
+      byStatus: [...byStatus.entries()].map(([key, count]) => ({ key, label: key, count })),
+      byOrderType: [...byOrderType.entries()].map(([key, count]) => ({ key, label: key, count })),
+      topDishes: [...dishMap.values()].sort((a, b) => b.quantity - a.quantity).slice(0, 10),
+      revenueByDay: [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date)),
+    };
+  },
 };
 
 export default { OrderQuery };

@@ -1,4 +1,5 @@
-import { Coupon } from "../../../models/index.js";
+import mongoose from "mongoose";
+import { Coupon, VoucherPackage } from "../../../models/index.js";
 
 function clamp(value, min, max) {
   const n = Number(value);
@@ -38,5 +39,13 @@ export const CouponQuery = {
     const norm = String(code || "").trim().toUpperCase();
     if (!norm) return null;
     return Coupon.findOne({ code: norm }).lean({ virtuals: true });
+  },
+
+  async voucherPackages(_, { restaurantId }) {
+    const query = {};
+    if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
+      query.restaurantId = new mongoose.Types.ObjectId(restaurantId);
+    }
+    return VoucherPackage.find(query).sort({ createdAt: -1, _id: -1 }).lean({ virtuals: true });
   },
 };

@@ -647,6 +647,33 @@ type ManagerDashboard {
   staffPerformance: [DashboardStaffPerformance!]!
 }
 
+type ReportCountBucket {
+  key: String!
+  label: String
+  count: Int!
+}
+
+type ReportTopDish {
+  name: String!
+  quantity: Int!
+  revenue: Float!
+}
+
+type ReportRevenuePoint {
+  date: String!
+  grossRevenue: Float!
+  orders: Int!
+}
+
+type ReportsOverview {
+  totalOrders: Int!
+  grossRevenue: Float!
+  byStatus: [ReportCountBucket!]!
+  byOrderType: [ReportCountBucket!]!
+  topDishes: [ReportTopDish!]!
+  revenueByDay: [ReportRevenuePoint!]!
+}
+
 # =========================================================
 # ROOT
 # =========================================================
@@ -683,6 +710,12 @@ extend type Query {
     tableCode: String
   ): [OrderGroup!]!
   managerDashboard(restaurantId: ID!, range: String = "week"): ManagerDashboard!
+  reportsOverview(
+    restaurantId: ID!
+    startAt: DateTime
+    endAt: DateTime
+    limit: Int = 500
+  ): ReportsOverview!
 }
 
 extend type Mutation {
