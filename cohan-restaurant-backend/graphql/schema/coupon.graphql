@@ -1,16 +1,38 @@
 """Voucher / coupon"""
 type Coupon {
   id: ID!
+  name: String!
   code: String!
+  category: String
   description: String
   discountType: String
   discountValue: Float
+  minOrderValue: Float
+  maxDiscount: Float
   maxUsage: Int
   used: Int
+  publishAt: DateTime
+  restaurantId: ID
   constraints: JSON
   startAt: DateTime
   endAt: DateTime
   isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type VoucherPackage {
+  id: ID!
+  name: String!
+  code: String!
+  description: String
+  voucherIds: [ID!]!
+  startAt: DateTime
+  endAt: DateTime
+  publishAt: DateTime
+  isActive: Boolean
+  conditions: [String!]
+  restaurantId: ID
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -23,4 +45,47 @@ extend type Query {
     now: DateTime
   ): [Coupon!]!
   couponByCode(code: String!): Coupon
+  voucherPackages(restaurantId: ID): [VoucherPackage!]!
+}
+
+input CouponInput {
+  name: String!
+  code: String!
+  category: String
+  description: String
+  discountType: String!
+  discountValue: Float!
+  minOrderValue: Float
+  maxDiscount: Float
+  maxUsage: Int
+  constraints: JSON
+  publishAt: DateTime
+  startAt: DateTime
+  endAt: DateTime
+  isActive: Boolean
+  restaurantId: ID
+}
+
+input VoucherPackageInput {
+  name: String!
+  code: String!
+  description: String
+  voucherIds: [ID!]!
+  startAt: DateTime
+  endAt: DateTime
+  publishAt: DateTime
+  isActive: Boolean
+  conditions: [String!]
+  restaurantId: ID
+}
+
+extend type Mutation {
+  createCoupon(input: CouponInput!): Coupon!
+  updateCoupon(id: ID!, input: CouponInput!): Coupon!
+  deleteCoupon(id: ID!): Boolean!
+  toggleCoupon(id: ID!, isActive: Boolean!): Coupon!
+
+  createVoucherPackage(input: VoucherPackageInput!): VoucherPackage!
+  updateVoucherPackage(id: ID!, input: VoucherPackageInput!): VoucherPackage!
+  deleteVoucherPackage(id: ID!): Boolean!
 }

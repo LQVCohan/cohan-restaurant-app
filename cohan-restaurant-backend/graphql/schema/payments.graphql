@@ -1,8 +1,10 @@
 enum PaymentMethod {
   cash
   card
+  transfer
   bank_transfer
   e_wallet
+  other
 }
 enum PaymentStatus {
   SUCCESS
@@ -35,6 +37,14 @@ enum CashflowCategory {
   SALE
   REFUND
   OTHER
+}
+
+enum FinanceRange {
+  WEEK
+  MONTH
+  QUARTER
+  YEAR
+  CUSTOM
 }
 
 type PayOrdersByTableResult {
@@ -92,9 +102,74 @@ type PaymentTransaction {
   createdAt: DateTime
   updatedAt: DateTime
 }
+
+type FinanceSummary {
+  revenue: Float!
+  expense: Float!
+  profit: Float!
+  debt: Float!
+  payment: Float!
+  refund: Float!
+  settlement: Float!
+  cashIn: Float!
+  cashOut: Float!
+}
+
+type FinanceTrendPoint {
+  key: String!
+  revenue: Float!
+  expense: Float!
+  profit: Float!
+}
+
+type FinanceTransaction {
+  id: ID!
+  occurredAt: DateTime!
+  description: String!
+  category: String!
+  type: CashflowType!
+  amount: Float!
+  method: String
+  status: String
+  source: String
+  referenceType: String
+  referenceId: ID
+}
+
+type FinanceDebtItem {
+  id: ID!
+  supplier: String!
+  amount: Float!
+  dueDate: DateTime
+  status: String!
+}
+
+type FinanceCostBreakdown {
+  cogs: Float!
+  labor: Float!
+  operations: Float!
+  other: Float!
+}
+
+type FinanceDashboard {
+  summary: FinanceSummary!
+  trend: [FinanceTrendPoint!]!
+  transactions: [FinanceTransaction!]!
+  debts: [FinanceDebtItem!]!
+  costBreakdown: FinanceCostBreakdown!
+}
+
+input FinanceDashboardInput {
+  restaurantId: ID!
+  range: FinanceRange = MONTH
+  dateFrom: DateTime
+  dateTo: DateTime
+}
+
 extend type Query {
   paymentTransactionsByOrder(orderId: ID!): [PaymentTransaction!]!
   invoicesByOrder(orderId: ID!): [Invoice!]!
+  financeDashboard(input: FinanceDashboardInput!): FinanceDashboard!
 }
 
 extend type Mutation {

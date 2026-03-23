@@ -10,4 +10,11 @@ export default {
   Mutation: {
     ...reviewMutation,
   },
+  ReactionSummary: {
+    total: (parent = {}) =>
+      ["like", "love", "care", "haha", "wow", "sad", "angry"].reduce(
+        (sum, key) => sum + Number(parent?.[key] || 0),
+        0,
+      ),
+  },
 };

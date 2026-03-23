@@ -17,6 +17,14 @@ const printSettingSchema = BaseSchemaModel({
     type: mongoose.Schema.Types.Mixed,
     default: {},
   },
+  templates: {
+    type: mongoose.Schema.Types.Mixed,
+    default: [],
+  },
+  jobs: {
+    type: mongoose.Schema.Types.Mixed,
+    default: [],
+  },
 });
 
 export default mongoose.model("PrintSetting", printSettingSchema);

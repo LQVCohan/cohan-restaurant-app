@@ -87,6 +87,8 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit 
             ? "reviews-review-card__status--pending"
             : review.status === "hidden"
             ? "reviews-review-card__status--hidden"
+            : review.status === "reported"
+            ? "reviews-review-card__status--reported"
             : "";
 
         return (
@@ -116,6 +118,9 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit 
                 )}
                 {review.status !== "hidden" && (
                   <button type="button" className="reviews-review-card__action-btn" title="Ẩn" onClick={() => onEdit(review, "hidden")}>🙈</button>
+                )}
+                {review.status !== "reported" && (
+                  <button type="button" className="reviews-review-card__action-btn" title="Đánh dấu bị báo cáo" onClick={() => onEdit(review, "reported")}>🚩</button>
                 )}
                 <button type="button" className="reviews-review-card__action-btn" title="Xóa" onClick={() => onDelete(review)}>
                   🗑️
@@ -169,6 +174,10 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit 
                   <span>📣</span>
                   <span>{review.likes} tương tác</span>
                 </div>
+                <div className="reviews-review-card__stat">
+                  <span>🚩</span>
+                  <span>{review.reports_count || 0} báo cáo</span>
+                </div>
               </div>
 
               <div className={"reviews-review-card__status " + statusClass}>
@@ -178,6 +187,8 @@ const ReviewsList = ({ isLoading, reviews, currentTab, onView, onDelete, onEdit 
                   ? "⏳ Chờ duyệt"
                   : review.status === "hidden"
                   ? "🚫 Đã ẩn"
+                  : review.status === "reported"
+                  ? "🚩 Bị báo cáo"
                   : review.status}
               </div>
             </footer>

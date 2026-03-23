@@ -10,6 +10,7 @@ import OrderManagement from "../components/Dashboard_Manager/Order/OrderManageme
 import MenuManagement from "../components/Dashboard_Manager/Menu/MenuManagement";
 import TableManagement from "../components/Dashboard_Manager/Table/TableManagement";
 import CustomerManagement from "../components/Dashboard_Manager/Customer/CustomerManagement";
+import CustomerAnalyticsPage from "../components/Dashboard_Manager/Customer/CustomerAnalyticsPage";
 import PromotionManagement from "../components/Dashboard_Manager/Promotion/PromotionManagement";
 import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/PayrollManagement";
 import "./ManagerLayout.scss";
@@ -41,6 +42,7 @@ const VALID_MANAGER_PAGES = new Set([
   "inventory",
   "staff",
   "customers",
+  "customer-analytics",
   "analytics",
   "transactions",
   "reports",
@@ -156,6 +158,8 @@ const ManagerLayout = () => {
         return <StaffManagement />;
       case "customers":
         return <CustomerManagement />;
+      case "customer-analytics":
+        return <CustomerAnalyticsPage />;
       case "analytics":
         return <ManagerAnalyst />;
 

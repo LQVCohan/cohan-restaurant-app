@@ -173,6 +173,27 @@
   }
 }
 
+.reviews-error-box {
+  margin: 16px 20px 20px;
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .reviews-page {
+    --reviews-bg: #0b1220;
+    --reviews-card-bg: #111827;
+    --reviews-border-color: #1f2937;
+    --reviews-text-main: #e5e7eb;
+    --reviews-text-secondary: #94a3b8;
+    --reviews-text-muted: #64748b;
+  }
+}
+
 @media (max-width: 768px) {
   .reviews-content-header {
     align-items: flex-start;

@@ -556,6 +556,124 @@ type OrderList {
   totalCount: Int!
 }
 
+type DashboardTrend {
+  key: String!
+  current: Float!
+  previous: Float!
+}
+
+type DashboardStatusCounts {
+  pending: Int!
+  preparing: Int!
+  completed: Int!
+  cancelled: Int!
+}
+
+type DashboardTopDish {
+  dishName: String!
+  quantity: Int!
+  revenue: Float!
+}
+
+type DashboardRecentOrder {
+  id: ID!
+  orderCode: String
+  customerName: String
+  orderType: String
+  tableCode: String
+  status: String
+  total: Float!
+  createdAt: DateTime
+  itemNames: [String!]!
+}
+
+type DashboardLowStockItem {
+  id: ID!
+  name: String!
+  onHand: Float!
+  reserved: Float!
+}
+
+type DashboardFeedbackItem {
+  id: ID!
+  customerName: String!
+  rating: Int!
+  content: String!
+  createdAt: DateTime
+  sentiment: String!
+}
+
+type DashboardFeedbackSummary {
+  avgRating: Float!
+  total: Int!
+  negative: Int!
+  positive: Int!
+}
+
+type DashboardOccupancyPoint {
+  dayLabel: String!
+  hourLabel: String!
+  occupancyRate: Float!
+  staffRequired: Int!
+}
+
+type DashboardStaffPerformance {
+  staffId: ID!
+  fullName: String!
+  role: String
+  status: String!
+  ordersHandled: Int!
+  efficiency: Float!
+}
+
+type ManagerDashboard {
+  restaurantId: ID!
+  revenue: Float!
+  orders: Int!
+  customers: Int!
+  tables: Int!
+  menuItems: Int!
+  activePromotions: Int!
+  workingStaff: Int!
+  statusCounts: DashboardStatusCounts!
+  revenueTrend: [DashboardTrend!]!
+  orderTrend: [DashboardTrend!]!
+  topDishes: [DashboardTopDish!]!
+  recentOrders: [DashboardRecentOrder!]!
+  lowStockItems: [DashboardLowStockItem!]!
+  feedbackSummary: DashboardFeedbackSummary!
+  feedbackItems: [DashboardFeedbackItem!]!
+  occupancyHeatmap: [DashboardOccupancyPoint!]!
+  staffPerformance: [DashboardStaffPerformance!]!
+}
+
+type ReportCountBucket {
+  key: String!
+  label: String
+  count: Int!
+}
+
+type ReportTopDish {
+  name: String!
+  quantity: Int!
+  revenue: Float!
+}
+
+type ReportRevenuePoint {
+  date: String!
+  grossRevenue: Float!
+  orders: Int!
+}
+
+type ReportsOverview {
+  totalOrders: Int!
+  grossRevenue: Float!
+  byStatus: [ReportCountBucket!]!
+  byOrderType: [ReportCountBucket!]!
+  topDishes: [ReportTopDish!]!
+  revenueByDay: [ReportRevenuePoint!]!
+}
+
 # =========================================================
 # ROOT
 # =========================================================
@@ -591,6 +709,13 @@ extend type Query {
     tableId: ID
     tableCode: String
   ): [OrderGroup!]!
+  managerDashboard(restaurantId: ID!, range: String = "week"): ManagerDashboard!
+  reportsOverview(
+    restaurantId: ID!
+    startAt: DateTime
+    endAt: DateTime
+    limit: Int = 500
+  ): ReportsOverview!
 }
 
 extend type Mutation {

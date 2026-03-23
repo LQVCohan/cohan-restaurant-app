@@ -81,10 +81,20 @@ $border: #e2e8f0;
     }
   }
 
+  
+  .finance-error {
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+  }
+
   // 2. Stats Section
   .stats-section .finance-stats-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
     .stat-card {
@@ -240,6 +250,8 @@ $border: #e2e8f0;
 
     // Chart UI
     .chart-placeholder-ui {
+      overflow-x: auto;
+
       height: 100%;
       min-height: 250px;
       display: flex;
@@ -271,10 +283,16 @@ $border: #e2e8f0;
           transform: scaleX(1.2);
         }
         .label {
-          font-size: 0.75rem;
+          font-size: 0.7rem;
           color: $text-sec;
           margin-top: 8px;
         }
+      }
+      .chart-empty {
+        color: $text-sec;
+        width: 100%;
+        text-align: center;
+        padding: 2rem;
       }
     }
 
@@ -632,7 +650,7 @@ $border: #e2e8f0;
   .finance-dashboard {
     padding: 1rem;
     .stats-section .finance-stats-grid {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .main-layout-grid-v2 {
       grid-template-columns: 1fr;

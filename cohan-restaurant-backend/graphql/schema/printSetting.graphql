@@ -5,6 +5,31 @@ type PrintSetting {
   restaurantId: ID!
   printers: JSON
   stations: JSON
+  templates: [PrintTemplate!]!
+  jobs: [PrintJob!]!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type PrintTemplate {
+  key: String!
+  name: String!
+  enabled: Boolean!
+  content: String
+  updatedAt: DateTime
+}
+
+type PrintJob {
+  id: ID!
+  printerId: String
+  printerName: String
+  stationId: String
+  printType: String!
+  templateKey: String
+  status: String!
+  error: String
+  retryCount: Int!
+  payload: JSON
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -13,6 +38,40 @@ input UpsertPrintSettingInput {
   restaurantId: ID!
   printers: JSON
   stations: JSON
+  templates: [PrintTemplateInput!]
+}
+
+input PrintTemplateInput {
+  key: String!
+  name: String!
+  enabled: Boolean!
+  content: String
+}
+
+input EnqueuePrintJobInput {
+  restaurantId: ID!
+  printerId: String
+  stationId: String
+  printType: String!
+  templateKey: String
+  payload: JSON
+}
+
+input RetryPrintJobInput {
+  restaurantId: ID!
+  jobId: ID!
+}
+
+input UpdatePrintJobStatusInput {
+  restaurantId: ID!
+  jobId: ID!
+  status: String!
+  error: String
+}
+
+input TestPrintInput {
+  restaurantId: ID!
+  printerId: String!
 }
 
 extend type Query {
@@ -21,4 +80,8 @@ extend type Query {
 
 extend type Mutation {
   upsertPrintSettings(input: UpsertPrintSettingInput!): PrintSetting!
+  enqueuePrintJob(input: EnqueuePrintJobInput!): PrintJob!
+  retryPrintJob(input: RetryPrintJobInput!): PrintJob!
+  updatePrintJobStatus(input: UpdatePrintJobStatusInput!): PrintJob!
+  testPrint(input: TestPrintInput!): PrintJob!
 }

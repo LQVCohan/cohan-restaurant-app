@@ -28,5 +28,18 @@ export default {
       if (!parent.updatedBy) return null;
       return User.findById(parent.updatedBy).lean();
     },
+    isOnline: (parent) => {
+      const last = new Date(parent?.lastLoginAt || 0).getTime();
+      if (!Number.isFinite(last) || last <= 0) return false;
+      return Date.now() - last <= 5 * 60 * 1000;
+    },
+    loyaltyDurationScore: (parent) => {
+      const created = new Date(parent?.createdAt || 0).getTime();
+      if (!Number.isFinite(created) || created <= 0) return 0;
+      return Math.max(
+        0,
+        Math.floor((Date.now() - created) / (1000 * 60 * 60 * 24))
+      );
+    },
   },
 };

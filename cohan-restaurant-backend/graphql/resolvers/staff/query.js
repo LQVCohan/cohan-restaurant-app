@@ -15,6 +15,36 @@ function toObjectId(id) {
   return new mongoose.Types.ObjectId(id);
 }
 
+function toStartOfDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function toEndOfDay(date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+function calculatePeriodWorkDays(start, end) {
+  if (!start || !end || end < start) return 0;
+  const dayMs = 24 * 60 * 60 * 1000;
+  return Math.floor((toEndOfDay(end) - toStartOfDay(start)) / dayMs) + 1;
+}
+
+function mapDepartmentLabel(department) {
+  const map = {
+    management: "Management",
+    kitchen: "Kitchen",
+    service: "Service",
+    cashier: "Cashier",
+    cleaning: "Cleaning",
+    delivery: "Delivery",
+  };
+  return map[String(department || "").toLowerCase()] || "Other";
+}
+
 async function resolveStaffDoc(staffId, ctx) {
   const fallbackId = ctx?.user?.id;
   const targetId = staffId || fallbackId;
@@ -51,7 +81,7 @@ export default {
     _,
     { restaurantId, roleId, search, employmentStatus }
   ) => {
-    const filter = {};
+    const filter = { userType: "STAFF" };
 
     if (restaurantId) filter.refRestaurants = restaurantId;
     if (roleId) filter.role = roleId;
@@ -228,6 +258,235 @@ export default {
       endTime: r.endTime || null,
       status: r.status || null,
       notes: r.notes || null,
+    }));
+  },
+
+  staffPayrollOverview: async (_, { startDate, endDate, restaurantId }, ctx) => {
+    const start = toStartOfDay(startDate);
+    const end = toEndOfDay(endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+      return {
+        stats: { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+        items: [],
+      };
+    }
+
+    const authUser = ctx?.user || null;
+    const fallbackRestaurantId =
+      restaurantId ||
+      authUser?.restaurantForStaff ||
+      authUser?.primaryRestaurantId ||
+      null;
+    const rid = toObjectId(fallbackRestaurantId);
+
+    const staffFilter = { userType: "STAFF" };
+    if (rid) {
+      staffFilter.$or = [{ primaryRestaurant: rid }, { refRestaurants: rid }];
+    }
+
+    const staffs = await Staff.find(staffFilter)
+      .select({
+        _id: 1,
+        fullName: 1,
+        employeeCode: 1,
+        positionTitle: 1,
+        roleName: 1,
+        department: 1,
+        avatarUrl: 1,
+        avatar: 1,
+        baseSalary: 1,
+      })
+      .lean();
+
+    if (!staffs.length) {
+      return {
+        stats: { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+        items: [],
+      };
+    }
+
+    const staffIds = staffs.map((s) => s._id);
+    const shiftMatch = {
+      employeeId: { $in: staffIds },
+      startTime: { $gte: start, $lte: end },
+    };
+    if (rid) shiftMatch.restaurantId = rid;
+
+    const shifts = await Shift.find(shiftMatch)
+      .select({ _id: 1, employeeId: 1, startTime: 1 })
+      .lean();
+
+    const shiftIds = shifts.map((s) => s._id);
+    const timesheetAgg = shiftIds.length
+      ? await Timesheet.aggregate([
+          { $match: { shiftId: { $in: shiftIds } } },
+          {
+            $group: {
+              _id: "$shiftId",
+              totalHours: { $sum: { $ifNull: ["$hours", 0] } },
+              totalWage: { $sum: { $ifNull: ["$wage", 0] } },
+              totalAmount: { $sum: { $ifNull: ["$amount", 0] } },
+            },
+          },
+        ])
+      : [];
+
+    const timesheetByShiftId = new Map(
+      timesheetAgg.map((row) => [
+        String(row._id),
+        {
+          totalHours: Number(row.totalHours || 0),
+          totalWage: Number(row.totalWage || 0),
+          totalAmount: Number(row.totalAmount || 0),
+        },
+      ])
+    );
+
+    const payrollByStaffId = new Map();
+    for (const shift of shifts) {
+      const sid = String(shift.employeeId);
+      if (!payrollByStaffId.has(sid)) {
+        payrollByStaffId.set(sid, {
+          workedDateKeys: new Set(),
+          totalHours: 0,
+          totalWage: 0,
+          totalAmount: 0,
+        });
+      }
+      const bucket = payrollByStaffId.get(sid);
+      bucket.workedDateKeys.add(new Date(shift.startTime).toISOString().slice(0, 10));
+      const ts = timesheetByShiftId.get(String(shift._id)) || {
+        totalHours: 0,
+        totalWage: 0,
+        totalAmount: 0,
+      };
+      bucket.totalHours += ts.totalHours;
+      bucket.totalWage += ts.totalWage;
+      bucket.totalAmount += ts.totalAmount;
+    }
+
+    const now = new Date();
+    const workDays = calculatePeriodWorkDays(start, end);
+
+    const items = staffs.map((staff) => {
+      const sid = String(staff._id);
+      const agg = payrollByStaffId.get(sid) || {
+        workedDateKeys: new Set(),
+        totalHours: 0,
+        totalWage: 0,
+        totalAmount: 0,
+      };
+
+      const baseSalary = Number(staff.baseSalary || 0);
+      const actualWorkDays = agg.workedDateKeys.size;
+      const standardHours = Math.max(actualWorkDays * 8, 0);
+      const overtimeHours = Math.max(agg.totalHours - standardHours, 0);
+      const hourlyRate = workDays > 0 ? baseSalary / Math.max(workDays * 8, 1) : 0;
+      const overtime = overtimeHours * hourlyRate;
+      const wageDelta = Number(agg.totalAmount || 0) - Number(agg.totalWage || 0);
+      const bonus = Math.max(0, wageDelta);
+      const allowance = 0;
+      const deduction = Math.max(0, -wageDelta);
+      const advance = 0;
+      const dailyWage = workDays > 0 ? baseSalary / workDays : 0;
+      const totalIncome = dailyWage * actualWorkDays + allowance + bonus + overtime;
+      const totalDeduction = deduction + advance;
+      const netSalary = totalIncome - totalDeduction;
+      const coefficient = workDays > 0 ? actualWorkDays / workDays : 0;
+
+      let status = "draft";
+      if (actualWorkDays > 0) {
+        status = end < now ? "paid" : "approved";
+      }
+
+      return {
+        id: sid,
+        name: staff.fullName || "Nhân viên",
+        code: staff.employeeCode || null,
+        role: staff.positionTitle || staff.roleName || "Nhân viên",
+        department: mapDepartmentLabel(staff.department),
+        avatar: staff.avatarUrl || staff.avatar || null,
+        baseSalary,
+        workDays,
+        actualWorkDays,
+        allowance,
+        bonus,
+        overtime,
+        deduction,
+        advance,
+        coefficient: Number(coefficient.toFixed(2)),
+        totalIncome,
+        totalDeduction,
+        netSalary,
+        status,
+      };
+    });
+
+    const totalPayroll = items.reduce(
+      (sum, item) => sum + Number(item.netSalary || 0),
+      0,
+    );
+
+    const paidAmount = items.reduce((sum, item) => {
+      if (item.status !== "paid") return sum;
+      return sum + Number(item.netSalary || 0);
+    }, 0);
+
+    const remaining = totalPayroll - paidAmount;
+    const progress = totalPayroll > 0 ? Math.round((paidAmount / totalPayroll) * 100) : 0;
+
+    return {
+      stats: {
+        totalPayroll,
+        paidAmount,
+        remaining,
+        progress,
+      },
+      items,
+    };
+  },
+
+  staffShifts: async (
+    _,
+    { restaurantId, employeeId, startDate, endDate, status, limit = 500 },
+    ctx,
+  ) => {
+    const filter = { userType: "STAFF" };
+    const authUser = ctx?.user || null;
+    const fallbackRestaurantId =
+      restaurantId ||
+      authUser?.restaurantForStaff ||
+      authUser?.primaryRestaurantId ||
+      null;
+    const rid = toObjectId(fallbackRestaurantId);
+    const eid = toObjectId(employeeId);
+
+    if (rid) filter.restaurantId = rid;
+    if (eid) filter.employeeId = eid;
+    if (status) filter.status = status;
+
+    if (startDate || endDate) {
+      filter.startTime = {};
+      if (startDate) filter.startTime.$gte = toStartOfDay(startDate);
+      if (endDate) filter.startTime.$lte = toEndOfDay(endDate);
+    }
+
+    const rows = await Shift.find(filter)
+      .sort({ startTime: 1 })
+      .limit(Math.max(1, Math.min(Number(limit || 500), 2000)))
+      .populate("employeeId", "fullName")
+      .lean();
+
+    return rows.map((row) => ({
+      id: String(row._id),
+      employeeId: String(row.employeeId?._id || row.employeeId),
+      employeeName: row.employeeId?.fullName || null,
+      restaurantId: String(row.restaurantId),
+      shiftType: row.shiftType,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      status: row.status || "scheduled",
+      notes: row.notes || "",
     }));
   },
 };

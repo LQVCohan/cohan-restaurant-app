@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -10,134 +10,13 @@ import {
 import EmployeeItem from "./EmployeeItem";
 import "./EmployeeList.scss";
 
-// --- DỮ LIỆU MẪU ĐỂ TEST GIAO DIỆN ---
-const SAMPLE_DATA = [
-  {
-    id: 1,
-    code: "NV001",
-    name: "Nguyễn Nhật Minh",
-    role: "Bếp Trưởng",
-    department: "kitchen",
-    status: "active",
-    phone: "0901234567",
-    email: "minh.nguyen@restaurant.com",
-    avatar: "https://i.pravatar.cc/150?img=11",
-    startDate: "2022-01-15",
-    salary: 15000000,
-    address: "Q1, TP.HCM",
-    shift: "Ca gãy (10:00 - 14:00 & 17:00 - 22:00)",
-  },
-  {
-    id: 2,
-    code: "NV002",
-    name: "Trần Thị Thu Hà",
-    role: "Quản Lý Nhà Hàng",
-    department: "management",
-    status: "active",
-    phone: "0909888777",
-    email: "ha.tran@restaurant.com",
-    avatar: "https://i.pravatar.cc/150?img=5",
-    startDate: "2021-05-20",
-    salary: 20000000,
-    address: "Q3, TP.HCM",
-    shift: "Hành chính",
-  },
-  {
-    id: 3,
-    code: "NV003",
-    name: "Phạm Văn Long",
-    role: "Phục Vụ",
-    department: "service",
-    status: "break",
-    phone: "0933444555",
-    email: "long.pham@restaurant.com",
-    avatar: null, // Test trường hợp không có avatar
-    startDate: "2023-03-10",
-    salary: 6000000,
-    address: "Q.Bình Thạnh, TP.HCM",
-    shift: "Ca sáng (06:00 - 14:00)",
-  },
-  {
-    id: 4,
-    code: "NV004",
-    name: "Lê Tuyết Mai",
-    role: "Thu Ngân",
-    department: "cashier",
-    status: "active",
-    phone: "0912333444",
-    email: "mai.le@restaurant.com",
-    avatar: "https://i.pravatar.cc/150?img=9",
-    startDate: "2023-06-01",
-    salary: 7000000,
-    address: "Q.Tân Bình, TP.HCM",
-    shift: "Ca chiều (14:00 - 22:00)",
-  },
-  {
-    id: 5,
-    code: "NV005",
-    name: "Hoàng Văn Nam",
-    role: "Phụ Bếp",
-    department: "kitchen",
-    status: "active",
-    phone: "0987654321",
-    email: "nam.hoang@restaurant.com",
-    avatar: "https://i.pravatar.cc/150?img=13",
-    startDate: "2023-08-15",
-    salary: 5500000,
-    address: "Q12, TP.HCM",
-    shift: "Full-time",
-  },
-  {
-    id: 6,
-    code: "NV006",
-    name: "Đỗ Thị Bích",
-    role: "Tạp Vụ",
-    department: "cleaning",
-    status: "inactive",
-    phone: "0911222333",
-    email: "bich.do@email.com",
-    avatar: null,
-    startDate: "2022-11-01",
-    salary: 5000000,
-    address: "Hóc Môn, TP.HCM",
-    shift: "Ca sáng",
-  },
-  {
-    id: 7,
-    code: "NV007",
-    name: "Vũ Tuấn Anh",
-    role: "Phục Vụ",
-    department: "service",
-    status: "active",
-    phone: "0944555666",
-    email: "anh.vu@restaurant.com",
-    avatar: "https://i.pravatar.cc/150?img=60",
-    startDate: "2023-09-05",
-    salary: 6000000,
-    address: "Q4, TP.HCM",
-    shift: "Ca tối",
-  },
-  {
-    id: 8,
-    code: "NV008",
-    name: "Ngô Thanh Vân",
-    role: "Pha Chế (Bartender)",
-    department: "service",
-    status: "break",
-    phone: "0977888999",
-    email: "van.ngo@restaurant.com",
-    avatar: "https://i.pravatar.cc/150?img=32",
-    startDate: "2023-02-20",
-    salary: 8000000,
-    address: "Q7, TP.HCM",
-    shift: "Ca tối",
-  },
-];
-
-const EmployeeList = ({ employees, selectedEmployee, onEmployeeSelect }) => {
-  // Ưu tiên dùng props, nếu không có thì dùng SAMPLE_DATA
-  const dataSource =
-    employees && employees.length > 0 ? employees : SAMPLE_DATA;
+const EmployeeList = ({
+  employees = [],
+  selectedEmployee,
+  onEmployeeSelect,
+  loading = false,
+}) => {
+  const dataSource = employees;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -173,9 +52,20 @@ const EmployeeList = ({ employees, selectedEmployee, onEmployeeSelect }) => {
   );
 
   // Reset về trang 1 khi filter đổi
-  useMemo(() => {
+  useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, departmentFilter, statusFilter]);
+
+  // Clamp trang hiện tại khi tổng trang thay đổi
+  useEffect(() => {
+    if (totalPages === 0 && currentPage !== 1) {
+      setCurrentPage(1);
+      return;
+    }
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
 
   // --- HANDLERS ---
   const handleActionClick = (e, type) => {
@@ -256,7 +146,15 @@ const EmployeeList = ({ employees, selectedEmployee, onEmployeeSelect }) => {
 
       {/* 4. LIST CONTENT */}
       <div className="list-body custom-scrollbar">
-        {paginatedEmployees.length > 0 ? (
+        {loading ? (
+          <div className="empty-state">
+            <div className="icon-wrapper">
+              <Users size={40} />
+            </div>
+            <h4>Đang tải danh sách</h4>
+            <p>Vui lòng chờ trong giây lát...</p>
+          </div>
+        ) : paginatedEmployees.length > 0 ? (
           paginatedEmployees.map((employee) => (
             <EmployeeItem
               key={employee.id}

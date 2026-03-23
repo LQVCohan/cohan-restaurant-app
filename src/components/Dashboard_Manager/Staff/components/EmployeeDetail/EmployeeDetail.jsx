@@ -13,7 +13,6 @@ import {
   History,
   Calculator,
   Award,
-  MoreHorizontal,
 } from "lucide-react";
 import "./EmployeeDetail.scss";
 
@@ -23,6 +22,11 @@ const EmployeeDetail = ({
   onViewHistory,
   onCalculateSalary,
   onDelete,
+  onSetOnLeave,
+  onSetWorking,
+  onLockAccount,
+  onUnlockAccount,
+  onRate,
 }) => {
   // --- EMPTY STATE ---
   if (!employee) {
@@ -55,6 +59,11 @@ const EmployeeDetail = ({
   };
 
   const statusInfo = getStatusInfo(employee.status);
+
+  const canSetOnLeave = employee.status === "active";
+  const canSetWorking = employee.status === "break";
+  const canLock = employee.status !== "inactive";
+  const canUnlock = employee.status === "inactive";
 
   return (
     <div className="employee-detail-card fade-in">
@@ -189,6 +198,48 @@ const EmployeeDetail = ({
           </button>
         </div>
 
+        <div className="main-actions">
+          <button
+            className="btn btn-secondary"
+            onClick={() => onRate?.(employee.id, 5)}
+            title="Đánh giá 5 sao"
+          >
+            <Award size={18} />
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => onSetOnLeave?.(employee.id)}
+            disabled={!canSetOnLeave}
+            title="Chuyển sang nghỉ phép"
+          >
+            <span>🏖️</span>
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => onSetWorking?.(employee.id)}
+            disabled={!canSetWorking}
+            title="Chuyển sang đang làm việc"
+          >
+            <span>✅</span>
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => onLockAccount?.(employee.id)}
+            disabled={!canLock}
+            title="Khoá tài khoản"
+          >
+            <span>🔒</span>
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => onUnlockAccount?.(employee.id)}
+            disabled={!canUnlock}
+            title="Mở khoá tài khoản"
+          >
+            <span>🔓</span>
+          </button>
+        </div>
+
         <div className="danger-actions">
           <button
             className="btn btn-danger-ghost"
@@ -204,24 +255,28 @@ const EmployeeDetail = ({
 };
 
 // Reusable Info Row Component
-const InfoRow = ({ icon: Icon, label, value, isLink, isHighlight }) => (
-  <div className="info-row">
-    <div className="icon-box">
-      <Icon size={16} />
+const InfoRow = ({ icon, label, value, isLink, isHighlight }) => {
+  const IconComponent = icon;
+
+  return (
+    <div className="info-row">
+      <div className="icon-box">
+        <IconComponent size={16} />
+      </div>
+      <div className="info-content">
+        <span className="info-label">{label}</span>
+        {isLink ? (
+          <a href={`mailto:${value}`} className="info-value link">
+            {value || "---"}
+          </a>
+        ) : (
+          <span className={`info-value ${isHighlight ? "highlight" : ""}`}>
+            {value || "---"}
+          </span>
+        )}
+      </div>
     </div>
-    <div className="info-content">
-      <span className="info-label">{label}</span>
-      {isLink ? (
-        <a href={`mailto:${value}`} className="info-value link">
-          {value || "---"}
-        </a>
-      ) : (
-        <span className={`info-value ${isHighlight ? "highlight" : ""}`}>
-          {value || "---"}
-        </span>
-      )}
-    </div>
-  </div>
-);
+  );
+};
 
 export default EmployeeDetail;

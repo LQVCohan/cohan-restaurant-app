@@ -2,6 +2,7 @@
 type Promotion {
   id: ID!
   name: String!
+  code: String
   description: String
   scope: String
   restaurantId: ID
@@ -9,6 +10,12 @@ type Promotion {
   itemId: ID
   discountType: String
   discountValue: Float
+  minOrderValue: Float
+  maxDiscount: Float
+  usageLimit: Int
+  usageCount: Int
+  targetAudience: String
+  conditions: [String!]
   level: Int
   startAt: DateTime
   endAt: DateTime
@@ -26,4 +33,33 @@ extend type Query {
     offset: Int = 0
     now: DateTime
   ): [Promotion!]!
+}
+
+input PromotionInput {
+  name: String!
+  code: String
+  description: String
+  scope: String
+  restaurantId: ID!
+  categoryId: ID
+  itemId: ID
+  discountType: String
+  discountValue: Float!
+  minOrderValue: Float
+  maxDiscount: Float
+  usageLimit: Int
+  targetAudience: String
+  conditions: [String!]
+  level: Int
+  startAt: DateTime
+  endAt: DateTime
+  isActive: Boolean
+  stacking: Boolean
+}
+
+extend type Mutation {
+  createPromotion(input: PromotionInput!): Promotion!
+  updatePromotion(id: ID!, input: PromotionInput!): Promotion!
+  deletePromotion(id: ID!): Boolean!
+  togglePromotion(id: ID!, isActive: Boolean!): Promotion!
 }

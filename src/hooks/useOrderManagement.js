@@ -293,6 +293,27 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             service
             grandTotal
           }
+          payment {
+            method
+            status
+            paidAmount
+            paidAt
+          }
+          shipping {
+            fullName
+            phone
+            address
+            deliveryMethod
+            deliveryTime
+            scheduleDate
+            scheduleTime
+          }
+          statusTimeline {
+            status
+            at
+            note
+            byUserId
+          }
           customerInfo {
             name
             phone
@@ -368,6 +389,27 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
             service
             grandTotal
           }
+          payment {
+            method
+            status
+            paidAmount
+            paidAt
+          }
+          shipping {
+            fullName
+            phone
+            address
+            deliveryMethod
+            deliveryTime
+            scheduleDate
+            scheduleTime
+          }
+          statusTimeline {
+            status
+            at
+            note
+            byUserId
+          }
           orderType
           createdAt
           updatedAt
@@ -424,6 +466,27 @@ const GET_ORDER = gql`
         service
         grandTotal
       }
+          payment {
+            method
+            status
+            paidAmount
+            paidAt
+          }
+          shipping {
+            fullName
+            phone
+            address
+            deliveryMethod
+            deliveryTime
+            scheduleDate
+            scheduleTime
+          }
+          statusTimeline {
+            status
+            at
+            note
+            byUserId
+          }
       note
       createdAt
       updatedAt
@@ -651,6 +714,10 @@ export default function useOrderManagement(pos = null) {
         ...it,
         price,
         method: getItemMethod(it),
+        modifiers: (it?.modifiers || []).map((m) => ({
+          ...m,
+          name: m?.name || m?.optionName || m?.option || "",
+        })),
         lineSubtotal,
       };
     },
@@ -743,7 +810,9 @@ export default function useOrderManagement(pos = null) {
             totals: () => order.totals,
           },
         });
-      } catch {}
+      } catch (e) {
+        void e;
+      }
 
       // Nếu đang xem theo bàn → reload group để cập nhật gộp món
       if (
@@ -757,7 +826,9 @@ export default function useOrderManagement(pos = null) {
             tableId: currentTable.id,
             tableCode: currentTable.code,
           });
-        } catch {}
+        } catch (e) {
+        void e;
+      }
       }
 
       // Giữ hành vi dọn OrdersNow khi order không còn active
@@ -781,7 +852,9 @@ export default function useOrderManagement(pos = null) {
               },
             });
           }
-        } catch {}
+        } catch (e) {
+        void e;
+      }
       }
     },
   });
@@ -994,7 +1067,9 @@ export default function useOrderManagement(pos = null) {
             },
           });
         }
-      } catch {}
+      } catch (e) {
+        void e;
+      }
 
       try {
         const all = apollo.readQuery({
@@ -1008,7 +1083,9 @@ export default function useOrderManagement(pos = null) {
             data: { ordersByRestaurant: bumpInConn(all.ordersByRestaurant) },
           });
         }
-      } catch {}
+      } catch (e) {
+        void e;
+      }
     },
     [apollo]
   );
