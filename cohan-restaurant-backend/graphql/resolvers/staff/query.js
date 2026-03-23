@@ -81,7 +81,7 @@ export default {
     _,
     { restaurantId, roleId, search, employmentStatus }
   ) => {
-    const filter = {};
+    const filter = { userType: "STAFF" };
 
     if (restaurantId) filter.refRestaurants = restaurantId;
     if (roleId) filter.role = roleId;
@@ -383,10 +383,16 @@ export default {
       const overtimeHours = Math.max(agg.totalHours - standardHours, 0);
       const hourlyRate = workDays > 0 ? baseSalary / Math.max(workDays * 8, 1) : 0;
       const overtime = overtimeHours * hourlyRate;
-      const bonus = Math.max(0, agg.totalAmount - agg.totalWage);
+      const wageDelta = Number(agg.totalAmount || 0) - Number(agg.totalWage || 0);
+      const bonus = Math.max(0, wageDelta);
       const allowance = 0;
-      const deduction = 0;
+      const deduction = Math.max(0, -wageDelta);
       const advance = 0;
+      const dailyWage = workDays > 0 ? baseSalary / workDays : 0;
+      const totalIncome = dailyWage * actualWorkDays + allowance + bonus + overtime;
+      const totalDeduction = deduction + advance;
+      const netSalary = totalIncome - totalDeduction;
+      const coefficient = workDays > 0 ? actualWorkDays / workDays : 0;
 
       let status = "draft";
       if (actualWorkDays > 0) {
@@ -408,23 +414,22 @@ export default {
         overtime,
         deduction,
         advance,
+        coefficient: Number(coefficient.toFixed(2)),
+        totalIncome,
+        totalDeduction,
+        netSalary,
         status,
       };
     });
 
-    const totalPayroll = items.reduce((sum, item) => {
-      const dailyWage = item.workDays > 0 ? item.baseSalary / item.workDays : 0;
-      const income = dailyWage * item.actualWorkDays + item.allowance + item.bonus + item.overtime;
-      const totalDeduct = item.deduction + item.advance;
-      return sum + (income - totalDeduct);
-    }, 0);
+    const totalPayroll = items.reduce(
+      (sum, item) => sum + Number(item.netSalary || 0),
+      0,
+    );
 
     const paidAmount = items.reduce((sum, item) => {
       if (item.status !== "paid") return sum;
-      const dailyWage = item.workDays > 0 ? item.baseSalary / item.workDays : 0;
-      const income = dailyWage * item.actualWorkDays + item.allowance + item.bonus + item.overtime;
-      const totalDeduct = item.deduction + item.advance;
-      return sum + (income - totalDeduct);
+      return sum + Number(item.netSalary || 0);
     }, 0);
 
     const remaining = totalPayroll - paidAmount;
@@ -439,5 +444,49 @@ export default {
       },
       items,
     };
+  },
+
+  staffShifts: async (
+    _,
+    { restaurantId, employeeId, startDate, endDate, status, limit = 500 },
+    ctx,
+  ) => {
+    const filter = { userType: "STAFF" };
+    const authUser = ctx?.user || null;
+    const fallbackRestaurantId =
+      restaurantId ||
+      authUser?.restaurantForStaff ||
+      authUser?.primaryRestaurantId ||
+      null;
+    const rid = toObjectId(fallbackRestaurantId);
+    const eid = toObjectId(employeeId);
+
+    if (rid) filter.restaurantId = rid;
+    if (eid) filter.employeeId = eid;
+    if (status) filter.status = status;
+
+    if (startDate || endDate) {
+      filter.startTime = {};
+      if (startDate) filter.startTime.$gte = toStartOfDay(startDate);
+      if (endDate) filter.startTime.$lte = toEndOfDay(endDate);
+    }
+
+    const rows = await Shift.find(filter)
+      .sort({ startTime: 1 })
+      .limit(Math.max(1, Math.min(Number(limit || 500), 2000)))
+      .populate("employeeId", "fullName")
+      .lean();
+
+    return rows.map((row) => ({
+      id: String(row._id),
+      employeeId: String(row.employeeId?._id || row.employeeId),
+      employeeName: row.employeeId?.fullName || null,
+      restaurantId: String(row.restaurantId),
+      shiftType: row.shiftType,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      status: row.status || "scheduled",
+      notes: row.notes || "",
+    }));
   },
 };

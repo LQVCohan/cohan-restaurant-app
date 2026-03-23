@@ -539,7 +539,7 @@ $bg-body: #f8fafc;
         }
       }
 
-      .details-grid {
+        .details-grid {
         display: grid;
         gap: 2rem;
         grid-template-columns: 1fr; // 1 cột cho dễ nhìn
@@ -577,6 +577,16 @@ $bg-body: #f8fafc;
             }
           }
         }
+
+        .formula-note {
+          margin-top: 1rem;
+          padding: 0.75rem 1rem;
+          border-radius: 8px;
+          border: 1px solid $border;
+          background: #f8fafc;
+          color: $text-sub;
+          font-size: 0.85rem;
+        }
       }
     }
 
@@ -610,6 +620,29 @@ $bg-body: #f8fafc;
           }
         }
       }
+    }
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .payroll-page-compact {
+    .page-title,
+    .payroll-table tbody td,
+    .payroll-table thead th,
+    .emp-cell .name {
+      color: #e5e7eb !important;
+    }
+
+    .table-card,
+    .metrics-strip,
+    .cycle-picker-compact,
+    .filter-select,
+    .search-box input,
+    .payslip-modal,
+    .formula-note {
+      background: #111827 !important;
+      border-color: #374151 !important;
+      color: #cbd5e1 !important;
     }
   }
 }

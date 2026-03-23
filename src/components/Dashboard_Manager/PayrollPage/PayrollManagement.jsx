@@ -16,6 +16,7 @@ const PayrollManagement = () => {
   const [dateRange, setDateRange] = useState(getDefaultRange);
   const [activeTab, setActiveTab] = useState("all");
   const [deptFilter, setDeptFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("net_desc");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [showPayslip, setShowPayslip] = useState(null);
@@ -32,13 +33,7 @@ const PayrollManagement = () => {
       maximumFractionDigits: 0,
     }).format(Number(amount || 0));
 
-  const calculateNet = (emp) => {
-    const dailyWage = emp.workDays > 0 ? emp.baseSalary / emp.workDays : 0;
-    const income =
-      dailyWage * emp.actualWorkDays + emp.allowance + emp.bonus + emp.overtime;
-    const deduction = emp.deduction + emp.advance;
-    return income - deduction;
-  };
+  const calculateNet = (emp) => Number(emp.netSalary || 0);
 
   const getStatusBadge = (status) => {
     const map = {
@@ -56,8 +51,13 @@ const PayrollManagement = () => {
     return colors[String(name || "").length % colors.length];
   };
 
+  const departmentOptions = useMemo(() => {
+    const set = new Set(payrollItems.map((item) => item.department).filter(Boolean));
+    return ["all", ...Array.from(set)];
+  }, [payrollItems]);
+
   const filteredData = useMemo(() => {
-    return payrollItems.filter((item) => {
+    const list = payrollItems.filter((item) => {
       const matchTab = activeTab === "all" || item.status === activeTab;
       const matchDept = deptFilter === "all" || item.department === deptFilter;
       const q = searchQuery.toLowerCase();
@@ -66,7 +66,12 @@ const PayrollManagement = () => {
         String(item.code || "").toLowerCase().includes(q);
       return matchTab && matchDept && matchSearch;
     });
-  }, [payrollItems, activeTab, deptFilter, searchQuery]);
+    if (sortBy === "name_asc") list.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    else if (sortBy === "name_desc") list.sort((a, b) => String(b.name).localeCompare(String(a.name)));
+    else if (sortBy === "net_asc") list.sort((a, b) => Number(a.netSalary || 0) - Number(b.netSalary || 0));
+    else list.sort((a, b) => Number(b.netSalary || 0) - Number(a.netSalary || 0));
+    return list;
+  }, [payrollItems, activeTab, deptFilter, searchQuery, sortBy]);
 
   const stats = useMemo(() => {
     if (payrollStats) {
@@ -81,7 +86,7 @@ const PayrollManagement = () => {
     let totalPayroll = 0;
     let paidAmount = 0;
     for (const emp of payrollItems) {
-      const net = calculateNet(emp);
+      const net = Number(emp.netSalary || 0);
       totalPayroll += net;
       if (emp.status === "paid") paidAmount += net;
     }
@@ -110,6 +115,44 @@ const PayrollManagement = () => {
     const { name, value } = e.target;
     setDateRange((prev) => ({ ...prev, [name]: value }));
     setSelectedIds([]);
+  };
+
+  const handleExportCsv = () => {
+    const header = [
+      "ID",
+      "Tên",
+      "Mã NV",
+      "Phòng ban",
+      "Lương cơ bản",
+      "Hệ số",
+      "Tổng thu nhập",
+      "Tổng khấu trừ",
+      "Thực lĩnh",
+      "Trạng thái",
+    ].join(",");
+    const rows = filteredData.map((item) =>
+      [
+        item.id,
+        `"${item.name || ""}"`,
+        item.code || "",
+        item.department || "",
+        Number(item.baseSalary || 0),
+        Number(item.coefficient || 0),
+        Number(item.totalIncome || 0),
+        Number(item.totalDeduction || 0),
+        Number(item.netSalary || 0),
+        item.status || "",
+      ].join(","),
+    );
+    const blob = new Blob([[header, ...rows].join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "payroll_export.csv";
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -142,8 +185,8 @@ const PayrollManagement = () => {
         </div>
 
         <div className="right-actions">
-          <button className="btn btn-white" onClick={() => window.print()}>
-            📥 Xuất Excel
+          <button className="btn btn-white" onClick={handleExportCsv}>
+            📥 Xuất CSV
           </button>
           <button className="btn btn-primary" onClick={() => refetch?.()}>
             🔄 Tính Lương
@@ -208,13 +251,21 @@ const PayrollManagement = () => {
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
             >
-              <option value="all">🏢 Tất cả phòng ban</option>
-              <option value="Management">👔 Quản lý</option>
-              <option value="Kitchen">👨‍🍳 Bếp</option>
-              <option value="Service">🍽️ Phục vụ</option>
-              <option value="Cashier">💰 Thu ngân</option>
-              <option value="Cleaning">🧹 Vệ sinh</option>
-              <option value="Delivery">🛵 Giao hàng</option>
+              {departmentOptions.map((dep) => (
+                <option key={dep} value={dep}>
+                  {dep === "all" ? "🏢 Tất cả phòng ban" : dep}
+                </option>
+              ))}
+            </select>
+            <select
+              className="filter-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="net_desc">💰 Thực lĩnh giảm dần</option>
+              <option value="net_asc">💰 Thực lĩnh tăng dần</option>
+              <option value="name_asc">🔤 Tên A→Z</option>
+              <option value="name_desc">🔤 Tên Z→A</option>
             </select>
 
             <div className="search-box">
@@ -295,13 +346,8 @@ const PayrollManagement = () => {
               {!loading &&
                 filteredData.map((item) => {
                   const net = calculateNet(item);
-                  const totalIncome =
-                    (item.workDays > 0 ? item.baseSalary / item.workDays : 0) *
-                      item.actualWorkDays +
-                    item.allowance +
-                    item.bonus +
-                    item.overtime;
-                  const totalDeduct = item.deduction + item.advance;
+                  const totalIncome = Number(item.totalIncome || 0);
+                  const totalDeduct = Number(item.totalDeduction || 0);
                   const isSelected = selectedIds.includes(item.id);
 
                   return (
@@ -417,6 +463,7 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
                 {data.code} - {data.role}
               </p>
               <p>{data.department}</p>
+              <p>Hệ số lương: {Number(data.coefficient || 0).toFixed(2)}</p>
             </div>
             <div className="right">
               <div className="net-total-box">
@@ -469,13 +516,17 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
               </div>
               <div className="row">
                 <span>Phạt vi phạm</span>
-                <span>0 ₫</span>
+                <span>{formatCurrency(Math.max(0, Number(data.deduction || 0) - Number(data.advance || 0)))}</span>
               </div>
               <div className="row total text-danger">
                 <strong>Tổng khấu trừ</strong>
                 <strong>{formatCurrency(data.totalDeduct)}</strong>
               </div>
             </div>
+          </div>
+          <div className="formula-note">
+            Công thức: <strong>Thực lĩnh = Tổng thu nhập - Tổng khấu trừ</strong> (hệ số công kỳ này:{" "}
+            <strong>{Number(data.coefficient || 0).toFixed(2)}</strong>).
           </div>
         </div>
 

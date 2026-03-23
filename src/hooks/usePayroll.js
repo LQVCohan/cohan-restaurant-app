@@ -32,6 +32,10 @@ export const QUERY_STAFF_PAYROLL_OVERVIEW = gql`
         overtime
         deduction
         advance
+        coefficient
+        totalIncome
+        totalDeduction
+        netSalary
         status
       }
     }

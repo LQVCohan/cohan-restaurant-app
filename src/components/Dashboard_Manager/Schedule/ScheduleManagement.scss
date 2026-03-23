@@ -489,3 +489,25 @@ $danger: #ef4444;
     }
   }
 }
+
+@media (prefers-color-scheme: dark) {
+  .schedule-container {
+    .schedule-header,
+    .schedule-toolbar,
+    .schedule-board,
+    .schedule-day-column,
+    .day-body,
+    .shift-cell {
+      background: #111827 !important;
+      border-color: #374151 !important;
+      color: #e5e7eb !important;
+    }
+
+    .subtitle,
+    .week-label,
+    .toolbar-right select,
+    .toolbar-right button {
+      color: #cbd5e1 !important;
+    }
+  }
+}

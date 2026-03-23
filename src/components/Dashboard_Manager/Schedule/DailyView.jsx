@@ -35,7 +35,7 @@ const DailyView = ({ currentDate, shifts, staffList }) => {
   const groupedShifts = {
     morning: dayShifts.filter((s) => s.shiftType === "morning"),
     afternoon: dayShifts.filter((s) => s.shiftType === "afternoon"),
-    // night: dayShifts.filter(s => s.shiftType === 'night'), // Mở rộng nếu cần
+    evening: dayShifts.filter((s) => s.shiftType === "evening"),
   };
 
   return (
@@ -90,6 +90,23 @@ const DailyView = ({ currentDate, shifts, staffList }) => {
           </div>
           <div className="row-track">
             {groupedShifts.afternoon.map((shift) => (
+              <ShiftItem
+                key={shift.id}
+                shift={shift}
+                staffList={staffList}
+                getPos={getHorizontalPosition}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="timeline-row">
+          <div className="row-label">
+            <div className="icon afternoon">🌃</div>
+            <span>Ca Tối</span>
+          </div>
+          <div className="row-track">
+            {groupedShifts.evening.map((shift) => (
               <ShiftItem
                 key={shift.id}
                 shift={shift}

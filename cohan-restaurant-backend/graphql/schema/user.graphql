@@ -387,12 +387,46 @@ type StaffPayrollItem {
   overtime: Float!
   deduction: Float!
   advance: Float!
+  coefficient: Float!
+  totalIncome: Float!
+  totalDeduction: Float!
+  netSalary: Float!
   status: String!
 }
 
 type StaffPayrollOverview {
   stats: PayrollStats!
   items: [StaffPayrollItem!]!
+}
+
+type StaffScheduleShift {
+  id: ID!
+  employeeId: ID!
+  employeeName: String
+  restaurantId: ID!
+  shiftType: String!
+  startTime: DateTime!
+  endTime: DateTime!
+  status: String!
+  notes: String
+}
+
+input CreateStaffShiftInput {
+  employeeId: ID!
+  restaurantId: ID!
+  shiftType: ShiftType!
+  startTime: DateTime!
+  endTime: DateTime!
+  status: String
+  notes: String
+}
+
+input UpdateStaffShiftInput {
+  shiftType: ShiftType
+  startTime: DateTime
+  endTime: DateTime
+  status: String
+  notes: String
 }
 
 # =========================
@@ -423,6 +457,14 @@ type Query {
     endDate: DateTime!
     restaurantId: ID
   ): StaffPayrollOverview!
+  staffShifts(
+    restaurantId: ID
+    employeeId: ID
+    startDate: DateTime
+    endDate: DateTime
+    status: String
+    limit: Int = 500
+  ): [StaffScheduleShift!]!
 }
 
 # =========================
@@ -474,4 +516,8 @@ type Mutation {
     userId: ID!
     employmentStatus: EmploymentStatus!
   ): User!
+
+  createStaffShift(input: CreateStaffShiftInput!): StaffScheduleShift!
+  updateStaffShift(shiftId: ID!, input: UpdateStaffShiftInput!): StaffScheduleShift!
+  deleteStaffShift(shiftId: ID!): Boolean!
 }
