@@ -7,6 +7,7 @@
     justify-content: space-between;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
 
     h2 {
       margin: 0;
@@ -19,6 +20,24 @@
       border: 1px solid #d4d4d8;
       border-radius: 8px;
       background: #fff;
+    }
+  }
+
+  &__filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+
+    input,
+    button {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #d4d4d8;
+      background: #fff;
+    }
+
+    button {
+      cursor: pointer;
     }
   }
 
@@ -88,6 +107,23 @@
         border-bottom: 1px dashed #e4e4e7;
         padding-bottom: 6px;
       }
+    }
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .manager-reports-page {
+    background: #0f172a;
+    color: #e2e8f0;
+
+    .manager-reports-page__header select,
+    .manager-reports-page__filters input,
+    .manager-reports-page__filters button,
+    .manager-reports-page__cards article,
+    .manager-reports-page__grid section {
+      background: #111827;
+      color: #e2e8f0;
+      border-color: #334155;
     }
   }
 }

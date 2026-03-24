@@ -10,6 +10,7 @@ import OrderManagement from "../components/Dashboard_Manager/Order/OrderManageme
 import MenuManagement from "../components/Dashboard_Manager/Menu/MenuManagement";
 import TableManagement from "../components/Dashboard_Manager/Table/TableManagement";
 import CustomerManagement from "../components/Dashboard_Manager/Customer/CustomerManagement";
+import CustomerAnalyticsPage from "../components/Dashboard_Manager/Customer/CustomerAnalyticsPage";
 import PromotionManagement from "../components/Dashboard_Manager/Promotion/PromotionManagement";
 import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/PayrollManagement";
 import "./ManagerLayout.scss";
@@ -41,6 +42,7 @@ const VALID_MANAGER_PAGES = new Set([
   "inventory",
   "staff",
   "customers",
+  "customer-analytics",
   "analytics",
   "transactions",
   "reports",
@@ -65,6 +67,30 @@ const resolveInitialManagerPage = () => {
   if (saved && VALID_MANAGER_PAGES.has(saved)) return saved;
 
   return "dashboard";
+};
+
+const PAGE_TITLES = {
+  dashboard: "Tổng quan",
+  tables: "Quản lý bàn",
+  orders: "Quản lý đơn hàng",
+  menu: "Quản lý menu",
+  inventory: "Quản lý kho",
+  staff: "Quản lý nhân viên",
+  customers: "Quản lý khách hàng",
+  "customer-analytics": "Phân tích khách hàng",
+  analytics: "Phân tích kinh doanh",
+  reports: "Báo cáo",
+  finance: "Tài chính",
+  schedules: "Lịch làm việc",
+  promotions: "Khuyến mãi",
+  payroll: "Bảng lương",
+  reviews: "Đánh giá khách hàng",
+  "print-management": "Quản lý in ấn",
+  "restaurant-info-management": "Thông tin nhà hàng",
+  settings: "Cài đặt",
+  rates: "Cài đặt",
+  setting: "Cài đặt",
+  backup: "Cài đặt",
 };
 
 const ManagerLayout = () => {
@@ -105,34 +131,6 @@ const ManagerLayout = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, [sidebarOpen]);
 
-  const notifications = [
-    {
-      id: 1,
-      title: "Đơn hàng mới #1234",
-      message: "Bàn 5 vừa đặt 2 món phở bò",
-      time: "2 phút trước",
-      type: "primary",
-      icon: "🛒",
-      read: false,
-    },
-    {
-      id: 2,
-      title: "Nhân viên chấm công",
-      message: "Nguyễn Văn A đã check-in lúc 8:00",
-      time: "15 phút trước",
-      type: "success",
-      icon: "👤",
-      read: false,
-    },
-  ];
-
-  const user = {
-    name: "Nguyễn Quản Lý",
-    role: "Quản lý cửa hàng",
-    email: "manager@restaurant.com",
-    avatar: "👨‍💼",
-  };
-
   const toggleSidebar = () => {
     setSidebarOpen((prev) => !prev);
   };
@@ -156,6 +154,8 @@ const ManagerLayout = () => {
         return <StaffManagement />;
       case "customers":
         return <CustomerManagement />;
+      case "customer-analytics":
+        return <CustomerAnalyticsPage />;
       case "analytics":
         return <ManagerAnalyst />;
 
@@ -209,11 +209,10 @@ const ManagerLayout = () => {
         {/* Header */}
         <div className="manager-layout__header">
           <Header
-            pageTitle={currentPage}
+            pageTitle={PAGE_TITLES[currentPage] || "Trang quản trị"}
             onToggleSidebar={toggleSidebar}
             sidebarOpen={sidebarOpen}
-            notifications={notifications}
-            user={user}
+            notifications={[]}
           />
         </div>
 

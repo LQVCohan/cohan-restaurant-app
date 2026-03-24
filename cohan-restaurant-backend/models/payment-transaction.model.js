@@ -11,7 +11,7 @@ const TransactionSchema = BaseSchemaModel(
     userId: { type: Types.ObjectId, ref: "User" },
     method: {
       type: String,
-      enum: ["cash", "card", "transfer", "other"],
+      enum: ["cash", "card", "transfer", "bank_transfer", "e_wallet", "other"],
       required: true,
     },
     paidAmount: { type: Number, required: true },
@@ -19,7 +19,7 @@ const TransactionSchema = BaseSchemaModel(
     currency: { type: String, default: "VND" },
     status: {
       type: String,
-      enum: ["SUCCESS", "PENDING", "FAILED"],
+      enum: ["SUCCESS", "PENDING", "FAILED", "CANCELED"],
       default: "SUCCESS",
     },
     txnRef: { type: String }, // Mã giao dịch từ bên thứ 3 (VD: VNPay)

@@ -10,7 +10,12 @@ const EmployeeDashboard = ({
   onEditEmployee,
   onViewHistory,
   onDeleteEmployee,
-  // onPageChange: Không cần thiết nữa vì EmployeeList tự xử lý phân trang nội bộ
+  onSetOnLeave,
+  onSetWorking,
+  onLockAccount,
+  onUnlockAccount,
+  onRateStaff,
+  loading = false,
 }) => {
   const handleCalculateSalary = () => {
     alert("💰 Tính lương tháng cho nhân viên...\n(Tính năng demo)");
@@ -24,6 +29,7 @@ const EmployeeDashboard = ({
           employees={employees}
           selectedEmployee={selectedEmployee}
           onEmployeeSelect={onEmployeeSelect}
+          loading={loading}
         />
       </div>
 
@@ -35,6 +41,11 @@ const EmployeeDashboard = ({
           onViewHistory={onViewHistory}
           onCalculateSalary={handleCalculateSalary}
           onDelete={onDeleteEmployee}
+          onSetOnLeave={onSetOnLeave}
+          onSetWorking={onSetWorking}
+          onLockAccount={onLockAccount}
+          onUnlockAccount={onUnlockAccount}
+          onRate={onRateStaff}
         />
       </div>
     </div>

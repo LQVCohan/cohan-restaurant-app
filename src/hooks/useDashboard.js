@@ -1,73 +1,135 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useCallback, useContext, useMemo, useState } from "react";
+import { gql, useQuery } from "@apollo/client";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
+
+const GET_MANAGER_DASHBOARD = gql`
+  query GetManagerDashboard($restaurantId: ID!, $range: String) {
+    managerDashboard(restaurantId: $restaurantId, range: $range) {
+      restaurantId
+      revenue
+      orders
+      customers
+      tables
+      menuItems
+      activePromotions
+      workingStaff
+      statusCounts {
+        pending
+        preparing
+        completed
+        cancelled
+      }
+      revenueTrend {
+        key
+        current
+        previous
+      }
+      orderTrend {
+        key
+        current
+        previous
+      }
+      topDishes {
+        dishName
+        quantity
+        revenue
+      }
+      recentOrders {
+        id
+        orderCode
+        customerName
+        orderType
+        tableCode
+        status
+        total
+        createdAt
+        itemNames
+      }
+      lowStockItems {
+        id
+        name
+        onHand
+        reserved
+      }
+    }
+  }
+`;
+
+const formatMoney = (value) =>
+  new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+
 export const useDashboard = () => {
-  const [selectedRestaurant, setSelectedRestaurant] = useState("all");
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    revenue: "₫24.8M",
-    orders: 156,
-    customers: 89,
-    rating: 4.8,
+  const { restaurants = [] } = useContext(AuthContext) || {};
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState(
+    restaurants?.[0]?.id || ""
+  );
+  const [range, setRange] = useState("week");
+
+  const { data, loading, error, refetch } = useQuery(GET_MANAGER_DASHBOARD, {
+    skip: !selectedRestaurantId,
+    variables: { restaurantId: selectedRestaurantId, range },
+    fetchPolicy: "network-only",
   });
 
-  const statsData = {
-    all: { revenue: "₫24.8M", orders: 156, customers: 89, rating: 4.8 },
-    "hcm-center": { revenue: "₫8.2M", orders: 52, customers: 28, rating: 4.9 },
-    "hcm-district7": {
-      revenue: "₫6.1M",
-      orders: 38,
-      customers: 21,
-      rating: 4.7,
-    },
-    "hcm-thuduc": { revenue: "₫4.8M", orders: 31, customers: 18, rating: 4.8 },
-    "hanoi-center": {
-      revenue: "₫3.2M",
-      orders: 22,
-      customers: 15,
-      rating: 4.6,
-    },
-    "hanoi-caugiay": {
-      revenue: "₫2.1M",
-      orders: 13,
-      customers: 7,
-      rating: 4.9,
-    },
-    "danang-center": { revenue: "₫0.4M", orders: 0, customers: 0, rating: 5.0 },
-  };
+  const dashboard = data?.managerDashboard;
 
-  const updateStats = useCallback((restaurantId) => {
-    const newStats = statsData[restaurantId] || statsData["all"];
-    setStats(newStats);
-  }, []);
+  const stats = useMemo(() => {
+    return {
+      revenue: formatMoney(dashboard?.revenue || 0),
+      orders: dashboard?.orders || 0,
+      customers: dashboard?.customers || 0,
+      tables: dashboard?.tables || 0,
+      menuItems: dashboard?.menuItems || 0,
+      promotions: dashboard?.activePromotions || 0,
+      staff: dashboard?.workingStaff || 0,
+      statusCounts: dashboard?.statusCounts || {
+        pending: 0,
+        preparing: 0,
+        completed: 0,
+        cancelled: 0,
+      },
+    };
+  }, [dashboard]);
 
-  const handleRestaurantChange = useCallback(
-    (restaurantId) => {
-      setSelectedRestaurant(restaurantId);
-      updateStats(restaurantId);
-    },
-    [updateStats]
+  const selectedRestaurant = useMemo(
+    () => restaurants.find((x) => x.id === selectedRestaurantId) || null,
+    [restaurants, selectedRestaurantId]
   );
 
-  const handleSwitchToPOS = () => {
-    navigate("/manager/dashboard/POS");
-  };
-
-  const handleGenerateReport = useCallback(() => {
-    alert("📈 Đang tạo báo cáo tổng hợp...\n(Tính năng demo)");
+  const handleRestaurantChange = useCallback((restaurantId) => {
+    setSelectedRestaurantId(restaurantId);
   }, []);
 
-  // Real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      updateStats(selectedRestaurant);
-    }, 30000);
+  const handleSwitchToPOS = useCallback(() => {
+    navigate("/manager/dashboard/POS");
+  }, [navigate]);
 
-    return () => clearInterval(interval);
-  }, [selectedRestaurant, updateStats]);
+  const handleGenerateReport = useCallback(() => {
+    if (selectedRestaurantId) {
+      refetch({ restaurantId: selectedRestaurantId, range });
+    }
+  }, [refetch, selectedRestaurantId, range]);
 
   return {
     selectedRestaurant,
+    restaurants,
+    selectedRestaurantId,
     stats,
+    loading,
+    error,
+    range,
+    setRange,
+    revenueTrend: dashboard?.revenueTrend || [],
+    orderTrend: dashboard?.orderTrend || [],
+    topDishes: dashboard?.topDishes || [],
+    recentOrders: dashboard?.recentOrders || [],
+    lowStockItems: dashboard?.lowStockItems || [],
     handleRestaurantChange,
     handleSwitchToPOS,
     handleGenerateReport,

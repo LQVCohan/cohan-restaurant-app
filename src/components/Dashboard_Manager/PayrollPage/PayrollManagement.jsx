@@ -1,162 +1,39 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState } from "react";
+import usePayroll from "@/hooks/usePayroll";
 import "./PayrollManagement.scss";
 
-// --- MOCK DATA: DỮ LIỆU LƯƠNG GIẢ LẬP ---
-const MOCK_PAYROLL = [
-  {
-    id: 1,
-    name: "Nguyễn Nhật Minh",
-    code: "NV001",
-    role: "Cửa hàng trưởng",
-    department: "Management",
-    avatar: "https://i.pravatar.cc/150?img=11",
-    baseSalary: 15000000,
-    workDays: 26,
-    actualWorkDays: 26,
-    allowance: 2000000,
-    bonus: 1500000,
-    overtime: 0,
-    deduction: 1050000,
-    advance: 0,
-    status: "paid",
-  },
-  {
-    id: 2,
-    name: "Trần Thị Thu Hà",
-    code: "NV002",
-    role: "Bếp chính",
-    department: "Kitchen",
-    avatar: "https://i.pravatar.cc/150?img=5",
-    baseSalary: 12000000,
-    workDays: 26,
-    actualWorkDays: 25,
-    allowance: 1000000,
-    bonus: 500000,
-    overtime: 1200000,
-    deduction: 800000,
-    advance: 2000000,
-    status: "approved",
-  },
-  {
-    id: 3,
-    name: "Lê Văn Cường",
-    code: "NV003",
-    role: "Phục vụ",
-    department: "Service",
-    avatar: null,
-    baseSalary: 7000000,
-    workDays: 26,
-    actualWorkDays: 26,
-    allowance: 500000,
-    bonus: 200000,
-    overtime: 0,
-    deduction: 0,
-    advance: 0,
-    status: "draft",
-  },
-  {
-    id: 4,
-    name: "Phạm Hoàng Yến",
-    code: "NV004",
-    role: "Thu ngân",
-    department: "Cashier",
-    avatar: "https://i.pravatar.cc/150?img=9",
-    baseSalary: 8500000,
-    workDays: 26,
-    actualWorkDays: 26,
-    allowance: 500000,
-    bonus: 300000,
-    overtime: 0,
-    deduction: 600000,
-    advance: 0,
-    status: "paid",
-  },
-  {
-    id: 5,
-    name: "Đỗ Minh Tuấn",
-    code: "NV005",
-    role: "Phụ bếp",
-    department: "Kitchen",
-    avatar: null,
-    baseSalary: 6000000,
-    workDays: 26,
-    actualWorkDays: 23,
-    allowance: 300000,
-    bonus: 0,
-    overtime: 500000,
-    deduction: 0,
-    advance: 1000000,
-    status: "pending",
-  },
-  {
-    id: 6,
-    name: "Vũ Thị Mai",
-    code: "NV006",
-    role: "Tạp vụ",
-    department: "Cleaning",
-    avatar: "https://i.pravatar.cc/150?img=24",
-    baseSalary: 6500000,
-    workDays: 26,
-    actualWorkDays: 26,
-    allowance: 200000,
-    bonus: 100000,
-    overtime: 0,
-    deduction: 0,
-    advance: 500000,
-    status: "draft",
-  },
-  {
-    id: 7,
-    name: "Hoàng Văn Em",
-    code: "NV007",
-    role: "Pha chế",
-    department: "Kitchen",
-    avatar: "https://i.pravatar.cc/150?img=32",
-    baseSalary: 9000000,
-    workDays: 26,
-    actualWorkDays: 26,
-    allowance: 500000,
-    bonus: 500000,
-    overtime: 200000,
-    deduction: 500000,
-    advance: 0,
-    status: "approved",
-  },
-];
+const getDefaultRange = () => {
+  const today = new Date();
+  const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 26);
+  const thisMonth = new Date(today.getFullYear(), today.getMonth(), 25);
+  return {
+    start: prevMonth.toISOString().split("T")[0],
+    end: thisMonth.toISOString().split("T")[0],
+  };
+};
 
 const PayrollManagement = () => {
-  // --- STATES ---
-  // Kỳ lương mặc định: 26 tháng trước -> 25 tháng này
-  const [dateRange, setDateRange] = useState(() => {
-    const today = new Date();
-    const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 26);
-    const thisMonth = new Date(today.getFullYear(), today.getMonth(), 25);
-    return {
-      start: prevMonth.toISOString().split("T")[0],
-      end: thisMonth.toISOString().split("T")[0],
-    };
+  const [dateRange, setDateRange] = useState(getDefaultRange);
+  const [activeTab, setActiveTab] = useState("all");
+  const [deptFilter, setDeptFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("net_desc");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [showPayslip, setShowPayslip] = useState(null);
+
+  const { payrollItems, payrollStats, loading, error, refetch } = usePayroll({
+    startDate: dateRange.start,
+    endDate: dateRange.end,
   });
 
-  const [activeTab, setActiveTab] = useState("all"); // Filter trạng thái
-  const [deptFilter, setDeptFilter] = useState("all"); // Filter phòng ban
-  const [searchQuery, setSearchQuery] = useState(""); // Tìm kiếm
-  const [selectedIds, setSelectedIds] = useState([]); // Checkbox chọn nhiều
-  const [showPayslip, setShowPayslip] = useState(null); // Modal chi tiết
-
-  // --- HELPERS ---
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
-    }).format(amount);
+      maximumFractionDigits: 0,
+    }).format(Number(amount || 0));
 
-  const calculateNet = (emp) => {
-    const dailyWage = emp.baseSalary / emp.workDays;
-    const income =
-      dailyWage * emp.actualWorkDays + emp.allowance + emp.bonus + emp.overtime;
-    const deduction = emp.deduction + emp.advance;
-    return income - deduction;
-  };
+  const calculateNet = (emp) => Number(emp.netSalary || 0);
 
   const getStatusBadge = (status) => {
     const map = {
@@ -171,34 +48,49 @@ const PayrollManagement = () => {
 
   const getAvatarColor = (name) => {
     const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
-    return colors[name.length % colors.length];
+    return colors[String(name || "").length % colors.length];
   };
 
-  // --- FILTERING LOGIC ---
+  const departmentOptions = useMemo(() => {
+    const set = new Set(payrollItems.map((item) => item.department).filter(Boolean));
+    return ["all", ...Array.from(set)];
+  }, [payrollItems]);
+
   const filteredData = useMemo(() => {
-    return MOCK_PAYROLL.filter((item) => {
+    const list = payrollItems.filter((item) => {
       const matchTab = activeTab === "all" || item.status === activeTab;
       const matchDept = deptFilter === "all" || item.department === deptFilter;
+      const q = searchQuery.toLowerCase();
       const matchSearch =
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.code.toLowerCase().includes(searchQuery.toLowerCase());
+        String(item.name || "").toLowerCase().includes(q) ||
+        String(item.code || "").toLowerCase().includes(q);
       return matchTab && matchDept && matchSearch;
     });
-  }, [activeTab, deptFilter, searchQuery]);
+    if (sortBy === "name_asc") list.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    else if (sortBy === "name_desc") list.sort((a, b) => String(b.name).localeCompare(String(a.name)));
+    else if (sortBy === "net_asc") list.sort((a, b) => Number(a.netSalary || 0) - Number(b.netSalary || 0));
+    else list.sort((a, b) => Number(b.netSalary || 0) - Number(a.netSalary || 0));
+    return list;
+  }, [payrollItems, activeTab, deptFilter, searchQuery, sortBy]);
 
-  // --- STATISTICS LOGIC ---
   const stats = useMemo(() => {
+    if (payrollStats) {
+      return {
+        totalPayroll: Number(payrollStats.totalPayroll || 0),
+        paidAmount: Number(payrollStats.paidAmount || 0),
+        remaining: Number(payrollStats.remaining || 0),
+        progress: Number(payrollStats.progress || 0),
+      };
+    }
+
     let totalPayroll = 0;
     let paidAmount = 0;
-
-    MOCK_PAYROLL.forEach((emp) => {
-      const net = calculateNet(emp);
+    for (const emp of payrollItems) {
+      const net = Number(emp.netSalary || 0);
       totalPayroll += net;
       if (emp.status === "paid") paidAmount += net;
-    });
-
-    const progress =
-      totalPayroll > 0 ? Math.round((paidAmount / totalPayroll) * 100) : 0;
+    }
+    const progress = totalPayroll > 0 ? Math.round((paidAmount / totalPayroll) * 100) : 0;
 
     return {
       totalPayroll,
@@ -206,9 +98,8 @@ const PayrollManagement = () => {
       remaining: totalPayroll - paidAmount,
       progress,
     };
-  }, []);
+  }, [payrollStats, payrollItems]);
 
-  // --- HANDLERS ---
   const handleSelectAll = (e) => {
     if (e.target.checked) setSelectedIds(filteredData.map((i) => i.id));
     else setSelectedIds([]);
@@ -223,16 +114,53 @@ const PayrollManagement = () => {
   const handleDateChange = (e) => {
     const { name, value } = e.target;
     setDateRange((prev) => ({ ...prev, [name]: value }));
+    setSelectedIds([]);
+  };
+
+  const handleExportCsv = () => {
+    const header = [
+      "ID",
+      "Tên",
+      "Mã NV",
+      "Phòng ban",
+      "Lương cơ bản",
+      "Hệ số",
+      "Tổng thu nhập",
+      "Tổng khấu trừ",
+      "Thực lĩnh",
+      "Trạng thái",
+    ].join(",");
+    const rows = filteredData.map((item) =>
+      [
+        item.id,
+        `"${item.name || ""}"`,
+        item.code || "",
+        item.department || "",
+        Number(item.baseSalary || 0),
+        Number(item.coefficient || 0),
+        Number(item.totalIncome || 0),
+        Number(item.totalDeduction || 0),
+        Number(item.netSalary || 0),
+        item.status || "",
+      ].join(","),
+    );
+    const blob = new Blob([[header, ...rows].join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "payroll_export.csv";
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
     <div className="payroll-page-compact">
-      {/* 1. HEADER & CYCLE PICKER */}
       <div className="header-toolbar">
         <div className="left-section">
           <h2 className="page-title">Bảng Lương</h2>
 
-          {/* Chọn chu kỳ lương */}
           <div className="cycle-picker-compact">
             <div className="input-group">
               <span className="label">Từ:</span>
@@ -257,43 +185,30 @@ const PayrollManagement = () => {
         </div>
 
         <div className="right-actions">
-          <button
-            className="btn btn-white"
-            onClick={() => alert("Xuất file Excel thành công!")}
-          >
-            📥 Xuất Excel
+          <button className="btn btn-white" onClick={handleExportCsv}>
+            📥 Xuất CSV
           </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => alert("Đang tính toán lại lương...")}
-          >
+          <button className="btn btn-primary" onClick={() => refetch?.()}>
             🔄 Tính Lương
           </button>
         </div>
       </div>
 
-      {/* 2. METRICS STRIP (Thống kê) */}
       <div className="metrics-strip">
         <div className="metric-group">
           <div className="metric-item">
             <span className="label">Tổng quỹ lương</span>
-            <span className="value highlight">
-              {formatCurrency(stats.totalPayroll)}
-            </span>
+            <span className="value highlight">{formatCurrency(stats.totalPayroll)}</span>
           </div>
           <div className="separator"></div>
           <div className="metric-item">
             <span className="label">Đã chi trả</span>
-            <span className="value success">
-              {formatCurrency(stats.paidAmount)}
-            </span>
+            <span className="value success">{formatCurrency(stats.paidAmount)}</span>
           </div>
           <div className="separator"></div>
           <div className="metric-item">
             <span className="label">Còn lại</span>
-            <span className="value danger">
-              {formatCurrency(stats.remaining)}
-            </span>
+            <span className="value danger">{formatCurrency(stats.remaining)}</span>
           </div>
         </div>
 
@@ -303,19 +218,13 @@ const PayrollManagement = () => {
             <strong>{stats.progress}%</strong>
           </div>
           <div className="progress-track">
-            <div
-              className="progress-fill"
-              style={{ width: `${stats.progress}%` }}
-            ></div>
+            <div className="progress-fill" style={{ width: `${stats.progress}%` }}></div>
           </div>
         </div>
       </div>
 
-      {/* 3. MAIN DATA TABLE */}
       <div className="table-card">
-        {/* Table Controls: Tabs, Filter, Search */}
         <div className="table-controls">
-          {/* Left: Tabs */}
           <div className="left-controls">
             <div className="workflow-tabs">
               {[
@@ -336,19 +245,27 @@ const PayrollManagement = () => {
             </div>
           </div>
 
-          {/* Right: Filter & Search */}
           <div className="right-controls">
             <select
               className="filter-select"
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
             >
-              <option value="all">🏢 Tất cả phòng ban</option>
-              <option value="Management">👔 Quản lý</option>
-              <option value="Kitchen">👨‍🍳 Bếp</option>
-              <option value="Service">🍽️ Phục vụ</option>
-              <option value="Cashier">💰 Thu ngân</option>
-              <option value="Cleaning">🧹 Vệ sinh</option>
+              {departmentOptions.map((dep) => (
+                <option key={dep} value={dep}>
+                  {dep === "all" ? "🏢 Tất cả phòng ban" : dep}
+                </option>
+              ))}
+            </select>
+            <select
+              className="filter-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="net_desc">💰 Thực lĩnh giảm dần</option>
+              <option value="net_asc">💰 Thực lĩnh tăng dần</option>
+              <option value="name_asc">🔤 Tên A→Z</option>
+              <option value="name_desc">🔤 Tên Z→A</option>
             </select>
 
             <div className="search-box">
@@ -362,50 +279,29 @@ const PayrollManagement = () => {
             </div>
           </div>
 
-          {/* Bulk Actions Overlay (Hiện khi chọn dòng) */}
           {selectedIds.length > 0 && (
             <div className="bulk-actions">
-              <span className="count">
-                Đã chọn {selectedIds.length} nhân viên
-              </span>
+              <span className="count">Đã chọn {selectedIds.length} nhân viên</span>
               <div className="actions">
-                <button
-                  className="btn-xs btn-white"
-                  onClick={() => setSelectedIds([])}
-                >
+                <button className="btn-xs btn-white" onClick={() => setSelectedIds([])}>
                   Bỏ chọn
-                </button>
-                <button
-                  className="btn-xs btn-primary"
-                  onClick={() => alert("Đã gửi phiếu lương qua Email!")}
-                >
-                  📧 Gửi Email
-                </button>
-                <button
-                  className="btn-xs btn-success"
-                  onClick={() => alert("Đã xác nhận thanh toán!")}
-                >
-                  💰 Thanh toán
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Table Responsive Wrapper */}
+        {error && <div className="table-empty">Không tải được dữ liệu bảng lương.</div>}
+
         <div className="table-responsive">
           <table className="payroll-table">
             <thead>
               <tr>
-                {/* Set width cứng cho th để fix layout */}
                 <th style={{ width: "50px" }} className="center">
                   <input
                     type="checkbox"
                     onChange={handleSelectAll}
-                    checked={
-                      selectedIds.length === filteredData.length &&
-                      filteredData.length > 0
-                    }
+                    checked={selectedIds.length === filteredData.length && filteredData.length > 0}
                   />
                 </th>
                 <th style={{ width: "250px" }} className="sticky-left">
@@ -431,95 +327,99 @@ const PayrollManagement = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredData.map((item) => {
-                const net = calculateNet(item);
-                const totalIncome =
-                  (item.baseSalary / item.workDays) * item.actualWorkDays +
-                  item.allowance +
-                  item.bonus +
-                  item.overtime;
-                const totalDeduct = item.deduction + item.advance;
-                const isSelected = selectedIds.includes(item.id);
+              {loading && (
+                <tr>
+                  <td colSpan={9} className="table-empty">
+                    Đang tải dữ liệu bảng lương...
+                  </td>
+                </tr>
+              )}
 
-                return (
-                  <tr
-                    key={item.id}
-                    className={isSelected ? "selected" : ""}
-                    onClick={() =>
-                      setShowPayslip({ ...item, net, totalIncome, totalDeduct })
-                    }
-                  >
-                    <td className="center" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleSelectRow(item.id)}
-                      />
-                    </td>
+              {!loading && filteredData.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="table-empty">
+                    Không có dữ liệu phù hợp.
+                  </td>
+                </tr>
+              )}
 
-                    <td className="sticky-left">
-                      <div className="emp-cell">
-                        <div
-                          className="avatar"
-                          style={{
-                            backgroundColor: !item.avatar
-                              ? getAvatarColor(item.name)
-                              : "transparent",
-                            backgroundImage: item.avatar
-                              ? `url(${item.avatar})`
-                              : "none",
-                          }}
-                        >
-                          {!item.avatar && item.name.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="name">{item.name}</div>
-                          <div className="sub">
-                            {item.code} • {item.department}
+              {!loading &&
+                filteredData.map((item) => {
+                  const net = calculateNet(item);
+                  const totalIncome = Number(item.totalIncome || 0);
+                  const totalDeduct = Number(item.totalDeduction || 0);
+                  const isSelected = selectedIds.includes(item.id);
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className={isSelected ? "selected" : ""}
+                      onClick={() =>
+                        setShowPayslip({ ...item, net, totalIncome, totalDeduct })
+                      }
+                    >
+                      <td className="center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleSelectRow(item.id)}
+                        />
+                      </td>
+
+                      <td className="sticky-left">
+                        <div className="emp-cell">
+                          <div
+                            className="avatar"
+                            style={{
+                              backgroundColor: !item.avatar
+                                ? getAvatarColor(item.name)
+                                : "transparent",
+                              backgroundImage: item.avatar ? `url(${item.avatar})` : "none",
+                            }}
+                          >
+                            {!item.avatar && item.name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="name">{item.name}</div>
+                            <div className="sub">
+                              {item.code || "—"} • {item.department}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td>{formatCurrency(item.baseSalary)}</td>
+                      <td>{formatCurrency(item.baseSalary)}</td>
 
-                    <td className="center">
-                      <span className="work-tag">
-                        {item.actualWorkDays}/{item.workDays}
-                      </span>
-                    </td>
+                      <td className="center">
+                        <span className="work-tag">
+                          {item.actualWorkDays}/{item.workDays}
+                        </span>
+                      </td>
 
-                    <td className="text-right text-success">
-                      +{formatCurrency(totalIncome)}
-                    </td>
-                    <td className="text-right text-danger">
-                      -{formatCurrency(totalDeduct)}
-                    </td>
+                      <td className="text-right text-success">+{formatCurrency(totalIncome)}</td>
+                      <td className="text-right text-danger">-{formatCurrency(totalDeduct)}</td>
 
-                    <td className="text-right net-cell">
-                      <strong>{formatCurrency(net)}</strong>
-                    </td>
+                      <td className="text-right net-cell">
+                        <strong>{formatCurrency(net)}</strong>
+                      </td>
 
-                    <td className="center">
-                      <div className="status-badge-wrapper">
-                        {getStatusBadge(item.status)}
-                      </div>
-                    </td>
+                      <td className="center">
+                        <div className="status-badge-wrapper">{getStatusBadge(item.status)}</div>
+                      </td>
 
-                    <td className="text-right action-cell">
-                      <button className="btn-icon" title="Xem phiếu lương">
-                        📄
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                      <td className="text-right action-cell">
+                        <button className="btn-icon" title="Xem phiếu lương">
+                          📄
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* 4. PAYSLIP MODAL */}
       {showPayslip && (
         <PayslipModal
           data={showPayslip}
@@ -532,7 +432,6 @@ const PayrollManagement = () => {
   );
 };
 
-// --- SUB-COMPONENT: PAYSLIP MODAL ---
 const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
   const formatDate = (d) =>
     new Date(d).toLocaleDateString("vi-VN", {
@@ -548,8 +447,7 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
           <div className="brand">
             <h3>PHIẾU LƯƠNG (PAYSLIP)</h3>
             <span>
-              Kỳ lương: {formatDate(dateRange.start)} -{" "}
-              {formatDate(dateRange.end)}
+              Kỳ lương: {formatDate(dateRange.start)} - {formatDate(dateRange.end)}
             </span>
           </div>
           <button className="close-btn" onClick={onClose}>
@@ -565,6 +463,7 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
                 {data.code} - {data.role}
               </p>
               <p>{data.department}</p>
+              <p>Hệ số lương: {Number(data.coefficient || 0).toFixed(2)}</p>
             </div>
             <div className="right">
               <div className="net-total-box">
@@ -575,7 +474,6 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
           </div>
 
           <div className="details-grid">
-            {/* Section Thu Nhập */}
             <div className="section">
               <h5 className="section-title income">Các Khoản Thu Nhập</h5>
               <div className="row">
@@ -585,9 +483,7 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
               <div className="row">
                 <span>Lương theo công ({data.actualWorkDays} ngày)</span>
                 <span>
-                  {formatCurrency(
-                    (data.baseSalary / data.workDays) * data.actualWorkDays
-                  )}
+                  {formatCurrency((data.workDays > 0 ? data.baseSalary / data.workDays : 0) * data.actualWorkDays)}
                 </span>
               </div>
               <div className="row">
@@ -608,7 +504,6 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
               </div>
             </div>
 
-            {/* Section Khấu Trừ */}
             <div className="section">
               <h5 className="section-title deduction">Các Khoản Khấu Trừ</h5>
               <div className="row">
@@ -621,7 +516,7 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
               </div>
               <div className="row">
                 <span>Phạt vi phạm</span>
-                <span>0 ₫</span>
+                <span>{formatCurrency(Math.max(0, Number(data.deduction || 0) - Number(data.advance || 0)))}</span>
               </div>
               <div className="row total text-danger">
                 <strong>Tổng khấu trừ</strong>
@@ -629,17 +524,15 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
               </div>
             </div>
           </div>
+          <div className="formula-note">
+            Công thức: <strong>Thực lĩnh = Tổng thu nhập - Tổng khấu trừ</strong> (hệ số công kỳ này:{" "}
+            <strong>{Number(data.coefficient || 0).toFixed(2)}</strong>).
+          </div>
         </div>
 
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>
             Đóng
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => alert("Đã gửi email!")}
-          >
-            📧 Gửi qua Email
           </button>
           <button className="btn btn-primary" onClick={() => window.print()}>
             🖨️ In Phiếu

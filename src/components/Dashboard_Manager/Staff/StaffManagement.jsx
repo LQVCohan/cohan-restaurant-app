@@ -69,7 +69,7 @@ const StaffManagement = () => {
     return () => {
       cancelled = true;
     };
-  }, [managerId]);
+  }, [managerId, getManagedRestaurantIds, getManagedRestaurants]);
 
   const {
     staffList,
@@ -140,7 +140,9 @@ const StaffManagement = () => {
           email: staff.email,
           phone: staff.phone,
           avatar: staff.avatarUrl,
-          startDate: new Date(staff.dateJoined).toLocaleDateString("vi-VN"),
+          startDate: staff.dateJoined
+            ? new Date(staff.dateJoined).toLocaleDateString("vi-VN")
+            : "---",
           shift: staff.shiftType || "Ca xoay",
           primaryRestaurantId: staff.primaryRestaurant?.id,
           raw: staff,
@@ -188,6 +190,15 @@ const StaffManagement = () => {
     rate: rateStaff,
   };
 
+
+  useEffect(() => {
+    if (!selectedEmployee) return;
+    const stillVisible = mappedStaff.some(
+      (item) => item.id === selectedEmployee.id,
+    );
+    if (!stillVisible) setSelectedEmployee(null);
+  }, [mappedStaff, selectedEmployee]);
+
   const isLoading = staffListLoading || restaurantLoading;
 
   return (
@@ -210,9 +221,8 @@ const StaffManagement = () => {
             onPageChange={setCurrentPage}
             isCollapsed={isHeaderCollapsed}
             onToggle={toggleHeader}
-            // Props tìm kiếm (nếu StaffHeader hỗ trợ)
             searchValue={searchQuery}
-            // Lưu ý: Cần update StaffHeader để nhận input onChange và gọi setSearchQuery
+            onSearchChange={setSearchQuery}
           />
         </header>
 

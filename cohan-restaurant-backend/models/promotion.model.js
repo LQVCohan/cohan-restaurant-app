@@ -6,6 +6,7 @@ const baseOptions = { timestamps: true };
 const PromotionSchema = new Schema(
   {
     name: { type: String, required: true },
+    code: { type: String, trim: true, uppercase: true },
     description: String,
     scope: {
       type: String,
@@ -21,6 +22,12 @@ const PromotionSchema = new Schema(
       default: "PERCENT",
     },
     discountValue: { type: Number, required: true },
+    minOrderValue: { type: Number, default: 0 },
+    maxDiscount: { type: Number, default: 0 },
+    usageLimit: { type: Number, default: 0 },
+    usageCount: { type: Number, default: 0 },
+    targetAudience: { type: String, default: "all" },
+    conditions: [{ type: String }],
     startAt: Date,
     endAt: Date,
     isActive: { type: Boolean, default: true },

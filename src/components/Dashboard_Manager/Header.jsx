@@ -1,5 +1,6 @@
 // src/layout/Header.jsx (ví dụ đường dẫn)
 import React, { useState, useEffect, useRef, useContext, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import SearchBox from "../SearchBox/SearchBox";
 import {
   FiBell,
@@ -41,12 +42,27 @@ const Header = ({
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [localNotifications, setLocalNotifications] = useState(notifications);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("manager.darkMode") === "1";
+  });
 
   // Refs cho các container dropdown
   const notificationRef = useRef(null);
   const userMenuRef = useRef(null);
 
-  const { user } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setLocalNotifications(Array.isArray(notifications) ? notifications : []);
+  }, [notifications]);
+
+  useEffect(() => {
+    document.body.classList.toggle("manager-dark-mode", isDarkMode);
+    localStorage.setItem("manager.darkMode", isDarkMode ? "1" : "0");
+  }, [isDarkMode]);
 
   // Chuẩn hoá user + fallback an toàn
   const normalizeUser = useMemo(() => {
@@ -112,7 +128,7 @@ const Header = ({
       year: "numeric",
     });
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = localNotifications.filter((n) => !n.read).length;
 
   const handleToggleSidebar = () => {
     if (onToggleSidebar) onToggleSidebar();
@@ -129,13 +145,27 @@ const Header = ({
   };
 
   const markAllAsRead = () => {
-    console.log("Mark all notifications as read");
-    // TODO: thêm logic setState từ cha nếu cần
+    setLocalNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
   };
 
   const handleLogout = () => {
-    console.log("User logged out");
-    // TODO: gọi hàm logout từ AuthContext hoặc hook
+    logout?.();
+    setShowUserMenu(false);
+  };
+
+  const toggleDarkMode = () => {
+    setIsDarkMode((prev) => !prev);
+  };
+
+  const goToManagerPage = (hash) => {
+    window.location.hash = hash;
+    setShowUserMenu(false);
+    setShowNotifications(false);
+  };
+
+  const goToSupport = () => {
+    navigate("/contact");
+    setShowUserMenu(false);
   };
 
   return (
@@ -211,8 +241,8 @@ const Header = ({
                   </button>
                 </div>
                 <div className="notification-list">
-                  {notifications.length > 0 ? (
-                    notifications.map((notification, index) => (
+                  {localNotifications.length > 0 ? (
+                    localNotifications.map((notification, index) => (
                       <div
                         key={index}
                         className={`notification-item ${
@@ -287,42 +317,48 @@ const Header = ({
                 </div>
 
                 <div className="user-menu-items">
-                  <button className="user-menu-item">
+                  <button
+                    className="user-menu-item"
+                    onClick={() => goToManagerPage("restaurant-info-management")}
+                  >
                     <span className="menu-icon">
                       <FiUser />
                     </span>
                     <span>Thông tin cá nhân</span>
                   </button>
-                  <button className="user-menu-item">
+                  <button
+                    className="user-menu-item"
+                    onClick={() => goToManagerPage("restaurant-info-management")}
+                  >
                     <span className="menu-icon">
                       <FiSettings />
                     </span>
                     <span>Cài đặt tài khoản</span>
                   </button>
-                  <button className="user-menu-item">
+                  <button className="user-menu-item" onClick={toggleDarkMode}>
                     <span className="menu-icon">
                       <FiMoon />
                     </span>
-                    <span>Chế độ tối</span>
+                    <span>{isDarkMode ? "Chế độ sáng" : "Chế độ tối"}</span>
                   </button>
-                  <button className="user-menu-item">
+                  <button className="user-menu-item" onClick={handleNotificationClick}>
                     <span className="menu-icon">
                       <FiBell />
                     </span>
                     <span>Cài đặt thông báo</span>
                   </button>
                   <div className="menu-divider"></div>
-                  <button className="user-menu-item">
+                  <button className="user-menu-item" onClick={goToSupport}>
                     <span className="menu-icon">
                       <FiHelpCircle />
                     </span>
                     <span>Trợ giúp & Hỗ trợ</span>
                   </button>
-                  <button className="user-menu-item">
+                  <button className="user-menu-item" onClick={() => goToManagerPage("dashboard")}>
                     <span className="menu-icon">
                       <FiCommand />
                     </span>
-                    <span>Phím tắt</span>
+                    <span>Về trang tổng quan</span>
                   </button>
                   <div className="menu-divider"></div>
                   <button

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import { PRINT_STATIONS } from "@/utils/printStations";
@@ -13,10 +13,18 @@ import {
   Server,
   Check,
   Power,
+  RotateCcw,
+  FileText,
+  Send,
 } from "lucide-react";
 import "./PrintManagement.scss";
 
-// --- GRAPHQL (Đã fix lỗi dấu chấm phẩy) ---
+const DEFAULT_TEMPLATES = [
+  { key: "kitchen", name: "Phiếu bếp", enabled: true, content: "[KITCHEN] {{orderCode}}" },
+  { key: "bar", name: "Phiếu bar", enabled: true, content: "[BAR] {{orderCode}}" },
+  { key: "receipt", name: "Hóa đơn", enabled: true, content: "[RECEIPT] {{orderCode}}" },
+];
+
 const Q_PRINT_SETTINGS = gql`
   query PrintSettings($restaurantId: ID!) {
     printSettings(restaurantId: $restaurantId) {
@@ -24,6 +32,28 @@ const Q_PRINT_SETTINGS = gql`
       restaurantId
       printers
       stations
+      templates {
+        key
+        name
+        enabled
+        content
+        updatedAt
+      }
+      jobs {
+        id
+        printerId
+        printerName
+        stationId
+        printType
+        templateKey
+        status
+        error
+        retryCount
+        payload
+        createdAt
+        updatedAt
+      }
+      updatedAt
     }
   }
 `;
@@ -35,6 +65,53 @@ const M_UPSERT_PRINT_SETTINGS = gql`
       restaurantId
       printers
       stations
+      templates {
+        key
+        name
+        enabled
+        content
+        updatedAt
+      }
+      updatedAt
+    }
+  }
+`;
+
+const M_TEST_PRINT = gql`
+  mutation TestPrint($input: TestPrintInput!) {
+    testPrint(input: $input) {
+      id
+      printerId
+      status
+      error
+      createdAt
+    }
+  }
+`;
+
+const M_RETRY_PRINT_JOB = gql`
+  mutation RetryPrintJob($input: RetryPrintJobInput!) {
+    retryPrintJob(input: $input) {
+      id
+      status
+      retryCount
+      updatedAt
+      error
+    }
+  }
+`;
+
+const M_ENQUEUE_PRINT_JOB = gql`
+  mutation EnqueuePrintJob($input: EnqueuePrintJobInput!) {
+    enqueuePrintJob(input: $input) {
+      id
+      printerId
+      printerName
+      printType
+      templateKey
+      status
+      error
+      createdAt
     }
   }
 `;
@@ -45,37 +122,47 @@ const buildStationDefaults = () =>
     return acc;
   }, {});
 
-const makePrinterId = () => `printer_${Date.now()}_${Math.random()}`;
+const makePrinterId = () => `printer_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+
+const normalizeTemplates = (templates) => {
+  const list = Array.isArray(templates) ? templates : [];
+  const byKey = new Map(list.map((t) => [t.key, t]));
+  return DEFAULT_TEMPLATES.map((t) => ({ ...t, ...(byKey.get(t.key) || {}) }));
+};
 
 export default function PrintManagement() {
   const { restaurants } = useContext(AuthContext);
-  const restaurantList = restaurants || [];
+  const restaurantList = useMemo(() => restaurants || [], [restaurants]);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [printers, setPrinters] = useState([]);
   const [stationMap, setStationMap] = useState(buildStationDefaults);
+  const [templates, setTemplates] = useState(DEFAULT_TEMPLATES);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState({});
-
   const hydrateRef = useRef(false);
   const debounceRef = useRef(null);
 
-  // --- LOGIC GIỮ NGUYÊN ---
   useEffect(() => {
     if (!selectedRestaurantId && restaurantList.length) {
-      setSelectedRestaurantId(
-        String(restaurantList[0].id ?? restaurantList[0].restaurantId),
-      );
+      setSelectedRestaurantId(String(restaurantList[0].id ?? restaurantList[0].restaurantId));
     }
   }, [restaurantList, selectedRestaurantId]);
 
-  const { data } = useQuery(Q_PRINT_SETTINGS, {
+  const { data, loading, error, refetch } = useQuery(Q_PRINT_SETTINGS, {
     variables: { restaurantId: selectedRestaurantId },
     skip: !selectedRestaurantId,
     fetchPolicy: "network-only",
   });
 
-  const [upsertPrintSettings] = useMutation(M_UPSERT_PRINT_SETTINGS);
+  const [upsertPrintSettings, { loading: saving }] = useMutation(M_UPSERT_PRINT_SETTINGS);
+  const [testPrint] = useMutation(M_TEST_PRINT);
+  const [retryPrintJob] = useMutation(M_RETRY_PRINT_JOB);
+  const [enqueuePrintJob] = useMutation(M_ENQUEUE_PRINT_JOB);
+
+  const jobs = useMemo(() => {
+    const list = data?.printSettings?.jobs || [];
+    return [...list].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [data]);
 
   useEffect(() => {
     if (!selectedRestaurantId) return;
@@ -83,14 +170,14 @@ export default function PrintManagement() {
     if (!settings) {
       setPrinters([]);
       setStationMap(buildStationDefaults());
+      setTemplates(DEFAULT_TEMPLATES);
       return;
     }
+
     hydrateRef.current = true;
     setPrinters(Array.isArray(settings?.printers) ? settings.printers : []);
-    setStationMap(settings?.stations || buildStationDefaults());
-    const fakeStatus = {};
-    (settings.printers || []).forEach((p) => (fakeStatus[p.id] = true));
-    setConnectionStatus(fakeStatus);
+    setStationMap({ ...buildStationDefaults(), ...(settings?.stations || {}) });
+    setTemplates(normalizeTemplates(settings?.templates));
     setTimeout(() => {
       hydrateRef.current = false;
     }, 0);
@@ -106,16 +193,18 @@ export default function PrintManagement() {
             restaurantId: selectedRestaurantId,
             printers,
             stations: stationMap,
+            templates,
           },
         },
       }).catch(() => {});
     }, 400);
-  }, [selectedRestaurantId, printers, stationMap, upsertPrintSettings]);
+  }, [selectedRestaurantId, printers, stationMap, templates, upsertPrintSettings]);
 
   const openAddPrinter = () => {
     setEditingPrinter(null);
     setSettingsModalOpen(true);
   };
+
   const openEditPrinter = (printer) => {
     setEditingPrinter(printer);
     setSettingsModalOpen(true);
@@ -126,13 +215,22 @@ export default function PrintManagement() {
     if (editingPrinter?.id) {
       setPrinters((prev) =>
         prev.map((p) =>
-          p.id === editingPrinter.id ? { ...p, ...payload } : p,
+          p.id === editingPrinter.id
+            ? { ...p, ...payload, status: p.status || "offline", updatedAt: new Date().toISOString() }
+            : p,
         ),
       );
     } else {
       const newId = makePrinterId();
-      setPrinters((prev) => [...prev, { ...payload, id: newId }]);
-      setConnectionStatus((prev) => ({ ...prev, [newId]: true }));
+      setPrinters((prev) => [
+        ...prev,
+        {
+          ...payload,
+          id: newId,
+          status: "offline",
+          updatedAt: new Date().toISOString(),
+        },
+      ]);
     }
     setSettingsModalOpen(false);
   };
@@ -142,9 +240,7 @@ export default function PrintManagement() {
     setPrinters((prev) => prev.filter((p) => p.id !== printerId));
     setStationMap((prev) => {
       const next = { ...prev };
-      Object.keys(next).forEach(
-        (k) => (next[k] = (next[k] || []).filter((id) => id !== printerId)),
-      );
+      Object.keys(next).forEach((k) => (next[k] = (next[k] || []).filter((id) => id !== printerId)));
       return next;
     });
   };
@@ -158,12 +254,72 @@ export default function PrintManagement() {
     });
   };
 
+  const handleTestPrinter = async (printer) => {
+    if (!selectedRestaurantId || !printer?.id) return;
+    await testPrint({
+      variables: {
+        input: {
+          restaurantId: selectedRestaurantId,
+          printerId: printer.id,
+        },
+      },
+    });
+    await refetch();
+  };
+
+  const handleRetryJob = async (jobId) => {
+    await retryPrintJob({
+      variables: {
+        input: {
+          restaurantId: selectedRestaurantId,
+          jobId,
+        },
+      },
+    });
+    await refetch();
+  };
+
+  const handleTemplateToggle = (key) => {
+    setTemplates((prev) =>
+      prev.map((t) => (t.key === key ? { ...t, enabled: !t.enabled, updatedAt: new Date().toISOString() } : t)),
+    );
+  };
+
+  const handleTemplateContent = (key, content) => {
+    setTemplates((prev) =>
+      prev.map((t) => (t.key === key ? { ...t, content, updatedAt: new Date().toISOString() } : t)),
+    );
+  };
+
+  const handleSendTemplateTest = async (templateKey) => {
+    const targetPrinter = printers.find((p) => p.status === "online") || printers[0];
+    if (!targetPrinter || !selectedRestaurantId) return;
+    await enqueuePrintJob({
+      variables: {
+        input: {
+          restaurantId: selectedRestaurantId,
+          printerId: targetPrinter.id,
+          stationId: targetPrinter.location,
+          printType: "manual_test",
+          templateKey,
+          payload: { source: "print_management" },
+        },
+      },
+    });
+    await refetch();
+  };
+
+  const statusText = (status) => {
+    if (status === "completed") return "Hoàn tất";
+    if (status === "failed") return "Thất bại";
+    if (status === "printing") return "Đang in";
+    return "Đang chờ";
+  };
+
   return (
     <div className="print-ui">
-      {/* BACKGROUND DECORATION */}
       <div className="print-ui__bg-circle"></div>
 
-      {/* HEADER */}
       <header className="print-ui__header">
         <div className="header-content">
           <div className="header-title">
@@ -178,10 +334,7 @@ export default function PrintManagement() {
 
           <div className="header-controls">
             <div className="select-wrapper">
-              <select
-                value={selectedRestaurantId}
-                onChange={(e) => setSelectedRestaurantId(e.target.value)}
-              >
+              <select value={selectedRestaurantId} onChange={(e) => setSelectedRestaurantId(e.target.value)}>
                 {restaurantList.map((r) => (
                   <option key={r.id} value={String(r.id)}>
                     {r.name}
@@ -197,126 +350,180 @@ export default function PrintManagement() {
         </div>
       </header>
 
-      <div className="print-ui__grid">
-        {/* COLUMN 1: DEVICES */}
-        <section className="ui-card devices-section">
-          <div className="card-header">
-            <h3>
-              <Server size={18} /> Thiết bị đã kết nối
-            </h3>
-            <span className="badge">{printers.length} Active</span>
-          </div>
+      {loading && <div className="ui-card">Đang tải cấu hình in...</div>}
+      {error && <div className="ui-card">Không thể tải dữ liệu in ấn. Vui lòng thử lại.</div>}
 
-          <div className="device-list">
-            {printers.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">
-                  <Wifi size={32} />
-                </div>
-                <p>Chưa có máy in nào</p>
-                <button onClick={openAddPrinter}>Thêm ngay</button>
+      {!loading && !error && (
+        <>
+          <div className="print-ui__grid">
+            <section className="ui-card devices-section">
+              <div className="card-header">
+                <h3>
+                  <Server size={18} /> Thiết bị đã kết nối
+                </h3>
+                <span className="badge">{printers.length} Active</span>
               </div>
-            ) : (
-              printers.map((printer) => (
-                <div key={printer.id} className="device-item">
-                  <div
-                    className={`status-indicator ${connectionStatus[printer.id] ? "online" : "offline"}`}
-                  >
-                    <div className="dot"></div>
-                    <div className="pulse"></div>
-                  </div>
 
-                  <div className="device-info">
-                    <h4>{printer.name}</h4>
-                    <div className="meta">
-                      <span className="tag-ip">{printer.ip}</span>
-                      <span className="type">
-                        {printer.type === "thermal" ? "Nhiệt" : "Kim"}
-                      </span>
+              <div className="device-list">
+                {printers.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-icon">
+                      <Wifi size={32} />
+                    </div>
+                    <p>Chưa có máy in nào</p>
+                    <button onClick={openAddPrinter}>Thêm ngay</button>
+                  </div>
+                ) : (
+                  printers.map((printer) => (
+                    <div key={printer.id} className="device-item">
+                      <div className={`status-indicator ${printer.status === "online" ? "online" : "offline"}`}>
+                        <div className="dot"></div>
+                        <div className="pulse"></div>
+                      </div>
+
+                      <div className="device-info">
+                        <h4>{printer.name}</h4>
+                        <div className="meta">
+                          <span className="tag-ip">{printer.ip}</span>
+                          <span className="type">{printer.type === "thermal" ? "Nhiệt" : "Khác"}</span>
+                          <span className={`type status-${printer.status || "offline"}`}>{printer.status || "offline"}</span>
+                        </div>
+                      </div>
+
+                      <div className="device-actions">
+                        <button onClick={() => handleTestPrinter(printer)} title="Test in">
+                          <Send size={16} />
+                        </button>
+                        <button onClick={() => openEditPrinter(printer)} title="Cấu hình">
+                          <Settings size={16} />
+                        </button>
+                        <button onClick={() => handleRemovePrinter(printer.id)} className="danger" title="Xóa">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+
+            <section className="ui-card routing-section">
+              <div className="card-header">
+                <h3>
+                  <Activity size={18} /> Phân luồng in bếp
+                </h3>
+                <p>Điều hướng lệnh in tự động</p>
+              </div>
+
+              <div className="routing-matrix">
+                {PRINT_STATIONS.map((station) => (
+                  <div key={station.id} className="routing-row">
+                    <div className="station-info">
+                      <div className="station-icon">{station.label.charAt(0)}</div>
+                      <div className="text">
+                        <h4>{station.label}</h4>
+                        <span>{station.description}</span>
+                      </div>
+                    </div>
+
+                    <div className="printer-toggles">
+                      {printers.map((printer) => {
+                        const isActive = (stationMap[station.id] || []).includes(printer.id);
+                        return (
+                          <div
+                            key={`${station.id}-${printer.id}`}
+                            className={`toggle-pill ${isActive ? "active" : ""}`}
+                            onClick={() => toggleStationPrinter(station.id, printer.id)}
+                          >
+                            <div className="check-icon">
+                              {isActive ? <Check size={12} strokeWidth={4} /> : <Power size={12} />}
+                            </div>
+                            <span>{printer.name}</span>
+                          </div>
+                        );
+                      })}
+                      {printers.length === 0 && <span className="no-data">Cần thêm máy in</span>}
                     </div>
                   </div>
-
-                  <div className="device-actions">
-                    <button
-                      onClick={() => openEditPrinter(printer)}
-                      title="Cấu hình"
-                    >
-                      <Settings size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleRemovePrinter(printer.id)}
-                      className="danger"
-                      title="Xóa"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        {/* COLUMN 2: ROUTING MATRIX */}
-        <section className="ui-card routing-section">
-          <div className="card-header">
-            <h3>
-              <Activity size={18} /> Phân luồng in bếp
-            </h3>
-            <p>Điều hướng lệnh in tự động</p>
-          </div>
-
-          <div className="routing-matrix">
-            {PRINT_STATIONS.map((station) => (
-              <div key={station.id} className="routing-row">
-                <div className="station-info">
-                  <div className="station-icon">{station.label.charAt(0)}</div>
-                  <div className="text">
-                    <h4>{station.label}</h4>
-                    <span>{station.description}</span>
-                  </div>
-                </div>
-
-                <div className="printer-toggles">
-                  {printers.map((printer) => {
-                    const isActive = (stationMap[station.id] || []).includes(
-                      printer.id,
-                    );
-                    return (
-                      <div
-                        key={`${station.id}-${printer.id}`}
-                        className={`toggle-pill ${isActive ? "active" : ""}`}
-                        onClick={() =>
-                          toggleStationPrinter(station.id, printer.id)
-                        }
-                      >
-                        <div className="check-icon">
-                          {isActive ? (
-                            <Check size={12} strokeWidth={4} />
-                          ) : (
-                            <Power size={12} />
-                          )}
-                        </div>
-                        <span>{printer.name}</span>
-                      </div>
-                    );
-                  })}
-                  {printers.length === 0 && (
-                    <span className="no-data">Cần thêm máy in</span>
-                  )}
-                </div>
+                ))}
               </div>
-            ))}
+            </section>
           </div>
-        </section>
-      </div>
+
+          <div className="print-ui__stack">
+            <section className="ui-card">
+              <div className="card-header">
+                <h3>
+                  <FileText size={18} /> Loại phiếu / mẫu in
+                </h3>
+                <span className="badge">{templates.length} mẫu</span>
+              </div>
+              <div className="template-grid">
+                {templates.map((template) => (
+                  <div key={template.key} className={`template-card ${template.enabled ? "active" : ""}`}>
+                    <div className="template-head">
+                      <strong>{template.name}</strong>
+                      <button className="template-toggle" onClick={() => handleTemplateToggle(template.key)}>
+                        {template.enabled ? "Bật" : "Tắt"}
+                      </button>
+                    </div>
+                    <textarea
+                      value={template.content || ""}
+                      onChange={(e) => handleTemplateContent(template.key, e.target.value)}
+                    />
+                    <button className="template-test" onClick={() => handleSendTemplateTest(template.key)}>
+                      Gửi test print
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="ui-card">
+              <div className="card-header">
+                <h3>
+                  <Printer size={18} /> Print Queue / Jobs
+                </h3>
+                <span className="badge">{jobs.length} jobs</span>
+              </div>
+
+              {jobs.length === 0 ? (
+                <div className="no-data">Chưa có print job.</div>
+              ) : (
+                <div className="jobs-list">
+                  {jobs.slice(0, 20).map((job) => (
+                    <div key={job.id} className={`job-item job-${job.status}`}>
+                      <div>
+                        <strong>{job.printType}</strong> • {job.printerName || job.printerId || "N/A"}
+                        <div className="job-meta">
+                          <span>{statusText(job.status)}</span>
+                          <span>{new Date(job.createdAt).toLocaleString("vi-VN")}</span>
+                          <span>Retry: {job.retryCount || 0}</span>
+                        </div>
+                        {job.error && <div className="job-error">Lỗi: {job.error}</div>}
+                      </div>
+                      {job.status === "failed" && (
+                        <button className="retry-btn" onClick={() => handleRetryJob(job.id)}>
+                          <RotateCcw size={14} /> Retry
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+
+          {saving && <div className="save-hint">Đang lưu cấu hình...</div>}
+        </>
+      )}
 
       <PrinterSettingsModal
         isOpen={settingsModalOpen}
         printer={editingPrinter}
         onSave={handleSavePrinter}
         onClose={() => setSettingsModalOpen(false)}
-        onTest={() => {}}
+        onTest={() => handleTestPrinter(editingPrinter)}
       />
     </div>
   );

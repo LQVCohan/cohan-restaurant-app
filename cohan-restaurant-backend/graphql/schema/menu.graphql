@@ -48,6 +48,7 @@ type Menu {
   createdAt: DateTime
   updatedAt: DateTime
   categoryMenu: CategoryMenu
+  itemCount: Int!
 }
 
 input MenuItemFilter {

@@ -16,6 +16,8 @@ const StaffHeader = ({
   onPageChange,
   isCollapsed,
   onToggle,
+  searchValue = "",
+  onSearchChange,
 }) => {
   // --- TIME & GREETING LOGIC ---
   const [currentTime, setCurrentTime] = useState(() => new Date());
@@ -184,6 +186,8 @@ const StaffHeader = ({
                 placeholder={
                   isCollapsed ? "Tìm kiếm..." : "Tìm tên nhân viên, mã số..."
                 }
+                value={searchValue}
+                onChange={(e) => onSearchChange?.(e.target.value)}
               />
             </div>
 

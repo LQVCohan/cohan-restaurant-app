@@ -152,11 +152,9 @@ const CompactMenuStrip = ({
                 const slotStyle =
                   SLOT_CONFIG[menu.timeSlot] || SLOT_CONFIG.breakfast;
                 const isActive = currentActiveId === menu.id;
-                const itemCount =
-                  typeof menu.itemCount === "number" ? menu.itemCount : 0;
-                const rating =
-                  typeof menu.rating === "number" ? menu.rating : 4.5;
-                const revenue = menu.revenue || "0đ";
+                const itemCount = typeof menu.itemCount === "number" ? menu.itemCount : 0;
+                const rating = typeof menu.rating === "number" ? menu.rating : null;
+                const revenue = menu.revenue || null;
                 const categoryName = menu.categoryMenu?.name;
 
                 return (
@@ -219,11 +217,11 @@ const CompactMenuStrip = ({
                         </div>
                         <div className="cms-stat-item" title="Đánh giá">
                           <FiStar className="ic star" />{" "}
-                          <strong>{rating}</strong>
+                          <strong>{rating ?? "--"}</strong>
                         </div>
                         <div className="cms-stat-item" title="Doanh thu">
                           <FiTrendingUp className="ic grow" />{" "}
-                          <strong>{revenue}</strong>
+                          <strong>{revenue || "--"}</strong>
                         </div>
                       </div>
                     </div>
