@@ -316,6 +316,24 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
               <label>Khách hàng:</label>
               <strong>{order?.user?.fullName || "Khách lẻ"}</strong>
             </div>
+            <div className="info-row">
+              <label>Thanh toán:</label>
+              <strong>
+                {order?.payment?.status || "pending"} /{" "}
+                {order?.payment?.method || "cash"}
+              </strong>
+            </div>
+            {(order?.shipping?.fullName || order?.shipping?.phone) && (
+              <div className="info-row">
+                <label>Giao hàng:</label>
+                <strong>
+                  {order?.shipping?.fullName || "N/A"}{" "}
+                  {order?.shipping?.phone
+                    ? `(${order.shipping.phone})`
+                    : ""}
+                </strong>
+              </div>
+            )}
             {order?.note && (
               <div className="order-note-box">
                 <Utensils size={16} />{" "}
@@ -323,6 +341,38 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
               </div>
             )}
           </section>
+
+          {Array.isArray(order?.statusTimeline) && order.statusTimeline.length > 0 && (
+            <section className="om-section">
+              <div className="section-header">
+                <h3>Timeline trạng thái</h3>
+              </div>
+              <div className="items-grid">
+                {order.statusTimeline.slice().reverse().map((s, idx) => (
+                  <div key={`${s.status}-${idx}`} className="itemCard">
+                    <div className="itemCard__info">
+                      <div className="itemCard__header">
+                        <span className="itemName">{s.status}</span>
+                      </div>
+                      <div className="itemCard__meta">
+                        <span className="metaTag">
+                          {toSafeDate(s.at)?.toLocaleString("vi-VN") || "—"}
+                        </span>
+                        {s.byUserId && (
+                          <span className="metaTag gray">{s.byUserId}</span>
+                        )}
+                      </div>
+                      {s.note && (
+                        <div className="itemCard__note">
+                          <span>Note:</span> {s.note}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="om-section">
             <div className="section-header">

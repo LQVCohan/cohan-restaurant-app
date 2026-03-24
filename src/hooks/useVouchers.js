@@ -1,100 +1,56 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useContext } from "react";
+import { gql, useMutation, useQuery } from "@apollo/client";
+import { AuthContext } from "@/context/AuthContext";
 
-const sampleVouchers = [
-  {
-    id: 1,
-    name: "Voucher Tết Sum Vầy",
-    code: "TET2025",
-    category: "food",
-    discountType: "percent",
-    discountValue: 20,
-    minOrderValue: 300000,
-    maxDiscount: 80000,
-    startDate: "2025-01-20T00:00",
-    endDate: "2025-02-10T23:59",
-    publishAt: "2025-01-10T09:00",
-    status: "scheduled",
-    usageLimit: 2000,
-    usageCount: 120,
-    conditions: [
-      "Áp dụng cho món chính",
-      "Không áp dụng cùng ưu đãi khác",
-    ],
-    description: "Ưu đãi Tết dành cho đơn ăn tại nhà hàng.",
-  },
-  {
-    id: 2,
-    name: "Voucher Đặt Bàn Cuối Tuần",
-    code: "TABLEWEEK",
-    category: "table",
-    discountType: "fixed",
-    discountValue: 50000,
-    minOrderValue: 500000,
-    maxDiscount: null,
-    startDate: "2024-12-15T00:00",
-    endDate: "2025-01-31T23:59",
-    publishAt: "2024-12-10T08:00",
-    status: "active",
-    usageLimit: 500,
-    usageCount: 78,
-    conditions: ["Áp dụng cho đặt bàn trước 24h"],
-    description: "Giảm ngay 50.000đ cho các bàn đặt trước cuối tuần.",
-  },
-  {
-    id: 3,
-    name: "Voucher Freeship",
-    code: "SHIPFREE",
-    category: "shipping",
-    discountType: "fixed",
-    discountValue: 30000,
-    minOrderValue: 200000,
-    maxDiscount: null,
-    startDate: "2024-11-01T00:00",
-    endDate: "2024-12-31T23:59",
-    publishAt: "2024-10-25T09:00",
-    status: "expired",
-    usageLimit: 1000,
-    usageCount: 1000,
-    conditions: ["Áp dụng cho đơn giao hàng nội thành"],
-    description: "Miễn phí vận chuyển cho đơn đủ điều kiện.",
-  },
-  {
-    id: 4,
-    name: "Voucher Đặt Món Online",
-    code: "ORDER15",
-    category: "order",
-    discountType: "percent",
-    discountValue: 15,
-    minOrderValue: 250000,
-    maxDiscount: 60000,
-    startDate: "2024-12-01T00:00",
-    endDate: "2025-02-01T23:59",
-    publishAt: "2024-11-28T09:00",
-    status: "active",
-    usageLimit: 1200,
-    usageCount: 240,
-    conditions: ["Áp dụng cho đơn đặt món online"],
-    description: "Ưu đãi dành riêng cho khách đặt món online.",
-  },
-];
+const Q_COUPONS = gql`
+  query Coupons($activeOnly: Boolean!, $limit: Int!, $offset: Int!) {
+    coupons(activeOnly: $activeOnly, limit: $limit, offset: $offset) {
+      id
+      name
+      code
+      category
+      description
+      discountType
+      discountValue
+      minOrderValue
+      maxDiscount
+      maxUsage
+      used
+      publishAt
+      startAt
+      endAt
+      isActive
+      constraints
+      restaurantId
+    }
+  }
+`;
 
-const samplePackages = [
-  {
-    id: 1,
-    name: "Gói Voucher Khách Mới",
-    code: "NEWBIE-PACK",
-    description:
-      "Gồm 3 voucher (ăn tại quán, đặt món online và freeship) dành cho khách mới.",
-    voucherIds: [1, 3, 4],
-    startDate: "2025-01-01T00:00",
-    endDate: "2025-03-31T23:59",
-    publishAt: "2024-12-20T09:00",
-    status: "scheduled",
-  },
-];
+const Q_VOUCHER_PACKAGES = gql`
+  query VoucherPackages($restaurantId: ID) {
+    voucherPackages(restaurantId: $restaurantId) {
+      id
+      name
+      code
+      description
+      voucherIds
+      startAt
+      endAt
+      publishAt
+      isActive
+      conditions
+      restaurantId
+    }
+  }
+`;
 
-const getNextId = (items) =>
-  items.length ? Math.max(...items.map((item) => item.id)) + 1 : 1;
+const M_CREATE_COUPON = gql`mutation CreateCoupon($input: CouponInput!) { createCoupon(input: $input) { id } }`;
+const M_UPDATE_COUPON = gql`mutation UpdateCoupon($id: ID!, $input: CouponInput!) { updateCoupon(id: $id, input: $input) { id } }`;
+const M_DELETE_COUPON = gql`mutation DeleteCoupon($id: ID!) { deleteCoupon(id: $id) }`;
+
+const M_CREATE_PACKAGE = gql`mutation CreateVoucherPackage($input: VoucherPackageInput!) { createVoucherPackage(input: $input) { id } }`;
+const M_UPDATE_PACKAGE = gql`mutation UpdateVoucherPackage($id: ID!, $input: VoucherPackageInput!) { updateVoucherPackage(id: $id, input: $input) { id } }`;
+const M_DELETE_PACKAGE = gql`mutation DeleteVoucherPackage($id: ID!) { deleteVoucherPackage(id: $id) }`;
 
 const resolveStatus = (item) => {
   if (item.status === "draft") return "draft";
@@ -103,166 +59,224 @@ const resolveStatus = (item) => {
   const endDate = item.endDate ? new Date(item.endDate) : null;
   const startDate = item.startDate ? new Date(item.startDate) : null;
 
+  if (item.isActive === false) return "draft";
   if (publishAt && publishAt > now) return "scheduled";
   if (endDate && endDate < now) return "expired";
   if (startDate && startDate > now) return "scheduled";
   return "active";
 };
 
+const normalizeVoucher = (item) => ({
+  id: item.id,
+  name: item.name || item.code,
+  code: item.code,
+  category: item.category || "order",
+  discountType: String(item.discountType || "PERCENT").toLowerCase() === "amount" ? "fixed" : "percent",
+  discountValue: Number(item.discountValue || 0),
+  minOrderValue: Number(item.minOrderValue || 0),
+  maxDiscount: Number(item.maxDiscount || 0),
+  startDate: item.startAt ? new Date(item.startAt).toISOString().slice(0, 16) : "",
+  endDate: item.endAt ? new Date(item.endAt).toISOString().slice(0, 16) : "",
+  publishAt: item.publishAt ? new Date(item.publishAt).toISOString().slice(0, 16) : "",
+  usageLimit: Number(item.maxUsage || 0),
+  usageCount: Number(item.used || 0),
+  description: item.description || "",
+  conditions: Array.isArray(item.constraints?.conditions) ? item.constraints.conditions : [],
+  isActive: Boolean(item.isActive),
+});
+
+const normalizePackage = (pkg) => ({
+  id: pkg.id,
+  name: pkg.name,
+  code: pkg.code,
+  description: pkg.description || "",
+  voucherIds: Array.isArray(pkg.voucherIds) ? pkg.voucherIds : [],
+  startDate: pkg.startAt ? new Date(pkg.startAt).toISOString().slice(0, 16) : "",
+  endDate: pkg.endAt ? new Date(pkg.endAt).toISOString().slice(0, 16) : "",
+  publishAt: pkg.publishAt ? new Date(pkg.publishAt).toISOString().slice(0, 16) : "",
+  conditions: Array.isArray(pkg.conditions) ? pkg.conditions : [],
+  isActive: Boolean(pkg.isActive),
+});
+
 export const useVouchers = () => {
-  const [vouchers, setVouchers] = useState(sampleVouchers);
-  const [packages, setPackages] = useState(samplePackages);
-  const [voucherFilters, setVoucherFilters] = useState({
-    search: "",
-    category: "all",
-    status: "all",
-  });
-  const [packageFilters, setPackageFilters] = useState({
-    search: "",
-    status: "all",
+  const { restaurants } = useContext(AuthContext);
+  const defaultRestaurantId = restaurants?.[0]?.id || null;
+
+  const [voucherFilters, setVoucherFilters] = useState({ search: "", category: "all", status: "all" });
+  const [packageFilters, setPackageFilters] = useState({ search: "", status: "all" });
+
+  const { data: couponData, refetch: refetchCoupons } = useQuery(Q_COUPONS, {
+    variables: { activeOnly: false, limit: 500, offset: 0 },
+    fetchPolicy: "network-only",
   });
 
-  const filteredVouchers = useMemo(() => {
-    return vouchers.filter((voucher) => {
+  const { data: packageData, refetch: refetchPackages } = useQuery(Q_VOUCHER_PACKAGES, {
+    variables: { restaurantId: defaultRestaurantId || undefined },
+    fetchPolicy: "network-only",
+  });
+
+  const [createCoupon] = useMutation(M_CREATE_COUPON);
+  const [updateCoupon] = useMutation(M_UPDATE_COUPON);
+  const [deleteCoupon] = useMutation(M_DELETE_COUPON);
+  const [createPackageMu] = useMutation(M_CREATE_PACKAGE);
+  const [updatePackageMu] = useMutation(M_UPDATE_PACKAGE);
+  const [deletePackageMu] = useMutation(M_DELETE_PACKAGE);
+
+  const allVouchers = useMemo(() => (couponData?.coupons || []).map(normalizeVoucher), [couponData]);
+  const allPackages = useMemo(() => (packageData?.voucherPackages || []).map(normalizePackage), [packageData]);
+
+  const vouchers = useMemo(() => {
+    return allVouchers.filter((voucher) => {
+      const q = voucherFilters.search.toLowerCase();
       const matchesSearch =
-        voucher.name.toLowerCase().includes(voucherFilters.search.toLowerCase()) ||
-        voucher.code.toLowerCase().includes(voucherFilters.search.toLowerCase()) ||
-        (voucher.description || "")
-          .toLowerCase()
-          .includes(voucherFilters.search.toLowerCase());
-
-      const matchesCategory =
-        voucherFilters.category === "all" ||
-        voucher.category === voucherFilters.category;
-
+        voucher.name.toLowerCase().includes(q) ||
+        voucher.code.toLowerCase().includes(q) ||
+        (voucher.description || "").toLowerCase().includes(q);
+      const matchesCategory = voucherFilters.category === "all" || voucher.category === voucherFilters.category;
       const status = resolveStatus(voucher);
-      const matchesStatus =
-        voucherFilters.status === "all" || status === voucherFilters.status;
-
+      const matchesStatus = voucherFilters.status === "all" || status === voucherFilters.status;
       return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [vouchers, voucherFilters]);
+  }, [allVouchers, voucherFilters]);
 
-  const filteredPackages = useMemo(() => {
-    return packages.filter((pkg) => {
+  const packages = useMemo(() => {
+    return allPackages.filter((pkg) => {
+      const q = packageFilters.search.toLowerCase();
       const matchesSearch =
-        pkg.name.toLowerCase().includes(packageFilters.search.toLowerCase()) ||
-        pkg.code.toLowerCase().includes(packageFilters.search.toLowerCase()) ||
-        (pkg.description || "")
-          .toLowerCase()
-          .includes(packageFilters.search.toLowerCase());
-
+        pkg.name.toLowerCase().includes(q) ||
+        pkg.code.toLowerCase().includes(q) ||
+        (pkg.description || "").toLowerCase().includes(q);
       const status = resolveStatus(pkg);
-      const matchesStatus =
-        packageFilters.status === "all" || status === packageFilters.status;
-
+      const matchesStatus = packageFilters.status === "all" || status === packageFilters.status;
       return matchesSearch && matchesStatus;
     });
-  }, [packages, packageFilters]);
+  }, [allPackages, packageFilters]);
 
-  const addVoucher = (voucherData) => {
-    const status = resolveStatus(voucherData);
-    const newVoucher = {
-      id: getNextId(vouchers),
-      usageCount: 0,
-      ...voucherData,
-      status,
-    };
-    setVouchers((prev) => [...prev, newVoucher]);
+  const addVoucher = async (voucherData) => {
+    await createCoupon({
+      variables: {
+        input: {
+          name: voucherData.name,
+          code: voucherData.code,
+          category: voucherData.category,
+          description: voucherData.description,
+          discountType: voucherData.discountType === "fixed" ? "AMOUNT" : "PERCENT",
+          discountValue: Number(voucherData.discountValue || 0),
+          minOrderValue: Number(voucherData.minOrderValue || 0),
+          maxDiscount: Number(voucherData.maxDiscount || 0),
+          maxUsage: Number(voucherData.usageLimit || 0),
+          constraints: { conditions: voucherData.conditions || [] },
+          publishAt: voucherData.publishAt || null,
+          startAt: voucherData.startDate || null,
+          endAt: voucherData.endDate || null,
+          isActive: voucherData.status !== "draft",
+          restaurantId: defaultRestaurantId,
+        },
+      },
+    });
+    await refetchCoupons();
   };
 
-  const updateVoucher = (id, voucherData) => {
-    setVouchers((prev) =>
-      prev.map((voucher) =>
-        voucher.id === id
-          ? { ...voucher, ...voucherData, status: resolveStatus(voucherData) }
-          : voucher
-      )
-    );
+  const updateVoucher = async (id, voucherData) => {
+    await updateCoupon({
+      variables: {
+        id,
+        input: {
+          name: voucherData.name,
+          code: voucherData.code,
+          category: voucherData.category,
+          description: voucherData.description,
+          discountType: voucherData.discountType === "fixed" ? "AMOUNT" : "PERCENT",
+          discountValue: Number(voucherData.discountValue || 0),
+          minOrderValue: Number(voucherData.minOrderValue || 0),
+          maxDiscount: Number(voucherData.maxDiscount || 0),
+          maxUsage: Number(voucherData.usageLimit || 0),
+          constraints: { conditions: voucherData.conditions || [] },
+          publishAt: voucherData.publishAt || null,
+          startAt: voucherData.startDate || null,
+          endAt: voucherData.endDate || null,
+          isActive: voucherData.status !== "draft",
+          restaurantId: defaultRestaurantId,
+        },
+      },
+    });
+    await refetchCoupons();
   };
 
-  const deleteVoucher = (id) => {
-    setVouchers((prev) => prev.filter((voucher) => voucher.id !== id));
+  const duplicateVoucher = async (id) => {
+    const voucher = allVouchers.find((v) => v.id === id);
+    if (!voucher) return;
+    await addVoucher({ ...voucher, code: `${voucher.code}_COPY`, name: `${voucher.name} (Sao chép)`, status: "draft" });
   };
 
-  const duplicateVoucher = (id) => {
-    const voucher = vouchers.find((item) => item.id === id);
-    if (voucher) {
-      const newVoucher = {
-        ...voucher,
-        id: getNextId(vouchers),
-        name: `${voucher.name} (Sao chép)`,
-        code: `${voucher.code}_COPY`,
-        status: "draft",
-        usageCount: 0,
-      };
-      setVouchers((prev) => [...prev, newVoucher]);
-    }
+  const addPackage = async (packageData) => {
+    await createPackageMu({
+      variables: {
+        input: {
+          name: packageData.name,
+          code: packageData.code,
+          description: packageData.description,
+          voucherIds: packageData.voucherIds,
+          startAt: packageData.startDate || null,
+          endAt: packageData.endDate || null,
+          publishAt: packageData.publishAt || null,
+          isActive: packageData.status !== "draft",
+          conditions: packageData.conditions || [],
+          restaurantId: defaultRestaurantId,
+        },
+      },
+    });
+    await refetchPackages();
   };
 
-  const updateVoucherFilters = (newFilters) => {
-    setVoucherFilters((prev) => ({ ...prev, ...newFilters }));
-  };
-
-  const addPackage = (packageData) => {
-    const status = resolveStatus(packageData);
-    const newPackage = {
-      id: getNextId(packages),
-      ...packageData,
-      status,
-    };
-    setPackages((prev) => [...prev, newPackage]);
-  };
-
-  const updatePackage = (id, packageData) => {
-    setPackages((prev) =>
-      prev.map((pkg) =>
-        pkg.id === id
-          ? { ...pkg, ...packageData, status: resolveStatus(packageData) }
-          : pkg
-      )
-    );
-  };
-
-  const deletePackage = (id) => {
-    setPackages((prev) => prev.filter((pkg) => pkg.id !== id));
-  };
-
-  const duplicatePackage = (id) => {
-    const pkg = packages.find((item) => item.id === id);
-    if (pkg) {
-      const newPackage = {
-        ...pkg,
-        id: getNextId(packages),
-        name: `${pkg.name} (Sao chép)`,
-        code: `${pkg.code}_COPY`,
-        status: "draft",
-      };
-      setPackages((prev) => [...prev, newPackage]);
-    }
-  };
-
-  const updatePackageFilters = (newFilters) => {
-    setPackageFilters((prev) => ({ ...prev, ...newFilters }));
+  const updatePackage = async (id, packageData) => {
+    await updatePackageMu({
+      variables: {
+        id,
+        input: {
+          name: packageData.name,
+          code: packageData.code,
+          description: packageData.description,
+          voucherIds: packageData.voucherIds,
+          startAt: packageData.startDate || null,
+          endAt: packageData.endDate || null,
+          publishAt: packageData.publishAt || null,
+          isActive: packageData.status !== "draft",
+          conditions: packageData.conditions || [],
+          restaurantId: defaultRestaurantId,
+        },
+      },
+    });
+    await refetchPackages();
   };
 
   return {
-    vouchers: filteredVouchers,
-    allVouchers: vouchers,
+    vouchers,
+    allVouchers,
     voucherFilters,
-    updateVoucherFilters,
+    updateVoucherFilters: (newFilters) => setVoucherFilters((prev) => ({ ...prev, ...newFilters })),
     addVoucher,
     updateVoucher,
-    deleteVoucher,
+    deleteVoucher: async (id) => {
+      await deleteCoupon({ variables: { id } });
+      await refetchCoupons();
+    },
     duplicateVoucher,
-    packages: filteredPackages,
-    allPackages: packages,
+    packages,
+    allPackages,
     packageFilters,
-    updatePackageFilters,
+    updatePackageFilters: (newFilters) => setPackageFilters((prev) => ({ ...prev, ...newFilters })),
     addPackage,
     updatePackage,
-    deletePackage,
-    duplicatePackage,
+    deletePackage: async (id) => {
+      await deletePackageMu({ variables: { id } });
+      await refetchPackages();
+    },
+    duplicatePackage: async (id) => {
+      const pkg = allPackages.find((p) => p.id === id);
+      if (!pkg) return;
+      await addPackage({ ...pkg, code: `${pkg.code}_COPY`, name: `${pkg.name} (Sao chép)`, status: "draft" });
+    },
     resolveStatus,
   };
 };

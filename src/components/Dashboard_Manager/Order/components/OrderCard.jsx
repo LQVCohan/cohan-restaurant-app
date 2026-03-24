@@ -272,7 +272,7 @@ const OrderCard = ({
                     )}
                     {item.modifiers?.map((mod, i) => (
                       <span key={i} className="mod">
-                        + {mod.name}
+                        + {mod.name || mod.optionName || "Modifier"}
                       </span>
                     ))}
                   </div>

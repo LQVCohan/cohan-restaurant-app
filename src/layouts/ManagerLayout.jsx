@@ -10,6 +10,7 @@ import OrderManagement from "../components/Dashboard_Manager/Order/OrderManageme
 import MenuManagement from "../components/Dashboard_Manager/Menu/MenuManagement";
 import TableManagement from "../components/Dashboard_Manager/Table/TableManagement";
 import CustomerManagement from "../components/Dashboard_Manager/Customer/CustomerManagement";
+import CustomerAnalyticsPage from "../components/Dashboard_Manager/Customer/CustomerAnalyticsPage";
 import PromotionManagement from "../components/Dashboard_Manager/Promotion/PromotionManagement";
 import PayrollManagement from "../components/Dashboard_Manager/PayrollPage/PayrollManagement";
 import "./ManagerLayout.scss";
@@ -18,20 +19,6 @@ import ReviewManagement from "../components/Dashboard_Manager/Review/ReviewManag
 import FinanceDashboard from "@/components/Dashboard_Manager/Finance/FinanceDashboard";
 import PrintManagement from "@/components/Dashboard_Manager/PrintManagement/PrintManagement";
 import { ManagerRestaurantInfoManagement } from "@/components/Dashboard_Manager/RestaurantInfo/RestaurantInfoManagement.jsx";
-import {
-  BarChartOutlined,
-  ShopOutlined,
-  TableOutlined,
-  ShoppingCartOutlined,
-  TeamOutlined,
-  AppstoreOutlined,
-  InboxOutlined,
-  StarOutlined,
-  DollarOutlined,
-  ThunderboltOutlined,
-  CheckCircleOutlined,
-  RocketOutlined,
-} from "@ant-design/icons";
 
 const VALID_MANAGER_PAGES = new Set([
   "dashboard",
@@ -41,6 +28,7 @@ const VALID_MANAGER_PAGES = new Set([
   "inventory",
   "staff",
   "customers",
+  "customer-analytics",
   "analytics",
   "transactions",
   "reports",
@@ -65,6 +53,135 @@ const resolveInitialManagerPage = () => {
   if (saved && VALID_MANAGER_PAGES.has(saved)) return saved;
 
   return "dashboard";
+};
+
+const PAGE_CONFIG = {
+  dashboard: {
+    title: "Tổng quan",
+    description: "Tổng quan hiệu suất và số liệu vận hành nhà hàng",
+    icon: "📊",
+    keywords: ["overview", "thống kê", "kpi", "doanh thu", "dashboard"],
+  },
+  tables: {
+    title: "Quản lý bàn",
+    description: "Theo dõi trạng thái bàn, sơ đồ tầng và đặt chỗ",
+    icon: "🪑",
+    keywords: ["bàn", "table", "đặt bàn", "sơ đồ"],
+  },
+  orders: {
+    title: "Quản lý đơn hàng",
+    description: "Xử lý đơn tại chỗ, mang đi, giao hàng và thanh toán",
+    icon: "🧾",
+    keywords: ["order", "đơn", "timeline", "thanh toán"],
+  },
+  menu: {
+    title: "Quản lý menu",
+    description: "Quản lý món ăn, giá bán, danh mục và trạng thái phục vụ",
+    icon: "🍜",
+    keywords: ["món", "menu", "giá", "danh mục"],
+  },
+  inventory: {
+    title: "Quản lý kho",
+    description: "Theo dõi tồn kho, nhập xuất và cảnh báo nguyên liệu",
+    icon: "📦",
+    keywords: ["kho", "inventory", "nguyên liệu", "tồn"],
+  },
+  staff: {
+    title: "Quản lý nhân viên",
+    description: "Danh sách nhân viên, vai trò, trạng thái và phân công",
+    icon: "👥",
+    keywords: ["staff", "nhân viên", "vai trò", "quyền"],
+  },
+  customers: {
+    title: "Quản lý khách hàng",
+    description: "Thông tin khách, hạng thành viên, điểm và hành vi mua",
+    icon: "🧑‍🤝‍🧑",
+    keywords: ["khách hàng", "loyalty", "rank", "điểm"],
+  },
+  "customer-analytics": {
+    title: "Phân tích khách hàng",
+    description: "Phân tích nhóm khách, món phổ biến và mức độ gắn bó",
+    icon: "📈",
+    keywords: ["analytics", "phân tích", "khách", "insight"],
+  },
+  analytics: {
+    title: "Phân tích kinh doanh",
+    description: "Theo dõi xu hướng doanh thu và đề xuất tối ưu vận hành",
+    icon: "🧠",
+    keywords: ["analyst", "ai", "chiến lược", "dự báo"],
+  },
+  reports: {
+    title: "Báo cáo",
+    description: "Báo cáo doanh thu, đơn hàng và xuất dữ liệu theo kỳ",
+    icon: "📑",
+    keywords: ["report", "báo cáo", "xuất file", "csv"],
+  },
+  finance: {
+    title: "Tài chính",
+    description: "Theo dõi thu chi, công nợ, hoàn tiền và đối soát",
+    icon: "💰",
+    keywords: ["finance", "thu", "chi", "công nợ", "profit"],
+  },
+  schedules: {
+    title: "Lịch làm việc",
+    description: "Lập ca làm theo ngày/tuần/tháng và phân công nhân sự",
+    icon: "📅",
+    keywords: ["schedule", "ca làm", "shift", "lịch"],
+  },
+  promotions: {
+    title: "Khuyến mãi",
+    description: "Quản lý campaign, voucher, điều kiện và thời gian hiệu lực",
+    icon: "🎁",
+    keywords: ["promotion", "voucher", "discount", "khuyến mãi"],
+  },
+  payroll: {
+    title: "Bảng lương",
+    description: "Tổng hợp công, phụ cấp, thưởng phạt và kỳ lương nhân viên",
+    icon: "💼",
+    keywords: ["payroll", "salary", "lương", "thưởng", "khấu trừ"],
+  },
+  reviews: {
+    title: "Đánh giá khách hàng",
+    description: "Xem đánh giá, phản hồi và kiểm duyệt nội dung review",
+    icon: "⭐",
+    keywords: ["review", "đánh giá", "rating", "feedback"],
+  },
+  "print-management": {
+    title: "Quản lý in ấn",
+    description: "Cấu hình máy in, mẫu in, hàng đợi và retry print job",
+    icon: "🖨️",
+    keywords: ["print", "máy in", "phiếu bếp", "queue"],
+  },
+  "restaurant-info-management": {
+    title: "Thông tin nhà hàng",
+    description: "Cập nhật hồ sơ nhà hàng, giờ mở cửa và thông tin liên hệ",
+    icon: "🏪",
+    keywords: ["nhà hàng", "restaurant", "địa chỉ", "liên hệ"],
+  },
+  settings: {
+    title: "Cài đặt",
+    description: "Cấu hình hệ thống và tuỳ chọn vận hành",
+    icon: "⚙️",
+    keywords: ["settings", "cài đặt"],
+  },
+  rates: {
+    title: "Cài đặt",
+    description: "Cấu hình hệ thống và tuỳ chọn vận hành",
+    icon: "⚙️",
+    keywords: ["settings", "cài đặt"],
+  },
+  setting: {
+    title: "Cài đặt",
+    description: "Cấu hình hệ thống và tuỳ chọn vận hành",
+    icon: "⚙️",
+    keywords: ["settings", "cài đặt"],
+  },
+  backup: {
+    title: "Cài đặt",
+    description: "Cấu hình hệ thống và tuỳ chọn vận hành",
+    icon: "⚙️",
+    keywords: ["backup", "sao lưu"],
+  },
 };
 
 const ManagerLayout = () => {
@@ -105,34 +222,6 @@ const ManagerLayout = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, [sidebarOpen]);
 
-  const notifications = [
-    {
-      id: 1,
-      title: "Đơn hàng mới #1234",
-      message: "Bàn 5 vừa đặt 2 món phở bò",
-      time: "2 phút trước",
-      type: "primary",
-      icon: "🛒",
-      read: false,
-    },
-    {
-      id: 2,
-      title: "Nhân viên chấm công",
-      message: "Nguyễn Văn A đã check-in lúc 8:00",
-      time: "15 phút trước",
-      type: "success",
-      icon: "👤",
-      read: false,
-    },
-  ];
-
-  const user = {
-    name: "Nguyễn Quản Lý",
-    role: "Quản lý cửa hàng",
-    email: "manager@restaurant.com",
-    avatar: "👨‍💼",
-  };
-
   const toggleSidebar = () => {
     setSidebarOpen((prev) => !prev);
   };
@@ -140,6 +229,23 @@ const ManagerLayout = () => {
   const closeSidebar = () => {
     setSidebarOpen(false);
   };
+
+  const managerSearchItems = useMemo(
+    () =>
+      [...VALID_MANAGER_PAGES]
+        .filter((page) => PAGE_CONFIG[page])
+        .map((page) => ({
+          id: page,
+          title: PAGE_CONFIG[page].title,
+          description: PAGE_CONFIG[page].description,
+          category: "Điều hướng",
+          icon: PAGE_CONFIG[page].icon || "📍",
+          type: "navigation",
+          keywords: PAGE_CONFIG[page].keywords || [],
+          route: `#${page}`,
+        })),
+    []
+  );
   const renderContent = () => {
     switch (currentPage) {
       case "dashboard":
@@ -156,6 +262,8 @@ const ManagerLayout = () => {
         return <StaffManagement />;
       case "customers":
         return <CustomerManagement />;
+      case "customer-analytics":
+        return <CustomerAnalyticsPage />;
       case "analytics":
         return <ManagerAnalyst />;
 
@@ -209,11 +317,16 @@ const ManagerLayout = () => {
         {/* Header */}
         <div className="manager-layout__header">
           <Header
-            pageTitle={currentPage}
+            pageTitle={PAGE_CONFIG[currentPage]?.title || "Trang quản trị"}
             onToggleSidebar={toggleSidebar}
             sidebarOpen={sidebarOpen}
-            notifications={notifications}
-            user={user}
+            notifications={[]}
+            searchItems={managerSearchItems}
+            onSelectSearchResult={(item) => {
+              if (!item?.id) return;
+              setCurrentPage(item.id);
+              setSidebarOpen(false);
+            }}
           />
         </div>
 

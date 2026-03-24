@@ -119,7 +119,18 @@ const PromotionManagement = () => {
       }
 
       return {
-        totalSavings: 12500000, // Có thể lấy từ API thực tế
+        totalSavings: allPromotions.reduce((sum, p) => {
+          const usage = Number(p.usageCount || 0);
+          const discountValue = Number(p.discountValue || 0);
+          const perUsage =
+            p.type === "percentage"
+              ? Math.min(
+                  (Number(p.minOrderValue || 0) * discountValue) / 100,
+                  Number(p.maxDiscount || Number.MAX_SAFE_INTEGER)
+                )
+              : discountValue;
+          return sum + Math.max(0, perUsage) * usage;
+        }, 0),
         usageRate: 45,
         totalUsage: allPromotions.reduce(
           (sum, p) => sum + (p.usageCount || 0),

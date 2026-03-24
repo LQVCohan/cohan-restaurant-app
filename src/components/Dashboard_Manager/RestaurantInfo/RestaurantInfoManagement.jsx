@@ -139,18 +139,26 @@ const GET_RESTAURANT_DETAIL = gql`
       description
       openingHours
       closingHours
+      notesOnHours
       cuisineType
       priceRange
       status
       amenities
       notesOnAmenities
       avgRating
+      seatingCapacity
       avatar
       coverImage
       address {
         line1
+        line2
+        ward
         district
         city
+        country
+        postalCode
+        lat
+        lng
       }
       reservationSettings {
         baseDepositAmount
@@ -160,6 +168,16 @@ const GET_RESTAURANT_DETAIL = gql`
         vatRate
         serviceFee
       }
+    }
+  }
+`;
+const GET_RESTAURANT_LAYOUT_METRICS = gql`
+  query GetRestaurantLayoutMetrics($restaurantId: ID!) {
+    floors(restaurantId: $restaurantId) {
+      id
+    }
+    tables(restaurantId: $restaurantId) {
+      id
     }
   }
 `;
@@ -173,14 +191,27 @@ const UPDATE_RESTAURANT = gql`
       description
       openingHours
       closingHours
+      notesOnHours
       cuisineType
       priceRange
       status
       amenities
       notesOnAmenities
       avgRating
+      seatingCapacity
       avatar
       coverImage
+      address {
+        line1
+        line2
+        ward
+        district
+        city
+        country
+        postalCode
+        lat
+        lng
+      }
       reservationSettings {
         baseDepositAmount
         menuDepositPercent
@@ -270,6 +301,12 @@ const parseCustomerInfo = (value) => {
   }
 };
 
+const parseOptionalNumber = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const RestaurantInfoManagement = ({ role = "manager" }) => {
   const { upload: uploadAsset } = useAvatarUploadLocal();
   const [timeSlot, setTimeSlot] = useState("lunch");
@@ -307,12 +344,20 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       card: false,
     },
     notesOnAmenities: "",
+    notesOnHours: "",
+    seatingCapacity: 0,
     customerInfo: DEFAULT_CUSTOMER_INFO,
     avatar: "",
     coverImage: "",
     line1: "",
+    line2: "",
+    ward: "",
     district: "",
     city: "",
+    country: "",
+    postalCode: "",
+    lat: "",
+    lng: "",
     reservationSettings: {
       baseDepositAmount: 0,
       menuDepositPercent: 50,
@@ -373,9 +418,15 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
   const {
     data: restaurantDetailData,
     loading: restaurantDetailLoading,
+    error: restaurantDetailError,
     refetch: refetchRestaurantDetail,
   } = useQuery(GET_RESTAURANT_DETAIL, {
     variables: { id: selectedRestaurantId },
+    skip: !selectedRestaurantId,
+    fetchPolicy: "network-only",
+  });
+  const { data: layoutMetricsData } = useQuery(GET_RESTAURANT_LAYOUT_METRICS, {
+    variables: { restaurantId: selectedRestaurantId },
     skip: !selectedRestaurantId,
     fetchPolicy: "network-only",
   });
@@ -391,14 +442,18 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       description: r.description || "",
       openingHours: r.openingHours || "",
       closingHours: r.closingHours || "",
+      notesOnHours: r.notesOnHours || "",
       cuisineType: r.cuisineType || "",
       priceRange: r.priceRange || "",
       status: r.status || "active",
       avgRating: r.avgRating || 0,
+      seatingCapacity: Number(r.seatingCapacity || 0),
       amenities: {
-        wifi: Boolean(r.amenities?.wifi),
-        parking: Boolean(r.amenities?.parking),
-        card: Boolean(r.amenities?.card),
+        wifi: Array.isArray(r.amenities) ? r.amenities.includes("wifi") : false,
+        parking: Array.isArray(r.amenities)
+          ? r.amenities.includes("parking")
+          : false,
+        card: Array.isArray(r.amenities) ? r.amenities.includes("card") : false,
       },
       notesOnAmenities: r.notesOnAmenities || "",
       avatar: r.avatar || "",
@@ -408,8 +463,14 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         story: parsedCustomerInfo?.story || r.description || "",
       }),
       line1: r.address?.line1 || "",
+      line2: r.address?.line2 || "",
+      ward: r.address?.ward || "",
       district: r.address?.district || "",
       city: r.address?.city || "",
+      country: r.address?.country || "",
+      postalCode: r.address?.postalCode || "",
+      lat: r.address?.lat ?? "",
+      lng: r.address?.lng ?? "",
       reservationSettings: {
         baseDepositAmount: Number(r.reservationSettings?.baseDepositAmount || 0),
         menuDepositPercent: Number(r.reservationSettings?.menuDepositPercent || 50),
@@ -615,6 +676,8 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
     const district = restaurantForm.district || "";
     const city = restaurantForm.city || "";
     const line1 = restaurantForm.line1 || "";
+    const ward = restaurantForm.ward || "";
+    const line2 = restaurantForm.line2 || "";
     return {
       id: selectedRestaurantId || null,
       name: restaurantForm.name || "",
@@ -626,11 +689,17 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       rating: Number(restaurantForm.avgRating) || 0,
       avgRating: Number(restaurantForm.avgRating) || 0,
       district,
-      addressText: [line1, district, city].filter(Boolean).join(", "),
+      addressText: [line1, line2, ward, district, city].filter(Boolean).join(", "),
       address: {
         line1,
+        line2,
+        ward,
         district,
         city,
+        country: restaurantForm.country || "",
+        postalCode: restaurantForm.postalCode || "",
+        lat: parseOptionalNumber(restaurantForm.lat),
+        lng: parseOptionalNumber(restaurantForm.lng),
       },
       phone: restaurantForm.phone || "",
       email: restaurantForm.email || "",
@@ -716,17 +785,25 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             description: normalizedCustomerInfo.story || null,
             openingHours: restaurantForm.openingHours || null,
             closingHours: restaurantForm.closingHours || null,
+            notesOnHours: restaurantForm.notesOnHours || null,
             cuisineType: restaurantForm.cuisineType || null,
             priceRange: restaurantForm.priceRange || null,
             status: restaurantForm.status || "active",
             avatar: restaurantForm.avatar || null,
             coverImage: restaurantForm.coverImage || null,
+            seatingCapacity: parseOptionalNumber(restaurantForm.seatingCapacity) ?? 0,
             amenities: amenityList,
             notesOnAmenities: JSON.stringify(normalizedCustomerInfo),
             address: {
               line1: restaurantForm.line1 || null,
+              line2: restaurantForm.line2 || null,
+              ward: restaurantForm.ward || null,
               district: restaurantForm.district || null,
               city: restaurantForm.city || null,
+              country: restaurantForm.country || null,
+              postalCode: restaurantForm.postalCode || null,
+              lat: parseOptionalNumber(restaurantForm.lat),
+              lng: parseOptionalNumber(restaurantForm.lng),
             },
             reservationSettings: {
               baseDepositAmount: Number(restaurantForm.reservationSettings?.baseDepositAmount || 0),
@@ -765,14 +842,38 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             ],
             ["openingHours", restaurantForm.openingHours || "", latestRestaurant.openingHours || ""],
             ["closingHours", restaurantForm.closingHours || "", latestRestaurant.closingHours || ""],
+            ["notesOnHours", restaurantForm.notesOnHours || "", latestRestaurant.notesOnHours || ""],
             ["cuisineType", restaurantForm.cuisineType || "", latestRestaurant.cuisineType || ""],
             ["priceRange", restaurantForm.priceRange || "", latestRestaurant.priceRange || ""],
             ["status", restaurantForm.status || "", latestRestaurant.status || ""],
             ["avatar", restaurantForm.avatar || "", latestRestaurant.avatar || ""],
             ["coverImage", restaurantForm.coverImage || "", latestRestaurant.coverImage || ""],
+            [
+              "seatingCapacity",
+              String(Number(restaurantForm.seatingCapacity || 0)),
+              String(Number(latestRestaurant.seatingCapacity || 0)),
+            ],
             ["address.line1", restaurantForm.line1 || "", latestRestaurant.address?.line1 || ""],
+            ["address.line2", restaurantForm.line2 || "", latestRestaurant.address?.line2 || ""],
+            ["address.ward", restaurantForm.ward || "", latestRestaurant.address?.ward || ""],
             ["address.district", restaurantForm.district || "", latestRestaurant.address?.district || ""],
             ["address.city", restaurantForm.city || "", latestRestaurant.address?.city || ""],
+            ["address.country", restaurantForm.country || "", latestRestaurant.address?.country || ""],
+            ["address.postalCode", restaurantForm.postalCode || "", latestRestaurant.address?.postalCode || ""],
+            [
+              "address.lat",
+              parseOptionalNumber(restaurantForm.lat) == null
+                ? ""
+                : String(parseOptionalNumber(restaurantForm.lat)),
+              latestRestaurant.address?.lat == null ? "" : String(latestRestaurant.address.lat),
+            ],
+            [
+              "address.lng",
+              parseOptionalNumber(restaurantForm.lng) == null
+                ? ""
+                : String(parseOptionalNumber(restaurantForm.lng)),
+              latestRestaurant.address?.lng == null ? "" : String(latestRestaurant.address.lng),
+            ],
             ["notesOnAmenities", expectedNotes, latestRestaurant.notesOnAmenities || ""],
             ["amenities", JSON.stringify(expectedAmenities), JSON.stringify(actualAmenities)],
           ].some(([, expected, actual]) => (expected || "") !== (actual || ""))
@@ -1098,6 +1199,32 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                           />
                         </Form.Item>
                       </Col>
+                      <Col span={12}>
+                        <Form.Item label="Địa chỉ bổ sung (line2)">
+                          <Input
+                            value={restaurantForm.line2}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                line2: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item label="Phường / Xã">
+                          <Input
+                            value={restaurantForm.ward}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                ward: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
                       <Col span={6}>
                         <Form.Item label="Quận / Huyện">
                           <Input
@@ -1119,6 +1246,58 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                               setRestaurantForm((p) => ({
                                 ...p,
                                 city: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item label="Quốc gia">
+                          <Input
+                            value={restaurantForm.country}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                country: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item label="Mã bưu chính">
+                          <Input
+                            value={restaurantForm.postalCode}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                postalCode: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={4}>
+                        <Form.Item label="Lat">
+                          <Input
+                            value={restaurantForm.lat}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                lat: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
+                      <Col span={4}>
+                        <Form.Item label="Lng">
+                          <Input
+                            value={restaurantForm.lng}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                lng: e.target.value,
                               }))
                             }
                           />
@@ -1171,7 +1350,33 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                           />
                         </Form.Item>
                       </Col>
+                      <Col span={8}>
+                        <Form.Item label="Sức chứa (khách)">
+                          <Input
+                            value={restaurantForm.seatingCapacity}
+                            onChange={(e) =>
+                              setRestaurantForm((p) => ({
+                                ...p,
+                                seatingCapacity: e.target.value,
+                              }))
+                            }
+                          />
+                        </Form.Item>
+                      </Col>
                     </Row>
+                    <Form.Item label="Ghi chú giờ hoạt động">
+                      <TextArea
+                        rows={2}
+                        value={restaurantForm.notesOnHours}
+                        onChange={(e) =>
+                          setRestaurantForm((p) => ({
+                            ...p,
+                            notesOnHours: e.target.value,
+                          }))
+                        }
+                        placeholder="Ví dụ: nghỉ thứ 2 hàng tuần, lễ tết mở cửa theo lịch thông báo"
+                      />
+                    </Form.Item>
                   </div>
                 </>
               ),
@@ -1412,9 +1617,9 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         </Card>
         <Card variant="borderless" className="metric-card">
           <Badge color="#f59e0b" />
-          <Text type="secondary" className="metric-subtitle">Tiện ích đã bật</Text>
+          <Text type="secondary" className="metric-subtitle">Số tầng / số bàn</Text>
           <Title level={4} className="metric-value">
-            {Object.values(restaurantForm.amenities || {}).filter(Boolean).length}
+            {(layoutMetricsData?.floors || []).length} / {(layoutMetricsData?.tables || []).length}
           </Title>
         </Card>
       </div>
@@ -1429,6 +1634,12 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
             {restaurantDetailLoading ? (
               <div style={{ padding: 24 }}>
                 <Skeleton active paragraph={{ rows: 8 }} />
+              </div>
+            ) : restaurantDetailError ? (
+              <div style={{ padding: 24 }}>
+                <Text type="danger">
+                  Không tải được thông tin nhà hàng. Vui lòng thử lại.
+                </Text>
               </div>
             ) : (
               renderRestaurantForm()

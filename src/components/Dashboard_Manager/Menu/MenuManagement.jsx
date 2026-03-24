@@ -17,7 +17,6 @@ import MenuItemCard from "./components/MenuItemCard/MenuItemCard";
 import MenuItemModal from "./components/MenuItemModal/MenuItemModal";
 import CategoryModal from "./components/CategoryModal/CategoryModal";
 import PriceEditModal from "./components/PriceEditModal/PriceEditModal";
-import PromotionModal from "./components/PromotionModal/PromotionModal";
 import MenuModal from "./components/MenuModal/MenuModal";
 
 // Logic
@@ -25,6 +24,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import { gql, useQuery } from "@apollo/client";
 import useMenuManagement from "../../../hooks/useMenuManagement";
 import { useCategoryManagement } from "../../../hooks/useCategoryManagement";
+import { useRecipes } from "../../../hooks/useRecipes";
 
 /* ========== QUERY ========== */
 const GET_MANAGER_RESTAURANTS = gql`
@@ -76,7 +76,6 @@ const MenuManagement = () => {
     menu: { isOpen: false, editingMenu: null },
     category: { isOpen: false },
     priceEdit: { isOpen: false },
-    promotion: { isOpen: false },
   });
 
   const [isSavingMenu, setIsSavingMenu] = useState(false);
@@ -126,6 +125,7 @@ const MenuManagement = () => {
     pageInfo,
     fetchMoreItems,
     refetchItems,
+    deleteMenuItem,
   } = useMenuManagement({
     restaurantId: currentRestaurant || null,
     defaultTimeSlot: "breakfast",
@@ -145,6 +145,11 @@ const MenuManagement = () => {
       loadTopCategories: false,
       loadCategoryMenus: modals.menu.isOpen,
     });
+
+  const { updateRecipe } = useRecipes(currentRestaurant || null, selectedTimeSlot || null, {
+    search: null,
+    categoryId: null,
+  });
 
   /* --- HANDLERS --- */
   // Modal toggle helpers
@@ -183,7 +188,10 @@ const MenuManagement = () => {
   // Nếu hook useMenuManagement chưa xử lý sort, ta có thể sort tạm ở đây:
   const displayItems = useMemo(() => {
     if (!items) return [];
-    let sorted = [...items];
+    let sorted = [...items].map((item) => ({
+      ...item,
+      categoryName: categories.find((c) => c.id === item.categoryId)?.name || item.categoryName,
+    }));
     if (sortOption === "name_asc")
       sorted.sort((a, b) => a.name.localeCompare(b.name));
     if (sortOption === "name_desc")
@@ -193,7 +201,7 @@ const MenuManagement = () => {
     if (sortOption === "price_desc")
       sorted.sort((a, b) => b.basePrice - a.basePrice);
     return sorted;
-  }, [items, sortOption]);
+  }, [items, categories, sortOption]);
 
   /* --- RENDER --- */
   if (!managerId)
@@ -289,7 +297,7 @@ const MenuManagement = () => {
           onToggleCollapse={() => setIsStatsCollapsed((s) => !s)}
           onAddMenu={() => toggleModal("menu", true)}
           onEditMenu={(menu) => toggleModal("menu", true, menu)}
-          onDeleteMenu={() => alert("Coming soon...")}
+          onDeleteMenu={undefined}
         />
       </section>
 
@@ -311,7 +319,6 @@ const MenuManagement = () => {
           // Price props
           onPriceRangeChange={setPriceRange}
           onBulkPriceEdit={() => toggleModal("priceEdit", true)}
-          onCreatePromotion={() => toggleModal("promotion", true)}
           onAddCategory={() => toggleModal("category", true)}
           categories={categories}
           itemCount={displayItems.length}
@@ -361,7 +368,11 @@ const MenuManagement = () => {
                     key={item.id}
                     item={item}
                     onEdit={() => toggleModal("menuItem", true, item.id)}
-                    onDelete={() => {}}
+                    onDelete={async () => {
+                      if (!window.confirm(`Xóa món "${item.name}"?`)) return;
+                      await deleteMenuItem(item.id);
+                      await refetchItems?.();
+                    }}
                     viewMode={currentView}
                   />
                 ))}
@@ -405,10 +416,13 @@ const MenuManagement = () => {
         }}
         menuItems={items}
         categories={categories}
+        restaurantId={currentRestaurant}
+        timeSlot={selectedTimeSlot || "breakfast"}
       />
 
       <CategoryModal
         restaurantId={currentRestaurant}
+        timeSlot={selectedTimeSlot || "breakfast"}
         isOpen={modals.category.isOpen}
         onClose={() => toggleModal("category", false)}
         onSave={() => toggleModal("category", false)}
@@ -417,21 +431,25 @@ const MenuManagement = () => {
       <PriceEditModal
         isOpen={modals.priceEdit.isOpen}
         onClose={() => toggleModal("priceEdit", false)}
-        onSave={() => {
-          refetchItems?.();
+        onSave={async (updates) => {
+          for (const update of updates) {
+            await updateRecipe(update.itemId, {
+              servingVariants: update.updates.methods.map((m, idx) => ({
+                key: m.key || `sv_${idx}`,
+                name: m.name,
+                mode: m.mode || "PORTION",
+                sellQty: Number(m.sellQty || 1),
+                sellUnit: m.sellUnit || "portion",
+                price: Number(m.price || 0),
+                ingredients: [],
+                isDefault: idx === 0,
+              })),
+            });
+          }
+          await refetchItems?.();
           toggleModal("priceEdit", false);
         }}
         menuItems={items}
-      />
-
-      <PromotionModal
-        isOpen={modals.promotion.isOpen}
-        onClose={() => toggleModal("promotion", false)}
-        onSave={(data) => {
-          console.log("Promo Data:", data);
-          toggleModal("promotion", false);
-        }}
-        menuItems={items} // Pass menuItems for scope selection
       />
     </div>
   );

@@ -54,6 +54,12 @@ const Sidebar = ({ isOpen, onClose, onPageChange, activeItem }) => {
           page: "Khách hàng",
         },
         {
+          id: "customer-analytics",
+          icon: "🧠",
+          label: "Phân tích người dùng",
+          page: "Phân tích người dùng",
+        },
+        {
           id: "promotions",
           icon: "🎁",
           label: "Khuyến mãi",

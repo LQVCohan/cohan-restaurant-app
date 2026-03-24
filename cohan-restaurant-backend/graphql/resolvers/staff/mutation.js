@@ -1,5 +1,5 @@
 // src/graphql/staff/mutation.js
-import { Staff, Role, EventLog } from "../../../models/index.js";
+import { Staff, Role, EventLog, Shift } from "../../../models/index.js";
 
 async function logStaffEvent({
   staff,
@@ -333,5 +333,62 @@ export default {
     });
 
     return staff;
+  },
+
+  createStaffShift: async (_, { input }) => {
+    const staff = await Staff.findById(input.employeeId).lean();
+    if (!staff || staff.userType !== "STAFF") {
+      throw new Error("Staff not found");
+    }
+
+    const created = await Shift.create({
+      employeeId: input.employeeId,
+      restaurantId: input.restaurantId,
+      shiftType: input.shiftType.toString().toLowerCase(),
+      startTime: new Date(input.startTime),
+      endTime: new Date(input.endTime),
+      status: input.status || "scheduled",
+      notes: input.notes || "",
+    });
+
+    return {
+      id: String(created._id),
+      employeeId: String(created.employeeId),
+      employeeName: staff.fullName || null,
+      restaurantId: String(created.restaurantId),
+      shiftType: created.shiftType,
+      startTime: created.startTime,
+      endTime: created.endTime,
+      status: created.status,
+      notes: created.notes || "",
+    };
+  },
+
+  updateStaffShift: async (_, { shiftId, input }) => {
+    const payload = { ...input };
+    if (payload.shiftType) payload.shiftType = payload.shiftType.toString().toLowerCase();
+    if (payload.startTime) payload.startTime = new Date(payload.startTime);
+    if (payload.endTime) payload.endTime = new Date(payload.endTime);
+
+    const updated = await Shift.findByIdAndUpdate(shiftId, payload, { new: true })
+      .populate("employeeId", "fullName");
+    if (!updated) throw new Error("Shift not found");
+
+    return {
+      id: String(updated._id),
+      employeeId: String(updated.employeeId?._id || updated.employeeId),
+      employeeName: updated.employeeId?.fullName || null,
+      restaurantId: String(updated.restaurantId),
+      shiftType: updated.shiftType,
+      startTime: updated.startTime,
+      endTime: updated.endTime,
+      status: updated.status || "scheduled",
+      notes: updated.notes || "",
+    };
+  },
+
+  deleteStaffShift: async (_, { shiftId }) => {
+    const deleted = await Shift.findByIdAndDelete(shiftId);
+    return Boolean(deleted);
   },
 };

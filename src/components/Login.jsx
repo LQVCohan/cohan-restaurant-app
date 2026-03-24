@@ -1,6 +1,6 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { gql, useMutation, useQuery } from "@apollo/client";
+import { gql, useLazyQuery, useMutation } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
 import ReCAPTCHA from "react-google-recaptcha";
 import { useNotification } from "@/hooks/useNotification"; // Hook thông báo (tuỳ project bạn)
@@ -202,21 +202,31 @@ const LoginPage = () => {
   const recaptchaLoginRef = useRef(null);
   const recaptchaRegisterRef = useRef(null);
 
-  // Lấy danh sách Role (mặc định lấy role customer)
-  const { data: rolesData } = useQuery(ROLES_QUERY, {
-    variables: { search: "customer" },
+  // Chỉ lấy role khi cần đăng ký để tránh query sớm lúc chưa đăng nhập/khởi động
+  const [loadRoles] = useLazyQuery(ROLES_QUERY, {
+    fetchPolicy: "network-only",
   });
 
   // --- MUTATIONS ---
   const [loginMutation, { loading: loginLoading }] = useMutation(
     LOGIN_MUTATION,
     {
+      errorPolicy: "none",
       onError: (error) => {
         showNotification(resolveLoginErrorMessage(error), "error");
         resetCaptcha();
       },
       onCompleted: (data) => {
-        const { token, user } = data.login;
+        const token = data?.login?.token;
+        const user = data?.login?.user;
+        if (!token || !user) {
+          showNotification(
+            "Đăng nhập không thành công. Vui lòng kiểm tra lại tài khoản/mật khẩu.",
+            "error",
+          );
+          resetCaptcha();
+          return;
+        }
         // Lưu token vào Context/LocalStorage
         authLogin(token, user, null, {
           persistSession: loginForm.rememberSession,
@@ -236,6 +246,7 @@ const LoginPage = () => {
   const [registerMutation, { loading: registerLoading }] = useMutation(
     CREATE_USER_MUTATION,
     {
+      errorPolicy: "none",
       onError: () => {
         showNotification("Đăng ký thất bại", "error");
         resetCaptcha();
@@ -289,7 +300,7 @@ const LoginPage = () => {
     loginMutation({ variables });
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     // Validate cơ bản
     if (
@@ -313,10 +324,25 @@ const LoginPage = () => {
       return showNotification("Vui lòng xác thực Captcha", "warning");
     }
 
-    // Lấy Role ID (Customer)
-    const roleId =
-      rolesData?.role?.find((r) => r.slug === "customer")?.id ||
-      rolesData?.role?.[0]?.id;
+    // Lấy Role ID (Customer) ngay thời điểm submit để tránh query nền khi chưa cần
+    let roleId;
+    try {
+      const { data } = await loadRoles({
+        variables: { search: "customer" },
+      });
+      roleId =
+        data?.role?.find((r) => r.slug === "customer")?.id ||
+        data?.role?.[0]?.id;
+    } catch {
+      roleId = undefined;
+    }
+    if (!roleId) {
+      showNotification(
+        "Không thể tải quyền mặc định cho tài khoản mới. Vui lòng thử lại.",
+        "error",
+      );
+      return;
+    }
 
     const variables = {
       i: {

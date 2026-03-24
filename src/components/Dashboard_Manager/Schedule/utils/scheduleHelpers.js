@@ -13,11 +13,11 @@ export const shiftTypes = {
     endTime: "22:00",
     icon: "☀️",
   },
-  night: {
-    label: "Ca Đêm",
-    time: "22:00 - 06:00",
-    startTime: "22:00",
-    endTime: "06:00",
+  evening: {
+    label: "Ca Tối",
+    time: "18:00 - 23:00",
+    startTime: "18:00",
+    endTime: "23:00",
     icon: "🌙",
   },
 };

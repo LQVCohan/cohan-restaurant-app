@@ -150,13 +150,16 @@ const OrderManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [tableFilter, setTableFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortBy, setSortBy] = useState("oldest");
 
   const [focusMode, setFocusMode] = useState(false);
   const [highlightDishKey, setHighlightDishKey] = useState(null);
   const [highlightedOrderIds, setHighlightedOrderIds] = useState([]);
 
   const { showNotification } = useNotification?.() || {
-    showNotification: console.log,
+    showNotification: () => {},
   };
   const { restaurantList } = useRestaurant();
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
@@ -199,7 +202,9 @@ const OrderManagement = () => {
         "orderSettings",
         JSON.stringify({ timeSettings, chipSize, timeColors })
       );
-    } catch {}
+    } catch (e) {
+      void e;
+    }
   }, [timeSettings, chipSize, timeColors]);
 
   const {
@@ -296,10 +301,23 @@ const OrderManagement = () => {
     const matchesStatus = (o) =>
       !statusFilter || o.currentStatus === statusFilter;
     const matchesTableType = (o) => !tableFilter || o.orderType === tableFilter;
+    const matchesDate = (o) => {
+      const created = o?.createdAt ? new Date(o.createdAt) : null;
+      if (!created || Number.isNaN(created.getTime())) return !dateFrom && !dateTo;
+      if (dateFrom) {
+        const from = new Date(`${dateFrom}T00:00:00`);
+        if (created < from) return false;
+      }
+      if (dateTo) {
+        const to = new Date(`${dateTo}T23:59:59`);
+        if (created > to) return false;
+      }
+      return true;
+    };
 
     if (!q)
       return activeOrders.filter(
-        (o) => matchesStatus(o) && matchesTableType(o)
+        (o) => matchesStatus(o) && matchesTableType(o) && matchesDate(o)
       );
 
     if (endsWithSpace && singleToken) {
@@ -310,7 +328,8 @@ const OrderManagement = () => {
         return (
           (table === q || code === q || id === q || id.endsWith(q)) &&
           matchesStatus(o) &&
-          matchesTableType(o)
+          matchesTableType(o) &&
+          matchesDate(o)
         );
       });
     }
@@ -331,20 +350,56 @@ const OrderManagement = () => {
       return (
         tokens.every((t) => combined.includes(t)) &&
         matchesStatus(o) &&
-        matchesTableType(o)
+        matchesTableType(o) &&
+        matchesDate(o)
       );
     });
-  }, [activeOrders, searchTerm, statusFilter, tableFilter]);
+  }, [activeOrders, searchTerm, statusFilter, tableFilter, dateFrom, dateTo]);
 
-  const orderedFilteredOrders = useMemo(
-    () =>
-      [...filteredOrders].sort(
-        (a, b) =>
-          (a.createdAt ? new Date(a.createdAt).getTime() : 0) -
-          (b.createdAt ? new Date(b.createdAt).getTime() : 0)
-      ),
-    [filteredOrders]
-  );
+  const orderedFilteredOrders = useMemo(() => {
+    const sorted = [...filteredOrders].sort((a, b) => {
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return sortBy === "newest" ? tb - ta : ta - tb;
+    });
+    return sorted;
+  }, [filteredOrders, sortBy]);
+
+  const handleExportCsv = useCallback(() => {
+    const rows = orderedFilteredOrders.map((o) => ({
+      orderCode: o.orderCode || o.id,
+      tableCode: o.tableCode || "",
+      orderType: o.orderType || "",
+      status: o.currentStatus || "",
+      paymentStatus: o.payment?.status || "",
+      paymentMethod: o.payment?.method || "",
+      total: o.totals?.grandTotal || 0,
+      createdAt: o.createdAt || "",
+    }));
+    const header = [
+      "orderCode",
+      "tableCode",
+      "orderType",
+      "status",
+      "paymentStatus",
+      "paymentMethod",
+      "total",
+      "createdAt",
+    ];
+    const csvRows = rows.map((r) =>
+      header
+        .map((h) => `"${String(r[h] ?? "").replaceAll('"', '""')}"`)
+        .join(",")
+    );
+    const csv = [header.join(","), ...csvRows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `orders-${selectedRestaurantId || "all"}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [orderedFilteredOrders, selectedRestaurantId]);
 
   const dishSummaries = useMemo(() => {
     const map = new Map();
@@ -632,6 +687,38 @@ const OrderManagement = () => {
                     <ChevronDown size={14} className="om-select-icon-right" />
                   </div>
                 )}
+                {!focusMode && (
+                  <>
+                    <div className="om-select-wrapper">
+                      <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                        className="om-select-input"
+                        title="Từ ngày"
+                      />
+                    </div>
+                    <div className="om-select-wrapper">
+                      <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                        className="om-select-input"
+                        title="Đến ngày"
+                      />
+                    </div>
+                    <div className="om-select-wrapper">
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="om-select-input"
+                      >
+                        <option value="oldest">Cũ nhất trước</option>
+                        <option value="newest">Mới nhất trước</option>
+                      </select>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -650,7 +737,7 @@ const OrderManagement = () => {
                   </select>
                 </div>
               ) : (
-                <button className="om-btn-outline">
+                <button className="om-btn-outline" onClick={handleExportCsv}>
                   <Download size={18} />
                   <span>Xuất BC</span>
                 </button>

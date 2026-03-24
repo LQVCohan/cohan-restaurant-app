@@ -116,4 +116,7 @@ export default {
 
   ...(search.SearchResult ? { SearchResult: search.SearchResult } : {}),
   ...(supplier.Supplier ? { Supplier: supplier.Supplier } : {}),
+  ...(review.ReactionSummary
+    ? { ReactionSummary: review.ReactionSummary }
+    : {}),
 };

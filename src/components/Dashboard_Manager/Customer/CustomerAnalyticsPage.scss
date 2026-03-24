@@ -1,0 +1,35 @@
+.customer-analytics-page {
+  padding: 16px;
+  .cap-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin: 12px 0 16px;
+  }
+  .cap-card,
+  .cap-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .label {
+    font-size: 12px;
+    color: #64748b;
+  }
+  .value {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .cap-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .cap-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed #e2e8f0;
+  }
+}

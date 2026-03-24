@@ -1,17 +1,14 @@
 // src/components/CustomerManagement/CustomerCard.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   User,
   Phone,
   Mail,
-  Receipt,
   ChevronRight,
   Star,
   Zap,
   Award,
 } from "lucide-react";
-import CustomerModal from "./CustomerModal";
-import OrderBillModal from "./OrderBillModal";
 import "./CustomerCard.scss";
 
 /* --- Helpers Functions (Giữ nguyên) --- */
@@ -66,10 +63,7 @@ const STATUS_CONFIG = {
   offline: "offline",
 };
 
-const CustomerCard = ({ customer }) => {
-  const [showModal, setShowModal] = useState(false);
-  const [showBillModal, setShowBillModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
+const CustomerCard = ({ customer, onClick }) => {
 
   // --- Logic ---
   const cleanName = useMemo(
@@ -106,13 +100,6 @@ const CustomerCard = ({ customer }) => {
     : [];
 
   // --- Handlers ---
-  const handleShowBill = (e, orderEntry) => {
-    e.stopPropagation(); // Ngăn click lan ra card (mở CustomerModal)
-    if (!orderEntry) return;
-    setSelectedOrder(orderEntry);
-    setShowBillModal(true);
-  };
-
   const renderCustomerType = () => {
     const type = customer?.customerType || "Mới";
     const map = {
@@ -138,13 +125,18 @@ const CustomerCard = ({ customer }) => {
 
   return (
     <>
-      <div className="customer-card" onClick={() => setShowModal(true)}>
+      <div className="customer-card" onClick={() => onClick?.(customer)}>
         {/* 1. Header: Avatar & Name */}
         <div className="cc-header">
           <div className="cc-avatar-wrapper">
-            <div className="cc-avatar">
+          <div className="cc-avatar">
               {customer?.avatar ? (
-                <img src={customer.avatar} alt="" />
+                typeof customer.avatar === "string" &&
+                customer.avatar.startsWith("http") ? (
+                  <img src={customer.avatar} alt="" />
+                ) : (
+                  <span>{customer.avatar}</span>
+                )
               ) : (
                 <User size={24} />
               )}
@@ -225,53 +217,12 @@ const CustomerCard = ({ customer }) => {
           )}
 
           <div className="cc-actions">
-            {nearestOrder && (
-              <button
-                className="btn-bill"
-                onClick={(e) => handleShowBill(e, nearestOrder)}
-                title="Xem hóa đơn gần nhất"
-              >
-                <Receipt size={14} />
-              </button>
-            )}
             <button className="btn-view" title="Xem chi tiết">
               <ChevronRight size={18} />
             </button>
           </div>
         </div>
       </div>
-
-      {/* --- Modals Updated --- */}
-
-      {/* Thay đổi chính: 
-        1. Bỏ điều kiện {showModal && ...} bao bên ngoài để Animation Out hoạt động đúng.
-        2. Truyền prop isOpen={showModal}.
-      */}
-      <CustomerModal
-        isOpen={showModal}
-        customer={{
-          ...customer,
-          recentOrders: sortedRecentOrders,
-          name: cleanName,
-        }}
-        onClose={() => setShowModal(false)}
-        onShowBill={(entry) => {
-          setSelectedOrder(entry);
-          setShowBillModal(true);
-        }}
-      />
-
-      {/* Giữ nguyên logic cũ cho OrderBillModal (nếu chưa nâng cấp component này) */}
-      {showBillModal && selectedOrder && (
-        <OrderBillModal
-          customer={customer}
-          order={selectedOrder}
-          onClose={() => {
-            setShowBillModal(false);
-            setSelectedOrder(null);
-          }}
-        />
-      )}
     </>
   );
 };

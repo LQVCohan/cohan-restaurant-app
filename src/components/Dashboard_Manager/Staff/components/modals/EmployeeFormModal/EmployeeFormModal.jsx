@@ -1,5 +1,5 @@
 // src/pages/StaffManagement/components/modals/EmployeeFormModal.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Modal from "../../../../../common/Modal";
 import LoadingSpinner from "../../../../../common/LoadingSpinner";
 import "./EmployeeFormModal.scss";
@@ -69,17 +69,8 @@ const EmployeeFormModal = ({
     },
   ];
 
-  const shiftOptions = [
-    { value: "MORNING", label: "🌅 Sáng (6:00 - 14:00)" },
-    { value: "AFTERNOON", label: "☀️ Chiều (14:00 - 22:00)" },
-    { value: "EVENING", label: "🌙 Tối (22:00 - 6:00)" },
-    { value: "FULL_DAY", label: "⏰ Full (8:00 - 17:00)" },
-    { value: "ROTATING", label: "🔁 Xoay ca" },
-  ];
-
   const userTypeOptions = [
     { value: "STAFF", label: "Nhân viên", icon: "👤" },
-    { value: "MANAGER", label: "Quản lý", icon: "👔" },
   ];
 
   const employmentTypeOptions = [
@@ -90,14 +81,7 @@ const EmployeeFormModal = ({
     { value: "CONTRACT", label: "Hợp đồng" },
   ];
 
-  useEffect(() => {
-    if (isOpen && mode === "add") {
-      resetForm();
-      setCurrentStep(1);
-    }
-  }, [isOpen, mode]);
-
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     const today = new Date().toISOString().split("T")[0];
     setFormData({
       name: "",
@@ -124,7 +108,14 @@ const EmployeeFormModal = ({
     setIsDirty(false);
     setShowPassword(false);
     setShowConfirmPassword(false);
-  };
+  }, [defaultRestaurantId]);
+
+  useEffect(() => {
+    if (isOpen && mode === "add") {
+      resetForm();
+      setCurrentStep(1);
+    }
+  }, [isOpen, mode, resetForm]);
 
   const validateStep = (step) => {
     const newErrors = {};

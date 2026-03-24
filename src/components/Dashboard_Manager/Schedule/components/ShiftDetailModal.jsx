@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Modal from "../../../common/Modal";
 import "./ShiftDetailModal.scss";
 import {
@@ -31,14 +31,19 @@ const ShiftDetailModal = ({
   onRemoveStaff,
   onAddStaff,
   onDeleteShift,
+  onUpdateNotes,
 }) => {
   const [search, setSearch] = useState("");
   const [jobFilter, setJobFilter] = useState("");
+  const [noteDraft, setNoteDraft] = useState("");
 
   // --- 1. SỬA LỖI: Tạo các biến an toàn để dùng trong Hooks ---
   // Nếu shift là null, ta dùng mảng rỗng để tránh lỗi "reading properties of null"
-  const shiftStaffIds = shift?.staffIds || [];
-  const shiftEssentialJobs = shift?.essentialJobs || [];
+  const shiftStaffIds = useMemo(() => shift?.staffIds || [], [shift?.staffIds]);
+  const shiftEssentialJobs = useMemo(
+    () => shift?.essentialJobs || [],
+    [shift?.essentialJobs],
+  );
 
   // --- 2. SỬA LỖI: Gọi useMemo TRƯỚC khi return null ---
   const availableStaff = useMemo(() => {
@@ -52,6 +57,10 @@ const ShiftDetailModal = ({
       return notInShift && matchSearch && matchJob;
     });
   }, [staffList, shiftStaffIds, search, jobFilter, shift]); // Dependency safe
+
+  useEffect(() => {
+    setNoteDraft(shift?.notes || "");
+  }, [shift]);
 
   // --- 3. Return null NẾU không có dữ liệu (đặt sau Hooks) ---
   if (!isOpen || !shift) return null;
@@ -143,6 +152,19 @@ const ShiftDetailModal = ({
           </div>
         </div>
 
+        <div className="section-block">
+          <div className="section-header">
+            <h4>Ghi chú ca</h4>
+          </div>
+          <textarea
+            value={noteDraft}
+            onChange={(e) => setNoteDraft(e.target.value)}
+            placeholder="Nhập ghi chú ca làm..."
+            rows={2}
+            style={{ width: "100%" }}
+          />
+        </div>
+
         {/* 3. Add Staff Section */}
         <div className="section-block add-section">
           <div className="section-header">
@@ -224,6 +246,12 @@ const ShiftDetailModal = ({
 
         {/* 4. Footer Actions */}
         <div className="modal-footer-actions">
+          <button
+            className="btn-close"
+            onClick={() => onUpdateNotes && onUpdateNotes(noteDraft)}
+          >
+            Lưu ghi chú
+          </button>
           <button
             className="btn-delete"
             onClick={() => {
