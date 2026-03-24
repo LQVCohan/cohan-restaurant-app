@@ -57,6 +57,12 @@ const LOGIN_MUTATION = gql`
         }
         emailVerified
         avatarUrl
+        wallet {
+          provider
+          status
+          balance
+          currency
+        }
       }
     }
   }

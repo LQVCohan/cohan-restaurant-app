@@ -5,6 +5,7 @@ import {
   Customer,
   Order,
   CustomerRankSetting,
+  WalletTransaction,
 } from "../../../models/index.js";
 import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
@@ -335,5 +336,23 @@ export const UserQuery = {
         ],
       }
     );
+  },
+
+  async myWalletTransactions(_, { limit = 20, offset = 0 }, { user: authUser }) {
+    if (!authUser?.id) {
+      throw new GraphQLError("Unauthorized", {
+        extensions: { code: "UNAUTHENTICATED" },
+      });
+    }
+
+    const safeLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);
+    const safeOffset = Math.max(Number(offset) || 0, 0);
+
+    const rows = await WalletTransaction.find({ userId: toObjectId(authUser.id) })
+      .sort({ createdAt: -1, _id: -1 })
+      .skip(safeOffset)
+      .limit(safeLimit)
+      .lean();
+    return rows.map((row) => ({ ...row, id: String(row._id), userId: String(row.userId) }));
   },
 };

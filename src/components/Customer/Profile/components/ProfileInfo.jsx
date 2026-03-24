@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useMutation, gql } from "@apollo/client";
+import { useMutation, useQuery, gql } from "@apollo/client";
 import { useVnAddressLazy } from "@/hooks/useVnAddressLazy"; // Đảm bảo đường dẫn đúng
 import "./ProfileInfo.scss";
 
@@ -11,10 +11,6 @@ const UPDATE_USER = gql`
       fullName
       phone
       avatarUrl
-      bio
-      gender
-      dateOfBirth
-      dietaryPreferences
       address {
         line1
         line2
@@ -43,21 +39,47 @@ const CREATE_WALLET = gql`
   }
 `;
 
-const DIETARY_OPTIONS = [
-  "Không hành",
-  "Không rau thơm",
-  "Ít đường",
-  "Ít đá",
-  "Ăn chay",
-  "Dị ứng hải sản",
-  "Dị ứng đậu phộng",
-  "Thích ăn cay",
-];
+const TOPUP_WALLET = gql`
+  mutation TopUpMyWallet($input: WalletTopupInput!) {
+    topUpMyWallet(input: $input) {
+      id
+      type
+      amount
+      balanceBefore
+      balanceAfter
+      currency
+      createdAt
+      status
+    }
+  }
+`;
+
+const MY_WALLET_TRANSACTIONS = gql`
+  query MyWalletTransactions($limit: Int, $offset: Int) {
+    myWalletTransactions(limit: $limit, offset: $offset) {
+      id
+      type
+      amount
+      currency
+      balanceBefore
+      balanceAfter
+      status
+      referenceType
+      createdAt
+    }
+  }
+`;
 
 const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
   const [updateUser, { loading: updating }] = useMutation(UPDATE_USER);
   const [createWallet, { loading: creatingWallet }] =
     useMutation(CREATE_WALLET);
+  const [topUpMyWallet, { loading: toppingUp }] = useMutation(TOPUP_WALLET);
+  const { data: txData, refetch: refetchTx } = useQuery(MY_WALLET_TRANSACTIONS, {
+    variables: { limit: 10, offset: 0 },
+    skip: !user?.wallet,
+    fetchPolicy: "network-only",
+  });
 
   // Form State
   const [formData, setFormData] = useState({
@@ -67,11 +89,8 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
     city: "",
     district: "",
     ward: "",
-    bio: "",
-    gender: "other",
-    dateOfBirth: "",
-    dietaryPreferences: [],
   });
+  const [topupAmount, setTopupAmount] = useState("100000");
 
   // Address Hook
   const {
@@ -97,14 +116,6 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
         city: user.address?.city || "",
         district: user.address?.district || "",
         ward: user.address?.ward || "",
-        // Các trường mới
-        bio: user.bio || "",
-        gender: user.gender || "other",
-        // Chuyển đổi ngày về định dạng YYYY-MM-DD cho input date
-        dateOfBirth: user.dateOfBirth
-          ? new Date(user.dateOfBirth).toISOString().split("T")[0]
-          : "",
-        dietaryPreferences: user.dietaryPreferences || [],
       });
     }
   }, [user]);
@@ -161,24 +172,6 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
     }
   };
 
-  const togglePreference = (pref) => {
-    if (!isEditMode) return;
-    setFormData((prev) => {
-      const exists = prev.dietaryPreferences.includes(pref);
-      if (exists) {
-        return {
-          ...prev,
-          dietaryPreferences: prev.dietaryPreferences.filter((p) => p !== pref),
-        };
-      } else {
-        return {
-          ...prev,
-          dietaryPreferences: [...prev.dietaryPreferences, pref],
-        };
-      }
-    });
-  };
-
   const handleSave = async () => {
     try {
       await updateUser({
@@ -187,10 +180,6 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
             fullName: formData.fullName,
             phone: formData.phone,
             avatarUrl: user.avatarUrl, // Giữ nguyên avatar cũ (Sidebar xử lý upload riêng)
-            bio: formData.bio,
-            gender: formData.gender,
-            dateOfBirth: formData.dateOfBirth,
-            dietaryPreferences: formData.dietaryPreferences,
             address: {
               line1: formData.line1,
               city: formData.city,
@@ -207,6 +196,29 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
     } catch (err) {
       console.error(err);
       alert("Lỗi cập nhật: " + err.message);
+    }
+  };
+
+  const handleTopupWallet = async () => {
+    const amount = Number(String(topupAmount || "").replace(/[^\d]/g, ""));
+    if (!amount || amount <= 0) {
+      alert("Vui lòng nhập số tiền nạp hợp lệ.");
+      return;
+    }
+    try {
+      await topUpMyWallet({
+        variables: {
+          input: {
+            amount,
+            note: "Top-up từ hồ sơ khách hàng",
+            idempotencyKey: `wallet-topup-${Date.now()}`,
+          },
+        },
+      });
+      await Promise.all([refetchUser?.(), refetchTx?.()]);
+      alert("Nạp ví thành công.");
+    } catch (err) {
+      alert(`Nạp ví thất bại: ${err.message}`);
     }
   };
 
@@ -268,47 +280,6 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
         </div>
 
         <div className="form-group">
-          <label>Giới thiệu ngắn (Bio)</label>
-          <input
-            type="text"
-            className="form-input"
-            disabled={!isEditMode}
-            value={formData.bio}
-            onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-            placeholder="VD: Yêu thích món cay, trà sữa..."
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Ngày sinh 🎂</label>
-          <input
-            type="date"
-            className="form-input"
-            disabled={!isEditMode}
-            value={formData.dateOfBirth}
-            onChange={(e) =>
-              setFormData({ ...formData, dateOfBirth: e.target.value })
-            }
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Giới tính</label>
-          <select
-            className="form-select"
-            disabled={!isEditMode}
-            value={formData.gender}
-            onChange={(e) =>
-              setFormData({ ...formData, gender: e.target.value })
-            }
-          >
-            <option value="male">Nam</option>
-            <option value="female">Nữ</option>
-            <option value="other">Khác</option>
-          </select>
-        </div>
-
-        <div className="form-group">
           <label>Số điện thoại</label>
           <input
             type="text"
@@ -336,31 +307,6 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
               </span>
             )}
           </div>
-        </div>
-
-        {/* --- SỞ THÍCH ĂN UỐNG --- */}
-        <div className="form-divider">
-          <span>❤️ Sở thích & Lưu ý ăn uống</span>
-        </div>
-        <div className="form-group full">
-          <div className="dietary-tags">
-            {DIETARY_OPTIONS.map((pref) => {
-              const isActive = formData.dietaryPreferences.includes(pref);
-              return (
-                <button
-                  key={pref}
-                  className={`tag-item ${isActive ? "active" : ""}`}
-                  onClick={() => togglePreference(pref)}
-                  disabled={!isEditMode}
-                >
-                  {isActive ? "✓ " : "+ "} {pref}
-                </button>
-              );
-            })}
-          </div>
-          <p className="form-note">
-            * Những lưu ý này sẽ giúp nhà hàng phục vụ bạn tốt hơn.
-          </p>
         </div>
 
         {/* --- ĐỊA CHỈ --- */}
@@ -470,8 +416,47 @@ const ProfileInfo = ({ user, isEditMode, setIsEditMode, refetchUser }) => {
                 ? "Đang tạo ví..."
                 : "Tạo ví điện tử"}
           </button>
+          {user?.wallet && (
+            <div className="wallet-topup">
+              <input
+                type="text"
+                className="form-input"
+                value={topupAmount}
+                onChange={(e) => setTopupAmount(e.target.value)}
+                placeholder="Số tiền nạp"
+              />
+              <button
+                className="btn-edit"
+                onClick={handleTopupWallet}
+                disabled={toppingUp}
+              >
+                {toppingUp ? "Đang nạp..." : "Nạp tiền"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {user?.wallet && (
+        <div className="wallet-panel">
+          <div className="wallet-info">
+            <h3>Lịch sử giao dịch ví</h3>
+            <div className="wallet-meta">
+              {(txData?.myWalletTransactions || []).length === 0 && (
+                <div>Chưa có giao dịch nào.</div>
+              )}
+              {(txData?.myWalletTransactions || []).map((tx) => (
+                <div key={tx.id}>
+                  <strong>{tx.type}</strong> ·{" "}
+                  {Number(tx.amount || 0).toLocaleString()} {tx.currency || "VND"} ·{" "}
+                  {new Date(tx.createdAt).toLocaleString("vi-VN")} · Số dư sau:{" "}
+                  {Number(tx.balanceAfter || 0).toLocaleString()}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

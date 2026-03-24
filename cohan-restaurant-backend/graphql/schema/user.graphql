@@ -92,6 +92,36 @@ type Wallet {
   updatedAt: DateTime
 }
 
+enum WalletTransactionType {
+  TOPUP
+  PAYMENT
+  REFUND
+  ADJUSTMENT
+}
+
+enum WalletTransactionStatus {
+  SUCCESS
+  FAILED
+  PENDING
+}
+
+type WalletTransaction {
+  id: ID!
+  userId: ID!
+  type: WalletTransactionType!
+  amount: Float!
+  currency: String
+  balanceBefore: Float!
+  balanceAfter: Float!
+  status: WalletTransactionStatus!
+  referenceType: String
+  referenceId: ID
+  orderIds: [ID!]
+  metadata: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
 # =========================
 # User Schema
 # =========================
@@ -269,6 +299,12 @@ input UpdateAvatarInput {
 input CreateWalletInput {
   provider: String
   currency: String
+}
+
+input WalletTopupInput {
+  amount: Float!
+  note: String
+  idempotencyKey: String
 }
 
 input AssignRoleToUserInput {
@@ -465,6 +501,7 @@ type Query {
     status: String
     limit: Int = 500
   ): [StaffScheduleShift!]!
+  myWalletTransactions(limit: Int = 20, offset: Int = 0): [WalletTransaction!]!
 }
 
 # =========================
@@ -497,6 +534,7 @@ type Mutation {
   createGuestUser(fullName: String, phone: String, expiresInDays: Int): User!
 
   createMyWallet(input: CreateWalletInput!): User!
+  topUpMyWallet(input: WalletTopupInput!): WalletTransaction!
 
   updateCustomerMetrics(
     id: ID!

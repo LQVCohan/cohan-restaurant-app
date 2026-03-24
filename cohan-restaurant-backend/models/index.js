@@ -59,3 +59,4 @@ export { default as IngredientRecent } from "./ingredient-recent.model.js";
 export { default as RestaurantInfoDraft } from "./restaurant-info-draft.model.js";
 
 export { default as CheckoutSession } from "./checkout-session.model.js";
+export { default as WalletTransaction } from "./wallet-transaction.model.js";

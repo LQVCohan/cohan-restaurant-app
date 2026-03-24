@@ -14,7 +14,10 @@ export default function VerifyEmailPending() {
   const { user, logout } = React.useContext(AuthContext) || {};
   const email = user?.email || "";
   const navigate = useNavigate();
-  const [resend, { loading, data }] = useMutation(RESEND_MUTATION);
+  const [feedback, setFeedback] = React.useState("");
+  const [resend, { loading, data }] = useMutation(RESEND_MUTATION, {
+    onError: (err) => setFeedback(err?.message || "Không thể gửi lại email xác minh."),
+  });
 
   return (
     <div style={centerStyle()}>
@@ -29,7 +32,10 @@ export default function VerifyEmailPending() {
         <div>
           <button
             style={btnStyle("#0ea5e9")}
-            onClick={() => resend({ variables: { email } })}
+            onClick={() => {
+              setFeedback("");
+              resend({ variables: { email } });
+            }}
             disabled={loading}
           >
             {loading ? "Đang gửi lại..." : "Gửi lại email xác minh"}
@@ -51,6 +57,7 @@ export default function VerifyEmailPending() {
             ✅ Đã gửi lại email xác minh!
           </p>
         )}
+        {!!feedback && <p style={{ color: "#dc2626", marginTop: 12 }}>{feedback}</p>}
       </div>
     </div>
   );
