@@ -38,6 +38,8 @@ const Header = ({
   onToggleSidebar,
   sidebarOpen = false,
   notifications = [],
+  searchItems = [],
+  onSelectSearchResult,
 }) => {
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [showNotifications, setShowNotifications] = useState(false);
@@ -204,7 +206,11 @@ const Header = ({
             sidebarOpen ? "header__center--compact" : ""
           }`}
         >
-          <SearchBox />
+          <SearchBox
+            items={searchItems}
+            onSelectItem={onSelectSearchResult}
+            placeholder="Tìm kiếm trang quản lý..."
+          />
         </div>
 
         {/* Right Section */}

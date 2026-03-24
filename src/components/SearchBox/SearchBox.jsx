@@ -1,14 +1,19 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { searchData } from "../../data/searchData";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts";
 import "./SearchBox.scss";
 
-const SearchBox = () => {
+const SearchBox = ({
+  items = null,
+  onSelectItem,
+  placeholder = "Tìm kiếm mọi thứ trong trang...",
+}) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [showResults, setShowResults] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef(null);
+  const searchSource = Array.isArray(items) && items.length > 0 ? items : searchData;
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -26,29 +31,31 @@ const SearchBox = () => {
     const normalizedQuery = searchQuery.toLowerCase().trim();
     const searchResults = [];
 
-    searchData.forEach((item) => {
+    searchSource.forEach((item) => {
       let score = 0;
-      let titleMatch = false;
-      let descriptionMatch = false;
 
       // Check title match
-      const titleLower = item.title.toLowerCase();
+      const titleLower = String(item.title || "").toLowerCase();
       if (titleLower.includes(normalizedQuery)) {
         score += titleLower.indexOf(normalizedQuery) === 0 ? 100 : 50;
-        titleMatch = true;
       }
 
       // Check description match
-      const descriptionLower = item.description.toLowerCase();
+      const descriptionLower = String(item.description || "").toLowerCase();
       if (descriptionLower.includes(normalizedQuery)) {
         score += 25;
-        descriptionMatch = true;
       }
 
       // Check category match
-      const categoryLower = item.category.toLowerCase();
+      const categoryLower = String(item.category || "").toLowerCase();
       if (categoryLower.includes(normalizedQuery)) {
         score += 15;
+      }
+
+      // Check keywords
+      const keywords = Array.isArray(item.keywords) ? item.keywords : [];
+      if (keywords.some((k) => String(k).toLowerCase().includes(normalizedQuery))) {
+        score += 35;
       }
 
       if (score > 0) {
@@ -61,18 +68,19 @@ const SearchBox = () => {
       }
     });
 
-    return searchResults.sort((a, b) => b.score - a.score).slice(0, 8);
+    return searchResults.sort((a, b) => b.score - a.score).slice(0, 10);
   };
 
   // Highlight matching text
   const highlightText = (text, searchQuery) => {
-    if (!searchQuery) return text;
+    const safeText = String(text || "");
+    if (!searchQuery) return safeText;
 
     const regex = new RegExp(
       `(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
       "gi"
     );
-    return text.replace(regex, '<span class="search-highlight">$1</span>');
+    return safeText.replace(regex, '<span class="search-highlight">$1</span>');
   };
 
   // Handle search input
@@ -123,21 +131,17 @@ const SearchBox = () => {
 
   // Select a result
   const selectResult = (result) => {
-    console.log("Selected:", result);
     setQuery("");
     setShowResults(false);
     inputRef.current?.blur();
 
-    // Handle different result types
-    switch (result.type) {
-      case "navigation":
-        // Navigate to page
-        break;
-      case "action":
-        // Perform action
-        break;
-      default:
-        break;
+    if (typeof onSelectItem === "function") {
+      onSelectItem(result);
+      return;
+    }
+
+    if (result.type === "navigation" && result.route) {
+      window.location.hash = result.route;
     }
   };
 
@@ -158,7 +162,7 @@ const SearchBox = () => {
         <input
           ref={inputRef}
           type="text"
-          placeholder="Tìm kiếm mọi thứ trong trang..."
+          placeholder={placeholder}
           className="search-input"
           value={query}
           onChange={handleSearch}
@@ -185,7 +189,7 @@ const SearchBox = () => {
               Object.keys(groupedResults).map((category) => (
                 <div key={category}>
                   <div className="search-results-header">{category}</div>
-                  {groupedResults[category].map((result, index) => {
+                  {groupedResults[category].map((result) => {
                     const globalIndex = results.indexOf(result);
                     return (
                       <div
