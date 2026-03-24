@@ -4,7 +4,13 @@ import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
 import process from "process";
 import { Buffer } from "buffer";
-import { User, Role, Customer, CustomerRankSetting } from "../../../models/index.js";
+import {
+  User,
+  Role,
+  Customer,
+  CustomerRankSetting,
+  WalletTransaction,
+} from "../../../models/index.js";
 import { requireRole } from "../../../utils/authz.js";
 import dayjs from "dayjs";
 
@@ -267,6 +273,87 @@ export const UserMutation = {
       .lean({ virtuals: true });
     const roleName = (saved.role?.slug || saved.role?.name || "").toLowerCase();
     return { ...saved, roleName };
+  },
+
+  async topUpMyWallet(_, { input }, ctx) {
+    const authUser = ctx?.user;
+    if (!authUser?.id) {
+      throw new GraphQLError("Unauthorized", {
+        extensions: { code: "UNAUTHENTICATED" },
+      });
+    }
+
+    const amount = Number(input?.amount || 0);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new GraphQLError("Top-up amount must be greater than 0", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    if (amount > 50_000_000) {
+      throw new GraphQLError("Top-up amount exceeds allowed limit", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+
+    const session = await mongoose.startSession();
+    let tx = null;
+    try {
+      await session.withTransaction(async () => {
+        const user = await User.findById(authUser.id).session(session);
+        if (!user) {
+          throw new GraphQLError("User not found", {
+            extensions: { code: "NOT_FOUND" },
+          });
+        }
+
+        if (!user.wallet || user.wallet.status !== "active") {
+          user.wallet = {
+            provider: user.wallet?.provider || "internal",
+            currency: user.wallet?.currency || "VND",
+            status: "active",
+            balance: Number(user.wallet?.balance || 0),
+            createdAt: user.wallet?.createdAt || new Date(),
+            updatedAt: new Date(),
+          };
+        }
+
+        const balanceBefore = Number(user.wallet?.balance || 0);
+        const balanceAfter = balanceBefore + amount;
+
+        user.wallet.balance = balanceAfter;
+        user.wallet.updatedAt = new Date();
+        await user.save({ session });
+
+        [tx] = await WalletTransaction.create(
+          [
+            {
+              userId: user._id,
+              type: "TOPUP",
+              amount,
+              currency: user.wallet.currency || "VND",
+              balanceBefore,
+              balanceAfter,
+              status: "SUCCESS",
+              referenceType: "WALLET_TOPUP",
+              metadata: {
+                note: input?.note || null,
+                idempotencyKey: input?.idempotencyKey || null,
+              },
+            },
+          ],
+          { session },
+        );
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    const raw = tx?.toObject?.() || tx;
+    return {
+      ...raw,
+      id: String(raw?._id || raw?.id),
+      userId: String(raw?.userId || authUser.id),
+    };
   },
 
   // ========== Register ==========

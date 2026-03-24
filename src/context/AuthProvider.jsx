@@ -64,6 +64,13 @@ const ME_QUERY = gql`
       avatarUrl
       roleName
       emailVerified
+      wallet {
+        provider
+        status
+        balance
+        currency
+        updatedAt
+      }
       refRestaurants {
         id
         name

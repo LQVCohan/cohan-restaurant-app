@@ -12,6 +12,8 @@ import {
   ModifierGroup,
   CheckoutSession,
   Customer,
+  User,
+  WalletTransaction,
 } from "../../../models/index.js";
 
 import { normalizeItem, toId } from "./helper/orderUtils.js";
@@ -1181,6 +1183,14 @@ export const OrderMutation = {
     if (!Array.isArray(items) || items.length === 0) {
       throw new Error("items is required");
     }
+    if (
+      paymentMethod &&
+      !["cash", "transfer", "wallet", "e_wallet", "card", "bank_transfer"].includes(
+        String(paymentMethod).toLowerCase(),
+      )
+    ) {
+      throw new Error("Unsupported payment method");
+    }
 
     if (idempotencyKey) {
       const existing = await CheckoutSession.findOne({ idempotencyKey }).lean();
@@ -1210,6 +1220,9 @@ export const OrderMutation = {
     const checkoutCode = generateOrderCode("CHK", new Date(), null);
     const finalUserId = await ensureUserForOrder(userId, customer);
     const createdOrders = [];
+    const normalizedPaymentMethodRaw = String(paymentMethod || "cash").toLowerCase();
+    const normalizedPaymentMethod =
+      normalizedPaymentMethodRaw === "e_wallet" ? "wallet" : normalizedPaymentMethodRaw;
 
     const session = await mongoose.startSession();
     try {
@@ -1247,8 +1260,8 @@ export const OrderMutation = {
               items: g.items,
               totals,
               note,
-              currentStatus: paymentMethod === "transfer" ? "pending" : "pending",
-              payment: { method: paymentMethod || "cash", status: paymentMethod === "transfer" ? "pending" : "pending" },
+              currentStatus: "pending",
+              payment: { method: normalizedPaymentMethod, status: "pending" },
               statusTimeline: [
                 {
                   status: "pending",
@@ -1284,7 +1297,7 @@ export const OrderMutation = {
             customer: customer || undefined,
             orderIds: createdOrders.map((o) => o._id),
             restaurantIds: createdOrders.map((o) => o.restaurantId),
-            payment: { method: paymentMethod || "cash", status: paymentMethod === "transfer" ? "pending" : "pending" },
+            payment: { method: normalizedPaymentMethod, status: "pending" },
             totals: createdOrders.reduce(
               (acc, o) => {
                 acc.subtotal += Number(o.totals?.subtotal || 0);
@@ -1299,6 +1312,64 @@ export const OrderMutation = {
             ),
           },
         ], { session });
+
+        if (normalizedPaymentMethod === "wallet") {
+          if (!finalUserId || !mongoose.isValidObjectId(finalUserId)) {
+            throw new Error("Wallet payment requires an authenticated account");
+          }
+          const uid = toId(finalUserId);
+          const walletOwner = await User.findById(uid).session(session);
+          if (!walletOwner?.wallet || walletOwner.wallet.status !== "active") {
+            throw new Error("Wallet is not active");
+          }
+
+          const totalPayable = createdOrders.reduce(
+            (acc, o) => acc + Number(o?.totals?.grandTotal || 0),
+            0,
+          );
+          const balanceBefore = Number(walletOwner.wallet.balance || 0);
+          if (balanceBefore < totalPayable) {
+            throw new Error("Insufficient wallet balance");
+          }
+
+          const balanceAfter = balanceBefore - totalPayable;
+          walletOwner.wallet.balance = balanceAfter;
+          walletOwner.wallet.updatedAt = new Date();
+          await walletOwner.save({ session });
+
+          await WalletTransaction.create(
+            [
+              {
+                userId: uid,
+                type: "PAYMENT",
+                amount: totalPayable,
+                currency: walletOwner.wallet.currency || "VND",
+                balanceBefore,
+                balanceAfter,
+                status: "SUCCESS",
+                referenceType: "CHECKOUT_SESSION",
+                orderIds: createdOrders.map((o) => o._id),
+                metadata: {
+                  checkoutCode,
+                  paymentMethod: "wallet",
+                },
+              },
+            ],
+            { session },
+          );
+
+          await Order.updateMany(
+            { _id: { $in: createdOrders.map((o) => o._id) } },
+            { $set: { "payment.status": "paid" } },
+            { session },
+          );
+
+          await CheckoutSession.updateOne(
+            { checkoutCode },
+            { $set: { "payment.status": "paid" } },
+            { session },
+          );
+        }
       });
     } finally {
       await session.endSession();

@@ -23,6 +23,7 @@ import {
   CreditCard,
   Banknote,
   QrCode,
+  Wallet,
   CheckCircle,
   PlusCircle,
   CalendarDays,
@@ -92,6 +93,7 @@ const OrderSummaryModal = ({
   onSuccess,
 }) => {
   const { user, isAuthenticated } = useContext(AuthContext);
+  const walletBalance = Number(user?.wallet?.balance || 0);
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [currentView, setCurrentView] = useState("summary");
@@ -380,6 +382,23 @@ const OrderSummaryModal = ({
       }
     } else if (selectedPaymentMethod === "transfer") {
       setCurrentView("qr");
+    } else if (selectedPaymentMethod === "wallet") {
+      try {
+        setIsProcessingPayment(true);
+        const { orders: created } = await persistAllOrders("wallet");
+        setIsProcessingPayment(false);
+        setCurrentView("success");
+        setAndShowSuccess(created);
+        onSuccess?.();
+      } catch (err) {
+        setIsProcessingPayment(false);
+        const message = String(err?.message || "");
+        if (message.toLowerCase().includes("insufficient wallet balance")) {
+          alert("Số dư ví không đủ. Vui lòng nạp thêm tiền trong trang hồ sơ.");
+          return;
+        }
+        alert(`Thanh toán ví thất bại: ${message}`);
+      }
     }
   };
 
@@ -430,6 +449,7 @@ const OrderSummaryModal = ({
             onPaymentMethodSelect={handlePaymentMethodSelect}
             restaurantCount={restaurantCount}
             calcGroupTotals={calcGroupTotals}
+            walletBalance={walletBalance}
           />
         );
     }
@@ -555,6 +575,7 @@ const SummaryContent = ({
   onPaymentMethodSelect,
   restaurantCount,
   calcGroupTotals,
+  walletBalance,
 }) => (
   <>
     <RestaurantInfo
@@ -576,6 +597,8 @@ const SummaryContent = ({
     <PaymentMethods
       selectedMethod={selectedPaymentMethod}
       onSelect={onPaymentMethodSelect}
+      walletBalance={walletBalance}
+      amount={subtotals.finalTotal}
     />
   </>
 );
@@ -986,7 +1009,7 @@ const PriceBreakdown = ({ subtotals }) => (
   </div>
 );
 
-const PaymentMethods = ({ selectedMethod, onSelect }) => (
+const PaymentMethods = ({ selectedMethod, onSelect, walletBalance, amount }) => (
   <div className="section">
     <h3 className="section-title">
       <CreditCard size={20} /> Phương thức thanh toán
@@ -1018,6 +1041,25 @@ const PaymentMethods = ({ selectedMethod, onSelect }) => (
         <div className="payment-info">
           <h4 className="payment-name">Chuyển khoản / QR</h4>
           <p className="payment-desc">Quét mã QR qua ứng dụng ngân hàng</p>
+        </div>
+        <div className="check-circle">
+          <CheckCircle size={20} />
+        </div>
+      </div>
+
+      <div
+        className={`payment-method-card ${selectedMethod === "wallet" ? "selected" : ""}`}
+        onClick={() => onSelect("wallet")}
+      >
+        <div className="payment-icon">
+          <Wallet size={28} />
+        </div>
+        <div className="payment-info">
+          <h4 className="payment-name">Ví nội bộ</h4>
+          <p className="payment-desc">
+            Số dư {formatCurrency(walletBalance)} ·{" "}
+            {walletBalance >= amount ? "Đủ thanh toán" : "Không đủ số dư"}
+          </p>
         </div>
         <div className="check-circle">
           <CheckCircle size={20} />

@@ -157,6 +157,7 @@ const userSchema = BaseSchemaModel(
     emailVerified: { type: Boolean, default: false },
     emailVerifyToken: { type: String, default: null },
     emailVerifyTokenExp: { type: Date, default: null },
+    emailVerifyLastSentAt: { type: Date, default: null },
 
     lastLoginAt: { type: Date },
     lastLoginIp: { type: String },

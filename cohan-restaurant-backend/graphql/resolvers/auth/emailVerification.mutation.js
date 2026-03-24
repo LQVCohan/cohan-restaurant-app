@@ -6,6 +6,7 @@ import { User } from "../../../models/index.js";
 import { mailer, buildVerifyMail } from "../../../lib/mailer.js";
 
 const VERIFY_TTL_MS = 24 * 3600 * 1000; // 24h
+const RESEND_COOLDOWN_MS = 60 * 1000;
 
 function appPublicUrl() {
   return process.env.APP_PUBLIC_URL || "http://localhost:5173";
@@ -18,12 +19,28 @@ function buildVerifyLink(token) {
 
 // 👉 helper để nơi khác (vd: createUser) có thể gọi tái sử dụng
 export async function issueAndSendVerificationForUser(user) {
+  const now = Date.now();
+  const lastSentAt = user?.emailVerifyLastSentAt
+    ? new Date(user.emailVerifyLastSentAt).getTime()
+    : 0;
+  if (lastSentAt && now - lastSentAt < RESEND_COOLDOWN_MS) {
+    throw new GraphQLError("Please wait before requesting another verification email.", {
+      extensions: { code: "TOO_MANY_REQUESTS" },
+    });
+  }
+
   const token = randomBytes(32).toString("hex");
   const exp = new Date(Date.now() + VERIFY_TTL_MS);
 
   await User.updateOne(
     { _id: user._id },
-    { $set: { emailVerifyToken: token, emailVerifyTokenExp: exp } }
+    {
+      $set: {
+        emailVerifyToken: token,
+        emailVerifyTokenExp: exp,
+        emailVerifyLastSentAt: new Date(),
+      },
+    }
   );
 
   const link = buildVerifyLink(token);
