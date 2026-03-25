@@ -23,6 +23,7 @@ import {
 } from "../services/ai/aiTable.service.js";
 import { registerObservability } from "../observability/observability.js";
 import { initBackendSentry } from "../observability/sentry.js";
+import { applyPaymentProviderCallback, createReservationPayment, getPaymentSessionById, listReservationPayments } from "../services/payment/paymentSession.service.js";
 
 const parseAllowedOrigins = () => {
   const rawOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173")
@@ -88,6 +89,79 @@ export async function createServer() {
   });
 
   await app.register(uploadRoutes, { prefix: "/api" });
+
+  app.post("/api/payments/reservations/:reservationId/create", async (req, reply) => {
+    try {
+      const reservationId = req.params?.reservationId;
+      const { provider } = req.body || {};
+      const userId = req.user?.id || req.headers["x-user-id"];
+      if (!userId) return reply.code(401).send({ ok: false, message: "Unauthorized" });
+      const host = req.headers["x-forwarded-host"] || req.headers.host || `localhost:${process.env.PORT || 4000}`;
+      const proto = req.headers["x-forwarded-proto"] || "http";
+      const baseApiUrl = `${proto}://${host}`;
+      const ip = req.headers["x-forwarded-for"] || req.ip || "127.0.0.1";
+
+      const payment = await createReservationPayment({
+        reservationId,
+        provider,
+        userId,
+        baseApiUrl,
+        clientIp: Array.isArray(ip) ? ip[0] : String(ip).split(",")[0],
+      });
+
+      return reply.send({ ok: true, payment });
+    } catch (err) {
+      req.log.error({ err }, "create reservation payment failed");
+      return reply.code(400).send({ ok: false, message: err?.message || "Create payment failed" });
+    }
+  });
+
+  app.get("/api/payments/:paymentId/status", async (req, reply) => {
+    try {
+      const payment = await getPaymentSessionById(req.params?.paymentId);
+      return reply.send({ ok: true, payment });
+    } catch (err) {
+      return reply.code(404).send({ ok: false, message: err?.message || "Payment not found" });
+    }
+  });
+
+  app.get("/api/payments/reservations/:reservationId", async (req, reply) => {
+    try {
+      const userId = req.user?.id || req.headers["x-user-id"];
+      if (!userId) return reply.code(401).send({ ok: false, message: "Unauthorized" });
+      const list = await listReservationPayments(req.params?.reservationId, userId);
+      return reply.send({ ok: true, items: list });
+    } catch (err) {
+      return reply.code(400).send({ ok: false, message: err?.message || "List payments failed" });
+    }
+  });
+
+  app.post("/api/payments/webhooks/:provider", async (req, reply) => {
+    try {
+      const payment = await applyPaymentProviderCallback({
+        provider: req.params?.provider,
+        payload: req.body || {},
+        source: "webhook",
+      });
+      return reply.send({ ok: true, paymentId: String(payment._id), status: payment.status });
+    } catch (err) {
+      req.log.error({ err }, "payment webhook failed");
+      return reply.code(400).send({ ok: false, message: err?.message || "Webhook failed" });
+    }
+  });
+
+  app.get("/api/payments/return/:provider", async (req, reply) => {
+    try {
+      const payment = await applyPaymentProviderCallback({
+        provider: req.params?.provider,
+        payload: req.query || {},
+        source: "return",
+      });
+      return reply.send({ ok: true, paymentId: String(payment._id), status: payment.status, message: "Payment return captured. Backend remains source of truth." });
+    } catch (err) {
+      return reply.code(400).send({ ok: false, message: err?.message || "Return processing failed" });
+    }
+  });
 
   // ===== REVERSE GEOCODE API =====
   app.get("/api/reverse-geocode", async (req, reply) => {

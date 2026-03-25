@@ -1,5 +1,6 @@
 import mongoose, { startSession } from "mongoose";
 import dayjs from "dayjs";
+import process from "node:process";
 import { generateInvoiceNumber } from "../../../utils/generateInvoiceNumber.ts";
 import {
   Order,
@@ -8,7 +9,10 @@ import {
   Cashflow,
   EventLog,
   Table,
+  Restaurant,
+  PaymentSession,
 } from "../../../models/index.js";
+import { createReservationPayment } from "../../../src/services/payment/paymentSession.service.js";
 
 const INACTIVE_ORDER_STATUSES = ["completed", "cancelled", "failed"];
 const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
@@ -349,4 +353,94 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
   }
 };
 
-export default { payOrdersByTableId };
+
+
+export const createReservationPaymentMutation = async (_parent, { input }, ctx) => {
+  const userId = ctx?.user?.id;
+  if (!userId) throw new Error("Unauthorized");
+
+  const baseApiUrl = process.env.PUBLIC_BASE_URL || process.env.APP_PUBLIC_URL || "http://localhost:4000";
+
+  const payment = await createReservationPayment({
+    reservationId: input?.reservationId,
+    provider: input?.provider,
+    userId,
+    baseApiUrl,
+    clientIp: "127.0.0.1",
+  });
+
+  return payment;
+};
+
+export const syncPaymentStatus = async (_parent, { paymentId }) => {
+  if (!mongoose.isValidObjectId(paymentId)) throw new Error("Invalid paymentId");
+  const payment = await PaymentSession.findById(paymentId).lean();
+  if (!payment) throw new Error("Payment session not found");
+
+  if (payment.provider === "vnpay" && payment.providerResponseRaw?.vnp_TxnRef) {
+    // VNPAY bản chuẩn cần query API riêng; ở đây fallback trả trạng thái đã biết.
+    return payment;
+  }
+  if (payment.provider === "momo" && payment.providerResponseRaw?.orderId) {
+    // MoMo query API optional; callback/webhook vẫn là source of truth.
+    return payment;
+  }
+
+  return payment;
+};
+
+export const updateRestaurantPaymentSettings = async (_parent, { input }, ctx) => {
+  if (!ctx?.user?.id) throw new Error("Unauthorized");
+  const role = String(ctx?.user?.roleName || ctx?.user?.role || "").toLowerCase();
+  if (!["manager", "admin"].some((x) => role.includes(x))) {
+    throw new Error("Forbidden");
+  }
+
+  const rid = toId(input?.restaurantId);
+  if (!rid) throw new Error("Invalid restaurantId");
+
+  const providers = Array.isArray(input?.providers) ? input.providers : [];
+  const normalizedProviders = providers
+    .map((p, idx) => ({
+      provider: String(p?.provider || "").toLowerCase(),
+      label: String(p?.label || "").trim() || (String(p?.provider || "").toLowerCase() === "momo" ? "MoMo" : "VNPAY"),
+      active: p?.active !== false,
+      priority: Number.isFinite(Number(p?.priority)) ? Number(p.priority) : idx + 1,
+      mode: String(p?.mode || "sandbox").toLowerCase() === "production" ? "production" : "sandbox",
+    }))
+    .filter((p) => ["momo", "vnpay"].includes(p.provider));
+
+  const defaultProvider = ["momo", "vnpay"].includes(String(input?.defaultProvider || "").toLowerCase())
+    ? String(input.defaultProvider).toLowerCase()
+    : (normalizedProviders[0]?.provider || "momo");
+
+  const restaurant = await Restaurant.findByIdAndUpdate(
+    rid,
+    {
+      $set: {
+        paymentSettings: {
+          defaultProvider,
+          providers: normalizedProviders,
+        },
+      },
+    },
+    { new: true }
+  );
+
+  if (!restaurant) throw new Error("Restaurant not found");
+
+  await EventLog.log({
+    restaurantId: restaurant._id,
+    actorUserId: ctx?.user?.id,
+    verb: "payment.create",
+    object: { kind: "Restaurant", id: restaurant._id },
+    source: "web",
+    status: "success",
+    meta: { action: "update_payment_settings", defaultProvider, providers: normalizedProviders },
+  }).catch(() => {});
+
+  return restaurant;
+};
+
+
+export default { payOrdersByTableId, createReservationPayment: createReservationPaymentMutation, syncPaymentStatus, updateRestaurantPaymentSettings };

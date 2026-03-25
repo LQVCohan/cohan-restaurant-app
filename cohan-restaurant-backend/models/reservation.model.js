@@ -34,7 +34,7 @@ const ReservationSchema = BaseSchemaModel(
       index: true,
     },
 
-    paymentMethod: { type: String, default: "transfer" },
+    paymentMethod: { type: String, default: "momo" },
     paymentReference: { type: String },
 
     status: {

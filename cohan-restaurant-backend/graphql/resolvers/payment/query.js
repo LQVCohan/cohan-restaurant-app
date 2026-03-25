@@ -4,7 +4,10 @@ import {
   Invoice,
   PaymentTransaction,
   Cashflow,
+  PaymentSession,
+  Restaurant,
 } from "../../../models/index.js";
+import { getProviderPublicConfig } from "../../../src/services/payment/paymentSession.service.js";
 
 const toObjectId = (id) =>
   id && mongoose.isValidObjectId(id) ? new mongoose.Types.ObjectId(id) : null;
@@ -105,6 +108,26 @@ function buildBuckets({ from, to, mode, format }) {
 }
 
 export const PaymentQuery = {
+
+
+  async paymentSession(_, { id }) {
+    if (!mongoose.isValidObjectId(id)) throw new Error("Invalid payment id");
+    return PaymentSession.findById(id).lean();
+  },
+
+  async reservationPaymentSessions(_, { reservationId }, ctx) {
+    if (!mongoose.isValidObjectId(reservationId)) throw new Error("Invalid reservationId");
+    const q = { reservationId: new mongoose.Types.ObjectId(reservationId) };
+    if (ctx?.user?.id && mongoose.isValidObjectId(ctx.user.id)) {
+      q.userId = new mongoose.Types.ObjectId(ctx.user.id);
+    }
+    return PaymentSession.find(q).sort({ createdAt: -1 }).lean();
+  },
+
+  async restaurantPaymentPublicConfig(_, { restaurantId }) {
+    if (!mongoose.isValidObjectId(restaurantId)) throw new Error("Invalid restaurantId");
+    return getProviderPublicConfig(restaurantId);
+  },
   async paymentTransactionsByOrder(_, { orderId }) {
     if (!mongoose.isValidObjectId(orderId)) return [];
     const id = new mongoose.Types.ObjectId(orderId);

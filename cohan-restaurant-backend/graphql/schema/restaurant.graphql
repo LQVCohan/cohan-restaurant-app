@@ -12,6 +12,19 @@ type Address {
 
 
 
+type PaymentProviderConfig {
+  provider: String!
+  label: String!
+  active: Boolean!
+  priority: Int!
+  mode: String!
+}
+
+type PaymentSettings {
+  defaultProvider: String!
+  providers: [PaymentProviderConfig!]!
+}
+
 type ReservationSettings {
   baseDepositAmount: Float
   menuDepositPercent: Float
@@ -19,6 +32,19 @@ type ReservationSettings {
   changeTableFee: Float
   vatRate: Float
   serviceFee: Float
+}
+
+input PaymentProviderConfigInput {
+  provider: String!
+  label: String
+  active: Boolean
+  priority: Int
+  mode: String
+}
+
+input PaymentSettingsInput {
+  defaultProvider: String
+  providers: [PaymentProviderConfigInput!]
 }
 
 input ReservationSettingsInput {
@@ -59,6 +85,7 @@ type Restaurant {
   reservationCount: Int
   tableParticipationCount: Int
   reservationSettings: ReservationSettings
+  paymentSettings: PaymentSettings
 }
 
 input RestaurantFilter {
@@ -178,6 +205,7 @@ input CreateRestaurantInput {
   status: String
   managerId: ID!
   reservationSettings: ReservationSettingsInput
+  paymentSettings: PaymentSettingsInput
 }
 
 input UpdateRestaurantInput {
@@ -201,12 +229,14 @@ input UpdateRestaurantInput {
   cuisineType: String
   status: String
   reservationSettings: ReservationSettingsInput
+  paymentSettings: PaymentSettingsInput
 }
 
 input UpdateRestaurantManagerInput {
   restaurantId: ID!
   managerId: ID!
   reservationSettings: ReservationSettingsInput
+  paymentSettings: PaymentSettingsInput
 }
 
 

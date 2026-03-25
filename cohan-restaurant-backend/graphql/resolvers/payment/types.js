@@ -1,4 +1,10 @@
 export const PaymentResolvers = {
+  PaymentSession: {
+    restaurantId(parent) { return parent?.restaurantId ? String(parent.restaurantId) : null; },
+    orderId(parent) { return parent?.orderId ? String(parent.orderId) : null; },
+    reservationId(parent) { return parent?.reservationId ? String(parent.reservationId) : null; },
+    userId(parent) { return parent?.userId ? String(parent.userId) : null; },
+  },
   PaymentTransaction: {
     orderId(parent) {
       if (parent.orderId) return String(parent.orderId);
