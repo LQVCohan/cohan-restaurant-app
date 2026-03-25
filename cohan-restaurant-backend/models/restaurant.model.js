@@ -14,6 +14,26 @@ const addressSchema = new mongoose.Schema({
   lng: Number,
 });
 
+
+const paymentProviderConfigSchema = new mongoose.Schema({
+  provider: { type: String, enum: ["momo", "vnpay"], required: true },
+  label: { type: String, default: "" },
+  active: { type: Boolean, default: true },
+  priority: { type: Number, default: 0 },
+  mode: { type: String, enum: ["sandbox", "production"], default: "sandbox" },
+}, { _id: false });
+
+const paymentSettingsSchema = new mongoose.Schema({
+  defaultProvider: { type: String, enum: ["momo", "vnpay"], default: "momo" },
+  providers: {
+    type: [paymentProviderConfigSchema],
+    default: () => ([
+      { provider: "momo", label: "MoMo", active: true, priority: 1, mode: "sandbox" },
+      { provider: "vnpay", label: "VNPAY", active: true, priority: 2, mode: "sandbox" },
+    ]),
+  },
+}, { _id: false });
+
 const reservationSettingsSchema = new mongoose.Schema({
   baseDepositAmount: { type: Number, default: 0, min: 0 },
   menuDepositPercent: { type: Number, default: 50, min: 0, max: 100 },
@@ -50,6 +70,7 @@ const restaurantSchema = BaseSchemaModel({
   },
   status: { type: String, enum: ["active", "inactive"], default: "active" },
   reservationSettings: { type: reservationSettingsSchema, default: () => ({}) },
+  paymentSettings: { type: paymentSettingsSchema, default: () => ({}) },
 
   managerId: {
     type: mongoose.Schema.Types.ObjectId,

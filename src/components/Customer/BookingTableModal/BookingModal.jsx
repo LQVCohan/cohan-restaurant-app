@@ -423,7 +423,7 @@ const BookingModal = ({
         depositAmount: totalDeposit,
         linkedMenuSubtotal: menuSubtotal,
         isUnlimitedTime: !!formData.openEnded,
-        paymentMethod: "transfer",
+        paymentMethod: "momo",
       };
 
       const reservation = await createBooking(input);

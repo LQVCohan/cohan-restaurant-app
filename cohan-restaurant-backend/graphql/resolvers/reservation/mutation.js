@@ -10,8 +10,8 @@ import {
 } from "../../../models/index.js";
 
 const ACTIVE_STATUSES = ["pending_payment", "confirmed", "seated", "pending_change"];
-const PAYMENT_METHODS = ["cash", "transfer", "pending_transfer"];
-const PAYMENT_STATUSES = ["paid", "pending", "failed"];
+const PAYMENT_METHODS = ["cash", "momo", "vnpay"];
+const PAYMENT_STATUSES = ["paid", "pending", "failed", "cancelled"];
 
 function toObjectId(id, field = "ID") {
   if (!id || !mongoose.isValidObjectId(id)) {
@@ -160,7 +160,7 @@ async function updateTableStatusByReservation(tableId) {
 }
 
 function normalizePaymentMethod(method) {
-  const normalized = String(method || "transfer").toLowerCase();
+  const normalized = String(method || "momo").toLowerCase();
   if (!PAYMENT_METHODS.includes(normalized)) {
     throw new GraphQLError("paymentMethod không hợp lệ", {
       extensions: { code: "BAD_USER_INPUT" },
@@ -509,6 +509,9 @@ export const ReservationMutation = {
     } else if (pStatus === "pending") {
       reservation.depositStatus = "pending";
       reservation.status = "pending_payment";
+    } else if (pStatus === "cancelled") {
+      reservation.depositStatus = "cancelled";
+      reservation.status = "cancelled";
     } else {
       reservation.depositStatus = "failed";
       reservation.status = "cancelled";

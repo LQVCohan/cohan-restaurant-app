@@ -103,6 +103,65 @@ type PaymentTransaction {
   updatedAt: DateTime
 }
 
+
+
+type PaymentSession {
+  id: ID!
+  restaurantId: ID!
+  orderId: ID
+  reservationId: ID
+  userId: ID!
+  provider: String!
+  providerTransactionId: String
+  requestId: String!
+  reference: String!
+  amount: Float!
+  currency: String!
+  paymentMethod: String
+  status: String!
+  callbackStatus: String!
+  payUrl: String
+  qrCodeUrl: String
+  deeplink: String
+  metadata: JSON
+  providerResponseRaw: JSON
+  callbackRaw: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CreateReservationPaymentInput {
+  reservationId: ID!
+  provider: String!
+}
+
+input PaymentProviderConfigInputLite {
+  provider: String!
+  label: String
+  active: Boolean
+  priority: Int
+  mode: String
+}
+
+input UpdateRestaurantPaymentSettingsInput {
+  restaurantId: ID!
+  defaultProvider: String
+  providers: [PaymentProviderConfigInputLite!]
+}
+
+type PaymentProviderPublicConfig {
+  provider: String!
+  label: String!
+  active: Boolean!
+  priority: Int!
+  mode: String!
+}
+
+type RestaurantPaymentPublicConfig {
+  defaultProvider: String!
+  providers: [PaymentProviderPublicConfig!]!
+}
+
 type FinanceSummary {
   revenue: Float!
   expense: Float!
@@ -167,11 +226,19 @@ input FinanceDashboardInput {
 }
 
 extend type Query {
+  paymentSession(id: ID!): PaymentSession
+  reservationPaymentSessions(reservationId: ID!): [PaymentSession!]!
+  restaurantPaymentPublicConfig(restaurantId: ID!): RestaurantPaymentPublicConfig!
+
   paymentTransactionsByOrder(orderId: ID!): [PaymentTransaction!]!
   invoicesByOrder(orderId: ID!): [Invoice!]!
   financeDashboard(input: FinanceDashboardInput!): FinanceDashboard!
 }
 
 extend type Mutation {
+  createReservationPayment(input: CreateReservationPaymentInput!): PaymentSession!
+  syncPaymentStatus(paymentId: ID!): PaymentSession!
+  updateRestaurantPaymentSettings(input: UpdateRestaurantPaymentSettingsInput!): Restaurant!
+
   payOrdersByTableId(input: PayOrdersByTableIdInput!): PayOrdersByTableResult!
 }

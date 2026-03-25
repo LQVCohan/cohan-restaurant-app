@@ -21,6 +21,7 @@ import {
   Divider,
   Modal,
   List,
+  Alert,
 } from "antd";
 import {
   SaveOutlined,
@@ -168,6 +169,16 @@ const GET_RESTAURANT_DETAIL = gql`
         vatRate
         serviceFee
       }
+      paymentSettings {
+        defaultProvider
+        providers {
+          provider
+          label
+          active
+          priority
+          mode
+        }
+      }
     }
   }
 `;
@@ -219,6 +230,16 @@ const UPDATE_RESTAURANT = gql`
         changeTableFee
         vatRate
         serviceFee
+      }
+      paymentSettings {
+        defaultProvider
+        providers {
+          provider
+          label
+          active
+          priority
+          mode
+        }
       }
     }
   }
@@ -366,6 +387,13 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
       vatRate: 0,
       serviceFee: 0,
     },
+    paymentSettings: {
+      defaultProvider: "momo",
+      providers: [
+        { provider: "momo", label: "MoMo", active: true, priority: 1, mode: "sandbox" },
+        { provider: "vnpay", label: "VNPAY", active: true, priority: 2, mode: "sandbox" },
+      ],
+    },
   });
 
   // --- QUERY HOOKS ---
@@ -478,6 +506,19 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
         changeTableFee: Number(r.reservationSettings?.changeTableFee || 0),
         vatRate: Number(r.reservationSettings?.vatRate || 0),
         serviceFee: Number(r.reservationSettings?.serviceFee || 0),
+      },
+      paymentSettings: {
+        defaultProvider: r.paymentSettings?.defaultProvider || "momo",
+        providers: (r.paymentSettings?.providers || [
+          { provider: "momo", label: "MoMo", active: true, priority: 1, mode: "sandbox" },
+          { provider: "vnpay", label: "VNPAY", active: true, priority: 2, mode: "sandbox" },
+        ]).map((x, idx) => ({
+          provider: x.provider,
+          label: x.label || (x.provider === "momo" ? "MoMo" : "VNPAY"),
+          active: x.active !== false,
+          priority: Number(x.priority ?? idx + 1),
+          mode: x.mode || "sandbox",
+        })),
       },
     };
     setRestaurantForm(nextState);
@@ -812,6 +853,18 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
               changeTableFee: Number(restaurantForm.reservationSettings?.changeTableFee || 0),
               vatRate: Number(restaurantForm.reservationSettings?.vatRate || 0),
               serviceFee: Number(restaurantForm.reservationSettings?.serviceFee || 0),
+            },
+            paymentSettings: {
+              defaultProvider: restaurantForm.paymentSettings?.defaultProvider || "momo",
+              providers: (restaurantForm.paymentSettings?.providers || [])
+                .filter((p) => ["momo", "vnpay"].includes(String(p.provider || "").toLowerCase()))
+                .map((p, idx) => ({
+                  provider: String(p.provider || "").toLowerCase(),
+                  label: p.label || (String(p.provider || "").toLowerCase() === "momo" ? "MoMo" : "VNPAY"),
+                  active: p.active !== false,
+                  priority: Number(p.priority ?? idx + 1),
+                  mode: p.mode === "production" ? "production" : "sandbox",
+                })),
             },
           },
         },
@@ -1519,6 +1572,108 @@ const RestaurantInfoManagement = ({ role = "manager" }) => {
                       ),
                     }))}
                   />
+                </>
+              ),
+            },
+            {
+              key: "4",
+              label: (
+                <span>
+                  <CreditCardOutlined /> Thanh toán realtime
+                </span>
+              ),
+              children: (
+                <>
+                  <Alert type="info" showIcon message="Chỉ hỗ trợ provider callback realtime: MoMo và VNPAY." style={{ marginBottom: 16 }} />
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item label="Provider mặc định">
+                        <Select
+                          value={restaurantForm.paymentSettings?.defaultProvider || "momo"}
+                          onChange={(v) =>
+                            setRestaurantForm((p) => ({
+                              ...p,
+                              paymentSettings: {
+                                ...(p.paymentSettings || {}),
+                                defaultProvider: v,
+                              },
+                            }))
+                          }
+                          options={[
+                            { value: "momo", label: "MoMo" },
+                            { value: "vnpay", label: "VNPAY" },
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                  {(restaurantForm.paymentSettings?.providers || []).map((provider, idx) => (
+                    <Card key={provider.provider} size="small" style={{ marginBottom: 12 }} title={provider.provider === "momo" ? "MoMo" : "VNPAY"}>
+                      <Row gutter={16}>
+                        <Col span={8}>
+                          <Form.Item label="Label hiển thị">
+                            <Input
+                              value={provider.label}
+                              onChange={(e) =>
+                                setRestaurantForm((p) => {
+                                  const providers = [...(p.paymentSettings?.providers || [])];
+                                  providers[idx] = { ...providers[idx], label: e.target.value };
+                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
+                                })
+                              }
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={5}>
+                          <Form.Item label="Ưu tiên">
+                            <Input
+                              type="number"
+                              value={provider.priority}
+                              onChange={(e) =>
+                                setRestaurantForm((p) => {
+                                  const providers = [...(p.paymentSettings?.providers || [])];
+                                  providers[idx] = { ...providers[idx], priority: Number(e.target.value || 0) };
+                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
+                                })
+                              }
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={5}>
+                          <Form.Item label="Môi trường">
+                            <Select
+                              value={provider.mode || "sandbox"}
+                              onChange={(v) =>
+                                setRestaurantForm((p) => {
+                                  const providers = [...(p.paymentSettings?.providers || [])];
+                                  providers[idx] = { ...providers[idx], mode: v };
+                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
+                                })
+                              }
+                              options={[
+                                { value: "sandbox", label: "Sandbox" },
+                                { value: "production", label: "Production" },
+                              ]}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={6}>
+                          <Form.Item label="Kích hoạt">
+                            <Switch
+                              checked={provider.active !== false}
+                              onChange={(checked) =>
+                                setRestaurantForm((p) => {
+                                  const providers = [...(p.paymentSettings?.providers || [])];
+                                  providers[idx] = { ...providers[idx], active: checked };
+                                  return { ...p, paymentSettings: { ...(p.paymentSettings || {}), providers } };
+                                })
+                              }
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </Card>
+                  ))}
                 </>
               ),
             },
