@@ -741,6 +741,141 @@ type DemandForecast {
   meta: DemandForecastMeta!
 }
 
+type MenuEngineeringSummary {
+  totalDishes: Int!
+  starCount: Int!
+  plowhorseCount: Int!
+  puzzleCount: Int!
+  dogCount: Int!
+  avgMarginPct: Float!
+  notes: [String!]!
+}
+
+type MenuEngineeringDishInsight {
+  dishId: ID!
+  dishName: String!
+  quantity: Float!
+  revenue: Float!
+  estimatedCost: Float!
+  profit: Float!
+  marginPct: Float!
+  popularityScore: Int!
+  marginScore: Int!
+  contributionMargin: Float!
+  quadrant: String!
+  recommendation: String!
+}
+
+type MenuEngineeringMeta {
+  method: String!
+  fallbackUsed: Boolean!
+  fallbackMarginRate: Float!
+  generatedAt: DateTime!
+  timezone: String!
+  sampleOrders: Int!
+  sampleDays: Int!
+}
+
+type MenuEngineeringAssistant {
+  summary: MenuEngineeringSummary!
+  dishes: [MenuEngineeringDishInsight!]!
+  recommendations: [String!]!
+  meta: MenuEngineeringMeta!
+}
+
+type SmartPromotionEngineSummary {
+  recommendedCampaignCount: Int!
+  topOpportunityWindow: String!
+  highestPrioritySegment: String!
+  notes: [String!]!
+}
+
+type SmartPromotionTargetWindow {
+  days: [String!]!
+  startHour: Int!
+  endHour: Int!
+}
+
+type SmartPromotionRecommendation {
+  scope: String!
+  discountType: String!
+  discountValue: Float!
+  minOrderValue: Float!
+  maxDiscount: Float!
+  stacking: Boolean!
+}
+
+type SmartPromotionExpectedKpi {
+  expectedOrdersLiftPct: Float!
+  expectedRevenueLiftPct: Float!
+  expectedConversionLiftPct: Float!
+  expectedAovLiftPct: Float!
+  expectedRedemptionRate: Float!
+  expectedStockReliefScore: Float!
+  confidence: Float!
+}
+
+type SmartPromotionCampaign {
+  campaignKey: String!
+  title: String!
+  objective: String!
+  campaignType: String!
+  priority: String!
+  score: Float!
+  targetSegment: String!
+  targetOrderType: String!
+  targetWindow: SmartPromotionTargetWindow!
+  recommendation: SmartPromotionRecommendation!
+  expectedKpi: SmartPromotionExpectedKpi!
+  guardrails: [String!]!
+  reason: String!
+}
+
+type SmartPromotionAutoSelected {
+  source: String!
+  promotionId: ID!
+  promotionName: String!
+  fitScore: Float!
+  fitReason: String!
+}
+
+type SmartPromotionSegmentInsight {
+  segment: String!
+  recommendedStrategy: String!
+  reason: String!
+}
+
+type SmartPromotionTimeWindowInsight {
+  window: String!
+  demandLevel: String!
+  recommendedStrategy: String!
+}
+
+type SmartPromotionCouponContext {
+  activeCouponCount: Int!
+  nearUsageLimitCount: Int!
+}
+
+type SmartPromotionEngineMeta {
+  method: String!
+  fallbackUsed: Boolean!
+  aiEnhanced: Boolean!
+  generatedAt: DateTime!
+  timezone: String!
+  sampleOrders: Int!
+  sampleDays: Int!
+}
+
+type SmartPromotionEngine {
+  summary: SmartPromotionEngineSummary!
+  campaigns: [SmartPromotionCampaign!]!
+  autoSelectedPromotions: [SmartPromotionAutoSelected!]!
+  segmentInsights: [SmartPromotionSegmentInsight!]!
+  timeWindowInsights: [SmartPromotionTimeWindowInsight!]!
+  couponContext: SmartPromotionCouponContext!
+  meta: SmartPromotionEngineMeta!
+}
+
 # =========================================================
 # ROOT
 # =========================================================
@@ -788,6 +923,17 @@ extend type Query {
     horizonDays: Int = 2
     timezone: String = "Asia/Ho_Chi_Minh"
   ): DemandForecast!
+  menuEngineeringAssistant(
+    restaurantId: ID!
+    lookbackDays: Int = 30
+    timezone: String = "Asia/Ho_Chi_Minh"
+  ): MenuEngineeringAssistant!
+  smartPromotionEngine(
+    restaurantId: ID!
+    lookbackDays: Int = 30
+    horizonDays: Int = 2
+    timezone: String = "Asia/Ho_Chi_Minh"
+  ): SmartPromotionEngine!
 }
 
 extend type Mutation {

@@ -10,6 +10,9 @@ import SmartFeedbackAnalysis from "./components/SmartFeedbackAnalysis";
 import SmartOccupancyHeatmap from "./components/SmartOccupancyHeatmap";
 import StaffPerformance from "./components/StaffPerformance";
 import DemandForecastWidget from "./components/DemandForecastWidget";
+import StaffSchedulingAssistantWidget from "./components/StaffSchedulingAssistantWidget";
+import MenuEngineeringAssistantWidget from "./components/MenuEngineeringAssistantWidget";
+import SmartPromotionEngineWidget from "./components/SmartPromotionEngineWidget";
 import "./ManagerAnalyst.scss";
 
 const ManagerAnalyst = () => {
@@ -26,6 +29,9 @@ const ManagerAnalyst = () => {
     occupancyHeatmap,
     staffPerformance,
     demandForecast,
+    staffSchedulingAssistant,
+    menuEngineeringAssistant,
+    smartPromotionEngine,
   } = useAnalyst();
 
   const icons = [DollarSign, Users, ShoppingBag, Star];
@@ -80,6 +86,26 @@ const ManagerAnalyst = () => {
       <section className="forecast-grid">
         <div className="grid-item demand-forecast">
           <DemandForecastWidget forecast={demandForecast} loading={loading} />
+        </div>
+      </section>
+
+
+
+      <section className="scheduling-assistant-grid">
+        <div className="grid-item scheduling-assistant">
+          <StaffSchedulingAssistantWidget assistant={staffSchedulingAssistant} loading={loading} />
+        </div>
+      </section>
+
+      <section className="menu-engineering-assistant-grid">
+        <div className="grid-item menu-engineering-assistant">
+          <MenuEngineeringAssistantWidget assistant={menuEngineeringAssistant} loading={loading} />
+        </div>
+      </section>
+
+      <section className="smart-promotion-engine-grid">
+        <div className="grid-item smart-promotion-engine">
+          <SmartPromotionEngineWidget engine={smartPromotionEngine} loading={loading} />
         </div>
       </section>
 
