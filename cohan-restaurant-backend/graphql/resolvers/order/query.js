@@ -15,6 +15,7 @@ import {
 import { toId } from "../order/helper/orderUtils.js";
 import { resolveTableSafe } from "../order/helper/tableUtils.js";
 import TableCustomer from "../../../models/tableCustomer.model.js";
+import { buildDemandForecast } from "../../../src/services/ai/demandForecast.service.js";
 
 const INACTIVE_STATUSES = ["cancelled", "completed"];
 
@@ -500,6 +501,21 @@ export const OrderQuery = {
         hasNextPage,
       },
     };
+  },
+
+
+
+  async demandForecast(_, { restaurantId, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" }) {
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new Error("Invalid restaurantId");
+    }
+
+    const rid = toId(restaurantId);
+    return buildDemandForecast({
+      restaurantId: rid,
+      horizonDays,
+      timezone,
+    });
   },
 
   async managerDashboard(_, { restaurantId, range = "week" }) {
