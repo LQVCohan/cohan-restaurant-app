@@ -674,6 +674,73 @@ type ReportsOverview {
   revenueByDay: [ReportRevenuePoint!]!
 }
 
+
+type DemandForecastSummary {
+  busiestPeriods: [String!]!
+  topRisingDishes: [String!]!
+  totalRecommendedPrep: Int!
+  notes: [String!]!
+}
+
+type DemandHourlyForecast {
+  slot: String!
+  date: String!
+  hourLabel: String!
+  expectedOrders: Float!
+  expectedGuests: Float!
+  demandScore: Float!
+  suggestedStaff: Int!
+  confidence: Float!
+}
+
+type DemandDailyForecast {
+  date: String!
+  expectedOrders: Float!
+  expectedGuests: Float!
+  peakWindow: String!
+  confidence: Float!
+}
+
+type DemandRisingDish {
+  dishId: ID!
+  dishName: String!
+  baselineQty: Float!
+  forecastQty: Int!
+  upliftPct: Float!
+  suggestedPrepQty: Int!
+  confidence: Float!
+  stockRisk: String!
+  inventoryNote: String!
+}
+
+type DemandPrepPlanItem {
+  dishId: ID!
+  dishName: String!
+  suggestedPrepQty: Int!
+  reason: String!
+  inventoryNote: String!
+}
+
+type DemandForecastMeta {
+  method: String!
+  fallbackUsed: Boolean!
+  aiEnhanced: Boolean!
+  generatedAt: DateTime!
+  granularity: String!
+  timezone: String!
+  sampleOrders: Int!
+  sampleDays: Int!
+}
+
+type DemandForecast {
+  summary: DemandForecastSummary!
+  hourlyForecast: [DemandHourlyForecast!]!
+  dailyForecast: [DemandDailyForecast!]!
+  risingDishes: [DemandRisingDish!]!
+  prepPlan: [DemandPrepPlanItem!]!
+  meta: DemandForecastMeta!
+}
+
 # =========================================================
 # ROOT
 # =========================================================
@@ -716,6 +783,11 @@ extend type Query {
     endAt: DateTime
     limit: Int = 500
   ): ReportsOverview!
+  demandForecast(
+    restaurantId: ID!
+    horizonDays: Int = 2
+    timezone: String = "Asia/Ho_Chi_Minh"
+  ): DemandForecast!
 }
 
 extend type Mutation {

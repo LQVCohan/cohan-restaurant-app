@@ -9,6 +9,7 @@ import MenuEngineeringMatrix from "./components/MenuEngineeringMatrix";
 import SmartFeedbackAnalysis from "./components/SmartFeedbackAnalysis";
 import SmartOccupancyHeatmap from "./components/SmartOccupancyHeatmap";
 import StaffPerformance from "./components/StaffPerformance";
+import DemandForecastWidget from "./components/DemandForecastWidget";
 import "./ManagerAnalyst.scss";
 
 const ManagerAnalyst = () => {
@@ -24,6 +25,7 @@ const ManagerAnalyst = () => {
     feedbackItems,
     occupancyHeatmap,
     staffPerformance,
+    demandForecast,
   } = useAnalyst();
 
   const icons = [DollarSign, Users, ShoppingBag, Star];
@@ -70,6 +72,14 @@ const ManagerAnalyst = () => {
         </div>
         <div className="grid-item revenue-chart">
           <RevenueAnalyticsChart data={revenueTrend} loading={loading} />
+        </div>
+      </section>
+
+
+
+      <section className="forecast-grid">
+        <div className="grid-item demand-forecast">
+          <DemandForecastWidget forecast={demandForecast} loading={loading} />
         </div>
       </section>
 

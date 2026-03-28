@@ -144,6 +144,20 @@ $gap: 24px; // Khoảng cách chuẩn giữa các widget
     }
   }
 
+
+
+  // --- 3.5 FORECAST GRID ---
+  .forecast-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: $gap;
+    margin-bottom: $gap;
+
+    .demand-forecast {
+      border: 1px solid rgba($gold, 0.28);
+    }
+  }
+
   // --- 4. PRODUCT & CUSTOMER GRID ---
   .product-customer-grid {
     display: grid;

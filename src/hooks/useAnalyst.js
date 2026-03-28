@@ -47,6 +47,60 @@ const GET_ANALYST_DASHBOARD = gql`
         efficiency
       }
     }
+
+    demandForecast(restaurantId: $restaurantId, horizonDays: 2) {
+      summary {
+        busiestPeriods
+        topRisingDishes
+        totalRecommendedPrep
+        notes
+      }
+      hourlyForecast {
+        slot
+        date
+        hourLabel
+        expectedOrders
+        expectedGuests
+        demandScore
+        suggestedStaff
+        confidence
+      }
+      dailyForecast {
+        date
+        expectedOrders
+        expectedGuests
+        peakWindow
+        confidence
+      }
+      risingDishes {
+        dishId
+        dishName
+        baselineQty
+        forecastQty
+        upliftPct
+        suggestedPrepQty
+        confidence
+        stockRisk
+        inventoryNote
+      }
+      prepPlan {
+        dishId
+        dishName
+        suggestedPrepQty
+        reason
+        inventoryNote
+      }
+      meta {
+        method
+        fallbackUsed
+        aiEnhanced
+        generatedAt
+        granularity
+        timezone
+        sampleOrders
+        sampleDays
+      }
+    }
   }
 `;
 
@@ -62,6 +116,8 @@ export const useAnalyst = () => {
   });
 
   const analyst = data?.managerDashboard;
+  const demandForecast = data?.demandForecast;
+
   const kpiData = useMemo(
     () => [
       { label: "Doanh Thu Thuần", value: analyst?.revenue || 0 },
@@ -93,5 +149,27 @@ export const useAnalyst = () => {
     feedbackItems: analyst?.feedbackItems || [],
     occupancyHeatmap: analyst?.occupancyHeatmap || [],
     staffPerformance: analyst?.staffPerformance || [],
+    demandForecast: demandForecast || {
+      summary: {
+        busiestPeriods: [],
+        topRisingDishes: [],
+        totalRecommendedPrep: 0,
+        notes: [],
+      },
+      hourlyForecast: [],
+      dailyForecast: [],
+      risingDishes: [],
+      prepPlan: [],
+      meta: {
+        method: "time_series_v1",
+        fallbackUsed: true,
+        aiEnhanced: false,
+        generatedAt: null,
+        granularity: "hourly",
+        timezone: "Asia/Ho_Chi_Minh",
+        sampleOrders: 0,
+        sampleDays: 0,
+      },
+    },
   };
 };
