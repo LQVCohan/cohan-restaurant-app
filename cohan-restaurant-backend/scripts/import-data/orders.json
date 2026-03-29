@@ -1,0 +1,57 @@
+[
+  {
+    "restaurantKey": "cohan-demo",
+    "orderCode": "ORD-DEMO-0001",
+    "createdAt": "2026-03-29T10:00:00.000Z",
+    "updatedAt": "2026-03-29T10:15:00.000Z",
+    "tableCode": "T01",
+    "userEmail": "vietle632@gmail.com",
+    "orderType": "dine_in",
+    "items": [
+      {
+        "itemKey": "pho_bo",
+        "menuTimeSlot": "lunch",
+        "categoryName": "Món chính",
+        "name": "Phở bò tái",
+        "unit": "portion",
+        "servingKey": "default",
+        "servingVariant": {
+          "key": "default",
+          "name": "Tô thường",
+          "mode": "PORTION",
+          "price": 65000,
+          "sellQty": 1,
+          "sellUnit": "portion"
+        },
+        "quantity": 2,
+        "modifiers": [],
+        "baseUnitPrice": 65000,
+        "unitPrice": 65000,
+        "modifiersPricePerUnit": 0,
+        "lineSubtotal": 130000,
+        "ingredientsSnapshot": [],
+        "status": "served"
+      }
+    ],
+    "totals": {
+      "subtotal": 130000,
+      "discount": 13000,
+      "promotionCode": "HH10",
+      "tax": 0,
+      "taxRate": 0,
+      "service": 0,
+      "serviceRate": 0,
+      "shippingFee": 0,
+      "grandTotal": 117000
+    },
+    "payment": {
+      "method": "cash",
+      "status": "paid",
+      "paidAmount": 117000,
+      "currency": "VND",
+      "paidAt": "2026-03-29T10:20:00.000Z"
+    },
+    "currentStatus": "completed",
+    "priority": "MEDIUM"
+  }
+]

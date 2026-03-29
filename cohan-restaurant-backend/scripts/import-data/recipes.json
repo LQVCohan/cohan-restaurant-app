@@ -1,0 +1,22 @@
+[
+  {
+    "restaurantKey": "cohan-demo",
+    "menuItemKey": "pho_bo",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Tô thường",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 65000,
+        "isDefault": true,
+        "ingredients": [
+          { "ingredientName": "Thịt bò", "qty": 120, "unit": "g", "wastePct": 5 },
+          { "ingredientName": "Bánh phở", "qty": 180, "unit": "g", "wastePct": 3 }
+        ]
+      }
+    ]
+  }
+]

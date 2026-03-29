@@ -1,0 +1,9 @@
+[
+  {
+    "restaurantKey": "cohan-demo",
+    "name": "Kho Chính",
+    "code": "KHO-01",
+    "address": "Back office",
+    "isActive": true
+  }
+]

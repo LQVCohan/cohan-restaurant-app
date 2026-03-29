@@ -1,0 +1,9 @@
+[
+  {
+    "restaurantKey": "cohan-demo",
+    "name": "Tầng 1",
+    "level": 1,
+    "isActive": true,
+    "meta": { "width": 1200, "height": 800 }
+  }
+]

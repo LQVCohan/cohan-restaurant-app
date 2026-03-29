@@ -1,0 +1,18 @@
+[
+  {
+    "restaurantKey": "cohan-demo",
+    "name": "Thịt bò",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.32,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "cohan-demo",
+    "name": "Bánh phở",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.07,
+    "minStock": 1000,
+    "isActive": true
+  }
+]
