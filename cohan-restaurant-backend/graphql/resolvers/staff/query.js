@@ -9,6 +9,7 @@ import {
   Category,
   Promotion,
 } from "../../../models/index.js";
+import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSchedulingAssistant.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -444,6 +445,16 @@ export default {
       },
       items,
     };
+  },
+
+
+
+  staffSchedulingAssistant: async (_, { restaurantId, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" }) => {
+    return buildStaffSchedulingAssistant({
+      restaurantId,
+      horizonDays,
+      timezone,
+    });
   },
 
   staffShifts: async (
