@@ -1,0 +1,18 @@
+[
+  {
+    "restaurantKey": "cohan-demo",
+    "name": "Happy Hour Trưa",
+    "code": "HH10",
+    "scope": "ORDER",
+    "discountType": "PERCENT",
+    "discountValue": 10,
+    "minOrderValue": 99000,
+    "maxDiscount": 30000,
+    "usageLimit": 1000,
+    "usageCount": 0,
+    "targetAudience": "all",
+    "level": 1,
+    "isActive": true,
+    "stacking": false
+  }
+]

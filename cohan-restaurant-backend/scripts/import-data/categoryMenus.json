@@ -1,0 +1,9 @@
+[
+  {
+    "restaurantKey": "cohan-demo",
+    "name": "Menu Mặc định",
+    "description": "Menu dùng cho import demo",
+    "order": 1,
+    "isActive": true
+  }
+]

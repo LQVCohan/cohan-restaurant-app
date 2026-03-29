@@ -1,0 +1,18 @@
+[
+  {
+    "restaurantKey": "cohan-demo",
+    "warehouseName": "Kho Chính",
+    "ingredientName": "Thịt bò",
+    "onHand": 12000,
+    "reserved": 0,
+    "costPerUnit": 0.32
+  },
+  {
+    "restaurantKey": "cohan-demo",
+    "warehouseName": "Kho Chính",
+    "ingredientName": "Bánh phở",
+    "onHand": 22000,
+    "reserved": 0,
+    "costPerUnit": 0.07
+  }
+]

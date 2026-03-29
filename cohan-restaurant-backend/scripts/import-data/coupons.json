@@ -1,0 +1,15 @@
+[
+  {
+    "restaurantKey": "cohan-demo",
+    "name": "Welcome 10%",
+    "code": "WELCOME10",
+    "category": "order",
+    "discountType": "PERCENT",
+    "discountValue": 10,
+    "minOrderValue": 120000,
+    "maxDiscount": 30000,
+    "maxUsage": 500,
+    "used": 0,
+    "isActive": true
+  }
+]

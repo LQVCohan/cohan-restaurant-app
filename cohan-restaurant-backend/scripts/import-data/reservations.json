@@ -1,0 +1,14 @@
+[
+  {
+    "restaurantKey": "cohan-demo",
+    "tableCode": "T01",
+    "userEmail": "vietle632@gmail.com",
+    "timeTo": "2026-03-30T11:30:00.000Z",
+    "durationMinutes": 90,
+    "partySize": 2,
+    "status": "confirmed",
+    "depositStatus": "paid",
+    "customerName": "Viet Le",
+    "customerPhone": "0900000001"
+  }
+]

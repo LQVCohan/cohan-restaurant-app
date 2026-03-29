@@ -421,8 +421,8 @@ async function importRestaurants(ctx) {
     try {
       const name = required(row.name, "name");
       const managerEmail = normalizeEmail(row.managerEmail || "");
-      let managerId = null;
-      if (managerEmail) {
+      let managerId = toObjectId(row.managerId);
+      if (!managerId && managerEmail) {
         managerId = await ctx.resolver.resolveUserIdByEmail(managerEmail, { required: true });
       }
       const payload = {

@@ -1,0 +1,9 @@
+[
+  {
+    "restaurantKey": "cohan-demo",
+    "timeSlot": "lunch",
+    "name": "Menu Trưa",
+    "categoryMenuName": "Menu Mặc định",
+    "isActive": true
+  }
+]

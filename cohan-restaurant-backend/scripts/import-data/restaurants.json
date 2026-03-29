@@ -1,0 +1,18 @@
+[
+  {
+    "key": "cohan-demo",
+    "name": "Cohan Demo Restaurant",
+    "managerId": "68e942775eaa392edeabca16",
+    "managerEmail": "vietle632@gmail.com",
+    "phone": "0900000001",
+    "email": "demo@cohan.local",
+    "status": "active",
+    "address": {
+      "line1": "1 Nguyen Hue",
+      "ward": "Ben Nghe",
+      "district": "District 1",
+      "city": "Ho Chi Minh",
+      "country": "VN"
+    }
+  }
+]

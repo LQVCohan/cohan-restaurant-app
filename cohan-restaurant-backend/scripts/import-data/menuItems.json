@@ -1,0 +1,14 @@
+[
+  {
+    "restaurantKey": "cohan-demo",
+    "menuTimeSlot": "lunch",
+    "categoryName": "Món chính",
+    "itemKey": "pho_bo",
+    "code": "PHO_BO",
+    "name": "Phở bò tái",
+    "description": "Phở bò tái truyền thống",
+    "basePrice": 65000,
+    "status": "available",
+    "defaultServingKey": "default"
+  }
+]
