@@ -1,0 +1,112 @@
+[
+  {
+    "restaurantKey": "viet-heritage",
+    "orderCode": "V-ORD-0001",
+    "createdAt": "2026-03-29T10:00:00.000Z",
+    "updatedAt": "2026-03-29T10:20:00.000Z",
+    "tableCode": "V101",
+    "userEmail": "vietle632@gmail.com",
+    "orderType": "dine_in",
+    "items": [
+      {
+        "itemKey": "pho-bo",
+        "menuTimeSlot": "lunch",
+        "categoryName": "Món nước",
+        "name": "Phở bò tái",
+        "unit": "portion",
+        "servingKey": "default",
+        "servingVariant": {
+          "key": "default",
+          "name": "Default",
+          "mode": "PORTION",
+          "price": 68000,
+          "sellQty": 1,
+          "sellUnit": "portion"
+        },
+        "quantity": 2,
+        "modifiers": [],
+        "baseUnitPrice": 68000,
+        "unitPrice": 68000,
+        "modifiersPricePerUnit": 0,
+        "lineSubtotal": 136000,
+        "ingredientsSnapshot": [],
+        "status": "served"
+      }
+    ],
+    "totals": {
+      "subtotal": 136000,
+      "discount": 13600,
+      "promotionCode": "VTRUA10",
+      "tax": 0,
+      "taxRate": 0,
+      "service": 0,
+      "serviceRate": 0,
+      "shippingFee": 0,
+      "grandTotal": 122400
+    },
+    "payment": {
+      "method": "cash",
+      "status": "paid",
+      "paidAmount": 122400,
+      "currency": "VND",
+      "paidAt": "2026-03-29T10:21:00.000Z"
+    },
+    "currentStatus": "completed",
+    "priority": "MEDIUM"
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "orderCode": "E-ORD-0001",
+    "createdAt": "2026-03-29T18:00:00.000Z",
+    "updatedAt": "2026-03-29T18:30:00.000Z",
+    "tableCode": "E01",
+    "userEmail": "vietle632@gmail.com",
+    "orderType": "dine_in",
+    "items": [
+      {
+        "itemKey": "beef-steak",
+        "menuTimeSlot": "dinner",
+        "categoryName": "Main Course",
+        "name": "Beef Steak",
+        "unit": "portion",
+        "servingKey": "default",
+        "servingVariant": {
+          "key": "default",
+          "name": "Default",
+          "mode": "PORTION",
+          "price": 240000,
+          "sellQty": 1,
+          "sellUnit": "portion"
+        },
+        "quantity": 1,
+        "modifiers": [],
+        "baseUnitPrice": 240000,
+        "unitPrice": 240000,
+        "modifiersPricePerUnit": 0,
+        "lineSubtotal": 240000,
+        "ingredientsSnapshot": [],
+        "status": "served"
+      }
+    ],
+    "totals": {
+      "subtotal": 240000,
+      "discount": 28800,
+      "promotionCode": "EDINE12",
+      "tax": 0,
+      "taxRate": 0,
+      "service": 0,
+      "serviceRate": 0,
+      "shippingFee": 0,
+      "grandTotal": 211200
+    },
+    "payment": {
+      "method": "cash",
+      "status": "paid",
+      "paidAmount": 211200,
+      "currency": "VND",
+      "paidAt": "2026-03-29T18:35:00.000Z"
+    },
+    "currentStatus": "completed",
+    "priority": "MEDIUM"
+  }
+]

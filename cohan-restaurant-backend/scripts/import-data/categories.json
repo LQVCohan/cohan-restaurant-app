@@ -1,0 +1,74 @@
+[
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Món nước",
+    "order": 1,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Món nướng",
+    "order": 2,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Món cơm",
+    "order": 3,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Món cuốn",
+    "order": 4,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Lẩu",
+    "order": 5,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Đồ uống",
+    "order": 6,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Appetizer",
+    "order": 1,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Soup",
+    "order": 2,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Main Course",
+    "order": 3,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Pasta",
+    "order": 4,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Dessert",
+    "order": 5,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Beverage",
+    "order": 6,
+    "isActive": true
+  }
+]
