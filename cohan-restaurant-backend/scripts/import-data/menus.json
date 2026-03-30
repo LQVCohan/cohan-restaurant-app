@@ -1,9 +1,30 @@
 [
   {
-    "restaurantKey": "cohan-demo",
+    "restaurantKey": "viet-heritage",
     "timeSlot": "lunch",
-    "name": "Menu Trưa",
-    "categoryMenuName": "Menu Mặc định",
+    "name": "Menu Trưa Việt",
+    "categoryMenuName": "Menu Trưa Việt",
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "timeSlot": "dinner",
+    "name": "Menu Tối Việt",
+    "categoryMenuName": "Menu Tối Việt",
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "timeSlot": "lunch",
+    "name": "European Lunch",
+    "categoryMenuName": "European Lunch",
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "timeSlot": "dinner",
+    "name": "European Dinner",
+    "categoryMenuName": "European Dinner",
     "isActive": true
   }
 ]

@@ -1,18 +1,282 @@
 [
   {
-    "restaurantKey": "cohan-demo",
-    "warehouseName": "Kho Chính",
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Bánh phở",
+    "onHand": 12000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Thịt bò",
+    "onHand": 13000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Bún",
+    "onHand": 14000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Hủ tiếu",
+    "onHand": 15000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Thịt heo",
+    "onHand": 16000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Thịt gà",
+    "onHand": 12000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Gạo",
+    "onHand": 13000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Bánh tráng",
+    "onHand": 14000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Tôm",
+    "onHand": 15000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Củ sắn",
+    "onHand": 16000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Mực",
+    "onHand": 12000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Cá phi lê",
+    "onHand": 13000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Trà",
+    "onHand": 14000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Cam",
+    "onHand": 15000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Cà phê",
+    "onHand": 16000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "warehouseName": "Kho Việt",
+    "ingredientName": "Sữa đặc",
+    "onHand": 12000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Bánh mì",
+    "onHand": 13000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Cà chua",
+    "onHand": 14000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Xà lách",
+    "onHand": 15000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Phô mai",
+    "onHand": 16000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Tôm",
+    "onHand": 12000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Nấm",
+    "onHand": 13000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Sữa tươi",
+    "onHand": 14000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Bí đỏ",
+    "onHand": 15000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Hành tây",
+    "onHand": 16000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
     "ingredientName": "Thịt bò",
     "onHand": 12000,
     "reserved": 0,
-    "costPerUnit": 0.32
+    "costPerUnit": 0.08
   },
   {
-    "restaurantKey": "cohan-demo",
-    "warehouseName": "Kho Chính",
-    "ingredientName": "Bánh phở",
-    "onHand": 22000,
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Cá hồi",
+    "onHand": 13000,
     "reserved": 0,
-    "costPerUnit": 0.07
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Thịt gà",
+    "onHand": 14000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Mì spaghetti",
+    "onHand": 15000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Thịt heo xông khói",
+    "onHand": 16000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Tỏi",
+    "onHand": 12000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Cà phê",
+    "onHand": 13000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Táo",
+    "onHand": 14000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Bột mì",
+    "onHand": 15000,
+    "reserved": 0,
+    "costPerUnit": 0.08
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "warehouseName": "Euro Storage",
+    "ingredientName": "Cam",
+    "onHand": 16000,
+    "reserved": 0,
+    "costPerUnit": 0.08
   }
 ]

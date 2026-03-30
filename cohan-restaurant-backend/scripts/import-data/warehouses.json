@@ -1,9 +1,16 @@
 [
   {
-    "restaurantKey": "cohan-demo",
-    "name": "Kho Chính",
-    "code": "KHO-01",
-    "address": "Back office",
+    "restaurantKey": "viet-heritage",
+    "name": "Kho Việt",
+    "code": "V-KHO",
+    "address": "Kho tầng trệt",
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Euro Storage",
+    "code": "E-KHO",
+    "address": "Back storage",
     "isActive": true
   }
 ]

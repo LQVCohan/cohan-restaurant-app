@@ -1,9 +1,30 @@
 [
   {
-    "restaurantKey": "cohan-demo",
-    "name": "Menu Mặc định",
-    "description": "Menu dùng cho import demo",
+    "restaurantKey": "viet-heritage",
+    "name": "Menu Trưa Việt",
+    "description": "Menu ban trưa",
     "order": 1,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Menu Tối Việt",
+    "description": "Menu buổi tối",
+    "order": 2,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "European Lunch",
+    "description": "Lunch set",
+    "order": 1,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "European Dinner",
+    "description": "Dinner set",
+    "order": 2,
     "isActive": true
   }
 ]
