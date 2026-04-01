@@ -86,3 +86,66 @@
     }
   }
 }
+
+
+.tracking__proofs {
+  margin-top: 14px;
+
+  h4 {
+    margin: 0 0 10px;
+  }
+
+  .proof-item-row {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+
+  .proof-item-title {
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 8px;
+  }
+
+  .proof-item-empty {
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+
+  .proof-grid {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .proof-thumb {
+    border: none;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+
+    img {
+      width: 72px;
+      height: 72px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+  }
+}
+
+.tracking-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
+  display: grid;
+  place-items: center;
+  z-index: 1500;
+
+  img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 12px;
+  }
+}

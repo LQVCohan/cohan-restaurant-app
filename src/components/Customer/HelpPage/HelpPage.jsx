@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useContext } from "react";
 import {
   Search,
   HelpCircle,
@@ -15,9 +15,11 @@ import {
   CreditCard,
   User,
 } from "lucide-react";
+import { AuthContext } from "@/context/AuthContext";
+import { useSearchParams } from "react-router-dom";
+import useCommunication from "@/hooks/useCommunication";
 import "./HelpPage.scss";
 
-// --- DỮ LIỆU HƯỚNG DẪN (FAQ) ---
 const FAQ_DATA = [
   {
     category: "order",
@@ -50,75 +52,96 @@ const FAQ_DATA = [
 ];
 
 const HelpPage = () => {
-  const [openIndex, setOpenIndex] = useState(0); // Mặc định mở câu đầu tiên
+  const [openIndex, setOpenIndex] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-
-  // --- CHATBOT STATE ---
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      text: "Xin chào! Tôi là trợ lý ảo FoodHub. Tôi có thể giúp gì cho bạn hôm nay?",
-      sender: "bot",
-    },
-  ]);
+  const [threadId, setThreadId] = useState(null);
+  const [searchParams] = useSearchParams();
   const [inputMsg, setInputMsg] = useState("");
   const messagesEndRef = useRef(null);
 
-  // Scroll xuống cuối chat khi có tin nhắn mới
+  const { user } = useContext(AuthContext) || {};
+  const restaurantId = useMemo(
+    () => user?.refRestaurants?.[0] || user?.restaurantForStaff || null,
+    [user]
+  );
+
+  const {
+    thread,
+    loadThread,
+    openThread,
+    sendMessage,
+    sendMessageState,
+    markThreadRead,
+  } = useCommunication({ restaurantId });
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isChatOpen]);
+  }, [thread?.messages, isChatOpen]);
 
-  // Logic Toggle Accordion
+
+  useEffect(() => {
+    const fromUrl = searchParams.get("threadId");
+    if (fromUrl) {
+      setIsChatOpen(true);
+      setThreadId(fromUrl);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!threadId) return;
+    loadThread({ variables: { id: threadId } });
+    markThreadRead({ variables: { threadId } }).catch(() => {});
+  }, [threadId, loadThread, markThreadRead]);
+
   const toggleAccordion = (index) => {
     setOpenIndex(openIndex === index ? null : index);
   };
 
-  // Logic Gửi tin nhắn & Bot phản hồi (Simulation)
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!inputMsg.trim()) return;
-
-    // 1. Add User Message
-    const userMsg = { id: Date.now(), text: inputMsg, sender: "user" };
-    setMessages((prev) => [...prev, userMsg]);
-    setInputMsg("");
-
-    // 2. Simulate Bot Thinking & Reply
-    setTimeout(() => {
-      let botText =
-        "Cảm ơn bạn đã đặt câu hỏi. Nhân viên tư vấn sẽ sớm liên hệ lại.";
-      const lowerMsg = userMsg.text.toLowerCase();
-
-      // Logic trả lời đơn giản theo từ khóa
-      if (lowerMsg.includes("đặt món") || lowerMsg.includes("mua")) {
-        botText =
-          "Để đặt món, bạn hãy chọn nhà hàng yêu thích, thêm món vào giỏ và tiến hành thanh toán nhé!";
-      } else if (
-        lowerMsg.includes("khuyến mãi") ||
-        lowerMsg.includes("voucher")
-      ) {
-        botText =
-          "Bạn có thể xem các mã giảm giá mới nhất tại mục 'Kho Voucher' trên thanh menu.";
-      } else if (lowerMsg.includes("lỗi") || lowerMsg.includes("không được")) {
-        botText =
-          "Rất tiếc vì sự cố này. Bạn vui lòng chụp màn hình và gửi qua Zalo 0909.123.456 để kỹ thuật viên hỗ trợ ngay ạ.";
-      } else if (lowerMsg.includes("chào") || lowerMsg.includes("hi")) {
-        botText =
-          "Chào bạn! Chúc bạn một ngày tốt lành. Bạn cần hỗ trợ vấn đề gì không?";
-      }
-
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now() + 1, text: botText, sender: "bot" },
-      ]);
-    }, 1000);
+  const ensureSupportThread = async () => {
+    if (threadId) return threadId;
+    if (!restaurantId) return null;
+    const { data } = await openThread({
+      variables: {
+        input: {
+          restaurantId,
+          channel: "support",
+          subject: "Hỗ trợ khách hàng",
+          targetRole: "support",
+        },
+      },
+    });
+    const id = data?.openChatThread?.id || null;
+    setThreadId(id);
+    return id;
   };
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    const content = inputMsg.trim();
+    if (!content) return;
+    const id = await ensureSupportThread();
+    if (!id) {
+      alert("Bạn cần đăng nhập/tạo ngữ cảnh nhà hàng để chat hỗ trợ.");
+      return;
+    }
+
+    await sendMessage({
+      variables: {
+        input: {
+          threadId: id,
+          content,
+        },
+      },
+    });
+    setInputMsg("");
+    await loadThread({ variables: { id } });
+  };
+
+  const messages = thread?.messages || [];
 
   return (
     <div className="help-page">
-      {/* HERO SECTION */}
       <div className="help-hero">
         <h1>Xin chào, chúng tôi có thể giúp gì?</h1>
         <div className="search-box">
@@ -133,9 +156,7 @@ const HelpPage = () => {
       </div>
 
       <div className="help-container">
-        {/* MAIN LAYOUT: LEFT (FAQ) - RIGHT (CONTACT) */}
         <div className="content-grid">
-          {/* CỘT TRÁI: FAQ */}
           <div className="faq-section">
             <h2 className="section-title">
               <HelpCircle size={24} /> Câu hỏi thường gặp
@@ -148,19 +169,12 @@ const HelpPage = () => {
                   key={index}
                   className={`faq-item ${openIndex === index ? "active" : ""}`}
                 >
-                  <button
-                    className="faq-question"
-                    onClick={() => toggleAccordion(index)}
-                  >
+                  <button className="faq-question" onClick={() => toggleAccordion(index)}>
                     <div className="q-content">
                       <span className="icon">{item.icon}</span>
                       <span>{item.question}</span>
                     </div>
-                    {openIndex === index ? (
-                      <ChevronUp size={18} />
-                    ) : (
-                      <ChevronDown size={18} />
-                    )}
+                    {openIndex === index ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </button>
                   <div className="faq-answer">
                     <div className="answer-inner">
@@ -174,54 +188,33 @@ const HelpPage = () => {
             </div>
           </div>
 
-          {/* CỘT PHẢI: CONTACT INFO */}
           <div className="contact-section">
             <div className="contact-card">
               <h3>Liên hệ trực tiếp</h3>
-              <p className="desc">
-                Đội ngũ CSKH hoạt động từ 8:00 - 22:00 hàng ngày.
-              </p>
+              <p className="desc">Đội ngũ CSKH hoạt động từ 8:00 - 22:00 hàng ngày.</p>
 
               <ul className="contact-list">
                 <li>
-                  <div className="icon">
-                    <Phone size={18} />
-                  </div>
-                  <div>
-                    <span className="label">Hotline</span>
-                    <a href="tel:19001234" className="value">
-                      1900 1234
-                    </a>
-                  </div>
+                  <div className="icon"><Phone size={18} /></div>
+                  <div><span className="label">Hotline</span><a href="tel:19001234" className="value">1900 1234</a></div>
                 </li>
                 <li>
-                  <div className="icon">
-                    <Mail size={18} />
-                  </div>
-                  <div>
-                    <span className="label">Email</span>
-                    <a href="mailto:support@foodhub.vn" className="value">
-                      support@foodhub.vn
-                    </a>
-                  </div>
+                  <div className="icon"><Mail size={18} /></div>
+                  <div><span className="label">Email</span><a href="mailto:support@foodhub.vn" className="value">support@foodhub.vn</a></div>
                 </li>
                 <li>
-                  <div className="icon">
-                    <MapPin size={18} />
-                  </div>
-                  <div>
-                    <span className="label">Văn phòng</span>
-                    <span className="value">
-                      Tầng 12, Tòa nhà Bitexco, Q.1, TP.HCM
-                    </span>
-                  </div>
+                  <div className="icon"><MapPin size={18} /></div>
+                  <div><span className="label">Văn phòng</span><span className="value">Tầng 12, Tòa nhà Bitexco, Q.1, TP.HCM</span></div>
                 </li>
               </ul>
 
               <div className="divider"></div>
               <button
                 className="btn-chat-trigger"
-                onClick={() => setIsChatOpen(true)}
+                onClick={async () => {
+                  setIsChatOpen(true);
+                  await ensureSupportThread();
+                }}
               >
                 <MessageCircle size={18} /> Chat với hỗ trợ ngay
               </button>
@@ -230,13 +223,11 @@ const HelpPage = () => {
         </div>
       </div>
 
-      {/* --- CHATBOT WIDGET (FLOATING) --- */}
       <div className={`chatbot-widget ${isChatOpen ? "open" : ""}`}>
-        {/* Chat Header */}
         <div className="chat-header" onClick={() => setIsChatOpen(!isChatOpen)}>
           <div className="bot-info">
             <div className="avatar-dot"></div>
-            <span>FoodHub Assistant</span>
+            <span>FoodHub Support</span>
           </div>
           <button
             className="close-chat"
@@ -249,24 +240,25 @@ const HelpPage = () => {
           </button>
         </div>
 
-        {/* Chat Body */}
         {isChatOpen && (
           <>
             <div className="chat-body">
-              {messages.map((msg) => (
-                <div key={msg.id} className={`message ${msg.sender}`}>
-                  {msg.sender === "bot" && (
-                    <div className="bot-avatar">
-                      <HelpCircle size={14} />
-                    </div>
-                  )}
-                  <div className="bubble">{msg.text}</div>
+              {messages.length === 0 && (
+                <div className="message bot">
+                  <div className="bubble">Xin chào! Bạn cần hỗ trợ gì hôm nay?</div>
+                </div>
+              )}
+              {messages.map((msg, idx) => (
+                <div
+                  key={`${msg.createdAt}_${idx}`}
+                  className={`message ${String(msg.senderId) === String(user?.id) ? "user" : "bot"}`}
+                >
+                  <div className="bubble">{msg.text || msg.content}</div>
                 </div>
               ))}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Chat Input */}
             <form className="chat-input-area" onSubmit={handleSendMessage}>
               <input
                 type="text"
@@ -274,7 +266,7 @@ const HelpPage = () => {
                 value={inputMsg}
                 onChange={(e) => setInputMsg(e.target.value)}
               />
-              <button type="submit" disabled={!inputMsg.trim()}>
+              <button type="submit" disabled={!inputMsg.trim() || sendMessageState.loading}>
                 <Send size={16} />
               </button>
             </form>
@@ -282,12 +274,8 @@ const HelpPage = () => {
         )}
       </div>
 
-      {/* Nút tròn nổi bật bật Chat khi widget đóng */}
       {!isChatOpen && (
-        <button
-          className="floating-chat-btn"
-          onClick={() => setIsChatOpen(true)}
-        >
+        <button className="floating-chat-btn" onClick={() => setIsChatOpen(true)}>
           <MessageCircle size={28} />
         </button>
       )}

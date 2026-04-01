@@ -30,6 +30,8 @@ import ContactsView from "./components/ContactsView";
 import NotificationsView from "./components/NotificationsView";
 import StaffProfile from "./components/StaffProfile";
 import { AuthContext } from "../../context/AuthContext";
+import StaffProofCaptureModal from "./components/StaffProofCaptureModal";
+import { buildProofState, requiresProofImage } from "@/utils/orderProofRules";
 
 const TABLES_QUERY = gql`
   query StaffTables($restaurantId: ID!, $limit: Int) {
@@ -59,6 +61,7 @@ const MENU_ITEMS_QUERY = gql`
         name
         mode
         price
+        sellUnit
       }
     }
   }
@@ -160,6 +163,15 @@ const ORDERS_GROUPED_BY_TABLE = gql`
           unitPrice
           basePrice
           servingKey
+          unit
+          weightGrams
+          proofImages
+          servingVariant {
+            key
+            name
+            mode
+            sellUnit
+          }
         }
       }
     }
@@ -205,9 +217,11 @@ const buildCartFromServerOrders = (orders = []) => {
   const result = [];
   for (const order of orders) {
     for (const item of order.items || []) {
+      const proofState = buildProofState(item);
       result.push({
         id: String(item._id || `${order.id}_${item.dishId || item.name}`),
         itemId: item.dishId,
+        dishId: item.dishId,
         menuId: item.menuId,
         categoryId: item.categoryId,
         name: item.name,
@@ -223,14 +237,18 @@ const buildCartFromServerOrders = (orders = []) => {
         price: Number(item.unitPrice || item.basePrice || 0),
         status: item.status || "pending",
         printed: true,
-        hasPhoto: false,
         persisted: true,
         servingKey: item.servingKey || null,
+        unit: item.unit || item.servingVariant?.sellUnit || "portion",
+        weightGrams: item.weightGrams ?? null,
+        servingVariant: item.servingVariant || null,
+        ...proofState,
       });
     }
   }
   return result;
 };
+
 
 export default function StaffOrdering() {
   const { user, restaurants } = useContext(AuthContext) || {};
@@ -252,6 +270,8 @@ export default function StaffOrdering() {
   const [orderCodeByTable, setOrderCodeByTable] = useState({});
   const [tableCustomerMap, setTableCustomerMap] = useState({});
   const [showCustomerNoteModal, setShowCustomerNoteModal] = useState(false);
+  const [proofCaptureItem, setProofCaptureItem] = useState(null);
+  const [focusChatThreadId, setFocusChatThreadId] = useState(null);
 
   const searchTimerRef = useRef(null);
 
@@ -331,6 +351,8 @@ export default function StaffOrdering() {
           ? variants.map((v) => v.name).filter(Boolean)
           : ["Mặc định"],
         servingKey: m.defaultServingKey || defaultVariant?.key || "portion",
+        servingVariants: variants,
+        defaultVariant: defaultVariant || null,
         thumbImage: m.thumbImage || null,
       };
     });
@@ -544,6 +566,11 @@ export default function StaffOrdering() {
         );
       }
 
+      const defaultVariant = item.defaultVariant || item.servingVariants?.[0] || null;
+      const unit =
+        defaultVariant?.mode === "BY_WEIGHT"
+          ? defaultVariant?.sellUnit || "kg"
+          : defaultVariant?.sellUnit || "portion";
       const newItem = {
         id: "C" + Date.now(),
         signature,
@@ -551,7 +578,10 @@ export default function StaffOrdering() {
         dishId: item.dishId || item.id,
         menuId: item.menuId,
         categoryId: item.categoryId,
-        servingKey: item.servingKey || "portion",
+        servingKey: item.servingKey || defaultVariant?.key || "portion",
+        servingVariant: defaultVariant,
+        unit,
+        weightGrams: defaultVariant?.mode === "BY_WEIGHT" ? 1000 : null,
         name: item.name,
         prep: prep || "Mặc định",
         serveOrder,
@@ -560,11 +590,28 @@ export default function StaffOrdering() {
         price: item.price,
         status: "pending",
         printed: false,
-        hasPhoto: false,
+        proofImages: [],
         persisted: false,
       };
-      return [newItem, ...prev];
+      const proofState = buildProofState(newItem);
+      return [{ ...newItem, ...proofState }, ...prev];
     });
+  };
+  const handleOpenProofCapture = (item) => {
+    setProofCaptureItem(item);
+  };
+
+  const handleSaveProofImages = (itemId, proofImages) => {
+    setCartForSelectedTable((prev) =>
+      prev.map((it) => {
+        if (it.id !== itemId) return it;
+        return {
+          ...it,
+          ...buildProofState({ ...it, proofImages }),
+        };
+      }),
+    );
+    setProofCaptureItem(null);
   };
 
   const handleSendKitchen = async () => {
@@ -582,18 +629,46 @@ export default function StaffOrdering() {
       return;
     }
 
-    const payloadItems = pendingItems.map((item) => ({
-      dishId: item.dishId,
-      menuId: item.menuId,
-      categoryId: item.categoryId,
-      name: item.name,
-      unit: "portion",
-      basePrice: Number(item.price || 0),
-      servingKey: item.servingKey || "portion",
-      quantity: Number(item.quantity || 1),
-      note: [item.prep, item.serveOrder].filter(Boolean).join(" • "),
-      priority: item.priority || "MEDIUM",
-    }));
+    const missingProof = pendingItems.filter((item) =>
+      requiresProofImage(item) && (!Array.isArray(item.proofImages) || item.proofImages.length === 0),
+    );
+
+    if (missingProof.length > 0) {
+      const names = missingProof.slice(0, 3).map((x) => x.name).join(", ");
+      alert(`Các món bắt buộc ảnh minh chứng nhưng chưa có ảnh: ${names}`);
+      return;
+    }
+
+    const payloadItems = pendingItems.map((item) => {
+      const isWeight = String(item?.servingVariant?.mode || "").toUpperCase() === "BY_WEIGHT";
+      const quantity = Number(item.quantity || 1);
+      const weightGrams = isWeight
+        ? Number(item.weightGrams || Math.round(quantity * 1000))
+        : null;
+      return {
+        dishId: item.dishId,
+        menuId: item.menuId,
+        categoryId: item.categoryId,
+        name: item.name,
+        unit: item.unit || (isWeight ? "kg" : "portion"),
+        basePrice: Number(item.price || 0),
+        servingKey: item.servingKey || "portion",
+        servingVariant: item.servingVariant
+          ? {
+              key: item.servingVariant.key,
+              name: item.servingVariant.name,
+              mode: item.servingVariant.mode,
+              sellUnit: item.servingVariant.sellUnit,
+              price: Number(item.servingVariant.price ?? item.price ?? 0),
+            }
+          : null,
+        quantity,
+        weightGrams,
+        proofImages: item.proofImages || [],
+        note: [item.prep, item.serveOrder].filter(Boolean).join(" • "),
+        priority: item.priority || "MEDIUM",
+      };
+    });
 
     try {
       const { data } = await createOrderForTable({
@@ -703,7 +778,14 @@ export default function StaffOrdering() {
         </div>
 
         <div className="header-actions">
-          <NotificationBell onViewAll={() => setActiveTab("notifications")} />
+          <NotificationBell
+            onViewAll={() => setActiveTab("notifications")}
+            restaurantId={restaurantId}
+            onOpenThread={(threadId) => {
+              setFocusChatThreadId(threadId);
+              setActiveTab("contacts");
+            }}
+          />
         </div>
       </header>
 
@@ -743,8 +825,22 @@ export default function StaffOrdering() {
             categories={dynamicCategories}
           />
         )}
-        {activeTab === "contacts" && <ContactsView />}
-        {activeTab === "notifications" && <NotificationsView />}
+        {activeTab === "contacts" && (
+          <ContactsView
+            restaurantId={restaurantId}
+            focusThreadId={focusChatThreadId}
+            onFocusHandled={() => setFocusChatThreadId(null)}
+          />
+        )}
+        {activeTab === "notifications" && (
+          <NotificationsView
+            restaurantId={restaurantId}
+            onOpenThread={(threadId) => {
+              setFocusChatThreadId(threadId);
+              setActiveTab("contacts");
+            }}
+          />
+        )}
         {activeTab === "profile" && <StaffProfile />}
       </main>
 
@@ -845,9 +941,19 @@ export default function StaffOrdering() {
           onClose={() => setIsCartOpen(false)}
           table={selectedTable}
           onSendKitchen={handleSendKitchen}
+          onOpenProofCapture={handleOpenProofCapture}
           sending={savingOrder}
         />
       )}
+
+      <StaffProofCaptureModal
+        open={!!proofCaptureItem}
+        item={proofCaptureItem}
+        onClose={() => setProofCaptureItem(null)}
+        onSave={(proofImages) =>
+          proofCaptureItem && handleSaveProofImages(proofCaptureItem.id, proofImages)
+        }
+      />
 
       {showCustomerNoteModal && linkedTableCustomer && (
         <div className="customer-note-modal" onClick={() => setShowCustomerNoteModal(false)}>

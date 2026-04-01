@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-const { Schema, model, Types } = mongoose;
+const { Schema, Types } = mongoose;
 
 const baseOptions = { timestamps: true };
 
@@ -7,6 +7,9 @@ const MessageSchema = new Schema(
   {
     senderId: { type: Types.ObjectId, ref: "User" },
     customerProfileId: { type: Types.ObjectId, ref: "CustomerProfile" },
+    senderRole: { type: String },
+    senderName: { type: String },
+    messageType: { type: String, enum: ["text"], default: "text" },
     content: String,
     attachments: [{ type: Types.ObjectId, ref: "MediaAsset" }],
     createdAt: { type: Date, default: Date.now },
@@ -24,12 +27,18 @@ const ChatThreadSchema = new Schema(
       enum: ["support", "order", "reservation", "other"],
       default: "support",
     },
+    subject: { type: String, default: "" },
+    targetRole: { type: String, default: null },
     messages: [MessageSchema],
     status: { type: String, enum: ["open", "closed"], default: "open" },
+    lastMessageAt: { type: Date, default: null },
+    lastMessagePreview: { type: String, default: "" },
+    unreadBy: [{ type: Types.ObjectId, ref: "User" }],
   },
   baseOptions
 );
 
 ChatThreadSchema.index({ restaurantId: 1, status: 1, updatedAt: -1 });
+ChatThreadSchema.index({ participants: 1, updatedAt: -1 });
 
 export default mongoose.model("ChatThread", ChatThreadSchema);
