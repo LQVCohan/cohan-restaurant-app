@@ -422,11 +422,16 @@ const RecipeModal = ({
     return toBaseQty(q || 0, unit, baseUnit);
   };
 
+  const getComponentWasteFactor = (comp) => {
+    const wastePct = clamp(Number(comp?.wastePct) || 0, 0, 200);
+    return 1 + wastePct / 100;
+  };
+
   const calcVariantCostPortion = (variant) => {
     const list = variant?.components || [];
     return list.reduce((sum, c) => {
       const unitCost = getIngredientCost(c.ingredientId);
-      const qtyBase = getComponentQtyInBase(c);
+      const qtyBase = getComponentQtyInBase(c) * getComponentWasteFactor(c);
       return sum + qtyBase * unitCost;
     }, 0);
   };
@@ -436,7 +441,8 @@ const RecipeModal = ({
     const list = variant?.components || [];
     return list.reduce((sum, c) => {
       const unitCost = getIngredientCost(c.ingredientId);
-      const qtyBasePer100g = getComponentQtyInBase(c);
+      const qtyBasePer100g =
+        getComponentQtyInBase(c) * getComponentWasteFactor(c);
       return sum + qtyBasePer100g * ratio * unitCost;
     }, 0);
   };
