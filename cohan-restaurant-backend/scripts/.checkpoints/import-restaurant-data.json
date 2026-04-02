@@ -1,0 +1,19 @@
+{
+  "startedAt": "2026-03-31T18:09:34.776Z",
+  "updatedAt": "2026-03-31T18:14:07.547Z",
+  "lastCompletedStep": null,
+  "completedSteps": [],
+  "failedStep": "restaurants",
+  "runId": "86a4da38-bd2a-4e20-931f-bac869db8277",
+  "sourceDir": "C:\\Users\\Cohan\\cohan-restaurant-app\\cohan-restaurant-backend\\scripts\\import-data",
+  "options": {
+    "sourceDir": "C:\\Users\\Cohan\\cohan-restaurant-app\\cohan-restaurant-backend\\scripts\\import-data",
+    "dryRun": false,
+    "importResume": false,
+    "importFrom": "",
+    "importOnly": "",
+    "clearCheckpoint": false,
+    "resetScope": "none",
+    "allowCreateStaffUsers": false
+  }
+}

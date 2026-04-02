@@ -8,8 +8,10 @@ import useTableManagement from "@/hooks/useTableManagement";
 import useFloorManagement from "@/hooks/useFloorManagement";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import TableActionsLiteModal from "./TableActionsLiteModal";
+import Table3DSimulatorModal from "./Table3DSimulatorModal";
 import { loadTableVrImage } from "@/utils/vrStorage";
 import "./TableManagement.scss";
+import { mapModelToTableForm } from "@/config/table3dCatalog";
 
 const TableManagement = () => {
   const navigate = useNavigate(); // 2. Init Hook
@@ -98,6 +100,7 @@ const TableManagement = () => {
   const [showAddTableModal, setShowAddTableModal] = useState(false);
   const [showFloorModal, setShowFloorModal] = useState(false);
   const [showVrModal, setShowVrModal] = useState(false);
+  const [showTable3DModal, setShowTable3DModal] = useState(false);
   const [vrForm, setVrForm] = useState({
     vrTourUrl: "",
   });
@@ -108,6 +111,7 @@ const TableManagement = () => {
     seats: 4,
     floorId: "",
     area: "standard",
+    visualTemplate: "",
   });
   const [floorForm, setFloorForm] = useState({ name: "" });
   const [vrSaving, setVrSaving] = useState(false);
@@ -274,6 +278,21 @@ const TableManagement = () => {
     }
   };
 
+
+  const handleApply3DTemplate = (selectedModel) => {
+    const mapped = mapModelToTableForm(selectedModel);
+    // Chỉ prefill form để user xác nhận lại theo luồng thêm bàn hiện tại.
+    setTableForm((prev) => ({
+      ...prev,
+      seats: mapped.seats,
+      area: mapped.area,
+      floorId: prev.floorId || currentFloor || floors[0]?.id || "",
+      visualTemplate: mapped.visualTemplate,
+    }));
+    setShowTable3DModal(false);
+    setShowAddTableModal(true);
+  };
+
   const handleSaveRestaurantVr = async () => {
     if (!restaurantId) return;
     setVrSaving(true);
@@ -326,6 +345,14 @@ const TableManagement = () => {
             onClick={() => setShowVrModal(true)}
           >
             🕶️ VR toàn quán
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowTable3DModal(true)}
+            disabled={!restaurantId}
+          >
+            🪑 Mô phỏng 3D
           </Button>
           <Button
             variant="primary"
@@ -564,6 +591,12 @@ const TableManagement = () => {
                 <option value="vip">VIP</option>
               </select>
             </div>
+            {tableForm.visualTemplate && (
+              <div className="tm-field tm-field--full">
+                <label>Mẫu 3D đã chọn</label>
+                <input value={tableForm.visualTemplate} disabled />
+              </div>
+            )}
           </div>
           <div className="modal-footer">
             <Button variant="primary" onClick={handleSaveTable}>
@@ -599,6 +632,14 @@ const TableManagement = () => {
           </div>
         </div>
       </Modal>
+
+      <Table3DSimulatorModal
+        open={showTable3DModal}
+        onClose={() => setShowTable3DModal(false)}
+        onApply={handleApply3DTemplate}
+        currentFloorName={floors.find((f) => String(f.id) === String(currentFloor))?.name}
+        restaurantName={restaurant?.name}
+      />
 
       {/* 4. Restaurant VR Modal */}
       <Modal
