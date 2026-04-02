@@ -141,14 +141,22 @@ async function connectDb() {
 async function ensureRestaurantManagerIndex() {
   if (options.dryRun) return;
   const indexes = await Restaurant.collection.indexes();
-  const managerIndex = indexes.find((idx) => idx?.key?.managerId === 1);
-  if (!managerIndex?.unique) return;
+  const uniqueManagerIndexes = indexes.filter((idx) => idx?.unique && idx?.key && Object.prototype.hasOwnProperty.call(idx.key, "managerId"));
 
-  await Restaurant.collection.dropIndex(managerIndex.name);
-  await Restaurant.collection.createIndex({ managerId: 1 }, { background: true });
-  log("MIGRATION", "recreated restaurants.managerId index as non-unique", {
-    droppedIndex: managerIndex.name,
-  });
+  for (const idx of uniqueManagerIndexes) {
+    await Restaurant.collection.dropIndex(idx.name);
+    await Restaurant.collection.createIndex(idx.key, { background: true });
+    log("MIGRATION", "recreated restaurants index as non-unique", {
+      droppedIndex: idx.name,
+      key: idx.key,
+    });
+  }
+
+  const hasManagerIndex = indexes.some((idx) => idx?.key?.managerId === 1 && Object.keys(idx.key || {}).length === 1);
+  if (!hasManagerIndex) {
+    await Restaurant.collection.createIndex({ managerId: 1 }, { background: true });
+    log("MIGRATION", "created restaurants.managerId non-unique index");
+  }
 }
 
 async function ensureDir(filePath) {
