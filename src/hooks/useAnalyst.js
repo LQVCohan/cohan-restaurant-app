@@ -47,6 +47,214 @@ const GET_ANALYST_DASHBOARD = gql`
         efficiency
       }
     }
+
+
+
+    staffSchedulingAssistant(restaurantId: $restaurantId, horizonDays: 2) {
+      summary {
+        totalShiftGroups
+        underStaffedShifts
+        overStaffedShifts
+        highestRiskShift
+        notes
+      }
+      shifts {
+        shiftKey
+        date
+        shiftType
+        demandLevel
+        expectedOrders
+        expectedGuests
+        recommendedTotalStaff
+        currentAssignedStaff
+        deltaStaff
+        status
+        severity
+        confidence
+        recommendedRoles {
+          role
+          required
+          assigned
+          delta
+        }
+        suggestedCandidates {
+          staffId
+          fullName
+          role
+          reason
+        }
+      }
+      meta {
+        method
+        basedOnForecast
+        fallbackUsed
+        generatedAt
+        timezone
+      }
+    }
+
+    demandForecast(restaurantId: $restaurantId, horizonDays: 2) {
+      summary {
+        busiestPeriods
+        topRisingDishes
+        totalRecommendedPrep
+        notes
+      }
+      hourlyForecast {
+        slot
+        date
+        hourLabel
+        expectedOrders
+        expectedGuests
+        demandScore
+        suggestedStaff
+        confidence
+      }
+      dailyForecast {
+        date
+        expectedOrders
+        expectedGuests
+        peakWindow
+        confidence
+      }
+      risingDishes {
+        dishId
+        dishName
+        baselineQty
+        forecastQty
+        upliftPct
+        suggestedPrepQty
+        confidence
+        stockRisk
+        inventoryNote
+      }
+      prepPlan {
+        dishId
+        dishName
+        suggestedPrepQty
+        reason
+        inventoryNote
+      }
+      meta {
+        method
+        fallbackUsed
+        aiEnhanced
+        generatedAt
+        granularity
+        timezone
+        sampleOrders
+        sampleDays
+      }
+    }
+
+    menuEngineeringAssistant(restaurantId: $restaurantId, lookbackDays: 30) {
+      summary {
+        totalDishes
+        starCount
+        plowhorseCount
+        puzzleCount
+        dogCount
+        avgMarginPct
+        notes
+      }
+      dishes {
+        dishId
+        dishName
+        quantity
+        revenue
+        estimatedCost
+        profit
+        marginPct
+        popularityScore
+        marginScore
+        contributionMargin
+        quadrant
+        recommendation
+      }
+      recommendations
+      meta {
+        method
+        fallbackUsed
+        fallbackMarginRate
+        generatedAt
+        timezone
+        sampleOrders
+        sampleDays
+      }
+    }
+
+    smartPromotionEngine(restaurantId: $restaurantId, lookbackDays: 30, horizonDays: 2) {
+      summary {
+        recommendedCampaignCount
+        topOpportunityWindow
+        highestPrioritySegment
+        notes
+      }
+      campaigns {
+        campaignKey
+        title
+        objective
+        campaignType
+        priority
+        score
+        targetSegment
+        targetOrderType
+        targetWindow {
+          days
+          startHour
+          endHour
+        }
+        recommendation {
+          scope
+          discountType
+          discountValue
+          minOrderValue
+          maxDiscount
+          stacking
+        }
+        expectedKpi {
+          expectedOrdersLiftPct
+          expectedRevenueLiftPct
+          expectedConversionLiftPct
+          expectedAovLiftPct
+          expectedRedemptionRate
+          expectedStockReliefScore
+          confidence
+        }
+        guardrails
+        reason
+      }
+      autoSelectedPromotions {
+        source
+        promotionId
+        promotionName
+        fitScore
+        fitReason
+      }
+      segmentInsights {
+        segment
+        recommendedStrategy
+        reason
+      }
+      timeWindowInsights {
+        window
+        demandLevel
+        recommendedStrategy
+      }
+      couponContext {
+        activeCouponCount
+        nearUsageLimitCount
+      }
+      meta {
+        method
+        fallbackUsed
+        aiEnhanced
+        generatedAt
+        timezone
+        sampleOrders
+        sampleDays
+      }
+    }
   }
 `;
 
@@ -62,6 +270,11 @@ export const useAnalyst = () => {
   });
 
   const analyst = data?.managerDashboard;
+  const demandForecast = data?.demandForecast;
+  const staffSchedulingAssistant = data?.staffSchedulingAssistant;
+  const menuEngineeringAssistant = data?.menuEngineeringAssistant;
+  const smartPromotionEngine = data?.smartPromotionEngine;
+
   const kpiData = useMemo(
     () => [
       { label: "Doanh Thu Thuần", value: analyst?.revenue || 0 },
@@ -93,5 +306,91 @@ export const useAnalyst = () => {
     feedbackItems: analyst?.feedbackItems || [],
     occupancyHeatmap: analyst?.occupancyHeatmap || [],
     staffPerformance: analyst?.staffPerformance || [],
+    demandForecast: demandForecast || {
+      summary: {
+        busiestPeriods: [],
+        topRisingDishes: [],
+        totalRecommendedPrep: 0,
+        notes: [],
+      },
+      hourlyForecast: [],
+      dailyForecast: [],
+      risingDishes: [],
+      prepPlan: [],
+      meta: {
+        method: "time_series_v1",
+        fallbackUsed: true,
+        aiEnhanced: false,
+        generatedAt: null,
+        granularity: "hourly",
+        timezone: "Asia/Ho_Chi_Minh",
+        sampleOrders: 0,
+        sampleDays: 0,
+      },
+    },
+    staffSchedulingAssistant: staffSchedulingAssistant || {
+      summary: {
+        totalShiftGroups: 0,
+        underStaffedShifts: 0,
+        overStaffedShifts: 0,
+        highestRiskShift: null,
+        notes: [],
+      },
+      shifts: [],
+      meta: {
+        method: "staff_scheduling_v1",
+        basedOnForecast: false,
+        fallbackUsed: true,
+        generatedAt: null,
+        timezone: "Asia/Ho_Chi_Minh",
+      },
+    },
+    menuEngineeringAssistant: menuEngineeringAssistant || {
+      summary: {
+        totalDishes: 0,
+        starCount: 0,
+        plowhorseCount: 0,
+        puzzleCount: 0,
+        dogCount: 0,
+        avgMarginPct: 0,
+        notes: [],
+      },
+      dishes: [],
+      recommendations: [],
+      meta: {
+        method: "menu_engineering_v1",
+        fallbackUsed: true,
+        fallbackMarginRate: 0.65,
+        generatedAt: null,
+        timezone: "Asia/Ho_Chi_Minh",
+        sampleOrders: 0,
+        sampleDays: 30,
+      },
+    },
+    smartPromotionEngine: smartPromotionEngine || {
+      summary: {
+        recommendedCampaignCount: 0,
+        topOpportunityWindow: "15:00-17:00",
+        highestPrioritySegment: "NEW",
+        notes: [],
+      },
+      campaigns: [],
+      autoSelectedPromotions: [],
+      segmentInsights: [],
+      timeWindowInsights: [],
+      couponContext: {
+        activeCouponCount: 0,
+        nearUsageLimitCount: 0,
+      },
+      meta: {
+        method: "smart_promo_v1",
+        fallbackUsed: true,
+        aiEnhanced: false,
+        generatedAt: null,
+        timezone: "Asia/Ho_Chi_Minh",
+        sampleOrders: 0,
+        sampleDays: 30,
+      },
+    },
   };
 };

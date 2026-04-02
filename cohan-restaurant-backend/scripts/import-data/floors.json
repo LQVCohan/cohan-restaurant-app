@@ -1,0 +1,32 @@
+[
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Tầng 1",
+    "level": 1,
+    "isActive": true,
+    "meta": {
+      "width": 1400,
+      "height": 900
+    }
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Tầng 2",
+    "level": 2,
+    "isActive": true,
+    "meta": {
+      "width": 1200,
+      "height": 800
+    }
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Ground Floor",
+    "level": 1,
+    "isActive": true,
+    "meta": {
+      "width": 1300,
+      "height": 850
+    }
+  }
+]

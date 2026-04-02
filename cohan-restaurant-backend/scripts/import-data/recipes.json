@@ -1,0 +1,1004 @@
+[
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "pho-bo",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 68000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Bánh phở",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Thịt bò",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "bun-bo",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 72000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Bún",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Thịt bò",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "hu-tieu",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 70000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Hủ tiếu",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Thịt heo",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "bo-nuong",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 89000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Thịt bò",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "ga-nuong",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 85000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Thịt gà",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "heo-nuong",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 82000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Thịt heo",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "com-tam",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 68000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Gạo",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Thịt heo",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "com-ga",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 70000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Gạo",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Thịt gà",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "com-bo",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 88000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Gạo",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Thịt bò",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "goi-cuon",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 55000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Bánh tráng",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Tôm",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Thịt heo",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "bo-bia",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 50000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Bánh tráng",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Củ sắn",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "nem-cuon",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 52000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Bánh tráng",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Thịt heo",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "lau-thai",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 220000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Tôm",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Mực",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "lau-bo",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 240000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Thịt bò",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "lau-ca",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 210000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Cá phi lê",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "tra-da",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 12000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Trà",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "nuoc-cam",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 35000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Cam",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "menuItemKey": "ca-phe-sua",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 32000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Cà phê",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Sữa đặc",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "bruschetta",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 65000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Bánh mì",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Cà chua",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "caesar",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 78000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Xà lách",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Phô mai",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "shrimp-cocktail",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 92000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Tôm",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "mushroom-soup",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 72000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Nấm",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Sữa tươi",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "pumpkin-soup",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 70000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Bí đỏ",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Sữa tươi",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "onion-soup",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 76000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Hành tây",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Phô mai",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "beef-steak",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 240000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Thịt bò",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "grilled-salmon",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 220000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Cá hồi",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "roast-chicken",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 180000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Thịt gà",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "spaghetti-bolognese",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 165000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Mì spaghetti",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Thịt bò",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "carbonara",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 170000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Mì spaghetti",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Thịt heo xông khói",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "aglio-olio",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 145000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Mì spaghetti",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Tỏi",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "tiramisu",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 85000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Phô mai",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Cà phê",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "panna-cotta",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 78000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Sữa tươi",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "apple-pie",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 82000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Táo",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Bột mì",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "espresso",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 42000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Cà phê",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "latte",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 55000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Cà phê",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          },
+          {
+            "ingredientName": "Sữa tươi",
+            "qty": 80,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "menuItemKey": "orange-juice",
+    "isActive": true,
+    "servingVariants": [
+      {
+        "key": "default",
+        "name": "Default",
+        "mode": "PORTION",
+        "sellQty": 1,
+        "sellUnit": "portion",
+        "price": 48000,
+        "isDefault": true,
+        "ingredients": [
+          {
+            "ingredientName": "Cam",
+            "qty": 150,
+            "unit": "g",
+            "wastePct": 3
+          }
+        ]
+      }
+    ]
+  }
+]

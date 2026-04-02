@@ -144,6 +144,56 @@ $gap: 24px; // Khoảng cách chuẩn giữa các widget
     }
   }
 
+
+
+  // --- 3.5 FORECAST GRID ---
+  .forecast-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: $gap;
+    margin-bottom: $gap;
+
+    .demand-forecast {
+      border: 1px solid rgba($gold, 0.28);
+    }
+  }
+
+
+
+  // --- 3.6 STAFF SCHEDULING ASSISTANT ---
+  .scheduling-assistant-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: $gap;
+    margin-bottom: $gap;
+
+    .scheduling-assistant {
+      border: 1px solid rgba($gold, 0.22);
+    }
+  }
+
+  .menu-engineering-assistant-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: $gap;
+    margin-bottom: $gap;
+
+    .menu-engineering-assistant {
+      border: 1px solid rgba($gold, 0.24);
+    }
+  }
+
+  .smart-promotion-engine-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: $gap;
+    margin-bottom: $gap;
+
+    .smart-promotion-engine {
+      border: 1px solid rgba($gold, 0.2);
+    }
+  }
+
   // --- 4. PRODUCT & CUSTOMER GRID ---
   .product-customer-grid {
     display: grid;

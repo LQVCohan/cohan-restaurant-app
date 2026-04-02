@@ -8,6 +8,7 @@
     "dev": "nodemon --es-module-specifier-resolution=node src/server/server.js",
     "test": "vitest run",
     "seed:admin": "node scripts/seed-admin.js",
+    "import:restaurant-data": "node scripts/import-restaurant-data.js",
     "test:db": "node scripts/test-db.js",
     "sync:menuitem-category-json": "node scripts/update-menuitem-category-from-db-json.js --dry-run",
     "lint": "node --check src/server/server.js",
