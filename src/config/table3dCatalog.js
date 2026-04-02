@@ -11,6 +11,18 @@ export const TABLE_3D_PUBLIC_CATALOG_URL =
 
 const SAMPLE_GLB_BASE =
   "https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0";
+const PLACEHOLDER_THUMB =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="220" viewBox="0 0 320 220">
+      <rect width="320" height="220" fill="#f5f7fb"/>
+      <rect x="36" y="150" width="248" height="12" rx="6" fill="#8b5e3c"/>
+      <rect x="64" y="92" width="192" height="64" rx="12" fill="#b98962"/>
+      <rect x="92" y="156" width="12" height="34" rx="6" fill="#6f4b2f"/>
+      <rect x="216" y="156" width="12" height="34" rx="6" fill="#6f4b2f"/>
+      <text x="160" y="44" text-anchor="middle" font-size="20" fill="#1f2937" font-family="Arial, sans-serif">Table Preview</text>
+    </svg>`
+  );
 
 export const LOCAL_TABLE_3D_CATALOG = [
   {
@@ -19,9 +31,9 @@ export const LOCAL_TABLE_3D_CATALOG = [
     tableType: TABLE_3D_TYPES.ROUND,
     capacity: 4,
     defaultScale: 1,
-    modelUrl: `${SAMPLE_GLB_BASE}/BoomBox/glTF-Binary/BoomBox.glb`,
+    modelUrl: `${SAMPLE_GLB_BASE}/DiningTable/glTF-Binary/DiningTable.glb`,
     thumbnailUrl:
-      "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BoomBox/screenshot/screenshot.jpg",
+      "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DiningTable/screenshot/screenshot.jpg",
     source: "public-fallback",
   },
   {
@@ -30,10 +42,10 @@ export const LOCAL_TABLE_3D_CATALOG = [
     tableType: TABLE_3D_TYPES.RECT_2,
     capacity: 2,
     defaultScale: 0.9,
-    modelUrl: `${SAMPLE_GLB_BASE}/DamagedHelmet/glTF-Binary/DamagedHelmet.glb`,
-    thumbnailUrl:
-      "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DamagedHelmet/screenshot/screenshot.jpg",
+    modelUrl: "",
+    thumbnailUrl: PLACEHOLDER_THUMB,
     source: "public-fallback",
+    fallbackKind: "placeholder",
   },
   {
     key: "rect-4-modern",
@@ -41,9 +53,9 @@ export const LOCAL_TABLE_3D_CATALOG = [
     tableType: TABLE_3D_TYPES.RECT_4,
     capacity: 4,
     defaultScale: 1,
-    modelUrl: `${SAMPLE_GLB_BASE}/Lantern/glTF-Binary/Lantern.glb`,
+    modelUrl: `${SAMPLE_GLB_BASE}/DiningTable/glTF-Binary/DiningTable.glb`,
     thumbnailUrl:
-      "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Lantern/screenshot/screenshot.jpg",
+      "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/DiningTable/screenshot/screenshot.jpg",
     source: "public-fallback",
   },
   {
@@ -52,10 +64,10 @@ export const LOCAL_TABLE_3D_CATALOG = [
     tableType: TABLE_3D_TYPES.VIP,
     capacity: 6,
     defaultScale: 1.15,
-    modelUrl: `${SAMPLE_GLB_BASE}/FlightHelmet/glTF-Binary/FlightHelmet.glb`,
-    thumbnailUrl:
-      "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/FlightHelmet/screenshot/screenshot.jpg",
+    modelUrl: "",
+    thumbnailUrl: PLACEHOLDER_THUMB,
     source: "public-fallback",
+    fallbackKind: "placeholder",
   },
   {
     key: "booth-sofa-4",
@@ -63,10 +75,10 @@ export const LOCAL_TABLE_3D_CATALOG = [
     tableType: TABLE_3D_TYPES.BOOTH,
     capacity: 4,
     defaultScale: 1.05,
-    modelUrl: `${SAMPLE_GLB_BASE}/CesiumMan/glTF-Binary/CesiumMan.glb`,
-    thumbnailUrl:
-      "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/CesiumMan/screenshot/screenshot.jpg",
+    modelUrl: "",
+    thumbnailUrl: PLACEHOLDER_THUMB,
     source: "public-fallback",
+    fallbackKind: "placeholder",
   },
 ];
 
@@ -87,13 +99,21 @@ export const mapModelToTableForm = (model) => {
   };
 };
 
-export const normalizeCatalogItem = (item) => ({
-  key: item?.key || "",
-  label: item?.label || "Mẫu bàn 3D",
-  tableType: item?.tableType || TABLE_3D_TYPES.RECT_4,
-  capacity: Number(item?.capacity || 4),
-  defaultScale: Number(item?.defaultScale || 1),
-  modelUrl: item?.modelUrl || "",
-  thumbnailUrl: item?.thumbnailUrl || "",
-  source: item?.source || "public",
-});
+export const normalizeCatalogItem = (item) => {
+  const normalizedType = Object.values(TABLE_3D_TYPES).includes(item?.tableType)
+    ? item.tableType
+    : TABLE_3D_TYPES.RECT_4;
+  const modelUrl = item?.modelUrl || "";
+
+  return {
+    key: item?.key || "",
+    label: item?.label || "Mẫu bàn 3D",
+    tableType: normalizedType,
+    capacity: Number(item?.capacity || 4),
+    defaultScale: Number(item?.defaultScale || 1),
+    modelUrl,
+    thumbnailUrl: item?.thumbnailUrl || PLACEHOLDER_THUMB,
+    source: item?.source || "public",
+    fallbackKind: item?.fallbackKind || (modelUrl ? "model" : "placeholder"),
+  };
+};

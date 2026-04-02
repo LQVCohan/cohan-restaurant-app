@@ -32,7 +32,9 @@ export default function useTable3DModels() {
       }
       const data = await response.json();
       const normalized = Array.isArray(data)
-        ? data.map(normalizeCatalogItem).filter((item) => item.modelUrl)
+        ? data
+            .map(normalizeCatalogItem)
+            .filter((item) => item.key && item.tableType)
         : [];
 
       if (!normalized.length) {

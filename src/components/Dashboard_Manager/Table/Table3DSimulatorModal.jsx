@@ -38,7 +38,7 @@ const Table3DSimulatorModal = ({
   }, []);
 
   const models = useMemo(
-    () => modelsByType[tableType] || [],
+    () => (modelsByType[tableType] || []).filter((model) => model.tableType === tableType),
     [modelsByType, tableType]
   );
 
@@ -84,11 +84,11 @@ const Table3DSimulatorModal = ({
 
   useEffect(() => {
     const node = viewerRef.current;
-    if (!node) return undefined;
+    if (!node || !selectedModel?.modelUrl) return undefined;
     const handleError = () => setModelError("Không tải được model, hãy đổi mẫu khác.");
     node.addEventListener("error", handleError);
     return () => node.removeEventListener("error", handleError);
-  }, [selectedModel?.key]);
+  }, [selectedModel?.key, selectedModel?.modelUrl]);
 
   return (
     <Modal isOpen={open} onClose={onClose} size="full" className="table-3d-modal">
@@ -157,7 +157,7 @@ const Table3DSimulatorModal = ({
             {loading && <span>Đang tải catalog...</span>}
           </div>
 
-          {selectedModel ? (
+          {selectedModel?.modelUrl && !modelError ? (
             <model-viewer
               ref={viewerRef}
               src={selectedModel.modelUrl}
@@ -172,7 +172,11 @@ const Table3DSimulatorModal = ({
               className="table-3d-viewer"
             />
           ) : (
-            <div className="viewer-placeholder">Chọn mẫu để bắt đầu mô phỏng.</div>
+            <div className="viewer-placeholder">
+              {selectedModel
+                ? "Đang dùng placeholder bàn (không có model 3D công khai khả dụng)."
+                : "Chọn mẫu để bắt đầu mô phỏng."}
+            </div>
           )}
 
           {modelError && <div className="table-3d-modal__warning">{modelError}</div>}
