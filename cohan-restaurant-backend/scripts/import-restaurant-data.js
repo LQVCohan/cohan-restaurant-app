@@ -416,6 +416,7 @@ function toDate(v) {
 async function importRestaurants(ctx) {
   const rows = ctx.stepData.get("restaurants");
   const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
+  const seenManagerIds = new Set();
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -424,6 +425,19 @@ async function importRestaurants(ctx) {
       let managerId = toObjectId(row.managerId);
       if (!managerId && managerEmail) {
         managerId = await ctx.resolver.resolveUserIdByEmail(managerEmail, { required: true });
+      }
+      if (managerId) {
+        const managerKey = String(managerId);
+        if (seenManagerIds.has(managerKey)) {
+          log("WARN", "restaurants duplicate managerId in source; manager assignment removed for this row", {
+            index: i,
+            name,
+            managerId: managerKey,
+          });
+          managerId = null;
+        } else {
+          seenManagerIds.add(managerKey);
+        }
       }
       const payload = {
         name,
