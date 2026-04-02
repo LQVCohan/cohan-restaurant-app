@@ -249,6 +249,19 @@ export default {
     if (![restaurantId, menuItemId].every(mongoose.isValidObjectId))
       return false;
     const res = await Recipe.deleteOne({ restaurantId, menuItemId });
+    if (res.deletedCount > 0) {
+      try {
+        await MenuItem.updateOne(
+          { _id: menuItemId, restaurantId },
+          {
+            $set: { hasByWeightVariant: false },
+            $unset: { defaultServingKey: 1 },
+          }
+        );
+      } catch (err) {
+        console.error("sync MenuItem after recipe delete failed:", err);
+      }
+    }
     return res.deletedCount > 0;
   },
 };
