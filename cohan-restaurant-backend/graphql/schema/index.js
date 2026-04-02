@@ -35,6 +35,7 @@ const files = [
   "shippingTracking.graphql",
   "orderTracking.graphql",
   "supplier.graphql",
+  "communication.graphql",
 ].map((f) => fs.readFileSync(path.join(schemaDir, f), "utf8"));
 
 const typeDefs = mergeTypeDefs(files, { useSchemaDefinition: true });

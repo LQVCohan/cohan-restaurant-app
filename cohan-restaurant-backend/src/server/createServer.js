@@ -303,6 +303,30 @@ export async function createServer() {
       app.log.info(`🚪 Socket ${socket.id} left room ${roomName}`);
     });
 
+
+    socket.on("joinUserChannel", (userId) => {
+      if (!userId) return;
+      const roomName = `user_${userId}`;
+      socket.join(roomName);
+      socket.emit("joinedUserChannel", { room: roomName });
+    });
+
+    socket.on("leaveUserChannel", (userId) => {
+      if (!userId) return;
+      socket.leave(`user_${userId}`);
+    });
+
+    socket.on("joinChatThread", (threadId) => {
+      if (!threadId) return;
+      const roomName = `chat_thread_${threadId}`;
+      socket.join(roomName);
+      socket.emit("joinedChatThread", { room: roomName });
+    });
+
+    socket.on("leaveChatThread", (threadId) => {
+      if (!threadId) return;
+      socket.leave(`chat_thread_${threadId}`);
+    });
     socket.on("joinOrder", (orderCode) => {
       if (!orderCode) return;
       const roomName = `order_${orderCode}`;

@@ -1,11 +1,26 @@
 // src/pages/OrderTrackingPage.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@apollo/client";
+import { gql, useQuery } from "@apollo/client";
 import { useParams, useSearchParams } from "react-router-dom";
 import { GET_ORDER_TRACKING } from "./queries/orderTracking.queries";
 import useSocketDeliveryTracking from "../../../hooks/useSocketDeliveryTracking";
 import OrderTrackingMap from "./components/OrderTrackingMap";
 import "./orderTracking.scss";
+
+const GET_ORDER_ITEMS_FOR_TRACKING = gql`
+  query GetOrderItemsForTracking($id: ID!) {
+    order(id: $id) {
+      id
+      items {
+        _id
+        name
+        quantity
+        proofImages
+      }
+    }
+  }
+`;
+
 
 function mapStatusLabel(status) {
   if (!status) return "Đang xử lý";
@@ -44,6 +59,12 @@ export default function OrderTrackingPage() {
   const { data, loading, error } = useQuery(GET_ORDER_TRACKING, {
     skip: !orderId || !restaurantId,
     variables: { orderId, restaurantId },
+    fetchPolicy: "cache-and-network",
+  });
+
+  const { data: orderData } = useQuery(GET_ORDER_ITEMS_FOR_TRACKING, {
+    skip: !orderId,
+    variables: { id: orderId },
     fetchPolicy: "cache-and-network",
   });
 
@@ -125,14 +146,15 @@ export default function OrderTrackingPage() {
   const tracking = data?.getOrderTracking;
   const statusLabel = mapStatusLabel(deliveryStatus);
 
-  const items = useMemo(
-    () => [
-      // TODO: sau này map từ tracking.items (nếu BE trả về)
-      { name: "Combo cơm gà xối mỡ", quantity: 1 },
-      { name: "Nước ngọt", quantity: 2 },
-    ],
-    []
-  );
+  const items = useMemo(() => {
+    const rows = orderData?.order?.items || [];
+    return rows.map((it) => ({
+      _id: it._id,
+      name: it.name,
+      quantity: Number(it.quantity || 1),
+      proofImages: Array.isArray(it.proofImages) ? it.proofImages.filter(Boolean) : [],
+    }));
+  }, [orderData]);
 
   const driverCard = useMemo(() => {
     const info =
@@ -305,11 +327,18 @@ export default function OrderTrackingPage() {
           <div className="ot-card ot-order-card">
             <h3>Chi tiết đơn hàng</h3>
             <ul className="ot-order-items">
-              {items.map((item, idx) => (
-                <li key={idx} className="ot-order-item">
+              {items.map((item) => (
+                <li key={item._id || item.name} className="ot-order-item">
                   <span>
                     {item.quantity}× {item.name}
                   </span>
+                  {item.proofImages?.length > 0 && (
+                    <div className="ot-order-proofs">
+                      {item.proofImages.map((src, idx) => (
+                        <img key={`${src}_${idx}`} src={src} alt={`${item.name}-${idx}`} />
+                      ))}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

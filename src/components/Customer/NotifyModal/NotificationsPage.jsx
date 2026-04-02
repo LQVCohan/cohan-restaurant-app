@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Trash2, Bell, CheckCheck } from "lucide-react";
 import "./NotificationsPage.scss";
 import { useCustomerNotifications } from "@/context/CustomerNotificationContext";
 
 const NotificationsPage = () => {
   const [filter, setFilter] = useState("all"); // 'all' hoặc 'unread'
+  const navigate = useNavigate();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } =
     useCustomerNotifications();
 
@@ -70,7 +72,10 @@ const NotificationsPage = () => {
               <div
                 key={notif.id}
                 className={`notif-card ${!notif.isRead ? "unread" : ""}`}
-                onClick={() => markAsRead(notif.id)}
+                onClick={() => {
+                  markAsRead(notif.id);
+                  if (notif.threadId) navigate(`/help?threadId=${notif.threadId}`);
+                }}
               >
                 <div className="notif-icon">
                   <img src={notif.image} alt="icon" />

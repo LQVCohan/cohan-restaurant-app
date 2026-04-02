@@ -30,6 +30,7 @@ import tableEvent from "./table_event/index.js";
 import * as printSetting from "./printSetting/index.js";
 // 🆕 Thêm search module
 import search from "./search/index.js";
+import communication from "./communication/index.js";
 
 export default {
   ...baseResolvers,
@@ -62,6 +63,7 @@ export default {
     ...(eventPackage.Query || {}),
     ...(tableEvent.Query || {}),
     ...(printSetting.Query || {}),
+    ...(communication.Query || {}),
   },
 
   Mutation: {
@@ -90,6 +92,7 @@ export default {
     ...(eventPackage.Mutation || {}),
     ...(tableEvent.Mutation || {}),
     ...(printSetting.Mutation || {}),
+    ...(communication.Mutation || {}),
   },
 
   // ============================
@@ -115,6 +118,7 @@ export default {
   ...(cart.CartItem ? { CartItem: cart.CartItem } : {}),
 
   ...(search.SearchResult ? { SearchResult: search.SearchResult } : {}),
+  ...(communication.ChatThread ? { ChatThread: communication.ChatThread } : {}),
   ...(supplier.Supplier ? { Supplier: supplier.Supplier } : {}),
   ...(review.ReactionSummary
     ? { ReactionSummary: review.ReactionSummary }
