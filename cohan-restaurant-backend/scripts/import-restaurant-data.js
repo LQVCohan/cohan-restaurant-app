@@ -435,7 +435,11 @@ async function importRestaurants(ctx) {
         reservationSettings: row.reservationSettings || undefined,
         paymentSettings: row.paymentSettings || undefined,
       };
-      const filter = managerId ? { name, managerId } : { name };
+      // `restaurants.managerId` is unique in many deployments.
+      // If the seed `name` changes over time, filtering by `{ name, managerId }`
+      // can miss the existing row and trigger duplicate-key inserts on managerId.
+      // Prefer managerId-only matching when available.
+      const filter = managerId ? { managerId } : { name };
       const rid = await upsertWithSummary({
         model: Restaurant,
         filter,
