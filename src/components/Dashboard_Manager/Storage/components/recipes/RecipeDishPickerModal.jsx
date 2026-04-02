@@ -12,11 +12,13 @@ export default function RecipeDishPickerModal({
 }) {
   const [dishSearchText, setDishSearchText] = useState("");
 
+  // Reset thanh tìm kiếm mỗi khi mở modal
   useEffect(() => {
     if (!isOpenPicker) return;
     setDishSearchText("");
   }, [isOpenPicker]);
 
+  // Bắt sự kiện phím Escape để đóng modal
   useEffect(() => {
     if (!isOpenPicker) return;
 
@@ -28,6 +30,7 @@ export default function RecipeDishPickerModal({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isOpenPicker, onRequestClose]);
 
+  // Lọc món ăn dựa trên từ khóa
   const filteredRows = useMemo(() => {
     const key = dishSearchText.trim().toLowerCase();
     if (!key) return dishRows || [];
@@ -35,130 +38,128 @@ export default function RecipeDishPickerModal({
     return (dishRows || []).filter((row) => {
       const name = String(row?.name || "").toLowerCase();
       const code = String(
-        row?._rawMenuItem?.code || row?.code || ""
+        row?._rawMenuItem?.code || row?.code || "",
       ).toLowerCase();
       const desc = String(row?.description || "").toLowerCase();
       return name.includes(key) || code.includes(key) || desc.includes(key);
     });
-  }, [dishRows, dishSearchText]);
-
-  const getRowId = (row) => String(row?.id || row?.menuItemId || "");
-
-  const detectHasRecipe = (row) => {
-    // ưu tiên các id nếu tồn tại
-    if (row?._rawRecipeId || row?.recipeId || row?.recipe?.id) return true;
-
-    // fallback: có ingredients trong variants
-    const variants = Array.isArray(row?.servingVariants)
-      ? row.servingVariants
-      : [];
-    return variants.some((v) => {
-      const lines = v?.ingredients || v?.components || [];
-      return Array.isArray(lines) && lines.length > 0;
-    });
-  };
+  }, [dishSearchText, dishRows]);
 
   if (!isOpenPicker) return null;
 
   return createPortal(
     <div className={styles.backdrop} onClick={onRequestClose}>
-      <div
-        className={styles.modal}
-        onClick={stop}
-        role="dialog"
-        aria-modal="true"
-      >
+      <div className={styles.modal} onClick={stop}>
+        {/* Header */}
         <div className={styles.header}>
           <div className={styles.titleWrap}>
             <div className={styles.title}>
-              Chọn món để thêm/cập nhật công thức
+              🔎 Chọn món ăn cần cài đặt công thức
             </div>
             <div className={styles.subTitle}>
-              Tổng: <b>{dishRows?.length || 0}</b> • Hiển thị:{" "}
-              <b>{filteredRows?.length || 0}</b>
+              Tìm kiếm theo tên hoặc mã món để thiết lập định lượng nguyên liệu
             </div>
           </div>
-
-          <button
-            className={styles.closeBtn}
-            type="button"
-            onClick={onRequestClose}
-          >
-            ✕
-          </button>
         </div>
 
-        <div className={styles.toolbar}>
+        {/* Body */}
+        <div className={styles.body}>
           <input
-            className={styles.search}
+            autoFocus
+            className={styles.searchInput}
+            placeholder="Tìm theo tên, mã món, mô tả..."
             value={dishSearchText}
             onChange={(e) => setDishSearchText(e.target.value)}
-            placeholder="Tìm theo tên / mô tả / mã món…"
           />
-        </div>
 
-        <div className={styles.list}>
-          {filteredRows?.length ? (
-            filteredRows.map((row) => {
-              const rowId = getRowId(row);
-              const hasRecipe = detectHasRecipe(row);
+          <div className={styles.list}>
+            {filteredRows.length > 0 ? (
+              filteredRows.map((row, idx) => {
+                const hasRecipe = Boolean(row?.recipeId || row?.hasRecipe);
 
-              return (
-                <button
-                  key={rowId}
-                  className={styles.row}
-                  type="button"
-                  onClick={() => onPickDishRow?.(row)}
-                  title={row?.description || row?.name || ""}
-                >
-                  <div className={styles.thumb}>
-                    {row?.thumbImage ? (
-                      <img src={row.thumbImage} alt={row?.name || "thumb"} />
-                    ) : (
-                      <div className={styles.thumbFallback}>🍽️</div>
-                    )}
-                  </div>
+                return (
+                  <button
+                    key={row?.id || idx}
+                    type="button"
+                    className={styles.row}
+                    onClick={() => {
+                      onPickDishRow?.(row);
+                      onRequestClose?.();
+                    }}
+                  >
+                    <div className={styles.left}>
+                      {/* Ảnh đại diện món / Fallback */}
+                      <div className={styles.thumb}>
+                        {row?.imageUrl ? (
+                          <img
+                            src={row.imageUrl}
+                            alt={row.name}
+                            className={styles.thumbImg}
+                          />
+                        ) : (
+                          <span className={styles.thumbFallback}>🍽️</span>
+                        )}
+                      </div>
 
-                  <div className={styles.meta}>
-                    <div className={styles.nameLine}>
-                      <span className={styles.name}>
-                        {row?.name || "Unnamed"}
-                      </span>
+                      {/* Thông tin món */}
+                      <div className={styles.meta}>
+                        <div className={styles.nameLine}>
+                          <span className={styles.name}>
+                            {row?.name || "Chưa có tên"}
+                          </span>
+                          {row?.code && (
+                            <span
+                              style={{ fontSize: "12px", color: "#64748b" }}
+                            >
+                              ({row.code})
+                            </span>
+                          )}
 
-                      {hasRecipe ? (
-                        <span className={styles.badgeOk}>Đã có công thức</span>
-                      ) : (
-                        <span className={styles.badgeNew}>
-                          Chưa có công thức
-                        </span>
-                      )}
+                          {/* Badges */}
+                          {hasRecipe ? (
+                            <span className={styles.badgeOk}>
+                              Đã có công thức
+                            </span>
+                          ) : (
+                            <span className={styles.badgeNew}>
+                              Chưa có công thức
+                            </span>
+                          )}
 
-                      {row?.status ? (
-                        <span className={styles.badgeStatus}>{row.status}</span>
-                      ) : null}
+                          {row?.status ? (
+                            <span className={styles.badgeStatus}>
+                              {row.status}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {row?.description ? (
+                          <div className={styles.desc}>{row.description}</div>
+                        ) : (
+                          <div className={styles.descMuted}>Không có mô tả</div>
+                        )}
+                      </div>
                     </div>
 
-                    {row?.description ? (
-                      <div className={styles.desc}>{row.description}</div>
-                    ) : (
-                      <div className={styles.descMuted}>Không có mô tả</div>
-                    )}
-                  </div>
-
-                  <div className={styles.right}>
-                    <div className={styles.price}>
-                      {typeof row?.basePrice === "number" ? row.basePrice : 0}
+                    {/* Cột phải: Giá + Nút chọn */}
+                    <div className={styles.right}>
+                      <div className={styles.price}>
+                        {typeof row?.basePrice === "number"
+                          ? row.basePrice.toLocaleString("vi-VN") + "đ"
+                          : "0đ"}
+                      </div>
+                      <div className={styles.pickHint}>Chọn →</div>
                     </div>
-                    <div className={styles.pickHint}>Chọn →</div>
-                  </div>
-                </button>
-              );
-            })
-          ) : (
-            <div className={styles.empty}>Không tìm thấy món phù hợp.</div>
-          )}
+                  </button>
+                );
+              })
+            ) : (
+              <div className={styles.empty}>Không tìm thấy món phù hợp.</div>
+            )}
+          </div>
         </div>
 
+        {/* Footer */}
         <div className={styles.footer}>
           <button
             className={styles.secondary}
@@ -170,6 +171,6 @@ export default function RecipeDishPickerModal({
         </div>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 }

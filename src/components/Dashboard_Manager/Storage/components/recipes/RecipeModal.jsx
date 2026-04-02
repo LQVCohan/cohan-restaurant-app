@@ -23,18 +23,6 @@ import {
 
 import "./RecipeModal.scss";
 
-/**
- * ✅ RecipeModal:
- * - Chỉ làm công thức (notes + servingVariants + ingredients)
- * - Chọn món qua RecipeDishPickerModal, sau khi chọn: info món chỉ đọc + có thể thu gọn
- * - Ingredient search: có suggestions list (không cần mở select)
- *   + hỗ trợ tìm không dấu: "ot" match "ớt"
- *   + khi focus mà chưa gõ: show Recent/Top/New (limit 8)
- * - Hao hụt: 2 mode (UNIT hoặc %) nhưng luôn chuẩn hoá lưu về wastePct (%), rule waste <= qty
- * - Nút nhân bản biến thể
- */
-
-// ===== decimal helpers (1,2 or 1.2) =====
 const sanitizeDecimalText = (v) => {
   let s = String(v ?? "").replace(/[^\d.,]/g, "");
   const i = s.search(/[.,]/);
@@ -64,13 +52,8 @@ const RecipeModal = ({
   onClose,
   onSave,
   onDelete,
-
-  // nếu mở modal từ card recipe có sẵn
   recipe = null,
-
-  // ✅ truyền list dishRows (items của Q_MENU_ITEMS_WITH_RECIPES_PAGED)
   menuItemRecipeRows = [],
-
   restaurantId,
   ingredients = [],
 }) => {
@@ -79,15 +62,10 @@ const RecipeModal = ({
   const [errors, setErrors] = useState({});
   const [activeVariantIndex, setActiveVariantIndex] = useState(0);
   const [previewWeight, setPreviewWeight] = useState(100);
-
-  // dish picker state
   const [isDishPickerOpen, setIsDishPickerOpen] = useState(false);
   const [pickedDishRow, setPickedDishRow] = useState(null);
-
-  // dish info collapse
   const [isDishInfoCollapsed, setIsDishInfoCollapsed] = useState(true);
 
-  // ===== suggestions query (Recent/Top/New) =====
   const shouldLoadSuggest = Boolean(isOpen && restaurantId);
   const { data: suggestData, loading: suggestLoading } = useQuery(
     Q_INGREDIENT_SUGGESTIONS,
@@ -95,12 +73,11 @@ const RecipeModal = ({
       variables: { restaurantId, limit: 8 },
       skip: !shouldLoadSuggest,
       fetchPolicy: "cache-and-network",
-    }
+    },
   );
 
   const [recordIngredientUsed] = useMutation(M_RECORD_INGREDIENT_USED);
 
-  // ========= ingredient helpers =========
   const ingredientIdSet = useMemo(() => {
     const s = new Set();
     (ingredients || []).forEach((i) => s.add(String(i.id)));
@@ -140,7 +117,6 @@ const RecipeModal = ({
     return allowed.includes(unit);
   };
 
-  // ========= waste normalize =========
   const normalizeWasteForComp = (comp) => {
     if (!comp?.ingredientId) return comp;
 
@@ -186,7 +162,6 @@ const RecipeModal = ({
     };
   };
 
-  // ========= key helpers =========
   const slugifyKey = (str) =>
     String(str || "")
       .trim()
@@ -218,22 +193,18 @@ const RecipeModal = ({
       key,
       name,
       mode: "PORTION",
-
       sellQty: 1,
       sellQtyText: "1",
       sellUnit: "portion",
-
       price: 0,
       isDefault: idx === 0,
-
       components: [],
     };
   };
 
-  // ========= resolve active row =========
   const activeRow = useMemo(
     () => pickedDishRow || recipe || null,
-    [pickedDishRow, recipe]
+    [pickedDishRow, recipe],
   );
 
   const menuItemNode = useMemo(() => {
@@ -277,7 +248,6 @@ const RecipeModal = ({
     return variants.length > 0;
   }, [activeRow, recipeNode]);
 
-  // ========= form state =========
   const [formData, setFormData] = useState({
     notes: "",
     servingVariants: [],
@@ -285,7 +255,6 @@ const RecipeModal = ({
 
   const activeVariant = formData.servingVariants?.[activeVariantIndex];
 
-  // ========= open/init =========
   useEffect(() => {
     if (!isOpen) return;
 
@@ -293,17 +262,14 @@ const RecipeModal = ({
     setActiveVariantIndex(0);
     setPreviewWeight(100);
 
-    // nếu mở modal để tạo mới recipe (chưa có recipe truyền vào) => bật picker
     if (!recipe && !pickedDishRow) {
       setIsDishPickerOpen(true);
       setIsDishInfoCollapsed(true);
     } else {
       setIsDishInfoCollapsed(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, recipe, pickedDishRow]);
 
-  // Init form from recipeNode
   useEffect(() => {
     if (!isOpen) return;
 
@@ -322,7 +288,7 @@ const RecipeModal = ({
       const mode = v?.mode === "BY_WEIGHT" ? "BY_WEIGHT" : "PORTION";
 
       let sellUnit = String(
-        v?.sellUnit || (mode === "BY_WEIGHT" ? "kg" : "portion")
+        v?.sellUnit || (mode === "BY_WEIGHT" ? "kg" : "portion"),
       );
       let sellQty = Number(v?.sellQty);
 
@@ -340,8 +306,8 @@ const RecipeModal = ({
       const rawLines = Array.isArray(v?.ingredients)
         ? v.ingredients
         : Array.isArray(v?.components)
-        ? v.components
-        : [];
+          ? v.components
+          : [];
 
       const components = rawLines
         .map((c) => {
@@ -380,10 +346,8 @@ const RecipeModal = ({
         key,
         name,
         mode,
-
         sellQty,
         sellQtyText: String(sellQty),
-
         sellUnit,
         price: Number.isFinite(price) && price >= 0 ? price : 0,
         isDefault,
@@ -395,7 +359,6 @@ const RecipeModal = ({
       ? normalizedVariants
       : [makeEmptyVariant(0, usedKeys)];
 
-    // enforce exactly one default
     if (variantsFinal.length) {
       const hasDefault = variantsFinal.some((x) => x.isDefault);
       if (!hasDefault) variantsFinal[0].isDefault = true;
@@ -411,10 +374,8 @@ const RecipeModal = ({
       notes: String(recipeNode?.notes || ""),
       servingVariants: variantsFinal,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, recipeNode, ingredients]);
 
-  // ========= costs =========
   const getComponentQtyInBase = (comp) => {
     const baseUnit = getIngredientBaseUnit(comp.ingredientId);
     const unit = comp.unit || baseUnit;
@@ -455,7 +416,6 @@ const RecipeModal = ({
     return calcVariantCostPortion(activeVariant);
   }, [activeVariant, previewWeight, ingredients]);
 
-  // ========= label helpers =========
   const getPriceLabel = (variant) => {
     if (!variant) return "Giá";
     if (variant.mode === "PORTION") return "Giá / phần";
@@ -479,14 +439,68 @@ const RecipeModal = ({
     return `${formatPrice(price)} / ${unit}`;
   };
 
-  // ========= Variant handlers =========
+  const recipeSummary = useMemo(() => {
+    const variants = formData.servingVariants || [];
+    const allComponents = variants.flatMap((v) => v.components || []);
+    const validComponents = allComponents.filter((c) => c.ingredientId);
+    const totalEstimated = variants.reduce((sum, variant) => {
+      if (variant.mode === "BY_WEIGHT") {
+        return sum + calcVariantCostByWeightPreview(variant, previewWeight);
+      }
+      return sum + calcVariantCostPortion(variant);
+    }, 0);
+
+    return {
+      totalVariants: variants.length,
+      totalComponents: allComponents.length,
+      validComponents: validComponents.length,
+      totalEstimated,
+      defaultVariantName:
+        variants.find((v) => v.isDefault)?.name || variants[0]?.name || "—",
+    };
+  }, [formData.servingVariants, previewWeight]);
+
+  const activeVariantSummary = useMemo(() => {
+    if (!activeVariant) {
+      return {
+        totalLines: 0,
+        readyLines: 0,
+        wasteLines: 0,
+        displayPrice: "—",
+      };
+    }
+
+    const components = activeVariant.components || [];
+    const readyLines = components.filter((c) => {
+      const q = parseDecimalLoose(c.qty);
+      return c.ingredientId && q && q > 0;
+    }).length;
+
+    const wasteLines = components.filter((c) => Number(c?.wastePct) > 0).length;
+
+    return {
+      totalLines: components.length,
+      readyLines,
+      wasteLines,
+      displayPrice: getFinalDisplay(activeVariant) || "—",
+    };
+  }, [activeVariant]);
+
+  const activeVariantErrors = useMemo(() => {
+    if (!activeVariant) return [];
+    const prefix = `variant_${activeVariantIndex}`;
+    return Object.entries(errors)
+      .filter(([key]) => key.startsWith(prefix))
+      .map(([, value]) => value);
+  }, [errors, activeVariant, activeVariantIndex]);
+
   const handleVariantAdd = () => {
     const used = new Set(
-      (formData.servingVariants || []).map((v) => v.key).filter(Boolean)
+      (formData.servingVariants || []).map((v) => v.key).filter(Boolean),
     );
     const nextVariant = makeEmptyVariant(
       (formData.servingVariants || []).length,
-      used
+      used,
     );
 
     setFormData((p) => ({
@@ -503,7 +517,7 @@ const RecipeModal = ({
     const used = new Set(
       (formData.servingVariants || [])
         .map((v) => String(v.key || "").trim())
-        .filter(Boolean)
+        .filter(Boolean),
     );
 
     const copyName = `${src.name || "Biến thể"} (copy)`;
@@ -600,7 +614,6 @@ const RecipeModal = ({
     setFormData((p) => ({ ...p, servingVariants: next }));
   };
 
-  // ========= ingredient line handlers =========
   const handleComponentAdd = (variantIndex) => {
     const next = [...formData.servingVariants];
     next[variantIndex].components = [
@@ -665,12 +678,10 @@ const RecipeModal = ({
       comp.unit = unit;
       comp.ingSearch = "";
       comp.ingFocused = false;
-
       comp.qty = comp.qty || "";
       comp.wasteMode = comp.wasteMode || "PERCENT";
       comp.wastePct = comp.wastePct ?? "0";
       comp.wasteQty = comp.wasteQty ?? "0";
-
       comp = normalizeWasteForComp(comp);
 
       next[variantIndex].components[compIndex] = comp;
@@ -689,7 +700,6 @@ const RecipeModal = ({
 
       comp.ingredientId = ingredientId;
       comp.unit = unit;
-
       comp.qty = comp.qty || "";
       comp.wasteMode = comp.wasteMode || "PERCENT";
       comp.wastePct = comp.wastePct ?? "0";
@@ -713,14 +723,14 @@ const RecipeModal = ({
         const qtyBase = toBaseQty(
           parseDecimalLoose(comp.qty) || 0,
           oldUnit,
-          baseUnit
+          baseUnit,
         );
         const newQty = fromBaseQty(qtyBase, newUnit, baseUnit);
 
         const wasteBase = toBaseQty(
           parseDecimalLoose(comp.wasteQty) || 0,
           oldUnit,
-          baseUnit
+          baseUnit,
         );
         const newWasteQty = fromBaseQty(wasteBase, newUnit, baseUnit);
 
@@ -753,7 +763,6 @@ const RecipeModal = ({
     setFormData((p) => ({ ...p, servingVariants: next }));
   };
 
-  // ========= validate =========
   const validateForm = () => {
     const e = {};
 
@@ -799,11 +808,10 @@ const RecipeModal = ({
         const baseUnit = getIngredientBaseUnit(c.ingredientId);
         const unit = c.unit || baseUnit;
         if (c.ingredientId && !isUnitAllowed(c.ingredientId, unit)) {
-          e[
-            `variant_${vi}_comp_${ci}_unit`
-          ] = `Unit không hợp lệ (chỉ cho: ${getAllowedUnitsForIngredient(
-            c.ingredientId
-          ).join(", ")})`;
+          e[`variant_${vi}_comp_${ci}_unit`] =
+            `Unit không hợp lệ (chỉ cho: ${getAllowedUnitsForIngredient(
+              c.ingredientId,
+            ).join(", ")})`;
         }
       });
     });
@@ -812,7 +820,6 @@ const RecipeModal = ({
     return Object.keys(e).length === 0;
   };
 
-  // ========= build payload =========
   const buildPayload = () => {
     const variants = (formData.servingVariants || []).map((v, idx) => {
       const mode = v.mode === "BY_WEIGHT" ? "BY_WEIGHT" : "PORTION";
@@ -832,7 +839,7 @@ const RecipeModal = ({
           const qtyBase = toBaseQty(
             parseDecimalLoose(c.qty) || 0,
             unit,
-            baseUnit
+            baseUnit,
           );
           const q = Number(qtyBase);
           if (!Number.isFinite(q) || q <= 0) return null;
@@ -842,8 +849,8 @@ const RecipeModal = ({
           return {
             ingredientId: c.ingredientId,
             qty: q,
-            unit: baseUnit, // ✅ chuẩn hoá
-            wastePct, // ✅ chuẩn hoá
+            unit: baseUnit,
+            wastePct,
           };
         })
         .filter(Boolean);
@@ -904,7 +911,6 @@ const RecipeModal = ({
     }
   };
 
-  // ========= options =========
   const ingredientOptions = useMemo(() => {
     return (ingredients || []).map((ing) => ({
       value: String(ing.id),
@@ -912,23 +918,6 @@ const RecipeModal = ({
     }));
   }, [ingredients]);
 
-  const modeOptions = useMemo(
-    () => [
-      { value: "PORTION", label: "PORTION (Theo phần)" },
-      { value: "BY_WEIGHT", label: "BY_WEIGHT (Theo trọng lượng)" },
-    ],
-    []
-  );
-
-  const sellUnitOptions = useMemo(
-    () => [
-      { value: "kg", label: "kg" },
-      { value: "g", label: "g" },
-    ],
-    []
-  );
-
-  // ========= suggestion payload -> option groups =========
   const suggestPayload = suggestData?.ingredientSuggestions;
 
   const suggestGroups = useMemo(() => {
@@ -941,7 +930,6 @@ const RecipeModal = ({
     const topUsed = toOpts(suggestPayload?.topUsed);
     const recentCreated = toOpts(suggestPayload?.recentCreated);
 
-    // de-dup across groups while keeping priority
     const seen = new Set();
     const uniq = (list) =>
       list.filter((o) => {
@@ -954,7 +942,6 @@ const RecipeModal = ({
     const gTop = uniq(topUsed);
     const gNew = uniq(recentCreated);
 
-    // limit total 8
     const take = (list, n) => list.slice(0, Math.max(n, 0));
     let remain = 8;
 
@@ -975,7 +962,6 @@ const RecipeModal = ({
       remain -= part.length;
     }
 
-    // fallback nếu BE chưa có data
     if (!out.length && ingredientOptions.length) {
       out.push({ title: "Gợi ý", items: ingredientOptions.slice(0, 8) });
     }
@@ -983,7 +969,6 @@ const RecipeModal = ({
     return out;
   }, [suggestPayload, ingredientIdSet, ingredientOptions]);
 
-  // ========= dish picker =========
   const handlePickDishRow = (row) => {
     setPickedDishRow(row);
     setIsDishPickerOpen(false);
@@ -992,894 +977,809 @@ const RecipeModal = ({
     setPreviewWeight(100);
     setIsDishInfoCollapsed(true);
   };
-
   if (!isOpen) return null;
+
+  // Tuỳ chọn cho FormSelect (Nếu bạn đã khai báo ở trên thì có thể bỏ qua 2 mảng này)
+  const modeOptions = [
+    { value: "PORTION", label: "Bán theo phần" },
+    { value: "BY_WEIGHT", label: "Bán theo khối lượng" },
+  ];
+
+  const sellUnitOptions = [
+    { value: "kg", label: "kg" },
+    { value: "g", label: "g" },
+  ];
 
   return (
     <>
       <Modal
         isOpen={isOpen}
         onClose={onClose}
-        title={hasExistingRecipe ? "Cập nhật công thức" : "Thêm công thức"}
+        title={
+          hasExistingRecipe ? "Cập nhật công thức món" : "Thêm công thức mới"
+        }
         size="xl"
       >
-        <form className="recipe-modal-form" onSubmit={handleSubmit}>
-          <Modal.Body>
-          {/* ===== Dish (read-only) ===== */}
-          <div className="recipe-section">
-            <div className="section-header" style={{ marginBottom: 8 }}>
-              <h3 className="section-title">🍽️ Món đang chọn</h3>
-
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                {currentMenuItemId ? (
-                  <button
-                    type="button"
-                    className="recipeToggleBtn"
-                    onClick={() => setIsDishInfoCollapsed((v) => !v)}
-                  >
-                    {isDishInfoCollapsed ? "Mở thông tin" : "Thu gọn"}
-                  </button>
-                ) : null}
-
-                {!recipe ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setIsDishPickerOpen(true)}
-                    disabled={saving || deleting}
-                  >
-                    {currentMenuItemId ? "🔁 Đổi món" : "🔎 Chọn món"}
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-
-            {!currentMenuItemId ? (
-              <Card style={{ padding: 12, border: "1px dashed #e5e7eb" }}>
-                <div style={{ fontWeight: 800, marginBottom: 6 }}>
-                  Bạn chưa chọn món
-                </div>
-                {errors.menuItem ? (
-                  <div className="error-message">{errors.menuItem}</div>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={() => setIsDishPickerOpen(true)}
-                >
-                  Chọn món ngay
-                </Button>
-              </Card>
-            ) : isDishInfoCollapsed ? (
-              <div className="dishInfoCompact">
-                <div className="dishInfoName">{dishInfo.name}</div>
-                <div className="dishInfoDesc">
-                  {dishInfo.description || "Không có mô tả"}
-                </div>
-                <div className="dishInfoHint">
-                  Thông tin món được khóa trong modal công thức.
+        <form
+          className="recipe-modal-form"
+          onSubmit={
+            /* Gọi hàm Submit của bạn ở đây, vd: handleSubmit */ (e) =>
+              e.preventDefault()
+          }
+        >
+          <Modal.Body style={{ padding: "24px", background: "#f8fafc" }}>
+            {/* =========================================
+                1. THÔNG TIN MÓN ĂN & GHI CHÚ
+                ========================================= */}
+            <div className="recipe-section">
+              <div className="section-header">
+                <h3 className="section-title">🍽️ Thông tin món ăn</h3>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  {currentMenuItemId && (
+                    <button
+                      type="button"
+                      className="method-tab"
+                      style={{ padding: "6px 12px", fontSize: "12px" }}
+                      onClick={() => setIsDishInfoCollapsed((v) => !v)}
+                    >
+                      {isDishInfoCollapsed ? "Mở rộng" : "Thu gọn"}
+                    </button>
+                  )}
+                  {!recipe && (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setIsDishPickerOpen(true)}
+                    >
+                      {currentMenuItemId ? "🔁 Đổi món khác" : "🔎 Chọn món"}
+                    </Button>
+                  )}
                 </div>
               </div>
-            ) : (
-              <Card style={{ padding: 12 }}>
-                <div style={{ fontWeight: 900, fontSize: 16 }}>
-                  {dishInfo.name}
-                </div>
-                <div style={{ opacity: 0.75, marginTop: 6 }}>
-                  {dishInfo.description || "Không có mô tả"}
-                </div>
+
+              {!currentMenuItemId ? (
                 <div
                   style={{
-                    marginTop: 10,
-                    display: "flex",
-                    gap: 8,
-                    flexWrap: "wrap",
+                    padding: "20px",
+                    textAlign: "center",
+                    border: "2px dashed #cbd5e1",
+                    borderRadius: "12px",
+                    color: "#64748b",
                   }}
                 >
-                  <span className="badgeSoft">
-                    {hasExistingRecipe
-                      ? "Đã có công thức"
-                      : "Chưa có công thức"}
-                  </span>
-                  {dishInfo.status ? (
-                    <span className="badgeSoft">{dishInfo.status}</span>
-                  ) : null}
-                  <span className="badgeSoft">
-                    Giá cache: {formatPrice(dishInfo.basePrice)}
-                  </span>
-                </div>
-              </Card>
-            )}
-          </div>
-
-          {/* ===== Notes ===== */}
-          <div className="recipe-section">
-            <h3 className="section-title">🗒️ Ghi chú công thức</h3>
-            <FormGroup>
-              <FormTextarea
-                placeholder="Ghi chú nội bộ cho công thức..."
-                value={formData.notes}
-                onChange={(e) =>
-                  setFormData((p) => ({ ...p, notes: e.target.value }))
-                }
-                rows={2}
-                disabled={saving || deleting || !currentMenuItemId}
-              />
-            </FormGroup>
-          </div>
-
-          {/* ===== Variants ===== */}
-          <div className="recipe-section">
-            <div className="section-header">
-              <h3 className="section-title">👨‍🍳 Biến thể</h3>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleVariantDuplicate(activeVariantIndex)}
-                  disabled={
-                    saving || deleting || !currentMenuItemId || !activeVariant
-                  }
-                  title="Nhân bản biến thể đang chọn"
-                >
-                  📄 Nhân bản biến thể
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleVariantAdd}
-                  disabled={saving || deleting || !currentMenuItemId}
-                >
-                  ➕ Thêm biến thể
-                </Button>
-              </div>
-            </div>
-
-            {(errors.variants || errors.default || errors.keys) && (
-              <div
-                style={{ margin: "8px 0", color: "#b91c1c", fontWeight: 600 }}
-              >
-                {errors.variants || errors.default || errors.keys}
-              </div>
-            )}
-
-            <div className="method-tabs">
-              {(formData.servingVariants || []).map((v, idx) => (
-                <button
-                  key={v.uiId || v.key || idx}
-                  type="button"
-                  className={`method-tab ${
-                    activeVariantIndex === idx ? "active" : ""
-                  }`}
-                  onClick={() => setActiveVariantIndex(idx)}
-                  disabled={saving || deleting || !currentMenuItemId}
-                  title={v.key}
-                >
-                  {v.name || `Biến thể ${idx + 1}`}
-                  {v.isDefault ? " ⭐" : ""}
-                  {(formData.servingVariants || []).length > 1 && (
-                    <span
-                      className="method-remove"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleVariantRemove(idx);
-                      }}
-                      title="Xoá"
-                    >
-                      ×
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {activeVariant && (
-              <Card className="method-content">
-                <div className="form-row">
-                  <FormGroup>
-                    <FormLabel required>Tên biến thể</FormLabel>
-                    <FormInput
-                      value={activeVariant.name}
-                      onChange={(e) =>
-                        handleVariantChange(activeVariantIndex, {
-                          name: e.target.value,
-                        })
-                      }
-                      disabled={saving || deleting || !currentMenuItemId}
-                    />
-                    {errors[`variant_${activeVariantIndex}_name`] && (
-                      <div className="error-message">
-                        {errors[`variant_${activeVariantIndex}_name`]}
-                      </div>
-                    )}
-                    <div style={{ marginTop: 6, opacity: 0.75, fontSize: 12 }}>
-                      Key ổn định: <strong>{activeVariant.key}</strong>
-                    </div>
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>Chế độ</FormLabel>
-                    <FormSelect
-                      options={modeOptions}
-                      value={activeVariant.mode}
-                      onChange={(e) =>
-                        handleVariantChange(activeVariantIndex, {
-                          mode: e.target.value,
-                        })
-                      }
-                      disabled={saving || deleting || !currentMenuItemId}
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <FormLabel>Mặc định</FormLabel>
+                  <div style={{ fontWeight: 800, marginBottom: "8px" }}>
+                    Chưa có món ăn nào được chọn
+                  </div>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => setIsDishPickerOpen(true)}
+                  >
+                    Chọn món ngay
+                  </Button>
+                  {errors.menuItem && (
                     <div
-                      style={{ display: "flex", gap: 10, alignItems: "center" }}
+                      style={{
+                        color: "#ef4444",
+                        marginTop: "8px",
+                        fontSize: "13px",
+                      }}
                     >
-                      <input
-                        type="radio"
-                        checked={!!activeVariant.isDefault}
-                        onChange={() => setOnlyDefault(activeVariantIndex)}
-                        disabled={saving || deleting || !currentMenuItemId}
-                      />
-                      <span style={{ opacity: 0.85 }}>Chọn làm mặc định</span>
+                      {errors.menuItem}
                     </div>
-                  </FormGroup>
-                </div>
-
-                <div className="sell-config-title">
-                  Đơn vị bán • Số lượng bán • {getPriceLabel(activeVariant)}
-                </div>
-
-                <div className="form-row">
-                  {activeVariant.mode === "BY_WEIGHT" ? (
-                    <>
-                      <FormGroup>
-                        <FormLabel required>Đơn vị bán</FormLabel>
-                        <FormSelect
-                          options={sellUnitOptions}
-                          value={activeVariant.sellUnit}
-                          onChange={(e) =>
-                            handleVariantChange(activeVariantIndex, {
-                              sellUnit: e.target.value,
-                            })
-                          }
-                          disabled={saving || deleting || !currentMenuItemId}
-                        />
-                        {errors[`variant_${activeVariantIndex}_sellUnit`] && (
-                          <div className="error-message">
-                            {errors[`variant_${activeVariantIndex}_sellUnit`]}
-                          </div>
-                        )}
-                      </FormGroup>
-
-                      <FormGroup>
-                        <FormLabel required>Số lượng bán</FormLabel>
-                        <input
-                          className="decimalInput"
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="vd: 1,2 hoặc 1.2"
-                          value={activeVariant.sellQtyText ?? ""}
-                          onChange={(e) =>
-                            handleVariantChange(activeVariantIndex, {
-                              sellQtyText: e.target.value,
-                            })
-                          }
-                          disabled={saving || deleting || !currentMenuItemId}
-                        />
-                        {errors[`variant_${activeVariantIndex}_sellQty`] && (
-                          <div className="error-message">
-                            {errors[`variant_${activeVariantIndex}_sellQty`]}
-                          </div>
-                        )}
-                      </FormGroup>
-                    </>
-                  ) : (
-                    <>
-                      <FormGroup>
-                        <FormLabel>Đơn vị bán</FormLabel>
-                        <FormInput value="portion" disabled />
-                      </FormGroup>
-                      <FormGroup>
-                        <FormLabel>Số lượng bán</FormLabel>
-                        <FormInput value="1" disabled />
-                      </FormGroup>
-                    </>
                   )}
-
-                  <FormGroup>
-                    <FormLabel>{getPriceLabel(activeVariant)}</FormLabel>
-                    <FormInput
-                      type="number"
-                      min="0"
-                      step="1000"
-                      value={activeVariant.price}
-                      onChange={(e) =>
-                        handleVariantChange(activeVariantIndex, {
-                          price: e.target.value,
-                        })
-                      }
-                      disabled={saving || deleting || !currentMenuItemId}
-                    />
-                    <div className="finalDisplay">
-                      Hiển thị:{" "}
-                      <strong>{getFinalDisplay(activeVariant)}</strong>
+                </div>
+              ) : isDishInfoCollapsed ? (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontWeight: 900,
+                        fontSize: "16px",
+                        color: "#0f172a",
+                      }}
+                    >
+                      {dishInfo.name}
                     </div>
+                    <div
+                      style={{
+                        color: "#64748b",
+                        fontSize: "13px",
+                        marginTop: "4px",
+                      }}
+                    >
+                      {dishInfo.description || "Không có mô tả"}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "12px", color: "#64748b" }}>
+                      Giá bán gốc
+                    </div>
+                    <div
+                      style={{
+                        fontWeight: 900,
+                        color: "#16a34a",
+                        fontSize: "16px",
+                      }}
+                    >
+                      {formatPrice(dishInfo.basePrice)}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gap: "16px" }}>
+                  <FormGroup>
+                    <FormLabel>Tên món</FormLabel>
+                    <FormInput value={dishInfo.name} disabled />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>
+                      Ghi chú công thức chung (Không bắt buộc)
+                    </FormLabel>
+                    <FormTextarea
+                      placeholder="Nhập lưu ý sơ chế, cách chế biến chung..."
+                      value={formData.notes || ""}
+                      onChange={(e) =>
+                        setFormData((p) => ({ ...p, notes: e.target.value }))
+                      }
+                    />
                   </FormGroup>
                 </div>
+              )}
+            </div>
 
-                {activeVariant.mode === "BY_WEIGHT" && (
-                  <Card className="ingredient-row" style={{ marginBottom: 12 }}>
-                    <div style={{ marginBottom: 8 }}>
-                      <strong>Preview</strong> chi phí theo gram:
+            {/* =========================================
+                2. QUẢN LÝ BIẾN THỂ & ĐỊNH LƯỢNG
+                ========================================= */}
+            <div className="recipe-section">
+              <div className="section-header">
+                <h4 className="section-title">
+                  ⚖️ Cấu hình các biến thể định lượng
+                </h4>
+              </div>
+
+              {/* TỔNG QUAN RECIPE & ACTIVE VARIANT */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "16px",
+                  marginBottom: "20px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div
+                  style={{
+                    flex: "1 1 250px",
+                    background: "#f0f9ff",
+                    padding: "14px",
+                    borderRadius: "10px",
+                    border: "1px solid #bae6fd",
+                  }}
+                >
+                  <strong style={{ color: "#0369a1", fontSize: "14px" }}>
+                    Tổng quan cấu hình:
+                  </strong>
+                  <div
+                    style={{
+                      fontSize: "13px",
+                      color: "#0c4a6e",
+                      marginTop: "6px",
+                      lineHeight: "1.6",
+                    }}
+                  >
+                    <div>
+                      Tổng số biến thể:{" "}
+                      <strong>{recipeSummary.totalVariants}</strong>
                     </div>
-                    <div className="form-row">
+                    <div>
+                      Số dòng NL hợp lệ:{" "}
+                      <strong>{recipeSummary.validComponents}</strong>
+                    </div>
+                    <div>
+                      Biến thể mặc định:{" "}
+                      <strong>{recipeSummary.defaultVariantName}</strong>
+                    </div>
+                  </div>
+                </div>
+                {activeVariant && (
+                  <div
+                    style={{
+                      flex: "1 1 250px",
+                      background: "#fdf4ff",
+                      padding: "14px",
+                      borderRadius: "10px",
+                      border: "1px solid #fbcfe8",
+                    }}
+                  >
+                    <strong style={{ color: "#86198f", fontSize: "14px" }}>
+                      Thống kê biến thể hiện tại:
+                    </strong>
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        color: "#701a75",
+                        marginTop: "6px",
+                        lineHeight: "1.6",
+                      }}
+                    >
+                      <div>
+                        Tổng số dòng:{" "}
+                        <strong>{activeVariantSummary.totalLines}</strong>
+                      </div>
+                      <div>
+                        Dòng đã nhập đủ:{" "}
+                        <strong>{activeVariantSummary.readyLines}</strong>
+                      </div>
+                      <div>
+                        Hiển thị bán:{" "}
+                        <strong>{activeVariantSummary.displayPrice}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {errors.variants && (
+                <div
+                  style={{
+                    color: "#ef4444",
+                    fontSize: "13px",
+                    marginBottom: "12px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {errors.variants}
+                </div>
+              )}
+              {errors.default && (
+                <div
+                  style={{
+                    color: "#ef4444",
+                    fontSize: "13px",
+                    marginBottom: "12px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {errors.default}
+                </div>
+              )}
+              {errors.keys && (
+                <div
+                  style={{
+                    color: "#ef4444",
+                    fontSize: "13px",
+                    marginBottom: "12px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {errors.keys}
+                </div>
+              )}
+
+              {/* HIỂN THỊ DANH SÁCH LỖI CỦA BIẾN THỂ (NẾU CÓ) */}
+              {activeVariantErrors.length > 0 && (
+                <div
+                  style={{
+                    background: "#fef2f2",
+                    padding: "12px",
+                    borderRadius: "8px",
+                    border: "1px solid #fecaca",
+                    marginBottom: "16px",
+                  }}
+                >
+                  <strong style={{ color: "#dc2626", fontSize: "13px" }}>
+                    Vui lòng sửa các lỗi sau:
+                  </strong>
+                  <ul
+                    style={{
+                      margin: 0,
+                      paddingLeft: "20px",
+                      color: "#b91c1c",
+                      fontSize: "13px",
+                      marginTop: "4px",
+                    }}
+                  >
+                    {activeVariantErrors.map((err, i) => (
+                      <li key={i}>{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* TABS BIẾN THỂ */}
+              <div className="method-tabs">
+                {(formData.servingVariants || []).map((v, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    className={`method-tab ${activeVariantIndex === index ? "active" : ""}`}
+                    onClick={() => setActiveVariantIndex(index)}
+                  >
+                    {v.name || `Biến thể ${index + 1}`}
+                    {v.isDefault && (
+                      <span style={{ marginLeft: "6px", color: "#10b981" }}>
+                        ★
+                      </span>
+                    )}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="method-tab"
+                  onClick={handleVariantAdd}
+                  style={{ color: "#3b82f6" }}
+                >
+                  + Thêm biến thể
+                </button>
+              </div>
+
+              {/* NỘI DUNG BIẾN THỂ HIỆN TẠI */}
+              {activeVariant && (
+                <div style={{ animation: "fadeIn 0.3s ease" }}>
+                  {/* --- FORM THÔNG SỐ BIẾN THỂ --- */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "16px",
+                      marginBottom: "20px",
+                    }}
+                  >
+                    <div>
                       <FormGroup>
-                        <FormLabel>Trọng lượng (gram)</FormLabel>
+                        <FormLabel>
+                          Tên biến thể <span style={{ color: "red" }}>*</span>
+                        </FormLabel>
+                        <FormInput
+                          type="text"
+                          value={activeVariant.name || ""}
+                          onChange={(e) =>
+                            handleVariantChange(activeVariantIndex, {
+                              name: e.target.value,
+                            })
+                          }
+                          placeholder="VD: Mặc định, Cỡ Lớn..."
+                        />
+                      </FormGroup>
+                    </div>
+
+                    <div>
+                      <FormGroup>
+                        <FormLabel>
+                          Định danh (Key){" "}
+                          <span style={{ color: "red" }}>*</span>
+                        </FormLabel>
+                        <FormInput
+                          type="text"
+                          value={activeVariant.key || ""}
+                          onChange={(e) =>
+                            handleVariantChange(activeVariantIndex, {
+                              key: e.target.value,
+                            })
+                          }
+                          placeholder="VD: mac_dinh, co_lon..."
+                        />
+                      </FormGroup>
+                    </div>
+
+                    <div>
+                      <FormGroup>
+                        <FormLabel>
+                          Chế độ bán <span style={{ color: "red" }}>*</span>
+                        </FormLabel>
+                        <FormSelect
+                          options={modeOptions}
+                          value={activeVariant.mode}
+                          onChange={(e) =>
+                            handleVariantChange(activeVariantIndex, {
+                              mode: e.target.value,
+                            })
+                          }
+                        />
+                      </FormGroup>
+                    </div>
+
+                    {activeVariant.mode === "BY_WEIGHT" ? (
+                      <div style={{ display: "flex", gap: "12px" }}>
+                        <div style={{ flex: 1 }}>
+                          <FormGroup>
+                            <FormLabel>
+                              Số lượng bán{" "}
+                              <span style={{ color: "red" }}>*</span>
+                            </FormLabel>
+                            <FormInput
+                              type="text"
+                              value={activeVariant.sellQtyText || ""}
+                              onChange={(e) =>
+                                handleVariantChange(activeVariantIndex, {
+                                  sellQtyText: e.target.value,
+                                })
+                              }
+                              style={{ textAlign: "right" }}
+                            />
+                          </FormGroup>
+                        </div>
+                        <div style={{ width: "100px" }}>
+                          <FormGroup>
+                            <FormLabel>ĐVT</FormLabel>
+                            <FormSelect
+                              options={sellUnitOptions}
+                              value={activeVariant.sellUnit}
+                              onChange={(e) =>
+                                handleVariantChange(activeVariantIndex, {
+                                  sellUnit: e.target.value,
+                                })
+                              }
+                            />
+                          </FormGroup>
+                        </div>
+                      </div>
+                    ) : (
+                      <FormGroup>
+                        <FormLabel>Số lượng / ĐVT</FormLabel>
+                        <FormInput type="text" value="1 phần" disabled />
+                      </FormGroup>
+                    )}
+
+                    <div>
+                      <FormGroup>
+                        <FormLabel>{getPriceLabel(activeVariant)}</FormLabel>
                         <FormInput
                           type="number"
-                          min="1"
-                          step="1"
-                          value={previewWeight}
-                          onChange={(e) => setPreviewWeight(e.target.value)}
-                          disabled={saving || deleting || !currentMenuItemId}
+                          value={
+                            activeVariant.price === 0 ? "" : activeVariant.price
+                          }
+                          onChange={(e) =>
+                            handleVariantChange(activeVariantIndex, {
+                              price: e.target.value,
+                            })
+                          }
+                          placeholder="0"
+                          style={{ textAlign: "right" }}
                         />
-                        <div style={{ marginTop: 6 }}>
-                          Ước tính chi phí:{" "}
-                          <strong>{formatPrice(activeCost)}</strong>
-                        </div>
                       </FormGroup>
                     </div>
-                  </Card>
-                )}
 
-                {/* Ingredients */}
-                <div className="method-ingredients">
-                  <div className="subsection-header">
-                    <h4>Nguyên liệu</h4>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-end",
+                        paddingBottom: "10px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={activeVariant.isDefault || false}
+                          onChange={(e) => {
+                            if (e.target.checked)
+                              setOnlyDefault(activeVariantIndex);
+                          }}
+                          style={{
+                            width: "20px",
+                            height: "20px",
+                            accentColor: "#10b981",
+                            marginRight: "10px",
+                          }}
+                        />
+                        <span style={{ fontWeight: 800, color: "#0f172a" }}>
+                          Dùng làm biến thể mặc định
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* THANH CÔNG CỤ BIẾN THỂ */}
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "12px",
+                      marginBottom: "20px",
+                      justifyContent: "flex-end",
+                      borderBottom: "1px dashed #cbd5e1",
+                      paddingBottom: "16px",
+                    }}
+                  >
                     <Button
                       type="button"
                       variant="secondary"
                       size="sm"
-                      onClick={() => handleComponentAdd(activeVariantIndex)}
-                      disabled={saving || deleting || !currentMenuItemId}
+                      onClick={() => handleVariantDuplicate(activeVariantIndex)}
                     >
-                      ➕ Thêm nguyên liệu
+                      ⧉ Nhân bản
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleVariantRemove(activeVariantIndex)}
+                    >
+                      🗑 Xóa biến thể này
                     </Button>
                   </div>
 
-                  {(activeVariant.components || []).map((c, ci) => {
-                    const ing = c.ingredientId
-                      ? findIngredient(c.ingredientId)
-                      : null;
-                    const baseUnit = c.ingredientId
-                      ? getIngredientBaseUnit(c.ingredientId)
-                      : "";
-                    const allowedUnits = c.ingredientId
-                      ? getAllowedUnitsForIngredient(c.ingredientId)
-                      : [];
+                  {/* BẢNG NGUYÊN LIỆU (Grid UI) */}
+                  <div className="ingredient-table">
+                    <div className="recipeIngredientLine header">
+                      <div>Tên nguyên liệu</div>
+                      <div className="right-align">Số lượng</div>
+                      <div>ĐVT</div>
+                      <div className="right-align">Hao hụt (%)</div>
+                      <div style={{ textAlign: "center" }}>Xoá</div>
+                    </div>
 
-                    const unitValue =
-                      c.ingredientId && isUnitAllowed(c.ingredientId, c.unit)
-                        ? c.unit
-                        : baseUnit || "";
-
-                    // ===== search filter + suggestions =====
-                    const searchTextRaw = String(c.ingSearch || "").trim();
-                    const searchKey = normalizeText(searchTextRaw);
-
-                    let filteredIngredientOptions = ingredientOptions;
-                    if (searchKey) {
-                      filteredIngredientOptions = ingredientOptions.filter(
-                        (o) => normalizeText(o.label).includes(searchKey)
-                      );
-                    }
-
-                    // ensure selected visible in filtered list
-                    if (c.ingredientId) {
-                      const selected = ingredientOptions.find(
-                        (o) => o.value === String(c.ingredientId)
-                      );
-                      if (
-                        selected &&
-                        !filteredIngredientOptions.some(
-                          (o) => o.value === selected.value
-                        )
-                      ) {
-                        filteredIngredientOptions = [
-                          selected,
-                          ...filteredIngredientOptions,
-                        ];
-                      }
-                    }
-
-                    const showFallback = !!c.ingFocused && !searchKey;
-                    const showSuggest = !!c.ingFocused;
-
-                    const wasteMode =
-                      c.wasteMode === "UNIT" ? "UNIT" : "PERCENT";
-
-                    return (
-                      <div key={ci} className="method-ingredient-row">
-                        <div className="form-row-3">
-                          <FormGroup>
-                            <FormLabel>Nguyên liệu</FormLabel>
-                            <div className="ingredientSelectField">
-
-                            <input
-                              className="ingredientSearchInput"
-                              type="text"
-                              placeholder={
-                                suggestLoading
-                                  ? "Đang tải gợi ý..."
-                                  : "Tìm nguyên liệu..."
-                              }
-                              value={c.ingSearch || ""}
-                              onFocus={() =>
-                                handleComponentChange(
-                                  activeVariantIndex,
-                                  ci,
-                                  "ingFocused",
-                                  true
-                                )
-                              }
-                              onBlur={() =>
-                                setTimeout(() => {
+                    {(activeVariant.components || []).map((comp, cIdx) => (
+                      <div key={cIdx} className="recipeIngredientLine">
+                        {/* 1. NGUYÊN LIỆU (Giữ chuẩn logic ingSearch và ingFocused) */}
+                        <div style={{ position: "relative" }}>
+                          <FormInput
+                            type="text"
+                            placeholder="🔍 Tìm nguyên liệu..."
+                            value={
+                              comp.ingSearch !== undefined
+                                ? comp.ingSearch
+                                : comp.ingredientName || ""
+                            }
+                            onChange={(e) =>
+                              handleComponentChange(
+                                activeVariantIndex,
+                                cIdx,
+                                "ingSearch",
+                                e.target.value,
+                              )
+                            }
+                            onFocus={() =>
+                              handleComponentChange(
+                                activeVariantIndex,
+                                cIdx,
+                                "ingFocused",
+                                true,
+                              )
+                            }
+                            onBlur={() =>
+                              setTimeout(
+                                () =>
                                   handleComponentChange(
                                     activeVariantIndex,
-                                    ci,
+                                    cIdx,
                                     "ingFocused",
-                                    false
-                                  );
-                                }, 120)
-                              }
-                              onChange={(e) =>
-                                handleComponentChange(
-                                  activeVariantIndex,
-                                  ci,
-                                  "ingSearch",
-                                  e.target.value
-                                )
-                              }
-                              disabled={
-                                saving || deleting || !currentMenuItemId
-                              }
-                            />
+                                    false,
+                                  ),
+                                200,
+                              )
+                            }
+                          />
 
-                            {/* ✅ suggestions list */}
-                            {showSuggest ? (
-                              <div className="ingredientSuggest">
-                                {showFallback ? (
-                                  <>
-                                    {suggestGroups.map((g) => (
-                                      <div
-                                        key={g.title}
-                                        className="ingredientSuggestGroup"
-                                      >
-                                        <div className="ingredientSuggestTitle">
-                                          {g.title}
-                                        </div>
-                                        {g.items.map((opt) => (
-                                          <button
-                                            key={opt.value}
-                                            type="button"
-                                            className="ingredientSuggestItem"
-                                            onMouseDown={(e) =>
-                                              e.preventDefault()
-                                            } // tránh blur trước click
-                                            onClick={() =>
-                                              handleComponentChange(
-                                                activeVariantIndex,
-                                                ci,
-                                                "pickIngredient",
-                                                opt.value
-                                              )
-                                            }
-                                            disabled={
-                                              saving ||
-                                              deleting ||
-                                              !currentMenuItemId
-                                            }
-                                          >
-                                            {opt.label}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    ))}
-                                  </>
-                                ) : (
-                                  <>
-                                    {filteredIngredientOptions.length ? (
-                                      filteredIngredientOptions
-                                        .slice(0, 10)
-                                        .map((opt) => (
-                                          <button
-                                            key={opt.value}
-                                            type="button"
-                                            className="ingredientSuggestItem"
-                                            onMouseDown={(e) =>
-                                              e.preventDefault()
-                                            }
-                                            onClick={() =>
-                                              handleComponentChange(
-                                                activeVariantIndex,
-                                                ci,
-                                                "pickIngredient",
-                                                opt.value
-                                              )
-                                            }
-                                            disabled={
-                                              saving ||
-                                              deleting ||
-                                              !currentMenuItemId
-                                            }
-                                          >
-                                            {opt.label}
-                                          </button>
-                                        ))
-                                    ) : (
-                                      <div className="ingredientSuggestEmpty">
-                                        Không tìm thấy nguyên liệu phù hợp
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            ) : null}
-
-                            {/* dropdown vẫn giữ để user thích chọn kiểu select */}
-                            <FormSelect
-                              options={ingredientOptions}
-                              value={
-                                c.ingredientId ? String(c.ingredientId) : ""
-                              }
-                              onChange={(e) =>
-                                handleComponentChange(
-                                  activeVariantIndex,
-                                  ci,
-                                  "ingredientId",
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Chọn nguyên liệu"
-                              disabled={
-                                saving || deleting || !currentMenuItemId
-                              }
-                            />
-
-                            {errors[
-                              `variant_${activeVariantIndex}_comp_${ci}_id`
-                            ] && (
-                              <div className="error-message">
-                                {
-                                  errors[
-                                    `variant_${activeVariantIndex}_comp_${ci}_id`
-                                  ]
-                                }
-                              </div>
-                            )}
-
-                            {ing?.baseUnit ? (
-                              <div
-                                style={{
-                                  marginTop: 6,
-                                  opacity: 0.75,
-                                  fontSize: 12,
-                                }}
-                              >
-                                BaseUnit (BE): <strong>{ing.baseUnit}</strong>
-                              </div>
-                            ) : null}
+                          {comp.ingFocused && (
+                            <div className="ingredientSuggestDropdown">
+                              {suggestGroups && suggestGroups.length > 0 ? (
+                                suggestGroups.map((group, gIdx) => (
+                                  <div
+                                    key={gIdx}
+                                    className="ingredientSuggestGroup"
+                                  >
+                                    <div className="ingredientSuggestTitle">
+                                      {group.title}
+                                    </div>
+                                    <div style={{ padding: "4px" }}>
+                                      {group.items.map((item, iIdx) => (
+                                        <button
+                                          key={iIdx}
+                                          type="button"
+                                          className="ingredientSuggestItem"
+                                          onMouseDown={() =>
+                                            handleComponentChange(
+                                              activeVariantIndex,
+                                              cIdx,
+                                              "pickIngredient",
+                                              item.id,
+                                            )
+                                          }
+                                        >
+                                          {item.name}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="ingredientSuggestEmpty">
+                                  Không tìm thấy
+                                </div>
+                              )}
                             </div>
-                          </FormGroup>
-
-                          <FormGroup>
-                            <FormLabel>Số lượng</FormLabel>
-                            <FormInput
-                              type="text"
-                              inputMode="decimal"
-                              placeholder="0"
-                              value={c.qty}
-                              onChange={(e) =>
-                                handleComponentChange(
-                                  activeVariantIndex,
-                                  ci,
-                                  "qty",
-                                  e.target.value
-                                )
-                              }
-                              disabled={
-                                saving || deleting || !currentMenuItemId
-                              }
-                            />
-                            {errors[
-                              `variant_${activeVariantIndex}_comp_${ci}_qty`
-                            ] && (
-                              <div className="error-message">
-                                {
-                                  errors[
-                                    `variant_${activeVariantIndex}_comp_${ci}_qty`
-                                  ]
-                                }
-                              </div>
-                            )}
-                          </FormGroup>
-
-                          <FormGroup>
-                            <FormLabel>Đơn vị</FormLabel>
-                            <div className="input-with-action">
-                              <select
-                                className="select"
-                                value={unitValue || ""}
-                                disabled={
-                                  !c.ingredientId ||
-                                  saving ||
-                                  deleting ||
-                                  !currentMenuItemId
-                                }
-                                onChange={(e) =>
-                                  handleComponentChange(
-                                    activeVariantIndex,
-                                    ci,
-                                    "unit",
-                                    e.target.value
-                                  )
-                                }
-                              >
-                                {!c.ingredientId ? (
-                                  <option value="">
-                                    Chọn nguyên liệu trước
-                                  </option>
-                                ) : null}
-
-                                {c.ingredientId
-                                  ? allowedUnits.map((u) => (
-                                      <option key={u} value={u}>
-                                        {u}
-                                      </option>
-                                    ))
-                                  : null}
-                              </select>
-
-                              <Button
-                                type="button"
-                                variant="danger"
-                                size="sm"
-                                onClick={() =>
-                                  handleComponentRemove(activeVariantIndex, ci)
-                                }
-                                disabled={
-                                  saving || deleting || !currentMenuItemId
-                                }
-                                title="Xoá dòng"
-                              >
-                                🗑️
-                              </Button>
-                            </div>
-
-                            {errors[
-                              `variant_${activeVariantIndex}_comp_${ci}_unit`
-                            ] && (
-                              <div className="error-message">
-                                {
-                                  errors[
-                                    `variant_${activeVariantIndex}_comp_${ci}_unit`
-                                  ]
-                                }
-                              </div>
-                            )}
-
-                            <div
-                              style={{
-                                marginTop: 6,
-                                opacity: 0.7,
-                                fontSize: 12,
-                              }}
-                            >
-                              Khi lưu: qty chuẩn hoá về{" "}
-                              <strong>{baseUnit || "baseUnit"}</strong>.
-                            </div>
-                          </FormGroup>
+                          )}
                         </div>
 
-                        {/* waste */}
-                        <div className="wasteBlock">
-                          <div className="wasteModeGroup">
-                            <button
-                              type="button"
-                              className={`wasteModeBtn ${
-                                wasteMode === "UNIT" ? "active" : ""
-                              }`}
-                              disabled={
-                                !c.ingredientId ||
-                                saving ||
-                                deleting ||
-                                !currentMenuItemId
-                              }
-                              onClick={() =>
-                                handleComponentChange(
-                                  activeVariantIndex,
-                                  ci,
-                                  "wasteMode",
-                                  "UNIT"
-                                )
-                              }
-                              title="Nhập hao hụt theo số lượng (đơn vị đang chọn)"
-                            >
-                              1/ {unitValue || "unit"}
-                            </button>
+                        {/* 2. SỐ LƯỢNG */}
+                        <div>
+                          <FormInput
+                            type="number"
+                            placeholder="0.00"
+                            value={comp.qty}
+                            onChange={(e) =>
+                              handleComponentChange(
+                                activeVariantIndex,
+                                cIdx,
+                                "qty",
+                                e.target.value,
+                              )
+                            }
+                            className="right-align"
+                          />
+                        </div>
 
-                            <button
-                              type="button"
-                              className={`wasteModeBtn ${
-                                wasteMode === "PERCENT" ? "active" : ""
-                              }`}
-                              disabled={
-                                !c.ingredientId ||
-                                saving ||
-                                deleting ||
-                                !currentMenuItemId
-                              }
-                              onClick={() =>
-                                handleComponentChange(
-                                  activeVariantIndex,
-                                  ci,
-                                  "wasteMode",
-                                  "PERCENT"
-                                )
-                              }
-                              title="Nhập hao hụt theo %"
-                            >
-                              2/ %
-                            </button>
-                          </div>
+                        {/* 3. ĐƠN VỊ */}
+                        <div>
+                          <FormSelect
+                            value={comp.unit || ""}
+                            onChange={(e) =>
+                              handleComponentChange(
+                                activeVariantIndex,
+                                cIdx,
+                                "unit",
+                                e.target.value,
+                              )
+                            }
+                            options={
+                              comp.ingredientId
+                                ? getAllowedUnitsForIngredient(
+                                    comp.ingredientId,
+                                  ).map((u) => ({ value: u, label: u }))
+                                : []
+                            }
+                            disabled={!comp.ingredientId}
+                          />
+                        </div>
 
-                          <div className="form-row" style={{ marginTop: 8 }}>
-                            <FormGroup>
-                              <FormLabel>
-                                Hao hụt{" "}
-                                {wasteMode === "UNIT"
-                                  ? `(${unitValue || ""})`
-                                  : "(%)"}
-                              </FormLabel>
+                        {/* 4. HAO HỤT */}
+                        <div>
+                          <FormInput
+                            type="number"
+                            placeholder="0"
+                            value={comp.wastePct}
+                            onChange={(e) =>
+                              handleComponentChange(
+                                activeVariantIndex,
+                                cIdx,
+                                "wastePct",
+                                e.target.value,
+                              )
+                            }
+                            className="right-align"
+                            style={{
+                              color: comp.wastePct > 0 ? "#ef4444" : "inherit",
+                              fontWeight: comp.wastePct > 0 ? "bold" : "normal",
+                            }}
+                          />
+                        </div>
 
-                              {wasteMode === "UNIT" ? (
-                                <input
-                                  className="decimalInput"
-                                  type="text"
-                                  inputMode="decimal"
-                                  placeholder="vd: 0.1"
-                                  value={c.wasteQty ?? ""}
-                                  onChange={(e) =>
-                                    handleComponentChange(
-                                      activeVariantIndex,
-                                      ci,
-                                      "wasteQty",
-                                      e.target.value
-                                    )
-                                  }
-                                  disabled={
-                                    !c.ingredientId ||
-                                    saving ||
-                                    deleting ||
-                                    !currentMenuItemId
-                                  }
-                                />
-                              ) : (
-                                <input
-                                  className="decimalInput"
-                                  type="text"
-                                  inputMode="decimal"
-                                  placeholder="vd: 5"
-                                  value={String(c.wastePct ?? "")}
-                                  onChange={(e) =>
-                                    handleComponentChange(
-                                      activeVariantIndex,
-                                      ci,
-                                      "wastePct",
-                                      e.target.value
-                                    )
-                                  }
-                                  disabled={
-                                    !c.ingredientId ||
-                                    saving ||
-                                    deleting ||
-                                    !currentMenuItemId
-                                  }
-                                />
-                              )}
-
-                              {errors[
-                                `variant_${activeVariantIndex}_comp_${ci}_waste`
-                              ] ? (
-                                <div className="error-message">
-                                  {
-                                    errors[
-                                      `variant_${activeVariantIndex}_comp_${ci}_waste`
-                                    ]
-                                  }
-                                </div>
-                              ) : null}
-
-                              <div className="wasteHint">
-                                Chuẩn hoá:{" "}
-                                <strong>
-                                  {(Number(c.wastePct) || 0).toFixed(2)}%
-                                </strong>
-                                {wasteMode === "PERCENT" && c.ingredientId ? (
-                                  <>
-                                    {" "}
-                                    • Tương đương:{" "}
-                                    <strong>
-                                      {(
-                                        parseDecimalLoose(c.wasteQty) || 0
-                                      ).toFixed(4)}{" "}
-                                      {unitValue}
-                                    </strong>
-                                  </>
-                                ) : null}
-                              </div>
-                            </FormGroup>
-                          </div>
+                        {/* 5. NÚT XOÁ */}
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleComponentRemove(activeVariantIndex, cIdx)
+                            }
+                            style={{
+                              color: "#ef4444",
+                              background: "transparent",
+                              border: "none",
+                              cursor: "pointer",
+                              fontSize: "16px",
+                              padding: "8px",
+                              margin: "0 auto",
+                              display: "block",
+                              transition: "transform 0.2s",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.target.style.transform = "scale(1.2)")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.target.style.transform = "scale(1)")
+                            }
+                            title="Xoá dòng này"
+                          >
+                            ✕
+                          </button>
                         </div>
                       </div>
-                    );
-                  })}
+                    ))}
 
-                  <div className="method-cost">
-                    <strong>
-                      Chi phí ước tính:{" "}
-                      {activeVariant.mode === "BY_WEIGHT"
-                        ? formatPrice(activeCost)
-                        : formatPrice(calcVariantCostPortion(activeVariant))}
-                    </strong>
+                    {/* THÊM DÒNG MỚI */}
+                    <div style={{ padding: "12px" }}>
+                      <button
+                        type="button"
+                        onClick={() => handleComponentAdd(activeVariantIndex)}
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          borderRadius: "8px",
+                          background: "#eff6ff",
+                          border: "1px dashed #93c5fd",
+                          color: "#2563eb",
+                          fontWeight: 800,
+                          cursor: "pointer",
+                        }}
+                      >
+                        + Thêm dòng nguyên liệu
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* TỔNG KẾT CHI PHÍ BIẾN THỂ */}
+                  <div className="variant-footer">
+                    <span className="label">
+                      Tổng chi phí dự kiến cho biến thể này:
+                    </span>
+                    <span className="value">{formatPrice(activeCost)}</span>
                   </div>
                 </div>
-              </Card>
-            )}
-          </div>
+              )}
+            </div>
           </Modal.Body>
-          <Modal.Footer>
-            <div className="form-actions">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={onClose}
-              disabled={saving || deleting}
-            >
-              Đóng
-            </Button>
 
-            {hasExistingRecipe && (
+          {/* =========================================
+              3. MODAL FOOTER (Nút hành động chính)
+              ========================================= */}
+          <Modal.Footer
+            style={{ borderTop: "1px solid #e2e8f0", background: "#ffffff" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "flex-end",
+                width: "100%",
+                padding: "8px 0",
+              }}
+            >
               <Button
                 type="button"
-                variant="danger"
-                onClick={handleDeleteClick}
+                variant="secondary"
+                onClick={onClose}
+                disabled={saving || deleting}
+              >
+                Hủy bỏ
+              </Button>
+
+              {hasExistingRecipe && (
+                <Button
+                  type="button"
+                  variant="danger"
+                  onClick={handleDeleteClick}
+                  disabled={saving || deleting || !currentMenuItemId}
+                >
+                  {deleting ? "Đang xoá..." : "Xóa công thức này"}
+                </Button>
+              )}
+
+              <Button
+                type="submit"
+                variant="primary"
                 disabled={saving || deleting || !currentMenuItemId}
               >
-                {deleting ? "Đang xoá..." : "Xóa"}
+                {saving ? "Đang lưu..." : "💾 Lưu công thức"}
               </Button>
-            )}
-
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={saving || deleting || !currentMenuItemId}
-              title={!currentMenuItemId ? "Vui lòng chọn món trước" : ""}
-            >
-              {saving ? "Đang lưu..." : "Lưu"}
-            </Button>
             </div>
           </Modal.Footer>
         </form>
       </Modal>
 
-      {/* Dish picker */}
+      {/* Component Chọn Món */}
       <RecipeDishPickerModal
         isOpenPicker={isDishPickerOpen}
         onRequestClose={() => setIsDishPickerOpen(false)}

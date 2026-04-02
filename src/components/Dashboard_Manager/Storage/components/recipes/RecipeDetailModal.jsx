@@ -7,9 +7,7 @@ import "./RecipeDetailModal.scss";
 
 /**
  * RecipeDetailModal
- * - NEW model: servingVariants[].ingredients[] { ingredientId, qty, unit, wastePct }
- * - Backward compatible: components / Ingredients
- * - UI: đẹp + rõ ràng: header summary + variant cards + ingredient table + cost summary
+ * Hiển thị chi tiết công thức, các biến thể định lượng và tổng hợp chi phí
  */
 const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
   const canRender = Boolean(isOpen && recipe);
@@ -32,50 +30,21 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
 
   const getLines = (variant) => {
     if (!variant) return [];
-    if (Array.isArray(variant.ingredients)) return variant.ingredients; // new
-    if (Array.isArray(variant.components)) return variant.components; // legacy alias
-    if (Array.isArray(variant.Ingredients)) return variant.Ingredients; // legacy
+    if (Array.isArray(variant.ingredients)) return variant.ingredients;
+    if (Array.isArray(variant.components)) return variant.components;
+    if (Array.isArray(variant.Ingredients)) return variant.Ingredients;
     return [];
   };
 
   const getVariantTitle = (v, idx) =>
     String(v?.name || v?.key || `Biến thể #${idx + 1}`).trim();
 
-  const getModeLabel = (v) =>
-    v?.mode === "BY_WEIGHT" ? "Theo trọng lượng" : "Theo phần";
-
-  const getSellLabel = (v) => {
-    const mode = v?.mode;
-    const sellQty = safeNum(v?.sellQty) || 1;
-    const sellUnit = v?.sellUnit || (mode === "BY_WEIGHT" ? "kg" : "portion");
-    if (mode === "BY_WEIGHT") return `${formatQty(sellQty)} ${sellUnit}`;
-    return "1 portion";
-  };
-
-  const getPriceLabel = (v) => {
-    const mode = v?.mode;
-    const price = safeNum(v?.price);
-    if (mode === "BY_WEIGHT") {
-      const sellQty = safeNum(v?.sellQty) || 1;
-      const sellUnit = v?.sellUnit || "kg";
-      const perUnit = sellQty > 0 ? price / sellQty : price;
-      return {
-        main: `${formatPrice(price)} / ${formatQty(sellQty)} ${sellUnit}`,
-        sub: `${formatPrice(perUnit)} / ${sellUnit}`,
-      };
-    }
-    return { main: `${formatPrice(price)} / phần`, sub: "" };
-  };
-
-  // cost per line (có tính hao hụt)
   const calcLineCost = (line) => {
     const qty = safeNum(line?.qty ?? line?.quantify ?? line?.quantity);
     const wastePct = safeNum(line?.wastePct);
     const unitCost = safeNum(line?.costPerBaseUnit ?? line?.unitCost);
-
     if (!(qty > 0) || !(unitCost > 0)) return 0;
-
-    // ✅ tính hao hụt như phần thêm vào (qty * (1 + waste%))
+    // Công thức tính: (số lượng * (1 + hao hụt %)) * đơn giá
     const effectiveQty = qty * (1 + wastePct / 100);
     return effectiveQty * unitCost;
   };
@@ -86,6 +55,7 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
   const summary = useMemo(() => {
     const allLines = variants.flatMap((v) => getLines(v));
     const ingredientIdSet = new Set();
+
     allLines.forEach((l) => {
       if (l?.ingredientId) ingredientIdSet.add(String(l.ingredientId));
     });
@@ -93,15 +63,16 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
     const defaultVariant =
       variants.find((v) => v?.isDefault) || variants[0] || null;
 
-    const costRows = variants.map((v, idx) => {
-      const cost = calcVariantCost(v);
-      return { key: v?.key || String(idx), idx, cost, v };
-    });
+    const costRows = variants.map((v, idx) => ({
+      key: v?.key || String(idx),
+      idx,
+      cost: calcVariantCost(v),
+      v,
+    }));
 
     const costs = costRows
       .map((r) => r.cost)
       .filter((n) => Number.isFinite(n) && n > 0);
-
     const minCost = costs.length ? Math.min(...costs) : 0;
 
     return {
@@ -111,7 +82,6 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
       costRows,
       minCost,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [variants]);
 
   if (!canRender) return null;
@@ -120,179 +90,107 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`🍽️ ${recipe?.name || ""}`}
+      title={`🍽️ ${recipe?.name || "Chi tiết công thức"}`}
       size="xl"
     >
       <div className="recipeDetail">
         {/* ===== Header summary ===== */}
         <Card className="recipeDetail__header">
-          <div className="recipeDetail__titleRow">
-            <div className="recipeDetail__titleBlock">
-              <div className="recipeDetail__name">{recipe?.name || "—"}</div>
-              {recipe?.description ? (
-                <div className="recipeDetail__desc">{recipe.description}</div>
-              ) : (
-                <div className="recipeDetail__desc recipeDetail__desc--muted">
-                  Không có mô tả
-                </div>
-              )}
+          <div className="recipeDetail__name">{recipe?.name || "—"}</div>
+          {recipe?.description ? (
+            <div className="recipeDetail__desc">{recipe.description}</div>
+          ) : (
+            <div className="recipeDetail__desc" style={{ color: "#94a3b8" }}>
+              Không có ghi chú cách chế biến.
             </div>
-
-            <div className="recipeDetail__badges">
-              <span className="pill pill--soft">
-                {summary.totalVariants} biến thể
-              </span>
-              <span className="pill pill--soft">
-                {summary.totalIngredients} nguyên liệu
-              </span>
-              {summary.defaultVariant ? (
-                <span className="pill pill--ok" title="Biến thể mặc định">
-                  ⭐ {getVariantTitle(summary.defaultVariant, 0)}
-                </span>
-              ) : null}
-            </div>
+          )}
+          <div
+            style={{
+              marginTop: "16px",
+              display: "flex",
+              gap: "8px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span className="pill pill--soft">
+              Biến thể: {summary.totalVariants}
+            </span>
+            <span className="pill pill--soft">
+              Loại nguyên liệu: {summary.totalIngredients}
+            </span>
           </div>
-
-          {recipe?.notes ? (
-            <div className="recipeDetail__notes">
-              <div className="recipeDetail__notesLabel">Ghi chú</div>
-              <div className="recipeDetail__notesText">{recipe.notes}</div>
-            </div>
-          ) : null}
         </Card>
 
-        {/* ===== Variants ===== */}
-        <div className="recipeDetail__section">
-          <div className="recipeDetail__sectionTitle">
-            👨‍🍳 Biến thể bán / chế biến
-          </div>
-
-          {variants.length ? (
-            <div className="recipeDetail__variants">
-              {variants.map((v, idx) => {
-                const lines = getLines(v);
-                const variantCost = calcVariantCost(v);
-                const priceInfo = getPriceLabel(v);
-
+        {/* ===== Variants List ===== */}
+        <div className="variantList">
+          {variants.length > 0 ? (
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+            >
+              {variants.map((variant, idx) => {
+                const lines = getLines(variant);
                 return (
-                  <Card key={v?.key || idx} className="variantCard">
-                    <div className="variantCard__head">
-                      <div className="variantCard__left">
-                        <div className="variantCard__nameRow">
-                          <div className="variantCard__name">
-                            {getVariantTitle(v, idx)}
-                          </div>
-
-                          {v?.isDefault ? (
-                            <span className="pill pill--ok" title="Mặc định">
-                              mặc định
-                            </span>
-                          ) : null}
-                        </div>
-
-                        <div className="variantCard__meta">
-                          <span className="chip">{getModeLabel(v)}</span>
-
-                          <span className="chip" title="Đơn vị bán">
-                            Bán: {getSellLabel(v)}
-                          </span>
-
-                          {Number.isFinite(Number(v?.price)) ? (
-                            <span className="chip" title="Giá bán">
-                              Giá: {priceInfo.main}
-                              {priceInfo.sub ? (
-                                <span className="chip__sub">
-                                  (Hiển thị: {priceInfo.sub})
-                                </span>
-                              ) : null}
-                            </span>
-                          ) : null}
-                        </div>
+                  <Card key={idx} className="variantCard">
+                    <div className="variantCard__header">
+                      <div className="variantCard__title">
+                        {getVariantTitle(variant, idx)}
                       </div>
-
-                      <div className="variantCard__right">
-                        <div className="variantCard__costLabel">
-                          Chi phí nguyên liệu
-                        </div>
-                        <div className="variantCard__costValue">
-                          {variantCost > 0 ? formatPrice(variantCost) : "—"}
-                        </div>
-                        <div className="variantCard__costHint">
-                          (đã tính hao hụt)
-                        </div>
-                      </div>
+                      {variant.isDefault && (
+                        <span className="pill pill--ok">Mặc định</span>
+                      )}
                     </div>
 
-                    <div className="variantCard__body">
-                      <div className="variantCard__subTitle">
-                        Nguyên liệu ({lines.length})
+                    <div className="variantCard__content">
+                      {/* Bảng nguyên liệu: Grid Header */}
+                      <div className="ingRow ingRow--header">
+                        <div className="ingRow__cell">Tên nguyên liệu</div>
+                        <div className="ingRow__cell right">Số lượng</div>
+                        <div className="ingRow__cell right">Hao hụt</div>
+                        <div className="ingRow__cell right">Đơn giá</div>
+                        <div className="ingRow__cell right">Thành tiền</div>
                       </div>
 
-                      {lines.length ? (
-                        <div className="ingTable">
-                          <div className="ingTable__head">
-                            <div>Nguyên liệu</div>
-                            <div className="right">Số lượng</div>
-                            <div className="right">Hao hụt</div>
-                            <div className="right">Đơn giá</div>
-                            <div className="right">Thành tiền</div>
+                      {/* Danh sách nguyên liệu */}
+                      {lines.length > 0 ? (
+                        lines.map((line, lIdx) => (
+                          <div key={lIdx} className="ingRow">
+                            <div className="ingRow__cell strong">
+                              {line.ingredientName ||
+                                line.ingredient?.name ||
+                                "Nguyên liệu ẩn"}
+                            </div>
+                            <div className="ingRow__cell right">
+                              {formatQty(line.qty)} {line.unit}
+                            </div>
+                            <div
+                              className="ingRow__cell right"
+                              style={{
+                                color:
+                                  line.wastePct > 0 ? "#ef4444" : "inherit",
+                              }}
+                            >
+                              {formatPct(line.wastePct)}%
+                            </div>
+                            <div className="ingRow__cell right">
+                              {formatPrice(
+                                line.basePrice || line.costPerBaseUnit,
+                              )}
+                            </div>
+                            <div className="ingRow__cell right strong">
+                              {formatPrice(calcLineCost(line))}
+                            </div>
                           </div>
-
-                          <div className="ingTable__body">
-                            {lines.map((c, i) => {
-                              const qty = safeNum(
-                                c?.qty ?? c?.quantify ?? c?.quantity
-                              );
-                              const unit = c?.unit || c?.baseUnit || "";
-                              const wastePct = safeNum(c?.wastePct);
-                              const unitCost = safeNum(
-                                c?.costPerBaseUnit ?? c?.unitCost
-                              );
-                              const itemCost = calcLineCost(c);
-
-                              const name =
-                                c?.name ||
-                                c?.ingredientName ||
-                                (c?.ingredientId
-                                  ? `#${String(c.ingredientId).slice(-6)}`
-                                  : "Nguyên liệu");
-
-                              return (
-                                <div
-                                  key={`${c?.ingredientId || i}-${i}`}
-                                  className="ingRow"
-                                >
-                                  <div className="ingRow__name" title={name}>
-                                    {name}
-                                  </div>
-
-                                  <div className="ingRow__cell right">
-                                    {qty > 0
-                                      ? `${formatQty(qty)} ${unit}`
-                                      : "—"}
-                                  </div>
-
-                                  <div className="ingRow__cell right">
-                                    {wastePct > 0
-                                      ? `${formatPct(wastePct)}%`
-                                      : "—"}
-                                  </div>
-
-                                  <div className="ingRow__cell right">
-                                    {unitCost > 0 ? formatPrice(unitCost) : "—"}
-                                  </div>
-
-                                  <div className="ingRow__cell right strong">
-                                    {itemCost > 0 ? formatPrice(itemCost) : "—"}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
+                        ))
                       ) : (
-                        <div className="variantCard__empty">
-                          Chưa có nguyên liệu cho biến thể này.
+                        <div
+                          style={{
+                            padding: "16px",
+                            textAlign: "center",
+                            color: "#94a3b8",
+                            fontSize: "13px",
+                          }}
+                        >
+                          Biến thể này chưa có nguyên liệu nào
                         </div>
                       )}
                     </div>
@@ -302,7 +200,7 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
             </div>
           ) : (
             <Card className="variantCard variantCard--empty">
-              Chưa cấu hình biến thể.
+              Chưa cấu hình biến thể nào cho công thức này.
             </Card>
           )}
         </div>
@@ -310,7 +208,6 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
         {/* ===== Cost summary ===== */}
         <Card className="costSummary">
           <div className="costSummary__title">💰 Tổng kết chi phí</div>
-
           <div className="costSummary__grid">
             {summary.costRows.map((row) => (
               <div key={row.key} className="costSummary__row">
@@ -323,7 +220,6 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
               </div>
             ))}
           </div>
-
           <div className="costSummary__footer">
             <div className="costSummary__min">
               Chi phí thấp nhất:{" "}

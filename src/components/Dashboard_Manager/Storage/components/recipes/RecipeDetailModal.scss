@@ -4,7 +4,7 @@
 .recipeDetail {
   display: flex;
   flex-direction: column;
-  gap: $spacing-lg;
+  gap: 20px;
 }
 
 /* ===== Pills / chips ===== */
@@ -12,7 +12,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 800;
@@ -21,8 +21,8 @@
 
   &--soft {
     background: #f8fafc;
-    border-color: #eef2f7;
-    color: #0f172a;
+    border-color: #e2e8f0;
+    color: #334155;
   }
 
   &--ok {
@@ -32,282 +32,99 @@
   }
 }
 
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 10px;
-  background: #f1f5f9;
-  border: 1px solid #e5e7eb;
-  color: #0f172a;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-
-  .chip__sub {
-    margin-left: 6px;
-    opacity: 0.75;
-    font-weight: 800;
-  }
-}
-
 /* ===== Header ===== */
 .recipeDetail__header {
-  padding: 14px 14px 12px;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-  border: 1px solid #eef2f7;
-  border-radius: 14px;
-}
-
-.recipeDetail__titleRow {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-
-  @include mobile {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-.recipeDetail__titleBlock {
-  min-width: 0;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
 }
 
 .recipeDetail__name {
   font-size: 18px;
   font-weight: 900;
-  color: #0c4a6e;
-  letter-spacing: 0.2px;
-  line-height: 1.2;
+  color: #0f172a;
+  margin-bottom: 6px;
 }
 
 .recipeDetail__desc {
-  margin-top: 6px;
-  font-size: 13px;
-  color: #334155;
-  line-height: 1.45;
-
-  &--muted {
-    opacity: 0.75;
-  }
-}
-
-.recipeDetail__badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-
-  @include mobile {
-    justify-content: flex-start;
-  }
-}
-
-.recipeDetail__notes {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed #e5e7eb;
-  display: grid;
-  grid-template-columns: 90px 1fr;
-  gap: 10px;
-
-  @include mobile {
-    grid-template-columns: 1fr;
-  }
-}
-
-.recipeDetail__notesLabel {
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: #64748b;
-}
-
-.recipeDetail__notesText {
-  font-size: 13px;
-  color: #0f172a;
-  line-height: 1.55;
-}
-
-/* ===== Section ===== */
-.recipeDetail__sectionTitle {
   font-size: 14px;
-  font-weight: 900;
-  color: #0f172a;
-  margin-bottom: 8px;
+  color: #475569;
+  line-height: 1.5;
 }
 
-.recipeDetail__variants {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-}
-
-/* ===== Variant card ===== */
+/* ===== Variant Cards ===== */
 .variantCard {
-  border-radius: 14px;
-  border: 1px solid #eef2f7;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   overflow: hidden;
+  background: #fff;
+  padding: 0; // Để full width cho phần nội dung
 
   &--empty {
-    padding: 14px;
+    padding: 24px;
+    text-align: center;
+    color: #64748b;
+    font-weight: 600;
+    background: #f8fafc;
   }
 }
 
-.variantCard__head {
-  display: grid;
-  grid-template-columns: 1fr 220px;
-  gap: 12px;
-  padding: 12px 12px 10px;
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-  border-bottom: 1px solid #eef2f7;
-
-  @include mobile {
-    grid-template-columns: 1fr;
-  }
-}
-
-.variantCard__nameRow {
+.variantCard__header {
   display: flex;
-  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
-  gap: 8px;
-}
-
-.variantCard__name {
-  font-size: 15px;
-  font-weight: 900;
-  color: #0c4a6e;
-  min-width: 0;
-  word-break: break-word;
-}
-
-.variantCard__meta {
-  margin-top: 8px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.variantCard__right {
-  text-align: right;
-  padding: 10px;
-  background: #f0f9ff;
-  border: 1px solid rgba(2, 132, 199, 0.15);
-  border-radius: 12px;
-
-  @include mobile {
-    text-align: left;
-  }
-}
-
-.variantCard__costLabel {
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.35px;
-  color: #075985;
-}
-
-.variantCard__costValue {
-  margin-top: 4px;
-  font-size: 16px;
-  font-weight: 900;
-  color: #0c4a6e;
-}
-
-.variantCard__costHint {
-  margin-top: 2px;
-  font-size: 11px;
-  opacity: 0.75;
-}
-
-.variantCard__body {
-  padding: 12px;
-}
-
-.variantCard__subTitle {
-  font-size: 12px;
-  font-weight: 900;
-  color: #0f172a;
-  margin-bottom: 8px;
-}
-
-.variantCard__empty {
-  padding: 10px 12px;
-  background: #fafafa;
-  border: 1px dashed #e5e7eb;
-  border-radius: 12px;
-  opacity: 0.85;
-}
-
-/* ===== Ingredient table ===== */
-.ingTable {
-  border: 1px solid #eef2f7;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.ingTable__head {
-  display: grid;
-  grid-template-columns: 1.6fr 0.7fr 0.6fr 0.7fr 0.8fr;
-  gap: 8px;
-  padding: 10px 12px;
+  padding: 12px 16px;
   background: #f8fafc;
-  border-bottom: 1px solid #eef2f7;
-  font-size: 11px;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0.35px;
-  color: #64748b;
-
-  @include mobile {
-    grid-template-columns: 1.4fr 0.8fr 0.8fr;
-    .right:nth-child(4),
-    .right:nth-child(5) {
-      display: none;
-    }
-  }
+  border-bottom: 1px solid #e2e8f0;
 }
 
-.ingTable__body {
+.variantCard__title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.variantCard__content {
   display: flex;
   flex-direction: column;
 }
 
+/* ===== Bảng nguyên liệu (Grid) ===== */
 .ingRow {
   display: grid;
-  grid-template-columns: 1.6fr 0.7fr 0.6fr 0.7fr 0.8fr;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid #f1f5f9;
+  grid-template-columns: 2fr 1fr 1fr 1.5fr 1.5fr;
+  gap: 12px;
+  padding: 12px 16px;
   align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background-color 0.2s;
 
   &:last-child {
     border-bottom: none;
   }
 
-  @include mobile {
-    grid-template-columns: 1.4fr 0.8fr 0.8fr;
+  &:hover:not(.ingRow--header) {
+    background: #f8fafc;
+  }
 
-    .right:nth-child(4),
-    .right:nth-child(5) {
-      display: none;
+  &--header {
+    background: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+    border-bottom: 2px solid #e2e8f0;
+  }
+
+  @include mobile {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+
+    &--header {
+      display: none; // Ẩn header trên mobile để chuyển thành dạng list card
     }
   }
-}
-
-.ingRow__name {
-  font-weight: 800;
-  color: #0f172a;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .ingRow__cell {
@@ -324,75 +141,75 @@
 
   &.strong {
     font-weight: 900;
-    color: #0c4a6e;
+    color: #0369a1;
   }
 }
 
 /* ===== Cost summary ===== */
 .costSummary {
-  padding: 14px;
+  padding: 16px;
   border: 1px solid #eef2f7;
-  border-radius: 14px;
+  border-radius: 12px;
   background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
 }
 
 .costSummary__title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 900;
   color: #0f172a;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .costSummary__grid {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  margin-bottom: 16px;
 }
 
 .costSummary__row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
+  align-items: center;
+  padding: 8px 12px;
   background: #f8fafc;
-  border: 1px solid #eef2f7;
-  border-radius: 12px;
-
-  @include mobile {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+  border-radius: 8px;
 }
 
 .costSummary__rowName {
-  font-weight: 800;
-  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+  color: #475569;
 }
 
 .costSummary__rowValue {
+  font-size: 14px;
   font-weight: 900;
-  color: #0c4a6e;
-  white-space: nowrap;
+  color: #0f172a;
 }
 
 .costSummary__footer {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed #e5e7eb;
+  padding-top: 16px;
+  border-top: 1px dashed #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .costSummary__min {
-  font-size: 13px;
+  font-size: 15px;
   color: #0f172a;
 
   strong {
-    color: #0c4a6e;
+    color: #16a34a;
     font-weight: 900;
+    font-size: 18px;
+    margin-left: 8px;
   }
 }
 
 .costSummary__note {
-  margin-top: 6px;
   font-size: 12px;
-  opacity: 0.75;
+  color: #64748b;
+  font-style: italic;
 }
