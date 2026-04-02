@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Bell,
   CheckCircle2,
@@ -8,29 +8,48 @@ import {
   Clock,
   CheckCheck,
 } from "lucide-react";
+import useCommunication from "@/hooks/useCommunication";
 import "./NotificationsView.scss";
 
-export default function NotificationsView() {
+const formatTime = (iso) =>
+  iso ? new Date(iso).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "";
+
+export default function NotificationsView({ restaurantId, onOpenThread }) {
   const [filter, setFilter] = useState("all");
-  const [messages, setMessages] = useState([]);
+  const {
+    notifications,
+    markNotificationRead,
+    markAllNotificationsRead,
+    unreadCount,
+    refetchNotifications,
+  } = useCommunication({ restaurantId });
 
-  const unreadCount = messages.filter((m) => !m.isRead).length;
-  const displayedMessages =
-    filter === "unread" ? messages.filter((m) => !m.isRead) : messages;
+  const displayedMessages = useMemo(() => {
+    const mapped = (notifications || []).map((n) => ({
+      id: n.id,
+      isRead: !!n.readAt,
+      from: n.payload?.senderName || n.toRole || "Hệ thống",
+      text: n.payload?.messagePreview || n.type,
+      time: formatTime(n.createdAt),
+      type: n.payload?.channel || n.type || "system",
+      threadId: n.payload?.threadId || null,
+    }));
+    return filter === "unread" ? mapped.filter((m) => !m.isRead) : mapped;
+  }, [notifications, filter]);
 
-  const markAllAsRead = () => {
-    setMessages(messages.map((m) => ({ ...m, isRead: true })));
+  const markAsRead = async (id, threadId) => {
+    await markNotificationRead({ variables: { id } });
+    refetchNotifications?.();
+    if (threadId && onOpenThread) onOpenThread(threadId);
   };
 
-  const markAsRead = (id) => {
-    setMessages(
-      messages.map((msg) => (msg.id === id ? { ...msg, isRead: true } : msg)),
-    );
+  const markAllAsRead = async () => {
+    await markAllNotificationsRead({ variables: { restaurantId } });
+    refetchNotifications?.();
   };
 
-  // Hàm render Icon theo loại thông báo
   const renderIcon = (type) => {
-    switch (type) {
+    switch (String(type || "").toLowerCase()) {
       case "management":
         return <ShieldAlert size={20} />;
       case "kitchen":
@@ -44,7 +63,6 @@ export default function NotificationsView() {
 
   return (
     <div className="staff-pos-notifications">
-      {/* Header & Tools */}
       <div className="noti-header">
         <div className="header-title">
           <h3>Thông báo</h3>
@@ -59,7 +77,6 @@ export default function NotificationsView() {
         )}
       </div>
 
-      {/* Segmented Control Tabs */}
       <div className="noti-tabs-container">
         <div className="segmented-control">
           <button
@@ -77,7 +94,6 @@ export default function NotificationsView() {
         </div>
       </div>
 
-      {/* Danh sách thông báo */}
       <div className="noti-list">
         {displayedMessages.length === 0 ? (
           <div className="empty-state">
@@ -85,23 +101,17 @@ export default function NotificationsView() {
               <CheckCircle2 size={40} />
             </div>
             <h4>Bạn đã xem hết thông báo!</h4>
-            <p>
-              Không có thông báo {filter === "unread" ? "mới" : ""} nào lúc này.
-            </p>
+            <p>Không có thông báo {filter === "unread" ? "mới" : ""} nào lúc này.</p>
           </div>
         ) : (
           displayedMessages.map((m) => (
             <div
               key={m.id}
               className={`noti-card ${!m.isRead ? "is-unread" : ""}`}
-              onClick={() => !m.isRead && markAsRead(m.id)}
+              onClick={() => markAsRead(m.id, m.threadId)}
             >
-              {/* Cột Icon */}
-              <div className={`noti-icon-wrap type-${m.type}`}>
-                {renderIcon(m.type)}
-              </div>
+              <div className={`noti-icon-wrap type-${m.type}`}>{renderIcon(m.type)}</div>
 
-              {/* Nội dung */}
               <div className="noti-content">
                 <div className="noti-meta">
                   <span className="sender">{m.from}</span>
@@ -112,7 +122,6 @@ export default function NotificationsView() {
                 <p className="message-text">{m.text}</p>
               </div>
 
-              {/* Chấm trạng thái */}
               {!m.isRead && <div className="unread-dot"></div>}
             </div>
           ))
