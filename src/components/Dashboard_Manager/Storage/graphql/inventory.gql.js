@@ -183,11 +183,9 @@ export const MENU_ITEMS_FOR_RECIPE = gql`
       id
       name
       categoryId
-      preparationMethods {
-        name
-        price
-        isDefault
-      }
+      description
+      basePrice
+      status
     }
   }
 `;
@@ -197,30 +195,15 @@ export const RECIPE_QUERY = gql`
     recipe(restaurantId: $restaurantId, menuItemId: $menuItemId) {
       id
       menuItemId
-      yieldQty
-      yieldUnit
-      baseComponents {
-        ingredientId
-        qty
-        unit
-        wastePct
-      }
-      variants {
-        preparationMethodName
-        components {
-          ingredientId
-          qty
-          unit
-          wastePct
-        }
-      }
       servingVariants {
         key
+        name
         mode
-        yieldQty
-        yieldUnit
-        preparationMethodName
-        components {
+        sellQty
+        sellUnit
+        isDefault
+        price
+        ingredients {
           ingredientId
           qty
           unit
@@ -239,19 +222,20 @@ export const UPSERT_RECIPE = gql`
     upsertRecipe(input: $input) {
       id
       menuItemId
-      yieldQty
-      yieldUnit
-      baseComponents {
-        ingredientId
-        qty
-        unit
-        wastePct
-      }
       servingVariants {
         key
+        name
         mode
-        yieldQty
-        yieldUnit
+        sellQty
+        sellUnit
+        isDefault
+        price
+        ingredients {
+          ingredientId
+          qty
+          unit
+          wastePct
+        }
       }
       isActive
       updatedAt

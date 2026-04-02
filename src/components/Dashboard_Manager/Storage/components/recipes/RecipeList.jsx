@@ -97,14 +97,17 @@ const RecipeList = ({
       });
 
       const { minCost, hasAnyCost } = calcMinCost(r);
+      const hasRecipe = variants.length > 0;
 
       return {
         ...r,
         _meta: {
+          hasRecipe,
           totalVariants: variants.length,
           totalIngredients: ids.size,
           minCost,
           hasAnyCost,
+          hasMissingCost: hasRecipe && !hasAnyCost,
         },
       };
     });
