@@ -41,9 +41,12 @@ const ORDERS_BY_USER = gql`
             scheduleTime
           }
           items {
+            _id
             name
             price
             quantity
+            unit
+            proofImages
           }
           totals {
             grandTotal

@@ -216,6 +216,14 @@ $shadow-lg: 0 -4px 16px rgba(0, 0, 0, 0.1);
                 background: $bg-main;
                 color: $text-sub;
               }
+              &.badge-proof-required {
+                background: rgba($danger, 0.1);
+                color: $danger;
+              }
+              &.badge-proof-ok {
+                background: rgba($success, 0.1);
+                color: $success;
+              }
             }
           }
 

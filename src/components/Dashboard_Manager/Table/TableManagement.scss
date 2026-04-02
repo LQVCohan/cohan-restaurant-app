@@ -413,6 +413,9 @@ $st-cleaning-text: #7e22ce;
       display: flex;
       flex-direction: column;
       gap: 6px;
+      &.tm-field--full {
+        grid-column: 1 / -1;
+      }
     }
     label {
       font-weight: 600;
