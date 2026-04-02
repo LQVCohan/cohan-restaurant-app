@@ -224,6 +224,20 @@ $shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         display: flex;
         gap: 8px;
 
+
+        .unread-pill {
+          min-width: 22px;
+          height: 22px;
+          padding: 0 6px;
+          border-radius: 999px;
+          background: #ef4444;
+          color: #fff;
+          font-size: 12px;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
         .action-btn {
           width: 40px;
           height: 40px;

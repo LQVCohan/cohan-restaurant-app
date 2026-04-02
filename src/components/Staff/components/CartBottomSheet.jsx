@@ -13,6 +13,7 @@ import {
   Banknote,
   CheckCircle2,
   ShoppingBag,
+  ShieldAlert,
 } from "lucide-react";
 import "./CartBottomSheet.scss";
 
@@ -22,6 +23,7 @@ export default function CartBottomSheet({
   onClose,
   table,
   onSendKitchen,
+  onOpenProofCapture,
   sending = false,
 }) {
   const handleRequestVoid = (item) => {
@@ -36,7 +38,6 @@ export default function CartBottomSheet({
     }
   };
 
-  // Tính tổng tiền
   const totalPrice = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0,
@@ -46,9 +47,8 @@ export default function CartBottomSheet({
     <div className="staff-pos-cart-overlay" onClick={onClose}>
       <div
         className="staff-pos-cart-sheet"
-        onClick={(e) => e.stopPropagation()} // Ngăn việc click vào sheet làm đóng overlay
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* Thanh kéo giả lập native mobile */}
         <div className="drag-indicator">
           <div className="drag-handle"></div>
         </div>
@@ -112,11 +112,22 @@ export default function CartBottomSheet({
                         <Printer size={12} /> Đã in
                       </span>
                     )}
+                    {item.requiresProof && !item.hasPhoto && (
+                      <span className="badge badge-proof-required">
+                        <ShieldAlert size={12} /> Cần ảnh
+                      </span>
+                    )}
+                    {item.hasPhoto && (
+                      <span className="badge badge-proof-ok">
+                        <Camera size={12} /> {item.proofImages?.length || 0} ảnh
+                      </span>
+                    )}
                   </div>
 
                   <div className="actions">
                     <button
                       className={`btn-icon ${item.hasPhoto ? "active-cam" : ""}`}
+                      onClick={() => onOpenProofCapture?.(item)}
                     >
                       <Camera size={16} />
                     </button>
@@ -131,7 +142,7 @@ export default function CartBottomSheet({
                               return nextQty > 0
                                 ? [{ ...c, quantity: nextQty }]
                                 : [];
-                            })
+                            }),
                           )
                         }
                       >
@@ -153,15 +164,11 @@ export default function CartBottomSheet({
         </div>
 
         <div className="sheet-footer">
-          {/* Tổng tiền nổi bật */}
           <div className="summary-row">
             <span className="summary-label">Tổng thanh toán:</span>
-            <span className="summary-total">
-              {totalPrice.toLocaleString()}đ
-            </span>
+            <span className="summary-total">{totalPrice.toLocaleString()}đ</span>
           </div>
 
-          {/* Các nút công cụ phụ */}
           <div className="billing-actions">
             <button className="btn-sub">
               <Tag size={16} /> Thêm Ưu Đãi
@@ -174,19 +181,15 @@ export default function CartBottomSheet({
             </button>
           </div>
 
-          {/* Nút hành động chính */}
           <div className="main-actions">
             <button
               className="btn-primary btn-send-kitchen"
               disabled={cart.length === 0 || sending}
-            onClick={onSendKitchen}
+              onClick={onSendKitchen}
             >
               <CheckCircle2 size={20} /> {sending ? "Đang gửi..." : "Gửi Bếp"}
             </button>
-            <button
-              className="btn-primary btn-checkout"
-              disabled={cart.length === 0}
-            >
+            <button className="btn-primary btn-checkout" disabled={cart.length === 0}>
               <Banknote size={20} /> Thanh Toán
             </button>
           </div>
