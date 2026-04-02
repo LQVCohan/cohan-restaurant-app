@@ -1,0 +1,282 @@
+[
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Bánh phở",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Thịt bò",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Bún",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Hủ tiếu",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Thịt heo",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Thịt gà",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Gạo",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Bánh tráng",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Tôm",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Củ sắn",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Mực",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Cá phi lê",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Trà",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Cam",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Cà phê",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Sữa đặc",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Bánh mì",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Cà chua",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Xà lách",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Phô mai",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Tôm",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Nấm",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Sữa tươi",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Bí đỏ",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Hành tây",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Thịt bò",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Cá hồi",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Thịt gà",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Mì spaghetti",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Thịt heo xông khói",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Tỏi",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Cà phê",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Táo",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Bột mì",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Cam",
+    "baseUnit": "g",
+    "costPerBaseUnit": 0.08,
+    "minStock": 500,
+    "isActive": true
+  }
+]
