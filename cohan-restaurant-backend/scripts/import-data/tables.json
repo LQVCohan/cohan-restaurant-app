@@ -1,0 +1,226 @@
+[
+  {
+    "restaurantKey": "viet-heritage",
+    "floorLevel": 1,
+    "code": "V101",
+    "capacity": 4,
+    "type": "standard",
+    "position": {
+      "x": 120,
+      "y": 120,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 80,
+      "h": 80
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "floorLevel": 1,
+    "code": "V102",
+    "capacity": 6,
+    "type": "standard",
+    "position": {
+      "x": 240,
+      "y": 120,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 80,
+      "h": 80
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "floorLevel": 1,
+    "code": "V103",
+    "capacity": 4,
+    "type": "standard",
+    "position": {
+      "x": 360,
+      "y": 120,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 80,
+      "h": 80
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "floorLevel": 1,
+    "code": "V104",
+    "capacity": 6,
+    "type": "standard",
+    "position": {
+      "x": 480,
+      "y": 120,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 80,
+      "h": 80
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "floorLevel": 2,
+    "code": "V201",
+    "capacity": 4,
+    "type": "vip",
+    "position": {
+      "x": 120,
+      "y": 260,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 90,
+      "h": 90
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "floorLevel": 2,
+    "code": "V202",
+    "capacity": 8,
+    "type": "vip",
+    "position": {
+      "x": 240,
+      "y": 260,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 90,
+      "h": 90
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "floorLevel": 2,
+    "code": "V203",
+    "capacity": 4,
+    "type": "vip",
+    "position": {
+      "x": 360,
+      "y": 260,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 90,
+      "h": 90
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "viet-heritage",
+    "floorLevel": 2,
+    "code": "V204",
+    "capacity": 8,
+    "type": "vip",
+    "position": {
+      "x": 480,
+      "y": 260,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 90,
+      "h": 90
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "floorLevel": 1,
+    "code": "E01",
+    "capacity": 2,
+    "type": "booth",
+    "position": {
+      "x": 110,
+      "y": 180,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 78,
+      "h": 78
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "floorLevel": 1,
+    "code": "E02",
+    "capacity": 2,
+    "type": "booth",
+    "position": {
+      "x": 220,
+      "y": 180,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 78,
+      "h": 78
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "floorLevel": 1,
+    "code": "E03",
+    "capacity": 2,
+    "type": "standard",
+    "position": {
+      "x": 330,
+      "y": 180,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 78,
+      "h": 78
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "floorLevel": 1,
+    "code": "E04",
+    "capacity": 2,
+    "type": "standard",
+    "position": {
+      "x": 440,
+      "y": 180,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 78,
+      "h": 78
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "floorLevel": 1,
+    "code": "E05",
+    "capacity": 4,
+    "type": "standard",
+    "position": {
+      "x": 550,
+      "y": 180,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 78,
+      "h": 78
+    },
+    "status": "available"
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "floorLevel": 1,
+    "code": "E06",
+    "capacity": 4,
+    "type": "standard",
+    "position": {
+      "x": 660,
+      "y": 180,
+      "rotation": 0,
+      "shape": "rect",
+      "w": 78,
+      "h": 78
+    },
+    "status": "available"
+  }
+]

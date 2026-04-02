@@ -15,6 +15,9 @@ import {
 import { toId } from "../order/helper/orderUtils.js";
 import { resolveTableSafe } from "../order/helper/tableUtils.js";
 import TableCustomer from "../../../models/tableCustomer.model.js";
+import { buildDemandForecast } from "../../../src/services/ai/demandForecast.service.js";
+import { buildMenuEngineeringAssistant } from "../../../src/services/ai/menuEngineeringAssistant.service.js";
+import { buildSmartPromotionEngine } from "../../../src/services/ai/smartPromotionEngine.service.js";
 
 const INACTIVE_STATUSES = ["cancelled", "completed"];
 
@@ -500,6 +503,50 @@ export const OrderQuery = {
         hasNextPage,
       },
     };
+  },
+
+
+
+  async demandForecast(_, { restaurantId, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" }) {
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new Error("Invalid restaurantId");
+    }
+
+    const rid = toId(restaurantId);
+    return buildDemandForecast({
+      restaurantId: rid,
+      horizonDays,
+      timezone,
+    });
+  },
+
+  async menuEngineeringAssistant(_, { restaurantId, lookbackDays = 30, timezone = "Asia/Ho_Chi_Minh" }) {
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new Error("Invalid restaurantId");
+    }
+
+    const rid = toId(restaurantId);
+    return buildMenuEngineeringAssistant({
+      restaurantId: rid,
+      lookbackDays,
+      timezone,
+    });
+  },
+
+  async smartPromotionEngine(
+    _,
+    { restaurantId, lookbackDays = 30, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" }
+  ) {
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new Error("Invalid restaurantId");
+    }
+    const rid = toId(restaurantId);
+    return buildSmartPromotionEngine({
+      restaurantId: rid,
+      lookbackDays,
+      horizonDays,
+      timezone,
+    });
   },
 
   async managerDashboard(_, { restaurantId, range = "week" }) {

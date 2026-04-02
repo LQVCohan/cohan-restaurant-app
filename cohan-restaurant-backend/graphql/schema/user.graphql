@@ -465,6 +465,61 @@ input UpdateStaffShiftInput {
   notes: String
 }
 
+
+
+type StaffSchedulingSummary {
+  totalShiftGroups: Int!
+  underStaffedShifts: Int!
+  overStaffedShifts: Int!
+  highestRiskShift: String
+  notes: [String!]!
+}
+
+type StaffSchedulingRoleNeed {
+  role: String!
+  required: Int!
+  assigned: Int!
+  delta: Int!
+}
+
+type StaffSchedulingCandidate {
+  staffId: ID!
+  fullName: String!
+  role: String!
+  reason: String!
+}
+
+type StaffSchedulingShiftInsight {
+  shiftKey: String!
+  date: String!
+  shiftType: String!
+  demandLevel: String!
+  expectedOrders: Float!
+  expectedGuests: Float!
+  recommendedTotalStaff: Int!
+  currentAssignedStaff: Int!
+  deltaStaff: Int!
+  status: String!
+  severity: String!
+  confidence: Float!
+  recommendedRoles: [StaffSchedulingRoleNeed!]!
+  suggestedCandidates: [StaffSchedulingCandidate!]!
+}
+
+type StaffSchedulingMeta {
+  method: String!
+  basedOnForecast: Boolean!
+  fallbackUsed: Boolean!
+  generatedAt: DateTime!
+  timezone: String!
+}
+
+type StaffSchedulingAssistant {
+  summary: StaffSchedulingSummary!
+  shifts: [StaffSchedulingShiftInsight!]!
+  meta: StaffSchedulingMeta!
+}
+
 # =========================
 # Queries
 # =========================
@@ -501,6 +556,11 @@ type Query {
     status: String
     limit: Int = 500
   ): [StaffScheduleShift!]!
+  staffSchedulingAssistant(
+    restaurantId: ID!
+    horizonDays: Int = 2
+    timezone: String = "Asia/Ho_Chi_Minh"
+  ): StaffSchedulingAssistant!
   myWalletTransactions(limit: Int = 20, offset: Int = 0): [WalletTransaction!]!
 }
 
