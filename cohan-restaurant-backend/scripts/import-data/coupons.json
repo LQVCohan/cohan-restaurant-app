@@ -1,0 +1,28 @@
+[
+  {
+    "restaurantKey": "viet-heritage",
+    "name": "Viet Welcome",
+    "code": "VIETWELCOME",
+    "category": "order",
+    "discountType": "PERCENT",
+    "discountValue": 10,
+    "minOrderValue": 150000,
+    "maxDiscount": 35000,
+    "maxUsage": 500,
+    "used": 0,
+    "isActive": true
+  },
+  {
+    "restaurantKey": "euro-bistro",
+    "name": "Euro Welcome",
+    "code": "EUROWELCOME",
+    "category": "order",
+    "discountType": "PERCENT",
+    "discountValue": 10,
+    "minOrderValue": 220000,
+    "maxDiscount": 45000,
+    "maxUsage": 500,
+    "used": 0,
+    "isActive": true
+  }
+]

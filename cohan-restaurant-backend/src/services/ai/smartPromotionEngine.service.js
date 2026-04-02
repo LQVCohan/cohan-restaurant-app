@@ -1,0 +1,381 @@
+import process from "process";
+import mongoose from "mongoose";
+import { Coupon, Customer, Order, Promotion, StockItem } from "../../../models/index.js";
+import { buildDemandForecast } from "./demandForecast.service.js";
+
+const DEFAULT_MODEL = process.env.AI_MODEL || "gpt-5";
+const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
+
+const ACTIVE_ORDER_STATUSES = new Set([
+  "pending",
+  "confirmed",
+  "customer_attached",
+  "preparing",
+  "ready",
+  "served",
+  "completed",
+]);
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const toNum = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+const safeJsonParse = (raw) => {
+  if (!raw || typeof raw !== "string") return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+function scoreExistingPromotion(promo, campaign, nowDate) {
+  let score = 0.4;
+  const reasons = [];
+
+  const startAt = promo?.startAt ? new Date(promo.startAt) : null;
+  const endAt = promo?.endAt ? new Date(promo.endAt) : null;
+  const activeNow = (!startAt || startAt <= nowDate) && (!endAt || endAt >= nowDate) && promo?.isActive;
+  if (activeNow) {
+    score += 0.2;
+    reasons.push("active_now");
+  }
+
+  const target = String(promo?.targetAudience || "all").toUpperCase();
+  const segment = String(campaign?.targetSegment || "ALL").toUpperCase();
+  if (target === "ALL" || target === segment) {
+    score += 0.2;
+    reasons.push("segment_fit");
+  }
+
+  const usageLimit = toNum(promo?.usageLimit, 0);
+  const usageCount = toNum(promo?.usageCount, 0);
+  if (usageLimit <= 0 || usageCount / Math.max(1, usageLimit) < 0.85) {
+    score += 0.1;
+    reasons.push("usage_capacity_ok");
+  }
+
+  if (String(promo?.discountType || "").toUpperCase() === String(campaign?.recommendation?.discountType || "").toUpperCase()) {
+    score += 0.1;
+    reasons.push("discount_type_match");
+  }
+
+  return {
+    fitScore: Number(clamp(score, 0, 0.99).toFixed(2)),
+    fitReason: reasons.join(" + ") || "general_fit",
+  };
+}
+
+async function tryAiEnhanceCampaigns({ summary, campaigns, timezone }) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return { aiEnhanced: false, campaigns: null };
+
+  const prompt = [
+    "Bạn là chuyên gia growth/promotion cho nhà hàng.",
+    "Hãy cải thiện title/reason/guardrails của campaigns, KHÔNG đổi KPI số học.",
+    "Trả về JSON thuần: {campaigns:[{campaignKey,title,reason,guardrails}]}.",
+    `Timezone: ${timezone}`,
+    `Input: ${JSON.stringify({ summary, campaigns })}`,
+  ].join("\n");
+
+  try {
+    const res = await fetch(OPENAI_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        temperature: 0.2,
+        max_tokens: 350,
+        messages: [
+          { role: "system", content: "Trả về JSON hợp lệ." },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+    if (!res.ok) return { aiEnhanced: false, campaigns: null };
+    const payload = await res.json();
+    const text = payload?.choices?.[0]?.message?.content?.trim();
+    const parsed = safeJsonParse(text);
+    if (!Array.isArray(parsed?.campaigns)) return { aiEnhanced: false, campaigns: null };
+    return { aiEnhanced: true, campaigns: parsed.campaigns };
+  } catch {
+    return { aiEnhanced: false, campaigns: null };
+  }
+}
+
+function kpiFromScore({ score, demandWeakness, basketGap, stockReliefPotential }) {
+  const base = clamp(score, 0.2, 0.95);
+  return {
+    expectedOrdersLiftPct: Math.round((6 + base * 14 + demandWeakness * 8) * 10) / 10,
+    expectedRevenueLiftPct: Math.round((4 + base * 9 + basketGap * 6) * 10) / 10,
+    expectedConversionLiftPct: Math.round((5 + base * 11 + demandWeakness * 7) * 10) / 10,
+    expectedAovLiftPct: Math.round((2 + base * 6 + basketGap * 10) * 10) / 10,
+    expectedRedemptionRate: Number((0.08 + base * 0.18).toFixed(3)),
+    expectedStockReliefScore: Math.round((stockReliefPotential * 100 + base * 25) * 10) / 10,
+    confidence: Number((0.45 + base * 0.45).toFixed(2)),
+  };
+}
+
+export async function buildSmartPromotionEngine({
+  restaurantId,
+  lookbackDays = 30,
+  timezone = "Asia/Ho_Chi_Minh",
+  horizonDays = 2,
+}) {
+  const rid = mongoose.isValidObjectId(restaurantId)
+    ? new mongoose.Types.ObjectId(restaurantId)
+    : null;
+  if (!rid) throw new Error("Invalid restaurantId");
+
+  const safeLookbackDays = clamp(toNum(lookbackDays, 30), 7, 90);
+  const safeHorizonDays = clamp(toNum(horizonDays, 2), 1, 7);
+  const now = new Date();
+  const start = new Date(now.getTime() - safeLookbackDays * 86400000);
+
+  const [orders, promotions, coupons, customers, stockItems] = await Promise.all([
+    Order.find({
+      restaurantId: rid,
+      createdAt: { $gte: start, $lte: now },
+      currentStatus: { $in: [...ACTIVE_ORDER_STATUSES] },
+    })
+      .select({ createdAt: 1, orderType: 1, items: 1, totals: 1, currentStatus: 1 })
+      .lean(),
+    Promotion.find({ restaurantId: rid }).select({ name: 1, targetAudience: 1, discountType: 1, usageLimit: 1, usageCount: 1, isActive: 1, startAt: 1, endAt: 1 }).lean(),
+    Coupon.find({ restaurantId: rid }).select({ name: 1, code: 1, discountType: 1, maxUsage: 1, used: 1, isActive: 1, publishAt: 1, startAt: 1, endAt: 1 }).lean(),
+    Customer.find({ refRestaurants: { $in: [rid] } }).select({ customerType: 1, totalOrders: 1, totalSpending: 1 }).lean(),
+    StockItem.find({ restaurantId: rid }).select({ onHand: 1, reserved: 1 }).limit(200).lean(),
+  ]);
+
+  let forecast;
+  let forecastFallback = true;
+  try {
+    forecast = await buildDemandForecast({ restaurantId: rid, timezone, horizonDays: safeHorizonDays });
+    forecastFallback = Boolean(forecast?.meta?.fallbackUsed);
+  } catch {
+    forecast = null;
+    forecastFallback = true;
+  }
+
+  const activePromotions = (promotions || []).filter((p) => {
+    const startAt = p?.startAt ? new Date(p.startAt) : null;
+    const endAt = p?.endAt ? new Date(p.endAt) : null;
+    return p?.isActive && (!startAt || startAt <= now) && (!endAt || endAt >= now);
+  });
+
+  const totalOrders = orders.length;
+  const totalRevenue = orders.reduce((sum, row) => sum + toNum(row?.totals?.grandTotal, 0), 0);
+  const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+  const lowStockCount = (stockItems || []).filter((row) => toNum(row.onHand, 0) - toNum(row.reserved, 0) <= 10).length;
+  const stockPressureRatio = stockItems.length ? lowStockCount / stockItems.length : 0;
+
+  const segmentCount = { NEW: 0, OFTEN: 0, VIP: 0 };
+  for (const row of customers || []) {
+    const type = String(row?.customerType || "NEW").toUpperCase();
+    if (segmentCount[type] != null) segmentCount[type] += 1;
+  }
+  const highestPrioritySegment =
+    segmentCount.NEW >= segmentCount.OFTEN && segmentCount.NEW >= segmentCount.VIP
+      ? "NEW"
+      : segmentCount.OFTEN >= segmentCount.VIP
+        ? "OFTEN"
+        : "VIP";
+
+  const hourly = forecast?.hourlyForecast || [];
+  const sortedByDemand = [...hourly].sort((a, b) => toNum(a.expectedOrders, 0) - toNum(b.expectedOrders, 0));
+  const weakest = sortedByDemand[0] || null;
+  const topOpportunityWindow = weakest?.hourLabel
+    ? `${weakest.hourLabel}-${String((toNum(weakest.hourLabel.slice(0, 2), 0) + 2) % 24).padStart(2, "0")}:00`
+    : "15:00-17:00";
+  const demandWeakness = weakest ? clamp(1 - toNum(weakest.demandScore, 0.5), 0, 1) : 0.45;
+  const basketGap = avgOrderValue > 0 ? clamp((140000 - avgOrderValue) / 140000, 0, 1) : 0.5;
+
+  const baseCampaigns = [
+    {
+      campaignKey: "off_peak_happy_hour_new",
+      title: "Happy Hour khách mới",
+      objective: "increase_conversion",
+      campaignType: "time_window_discount",
+      priority: demandWeakness > 0.5 ? "high" : "medium",
+      score: Number((0.55 + demandWeakness * 0.32 + (highestPrioritySegment === "NEW" ? 0.08 : 0)).toFixed(2)),
+      targetSegment: "NEW",
+      targetOrderType: "dine_in",
+      targetWindow: { days: ["Mon", "Tue", "Wed", "Thu", "Fri"], startHour: 15, endHour: 17 },
+      recommendation: {
+        scope: "ORDER",
+        discountType: "PERCENT",
+        discountValue: 10,
+        minOrderValue: Math.max(79000, Math.round(avgOrderValue * 0.8)),
+        maxDiscount: 30000,
+        stacking: false,
+      },
+      guardrails: ["không áp dụng cùng voucher khác", "tắt campaign khi demand tăng mạnh"],
+      reason: "off-peak + khách mới + cần tăng conversion",
+    },
+    {
+      campaignKey: "basket_threshold_often",
+      title: "Thưởng ngưỡng đơn cho khách quay lại",
+      objective: "increase_aov",
+      campaignType: "min_order_threshold",
+      priority: basketGap > 0.35 ? "high" : "medium",
+      score: Number((0.52 + basketGap * 0.33 + (highestPrioritySegment === "OFTEN" ? 0.08 : 0)).toFixed(2)),
+      targetSegment: "OFTEN",
+      targetOrderType: "takeaway",
+      targetWindow: { days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], startHour: 10, endHour: 22 },
+      recommendation: {
+        scope: "ORDER",
+        discountType: "AMOUNT",
+        discountValue: 25000,
+        minOrderValue: Math.max(119000, Math.round(avgOrderValue * 1.25)),
+        maxDiscount: 25000,
+        stacking: false,
+      },
+      guardrails: ["ưu tiên đơn chưa dùng voucher", "giới hạn theo usageLimit/khung giờ"],
+      reason: "basket hiện thấp hơn ngưỡng mục tiêu, cần đẩy AOV",
+    },
+    {
+      campaignKey: "vip_bundle_upsell",
+      title: "Ưu đãi bundle VIP",
+      objective: "upsell_margin",
+      campaignType: "bundle_offer",
+      priority: "medium",
+      score: Number((0.5 + (highestPrioritySegment === "VIP" ? 0.16 : 0.06)).toFixed(2)),
+      targetSegment: "VIP",
+      targetOrderType: "delivery",
+      targetWindow: { days: ["Fri", "Sat", "Sun"], startHour: 18, endHour: 21 },
+      recommendation: {
+        scope: "ORDER",
+        discountType: "PERCENT",
+        discountValue: 7,
+        minOrderValue: Math.max(169000, Math.round(avgOrderValue * 1.4)),
+        maxDiscount: 45000,
+        stacking: false,
+      },
+      guardrails: ["không giảm sâu món premium nhu cầu cao", "ưu tiên combo thay vì giảm thẳng"],
+      reason: "khách VIP có chi tiêu cao, phù hợp upsell có kiểm soát",
+    },
+  ];
+
+  const stockReliefPotential = clamp(stockPressureRatio, 0, 1);
+  const campaigns = baseCampaigns
+    .map((campaign) => {
+      const kpi = kpiFromScore({
+        score: campaign.score,
+        demandWeakness,
+        basketGap,
+        stockReliefPotential,
+      });
+      const extraGuard = stockPressureRatio > 0.25 ? ["không áp dụng cho món/line có stock risk cao"] : [];
+      return {
+        ...campaign,
+        expectedKpi: kpi,
+        guardrails: [...campaign.guardrails, ...extraGuard],
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const autoSelectedPromotions = activePromotions
+    .map((promo) => {
+      const targetCampaign = campaigns[0];
+      const fit = scoreExistingPromotion(promo, targetCampaign, now);
+      return {
+        source: "existing_promotion",
+        promotionId: String(promo._id),
+        promotionName: promo.name || "Promotion",
+        fitScore: fit.fitScore,
+        fitReason: fit.fitReason,
+      };
+    })
+    .sort((a, b) => b.fitScore - a.fitScore)
+    .slice(0, 4);
+
+  const segmentInsights = [
+    {
+      segment: "NEW",
+      recommendedStrategy: "welcome_discount",
+      reason: "ưu tiên tăng conversion và first order",
+    },
+    {
+      segment: "OFTEN",
+      recommendedStrategy: "threshold_reward",
+      reason: "tăng AOV bằng ngưỡng đơn hợp lý",
+    },
+    {
+      segment: "VIP",
+      recommendedStrategy: "upsell_bundle",
+      reason: "giữ biên lợi nhuận bằng ưu đãi chọn lọc",
+    },
+  ];
+
+  const timeWindowInsights = [
+    {
+      window: topOpportunityWindow,
+      demandLevel: demandWeakness > 0.5 ? "low" : "medium",
+      recommendedStrategy: "flash_discount",
+    },
+  ];
+
+  const summary = {
+    recommendedCampaignCount: campaigns.length,
+    topOpportunityWindow,
+    highestPrioritySegment,
+    notes: [
+      demandWeakness > 0.5
+        ? "Khung giờ thấp điểm có dư địa tăng conversion."
+        : "Nhu cầu ổn định, ưu tiên tối ưu AOV và segment-fit.",
+      stockPressureRatio > 0.25
+        ? "Stock pressure cao: cần guardrail để tránh đẩy campaign sai món."
+        : "Stock pressure trong ngưỡng an toàn.",
+      activePromotions.length
+        ? `Đang có ${activePromotions.length} promotion active, đã chấm điểm tránh overlap cơ bản.`
+        : "Chưa có promotion active phù hợp, ưu tiên khởi tạo campaign mới.",
+    ],
+  };
+
+  let aiEnhanced = false;
+  const aiResult = await tryAiEnhanceCampaigns({ summary, campaigns, timezone });
+  let finalCampaigns = campaigns;
+  if (aiResult.aiEnhanced && Array.isArray(aiResult.campaigns)) {
+    aiEnhanced = true;
+    const map = new Map(aiResult.campaigns.map((c) => [String(c.campaignKey), c]));
+    finalCampaigns = campaigns.map((campaign) => {
+      const ai = map.get(String(campaign.campaignKey));
+      if (!ai) return campaign;
+      return {
+        ...campaign,
+        title: ai.title || campaign.title,
+        reason: ai.reason || campaign.reason,
+        guardrails: Array.isArray(ai.guardrails) && ai.guardrails.length ? ai.guardrails : campaign.guardrails,
+      };
+    });
+  }
+
+  return {
+    summary,
+    campaigns: finalCampaigns,
+    autoSelectedPromotions,
+    segmentInsights,
+    timeWindowInsights,
+    couponContext: {
+      activeCouponCount: (coupons || []).filter((c) => c.isActive).length,
+      nearUsageLimitCount: (coupons || []).filter((c) => {
+        const maxUsage = toNum(c.maxUsage, 0);
+        const used = toNum(c.used, 0);
+        if (maxUsage <= 0) return false;
+        return used / Math.max(1, maxUsage) >= 0.85;
+      }).length,
+    },
+    meta: {
+      method: "smart_promo_v1",
+      fallbackUsed: forecastFallback || !aiEnhanced,
+      aiEnhanced,
+      generatedAt: now,
+      timezone,
+      sampleOrders: totalOrders,
+      sampleDays: safeLookbackDays,
+    },
+  };
+}

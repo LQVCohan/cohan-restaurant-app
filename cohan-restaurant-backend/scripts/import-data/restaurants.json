@@ -1,0 +1,36 @@
+[
+  {
+    "key": "viet-heritage",
+    "name": "Viet Heritage Kitchen",
+    "managerId": "68e942775eaa392edeabca16",
+    "managerEmail": "vietle632@gmail.com",
+    "phone": "0900000001",
+    "email": "vietheritage@cohan.local",
+    "status": "active",
+    "cuisineType": "Vietnamese",
+    "address": {
+      "line1": "12 Le Loi",
+      "ward": "Ben Thanh",
+      "district": "District 1",
+      "city": "Ho Chi Minh",
+      "country": "VN"
+    }
+  },
+  {
+    "key": "euro-bistro",
+    "name": "Euro Bistro House",
+    "managerId": "68e942775eaa392edeabca16",
+    "managerEmail": "vietle632@gmail.com",
+    "phone": "0900000002",
+    "email": "eurobistro@cohan.local",
+    "status": "active",
+    "cuisineType": "European",
+    "address": {
+      "line1": "88 Nguyen Hue",
+      "ward": "Ben Nghe",
+      "district": "District 1",
+      "city": "Ho Chi Minh",
+      "country": "VN"
+    }
+  }
+]
