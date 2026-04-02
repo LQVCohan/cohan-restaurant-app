@@ -1,6 +1,6 @@
 {
-  "startedAt": "2026-04-02T16:17:52.146Z",
-  "updatedAt": "2026-04-02T16:18:33.326Z",
+  "startedAt": "2026-04-02T16:49:43.119Z",
+  "updatedAt": "2026-04-02T16:50:26.406Z",
   "lastCompletedStep": "orders",
   "completedSteps": [
     "restaurants",
@@ -22,7 +22,7 @@
     "orders"
   ],
   "failedStep": null,
-  "runId": "12d52c67-b9a8-4fa4-adce-4ca5810e7afb",
+  "runId": "b4a90147-925d-46d5-bd05-db62bb1c6ed3",
   "sourceDir": "C:\\Users\\Cohan\\cohan-restaurant-app\\cohan-restaurant-backend\\scripts\\import-data",
   "options": {
     "sourceDir": "C:\\Users\\Cohan\\cohan-restaurant-app\\cohan-restaurant-backend\\scripts\\import-data",
