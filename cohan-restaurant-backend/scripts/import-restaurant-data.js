@@ -138,6 +138,19 @@ async function connectDb() {
   log("DB", "connected", { dbName: DB_NAME });
 }
 
+async function ensureRestaurantManagerIndex() {
+  if (options.dryRun) return;
+  const indexes = await Restaurant.collection.indexes();
+  const managerIndex = indexes.find((idx) => idx?.key?.managerId === 1);
+  if (!managerIndex?.unique) return;
+
+  await Restaurant.collection.dropIndex(managerIndex.name);
+  await Restaurant.collection.createIndex({ managerId: 1 }, { background: true });
+  log("MIGRATION", "recreated restaurants.managerId index as non-unique", {
+    droppedIndex: managerIndex.name,
+  });
+}
+
 async function ensureDir(filePath) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
 }
@@ -416,7 +429,6 @@ function toDate(v) {
 async function importRestaurants(ctx) {
   const rows = ctx.stepData.get("restaurants");
   const summary = { input: rows.length, created: 0, updated: 0, skipped: 0, failed: 0 };
-  const seenManagerIds = new Set();
   for (let i = 0; i < rows.length; i += 1) {
     const row = rows[i];
     try {
@@ -425,19 +437,6 @@ async function importRestaurants(ctx) {
       let managerId = toObjectId(row.managerId);
       if (!managerId && managerEmail) {
         managerId = await ctx.resolver.resolveUserIdByEmail(managerEmail, { required: true });
-      }
-      if (managerId) {
-        const managerKey = String(managerId);
-        if (seenManagerIds.has(managerKey)) {
-          log("WARN", "restaurants duplicate managerId in source; manager assignment removed for this row", {
-            index: i,
-            name,
-            managerId: managerKey,
-          });
-          managerId = null;
-        } else {
-          seenManagerIds.add(managerKey);
-        }
       }
       const payload = {
         name,
@@ -449,11 +448,7 @@ async function importRestaurants(ctx) {
         reservationSettings: row.reservationSettings || undefined,
         paymentSettings: row.paymentSettings || undefined,
       };
-      // `restaurants.managerId` is unique in many deployments.
-      // If the seed `name` changes over time, filtering by `{ name, managerId }`
-      // can miss the existing row and trigger duplicate-key inserts on managerId.
-      // Prefer managerId-only matching when available.
-      const filter = managerId ? { managerId } : { name };
+      const filter = managerId ? { name, managerId } : { name };
       const rid = await upsertWithSummary({
         model: Restaurant,
         filter,
@@ -1290,6 +1285,7 @@ async function main() {
 
   await connectDb();
   try {
+    await ensureRestaurantManagerIndex();
     const stepsToRun = prepareStepsToRun(checkpoint);
     log("RUN", "steps selected", { stepsToRun });
     await preLoadStepData(stepsToRun, ctx);
