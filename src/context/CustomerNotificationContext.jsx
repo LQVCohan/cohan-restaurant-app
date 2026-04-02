@@ -1,65 +1,69 @@
-import React, { createContext, useContext, useMemo, useState, useCallback } from "react";
-
-const INITIAL_NOTIFICATIONS = [
-  {
-    id: 1,
-    image: "https://cdn-icons-png.flaticon.com/512/7541/7541900.png",
-    text: "Đơn hàng #DH001 của bạn đã được giao thành công. Chúc bạn ngon miệng!",
-    time: "5 phút trước",
-    isRead: false,
-    type: "order",
-  },
-  {
-    id: 2,
-    image: "https://cdn-icons-png.flaticon.com/512/879/879757.png",
-    text: "Mã giảm giá 'SALE50' sắp hết hạn vào ngày mai. Sử dụng ngay!",
-    time: "1 giờ trước",
-    isRead: false,
-    type: "promotion",
-  },
-  {
-    id: 3,
-    image: "https://cdn-icons-png.flaticon.com/512/1046/1046857.png",
-    text: "Nhà hàng Pizza Company vừa thêm món mới. Khám phá ngay!",
-    time: "2 giờ trước",
-    isRead: true,
-    type: "system",
-  },
-  {
-    id: 4,
-    image: "https://cdn-icons-png.flaticon.com/512/7541/7541900.png",
-    text: "Đơn hàng #DH002 đang được chuẩn bị.",
-    time: "1 ngày trước",
-    isRead: true,
-    type: "order",
-  },
-];
+import React, { createContext, useContext, useMemo, useCallback } from "react";
+import { AuthContext } from "@/context/AuthContext";
+import useCommunication from "@/hooks/useCommunication";
 
 const CustomerNotificationContext = createContext(null);
 
+const formatRelative = (iso) =>
+  iso
+    ? new Date(iso).toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
+
+const iconByType = {
+  chat_message: "https://cdn-icons-png.flaticon.com/512/1046/1046857.png",
+  order: "https://cdn-icons-png.flaticon.com/512/7541/7541900.png",
+  promotion: "https://cdn-icons-png.flaticon.com/512/879/879757.png",
+  system: "https://cdn-icons-png.flaticon.com/512/1046/1046857.png",
+};
+
 export const CustomerNotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const { user } = useContext(AuthContext) || {};
+  const restaurantId = user?.refRestaurants?.[0] || null;
 
-  const markAllAsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((notif) => ({ ...notif, isRead: true })));
-  }, []);
+  const {
+    notifications: rawNotifications,
+    unreadCount,
+    markNotificationRead,
+    markAllNotificationsRead,
+    refetchNotifications,
+  } = useCommunication({ restaurantId });
 
-  const markAsRead = useCallback((id) => {
-    setNotifications((prev) =>
-      prev.map((notif) =>
-        notif.id === id ? { ...notif, isRead: true } : notif,
-      ),
-    );
-  }, []);
-
-  const deleteNotification = useCallback((id) => {
-    setNotifications((prev) => prev.filter((notif) => notif.id !== id));
-  }, []);
-
-  const unreadCount = useMemo(
-    () => notifications.filter((notification) => !notification.isRead).length,
-    [notifications],
+  const notifications = useMemo(
+    () =>
+      (rawNotifications || []).map((n) => ({
+        id: n.id,
+        image: iconByType[n.type] || iconByType.system,
+        text: n.payload?.messagePreview || n.type,
+        time: formatRelative(n.createdAt),
+        isRead: !!n.readAt,
+        type: n.type,
+        threadId: n.payload?.threadId || null,
+      })),
+    [rawNotifications]
   );
+
+  const markAsRead = useCallback(
+    async (id) => {
+      await markNotificationRead({ variables: { id } });
+      refetchNotifications?.();
+    },
+    [markNotificationRead, refetchNotifications]
+  );
+
+  const markAllAsRead = useCallback(async () => {
+    await markAllNotificationsRead({ variables: { restaurantId } });
+    refetchNotifications?.();
+  }, [markAllNotificationsRead, refetchNotifications, restaurantId]);
+
+  const deleteNotification = useCallback(async (id) => {
+    await markNotificationRead({ variables: { id } });
+    refetchNotifications?.();
+  }, [markNotificationRead, refetchNotifications]);
 
   const value = useMemo(
     () => ({
@@ -69,7 +73,7 @@ export const CustomerNotificationProvider = ({ children }) => {
       markAllAsRead,
       deleteNotification,
     }),
-    [notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification],
+    [notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification]
   );
 
   return (
@@ -84,7 +88,7 @@ export const useCustomerNotifications = () => {
 
   if (!context) {
     throw new Error(
-      "useCustomerNotifications must be used within CustomerNotificationProvider",
+      "useCustomerNotifications must be used within CustomerNotificationProvider"
     );
   }
 

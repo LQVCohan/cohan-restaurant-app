@@ -1,0 +1,70 @@
+enum ChatChannel {
+  support
+  order
+  reservation
+  other
+}
+
+type ChatMessage {
+  senderId: ID
+  senderRole: String
+  senderName: String
+  messageType: String
+  content: String
+  createdAt: DateTime
+}
+
+type ChatThread {
+  id: ID!
+  restaurantId: ID
+  participants: [ID!]!
+  channel: ChatChannel
+  subject: String
+  targetRole: String
+  status: String
+  lastMessageAt: DateTime
+  lastMessagePreview: String
+  unreadCount: Int
+  messages(limit: Int = 50): [ChatMessage!]!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type AppNotification {
+  id: ID!
+  toUserId: ID
+  toRole: String
+  restaurantId: ID
+  type: String!
+  payload: JSON
+  readAt: DateTime
+  createdAt: DateTime
+}
+
+input OpenChatThreadInput {
+  restaurantId: ID!
+  channel: ChatChannel = support
+  participantIds: [ID!]
+  targetRole: String
+  subject: String
+}
+
+input SendChatMessageInput {
+  threadId: ID!
+  content: String!
+}
+
+extend type Query {
+  chatThreads(restaurantId: ID, channel: ChatChannel, limit: Int = 30): [ChatThread!]!
+  chatThread(id: ID!): ChatThread
+  notifications(restaurantId: ID, unreadOnly: Boolean = false, limit: Int = 50): [AppNotification!]!
+  unreadNotificationCount(restaurantId: ID): Int!
+}
+
+extend type Mutation {
+  openChatThread(input: OpenChatThreadInput!): ChatThread!
+  sendChatMessage(input: SendChatMessageInput!): ChatThread!
+  markChatThreadRead(threadId: ID!): Boolean!
+  markNotificationRead(id: ID!): Boolean!
+  markAllNotificationsRead(restaurantId: ID): Boolean!
+}

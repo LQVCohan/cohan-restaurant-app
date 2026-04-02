@@ -1,63 +1,42 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import {
-  Bell,
-  CheckCheck,
-  Clock,
-  ChefHat,
-  Banknote,
-  AlertCircle,
-} from "lucide-react";
+import { Bell, CheckCheck, Clock, ChefHat, Banknote, AlertCircle } from "lucide-react";
+import useCommunication from "@/hooks/useCommunication";
 import "./NotificationBell.scss";
 
-const INITIAL_NOTIFICATIONS = [
-  {
-    id: 1,
-    type: "order",
-    title: "Bàn 01 gọi thanh toán",
-    time: "Vừa xong",
-    isRead: false,
-    icon: <Banknote size={16} />,
-  },
-  {
-    id: 2,
-    type: "kitchen",
-    title: "Bếp đã làm xong món: Lẩu Thái Tomyum (Bàn 03)",
-    time: "2 phút trước",
-    isRead: false,
-    icon: <ChefHat size={16} />,
-  },
-  {
-    id: 3,
-    type: "system",
-    title: "Hết món: Nước Ép Dưa Hấu",
-    time: "15 phút trước",
-    isRead: true,
-    icon: <AlertCircle size={16} />,
-  },
-  {
-    id: 4,
-    type: "order",
-    title: "Bàn VIP 01 yêu cầu phục vụ thêm nước đá",
-    time: "1 giờ trước",
-    isRead: true,
-    icon: <Bell size={16} />,
-  },
-];
+const iconByType = {
+  order: <Banknote size={16} />,
+  kitchen: <ChefHat size={16} />,
+  system: <AlertCircle size={16} />,
+};
 
-export default function NotificationBell({ onViewAll }) {
+const toTime = (iso) =>
+  iso ? new Date(iso).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : "";
+
+export default function NotificationBell({ onViewAll, restaurantId, onOpenThread }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const dropdownRef = useRef(null);
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const {
+    notifications,
+    unreadCount,
+    markNotificationRead,
+    markAllNotificationsRead,
+    refetchNotifications,
+  } = useCommunication({ restaurantId });
 
   const filteredNotifications = useMemo(() => {
-    let result = notifications;
-    if (activeTab === "unread") {
-      result = notifications.filter((n) => !n.isRead);
-    }
-    return result.slice(0, 3); // Chỉ lấy 3 thông báo mới nhất
+    const rows = (notifications || []).map((n) => ({
+      id: n.id,
+      type: n.type,
+      title: n.payload?.messagePreview || n.type,
+      time: toTime(n.createdAt),
+      isRead: !!n.readAt,
+      icon: iconByType[n.type] || <Bell size={16} />,
+      threadId: n.payload?.threadId || null,
+    }));
+    const result = activeTab === "unread" ? rows.filter((n) => !n.isRead) : rows;
+    return result.slice(0, 3);
   }, [notifications, activeTab]);
 
   useEffect(() => {
@@ -70,14 +49,18 @@ export default function NotificationBell({ onViewAll }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
+  const markAllAsRead = async () => {
+    await markAllNotificationsRead({ variables: { restaurantId } });
+    refetchNotifications?.();
   };
 
-  const handleNotificationClick = (id) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
-    );
+  const handleNotificationClick = async (noti) => {
+    await markNotificationRead({ variables: { id: noti.id } });
+    refetchNotifications?.();
+    if (noti.threadId && onOpenThread) {
+      onOpenThread(noti.threadId);
+      setIsOpen(false);
+    }
   };
 
   return (
@@ -85,18 +68,13 @@ export default function NotificationBell({ onViewAll }) {
       <button className="bell-trigger-btn" onClick={() => setIsOpen(!isOpen)}>
         <Bell size={24} color="#f9fafb" />
         {unreadCount > 0 && (
-          <span className="bell-badge">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
+          <span className="bell-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
         )}
       </button>
 
       {isOpen && (
         <>
-          <div
-            className="notification-overlay"
-            onClick={() => setIsOpen(false)}
-          ></div>
+          <div className="notification-overlay" onClick={() => setIsOpen(false)}></div>
           <div className="notification-dropdown">
             <div className="noti-header">
               <h3>Thông báo mới</h3>
@@ -106,18 +84,8 @@ export default function NotificationBell({ onViewAll }) {
             </div>
 
             <div className="noti-tabs">
-              <button
-                className={activeTab === "all" ? "active" : ""}
-                onClick={() => setActiveTab("all")}
-              >
-                Tất cả
-              </button>
-              <button
-                className={activeTab === "unread" ? "active" : ""}
-                onClick={() => setActiveTab("unread")}
-              >
-                Chưa đọc
-              </button>
+              <button className={activeTab === "all" ? "active" : ""} onClick={() => setActiveTab("all")}>Tất cả</button>
+              <button className={activeTab === "unread" ? "active" : ""} onClick={() => setActiveTab("unread")}>Chưa đọc</button>
             </div>
 
             <div className="noti-list">
@@ -131,11 +99,9 @@ export default function NotificationBell({ onViewAll }) {
                   <div
                     key={noti.id}
                     className={`noti-item ${!noti.isRead ? "unread" : ""}`}
-                    onClick={() => handleNotificationClick(noti.id)}
+                    onClick={() => handleNotificationClick(noti)}
                   >
-                    <div className={`noti-icon-wrapper ${noti.type}`}>
-                      {noti.icon}
-                    </div>
+                    <div className={`noti-icon-wrapper ${noti.type}`}>{noti.icon}</div>
                     <div className="noti-content">
                       <p className="noti-title">{noti.title}</p>
                       <p className="noti-time">
