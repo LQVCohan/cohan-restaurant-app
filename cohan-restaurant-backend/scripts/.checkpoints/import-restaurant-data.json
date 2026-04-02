@@ -1,0 +1,37 @@
+{
+  "startedAt": "2026-04-02T16:17:52.146Z",
+  "updatedAt": "2026-04-02T16:18:33.326Z",
+  "lastCompletedStep": "orders",
+  "completedSteps": [
+    "restaurants",
+    "floors",
+    "tables",
+    "categories",
+    "categoryMenus",
+    "menus",
+    "menuItems",
+    "warehouses",
+    "ingredients",
+    "recipes",
+    "stockItems",
+    "staff",
+    "shifts",
+    "promotions",
+    "coupons",
+    "reservations",
+    "orders"
+  ],
+  "failedStep": null,
+  "runId": "12d52c67-b9a8-4fa4-adce-4ca5810e7afb",
+  "sourceDir": "C:\\Users\\Cohan\\cohan-restaurant-app\\cohan-restaurant-backend\\scripts\\import-data",
+  "options": {
+    "sourceDir": "C:\\Users\\Cohan\\cohan-restaurant-app\\cohan-restaurant-backend\\scripts\\import-data",
+    "dryRun": false,
+    "importResume": false,
+    "importFrom": "",
+    "importOnly": "",
+    "clearCheckpoint": true,
+    "resetScope": "restaurant_domain",
+    "allowCreateStaffUsers": false
+  }
+}

@@ -80,6 +80,7 @@ const restaurantSchema = BaseSchemaModel({
 });
 
 restaurantSchema.index({ status: 1, avgRating: -1 });
+restaurantSchema.index({ managerId: 1 });
 restaurantSchema.index({ "address.city": 1, "address.district": 1 });
 restaurantSchema.index({ "address.ward": 1, "address.postalCode": 1 });
 restaurantSchema.index({ cuisineType: 1 });

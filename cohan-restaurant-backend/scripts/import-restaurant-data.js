@@ -138,6 +138,19 @@ async function connectDb() {
   log("DB", "connected", { dbName: DB_NAME });
 }
 
+async function ensureRestaurantManagerIndex() {
+  if (options.dryRun) return;
+  const indexes = await Restaurant.collection.indexes();
+  const managerIndex = indexes.find((idx) => idx?.key?.managerId === 1);
+  if (!managerIndex?.unique) return;
+
+  await Restaurant.collection.dropIndex(managerIndex.name);
+  await Restaurant.collection.createIndex({ managerId: 1 }, { background: true });
+  log("MIGRATION", "recreated restaurants.managerId index as non-unique", {
+    droppedIndex: managerIndex.name,
+  });
+}
+
 async function ensureDir(filePath) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
 }
@@ -1272,6 +1285,7 @@ async function main() {
 
   await connectDb();
   try {
+    await ensureRestaurantManagerIndex();
     const stepsToRun = prepareStepsToRun(checkpoint);
     log("RUN", "steps selected", { stepsToRun });
     await preLoadStepData(stepsToRun, ctx);
