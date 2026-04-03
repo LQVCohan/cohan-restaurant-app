@@ -167,7 +167,34 @@ export const STOCK_MOVEMENTS_QUERY = gql`
       type
       qty
       reason
+      meta
       createdAt
+    }
+  }
+`;
+
+export const INGREDIENT_PRICE_SUGGESTIONS = gql`
+  query IngredientPriceSuggestions(
+    $restaurantId: ID!
+    $ingredientId: ID!
+    $limit: Int = 5
+  ) {
+    ingredientPriceSuggestions(
+      restaurantId: $restaurantId
+      ingredientId: $ingredientId
+      limit: $limit
+    ) {
+      latestCostPerBaseUnit
+      avgRecentCostPerBaseUnit
+      recent {
+        movementId
+        createdAt
+        qtyBase
+        costPerBaseUnit
+        totalValue
+        lot
+        supplierNote
+      }
     }
   }
 `;
@@ -266,6 +293,46 @@ export const ADJUST_STOCK = gql`
       id
       onHand
       reserved
+      updatedAt
+    }
+  }
+`;
+
+export const RECEIVE_STOCK = gql`
+  mutation ReceiveStock(
+    $restaurantId: ID!
+    $warehouseId: ID!
+    $ingredientId: ID!
+    $qty: Int!
+    $costPerBaseUnit: Float!
+    $reason: String
+    $lot: String
+    $expiry: DateTime
+    $supplierNote: String
+  ) {
+    receiveStock(
+      restaurantId: $restaurantId
+      warehouseId: $warehouseId
+      ingredientId: $ingredientId
+      qty: $qty
+      costPerBaseUnit: $costPerBaseUnit
+      reason: $reason
+      lot: $lot
+      expiry: $expiry
+      supplierNote: $supplierNote
+    ) {
+      id
+      restaurantId
+      warehouseId
+      ingredientId
+      onHand
+      reserved
+      batches {
+        lot
+        qty
+        expiry
+        costPerBaseUnit
+      }
       updatedAt
     }
   }

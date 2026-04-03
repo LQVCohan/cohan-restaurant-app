@@ -5,6 +5,7 @@ import {
   Recipe,
   IngredientRecent,
   MenuItem,
+  StockMovement,
 } from "../../../models/index.js";
 
 function escapeRegex(input) {
@@ -153,6 +154,56 @@ export default {
       topUsed,
       recentUsed,
       recentCreated,
+    };
+  },
+
+  ingredientPriceSuggestions: async (
+    _p,
+    { restaurantId, ingredientId, limit = 5 }
+  ) => {
+    if (!mongoose.isValidObjectId(restaurantId)) {
+      throw new GraphQLError("Invalid restaurantId");
+    }
+    if (!mongoose.isValidObjectId(ingredientId)) {
+      throw new GraphQLError("Invalid ingredientId");
+    }
+
+    const LIM = Math.min(Math.max(limit || 5, 1), 20);
+
+    const inboundRows = await StockMovement.find({
+      restaurantId,
+      ingredientId,
+      type: "inbound",
+      "meta.costPerBaseUnit": { $gt: 0 },
+    })
+      .sort({ createdAt: -1 })
+      .limit(LIM)
+      .select({ createdAt: 1, qty: 1, meta: 1 })
+      .lean();
+
+    const recent = inboundRows.map((r) => ({
+      movementId: r._id,
+      createdAt: r.createdAt,
+      qtyBase: Number(r.qty) || 0,
+      costPerBaseUnit: Number(r?.meta?.costPerBaseUnit) || 0,
+      totalValue:
+        Number(r?.meta?.totalValue) ||
+        (Number(r.qty) || 0) * (Number(r?.meta?.costPerBaseUnit) || 0),
+      lot: r?.meta?.lot || null,
+      supplierNote: r?.meta?.supplierNote || null,
+    }));
+
+    const latestCostPerBaseUnit = recent[0]?.costPerBaseUnit || null;
+    const avgRecentCostPerBaseUnit =
+      recent.length > 0
+        ? recent.reduce((sum, r) => sum + (Number(r.costPerBaseUnit) || 0), 0) /
+          recent.length
+        : null;
+
+    return {
+      latestCostPerBaseUnit,
+      avgRecentCostPerBaseUnit,
+      recent,
     };
   },
 

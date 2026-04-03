@@ -27,11 +27,12 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
     addIngredient,
     updateIngredient,
     deleteIngredient,
-    addStock,
+    receiveStock,
     updateCostPerBaseUnit,
     getStockStatus,
     warehouses,
     effectiveWarehouseId,
+    getPriceSuggestions,
   } = useIngredients(restaurantId, selectedWarehouseId, {
     withStock: true,
     withWarehouses: true,
@@ -305,6 +306,8 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
         isOpen={quickStockOpen}
         onClose={() => setQuickStockOpen(false)}
         entries={quickEntries}
+        ingredients={filteredIngredients}
+        onGetPriceSuggestions={getPriceSuggestions}
         onSubmit={async (rows) => {
           if (!rows?.length) {
             showNotification("Danh sách nhập kho đang trống.", "warning");
@@ -312,7 +315,17 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
           }
 
           await Promise.all(
-            rows.map((row) => addStock(row.id, row.qty, buildReason(row)))
+            rows.map((row) =>
+              receiveStock(row.id, {
+                qty: row.qty,
+                unit: row.unit,
+                unitPrice: row.unitPrice,
+                reason: buildReason(row),
+                lot: row.lot,
+                expiry: row.expiry,
+                supplierNote: row.supplier,
+              })
+            )
           );
 
           setQuickStockOpen(false);

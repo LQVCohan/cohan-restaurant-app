@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Modal from "../../../../common/Modal";
+import { toBaseQty } from "../../../../../utils/unitConversion";
+import { formatPrice } from "../../../../../utils/formatters";
 import "./QuickStockModal.scss";
 
 /**
@@ -14,7 +16,14 @@ import "./QuickStockModal.scss";
  *   unit: string;
  * }
  */
-const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
+const QuickStockModal = ({
+  isOpen,
+  onClose,
+  entries = [],
+  onSubmit,
+  ingredients = [],
+  onGetPriceSuggestions,
+}) => {
   const normalized = useMemo(() => {
     return (entries || []).map((e) => ({
       id: String(e.id || ""),
@@ -26,8 +35,15 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
 
   const [formRows, setFormRows] = useState([]);
   const [errors, setErrors] = useState({});
+  const [priceHintsByIngredient, setPriceHintsByIngredient] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const ingredientMap = useMemo(() => {
+    const map = new Map();
+    (ingredients || []).forEach((x) => map.set(String(x.id), x));
+    return map;
+  }, [ingredients]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -37,6 +53,9 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
       normalized.map((e) => ({
         ...e,
         qty: "",
+        unitPrice: "",
+        lot: "",
+        expiry: "",
         supplier: "",
         note: "",
         datetime: defaultDate,
@@ -45,7 +64,31 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
     setErrors({});
     setSubmitError("");
     setSubmitting(false);
+    setPriceHintsByIngredient({});
   }, [isOpen, normalized]);
+
+  useEffect(() => {
+    if (!isOpen || !onGetPriceSuggestions) return;
+    let cancelled = false;
+    const run = async () => {
+      const pairs = await Promise.all(
+        normalized.map(async (e) => {
+          try {
+            const data = await onGetPriceSuggestions?.(e.id, 5);
+            return [String(e.id), data];
+          } catch {
+            return [String(e.id), null];
+          }
+        }),
+      );
+      if (cancelled) return;
+      setPriceHintsByIngredient(Object.fromEntries(pairs));
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, onGetPriceSuggestions, normalized]);
 
   if (!isOpen) return null;
 
@@ -63,9 +106,9 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
         nextErrors[idx] = "Số lượng phải > 0";
         return;
       }
-      // Cả ingredient và supply đều lưu integer ở BE
-      if (!Number.isInteger(qtyNum)) {
-        nextErrors[idx] = "Số lượng phải là số nguyên";
+      const priceNum = Number(row.unitPrice);
+      if (!Number.isFinite(priceNum) || priceNum <= 0) {
+        nextErrors[idx] = "Giá nhập là bắt buộc và phải > 0";
         return;
       }
     });
@@ -82,9 +125,12 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
       type: row.type,
       qty: Number(row.qty),
       unit: row.unit,
+      unitPrice: Number(row.unitPrice),
       supplier: row.supplier?.trim() || null,
       note: row.note?.trim() || null,
       datetime: row.datetime ? new Date(row.datetime).toISOString() : null,
+      lot: row.lot?.trim() || null,
+      expiry: row.expiry || null,
     }));
     try {
       setSubmitting(true);
@@ -94,6 +140,37 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const getAllowedUnits = (row) => {
+    const ing = ingredientMap.get(String(row.id));
+    if (!ing) return [row.unit].filter(Boolean);
+    const base = ing.baseUnit || row.unit;
+    const set = new Set([base]);
+    (ing.conversions || []).forEach((c) => {
+      const from = c?.from;
+      const to = c?.to;
+      if (from === base && to) set.add(to);
+      if (to === base && from) set.add(from);
+    });
+    return Array.from(set);
+  };
+
+  const getDerivedPricing = (row) => {
+    const ing = ingredientMap.get(String(row.id));
+    if (!ing) return null;
+    const qty = Number(row.qty) || 0;
+    if (!(qty > 0)) return null;
+    const unitPrice = Number(row.unitPrice) || 0;
+    const qtyBase = toBaseQty(qty, row.unit || ing.baseUnit, ing.baseUnit);
+    if (!(qtyBase > 0)) return null;
+    const costPerBaseUnit = unitPrice > 0 ? unitPrice / qtyBase : 0;
+    return {
+      qtyBase,
+      costPerBaseUnit,
+      totalValue: unitPrice,
+      baseUnit: ing.baseUnit,
+    };
   };
 
   return (
@@ -139,6 +216,37 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
                 </label>
 
                 <label className="qsm-field">
+                  <span className="qsm-label">Đơn vị nhập</span>
+                  <select
+                    value={row.unit}
+                    onChange={(e) => updateRow(idx, { unit: e.target.value })}
+                  >
+                    {getAllowedUnits(row).map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="qsm-field">
+                  <span className="qsm-label">
+                    Giá lô nhập (VND) <span className="req">*</span>
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={row.unitPrice}
+                    onChange={(e) =>
+                      updateRow(idx, { unitPrice: e.target.value })
+                    }
+                    className={errors[idx] ? "error" : ""}
+                    placeholder="0"
+                  />
+                </label>
+
+                <label className="qsm-field">
                   <span className="qsm-label">Nhà cung cấp / Nguồn</span>
                   <input
                     type="text"
@@ -160,7 +268,100 @@ const QuickStockModal = ({ isOpen, onClose, entries = [], onSubmit }) => {
                     }
                   />
                 </label>
+
+                <label className="qsm-field">
+                  <span className="qsm-label">Mã lô</span>
+                  <input
+                    type="text"
+                    value={row.lot}
+                    onChange={(e) => updateRow(idx, { lot: e.target.value })}
+                    placeholder="LOT-2026-001"
+                  />
+                </label>
+
+                <label className="qsm-field">
+                  <span className="qsm-label">Hạn dùng</span>
+                  <input
+                    type="date"
+                    value={row.expiry}
+                    onChange={(e) => updateRow(idx, { expiry: e.target.value })}
+                  />
+                </label>
               </div>
+
+              {(() => {
+                const hint = priceHintsByIngredient[String(row.id)];
+                const d = getDerivedPricing(row);
+                return (
+                  <div style={{ marginTop: "8px", display: "grid", gap: "8px" }}>
+                    {d && (
+                      <div className="qsm-meta">
+                        Quy đổi: {Number(d.qtyBase).toLocaleString("vi-VN")}{" "}
+                        {d.baseUnit} • Giá/base:{" "}
+                        <b>{formatPrice(d.costPerBaseUnit)}</b> • Tổng lô:{" "}
+                        <b>{formatPrice(d.totalValue)}</b>
+                      </div>
+                    )}
+                    {hint && (
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        {hint.latestCostPerBaseUnit > 0 && (
+                          <button
+                            type="button"
+                            className="qsm-btn qsm-btn--secondary"
+                            onClick={() =>
+                              d &&
+                              updateRow(idx, {
+                                unitPrice: String(
+                                  Math.round(
+                                    hint.latestCostPerBaseUnit * d.qtyBase,
+                                  ),
+                                ),
+                              })
+                            }
+                          >
+                            Giá gần nhất
+                          </button>
+                        )}
+                        {hint.avgRecentCostPerBaseUnit > 0 && (
+                          <button
+                            type="button"
+                            className="qsm-btn qsm-btn--secondary"
+                            onClick={() =>
+                              d &&
+                              updateRow(idx, {
+                                unitPrice: String(
+                                  Math.round(
+                                    hint.avgRecentCostPerBaseUnit * d.qtyBase,
+                                  ),
+                                ),
+                              })
+                            }
+                          >
+                            TB gần đây
+                          </button>
+                        )}
+                        {(hint.recent || []).slice(0, 3).map((p, pIdx) => (
+                          <button
+                            key={`${p.movementId}_${pIdx}`}
+                            type="button"
+                            className="qsm-btn qsm-btn--secondary"
+                            onClick={() =>
+                              d &&
+                              updateRow(idx, {
+                                unitPrice: String(
+                                  Math.round((Number(p.costPerBaseUnit) || 0) * d.qtyBase),
+                                ),
+                              })
+                            }
+                          >
+                            {new Date(p.createdAt).toLocaleDateString("vi-VN")}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <label className="qsm-field">
                 <span className="qsm-label">Ghi chú</span>

@@ -15,6 +15,7 @@ function InventoryAuditTab({
   ingredients = [],
   stockItems = [],
   movements = [],
+  warehouses = [],
   loading = false,
   error = null,
 }) {
@@ -28,6 +29,11 @@ function InventoryAuditTab({
     ingredients.forEach((it) => m.set(it.id, it));
     return m;
   }, [ingredients]);
+  const warehouseMap = useMemo(() => {
+    const m = new Map();
+    warehouses.forEach((w) => m.set(String(w.id), w.name || w.id));
+    return m;
+  }, [warehouses]);
 
   const rows = useMemo(() => {
     const agg = new Map();
@@ -103,13 +109,28 @@ function InventoryAuditTab({
     return movements
       .map((mv) => {
         const ing = ingredientMap.get(mv.ingredientId);
+        const unit = ing?.baseUnit || "";
+        const cost = Number(mv?.meta?.costPerBaseUnit);
+        const totalValue =
+          Number(mv?.meta?.totalValue) ||
+          ((Number(mv.qty) || 0) * (Number.isFinite(cost) ? cost : 0));
         return {
           ...mv,
           ingredientName: ing?.name || mv.ingredientId,
+          unit,
+          warehouseName: warehouseMap.get(String(mv.warehouseId)) || mv.warehouseId,
+          toWarehouseName:
+            warehouseMap.get(String(mv?.meta?.toWarehouseId)) ||
+            mv?.meta?.toWarehouseId,
+          fromWarehouseName:
+            warehouseMap.get(String(mv?.meta?.fromWarehouseId)) ||
+            mv?.meta?.fromWarehouseId,
+          cost: Number.isFinite(cost) ? cost : null,
+          totalValue: Number.isFinite(totalValue) ? totalValue : null,
         };
       })
       .slice(0, 30);
-  }, [ingredientMap, movements]);
+  }, [ingredientMap, movements, warehouseMap]);
 
   const summary = useMemo(() => {
     return rows.reduce(
@@ -256,7 +277,23 @@ function InventoryAuditTab({
             <div key={mv.id} className="inv-movement-item">
               <strong>{mv.ingredientName}</strong>
               <span>{movementLabel[mv.type] || mv.type}</span>
-              <span>{mv.qty > 0 ? `+${mv.qty}` : mv.qty}</span>
+              <span>
+                {mv.qty > 0 ? `+${mv.qty}` : mv.qty} {mv.unit}
+              </span>
+              <span>{mv.warehouseName}</span>
+              {mv.toWarehouseName && <span>→ {mv.toWarehouseName}</span>}
+              {mv.fromWarehouseName && <span>← {mv.fromWarehouseName}</span>}
+              <span>
+                {mv.cost !== null
+                  ? `${Number(mv.cost).toLocaleString("vi-VN")} đ/${mv.unit}`
+                  : "—"}
+              </span>
+              <span>
+                {mv.totalValue !== null
+                  ? `${Number(mv.totalValue).toLocaleString("vi-VN")} đ`
+                  : "—"}
+              </span>
+              {mv.reason && <span>{mv.reason}</span>}
               <span>{new Date(mv.createdAt).toLocaleString("vi-VN")}</span>
             </div>
           ))}

@@ -1,9 +1,99 @@
 // src/graphql/resolvers/inventory/stockItem.mutation.js
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { StockItem, StockMovement } from "../../../models/index.js";
+import { StockItem, StockMovement, Ingredient } from "../../../models/index.js";
 
 export default {
+  receiveStock: async (
+    _p,
+    {
+      restaurantId,
+      warehouseId,
+      ingredientId,
+      qty,
+      costPerBaseUnit,
+      reason,
+      lot,
+      expiry,
+      supplierNote,
+    }
+  ) => {
+    if (
+      ![restaurantId, warehouseId, ingredientId].every(mongoose.isValidObjectId)
+    ) {
+      throw new GraphQLError("Invalid ids");
+    }
+
+    const nQty = Number(qty);
+    const nCost = Number(costPerBaseUnit);
+    if (!Number.isFinite(nQty) || nQty <= 0) {
+      throw new GraphQLError("qty must be > 0");
+    }
+    if (!Number.isFinite(nCost) || nCost <= 0) {
+      throw new GraphQLError("costPerBaseUnit is required and must be > 0");
+    }
+
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        await StockItem.findOneAndUpdate(
+          { restaurantId, warehouseId, ingredientId },
+          {
+            $inc: { onHand: nQty },
+            $push: {
+              batches: {
+                lot: lot?.trim() || undefined,
+                qty: nQty,
+                expiry: expiry || undefined,
+                costPerBaseUnit: nCost,
+              },
+            },
+            $setOnInsert: { reserved: 0 },
+          },
+          { new: true, upsert: true, runValidators: true, session }
+        );
+
+        await StockMovement.create(
+          [
+            {
+              restaurantId,
+              warehouseId,
+              ingredientId,
+              type: "inbound",
+              qty: nQty,
+              reason: reason || "Nhập kho",
+              meta: {
+                lot: lot?.trim() || null,
+                expiry: expiry || null,
+                supplierNote: supplierNote?.trim() || null,
+                costPerBaseUnit: nCost,
+                totalValue: nQty * nCost,
+              },
+            },
+          ],
+          { session }
+        );
+
+        // V1 source-of-truth: Last purchase price (low-risk, dễ kiểm soát)
+        await Ingredient.updateOne(
+          { _id: ingredientId, restaurantId },
+          { $set: { costPerBaseUnit: nCost } },
+          { session }
+        );
+      });
+
+      return StockItem.findOne({
+        restaurantId,
+        warehouseId,
+        ingredientId,
+      }).lean({ virtuals: true });
+    } catch (e) {
+      throw new GraphQLError(e?.message || "receiveStock failed");
+    } finally {
+      session.endSession();
+    }
+  },
+
   upsertStockItem: async (
     _p,
     { restaurantId, warehouseId, ingredientId, onHand, reserved, batches }

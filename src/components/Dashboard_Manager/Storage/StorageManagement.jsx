@@ -293,6 +293,7 @@ const StorageManagement = () => {
           ingredients={ingredients}
           stockItems={stockItems}
           movements={movements}
+          warehouses={warehouses}
           loading={stockLoading || movementLoading}
           error={stockError || movementError}
         />
