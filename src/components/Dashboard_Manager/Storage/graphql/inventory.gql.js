@@ -167,7 +167,34 @@ export const STOCK_MOVEMENTS_QUERY = gql`
       type
       qty
       reason
+      meta
       createdAt
+    }
+  }
+`;
+
+export const INGREDIENT_PRICE_SUGGESTIONS = gql`
+  query IngredientPriceSuggestions(
+    $restaurantId: ID!
+    $ingredientId: ID!
+    $limit: Int = 5
+  ) {
+    ingredientPriceSuggestions(
+      restaurantId: $restaurantId
+      ingredientId: $ingredientId
+      limit: $limit
+    ) {
+      latestCostPerBaseUnit
+      avgRecentCostPerBaseUnit
+      recent {
+        movementId
+        createdAt
+        qtyBase
+        costPerBaseUnit
+        totalValue
+        lot
+        supplierNote
+      }
     }
   }
 `;
@@ -183,11 +210,9 @@ export const MENU_ITEMS_FOR_RECIPE = gql`
       id
       name
       categoryId
-      preparationMethods {
-        name
-        price
-        isDefault
-      }
+      description
+      basePrice
+      status
     }
   }
 `;
@@ -197,30 +222,15 @@ export const RECIPE_QUERY = gql`
     recipe(restaurantId: $restaurantId, menuItemId: $menuItemId) {
       id
       menuItemId
-      yieldQty
-      yieldUnit
-      baseComponents {
-        ingredientId
-        qty
-        unit
-        wastePct
-      }
-      variants {
-        preparationMethodName
-        components {
-          ingredientId
-          qty
-          unit
-          wastePct
-        }
-      }
       servingVariants {
         key
+        name
         mode
-        yieldQty
-        yieldUnit
-        preparationMethodName
-        components {
+        sellQty
+        sellUnit
+        isDefault
+        price
+        ingredients {
           ingredientId
           qty
           unit
@@ -239,19 +249,20 @@ export const UPSERT_RECIPE = gql`
     upsertRecipe(input: $input) {
       id
       menuItemId
-      yieldQty
-      yieldUnit
-      baseComponents {
-        ingredientId
-        qty
-        unit
-        wastePct
-      }
       servingVariants {
         key
+        name
         mode
-        yieldQty
-        yieldUnit
+        sellQty
+        sellUnit
+        isDefault
+        price
+        ingredients {
+          ingredientId
+          qty
+          unit
+          wastePct
+        }
       }
       isActive
       updatedAt
@@ -282,6 +293,46 @@ export const ADJUST_STOCK = gql`
       id
       onHand
       reserved
+      updatedAt
+    }
+  }
+`;
+
+export const RECEIVE_STOCK = gql`
+  mutation ReceiveStock(
+    $restaurantId: ID!
+    $warehouseId: ID!
+    $ingredientId: ID!
+    $qty: Int!
+    $costPerBaseUnit: Float!
+    $reason: String
+    $lot: String
+    $expiry: DateTime
+    $supplierNote: String
+  ) {
+    receiveStock(
+      restaurantId: $restaurantId
+      warehouseId: $warehouseId
+      ingredientId: $ingredientId
+      qty: $qty
+      costPerBaseUnit: $costPerBaseUnit
+      reason: $reason
+      lot: $lot
+      expiry: $expiry
+      supplierNote: $supplierNote
+    ) {
+      id
+      restaurantId
+      warehouseId
+      ingredientId
+      onHand
+      reserved
+      batches {
+        lot
+        qty
+        expiry
+        costPerBaseUnit
+      }
       updatedAt
     }
   }

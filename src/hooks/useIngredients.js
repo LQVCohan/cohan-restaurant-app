@@ -1,6 +1,6 @@
 // src/hooks/useIngredients.js
 import { useMemo, useState, useCallback } from "react";
-import { useQuery, useMutation } from "@apollo/client";
+import { useQuery, useMutation, useApolloClient } from "@apollo/client";
 import {
   INGREDIENTS_QUERY,
   CREATE_INGREDIENT,
@@ -9,7 +9,10 @@ import {
   WAREHOUSES_QUERY,
   STOCK_ITEMS_QUERY,
   ADJUST_STOCK,
+  RECEIVE_STOCK,
+  INGREDIENT_PRICE_SUGGESTIONS,
 } from "@/components/Dashboard_Manager/Storage/graphql/inventory.gql";
+import { toBaseQty } from "@/utils/unitConversion";
 
 /**
  * useIngredients (SINGLE SOURCE OF TRUTH)
@@ -30,6 +33,7 @@ export function useIngredients(
   options = {}
 ) {
   const { withStock = true, withWarehouses = true } = options;
+  const apolloClient = useApolloClient();
 
   const [filters, setFilters] = useState({
     search: "",
@@ -192,6 +196,7 @@ export function useIngredients(
   const [updateIngredientMu] = useMutation(UPDATE_INGREDIENT);
   const [deleteIngredientMu] = useMutation(DELETE_INGREDIENT);
   const [adjustStockMu] = useMutation(ADJUST_STOCK);
+  const [receiveStockMu] = useMutation(RECEIVE_STOCK);
 
   const safeRefetchAll = useCallback(async () => {
     await Promise.allSettled([
@@ -239,19 +244,27 @@ export function useIngredients(
       const created = res?.data?.createIngredient;
       const createdId = created?.id;
 
-      // init stock
+      // init stock (nhập tồn ban đầu phải có giá nhập)
       const qty0 = Number(initialStockQty) || 0;
       if (qty0 > 0 && withStock) {
         const wid = assertWarehouseForStock();
         const intQty = Math.round(qty0); // BE: integer
+        const initCost = Number(payload.costPerBaseUnit);
+        if (!Number.isFinite(initCost) || initCost <= 0) {
+          throw new Error(
+            "Nhập tồn ban đầu bắt buộc có giá nhập > 0 (cost per base unit)."
+          );
+        }
         if (intQty > 0 && createdId) {
-          await adjustStockMu({
+          await receiveStockMu({
             variables: {
               restaurantId,
               warehouseId: wid,
               ingredientId: createdId,
               qty: intQty,
+              costPerBaseUnit: initCost,
               reason: "Nhập tồn ban đầu",
+              lot: "INIT",
             },
           });
         }
@@ -264,7 +277,7 @@ export function useIngredients(
       restaurantId,
       withStock,
       createIngredientMu,
-      adjustStockMu,
+      receiveStockMu,
       assertWarehouseForStock,
       safeRefetchAll,
     ]
@@ -339,6 +352,83 @@ export function useIngredients(
     ]
   );
 
+  const receiveStock = useCallback(
+    async (
+      ingredientId,
+      { qty, unit, unitPrice, reason, lot, expiry, supplierNote } = {}
+    ) => {
+      if (!withStock)
+        throw new Error("withStock=false: không hỗ trợ nhập kho.");
+
+      const wid = assertWarehouseForStock();
+      const ing = ingredientsMapped.find((x) => String(x.id) === String(ingredientId));
+      if (!ing) throw new Error("Không tìm thấy nguyên liệu.");
+
+      const qtyNum = Number(qty);
+      if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
+        throw new Error("Số lượng nhập phải > 0.");
+      }
+
+      const unitPriceNum = Number(unitPrice);
+      if (!Number.isFinite(unitPriceNum) || unitPriceNum <= 0) {
+        throw new Error("Giá nhập là bắt buộc và phải > 0.");
+      }
+
+      const fromUnit = unit || ing.baseUnit;
+      const qtyBaseRaw = toBaseQty(qtyNum, fromUnit, ing.baseUnit);
+      const qtyBase = Math.round(qtyBaseRaw);
+      if (!Number.isFinite(qtyBase) || qtyBase <= 0) {
+        throw new Error("Số lượng quy đổi về đơn vị gốc không hợp lệ.");
+      }
+
+      const costPerBaseUnit = unitPriceNum / qtyBaseRaw;
+      if (!Number.isFinite(costPerBaseUnit) || costPerBaseUnit <= 0) {
+        throw new Error("Không thể tính giá theo đơn vị gốc.");
+      }
+
+      await receiveStockMu({
+        variables: {
+          restaurantId,
+          warehouseId: wid,
+          ingredientId,
+          qty: qtyBase,
+          costPerBaseUnit,
+          reason: reason || "Nhập kho",
+          lot: lot || null,
+          expiry: expiry || null,
+          supplierNote: supplierNote || null,
+        },
+      });
+
+      await safeRefetchAll();
+      return {
+        qtyBase,
+        costPerBaseUnit,
+      };
+    },
+    [
+      withStock,
+      assertWarehouseForStock,
+      ingredientsMapped,
+      receiveStockMu,
+      restaurantId,
+      safeRefetchAll,
+    ]
+  );
+
+  const getPriceSuggestions = useCallback(
+    async (ingredientId, limit = 5) => {
+      if (!restaurantId || !ingredientId) return null;
+      const res = await apolloClient.query({
+        query: INGREDIENT_PRICE_SUGGESTIONS,
+        variables: { restaurantId, ingredientId, limit },
+        fetchPolicy: "network-only",
+      });
+      return res?.data?.ingredientPriceSuggestions || null;
+    },
+    [apolloClient, restaurantId]
+  );
+
   // Update giá nhập nhanh (costPerBaseUnit) – vẫn đi qua updateIngredient (BE sẽ chặn nếu active order)
   const updateCostPerBaseUnit = useCallback(
     async (ingredientId, nextCost) => {
@@ -387,6 +477,8 @@ export function useIngredients(
     updateIngredient,
     deleteIngredient,
     addStock,
+    receiveStock,
+    getPriceSuggestions,
     updateCostPerBaseUnit,
 
     // helpers

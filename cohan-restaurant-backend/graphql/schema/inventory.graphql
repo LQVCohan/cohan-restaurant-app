@@ -310,6 +310,22 @@ type MovementSummary {
   count: Int!
 }
 
+type IngredientPricePoint {
+  movementId: ID
+  createdAt: DateTime
+  qtyBase: Float
+  costPerBaseUnit: Float!
+  totalValue: Float
+  lot: String
+  supplierNote: String
+}
+
+type IngredientPriceSuggestionsPayload {
+  latestCostPerBaseUnit: Float
+  avgRecentCostPerBaseUnit: Float
+  recent: [IngredientPricePoint!]!
+}
+
 # ================================
 # QUERY
 # ================================
@@ -324,6 +340,11 @@ extend type Query {
     restaurantId: ID!
     limit: Int = 8
   ): IngredientSuggestionsPayload!
+  ingredientPriceSuggestions(
+    restaurantId: ID!
+    ingredientId: ID!
+    limit: Int = 5
+  ): IngredientPriceSuggestionsPayload!
   ingredient(id: ID!): Ingredient
 
   warehouses(restaurantId: ID!): [Warehouse!]!
@@ -414,6 +435,18 @@ extend type Mutation {
     qty: Int!
     reason: String
   ): Boolean!
+
+  receiveStock(
+    restaurantId: ID!
+    warehouseId: ID!
+    ingredientId: ID!
+    qty: Int!
+    costPerBaseUnit: Float!
+    reason: String
+    lot: String
+    expiry: DateTime
+    supplierNote: String
+  ): StockItem!
 
   upsertRecipe(input: UpsertRecipeInput!): Recipe!
   deleteRecipe(restaurantId: ID!, menuItemId: ID!): Boolean!
