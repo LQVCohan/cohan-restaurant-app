@@ -129,12 +129,20 @@ const ModalHeader = ({ children, onClose, titleId, className = "" }) => {
   );
 };
 
-const ModalBody = ({ children, className = "" }) => {
-  return <div className={`modal-body ${className}`}>{children}</div>;
+const ModalBody = ({ children, className = "", ...rest }) => {
+  return (
+    <div className={`modal-body ${className}`} {...rest}>
+      {children}
+    </div>
+  );
 };
 
-const ModalFooter = ({ children, className = "" }) => {
-  return <div className={`modal-footer ${className}`}>{children}</div>;
+const ModalFooter = ({ children, className = "", ...rest }) => {
+  return (
+    <div className={`modal-footer ${className}`} {...rest}>
+      {children}
+    </div>
+  );
 };
 
 // --- Gắn các sub-components vào Modal chính ---

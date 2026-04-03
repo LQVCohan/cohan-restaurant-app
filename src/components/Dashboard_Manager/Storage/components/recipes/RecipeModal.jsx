@@ -784,6 +784,8 @@ const RecipeModal = ({
     variants.forEach((v, vi) => {
       if (!String(v?.name || "").trim())
         e[`variant_${vi}_name`] = "Tên biến thể là bắt buộc";
+      if (!String(v?.key || "").trim())
+        e[`variant_${vi}_key`] = "Key biến thể là bắt buộc";
 
       if (v.mode === "BY_WEIGHT") {
         const sq = parseDecimalLoose(v.sellQtyText);
@@ -791,6 +793,10 @@ const RecipeModal = ({
           e[`variant_${vi}_sellQty`] = "Số lượng bán phải > 0";
         if (!["kg", "g"].includes(v.sellUnit))
           e[`variant_${vi}_sellUnit`] = "sellUnit chỉ kg/g";
+      }
+
+      if (Number(v?.price) < 0) {
+        e[`variant_${vi}_price`] = "Giá bán không được âm";
       }
 
       (v.components || []).forEach((c, ci) => {
@@ -923,12 +929,21 @@ const RecipeModal = ({
   const suggestGroups = useMemo(() => {
     const toOpts = (arr) =>
       (arr || [])
-        .map((x) => ({ value: String(x.id), label: x.name }))
+        .map((x) => ({ value: String(x.id), label: x.name, source: "recent" }))
         .filter((o) => ingredientIdSet.has(o.value));
 
-    const recentUsed = toOpts(suggestPayload?.recentUsed);
-    const topUsed = toOpts(suggestPayload?.topUsed);
-    const recentCreated = toOpts(suggestPayload?.recentCreated);
+    const recentUsed = toOpts(suggestPayload?.recentUsed).map((x) => ({
+      ...x,
+      source: "recent",
+    }));
+    const topUsed = toOpts(suggestPayload?.topUsed).map((x) => ({
+      ...x,
+      source: "top",
+    }));
+    const recentCreated = toOpts(suggestPayload?.recentCreated).map((x) => ({
+      ...x,
+      source: "new",
+    }));
 
     const seen = new Set();
     const uniq = (list) =>
@@ -948,26 +963,148 @@ const RecipeModal = ({
     const out = [];
     if (gRecent.length && remain > 0) {
       const part = take(gRecent, remain);
-      out.push({ title: "Gần đây", items: part });
+      out.push({ title: "Gần đây", items: part, kind: "recent" });
       remain -= part.length;
     }
     if (gTop.length && remain > 0) {
       const part = take(gTop, remain);
-      out.push({ title: "Dùng nhiều", items: part });
+      out.push({ title: "Dùng nhiều", items: part, kind: "top" });
       remain -= part.length;
     }
     if (gNew.length && remain > 0) {
       const part = take(gNew, remain);
-      out.push({ title: "Mới tạo", items: part });
+      out.push({ title: "Mới tạo", items: part, kind: "new" });
       remain -= part.length;
     }
 
     if (!out.length && ingredientOptions.length) {
-      out.push({ title: "Gợi ý", items: ingredientOptions.slice(0, 8) });
+      out.push({
+        title: "Gợi ý",
+        items: ingredientOptions.slice(0, 8),
+        kind: "fallback",
+      });
     }
 
     return out;
   }, [suggestPayload, ingredientIdSet, ingredientOptions]);
+
+  const aiLikeGroups = useMemo(() => {
+    const allRows = Array.isArray(menuItemRecipeRows) ? menuItemRecipeRows : [];
+    if (!allRows.length || !ingredientOptions.length) return [];
+
+    const selectedIds = new Set(
+      (activeVariant?.components || [])
+        .map((c) => String(c?.ingredientId || "").trim())
+        .filter(Boolean),
+    );
+
+    const activeDishName = normalizeText(dishInfo?.name);
+    const activeCategory = String(menuItemNode?.categoryId || "").trim();
+    const nameTokens = activeDishName
+      .split(/\s+/)
+      .map((x) => x.trim())
+      .filter((x) => x.length >= 2);
+
+    const pairScore = new Map();
+    const fallbackScore = new Map();
+
+    const addScore = (id, score) => {
+      if (!id || selectedIds.has(id) || !ingredientIdSet.has(id)) return;
+      pairScore.set(id, (pairScore.get(id) || 0) + score);
+    };
+    const addFallback = (id, score) => {
+      if (!id || selectedIds.has(id) || !ingredientIdSet.has(id)) return;
+      fallbackScore.set(id, (fallbackScore.get(id) || 0) + score);
+    };
+
+    allRows.forEach((row) => {
+      const rowMenu = row?.menuItem || row;
+      const rowRecipe = row?.recipe || row;
+      const variants = Array.isArray(rowRecipe?.servingVariants)
+        ? rowRecipe.servingVariants
+        : [];
+      if (!variants.length) return;
+
+      const rowName = normalizeText(rowMenu?.name || "");
+      const rowCategory = String(rowMenu?.categoryId || "").trim();
+
+      let recipeWeight = 0;
+      if (rowCategory && activeCategory && rowCategory === activeCategory) {
+        recipeWeight += 3;
+      }
+      if (activeDishName && rowName && rowName === activeDishName) recipeWeight += 3;
+      if (nameTokens.length) {
+        const tokenHits = nameTokens.filter((t) => rowName.includes(t)).length;
+        recipeWeight += Math.min(tokenHits, 3);
+      }
+      recipeWeight = Math.max(1, recipeWeight);
+
+      const ingredientSet = new Set();
+      variants.forEach((v) => {
+        const lines = Array.isArray(v?.ingredients) ? v.ingredients : [];
+        lines.forEach((line) => {
+          const iid = String(line?.ingredientId || "").trim();
+          if (iid) ingredientSet.add(iid);
+        });
+      });
+
+      if (!ingredientSet.size) return;
+
+      ingredientSet.forEach((iid) => addFallback(iid, recipeWeight));
+      if (!selectedIds.size) return;
+
+      const sharedCount = Array.from(selectedIds).filter((iid) =>
+        ingredientSet.has(iid),
+      ).length;
+      if (!sharedCount) return;
+
+      const extraBoost = sharedCount >= 2 ? 2 : 1;
+      ingredientSet.forEach((iid) => addScore(iid, recipeWeight * extraBoost));
+    });
+
+    const toItems = (mapObj, limit) =>
+      Array.from(mapObj.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([id, score]) => {
+          const ing = ingredients.find((x) => String(x.id) === id);
+          return {
+            value: id,
+            label: ing?.name || `Ingredient ${id}`,
+            score,
+          };
+        });
+
+    const pairingItems = toItems(pairScore, 5);
+    const managerHintItems = toItems(fallbackScore, 5).filter(
+      (x) => !pairingItems.some((p) => p.value === x.value),
+    );
+
+    const groups = [];
+    if (pairingItems.length) {
+      groups.push({
+        title: "Gợi ý thêm (AI-like)",
+        items: pairingItems,
+        kind: "ai_pair",
+      });
+    }
+    if (managerHintItems.length) {
+      groups.push({
+        title: "Manager hint",
+        items: managerHintItems,
+        kind: "ai_hint",
+      });
+    }
+    return groups;
+  }, [
+    menuItemRecipeRows,
+    ingredientOptions,
+    activeVariant,
+    dishInfo?.name,
+    menuItemNode?.categoryId,
+    ingredientIdSet,
+    ingredients,
+  ]);
 
   const handlePickDishRow = (row) => {
     setPickedDishRow(row);
@@ -1000,13 +1137,7 @@ const RecipeModal = ({
         }
         size="xl"
       >
-        <form
-          className="recipe-modal-form"
-          onSubmit={
-            /* Gọi hàm Submit của bạn ở đây, vd: handleSubmit */ (e) =>
-              e.preventDefault()
-          }
-        >
+        <form className="recipe-modal-form" onSubmit={handleSubmit}>
           <Modal.Body style={{ padding: "24px", background: "#f8fafc" }}>
             {/* =========================================
                 1. THÔNG TIN MÓN ĂN & GHI CHÚ
@@ -1565,8 +1696,9 @@ const RecipeModal = ({
 
                           {comp.ingFocused && (
                             <div className="ingredientSuggestDropdown">
-                              {suggestGroups && suggestGroups.length > 0 ? (
-                                suggestGroups.map((group, gIdx) => (
+                              {[...(suggestGroups || []), ...aiLikeGroups]
+                                .filter((g) => Array.isArray(g?.items) && g.items.length > 0)
+                                .map((group, gIdx) => (
                                   <div
                                     key={gIdx}
                                     className="ingredientSuggestGroup"
@@ -1585,19 +1717,21 @@ const RecipeModal = ({
                                               activeVariantIndex,
                                               cIdx,
                                               "pickIngredient",
-                                              item.id,
+                                              item.value,
                                             )
                                           }
                                         >
-                                          {item.name}
+                                          {item.label}
                                         </button>
                                       ))}
                                     </div>
                                   </div>
-                                ))
-                              ) : (
+                                ))}
+                              {(!suggestGroups.length && !aiLikeGroups.length) && (
                                 <div className="ingredientSuggestEmpty">
-                                  Không tìm thấy
+                                  {suggestLoading
+                                    ? "Đang tải gợi ý..."
+                                    : "Không tìm thấy"}
                                 </div>
                               )}
                             </div>
@@ -1607,7 +1741,8 @@ const RecipeModal = ({
                         {/* 2. SỐ LƯỢNG */}
                         <div>
                           <FormInput
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="0.00"
                             value={comp.qty}
                             onChange={(e) =>
@@ -1615,7 +1750,7 @@ const RecipeModal = ({
                                 activeVariantIndex,
                                 cIdx,
                                 "qty",
-                                e.target.value,
+                                sanitizeDecimalText(e.target.value),
                               )
                             }
                             className="right-align"
@@ -1648,7 +1783,8 @@ const RecipeModal = ({
                         {/* 4. HAO HỤT */}
                         <div>
                           <FormInput
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
                             placeholder="0"
                             value={comp.wastePct}
                             onChange={(e) =>
@@ -1656,7 +1792,7 @@ const RecipeModal = ({
                                 activeVariantIndex,
                                 cIdx,
                                 "wastePct",
-                                e.target.value,
+                                sanitizeDecimalText(e.target.value),
                               )
                             }
                             className="right-align"

@@ -18,13 +18,15 @@ const RecipeCard = ({ recipe, onEdit, onDelete, onViewDetails }) => {
   // Tận dụng _meta được truyền từ RecipeList để tối ưu hiệu năng
   // Nếu không có _meta (trường hợp dùng lẻ), fallback về giá trị mặc định
   const {
+    hasRecipe = false,
+    hasMissingCost = false,
     totalIngredients = 0,
     totalVariants = 0,
     minCost = 0,
     hasAnyCost = false,
   } = safeRecipe._meta || {};
 
-  const handleCardClick = (e) => {
+  const handleCardClick = () => {
     // Ngăn chặn click nếu user đang bôi đen văn bản (optional UX)
     if (window.getSelection().toString()) return;
     if (onEdit && safeRecipe.id) onEdit(safeRecipe.id);
@@ -57,6 +59,36 @@ const RecipeCard = ({ recipe, onEdit, onDelete, onViewDetails }) => {
                 safeRecipe.category.slice(1)
               : "Chưa phân loại"}
           </span>
+          <div style={{ marginTop: "6px", display: "flex", gap: "6px" }}>
+            {!hasRecipe && (
+              <span
+                style={{
+                  fontSize: "11px",
+                  padding: "2px 8px",
+                  borderRadius: "999px",
+                  background: "#eef2ff",
+                  color: "#4338ca",
+                  fontWeight: 700,
+                }}
+              >
+                Chưa có recipe
+              </span>
+            )}
+            {hasMissingCost && (
+              <span
+                style={{
+                  fontSize: "11px",
+                  padding: "2px 8px",
+                  borderRadius: "999px",
+                  background: "#fff7ed",
+                  color: "#c2410c",
+                  fontWeight: 700,
+                }}
+              >
+                Thiếu cost
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

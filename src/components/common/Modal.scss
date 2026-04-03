@@ -70,6 +70,7 @@ $modal-radius: 12px;
   display: flex;
   flex-direction: column;
   max-height: calc(100vh - 40px); // Tránh bị tràn màn hình
+  min-height: 0; // Cho phép các flex-child bên trong (modal-body) co lại để scroll
   opacity: 0;
   transform: translateY(20px) scale(0.95);
   transition: all $modal-duration cubic-bezier(0.16, 1, 0.3, 1); // Easing mượt
@@ -130,6 +131,7 @@ $modal-radius: 12px;
   padding: 24px;
   overflow-y: auto; // Chỉ cuộn phần nội dung nếu dài
   flex: 1;
+  min-height: 0; // Quan trọng để overflow-y hoạt động trong flex layout
   color: #334155;
   line-height: 1.5;
 }

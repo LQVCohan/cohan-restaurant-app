@@ -38,6 +38,14 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
 
   const getVariantTitle = (v, idx) =>
     String(v?.name || v?.key || `Biến thể #${idx + 1}`).trim();
+  const getModeLabel = (v) => {
+    if (v?.mode === "BY_WEIGHT") {
+      const qty = Number(v?.sellQty) || 1;
+      const unit = v?.sellUnit || "kg";
+      return `Bán theo khối lượng (${qty} ${unit})`;
+    }
+    return "Bán theo phần (1 portion)";
+  };
 
   const calcLineCost = (line) => {
     const qty = safeNum(line?.qty ?? line?.quantify ?? line?.quantity);
@@ -135,9 +143,14 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
                       <div className="variantCard__title">
                         {getVariantTitle(variant, idx)}
                       </div>
-                      {variant.isDefault && (
-                        <span className="pill pill--ok">Mặc định</span>
-                      )}
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <span className="pill pill--soft">
+                          {getModeLabel(variant)}
+                        </span>
+                        {variant.isDefault && (
+                          <span className="pill pill--ok">Mặc định</span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="variantCard__content">
