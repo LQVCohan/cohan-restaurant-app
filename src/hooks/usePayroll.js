@@ -27,15 +27,44 @@ export const QUERY_STAFF_PAYROLL_OVERVIEW = gql`
         baseSalary
         workDays
         actualWorkDays
+        totalHours
+        hourlyRate
         allowance
         bonus
+        otherAddition
         overtime
+        overtimeNormal
+        overtimeWeekend
+        overtimeHoliday
+        nightShiftExtra
+        overtimeHours
+        overtimeNormalHours
+        overtimeWeekendHours
+        overtimeHolidayHours
+        nightHours
+        overtimeNightHours
         deduction
+        otherDeduction
         advance
+        insuranceSocial
+        insuranceHealth
+        insuranceUnemployment
+        insuranceTotal
+        insuranceEmployerTotal
+        personalIncomeTax
+        grossIncome
         coefficient
         totalIncome
         totalDeduction
         netSalary
+        policyCode
+        policyEffectiveFrom
+        regionCode
+        minimumWageMonthly
+        minimumWageHourly
+        minimumWageViolation
+        insuranceEligible
+        warningMessages
         status
       }
     }

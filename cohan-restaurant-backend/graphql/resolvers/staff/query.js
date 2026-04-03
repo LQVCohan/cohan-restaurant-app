@@ -8,8 +8,14 @@ import {
   Table,
   Category,
   Promotion,
+  Restaurant,
 } from "../../../models/index.js";
 import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSchedulingAssistant.service.js";
+import {
+  buildPayrollItem,
+  calculatePeriodCalendarDays,
+  normalizeRegionCode,
+} from "../../../src/services/payroll/payrollCalculator.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -28,12 +34,6 @@ function toEndOfDay(date) {
   return d;
 }
 
-function calculatePeriodWorkDays(start, end) {
-  if (!start || !end || end < start) return 0;
-  const dayMs = 24 * 60 * 60 * 1000;
-  return Math.floor((toEndOfDay(end) - toStartOfDay(start)) / dayMs) + 1;
-}
-
 function mapDepartmentLabel(department) {
   const map = {
     management: "Management",
@@ -44,6 +44,17 @@ function mapDepartmentLabel(department) {
     delivery: "Delivery",
   };
   return map[String(department || "").toLowerCase()] || "Other";
+}
+
+function inferRegionCodeFromRestaurant(restaurant) {
+  const manual = String(restaurant?.payrollRegionCode || "").trim().toUpperCase();
+  if (["I", "II", "III", "IV"].includes(manual)) return manual;
+
+  const city = String(restaurant?.address?.city || "").toLowerCase();
+  if (city.includes("hà nội") || city.includes("ha noi") || city.includes("hồ chí minh") || city.includes("ho chi minh")) {
+    return "I";
+  }
+  return "II";
 }
 
 async function resolveStaffDoc(staffId, ctx) {
@@ -196,6 +207,13 @@ export default {
 
     if (!shiftIds.length) {
       const baseSalary = Number(staff.baseSalary || 0);
+      const payroll = buildPayrollItem({
+        staff,
+        period: { start: new Date(), end: new Date(), calendarDays: 0 },
+        aggregate: { workedDateCount: 0, totalHours: 0, totalWage: 0, totalAmount: 0 },
+        regionCode: "I",
+        payrollStatus: "draft",
+      });
       return {
         staffId: String(staff._id),
         baseSalary,
@@ -203,6 +221,21 @@ export default {
         totalWage: 0,
         totalAmount: 0,
         bonusAmount: 0,
+        grossIncome: 0,
+        totalDeduction: 0,
+        netSalary: 0,
+        insuranceSocial: 0,
+        insuranceHealth: 0,
+        insuranceUnemployment: 0,
+        insuranceTotal: 0,
+        overtimeNormal: 0,
+        overtimeWeekend: 0,
+        overtimeHoliday: 0,
+        nightShiftExtra: 0,
+        insuranceEligible: payroll.insuranceEligible,
+        policyCode: payroll.policyCode,
+        policyEffectiveFrom: payroll.policyEffectiveFrom,
+        warningMessages: [],
         coefficient: 0,
         timesheetCount: 0,
       };
@@ -227,6 +260,23 @@ export default {
     const baseSalary = Number(staff.baseSalary || 0);
     const bonusAmount = Math.max(0, totalAmount - totalWage);
     const coefficient = baseSalary > 0 ? totalWage / baseSalary : 0;
+    const payroll = buildPayrollItem({
+      staff,
+      period: {
+        start: new Date(),
+        end: new Date(),
+        calendarDays: 26,
+      },
+      aggregate: {
+        workedDateCount: Number(row.timesheetCount || 0),
+        totalHours: Number(row.totalHours || 0),
+        totalWage,
+        totalAmount,
+      },
+      regionCode: "I",
+      payrollStatus: "draft",
+    });
+
     return {
       staffId: String(staff._id),
       baseSalary,
@@ -234,6 +284,21 @@ export default {
       totalWage,
       totalAmount,
       bonusAmount,
+      grossIncome: payroll.grossIncome,
+      totalDeduction: payroll.totalDeduction,
+      netSalary: payroll.netSalary,
+      insuranceSocial: payroll.insuranceSocial,
+      insuranceHealth: payroll.insuranceHealth,
+      insuranceUnemployment: payroll.insuranceUnemployment,
+      insuranceTotal: payroll.insuranceTotal,
+      overtimeNormal: payroll.overtimeNormal,
+      overtimeWeekend: payroll.overtimeWeekend,
+      overtimeHoliday: payroll.overtimeHoliday,
+      nightShiftExtra: payroll.nightShiftExtra,
+      insuranceEligible: payroll.insuranceEligible,
+      policyCode: payroll.policyCode,
+      policyEffectiveFrom: payroll.policyEffectiveFrom,
+      warningMessages: payroll.minimumWageViolation ? ["Lương cơ bản thấp hơn mức tối thiểu vùng"] : [],
       coefficient: Number(coefficient.toFixed(2)),
       timesheetCount: Number(row.timesheetCount || 0),
     };
@@ -367,7 +432,9 @@ export default {
     }
 
     const now = new Date();
-    const workDays = calculatePeriodWorkDays(start, end);
+    const workDays = calculatePeriodCalendarDays(start, end);
+    const restaurant = rid ? await Restaurant.findById(rid).select({ address: 1, payrollRegionCode: 1 }).lean() : null;
+    const regionCode = normalizeRegionCode(inferRegionCodeFromRestaurant(restaurant));
 
     const items = staffs.map((staff) => {
       const sid = String(staff._id);
@@ -378,27 +445,27 @@ export default {
         totalAmount: 0,
       };
 
-      const baseSalary = Number(staff.baseSalary || 0);
       const actualWorkDays = agg.workedDateKeys.size;
-      const standardHours = Math.max(actualWorkDays * 8, 0);
-      const overtimeHours = Math.max(agg.totalHours - standardHours, 0);
-      const hourlyRate = workDays > 0 ? baseSalary / Math.max(workDays * 8, 1) : 0;
-      const overtime = overtimeHours * hourlyRate;
-      const wageDelta = Number(agg.totalAmount || 0) - Number(agg.totalWage || 0);
-      const bonus = Math.max(0, wageDelta);
-      const allowance = 0;
-      const deduction = Math.max(0, -wageDelta);
-      const advance = 0;
-      const dailyWage = workDays > 0 ? baseSalary / workDays : 0;
-      const totalIncome = dailyWage * actualWorkDays + allowance + bonus + overtime;
-      const totalDeduction = deduction + advance;
-      const netSalary = totalIncome - totalDeduction;
-      const coefficient = workDays > 0 ? actualWorkDays / workDays : 0;
-
       let status = "draft";
-      if (actualWorkDays > 0) {
-        status = end < now ? "paid" : "approved";
-      }
+      if (actualWorkDays > 0) status = end < now ? "paid" : "approved";
+
+      const payroll = buildPayrollItem({
+        staff,
+        period: { start, end, calendarDays: workDays },
+        aggregate: {
+          workedDateCount: actualWorkDays,
+          totalHours: agg.totalHours,
+          totalWage: agg.totalWage,
+          totalAmount: agg.totalAmount,
+        },
+        regionCode,
+        payrollStatus: status,
+      });
+
+      const warningMessages = [];
+      if (payroll.minimumWageViolation) warningMessages.push("Lương cơ bản thấp hơn lương tối thiểu vùng áp dụng.");
+      if (payroll.missingTimesheetData) warningMessages.push("Có ca làm nhưng thiếu dữ liệu timesheet giờ công.");
+      if (!payroll.insuranceEligible) warningMessages.push("Nhân sự chưa thuộc diện đóng BH bắt buộc theo cấu hình chính sách.");
 
       return {
         id: sid,
@@ -407,19 +474,48 @@ export default {
         role: staff.positionTitle || staff.roleName || "Nhân viên",
         department: mapDepartmentLabel(staff.department),
         avatar: staff.avatarUrl || staff.avatar || null,
-        baseSalary,
-        workDays,
-        actualWorkDays,
-        allowance,
-        bonus,
-        overtime,
-        deduction,
-        advance,
-        coefficient: Number(coefficient.toFixed(2)),
-        totalIncome,
-        totalDeduction,
-        netSalary,
-        status,
+        baseSalary: payroll.baseSalary,
+        workDays: payroll.workDays,
+        actualWorkDays: payroll.actualWorkDays,
+        totalHours: payroll.totalHours,
+        hourlyRate: payroll.hourlyRate,
+        allowance: payroll.allowance,
+        bonus: payroll.bonus,
+        otherAddition: payroll.otherAddition,
+        overtime: payroll.overtime,
+        overtimeNormal: payroll.overtimeNormal,
+        overtimeWeekend: payroll.overtimeWeekend,
+        overtimeHoliday: payroll.overtimeHoliday,
+        nightShiftExtra: payroll.nightShiftExtra,
+        overtimeHours: payroll.overtimeHours,
+        overtimeNormalHours: payroll.overtimeNormalHours,
+        overtimeWeekendHours: payroll.overtimeWeekendHours,
+        overtimeHolidayHours: payroll.overtimeHolidayHours,
+        nightHours: payroll.nightHours,
+        overtimeNightHours: payroll.overtimeNightHours,
+        deduction: payroll.deduction,
+        otherDeduction: payroll.otherDeduction,
+        advance: payroll.advance,
+        insuranceSocial: payroll.insuranceSocial,
+        insuranceHealth: payroll.insuranceHealth,
+        insuranceUnemployment: payroll.insuranceUnemployment,
+        insuranceTotal: payroll.insuranceTotal,
+        insuranceEmployerTotal: payroll.insuranceEmployerTotal,
+        personalIncomeTax: payroll.personalIncomeTax,
+        grossIncome: payroll.grossIncome,
+        totalIncome: payroll.totalIncome,
+        totalDeduction: payroll.totalDeduction,
+        netSalary: payroll.netSalary,
+        coefficient: Number(payroll.coefficient.toFixed(2)),
+        status: payroll.payrollStatus,
+        policyCode: payroll.policyCode,
+        policyEffectiveFrom: payroll.policyEffectiveFrom,
+        regionCode: payroll.regionCode,
+        minimumWageMonthly: payroll.minimumWageMonthly,
+        minimumWageHourly: payroll.minimumWageHourly,
+        minimumWageViolation: payroll.minimumWageViolation,
+        insuranceEligible: payroll.insuranceEligible,
+        warningMessages,
       };
     });
 

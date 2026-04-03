@@ -20,8 +20,8 @@ export default function StaffSalarySummary({ data, onBack }) {
 
       <div className="detail-content">
         <div className="salary-hero-card">
-          <div className="hero-label">Tổng thu nhập tạm tính</div>
-          <h2 className="hero-amount">{fmtMoney(data?.totalAmount)}</h2>
+          <div className="hero-label">Thực lĩnh tạm tính</div>
+          <h2 className="hero-amount">{fmtMoney(data?.netSalary)}</h2>
         </div>
 
         <div className="info-card">
@@ -48,9 +48,27 @@ export default function StaffSalarySummary({ data, onBack }) {
           </div>
           <div className="info-row">
             <div className="label-group">
+              <Wallet size={18} /> Tổng thu nhập (gross)
+            </div>
+            <div className="value">{fmtMoney(data?.grossIncome)}</div>
+          </div>
+          <div className="info-row">
+            <div className="label-group">
+              <Wallet size={18} /> Tổng khấu trừ
+            </div>
+            <div className="value">{fmtMoney(data?.totalDeduction)}</div>
+          </div>
+          <div className="info-row">
+            <div className="label-group">
               <CheckCircle size={18} /> Thưởng
             </div>
             <div className="value">{fmtMoney(data?.bonusAmount)}</div>
+          </div>
+          <div className="info-row">
+            <div className="label-group">
+              <CheckCircle size={18} /> BHXH / BHYT / BHTN
+            </div>
+            <div className="value">{fmtMoney(data?.insuranceTotal)}</div>
           </div>
           <div className="info-row">
             <div className="label-group">
@@ -64,6 +82,14 @@ export default function StaffSalarySummary({ data, onBack }) {
             </div>
             <div className="value">{data?.timesheetCount ?? 0} phiếu</div>
           </div>
+          {!!data?.warningMessages?.length && (
+            <div className="info-row">
+              <div className="label-group">
+                <CheckCircle size={18} /> Cảnh báo
+              </div>
+              <div className="value">{data.warningMessages.join("; ")}</div>
+            </div>
+          )}
         </div>
       </div>
     </div>

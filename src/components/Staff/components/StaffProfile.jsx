@@ -65,6 +65,21 @@ const STAFF_SALARY_SUMMARY = gql`
       totalWage
       totalAmount
       bonusAmount
+      grossIncome
+      totalDeduction
+      netSalary
+      insuranceSocial
+      insuranceHealth
+      insuranceUnemployment
+      insuranceTotal
+      overtimeNormal
+      overtimeWeekend
+      overtimeHoliday
+      nightShiftExtra
+      insuranceEligible
+      policyCode
+      policyEffectiveFrom
+      warningMessages
       coefficient
       timesheetCount
     }

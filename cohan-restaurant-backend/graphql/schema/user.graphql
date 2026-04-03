@@ -387,6 +387,21 @@ type StaffSalarySummary {
   totalWage: Float!
   totalAmount: Float!
   bonusAmount: Float!
+  grossIncome: Float!
+  totalDeduction: Float!
+  netSalary: Float!
+  insuranceSocial: Float!
+  insuranceHealth: Float!
+  insuranceUnemployment: Float!
+  insuranceTotal: Float!
+  overtimeNormal: Float!
+  overtimeWeekend: Float!
+  overtimeHoliday: Float!
+  nightShiftExtra: Float!
+  insuranceEligible: Boolean!
+  policyCode: String
+  policyEffectiveFrom: String
+  warningMessages: [String!]!
   coefficient: Float!
   timesheetCount: Int!
 }
@@ -418,15 +433,44 @@ type StaffPayrollItem {
   baseSalary: Float!
   workDays: Int!
   actualWorkDays: Int!
+  totalHours: Float!
+  hourlyRate: Float!
   allowance: Float!
   bonus: Float!
+  otherAddition: Float!
   overtime: Float!
+  overtimeNormal: Float!
+  overtimeWeekend: Float!
+  overtimeHoliday: Float!
+  nightShiftExtra: Float!
+  overtimeHours: Float!
+  overtimeNormalHours: Float!
+  overtimeWeekendHours: Float!
+  overtimeHolidayHours: Float!
+  nightHours: Float!
+  overtimeNightHours: Float!
   deduction: Float!
+  otherDeduction: Float!
   advance: Float!
+  insuranceSocial: Float!
+  insuranceHealth: Float!
+  insuranceUnemployment: Float!
+  insuranceTotal: Float!
+  insuranceEmployerTotal: Float!
+  personalIncomeTax: Float!
+  grossIncome: Float!
   coefficient: Float!
   totalIncome: Float!
   totalDeduction: Float!
   netSalary: Float!
+  policyCode: String
+  policyEffectiveFrom: String
+  regionCode: String
+  minimumWageMonthly: Float!
+  minimumWageHourly: Float!
+  minimumWageViolation: Boolean!
+  insuranceEligible: Boolean!
+  warningMessages: [String!]!
   status: String!
 }
 
