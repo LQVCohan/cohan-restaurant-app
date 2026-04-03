@@ -126,8 +126,13 @@ const PayrollManagement = () => {
       "Lương cơ bản",
       "Hệ số",
       "Tổng thu nhập",
+      "BHXH",
+      "BHYT",
+      "BHTN",
       "Tổng khấu trừ",
       "Thực lĩnh",
+      "Mã policy",
+      "Vùng lương",
       "Trạng thái",
     ].join(",");
     const rows = filteredData.map((item) =>
@@ -139,8 +144,13 @@ const PayrollManagement = () => {
         Number(item.baseSalary || 0),
         Number(item.coefficient || 0),
         Number(item.totalIncome || 0),
+        Number(item.insuranceSocial || 0),
+        Number(item.insuranceHealth || 0),
+        Number(item.insuranceUnemployment || 0),
         Number(item.totalDeduction || 0),
         Number(item.netSalary || 0),
+        item.policyCode || "",
+        item.regionCode || "",
         item.status || "",
       ].join(","),
     );
@@ -317,6 +327,9 @@ const PayrollManagement = () => {
                 <th style={{ width: "130px" }} className="text-right">
                   Khấu Trừ (-)
                 </th>
+                <th style={{ width: "120px" }} className="text-right">
+                  BH bắt buộc
+                </th>
                 <th style={{ width: "150px" }} className="text-right">
                   Thực Lĩnh
                 </th>
@@ -329,7 +342,7 @@ const PayrollManagement = () => {
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={9} className="table-empty">
+                  <td colSpan={10} className="table-empty">
                     Đang tải dữ liệu bảng lương...
                   </td>
                 </tr>
@@ -337,7 +350,7 @@ const PayrollManagement = () => {
 
               {!loading && filteredData.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="table-empty">
+                  <td colSpan={10} className="table-empty">
                     Không có dữ liệu phù hợp.
                   </td>
                 </tr>
@@ -398,6 +411,9 @@ const PayrollManagement = () => {
 
                       <td className="text-right text-success">+{formatCurrency(totalIncome)}</td>
                       <td className="text-right text-danger">-{formatCurrency(totalDeduct)}</td>
+                      <td className="text-right">
+                        {formatCurrency(item.insuranceTotal)}
+                      </td>
 
                       <td className="text-right net-cell">
                         <strong>{formatCurrency(net)}</strong>
@@ -464,6 +480,7 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
               </p>
               <p>{data.department}</p>
               <p>Hệ số lương: {Number(data.coefficient || 0).toFixed(2)}</p>
+              <p>Policy: {data.policyCode || "N/A"} • Vùng: {data.regionCode || "N/A"}</p>
             </div>
             <div className="right">
               <div className="net-total-box">
@@ -498,6 +515,14 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
                 <span>Làm thêm giờ (OT)</span>
                 <span>{formatCurrency(data.overtime)}</span>
               </div>
+              <div className="row">
+                <span>OT ngày thường</span>
+                <span>{formatCurrency(data.overtimeNormal)}</span>
+              </div>
+              <div className="row">
+                <span>OT ngày nghỉ/ lễ</span>
+                <span>{formatCurrency(Number(data.overtimeWeekend || 0) + Number(data.overtimeHoliday || 0))}</span>
+              </div>
               <div className="row total text-success">
                 <strong>Tổng thu nhập</strong>
                 <strong>{formatCurrency(data.totalIncome)}</strong>
@@ -507,8 +532,20 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
             <div className="section">
               <h5 className="section-title deduction">Các Khoản Khấu Trừ</h5>
               <div className="row">
-                <span>BHXH, BHYT, Thuế TNCN</span>
-                <span>{formatCurrency(data.deduction)}</span>
+                <span>BHXH</span>
+                <span>{formatCurrency(data.insuranceSocial)}</span>
+              </div>
+              <div className="row">
+                <span>BHYT</span>
+                <span>{formatCurrency(data.insuranceHealth)}</span>
+              </div>
+              <div className="row">
+                <span>BHTN</span>
+                <span>{formatCurrency(data.insuranceUnemployment)}</span>
+              </div>
+              <div className="row">
+                <span>Khấu trừ khác</span>
+                <span>{formatCurrency(data.otherDeduction)}</span>
               </div>
               <div className="row">
                 <span>Tạm ứng lương</span>
@@ -528,6 +565,11 @@ const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
             Công thức: <strong>Thực lĩnh = Tổng thu nhập - Tổng khấu trừ</strong> (hệ số công kỳ này:{" "}
             <strong>{Number(data.coefficient || 0).toFixed(2)}</strong>).
           </div>
+          {!!data.warningMessages?.length && (
+            <div className="formula-note">
+              ⚠️ Cảnh báo: {data.warningMessages.join(" | ")}
+            </div>
+          )}
         </div>
 
         <div className="modal-footer">
