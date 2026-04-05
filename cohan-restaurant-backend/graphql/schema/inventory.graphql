@@ -72,6 +72,18 @@ type Ingredient {
   updatedAt: DateTime
 }
 
+type IngredientCategory {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  slug: String!
+  source: String
+  usageCount: Int
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
 input CreateIngredientInput {
   restaurantId: ID!
   name: String!
@@ -97,6 +109,17 @@ input UpdateIngredientInput {
   photos: [String!]
   minStock: Float
   notes: String
+  isActive: Boolean
+}
+
+input CreateIngredientCategoryInput {
+  restaurantId: ID!
+  name: String!
+}
+
+input UpdateIngredientCategoryInput {
+  id: ID!
+  name: String
   isActive: Boolean
 }
 
@@ -346,6 +369,12 @@ extend type Query {
     limit: Int = 5
   ): IngredientPriceSuggestionsPayload!
   ingredient(id: ID!): Ingredient
+  ingredientCategories(
+    restaurantId: ID!
+    search: String
+    includeInactive: Boolean = false
+    limit: Int = 200
+  ): [IngredientCategory!]!
 
   warehouses(restaurantId: ID!): [Warehouse!]!
 
@@ -405,6 +434,10 @@ extend type Mutation {
   createIngredient(input: CreateIngredientInput!): Ingredient!
   updateIngredient(input: UpdateIngredientInput!): Ingredient!
   deleteIngredient(id: ID!): Boolean!
+  createIngredientCategory(input: CreateIngredientCategoryInput!): IngredientCategory!
+  updateIngredientCategory(input: UpdateIngredientCategoryInput!): IngredientCategory!
+  deleteIngredientCategory(id: ID!): Boolean!
+  syncIngredientCategoriesFromIngredients(restaurantId: ID!): [IngredientCategory!]!
 
   createWarehouse(input: CreateWarehouseInput!): Warehouse!
   updateWarehouse(input: UpdateWarehouseInput!): Warehouse!

@@ -71,6 +71,8 @@ const restaurantSchema = BaseSchemaModel({
   status: { type: String, enum: ["active", "inactive"], default: "active" },
   reservationSettings: { type: reservationSettingsSchema, default: () => ({}) },
   paymentSettings: { type: paymentSettingsSchema, default: () => ({}) },
+  defaultCurrency: { type: String, enum: ["VND", "USD"], default: "VND" },
+  manualUsdToVndRate: { type: Number, default: 26000, min: 1 },
 
   managerId: {
     type: mongoose.Schema.Types.ObjectId,

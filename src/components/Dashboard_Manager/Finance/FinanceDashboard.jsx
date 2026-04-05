@@ -8,6 +8,7 @@ import {
   SupplierDebts,
 } from "./FinanceComponents";
 import { useFinance } from "@/hooks/useFinance";
+import { useRestaurantCurrency } from "@/hooks/useRestaurantCurrency";
 
 const FinanceDashboard = () => {
   const {
@@ -23,7 +24,16 @@ const FinanceDashboard = () => {
     loading,
     error,
     refetch,
+    restaurantId,
+    setRestaurantId,
+    restaurants,
   } = useFinance();
+  const {
+    activeCurrency,
+    setActiveCurrency,
+    manualUsdToVndRate,
+    persistSettings,
+  } = useRestaurantCurrency(restaurantId);
 
   const totalCost =
     costBreakdown.cogs +
@@ -42,6 +52,42 @@ const FinanceDashboard = () => {
           <p>Theo dõi doanh thu, chi phí, lợi nhuận, công nợ và đối soát theo kỳ</p>
         </div>
         <div className="header-actions">
+          <select
+            className="btn-secondary"
+            value={restaurantId || ""}
+            onChange={(e) => setRestaurantId(e.target.value)}
+          >
+            <option value="">Chọn nhà hàng</option>
+            {(restaurants || []).map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="btn-secondary"
+            value={activeCurrency}
+            onChange={async (e) => {
+              setActiveCurrency(e.target.value);
+              await persistSettings({ defaultCurrency: e.target.value });
+            }}
+          >
+            <option value="VND">VND</option>
+            <option value="USD">USD</option>
+          </select>
+          <input
+            className="btn-secondary"
+            type="number"
+            min="1"
+            defaultValue={manualUsdToVndRate}
+            onBlur={async (e) => {
+              const v = Number(e.target.value);
+              if (v > 0) {
+                await persistSettings({ manualUsdToVndRate: v });
+              }
+            }}
+            title="Tỷ giá USD -> VND"
+          />
           <button className="btn-secondary" onClick={() => setRange("week")}>
             <Calendar size={16} /> <span>Tuần</span>
           </button>

@@ -12,11 +12,17 @@ import {
 import IngredientCard from "./IngredientCard";
 import IngredientModal from "./IngredientModal";
 import QuickStockModal from "./QuickStockModal";
+import IngredientCategoryManagerModal from "./IngredientCategoryManagerModal";
 import { useIngredients } from "@/hooks/useIngredients";
 import { useNotification } from "@/hooks/useNotification";
 import "./IngredientList.scss";
 
-const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
+const IngredientList = ({
+  restaurantId,
+  selectedWarehouseId = undefined,
+  activeCurrency = "VND",
+  usdToVndRate = 26000,
+}) => {
   const { showNotification } = useNotification();
   const {
     loading,
@@ -33,6 +39,11 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
     warehouses,
     effectiveWarehouseId,
     getPriceSuggestions,
+    ingredientCategories,
+    createIngredientCategory,
+    updateIngredientCategory,
+    deleteIngredientCategory,
+    syncIngredientCategories,
   } = useIngredients(restaurantId, selectedWarehouseId, {
     withStock: true,
     withWarehouses: true,
@@ -51,6 +62,7 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
   const [saving, setSaving] = useState(false);
   const [quickStockOpen, setQuickStockOpen] = useState(false);
   const [quickEntries, setQuickEntries] = useState([]);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
 
   // --- Handlers ---
   const handleSearch = (e) =>
@@ -186,12 +198,11 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
               onChange={handleCategoryFilter}
             >
               <option value="">Tất cả danh mục</option>
-              <option value="meat">Thịt cá</option>
-              <option value="vegetable">Rau củ</option>
-              <option value="spice">Gia vị</option>
-              <option value="dairy">Sữa & trứng</option>
-              <option value="grain">Ngũ cốc</option>
-              <option value="others">Khác</option>
+              {(ingredientCategories || []).map((cat) => (
+                <option key={cat.id} value={(cat.name || "").toLowerCase()}>
+                  {cat.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -223,6 +234,13 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
         </div>
 
         <div className="il-toolbar__actions">
+          <button
+            className="il-btn-icon"
+            onClick={() => setCategoryModalOpen(true)}
+            title="Quản lý danh mục"
+          >
+            Danh mục
+          </button>
           <button
             className="il-btn-primary"
             onClick={openCreate}
@@ -264,6 +282,8 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
               <IngredientCard
                 key={ingredient.id}
                 ingredient={ingredient}
+                currency={activeCurrency}
+                usdToVndRate={usdToVndRate}
                 onEdit={() => openEdit(ingredient)}
                 onDelete={handleDelete}
                 onAddStock={handleAddStock}
@@ -300,6 +320,9 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
         canInitStock={canInitStock}
         defaultWarehouseName={defaultWarehouseName}
         saving={saving}
+        currency={activeCurrency}
+        usdToVndRate={usdToVndRate}
+        categoryOptions={ingredientCategories}
       />
 
       <QuickStockModal
@@ -308,6 +331,8 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
         entries={quickEntries}
         ingredients={filteredIngredients}
         onGetPriceSuggestions={getPriceSuggestions}
+        currency={activeCurrency}
+        usdToVndRate={usdToVndRate}
         onSubmit={async (rows) => {
           if (!rows?.length) {
             showNotification("Danh sách nhập kho đang trống.", "warning");
@@ -333,6 +358,28 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
             `Nhập kho thành công ${rows.length} nguyên liệu.`,
             "success"
           );
+        }}
+      />
+
+      <IngredientCategoryManagerModal
+        isOpen={categoryModalOpen}
+        onClose={() => setCategoryModalOpen(false)}
+        categories={ingredientCategories}
+        onCreate={async (name) => {
+          await createIngredientCategory(name);
+          showNotification("Đã thêm danh mục.", "success");
+        }}
+        onRename={async (id, name) => {
+          await updateIngredientCategory(id, { name });
+          showNotification("Đã đổi tên danh mục.", "success");
+        }}
+        onDelete={async (id) => {
+          await deleteIngredientCategory(id);
+          showNotification("Đã xóa danh mục.", "success");
+        }}
+        onSync={async () => {
+          await syncIngredientCategories();
+          showNotification("Đã đồng bộ danh mục từ nguyên liệu.", "success");
         }}
       />
     </div>

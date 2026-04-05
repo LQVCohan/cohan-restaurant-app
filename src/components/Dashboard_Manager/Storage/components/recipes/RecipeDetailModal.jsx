@@ -3,13 +3,21 @@ import React, { useMemo } from "react";
 import Modal from "../../../../common/Modal";
 import Card from "../../../../common/Card";
 import { formatPrice } from "../../../../../utils/formatters";
+import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/currency";
 import "./RecipeDetailModal.scss";
 
 /**
  * RecipeDetailModal
  * Hiển thị chi tiết công thức, các biến thể định lượng và tổng hợp chi phí
  */
-const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
+const RecipeDetailModal = ({
+  isOpen,
+  onClose,
+  recipe,
+  currency = "VND",
+  usdToVndRate = 26000,
+}) => {
+  const activeCurrency = normalizeCurrency(currency, "VND");
   const canRender = Boolean(isOpen && recipe);
 
   const formatQty = (val) =>
@@ -186,11 +194,25 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
                             </div>
                             <div className="ingRow__cell right">
                               {formatPrice(
-                                line.basePrice || line.costPerBaseUnit,
+                                convertCurrencyAmount(
+                                  line.basePrice || line.costPerBaseUnit,
+                                  "VND",
+                                  activeCurrency,
+                                  usdToVndRate,
+                                ),
+                                { currency: activeCurrency },
                               )}
                             </div>
                             <div className="ingRow__cell right strong">
-                              {formatPrice(calcLineCost(line))}
+                              {formatPrice(
+                                convertCurrencyAmount(
+                                  calcLineCost(line),
+                                  "VND",
+                                  activeCurrency,
+                                  usdToVndRate,
+                                ),
+                                { currency: activeCurrency },
+                              )}
                             </div>
                           </div>
                         ))
@@ -228,7 +250,17 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
                   {getVariantTitle(row.v, row.idx)}
                 </div>
                 <div className="costSummary__rowValue">
-                  {row.cost > 0 ? formatPrice(row.cost) : "—"}
+                  {row.cost > 0
+                    ? formatPrice(
+                        convertCurrencyAmount(
+                          row.cost,
+                          "VND",
+                          activeCurrency,
+                          usdToVndRate,
+                        ),
+                        { currency: activeCurrency },
+                      )
+                    : "—"}
                 </div>
               </div>
             ))}
@@ -237,7 +269,17 @@ const RecipeDetailModal = ({ isOpen, onClose, recipe }) => {
             <div className="costSummary__min">
               Chi phí thấp nhất:{" "}
               <strong>
-                {summary.minCost > 0 ? formatPrice(summary.minCost) : "—"}
+                {summary.minCost > 0
+                  ? formatPrice(
+                      convertCurrencyAmount(
+                        summary.minCost,
+                        "VND",
+                        activeCurrency,
+                        usdToVndRate,
+                      ),
+                      { currency: activeCurrency },
+                    )
+                  : "—"}
               </strong>
             </div>
             <div className="costSummary__note">

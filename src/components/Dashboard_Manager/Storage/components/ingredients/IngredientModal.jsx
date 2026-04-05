@@ -8,15 +8,23 @@ import {
   DollarSign,
   AlertTriangle,
   ToggleLeft,
-  Box,
-  FileText,
   Archive,
 } from "lucide-react";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
+import {
+  convertAndRoundCurrencyAmount,
+  convertCurrencyAmount,
+  normalizeCurrency,
+  roundCurrencyValue,
+} from "../../../../../utils/currency";
+import {
+  suggestBaseUnitByIngredientName,
+  suggestUnitOptionsByIngredientName,
+} from "../../../../../utils/unitSuggestions";
 import "./IngredientModal.scss";
 
-const UNITS = [
+const ALL_UNITS = [
   "g",
   "kg",
   "ml",
@@ -51,9 +59,28 @@ const IngredientModal = ({
   canInitStock = false,
   defaultWarehouseName = null,
   saving = false,
+  currency = "VND",
+  usdToVndRate = 26000,
+  categoryOptions = [],
 }) => {
+  const activeCurrency = normalizeCurrency(currency, "VND");
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState({});
+  const [prevCurrency, setPrevCurrency] = useState(activeCurrency);
+  const [unitSuggested, setUnitSuggested] = useState(false);
+  const unitOptions = React.useMemo(() => {
+    const suggested = suggestUnitOptionsByIngredientName(form.name);
+    const selected = form.baseUnit || initial?.baseUnit || "g";
+    const merged = [...new Set([...suggested, selected])];
+    return merged.filter((u) => ALL_UNITS.includes(u));
+  }, [form.name, form.baseUnit, initial?.baseUnit]);
+  const categoryNames = React.useMemo(() => {
+    const fromMaster = (categoryOptions || [])
+      .map((c) => String(c?.name || "").trim())
+      .filter(Boolean);
+    const fallback = ["Meat", "Vegetable", "Spice", "Dry"];
+    return [...new Set([...(fromMaster.length ? fromMaster : fallback)])];
+  }, [categoryOptions]);
 
   useEffect(() => {
     if (initial) {
@@ -62,7 +89,13 @@ const IngredientModal = ({
         sku: initial.sku || "",
         category: initial.category || "",
         baseUnit: initial.baseUnit || "g",
-        costPerBaseUnit: initial.costPerBaseUnit ?? "",
+        costPerBaseUnit: convertAndRoundCurrencyAmount(
+          initial.costPerBaseUnit ?? "",
+          "VND",
+          activeCurrency,
+          usdToVndRate,
+          { usdDigits: 4 },
+        ),
         minStock: initial.minStock ?? "",
         notes: initial.notes || "",
         isActive: initial.isActive ?? true,
@@ -72,7 +105,33 @@ const IngredientModal = ({
       setForm(defaultForm);
     }
     setErrors({});
+    setPrevCurrency(activeCurrency);
+    setUnitSuggested(false);
   }, [initial, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || prevCurrency === activeCurrency) return;
+    setForm((prev) => ({
+      ...prev,
+      costPerBaseUnit: convertAndRoundCurrencyAmount(
+        Number(prev.costPerBaseUnit) || 0,
+        prevCurrency,
+        activeCurrency,
+        usdToVndRate,
+        { usdDigits: 4 },
+      ),
+    }));
+    setPrevCurrency(activeCurrency);
+  }, [activeCurrency, isOpen, prevCurrency, usdToVndRate]);
+
+  useEffect(() => {
+    if (isEditing || unitSuggested) return;
+    const suggestion = suggestBaseUnitByIngredientName(form.name);
+    if (suggestion && suggestion !== form.baseUnit) {
+      setForm((prev) => ({ ...prev, baseUnit: suggestion }));
+      setUnitSuggested(true);
+    }
+  }, [form.name, form.baseUnit, isEditing, unitSuggested]);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
@@ -111,7 +170,13 @@ const IngredientModal = ({
       sku: form.sku?.trim() || null,
       category: form.category?.trim() || "",
       baseUnit: form.baseUnit,
-      costPerBaseUnit: Number(form.costPerBaseUnit) || 0,
+      costPerBaseUnit:
+        convertCurrencyAmount(
+          Number(form.costPerBaseUnit) || 0,
+          activeCurrency,
+          "VND",
+          usdToVndRate,
+        ) || 0,
       minStock: Number(form.minStock) || 0,
       notes: form.notes?.trim() || "",
       isActive: !!form.isActive,
@@ -138,6 +203,7 @@ const IngredientModal = ({
       onClose={saving ? undefined : onClose}
       title={isEditing ? "Cập nhật nguyên liệu" : "Thêm nguyên liệu mới"}
       size="md"
+      closeOnOverlayClick={false}
     >
       <form onSubmit={save} className="il-modal-form">
         {/* --- Block 1: Thông tin cơ bản --- */}
@@ -185,12 +251,10 @@ const IngredientModal = ({
                 placeholder="VD: Meat, Veg..."
                 list="category-suggestions"
               />
-              {/* Gợi ý danh mục có sẵn */}
               <datalist id="category-suggestions">
-                <option value="Meat" />
-                <option value="Vegetable" />
-                <option value="Spice" />
-                <option value="Dry" />
+                {categoryNames.map((cat) => (
+                  <option key={cat} value={cat} />
+                ))}
               </datalist>
             </div>
           </div>
@@ -200,12 +264,12 @@ const IngredientModal = ({
               Đơn vị gốc <span className="req">*</span>
             </label>
             <div className="il-input-wrapper">
-              <Scale size={16} className="il-input-icon" />
-              <select
-                value={form.baseUnit}
-                onChange={(e) => set({ baseUnit: e.target.value })}
-              >
-                {UNITS.map((u) => (
+                <Scale size={16} className="il-input-icon" />
+                <select
+                  value={form.baseUnit}
+                  onChange={(e) => set({ baseUnit: e.target.value })}
+                >
+                {unitOptions.map((u) => (
                   <option key={u} value={u}>
                     {u}
                   </option>
@@ -215,11 +279,14 @@ const IngredientModal = ({
             {errors.baseUnit && (
               <span className="il-error-msg">{errors.baseUnit}</span>
             )}
+            <span className="il-help-text">
+              Gợi ý theo tên nguyên liệu để giảm danh sách đơn vị không phù hợp.
+            </span>
           </div>
 
           <div className="il-form-group">
             <label>
-              Giá vốn / đơn vị <span className="req">*</span>
+              Giá vốn / đơn vị ({activeCurrency}) <span className="req">*</span>
             </label>
             <div className="il-input-wrapper">
               <DollarSign size={16} className="il-input-icon" />
@@ -229,6 +296,15 @@ const IngredientModal = ({
                 step="0.01"
                 value={form.costPerBaseUnit}
                 onChange={(e) => set({ costPerBaseUnit: e.target.value })}
+                onBlur={() =>
+                  set({
+                    costPerBaseUnit: roundCurrencyValue(
+                      Number(form.costPerBaseUnit) || 0,
+                      activeCurrency,
+                      { usdDigits: 4 },
+                    ),
+                  })
+                }
                 placeholder="0"
               />
             </div>
@@ -261,15 +337,23 @@ const IngredientModal = ({
 
           <div className="il-form-group">
             <label>Trạng thái sử dụng</label>
-            <div className="il-input-wrapper">
-              <ToggleLeft size={16} className="il-input-icon" />
-              <select
-                value={form.isActive ? "1" : "0"}
-                onChange={(e) => set({ isActive: e.target.value === "1" })}
+            <div className="il-status-toggle">
+              <button
+                type="button"
+                className={form.isActive ? "active" : ""}
+                onClick={() => set({ isActive: true })}
               >
-                <option value="1">Đang hoạt động</option>
-                <option value="0">Ngừng kinh doanh</option>
-              </select>
+                <ToggleLeft size={14} />
+                Đang hoạt động
+              </button>
+              <button
+                type="button"
+                className={!form.isActive ? "active" : ""}
+                onClick={() => set({ isActive: false })}
+              >
+                <ToggleLeft size={14} />
+                Ngừng kinh doanh
+              </button>
             </div>
           </div>
         </div>

@@ -22,6 +22,7 @@ import InventoryAuditTab from "./components/inventory/InventoryAuditTab";
 // Hooks & Icons
 import { useRecipes } from "@/hooks/useRecipes";
 import { useNotification } from "@/hooks/useNotification";
+import { useRestaurantCurrency } from "@/hooks/useRestaurantCurrency";
 import {
   Carrot,
   Package,
@@ -76,6 +77,14 @@ const StorageManagement = () => {
   }, [currentRestaurant, managerRestaurants]);
 
   const restaurantReady = Boolean(currentRestaurant);
+  const {
+    loading: currencyLoading,
+    activeCurrency,
+    setActiveCurrency,
+    usdToVndRate,
+    manualUsdToVndRate,
+    persistSettings: persistCurrencySettings,
+  } = useRestaurantCurrency(currentRestaurant);
 
   // ==== 2) Ingredients ====
   const {
@@ -228,6 +237,8 @@ const StorageManagement = () => {
         <IngredientList
           restaurantId={currentRestaurant}
           selectedWarehouseId={warehouseFilterId}
+          activeCurrency={activeCurrency}
+          usdToVndRate={usdToVndRate}
           data={ingredients}
           stockItems={stockItems}
           loading={ingLoading || stockLoading}
@@ -258,6 +269,8 @@ const StorageManagement = () => {
       component: (
         <RecipeList
           restaurantId={currentRestaurant}
+          activeCurrency={activeCurrency}
+          usdToVndRate={usdToVndRate}
           recipes={recipes}
           loading={recipesLoading}
           error={recipesError}
@@ -342,6 +355,24 @@ const StorageManagement = () => {
             onWarehouseChange={setSelectedWarehouseId}
             restaurantsLoading={mgrLoading}
             warehousesLoading={whLoading}
+            activeCurrency={activeCurrency}
+            onCurrencyChange={async (currency) => {
+              setActiveCurrency(currency);
+              await persistCurrencySettings({ defaultCurrency: currency });
+            }}
+            manualRate={manualUsdToVndRate}
+            onManualRateSave={async (rate) => {
+              if (!(Number(rate) > 0)) {
+                showNotification("Tỷ giá phải lớn hơn 0.", "warning");
+                return;
+              }
+              await persistCurrencySettings({
+                defaultCurrency: activeCurrency,
+                manualUsdToVndRate: Number(rate),
+              });
+              showNotification("Đã lưu tỷ giá thủ công.", "success");
+            }}
+            currencyLoading={currencyLoading}
           />
         </section>
 
