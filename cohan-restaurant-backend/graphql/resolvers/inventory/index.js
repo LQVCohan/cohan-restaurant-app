@@ -1,5 +1,7 @@
 import ingredientQ from "./ingredient.query.js";
 import ingredientM from "./ingredient.mutation.js";
+import ingredientCategoryQ from "./ingredientCategory.query.js";
+import ingredientCategoryM from "./ingredientCategory.mutation.js";
 import warehouseQ from "./warehouse.query.js";
 import warehouseM from "./warehouse.mutation.js";
 import stockQ from "./stock.query.js";
@@ -13,6 +15,7 @@ import typesResolvers from "./types.js";
 export default {
   Query: {
     ...ingredientQ,
+    ...ingredientCategoryQ,
     ...warehouseQ,
     ...stockQ,
     ...recipeQ,
@@ -20,6 +23,7 @@ export default {
   },
   Mutation: {
     ...ingredientM,
+    ...ingredientCategoryM,
     ...warehouseM,
     ...stockM,
     ...recipeM,

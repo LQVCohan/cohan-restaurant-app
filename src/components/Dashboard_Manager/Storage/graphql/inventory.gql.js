@@ -54,6 +54,75 @@ export const INGREDIENTS_QUERY = gql`
   }
 `;
 
+export const INGREDIENT_CATEGORIES_QUERY = gql`
+  query IngredientCategories(
+    $restaurantId: ID!
+    $search: String
+    $includeInactive: Boolean = false
+    $limit: Int = 200
+  ) {
+    ingredientCategories(
+      restaurantId: $restaurantId
+      search: $search
+      includeInactive: $includeInactive
+      limit: $limit
+    ) {
+      id
+      restaurantId
+      name
+      slug
+      source
+      usageCount
+      isActive
+    }
+  }
+`;
+
+export const CREATE_INGREDIENT_CATEGORY = gql`
+  mutation CreateIngredientCategory($input: CreateIngredientCategoryInput!) {
+    createIngredientCategory(input: $input) {
+      id
+      name
+      slug
+      source
+      usageCount
+      isActive
+    }
+  }
+`;
+
+export const UPDATE_INGREDIENT_CATEGORY = gql`
+  mutation UpdateIngredientCategory($input: UpdateIngredientCategoryInput!) {
+    updateIngredientCategory(input: $input) {
+      id
+      name
+      slug
+      source
+      usageCount
+      isActive
+    }
+  }
+`;
+
+export const DELETE_INGREDIENT_CATEGORY = gql`
+  mutation DeleteIngredientCategory($id: ID!) {
+    deleteIngredientCategory(id: $id)
+  }
+`;
+
+export const SYNC_INGREDIENT_CATEGORIES = gql`
+  mutation SyncIngredientCategories($restaurantId: ID!) {
+    syncIngredientCategoriesFromIngredients(restaurantId: $restaurantId) {
+      id
+      name
+      slug
+      source
+      usageCount
+      isActive
+    }
+  }
+`;
+
 export const CREATE_INGREDIENT = gql`
   mutation CreateIngredient($input: CreateIngredientInput!) {
     createIngredient(input: $input) {

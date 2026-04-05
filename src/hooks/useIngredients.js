@@ -3,6 +3,11 @@ import { useMemo, useState, useCallback } from "react";
 import { useQuery, useMutation, useApolloClient } from "@apollo/client";
 import {
   INGREDIENTS_QUERY,
+  INGREDIENT_CATEGORIES_QUERY,
+  CREATE_INGREDIENT_CATEGORY,
+  UPDATE_INGREDIENT_CATEGORY,
+  DELETE_INGREDIENT_CATEGORY,
+  SYNC_INGREDIENT_CATEGORIES,
   CREATE_INGREDIENT,
   UPDATE_INGREDIENT,
   DELETE_INGREDIENT,
@@ -57,6 +62,15 @@ export function useIngredients(
     fetchPolicy: "cache-and-network",
   });
 
+  const {
+    data: categoryData,
+    refetch: refetchCategories,
+  } = useQuery(INGREDIENT_CATEGORIES_QUERY, {
+    variables: { restaurantId, includeInactive: false, limit: 200 },
+    skip: !restaurantId,
+    fetchPolicy: "cache-and-network",
+  });
+
   // ===== 2) Warehouses (optional) =====
   const {
     data: whData,
@@ -102,6 +116,10 @@ export function useIngredients(
   });
 
   const ingredientsRaw = useMemo(() => ingData?.ingredients || [], [ingData]);
+  const ingredientCategories = useMemo(
+    () => categoryData?.ingredientCategories || [],
+    [categoryData],
+  );
   const stockItems = useMemo(() => stockData?.stockItems || [], [stockData]);
 
   // ===== 5) Aggregate stock per ingredientId =====
@@ -193,6 +211,10 @@ export function useIngredients(
 
   // ===== 9) Mutations =====
   const [createIngredientMu] = useMutation(CREATE_INGREDIENT);
+  const [createIngredientCategoryMu] = useMutation(CREATE_INGREDIENT_CATEGORY);
+  const [updateIngredientCategoryMu] = useMutation(UPDATE_INGREDIENT_CATEGORY);
+  const [deleteIngredientCategoryMu] = useMutation(DELETE_INGREDIENT_CATEGORY);
+  const [syncIngredientCategoriesMu] = useMutation(SYNC_INGREDIENT_CATEGORIES);
   const [updateIngredientMu] = useMutation(UPDATE_INGREDIENT);
   const [deleteIngredientMu] = useMutation(DELETE_INGREDIENT);
   const [adjustStockMu] = useMutation(ADJUST_STOCK);
@@ -201,9 +223,62 @@ export function useIngredients(
   const safeRefetchAll = useCallback(async () => {
     await Promise.allSettled([
       refetchIngredients?.(),
+      refetchCategories?.(),
       withStock ? refetchStock?.() : Promise.resolve(),
     ]);
-  }, [refetchIngredients, refetchStock, withStock]);
+  }, [refetchIngredients, refetchCategories, refetchStock, withStock]);
+
+  const createIngredientCategory = useCallback(
+    async (name) => {
+      if (!restaurantId) throw new Error("restaurantId is required");
+      await createIngredientCategoryMu({
+        variables: { input: { restaurantId, name } },
+      });
+      await refetchCategories?.();
+    },
+    [createIngredientCategoryMu, restaurantId, refetchCategories],
+  );
+
+  const updateIngredientCategory = useCallback(
+    async (id, patch) => {
+      await updateIngredientCategoryMu({
+        variables: { input: { id, ...patch } },
+      });
+      await refetchCategories?.();
+    },
+    [updateIngredientCategoryMu, refetchCategories],
+  );
+
+  const deleteIngredientCategory = useCallback(
+    async (id) => {
+      await deleteIngredientCategoryMu({ variables: { id } });
+      await refetchCategories?.();
+    },
+    [deleteIngredientCategoryMu, refetchCategories],
+  );
+
+  const syncIngredientCategories = useCallback(async () => {
+    if (!restaurantId) throw new Error("restaurantId is required");
+    await syncIngredientCategoriesMu({ variables: { restaurantId } });
+    await Promise.all([refetchCategories?.(), refetchIngredients?.()]);
+  }, [
+    restaurantId,
+    syncIngredientCategoriesMu,
+    refetchCategories,
+    refetchIngredients,
+  ]);
+
+  const ensureCategoryMaster = useCallback(
+    async (categoryName) => {
+      const name = String(categoryName || "").trim();
+      if (!name || !restaurantId) return;
+      await createIngredientCategoryMu({
+        variables: { input: { restaurantId, name } },
+      });
+      await refetchCategories?.();
+    },
+    [createIngredientCategoryMu, restaurantId, refetchCategories],
+  );
 
   const assertWarehouseForStock = useCallback(() => {
     // null => all warehouses (không được nhập kho)
@@ -244,6 +319,8 @@ export function useIngredients(
       const created = res?.data?.createIngredient;
       const createdId = created?.id;
 
+      await ensureCategoryMaster(payload.category);
+
       // init stock (nhập tồn ban đầu phải có giá nhập)
       const qty0 = Number(initialStockQty) || 0;
       if (qty0 > 0 && withStock) {
@@ -277,6 +354,7 @@ export function useIngredients(
       restaurantId,
       withStock,
       createIngredientMu,
+      ensureCategoryMaster,
       receiveStockMu,
       assertWarehouseForStock,
       safeRefetchAll,
@@ -305,9 +383,11 @@ export function useIngredients(
         },
       });
 
+      await ensureCategoryMaster(payload.category);
+
       await safeRefetchAll();
     },
-    [updateIngredientMu, safeRefetchAll]
+    [updateIngredientMu, safeRefetchAll, ensureCategoryMaster]
   );
 
   const deleteIngredient = useCallback(
@@ -465,6 +545,7 @@ export function useIngredients(
     warehouses,
     effectiveWarehouseId, // string | null | undefined
     ingredients: ingredientsMapped,
+    ingredientCategories,
     filteredIngredients,
     stockItems,
 
@@ -480,6 +561,10 @@ export function useIngredients(
     receiveStock,
     getPriceSuggestions,
     updateCostPerBaseUnit,
+    createIngredientCategory,
+    updateIngredientCategory,
+    deleteIngredientCategory,
+    syncIngredientCategories,
 
     // helpers
     getStockStatus,

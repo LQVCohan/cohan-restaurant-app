@@ -1,4 +1,4 @@
-import { useContext, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { AuthContext } from "../context/AuthContext";
 
@@ -62,6 +62,12 @@ export const useFinance = () => {
   const [restaurantId, setRestaurantId] = useState(restaurants?.[0]?.id || "");
   const [range, setRange] = useState("month");
   const [typeFilter, setTypeFilter] = useState("all");
+
+  useEffect(() => {
+    if (!restaurantId && restaurants?.length) {
+      setRestaurantId(restaurants[0].id);
+    }
+  }, [restaurants, restaurantId]);
 
   const { data, loading, error, refetch } = useQuery(GET_FINANCE_DASHBOARD, {
     skip: !restaurantId,

@@ -14,7 +14,7 @@ $il-radius: 8px;
   padding: 8px 4px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 
   /* --- Grid System --- */
   .il-grid-2,
@@ -70,6 +70,7 @@ $il-radius: 8px;
       select,
       textarea {
         width: 100%;
+        min-height: 44px;
         padding: 10px 12px;
         padding-left: 38px; /* Chừa chỗ cho icon */
         font-size: 0.95rem;
@@ -109,11 +110,13 @@ $il-radius: 8px;
     /* Textarea không có icon wrapper */
     textarea.il-textarea {
       padding: 12px;
-      min-height: 80px;
+      min-height: 96px;
       resize: vertical;
       border: 1px solid $il-border-color;
       border-radius: $il-radius;
       font-family: inherit;
+      width: 100%;
+      box-sizing: border-box;
 
       &:focus {
         border-color: $il-primary;
@@ -129,6 +132,44 @@ $il-radius: 8px;
       display: flex;
       align-items: center;
       gap: 4px;
+    }
+
+    .il-help-text {
+      font-size: 0.78rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .il-status-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+
+      button {
+        min-height: 44px;
+        border: 1px solid $il-border-color;
+        border-radius: $il-radius;
+        background: #fff;
+        color: $il-text-main;
+        font-weight: 600;
+        font-size: 0.92rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          border-color: rgba($il-primary, 0.65);
+        }
+
+        &.active {
+          border-color: $il-primary;
+          background: #fdf8f3;
+          box-shadow: 0 0 0 3px rgba($il-primary, 0.1);
+        }
+      }
     }
   }
 
@@ -149,7 +190,7 @@ $il-radius: 8px;
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    margin-top: 10px;
+    margin-top: 6px;
     padding-top: 20px;
     border-top: 1px solid $il-border-color;
 
