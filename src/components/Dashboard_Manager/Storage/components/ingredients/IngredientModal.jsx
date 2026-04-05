@@ -74,6 +74,13 @@ const IngredientModal = ({
     const merged = [...new Set([...suggested, selected])];
     return merged.filter((u) => ALL_UNITS.includes(u));
   }, [form.name, form.baseUnit, initial?.baseUnit]);
+  const categoryNames = React.useMemo(() => {
+    const fromMaster = (categoryOptions || [])
+      .map((c) => String(c?.name || "").trim())
+      .filter(Boolean);
+    const fallback = ["Meat", "Vegetable", "Spice", "Dry"];
+    return [...new Set([...(fromMaster.length ? fromMaster : fallback)])];
+  }, [categoryOptions]);
 
   useEffect(() => {
     if (initial) {
