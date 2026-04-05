@@ -8,17 +8,18 @@ import {
   DollarSign,
   AlertTriangle,
   ToggleLeft,
-  Box,
-  FileText,
   Archive,
 } from "lucide-react";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
 import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/currency";
-import { suggestBaseUnitByIngredientName } from "../../../../../utils/unitSuggestions";
+import {
+  suggestBaseUnitByIngredientName,
+  suggestUnitOptionsByIngredientName,
+} from "../../../../../utils/unitSuggestions";
 import "./IngredientModal.scss";
 
-const UNITS = [
+const ALL_UNITS = [
   "g",
   "kg",
   "ml",
@@ -61,6 +62,12 @@ const IngredientModal = ({
   const [errors, setErrors] = useState({});
   const [prevCurrency, setPrevCurrency] = useState(activeCurrency);
   const [unitSuggested, setUnitSuggested] = useState(false);
+  const unitOptions = React.useMemo(() => {
+    const suggested = suggestUnitOptionsByIngredientName(form.name);
+    const selected = form.baseUnit || initial?.baseUnit || "g";
+    const merged = [...new Set([...suggested, selected])];
+    return merged.filter((u) => ALL_UNITS.includes(u));
+  }, [form.name, form.baseUnit, initial?.baseUnit]);
 
   useEffect(() => {
     if (initial) {
@@ -238,12 +245,12 @@ const IngredientModal = ({
               Đơn vị gốc <span className="req">*</span>
             </label>
             <div className="il-input-wrapper">
-              <Scale size={16} className="il-input-icon" />
-              <select
-                value={form.baseUnit}
-                onChange={(e) => set({ baseUnit: e.target.value })}
-              >
-                {UNITS.map((u) => (
+                <Scale size={16} className="il-input-icon" />
+                <select
+                  value={form.baseUnit}
+                  onChange={(e) => set({ baseUnit: e.target.value })}
+                >
+                {unitOptions.map((u) => (
                   <option key={u} value={u}>
                     {u}
                   </option>
@@ -253,6 +260,9 @@ const IngredientModal = ({
             {errors.baseUnit && (
               <span className="il-error-msg">{errors.baseUnit}</span>
             )}
+            <span className="il-help-text">
+              Gợi ý theo tên nguyên liệu để giảm danh sách đơn vị không phù hợp.
+            </span>
           </div>
 
           <div className="il-form-group">

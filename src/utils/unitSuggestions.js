@@ -5,6 +5,14 @@ const UNIT_SUGGESTIONS = [
   { keywords: ["beer", "bia", "cola", "soft drink"], baseUnit: "can" },
 ];
 
+const UNIT_GROUPS = {
+  weight: ["g", "kg"],
+  volume: ["ml", "l"],
+  count: ["piece", "unit"],
+  package: ["pack", "bottle", "can"],
+  spoon: ["tbsp", "tsp"],
+};
+
 const normalize = (text) =>
   String(text || "")
     .trim()
@@ -22,4 +30,28 @@ export function suggestBaseUnitByIngredientName(name) {
     }
   }
   return null;
+}
+
+export function suggestUnitOptionsByIngredientName(name) {
+  const base = suggestBaseUnitByIngredientName(name);
+
+  if (base === "g" || base === "kg") {
+    return [...UNIT_GROUPS.weight, ...UNIT_GROUPS.package];
+  }
+  if (base === "ml" || base === "l") {
+    return [...UNIT_GROUPS.volume, ...UNIT_GROUPS.package, ...UNIT_GROUPS.spoon];
+  }
+  if (base === "piece" || base === "unit") {
+    return [...UNIT_GROUPS.count, ...UNIT_GROUPS.package];
+  }
+  if (base === "can" || base === "bottle" || base === "pack") {
+    return [...UNIT_GROUPS.package, ...UNIT_GROUPS.count];
+  }
+
+  return [
+    ...UNIT_GROUPS.weight,
+    ...UNIT_GROUPS.volume,
+    ...UNIT_GROUPS.count,
+    ...UNIT_GROUPS.package,
+  ];
 }
