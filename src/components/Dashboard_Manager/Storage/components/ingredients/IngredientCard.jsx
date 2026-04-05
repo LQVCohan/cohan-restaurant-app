@@ -1,5 +1,5 @@
 // src/components/Dashboard_Manager/Storage/components/ingredients/IngredientCard.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Pencil,
   PackagePlus,
@@ -12,6 +12,7 @@ import {
 
 import Modal from "../../../../common/Modal";
 import { formatPrice } from "../../../../../utils/formatters";
+import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/currency";
 import "./IngredientCard.scss";
 
 const IngredientCard = ({
@@ -23,6 +24,8 @@ const IngredientCard = ({
   onShowUsage,
   getStockStatus,
   onUpdateCostPerBaseUnit,
+  currency = "VND",
+  usdToVndRate = 26000,
 }) => {
   const baseUnit = ingredient.baseUnit || ingredient.unit || "";
   const statusObj = getStockStatus ? getStockStatus(ingredient) : null;
@@ -39,24 +42,52 @@ const IngredientCard = ({
 
   // --- Price Modal State ---
   const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
-  const [priceInput, setPriceInput] = useState(
-    ingredient?.costPerBaseUnit ?? ""
-  );
+  const activeCurrency = normalizeCurrency(currency, "VND");
+  const [priceInput, setPriceInput] = useState("");
 
   const openPriceModal = (e) => {
     e?.stopPropagation();
-    setPriceInput(ingredient?.costPerBaseUnit ?? "");
+    setPriceInput(
+      String(
+        convertCurrencyAmount(
+          ingredient?.costPerBaseUnit ?? 0,
+          "VND",
+          activeCurrency,
+          usdToVndRate,
+        ),
+      ),
+    );
     setIsPriceModalOpen(true);
   };
+
+  useEffect(() => {
+    if (!isPriceModalOpen) return;
+    setPriceInput(
+      String(
+        convertCurrencyAmount(
+          ingredient?.costPerBaseUnit ?? 0,
+          "VND",
+          activeCurrency,
+          usdToVndRate,
+        ),
+      ),
+    );
+  }, [activeCurrency, ingredient?.costPerBaseUnit, isPriceModalOpen, usdToVndRate]);
 
   const handleSavePrice = async () => {
     const numericPrice = Number(priceInput);
     if (!Number.isFinite(numericPrice) || numericPrice < 0) return;
+    const vndPrice = convertCurrencyAmount(
+      numericPrice,
+      activeCurrency,
+      "VND",
+      usdToVndRate,
+    );
 
     if (onUpdateCostPerBaseUnit) {
-      await onUpdateCostPerBaseUnit(ingredient.id, numericPrice);
+      await onUpdateCostPerBaseUnit(ingredient.id, vndPrice);
     } else if (onEdit) {
-      onEdit({ ...ingredient, costPerBaseUnit: numericPrice });
+      onEdit({ ...ingredient, costPerBaseUnit: vndPrice });
     }
     setIsPriceModalOpen(false);
   };
@@ -113,7 +144,15 @@ const IngredientCard = ({
               </div>
               <div className="il-stat-value-group">
                 <span className="il-stat-value il-text-price">
-                  {formatPrice(ingredient.costPerBaseUnit)}
+                  {formatPrice(
+                    convertCurrencyAmount(
+                      ingredient.costPerBaseUnit,
+                      "VND",
+                      activeCurrency,
+                      usdToVndRate,
+                    ),
+                    { currency: activeCurrency },
+                  )}
                 </span>
                 <span className="il-stat-unit">/{baseUnit}</span>
               </div>
@@ -188,7 +227,9 @@ const IngredientCard = ({
       >
         <div className="il-modal-content">
           <div className="il-form-group">
-            <label className="il-label">Giá nhập mới (VND) / {baseUnit}</label>
+            <label className="il-label">
+              Giá nhập mới ({activeCurrency}) / {baseUnit}
+            </label>
             <div className="il-input-wrapper">
               <DollarSign size={16} className="il-input-icon" />
               <input

@@ -4,6 +4,8 @@ import s from "./PaymentModal.module.scss";
 import { formatPrice } from "@/utils/formatters";
 import useOrderManagement from "@/hooks/useOrderManagement";
 import { usePos } from "@/context/PosContext";
+import { useRestaurantCurrency } from "@/hooks/useRestaurantCurrency";
+import { convertCurrencyAmount } from "@/utils/currency";
 
 const QRCodePlaceholder = ({ value }) => (
   <div className={s.qrImage}>
@@ -43,44 +45,54 @@ function PaymentModal({
   order,
   table,
   onClose,
-  onConfirm, // optional (compat)
-  onComplete, // sẽ dùng để dọn bàn ở RightPanel
+  onConfirm,
+  onComplete,
   totalAmount,
 }) {
-  const [method, setMethod] = useState("cash"); // 'cash' | 'card' | 'transfer'
+  const [method, setMethod] = useState("cash");
   const [paidAmount, setPaidAmount] = useState(0);
   const [isConfirming, setIsConfirming] = useState(false);
 
   const pos = usePos?.() || null;
-  const { validatePayment, confirmPayment, payLoading } =
-    useOrderManagement(pos);
+  const restaurantId =
+    table?.restaurantId ||
+    table?.restaurant_id ||
+    pos?.currentTable?.restaurantId ||
+    null;
+
+  const { activeCurrency, setActiveCurrency, usdToVndRate } =
+    useRestaurantCurrency(restaurantId);
+  const { validatePayment, confirmPayment, payLoading } = useOrderManagement(pos);
 
   const busy = Boolean(payLoading);
-  const changeAmount = Math.max(
-    0,
-    (Number(paidAmount) || 0) - (Number(totalAmount) || 0)
+  const convertedTotalAmount = convertCurrencyAmount(
+    Number(totalAmount || 0),
+    "VND",
+    activeCurrency,
+    usdToVndRate,
   );
 
+  const changeAmount = Math.max(0, (Number(paidAmount) || 0) - convertedTotalAmount);
+
   useEffect(() => {
-    if (method === "card" || method === "transfer")
-      setPaidAmount(totalAmount || 0);
+    if (method === "card" || method === "transfer") setPaidAmount(convertedTotalAmount || 0);
     else setPaidAmount(0);
     setIsConfirming(false);
-  }, [method, isOpen, totalAmount]);
+  }, [method, isOpen, convertedTotalAmount]);
 
-  const handleSuggestion = (v) =>
-    setPaidAmount(v === "exact" ? totalAmount || 0 : v);
+  const handleSuggestion = (v) => setPaidAmount(v === "exact" ? convertedTotalAmount || 0 : v);
   const handleShowConfirm = () => !busy && setIsConfirming(true);
 
   const mapNote = () =>
     method === "cash"
-      ? `Khách đưa ${formatPrice(paidAmount)} - Thối lại ${formatPrice(
-          changeAmount
+      ? `Khách đưa ${formatPrice(paidAmount, { currency: activeCurrency })} - Thối lại ${formatPrice(
+          changeAmount,
+          { currency: activeCurrency },
         )}`
       : `Thanh toán ${method.toUpperCase()}`;
 
   const suggestions = (() => {
-    const total = Number(totalAmount || 0);
+    const total = Number(convertedTotalAmount || 0);
     if (total <= 0) return [50000, 100000, 200000];
     const sgs = new Set();
     sgs.add(Math.ceil(total / 1000) * 1000);
@@ -104,12 +116,6 @@ function PaymentModal({
 
   const executePayment = async () => {
     if (busy) return;
-
-    const restaurantId =
-      table?.restaurantId ||
-      table?.restaurant_id ||
-      pos?.currentTable?.restaurantId ||
-      null;
     if (!restaurantId) {
       alert("Thiếu restaurantId. Vui lòng chọn bàn và lưu đơn trước.");
       return;
@@ -118,17 +124,24 @@ function PaymentModal({
     const check = validatePayment({
       method,
       paidAmount: Number(paidAmount || 0),
-      total: Number(totalAmount || 0),
+      total: Number(convertedTotalAmount || 0),
     });
     if (!check.ok) {
       alert(check.message);
       return;
     }
 
+    const paidAmountVnd = convertCurrencyAmount(
+      Number(paidAmount || 0),
+      activeCurrency,
+      "VND",
+      usdToVndRate,
+    );
+
     const res = await confirmPayment({
       restaurantId,
       method,
-      paidAmount: Number(paidAmount || 0),
+      paidAmount: paidAmountVnd,
       note: mapNote(),
     });
 
@@ -137,13 +150,14 @@ function PaymentModal({
       return;
     }
 
-    onConfirm?.(method, paidAmount); // compat
+    onConfirm?.(method, paidAmount);
     onComplete?.({
       orderId: order?.[0]?.orderId || order?.[0]?.id || null,
       method,
       paidAmount: Number(paidAmount || 0),
-      total: Number(totalAmount || 0),
+      total: Number(convertedTotalAmount || 0),
       change: changeAmount,
+      currency: activeCurrency,
       status: "COMPLETED",
       server: res?.data || null,
     });
@@ -157,7 +171,7 @@ function PaymentModal({
   const isCash = method === "cash";
   const isTransfer = method === "transfer";
   const disableConfirm =
-    busy || (isCash && Number(paidAmount || 0) < Number(totalAmount || 0));
+    busy || (isCash && Number(paidAmount || 0) < Number(convertedTotalAmount || 0));
 
   return (
     <div className={s.backdrop} onClick={onClose}>
@@ -168,9 +182,33 @@ function PaymentModal({
 
         <h3 className={s.title}>🧾 Thanh Toán Hóa Đơn</h3>
         <p className={s.orderInfo}>
-          Bàn: <b>{table?.code || "..."}</b> | Hóa đơn:{" "}
-          <b>{order?.[0]?.orderCode || "..."}</b>
+          Bàn: <b>{table?.code || "..."}</b> | Hóa đơn: <b>{order?.[0]?.orderCode || "..."}</b>
         </p>
+
+        <div className={s.group}>
+          <label className={s.label}>Tiền tệ hóa đơn</label>
+          <div className={s.grid}>
+            {["VND", "USD"].map((cur) => (
+              <button
+                key={cur}
+                className={`${s.btn} ${activeCurrency === cur ? s.active : ""}`}
+                onClick={() => {
+                  const nextPaid = convertCurrencyAmount(
+                    Number(paidAmount || 0),
+                    activeCurrency,
+                    cur,
+                    usdToVndRate,
+                  );
+                  setActiveCurrency(cur);
+                  setPaidAmount(nextPaid);
+                }}
+                disabled={isConfirming || busy}
+              >
+                {cur}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className={s.mainContent}>
           <div className={s.leftPanel}>
@@ -178,24 +216,32 @@ function PaymentModal({
             <div className={s.itemsList}>
               {Array.isArray(order) && order.length > 0 ? (
                 order.map((item, index) => (
-                  <div
-                    key={item._lineId || item.dishId || index}
-                    className={s.itemRow}
-                  >
+                  <div key={item._lineId || item.dishId || index} className={s.itemRow}>
                     <div className={s.itemInfo}>
                       <span className={s.itemName}>
                         {item.quantity} x {item.name}
                       </span>
                       <span className={s.itemPrice}>
                         {formatPrice(
-                          (item.price || 0) + (item.modifiersPrice || 0)
+                          convertCurrencyAmount(
+                            (item.price || 0) + (item.modifiersPrice || 0),
+                            "VND",
+                            activeCurrency,
+                            usdToVndRate,
+                          ),
+                          { currency: activeCurrency },
                         )}
                       </span>
                     </div>
                     <div className={s.itemTotal}>
                       {formatPrice(
-                        ((item.price || 0) + (item.modifiersPrice || 0)) *
-                          (item.quantity || 0)
+                        convertCurrencyAmount(
+                          ((item.price || 0) + (item.modifiersPrice || 0)) * (item.quantity || 0),
+                          "VND",
+                          activeCurrency,
+                          usdToVndRate,
+                        ),
+                        { currency: activeCurrency },
                       )}
                     </div>
                   </div>
@@ -213,7 +259,7 @@ function PaymentModal({
               <div className={`${s.row} ${s.totalRow}`}>
                 <span className={s.label}>Khách cần trả</span>
                 <span className={s.totalAmount}>
-                  {formatPrice(totalAmount || 0)}
+                  {formatPrice(convertedTotalAmount || 0, { currency: activeCurrency })}
                 </span>
               </div>
             </div>
@@ -228,11 +274,7 @@ function PaymentModal({
                     onClick={() => setMethod(m)}
                     disabled={isConfirming || busy}
                   >
-                    {m === "cash"
-                      ? "Tiền mặt"
-                      : m === "card"
-                      ? "Thẻ"
-                      : "Chuyển khoản"}
+                    {m === "cash" ? "Tiền mặt" : m === "card" ? "Thẻ" : "Chuyển khoản"}
                   </button>
                 ))}
               </div>
@@ -248,11 +290,14 @@ function PaymentModal({
                     <span>Số TK:</span> <b>1234567890</b>
                   </div>
                   <div className={s.detailItem}>
-                    <span>Số tiền:</span> <b>{formatPrice(totalAmount || 0)}</b>
+                    <span>Số tiền:</span>{" "}
+                    <b>{formatPrice(convertedTotalAmount || 0, { currency: activeCurrency })}</b>
                   </div>
                 </div>
                 <div className={s.qrCode}>
-                  <QRCodePlaceholder value={formatPrice(totalAmount || 0)} />
+                  <QRCodePlaceholder
+                    value={formatPrice(convertedTotalAmount || 0, { currency: activeCurrency })}
+                  />
                 </div>
               </div>
             )}
@@ -277,14 +322,14 @@ function PaymentModal({
                       onClick={() => handleSuggestion(val)}
                       disabled={isConfirming || busy}
                     >
-                      {formatPrice(val)}
+                      {formatPrice(val, { currency: activeCurrency })}
                     </button>
                   ))}
                 </div>
                 <div className={`${s.row} ${s.changeRow}`}>
                   <span className={s.label}>Tiền thối lại</span>
                   <span className={s.changeAmount}>
-                    {formatPrice(changeAmount)}
+                    {formatPrice(changeAmount, { currency: activeCurrency })}
                   </span>
                 </div>
               </div>
@@ -298,28 +343,16 @@ function PaymentModal({
               <button className={s.secondary} onClick={onClose} disabled={busy}>
                 Quay lại
               </button>
-              <button
-                className={s.success}
-                onClick={handleShowConfirm}
-                disabled={disableConfirm}
-              >
+              <button className={s.success} onClick={handleShowConfirm} disabled={disableConfirm}>
                 Hoàn tất thanh toán
               </button>
             </>
           ) : (
             <>
-              <button
-                className={s.secondary}
-                onClick={() => setIsConfirming(false)}
-                disabled={busy}
-              >
+              <button className={s.secondary} onClick={() => setIsConfirming(false)} disabled={busy}>
                 Quay lại
               </button>
-              <button
-                className={`${s.success} ${busy ? s.loading : ""}`}
-                onClick={executePayment}
-                disabled={busy}
-              >
+              <button className={`${s.success} ${busy ? s.loading : ""}`} onClick={executePayment} disabled={busy}>
                 {busy ? <span className={s.spinner}></span> : "XÁC NHẬN"}
               </button>
             </>

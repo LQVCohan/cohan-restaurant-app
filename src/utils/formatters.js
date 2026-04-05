@@ -1,8 +1,8 @@
-export const formatPrice = (price) => {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(price);
+import { formatCurrencyAmount } from "./currency";
+
+export const formatPrice = (price, options = {}) => {
+  const currency = options?.currency || "VND";
+  return formatCurrencyAmount(price, currency, options);
 };
 export const formatQuantity = (quantity, unit) => {
   return unit === "kg" ? `${quantity}${unit}` : `${quantity} ${unit}`;
@@ -119,12 +119,8 @@ export const getCategoryName = (category) => {
   };
   return categories[category] || category;
 };
-export const formatCurrency = (amount) => {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(amount);
-};
+export const formatCurrency = (amount, currency = "VND", options = {}) =>
+  formatCurrencyAmount(amount, currency, options);
 
 export const formatDateTime = (date, time) => {
   return `${formatDate(date)} lúc ${time}`;
