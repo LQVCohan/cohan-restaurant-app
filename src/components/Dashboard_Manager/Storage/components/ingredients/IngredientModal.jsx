@@ -12,7 +12,12 @@ import {
 } from "lucide-react";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
-import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/currency";
+import {
+  convertAndRoundCurrencyAmount,
+  convertCurrencyAmount,
+  normalizeCurrency,
+  roundCurrencyValue,
+} from "../../../../../utils/currency";
 import {
   suggestBaseUnitByIngredientName,
   suggestUnitOptionsByIngredientName,
@@ -76,7 +81,13 @@ const IngredientModal = ({
         sku: initial.sku || "",
         category: initial.category || "",
         baseUnit: initial.baseUnit || "g",
-        costPerBaseUnit: convertCurrencyAmount(initial.costPerBaseUnit ?? "", "VND", activeCurrency, usdToVndRate),
+        costPerBaseUnit: convertAndRoundCurrencyAmount(
+          initial.costPerBaseUnit ?? "",
+          "VND",
+          activeCurrency,
+          usdToVndRate,
+          { usdDigits: 4 },
+        ),
         minStock: initial.minStock ?? "",
         notes: initial.notes || "",
         isActive: initial.isActive ?? true,
@@ -94,11 +105,12 @@ const IngredientModal = ({
     if (!isOpen || prevCurrency === activeCurrency) return;
     setForm((prev) => ({
       ...prev,
-      costPerBaseUnit: convertCurrencyAmount(
+      costPerBaseUnit: convertAndRoundCurrencyAmount(
         Number(prev.costPerBaseUnit) || 0,
         prevCurrency,
         activeCurrency,
         usdToVndRate,
+        { usdDigits: 4 },
       ),
     }));
     setPrevCurrency(activeCurrency);
@@ -183,6 +195,7 @@ const IngredientModal = ({
       onClose={saving ? undefined : onClose}
       title={isEditing ? "Cập nhật nguyên liệu" : "Thêm nguyên liệu mới"}
       size="md"
+      closeOnOverlayClick={false}
     >
       <form onSubmit={save} className="il-modal-form">
         {/* --- Block 1: Thông tin cơ bản --- */}
@@ -277,6 +290,15 @@ const IngredientModal = ({
                 step="0.01"
                 value={form.costPerBaseUnit}
                 onChange={(e) => set({ costPerBaseUnit: e.target.value })}
+                onBlur={() =>
+                  set({
+                    costPerBaseUnit: roundCurrencyValue(
+                      Number(form.costPerBaseUnit) || 0,
+                      activeCurrency,
+                      { usdDigits: 4 },
+                    ),
+                  })
+                }
                 placeholder="0"
               />
             </div>

@@ -1,8 +1,29 @@
 const UNIT_SUGGESTIONS = [
-  { keywords: ["rice", "gao", "bột", "bot", "flour", "sugar", "duong", "muoi", "salt"], baseUnit: "g" },
-  { keywords: ["oil", "dau", "nuoc", "sauce", "sot", "milk", "sua"], baseUnit: "ml" },
-  { keywords: ["egg", "trung", "lemon", "chanh", "onion", "hanh"], baseUnit: "piece" },
-  { keywords: ["beer", "bia", "cola", "soft drink"], baseUnit: "can" },
+  {
+    keywords: ["fish", "ca", "salmon", "tuna", "shrimp", "tom", "muc"],
+    baseUnit: "kg",
+    options: ["kg", "g", "piece"],
+  },
+  {
+    keywords: ["rice", "gao", "bột", "bot", "flour", "sugar", "duong", "muoi", "salt", "bun", "pho", "noodle"],
+    baseUnit: "g",
+    options: ["g", "kg", "pack"],
+  },
+  {
+    keywords: ["oil", "dau", "nuoc", "sauce", "sot", "milk", "sua"],
+    baseUnit: "ml",
+    options: ["ml", "l", "tbsp", "tsp", "bottle"],
+  },
+  {
+    keywords: ["egg", "trung", "lemon", "chanh", "onion", "hanh"],
+    baseUnit: "piece",
+    options: ["piece", "unit", "pack"],
+  },
+  {
+    keywords: ["beer", "bia", "cola", "soft drink"],
+    baseUnit: "can",
+    options: ["can", "bottle", "pack"],
+  },
 ];
 
 const UNIT_GROUPS = {
@@ -33,10 +54,17 @@ export function suggestBaseUnitByIngredientName(name) {
 }
 
 export function suggestUnitOptionsByIngredientName(name) {
-  const base = suggestBaseUnitByIngredientName(name);
+  const normalized = normalize(name);
+  const matched = UNIT_SUGGESTIONS.find((item) =>
+    item.keywords.some((kw) => normalized.includes(normalize(kw))),
+  );
+  if (matched?.options?.length) {
+    return matched.options;
+  }
 
+  const base = suggestBaseUnitByIngredientName(name);
   if (base === "g" || base === "kg") {
-    return [...UNIT_GROUPS.weight, ...UNIT_GROUPS.package];
+    return [...UNIT_GROUPS.weight, "piece", "pack"];
   }
   if (base === "ml" || base === "l") {
     return [...UNIT_GROUPS.volume, ...UNIT_GROUPS.package, ...UNIT_GROUPS.spoon];
@@ -50,8 +78,8 @@ export function suggestUnitOptionsByIngredientName(name) {
 
   return [
     ...UNIT_GROUPS.weight,
-    ...UNIT_GROUPS.volume,
     ...UNIT_GROUPS.count,
-    ...UNIT_GROUPS.package,
+    "ml",
+    "l",
   ];
 }

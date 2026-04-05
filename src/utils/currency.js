@@ -31,6 +31,31 @@ export function convertCurrencyAmount(
   return n;
 }
 
+export function roundCurrencyValue(amount, currency, options = {}) {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return 0;
+  const cur = normalizeCurrency(currency);
+  const usdDigits = Number.isInteger(options.usdDigits) ? options.usdDigits : 4;
+  const factor = 10 ** (cur === "USD" ? usdDigits : 0);
+  return Math.round(n * factor) / factor;
+}
+
+export function convertAndRoundCurrencyAmount(
+  amount,
+  fromCurrency,
+  toCurrency,
+  usdToVndRate = FALLBACK_USD_TO_VND,
+  options = {},
+) {
+  const converted = convertCurrencyAmount(
+    amount,
+    fromCurrency,
+    toCurrency,
+    usdToVndRate,
+  );
+  return roundCurrencyValue(converted, toCurrency, options);
+}
+
 export function formatCurrencyAmount(amount, currency = "VND", options = {}) {
   const cur = normalizeCurrency(currency);
   const maximumFractionDigits =
