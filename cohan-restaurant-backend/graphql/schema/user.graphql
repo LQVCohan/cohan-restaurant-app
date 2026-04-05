@@ -66,6 +66,8 @@ enum CustomerType {
 type Restaurant {
   id: ID!
   name: String!
+  defaultCurrency: String
+  manualUsdToVndRate: Float
 }
 
 type Address {

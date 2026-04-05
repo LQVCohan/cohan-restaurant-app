@@ -31,6 +31,8 @@ const RecipeList = ({
   onUpdateRecipe,
   onDeleteRecipe,
   ingredients = [],
+  activeCurrency = "VND",
+  usdToVndRate = 26000,
 }) => {
   // ===== UI state =====
   const [search, setSearch] = useState("");
@@ -300,6 +302,8 @@ const RecipeList = ({
                 <RecipeCard
                   key={r.id}
                   recipe={r}
+                  currency={activeCurrency}
+                  usdToVndRate={usdToVndRate}
                   onEdit={handleEdit}
                   onViewDetails={handleViewDetails}
                   onDelete={handleDelete}
@@ -353,6 +357,8 @@ const RecipeList = ({
         menuItemName={editingRecipe?.name}
         restaurantId={restaurantId}
         ingredients={ingredients}
+        currency={activeCurrency}
+        usdToVndRate={usdToVndRate}
       />
 
       <RecipeDetailModal
@@ -362,6 +368,8 @@ const RecipeList = ({
           setViewingRecipe(null);
         }}
         recipe={viewingRecipe}
+        currency={activeCurrency}
+        usdToVndRate={usdToVndRate}
       />
     </div>
   );

@@ -16,7 +16,12 @@ import { useIngredients } from "@/hooks/useIngredients";
 import { useNotification } from "@/hooks/useNotification";
 import "./IngredientList.scss";
 
-const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
+const IngredientList = ({
+  restaurantId,
+  selectedWarehouseId = undefined,
+  activeCurrency = "VND",
+  usdToVndRate = 26000,
+}) => {
   const { showNotification } = useNotification();
   const {
     loading,
@@ -264,6 +269,8 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
               <IngredientCard
                 key={ingredient.id}
                 ingredient={ingredient}
+                currency={activeCurrency}
+                usdToVndRate={usdToVndRate}
                 onEdit={() => openEdit(ingredient)}
                 onDelete={handleDelete}
                 onAddStock={handleAddStock}
@@ -300,6 +307,8 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
         canInitStock={canInitStock}
         defaultWarehouseName={defaultWarehouseName}
         saving={saving}
+        currency={activeCurrency}
+        usdToVndRate={usdToVndRate}
       />
 
       <QuickStockModal
@@ -308,6 +317,8 @@ const IngredientList = ({ restaurantId, selectedWarehouseId = undefined }) => {
         entries={quickEntries}
         ingredients={filteredIngredients}
         onGetPriceSuggestions={getPriceSuggestions}
+        currency={activeCurrency}
+        usdToVndRate={usdToVndRate}
         onSubmit={async (rows) => {
           if (!rows?.length) {
             showNotification("Danh sách nhập kho đang trống.", "warning");

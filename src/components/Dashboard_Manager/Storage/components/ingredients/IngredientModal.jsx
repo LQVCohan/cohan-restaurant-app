@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
+import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/currency";
+import { suggestBaseUnitByIngredientName } from "../../../../../utils/unitSuggestions";
 import "./IngredientModal.scss";
 
 const UNITS = [
@@ -51,9 +53,14 @@ const IngredientModal = ({
   canInitStock = false,
   defaultWarehouseName = null,
   saving = false,
+  currency = "VND",
+  usdToVndRate = 26000,
 }) => {
+  const activeCurrency = normalizeCurrency(currency, "VND");
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState({});
+  const [prevCurrency, setPrevCurrency] = useState(activeCurrency);
+  const [unitSuggested, setUnitSuggested] = useState(false);
 
   useEffect(() => {
     if (initial) {
@@ -62,7 +69,7 @@ const IngredientModal = ({
         sku: initial.sku || "",
         category: initial.category || "",
         baseUnit: initial.baseUnit || "g",
-        costPerBaseUnit: initial.costPerBaseUnit ?? "",
+        costPerBaseUnit: convertCurrencyAmount(initial.costPerBaseUnit ?? "", "VND", activeCurrency, usdToVndRate),
         minStock: initial.minStock ?? "",
         notes: initial.notes || "",
         isActive: initial.isActive ?? true,
@@ -72,7 +79,32 @@ const IngredientModal = ({
       setForm(defaultForm);
     }
     setErrors({});
+    setPrevCurrency(activeCurrency);
+    setUnitSuggested(false);
   }, [initial, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || prevCurrency === activeCurrency) return;
+    setForm((prev) => ({
+      ...prev,
+      costPerBaseUnit: convertCurrencyAmount(
+        Number(prev.costPerBaseUnit) || 0,
+        prevCurrency,
+        activeCurrency,
+        usdToVndRate,
+      ),
+    }));
+    setPrevCurrency(activeCurrency);
+  }, [activeCurrency, isOpen, prevCurrency, usdToVndRate]);
+
+  useEffect(() => {
+    if (isEditing || unitSuggested) return;
+    const suggestion = suggestBaseUnitByIngredientName(form.name);
+    if (suggestion && suggestion !== form.baseUnit) {
+      setForm((prev) => ({ ...prev, baseUnit: suggestion }));
+      setUnitSuggested(true);
+    }
+  }, [form.name, form.baseUnit, isEditing, unitSuggested]);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
@@ -111,7 +143,13 @@ const IngredientModal = ({
       sku: form.sku?.trim() || null,
       category: form.category?.trim() || "",
       baseUnit: form.baseUnit,
-      costPerBaseUnit: Number(form.costPerBaseUnit) || 0,
+      costPerBaseUnit:
+        convertCurrencyAmount(
+          Number(form.costPerBaseUnit) || 0,
+          activeCurrency,
+          "VND",
+          usdToVndRate,
+        ) || 0,
       minStock: Number(form.minStock) || 0,
       notes: form.notes?.trim() || "",
       isActive: !!form.isActive,
@@ -219,7 +257,7 @@ const IngredientModal = ({
 
           <div className="il-form-group">
             <label>
-              Giá vốn / đơn vị <span className="req">*</span>
+              Giá vốn / đơn vị ({activeCurrency}) <span className="req">*</span>
             </label>
             <div className="il-input-wrapper">
               <DollarSign size={16} className="il-input-icon" />

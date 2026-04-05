@@ -206,6 +206,34 @@ $bg-input: #f8fafc;
   }
 }
 
+.inline-rate {
+  display: flex;
+  gap: 8px;
+
+  input {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid $border-color;
+    background: $bg-input;
+    color: $charcoal;
+    font-size: 0.95rem;
+
+    &:focus {
+      outline: none;
+      border-color: $gold;
+      background: $white;
+      box-shadow: 0 0 0 3px rgba($gold, 0.1);
+    }
+  }
+
+  .sm-btn {
+    height: 42px;
+    padding: 0 12px;
+  }
+}
+
 @keyframes spin {
   from {
     transform: rotate(0deg);
