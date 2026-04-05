@@ -61,6 +61,7 @@ const IngredientModal = ({
   saving = false,
   currency = "VND",
   usdToVndRate = 26000,
+  categoryOptions = [],
 }) => {
   const activeCurrency = normalizeCurrency(currency, "VND");
   const [form, setForm] = useState(defaultForm);
@@ -243,12 +244,10 @@ const IngredientModal = ({
                 placeholder="VD: Meat, Veg..."
                 list="category-suggestions"
               />
-              {/* Gợi ý danh mục có sẵn */}
               <datalist id="category-suggestions">
-                <option value="Meat" />
-                <option value="Vegetable" />
-                <option value="Spice" />
-                <option value="Dry" />
+                {categoryNames.map((cat) => (
+                  <option key={cat} value={cat} />
+                ))}
               </datalist>
             </div>
           </div>
@@ -331,15 +330,23 @@ const IngredientModal = ({
 
           <div className="il-form-group">
             <label>Trạng thái sử dụng</label>
-            <div className="il-input-wrapper">
-              <ToggleLeft size={16} className="il-input-icon" />
-              <select
-                value={form.isActive ? "1" : "0"}
-                onChange={(e) => set({ isActive: e.target.value === "1" })}
+            <div className="il-status-toggle">
+              <button
+                type="button"
+                className={form.isActive ? "active" : ""}
+                onClick={() => set({ isActive: true })}
               >
-                <option value="1">Đang hoạt động</option>
-                <option value="0">Ngừng kinh doanh</option>
-              </select>
+                <ToggleLeft size={14} />
+                Đang hoạt động
+              </button>
+              <button
+                type="button"
+                className={!form.isActive ? "active" : ""}
+                onClick={() => set({ isActive: false })}
+              >
+                <ToggleLeft size={14} />
+                Ngừng kinh doanh
+              </button>
             </div>
           </div>
         </div>
@@ -438,3 +445,10 @@ const IngredientModal = ({
 };
 
 export default IngredientModal;
+  const categoryNames = React.useMemo(() => {
+    const fromMaster = (categoryOptions || [])
+      .map((c) => String(c?.name || "").trim())
+      .filter(Boolean);
+    const fallback = ["Meat", "Vegetable", "Spice", "Dry"];
+    return [...new Set([...(fromMaster.length ? fromMaster : fallback)])];
+  }, [categoryOptions]);

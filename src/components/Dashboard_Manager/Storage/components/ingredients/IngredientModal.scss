@@ -139,6 +139,38 @@ $il-radius: 8px;
       color: #64748b;
       margin-top: 2px;
     }
+
+    .il-status-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+
+      button {
+        min-height: 44px;
+        border: 1px solid $il-border-color;
+        border-radius: $il-radius;
+        background: #fff;
+        color: $il-text-main;
+        font-weight: 600;
+        font-size: 0.92rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          border-color: rgba($il-primary, 0.65);
+        }
+
+        &.active {
+          border-color: $il-primary;
+          background: #fdf8f3;
+          box-shadow: 0 0 0 3px rgba($il-primary, 0.1);
+        }
+      }
+    }
   }
 
   /* --- Initial Stock Section (Highlight) --- */
