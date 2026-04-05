@@ -74,13 +74,17 @@ const IngredientModal = ({
     const merged = [...new Set([...suggested, selected])];
     return merged.filter((u) => ALL_UNITS.includes(u));
   }, [form.name, form.baseUnit, initial?.baseUnit]);
+  const normalizedCategoryOptions = React.useMemo(
+    () => (Array.isArray(categoryOptions) ? categoryOptions : []),
+    [categoryOptions],
+  );
   const categoryNames = React.useMemo(() => {
-    const fromMaster = (categoryOptions || [])
+    const fromMaster = normalizedCategoryOptions
       .map((c) => String(c?.name || "").trim())
       .filter(Boolean);
     const fallback = ["Meat", "Vegetable", "Spice", "Dry"];
     return [...new Set([...(fromMaster.length ? fromMaster : fallback)])];
-  }, [categoryOptions]);
+  }, [normalizedCategoryOptions]);
 
   useEffect(() => {
     if (initial) {
@@ -107,7 +111,31 @@ const IngredientModal = ({
     setErrors({});
     setPrevCurrency(activeCurrency);
     setUnitSuggested(false);
-  }, [initial, isOpen]);
+  }, [activeCurrency, initial, isOpen, usdToVndRate]);
+
+  useEffect(() => {
+    if (!isOpen || prevCurrency === activeCurrency) return;
+    setForm((prev) => ({
+      ...prev,
+      costPerBaseUnit: convertAndRoundCurrencyAmount(
+        Number(prev.costPerBaseUnit) || 0,
+        prevCurrency,
+        activeCurrency,
+        usdToVndRate,
+        { usdDigits: 4 },
+      ),
+    }));
+    setPrevCurrency(activeCurrency);
+  }, [activeCurrency, isOpen, prevCurrency, usdToVndRate]);
+
+  useEffect(() => {
+    if (isEditing || unitSuggested) return;
+    const suggestion = suggestBaseUnitByIngredientName(form.name);
+    if (suggestion && suggestion !== form.baseUnit) {
+      setForm((prev) => ({ ...prev, baseUnit: suggestion }));
+      setUnitSuggested(true);
+    }
+  }, [form.name, form.baseUnit, isEditing, unitSuggested]);
 
   useEffect(() => {
     if (!isOpen || prevCurrency === activeCurrency) return;
