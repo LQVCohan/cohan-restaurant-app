@@ -137,30 +137,6 @@ const IngredientModal = ({
     }
   }, [form.name, form.baseUnit, isEditing, unitSuggested]);
 
-  useEffect(() => {
-    if (!isOpen || prevCurrency === activeCurrency) return;
-    setForm((prev) => ({
-      ...prev,
-      costPerBaseUnit: convertAndRoundCurrencyAmount(
-        Number(prev.costPerBaseUnit) || 0,
-        prevCurrency,
-        activeCurrency,
-        usdToVndRate,
-        { usdDigits: 4 },
-      ),
-    }));
-    setPrevCurrency(activeCurrency);
-  }, [activeCurrency, isOpen, prevCurrency, usdToVndRate]);
-
-  useEffect(() => {
-    if (isEditing || unitSuggested) return;
-    const suggestion = suggestBaseUnitByIngredientName(form.name);
-    if (suggestion && suggestion !== form.baseUnit) {
-      setForm((prev) => ({ ...prev, baseUnit: suggestion }));
-      setUnitSuggested(true);
-    }
-  }, [form.name, form.baseUnit, isEditing, unitSuggested]);
-
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
   const validate = () => {
@@ -480,10 +456,3 @@ const IngredientModal = ({
 };
 
 export default IngredientModal;
-  const categoryNames = React.useMemo(() => {
-    const fromMaster = (categoryOptions || [])
-      .map((c) => String(c?.name || "").trim())
-      .filter(Boolean);
-    const fallback = ["Meat", "Vegetable", "Spice", "Dry"];
-    return [...new Set([...(fromMaster.length ? fromMaster : fallback)])];
-  }, [categoryOptions]);
