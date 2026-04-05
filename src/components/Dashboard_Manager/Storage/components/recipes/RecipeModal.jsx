@@ -13,6 +13,7 @@ import FormSelect from "../Form/FormSelect";
 import FormTextarea from "../Form/FormTextarea";
 
 import { formatPrice } from "../../../../../utils/formatters";
+import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/currency";
 import { toBaseQty, fromBaseQty } from "../../../../../utils/unitConversion";
 
 import RecipeDishPickerModal from "./RecipeDishPickerModal";
@@ -61,7 +62,15 @@ const RecipeModal = ({
   menuItemRecipeRows = [],
   restaurantId,
   ingredients = [],
+  currency = "VND",
+  usdToVndRate = 26000,
 }) => {
+  const activeCurrency = normalizeCurrency(currency, "VND");
+  const cfmt = (amount) =>
+    formatPrice(
+      convertCurrencyAmount(amount, "VND", activeCurrency, usdToVndRate),
+      { currency: activeCurrency },
+    );
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [errors, setErrors] = useState({});
@@ -434,15 +443,15 @@ const RecipeModal = ({
     if (!variant) return "";
     const price = Math.max(0, Number(variant.price) || 0);
 
-    if (variant.mode === "PORTION") return `${formatPrice(price)} / phần`;
+    if (variant.mode === "PORTION") return `${cfmt(price)} / phần`;
 
     const unit = variant.sellUnit || "kg";
     const qtyNum = parseDecimalLoose(variant.sellQtyText) || 0;
     if (qtyNum > 0) {
       const perUnit = price / qtyNum;
-      return `${formatPrice(perUnit)} / ${unit}`;
+      return `${cfmt(perUnit)} / ${unit}`;
     }
-    return `${formatPrice(price)} / ${unit}`;
+    return `${cfmt(price)} / ${unit}`;
   };
 
   const recipeSummary = useMemo(() => {
@@ -1275,7 +1284,7 @@ const RecipeModal = ({
                         fontSize: "16px",
                       }}
                     >
-                      {formatPrice(dishInfo.basePrice)}
+                      {cfmt(dishInfo.basePrice)}
                     </div>
                   </div>
                 </div>
@@ -1652,7 +1661,7 @@ const RecipeModal = ({
                                   cursor: "pointer",
                                 }}
                               >
-                                {formatPrice(v)}
+                                {cfmt(v)}
                               </button>
                             ))}
                           </div>
@@ -1991,7 +2000,7 @@ const RecipeModal = ({
                     <span className="label">
                       Tổng chi phí dự kiến cho biến thể này:
                     </span>
-                    <span className="value">{formatPrice(activeCost)}</span>
+                    <span className="value">{cfmt(activeCost)}</span>
                   </div>
                 </div>
               )}

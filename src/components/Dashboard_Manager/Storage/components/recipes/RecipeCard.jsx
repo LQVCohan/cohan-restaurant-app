@@ -10,9 +10,18 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { formatPrice } from "../../../../../utils/formatters";
+import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/currency";
 import "./RecipeCard.scss";
 
-const RecipeCard = ({ recipe, onEdit, onDelete, onViewDetails }) => {
+const RecipeCard = ({
+  recipe,
+  onEdit,
+  onDelete,
+  onViewDetails,
+  currency = "VND",
+  usdToVndRate = 26000,
+}) => {
+  const activeCurrency = normalizeCurrency(currency, "VND");
   const safeRecipe = recipe || {};
 
   // Tận dụng _meta được truyền từ RecipeList để tối ưu hiệu năng
@@ -109,7 +118,17 @@ const RecipeCard = ({ recipe, onEdit, onDelete, onViewDetails }) => {
         <div className="rc-stat-item is-cost" title="Giá vốn thấp nhất">
           <DollarSign size={16} className="rc-stat-icon" />
           <span className="rc-stat-value">
-            {hasAnyCost ? formatPrice(minCost) : "—"}
+            {hasAnyCost
+              ? formatPrice(
+                  convertCurrencyAmount(
+                    minCost,
+                    "VND",
+                    activeCurrency,
+                    usdToVndRate,
+                  ),
+                  { currency: activeCurrency },
+                )
+              : "—"}
           </span>
           <span className="rc-stat-label">Min Cost</span>
         </div>
