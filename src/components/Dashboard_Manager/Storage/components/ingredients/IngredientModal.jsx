@@ -452,3 +452,10 @@ const IngredientModal = ({
 };
 
 export default IngredientModal;
+  const categoryNames = React.useMemo(() => {
+    const fromMaster = (categoryOptions || [])
+      .map((c) => String(c?.name || "").trim())
+      .filter(Boolean);
+    const fallback = ["Meat", "Vegetable", "Spice", "Dry"];
+    return [...new Set([...(fromMaster.length ? fromMaster : fallback)])];
+  }, [categoryOptions]);
