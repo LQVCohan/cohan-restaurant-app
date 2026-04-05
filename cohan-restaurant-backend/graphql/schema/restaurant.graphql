@@ -86,6 +86,8 @@ type Restaurant {
   tableParticipationCount: Int
   reservationSettings: ReservationSettings
   paymentSettings: PaymentSettings
+  defaultCurrency: String
+  manualUsdToVndRate: Float
 }
 
 input RestaurantFilter {
@@ -206,6 +208,8 @@ input CreateRestaurantInput {
   managerId: ID!
   reservationSettings: ReservationSettingsInput
   paymentSettings: PaymentSettingsInput
+  defaultCurrency: String
+  manualUsdToVndRate: Float
 }
 
 input UpdateRestaurantInput {
@@ -230,6 +234,8 @@ input UpdateRestaurantInput {
   status: String
   reservationSettings: ReservationSettingsInput
   paymentSettings: PaymentSettingsInput
+  defaultCurrency: String
+  manualUsdToVndRate: Float
 }
 
 input UpdateRestaurantManagerInput {

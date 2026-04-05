@@ -10,6 +10,7 @@ import {
   Warehouse,
   ChevronDown,
   Loader2,
+  Coins,
 } from "lucide-react";
 import "./Header.scss";
 
@@ -33,7 +34,18 @@ const Header = ({
   selectedWarehouseId = null,
   onWarehouseChange,
   warehousesLoading = false,
+  activeCurrency = "VND",
+  onCurrencyChange,
+  manualRate = 26000,
+  onManualRateSave,
+  currencyLoading = false,
 }) => {
+  const [rateInput, setRateInput] = React.useState(String(manualRate || 26000));
+
+  React.useEffect(() => {
+    setRateInput(String(manualRate || 26000));
+  }, [manualRate, currentRestaurantId]);
+
   // Handlers giữ nguyên
   const handleImportData = () =>
     alert("Chức năng nhập dữ liệu từ Excel sẽ được triển khai");
@@ -147,6 +159,48 @@ const Header = ({
               ))}
             </select>
             <ChevronDown className="arrow-icon" size={16} />
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="currency-select">
+            <Coins size={16} /> Tiền tệ
+            {currencyLoading && <Loader2 size={14} className="spin" />}
+          </label>
+          <div className="custom-select-wrapper">
+            <select
+              id="currency-select"
+              value={activeCurrency}
+              onChange={(e) => onCurrencyChange?.(e.target.value)}
+              disabled={!currentRestaurantId || currencyLoading}
+            >
+              <option value="VND">VND</option>
+              <option value="USD">USD</option>
+            </select>
+            <ChevronDown className="arrow-icon" size={16} />
+          </div>
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="manual-rate-input">Tỷ giá USD→VND</label>
+          <div className="inline-rate">
+            <input
+              id="manual-rate-input"
+              type="number"
+              min="1"
+              step="1"
+              value={rateInput}
+              onChange={(e) => setRateInput(e.target.value)}
+              disabled={!currentRestaurantId || currencyLoading}
+            />
+            <button
+              className="sm-btn secondary"
+              type="button"
+              onClick={() => onManualRateSave?.(Number(rateInput))}
+              disabled={!currentRestaurantId || currencyLoading}
+            >
+              Lưu
+            </button>
           </div>
         </div>
       </div>
