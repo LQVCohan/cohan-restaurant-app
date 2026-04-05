@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import Modal from "../../../../common/Modal";
 import { toBaseQty } from "../../../../../utils/unitConversion";
 import { formatPrice } from "../../../../../utils/formatters";
+import {
+  convertCurrencyAmount,
+  normalizeCurrency,
+} from "../../../../../utils/currency";
 import "./QuickStockModal.scss";
 
 /**
@@ -23,7 +27,10 @@ const QuickStockModal = ({
   onSubmit,
   ingredients = [],
   onGetPriceSuggestions,
+  currency = "VND",
+  usdToVndRate = 26000,
 }) => {
+  const activeCurrency = normalizeCurrency(currency, "VND");
   const normalized = useMemo(() => {
     return (entries || []).map((e) => ({
       id: String(e.id || ""),
@@ -38,6 +45,7 @@ const QuickStockModal = ({
   const [priceHintsByIngredient, setPriceHintsByIngredient] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [prevCurrency, setPrevCurrency] = useState(activeCurrency);
 
   const ingredientMap = useMemo(() => {
     const map = new Map();
@@ -65,7 +73,29 @@ const QuickStockModal = ({
     setSubmitError("");
     setSubmitting(false);
     setPriceHintsByIngredient({});
+    setPrevCurrency(activeCurrency);
   }, [isOpen, normalized]);
+
+  useEffect(() => {
+    if (!isOpen || prevCurrency === activeCurrency) return;
+    setFormRows((rows) =>
+      rows.map((row) => ({
+        ...row,
+        unitPrice:
+          row.unitPrice === ""
+            ? ""
+            : String(
+                convertCurrencyAmount(
+                  Number(row.unitPrice) || 0,
+                  prevCurrency,
+                  activeCurrency,
+                  usdToVndRate,
+                ),
+              ),
+      })),
+    );
+    setPrevCurrency(activeCurrency);
+  }, [activeCurrency, isOpen, prevCurrency, usdToVndRate]);
 
   useEffect(() => {
     if (!isOpen || !onGetPriceSuggestions) return;
@@ -125,7 +155,12 @@ const QuickStockModal = ({
       type: row.type,
       qty: Number(row.qty),
       unit: row.unit,
-      unitPrice: Number(row.unitPrice),
+      unitPrice: convertCurrencyAmount(
+        Number(row.unitPrice),
+        activeCurrency,
+        "VND",
+        usdToVndRate,
+      ),
       supplier: row.supplier?.trim() || null,
       note: row.note?.trim() || null,
       datetime: row.datetime ? new Date(row.datetime).toISOString() : null,
@@ -231,7 +266,7 @@ const QuickStockModal = ({
 
                 <label className="qsm-field">
                   <span className="qsm-label">
-                    Giá lô nhập (VND) <span className="req">*</span>
+                    Giá lô nhập ({activeCurrency}) <span className="req">*</span>
                   </span>
                   <input
                     type="number"
@@ -298,8 +333,19 @@ const QuickStockModal = ({
                       <div className="qsm-meta">
                         Quy đổi: {Number(d.qtyBase).toLocaleString("vi-VN")}{" "}
                         {d.baseUnit} • Giá/base:{" "}
-                        <b>{formatPrice(d.costPerBaseUnit)}</b> • Tổng lô:{" "}
-                        <b>{formatPrice(d.totalValue)}</b>
+                        <b>
+                          {formatPrice(
+                            convertCurrencyAmount(
+                              d.costPerBaseUnit,
+                              "VND",
+                              activeCurrency,
+                              usdToVndRate,
+                            ),
+                            { currency: activeCurrency },
+                          )}
+                        </b>{" "}
+                        • Tổng lô:{" "}
+                        <b>{formatPrice(Number(row.unitPrice) || 0, { currency: activeCurrency })}</b>
                       </div>
                     )}
                     {hint && (

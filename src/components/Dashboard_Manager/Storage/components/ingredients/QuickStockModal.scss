@@ -64,16 +64,20 @@
 }
 
 .qsm-field input,
-.qsm-field textarea {
+.qsm-field textarea,
+.qsm-field select {
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 0.95rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  min-height: 42px;
+  background: #fff;
 }
 
 .qsm-field input:focus,
-.qsm-field textarea:focus {
+.qsm-field textarea:focus,
+.qsm-field select:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
