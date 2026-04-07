@@ -37,6 +37,11 @@ export const INGREDIENTS_QUERY = gql`
       name
       sku
       category
+      ingredientCategoryId
+      ingredientCategory {
+        id
+        name
+      }
       baseUnit
       conversions {
         from
@@ -78,6 +83,24 @@ export const INGREDIENT_CATEGORIES_QUERY = gql`
   }
 `;
 
+export const INGREDIENT_CATEGORY_SYNC_LOGS_QUERY = gql`
+  query IngredientCategorySyncLogs($restaurantId: ID!, $limit: Int = 10) {
+    ingredientCategorySyncLogs(restaurantId: $restaurantId, limit: $limit) {
+      id
+      at
+      actorUserId
+      status
+      totalIngredients
+      categoriesCreated
+      categoriesUpdated
+      ingredientsReassigned
+      skipped
+      errors
+      summaryText
+    }
+  }
+`;
+
 export const CREATE_INGREDIENT_CATEGORY = gql`
   mutation CreateIngredientCategory($input: CreateIngredientCategoryInput!) {
     createIngredientCategory(input: $input) {
@@ -112,13 +135,31 @@ export const DELETE_INGREDIENT_CATEGORY = gql`
 
 export const SYNC_INGREDIENT_CATEGORIES = gql`
   mutation SyncIngredientCategories($restaurantId: ID!) {
-    syncIngredientCategoriesFromIngredients(restaurantId: $restaurantId) {
-      id
-      name
-      slug
-      source
-      usageCount
-      isActive
+    syncIngredientCategories(restaurantId: $restaurantId) {
+      totalIngredients
+      categoriesCreated
+      categoriesUpdated
+      ingredientsReassigned
+      skipped
+      errors
+      summaryText
+      syncedAt
+      sample {
+        ingredientId
+        ingredientName
+        predictedCategory
+        reason
+        confidence
+        matchedKeyword
+      }
+      categories {
+        id
+        name
+        slug
+        source
+        usageCount
+        isActive
+      }
     }
   }
 `;
@@ -131,6 +172,7 @@ export const CREATE_INGREDIENT = gql`
       name
       sku
       category
+      ingredientCategoryId
       baseUnit
       conversions {
         from
@@ -156,6 +198,7 @@ export const UPDATE_INGREDIENT = gql`
       name
       sku
       category
+      ingredientCategoryId
       baseUnit
       conversions {
         from

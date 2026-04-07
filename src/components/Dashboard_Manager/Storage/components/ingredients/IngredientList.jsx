@@ -40,6 +40,7 @@ const IngredientList = ({
     effectiveWarehouseId,
     getPriceSuggestions,
     ingredientCategories,
+    ingredientCategorySyncLogs,
     createIngredientCategory,
     updateIngredientCategory,
     deleteIngredientCategory,
@@ -199,7 +200,7 @@ const IngredientList = ({
             >
               <option value="">Tất cả danh mục</option>
               {(ingredientCategories || []).map((cat) => (
-                <option key={cat.id} value={(cat.name || "").toLowerCase()}>
+                <option key={cat.id} value={cat.id}>
                   {cat.name}
                 </option>
               ))}
@@ -365,6 +366,7 @@ const IngredientList = ({
         isOpen={categoryModalOpen}
         onClose={() => setCategoryModalOpen(false)}
         categories={ingredientCategories}
+        syncLogs={ingredientCategorySyncLogs}
         onCreate={async (name) => {
           await createIngredientCategory(name);
           showNotification("Đã thêm danh mục.", "success");
@@ -378,8 +380,12 @@ const IngredientList = ({
           showNotification("Đã xóa danh mục.", "success");
         }}
         onSync={async () => {
-          await syncIngredientCategories();
-          showNotification("Đã đồng bộ danh mục từ nguyên liệu.", "success");
+          const report = await syncIngredientCategories();
+          showNotification(
+            report?.summaryText || "Đã đồng bộ danh mục từ nguyên liệu.",
+            "success"
+          );
+          return report;
         }}
       />
     </div>

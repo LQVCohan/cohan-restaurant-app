@@ -4,6 +4,7 @@ import { useQuery, useMutation, useApolloClient } from "@apollo/client";
 import {
   INGREDIENTS_QUERY,
   INGREDIENT_CATEGORIES_QUERY,
+  INGREDIENT_CATEGORY_SYNC_LOGS_QUERY,
   CREATE_INGREDIENT_CATEGORY,
   UPDATE_INGREDIENT_CATEGORY,
   DELETE_INGREDIENT_CATEGORY,
@@ -71,6 +72,15 @@ export function useIngredients(
     fetchPolicy: "cache-and-network",
   });
 
+  const {
+    data: syncLogsData,
+    refetch: refetchSyncLogs,
+  } = useQuery(INGREDIENT_CATEGORY_SYNC_LOGS_QUERY, {
+    variables: { restaurantId, limit: 10 },
+    skip: !restaurantId,
+    fetchPolicy: "cache-and-network",
+  });
+
   // ===== 2) Warehouses (optional) =====
   const {
     data: whData,
@@ -120,6 +130,10 @@ export function useIngredients(
     () => categoryData?.ingredientCategories || [],
     [categoryData],
   );
+  const ingredientCategorySyncLogs = useMemo(
+    () => syncLogsData?.ingredientCategorySyncLogs || [],
+    [syncLogsData],
+  );
   const stockItems = useMemo(() => stockData?.stockItems || [], [stockData]);
 
   // ===== 5) Aggregate stock per ingredientId =====
@@ -159,7 +173,10 @@ export function useIngredients(
         restaurantId: it.restaurantId,
         name: it.name,
         sku: it.sku || "",
-        category: it.category || "",
+        category:
+          it.ingredientCategory?.name || it.category || "",
+        ingredientCategoryId:
+          it.ingredientCategoryId || it.ingredientCategory?.id || null,
 
         baseUnit: it.baseUnit,
         conversions: it.conversions || [],
@@ -198,8 +215,8 @@ export function useIngredients(
     let arr = ingredientsMapped;
 
     if (filters.category?.trim()) {
-      const cat = filters.category.trim().toLowerCase();
-      arr = arr.filter((i) => (i.category || "").toLowerCase() === cat);
+      const categoryId = filters.category.trim();
+      arr = arr.filter((i) => String(i.ingredientCategoryId || "") === categoryId);
     }
 
     if (filters.status) {
@@ -259,26 +276,20 @@ export function useIngredients(
 
   const syncIngredientCategories = useCallback(async () => {
     if (!restaurantId) throw new Error("restaurantId is required");
-    await syncIngredientCategoriesMu({ variables: { restaurantId } });
-    await Promise.all([refetchCategories?.(), refetchIngredients?.()]);
+    const res = await syncIngredientCategoriesMu({ variables: { restaurantId } });
+    await Promise.all([
+      refetchCategories?.(),
+      refetchIngredients?.(),
+      refetchSyncLogs?.(),
+    ]);
+    return res?.data?.syncIngredientCategories || null;
   }, [
     restaurantId,
     syncIngredientCategoriesMu,
     refetchCategories,
     refetchIngredients,
+    refetchSyncLogs,
   ]);
-
-  const ensureCategoryMaster = useCallback(
-    async (categoryName) => {
-      const name = String(categoryName || "").trim();
-      if (!name || !restaurantId) return;
-      await createIngredientCategoryMu({
-        variables: { input: { restaurantId, name } },
-      });
-      await refetchCategories?.();
-    },
-    [createIngredientCategoryMu, restaurantId, refetchCategories],
-  );
 
   const assertWarehouseForStock = useCallback(() => {
     // null => all warehouses (không được nhập kho)
@@ -305,6 +316,7 @@ export function useIngredients(
             name: payload.name,
             sku: payload.sku || null,
             category: payload.category || "",
+            ingredientCategoryId: payload.ingredientCategoryId || null,
             baseUnit: payload.baseUnit,
             conversions: payload.conversions || [],
             costPerBaseUnit: Number(payload.costPerBaseUnit) || 0,
@@ -318,8 +330,6 @@ export function useIngredients(
 
       const created = res?.data?.createIngredient;
       const createdId = created?.id;
-
-      await ensureCategoryMaster(payload.category);
 
       // init stock (nhập tồn ban đầu phải có giá nhập)
       const qty0 = Number(initialStockQty) || 0;
@@ -354,7 +364,6 @@ export function useIngredients(
       restaurantId,
       withStock,
       createIngredientMu,
-      ensureCategoryMaster,
       receiveStockMu,
       assertWarehouseForStock,
       safeRefetchAll,
@@ -372,6 +381,7 @@ export function useIngredients(
             name: payload.name,
             sku: payload.sku || null,
             category: payload.category || "",
+            ingredientCategoryId: payload.ingredientCategoryId || null,
             baseUnit: payload.baseUnit,
             conversions: payload.conversions || [],
             costPerBaseUnit: Number(payload.costPerBaseUnit) || 0,
@@ -383,11 +393,9 @@ export function useIngredients(
         },
       });
 
-      await ensureCategoryMaster(payload.category);
-
       await safeRefetchAll();
     },
-    [updateIngredientMu, safeRefetchAll, ensureCategoryMaster]
+    [updateIngredientMu, safeRefetchAll]
   );
 
   const deleteIngredient = useCallback(
@@ -520,6 +528,7 @@ export function useIngredients(
           name: ing.name,
           sku: ing.sku || null,
           category: ing.category || "",
+          ingredientCategoryId: ing.ingredientCategoryId || null,
           baseUnit: ing.baseUnit,
           conversions: ing.conversions || [],
           photos: ing.photos || [],
@@ -546,6 +555,7 @@ export function useIngredients(
     effectiveWarehouseId, // string | null | undefined
     ingredients: ingredientsMapped,
     ingredientCategories,
+    ingredientCategorySyncLogs,
     filteredIngredients,
     stockItems,
 

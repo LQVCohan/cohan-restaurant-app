@@ -41,7 +41,7 @@ const ALL_UNITS = [
 const defaultForm = {
   name: "",
   sku: "",
-  category: "",
+  ingredientCategoryId: "",
   baseUnit: "g",
   costPerBaseUnit: "",
   minStock: "",
@@ -79,19 +79,24 @@ const IngredientModal = ({
     [categoryOptions],
   );
   const categoryNames = React.useMemo(() => {
-    const fromMaster = normalizedCategoryOptions
-      .map((c) => String(c?.name || "").trim())
-      .filter(Boolean);
-    const fallback = ["Meat", "Vegetable", "Spice", "Dry"];
-    return [...new Set([...(fromMaster.length ? fromMaster : fallback)])];
-  }, [normalizedCategoryOptions]);
+    const options = normalizedCategoryOptions
+      .map((c) => ({ id: String(c?.id || ""), name: String(c?.name || "").trim() }))
+      .filter((c) => c.id && c.name);
+    if (initial?.ingredientCategoryId && initial?.category) {
+      options.push({
+        id: String(initial.ingredientCategoryId),
+        name: String(initial.category).trim(),
+      });
+    }
+    return [...new Map(options.map((x) => [x.id, x])).values()];
+  }, [normalizedCategoryOptions, initial?.ingredientCategoryId, initial?.category]);
 
   useEffect(() => {
     if (initial) {
       setForm({
         name: initial.name || "",
         sku: initial.sku || "",
-        category: initial.category || "",
+        ingredientCategoryId: initial.ingredientCategoryId || "",
         baseUnit: initial.baseUnit || "g",
         costPerBaseUnit: convertAndRoundCurrencyAmount(
           initial.costPerBaseUnit ?? "",
@@ -172,7 +177,9 @@ const IngredientModal = ({
     const payload = {
       name: form.name.trim(),
       sku: form.sku?.trim() || null,
-      category: form.category?.trim() || "",
+      ingredientCategoryId: form.ingredientCategoryId || null,
+      category:
+        categoryNames.find((c) => c.id === form.ingredientCategoryId)?.name || "",
       baseUnit: form.baseUnit,
       costPerBaseUnit:
         convertCurrencyAmount(
@@ -249,17 +256,17 @@ const IngredientModal = ({
             <label>Danh mục</label>
             <div className="il-input-wrapper">
               <Tag size={16} className="il-input-icon" />
-              <input
-                value={form.category}
-                onChange={(e) => set({ category: e.target.value })}
-                placeholder="VD: Meat, Veg..."
-                list="category-suggestions"
-              />
-              <datalist id="category-suggestions">
+              <select
+                value={form.ingredientCategoryId}
+                onChange={(e) => set({ ingredientCategoryId: e.target.value })}
+              >
+                <option value="">Chưa phân loại</option>
                 {categoryNames.map((cat) => (
-                  <option key={cat} value={cat} />
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
                 ))}
-              </datalist>
+              </select>
             </div>
           </div>
 
