@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import s from "./ReservationModal.module.scss";
+import useModalKeyboardClose from "./useModalKeyboardClose";
 
 export function ReservationModal({ isOpen, onConfirm, onClose }) {
+  useModalKeyboardClose({ isOpen, onClose });
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -14,8 +16,13 @@ export function ReservationModal({ isOpen, onConfirm, onClose }) {
   const change = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   return (
-    <div className={s.backdrop}>
-      <div className={s.modal}>
+    <div
+      className={s.backdrop}
+      onMouseDown={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className={s.modal} onMouseDown={(e) => e.stopPropagation()} tabIndex={-1}>
         <h3 className={s.title}>Đặt bàn</h3>
         <input
           className={s.input}

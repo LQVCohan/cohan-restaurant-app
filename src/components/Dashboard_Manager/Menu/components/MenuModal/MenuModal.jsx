@@ -1,5 +1,5 @@
 // src/pages/Restaurant/MenuManagement/components/MenuModal/MenuModal.jsx
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   FiX,
   FiUploadCloud,
@@ -133,8 +133,6 @@ const MenuModal = ({
     return found ? found.name : "";
   }, [categoryMenus, formData.categoryMenuId]);
 
-  if (!isOpen) return null;
-
   const handleFieldChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -183,7 +181,8 @@ const MenuModal = ({
     onSubmit?.(payload);
   };
 
-  const handleRequestClose = () => {
+  const handleRequestClose = useCallback(() => {
+    if (isSubmitting || quickCatSaving) return;
     if (isDirty) {
       const ok = window.confirm(
         "Bạn có thay đổi chưa lưu. Bạn có chắc chắn muốn đóng?"
@@ -191,7 +190,19 @@ const MenuModal = ({
       if (!ok) return;
     }
     onClose?.();
-  };
+  }, [isDirty, isSubmitting, onClose, quickCatSaving]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        handleRequestClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleRequestClose, isOpen]);
 
   // Quick add new category
   const handleStartAddCat = () => setIsAddingNewCat(true);
@@ -234,9 +245,16 @@ const MenuModal = ({
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="modern-modal-overlay">
-      <div className="modern-modal-container">
+    <div
+      className="modern-modal-overlay"
+      onClick={handleRequestClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="modern-modal-container" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="modal-header">
           <h2>{isEditMode ? "Cập nhật Menu" : "Thêm Menu mới"}</h2>

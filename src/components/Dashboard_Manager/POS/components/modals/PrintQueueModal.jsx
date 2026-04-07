@@ -1,5 +1,6 @@
 import React from "react";
 import s from "./PrintQueueModal.module.scss";
+import useModalKeyboardClose from "./useModalKeyboardClose";
 
 export function PrintQueueModal({
   isOpen,
@@ -8,6 +9,7 @@ export function PrintQueueModal({
   onPrintAll,
   onClose,
 }) {
+  useModalKeyboardClose({ isOpen, onClose });
   if (!isOpen) return null;
   const badge = (st) =>
     `${s.badge} ${
@@ -29,8 +31,13 @@ export function PrintQueueModal({
       : "Lỗi";
 
   return (
-    <div className={s.backdrop}>
-      <div className={s.modal} role="dialog" aria-modal>
+    <div className={s.backdrop} onMouseDown={onClose} role="dialog" aria-modal>
+      <div
+        className={s.modal}
+        role="document"
+        onMouseDown={(e) => e.stopPropagation()}
+        tabIndex={-1}
+      >
         <div className={s.header}>
           <h3 className={s.title}>Hàng đợi in</h3>
           <div className={s.tools}>

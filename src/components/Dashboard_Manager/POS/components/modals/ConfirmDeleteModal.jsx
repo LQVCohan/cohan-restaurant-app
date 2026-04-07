@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import "./ConfirmDeleteModal.scss"; // Import styles
+import useModalKeyboardClose from "./useModalKeyboardClose";
 
 const ConfirmDeleteModal = ({
   isOpen,
@@ -14,6 +15,7 @@ const ConfirmDeleteModal = ({
   const [action, setAction] = useState(
     showScopeChoice ? "clear_items" : "delete_item"
   );
+  useModalKeyboardClose({ isOpen, onClose });
 
   const handleConfirm = () => {
     const finalReason = requireReason ? selectedReason : "";
@@ -25,8 +27,13 @@ const ConfirmDeleteModal = ({
   if (!isOpen) return null; // Nếu modal không mở thì không render gì
 
   return (
-    <div className="modal-overlay-delete">
-      <div className="modal-container">
+    <div
+      className="modal-overlay-delete"
+      onMouseDown={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="modal-container" onMouseDown={(e) => e.stopPropagation()}>
         <h2>Xác nhận xóa món</h2>
         {requireReason && <p>Vui lòng chọn lý do xóa món:</p>}
 

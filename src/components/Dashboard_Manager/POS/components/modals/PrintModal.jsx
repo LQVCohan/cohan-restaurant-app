@@ -1,5 +1,6 @@
 import React from "react";
 import s from "./PrintModal.module.scss";
+import useModalKeyboardClose from "./useModalKeyboardClose";
 
 export function PrintModal({
   isOpen,
@@ -19,11 +20,17 @@ export function PrintModal({
   onOpenQueue,
   onClose,
 }) {
+  useModalKeyboardClose({ isOpen, onClose });
   if (!isOpen) return null;
 
   return (
-    <div className={s.backdrop}>
-      <div className={s.modal} role="dialog" aria-modal>
+    <div className={s.backdrop} onMouseDown={onClose} role="dialog" aria-modal>
+      <div
+        className={s.modal}
+        role="document"
+        onMouseDown={(e) => e.stopPropagation()}
+        tabIndex={-1}
+      >
         <div className={s.header}>
           <h3 className={s.title}>In hóa đơn & phiếu bếp</h3>
           <button className={s.close} onClick={onClose}>
