@@ -108,6 +108,25 @@ const IngredientCategoryManagerModal = ({
       closeOnEscape={!loading}
     >
       <div style={{ display: "grid", gap: 12 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+          }}
+        >
+          <b style={{ fontSize: 18 }}>Quản lý danh mục nguyên liệu</b>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={requestClose}
+            disabled={loading}
+          >
+            Đóng
+          </Button>
+        </div>
+
         <div style={{ display: "flex", gap: 8 }}>
           <input
             value={name}
@@ -340,6 +359,24 @@ const IngredientCategoryManagerModal = ({
               </small>
             )}
           </div>
+        </div>
+
+        <div
+          style={{
+            borderTop: "1px solid #eef2f7",
+            paddingTop: 10,
+            display: "flex",
+            justifyContent: "flex-end",
+          }}
+        >
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={requestClose}
+            disabled={loading}
+          >
+            Đóng
+          </Button>
         </div>
       </div>
     </Modal>
