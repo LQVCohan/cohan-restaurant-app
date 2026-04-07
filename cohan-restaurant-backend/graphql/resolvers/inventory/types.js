@@ -1,6 +1,6 @@
 // src/graphql/resolvers/inventory/type.js
 import mongoose from "mongoose";
-import { Recipe } from "../../../models/index.js";
+import { Recipe, IngredientCategory } from "../../../models/index.js";
 
 export default {
   RecipeIngredientLine: {
@@ -46,6 +46,14 @@ export default {
         .lean();
 
       return recipe?.servingVariants || [];
+    },
+  },
+
+  Ingredient: {
+    ingredientCategory: async (parent) => {
+      const id = parent?.ingredientCategoryId;
+      if (!id || !mongoose.isValidObjectId(id)) return null;
+      return IngredientCategory.findById(id).lean({ virtuals: true });
     },
   },
 };
