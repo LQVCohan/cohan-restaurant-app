@@ -21,6 +21,27 @@ const titleCase = (s) =>
     .map((w) => w[0].toUpperCase() + w.slice(1))
     .join(" ");
 
+const EN_CATEGORY_BY_ALIAS = {
+  meat: "Meat",
+  thit: "Meat",
+  seafood: "Seafood",
+  hai_san: "Seafood",
+  hai_san_: "Seafood",
+  rau_cu: "Vegetable",
+  rau_cu_: "Vegetable",
+  vegetable: "Vegetable",
+  gia_vi: "Spice",
+  spice: "Spice",
+  tinh_bot: "Starch",
+  starch: "Starch",
+  dairy_egg: "Dairy & Egg",
+  sua_trung: "Dairy & Egg",
+  beverage: "Beverage",
+  do_uong: "Beverage",
+  other: "Other",
+  khac: "Other",
+};
+
 const normalizeText = (s) =>
   String(s || "")
     .trim()
@@ -32,9 +53,18 @@ const normalizeText = (s) =>
     .replace(/\s+/g, " ")
     .trim();
 
+const normalizeCategoryAlias = (s) =>
+  normalizeText(s).replace(/\s+/g, "_");
+
+const toEnglishCategoryName = (s) => {
+  const alias = normalizeCategoryAlias(s);
+  if (EN_CATEGORY_BY_ALIAS[alias]) return EN_CATEGORY_BY_ALIAS[alias];
+  return titleCase(normalizeText(s));
+};
+
 const CATEGORY_RULES = [
   {
-    name: "Thịt",
+    name: "Meat",
     keywords: [
       "thit",
       "bo",
@@ -50,7 +80,7 @@ const CATEGORY_RULES = [
     ],
   },
   {
-    name: "Hải sản",
+    name: "Seafood",
     keywords: [
       "hai san",
       "tom",
@@ -67,7 +97,7 @@ const CATEGORY_RULES = [
     ],
   },
   {
-    name: "Rau củ",
+    name: "Vegetable",
     keywords: [
       "rau",
       "cu",
@@ -85,7 +115,7 @@ const CATEGORY_RULES = [
     ],
   },
   {
-    name: "Gia vị",
+    name: "Spice",
     keywords: [
       "muoi",
       "duong",
@@ -103,7 +133,7 @@ const CATEGORY_RULES = [
     ],
   },
   {
-    name: "Tinh bột",
+    name: "Starch",
     keywords: [
       "gao",
       "bun",
@@ -119,7 +149,7 @@ const CATEGORY_RULES = [
     ],
   },
   {
-    name: "Sữa & trứng",
+    name: "Dairy & Egg",
     keywords: [
       "sua",
       "pho mai",
@@ -133,7 +163,7 @@ const CATEGORY_RULES = [
     ],
   },
   {
-    name: "Đồ uống",
+    name: "Beverage",
     keywords: [
       "nuoc",
       "tra",
@@ -149,7 +179,9 @@ const CATEGORY_RULES = [
 ];
 
 const classifyCategoryFromIngredient = (ingredient, existingCategoryName) => {
-  const existingCategory = titleCase(existingCategoryName || ingredient?.category);
+  const existingCategory = toEnglishCategoryName(
+    existingCategoryName || ingredient?.category,
+  );
   if (existingCategory) {
     return {
       categoryName: existingCategory,
@@ -162,7 +194,7 @@ const classifyCategoryFromIngredient = (ingredient, existingCategoryName) => {
   const normalizedName = normalizeText(ingredient?.name);
   if (!normalizedName) {
     return {
-      categoryName: "Khác",
+      categoryName: "Other",
       reason: "fallback",
       confidence: 0.2,
       matchedKeyword: null,
@@ -186,7 +218,7 @@ const classifyCategoryFromIngredient = (ingredient, existingCategoryName) => {
   }
 
   return {
-    categoryName: "Khác",
+    categoryName: "Other",
     reason: "fallback",
     confidence: 0.4,
     matchedKeyword: null,
@@ -242,7 +274,7 @@ async function runIngredientCategorySync(restaurantId, ctx) {
       try {
         const linked = existingById.get(String(ingredient.ingredientCategoryId || ""));
         const result = classifyCategoryFromIngredient(ingredient, linked?.name);
-        const normalizedName = titleCase(result.categoryName);
+        const normalizedName = toEnglishCategoryName(result.categoryName);
         const slug = slugify(normalizedName);
         if (!slug) {
           stats.skipped += 1;
@@ -394,7 +426,7 @@ export default {
     if (!mongoose.isValidObjectId(input?.restaurantId)) {
       throw new GraphQLError("Invalid restaurantId");
     }
-    const name = titleCase(input?.name);
+    const name = toEnglishCategoryName(input?.name);
     if (!name) throw new GraphQLError("Category name is required");
     const slug = slugify(name);
     if (!slug) throw new GraphQLError("Category name is invalid");
@@ -424,7 +456,7 @@ export default {
 
       let renamedName = null;
       if (typeof name === "string") {
-        const nextName = titleCase(name);
+        const nextName = toEnglishCategoryName(name);
         const nextSlug = slugify(nextName);
         if (!nextName || !nextSlug) {
           throw new GraphQLError("Category name is invalid");

@@ -1,6 +1,16 @@
 import React, { useMemo, useState } from "react";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
+import { toIngredientCategoryVi } from "../../../../../utils/ingredientCategoryI18n";
+
+const PAGE_SIZE = 8;
+
+const fmtDateTime = (value) => {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleString("vi-VN");
+};
 
 const PAGE_SIZE = 8;
 
@@ -156,7 +166,7 @@ const IngredientCategoryManagerModal = ({
               }}
             >
               <div>
-                <div style={{ fontWeight: 600 }}>{cat.name}</div>
+                <div style={{ fontWeight: 600 }}>{toIngredientCategoryVi(cat.name)}</div>
                 <small style={{ color: "#64748b" }}>
                   {cat.source || "manual"} • usage: {cat.usageCount || 0}
                 </small>

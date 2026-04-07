@@ -22,6 +22,7 @@ import {
   suggestBaseUnitByIngredientName,
   suggestUnitOptionsByIngredientName,
 } from "../../../../../utils/unitSuggestions";
+import { toIngredientCategoryVi } from "../../../../../utils/ingredientCategoryI18n";
 import "./IngredientModal.scss";
 
 const ALL_UNITS = [
@@ -263,7 +264,7 @@ const IngredientModal = ({
                 <option value="">Chưa phân loại</option>
                 {categoryNames.map((cat) => (
                   <option key={cat.id} value={cat.id}>
-                    {cat.name}
+                    {toIngredientCategoryVi(cat.name)}
                   </option>
                 ))}
               </select>

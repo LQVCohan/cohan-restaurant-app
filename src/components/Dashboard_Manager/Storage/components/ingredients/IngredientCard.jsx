@@ -13,6 +13,7 @@ import {
 import Modal from "../../../../common/Modal";
 import { formatPrice } from "../../../../../utils/formatters";
 import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/currency";
+import { toIngredientCategoryVi } from "../../../../../utils/ingredientCategoryI18n";
 import "./IngredientCard.scss";
 
 const IngredientCard = ({
@@ -112,7 +113,7 @@ const IngredientCard = ({
             </h3>
             <div className="il-card__subtitle">
               <Tag size={12} />
-              <span>{ingredient.category}</span>
+              <span>{toIngredientCategoryVi(ingredient.category)}</span>
             </div>
           </div>
           <span className={`il-status-badge ${status.class}`}>

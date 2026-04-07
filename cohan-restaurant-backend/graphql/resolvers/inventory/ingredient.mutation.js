@@ -31,6 +31,47 @@ function escapeRegex(input) {
   return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function normalizeText(input) {
+  return String(input || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const EN_CATEGORY_BY_ALIAS = {
+  meat: "Meat",
+  thit: "Meat",
+  seafood: "Seafood",
+  hai_san: "Seafood",
+  vegetable: "Vegetable",
+  rau_cu: "Vegetable",
+  spice: "Spice",
+  gia_vi: "Spice",
+  starch: "Starch",
+  tinh_bot: "Starch",
+  dairy_egg: "Dairy & Egg",
+  sua_trung: "Dairy & Egg",
+  beverage: "Beverage",
+  do_uong: "Beverage",
+  other: "Other",
+  khac: "Other",
+};
+
+function toEnglishCategoryName(input) {
+  const alias = normalizeText(input).replace(/\s+/g, "_");
+  if (EN_CATEGORY_BY_ALIAS[alias]) return EN_CATEGORY_BY_ALIAS[alias];
+  return normalizeText(input)
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
 async function resolveIngredientCategoryRef({
   restaurantId,
   ingredientCategoryId,
@@ -69,7 +110,7 @@ async function resolveIngredientCategoryRef({
     return { ingredientCategoryId: cat._id, category: cat.name };
   }
 
-  const categoryName = String(category || "").trim();
+  const categoryName = toEnglishCategoryName(category);
   if (!categoryName) return { ingredientCategoryId: null, category: "" };
 
   const cat = await IngredientCategory.findOne({

@@ -15,6 +15,7 @@ import QuickStockModal from "./QuickStockModal";
 import IngredientCategoryManagerModal from "./IngredientCategoryManagerModal";
 import { useIngredients } from "@/hooks/useIngredients";
 import { useNotification } from "@/hooks/useNotification";
+import { toIngredientCategoryVi } from "@/utils/ingredientCategoryI18n";
 import "./IngredientList.scss";
 
 const IngredientList = ({
@@ -201,7 +202,7 @@ const IngredientList = ({
               <option value="">Tất cả danh mục</option>
               {(ingredientCategories || []).map((cat) => (
                 <option key={cat.id} value={cat.id}>
-                  {cat.name}
+                  {toIngredientCategoryVi(cat.name)}
                 </option>
               ))}
             </select>
