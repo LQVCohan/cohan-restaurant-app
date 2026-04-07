@@ -12,15 +12,6 @@ const fmtDateTime = (value) => {
   return d.toLocaleString("vi-VN");
 };
 
-const PAGE_SIZE = 8;
-
-const fmtDateTime = (value) => {
-  if (!value) return "-";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleString("vi-VN");
-};
-
 const IngredientCategoryManagerModal = ({
   isOpen,
   onClose,
@@ -39,12 +30,16 @@ const IngredientCategoryManagerModal = ({
   const [lastSyncReport, setLastSyncReport] = useState(null);
 
   const filtered = useMemo(() => {
-    const key = String(search || "").trim().toLowerCase();
+    const key = String(search || "")
+      .trim()
+      .toLowerCase();
     return [...(categories || [])]
       .filter((cat) => {
         if (sourceFilter !== "all" && cat.source !== sourceFilter) return false;
         if (!key) return true;
-        return String(cat.name || "").toLowerCase().includes(key);
+        return String(cat.name || "")
+          .toLowerCase()
+          .includes(key);
       })
       .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   }, [categories, search, sourceFilter]);
@@ -92,13 +87,25 @@ const IngredientCategoryManagerModal = ({
           </Button>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
           <b>Danh mục hiện có</b>
           <Button
             type="button"
             variant="secondary"
             onClick={async () => {
-              if (!window.confirm("Bạn có chắc chắn muốn đồng bộ danh mục từ nguyên liệu?")) return;
+              if (
+                !window.confirm(
+                  "Bạn có chắc chắn muốn đồng bộ danh mục từ nguyên liệu?",
+                )
+              )
+                return;
               setLoading(true);
               try {
                 const report = await onSync?.();
@@ -124,7 +131,11 @@ const IngredientCategoryManagerModal = ({
             <Metric label="Tạo mới" value={summary.categoriesCreated} />
             <Metric label="Cập nhật" value={summary.categoriesUpdated} />
             <Metric label="Gán lại" value={summary.ingredientsReassigned} />
-            <Metric label="Lỗi" value={summary.errors} danger={summary.errors > 0} />
+            <Metric
+              label="Lỗi"
+              value={summary.errors}
+              danger={summary.errors > 0}
+            />
           </div>
         )}
 
@@ -152,7 +163,14 @@ const IngredientCategoryManagerModal = ({
           </select>
         </div>
 
-        <div style={{ maxHeight: 320, overflow: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+        <div
+          style={{
+            maxHeight: 320,
+            overflow: "auto",
+            border: "1px solid #e2e8f0",
+            borderRadius: 8,
+          }}
+        >
           {pageRows.map((cat) => (
             <div
               key={cat.id}
@@ -166,7 +184,9 @@ const IngredientCategoryManagerModal = ({
               }}
             >
               <div>
-                <div style={{ fontWeight: 600 }}>{toIngredientCategoryVi(cat.name)}</div>
+                <div style={{ fontWeight: 600 }}>
+                  {toIngredientCategoryVi(cat.name)}
+                </div>
                 <small style={{ color: "#64748b" }}>
                   {cat.source || "manual"} • usage: {cat.usageCount || 0}
                 </small>
@@ -176,7 +196,10 @@ const IngredientCategoryManagerModal = ({
                   type="button"
                   disabled={loading}
                   onClick={async () => {
-                    const next = window.prompt("Đổi tên danh mục", cat.name || "");
+                    const next = window.prompt(
+                      "Đổi tên danh mục",
+                      cat.name || "",
+                    );
                     if (!next?.trim() || next.trim() === cat.name) return;
                     setLoading(true);
                     try {
@@ -207,16 +230,28 @@ const IngredientCategoryManagerModal = ({
             </div>
           ))}
           {!pageRows.length && (
-            <div style={{ padding: 16, color: "#64748b" }}>Không có danh mục phù hợp bộ lọc.</div>
+            <div style={{ padding: 16, color: "#64748b" }}>
+              Không có danh mục phù hợp bộ lọc.
+            </div>
           )}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <small style={{ color: "#64748b" }}>
             Trang {currentPage}/{pageCount}
           </small>
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
               Trước
             </button>
             <button
@@ -233,13 +268,20 @@ const IngredientCategoryManagerModal = ({
           <b>Lịch sử đồng bộ gần đây</b>
           <div style={{ maxHeight: 140, overflow: "auto", marginTop: 8 }}>
             {(syncLogs || []).map((log) => (
-              <div key={log.id} style={{ padding: "6px 0", borderBottom: "1px dashed #e2e8f0" }}>
+              <div
+                key={log.id}
+                style={{ padding: "6px 0", borderBottom: "1px dashed #e2e8f0" }}
+              >
                 <small style={{ color: "#475569" }}>
                   {fmtDateTime(log.at)} • {log.summaryText || "Không có mô tả"}
                 </small>
               </div>
             ))}
-            {!syncLogs?.length && <small style={{ color: "#94a3b8" }}>Chưa có lịch sử đồng bộ.</small>}
+            {!syncLogs?.length && (
+              <small style={{ color: "#94a3b8" }}>
+                Chưa có lịch sử đồng bộ.
+              </small>
+            )}
           </div>
         </div>
       </div>
@@ -248,9 +290,18 @@ const IngredientCategoryManagerModal = ({
 };
 
 const Metric = ({ label, value, danger = false }) => (
-  <div style={{ background: "#f8fafc", border: `1px solid ${danger ? "#fca5a5" : "#e2e8f0"}`, borderRadius: 8, padding: 10 }}>
+  <div
+    style={{
+      background: "#f8fafc",
+      border: `1px solid ${danger ? "#fca5a5" : "#e2e8f0"}`,
+      borderRadius: 8,
+      padding: 10,
+    }}
+  >
     <small style={{ color: "#64748b" }}>{label}</small>
-    <div style={{ fontWeight: 700, color: danger ? "#b91c1c" : "#0f172a" }}>{Number(value) || 0}</div>
+    <div style={{ fontWeight: 700, color: danger ? "#b91c1c" : "#0f172a" }}>
+      {Number(value) || 0}
+    </div>
   </div>
 );
 
