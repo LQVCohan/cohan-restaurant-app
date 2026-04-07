@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import s from "./SplitTableModal.module.scss";
+import useModalKeyboardClose from "./useModalKeyboardClose";
 
 export function SplitTableModal({
   isOpen,
@@ -8,6 +9,7 @@ export function SplitTableModal({
   onConfirm,
   onClose,
 }) {
+  useModalKeyboardClose({ isOpen, onClose });
   const [source, setSource] = useState("");
   const [target, setTarget] = useState("");
   const [selected, setSelected] = useState(new Set());
@@ -27,8 +29,13 @@ export function SplitTableModal({
   if (!isOpen) return null;
 
   return (
-    <div className={s.backdrop}>
-      <div className={s.modal}>
+    <div
+      className={s.backdrop}
+      onMouseDown={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className={s.modal} onMouseDown={(e) => e.stopPropagation()} tabIndex={-1}>
         <h3 className={s.title}>Tách bàn</h3>
         <select value={source} onChange={(e) => setSource(e.target.value)}>
           <option value="">--Chọn bàn--</option>

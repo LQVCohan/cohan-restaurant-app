@@ -1,5 +1,6 @@
 import React from "react";
 import s from "./SwitchTableConfirmModal.module.scss";
+import useModalKeyboardClose from "./useModalKeyboardClose";
 
 export default function SwitchTableConfirmModal({
   isOpen,
@@ -9,11 +10,17 @@ export default function SwitchTableConfirmModal({
   onCancel,
   onConfirm,
 }) {
+  useModalKeyboardClose({ isOpen, onClose: onCancel });
   if (!isOpen) return null;
 
   return (
-    <div className={s.backdrop} onMouseDown={onCancel}>
-      <div className={s.modal} onMouseDown={(e) => e.stopPropagation()}>
+    <div
+      className={s.backdrop}
+      onMouseDown={onCancel}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className={s.modal} onMouseDown={(e) => e.stopPropagation()} tabIndex={-1}>
         <div className={s.header}>
           <h3>Xác nhận đổi</h3>
           <button className={s.close} onClick={onCancel}>

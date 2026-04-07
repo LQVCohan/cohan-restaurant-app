@@ -6,6 +6,7 @@ import useOrderManagement from "@/hooks/useOrderManagement";
 import { usePos } from "@/context/PosContext";
 import { useRestaurantCurrency } from "@/hooks/useRestaurantCurrency";
 import { convertCurrencyAmount } from "@/utils/currency";
+import useModalKeyboardClose from "./useModalKeyboardClose";
 
 const QRCodePlaceholder = ({ value }) => (
   <div className={s.qrImage}>
@@ -166,16 +167,21 @@ function PaymentModal({
     onClose?.();
   };
 
-  if (!isOpen) return null;
-
   const isCash = method === "cash";
   const isTransfer = method === "transfer";
   const disableConfirm =
     busy || (isCash && Number(paidAmount || 0) < Number(convertedTotalAmount || 0));
+  useModalKeyboardClose({ isOpen, onClose, disabled: busy || isConfirming });
+  if (!isOpen) return null;
 
   return (
-    <div className={s.backdrop} onClick={onClose}>
-      <div className={s.modal} onClick={(e) => e.stopPropagation()}>
+    <div
+      className={s.backdrop}
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className={s.modal} onClick={(e) => e.stopPropagation()} tabIndex={-1}>
         <button className={s.closeButton} onClick={onClose} disabled={busy}>
           &times;
         </button>

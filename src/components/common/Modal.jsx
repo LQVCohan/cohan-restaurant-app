@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useId } from "react";
+import React, { useEffect, useRef, useState, useId, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import "./Modal.scss";
@@ -29,17 +29,27 @@ const Modal = ({
   children,
   closeOnOverlayClick = true,
   closeOnEscape = true,
+  onBeforeClose,
   className = "",
   zIndex = 1000, // Hỗ trợ stack modals
 }) => {
   const shouldRender = useDelayUnmount(isOpen, 300); // 300ms khớp với CSS transition
   const modalRef = useRef(null);
   const overlayRef = useRef(null);
+  const previousActiveElementRef = useRef(null);
   const titleId = useId();
+  const requestClose = useCallback(() => {
+    if (typeof onBeforeClose === "function") {
+      const canClose = onBeforeClose();
+      if (canClose === false) return;
+    }
+    onClose?.();
+  }, [onBeforeClose, onClose]);
 
   // 1. Lock Body Scroll & Focus Trap
   useEffect(() => {
     if (isOpen) {
+      previousActiveElementRef.current = document.activeElement;
       document.body.style.overflow = "hidden";
 
       // Focus vào modal khi mở
@@ -50,6 +60,9 @@ const Modal = ({
       return () => {
         document.body.style.overflow = "unset";
         clearTimeout(timer);
+        if (previousActiveElementRef.current?.focus) {
+          previousActiveElementRef.current.focus();
+        }
       };
     }
   }, [isOpen]);
@@ -59,7 +72,23 @@ const Modal = ({
     const handleKeyDown = (e) => {
       if (isOpen && closeOnEscape && e.key === "Escape") {
         e.stopPropagation(); // Ngăn event bubbling nếu có modal cha
-        onClose();
+        requestClose();
+      }
+
+      if (isOpen && e.key === "Tab" && modalRef.current) {
+        const focusable = modalRef.current.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
 
@@ -68,7 +97,7 @@ const Modal = ({
       window.addEventListener("keydown", handleKeyDown);
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, closeOnEscape, onClose]);
+  }, [isOpen, closeOnEscape, requestClose]);
 
   // 3. Handle Overlay Click (An toàn hơn mouseDown/Up)
   const handleOverlayClick = (e) => {
@@ -77,7 +106,7 @@ const Modal = ({
       overlayRef.current &&
       e.target === overlayRef.current
     ) {
-      onClose();
+      requestClose();
     }
   };
 
@@ -104,7 +133,7 @@ const Modal = ({
         {React.Children.map(children, (child) => {
           // Clone element để truyền props tự động nếu cần (như onClose cho Header)
           if (React.isValidElement(child) && child.type === ModalHeader) {
-            return React.cloneElement(child, { onClose, titleId });
+            return React.cloneElement(child, { onClose: requestClose, titleId });
           }
           return child;
         })}
