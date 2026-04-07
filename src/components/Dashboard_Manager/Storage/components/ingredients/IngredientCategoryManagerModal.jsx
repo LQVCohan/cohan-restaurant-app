@@ -12,6 +12,15 @@ const fmtDateTime = (value) => {
   return d.toLocaleString("vi-VN");
 };
 
+const PAGE_SIZE = 8;
+
+const fmtDateTime = (value) => {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleString("vi-VN");
+};
+
 const IngredientCategoryManagerModal = ({
   isOpen,
   onClose,
