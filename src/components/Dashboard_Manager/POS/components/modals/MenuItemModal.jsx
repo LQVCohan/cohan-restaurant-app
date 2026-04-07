@@ -3,6 +3,7 @@ import s from "./MenuItemModal.module.scss";
 import { formatPrice } from "../../utils/format";
 import { flyToOrder } from "../../../../../utils/flyToOrder";
 import { useAvatarUploadLocal } from "../../../../../hooks/useAvatarUploadLocal";
+import useModalKeyboardClose from "./useModalKeyboardClose";
 
 // ... (Giữ nguyên phần Import Icons như cũ) ...
 const IconCamera = () => (
@@ -324,12 +325,18 @@ export default function MenuItemModal({
     });
   };
 
+  useModalKeyboardClose({ isOpen, onClose, disabled: isUploading });
   if (!isOpen || !item) return null;
 
   return (
     <>
-      <div className={s.backdrop} onClick={!isUploading ? onClose : undefined}>
-        <div className={s.modal} onClick={(e) => e.stopPropagation()}>
+      <div
+        className={s.backdrop}
+        onClick={!isUploading ? onClose : undefined}
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className={s.modal} onClick={(e) => e.stopPropagation()} tabIndex={-1}>
           {/* HEADER IMAGE */}
           <div className={s.header}>
             {item.thumbImage ? (

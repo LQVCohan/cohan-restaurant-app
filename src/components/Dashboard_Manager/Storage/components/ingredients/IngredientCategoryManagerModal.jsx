@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
 import { toIngredientCategoryVi } from "../../../../../utils/ingredientCategoryI18n";
@@ -28,6 +28,18 @@ const IngredientCategoryManagerModal = ({
   const [sourceFilter, setSourceFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [lastSyncReport, setLastSyncReport] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setName("");
+    setLoading(false);
+    setSearch("");
+    setSourceFilter("all");
+    setPage(1);
+    setLastSyncReport(null);
+    setError("");
+  }, [isOpen]);
 
   const filtered = useMemo(() => {
     const key = String(search || "")
@@ -51,28 +63,49 @@ const IngredientCategoryManagerModal = ({
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, currentPage]);
 
-  if (!isOpen) return null;
-
   const create = async () => {
     if (!name.trim()) return;
+    setError("");
     setLoading(true);
     try {
       await onCreate?.(name.trim());
       setName("");
+    } catch (err) {
+      setError(err?.message || "Không thể tạo danh mục mới.");
     } finally {
       setLoading(false);
     }
   };
 
+  const canClose = useCallback(() => {
+    if (loading) return false;
+    if (name.trim()) {
+      const ok = window.confirm(
+        "Bạn đang nhập danh mục mới. Đóng modal có thể làm mất dữ liệu. Tiếp tục?",
+      );
+      if (!ok) return false;
+    }
+    return true;
+  }, [loading, name]);
+
+  const requestClose = useCallback(() => {
+    if (!canClose()) return;
+    onClose?.();
+  }, [canClose, onClose]);
+
   const summary = lastSyncReport || syncLogs?.[0] || null;
+
+  if (!isOpen) return null;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={loading ? undefined : onClose}
+      onClose={requestClose}
+      onBeforeClose={canClose}
       title="Quản lý danh mục nguyên liệu"
       size="lg"
       closeOnOverlayClick={false}
+      closeOnEscape={!loading}
     >
       <div style={{ display: "grid", gap: 12 }}>
         <div style={{ display: "flex", gap: 8 }}>
@@ -110,6 +143,9 @@ const IngredientCategoryManagerModal = ({
               try {
                 const report = await onSync?.();
                 setLastSyncReport(report || null);
+                setError("");
+              } catch (err) {
+                setError(err?.message || "Đồng bộ danh mục thất bại.");
               } finally {
                 setLoading(false);
               }
@@ -136,6 +172,21 @@ const IngredientCategoryManagerModal = ({
               value={summary.errors}
               danger={summary.errors > 0}
             />
+          </div>
+        )}
+
+        {!!error && (
+          <div
+            role="alert"
+            style={{
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#b91c1c",
+              borderRadius: 8,
+              padding: "10px 12px",
+            }}
+          >
+            {error}
           </div>
         )}
 
@@ -173,7 +224,7 @@ const IngredientCategoryManagerModal = ({
         >
           {pageRows.map((cat) => (
             <div
-              key={cat.id}
+              key={cat.id || cat._id || cat.name}
               style={{
                 padding: "10px 12px",
                 borderBottom: "1px solid #eef2f7",
@@ -204,6 +255,9 @@ const IngredientCategoryManagerModal = ({
                     setLoading(true);
                     try {
                       await onRename?.(cat.id, next.trim());
+                      setError("");
+                    } catch (err) {
+                      setError(err?.message || "Đổi tên danh mục thất bại.");
                     } finally {
                       setLoading(false);
                     }
@@ -219,6 +273,9 @@ const IngredientCategoryManagerModal = ({
                     setLoading(true);
                     try {
                       await onDelete?.(cat.id);
+                      setError("");
+                    } catch (err) {
+                      setError(err?.message || "Xóa danh mục thất bại.");
                     } finally {
                       setLoading(false);
                     }

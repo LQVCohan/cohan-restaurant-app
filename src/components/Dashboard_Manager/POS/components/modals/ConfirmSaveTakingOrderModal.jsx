@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { createPortal } from "react-dom";
 import { formatPrice } from "@/utils/formatters";
+import useModalKeyboardClose from "./useModalKeyboardClose";
 
 const BackdropStyle = {
   position: "fixed",
@@ -215,6 +216,7 @@ export default function ConfirmSaveOrderModal({
       problems,
     };
   }, [items, customer, shippingInfo, note, isDelivery]);
+  useModalKeyboardClose({ isOpen, onClose, disabled: isSaving });
 
   if (!isOpen) return null;
 

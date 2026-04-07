@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 
 const OrderModal = ({
   selectedTable,
@@ -24,10 +24,10 @@ const OrderModal = ({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItems, setLocalSelectedItems] = useState(initialItems);
-  const now = new Date();
-  const defaultTime = new Date(now.setHours(now.getHours() + 1))
-    .toISOString()
-    .slice(0, 16);
+  const defaultTime = useMemo(
+    () => new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16),
+    []
+  );
   const [arrivalTime, setLocalArrivalTime] = useState(
     initialArrivalTime || defaultTime
   );
@@ -35,6 +35,7 @@ const OrderModal = ({
   const [showPayment, setShowPayment] = useState(false);
   const [paymentTimer, setPaymentTimer] = useState(600);
   const [qrCode, setQrCode] = useState("");
+  const [initialSnapshot, setInitialSnapshot] = useState("");
   const filteredMenu = menu.find(
     (cat) => cat.category === selectedCategory
   ) || { items: [] };
@@ -58,6 +59,23 @@ const OrderModal = ({
       setShowPayment(false);
     }
   }, [showPayment, paymentTimer]);
+
+  useEffect(() => {
+    setInitialSnapshot(
+      JSON.stringify({
+        selectedItems: initialItems || [],
+        arrivalTime: initialArrivalTime || defaultTime,
+        message: message || "",
+      })
+    );
+  }, [initialItems, initialArrivalTime, message, defaultTime]);
+
+  const isDirty =
+    JSON.stringify({
+      selectedItems,
+      arrivalTime,
+      message: message || "",
+    }) !== initialSnapshot;
 
   const handleAddItem = (item) => {
     setLocalSelectedItems((prev) => {
@@ -126,9 +144,31 @@ const OrderModal = ({
     setShowOrderModal(false);
   };
 
+  const requestClose = useCallback(() => {
+    if (showPayment) return;
+    if (isDirty) {
+      const ok = window.confirm(
+        "Bạn có thay đổi chưa lưu. Bạn có chắc chắn muốn đóng?"
+      );
+      if (!ok) return;
+    }
+    setShowOrderModal(false);
+  }, [isDirty, setShowOrderModal, showPayment]);
+
   const handleClose = (e) => {
-    if (e.target === e.currentTarget) setShowOrderModal(false);
+    if (e.target === e.currentTarget) requestClose();
   };
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        requestClose();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [requestClose]);
 
   const sectionStyle = {
     background: "#f8f9fa",
@@ -157,6 +197,8 @@ const OrderModal = ({
         alignItems: "center",
       }}
       onClick={handleClose}
+      role="dialog"
+      aria-modal="true"
     >
       <div
         style={{
@@ -188,6 +230,22 @@ const OrderModal = ({
         </div>
 
         <h3>Đặt món cho bàn {selectedTable.tableNumber}</h3>
+        <button
+          onClick={requestClose}
+          style={{
+            position: "absolute",
+            top: "12px",
+            left: "12px",
+            padding: "8px 10px",
+            border: "1px solid #ddd",
+            background: "#fff",
+            borderRadius: "8px",
+            cursor: "pointer",
+          }}
+          aria-label="Đóng modal"
+        >
+          Đóng
+        </button>
 
         {!showSummary && !showPayment && (
           <div style={{ display: "flex", height: "calc(100% - 100px)" }}>

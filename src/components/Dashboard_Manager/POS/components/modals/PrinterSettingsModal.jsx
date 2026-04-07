@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { PRINT_STATIONS } from "@/utils/printStations";
 import s from "./PrinterSettingsModal.module.scss";
+import useModalKeyboardClose from "./useModalKeyboardClose";
 
 const PRINTER_TYPES = [
   {
@@ -49,6 +50,7 @@ export function PrinterSettingsModal({
   });
 
   const [isTesting, setIsTesting] = useState(false);
+  useModalKeyboardClose({ isOpen, onClose, disabled: isTesting });
 
   useEffect(() => {
     if (isOpen) {
@@ -74,12 +76,12 @@ export function PrinterSettingsModal({
   };
 
   return (
-    <div className={s.backdrop} onClick={onClose}>
+    <div className={s.backdrop} onClick={onClose} role="dialog" aria-modal="true">
       <div
         className={s.modal}
         onClick={(e) => e.stopPropagation()} // Ngăn click xuyên qua modal đóng backdrop
-        role="dialog"
-        aria-modal
+        role="document"
+        tabIndex={-1}
       >
         {/* HEADER */}
         <div className={s.header}>
