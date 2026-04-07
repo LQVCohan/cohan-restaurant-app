@@ -15,6 +15,7 @@ import QuickStockModal from "./QuickStockModal";
 import IngredientCategoryManagerModal from "./IngredientCategoryManagerModal";
 import { useIngredients } from "@/hooks/useIngredients";
 import { useNotification } from "@/hooks/useNotification";
+import { toIngredientCategoryVi } from "@/utils/ingredientCategoryI18n";
 import "./IngredientList.scss";
 
 const IngredientList = ({
@@ -40,6 +41,7 @@ const IngredientList = ({
     effectiveWarehouseId,
     getPriceSuggestions,
     ingredientCategories,
+    ingredientCategorySyncLogs,
     createIngredientCategory,
     updateIngredientCategory,
     deleteIngredientCategory,
@@ -199,8 +201,8 @@ const IngredientList = ({
             >
               <option value="">Tất cả danh mục</option>
               {(ingredientCategories || []).map((cat) => (
-                <option key={cat.id} value={(cat.name || "").toLowerCase()}>
-                  {cat.name}
+                <option key={cat.id} value={cat.id}>
+                  {toIngredientCategoryVi(cat.name)}
                 </option>
               ))}
             </select>
@@ -365,6 +367,7 @@ const IngredientList = ({
         isOpen={categoryModalOpen}
         onClose={() => setCategoryModalOpen(false)}
         categories={ingredientCategories}
+        syncLogs={ingredientCategorySyncLogs}
         onCreate={async (name) => {
           await createIngredientCategory(name);
           showNotification("Đã thêm danh mục.", "success");
@@ -378,8 +381,12 @@ const IngredientList = ({
           showNotification("Đã xóa danh mục.", "success");
         }}
         onSync={async () => {
-          await syncIngredientCategories();
-          showNotification("Đã đồng bộ danh mục từ nguyên liệu.", "success");
+          const report = await syncIngredientCategories();
+          showNotification(
+            report?.summaryText || "Đã đồng bộ danh mục từ nguyên liệu.",
+            "success"
+          );
+          return report;
         }}
       />
     </div>

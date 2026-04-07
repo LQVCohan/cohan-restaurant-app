@@ -34,6 +34,11 @@ const IngredientSchema = BaseSchemaModel({
   name: { type: String, required: true, trim: true, index: "text" },
   sku: { type: String, trim: true },
   category: { type: String, trim: true },
+  ingredientCategoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "IngredientCategory",
+    index: true,
+  },
 
   baseUnit: { type: String, enum: UnitEnum, required: true, default: "g" },
   conversions: { type: [ConversionSchema], default: [] },

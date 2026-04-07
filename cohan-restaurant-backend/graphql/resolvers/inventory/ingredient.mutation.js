@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 import { GraphQLError } from "graphql";
-import { Ingredient, Order, IngredientRecent } from "../../../models/index.js";
+import {
+  Ingredient,
+  Order,
+  IngredientRecent,
+  IngredientCategory,
+} from "../../../models/index.js";
 
 function normalizeDupKeyError(err) {
   // Mongo duplicate key
@@ -22,6 +27,104 @@ const ACTIVE_ORDER_STATUSES = [
   "served",
 ];
 
+function escapeRegex(input) {
+  return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeText(input) {
+  return String(input || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const EN_CATEGORY_BY_ALIAS = {
+  meat: "Meat",
+  thit: "Meat",
+  seafood: "Seafood",
+  hai_san: "Seafood",
+  vegetable: "Vegetable",
+  rau_cu: "Vegetable",
+  spice: "Spice",
+  gia_vi: "Spice",
+  starch: "Starch",
+  tinh_bot: "Starch",
+  dairy_egg: "Dairy & Egg",
+  sua_trung: "Dairy & Egg",
+  beverage: "Beverage",
+  do_uong: "Beverage",
+  other: "Other",
+  khac: "Other",
+};
+
+function toEnglishCategoryName(input) {
+  const alias = normalizeText(input).replace(/\s+/g, "_");
+  if (EN_CATEGORY_BY_ALIAS[alias]) return EN_CATEGORY_BY_ALIAS[alias];
+  return normalizeText(input)
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+async function resolveIngredientCategoryRef({
+  restaurantId,
+  ingredientCategoryId,
+  category,
+  fallbackIngredientCategoryId = null,
+  fallbackCategory = "",
+}) {
+  const hasCategoryIdInput = ingredientCategoryId !== undefined;
+  const hasCategoryNameInput = category !== undefined;
+
+  if (!hasCategoryIdInput && !hasCategoryNameInput) {
+    return {
+      ingredientCategoryId: fallbackIngredientCategoryId || null,
+      category: fallbackCategory || "",
+    };
+  }
+
+  if (
+    hasCategoryIdInput &&
+    ingredientCategoryId &&
+    !mongoose.isValidObjectId(ingredientCategoryId)
+  ) {
+    throw new GraphQLError("Invalid ingredientCategoryId");
+  }
+
+  if (ingredientCategoryId && mongoose.isValidObjectId(ingredientCategoryId)) {
+    const cat = await IngredientCategory.findOne({
+      _id: ingredientCategoryId,
+      restaurantId,
+      isActive: true,
+    })
+      .select({ _id: 1, name: 1 })
+      .lean();
+
+    if (!cat) throw new GraphQLError("Ingredient category not found");
+    return { ingredientCategoryId: cat._id, category: cat.name };
+  }
+
+  const categoryName = toEnglishCategoryName(category);
+  if (!categoryName) return { ingredientCategoryId: null, category: "" };
+
+  const cat = await IngredientCategory.findOne({
+    restaurantId,
+    name: new RegExp(`^\\s*${escapeRegex(categoryName)}\\s*$`, "i"),
+    isActive: true,
+  })
+    .select({ _id: 1, name: 1 })
+    .lean();
+
+  if (!cat) return { ingredientCategoryId: null, category: categoryName };
+  return { ingredientCategoryId: cat._id, category: cat.name };
+}
+
 export default {
   createIngredient: async (_p, { input }) => {
     if (!mongoose.isValidObjectId(input?.restaurantId)) {
@@ -29,7 +132,16 @@ export default {
     }
 
     try {
-      const created = await Ingredient.create(input);
+      const categoryRef = await resolveIngredientCategoryRef({
+        restaurantId: input.restaurantId,
+        ingredientCategoryId: input.ingredientCategoryId,
+        category: input.category,
+      });
+      const created = await Ingredient.create({
+        ...input,
+        ingredientCategoryId: categoryRef.ingredientCategoryId,
+        category: categoryRef.category,
+      });
       return created.toObject({ virtuals: true });
     } catch (err) {
       const e = normalizeDupKeyError(err);
@@ -45,7 +157,7 @@ export default {
     try {
       // 1) Load ingredient để lấy restaurantId (scope check đúng nhà hàng)
       const ing = await Ingredient.findById(id)
-        .select({ _id: 1, restaurantId: 1, name: 1 })
+        .select({ _id: 1, restaurantId: 1, name: 1, category: 1, ingredientCategoryId: 1 })
         .lean();
 
       if (!ing) throw new GraphQLError("Ingredient not found");
@@ -70,9 +182,23 @@ export default {
       }
 
       // 3) Update nếu không bị dùng
+      const categoryRef = await resolveIngredientCategoryRef({
+        restaurantId: ing.restaurantId,
+        ingredientCategoryId: patch.ingredientCategoryId,
+        category: patch.category,
+        fallbackIngredientCategoryId: ing.ingredientCategoryId,
+        fallbackCategory: ing.category,
+      });
+
       const doc = await Ingredient.findByIdAndUpdate(
         id,
-        { $set: patch },
+        {
+          $set: {
+            ...patch,
+            ingredientCategoryId: categoryRef.ingredientCategoryId,
+            category: categoryRef.category,
+          },
+        },
         { new: true, runValidators: true }
       ).lean({ virtuals: true });
 

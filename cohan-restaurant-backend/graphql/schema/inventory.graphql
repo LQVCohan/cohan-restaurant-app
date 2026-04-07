@@ -61,6 +61,8 @@ type Ingredient {
   name: String!
   sku: String
   category: String
+  ingredientCategoryId: ID
+  ingredientCategory: IngredientCategory
   baseUnit: Unit!
   conversions: [UnitConversion!]!
   costPerBaseUnit: Float
@@ -84,11 +86,48 @@ type IngredientCategory {
   updatedAt: DateTime
 }
 
+type IngredientCategorySyncSample {
+  ingredientId: ID!
+  ingredientName: String
+  predictedCategory: String!
+  reason: String!
+  confidence: Float!
+  matchedKeyword: String
+}
+
+type IngredientCategorySyncReport {
+  totalIngredients: Int!
+  categoriesCreated: Int!
+  categoriesUpdated: Int!
+  ingredientsReassigned: Int!
+  skipped: Int!
+  errors: Int!
+  summaryText: String!
+  syncedAt: DateTime!
+  sample: [IngredientCategorySyncSample!]!
+  categories: [IngredientCategory!]!
+}
+
+type IngredientCategorySyncLog {
+  id: ID!
+  at: DateTime
+  actorUserId: ID
+  status: String
+  totalIngredients: Int!
+  categoriesCreated: Int!
+  categoriesUpdated: Int!
+  ingredientsReassigned: Int!
+  skipped: Int!
+  errors: Int!
+  summaryText: String
+}
+
 input CreateIngredientInput {
   restaurantId: ID!
   name: String!
   sku: String
   category: String
+  ingredientCategoryId: ID
   baseUnit: Unit!
   conversions: [UnitConversionInput!]
   costPerBaseUnit: Float
@@ -103,6 +142,7 @@ input UpdateIngredientInput {
   name: String
   sku: String
   category: String
+  ingredientCategoryId: ID
   baseUnit: Unit
   conversions: [UnitConversionInput!]
   costPerBaseUnit: Float
@@ -375,6 +415,7 @@ extend type Query {
     includeInactive: Boolean = false
     limit: Int = 200
   ): [IngredientCategory!]!
+  ingredientCategorySyncLogs(restaurantId: ID!, limit: Int = 10): [IngredientCategorySyncLog!]!
 
   warehouses(restaurantId: ID!): [Warehouse!]!
 
@@ -438,6 +479,7 @@ extend type Mutation {
   updateIngredientCategory(input: UpdateIngredientCategoryInput!): IngredientCategory!
   deleteIngredientCategory(id: ID!): Boolean!
   syncIngredientCategoriesFromIngredients(restaurantId: ID!): [IngredientCategory!]!
+  syncIngredientCategories(restaurantId: ID!): IngredientCategorySyncReport!
 
   createWarehouse(input: CreateWarehouseInput!): Warehouse!
   updateWarehouse(input: UpdateWarehouseInput!): Warehouse!
