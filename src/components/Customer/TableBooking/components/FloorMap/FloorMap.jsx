@@ -1,7 +1,7 @@
 import React, { useState, useContext, useRef } from "react";
-import { AuthContext } from "../src/context/AuthContext";
-import NotifyModal from "../src/components/Customer/NotifyModal/NotifyModal";
-import { useNotification } from "../src/hooks/useNotification";
+import { AuthContext } from "../../../../../context/AuthContext";
+import NotifyModal from "../../../NotifyModal/NotifyModal";
+import { useNotification } from "../../../../../hooks/useNotification";
 import { Plus, Minus, RotateCcw, Info, X } from "lucide-react"; // Import Icons
 import "./FloorMap.scss";
 

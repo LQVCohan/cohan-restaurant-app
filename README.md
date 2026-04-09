@@ -18,7 +18,7 @@ npm run dev --prefix cohan-restaurant-backend
 ```
 
 ## Tài liệu
-- Environment setup: `docs-environment.md`
+- Environment setup: `docs/environment/setup.md`
 - Upload migration note: `cohan-restaurant-backend/docs/upload-storage-migration.md`
 - Health endpoints:
   - `/health/live`
