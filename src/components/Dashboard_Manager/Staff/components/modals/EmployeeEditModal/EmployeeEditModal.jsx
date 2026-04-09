@@ -2,9 +2,12 @@ import React, { useState, useEffect } from "react";
 import Modal from "../../../../../common/Modal";
 import LoadingSpinner from "../../../../../common/LoadingSpinner";
 import Badge from "../../../../../common/Badge";
+import useModalDraft from "../../../../../../hooks/useModalDraft";
+import { useNotification } from "../../../../../../hooks/useNotification";
 import "./EmployeeEditModal.scss";
 
 const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) => {
+  const { showNotification } = useNotification();
   const [formData, setFormData] = useState({});
   const [originalData, setOriginalData] = useState({});
   const [errors, setErrors] = useState({});
@@ -55,6 +58,41 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
     const changed = JSON.stringify(formData) !== JSON.stringify(originalData);
     setHasChanges(changed);
   }, [formData, originalData]);
+
+  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+    enabled: isOpen && !!employee,
+    draftIdentity: {
+      module: "staff",
+      modal: "employee-edit-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: "edit",
+      entityType: "employee",
+      recordId: employee?.id || employee?._id || employee?.raw?.id || null,
+      context: "staff-management",
+      schemaVersion: "1",
+    },
+    formValue: formData,
+    isDirty: hasChanges,
+    sanitize: (v) => ({
+      fullName: v?.fullName || "",
+      positionTitle: v?.positionTitle || "",
+      department: v?.department || "service",
+      baseSalary: v?.baseSalary || "",
+      shiftType: v?.shiftType || "",
+      dateJoined: v?.dateJoined || "",
+      employmentStatus: v?.employmentStatus || "WORKING",
+      notes: v?.notes || "",
+    }),
+    onRestore: (draft) => {
+      setFormData((prev) => ({ ...prev, ...draft }));
+      showNotification(
+        "Một số thông tin nhạy cảm (liên hệ cá nhân) không được khôi phục tự động.",
+        "info",
+        3200,
+      );
+    },
+    notify: showNotification,
+  });
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -127,6 +165,8 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
       if (handler) {
         await handler(payload);
       }
+      clearDraft();
+      showNotification("Đã xóa dữ liệu nháp sau khi cập nhật.", "success", 2200);
       setOriginalData(formData);
       setHasChanges(false);
       onClose();
@@ -142,6 +182,7 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
     setFormData(originalData);
     setErrors({});
     setHasChanges(false);
+    clearDraft();
   };
 
   const getChangedFields = () => {
@@ -399,7 +440,7 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => requestCloseWithDraft(onClose)}
       size="lg"
       className="employee-edit-modal"
     >
@@ -463,7 +504,7 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
             <button
               type="button"
               className="btn btn--secondary"
-              onClick={onClose}
+              onClick={() => requestCloseWithDraft(onClose)}
               disabled={isSubmitting}
             >
               ❌ Hủy

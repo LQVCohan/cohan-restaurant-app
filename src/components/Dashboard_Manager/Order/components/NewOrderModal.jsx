@@ -22,6 +22,7 @@ import useFloorManagement from "../../../../hooks/useFloorManagement";
 import useTableManagement from "../../../../hooks/useTableManagement";
 import useMenuManagement from "../../../../hooks/useMenuManagement";
 import { useNotification } from "@/hooks/useNotification";
+import useModalDraft from "../../../../hooks/useModalDraft";
 
 import "./NewOrderModal.scss";
 
@@ -166,6 +167,68 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  const hasDirtyForm =
+    !!currentTable ||
+    currentOrder.length > 0 ||
+    !!query.trim() ||
+    !!selectedCategoryId;
+
+  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+    enabled: isOpen,
+    draftIdentity: {
+      module: "order",
+      modal: "new-order-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: "create",
+      entityType: "order",
+      recordId: null,
+      context: String(restaurantId || "default"),
+      schemaVersion: "1",
+    },
+    formValue: {
+      currentTableCode: currentTable?.code || "",
+      currentOrder,
+      query,
+      selectedCategoryId,
+      selectedTimeSlot,
+      activeLevel,
+    },
+    isDirty: hasDirtyForm,
+    sanitize: (v) => ({
+      currentTableCode: v?.currentTableCode || "",
+      currentOrder: Array.isArray(v?.currentOrder)
+        ? v.currentOrder.map((row) => ({
+            menuItemId: row?.menuItem?.id || row?.menuItemId || "",
+            menuItemName: row?.menuItem?.name || row?.menuItemName || "",
+            quantity: Number(row?.quantity || 0),
+            cookingOption: row?.cookingOption || "",
+            price: Number(row?.price || 0),
+            note: row?.note || "",
+          }))
+        : [],
+      query: v?.query || "",
+      selectedCategoryId: v?.selectedCategoryId || "",
+      selectedTimeSlot: v?.selectedTimeSlot || "",
+      activeLevel: v?.activeLevel ?? null,
+    }),
+    onRestore: (draft) => {
+      const restoredTable = (tables || []).find(
+        (t) => t.code === draft?.currentTableCode,
+      );
+      setCurrentTable(restoredTable || null);
+      setCurrentOrder(Array.isArray(draft?.currentOrder) ? draft.currentOrder : []);
+      setQuery(draft?.query || "");
+      setSelectedCategoryId(draft?.selectedCategoryId || "");
+      if (draft?.selectedTimeSlot) setSelectedTimeSlot(draft.selectedTimeSlot);
+      if (draft?.activeLevel !== undefined) setActiveLevel(draft.activeLevel);
+      showNotification(
+        "Ảnh/file minh hoạ món không được khôi phục tự động trong đơn nháp.",
+        "info",
+        2600,
+      );
+    },
+    notify: showNotification,
+  });
 
   // Context Mock for Hooks
   const posContext = useMemo(
@@ -277,17 +340,20 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
 
     if (result.success) {
       showNotification("Tạo đơn hàng thành công!", "success");
+      clearDraft();
       onSuccess?.();
-      handleClose();
+      closeModalNow();
     } else {
       showNotification(`Lỗi: ${result.message}`, "error");
     }
   };
 
-  const handleClose = () => {
+  const closeModalNow = () => {
     setCurrentTable(null);
     setCurrentOrder([]);
     setShowCart(false);
+    setQuery("");
+    setSelectedCategoryId("");
     onClose();
   };
 
@@ -297,7 +363,7 @@ const NewOrderModal = ({ isOpen, onClose, restaurantId, onSuccess }) => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleClose}
+      onClose={() => requestCloseWithDraft(closeModalNow)}
       title="Tạo Đơn Hàng Mới"
       size="xl"
     >

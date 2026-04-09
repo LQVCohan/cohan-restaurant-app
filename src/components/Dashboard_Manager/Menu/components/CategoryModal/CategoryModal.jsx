@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { useCategoryManagement } from "../../../../../hooks/useCategoryManagement";
 import { COMMON_CATEGORY_ICONS, resolveCategoryIcon } from "../../../../../utils/categoryIconMap";
+import useModalDraft from "../../../../../hooks/useModalDraft";
+import { useNotification } from "../../../../../hooks/useNotification";
 import "./CategoryModal.scss";
 
 const INITIAL_FORM = {
@@ -23,11 +25,42 @@ const INITIAL_FORM = {
 };
 
 const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
+  const { showNotification } = useNotification();
   const [viewMode, setViewMode] = useState("list"); // 'list' | 'form'
   const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isDirty =
+    viewMode === "form" &&
+    (formData.name.trim() || formData.description.trim() || (formData.icon || "") !== "🍽️");
+
+  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+    enabled: isOpen && viewMode === "form",
+    draftIdentity: {
+      module: "menu",
+      modal: "category-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: formData.id ? "edit" : "create",
+      entityType: "category",
+      recordId: formData.id || null,
+      context: timeSlot || "all-day",
+      schemaVersion: "1",
+    },
+    formValue: formData,
+    isDirty,
+    sanitize: (v) => ({
+      id: v?.id || null,
+      name: v?.name || "",
+      icon: v?.icon || "🍽️",
+      description: v?.description || "",
+    }),
+    onRestore: (draft) => {
+      setViewMode("form");
+      setFormData((prev) => ({ ...prev, ...draft }));
+    },
+    notify: showNotification,
+  });
 
   // Hook giả lập logic (giữ nguyên logic của bạn)
   const {
@@ -74,6 +107,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
   const switchToList = () => {
     setViewMode("list");
     setErrors({});
+    clearDraft();
   };
 
   const handleInputChange = (field, value) => {
@@ -107,6 +141,8 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
       } else {
         await createCategoryMenu({ restaurantId, ...payload });
       }
+      clearDraft();
+      showNotification("Đã xóa dữ liệu nháp sau khi lưu danh mục.", "success", 2200);
       switchToList();
     } catch (err) {
       console.error(err);
@@ -132,7 +168,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => requestCloseWithDraft(onClose)}
       title={null} // Tắt title mặc định để custom header đẹp hơn
       size="md"
       className="modern-category-modal"
@@ -146,7 +182,7 @@ const CategoryModal = ({ isOpen, restaurantId, timeSlot, onClose }) => {
                 <h3>Quản lý Danh mục</h3>
                 <p>Danh sách các nhóm món ăn trong thực đơn</p>
               </div>
-              <button className="btn-close-modal" onClick={onClose}>
+              <button className="btn-close-modal" onClick={() => requestCloseWithDraft(onClose)}>
                 <X size={20} />
               </button>
             </div>

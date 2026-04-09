@@ -1,5 +1,5 @@
 // src/components/Dashboard_Manager/Storage/components/ingredients/IngredientModal.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Type,
   Barcode,
@@ -23,6 +23,8 @@ import {
   suggestUnitOptionsByIngredientName,
 } from "../../../../../utils/unitSuggestions";
 import { toIngredientCategoryVi } from "../../../../../utils/ingredientCategoryI18n";
+import useModalDraft from "../../../../../hooks/useModalDraft";
+import { useNotification } from "../../../../../hooks/useNotification";
 import "./IngredientModal.scss";
 
 const ALL_UNITS = [
@@ -65,10 +67,12 @@ const IngredientModal = ({
   categoryOptions = [],
 }) => {
   const activeCurrency = normalizeCurrency(currency, "VND");
+  const { showNotification } = useNotification();
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState({});
   const [prevCurrency, setPrevCurrency] = useState(activeCurrency);
   const [unitSuggested, setUnitSuggested] = useState(false);
+  const submittedRef = useRef(false);
   const unitOptions = React.useMemo(() => {
     const suggested = suggestUnitOptionsByIngredientName(form.name);
     const selected = form.baseUnit || initial?.baseUnit || "g";
@@ -144,6 +148,61 @@ const IngredientModal = ({
   }, [form.name, form.baseUnit, isEditing, unitSuggested]);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  const initialSnapshot = useMemo(() => JSON.stringify(initial || null), [initial]);
+  const isDirty = useMemo(() => {
+    if (!isOpen) return false;
+    const baseline = initial
+      ? {
+          name: initial.name || "",
+          sku: initial.sku || "",
+          ingredientCategoryId: initial.ingredientCategoryId || "",
+          baseUnit: initial.baseUnit || "g",
+          costPerBaseUnit: String(
+            convertAndRoundCurrencyAmount(
+              initial.costPerBaseUnit ?? "",
+              "VND",
+              activeCurrency,
+              usdToVndRate,
+              { usdDigits: 4 },
+            ),
+          ),
+          minStock: String(initial.minStock ?? ""),
+          notes: initial.notes || "",
+          isActive: initial.isActive ?? true,
+          initialStockQty: "",
+        }
+      : { ...defaultForm };
+    return JSON.stringify({ ...form, costPerBaseUnit: String(form.costPerBaseUnit ?? "") }) !== JSON.stringify(baseline);
+  }, [activeCurrency, form, initial, isOpen, usdToVndRate]);
+
+  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+    enabled: isOpen,
+    draftIdentity: {
+      module: "storage",
+      modal: "ingredient-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: isEditing ? "edit" : "create",
+      entityType: "ingredient",
+      recordId: initial?.id || null,
+      context: defaultWarehouseName || "global",
+      schemaVersion: "1",
+    },
+    formValue: form,
+    isDirty,
+    sanitize: (v) => ({
+      name: v?.name || "",
+      sku: v?.sku || "",
+      ingredientCategoryId: v?.ingredientCategoryId || "",
+      baseUnit: v?.baseUnit || "g",
+      costPerBaseUnit: v?.costPerBaseUnit ?? "",
+      minStock: v?.minStock ?? "",
+      notes: v?.notes || "",
+      isActive: !!v?.isActive,
+      initialStockQty: v?.initialStockQty ?? "",
+    }),
+    onRestore: (draft) => setForm((prev) => ({ ...prev, ...draft })),
+    notify: showNotification,
+  });
 
   const validate = () => {
     const e = {};
@@ -199,6 +258,7 @@ const IngredientModal = ({
     const initialStockQty =
       !isEditing && canInitStock ? Number(form.initialStockQty || 0) : 0;
 
+    submittedRef.current = true;
     onSubmit?.({
       payload,
       initialStockQty,
@@ -207,12 +267,21 @@ const IngredientModal = ({
     });
   };
 
+  useEffect(() => {
+    if (isOpen) return;
+    if (submittedRef.current && !saving) {
+      clearDraft();
+      submittedRef.current = false;
+      showNotification("Đã xóa dữ liệu nháp sau khi lưu thành công.", "success", 2500);
+    }
+  }, [clearDraft, isOpen, saving, showNotification, initialSnapshot]);
+
   if (!isOpen) return null;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={saving ? undefined : onClose}
+      onClose={saving ? undefined : () => requestCloseWithDraft(onClose)}
       title={isEditing ? "Cập nhật nguyên liệu" : "Thêm nguyên liệu mới"}
       size="md"
       closeOnOverlayClick={false}

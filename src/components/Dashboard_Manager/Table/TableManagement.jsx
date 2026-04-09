@@ -10,6 +10,7 @@ import { useRestaurant } from "@/hooks/useRestaurant";
 import TableActionsLiteModal from "./TableActionsLiteModal";
 import Table3DSimulatorModal from "./Table3DSimulatorModal";
 import { loadTableVrImage } from "@/utils/vrStorage";
+import useModalDraft from "@/hooks/useModalDraft";
 import "./TableManagement.scss";
 import { mapModelToTableForm } from "@/config/table3dCatalog";
 
@@ -17,7 +18,7 @@ const TableManagement = () => {
   const navigate = useNavigate(); // 2. Init Hook
   const { showNotification } = useNotification();
   const { restaurants } = useContext(AuthContext);
-  const restaurantList = restaurants || [];
+  const restaurantList = useMemo(() => restaurants || [], [restaurants]);
 
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
 
@@ -116,6 +117,78 @@ const TableManagement = () => {
   const [floorForm, setFloorForm] = useState({ name: "" });
   const [vrSaving, setVrSaving] = useState(false);
 
+  const addTableDirty =
+    !!tableForm.number.trim() ||
+    Number(tableForm.seats || 0) !== 4 ||
+    !!tableForm.floorId ||
+    tableForm.area !== "standard" ||
+    !!tableForm.visualTemplate;
+  const floorDirty = !!floorForm.name.trim();
+  const vrDirty = !!(vrForm.vrTourUrl || "").trim();
+
+  const addTableDraft = useModalDraft({
+    enabled: showAddTableModal,
+    draftIdentity: {
+      module: "table",
+      modal: "add-table-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: "create",
+      entityType: "table",
+      recordId: null,
+      context: String(restaurantId || "default"),
+      schemaVersion: "1",
+    },
+    formValue: tableForm,
+    isDirty: addTableDirty,
+    sanitize: (v) => ({
+      number: v?.number || "",
+      seats: v?.seats ?? 4,
+      floorId: v?.floorId || "",
+      area: v?.area || "standard",
+      visualTemplate: v?.visualTemplate || "",
+    }),
+    onRestore: (draft) => setTableForm((prev) => ({ ...prev, ...draft })),
+    notify: showNotification,
+  });
+
+  const addFloorDraft = useModalDraft({
+    enabled: showFloorModal,
+    draftIdentity: {
+      module: "table",
+      modal: "add-floor-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: "create",
+      entityType: "floor",
+      recordId: null,
+      context: String(restaurantId || "default"),
+      schemaVersion: "1",
+    },
+    formValue: floorForm,
+    isDirty: floorDirty,
+    sanitize: (v) => ({ name: v?.name || "" }),
+    onRestore: (draft) => setFloorForm((prev) => ({ ...prev, ...draft })),
+    notify: showNotification,
+  });
+
+  const vrDraft = useModalDraft({
+    enabled: showVrModal,
+    draftIdentity: {
+      module: "table",
+      modal: "restaurant-vr-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: "edit",
+      entityType: "restaurant-vr",
+      recordId: restaurantId || null,
+      context: "table-management",
+      schemaVersion: "1",
+    },
+    formValue: vrForm,
+    isDirty: vrDirty,
+    sanitize: (v) => ({ vrTourUrl: v?.vrTourUrl || "" }),
+    onRestore: (draft) => setVrForm((prev) => ({ ...prev, ...draft })),
+    notify: showNotification,
+  });
+
   // --- Auto Select Floor ---
   useEffect(() => {
     if (!floors.length) return;
@@ -127,8 +200,9 @@ const TableManagement = () => {
   }, [floors, activeLevel, currentFloor, getIdFromLevel]);
 
   useEffect(() => {
+    if (vrDraft.didRestore) return;
     setVrForm({ vrTourUrl: restaurant?.vrTourUrl || "" });
-  }, [restaurant]);
+  }, [restaurant, vrDraft.didRestore]);
 
   const selectFloor = (floorId) => {
     setCurrentFloor(String(floorId));
@@ -265,6 +339,7 @@ const TableManagement = () => {
         position: { x: position.x, y: position.y },
       });
       await refetchTables();
+      addTableDraft.clearDraft();
       setShowAddTableModal(false);
       showNotification("Thêm bàn thành công!", "success");
       if (existingCount > 0) {
@@ -301,6 +376,7 @@ const TableManagement = () => {
         vrTourUrl: vrForm.vrTourUrl?.trim() || null,
       });
       await refetchRestaurant?.();
+      vrDraft.clearDraft();
       showNotification("Đã cập nhật VR toàn quán.", "success");
       setShowVrModal(false);
     } catch (e) {
@@ -533,7 +609,7 @@ const TableManagement = () => {
       {/* 2. Add Table Modal */}
       <Modal
         isOpen={showAddTableModal}
-        onClose={() => setShowAddTableModal(false)}
+        onClose={() => addTableDraft.requestCloseWithDraft(() => setShowAddTableModal(false))}
         title="Thêm bàn mới"
       >
         <div className="tm-form tm-form--add-table">
@@ -609,7 +685,7 @@ const TableManagement = () => {
       {/* 3. Add Floor Modal (Stub) */}
       <Modal
         isOpen={showFloorModal}
-        onClose={() => setShowFloorModal(false)}
+        onClose={() => addFloorDraft.requestCloseWithDraft(() => setShowFloorModal(false))}
         title="Thêm tầng"
       >
         <div className="tm-form">
@@ -624,6 +700,7 @@ const TableManagement = () => {
             <Button
               onClick={() => {
                 showNotification("Đã thêm tầng demo", "success");
+                addFloorDraft.clearDraft();
                 setShowFloorModal(false);
               }}
             >
@@ -644,7 +721,7 @@ const TableManagement = () => {
       {/* 4. Restaurant VR Modal */}
       <Modal
         isOpen={showVrModal}
-        onClose={() => setShowVrModal(false)}
+        onClose={() => vrDraft.requestCloseWithDraft(() => setShowVrModal(false))}
         title="Cấu hình VR toàn quán"
       >
         <div className="tm-form tm-form--vr">

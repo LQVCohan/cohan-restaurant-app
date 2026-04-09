@@ -17,6 +17,8 @@ import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/c
 import { toBaseQty, fromBaseQty } from "../../../../../utils/unitConversion";
 
 import RecipeDishPickerModal from "./RecipeDishPickerModal";
+import useModalDraft from "../../../../../hooks/useModalDraft";
+import { useNotification } from "../../../../../hooks/useNotification";
 import {
   Q_INGREDIENT_SUGGESTIONS,
   M_RECORD_INGREDIENT_USED,
@@ -65,6 +67,7 @@ const RecipeModal = ({
   currency = "VND",
   usdToVndRate = 26000,
 }) => {
+  const { showNotification } = useNotification();
   const activeCurrency = normalizeCurrency(currency, "VND");
   const cfmt = (amount) =>
     formatPrice(
@@ -268,6 +271,60 @@ const RecipeModal = ({
   });
 
   const activeVariant = formData.servingVariants?.[activeVariantIndex];
+  const isDirty = useMemo(() => {
+    if (!isOpen) return false;
+    if ((formData.notes || "").trim()) return true;
+    return (formData.servingVariants || []).some((v) => {
+      const hasMeta =
+        (v?.name || "").trim() ||
+        (v?.key || "").trim() ||
+        Number(v?.price || 0) > 0;
+      const hasLines = (v?.components || []).some(
+        (c) => c?.ingredientId || c?.qty || c?.wastePct,
+      );
+      return hasMeta || hasLines;
+    });
+  }, [formData.notes, formData.servingVariants, isOpen]);
+
+  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+    enabled: isOpen,
+    draftIdentity: {
+      module: "storage",
+      modal: "recipe-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: hasExistingRecipe ? "edit" : "create",
+      entityType: "recipe",
+      recordId: currentMenuItemId || activeRow?.id || null,
+      context: "recipe-list",
+      schemaVersion: "1",
+    },
+    formValue: formData,
+    isDirty,
+    sanitize: (v) => ({
+      notes: v?.notes || "",
+      servingVariants: Array.isArray(v?.servingVariants)
+        ? v.servingVariants.map((variant) => ({
+            key: variant?.key || "",
+            name: variant?.name || "",
+            mode: variant?.mode || "PORTION",
+            sellQty: variant?.sellQty || 1,
+            sellUnit: variant?.sellUnit || "portion",
+            price: variant?.price || 0,
+            isDefault: !!variant?.isDefault,
+            components: Array.isArray(variant?.components)
+              ? variant.components.map((comp) => ({
+                  ingredientId: comp?.ingredientId || "",
+                  qty: comp?.qty || "",
+                  unit: comp?.unit || "",
+                  wastePct: comp?.wastePct || "",
+                }))
+              : [],
+          }))
+        : [],
+    }),
+    onRestore: (draft) => setFormData((prev) => ({ ...prev, ...draft })),
+    notify: showNotification,
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -942,6 +999,8 @@ const RecipeModal = ({
       setSaving(true);
       const payload = buildPayload();
       await onSave?.(payload);
+      clearDraft();
+      showNotification("Đã xóa dữ liệu nháp sau khi lưu công thức.", "success", 2200);
       onClose?.();
     } finally {
       setSaving(false);
@@ -1175,7 +1234,7 @@ const RecipeModal = ({
     <>
       <Modal
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={() => requestCloseWithDraft(onClose)}
         title={
           hasExistingRecipe ? "Cập nhật công thức món" : "Thêm công thức mới"
         }
@@ -2025,7 +2084,7 @@ const RecipeModal = ({
               <Button
                 type="button"
                 variant="secondary"
-                onClick={onClose}
+                onClick={() => requestCloseWithDraft(onClose)}
                 disabled={saving || deleting}
               >
                 Hủy bỏ
