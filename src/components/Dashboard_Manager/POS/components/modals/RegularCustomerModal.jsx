@@ -4,6 +4,8 @@ import Button from "../../../../common/Button";
 import cls from "./RegularCustomerModal.module.scss";
 import { usePos } from "../../../../../context/PosContext";
 import { useVnAddressLazy } from "../../../../../hooks/useVnAddressLazy";
+import useModalDraft from "../../../../../hooks/useModalDraft";
+import { useNotification } from "../../../../../hooks/useNotification";
 
 const emptyForm = {
   name: "",
@@ -42,13 +44,6 @@ function dedupeParts(parts) {
   return out;
 }
 
-function buildFullAddress({ detail, wardName, districtName, provinceName }) {
-  const parts = [detail, wardName, districtName, provinceName].filter(
-    (x) => safeStr(x).length > 0
-  );
-  return parts.join(", ");
-}
-
 // Reverse geocode FE (tạm thời). BE làm sau thì thay bằng API nội bộ.
 async function reverseGeocodeOSM(lat, lng) {
   const url =
@@ -74,6 +69,7 @@ export default function RegularCustomerModal({
   onSelectCustomer,
 }) {
   const { restaurantId } = usePos();
+  const { showNotification } = useNotification();
 
   const [tab, setTab] = useState("select"); // select | create
   const [search, setSearch] = useState("");
@@ -130,7 +126,6 @@ export default function RegularCustomerModal({
       districtKey: districtKey || "",
       wardKey: wardKey || "",
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provinceKey, districtKey, wardKey, isOpen]);
 
   const fullAddress = useMemo(() => {
@@ -197,9 +192,41 @@ export default function RegularCustomerModal({
       );
       if (!ok) return;
     }
-    onClose?.();
+    requestCloseWithDraft(() => onClose?.());
     setForm(emptyForm);
   };
+
+  const { clearDraft, requestCloseWithDraft } = useModalDraft({
+    enabled: isOpen && tab === "create",
+    draftIdentity: {
+      module: "pos",
+      modal: "regular-customer-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: "create",
+      entityType: "customer",
+      recordId: null,
+      context: String(restaurantId || "default"),
+      schemaVersion: "1",
+    },
+    formValue: form,
+    isDirty: hasDirtyForm,
+    sanitize: (v) => ({
+      note: safeStr(v?.note),
+      detail: safeStr(v?.detail),
+      provinceKey: v?.provinceKey || "",
+      districtKey: v?.districtKey || "",
+      wardKey: v?.wardKey || "",
+    }),
+    onRestore: (draft) => {
+      setForm((prev) => ({ ...prev, ...draft }));
+      showNotification(
+        "Một số thông tin nhạy cảm (tên/SĐT/email) không được khôi phục tự động.",
+        "info",
+        3200,
+      );
+    },
+    notify: showNotification,
+  });
 
   const setField = (key, value) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -230,6 +257,7 @@ export default function RegularCustomerModal({
       },
     });
 
+    clearDraft();
     onClose?.();
     setForm(emptyForm);
   };
@@ -295,7 +323,7 @@ export default function RegularCustomerModal({
         const r = await reverseGeocodeOSM(lat, lng);
         displayName = safeStr(r?.display_name);
         addr = r?.address || null;
-      } catch (e) {
+      } catch {
         displayName = "";
         addr = null;
       }
@@ -417,6 +445,7 @@ export default function RegularCustomerModal({
         shippingInfo: payload.shippingInfo,
       });
 
+      clearDraft();
       onClose?.();
       setForm(emptyForm);
     } catch (e) {
