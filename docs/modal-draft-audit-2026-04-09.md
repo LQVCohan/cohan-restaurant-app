@@ -73,19 +73,24 @@
 | 63 | `src/components/Dashboard_Manager/Storage/components/recipes/RecipeModal.jsx` | Yes | Yes | No | Implemented | Draft persistence added in this pass. |
 | 64 | `src/components/Dashboard_Manager/Storage/components/supplies/SupplyModal.jsx` | Yes | Yes | No | Implemented | Draft persistence added in this pass. |
 | 65 | `src/components/Dashboard_Manager/Table/Table3DSimulatorModal.jsx` | Yes | No | Yes | Deferred | Input modal; deferred to next phase to avoid broad-risk regression. |
-| 66 | `src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx` | Yes | No | Yes | Deferred | Input modal; deferred to next phase to avoid broad-risk regression. |
+| 66 | `src/components/Dashboard_Manager/Table/TableActionsLiteModal.jsx` | Yes | No | Yes | Implemented | Draft enabled; close pipeline unified for overlay/ESC/X/Cancel. |
 | 67 | `src/components/OrderModal.jsx` | Yes | No | Yes | Deferred | Input modal; deferred to next phase to avoid broad-risk regression. |
 | 68 | `src/components/Staff/components/CartBottomSheet.jsx` | No | No | Yes | Not applicable | View/confirm/info modal; no form draft needed. |
 | 69 | `src/components/Staff/components/StaffProofCaptureModal.jsx` | Yes | No | Yes | Deferred | Input modal; deferred to next phase to avoid broad-risk regression. |
 | 70 | `src/components/common/Dialog.jsx` | No | No | No | Not applicable | View/confirm/info modal; no form draft needed. |
 | 71 | `src/components/common/Modal.jsx` | No | No | No | Not applicable | View/confirm/info modal; no form draft needed. |
-| 72 | `src/hooks/useModalDraft.js` | No | No | No | Not applicable | View/confirm/info modal; no form draft needed. |
+| 72 | `src/components/Dashboard_Manager/Table/TableManagement.jsx` (Add Table modal) | Yes | Yes | No | Implemented | Embedded modal (không tách file riêng) đã bật draft persistence. |
+| 73 | `src/components/Dashboard_Manager/Table/TableManagement.jsx` (Add Floor modal) | Yes | Yes | No | Implemented | Embedded modal (không tách file riêng) đã bật draft persistence. |
+| 74 | `src/components/Dashboard_Manager/Table/TableManagement.jsx` (Restaurant VR modal) | Yes | Yes | No | Implemented | Embedded modal (không tách file riêng) đã bật draft persistence. |
+| 75 | `src/hooks/useModalDraft.js` | No | No | No | Not applicable | View/confirm/info modal; no form draft needed. |
 
 ## Implemented draft-enabled modals
 - Storage: IngredientModal, SupplyModal, RecipeModal.
 - Menu: MenuItemModal, CategoryModal.
 - Staff: EmployeeFormModal (create), EmployeeEditModal.
 - POS/Order: NewOrderModal, OrderSettingsModal, RegularCustomerModal, ReservationModal, SplitTableModal.
+- Table: TableActionsLiteModal.
+- Table (embedded in page): Add Table modal, Add Floor modal, Restaurant VR modal.
 
 ## Deferred highlights
 - POS payment/QR remains deferred for payment-sensitive contexts; customer/reservation forms now rollout with sensitive whitelist.
