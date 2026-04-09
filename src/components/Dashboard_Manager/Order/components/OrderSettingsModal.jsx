@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Modal from "../../../../components/common/Modal";
+import useModalDraft from "../../../../hooks/useModalDraft";
+import { useNotification } from "../../../../hooks/useNotification";
 import {
   Clock,
   Palette,
@@ -121,6 +123,7 @@ const OrderSettingsModal = ({
   timeColors,
   onSaveTimeColors,
 }) => {
+  const { showNotification } = useNotification();
   const [localTime, setLocalTime] = useState(
     timeSettings || { warn: 10, danger: 20, critical: 30 }
   );
@@ -128,6 +131,43 @@ const OrderSettingsModal = ({
   const [localColors, setLocalColors] = useState(
     timeColors || DEFAULT_TIME_COLORS
   );
+  const isDirty = useMemo(() => {
+    const baseTime = timeSettings || { warn: 10, danger: 20, critical: 30 };
+    const baseChip = chipSize || "m";
+    const baseColors = timeColors || DEFAULT_TIME_COLORS;
+    return (
+      JSON.stringify(localTime) !== JSON.stringify(baseTime) ||
+      localChip !== baseChip ||
+      JSON.stringify(localColors) !== JSON.stringify(baseColors)
+    );
+  }, [chipSize, localChip, localColors, localTime, timeColors, timeSettings]);
+
+  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+    enabled: open,
+    draftIdentity: {
+      module: "order",
+      modal: "order-settings-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: "edit",
+      entityType: "order-settings",
+      recordId: null,
+      context: "kitchen-board",
+      schemaVersion: "1",
+    },
+    formValue: { localTime, localChip, localColors },
+    isDirty,
+    sanitize: (v) => ({
+      localTime: v?.localTime || { warn: 10, danger: 20, critical: 30 },
+      localChip: v?.localChip || "m",
+      localColors: v?.localColors || DEFAULT_TIME_COLORS,
+    }),
+    onRestore: (draft) => {
+      setLocalTime(draft?.localTime || { warn: 10, danger: 20, critical: 30 });
+      setLocalChip(draft?.localChip || "m");
+      setLocalColors(draft?.localColors || DEFAULT_TIME_COLORS);
+    },
+    notify: showNotification,
+  });
 
   // Sync props -> state
   useEffect(() => {
@@ -175,13 +215,14 @@ const OrderSettingsModal = ({
     onSaveTimeSettings?.(normalized);
     onSaveChipSize?.(localChip);
     onSaveTimeColors?.(localColors);
+    clearDraft();
     onClose?.();
   };
 
   return (
     <Modal
-      open={open}
-      onClose={onClose}
+      isOpen={open}
+      onClose={() => requestCloseWithDraft(onClose)}
       title="⚙️ Cài đặt hiển thị & Bếp"
       size="xl"
     >
@@ -350,7 +391,7 @@ const OrderSettingsModal = ({
       </div>
 
       <Modal.Footer>
-        <button className="btn btn--secondary" onClick={onClose}>
+        <button className="btn btn--secondary" onClick={() => requestCloseWithDraft(onClose)}>
           Hủy bỏ
         </button>
         <button className="btn btn--primary" onClick={handleSave}>

@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from "react";
 import s from "./SplitTableModal.module.scss";
-import useModalKeyboardClose from "./useModalKeyboardClose";
+import useModalClosePipeline from "../../../../../hooks/useModalClosePipeline";
+import useModalDraft from "../../../../../hooks/useModalDraft";
+import { useNotification } from "../../../../../hooks/useNotification";
 
 export function SplitTableModal({
   isOpen,
@@ -9,10 +11,43 @@ export function SplitTableModal({
   onConfirm,
   onClose,
 }) {
-  useModalKeyboardClose({ isOpen, onClose });
+  const { showNotification } = useNotification();
   const [source, setSource] = useState("");
   const [target, setTarget] = useState("");
   const [selected, setSelected] = useState(new Set());
+  const hasDirtyForm = !!source || !!target || selected.size > 0;
+
+  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+    enabled: isOpen,
+    draftIdentity: {
+      module: "pos",
+      modal: "split-table-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: "create",
+      entityType: "table-split",
+      recordId: source || null,
+      context: "pos-right-panel",
+      schemaVersion: "1",
+    },
+    formValue: { source, target, selected: [...selected] },
+    isDirty: hasDirtyForm,
+    sanitize: (v) => ({
+      source: v?.source || "",
+      target: v?.target || "",
+      selected: Array.isArray(v?.selected) ? v.selected : [],
+    }),
+    onRestore: (draft) => {
+      setSource(draft?.source || "");
+      setTarget(draft?.target || "");
+      setSelected(new Set(Array.isArray(draft?.selected) ? draft.selected : []));
+    },
+    notify: showNotification,
+  });
+
+  const { requestClose, onBackdropMouseDown } = useModalClosePipeline({
+    isOpen,
+    onClose: () => requestCloseWithDraft(() => onClose?.()),
+  });
 
   const targets = useMemo(
     () => tables.filter((t) => t.status === "available" && t.code !== source),
@@ -31,7 +66,7 @@ export function SplitTableModal({
   return (
     <div
       className={s.backdrop}
-      onMouseDown={onClose}
+      onMouseDown={onBackdropMouseDown}
       role="dialog"
       aria-modal="true"
     >
@@ -66,11 +101,12 @@ export function SplitTableModal({
           ))}
         </div>
         <div className={s.actions}>
-          <button onClick={onClose}>Hủy</button>
+          <button onClick={() => requestClose("cancel")}>Hủy</button>
           <button
-            onClick={() =>
-              onConfirm?.({ source, target, selected: [...selected] })
-            }
+            onClick={() => {
+              onConfirm?.({ source, target, selected: [...selected] });
+              clearDraft();
+            }}
           >
             Xác nhận
           </button>
