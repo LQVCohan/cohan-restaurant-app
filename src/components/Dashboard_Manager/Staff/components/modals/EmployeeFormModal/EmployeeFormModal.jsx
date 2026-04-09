@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Modal from "../../../../../common/Modal";
 import LoadingSpinner from "../../../../../common/LoadingSpinner";
+import useModalDraft from "../../../../../../hooks/useModalDraft";
+import { useNotification } from "../../../../../../hooks/useNotification";
 import "./EmployeeFormModal.scss";
 
 const EmployeeFormModal = ({
@@ -13,6 +15,7 @@ const EmployeeFormModal = ({
   defaultRestaurantId = "",
 }) => {
   const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const { showNotification } = useNotification();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -43,6 +46,7 @@ const EmployeeFormModal = ({
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showSensitiveNotice, setShowSensitiveNotice] = useState(false);
 
   const departmentOptions = [
     {
@@ -108,6 +112,7 @@ const EmployeeFormModal = ({
     setIsDirty(false);
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setShowSensitiveNotice(false);
   }, [defaultRestaurantId]);
 
   useEffect(() => {
@@ -116,6 +121,43 @@ const EmployeeFormModal = ({
       setCurrentStep(1);
     }
   }, [isOpen, mode, resetForm]);
+
+  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+    enabled: isOpen && mode === "add",
+    draftIdentity: {
+      module: "staff",
+      modal: "employee-form-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: "create",
+      entityType: "employee",
+      recordId: null,
+      context: defaultRestaurantId || "default",
+      schemaVersion: "1",
+    },
+    formValue: formData,
+    isDirty,
+    sanitize: (v) => ({
+      name: v?.name || "",
+      role: v?.role || "",
+      department: v?.department || "service",
+      address: v?.address || "",
+      salary: v?.salary || "",
+      shift: v?.shift || "",
+      startDate: v?.startDate || todayStr,
+      emergencyRelation: v?.emergencyRelation || "",
+      notes: v?.notes || "",
+      primaryRestaurantId: v?.primaryRestaurantId || "",
+      refRestaurantIds: Array.isArray(v?.refRestaurantIds) ? v.refRestaurantIds : [],
+      userType: v?.userType || "STAFF",
+      employmentType: v?.employmentType || "FULL_TIME",
+    }),
+    onRestore: (draft) => {
+      setFormData((prev) => ({ ...prev, ...draft }));
+      setIsDirty(true);
+      setShowSensitiveNotice(true);
+    },
+    notify: showNotification,
+  });
 
   const validateStep = (step) => {
     const newErrors = {};
@@ -266,6 +308,8 @@ const EmployeeFormModal = ({
       };
 
       await onSubmit(staffPayload);
+      clearDraft();
+      showNotification("Đã xóa dữ liệu nháp sau khi tạo nhân viên.", "success", 2200);
       onClose();
     } catch (error) {
       console.error("Error creating employee:", error);
@@ -618,7 +662,7 @@ const EmployeeFormModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleRequestClose}
+      onClose={() => requestCloseWithDraft(handleRequestClose)}
       size="lg"
       className="employee-form-modal"
       showCloseButton={false}
@@ -635,11 +679,16 @@ const EmployeeFormModal = ({
         <button
           type="button"
           className="close-btn"
-          onClick={handleRequestClose}
+          onClick={() => requestCloseWithDraft(handleRequestClose)}
         >
           ×
         </button>
       </div>
+      {showSensitiveNotice && (
+        <div className="submit-error-box">
+          Một số trường nhạy cảm (SĐT, email, mật khẩu, liên hệ khẩn cấp) không được khôi phục tự động.
+        </div>
+      )}
 
       {renderStepIndicator()}
 
@@ -657,7 +706,7 @@ const EmployeeFormModal = ({
           <button
             type="button"
             className="btn btn-text"
-            onClick={handleRequestClose}
+            onClick={() => requestCloseWithDraft(handleRequestClose)}
             disabled={isSubmitting}
           >
             Hủy bỏ

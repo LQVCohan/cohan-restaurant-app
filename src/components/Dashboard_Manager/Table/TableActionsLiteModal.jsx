@@ -7,6 +7,9 @@ import {
   storeTableVrImage,
 } from "@/utils/vrStorage";
 import { usePromotions } from "@/hooks/usePromotions";
+import useModalDraft from "@/hooks/useModalDraft";
+import useModalClosePipeline from "@/hooks/useModalClosePipeline";
+import { useNotification } from "@/hooks/useNotification";
 
 export default function TableActionsLiteModal({
   open,
@@ -70,6 +73,7 @@ export default function TableActionsLiteModal({
   const [busy, setBusy] = useState({});
   const setBusyKey = (k, v) => setBusy((b) => ({ ...b, [k]: v }));
   const { allPromotions } = usePromotions();
+  const { showNotification } = useNotification();
   const areaLabelMap = {
     standard: "Trong nhà",
     vip: "VIP",
@@ -79,6 +83,112 @@ export default function TableActionsLiteModal({
     /\/graphql$/i,
     ""
   );
+
+  const initialDraft = useMemo(
+    () => ({
+      code: table?.code || "",
+      capacity: Number(table?.capacity || 0),
+      type: table?.type || "standard",
+      tags: Array.isArray(table?.tags) ? table.tags.join(", ") : "",
+      status: table?.status || "available",
+      depositAmount: table?.deposit ?? "",
+      selectedPromotions: Array.isArray(table?.promotionIds) ? table.promotionIds : [],
+      manualPerks: Array.isArray(table?.bookingPerks) ? table.bookingPerks : [],
+      zoneLabel: table?.zone || table?.areaLabel || "",
+      posX: table?.position?.x != null ? String(Math.round(table.position.x)) : "",
+      posY: table?.position?.y != null ? String(Math.round(table.position.y)) : "",
+      holdMinutes: table?.reservationHoldMinutes ?? table?.holdMinutes ?? "",
+      minSpend: table?.minSpend ?? table?.minOrderValue ?? "",
+      cancelPolicy: table?.cancelPolicy ?? table?.bookingPolicy ?? "",
+      moveLevel: table?.floorLevel ?? null,
+      swapWithCode: "",
+      mergeCodes: "",
+    }),
+    [table],
+  );
+
+  const draftForm = {
+    code,
+    capacity,
+    type,
+    tags,
+    status,
+    depositAmount,
+    selectedPromotions,
+    manualPerks,
+    zoneLabel,
+    posX,
+    posY,
+    holdMinutes,
+    minSpend,
+    cancelPolicy,
+    moveLevel,
+    swapWithCode,
+    mergeCodes,
+  };
+  const isDirty = JSON.stringify(draftForm) !== JSON.stringify(initialDraft);
+
+  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+    enabled: isOpen,
+    draftIdentity: {
+      module: "table",
+      modal: "table-actions-lite-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: "edit",
+      entityType: "table",
+      recordId: table?.id || table?.code || null,
+      context: String(restaurantId || "default"),
+      schemaVersion: "1",
+    },
+    formValue: draftForm,
+    isDirty,
+    sanitize: (v) => ({
+      code: v?.code || "",
+      capacity: Number(v?.capacity || 0),
+      type: v?.type || "standard",
+      tags: v?.tags || "",
+      status: v?.status || "available",
+      depositAmount: v?.depositAmount ?? "",
+      selectedPromotions: Array.isArray(v?.selectedPromotions) ? v.selectedPromotions : [],
+      manualPerks: Array.isArray(v?.manualPerks) ? v.manualPerks : [],
+      zoneLabel: v?.zoneLabel || "",
+      posX: v?.posX ?? "",
+      posY: v?.posY ?? "",
+      holdMinutes: v?.holdMinutes ?? "",
+      minSpend: v?.minSpend ?? "",
+      cancelPolicy: v?.cancelPolicy || "",
+      moveLevel: v?.moveLevel ?? null,
+      swapWithCode: v?.swapWithCode || "",
+      mergeCodes: v?.mergeCodes || "",
+    }),
+    onRestore: (draft) => {
+      setCode(draft?.code || "");
+      setCapacity(Number(draft?.capacity || 0));
+      setType(draft?.type || "standard");
+      setTags(draft?.tags || "");
+      setStatusLocal(draft?.status || "available");
+      setDepositAmount(draft?.depositAmount ?? "");
+      setSelectedPromotions(
+        Array.isArray(draft?.selectedPromotions) ? draft.selectedPromotions : [],
+      );
+      setManualPerks(Array.isArray(draft?.manualPerks) ? draft.manualPerks : []);
+      setZoneLabel(draft?.zoneLabel || "");
+      setPosX(draft?.posX ?? "");
+      setPosY(draft?.posY ?? "");
+      setHoldMinutes(draft?.holdMinutes ?? "");
+      setMinSpend(draft?.minSpend ?? "");
+      setCancelPolicy(draft?.cancelPolicy || "");
+      setMoveLevel(draft?.moveLevel ?? null);
+      setSwapWithCode(draft?.swapWithCode || "");
+      setMergeCodes(draft?.mergeCodes || "");
+      showNotification(
+        "Ảnh/VR upload không thể khôi phục tự động từ bản nháp.",
+        "info",
+        3200,
+      );
+    },
+    notify: showNotification,
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -119,18 +229,19 @@ export default function TableActionsLiteModal({
     setQuickPerk("");
   }, [isOpen, table]);
 
-  // lock scroll + ESC
+  const { requestClose, onBackdropMouseDown } = useModalClosePipeline({
+    isOpen,
+    onClose: () => requestCloseWithDraft(() => onClose?.()),
+  });
+
   useEffect(() => {
     if (!isOpen) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    const onKey = (e) => e.key === "Escape" && onClose?.();
-    window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKey);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   const floorsSorted = useMemo(
     () =>
@@ -176,6 +287,8 @@ export default function TableActionsLiteModal({
       };
       await actions.updateTable(patch);
       await onUpdated?.();
+      clearDraft();
+      showNotification("Đã xóa dữ liệu nháp sau khi lưu bàn.", "success", 2200);
     } catch (e) {
       console.error(e);
       alert("Cập nhật thông tin bàn thất bại.");
@@ -329,6 +442,7 @@ export default function TableActionsLiteModal({
     try {
       await actions.deleteTable(table.id);
       await onUpdated?.();
+      clearDraft();
       onClose?.();
     } catch (e) {
       console.error(e);
@@ -447,7 +561,7 @@ export default function TableActionsLiteModal({
 
   // ================= Render =================
   return createPortal(
-    <div className="talite-backdrop" onClick={onClose}>
+    <div className="talite-backdrop" onMouseDown={onBackdropMouseDown}>
       <div
         className="talite-modal"
         role="dialog"
@@ -464,7 +578,7 @@ export default function TableActionsLiteModal({
               Thiết lập thông tin, VR và ưu đãi đi kèm cho bàn.
             </p>
           </div>
-          <button className="talite-close" onClick={onClose} aria-label="Đóng">
+          <button className="talite-close" onClick={() => requestClose("x")} aria-label="Đóng">
             ×
           </button>
         </div>
@@ -1047,7 +1161,7 @@ export default function TableActionsLiteModal({
         {/* Footer */}
         <div className="talite-footer">
           <div className="actions">
-            <button className="btn" onClick={onClose}>
+            <button className="btn" onClick={() => requestClose("cancel")}>
               Đóng
             </button>
             <button

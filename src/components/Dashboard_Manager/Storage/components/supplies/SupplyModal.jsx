@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Modal from "../../../../common/Modal";
+import useModalDraft from "../../../../../hooks/useModalDraft";
+import { useNotification } from "../../../../../hooks/useNotification";
 import "./SupplyModal.scss";
 
 /**
@@ -47,6 +49,7 @@ const SupplyModal = ({
   onOpenOutbound,
 }) => {
   const isEditing = !!initial;
+  const { showNotification } = useNotification();
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState({});
 
@@ -84,6 +87,56 @@ const SupplyModal = ({
   }, [initial, isOpen]);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+  const isDirty = useMemo(() => {
+    const base = initial
+      ? {
+          name: initial.name ?? "",
+          category: initial.category ?? "other",
+          unit: initial.unit ?? "unit",
+          costPerUnit:
+            typeof initial.costPerUnit === "number"
+              ? String(initial.costPerUnit)
+              : "",
+          pricePerUnit:
+            typeof initial.pricePerUnit === "number"
+              ? String(initial.pricePerUnit)
+              : "",
+          minStock:
+            typeof initial.minStock === "number" ? String(initial.minStock) : "",
+          isActive: initial.isActive ?? true,
+          notes: initial.notes ?? "",
+        }
+      : defaultForm;
+    return JSON.stringify(form) !== JSON.stringify(base);
+  }, [form, initial]);
+
+  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+    enabled: isOpen,
+    draftIdentity: {
+      module: "storage",
+      modal: "supply-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: isEditing ? "edit" : "create",
+      entityType: "supply",
+      recordId: initial?.id || null,
+      context: "supply-list",
+      schemaVersion: "1",
+    },
+    formValue: form,
+    isDirty,
+    sanitize: (v) => ({
+      name: v?.name || "",
+      category: v?.category || "other",
+      unit: v?.unit || "unit",
+      costPerUnit: v?.costPerUnit ?? "",
+      pricePerUnit: v?.pricePerUnit ?? "",
+      minStock: v?.minStock ?? "",
+      isActive: !!v?.isActive,
+      notes: v?.notes || "",
+    }),
+    onRestore: (draft) => setForm((prev) => ({ ...prev, ...draft })),
+    notify: showNotification,
+  });
 
   const validate = () => {
     const e = {};
@@ -98,7 +151,7 @@ const SupplyModal = ({
     return Object.keys(e).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
     const payload = {
       name: form.name.trim(),
@@ -110,7 +163,13 @@ const SupplyModal = ({
       isActive: !!form.isActive,
       notes: form.notes?.trim() || "",
     };
-    onSubmit?.(payload);
+    try {
+      await onSubmit?.(payload);
+      clearDraft();
+      showNotification("Đã xóa dữ liệu nháp sau khi hoàn tất lưu.", "success", 2200);
+    } catch {
+      // giữ draft khi submit lỗi
+    }
   };
 
   const openInbound = () => {
@@ -128,7 +187,7 @@ const SupplyModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => requestCloseWithDraft(onClose)}
       title={isEditing ? "Chỉnh Sửa Vật Phẩm" : "Thêm Vật Phẩm Mới"}
       size="md"
     >

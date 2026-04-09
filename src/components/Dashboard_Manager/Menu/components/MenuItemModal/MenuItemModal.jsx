@@ -16,6 +16,7 @@ import "./MenuItemModal.scss";
 
 import useMenuManagement from "../../../../../hooks/useMenuManagement";
 import { useRecipes } from "../../../../../hooks/useRecipes";
+import useModalDraft from "../../../../../hooks/useModalDraft";
 
 const MenuItemModal = ({
   isOpen,
@@ -79,6 +80,46 @@ const MenuItemModal = ({
     sellUnit: "portion",
     isDefault: true,
   };
+  const isDirty = useMemo(() => {
+    const hasValues =
+      (formData.name || "").trim() ||
+      formData.categoryId ||
+      (formData.description || "").trim() ||
+      (formData.thumbImage || "").trim() ||
+      (Array.isArray(formData.preparationMethods) &&
+        formData.preparationMethods.some(
+          (m) => (m?.name || "").trim() || m?.price !== "" || m?.cookTime !== ""
+        ));
+    return !!hasValues;
+  }, [formData]);
+
+  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+    enabled: isOpen,
+    draftIdentity: {
+      module: "menu",
+      modal: "menu-item-modal",
+      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      mode: editId ? "edit" : "create",
+      entityType: "menu-item",
+      recordId: editId || null,
+      context: timeSlot || "all-day",
+      schemaVersion: "1",
+    },
+    formValue: formData,
+    isDirty,
+    sanitize: (v) => ({
+      name: v?.name || "",
+      categoryId: v?.categoryId || "",
+      status: v?.status || "available",
+      thumbImage: v?.thumbImage || "",
+      description: v?.description || "",
+      preparationMethods: Array.isArray(v?.preparationMethods)
+        ? v.preparationMethods
+        : [],
+    }),
+    onRestore: (draft) => setFormData((prev) => ({ ...prev, ...draft })),
+    notify: (message, type) => pushToast(message, type === "error" ? "error" : "success"),
+  });
 
   // --- EFFECT: Load Data ---
   useEffect(() => {
@@ -235,6 +276,7 @@ const MenuItemModal = ({
       }
 
       pushToast("Lưu món ăn thành công!", "success");
+      clearDraft();
       onSave?.();
     } catch (err) {
       console.error(err);
@@ -268,11 +310,11 @@ const MenuItemModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => requestCloseWithDraft(onClose)}
       size="xl"
       className="menu-item-modal-modern" // Kích hoạt style mới
     >
-      <Modal.Header onClose={onClose}>
+      <Modal.Header onClose={() => requestCloseWithDraft(onClose)}>
         {editId ? "Chỉnh sửa món ăn" : "Thêm món mới"}
       </Modal.Header>
 
@@ -468,7 +510,7 @@ const MenuItemModal = ({
       </Modal.Body>
 
       <Modal.Footer>
-        <button type="button" className="btn-secondary" onClick={onClose}>
+        <button type="button" className="btn-secondary" onClick={() => requestCloseWithDraft(onClose)}>
           Đóng
         </button>
         <button
