@@ -3,7 +3,7 @@
 // Usage:
 //   node scripts/dump-src.mjs [dir] [--list] [--out path] [--all-text]
 // Examples:
-//   node scripts/dump-src.mjs --list > filelist.txt
+//   node scripts/dump-src.mjs --list > docs/misc/filelist.txt
 //   node scripts/dump-src.mjs src --out src_dump.txt
 //   node scripts/dump-src.mjs src --out src_dump.txt --all-text
 

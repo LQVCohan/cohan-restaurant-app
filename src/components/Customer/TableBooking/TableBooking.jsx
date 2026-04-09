@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { gql, useMutation } from "@apollo/client";
 import { ChevronLeft, Info, Layers } from "lucide-react"; // Dùng lucide-react cho đồng bộ
 
-import FloorMap from "../../../../FloorMap/FloorMap";
+import FloorMap from "./components/FloorMap/FloorMap";
 import FloorSelector from "./FloorSelector/FloorSelector";
 import BookingSummary from "./BookingSummary/BookingSummary";
 import BookingModal from "../BookingTableModal/BookingModal";
