@@ -200,8 +200,9 @@ const TableManagement = () => {
   }, [floors, activeLevel, currentFloor, getIdFromLevel]);
 
   useEffect(() => {
+    if (vrDraft.didRestore) return;
     setVrForm({ vrTourUrl: restaurant?.vrTourUrl || "" });
-  }, [restaurant]);
+  }, [restaurant, vrDraft.didRestore]);
 
   const selectFloor = (floorId) => {
     setCurrentFloor(String(floorId));

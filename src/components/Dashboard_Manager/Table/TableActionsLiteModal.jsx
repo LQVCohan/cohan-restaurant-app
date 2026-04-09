@@ -128,7 +128,7 @@ export default function TableActionsLiteModal({
   };
   const isDirty = JSON.stringify(draftForm) !== JSON.stringify(initialDraft);
 
-  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+  const { requestCloseWithDraft, clearDraft, didRestore } = useModalDraft({
     enabled: isOpen,
     draftIdentity: {
       module: "table",
@@ -192,6 +192,7 @@ export default function TableActionsLiteModal({
 
   useEffect(() => {
     if (!isOpen) return;
+    if (didRestore) return;
 
     setCode(table?.code || "");
     setCapacity(Number(table?.capacity || 0));
@@ -227,7 +228,7 @@ export default function TableActionsLiteModal({
     setCancelPolicy(table?.cancelPolicy ?? table?.bookingPolicy ?? "");
     setAiSuggestions({ merge: null, promo: null, turnover: null });
     setQuickPerk("");
-  }, [isOpen, table]);
+  }, [didRestore, isOpen, table]);
 
   const { requestClose, onBackdropMouseDown } = useModalClosePipeline({
     isOpen,

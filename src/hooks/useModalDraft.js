@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const STORAGE_PREFIX = "cohan.modalDraft.v1";
 const TAB_ID_KEY = "cohan.modalDraft.tabId";
@@ -80,6 +80,7 @@ export default function useModalDraft({
   const tabIdRef = useRef(getTabId());
   const timerRef = useRef(null);
   const restoredRef = useRef(false);
+  const [didRestore, setDidRestore] = useState(false);
 
   const storageKey = useMemo(() => {
     const identity = draftIdentity || {};
@@ -165,6 +166,7 @@ export default function useModalDraft({
 
     if (shouldRestore) {
       onRestore?.(draft.data);
+      setDidRestore(true);
       notify?.("Đã khôi phục dữ liệu nháp.", "success", 2600);
     } else if (typeof onDiscard === "function") {
       onDiscard(draft.data);
@@ -175,6 +177,12 @@ export default function useModalDraft({
     if (!enabled) return;
     confirmAndRestore();
   }, [confirmAndRestore, enabled]);
+
+  useEffect(() => {
+    if (enabled) return;
+    restoredRef.current = false;
+    setDidRestore(false);
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled || !isDirty) return;
@@ -192,5 +200,6 @@ export default function useModalDraft({
     saveDraftNow,
     clearDraft,
     requestCloseWithDraft,
+    didRestore,
   };
 }

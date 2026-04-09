@@ -142,7 +142,7 @@ const OrderSettingsModal = ({
     );
   }, [chipSize, localChip, localColors, localTime, timeColors, timeSettings]);
 
-  const { requestCloseWithDraft, clearDraft } = useModalDraft({
+  const { requestCloseWithDraft, clearDraft, didRestore } = useModalDraft({
     enabled: open,
     draftIdentity: {
       module: "order",
@@ -172,11 +172,12 @@ const OrderSettingsModal = ({
   // Sync props -> state
   useEffect(() => {
     if (open) {
+      if (didRestore) return;
       setLocalTime(timeSettings || { warn: 10, danger: 20, critical: 30 });
       setLocalChip(chipSize || "m");
       setLocalColors(timeColors || DEFAULT_TIME_COLORS);
     }
-  }, [timeSettings, chipSize, timeColors, open]);
+  }, [timeSettings, chipSize, timeColors, open, didRestore]);
 
   const handleTimeChange = (field, value) => {
     setLocalTime((prev) => ({
