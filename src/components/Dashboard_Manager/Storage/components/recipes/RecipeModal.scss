@@ -1,28 +1,41 @@
 @use "../../../../../styles/variables" as *;
 @use "../../../../../styles/mixins" as *;
 
-/* === Local tokens === */
+/* =========================
+   Design tokens
+   ========================= */
 $surface: #ffffff;
 $surface-soft: #f8fafc;
-$surface-hover: #f1f5f9;
+$surface-subtle: #f1f5f9;
+$surface-hover: #eff6ff;
+
 $line: #e2e8f0;
 $line-heavy: #cbd5e1;
+
 $text: #0f172a;
 $text-soft: #475569;
 $text-muted: #94a3b8;
-$primary: #3b82f6;
-$primary-strong: #2563eb;
+
+$primary: #2563eb;
+$primary-soft: #dbeafe;
 $primary-bg: #eff6ff;
-$danger: #ef4444;
-$danger-bg: #fef2f2;
+
 $success: #16a34a;
 $success-bg: #f0fdf4;
+$success-line: #bbf7d0;
+
+$danger: #ef4444;
+$danger-bg: #fef2f2;
+$danger-line: #fecaca;
+
 $warning: #f59e0b;
-$shadow-soft: 0 10px 40px -10px rgba(15, 23, 42, 0.08);
-$shadow-card: 0 12px 32px -14px rgba(15, 23, 42, 0.16);
-$shadow-dropdown: 0 20px 25px -5px rgba(15, 23, 42, 0.12);
-$radius-lg: 16px;
-$radius-md: 12px;
+
+$shadow-soft: 0 10px 30px -12px rgba(15, 23, 42, 0.12);
+$shadow-card: 0 8px 24px -10px rgba(15, 23, 42, 0.1);
+$shadow-dropdown: 0 18px 36px -12px rgba(15, 23, 42, 0.18);
+
+$radius-lg: 18px;
+$radius-md: 14px;
 $radius-sm: 10px;
 
 @keyframes fadeIn {
@@ -30,12 +43,16 @@ $radius-sm: 10px;
     opacity: 0;
     transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
+/* =========================
+   Root
+   ========================= */
 .recipe-modal-form {
   display: flex;
   flex-direction: column;
@@ -44,293 +61,109 @@ $radius-sm: 10px;
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
-.recipe-modal-body {
-  padding: 24px;
-  background: transparent;
-}
-
-/* === Layout Blocks === */
+/* =========================
+   Section card
+   ========================= */
 .recipe-section {
   background: $surface;
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  border: 1px solid $line;
   border-radius: $radius-lg;
   padding: 20px;
   margin-bottom: 20px;
-  box-shadow: $shadow-soft;
-  transition:
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-
-  &:hover {
-    box-shadow: $shadow-card;
-  }
+  box-shadow: $shadow-card;
 }
 
 .section-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px dashed $line;
+  border-bottom: 1px dashed $line-heavy;
 
   .section-title {
+    margin: 0;
     font-size: 16px;
     font-weight: 800;
     color: $text;
-    margin: 0;
     letter-spacing: -0.01em;
   }
 }
 
-.recipe-header-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.recipe-empty-state {
-  padding: 24px;
-  text-align: center;
-  border: 2px dashed $line-heavy;
-  border-radius: $radius-md;
-  color: $text-soft;
-  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
-
-  &__title {
-    font-weight: 800;
-    margin-bottom: 8px;
-    color: $text;
-  }
-
-  &__error {
-    color: $danger;
-    margin-top: 8px;
-    font-size: 13px;
-    font-weight: 600;
-  }
-}
-
-.recipe-overview {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(240px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.recipe-overview-card {
-  padding: 14px;
-  border-radius: $radius-sm;
-  border: 1px solid transparent;
-
-  &__title {
-    font-size: 14px;
-    font-weight: 800;
-    margin-bottom: 6px;
-  }
-
-  &__body {
-    font-size: 13px;
-    line-height: 1.65;
-  }
-
-  &--info {
-    background: #f0f9ff;
-    border-color: #bae6fd;
-
-    .recipe-overview-card__title,
-    .recipe-overview-card__body {
-      color: #0c4a6e;
-    }
-  }
-
-  &--stats {
-    background: #fdf4ff;
-    border-color: #fbcfe8;
-
-    .recipe-overview-card__title,
-    .recipe-overview-card__body {
-      color: #701a75;
-    }
-  }
-}
-
-.recipe-error-box {
-  background: $danger-bg;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid #fecaca;
-  margin-bottom: 16px;
-
-  &__title {
-    color: #dc2626;
-    font-size: 13px;
-    font-weight: 800;
-  }
-
-  ul {
-    margin: 6px 0 0;
-    padding-left: 18px;
-    color: #b91c1c;
-    font-size: 13px;
-  }
-}
-
-/* === Segmented Tabs === */
+/* =========================
+   Variant tabs
+   ========================= */
 .method-tabs {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 20px;
-  background: $surface-soft;
+  gap: 8px;
+  margin-bottom: 18px;
   padding: 6px;
-  border-radius: 12px;
   border: 1px solid $line;
+  border-radius: 14px;
+  background: $surface-soft;
 }
 
 .method-tab {
-  padding: 10px 18px;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 14px;
-  color: $text-soft;
+  appearance: none;
   border: 1px solid transparent;
   background: transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  color: $text-soft;
+  border-radius: 10px;
+  padding: 10px 16px;
   min-height: 40px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 
   &:hover:not(.active) {
     background: #e2e8f0;
     color: $text;
   }
 
+  &:active {
+    transform: translateY(1px);
+  }
+
   &.active {
     background: $surface;
-    color: $primary-strong;
-    border-color: rgba(59, 130, 246, 0.12);
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-  }
-
-  &--compact {
-    padding: 6px 12px;
-    font-size: 12px;
-    min-height: 32px;
-  }
-
-  &--add {
-    color: $primary-strong;
+    color: $primary;
+    border-color: rgba(37, 99, 235, 0.15);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.1);
   }
 }
 
-.recipe-variant-form {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.recipe-field-inline {
-  display: flex;
-  gap: 12px;
-  align-items: flex-end;
-
-  > *:first-child {
-    flex: 1;
-  }
-
-  > *:last-child {
-    width: 100px;
-  }
-}
-
-.recipe-checkbox {
-  display: flex;
-  align-items: center;
-  padding-bottom: 10px;
-  min-height: 100%;
-
-  label {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    font-weight: 800;
-    color: $text;
-  }
-
-  input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    accent-color: #10b981;
-    margin-right: 10px;
-    cursor: pointer;
-  }
-}
-
-.recipe-variant-actions {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 20px;
-  justify-content: flex-end;
-  border-bottom: 1px dashed $line-heavy;
-  padding-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.recipe-price-suggestions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
-
-.recipe-price-chip {
-  border: 1px solid $line-heavy;
-  background: $surface-soft;
-  color: $text;
-  border-radius: 999px;
-  padding: 5px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.18s ease;
-
-  &:hover {
-    background: $primary-bg;
-    color: $primary-strong;
-    border-color: rgba(59, 130, 246, 0.22);
-  }
-}
-
-/* === Ingredient table === */
+/* =========================
+   Ingredient table
+   ========================= */
 .ingredient-table {
   position: relative;
   border: 1px solid $line;
   border-radius: 14px;
   background: $surface;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
   overflow: visible; /* tránh dropdown bị cắt */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .recipeIngredientLine {
   position: relative;
   display: grid;
   grid-template-columns:
-    minmax(240px, 2.5fr)
-    minmax(96px, 1fr)
-    minmax(92px, 1fr)
-    minmax(110px, 1fr)
-    44px;
+    minmax(220px, 2.6fr) minmax(120px, 1fr) minmax(110px, 0.9fr)
+    minmax(120px, 1fr) 48px;
   gap: 12px;
   align-items: center;
-  padding: 12px 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid $line;
   background: $surface;
-  border-bottom: 1px solid $surface-hover;
-  transition:
-    background 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: background 0.18s ease;
 
   &:last-child {
     border-bottom: none;
@@ -342,98 +175,81 @@ $radius-sm: 10px;
 
   &:hover:not(.header),
   &:focus-within:not(.header) {
-    background: $primary-bg;
+    background: $surface-hover;
     z-index: 2;
   }
 
   &.header {
-    background: $surface-soft;
-    font-weight: 800;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #f1f5f9;
+    border-bottom: 2px solid $line-heavy;
+    padding-top: 16px;
+    padding-bottom: 16px;
     font-size: 12px;
-    color: $text-soft;
+    font-weight: 800;
     text-transform: uppercase;
-    border-bottom: 2px solid $line;
-    padding: 14px 16px;
-    letter-spacing: 0.03em;
-    z-index: 1;
+    color: $text-soft;
+    letter-spacing: 0.04em;
   }
 
   input,
   select {
     width: 100%;
-    padding: 10px 12px;
     min-height: 42px;
-    border-radius: 10px;
+    padding: 10px 12px;
     border: 1px solid $line-heavy;
+    border-radius: 10px;
     background: $surface;
-    transition: all 0.2s ease;
+    color: $text;
+    transition:
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      background 0.18s ease;
+  }
 
-    &:focus {
-      outline: none;
-      border-color: $primary;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-    }
+  input::placeholder {
+    color: $text-muted;
+  }
+
+  input:hover,
+  select:hover {
+    border-color: #b6c3d1;
+  }
+
+  input:focus,
+  select:focus {
+    outline: none;
+    border-color: $primary;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
   }
 
   .right-align {
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
-}
 
-.ingredient-name-cell {
-  position: relative;
-  min-width: 0;
-}
-
-.ingredient-selected {
-  min-height: 42px;
-  border: 1px solid $line-heavy;
-  border-radius: 10px;
-  padding: 8px 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  background: $surface-soft;
-
-  &__name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  strong {
     color: $text;
-    font-weight: 700;
   }
 }
 
-.ingredient-edit-trigger {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: $primary-strong;
-  font-weight: 700;
-  padding: 4px 6px;
-  border-radius: 8px;
-  transition: background 0.18s ease;
-
-  &:hover {
-    background: rgba(59, 130, 246, 0.08);
-  }
-}
-
-/* === Suggestion Dropdown === */
+/* =========================
+   Suggest dropdown
+   ========================= */
 .ingredientSuggestDropdown {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   right: 0;
   z-index: 30;
+  max-height: 320px;
+  overflow-y: auto;
   background: $surface;
   border: 1px solid $line;
   border-radius: 14px;
   box-shadow: $shadow-dropdown;
-  max-height: 300px;
-  overflow-y: auto;
 }
 
 .ingredientSuggestGroup + .ingredientSuggestGroup {
@@ -444,124 +260,150 @@ $radius-sm: 10px;
   position: sticky;
   top: 0;
   z-index: 1;
-  padding: 8px 12px;
+  padding: 9px 12px;
+  background: $surface-soft;
+  color: $text-muted;
   font-size: 11px;
   font-weight: 800;
-  color: $text-muted;
-  background: $surface-soft;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .ingredientSuggestItem {
   display: block;
   width: 100%;
-  text-align: left;
-  padding: 10px 12px;
   border: none;
   background: transparent;
-  font-size: 14px;
+  text-align: left;
+  padding: 10px 12px;
   color: $text;
+  font-size: 14px;
   cursor: pointer;
-  border-radius: 8px;
-  transition: all 0.18s ease;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
 
   &:hover {
     background: $primary-bg;
-    color: $primary-strong;
+    color: $primary;
     font-weight: 700;
   }
 }
 
 .ingredientSuggestEmpty {
   padding: 14px 12px;
-  font-size: 13px;
-  color: $text-muted;
   text-align: center;
+  color: $text-muted;
+  font-size: 13px;
 }
 
-.ingredient-add-row {
-  padding: 12px;
-}
-
-.ingredient-add-row__button {
-  width: 100%;
-  padding: 11px 12px;
-  border-radius: 10px;
-  background: $primary-bg;
-  border: 1px dashed #93c5fd;
-  color: $primary-strong;
-  font-weight: 800;
-  cursor: pointer;
-  transition: all 0.18s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    background: #dbeafe;
-  }
-}
-
-/* === Footer Tổng Kết === */
+/* =========================
+   Cost footer
+   ========================= */
 .variant-footer {
   margin-top: 20px;
-  padding: 16px;
-  background: $success-bg;
-  border: 1px solid rgba(22, 101, 52, 0.12);
-  border-radius: 12px;
+  padding: 16px 18px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
+  border-radius: 14px;
+  border: 1px solid $success-line;
+  background: linear-gradient(180deg, #f3fcf6 0%, $success-bg 100%);
 
   .label {
     color: $success;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 800;
   }
 
   .value {
+    color: #166534;
     font-size: 20px;
     font-weight: 900;
-    color: #14532d;
+    letter-spacing: -0.02em;
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 }
 
-/* === Footer modal === */
-.recipe-modal-footer {
-  border-top: 1px solid $line;
-  background: $surface;
+/* =========================
+   Helper styles for inline blocks in current JSX
+   ========================= */
+.recipe-section button[type="button"] {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
 }
 
-.recipe-modal-footer__actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  width: 100%;
-  padding: 8px 0;
-  flex-wrap: wrap;
+.recipe-section button[type="button"]:active {
+  transform: translateY(1px);
 }
 
-/* === Responsive === */
-@media (max-width: 992px) {
-  .recipe-overview,
-  .recipe-variant-form {
-    grid-template-columns: 1fr;
+.recipe-section ul {
+  margin-bottom: 0;
+}
+
+.recipe-section input[type="checkbox"] {
+  cursor: pointer;
+}
+
+/* Chips giá gợi ý */
+.recipe-section button[style*="border-radius: 999px"] {
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+
+  &:hover {
+    background: $primary-bg !important;
+    border-color: #93c5fd !important;
+    transform: translateY(-1px);
   }
+}
 
+/* Nút thêm dòng nguyên liệu */
+.recipe-section button[style*="dashed"] {
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
+
+  &:hover {
+    background: #dbeafe !important;
+    border-color: #60a5fa !important;
+    transform: translateY(-1px);
+  }
+}
+
+/* =========================
+   Visual polish for common inline wrappers
+   ========================= */
+.recipe-section > div[style*="background: #f0f9ff"],
+.recipe-section > div > div[style*="background: #f0f9ff"] {
+  box-shadow: 0 6px 20px -14px rgba(3, 105, 161, 0.25);
+}
+
+.recipe-section > div[style*="background: #fdf4ff"],
+.recipe-section > div > div[style*="background: #fdf4ff"] {
+  box-shadow: 0 6px 20px -14px rgba(134, 25, 143, 0.25);
+}
+
+/* =========================
+   Responsive
+   ========================= */
+@media (max-width: 1100px) {
   .recipeIngredientLine {
     grid-template-columns:
-      minmax(200px, 2fr)
-      minmax(90px, 1fr)
-      minmax(90px, 1fr)
-      minmax(100px, 1fr)
-      40px;
+      minmax(220px, 2.2fr) minmax(110px, 1fr) minmax(100px, 0.9fr)
+      minmax(110px, 1fr) 44px;
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .recipe-section {
     padding: 16px;
-    margin-bottom: 16px;
   }
 
   .section-header {
@@ -569,18 +411,13 @@ $radius-sm: 10px;
     align-items: stretch;
   }
 
-  .recipe-header-actions,
-  .recipe-variant-actions,
-  .recipe-modal-footer__actions {
-    width: 100%;
+  .method-tabs {
+    gap: 6px;
   }
 
-  .recipe-field-inline {
-    flex-direction: column;
-
-    > *:last-child {
-      width: 100%;
-    }
+  .method-tab {
+    padding: 9px 14px;
+    font-size: 13px;
   }
 
   .ingredient-table {
@@ -599,8 +436,26 @@ $radius-sm: 10px;
       font-size: 18px;
     }
   }
+}
 
-  .recipe-modal-footer__actions {
-    flex-direction: column-reverse;
+@media (max-width: 640px) {
+  .recipe-section {
+    padding: 14px;
+    margin-bottom: 16px;
+    border-radius: 14px;
+  }
+
+  .recipeIngredientLine {
+    padding: 12px;
+    min-width: 720px;
+  }
+
+  .method-tab {
+    min-height: 36px;
+    padding: 8px 12px;
+  }
+
+  .variant-footer {
+    padding: 14px 16px;
   }
 }
