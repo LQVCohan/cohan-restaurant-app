@@ -1,209 +1,434 @@
-// src/components/Dashboard_Manager/Storage/components/ingredients/IngredientModal.scss
+/* src/components/Dashboard_Manager/Storage/components/ingredients/IngredientModal.scss */
 
-/* --- Variables (Đồng bộ với IngredientList) --- */
-$il-primary: #c5a47e;
-$il-text-main: #1e293b;
-$il-text-sub: #64748b;
-$il-border-color: #e2e8f0;
-$il-bg-input: #ffffff;
-$il-danger: #ef4444;
-$il-focus-ring: rgba(197, 164, 126, 0.25);
-$il-radius: 8px;
+:root {
+  /* Premium Palette */
+  --prem-primary: #4f46e5; /* Indigo 600 */
+  --prem-primary-hover: #4338ca; /* Indigo 700 */
+  --prem-primary-ring: rgba(79, 70, 229, 0.15);
+  --prem-primary-bg: #e0e7ff; /* Indigo 100 */
 
-.il-modal-form {
-  padding: 8px 4px;
+  --prem-danger: #e11d48; /* Rose 600 */
+  --prem-warning: #d97706; /* Amber 600 */
+  --prem-success: #059669; /* Emerald 600 */
+
+  --prem-text-title: #0f172a; /* Slate 900 */
+  --prem-text-body: #334155; /* Slate 700 */
+  --prem-text-muted: #64748b; /* Slate 500 */
+
+  --prem-bg-body: #ffffff;
+  --prem-bg-input: #f8fafc; /* Slate 50 */
+  --prem-bg-elevated: #fcfcfd;
+
+  --prem-border: #e2e8f0; /* Slate 200 */
+
+  /* Soft shadows for depth */
+  --prem-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --prem-shadow-input:
+    0 1px 2px 0 rgba(0, 0, 0, 0.05), inset 0 0 0 1px transparent;
+  --prem-shadow-focus:
+    0 0 0 4px var(--prem-primary-ring), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+  --prem-radius-lg: 12px;
+  --prem-radius-md: 8px;
+  --prem-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ingredient-form-premium {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 28px; /* Tăng whitespace */
+  color: var(--prem-text-body);
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
 
-  /* --- Grid System --- */
-  .il-grid-2,
-  .il-grid-3 {
-    display: grid;
-    gap: 16px;
-  }
-  .il-grid-2 {
-    grid-template-columns: 1fr 1fr;
-  }
-  .il-grid-3 {
-    grid-template-columns: 1fr 1fr 1fr;
+  /* ===== SECTIONS ===== */
+  .form-section {
+    position: relative;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--prem-border);
+
+    &.elevated-section {
+      background: var(--prem-bg-elevated);
+      padding: 20px;
+      border-radius: var(--prem-radius-lg);
+      border: 1px solid var(--prem-border);
+      box-shadow: var(--prem-shadow-sm);
+      margin-top: 8px;
+    }
+
+    &.borderless {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
   }
 
-  /* --- Form Group --- */
-  .il-form-group {
+  /* Đã đổi tên class để tránh xung đột Global CSS */
+  .im-section-header {
     display: flex;
-    flex-direction: column;
-    gap: 6px;
-
-    label {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: $il-text-main;
-
-      .req {
-        color: $il-danger;
-        margin-left: 2px;
-      }
-      .hint {
-        font-size: 0.8rem;
-        color: $il-text-sub;
-        font-weight: 400;
-        margin-left: 6px;
-      }
-    }
-
-    /* Input có icon bên trong */
-    .il-input-wrapper {
-      position: relative;
-      display: flex;
-      align-items: center;
-
-      .il-input-icon {
-        position: absolute;
-        left: 12px;
-        color: $il-text-sub;
-        pointer-events: none;
-        z-index: 2;
-      }
-
-      input,
-      select,
-      textarea {
-        width: 100%;
-        min-height: 44px;
-        padding: 10px 12px;
-        padding-left: 38px; /* Chừa chỗ cho icon */
-        font-size: 0.95rem;
-        border: 1px solid $il-border-color;
-        border-radius: $il-radius;
-        color: $il-text-main;
-        background: $il-bg-input;
-        transition: all 0.2s;
-        outline: none;
-
-        &::placeholder {
-          color: #cbd5e1;
-        }
-
-        &:focus {
-          border-color: $il-primary;
-          box-shadow: 0 0 0 3px $il-focus-ring;
-        }
-
-        &:disabled {
-          background: #f1f5f9;
-          cursor: not-allowed;
-          color: #94a3b8;
-        }
-      }
-
-      /* Select arrow customization */
-      select {
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 12px center;
-        padding-right: 32px;
-      }
-    }
-
-    /* Textarea không có icon wrapper */
-    textarea.il-textarea {
-      padding: 12px;
-      min-height: 96px;
-      resize: vertical;
-      border: 1px solid $il-border-color;
-      border-radius: $il-radius;
-      font-family: inherit;
-      width: 100%;
-      box-sizing: border-box;
-
-      &:focus {
-        border-color: $il-primary;
-        box-shadow: 0 0 0 3px $il-focus-ring;
-        outline: none;
-      }
-    }
-
-    .il-error-msg {
-      font-size: 0.8rem;
-      color: $il-danger;
-      margin-top: 2px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .il-help-text {
-      font-size: 0.78rem;
-      color: #64748b;
-      margin-top: 2px;
-    }
-
-    .il-status-toggle {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-
-      button {
-        min-height: 44px;
-        border: 1px solid $il-border-color;
-        border-radius: $il-radius;
-        background: #fff;
-        color: $il-text-main;
-        font-weight: 600;
-        font-size: 0.92rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-
-        &:hover {
-          border-color: rgba($il-primary, 0.65);
-        }
-
-        &.active {
-          border-color: $il-primary;
-          background: #fdf8f3;
-          box-shadow: 0 0 0 3px rgba($il-primary, 0.1);
-        }
-      }
-    }
-  }
-
-  /* --- Initial Stock Section (Highlight) --- */
-  .il-stock-init-section {
-    background: #f8fafc;
-    border: 1px dashed $il-border-color;
-    padding: 12px;
-    border-radius: $il-radius;
-
-    label {
-      color: #0f172a;
-    }
-  }
-
-  /* --- Footer --- */
-  .il-modal-footer {
-    display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: flex-start; /* Ép phần tử nằm bên trái */
     gap: 12px;
-    margin-top: 6px;
-    padding-top: 20px;
-    border-top: 1px solid $il-border-color;
+    margin-bottom: 20px;
+    text-align: left; /* Chống kế thừa text-align */
 
-    button {
-      min-width: 100px;
+    .icon-box {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--prem-primary-bg);
+      color: var(--prem-primary);
+      border-radius: var(--prem-radius-md);
+      flex-shrink: 0;
+
+      &.warning {
+        background: #fef3c7;
+        color: var(--prem-warning);
+      }
+      &.danger {
+        background: #ffe4e6;
+        color: var(--prem-danger);
+      }
+    }
+
+    .header-text {
+      .im-section-title {
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--prem-text-title);
+        margin: 0 0 2px 0;
+      }
+      .im-section-desc {
+        font-size: 0.8rem;
+        color: var(--prem-text-muted);
+        margin: 0;
+      }
     }
   }
 
-  /* --- Responsive --- */
-  @media (max-width: 768px) {
-    .il-grid-2,
-    .il-grid-3 {
+  /* ===== GRIDS ===== */
+  .form-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+
+    @media (max-width: 640px) {
       grid-template-columns: 1fr;
     }
+  }
+
+  /* ===== FORM GROUPS ===== */
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--prem-text-title);
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 4px; /* Đẩy dấu * đứng sát chữ */
+
+      .required {
+        color: var(--prem-danger);
+      }
+
+      .hint,
+      .badge-hint {
+        margin-left: auto; /* Chỉ đẩy hint/badge sang phải */
+      }
+
+      .hint {
+        font-weight: 400;
+        color: var(--prem-text-muted);
+        font-size: 0.8rem;
+      }
+
+      .badge-hint {
+        background: var(--prem-primary-bg);
+        color: var(--prem-primary);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+      }
+    }
+
+    .help-text {
+      font-size: 0.75rem;
+      color: var(--prem-text-muted);
+      margin-top: 4px;
+      &.text-success {
+        color: var(--prem-success);
+      }
+    }
+
+    .error-text {
+      font-size: 0.75rem;
+      color: var(--prem-danger);
+      margin-top: 4px;
+      animation: slideIn 0.2s ease-out;
+    }
+
+    &.has-error {
+      input,
+      select,
+      textarea,
+      .input-addon-group {
+        background: #fff0f2;
+        border: 1px solid rgba(225, 29, 72, 0.3) !important;
+        &:focus-within,
+        &:focus {
+          box-shadow: 0 0 0 4px rgba(225, 29, 72, 0.1) !important;
+        }
+      }
+    }
+  }
+
+  /* ===== PREMIUM INPUTS ===== */
+  .standard-input,
+  select,
+  .standard-textarea,
+  .input-with-icon input,
+  .input-with-icon select {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--prem-bg-input);
+    border: 1px solid transparent;
+    border-radius: var(--prem-radius-md);
+    font-size: 0.925rem;
+    color: var(--prem-text-title);
+    transition: var(--prem-transition);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+    text-align: left; /* Chống tràn text-align: center mặc định của trình duyệt/template */
+
+    &:hover:not(:disabled) {
+      background: #f1f5f9;
+    }
+
+    &:focus {
+      outline: none;
+      background: var(--prem-bg-body);
+      border-color: var(--prem-primary);
+      box-shadow: var(--prem-shadow-focus);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  .standard-textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+    background-size: 1.25em;
+    padding-right: 2.5rem;
+  }
+
+  /* ===== INPUT WITH ICON ===== */
+  .input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    .icon {
+      position: absolute;
+      left: 14px;
+      color: var(--prem-text-muted);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    input,
+    select {
+      padding-left: 40px;
+    }
+  }
+
+  /* ===== INPUT ADDON GROUP ===== */
+  .input-addon-group {
+    display: flex;
+    align-items: stretch;
+    background: var(--prem-bg-input);
+    border: 1px solid transparent;
+    border-radius: var(--prem-radius-md);
+    overflow: hidden;
+    transition: var(--prem-transition);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+
+    &:focus-within {
+      background: var(--prem-bg-body);
+      border-color: var(--prem-primary);
+      box-shadow: var(--prem-shadow-focus);
+
+      .addon-prefix,
+      .addon-suffix {
+        border-color: var(--prem-border);
+      }
+    }
+
+    .addon-prefix,
+    .addon-suffix {
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--prem-text-muted);
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: var(--prem-transition);
+    }
+
+    .addon-prefix {
+      border-right: 1px solid transparent;
+    }
+    .addon-suffix {
+      border-left: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 0 12px;
+      min-width: 0;
+      color: var(--prem-text-title);
+      font-size: 0.925rem;
+      text-align: left; /* Đảm bảo số căn trái */
+
+      &:focus {
+        outline: none;
+        box-shadow: none;
+      }
+    }
+  }
+
+  /* ===== IOS SEGMENTED CONTROL TÍNH NĂNG TRẠNG THÁI ===== */
+  .segmented-control {
+    display: flex;
+    background: var(--prem-bg-input);
+    padding: 4px;
+    border-radius: var(--prem-radius-md);
+    gap: 4px;
+
+    .segment {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--prem-text-muted);
+      cursor: pointer;
+      transition: var(--prem-transition);
+
+      &:hover:not(.active) {
+        color: var(--prem-text-title);
+      }
+
+      &.active {
+        background: var(--prem-bg-body);
+        color: var(--prem-primary);
+        box-shadow: var(--prem-shadow-sm);
+
+        &.error {
+          color: var(--prem-danger);
+        }
+      }
+    }
+  }
+
+  /* ===== PREMIUM FOOTER ACTIONS ===== */
+  .form-actions-premium {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    margin-top: 16px;
+    padding-top: 24px;
+    border-top: 1px solid var(--prem-border);
+
+    button {
+      padding: 10px 20px;
+      border-radius: var(--prem-radius-md);
+      font-weight: 600;
+      font-size: 0.925rem;
+      transition: var(--prem-transition);
+    }
+
+    .btn-cancel {
+      background: #fff;
+      border: 1px solid var(--prem-border);
+      color: var(--prem-text-body);
+      &:hover {
+        background: var(--prem-bg-input);
+        color: var(--prem-text-title);
+      }
+    }
+
+    .btn-save {
+      background: var(--prem-primary);
+      border: 1px solid var(--prem-primary);
+      color: #fff;
+      box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+
+      &:hover:not(:disabled) {
+        background: var(--prem-primary-hover);
+        box-shadow: 0 4px 6px rgba(79, 70, 229, 0.4);
+        transform: translateY(-1px);
+      }
+    }
+
+    .loading-state {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 0.8s linear infinite;
+      }
+    }
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }

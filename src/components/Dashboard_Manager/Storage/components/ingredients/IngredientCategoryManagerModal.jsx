@@ -2,6 +2,21 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Modal from "../../../../common/Modal";
 import Button from "../../../../common/Button";
 import { toIngredientCategoryVi } from "../../../../../utils/ingredientCategoryI18n";
+import {
+  FolderPlus,
+  RefreshCw,
+  Search,
+  Filter,
+  Edit2,
+  Trash2,
+  Clock,
+  AlertCircle,
+  Database,
+  Layers,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import "./IngredientCategoryManagerModal.scss"; // Nhớ import file CSS/SCSS
 
 const PAGE_SIZE = 8;
 
@@ -107,82 +122,106 @@ const IngredientCategoryManagerModal = ({
       closeOnOverlayClick={false}
       closeOnEscape={!loading}
     >
-      <div style={{ display: "grid", gap: 12 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 8,
-          }}
-        >
-          <b style={{ fontSize: 18 }}>Quản lý danh mục nguyên liệu</b>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={requestClose}
-            disabled={loading}
-          >
-            Đóng
-          </Button>
+      <div className="cat-manager-premium">
+        {/* THÔNG BÁO LỖI CHUNG */}
+        {!!error && (
+          <div className="alert-box danger mb-4">
+            <AlertCircle size={18} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* ========================================== */}
+        {/* SECTION 1: TẠO MỚI & ĐỒNG BỘ NGUỒN */}
+        {/* ========================================== */}
+        <div className="form-grid-2">
+          {/* CỘT TRÁI: THÊM THỦ CÔNG */}
+          <div className="form-section elevated-section bg-slate">
+            <div className="im-section-header compact">
+              <div className="icon-box">
+                <FolderPlus size={16} />
+              </div>
+              <div className="header-text">
+                <h4 className="im-section-title">Thêm thủ công</h4>
+              </div>
+            </div>
+
+            <div className="flex-row-action mt-3">
+              <div className="input-with-icon flex-1">
+                <Layers size={16} className="icon" />
+                <input
+                  className="standard-input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Nhập tên danh mục..."
+                  disabled={loading}
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={create}
+                disabled={loading || !name.trim()}
+                className="btn-save shrink-0"
+              >
+                Thêm
+              </Button>
+            </div>
+          </div>
+
+          {/* CỘT PHẢI: ĐỒNG BỘ TỰ ĐỘNG */}
+          <div className="form-section elevated-section bg-indigo">
+            <div className="im-section-header compact">
+              <div className="icon-box warning">
+                <Database size={16} />
+              </div>
+              <div className="header-text">
+                <h4 className="im-section-title">Đồng bộ từ nguyên liệu</h4>
+              </div>
+            </div>
+
+            <div className="mt-3 text-right">
+              <Button
+                type="button"
+                variant="secondary"
+                className="btn-outline-primary w-full justify-center"
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      "Bạn có chắc chắn muốn đồng bộ danh mục từ nguyên liệu?",
+                    )
+                  )
+                    return;
+                  setLoading(true);
+                  try {
+                    const report = await onSync?.();
+                    setLastSyncReport(report || null);
+                    setError("");
+                  } catch (err) {
+                    setError(err?.message || "Đồng bộ danh mục thất bại.");
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+              >
+                {loading ? (
+                  <span className="loading-state">
+                    <span className="spinner border-primary"></span> Đang xử
+                    lý...
+                  </span>
+                ) : (
+                  <>
+                    <RefreshCw size={16} className="mr-2" /> Tiến hành đồng bộ
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Tên danh mục mới"
-            style={{ flex: 1, minHeight: 40, padding: "0 12px" }}
-          />
-          <Button type="button" onClick={create} disabled={loading}>
-            Thêm
-          </Button>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <b>Danh mục hiện có</b>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={async () => {
-              if (
-                !window.confirm(
-                  "Bạn có chắc chắn muốn đồng bộ danh mục từ nguyên liệu?",
-                )
-              )
-                return;
-              setLoading(true);
-              try {
-                const report = await onSync?.();
-                setLastSyncReport(report || null);
-                setError("");
-              } catch (err) {
-                setError(err?.message || "Đồng bộ danh mục thất bại.");
-              } finally {
-                setLoading(false);
-              }
-            }}
-            disabled={loading}
-          >
-            {loading ? "Đang đồng bộ..." : "Đồng bộ danh mục"}
-          </Button>
-        </div>
-
+        {/* THỐNG KÊ ĐỒNG BỘ (Chỉ hiện khi có data) */}
         {summary && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-              gap: 8,
-            }}
-          >
+          <div className="metrics-grid mt-4">
             <Metric label="Tạo mới" value={summary.categoriesCreated} />
             <Metric label="Cập nhật" value={summary.categoriesUpdated} />
             <Metric label="Gán lại" value={summary.ingredientsReassigned} />
@@ -194,188 +233,206 @@ const IngredientCategoryManagerModal = ({
           </div>
         )}
 
-        {!!error && (
-          <div
-            role="alert"
-            style={{
-              background: "#fef2f2",
-              border: "1px solid #fecaca",
-              color: "#b91c1c",
-              borderRadius: 8,
-              padding: "10px 12px",
-            }}
-          >
-            {error}
-          </div>
-        )}
+        <hr className="divider" />
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Tìm danh mục"
-            style={{ flex: 1, minHeight: 36, padding: "0 10px" }}
-          />
-          <select
-            value={sourceFilter}
-            onChange={(e) => {
-              setSourceFilter(e.target.value);
-              setPage(1);
-            }}
-            style={{ minHeight: 36, minWidth: 150 }}
-          >
-            <option value="all">Tất cả nguồn</option>
-            <option value="manual">Manual</option>
-            <option value="sync">Sync</option>
-          </select>
-        </div>
-
-        <div
-          style={{
-            maxHeight: 320,
-            overflow: "auto",
-            border: "1px solid #e2e8f0",
-            borderRadius: 8,
-          }}
-        >
-          {pageRows.map((cat) => (
-            <div
-              key={cat.id || cat._id || cat.name}
-              style={{
-                padding: "10px 12px",
-                borderBottom: "1px solid #eef2f7",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 600 }}>
-                  {toIngredientCategoryVi(cat.name)}
-                </div>
-                <small style={{ color: "#64748b" }}>
-                  {cat.source || "manual"} • usage: {cat.usageCount || 0}
-                </small>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={async () => {
-                    const next = window.prompt(
-                      "Đổi tên danh mục",
-                      cat.name || "",
-                    );
-                    if (!next?.trim() || next.trim() === cat.name) return;
-                    setLoading(true);
-                    try {
-                      await onRename?.(cat.id, next.trim());
-                      setError("");
-                    } catch (err) {
-                      setError(err?.message || "Đổi tên danh mục thất bại.");
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                >
-                  Đổi tên
-                </button>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={async () => {
-                    if (!window.confirm(`Xóa danh mục "${cat.name}"?`)) return;
-                    setLoading(true);
-                    try {
-                      await onDelete?.(cat.id);
-                      setError("");
-                    } catch (err) {
-                      setError(err?.message || "Xóa danh mục thất bại.");
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                >
-                  Xóa
-                </button>
-              </div>
+        {/* ========================================== */}
+        {/* SECTION 2: DANH SÁCH & BỘ LỌC */}
+        {/* ========================================== */}
+        <div className="form-section borderless">
+          <div className="im-section-header">
+            <div className="icon-box">
+              <Layers size={18} />
             </div>
-          ))}
-          {!pageRows.length && (
-            <div style={{ padding: 16, color: "#64748b" }}>
-              Không có danh mục phù hợp bộ lọc.
+            <div className="header-text">
+              <h4 className="im-section-title">Danh mục hiện có</h4>
+              <p className="im-section-desc">
+                Tìm kiếm, lọc và quản lý các danh mục
+              </p>
             </div>
-          )}
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <small style={{ color: "#64748b" }}>
-            Trang {currentPage}/{pageCount}
-          </small>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              type="button"
-              disabled={currentPage <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Trước
-            </button>
-            <button
-              type="button"
-              disabled={currentPage >= pageCount}
-              onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-            >
-              Sau
-            </button>
           </div>
-        </div>
 
-        <div style={{ borderTop: "1px solid #eef2f7", paddingTop: 10 }}>
-          <b>Lịch sử đồng bộ gần đây</b>
-          <div style={{ maxHeight: 140, overflow: "auto", marginTop: 8 }}>
-            {(syncLogs || []).map((log) => (
-              <div
-                key={log.id}
-                style={{ padding: "6px 0", borderBottom: "1px dashed #e2e8f0" }}
+          {/* TOOLBAR: TÌM KIẾM & LỌC */}
+          <div className="toolbar mb-4">
+            <div className="input-with-icon search-box flex-1">
+              <Search size={16} className="icon" />
+              <input
+                className="standard-input"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Tìm danh mục..."
+                disabled={loading}
+              />
+            </div>
+            <div className="input-with-icon filter-box">
+              <Filter size={16} className="icon" />
+              <select
+                className="standard-input"
+                value={sourceFilter}
+                onChange={(e) => {
+                  setSourceFilter(e.target.value);
+                  setPage(1);
+                }}
+                disabled={loading}
               >
-                <small style={{ color: "#475569" }}>
-                  {fmtDateTime(log.at)} • {log.summaryText || "Không có mô tả"}
-                </small>
+                <option value="all">Tất cả nguồn</option>
+                <option value="manual">Tạo thủ công (Manual)</option>
+                <option value="sync">Đồng bộ (Sync)</option>
+              </select>
+            </div>
+          </div>
+
+          {/* BẢNG DANH SÁCH */}
+          <div className="list-container">
+            {pageRows.map((cat) => (
+              <div key={cat.id || cat._id || cat.name} className="list-item">
+                <div className="item-info">
+                  <div className="item-name">
+                    {toIngredientCategoryVi(cat.name)}
+                  </div>
+                  <div className="item-meta">
+                    <span
+                      className={`badge ${cat.source === "sync" ? "badge-sync" : "badge-manual"}`}
+                    >
+                      {cat.source || "manual"}
+                    </span>
+                    <span className="usage-count">
+                      • Sử dụng: <b>{cat.usageCount || 0}</b>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="item-actions">
+                  <button
+                    type="button"
+                    className="action-btn edit"
+                    disabled={loading}
+                    title="Đổi tên"
+                    onClick={async () => {
+                      const next = window.prompt(
+                        "Đổi tên danh mục:",
+                        cat.name || "",
+                      );
+                      if (!next?.trim() || next.trim() === cat.name) return;
+                      setLoading(true);
+                      try {
+                        await onRename?.(cat.id, next.trim());
+                        setError("");
+                      } catch (err) {
+                        setError(err?.message || "Đổi tên thất bại.");
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="action-btn delete"
+                    disabled={loading}
+                    title="Xóa danh mục"
+                    onClick={async () => {
+                      if (!window.confirm(`Xóa danh mục "${cat.name}"?`))
+                        return;
+                      setLoading(true);
+                      try {
+                        await onDelete?.(cat.id);
+                        setError("");
+                      } catch (err) {
+                        setError(err?.message || "Xóa thất bại.");
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {!pageRows.length && (
+              <div className="empty-state">
+                <Search size={32} />
+                <p>Không có danh mục phù hợp bộ lọc.</p>
+              </div>
+            )}
+          </div>
+
+          {/* PHÂN TRANG PREMIUM */}
+          <div className="pagination-premium">
+            <span className="page-info">
+              Trang {currentPage} / {pageCount}
+            </span>
+            <div className="page-controls">
+              <button
+                type="button"
+                className="page-btn"
+                disabled={currentPage <= 1 || loading}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                <ChevronLeft size={16} /> Trước
+              </button>
+              <button
+                type="button"
+                className="page-btn"
+                disabled={currentPage >= pageCount || loading}
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+              >
+                Sau <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <hr className="divider" />
+
+        {/* ========================================== */}
+        {/* SECTION 3: LỊCH SỬ ĐỒNG BỘ */}
+        {/* ========================================== */}
+        <div className="form-section borderless">
+          <div className="im-section-header compact mb-3">
+            <div className="icon-box bg-slate">
+              <Clock size={16} />
+            </div>
+            <div className="header-text">
+              <h4 className="im-section-title text-sm">Lịch sử hệ thống</h4>
+            </div>
+          </div>
+
+          <div className="history-timeline">
+            {(syncLogs || []).map((log) => (
+              <div key={log.id} className="timeline-item">
+                <div className="timeline-dot"></div>
+                <div className="timeline-content">
+                  <span className="time">{fmtDateTime(log.at)}</span>
+                  <span className="desc">
+                    {log.summaryText || "Không có mô tả chi tiết"}
+                  </span>
+                </div>
               </div>
             ))}
             {!syncLogs?.length && (
-              <small style={{ color: "#94a3b8" }}>
+              <div className="text-muted text-sm italic pl-2">
                 Chưa có lịch sử đồng bộ.
-              </small>
+              </div>
             )}
           </div>
         </div>
 
-        <div
-          style={{
-            borderTop: "1px solid #eef2f7",
-            paddingTop: 10,
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
-        >
+        {/* FOOTER ACTIONS */}
+        <div className="form-actions-premium mt-0">
           <Button
             type="button"
             variant="secondary"
             onClick={requestClose}
             disabled={loading}
+            className="btn-cancel"
           >
-            Đóng
+            Đóng cửa sổ
           </Button>
         </div>
       </div>
@@ -383,19 +440,11 @@ const IngredientCategoryManagerModal = ({
   );
 };
 
+// Component con hiển thị chỉ số
 const Metric = ({ label, value, danger = false }) => (
-  <div
-    style={{
-      background: "#f8fafc",
-      border: `1px solid ${danger ? "#fca5a5" : "#e2e8f0"}`,
-      borderRadius: 8,
-      padding: 10,
-    }}
-  >
-    <small style={{ color: "#64748b" }}>{label}</small>
-    <div style={{ fontWeight: 700, color: danger ? "#b91c1c" : "#0f172a" }}>
-      {Number(value) || 0}
-    </div>
+  <div className={`metric-card ${danger ? "danger" : ""}`}>
+    <span className="metric-label">{label}</span>
+    <span className="metric-value">{Number(value) || 0}</span>
   </div>
 );
 
