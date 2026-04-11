@@ -2,6 +2,16 @@ import mongoose from "mongoose";
 import { Supply, StockItem, StockMovement } from "../../../models/index.js";
 import Warehouse from "../../../models/warehouse.model.js";
 
+function buildStockInsertDefaults(supply) {
+  return {
+    reserved: 0,
+    batches: [],
+    costPerUnit: supply?.costPerUnit ?? 0,
+    pricePerUnit: supply?.pricePerUnit ?? 0,
+    note: supply?.notes ?? "",
+  };
+}
+
 function sortBatchesFIFO(batches) {
   return [...batches].sort((a, b) => {
     const ax = a.expiry
@@ -44,6 +54,7 @@ export default {
   // ===== Điều chỉnh ±qty =====
   adjustSupply: async (_p, { input }) => {
     const { restaurantId, warehouseId, supplyId, qty, reason, meta } = input;
+    const nQty = Number(qty);
 
     if (
       !mongoose.isValidObjectId(restaurantId) ||
@@ -51,6 +62,8 @@ export default {
       !mongoose.isValidObjectId(supplyId)
     )
       throw new Error("Invalid IDs");
+    if (!Number.isFinite(nQty) || nQty === 0)
+      throw new Error("qty must be a non-zero number");
 
     const wh = await Warehouse.findById(warehouseId).lean();
     if (!wh) throw new Error("Warehouse not found");
@@ -59,15 +72,8 @@ export default {
     const stock = await StockItem.findOneAndUpdate(
       { restaurantId, warehouseId, supplyId },
       {
-        $setOnInsert: {
-          onHand: 0,
-          reserved: 0,
-          batches: [],
-          costPerUnit: supply?.costPerUnit ?? 0,
-          pricePerUnit: supply?.pricePerUnit ?? 0,
-          note: supply?.notes ?? "",
-        },
-        $inc: { onHand: qty },
+        $setOnInsert: buildStockInsertDefaults(supply),
+        $inc: { onHand: nQty },
       },
       { new: true, upsert: true }
     );
@@ -78,7 +84,7 @@ export default {
       itemType: "supply",
       itemId: supplyId,
       type: "adjustment",
-      qty, // có thể âm/dương
+      qty: nQty, // có thể âm/dương
       reason,
       meta,
     });
@@ -100,6 +106,7 @@ export default {
       reason,
       meta,
     } = input;
+    const nQty = Number(qty);
 
     if (
       !mongoose.isValidObjectId(restaurantId) ||
@@ -107,7 +114,7 @@ export default {
       !mongoose.isValidObjectId(supplyId)
     )
       throw new Error("Invalid IDs");
-    if (!qty || qty <= 0) throw new Error("qty must be > 0");
+    if (!Number.isFinite(nQty) || nQty <= 0) throw new Error("qty must be > 0");
 
     const wh = await Warehouse.findById(warehouseId).lean();
     if (!wh) throw new Error("Warehouse not found");
@@ -116,19 +123,12 @@ export default {
     const stock = await StockItem.findOneAndUpdate(
       { restaurantId, warehouseId, supplyId },
       {
-        $setOnInsert: {
-          onHand: 0,
-          reserved: 0,
-          batches: [],
-          costPerUnit: supply?.costPerUnit ?? 0,
-          pricePerUnit: supply?.pricePerUnit ?? 0,
-          note: supply?.notes ?? "",
-        },
-        $inc: { onHand: qty },
+        $setOnInsert: buildStockInsertDefaults(supply),
+        $inc: { onHand: nQty },
         $push: {
           batches: {
             lot,
-            qty,
+            qty: nQty,
             expiry,
             costPerBaseUnit: costPerBaseUnit ?? 0,
           },
@@ -143,7 +143,7 @@ export default {
       itemType: "supply",
       itemId: supplyId,
       type: "inbound",
-      qty, // dương
+      qty: nQty, // dương
       reason,
       meta: { ...meta, lot, expiry, supplier, costPerBaseUnit },
     });
@@ -154,6 +154,7 @@ export default {
   // ===== Xuất kho FIFO (outbound) =====
   stockOutbound: async (_p, { input }) => {
     const { restaurantId, warehouseId, supplyId, qty, reason, meta } = input;
+    const nQty = Number(qty);
 
     if (
       !mongoose.isValidObjectId(restaurantId) ||
@@ -161,7 +162,7 @@ export default {
       !mongoose.isValidObjectId(supplyId)
     )
       throw new Error("Invalid IDs");
-    if (!qty || qty <= 0) throw new Error("qty must be > 0");
+    if (!Number.isFinite(nQty) || nQty <= 0) throw new Error("qty must be > 0");
 
     const stock = await StockItem.findOne({
       restaurantId,
@@ -170,10 +171,10 @@ export default {
     });
 
     if (!stock) throw new Error("Stock item not found");
-    if ((stock.onHand || 0) < qty) throw new Error("Insufficient stock");
+    if ((stock.onHand || 0) < nQty) throw new Error("Insufficient stock");
 
     // FIFO: trừ từ batches cũ trước (ưu tiên expiry)
-    let remain = qty;
+    let remain = nQty;
     const sorted = sortBatchesFIFO(stock.batches);
 
     for (const b of sorted) {
@@ -184,7 +185,7 @@ export default {
     }
 
     stock.batches = sorted.filter((b) => b.qty > 0);
-    stock.onHand = (stock.onHand || 0) - qty;
+    stock.onHand = (stock.onHand || 0) - nQty;
 
     await stock.save();
 
@@ -194,7 +195,7 @@ export default {
       itemType: "supply",
       itemId: supplyId,
       type: "outbound",
-      qty: -Math.abs(qty), // ghi âm cho outbound
+      qty: -Math.abs(nQty), // ghi âm cho outbound
       reason,
       meta,
     });
@@ -211,6 +212,7 @@ export default {
       reason,
       meta,
     } = input;
+    const nQty = Number(qty);
 
     if (
       !mongoose.isValidObjectId(restaurantId) ||
@@ -219,7 +221,7 @@ export default {
       !mongoose.isValidObjectId(supplyId)
     )
       throw new Error("Invalid IDs");
-    if (!qty || qty <= 0) throw new Error("qty must be > 0");
+    if (!Number.isFinite(nQty) || nQty <= 0) throw new Error("qty must be > 0");
 
     if (fromWarehouseId === toWarehouseId)
       throw new Error("Cannot transfer to the same warehouse");
@@ -232,10 +234,10 @@ export default {
       supplyId,
     });
     if (!fromStock) throw new Error("No stock found in source warehouse");
-    if ((fromStock.onHand || 0) < qty)
+    if ((fromStock.onHand || 0) < nQty)
       throw new Error("Insufficient stock in source warehouse");
 
-    let remain = qty;
+    let remain = nQty;
     const sorted = sortBatchesFIFO(fromStock.batches);
     const transferredBatches = [];
 
@@ -255,7 +257,7 @@ export default {
     }
 
     fromStock.batches = sorted.filter((b) => b.qty > 0);
-    fromStock.onHand -= qty;
+    fromStock.onHand -= nQty;
     await fromStock.save();
 
     await StockMovement.create({
@@ -264,7 +266,7 @@ export default {
       itemType: "supply",
       itemId: supplyId,
       type: "transfer",
-      qty: -Math.abs(qty),
+      qty: -Math.abs(nQty),
       reason: reason || "Xuất kho chuyển kho",
       meta: { ...meta, toWarehouseId },
     });
@@ -273,15 +275,8 @@ export default {
     const toStock = await StockItem.findOneAndUpdate(
       { restaurantId, warehouseId: toWarehouseId, supplyId },
       {
-        $setOnInsert: {
-          onHand: 0,
-          reserved: 0,
-          batches: [],
-          costPerUnit: supply?.costPerUnit ?? 0,
-          pricePerUnit: supply?.pricePerUnit ?? 0,
-          note: supply?.notes ?? "",
-        },
-        $inc: { onHand: qty },
+        $setOnInsert: buildStockInsertDefaults(supply),
+        $inc: { onHand: nQty },
       },
       { new: true, upsert: true }
     );
@@ -297,7 +292,7 @@ export default {
       itemType: "supply",
       itemId: supplyId,
       type: "transfer",
-      qty: qty,
+      qty: nQty,
       reason: reason || "Nhập kho (từ kho khác)",
       meta: { ...meta, fromWarehouseId },
     });
