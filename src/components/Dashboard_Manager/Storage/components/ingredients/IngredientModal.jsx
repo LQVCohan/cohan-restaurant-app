@@ -308,7 +308,8 @@ const IngredientModal = ({
       size="lg"
       closeOnOverlayClick={false}
     >
-      <form onSubmit={save} className="ingredient-form-premium">
+      <Modal.Body>
+        <form onSubmit={save} className="ingredient-form-premium">
         {/* SECTION 1: THÔNG TIN CƠ BẢN */}
         <div className="form-section">
           {/* Đã đổi class để tránh xung đột */}
@@ -593,7 +594,8 @@ const IngredientModal = ({
             )}
           </Button>
         </div>
-      </form>
+        </form>
+      </Modal.Body>
     </Modal>
   );
 };
