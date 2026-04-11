@@ -122,7 +122,8 @@ const IngredientCategoryManagerModal = ({
       closeOnOverlayClick={false}
       closeOnEscape={!loading}
     >
-      <div className="cat-manager-premium">
+      <Modal.Body>
+        <div className="cat-manager-premium">
         {/* THÔNG BÁO LỖI CHUNG */}
         {!!error && (
           <div className="alert-box danger mb-4">
@@ -435,7 +436,8 @@ const IngredientCategoryManagerModal = ({
             Đóng cửa sổ
           </Button>
         </div>
-      </div>
+        </div>
+      </Modal.Body>
     </Modal>
   );
 };
