@@ -32,6 +32,7 @@ const Modal = ({
   onBeforeClose,
   className = "",
   zIndex = 1000, // Hỗ trợ stack modals
+  autoWrapBody = true,
 }) => {
   const shouldRender = useDelayUnmount(isOpen, 300); // 300ms khớp với CSS transition
   const modalRef = useRef(null);
@@ -112,6 +113,17 @@ const Modal = ({
 
   if (!shouldRender) return null;
 
+  const childArray = React.Children.toArray(children);
+  const hasExplicitBody = childArray.some(
+    (child) => React.isValidElement(child) && child.type === ModalBody,
+  );
+  const normalizedChildren =
+    autoWrapBody && !hasExplicitBody ? (
+      <ModalBody>{children}</ModalBody>
+    ) : (
+      children
+    );
+
   return createPortal(
     <div
       ref={overlayRef}
@@ -130,7 +142,7 @@ const Modal = ({
         tabIndex="-1" // Cho phép div nhận focus programmatically
       >
         {/* Inject titleId context if needed, simple children rendering here */}
-        {React.Children.map(children, (child) => {
+        {React.Children.map(normalizedChildren, (child) => {
           // Clone element để truyền props tự động nếu cần (như onClose cho Header)
           if (React.isValidElement(child) && child.type === ModalHeader) {
             return React.cloneElement(child, { onClose: requestClose, titleId });
