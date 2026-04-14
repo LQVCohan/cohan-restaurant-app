@@ -381,14 +381,6 @@ export default function RightPanel() {
   const openPaymentModal = useCallback(async () => {
     if (!hasItems) return;
 
-    if (isOffPremise) {
-      showNotification(
-        "Thanh toán tại POS hiện chỉ áp dụng cho đơn tại bàn.",
-        "warning"
-      );
-      return;
-    }
-
     if (!currentTable?.restaurantId) {
       showNotification("Thiếu restaurantId.", "error");
       return;
@@ -407,7 +399,7 @@ export default function RightPanel() {
     }
 
     setPaymentModalOpen(true);
-  }, [hasItems, isOffPremise, currentTable, preparePayment, showNotification]);
+  }, [hasItems, currentTable, preparePayment, showNotification]);
 
   const handlePaymentComplete = useCallback(
     (payload) => {

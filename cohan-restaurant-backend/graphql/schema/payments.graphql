@@ -22,6 +22,15 @@ input PayOrdersByTableIdInput {
   externalRef: String
   includeUnserved: Boolean = false
 }
+input PayOrdersByOrderIdsInput {
+  restaurantId: ID!
+  orderIds: [ID!]!
+  paidAmount: Float
+  method: String! # "cash" | "card" | "bank_transfer" | "e_wallet" | ...
+  paidAt: DateTime
+  note: String
+  externalRef: String
+}
 enum InvoiceStatus {
   UNPAID
   PARTIAL
@@ -241,4 +250,5 @@ extend type Mutation {
   updateRestaurantPaymentSettings(input: UpdateRestaurantPaymentSettingsInput!): Restaurant!
 
   payOrdersByTableId(input: PayOrdersByTableIdInput!): PayOrdersByTableResult!
+  payOrdersByOrderIds(input: PayOrdersByOrderIdsInput!): PayOrdersByTableResult!
 }

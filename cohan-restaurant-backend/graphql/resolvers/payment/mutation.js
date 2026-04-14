@@ -353,6 +353,207 @@ export const payOrdersByTableId = async (_parent, { input }, ctx) => {
   }
 };
 
+export const payOrdersByOrderIds = async (_parent, { input }, ctx) => {
+  const {
+    restaurantId,
+    orderIds = [],
+    paidAmount,
+    method,
+    paidAt,
+    note,
+    externalRef,
+  } = input || {};
+
+  const rid = toId(restaurantId);
+  if (!rid) throw new Error("Invalid restaurantId");
+
+  const normalizedOrderIds = [...new Set((orderIds || []).map(String))]
+    .map(toId)
+    .filter(Boolean);
+  if (!normalizedOrderIds.length) throw new Error("Invalid orderIds");
+
+  const normMethod = String(method || "").toLowerCase();
+  if (!["cash", "card", "transfer", "bank_transfer", "e_wallet"].includes(normMethod)) {
+    throw new Error("Unsupported payment method");
+  }
+
+  const orders = await Order.find({
+    _id: { $in: normalizedOrderIds },
+    restaurantId: rid,
+    currentStatus: { $nin: INACTIVE_ORDER_STATUSES },
+  }).lean();
+
+  if (!orders.length) {
+    return {
+      warning: true,
+      pendingOrderCodes: [],
+      invoice: null,
+      transaction: null,
+      cashflow: null,
+    };
+  }
+
+  const pendingCodes = [];
+  const allLines = [];
+  let aggregatedTotals = { subtotal: 0, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 0 };
+  const activeOrderIds = orders.map((o) => o._id);
+
+  for (const order of orders) {
+    const filteredItems = (order.items || []).filter(
+      (it) => !EXCLUDED_ITEM_STATUSES.has(String(it.status || "").toLowerCase())
+    );
+
+    const normalizedLines = filteredItems.map(normalizeLine).filter(Boolean);
+    const linesSubtotal = normalizedLines.reduce((s, l) => s + l.subtotal, 0);
+    const totals = accumulateTotals(order, linesSubtotal, linesSubtotal);
+
+    aggregatedTotals.subtotal += totals.subtotal;
+    aggregatedTotals.discount += totals.discount;
+    aggregatedTotals.tax += totals.tax;
+    aggregatedTotals.service += totals.service;
+    aggregatedTotals.shippingFee += totals.shippingFee;
+    aggregatedTotals.grandTotal += totals.grandTotal;
+
+    allLines.push(...normalizedLines);
+  }
+
+  const mergedLines = mergeLines(allLines);
+  if (!mergedLines.length || !(aggregatedTotals.grandTotal > 0)) {
+    return {
+      warning: true,
+      pendingOrderCodes: pendingCodes,
+      invoice: null,
+      transaction: null,
+      cashflow: null,
+    };
+  }
+
+  const now = paidAt ? dayjs(paidAt).toDate() : new Date();
+  const amountToPay =
+    paidAmount != null ? Number(paidAmount) : aggregatedTotals.grandTotal;
+  const firstOrder = orders[0] || null;
+
+  const session = await startSession();
+  session.startTransaction();
+
+  try {
+    const trx = await PaymentTransaction.create(
+      [
+        {
+          restaurantId: rid,
+          orderIds: activeOrderIds,
+          paidAmount: amountToPay,
+          method: normMethod,
+          status: "SUCCESS",
+          paidAt: now,
+          note,
+          externalRef,
+          createdBy: ctx?.user?.id,
+        },
+      ],
+      { session }
+    ).then((r) => r[0]);
+
+    const number = await generateInvoiceNumber(Invoice, session);
+    const invoice = await Invoice.create(
+      [
+        {
+          restaurantId: rid,
+          orderIds: activeOrderIds,
+          userId: ctx?.user?.id,
+          tableCode: firstOrder?.tableCode || null,
+          number,
+          issuedAt: now,
+          lines: mergedLines,
+          totals: {
+            subtotal: aggregatedTotals.subtotal,
+            discount: aggregatedTotals.discount,
+            tax: aggregatedTotals.tax,
+            service: aggregatedTotals.service,
+            grandTotal: aggregatedTotals.grandTotal,
+          },
+          paid: amountToPay,
+          status:
+            amountToPay + 1e-6 >= aggregatedTotals.grandTotal
+              ? "PAID"
+              : amountToPay > 0
+                ? "PARTIAL"
+                : "UNPAID",
+          currency: "VND",
+          refTransactionId: trx._id,
+        },
+      ],
+      { session }
+    ).then((r) => r[0]);
+
+    const cashflow = await Cashflow.create(
+      [
+        {
+          restaurantId: rid,
+          type: "INFLOW",
+          amount: amountToPay,
+          currency: "VND",
+          ref: {
+            kind: "Invoice",
+            id: invoice._id,
+            orderIds: activeOrderIds,
+          },
+          note: "Thanh toán theo đơn",
+          occurredAt: now,
+        },
+      ],
+      { session }
+    ).then((r) => r[0]);
+
+    await Order.updateMany(
+      { _id: { $in: activeOrderIds } },
+      {
+        $set: {
+          "payment.method": normMethod,
+          "payment.status": "paid",
+          "payment.paidAmount": amountToPay,
+          "payment.paidAt": now,
+          currentStatus: "completed",
+        },
+      },
+      { session }
+    );
+
+    await EventLog.log(
+      {
+        restaurantId: rid,
+        verb: "order.pay",
+        actorUserId: ctx?.user?.id,
+        object: { kind: "Order", id: firstOrder?._id || activeOrderIds[0] },
+        target: { kind: "Invoice", id: invoice._id },
+        source: "pos",
+        status: "success",
+        meta: {
+          orders: activeOrderIds.map(String),
+          paidAmount: amountToPay,
+          method: normMethod,
+        },
+      },
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return {
+      warning: false,
+      pendingOrderCodes: pendingCodes,
+      invoice,
+      transaction: trx,
+      cashflow,
+    };
+  } catch (err) {
+    await session.abortTransaction().catch(() => {});
+    session.endSession();
+    throw err;
+  }
+};
+
 
 
 export const createReservationPaymentMutation = async (_parent, { input }, ctx) => {
@@ -443,4 +644,10 @@ export const updateRestaurantPaymentSettings = async (_parent, { input }, ctx) =
 };
 
 
-export default { payOrdersByTableId, createReservationPayment: createReservationPaymentMutation, syncPaymentStatus, updateRestaurantPaymentSettings };
+export default {
+  payOrdersByTableId,
+  payOrdersByOrderIds,
+  createReservationPayment: createReservationPaymentMutation,
+  syncPaymentStatus,
+  updateRestaurantPaymentSettings,
+};
