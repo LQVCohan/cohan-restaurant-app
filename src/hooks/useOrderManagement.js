@@ -522,6 +522,34 @@ const PAY_ORDERS_BY_TABLE_ID = gql`
   }
 `;
 
+/** 💳 Thanh toán theo danh sách orderIds (delivery/takeaway) */
+const PAY_ORDERS_BY_ORDER_IDS = gql`
+  mutation PayOrdersByOrderIds($input: PayOrdersByOrderIdsInput!) {
+    payOrdersByOrderIds(input: $input) {
+      warning
+      pendingOrderCodes
+      invoice {
+        id
+        number
+        totals {
+          grandTotal
+        }
+      }
+      transaction {
+        id
+        paidAmount
+        method
+        status
+      }
+      cashflow {
+        id
+        amount
+        type
+      }
+    }
+  }
+`;
+
 /** ✅ Cập nhật trạng thái 1 order theo ID */
 const UPDATE_ORDER_STATUS = gql`
   mutation UpdateOrderStatus($input: UpdateOrderStatusInput!) {
@@ -649,6 +677,9 @@ export default function useOrderManagement(pos = null) {
   const [createOffPremiseOrder] = useMutation(CREATE_OFF_PREMISE_ORDER);
   const [mutPayByTable, { loading: payLoadingByTable }] = useMutation(
     PAY_ORDERS_BY_TABLE_ID
+  );
+  const [mutPayByOrderIds, { loading: payLoadingByOrderIds }] = useMutation(
+    PAY_ORDERS_BY_ORDER_IDS
   );
   const [mutUpdateOrderStatus] = useMutation(UPDATE_ORDER_STATUS);
   const [mutUpdateOrderItemStatus] = useMutation(UPDATE_ORDER_ITEM_STATUS);
@@ -1681,7 +1712,7 @@ export default function useOrderManagement(pos = null) {
      ============================================================ */
 
   const saveOrder = useCallback(
-    async ({ persist = true, restaurantId } = {}) => {
+    async ({ persist = true, restaurantId, clearAfterSave = true } = {}) => {
       // ❌ Không cho lưu đơn rỗng
       if (!currentOrder?.length) {
         return { success: false, message: "Chưa có món ăn nào trong đơn." };
@@ -1894,8 +1925,10 @@ export default function useOrderManagement(pos = null) {
           writeOrderIntoCache(serverOrder);
         }
 
-        // Off-premise: sau khi lưu có thể clear cart POS
-        setCurrentOrder?.([]);
+        // Off-premise: có thể giữ cart khi cần mở PaymentModal ngay sau lưu
+        if (clearAfterSave) {
+          setCurrentOrder?.([]);
+        }
 
         return {
           success: true,
@@ -1937,22 +1970,13 @@ export default function useOrderManagement(pos = null) {
   );
 
   /* ============================================================
-     10) PAYMENT FLOW (chỉ áp dụng cho dine-in trong POS này)
+     10) PAYMENT FLOW (dine-in + delivery/takeaway)
      ============================================================ */
 
   const preparePayment = useCallback(
     async ({ restaurantId } = {}) => {
       if (!restaurantId)
         return { success: false, message: "Thiếu restaurantId." };
-
-      // POS bàn ăn: chỉ hỗ trợ thanh toán dine-in ở luồng này
-      if (currentOrderType && currentOrderType !== "dine_in") {
-        return {
-          success: false,
-          message:
-            "Thanh toán cho đơn giao hàng / mang về được xử lý ở màn khác.",
-        };
-      }
 
       if (activeGroup?.orderCode) {
         return {
@@ -1970,7 +1994,11 @@ export default function useOrderManagement(pos = null) {
       if (!currentOrder?.length)
         return { success: false, message: "Chưa có món để thanh toán." };
 
-      const saved = await saveOrder({ persist: true, restaurantId });
+      const saved = await saveOrder({
+        persist: true,
+        restaurantId,
+        clearAfterSave: false,
+      });
       if (!saved?.success) return saved;
 
       const orderId = saved?.data?.id || saved?.data?._id || null;
@@ -2018,22 +2046,9 @@ export default function useOrderManagement(pos = null) {
       if (!restaurantId)
         return { success: false, message: "Thiếu restaurantId." };
 
-      if (currentOrderType && currentOrderType !== "dine_in") {
-        return {
-          success: false,
-          message:
-            "Thanh toán cho đơn giao hàng / mang về được xử lý ở màn khác.",
-        };
-      }
-
-      const tableId =
-        currentTable?.id || currentTable?._id || activeGroup?.tableId || null;
-      if (!tableId) {
-        return { success: false, message: "Thiếu tableId để thanh toán." };
-      }
-
+      const isDineIn = !currentOrderType || currentOrderType === "dine_in";
       const grand =
-        activeGroup?.orderCode && mergedCurrent?.totals?.grandTotal
+        isDineIn && activeGroup?.orderCode && mergedCurrent?.totals?.grandTotal
           ? Number(mergedCurrent.totals.grandTotal || 0)
           : Number(totals.total || 0);
 
@@ -2049,40 +2064,76 @@ export default function useOrderManagement(pos = null) {
         externalRef ||
         `ref_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-      const attemptPay = async (includeUnserved = false) => {
-        const { data } = await mutPayByTable({
+      try {
+        if (isDineIn) {
+          const tableId =
+            currentTable?.id || currentTable?._id || activeGroup?.tableId || null;
+          if (!tableId) {
+            return { success: false, message: "Thiếu tableId để thanh toán." };
+          }
+
+          const attemptPay = async (includeUnserved = false) => {
+            const { data } = await mutPayByTable({
+              variables: {
+                input: {
+                  restaurantId,
+                  tableId,
+                  paidAmount: paid,
+                  method,
+                  note,
+                  externalRef: idempotency,
+                  includeUnserved,
+                },
+              },
+            });
+            return data?.payOrdersByTableId;
+          };
+
+          let res = await attemptPay(false);
+          if (res?.warning && Array.isArray(res.pendingOrderCodes)) {
+            const msg = `Các order chưa phục vụ: ${res.pendingOrderCodes.join(
+              ", "
+            )}. Thanh toán tất cả?`;
+            const confirmAll = window.confirm(msg);
+            if (confirmAll) {
+              res = await attemptPay(true);
+            }
+          }
+
+          if (currentTable?.id) {
+            await loadGroupsForTable({
+              restaurantId,
+              tableId: currentTable.id,
+            });
+          }
+
+          return { success: true, data: res };
+        }
+
+        const preparedOrderId = lastPreparedOrderIdRef.current || null;
+        if (!preparedOrderId) {
+          return {
+            success: false,
+            message: "Thiếu orderId đã chuẩn bị để thanh toán đơn off-premise.",
+          };
+        }
+
+        const { data } = await mutPayByOrderIds({
           variables: {
             input: {
               restaurantId,
-              tableId,
+              orderIds: [preparedOrderId],
               paidAmount: paid,
               method,
               note,
               externalRef: idempotency,
-              includeUnserved,
             },
           },
         });
-        return data?.payOrdersByTableId;
-      };
 
-      try {
-        let res = await attemptPay(false);
-        if (res?.warning && Array.isArray(res.pendingOrderCodes)) {
-          const msg = `Các order chưa phục vụ: ${res.pendingOrderCodes.join(
-            ", "
-          )}. Thanh toán tất cả?`;
-          const confirmAll = window.confirm(msg);
-          if (confirmAll) {
-            res = await attemptPay(true);
-          }
-        }
-
-        if (currentTable?.id) {
-          await loadGroupsForTable({
-            restaurantId,
-            tableId: currentTable.id,
-          });
+        const res = data?.payOrdersByOrderIds || null;
+        if (!res) {
+          return { success: false, message: "Thanh toán đơn off-premise thất bại." };
         }
 
         return { success: true, data: res };
@@ -2100,6 +2151,7 @@ export default function useOrderManagement(pos = null) {
       validatePayment,
       totals.total,
       mutPayByTable,
+      mutPayByOrderIds,
       currentTable?.id,
       loadGroupsForTable,
     ]
@@ -2338,12 +2390,12 @@ export default function useOrderManagement(pos = null) {
     loadOrders,
     orders,
 
-    // payment API (chỉ dine-in)
+    // payment API
     preparePayment,
     validatePayment,
     confirmPayment,
     checkoutOrder,
-    payLoading: payLoadingByTable,
+    payLoading: payLoadingByTable || payLoadingByOrderIds,
 
     // customer (dine-in, theo orderCode)
     updateOrderCustomerByCode,
