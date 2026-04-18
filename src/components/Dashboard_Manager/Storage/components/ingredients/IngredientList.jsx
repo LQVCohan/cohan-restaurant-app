@@ -1,5 +1,5 @@
 // src/components/Dashboard_Manager/Storage/components/ingredients/IngredientList.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Search,
   Filter,
@@ -9,6 +9,7 @@ import {
   AlertCircle,
   ListFilter,
 } from "lucide-react";
+import { useApolloClient, useQuery } from "@apollo/client";
 import IngredientCard from "./IngredientCard";
 import IngredientModal from "./IngredientModal";
 import QuickStockModal from "./QuickStockModal";
@@ -16,6 +17,22 @@ import IngredientCategoryManagerModal from "./IngredientCategoryManagerModal";
 import { useIngredients } from "@/hooks/useIngredients";
 import { useNotification } from "@/hooks/useNotification";
 import { toIngredientCategoryVi } from "@/utils/ingredientCategoryI18n";
+import {
+  INGREDIENTS_QUERY,
+  INGREDIENT_CATEGORIES_QUERY,
+  STOCK_MOVEMENTS_QUERY,
+} from "../../graphql/inventory.gql";
+import {
+  buildIngredientReportFiles,
+  downloadImportErrors,
+  downloadIngredientTemplate,
+  downloadReportsZip,
+  exportIngredientsFile,
+  normalizeSku,
+  normalizeText,
+  parseIngredientImportFile,
+  validateAndNormalizeImportRow,
+} from "./ingredientImportExport";
 import "./IngredientList.scss";
 
 const IngredientList = ({
@@ -23,6 +40,7 @@ const IngredientList = ({
   selectedWarehouseId = undefined,
   activeCurrency = "VND",
   usdToVndRate = 26000,
+  onRegisterActions,
 }) => {
   const { showNotification } = useNotification();
   const {
@@ -46,6 +64,7 @@ const IngredientList = ({
     updateIngredientCategory,
     deleteIngredientCategory,
     syncIngredientCategories,
+    refetch,
   } = useIngredients(restaurantId, selectedWarehouseId, {
     withStock: true,
     withWarehouses: true,
@@ -65,6 +84,26 @@ const IngredientList = ({
   const [quickStockOpen, setQuickStockOpen] = useState(false);
   const [quickEntries, setQuickEntries] = useState([]);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+
+  const [busyAction, setBusyAction] = useState("");
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportFrom, setReportFrom] = useState("");
+  const [reportTo, setReportTo] = useState("");
+  const fileInputRef = useRef(null);
+  const apolloClient = useApolloClient();
+
+  const { data: movementData } = useQuery(STOCK_MOVEMENTS_QUERY, {
+    variables: {
+      restaurantId,
+      warehouseId:
+        effectiveWarehouseId === undefined ? null : effectiveWarehouseId,
+      limit: 1000,
+      sort: -1,
+    },
+    skip: !restaurantId || effectiveWarehouseId === undefined,
+    fetchPolicy: "cache-and-network",
+  });
+  const movements = useMemo(() => movementData?.stockMovements || [], [movementData]);
 
   // --- Handlers ---
   const handleSearch = (e) =>
@@ -120,10 +159,10 @@ const IngredientList = ({
     setEditingItem(null);
   };
 
-  const handleSubmit = async ({ payload, initialStockQty, isEditing, id }) => {
+  const handleSubmit = async ({ payload, initialStockQty, isEditing: editing, id }) => {
     try {
       setSaving(true);
-      if (isEditing && id) {
+      if (editing && id) {
         await updateIngredient(id, { payload });
         showNotification("Đã cập nhật nguyên liệu.", "success");
       } else {
@@ -139,6 +178,242 @@ const IngredientList = ({
     }
   };
 
+  const loadAllIngredients = async () => {
+    const res = await apolloClient.query({
+      query: INGREDIENTS_QUERY,
+      variables: { restaurantId, search: null, limit: 1000 },
+      fetchPolicy: "network-only",
+    });
+    return res?.data?.ingredients || [];
+  };
+
+  const resolveCategoryId = async (categoryName, categoryCache) => {
+    const name = String(categoryName || "").trim();
+    if (!name) return null;
+    const key = normalizeText(name);
+    if (categoryCache.has(key)) return categoryCache.get(key);
+
+    await createIngredientCategory(name);
+    const categoryRes = await apolloClient.query({
+      query: INGREDIENT_CATEGORIES_QUERY,
+      variables: { restaurantId, includeInactive: false, limit: 500 },
+      fetchPolicy: "network-only",
+    });
+    const found = (categoryRes?.data?.ingredientCategories || []).find(
+      (cat) => normalizeText(cat.name) === key
+    );
+    if (found?.id) {
+      categoryCache.set(key, found.id);
+      return found.id;
+    }
+    return null;
+  };
+
+  const handleTemplate = async () => {
+    downloadIngredientTemplate();
+    showNotification("Đã tải file mẫu nguyên liệu.", "success");
+  };
+
+  const handleExport = async (format = "xlsx") => {
+    exportIngredientsFile({
+      ingredients: filteredIngredients,
+      format,
+      warehouseLabel:
+        effectiveWarehouseId === null
+          ? "Tất cả kho"
+          : defaultWarehouseName || "Chưa chọn kho",
+    });
+    showNotification(`Đã xuất danh sách nguyên liệu (${format.toUpperCase()}).`, "success");
+  };
+
+  const handleImportClick = () => fileInputRef.current?.click();
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      setBusyAction("import");
+      const parsedRows = await parseIngredientImportFile(file);
+      if (!parsedRows.length) throw new Error("File import không có dòng dữ liệu hợp lệ.");
+
+      const prepared = parsedRows.map(validateAndNormalizeImportRow);
+      const normalizedRows = prepared.map((r) => r.normalized);
+      const fileErrors = prepared
+        .filter((r) => r.errors.length)
+        .flatMap((r) =>
+          r.errors.map((reason) => ({
+            rowNo: r.normalized.rowNo,
+            name: r.normalized.name,
+            sku: r.normalized.sku,
+            type: "VALIDATION",
+            reason,
+          }))
+        );
+
+      const hasOpeningStock = normalizedRows.some((r) => r.openingStock > 0);
+      if (hasOpeningStock && typeof effectiveWarehouseId !== "string") {
+        throw new Error(
+          "File có tồn đầu kỳ > 0. Vui lòng chọn 1 kho cụ thể (không ở chế độ Tất cả kho)."
+        );
+      }
+
+      const existingIngredients = await loadAllIngredients();
+      const bySku = new Map();
+      const byName = new Map();
+      existingIngredients.forEach((ing) => {
+        const skuKey = normalizeSku(ing.sku || "");
+        const nameKey = normalizeText(ing.name || "");
+        if (skuKey) bySku.set(skuKey, ing);
+        if (nameKey) byName.set(nameKey, ing);
+      });
+
+      const categoryCache = new Map(
+        (ingredientCategories || []).map((cat) => [normalizeText(cat.name), cat.id])
+      );
+
+      let successCount = 0;
+      for (const row of normalizedRows) {
+        if (fileErrors.some((err) => err.rowNo === row.rowNo)) continue;
+
+        try {
+          const matchBySku = row.skuKey ? bySku.get(row.skuKey) : null;
+          const matchByName = byName.get(row.nameKey) || null;
+          if (matchBySku && matchByName && String(matchBySku.id) !== String(matchByName.id)) {
+            fileErrors.push({
+              rowNo: row.rowNo,
+              name: row.name,
+              sku: row.sku,
+              type: "CONFLICT",
+              reason: "SKU trỏ tới bản ghi khác với tên nguyên liệu.",
+            });
+            continue;
+          }
+
+          const target = matchBySku || matchByName;
+          const ingredientCategoryId = await resolveCategoryId(row.categoryName, categoryCache);
+          const payload = {
+            name: row.name,
+            sku: row.sku || null,
+            category: row.categoryName || "",
+            ingredientCategoryId,
+            baseUnit: row.baseUnit,
+            conversions: target?.conversions || [],
+            costPerBaseUnit: row.costPerBaseUnit,
+            photos: target?.photos || [],
+            minStock: row.minStock,
+            notes: row.notes,
+            isActive: row.isActive,
+          };
+
+          if (target?.id) {
+            await updateIngredient(target.id, { payload });
+            if (row.openingStock > 0) {
+              await receiveStock(target.id, {
+                qty: row.openingStock,
+                unit: row.baseUnit,
+                unitPrice: row.openingStock * row.costPerBaseUnit,
+                reason: "Nhập tồn đầu kỳ từ Excel",
+                lot: "INIT-IMPORT",
+              });
+            }
+          } else {
+            await addIngredient({ payload, initialStockQty: row.openingStock });
+          }
+          successCount += 1;
+        } catch (err) {
+          fileErrors.push({
+            rowNo: row.rowNo,
+            name: row.name,
+            sku: row.sku,
+            type: "PROCESS",
+            reason: err?.message || "Không thể import dòng này",
+          });
+        }
+      }
+
+      await refetch?.();
+      if (fileErrors.length) downloadImportErrors(fileErrors);
+
+      showNotification(
+        `Import hoàn tất: ${successCount} dòng thành công, ${fileErrors.length} dòng lỗi.`,
+        fileErrors.length ? "warning" : "success"
+      );
+    } catch (e) {
+      showNotification(e?.message || "Import thất bại.", "error");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const applyPreset = (preset) => {
+    const now = new Date();
+    let start = new Date(now);
+    if (preset === "7d") start.setDate(now.getDate() - 6);
+    if (preset === "30d") start.setDate(now.getDate() - 29);
+    if (preset === "month") start = new Date(now.getFullYear(), now.getMonth(), 1);
+    setReportFrom(start.toISOString().slice(0, 10));
+    setReportTo(now.toISOString().slice(0, 10));
+  };
+
+  const openReportModal = () => {
+    applyPreset("30d");
+    setReportModalOpen(true);
+  };
+
+  const handleGenerateReport = async () => {
+    try {
+      setBusyAction("report");
+      const from = reportFrom || new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10);
+      const to = reportTo || new Date().toISOString().slice(0, 10);
+      const inRangeMovements = movements.filter((m) => {
+        const d = String(m.createdAt || "").slice(0, 10);
+        return d >= from && d <= to;
+      });
+
+      const files = buildIngredientReportFiles({
+        ingredients: filteredIngredients,
+        movements: inRangeMovements,
+        fromDate: from,
+        toDate: to,
+        warehouseLabel:
+          effectiveWarehouseId === null
+            ? "Tất cả kho"
+            : defaultWarehouseName || "Chưa chọn kho",
+      });
+
+      downloadReportsZip(files);
+      setReportModalOpen(false);
+      showNotification("Đã xuất gói báo cáo nguyên liệu (.zip).", "success");
+    } catch (e) {
+      showNotification(e?.message || "Không thể xuất báo cáo.", "error");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  useEffect(() => {
+    onRegisterActions?.({
+      import: handleImportClick,
+      exportXlsx: () => handleExport("xlsx"),
+      exportCsv: () => handleExport("csv"),
+      template: handleTemplate,
+      report: openReportModal,
+      busy: Boolean(busyAction),
+    });
+    return () => onRegisterActions?.(null);
+  }, [
+    busyAction,
+    onRegisterActions,
+    filteredIngredients,
+    effectiveWarehouseId,
+    defaultWarehouseName,
+    handleExport,
+    handleTemplate,
+    openReportModal,
+  ]);
+
   const canInitStock =
     !isEditing &&
     typeof effectiveWarehouseId === "string" &&
@@ -146,6 +421,13 @@ const IngredientList = ({
 
   return (
     <div className="ing-storage-wrapper">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        style={{ display: "none" }}
+        onChange={handleImportFile}
+      />
       {/* 1. Header Section */}
       <div className="il-header">
         <div className="il-header__left">
@@ -389,6 +671,45 @@ const IngredientList = ({
           return report;
         }}
       />
+
+      {reportModalOpen && (
+        <div className="il-report-modal-overlay">
+          <div className="il-report-modal">
+            <h3>Xuất báo cáo nguyên liệu</h3>
+            <div className="il-report-preset">
+              <button onClick={() => applyPreset("7d")}>7 ngày</button>
+              <button onClick={() => applyPreset("30d")}>30 ngày</button>
+              <button onClick={() => applyPreset("month")}>Tháng này</button>
+            </div>
+            <div className="il-report-range">
+              <label>Từ ngày</label>
+              <input
+                type="date"
+                value={reportFrom}
+                onChange={(e) => setReportFrom(e.target.value)}
+              />
+              <label>Đến ngày</label>
+              <input
+                type="date"
+                value={reportTo}
+                onChange={(e) => setReportTo(e.target.value)}
+              />
+            </div>
+            <div className="il-report-actions">
+              <button className="il-btn-icon" onClick={() => setReportModalOpen(false)}>
+                Huỷ
+              </button>
+              <button
+                className="il-btn-primary"
+                disabled={busyAction === "report"}
+                onClick={handleGenerateReport}
+              >
+                Xuất .zip
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

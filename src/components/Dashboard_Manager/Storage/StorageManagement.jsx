@@ -54,6 +54,7 @@ const StorageManagement = () => {
   const [currentRestaurant, setCurrentRestaurant] = useState("");
   const [selectedWarehouseId, setSelectedWarehouseId] = useState(undefined);
   const [ingredientSearch, setIngredientSearch] = useState("");
+  const [ingredientActions, setIngredientActions] = useState(null);
 
   // ==== 1) Nhà hàng theo Manager ====
   const {
@@ -239,6 +240,7 @@ const StorageManagement = () => {
           selectedWarehouseId={warehouseFilterId}
           activeCurrency={activeCurrency}
           usdToVndRate={usdToVndRate}
+          onRegisterActions={setIngredientActions}
           data={ingredients}
           stockItems={stockItems}
           loading={ingLoading || stockLoading}
@@ -373,6 +375,8 @@ const StorageManagement = () => {
               showNotification("Đã lưu tỷ giá thủ công.", "success");
             }}
             currencyLoading={currencyLoading}
+            activeTab={activeTab}
+            ingredientActions={ingredientActions}
           />
         </section>
 
