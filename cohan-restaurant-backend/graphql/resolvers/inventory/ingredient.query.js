@@ -12,28 +12,84 @@ function escapeRegex(input) {
   return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function normalizeSearchText(input) {
+  return String(input || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const reorderByIdList = (docs, idList) => {
   const map = new Map(docs.map((d) => [String(d._id || d.id), d]));
   return idList.map((id) => map.get(String(id))).filter(Boolean);
 };
 
+function buildIngredientSearchSortKey(item, normalizedQuery) {
+  const name = normalizeSearchText(item?.name);
+  const sku = normalizeSearchText(item?.sku);
+
+  if (name === normalizedQuery) return { group: 0, text: name };
+  if (name.startsWith(normalizedQuery)) return { group: 1, text: name };
+  if (name.includes(normalizedQuery)) return { group: 2, text: name };
+  if (sku === normalizedQuery) return { group: 3, text: sku };
+  if (sku.startsWith(normalizedQuery)) return { group: 4, text: sku };
+  if (sku.includes(normalizedQuery)) return { group: 5, text: sku };
+  return null;
+}
+
 export default {
   ingredients: async (_p, { restaurantId, search, limit }) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
 
-    const q = { restaurantId, isActive: true };
+    const normalizedSearch = normalizeSearchText(search);
+    const maxLimit = Math.min(limit ?? 100, 500);
 
-    if (search?.trim()) {
-      const pattern = escapeRegex(search.trim());
-      const rx = new RegExp(pattern, "i");
-      q.$or = [{ name: rx }, { sku: rx }, { category: rx }];
+    if (!normalizedSearch) {
+      return Ingredient.find({ restaurantId, isActive: true })
+        .sort({ name: 1 })
+        .limit(maxLimit)
+        .select({ __v: 0 })
+        .lean({ virtuals: true });
     }
 
-    return Ingredient.find(q)
-      .sort({ name: 1 })
-      .limit(Math.min(limit ?? 100, 500))
+    const unaccentProbe = [...normalizedSearch]
+      .map((ch) => {
+        if (ch === "a") return "[aàáạảãâầấậẩẫăằắặẳẵ]";
+        if (ch === "e") return "[eèéẹẻẽêềếệểễ]";
+        if (ch === "i") return "[iìíịỉĩ]";
+        if (ch === "o") return "[oòóọỏõôồốộổỗơờớợởỡ]";
+        if (ch === "u") return "[uùúụủũưừứựửữ]";
+        if (ch === "y") return "[yỳýỵỷỹ]";
+        if (ch === "d") return "[dđ]";
+        if (ch === " ") return "\\s+";
+        return escapeRegex(ch);
+      })
+      .join("");
+
+    const rx = new RegExp(unaccentProbe, "i");
+    const candidates = await Ingredient.find({
+      restaurantId,
+      isActive: true,
+      $or: [{ name: rx }, { sku: rx }],
+    })
       .select({ __v: 0 })
       .lean({ virtuals: true });
+
+    return candidates
+      .map((item) => ({
+        item,
+        rank: buildIngredientSearchSortKey(item, normalizedSearch),
+      }))
+      .filter((row) => row.rank !== null)
+      .sort((a, b) => {
+        if (a.rank.group !== b.rank.group) return a.rank.group - b.rank.group;
+        return String(a.rank.text || "").localeCompare(String(b.rank.text || ""), "vi");
+      })
+      .slice(0, maxLimit)
+      .map((row) => row.item);
   },
 
   ingredient: async (_p, { id }) => {
