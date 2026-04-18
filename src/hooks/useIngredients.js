@@ -1,5 +1,5 @@
 // src/hooks/useIngredients.js
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useApolloClient } from "@apollo/client";
 import {
   INGREDIENTS_QUERY,
@@ -46,6 +46,15 @@ export function useIngredients(
     category: "",
     status: "", // "", "in-stock", "low-stock", "out-of-stock"
   });
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(filters.search || "");
+    }, 250);
+
+    return () => clearTimeout(handle);
+  }, [filters.search]);
 
   // ===== 1) Ingredients =====
   const {
@@ -56,7 +65,7 @@ export function useIngredients(
   } = useQuery(INGREDIENTS_QUERY, {
     variables: {
       restaurantId,
-      search: filters.search?.trim() ? filters.search.trim() : null,
+      search: debouncedSearch?.trim() ? debouncedSearch.trim() : null,
       limit: 200,
     },
     skip: !restaurantId,
