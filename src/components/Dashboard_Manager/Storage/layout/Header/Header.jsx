@@ -39,6 +39,8 @@ const Header = ({
   manualRate = 26000,
   onManualRateSave,
   currencyLoading = false,
+  activeTab = "ingredients",
+  ingredientActions = null,
 }) => {
   const [rateInput, setRateInput] = React.useState(String(manualRate || 26000));
 
@@ -47,14 +49,19 @@ const Header = ({
   }, [manualRate, currentRestaurantId]);
 
   // Handlers giữ nguyên
-  const handleImportData = () =>
-    alert("Chức năng nhập dữ liệu từ Excel sẽ được triển khai");
-  const handleExportData = () =>
-    alert("Chức năng xuất dữ liệu ra Excel sẽ được triển khai");
-  const handleGenerateReport = () =>
-    alert("Chức năng tạo báo cáo chi tiết sẽ được triển khai");
-  const handleExportSample = () =>
-    alert("Chức năng xuất mẫu Excel để nhập nguyên liệu sẽ được triển khai");
+  const isIngredientTab = activeTab === "ingredients";
+
+  const handleImportData = () => ingredientActions?.import?.();
+  const handleExportData = () => {
+    if (!ingredientActions) return;
+    const asCsv = window.confirm(
+      "Nhấn OK để xuất CSV. Nhấn Cancel để xuất XLSX (mặc định)."
+    );
+    if (asCsv) ingredientActions.exportCsv?.();
+    else ingredientActions.exportXlsx?.();
+  };
+  const handleGenerateReport = () => ingredientActions?.report?.();
+  const handleExportSample = () => ingredientActions?.template?.();
 
   const changeRestaurant = (e) => {
     const id = e.target.value || "";
@@ -87,18 +94,31 @@ const Header = ({
             className="sm-btn ghost"
             onClick={handleExportSample}
             title="Xuất mẫu Excel"
+            disabled={!isIngredientTab || ingredientActions?.busy}
           >
             <FileSpreadsheet size={18} />{" "}
             <span className="hide-on-mobile">Mẫu Excel</span>
           </button>
           <div className="divider-vertical"></div>
-          <button className="sm-btn secondary" onClick={handleImportData}>
+          <button
+            className="sm-btn secondary"
+            onClick={handleImportData}
+            disabled={!isIngredientTab || ingredientActions?.busy}
+          >
             <Upload size={18} /> <span className="hide-on-mobile">Nhập</span>
           </button>
-          <button className="sm-btn secondary" onClick={handleExportData}>
+          <button
+            className="sm-btn secondary"
+            onClick={handleExportData}
+            disabled={!isIngredientTab || ingredientActions?.busy}
+          >
             <Download size={18} /> <span className="hide-on-mobile">Xuất</span>
           </button>
-          <button className="sm-btn primary" onClick={handleGenerateReport}>
+          <button
+            className="sm-btn primary"
+            onClick={handleGenerateReport}
+            disabled={!isIngredientTab || ingredientActions?.busy}
+          >
             <FileText size={18} /> <span>Báo cáo</span>
           </button>
         </div>

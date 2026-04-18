@@ -329,3 +329,59 @@ $il-radius: 8px;
     }
   }
 }
+
+.il-report-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+
+.il-report-modal {
+  width: min(520px, calc(100vw - 32px));
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.25);
+
+  h3 {
+    margin-top: 0;
+  }
+}
+
+.il-report-preset {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+
+  button {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+}
+
+.il-report-range {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 8px;
+  align-items: center;
+
+  input {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 7px 10px;
+  }
+}
+
+.il-report-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
