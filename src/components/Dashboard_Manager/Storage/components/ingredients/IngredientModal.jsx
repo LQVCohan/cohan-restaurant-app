@@ -56,6 +56,26 @@ const defaultForm = {
   initialStockQty: "",
 };
 
+const normalizeDraftText = (value) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+
+const toComparableForm = (value = {}) => ({
+  name: String(value?.name ?? "").trim(),
+  sku: String(value?.sku ?? "").trim(),
+  ingredientCategoryId: String(value?.ingredientCategoryId ?? "").trim(),
+  baseUnit: value?.baseUnit || "g",
+  costPerBaseUnit: String(value?.costPerBaseUnit ?? "").trim(),
+  minStock: String(value?.minStock ?? "").trim(),
+  notes: String(value?.notes ?? "").trim(),
+  isActive: !!value?.isActive,
+  initialStockQty: String(value?.initialStockQty ?? "").trim(),
+});
+
 const IngredientModal = ({
   isOpen,
   onClose,
@@ -165,41 +185,48 @@ const IngredientModal = ({
   }, [form.name, form.baseUnit, isEditing, unitSuggested]);
 
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
-  const initialSnapshot = useMemo(
-    () => JSON.stringify(initial || null),
-    [initial],
-  );
+  const baselineForm = useMemo(() => {
+    if (!initial) return toComparableForm(defaultForm);
+    return toComparableForm({
+      name: initial.name || "",
+      sku: initial.sku || "",
+      ingredientCategoryId: initial.ingredientCategoryId || "",
+      baseUnit: initial.baseUnit || "g",
+      costPerBaseUnit: convertAndRoundCurrencyAmount(
+        initial.costPerBaseUnit ?? "",
+        "VND",
+        activeCurrency,
+        usdToVndRate,
+        { usdDigits: 4 },
+      ),
+      minStock: initial.minStock ?? "",
+      notes: initial.notes || "",
+      isActive: initial.isActive ?? true,
+      initialStockQty: "",
+    });
+  }, [activeCurrency, initial, usdToVndRate]);
 
   const isDirty = useMemo(() => {
     if (!isOpen) return false;
-    const baseline = initial
-      ? {
-          name: initial.name || "",
-          sku: initial.sku || "",
-          ingredientCategoryId: initial.ingredientCategoryId || "",
-          baseUnit: initial.baseUnit || "g",
-          costPerBaseUnit: String(
-            convertAndRoundCurrencyAmount(
-              initial.costPerBaseUnit ?? "",
-              "VND",
-              activeCurrency,
-              usdToVndRate,
-              { usdDigits: 4 },
-            ),
-          ),
-          minStock: String(initial.minStock ?? ""),
-          notes: initial.notes || "",
-          isActive: initial.isActive ?? true,
-          initialStockQty: "",
-        }
-      : { ...defaultForm };
-    return (
-      JSON.stringify({
-        ...form,
-        costPerBaseUnit: String(form.costPerBaseUnit ?? ""),
-      }) !== JSON.stringify(baseline)
-    );
-  }, [activeCurrency, form, initial, isOpen, usdToVndRate]);
+    return JSON.stringify(toComparableForm(form)) !== JSON.stringify(baselineForm);
+  }, [baselineForm, form, isOpen]);
+
+  const hasMeaningfulChanges = useMemo(() => {
+    if (!isDirty) return false;
+    const safeForm = toComparableForm(form);
+    if (safeForm.baseUnit !== baselineForm.baseUnit) return true;
+    if (safeForm.ingredientCategoryId !== baselineForm.ingredientCategoryId) return true;
+    if (safeForm.isActive !== baselineForm.isActive) return true;
+    if (normalizeDraftText(safeForm.name) !== normalizeDraftText(baselineForm.name)) return true;
+    if (normalizeDraftText(safeForm.sku) !== normalizeDraftText(baselineForm.sku)) return true;
+    if (normalizeDraftText(safeForm.notes) !== normalizeDraftText(baselineForm.notes)) return true;
+    if (Number(safeForm.costPerBaseUnit || 0) !== Number(baselineForm.costPerBaseUnit || 0))
+      return true;
+    if (Number(safeForm.minStock || 0) !== Number(baselineForm.minStock || 0)) return true;
+    if (Number(safeForm.initialStockQty || 0) !== Number(baselineForm.initialStockQty || 0))
+      return true;
+    return false;
+  }, [baselineForm, form, isDirty]);
 
   const { requestCloseWithDraft, clearDraft } = useModalDraft({
     enabled: isOpen,
@@ -216,17 +243,35 @@ const IngredientModal = ({
     },
     formValue: form,
     isDirty,
-    sanitize: (v) => ({
-      name: v?.name || "",
-      sku: v?.sku || "",
-      ingredientCategoryId: v?.ingredientCategoryId || "",
-      baseUnit: v?.baseUnit || "g",
-      costPerBaseUnit: v?.costPerBaseUnit ?? "",
-      minStock: v?.minStock ?? "",
-      notes: v?.notes || "",
-      isActive: !!v?.isActive,
-      initialStockQty: v?.initialStockQty ?? "",
-    }),
+    sanitize: (v) =>
+      hasMeaningfulChanges
+        ? {
+            name: v?.name || "",
+            sku: v?.sku || "",
+            ingredientCategoryId: v?.ingredientCategoryId || "",
+            baseUnit: v?.baseUnit || "g",
+            costPerBaseUnit: v?.costPerBaseUnit ?? "",
+            minStock: v?.minStock ?? "",
+            notes: v?.notes || "",
+            isActive: !!v?.isActive,
+            initialStockQty: v?.initialStockQty ?? "",
+          }
+        : null,
+    canRestoreDraft: (draft) => {
+      const restored = toComparableForm(draft);
+      if (restored.baseUnit !== baselineForm.baseUnit) return true;
+      if (restored.ingredientCategoryId !== baselineForm.ingredientCategoryId) return true;
+      if (restored.isActive !== baselineForm.isActive) return true;
+      if (normalizeDraftText(restored.name) !== normalizeDraftText(baselineForm.name)) return true;
+      if (normalizeDraftText(restored.sku) !== normalizeDraftText(baselineForm.sku)) return true;
+      if (normalizeDraftText(restored.notes) !== normalizeDraftText(baselineForm.notes)) return true;
+      if (Number(restored.costPerBaseUnit || 0) !== Number(baselineForm.costPerBaseUnit || 0))
+        return true;
+      if (Number(restored.minStock || 0) !== Number(baselineForm.minStock || 0)) return true;
+      if (Number(restored.initialStockQty || 0) !== Number(baselineForm.initialStockQty || 0))
+        return true;
+      return false;
+    },
     onRestore: (draft) => setForm((prev) => ({ ...prev, ...draft })),
     notify: showNotification,
   });
@@ -278,8 +323,12 @@ const IngredientModal = ({
     };
     const initialStockQty =
       !isEditing && canInitStock ? Number(form.initialStockQty || 0) : 0;
-    submittedRef.current = true;
-    onSubmit?.({ payload, initialStockQty, isEditing, id: initial?.id });
+    try {
+      await onSubmit?.({ payload, initialStockQty, isEditing, id: initial?.id });
+      submittedRef.current = true;
+    } catch {
+      submittedRef.current = false;
+    }
   };
 
   useEffect(() => {
@@ -293,7 +342,7 @@ const IngredientModal = ({
         2500,
       );
     }
-  }, [clearDraft, isOpen, saving, showNotification, initialSnapshot]);
+  }, [clearDraft, isOpen, saving, showNotification]);
 
   // ===== BẮT ĐẦU PHẦN RENDER GIAO DIỆN PREMIUM (ĐÃ FIX LỖI LAYOUT) =====
   if (!isOpen) return null;
@@ -571,7 +620,7 @@ const IngredientModal = ({
           <Button
             type="button"
             variant="secondary"
-            onClick={onClose}
+            onClick={() => requestCloseWithDraft(onClose)}
             disabled={saving}
             className="btn-cancel"
           >
