@@ -74,6 +74,7 @@ export default function useModalDraft({
   sanitize,
   onRestore,
   onDiscard,
+  canRestoreDraft,
   notify,
   debounceMs = 500,
 }) {
@@ -157,6 +158,10 @@ export default function useModalDraft({
     const draft = readDraftRecord(storageKey);
     if (!draft?.data) return;
     if (draft.tabId !== tabIdRef.current) return;
+    if (typeof canRestoreDraft === "function" && !canRestoreDraft(draft.data)) {
+      clearDraft();
+      return;
+    }
 
     restoredRef.current = true;
     notify?.("Phát hiện dữ liệu nháp chưa hoàn tất.", "info", 3200);
@@ -171,7 +176,7 @@ export default function useModalDraft({
     } else if (typeof onDiscard === "function") {
       onDiscard(draft.data);
     }
-  }, [enabled, notify, onDiscard, onRestore, storageKey]);
+  }, [canRestoreDraft, clearDraft, enabled, notify, onDiscard, onRestore, storageKey]);
 
   useEffect(() => {
     if (!enabled) return;

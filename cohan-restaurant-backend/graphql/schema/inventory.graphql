@@ -199,7 +199,7 @@ input UpdateWarehouseInput {
 # ================================
 
 type StockBatch {
-  id: ID!
+  id: ID
   lot: String
   qty: Float!
   expiry: DateTime

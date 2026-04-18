@@ -43,6 +43,77 @@ function normalizeText(input) {
     .trim();
 }
 
+function normalizeSku(input) {
+  return String(input || "").trim().toLowerCase();
+}
+
+function normalizeCategoryScope({ ingredientCategoryId, category }) {
+  if (ingredientCategoryId && mongoose.isValidObjectId(ingredientCategoryId)) {
+    return `cat:${String(ingredientCategoryId)}`;
+  }
+  const normalizedCategory = normalizeText(category);
+  if (!normalizedCategory) return "cat:none";
+  return `cat-name:${normalizedCategory}`;
+}
+
+function resolveCategoryLabel({ category, ingredientCategoryId }) {
+  if (String(category || "").trim()) return String(category).trim();
+  if (ingredientCategoryId) return "Đã phân loại";
+  return "Chưa phân loại";
+}
+
+async function assertIngredientBusinessUnique({
+  restaurantId,
+  excludeId = null,
+  name,
+  sku,
+  ingredientCategoryId,
+  category,
+}) {
+  const restaurantObjectId = new mongoose.Types.ObjectId(String(restaurantId));
+  const matchScope = { restaurantId: restaurantObjectId };
+  if (excludeId && mongoose.isValidObjectId(excludeId)) {
+    matchScope._id = { $ne: new mongoose.Types.ObjectId(String(excludeId)) };
+  }
+
+  const normalizedSku = normalizeSku(sku);
+  if (normalizedSku) {
+    const skuRegex = new RegExp(`^\\s*${escapeRegex(String(sku).trim())}\\s*$`, "i");
+    const existedSku = await Ingredient.findOne({
+      ...matchScope,
+      sku: skuRegex,
+    })
+      .select({ _id: 1, sku: 1, name: 1 })
+      .lean();
+    if (existedSku) {
+      throw new GraphQLError(`SKU "${existedSku.sku}" đã tồn tại. Vui lòng dùng SKU khác.`, {
+        extensions: { code: "DUPLICATE_INGREDIENT_SKU" },
+      });
+    }
+  }
+
+  const normalizedName = normalizeText(name);
+  const targetScope = normalizeCategoryScope({ ingredientCategoryId, category });
+  const candidates = await Ingredient.find(matchScope)
+    .select({ _id: 1, name: 1, category: 1, ingredientCategoryId: 1, isActive: 1 })
+    .lean();
+
+  const existedName = candidates.find((item) => {
+    const itemName = normalizeText(item?.name);
+    if (!itemName || itemName !== normalizedName) return false;
+    const itemScope = normalizeCategoryScope(item || {});
+    return itemScope === targetScope;
+  });
+
+  if (existedName) {
+    const categoryLabel = resolveCategoryLabel(existedName);
+    throw new GraphQLError(
+      `Nguyên liệu "${existedName.name}" đã tồn tại trong danh mục "${categoryLabel}". Vui lòng dùng tên khác hoặc chỉnh sửa bản ghi hiện có.`,
+      { extensions: { code: "DUPLICATE_INGREDIENT_NAME" } }
+    );
+  }
+}
+
 const EN_CATEGORY_BY_ALIAS = {
   meat: "Meat",
   thit: "Meat",
@@ -137,6 +208,13 @@ export default {
         ingredientCategoryId: input.ingredientCategoryId,
         category: input.category,
       });
+      await assertIngredientBusinessUnique({
+        restaurantId: input.restaurantId,
+        name: input.name,
+        sku: input.sku,
+        ingredientCategoryId: categoryRef.ingredientCategoryId,
+        category: categoryRef.category,
+      });
       const created = await Ingredient.create({
         ...input,
         ingredientCategoryId: categoryRef.ingredientCategoryId,
@@ -188,6 +266,14 @@ export default {
         category: patch.category,
         fallbackIngredientCategoryId: ing.ingredientCategoryId,
         fallbackCategory: ing.category,
+      });
+      await assertIngredientBusinessUnique({
+        restaurantId: ing.restaurantId,
+        excludeId: id,
+        name: patch.name ?? ing.name,
+        sku: patch.sku ?? ing.sku,
+        ingredientCategoryId: categoryRef.ingredientCategoryId,
+        category: categoryRef.category,
       });
 
       const doc = await Ingredient.findByIdAndUpdate(

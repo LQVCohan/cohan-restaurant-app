@@ -119,6 +119,23 @@ const IngredientList = ({
 
   const hasActiveFilters = filters.search || filters.category || filters.status;
 
+  const toFriendlyIngredientError = (error) => {
+    const graphQLErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
+    const firstGraphqlMessage = graphQLErrors[0]?.message;
+    const message = firstGraphqlMessage || error?.message || "";
+
+    if (/DUPLICATE_INGREDIENT_SKU/i.test(message) || /SKU .*đã tồn tại/i.test(message)) {
+      return "SKU đã tồn tại trong hệ thống nguyên liệu. Vui lòng dùng SKU khác.";
+    }
+    if (/DUPLICATE_INGREDIENT_NAME/i.test(message) || /đã tồn tại trong danh mục/i.test(message)) {
+      return message;
+    }
+    if (/Cannot return null for non-nullable field StockBatch\.id/i.test(message)) {
+      return "Không thể tải dữ liệu lô tồn kho. Vui lòng thử lại sau.";
+    }
+    return message.replace(/^GraphQL error:\s*/i, "").trim() || "Có lỗi khi lưu nguyên liệu.";
+  };
+
   const handleAddStock = async (id) => {
     const ing = filteredIngredients.find((i) => i.id === id);
     if (!ing) return;
@@ -172,7 +189,8 @@ const IngredientList = ({
       setShowModal(false);
       setEditingItem(null);
     } catch (e) {
-      showNotification(e?.message || "Có lỗi khi lưu nguyên liệu", "error");
+      showNotification(toFriendlyIngredientError(e), "error");
+      throw e;
     } finally {
       setSaving(false);
     }

@@ -51,6 +51,13 @@ const IngredientSchema = BaseSchemaModel({
   isActive: { type: Boolean, default: true },
 });
 
-IngredientSchema.index({ restaurantId: 1, name: 1 }, { unique: true });
+IngredientSchema.index({ restaurantId: 1, name: 1 });
+IngredientSchema.index(
+  { restaurantId: 1, sku: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { sku: { $exists: true, $type: "string", $gt: "" } },
+  }
+);
 IngredientSchema.index({ restaurantId: 1, createdAt: -1 });
 export default mongoose.model("Ingredient", IngredientSchema);
