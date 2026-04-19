@@ -64,41 +64,114 @@ const RecipeList = ({
 
   const calcVariantCost = (variant) => {
     const lines = getVariantLines(variant);
-    return lines.reduce((sum, line) => {
+    let hasCostLine = false;
+    const total = lines.reduce((sum, line) => {
       const qty = normalizeLineQty(line);
       const unitCost = normalizeUnitCost(line);
       if (qty <= 0 || unitCost <= 0) return sum;
+      hasCostLine = true;
       return sum + qty * unitCost;
     }, 0);
+    return {
+      total,
+      hasCostLine,
+    };
   };
 
-  const calcMinCost = (recipe) => {
+  const calcMinCost = (recipe, ingredientIdSet, canDetectMissingIngredients) => {
     const variants = Array.isArray(recipe?.servingVariants)
       ? recipe.servingVariants
       : [];
-    if (!variants.length) return { minCost: 0, hasAnyCost: false };
+    if (!variants.length)
+      return {
+        minCost: 0,
+        hasAnyCost: false,
+        estimatedCostValid: true,
+        hasNoReplacementIngredient: false,
+      };
 
-    const costs = variants.map(calcVariantCost).filter((n) => n > 0);
-    if (!costs.length) return { minCost: 0, hasAnyCost: false };
+    let estimatedCostValid = true;
+    let hasNoReplacementIngredient = false;
+    const costs = variants
+      .map((variant) => {
+        const lines = getVariantLines(variant);
+        const hasMissingReplacement = canDetectMissingIngredients
+          ? lines.some((line) => {
+              const id = String(line?.ingredientId || "").trim();
+              return id && !ingredientIdSet.has(id);
+            })
+          : false;
 
-    return { minCost: Math.min(...costs), hasAnyCost: true };
+        if (hasMissingReplacement) {
+          estimatedCostValid = false;
+          hasNoReplacementIngredient = true;
+          return 0;
+        }
+
+        const result = calcVariantCost(variant);
+        return result.hasCostLine ? result.total : 0;
+      })
+      .filter((n) => n > 0);
+
+    if (!estimatedCostValid) {
+      return {
+        minCost: 0,
+        hasAnyCost: false,
+        estimatedCostValid: false,
+        hasNoReplacementIngredient,
+      };
+    }
+
+    if (!costs.length)
+      return {
+        minCost: 0,
+        hasAnyCost: false,
+        estimatedCostValid: true,
+        hasNoReplacementIngredient: false,
+      };
+
+    return {
+      minCost: Math.min(...costs),
+      hasAnyCost: true,
+      estimatedCostValid: true,
+      hasNoReplacementIngredient: false,
+    };
   };
 
   // Map meta data cho hiển thị
   const recipesWithMeta = useMemo(() => {
+    const ingredientIdSet = new Set(
+      (ingredients || []).map((ing) => String(ing?.id || "")).filter(Boolean),
+    );
+    const canDetectMissingIngredients = ingredientIdSet.size > 0;
+
     return (recipes || []).map((r) => {
       const variants = Array.isArray(r?.servingVariants)
         ? r.servingVariants
         : [];
       const ids = new Set();
+      const missingIds = new Set();
       variants.forEach((v) => {
         getVariantLines(v).forEach((c) => {
           const id = c?.ingredientId;
-          if (id) ids.add(String(id));
+          if (!id) return;
+          const normalizedId = String(id);
+          ids.add(normalizedId);
+          if (
+            canDetectMissingIngredients &&
+            !ingredientIdSet.has(normalizedId)
+          ) {
+            missingIds.add(normalizedId);
+          }
         });
       });
 
-      const { minCost, hasAnyCost } = calcMinCost(r);
+      const {
+        minCost,
+        hasAnyCost,
+        estimatedCostValid,
+        hasNoReplacementIngredient,
+      } = calcMinCost(r, ingredientIdSet, canDetectMissingIngredients);
       const hasRecipe = variants.length > 0;
 
       return {
@@ -109,12 +182,18 @@ const RecipeList = ({
           totalIngredients: ids.size,
           minCost,
           hasAnyCost,
-          hasMissingCost: hasRecipe && !hasAnyCost,
+          hasMissingCost: hasRecipe && estimatedCostValid && !hasAnyCost,
+          hasMissingIngredient: missingIds.size > 0,
+          hasNoReplacementIngredient,
+          estimatedCostValid,
+          missingIngredientCount: missingIds.size,
+          missingIngredientIds: Array.from(missingIds),
+          canDetectMissingIngredients,
         },
       };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipes]);
+  }, [recipes, ingredients]);
 
   // ===== Filters Handlers =====
   const handleSearch = (e) => {
@@ -368,6 +447,7 @@ const RecipeList = ({
           setViewingRecipe(null);
         }}
         recipe={viewingRecipe}
+        ingredients={ingredients}
         currency={activeCurrency}
         usdToVndRate={usdToVndRate}
       />

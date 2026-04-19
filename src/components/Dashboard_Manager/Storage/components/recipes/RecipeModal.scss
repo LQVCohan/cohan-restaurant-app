@@ -152,6 +152,17 @@ $radius-sm: 10px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
+.recipe-missing-warning {
+  margin: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .recipeIngredientLine {
   position: relative;
   display: grid;
@@ -233,6 +244,18 @@ $radius-sm: 10px;
   strong {
     color: $text;
   }
+
+  &.is-missing-ingredient {
+    background: #fff7ed;
+    border-left: 3px solid #f97316;
+  }
+}
+
+.recipe-missing-hint {
+  padding: 10px 14px 14px;
+  color: #9a3412;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* =========================

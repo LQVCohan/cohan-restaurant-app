@@ -69,6 +69,16 @@ function normalizeVariantName(v) {
   return String(v?.name ?? v?.preparationMethodName ?? "").trim();
 }
 
+function normalizeVariantNameForCompare(name) {
+  return String(name ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, " ");
+}
+
 function normalizeVariantKey(v, fallbackName = "") {
   // ✅ không ép key theo mode
   let key = String(v?.key || "").trim();
@@ -100,6 +110,18 @@ function ensureUniqueVariantKeys(variants) {
   const set = new Set(keys);
   if (set.size !== keys.length) {
     throw new Error("servingVariants.key bị trùng.");
+  }
+}
+
+function ensureUniqueVariantNames(variants) {
+  const seen = new Set();
+  for (const v of variants) {
+    const normalizedName = normalizeVariantNameForCompare(v?.name || "");
+    if (!normalizedName) continue;
+    if (seen.has(normalizedName)) {
+      throw new Error("servingVariants.name bị trùng.");
+    }
+    seen.add(normalizedName);
   }
 }
 
@@ -175,6 +197,7 @@ function normalizeServingVariants(inputVariants = []) {
   }
 
   ensureUniqueVariantKeys(normalized);
+  ensureUniqueVariantNames(normalized);
   ensureSingleDefault(normalized);
   return normalized;
 }

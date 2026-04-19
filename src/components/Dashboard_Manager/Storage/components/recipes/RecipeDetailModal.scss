@@ -30,6 +30,12 @@
     border-color: rgba(16, 185, 129, 0.25);
     color: #059669;
   }
+
+  &--warn {
+    background: #fff7ed;
+    border-color: #fdba74;
+    color: #c2410c;
+  }
 }
 
 /* ===== Header ===== */
@@ -51,6 +57,17 @@
   font-size: 14px;
   color: #475569;
   line-height: 1.5;
+}
+
+.recipeDetail__missingWarning {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 /* ===== Variant Cards ===== */
@@ -115,6 +132,11 @@
     color: #64748b;
     text-transform: uppercase;
     border-bottom: 2px solid #e2e8f0;
+  }
+
+  &--missing {
+    background: #fff7ed;
+    border-left: 3px solid #f97316;
   }
 
   @include mobile {
