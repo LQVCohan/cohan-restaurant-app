@@ -36,6 +36,10 @@ const RecipeCard = ({
   const {
     hasRecipe = false,
     hasMissingCost = false,
+    hasMissingIngredient = false,
+    hasNoReplacementIngredient = false,
+    estimatedCostValid = true,
+    missingIngredientCount = 0,
     totalIngredients = 0,
     totalVariants = 0,
     minCost = 0,
@@ -122,6 +126,36 @@ const RecipeCard = ({
                 Thiếu cost
               </span>
             )}
+            {hasMissingIngredient && (
+              <span
+                style={{
+                  fontSize: "11px",
+                  padding: "2px 8px",
+                  borderRadius: "999px",
+                  background: "#fff1f2",
+                  color: "#be123c",
+                  fontWeight: 700,
+                }}
+                title="Công thức đang tham chiếu nguyên liệu đã bị xóa hoặc không còn tồn tại."
+              >
+                {`Thiếu NL (${missingIngredientCount})`}
+              </span>
+            )}
+            {hasNoReplacementIngredient && (
+              <span
+                style={{
+                  fontSize: "11px",
+                  padding: "2px 8px",
+                  borderRadius: "999px",
+                  background: "#ffedd5",
+                  color: "#9a3412",
+                  fontWeight: 700,
+                }}
+                title="Công thức đang có dòng chưa có nguyên liệu bù, không thể tin cậy chi phí ước tính."
+              >
+                Chưa có nguyên liệu bù
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -143,7 +177,8 @@ const RecipeCard = ({
         <div className="rc-stat-item is-cost" title="Giá vốn thấp nhất">
           <DollarSign size={16} className="rc-stat-icon" />
           <span className="rc-stat-value">
-            {hasAnyCost
+            {estimatedCostValid
+              ? hasAnyCost
               ? formatPrice(
                   convertCurrencyAmount(
                     minCost,
@@ -153,7 +188,8 @@ const RecipeCard = ({
                   ),
                   { currency: activeCurrency },
                 )
-              : "—"}
+              : "—"
+              : "N/A"}
           </span>
           <span className="rc-stat-label">Min Cost</span>
         </div>

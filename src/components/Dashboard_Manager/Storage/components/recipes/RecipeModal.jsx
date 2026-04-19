@@ -1,5 +1,5 @@
 // src/components/Dashboard_Manager/Storage/components/recipes/RecipeModal.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "@apollo/client";
 
 import Modal from "../../../../common/Modal";
@@ -70,6 +70,9 @@ const normalizeText = (s) =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/đ/g, "d");
 
+const normalizeVariantNameForCompare = (name) =>
+  normalizeText(name).replace(/\s+/g, " ").trim();
+
 // Cho phép đơn vị nhập liệu thân thiện hơn ở recipe line
 // nhưng vẫn chuẩn hóa về baseUnit khi save.
 const getRecipeDisplayUnitsForBase = (baseUnit) => {
@@ -137,6 +140,7 @@ const RecipeModal = ({
     (ingredients || []).forEach((i) => s.add(String(i.id)));
     return s;
   }, [ingredients]);
+  const canDetectMissingIngredients = ingredientIdSet.size > 0;
 
   const findIngredient = (ingredientId) =>
     ingredients.find((x) => String(x.id) === String(ingredientId));
@@ -239,6 +243,41 @@ const RecipeModal = ({
     return next;
   };
 
+  const findDuplicateVariantNameIndexes = (variants = []) => {
+    const map = new Map();
+    const dup = new Set();
+
+    variants.forEach((variant, index) => {
+      const normalized = normalizeVariantNameForCompare(variant?.name || "");
+      if (!normalized) return;
+      if (!map.has(normalized)) {
+        map.set(normalized, index);
+        return;
+      }
+      dup.add(map.get(normalized));
+      dup.add(index);
+    });
+
+    return Array.from(dup);
+  };
+
+  const makeUniqueVariantName = (rawName, existingVariants = []) => {
+    const base = String(rawName || "").trim() || "Biến thể";
+    const used = new Set(
+      (existingVariants || [])
+        .map((v) => normalizeVariantNameForCompare(v?.name || ""))
+        .filter(Boolean),
+    );
+
+    let candidate = base;
+    let i = 2;
+    while (used.has(normalizeVariantNameForCompare(candidate))) {
+      candidate = `${base} (${i})`;
+      i += 1;
+    }
+    return candidate;
+  };
+
   const makeEmptyVariant = (idx, usedKeys) => {
     const name = idx === 0 ? "Cơ bản" : `Biến thể ${idx + 1}`;
     const key = ensureUniqueKey(name, usedKeys);
@@ -310,6 +349,46 @@ const RecipeModal = ({
   });
 
   const activeVariant = formData.servingVariants?.[activeVariantIndex];
+
+  const isMissingIngredientId = useCallback(
+    (ingredientId) => {
+      const id = String(ingredientId || "").trim();
+      if (!id || !canDetectMissingIngredients) return false;
+      return !ingredientIdSet.has(id);
+    },
+    [canDetectMissingIngredients, ingredientIdSet],
+  );
+
+  const recipeMissingIngredientSummary = useMemo(() => {
+    if (!canDetectMissingIngredients) {
+      return {
+        ids: [],
+        count: 0,
+      };
+    }
+
+    const missingIds = new Set();
+    (formData.servingVariants || []).forEach((variant) => {
+      (variant?.components || []).forEach((comp) => {
+        const id = String(comp?.ingredientId || "").trim();
+        if (!id) return;
+        if (!ingredientIdSet.has(id)) missingIds.add(id);
+      });
+    });
+
+    return {
+      ids: Array.from(missingIds),
+      count: missingIds.size,
+    };
+  }, [canDetectMissingIngredients, formData.servingVariants, ingredientIdSet]);
+
+  const activeVariantMissingIngredientLines = useMemo(() => {
+    if (!activeVariant || !canDetectMissingIngredients) return [];
+    return (activeVariant.components || []).reduce((acc, comp, idx) => {
+      if (isMissingIngredientId(comp?.ingredientId)) acc.push(idx);
+      return acc;
+    }, []);
+  }, [activeVariant, canDetectMissingIngredients, isMissingIngredientId]);
 
   const isDirty = useMemo(() => {
     if (!isOpen) return false;
@@ -516,31 +595,49 @@ const RecipeModal = ({
 
   const calcVariantCostPortion = (variant) => {
     const list = variant?.components || [];
-    return list.reduce((sum, c) => {
+    const hasMissingReplacement = list.some((c) =>
+      isMissingIngredientId(c?.ingredientId),
+    );
+    if (hasMissingReplacement) {
+      return { total: 0, isValid: false };
+    }
+
+    const total = list.reduce((sum, c) => {
       const unitCost = getIngredientCost(c.ingredientId);
       const qtyBase = getComponentQtyInBase(c) * getComponentWasteFactor(c);
       return sum + qtyBase * unitCost;
     }, 0);
+    return { total, isValid: true };
   };
 
   const calcVariantCostByWeightPreview = (variant, weightGrams = 100) => {
     const ratio = (Number(weightGrams) || 0) / 100;
     const list = variant?.components || [];
-    return list.reduce((sum, c) => {
+    const hasMissingReplacement = list.some((c) =>
+      isMissingIngredientId(c?.ingredientId),
+    );
+    if (hasMissingReplacement) {
+      return { total: 0, isValid: false };
+    }
+
+    const total = list.reduce((sum, c) => {
       const unitCost = getIngredientCost(c.ingredientId);
       const qtyBasePer100g =
         getComponentQtyInBase(c) * getComponentWasteFactor(c);
       return sum + qtyBasePer100g * ratio * unitCost;
     }, 0);
+    return { total, isValid: true };
   };
 
-  const activeCost = useMemo(() => {
-    if (!activeVariant) return 0;
+  const activeCostMeta = useMemo(() => {
+    if (!activeVariant) return { total: 0, isValid: true };
     if (activeVariant.mode === "BY_WEIGHT") {
       return calcVariantCostByWeightPreview(activeVariant, previewWeight);
     }
     return calcVariantCostPortion(activeVariant);
-  }, [activeVariant, previewWeight, ingredients]);
+  }, [activeVariant, previewWeight, ingredients, isMissingIngredientId]);
+
+  const activeCost = activeCostMeta.isValid ? activeCostMeta.total : null;
 
   const getPriceLabel = (variant) => {
     if (!variant) return "Giá";
@@ -570,22 +667,36 @@ const RecipeModal = ({
     const allComponents = variants.flatMap((v) => v.components || []);
     const validComponents = allComponents.filter((c) => c.ingredientId);
 
+    let estimatedCostValid = true;
     const totalEstimated = variants.reduce((sum, variant) => {
-      if (variant.mode === "BY_WEIGHT") {
-        return sum + calcVariantCostByWeightPreview(variant, previewWeight);
+      const variantCost =
+        variant.mode === "BY_WEIGHT"
+          ? calcVariantCostByWeightPreview(variant, previewWeight)
+          : calcVariantCostPortion(variant);
+
+      if (!variantCost.isValid) {
+        estimatedCostValid = false;
+        return sum;
       }
-      return sum + calcVariantCostPortion(variant);
+
+      return sum + variantCost.total;
     }, 0);
+
+    const noReplacementCount = allComponents.filter((c) =>
+      isMissingIngredientId(c?.ingredientId),
+    ).length;
 
     return {
       totalVariants: variants.length,
       totalComponents: allComponents.length,
       validComponents: validComponents.length,
       totalEstimated,
+      estimatedCostValid,
+      noReplacementCount,
       defaultVariantName:
         variants.find((v) => v.isDefault)?.name || variants[0]?.name || "—",
     };
-  }, [formData.servingVariants, previewWeight]);
+  }, [formData.servingVariants, previewWeight, isMissingIngredientId]);
 
   const activeVariantSummary = useMemo(() => {
     if (!activeVariant) {
@@ -619,13 +730,13 @@ const RecipeModal = ({
     const mode = activeVariant.mode === "BY_WEIGHT" ? "BY_WEIGHT" : "PORTION";
     const costBase =
       mode === "PORTION"
-        ? calcVariantCostPortion(activeVariant)
+        ? calcVariantCostPortion(activeVariant).total
         : calcVariantCostByWeightPreview(
             activeVariant,
             (activeVariant.sellUnit === "kg"
               ? (Number(activeVariant.sellQty) || 1) * 1000
               : Number(activeVariant.sellQty) || 1) || 1000,
-          );
+          ).total;
 
     const values = [
       dishInfo?.basePrice,
@@ -648,19 +759,18 @@ const RecipeModal = ({
   }, [errors, activeVariant, activeVariantIndex]);
 
   const handleVariantAdd = () => {
+    const currentVariants = formData.servingVariants || [];
     const used = new Set(
-      (formData.servingVariants || []).map((v) => v.key).filter(Boolean),
+      currentVariants.map((v) => v.key).filter(Boolean),
     );
-    const nextVariant = makeEmptyVariant(
-      (formData.servingVariants || []).length,
-      used,
-    );
+    const nextVariant = makeEmptyVariant(currentVariants.length, used);
+    nextVariant.name = makeUniqueVariantName(nextVariant.name, currentVariants);
 
     setFormData((p) => ({
       ...p,
       servingVariants: [...(p.servingVariants || []), nextVariant],
     }));
-    setActiveVariantIndex((formData.servingVariants || []).length);
+    setActiveVariantIndex(currentVariants.length);
   };
 
   const handleVariantDuplicate = (index) => {
@@ -673,7 +783,9 @@ const RecipeModal = ({
         .filter(Boolean),
     );
 
-    const copyName = `${src.name || "Biến thể"} (copy)`;
+    const existingVariants = formData.servingVariants || [];
+    const copyNameSeed = `${src.name || "Biến thể"} (copy)`;
+    const copyName = makeUniqueVariantName(copyNameSeed, existingVariants);
     const copyKey = ensureUniqueKey(copyName, used);
 
     const cloned = {
@@ -693,7 +805,7 @@ const RecipeModal = ({
       ...p,
       servingVariants: [...(p.servingVariants || []), cloned],
     }));
-    setActiveVariantIndex((formData.servingVariants || []).length);
+    setActiveVariantIndex(existingVariants.length);
   };
 
   const handleVariantRemove = (index) => {
@@ -940,6 +1052,14 @@ const RecipeModal = ({
       e.keys = "Key biến thể bị trùng (vui lòng sửa)";
     }
 
+    const duplicateNameIndexes = findDuplicateVariantNameIndexes(variants);
+    if (duplicateNameIndexes.length) {
+      e.variantNames = "Tên biến thể bị trùng. Vui lòng dùng tên khác.";
+      duplicateNameIndexes.forEach((idx) => {
+        e[`variant_${idx}_name`] = "Tên biến thể bị trùng.";
+      });
+    }
+
     variants.forEach((v, vi) => {
       if (!String(v?.name || "").trim()) {
         e[`variant_${vi}_name`] = "Tên biến thể là bắt buộc";
@@ -994,6 +1114,13 @@ const RecipeModal = ({
   };
 
   const buildPayload = () => {
+    const duplicateNameIndexes = findDuplicateVariantNameIndexes(
+      formData.servingVariants || [],
+    );
+    if (duplicateNameIndexes.length) {
+      throw new Error("Tên biến thể bị trùng. Vui lòng dùng tên khác.");
+    }
+
     const variants = (formData.servingVariants || []).map((v, idx) => {
       const mode = v.mode === "BY_WEIGHT" ? "BY_WEIGHT" : "PORTION";
       const sellUnit =
@@ -1075,6 +1202,11 @@ const RecipeModal = ({
         2200,
       );
       onClose?.();
+    } catch (err) {
+      showNotification(
+        err?.message || "Không thể lưu công thức. Vui lòng kiểm tra lại.",
+        "error",
+      );
     } finally {
       setSaving(false);
     }
@@ -1514,6 +1646,11 @@ const RecipeModal = ({
                       Biến thể mặc định:{" "}
                       <strong>{recipeSummary.defaultVariantName}</strong>
                     </div>
+                    {!recipeSummary.estimatedCostValid && (
+                      <div style={{ color: "#b91c1c", fontWeight: 700 }}>
+                        {`Có ${recipeSummary.noReplacementCount} dòng Chưa có nguyên liệu bù.`}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1589,6 +1726,18 @@ const RecipeModal = ({
                   }}
                 >
                   {errors.keys}
+                </div>
+              )}
+              {errors.variantNames && (
+                <div
+                  style={{
+                    color: "#ef4444",
+                    fontSize: "13px",
+                    marginBottom: "12px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {errors.variantNames}
                 </div>
               )}
 
@@ -1894,8 +2043,22 @@ const RecipeModal = ({
                       <div style={{ textAlign: "center" }}>Xoá</div>
                     </div>
 
+                    {recipeMissingIngredientSummary.count > 0 && (
+                      <div className="recipe-missing-warning">
+                        ⚠️ Có dòng <strong>Chưa có nguyên liệu bù</strong>. Hệ
+                        thống sẽ không tính chi phí ước tính để tránh sai số.
+                      </div>
+                    )}
+
                     {(activeVariant.components || []).map((comp, cIdx) => (
-                      <div key={cIdx} className="recipeIngredientLine">
+                      <div
+                        key={cIdx}
+                        className={`recipeIngredientLine${
+                          isMissingIngredientId(comp?.ingredientId)
+                            ? " is-missing-ingredient"
+                            : ""
+                        }`}
+                      >
                         <div style={{ position: "relative" }}>
                           {comp.ingredientId && !comp.isEditingIngredient ? (
                             <div
@@ -1916,10 +2079,13 @@ const RecipeModal = ({
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
                                   whiteSpace: "nowrap",
+                                  color: isMissingIngredientId(comp.ingredientId)
+                                    ? "#b91c1c"
+                                    : undefined,
                                 }}
                               >
                                 {findIngredient(comp.ingredientId)?.name ||
-                                  "Nguyên liệu"}
+                                  `Chưa có nguyên liệu bù (${comp.ingredientId})`}
                               </strong>
                               <button
                                 type="button"
@@ -2131,6 +2297,12 @@ const RecipeModal = ({
                       </div>
                     ))}
 
+                    {activeVariantMissingIngredientLines.length > 0 && (
+                      <div className="recipe-missing-hint">
+                        {`Có ${activeVariantMissingIngredientLines.length} dòng Chưa có nguyên liệu bù trong biến thể đang chọn.`}
+                      </div>
+                    )}
+
                     <div style={{ padding: "12px" }}>
                       <button
                         type="button"
@@ -2155,7 +2327,9 @@ const RecipeModal = ({
                     <span className="label">
                       Tổng chi phí dự kiến cho biến thể này:
                     </span>
-                    <span className="value">{cfmt(activeCost)}</span>
+                    <span className="value">
+                      {activeCost === null ? "Không thể tính (N/A)" : cfmt(activeCost)}
+                    </span>
                   </div>
                 </div>
               )}

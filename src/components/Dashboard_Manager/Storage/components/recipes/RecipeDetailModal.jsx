@@ -14,6 +14,7 @@ const RecipeDetailModal = ({
   isOpen,
   onClose,
   recipe,
+  ingredients = [],
   currency = "VND",
   usdToVndRate = 26000,
 }) => {
@@ -36,6 +37,18 @@ const RecipeDetailModal = ({
     return Array.isArray(v) ? v : [];
   }, [recipe]);
 
+  const ingredientIdSet = useMemo(
+    () =>
+      new Set((ingredients || []).map((ing) => String(ing?.id || "")).filter(Boolean)),
+    [ingredients],
+  );
+  const canDetectMissingIngredients = ingredientIdSet.size > 0;
+  const isMissingIngredientLine = (line) => {
+    const id = String(line?.ingredientId || "").trim();
+    if (!id || !canDetectMissingIngredients) return false;
+    return !ingredientIdSet.has(id);
+  };
+
   const getLines = (variant) => {
     if (!variant) return [];
     if (Array.isArray(variant.ingredients)) return variant.ingredients;
@@ -56,6 +69,7 @@ const RecipeDetailModal = ({
   };
 
   const calcLineCost = (line) => {
+    if (isMissingIngredientLine(line)) return null;
     const qty = safeNum(line?.qty ?? line?.quantify ?? line?.quantity);
     const wastePct = safeNum(line?.wastePct);
     const unitCost = safeNum(line?.costPerBaseUnit ?? line?.unitCost);
@@ -65,40 +79,67 @@ const RecipeDetailModal = ({
     return effectiveQty * unitCost;
   };
 
-  const calcVariantCost = (variant) =>
-    getLines(variant).reduce((sum, c) => sum + calcLineCost(c), 0);
+  const calcVariantCost = (variant) => {
+    const lines = getLines(variant);
+    const hasNoReplacementIngredient = lines.some((line) =>
+      isMissingIngredientLine(line),
+    );
+    if (hasNoReplacementIngredient) {
+      return { total: 0, isValid: false };
+    }
+    const total = lines.reduce((sum, c) => sum + (calcLineCost(c) || 0), 0);
+    return { total, isValid: true };
+  };
 
   const summary = useMemo(() => {
     const allLines = variants.flatMap((v) => getLines(v));
-    const ingredientIdSet = new Set();
+    const recipeIngredientIdSet = new Set();
 
     allLines.forEach((l) => {
-      if (l?.ingredientId) ingredientIdSet.add(String(l.ingredientId));
+      if (l?.ingredientId) recipeIngredientIdSet.add(String(l.ingredientId));
     });
 
     const defaultVariant =
       variants.find((v) => v?.isDefault) || variants[0] || null;
 
-    const costRows = variants.map((v, idx) => ({
-      key: v?.key || String(idx),
-      idx,
-      cost: calcVariantCost(v),
-      v,
-    }));
+    const costRows = variants.map((v, idx) => {
+      const costMeta = calcVariantCost(v);
+      return {
+        key: v?.key || String(idx),
+        idx,
+        cost: costMeta.total,
+        estimatedCostValid: costMeta.isValid,
+        v,
+      };
+    });
 
+    const estimatedCostValid = costRows.every((r) => r.estimatedCostValid);
     const costs = costRows
+      .filter((r) => r.estimatedCostValid)
       .map((r) => r.cost)
       .filter((n) => Number.isFinite(n) && n > 0);
     const minCost = costs.length ? Math.min(...costs) : 0;
 
+    const missingIngredientIdSet = new Set();
+    if (canDetectMissingIngredients) {
+      allLines.forEach((line) => {
+        const id = String(line?.ingredientId || "").trim();
+        if (!id) return;
+        if (!ingredientIdSet.has(id)) missingIngredientIdSet.add(id);
+      });
+    }
+
     return {
       totalVariants: variants.length,
-      totalIngredients: ingredientIdSet.size,
+      totalIngredients: recipeIngredientIdSet.size,
       defaultVariant,
       costRows,
       minCost,
+      missingIngredientCount: missingIngredientIdSet.size,
+      estimatedCostValid,
     };
-  }, [variants]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canDetectMissingIngredients, ingredientIdSet, variants]);
 
   if (!canRender) return null;
 
@@ -134,7 +175,19 @@ const RecipeDetailModal = ({
             <span className="pill pill--soft">
               Loại nguyên liệu: {summary.totalIngredients}
             </span>
+            {summary.missingIngredientCount > 0 && (
+              <span className="pill pill--warn">
+                Thiếu nguyên liệu: {summary.missingIngredientCount}
+              </span>
+            )}
           </div>
+          {summary.missingIngredientCount > 0 && (
+            <div className="recipeDetail__missingWarning">
+              ⚠️ Công thức có dòng <strong>Chưa có nguyên liệu bù</strong>. Chi
+              phí ước tính sẽ chuyển sang trạng thái không thể tính để tránh sai
+              số.
+            </div>
+          )}
         </Card>
 
         {/* ===== Variants List ===== */}
@@ -174,11 +227,20 @@ const RecipeDetailModal = ({
                       {/* Danh sách nguyên liệu */}
                       {lines.length > 0 ? (
                         lines.map((line, lIdx) => (
-                          <div key={lIdx} className="ingRow">
+                          <div
+                            key={lIdx}
+                            className={`ingRow${
+                              isMissingIngredientLine(line)
+                                ? " ingRow--missing"
+                                : ""
+                            }`}
+                          >
                             <div className="ingRow__cell strong">
                               {line.ingredientName ||
                                 line.ingredient?.name ||
-                                "Nguyên liệu ẩn"}
+                                (isMissingIngredientLine(line)
+                                  ? `Chưa có nguyên liệu bù (${line.ingredientId})`
+                                  : "Nguyên liệu không xác định")}
                             </div>
                             <div className="ingRow__cell right">
                               {formatQty(line.qty)} {line.unit}
@@ -193,26 +255,30 @@ const RecipeDetailModal = ({
                               {formatPct(line.wastePct)}%
                             </div>
                             <div className="ingRow__cell right">
-                              {formatPrice(
-                                convertCurrencyAmount(
-                                  line.basePrice || line.costPerBaseUnit,
-                                  "VND",
-                                  activeCurrency,
-                                  usdToVndRate,
-                                ),
-                                { currency: activeCurrency },
-                              )}
+                              {isMissingIngredientLine(line)
+                                ? "Chưa có nguyên liệu bù"
+                                : formatPrice(
+                                    convertCurrencyAmount(
+                                      line.basePrice || line.costPerBaseUnit,
+                                      "VND",
+                                      activeCurrency,
+                                      usdToVndRate,
+                                    ),
+                                    { currency: activeCurrency },
+                                  )}
                             </div>
                             <div className="ingRow__cell right strong">
-                              {formatPrice(
-                                convertCurrencyAmount(
-                                  calcLineCost(line),
-                                  "VND",
-                                  activeCurrency,
-                                  usdToVndRate,
-                                ),
-                                { currency: activeCurrency },
-                              )}
+                              {isMissingIngredientLine(line)
+                                ? "Không thể tính"
+                                : formatPrice(
+                                    convertCurrencyAmount(
+                                      calcLineCost(line) || 0,
+                                      "VND",
+                                      activeCurrency,
+                                      usdToVndRate,
+                                    ),
+                                    { currency: activeCurrency },
+                                  )}
                             </div>
                           </div>
                         ))
@@ -250,7 +316,9 @@ const RecipeDetailModal = ({
                   {getVariantTitle(row.v, row.idx)}
                 </div>
                 <div className="costSummary__rowValue">
-                  {row.cost > 0
+                  {!row.estimatedCostValid
+                    ? "Không thể tính"
+                    : row.cost > 0
                     ? formatPrice(
                         convertCurrencyAmount(
                           row.cost,
@@ -269,17 +337,19 @@ const RecipeDetailModal = ({
             <div className="costSummary__min">
               Chi phí thấp nhất:{" "}
               <strong>
-                {summary.minCost > 0
-                  ? formatPrice(
-                      convertCurrencyAmount(
-                        summary.minCost,
-                        "VND",
-                        activeCurrency,
-                        usdToVndRate,
-                      ),
-                      { currency: activeCurrency },
-                    )
-                  : "—"}
+                {!summary.estimatedCostValid
+                  ? "Không thể tính"
+                  : summary.minCost > 0
+                    ? formatPrice(
+                        convertCurrencyAmount(
+                          summary.minCost,
+                          "VND",
+                          activeCurrency,
+                          usdToVndRate,
+                        ),
+                        { currency: activeCurrency },
+                      )
+                    : "—"}
               </strong>
             </div>
             <div className="costSummary__note">
