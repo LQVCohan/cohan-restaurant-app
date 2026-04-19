@@ -367,8 +367,14 @@ export default {
       !mongoose.isValidObjectId(warehouseId) ||
       !mongoose.isValidObjectId(supplyId)
     )
-      throw new Error("Invalid IDs");
-    if (!Number.isFinite(nQty) || nQty <= 0) throw new Error("qty must be > 0");
+      throw new GraphQLError("Thông tin kho hoặc vật tư không hợp lệ.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    if (!Number.isFinite(nQty) || nQty <= 0) {
+      throw new GraphQLError("Số lượng xuất phải lớn hơn 0.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
 
     const stock = await StockItem.findOne({
       restaurantId,
@@ -376,8 +382,19 @@ export default {
       supplyId,
     });
 
-    if (!stock) throw new Error("Stock item not found");
-    if ((stock.onHand || 0) < nQty) throw new Error("Insufficient stock");
+    if (!stock) {
+      throw new GraphQLError("Vật tư này chưa có tồn kho tại kho đang chọn.", {
+        extensions: { code: "STOCK_ITEM_NOT_FOUND" },
+      });
+    }
+    if ((stock.onHand || 0) < nQty) {
+      throw new GraphQLError("Không đủ tồn kho để xuất.", {
+        extensions: {
+          code: "INSUFFICIENT_STOCK",
+          currentOnHand: Number(stock.onHand || 0),
+        },
+      });
+    }
 
     // FIFO: trừ từ batches cũ trước (ưu tiên expiry)
     let remain = nQty;

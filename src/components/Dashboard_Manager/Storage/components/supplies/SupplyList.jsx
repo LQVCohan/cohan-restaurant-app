@@ -49,6 +49,7 @@ const SupplyList = ({
   const [current, setCurrent] = useState(null);
   const [mode, setMode] = useState(null); // 'in' | 'out' | 'transfer'
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmittingStockOut, setIsSubmittingStockOut] = useState(false);
   const [editing, setEditing] = useState(null);
   const [quickEntries, setQuickEntries] = useState([]);
 
@@ -155,6 +156,7 @@ const SupplyList = ({
   const closeStockModal = () => {
     setCurrent(null);
     setMode(null);
+    setIsSubmittingStockOut(false);
   };
 
   const submitInbound = async (values) => {
@@ -169,14 +171,35 @@ const SupplyList = ({
 
   const submitOutbound = async (values) => {
     if (!current) return;
-    await handleOutbound({
-      restaurantId,
-      warehouseId,
-      supplyId: current.id,
-      qty: values.qty,
-      reason: values.reason,
-    });
-    closeStockModal();
+    const stockItem = getStockItem(current.id);
+    const nQty = Number(values.qty || 0);
+
+    if ((stockItem?.id && Number(stockItem?.onHand || 0) < nQty) || !stockItem?.id) {
+      showNotification(
+        !stockItem?.id
+          ? "Vật tư này chưa có tồn kho tại kho đang chọn."
+          : `Không đủ tồn kho để xuất. Tồn hiện tại: ${formatNum(stockItem?.onHand)}.`,
+        "error"
+      );
+      return;
+    }
+
+    setIsSubmittingStockOut(true);
+    try {
+      await handleOutbound({
+        restaurantId,
+        warehouseId,
+        supplyId: current.id,
+        qty: values.qty,
+        reason: values.reason,
+      });
+      showNotification("Xuất kho vật tư thành công.", "success");
+      closeStockModal();
+    } catch (err) {
+      showNotification(toFriendlyOutboundError(err), "error");
+    } finally {
+      setIsSubmittingStockOut(false);
+    }
   };
 
   const submitTransfer = async (values) => {
@@ -358,6 +381,7 @@ const SupplyList = ({
           onClose={closeStockModal}
           onConfirm={submitOutbound}
           supply={current}
+          isSubmitting={isSubmittingStockOut}
         />
       )}
       {mode === "transfer" && current && (
@@ -422,4 +446,29 @@ function toFriendlyInboundError(error) {
   }
 
   return message.replace(/^GraphQL error:\s*/i, "").trim() || "Nhập kho vật tư thất bại.";
+}
+
+function toFriendlyOutboundError(error) {
+  const graphQLErrors =
+    error?.graphQLErrors || error?.networkError?.result?.errors || [];
+  const message = graphQLErrors[0]?.message || error?.message || "";
+  const code = graphQLErrors[0]?.extensions?.code || "";
+  const currentOnHand = graphQLErrors[0]?.extensions?.currentOnHand;
+
+  if (code === "STOCK_ITEM_NOT_FOUND" || /Stock item not found/i.test(message)) {
+    return "Vật tư này chưa có tồn kho tại kho đang chọn.";
+  }
+
+  if (code === "INSUFFICIENT_STOCK" || /Insufficient stock/i.test(message)) {
+    if (Number.isFinite(Number(currentOnHand))) {
+      return `Không đủ tồn kho để xuất. Tồn hiện tại: ${Number(currentOnHand).toLocaleString("vi-VN")}.`;
+    }
+    return "Không đủ tồn kho để xuất.";
+  }
+
+  if (code === "BAD_USER_INPUT") {
+    return "Dữ liệu xuất kho chưa hợp lệ. Vui lòng kiểm tra lại.";
+  }
+
+  return message.replace(/^GraphQL error:\s*/i, "").trim() || "Xuất kho vật tư thất bại.";
 }

@@ -350,25 +350,17 @@ const useSupply = (restaurantId, warehouseId = null) => {
   const handleOutbound = useCallback(
     async (input) => {
       const restId = input.restaurantId || restaurantId;
-      const current = getStockItem(input.supplyId);
-      const nextOnHand = (current.onHand || 0) - Number(input.qty || 0);
-      const tempStockId = current.id || "temp-stockitem-" + input.supplyId;
+      const nQty = Number(input.qty || 0);
+      const supply = (supplies || []).find((item) => item.id === input.supplyId);
+      const current = supply?.stockItem || null;
+      const canOptimistic =
+        !!current?.id &&
+        Number.isFinite(nQty) &&
+        nQty > 0 &&
+        Number(current.onHand || 0) >= nQty;
 
-      await outboundSupply({
+      const mutationConfig = {
         variables: { input },
-        optimisticResponse: {
-          stockOutbound: {
-            __typename: "StockItem",
-            id: tempStockId, // ✅ non-null
-            warehouseId: warehouseId || null,
-            onHand: nextOnHand,
-            reserved: current.reserved || 0,
-            costPerUnit: current.costPerUnit ?? null,
-            pricePerUnit: current.pricePerUnit ?? null,
-            note: current.note ?? null,
-            updatedAt: new Date().toISOString(),
-          },
-        },
         update: (cache, { data }) => {
           const updated = data?.stockOutbound;
           const existing = cache.readQuery({
@@ -383,9 +375,27 @@ const useSupply = (restaurantId, warehouseId = null) => {
           );
           writeSupplies(cache, restId, warehouseId, next);
         },
-      });
+      };
+
+      if (canOptimistic) {
+        mutationConfig.optimisticResponse = {
+          stockOutbound: {
+            __typename: "StockItem",
+            id: current.id,
+            warehouseId: warehouseId || null,
+            onHand: Number(current.onHand || 0) - nQty,
+            reserved: current.reserved || 0,
+            costPerUnit: current.costPerUnit ?? null,
+            pricePerUnit: current.pricePerUnit ?? null,
+            note: current.note ?? null,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+      }
+
+      await outboundSupply(mutationConfig);
     },
-    [outboundSupply, getStockItem, restaurantId, warehouseId]
+    [outboundSupply, restaurantId, supplies, warehouseId]
   );
 
   const handleTransfer = useCallback(
