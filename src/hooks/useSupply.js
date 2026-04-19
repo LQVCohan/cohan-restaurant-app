@@ -70,6 +70,57 @@ const useSupply = (restaurantId, warehouseId = null) => {
     });
   };
 
+  const mergeCreatedSupply = useCallback((list, created, fallbackStockItem) => {
+    if (!created?.id) return list;
+
+    const createdId = String(created.id);
+    const normalizedName = String(created.name || "").trim().toLowerCase();
+    const normalizedCategory = String(created.category || "").trim().toLowerCase();
+    const normalizedUnit = String(created.unit || "").trim().toLowerCase();
+
+    const concrete = {
+      __typename: "SupplyWithStock",
+      ...created,
+      stockItem: {
+        ...(fallbackStockItem || {}),
+        __typename: "StockItem",
+        costPerUnit: created?.costPerUnit ?? fallbackStockItem?.costPerUnit ?? 0,
+        pricePerUnit:
+          created?.pricePerUnit ?? fallbackStockItem?.pricePerUnit ?? 0,
+        note: created?.notes || fallbackStockItem?.note || "",
+      },
+    };
+
+    const next = [];
+    let inserted = false;
+
+    for (const item of list || []) {
+      const itemId = String(item?.id || "");
+      const isSameId = itemId === createdId;
+      const isOptimisticTwin =
+        itemId.startsWith("temp-supply-") &&
+        String(item?.name || "").trim().toLowerCase() === normalizedName &&
+        String(item?.category || "").trim().toLowerCase() === normalizedCategory &&
+        String(item?.unit || "").trim().toLowerCase() === normalizedUnit;
+
+      if (isSameId || isOptimisticTwin) {
+        if (!inserted) {
+          next.push(concrete);
+          inserted = true;
+        }
+        continue;
+      }
+
+      next.push(item);
+    }
+
+    if (!inserted) {
+      next.unshift(concrete);
+    }
+
+    return next;
+  }, []);
+
   const refresh = useCallback(async () => {
     await refetch();
   }, [refetch]);
@@ -132,26 +183,29 @@ const useSupply = (restaurantId, warehouseId = null) => {
       },
         update: (cache, { data }) => {
           const created = data?.createSupply;
-          const existing = cache.readQuery({
-            query: Q_SUPPLIES_WITH_STOCK,
-            variables: { restaurantId: restId, warehouseId },
-          });
-          const list = existing?.supplies || [];
-          const concrete = {
-            __typename: "SupplyWithStock",
-            ...created,
-            stockItem: {
-              ...optimisticSupplyWithStock.stockItem,
-              costPerUnit: created?.costPerUnit ?? 0,
-              pricePerUnit: created?.pricePerUnit ?? 0,
-              note: created?.notes || "",
-            },
-          };
-          writeSupplies(cache, restId, warehouseId, [concrete, ...list]);
+          if (!created?.id) return;
+
+          let list = [];
+          try {
+            const existing = cache.readQuery({
+              query: Q_SUPPLIES_WITH_STOCK,
+              variables: { restaurantId: restId, warehouseId },
+            });
+            list = existing?.supplies || [];
+          } catch {
+            list = [];
+          }
+
+          const next = mergeCreatedSupply(
+            list,
+            created,
+            optimisticSupplyWithStock.stockItem
+          );
+          writeSupplies(cache, restId, warehouseId, next);
         },
       });
     },
-    [createSupply, restaurantId, warehouseId]
+    [createSupply, mergeCreatedSupply, restaurantId, warehouseId]
   );
 
   const handleUpdate = useCallback(

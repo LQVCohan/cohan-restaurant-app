@@ -79,8 +79,16 @@ const SupplyList = ({
           normalizeSearchText(getSupplyCode(s)).includes(q)
       );
     }
-    if (category) list = list.filter((s) => s.category === category);
-    if (unit) list = list.filter((s) => s.unit === unit);
+    if (category) {
+      const expectedCategory = normalizeFilterKey(category);
+      list = list.filter(
+        (s) => normalizeFilterKey(s?.category) === expectedCategory
+      );
+    }
+    if (unit) {
+      const expectedUnit = normalizeFilterKey(unit);
+      list = list.filter((s) => normalizeFilterKey(s?.unit) === expectedUnit);
+    }
     return list;
   }, [supplies, search, category, unit]);
 
@@ -392,4 +400,8 @@ function getSupplyCode(supply) {
     supply?.sku ||
     ""
   );
+}
+
+function normalizeFilterKey(value) {
+  return String(value || "").trim().toLowerCase();
 }
