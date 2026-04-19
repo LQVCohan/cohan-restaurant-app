@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Modal from "../../../../common/Modal";
 import "./StockOutModal.scss";
 
-const StockOutModal = ({ isOpen, onClose, onConfirm, supply }) => {
+const StockOutModal = ({ isOpen, onClose, onConfirm, supply, isSubmitting = false }) => {
   const [qty, setQty] = useState("");
   const [reason, setReason] = useState("");
 
@@ -14,7 +14,7 @@ const StockOutModal = ({ isOpen, onClose, onConfirm, supply }) => {
     }
   }, [isOpen]);
 
-  const canSubmit = qty !== "" && Number(qty) > 0;
+  const canSubmit = qty !== "" && Number(qty) > 0 && !isSubmitting;
 
   const confirm = () => {
     if (!canSubmit) return;
@@ -88,7 +88,7 @@ const StockOutModal = ({ isOpen, onClose, onConfirm, supply }) => {
           onClick={confirm}
           disabled={!canSubmit}
         >
-          Xác nhận xuất
+          {isSubmitting ? "Đang xử lý..." : "Xác nhận xuất"}
         </button>
       </Modal.Footer>
     </Modal>
