@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { GraphQLError } from "graphql";
 import { Supply, StockItem, StockMovement, SupplyCategory } from "../../../models/index.js";
 import Warehouse from "../../../models/warehouse.model.js";
 import { findOrCreateSupplyCategory, isValidObjectId, toEnglishCategoryName } from "./mutation.support.js";
@@ -28,6 +29,65 @@ function sortBatchesFIFO(batches) {
   });
 }
 
+function normalizeText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeCode(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+async function assertSupplyBusinessUnique({
+  restaurantId,
+  excludeId = null,
+  name,
+  sku,
+  category,
+  session,
+}) {
+  const matchScope = { restaurantId };
+  if (excludeId && mongoose.isValidObjectId(excludeId)) {
+    matchScope._id = { $ne: new mongoose.Types.ObjectId(String(excludeId)) };
+  }
+
+  const candidates = await Supply.find(matchScope)
+    .select({ _id: 1, name: 1, sku: 1, category: 1 })
+    .lean()
+    .session(session || null);
+
+  const normalizedSku = normalizeCode(sku);
+  if (normalizedSku) {
+    const existedSku = candidates.find((item) => normalizeCode(item?.sku) === normalizedSku);
+    if (existedSku) {
+      throw new GraphQLError("Mã vật tư đã tồn tại. Vui lòng dùng mã khác.", {
+        extensions: { code: "DUPLICATE_SUPPLY_CODE" },
+      });
+    }
+  }
+
+  const normalizedName = normalizeText(name);
+  const normalizedCategory = normalizeText(category);
+  const existedName = candidates.find((item) => {
+    if (normalizeText(item?.name) !== normalizedName) return false;
+    return normalizeText(item?.category) === normalizedCategory;
+  });
+
+  if (existedName) {
+    const existedCategory = String(existedName.category || "Khác").trim() || "Khác";
+    throw new GraphQLError(
+      `Vật tư "${existedName.name}" đã tồn tại trong danh mục "${existedCategory}". Vui lòng dùng tên khác hoặc chỉnh sửa bản ghi hiện có.`,
+      { extensions: { code: "DUPLICATE_SUPPLY_NAME" } },
+    );
+  }
+}
+
 export default {
   // ===== CRUD =====
   createSupply: async (_p, { input }) => {
@@ -41,11 +101,21 @@ export default {
         source: "ai",
         session,
       });
+      const normalizedSku = String(input?.sku || "").trim();
+
+      await assertSupplyBusinessUnique({
+        restaurantId: input.restaurantId,
+        name: input?.name,
+        sku: normalizedSku,
+        category: categoryDoc?.name || normalizedCategory,
+        session,
+      });
 
       const [doc] = await Supply.create(
         [
           {
             ...input,
+            sku: normalizedSku,
             category: categoryDoc?.name || normalizedCategory,
           },
         ],
@@ -93,8 +163,21 @@ export default {
         session,
       });
 
+      const normalizedSku =
+        input?.sku !== undefined ? String(input?.sku || "").trim() : current.sku || "";
+
+      await assertSupplyBusinessUnique({
+        restaurantId: current.restaurantId,
+        excludeId: id,
+        name: input?.name ?? current.name,
+        sku: normalizedSku,
+        category: categoryDoc?.name || nextCategory,
+        session,
+      });
+
       current.set({
         ...input,
+        sku: normalizedSku,
         category: categoryDoc?.name || nextCategory,
       });
       await current.save({ session });

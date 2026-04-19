@@ -6,6 +6,7 @@ export const Q_SUPPLIES_WITH_STOCK = gql`
       id
       restaurantId
       name
+      sku
       category
       unit
       costPerUnit
@@ -47,6 +48,7 @@ export const M_CREATE_SUPPLY = gql`
       id
       restaurantId
       name
+      sku
       category
       unit
       costPerUnit
@@ -66,6 +68,7 @@ export const M_UPDATE_SUPPLY = gql`
       id
       restaurantId
       name
+      sku
       category
       unit
       costPerUnit
@@ -174,4 +177,3 @@ export const Q_SUGGEST_SUPPLY_CATEGORY = gql`
     }
   }
 `;
-

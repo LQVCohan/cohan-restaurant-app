@@ -93,7 +93,7 @@ const SupplyCard = ({
 
             <div className="sc-sub-info">
               <span className="sc-chip">
-                {supply?.code || supply?.category || "N/A"}
+                {supply?.sku || supply?.category || "N/A"}
               </span>
               <span className="sc-sep">|</span>
               <span>{supply?.unit || "unit"}</span>
