@@ -7,7 +7,6 @@ import { findOrCreateSupplyCategory, isValidObjectId, toEnglishCategoryName } fr
 function buildStockInsertDefaults(supply) {
   return {
     reserved: 0,
-    batches: [],
     costPerUnit: supply?.costPerUnit ?? 0,
     pricePerUnit: supply?.pricePerUnit ?? 0,
     note: supply?.notes ?? "",
@@ -268,41 +267,92 @@ export default {
       !mongoose.isValidObjectId(restaurantId) ||
       !mongoose.isValidObjectId(warehouseId) ||
       !mongoose.isValidObjectId(supplyId)
-    )
-      throw new Error("Invalid IDs");
-    if (!Number.isFinite(nQty) || nQty <= 0) throw new Error("qty must be > 0");
+    ) {
+      throw new GraphQLError("Thông tin kho hoặc vật tư không hợp lệ.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+
+    if (!Number.isFinite(nQty) || nQty <= 0) {
+      throw new GraphQLError("Số lượng nhập phải lớn hơn 0.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+
+    const nCost =
+      costPerBaseUnit === null || costPerBaseUnit === undefined
+        ? 0
+        : Number(costPerBaseUnit);
+    if (!Number.isFinite(nCost) || nCost < 0) {
+      throw new GraphQLError("Giá nhập không hợp lệ.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
 
     const wh = await Warehouse.findById(warehouseId).lean();
-    if (!wh) throw new Error("Warehouse not found");
+    if (!wh) {
+      throw new GraphQLError("Không tìm thấy kho đã chọn.", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
 
     const supply = await Supply.findById(supplyId).lean();
-    const stock = await StockItem.findOneAndUpdate(
-      { restaurantId, warehouseId, supplyId },
-      {
-        $setOnInsert: buildStockInsertDefaults(supply),
-        $inc: { onHand: nQty },
-        $push: {
-          batches: {
-            lot,
-            qty: nQty,
-            expiry,
-            costPerBaseUnit: costPerBaseUnit ?? 0,
-          },
-        },
-      },
-      { new: true, upsert: true }
-    );
+    if (!supply) {
+      throw new GraphQLError("Không tìm thấy vật tư cần nhập kho.", {
+        extensions: { code: "NOT_FOUND" },
+      });
+    }
 
-    await StockMovement.create({
-      restaurantId,
-      warehouseId,
-      itemType: "supply",
-      itemId: supplyId,
-      type: "inbound",
-      qty: nQty, // dương
-      reason,
-      meta: { ...meta, lot, expiry, supplier, costPerBaseUnit },
-    });
+    const batchDoc = {
+      qty: nQty,
+      costPerBaseUnit: nCost,
+    };
+    if (typeof lot === "string" && lot.trim()) {
+      batchDoc.lot = lot.trim();
+    }
+    if (expiry) {
+      batchDoc.expiry = expiry;
+    }
+
+    const session = await mongoose.startSession();
+    let stock = null;
+
+    try {
+      await session.withTransaction(async () => {
+        stock = await StockItem.findOneAndUpdate(
+          { restaurantId, warehouseId, supplyId },
+          {
+            $setOnInsert: buildStockInsertDefaults(supply),
+            $inc: { onHand: nQty },
+            $push: { batches: batchDoc },
+          },
+          { new: true, upsert: true, runValidators: true, session }
+        );
+
+        await StockMovement.create(
+          [
+            {
+              restaurantId,
+              warehouseId,
+              supplyId,
+              type: "inbound",
+              qty: nQty,
+              reason,
+              meta: {
+                ...meta,
+                lot: batchDoc.lot || null,
+                expiry: batchDoc.expiry || null,
+                supplier,
+                costPerBaseUnit: nCost,
+              },
+            },
+          ],
+          { session }
+        );
+      });
+    } finally {
+      session.endSession();
+    }
 
     return stock.toObject({ virtuals: true });
   },

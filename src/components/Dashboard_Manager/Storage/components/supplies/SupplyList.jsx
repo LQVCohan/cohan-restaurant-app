@@ -165,7 +165,6 @@ const SupplyList = ({
       supplyId: current.id,
       ...values,
     });
-    closeStockModal();
   };
 
   const submitOutbound = async (values) => {
@@ -335,17 +334,21 @@ const SupplyList = ({
           onClose={closeStockModal}
           entries={quickEntries}
           onSubmit={async (rows) => {
-            await Promise.all(
-              rows.map((row) =>
-                submitInbound({
-                  qty: row.qty,
-                  supplier: row.supplier,
-                  reason: buildReason(row),
-                })
-              )
-            );
-            showNotification("Nhập kho vật tư thành công.", "success");
-            closeStockModal();
+            try {
+              await Promise.all(
+                rows.map((row) =>
+                  submitInbound({
+                    qty: row.qty,
+                    supplier: row.supplier,
+                    reason: buildReason(row),
+                  })
+                )
+              );
+              showNotification("Nhập kho vật tư thành công.", "success");
+              closeStockModal();
+            } catch (err) {
+              showNotification(toFriendlyInboundError(err), "error");
+            }
           }}
         />
       )}
@@ -398,4 +401,25 @@ function getSupplyCode(supply) {
 
 function normalizeFilterKey(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function toFriendlyInboundError(error) {
+  const graphQLErrors =
+    error?.graphQLErrors || error?.networkError?.result?.errors || [];
+  const message = graphQLErrors[0]?.message || error?.message || "";
+  const code = graphQLErrors[0]?.extensions?.code || "";
+
+  if (code === "BAD_USER_INPUT") {
+    return "Dữ liệu nhập kho chưa hợp lệ. Vui lòng kiểm tra lại.";
+  }
+
+  if (/Invalid IDs/i.test(message)) {
+    return "Thông tin kho hoặc vật tư không hợp lệ.";
+  }
+
+  if (/qty must be > 0/i.test(message)) {
+    return "Số lượng nhập phải lớn hơn 0.";
+  }
+
+  return message.replace(/^GraphQL error:\s*/i, "").trim() || "Nhập kho vật tư thất bại.";
 }
