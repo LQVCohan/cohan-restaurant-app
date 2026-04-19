@@ -13,7 +13,6 @@ import {
 import RecipeCard from "./RecipeCard";
 import RecipeModal from "./RecipeModal";
 import RecipeDetailModal from "./RecipeDetailModal";
-import { RECIPE_CATEGORIES } from "../../../../../utils/constants";
 import "./RecipeList.scss";
 
 const RecipeList = ({
@@ -31,6 +30,7 @@ const RecipeList = ({
   onUpdateRecipe,
   onDeleteRecipe,
   ingredients = [],
+  categoryOptions = [],
   activeCurrency = "VND",
   usdToVndRate = 26000,
 }) => {
@@ -236,7 +236,7 @@ const RecipeList = ({
               onChange={handleCategoryFilter}
             >
               <option value="">Tất cả danh mục</option>
-              {RECIPE_CATEGORIES.map((c) => (
+              {categoryOptions.map((c) => (
                 <option key={c.value} value={c.value}>
                   {c.label}
                 </option>
