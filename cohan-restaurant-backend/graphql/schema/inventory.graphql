@@ -70,8 +70,16 @@ type Ingredient {
   minStock: Float
   notes: String
   isActive: Boolean
+  deletedAt: DateTime
+  deleteExpiresAt: DateTime
   createdAt: DateTime
   updatedAt: DateTime
+}
+
+type IngredientDeleteBlocker {
+  id: ID!
+  name: String!
+  status: String
 }
 
 type IngredientCategory {
@@ -398,7 +406,9 @@ extend type Query {
     restaurantId: ID!
     search: String
     limit: Int = 100
+    includeDeleted: Boolean = false
   ): [Ingredient!]!
+  ingredientTrash(restaurantId: ID!, limit: Int = 200): [Ingredient!]!
   ingredientSuggestions(
     restaurantId: ID!
     limit: Int = 8
@@ -475,6 +485,8 @@ extend type Mutation {
   createIngredient(input: CreateIngredientInput!): Ingredient!
   updateIngredient(input: UpdateIngredientInput!): Ingredient!
   deleteIngredient(id: ID!): Boolean!
+  restoreIngredient(id: ID!): Ingredient!
+  deleteIngredientPermanently(id: ID!): Boolean!
   createIngredientCategory(input: CreateIngredientCategoryInput!): IngredientCategory!
   updateIngredientCategory(input: UpdateIngredientCategoryInput!): IngredientCategory!
   deleteIngredientCategory(id: ID!): Boolean!

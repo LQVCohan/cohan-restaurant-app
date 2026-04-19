@@ -15,7 +15,18 @@ const NotificationProvider = ({ children }) => {
     (message, type = "info", duration = 4000) => {
       if (!message) return;
       const id = Date.now() + Math.random();
-      const n = { id, message, type };
+      const normalized =
+        typeof message === "object"
+          ? message
+          : { message, actionLabel: null, onAction: null };
+      const n = {
+        id,
+        message: normalized.message,
+        type,
+        actionLabel: normalized.actionLabel || null,
+        onAction:
+          typeof normalized.onAction === "function" ? normalized.onAction : null,
+      };
       setNotifications((prev) => [...prev, n]);
 
       const t = setTimeout(() => {
@@ -41,6 +52,20 @@ const NotificationProvider = ({ children }) => {
     setNotifications([]);
   }, []);
 
+  const triggerNotificationAction = useCallback((id) => {
+    let action = null;
+    setNotifications((prev) => {
+      const row = prev.find((x) => x.id === id);
+      action = row?.onAction || null;
+      return prev.filter((x) => x.id !== id);
+    });
+    if (timeoutRefs.current[id]) {
+      clearTimeout(timeoutRefs.current[id]);
+      delete timeoutRefs.current[id];
+    }
+    if (typeof action === "function") action();
+  }, []);
+
   useEffect(() => {
     return () => {
       Object.values(timeoutRefs.current).forEach(clearTimeout);
@@ -49,8 +74,20 @@ const NotificationProvider = ({ children }) => {
   }, []);
 
   const value = useMemo(
-    () => ({ notifications, showNotification, removeNotification, clearAll }),
-    [notifications, showNotification, removeNotification, clearAll]
+    () => ({
+      notifications,
+      showNotification,
+      removeNotification,
+      clearAll,
+      triggerNotificationAction,
+    }),
+    [
+      notifications,
+      showNotification,
+      removeNotification,
+      clearAll,
+      triggerNotificationAction,
+    ]
   );
 
   return (

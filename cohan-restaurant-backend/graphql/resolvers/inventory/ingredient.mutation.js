@@ -5,6 +5,8 @@ import {
   Order,
   IngredientRecent,
   IngredientCategory,
+  Recipe,
+  MenuItem,
 } from "../../../models/index.js";
 
 function normalizeDupKeyError(err) {
@@ -26,6 +28,50 @@ const ACTIVE_ORDER_STATUSES = [
   "ready",
   "served",
 ];
+const ACTIVE_MENU_ITEM_STATUSES = ["available"];
+const SOFT_DELETE_RETENTION_DAYS = 30;
+
+function toObjectId(value) {
+  return new mongoose.Types.ObjectId(String(value));
+}
+
+async function purgeExpiredIngredientsByRestaurant(restaurantId) {
+  await Ingredient.deleteMany({
+    restaurantId,
+    deletedAt: { $ne: null },
+    deleteExpiresAt: { $lte: new Date() },
+  });
+}
+
+async function findBlockingActiveMenuItems({ ingredientId, restaurantId }) {
+  const recipes = await Recipe.find({
+    restaurantId,
+    isActive: true,
+    "servingVariants.ingredients.ingredientId": ingredientId,
+  })
+    .select({ menuItemId: 1 })
+    .lean();
+
+  const menuItemIds = [
+    ...new Set(
+      recipes
+        .map((r) => r.menuItemId)
+        .filter((id) => mongoose.isValidObjectId(id))
+        .map((id) => String(id))
+    ),
+  ];
+
+  if (!menuItemIds.length) return [];
+
+  return MenuItem.find({
+    restaurantId,
+    _id: { $in: menuItemIds.map((id) => toObjectId(id)) },
+    status: { $in: ACTIVE_MENU_ITEM_STATUSES },
+  })
+    .select({ _id: 1, name: 1, status: 1 })
+    .sort({ name: 1 })
+    .lean();
+}
 
 function escapeRegex(input) {
   return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -299,7 +345,85 @@ export default {
 
   deleteIngredient: async (_p, { id }) => {
     if (!mongoose.isValidObjectId(id)) return false;
-    const res = await Ingredient.deleteOne({ _id: id });
+
+    const ing = await Ingredient.findById(id)
+      .select({ _id: 1, restaurantId: 1, name: 1, deletedAt: 1 })
+      .lean();
+    if (!ing) return false;
+    if (ing.deletedAt) return true;
+
+    await purgeExpiredIngredientsByRestaurant(ing.restaurantId);
+
+    const activeMenuItems = await findBlockingActiveMenuItems({
+      ingredientId: ing._id,
+      restaurantId: ing.restaurantId,
+    });
+
+    if (activeMenuItems.length) {
+      throw new GraphQLError(
+        `Không thể xóa nguyên liệu "${ing.name}" vì đang được sử dụng trong các món ăn đang hoạt động.`,
+        {
+          extensions: {
+            code: "INGREDIENT_IN_USE_ACTIVE_MENU_ITEMS",
+            activeMenuItems: activeMenuItems.map((it) => ({
+              id: String(it._id),
+              name: it.name,
+              status: it.status,
+            })),
+          },
+        }
+      );
+    }
+
+    const now = new Date();
+    const deleteExpiresAt = new Date(
+      now.getTime() + SOFT_DELETE_RETENTION_DAYS * 24 * 60 * 60 * 1000
+    );
+    const res = await Ingredient.updateOne(
+      { _id: ing._id, deletedAt: null },
+      {
+        $set: {
+          deletedAt: now,
+          deleteExpiresAt,
+          isActive: false,
+        },
+      }
+    );
+
+    return res.modifiedCount > 0;
+  },
+
+  restoreIngredient: async (_p, { id }) => {
+    if (!mongoose.isValidObjectId(id)) return null;
+    const now = new Date();
+
+    const restored = await Ingredient.findOneAndUpdate(
+      {
+        _id: id,
+        deletedAt: { $ne: null },
+        deleteExpiresAt: { $gt: now },
+      },
+      {
+        $set: { isActive: true },
+        $unset: { deletedAt: 1, deleteExpiresAt: 1, deletedBy: 1 },
+      },
+      { new: true }
+    ).lean({ virtuals: true });
+
+    if (!restored) {
+      throw new GraphQLError(
+        "Không thể khôi phục nguyên liệu. Bản ghi đã bị xóa vĩnh viễn hoặc đã hết hạn khôi phục."
+      );
+    }
+    return restored;
+  },
+
+  deleteIngredientPermanently: async (_p, { id }) => {
+    if (!mongoose.isValidObjectId(id)) return false;
+    const res = await Ingredient.deleteOne({
+      _id: id,
+      deletedAt: { $ne: null },
+    });
     return res.deletedCount > 0;
   },
 

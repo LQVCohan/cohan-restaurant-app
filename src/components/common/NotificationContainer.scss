@@ -21,6 +21,10 @@
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
   border-left: 6px solid #93c5fd;
   animation: slideIn 180ms ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 
   &--success {
     border-left-color: #22c55e;
@@ -34,6 +38,20 @@
   &--info {
     border-left-color: #3b82f6;
   }
+}
+
+.app-toast__message {
+  flex: 1;
+}
+
+.app-toast__action {
+  border: 0;
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 @keyframes slideIn {
