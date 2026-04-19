@@ -16,6 +16,7 @@ import { useNotification } from "@/hooks/useNotification";
 import StockOutModal from "../modals/StockOutModal";
 import StockTransferModal from "../modals/StockTransferModal";
 import QuickStockModal from "../ingredients/QuickStockModal";
+import { debounce } from "../../../../../utils/debounce";
 import "./SupplyList.scss";
 
 const SupplyList = ({
@@ -40,6 +41,7 @@ const SupplyList = ({
   } = useSupply(restaurantId, warehouseId);
 
   // ====== UI state ======
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [unit, setUnit] = useState("");
@@ -51,19 +53,29 @@ const SupplyList = ({
 
   // Reset filter khi đổi nhà hàng/kho
   useEffect(() => {
+    setSearchInput("");
     setSearch("");
     setCategory("");
     setUnit("");
   }, [restaurantId, warehouseId]);
 
+  const applyDebouncedSearch = useMemo(
+    () => debounce((nextValue) => setSearch(nextValue), 250),
+    []
+  );
+
+  useEffect(() => {
+    applyDebouncedSearch(searchInput);
+  }, [searchInput, applyDebouncedSearch]);
+
   const filtered = useMemo(() => {
     let list = supplies || [];
     if (search.trim()) {
-      const q = search.trim().toLowerCase();
+      const q = normalizeSearchText(search);
       list = list.filter(
         (s) =>
-          s.name?.toLowerCase().includes(q) ||
-          s.category?.toLowerCase().includes(q)
+          normalizeSearchText(s?.name).includes(q) ||
+          normalizeSearchText(getSupplyCode(s)).includes(q)
       );
     }
     if (category) list = list.filter((s) => s.category === category);
@@ -189,8 +201,8 @@ const SupplyList = ({
             <input
               type="text"
               placeholder="Tìm kiếm vật tư..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
 
@@ -357,4 +369,24 @@ function buildReason(row) {
   if (row.datetime) parts.push(`Thời gian: ${row.datetime}`);
   if (row.note) parts.push(`Ghi chú: ${row.note}`);
   return parts.join(" | ") || "Nhập kho nhanh";
+}
+
+function normalizeSearchText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getSupplyCode(supply) {
+  return (
+    supply?.code ||
+    supply?.itemCode ||
+    supply?.item_code ||
+    supply?.sku ||
+    ""
+  );
 }
