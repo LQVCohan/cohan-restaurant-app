@@ -20,6 +20,18 @@ import "./IngredientCategoryManagerModal.scss"; // Nhớ import file CSS/SCSS
 
 const PAGE_SIZE = 8;
 
+const normalizeText = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const matchCategory = (cat, search, sourceFilter) => {
+  if (sourceFilter !== "all" && cat.source !== sourceFilter) return false;
+  const key = normalizeText(search);
+  if (!key) return true;
+  return normalizeText(cat.name).includes(key);
+};
+
 const fmtDateTime = (value) => {
   if (!value) return "-";
   const d = new Date(value);
@@ -44,6 +56,7 @@ const IngredientCategoryManagerModal = ({
   const [page, setPage] = useState(1);
   const [lastSyncReport, setLastSyncReport] = useState(null);
   const [error, setError] = useState("");
+  const [pendingCreatedCategory, setPendingCreatedCategory] = useState(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -54,6 +67,7 @@ const IngredientCategoryManagerModal = ({
     setPage(1);
     setLastSyncReport(null);
     setError("");
+    setPendingCreatedCategory(null);
   }, [isOpen]);
 
   const filtered = useMemo(() => {
@@ -61,13 +75,7 @@ const IngredientCategoryManagerModal = ({
       .trim()
       .toLowerCase();
     return [...(categories || [])]
-      .filter((cat) => {
-        if (sourceFilter !== "all" && cat.source !== sourceFilter) return false;
-        if (!key) return true;
-        return String(cat.name || "")
-          .toLowerCase()
-          .includes(key);
-      })
+      .filter((cat) => matchCategory(cat, key, sourceFilter))
       .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   }, [categories, search, sourceFilter]);
 
@@ -78,13 +86,51 @@ const IngredientCategoryManagerModal = ({
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, currentPage]);
 
+  useEffect(() => {
+    if (!pendingCreatedCategory) return;
+    const sortedAll = [...(categories || [])].sort((a, b) =>
+      (a.name || "").localeCompare(b.name || ""),
+    );
+    const created = sortedAll.find((cat) => {
+      if (pendingCreatedCategory.id && cat.id === pendingCreatedCategory.id) {
+        return true;
+      }
+      return normalizeText(cat.name) === normalizeText(pendingCreatedCategory.name);
+    });
+    if (!created) return;
+
+    const visibleWithCurrentFilters = matchCategory(created, search, sourceFilter);
+    const nextSearch = visibleWithCurrentFilters ? search : "";
+    const nextSourceFilter = visibleWithCurrentFilters ? sourceFilter : "all";
+
+    if (!visibleWithCurrentFilters) {
+      setSearch("");
+      setSourceFilter("all");
+    }
+
+    const nextFiltered = sortedAll.filter((cat) =>
+      matchCategory(cat, nextSearch, nextSourceFilter),
+    );
+    const createdIndex = nextFiltered.findIndex((cat) => cat.id === created.id);
+    const nextPage =
+      createdIndex >= 0 ? Math.floor(createdIndex / PAGE_SIZE) + 1 : 1;
+
+    setPage(nextPage);
+    setPendingCreatedCategory(null);
+  }, [categories, pendingCreatedCategory, search, sourceFilter]);
+
   const create = async () => {
     if (!name.trim()) return;
     setError("");
     setLoading(true);
     try {
-      await onCreate?.(name.trim());
+      const nextName = name.trim();
+      const created = await onCreate?.(nextName);
       setName("");
+      setPendingCreatedCategory({
+        id: created?.id || null,
+        name: created?.name || nextName,
+      });
     } catch (err) {
       setError(err?.message || "Không thể tạo danh mục mới.");
     } finally {
