@@ -20,6 +20,47 @@ import {
 } from "@/components/Dashboard_Manager/Storage/graphql/inventory.gql";
 import { toBaseQty } from "@/utils/unitConversion";
 
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const parseLocalDateOnly = (value) => {
+  if (!DATE_ONLY_RE.test(value || "")) return null;
+  const [y, m, d] = value.split("-").map((v) => Number(v));
+  const dt = new Date(y, m - 1, d, 0, 0, 0, 0);
+  if (
+    dt.getFullYear() !== y ||
+    dt.getMonth() !== m - 1 ||
+    dt.getDate() !== d
+  ) {
+    return null;
+  }
+  return dt;
+};
+
+const normalizeExpiryForMutation = (expiry) => {
+  if (expiry == null || expiry === "") return null;
+  const raw = String(expiry).trim();
+  if (!raw) return null;
+
+  if (DATE_ONLY_RE.test(raw)) {
+    const localDate = parseLocalDateOnly(raw);
+    if (!localDate) {
+      throw new Error("Hạn dùng không hợp lệ. Vui lòng chọn đúng ngày.");
+    }
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    if (localDate.getTime() < todayStart.getTime()) {
+      throw new Error("Hạn dùng không được ở trong quá khứ.");
+    }
+    return localDate.toISOString();
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new Error("Hạn dùng không hợp lệ. Vui lòng chọn đúng ngày.");
+  }
+  return parsed.toISOString();
+};
+
 /**
  * useIngredients (SINGLE SOURCE OF TRUTH)
  *
@@ -483,19 +524,31 @@ export function useIngredients(
         throw new Error("Không thể tính giá theo đơn vị gốc.");
       }
 
-      await receiveStockMu({
-        variables: {
-          restaurantId,
-          warehouseId: wid,
-          ingredientId,
-          qty: qtyBase,
-          costPerBaseUnit,
-          reason: reason || "Nhập kho",
-          lot: lot || null,
-          expiry: expiry || null,
-          supplierNote: supplierNote || null,
-        },
-      });
+      const normalizedExpiry = normalizeExpiryForMutation(expiry);
+
+      try {
+        await receiveStockMu({
+          variables: {
+            restaurantId,
+            warehouseId: wid,
+            ingredientId,
+            qty: qtyBase,
+            costPerBaseUnit,
+            reason: reason || "Nhập kho",
+            lot: lot || null,
+            expiry: normalizedExpiry,
+            supplierNote: supplierNote || null,
+          },
+        });
+      } catch (err) {
+        const message = err?.message || "";
+        if (message.includes("DateTime cannot represent")) {
+          throw new Error(
+            "Hạn dùng không hợp lệ. Vui lòng chọn ngày hết hạn theo định dạng YYYY-MM-DD."
+          );
+        }
+        throw err;
+      }
 
       await safeRefetchAll();
       return {

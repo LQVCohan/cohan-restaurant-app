@@ -8,6 +8,29 @@ import {
 } from "../../../../../utils/currency";
 import "./QuickStockModal.scss";
 
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const parseLocalDateOnly = (value) => {
+  if (!DATE_ONLY_RE.test(value || "")) return null;
+  const [y, m, d] = value.split("-").map((v) => Number(v));
+  const parsed = new Date(y, m - 1, d, 0, 0, 0, 0);
+  if (
+    parsed.getFullYear() !== y ||
+    parsed.getMonth() !== m - 1 ||
+    parsed.getDate() !== d
+  ) {
+    return null;
+  }
+  return parsed;
+};
+
+const toLocalDateInputValue = (value) => {
+  const y = value.getFullYear();
+  const m = String(value.getMonth() + 1).padStart(2, "0");
+  const d = String(value.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
 /**
  * QuickStockModal
  * - Dùng chung cho nguyên liệu và supply
@@ -46,6 +69,7 @@ const QuickStockModal = ({
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [prevCurrency, setPrevCurrency] = useState(activeCurrency);
+  const todayDate = useMemo(() => toLocalDateInputValue(new Date()), []);
 
   const ingredientMap = useMemo(() => {
     const map = new Map();
@@ -141,6 +165,19 @@ const QuickStockModal = ({
         nextErrors[idx] = "Giá nhập là bắt buộc và phải > 0";
         return;
       }
+      if (row.expiry) {
+        const expiryDate = parseLocalDateOnly(row.expiry);
+        if (!expiryDate) {
+          nextErrors[idx] = "Hạn dùng không hợp lệ. Vui lòng chọn đúng ngày.";
+          return;
+        }
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        if (expiryDate.getTime() < todayStart.getTime()) {
+          nextErrors[idx] = "Hạn dùng không được ở trong quá khứ.";
+          return;
+        }
+      }
     });
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -171,7 +208,12 @@ const QuickStockModal = ({
       setSubmitting(true);
       await onSubmit?.(payload);
     } catch (e) {
-      setSubmitError(e?.message || "Không thể nhập kho. Vui lòng thử lại.");
+      const message = e?.message || "";
+      if (message.includes("DateTime cannot represent")) {
+        setSubmitError("Hạn dùng không hợp lệ. Vui lòng chọn lại ngày hết hạn.");
+      } else {
+        setSubmitError(message || "Không thể nhập kho. Vui lòng thử lại.");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -319,6 +361,7 @@ const QuickStockModal = ({
                   <input
                     type="date"
                     value={row.expiry}
+                    min={todayDate}
                     onChange={(e) => updateRow(idx, { expiry: e.target.value })}
                   />
                 </label>
