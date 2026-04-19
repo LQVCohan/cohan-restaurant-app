@@ -157,6 +157,7 @@ export const M_UPDATE_MENU_ITEM_BASIC = gql`
       name
       description
       categoryId
+      status
       updatedAt
     }
   }

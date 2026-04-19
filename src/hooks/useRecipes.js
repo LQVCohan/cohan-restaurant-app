@@ -261,6 +261,17 @@ function buildMenuItemPatch(restaurantId, menuItemId, form) {
     patch.description = form.description.trim();
   if (form?.categoryId) patch.categoryId = form.categoryId;
 
+  const validStatuses = new Set([
+    "available",
+    "unavailable",
+    "out_of_stock",
+    "hidden",
+  ]);
+  if (typeof form?.status === "string") {
+    const nextStatus = form.status.trim();
+    if (validStatuses.has(nextStatus)) patch.status = nextStatus;
+  }
+
   return Object.keys(patch).length
     ? { restaurantId, menuItemId, ...patch }
     : null;
@@ -486,6 +497,16 @@ export function useRecipes(
         if (typeof form?.description === "string")
           next.description = form.description.trim();
         if (form?.categoryId) next.categoryId = form.categoryId;
+
+        const validStatuses = new Set([
+          "available",
+          "unavailable",
+          "out_of_stock",
+          "hidden",
+        ]);
+        if (typeof form?.status === "string" && validStatuses.has(form.status)) {
+          next.status = form.status;
+        }
 
         // optimistic: update recipe variants
         try {
