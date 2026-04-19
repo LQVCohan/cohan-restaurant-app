@@ -381,6 +381,7 @@ $st-cleaning-text: #7e22ce;
     padding: 24px;
     &.tm-form--add-table {
       gap: 20px;
+      padding: 0;
     }
     &.tm-form--vr {
       gap: 20px;
@@ -389,6 +390,9 @@ $st-cleaning-text: #7e22ce;
       display: flex;
       flex-direction: column;
       gap: 6px;
+      &.tm-form-header--add-table {
+        padding-bottom: 2px;
+      }
       h4 {
         margin: 0;
         font-size: 1.1rem;
@@ -409,6 +413,22 @@ $st-cleaning-text: #7e22ce;
         grid-template-columns: 1fr;
       }
     }
+    .tm-form-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid #edf2f7;
+      border-radius: 12px;
+      background: #fcfdff;
+    }
+    .tm-form-section-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: $tm-text-light;
+    }
     .tm-field {
       display: flex;
       flex-direction: column;
@@ -416,6 +436,27 @@ $st-cleaning-text: #7e22ce;
       &.tm-field--full {
         grid-column: 1 / -1;
       }
+      &.is-invalid {
+        input,
+        select {
+          border-color: #dc2626;
+          background: #fff7f7;
+        }
+      }
+    }
+    .tm-field-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .tm-field-hint {
+      font-size: 0.78rem;
+      color: $tm-text-light;
+    }
+    .tm-field-error {
+      font-size: 0.78rem;
+      color: #dc2626;
+      font-weight: 600;
     }
     label {
       font-weight: 600;
@@ -436,6 +477,10 @@ $st-cleaning-text: #7e22ce;
         border-color: $tm-primary;
         outline: none;
       }
+      &[aria-invalid="true"] {
+        border-color: #dc2626;
+        background: #fff7f7;
+      }
     }
     .modal-footer {
       margin-top: 20px;
@@ -443,9 +488,39 @@ $st-cleaning-text: #7e22ce;
       justify-content: flex-end;
       gap: 10px;
     }
+    .tm-template-preview {
+      border: 1px solid $tm-primary-border;
+      background: $tm-primary-light;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      &__title {
+        font-size: 0.8rem;
+        color: $tm-text-light;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+      &__value {
+        font-size: 0.95rem;
+        color: $tm-text;
+        font-weight: 700;
+      }
+      &__hint {
+        font-size: 0.8rem;
+        color: $tm-text-light;
+      }
+    }
     .hint {
       font-size: 0.85rem;
       color: $tm-text-light;
+    }
+  }
+
+  .tm-add-table-footer {
+    .btn {
+      min-width: 108px;
     }
   }
 
