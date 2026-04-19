@@ -13,6 +13,13 @@ import { formatPrice } from "../../../../../utils/formatters";
 import { convertCurrencyAmount, normalizeCurrency } from "../../../../../utils/currency";
 import "./RecipeCard.scss";
 
+const MENU_ITEM_STATUS_META = {
+  available: { label: "Có sẵn", bg: "#dcfce7", color: "#166534" },
+  unavailable: { label: "Tạm ngưng", bg: "#fee2e2", color: "#b91c1c" },
+  out_of_stock: { label: "Hết món", bg: "#ffedd5", color: "#c2410c" },
+  hidden: { label: "Ẩn", bg: "#e2e8f0", color: "#334155" },
+};
+
 const RecipeCard = ({
   recipe,
   onEdit,
@@ -34,6 +41,12 @@ const RecipeCard = ({
     minCost = 0,
     hasAnyCost = false,
   } = safeRecipe._meta || {};
+
+  const statusMeta = MENU_ITEM_STATUS_META[safeRecipe.status] || {
+    label: "Không rõ",
+    bg: "#e2e8f0",
+    color: "#334155",
+  };
 
   const handleCardClick = () => {
     // Ngăn chặn click nếu user đang bôi đen văn bản (optional UX)
@@ -68,7 +81,19 @@ const RecipeCard = ({
                 safeRecipe.category.slice(1)
               : "Chưa phân loại"}
           </span>
-          <div style={{ marginTop: "6px", display: "flex", gap: "6px" }}>
+          <div style={{ marginTop: "6px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            <span
+              style={{
+                fontSize: "11px",
+                padding: "2px 8px",
+                borderRadius: "999px",
+                background: statusMeta.bg,
+                color: statusMeta.color,
+                fontWeight: 700,
+              }}
+            >
+              {statusMeta.label}
+            </span>
             {!hasRecipe && (
               <span
                 style={{

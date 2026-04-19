@@ -387,7 +387,7 @@ export const MenuMutation = {
   },
 
   updateMenuItemBasic: async (_p, { input }) => {
-    const { restaurantId, menuItemId, name, description, categoryId } =
+    const { restaurantId, menuItemId, name, description, categoryId, status } =
       input || {};
 
     if (![restaurantId, menuItemId].every(isOid)) {
@@ -401,6 +401,10 @@ export const MenuMutation = {
     if (typeof name === "string") patch.name = name;
     if (typeof description === "string") patch.description = description;
     if (categoryId) patch.categoryId = categoryId;
+    if (status !== undefined) {
+      if (status) assertStatus(status);
+      patch.status = status;
+    }
 
     if (input.point !== undefined) {
       const n = toNumOrUndef(input.point);

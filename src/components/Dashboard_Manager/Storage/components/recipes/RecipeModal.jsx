@@ -44,6 +44,18 @@ const parseDecimalLoose = (v) => {
 
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
+const MENU_ITEM_STATUS_OPTIONS = [
+  { value: "available", label: "Có sẵn" },
+  { value: "unavailable", label: "Tạm ngưng" },
+  { value: "out_of_stock", label: "Hết món" },
+  { value: "hidden", label: "Ẩn" },
+];
+
+const MENU_ITEM_STATUS_LABEL = MENU_ITEM_STATUS_OPTIONS.reduce((acc, item) => {
+  acc[item.value] = item.label;
+  return acc;
+}, {});
+
 const roundUpToThousand = (n) => {
   const x = Number(n) || 0;
   if (x <= 0) return 0;
@@ -293,6 +305,7 @@ const RecipeModal = ({
 
   const [formData, setFormData] = useState({
     notes: "",
+    status: "available",
     servingVariants: [],
   });
 
@@ -301,6 +314,8 @@ const RecipeModal = ({
   const isDirty = useMemo(() => {
     if (!isOpen) return false;
     if ((formData.notes || "").trim()) return true;
+    if (formData.status && formData.status !== (dishInfo?.status || "available"))
+      return true;
 
     return (formData.servingVariants || []).some((v) => {
       const hasMeta =
@@ -314,7 +329,7 @@ const RecipeModal = ({
 
       return hasMeta || hasLines;
     });
-  }, [formData.notes, formData.servingVariants, isOpen]);
+  }, [formData.notes, formData.servingVariants, formData.status, dishInfo?.status, isOpen]);
 
   const { requestCloseWithDraft, clearDraft } = useModalDraft({
     enabled: isOpen,
@@ -333,6 +348,7 @@ const RecipeModal = ({
     isDirty,
     sanitize: (v) => ({
       notes: v?.notes || "",
+      status: v?.status || "available",
       servingVariants: Array.isArray(v?.servingVariants)
         ? v.servingVariants.map((variant) => ({
             key: variant?.key || "",
@@ -481,9 +497,10 @@ const RecipeModal = ({
 
     setFormData({
       notes: String(recipeNode?.notes || ""),
+      status: menuItemNode?.status || "available",
       servingVariants: variantsFinal,
     });
-  }, [isOpen, recipeNode, ingredients]);
+  }, [isOpen, recipeNode, menuItemNode, ingredients]);
 
   const getComponentQtyInBase = (comp) => {
     const baseUnit = getIngredientBaseUnit(comp.ingredientId);
@@ -1037,6 +1054,7 @@ const RecipeModal = ({
       restaurantId,
       menuItemId: currentMenuItemId,
       notes: formData.notes || "",
+      status: formData.status || dishInfo?.status || "available",
       isActive: true,
       servingVariants: variants,
     };
@@ -1387,6 +1405,20 @@ const RecipeModal = ({
                     >
                       {dishInfo.description || "Không có mô tả"}
                     </div>
+                    <div style={{ marginTop: "8px" }}>
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          padding: "2px 10px",
+                          borderRadius: "999px",
+                          background: "#eef2ff",
+                          color: "#3730a3",
+                        }}
+                      >
+                        Trạng thái: {MENU_ITEM_STATUS_LABEL[formData.status] || "Không rõ"}
+                      </span>
+                    </div>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: "12px", color: "#64748b" }}>
@@ -1408,6 +1440,16 @@ const RecipeModal = ({
                   <FormGroup>
                     <FormLabel>Tên món</FormLabel>
                     <FormInput value={dishInfo.name} disabled />
+                  </FormGroup>
+                  <FormGroup>
+                    <FormLabel>Trạng thái món ăn</FormLabel>
+                    <FormSelect
+                      value={formData.status || "available"}
+                      onChange={(e) =>
+                        setFormData((p) => ({ ...p, status: e.target.value }))
+                      }
+                      options={MENU_ITEM_STATUS_OPTIONS}
+                    />
                   </FormGroup>
                   <FormGroup>
                     <FormLabel>
