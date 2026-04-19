@@ -135,3 +135,43 @@ export const M_STOCK_OUTBOUND = gql`
     }
   }
 `;
+
+
+export const Q_SUPPLY_CATEGORIES = gql`
+  query SupplyCategories(
+    $restaurantId: ID!
+    $search: String
+    $includeInactive: Boolean = false
+    $limit: Int = 200
+  ) {
+    supplyCategories(
+      restaurantId: $restaurantId
+      search: $search
+      includeInactive: $includeInactive
+      limit: $limit
+    ) {
+      id
+      name
+      slug
+      source
+      usageCount
+      isActive
+    }
+  }
+`;
+
+export const Q_SUGGEST_SUPPLY_CATEGORY = gql`
+  query SuggestSupplyCategory($restaurantId: ID!, $name: String!, $category: String) {
+    suggestSupplyCategory(restaurantId: $restaurantId, name: $name, category: $category) {
+      categoryId
+      categoryName
+      categorySlug
+      reason
+      confidence
+      matchedKeyword
+      existing
+      autoSelected
+    }
+  }
+`;
+

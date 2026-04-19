@@ -1,12 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useLazyQuery } from "@apollo/client";
 import Modal from "../../../../common/Modal";
 import useModalDraft from "../../../../../hooks/useModalDraft";
 import { useNotification } from "../../../../../hooks/useNotification";
+import { Q_SUGGEST_SUPPLY_CATEGORY } from "../../graphql/supply.gql";
 import "./SupplyModal.scss";
 
-/**
- * SupplyModal - Nâng cấp giao diện Luxury/Minimalist
- */
 const UNITS = [
   { value: "unit", label: "Đơn vị (unit)" },
   { value: "piece", label: "Cái (piece)" },
@@ -21,17 +20,9 @@ const UNITS = [
   { value: "tsp", label: "Muỗng cà phê (tsp)" },
 ];
 
-const CATEGORIES = [
-  { value: "drink", label: "Đồ uống" },
-  { value: "tissue", label: "Khăn giấy" },
-  { value: "cleaning", label: "Vệ sinh" },
-  { value: "sauce", label: "Gia vị/đóng gói" },
-  { value: "other", label: "Khác" },
-];
-
 const defaultForm = {
   name: "",
-  category: "other",
+  category: "Other",
   unit: "unit",
   costPerUnit: "",
   pricePerUnit: "",
@@ -40,10 +31,17 @@ const defaultForm = {
   notes: "",
 };
 
+const normalizeCategoryName = (value) =>
+  String(value || "")
+    .trim()
+    .replace(/\s+/g, " ");
+
 const SupplyModal = ({
   isOpen,
   onClose,
   initial = null,
+  restaurantId,
+  categoryOptions = [],
   onSubmit,
   onOpenInbound,
   onOpenOutbound,
@@ -52,31 +50,48 @@ const SupplyModal = ({
   const { showNotification } = useNotification();
   const [form, setForm] = useState(defaultForm);
   const [errors, setErrors] = useState({});
+  const [categoryTouched, setCategoryTouched] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [aiState, setAiState] = useState("idle");
+  const requestIdRef = useRef(0);
+
+  const [loadSuggestion] = useLazyQuery(Q_SUGGEST_SUPPLY_CATEGORY, {
+    fetchPolicy: "no-cache",
+  });
 
   const subtitle = useMemo(
     () =>
       isEditing
         ? "Điều chỉnh thông tin vật phẩm và quản lý lô hàng."
         : "Thiết lập vật phẩm mới vào hệ thống quản lý kho.",
-    [isEditing]
+    [isEditing],
   );
+
+  const dynamicCategoryOptions = useMemo(() => {
+    const base = Array.isArray(categoryOptions) ? categoryOptions : [];
+    const mapped = base
+      .map((item) => ({ value: normalizeCategoryName(item?.name), label: normalizeCategoryName(item?.name) }))
+      .filter((item) => item.value);
+
+    const legacy = ["Beverage", "Tissue & Paper", "Cleaning", "Condiments & Packaging", "Disposable", "Other"]
+      .map((name) => ({ value: name, label: name }));
+
+    const suggested = aiSuggestion?.categoryName
+      ? [{ value: aiSuggestion.categoryName, label: aiSuggestion.categoryName }]
+      : [];
+
+    return [...new Map([...mapped, ...legacy, ...suggested].map((item) => [item.value.toLowerCase(), item])).values()];
+  }, [categoryOptions, aiSuggestion?.categoryName]);
 
   useEffect(() => {
     if (initial) {
       setForm({
         name: initial.name ?? "",
-        category: initial.category ?? "other",
+        category: normalizeCategoryName(initial.category) || "Other",
         unit: initial.unit ?? "unit",
-        costPerUnit:
-          typeof initial.costPerUnit === "number"
-            ? String(initial.costPerUnit)
-            : "",
-        pricePerUnit:
-          typeof initial.pricePerUnit === "number"
-            ? String(initial.pricePerUnit)
-            : "",
-        minStock:
-          typeof initial.minStock === "number" ? String(initial.minStock) : "",
+        costPerUnit: typeof initial.costPerUnit === "number" ? String(initial.costPerUnit) : "",
+        pricePerUnit: typeof initial.pricePerUnit === "number" ? String(initial.pricePerUnit) : "",
+        minStock: typeof initial.minStock === "number" ? String(initial.minStock) : "",
         isActive: initial.isActive ?? true,
         notes: initial.notes ?? "",
       });
@@ -84,25 +99,62 @@ const SupplyModal = ({
       setForm(defaultForm);
     }
     setErrors({});
+    setCategoryTouched(false);
+    setAiSuggestion(null);
+    setAiState("idle");
   }, [initial, isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const name = String(form.name || "").trim();
+    if (!restaurantId || name.length < 2) {
+      setAiSuggestion(null);
+      setAiState("idle");
+      return;
+    }
+
+    const id = ++requestIdRef.current;
+    setAiState("loading");
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await loadSuggestion({
+          variables: {
+            restaurantId,
+            name,
+            category: isEditing ? initial?.category || "" : "",
+          },
+        });
+        if (id !== requestIdRef.current) return;
+        const next = data?.suggestSupplyCategory || null;
+        setAiSuggestion(next);
+        setAiState(next ? "ready" : "idle");
+
+        const canAutoSelect = !categoryTouched && (!isEditing || !String(initial?.category || "").trim());
+        if (next?.autoSelected && canAutoSelect) {
+          setForm((prev) => ({ ...prev, category: next.categoryName || prev.category }));
+        }
+      } catch {
+        if (id === requestIdRef.current) {
+          setAiState("error");
+          setAiSuggestion(null);
+        }
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [form.name, restaurantId, loadSuggestion, categoryTouched, isEditing, initial?.category, isOpen]);
+
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
   const isDirty = useMemo(() => {
     const base = initial
       ? {
           name: initial.name ?? "",
-          category: initial.category ?? "other",
+          category: normalizeCategoryName(initial.category) || "Other",
           unit: initial.unit ?? "unit",
-          costPerUnit:
-            typeof initial.costPerUnit === "number"
-              ? String(initial.costPerUnit)
-              : "",
-          pricePerUnit:
-            typeof initial.pricePerUnit === "number"
-              ? String(initial.pricePerUnit)
-              : "",
-          minStock:
-            typeof initial.minStock === "number" ? String(initial.minStock) : "",
+          costPerUnit: typeof initial.costPerUnit === "number" ? String(initial.costPerUnit) : "",
+          pricePerUnit: typeof initial.pricePerUnit === "number" ? String(initial.pricePerUnit) : "",
+          minStock: typeof initial.minStock === "number" ? String(initial.minStock) : "",
           isActive: initial.isActive ?? true,
           notes: initial.notes ?? "",
         }
@@ -120,13 +172,13 @@ const SupplyModal = ({
       entityType: "supply",
       recordId: initial?.id || null,
       context: "supply-list",
-      schemaVersion: "1",
+      schemaVersion: "2",
     },
     formValue: form,
     isDirty,
     sanitize: (v) => ({
       name: v?.name || "",
-      category: v?.category || "other",
+      category: normalizeCategoryName(v?.category) || "Other",
       unit: v?.unit || "unit",
       costPerUnit: v?.costPerUnit ?? "",
       pricePerUnit: v?.pricePerUnit ?? "",
@@ -142,10 +194,8 @@ const SupplyModal = ({
     const e = {};
     if (!form.name.trim()) e.name = "Vui lòng nhập tên vật phẩm";
     if (!form.unit) e.unit = "Chọn đơn vị";
-    if (form.costPerUnit === "" || Number(form.costPerUnit) < 0)
-      e.costPerUnit = "Giá trị không hợp lệ";
-    if (form.pricePerUnit === "" || Number(form.pricePerUnit) < 0)
-      e.pricePerUnit = "Giá trị không hợp lệ";
+    if (form.costPerUnit === "" || Number(form.costPerUnit) < 0) e.costPerUnit = "Giá trị không hợp lệ";
+    if (form.pricePerUnit === "" || Number(form.pricePerUnit) < 0) e.pricePerUnit = "Giá trị không hợp lệ";
     if (form.minStock === "" || Number(form.minStock) < 0) e.minStock = "≥ 0";
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -155,7 +205,7 @@ const SupplyModal = ({
     if (!validate()) return;
     const payload = {
       name: form.name.trim(),
-      category: form.category || "other",
+      category: normalizeCategoryName(form.category) || "Other",
       unit: form.unit || "unit",
       costPerUnit: Number(form.costPerUnit) || 0,
       pricePerUnit: Number(form.pricePerUnit) || 0,
@@ -170,16 +220,6 @@ const SupplyModal = ({
     } catch {
       // giữ draft khi submit lỗi
     }
-  };
-
-  const openInbound = () => {
-    if (!isEditing) return;
-    onOpenInbound?.(initial);
-  };
-
-  const openOutbound = () => {
-    if (!isEditing) return;
-    onOpenOutbound?.(initial);
   };
 
   if (!isOpen) return null;
@@ -197,12 +237,9 @@ const SupplyModal = ({
           <span>{subtitle}</span>
         </div>
 
-        {/* --- Block 1: Định danh --- */}
         <div className="sm-grid-2">
           <label className="sm-field">
-            <span className="sm-label">
-              Tên vật phẩm <b className="req">*</b>
-            </span>
+            <span className="sm-label">Tên vật phẩm <b className="req">*</b></span>
             <input
               className={`sm-input ${errors.name ? "error" : ""}`}
               value={form.name}
@@ -217,93 +254,60 @@ const SupplyModal = ({
             <select
               className="sm-input"
               value={form.category}
-              onChange={(e) => set({ category: e.target.value })}
+              onChange={(e) => {
+                setCategoryTouched(true);
+                set({ category: e.target.value });
+              }}
             >
-              {CATEGORIES.map((c) => (
+              {dynamicCategoryOptions.map((c) => (
                 <option key={c.value} value={c.value}>
                   {c.label}
                 </option>
               ))}
             </select>
+            {aiState === "loading" && <small className="sm-help">AI đang gợi ý danh mục...</small>}
+            {aiState === "ready" && aiSuggestion && (
+              <small className="sm-help">
+                Gợi ý AI: <b>{aiSuggestion.categoryName}</b>
+                {aiSuggestion.autoSelected && !categoryTouched ? " • Đã tự chọn từ AI" : " • Bạn có thể đổi tay"}
+                {!aiSuggestion.existing ? " • Danh mục mới sẽ được tạo khi lưu" : ""}
+              </small>
+            )}
           </label>
         </div>
 
-        {/* --- Block 2: Định lượng & Giá --- */}
         <div className="sm-grid-3">
           <label className="sm-field">
-            <span className="sm-label">
-              Đơn vị <b className="req">*</b>
-            </span>
-            <select
-              className={`sm-input ${errors.unit ? "error" : ""}`}
-              value={form.unit}
-              onChange={(e) => set({ unit: e.target.value })}
-            >
+            <span className="sm-label">Đơn vị <b className="req">*</b></span>
+            <select className={`sm-input ${errors.unit ? "error" : ""}`} value={form.unit} onChange={(e) => set({ unit: e.target.value })}>
               {UNITS.map((u) => (
-                <option key={u.value} value={u.value}>
-                  {u.label}
-                </option>
+                <option key={u.value} value={u.value}>{u.label}</option>
               ))}
             </select>
             {errors.unit && <small className="sm-msg">{errors.unit}</small>}
           </label>
 
           <label className="sm-field">
-            <span className="sm-label">
-              Giá nhập (VNĐ) <b className="req">*</b>
-            </span>
-            <input
-              className={`sm-input ${errors.costPerUnit ? "error" : ""}`}
-              type="number"
-              min="0"
-              value={form.costPerUnit}
-              onChange={(e) => set({ costPerUnit: e.target.value })}
-              placeholder="0"
-            />
+            <span className="sm-label">Giá nhập (VNĐ) <b className="req">*</b></span>
+            <input className={`sm-input ${errors.costPerUnit ? "error" : ""}`} type="number" min="0" value={form.costPerUnit} onChange={(e) => set({ costPerUnit: e.target.value })} placeholder="0" />
           </label>
 
           <label className="sm-field">
-            <span className="sm-label">
-              Giá bán (VNĐ) <b className="req">*</b>
-            </span>
-            <input
-              className={`sm-input ${errors.pricePerUnit ? "error" : ""}`}
-              type="number"
-              min="0"
-              value={form.pricePerUnit}
-              onChange={(e) => set({ pricePerUnit: e.target.value })}
-              placeholder="0"
-            />
-            {errors.pricePerUnit && (
-              <small className="sm-msg">{errors.pricePerUnit}</small>
-            )}
+            <span className="sm-label">Giá bán (VNĐ) <b className="req">*</b></span>
+            <input className={`sm-input ${errors.pricePerUnit ? "error" : ""}`} type="number" min="0" value={form.pricePerUnit} onChange={(e) => set({ pricePerUnit: e.target.value })} placeholder="0" />
+            {errors.pricePerUnit && <small className="sm-msg">{errors.pricePerUnit}</small>}
           </label>
 
           <label className="sm-field">
-            <span className="sm-label">
-              Tồn tối thiểu <b className="req">*</b>
-            </span>
-            <input
-              className={`sm-input ${errors.minStock ? "error" : ""}`}
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.minStock}
-              onChange={(e) => set({ minStock: e.target.value })}
-              placeholder="0"
-            />
+            <span className="sm-label">Tồn tối thiểu <b className="req">*</b></span>
+            <input className={`sm-input ${errors.minStock ? "error" : ""}`} type="number" min="0" step="0.01" value={form.minStock} onChange={(e) => set({ minStock: e.target.value })} placeholder="0" />
           </label>
         </div>
 
-        {/* --- Block 3: Trạng thái & Ghi chú --- */}
         <div className="sm-grid-2">
           <label className="sm-field">
             <span className="sm-label">Trạng thái</span>
-            <select
-              className="sm-input"
-              value={form.isActive ? "1" : "0"}
-              onChange={(e) => set({ isActive: e.target.value === "1" })}
-            >
+            <select className="sm-input" value={form.isActive ? "1" : "0"} onChange={(e) => set({ isActive: e.target.value === "1" })}>
               <option value="1">🟢 Đang hoạt động</option>
               <option value="0">🔴 Ngưng sử dụng</option>
             </select>
@@ -311,56 +315,27 @@ const SupplyModal = ({
 
           <label className="sm-field">
             <span className="sm-label">Ghi chú</span>
-            <input
-              className="sm-input"
-              value={form.notes}
-              onChange={(e) => set({ notes: e.target.value })}
-              placeholder="Ghi chú nội bộ..."
-            />
+            <input className="sm-input" value={form.notes} onChange={(e) => set({ notes: e.target.value })} placeholder="Ghi chú nội bộ..." />
           </label>
         </div>
 
-        {/* --- Block 4: Quick Actions (Chỉ hiện khi edit) --- */}
         {isEditing && (onOpenInbound || onOpenOutbound) && (
           <div className="sm-quick-actions">
             <div className="qa-info">
               <span className="qa-badge">FIFO System</span>
-              <p>
-                Hệ thống tự động ưu tiên xuất các lô hàng cũ nhất để đảm bảo
-                tuổi thọ sản phẩm.
-              </p>
+              <p>Hệ thống tự động ưu tiên xuất các lô hàng cũ nhất để đảm bảo tuổi thọ sản phẩm.</p>
             </div>
             <div className="qa-buttons">
-              {onOpenInbound && (
-                <button
-                  type="button"
-                  className="sm-btn-ghost"
-                  onClick={openInbound}
-                >
-                  📥 Nhập kho
-                </button>
-              )}
-              {onOpenOutbound && (
-                <button
-                  type="button"
-                  className="sm-btn-ghost"
-                  onClick={openOutbound}
-                >
-                  📤 Xuất kho
-                </button>
-              )}
+              {onOpenInbound && <button type="button" className="sm-btn-ghost" onClick={() => onOpenInbound?.(initial)}>📥 Nhập kho</button>}
+              {onOpenOutbound && <button type="button" className="sm-btn-ghost" onClick={() => onOpenOutbound?.(initial)}>📤 Xuất kho</button>}
             </div>
           </div>
         )}
       </div>
 
       <Modal.Footer>
-        <button className="sm-btn-cancel" onClick={onClose}>
-          Hủy bỏ
-        </button>
-        <button className="sm-btn-submit" onClick={handleSave}>
-          {isEditing ? "Lưu Thay Đổi" : "Xác Nhận Tạo"}
-        </button>
+        <button className="sm-btn-cancel" onClick={() => requestCloseWithDraft(onClose)}>Hủy bỏ</button>
+        <button className="sm-btn-submit" onClick={handleSave}>{isEditing ? "Lưu Thay Đổi" : "Xác Nhận Tạo"}</button>
       </Modal.Footer>
     </Modal>
   );

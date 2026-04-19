@@ -1,3 +1,26 @@
+
+type SupplyCategory {
+  id: ID!
+  restaurantId: ID!
+  name: String!
+  slug: String!
+  source: String
+  usageCount: Int
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type SupplyCategorySuggestion {
+  categoryId: ID
+  categoryName: String!
+  categorySlug: String
+  reason: String
+  confidence: Float!
+  matchedKeyword: String
+  existing: Boolean!
+  autoSelected: Boolean!
+}
 type Supply {
   id: ID!
   restaurantId: ID!
@@ -116,6 +139,8 @@ extend type Query {
   supply(id: ID!): SupplyWithStock
 
   supplyStockItems(restaurantId: ID!, supplyId: ID): [StockItem!]!
+  supplyCategories(restaurantId: ID!, search: String, includeInactive: Boolean = false, limit: Int = 200): [SupplyCategory!]!
+  suggestSupplyCategory(restaurantId: ID!, name: String!, category: String): SupplyCategorySuggestion
 }
 
 extend type Mutation {

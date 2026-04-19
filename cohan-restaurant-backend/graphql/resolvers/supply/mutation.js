@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
-import { Supply, StockItem, StockMovement } from "../../../models/index.js";
+import { Supply, StockItem, StockMovement, SupplyCategory } from "../../../models/index.js";
 import Warehouse from "../../../models/warehouse.model.js";
+import { findOrCreateSupplyCategory, isValidObjectId, toEnglishCategoryName } from "./mutation.support.js";
 
 function buildStockInsertDefaults(supply) {
   return {
@@ -30,18 +31,90 @@ function sortBatchesFIFO(batches) {
 export default {
   // ===== CRUD =====
   createSupply: async (_p, { input }) => {
-    const doc = await Supply.create(input);
-    return doc.toObject({ virtuals: true });
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      const normalizedCategory = toEnglishCategoryName(input?.category) || "Other";
+      const categoryDoc = await findOrCreateSupplyCategory({
+        restaurantId: input.restaurantId,
+        categoryName: normalizedCategory,
+        source: "ai",
+        session,
+      });
+
+      const [doc] = await Supply.create(
+        [
+          {
+            ...input,
+            category: categoryDoc?.name || normalizedCategory,
+          },
+        ],
+        { session },
+      );
+
+      if (categoryDoc?._id) {
+        await SupplyCategory.updateOne(
+          { _id: categoryDoc._id },
+          { $inc: { usageCount: 1 } },
+          { session },
+        );
+      }
+
+      await session.commitTransaction();
+      return doc.toObject({ virtuals: true });
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    } finally {
+      session.endSession();
+    }
   },
 
   updateSupply: async (_p, { id, input }) => {
-    if (!mongoose.isValidObjectId(id)) return null;
-    const doc = await Supply.findByIdAndUpdate(
-      id,
-      { $set: input },
-      { new: true }
-    );
-    return doc?.toObject({ virtuals: true }) || null;
+    if (!isValidObjectId(id)) return null;
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      const current = await Supply.findById(id).session(session);
+      if (!current) {
+        await session.abortTransaction();
+        return null;
+      }
+
+      const nextCategory =
+        input?.category !== undefined
+          ? toEnglishCategoryName(input?.category) || "Other"
+          : current.category;
+
+      const categoryDoc = await findOrCreateSupplyCategory({
+        restaurantId: current.restaurantId,
+        categoryName: nextCategory,
+        source: "ai",
+        session,
+      });
+
+      current.set({
+        ...input,
+        category: categoryDoc?.name || nextCategory,
+      });
+      await current.save({ session });
+
+      if (categoryDoc?._id) {
+        await SupplyCategory.updateOne(
+          { _id: categoryDoc._id },
+          { $inc: { usageCount: 1 } },
+          { session },
+        );
+      }
+
+      await session.commitTransaction();
+      return current.toObject({ virtuals: true });
+    } catch (err) {
+      await session.abortTransaction();
+      throw err;
+    } finally {
+      session.endSession();
+    }
   },
 
   deleteSupply: async (_p, { id }) => {
