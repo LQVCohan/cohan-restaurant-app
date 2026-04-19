@@ -17,6 +17,7 @@ export { default as Ingredient } from "./ingredient.model.js";
 export { default as IngredientCategory } from "./ingredient-category.model.js";
 export { default as Recipe } from "./recipe.model.js";
 export { default as Supply } from "./supply.model.js";
+export { default as SupplyCategory } from "./supply-category.model.js";
 export { default as StockMovement } from "./stock-movement.model.js";
 export { default as StockItem } from "./stockItem.model.js";
 export { default as Supplier } from "./supplier.model.js";

@@ -1,6 +1,7 @@
 // src/graphql/resolvers/supply/query.js
 import mongoose from "mongoose";
 import { Supply, StockItem } from "../../../models/index.js";
+import { listSupplyCategories, suggestSupplyCategory } from "./category-ai.js";
 
 function makeSupplyWithStock(s, stockItem) {
   // luôn đảm bảo có id (string) cho stockItem trả về
@@ -45,6 +46,20 @@ function makeSupplyWithStock(s, stockItem) {
 }
 
 export default {
+  supplyCategories: async (_p, { restaurantId, search, includeInactive, limit }) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return [];
+    return listSupplyCategories({ restaurantId, search, includeInactive, limit });
+  },
+
+  suggestSupplyCategory: async (_p, { restaurantId, name, category }) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return null;
+    return suggestSupplyCategory({
+      restaurantId,
+      supplyName: name,
+      existingCategoryName: category,
+    });
+  },
+
   // Supply + stockItem (theo warehouse nếu có; nếu không -> tổng across warehouses)
   supplies: async (_p, { restaurantId, warehouseId }) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];

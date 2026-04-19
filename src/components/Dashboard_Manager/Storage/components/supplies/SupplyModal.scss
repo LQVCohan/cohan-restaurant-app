@@ -109,6 +109,12 @@ $sm-danger: #ef4444;
     font-weight: 500;
   }
 
+  .sm-help {
+    color: $sm-text-light;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
   /* Quick Actions Box (FIFO) */
   .sm-quick-actions {
     margin-top: 24px;

@@ -9,6 +9,7 @@ import {
   M_STOCK_INBOUND,
   M_STOCK_OUTBOUND,
   M_STOCK_TRANSFER,
+  Q_SUPPLY_CATEGORIES,
 } from "../components/Dashboard_Manager/Storage/graphql/supply.gql";
 
 const useSupply = (restaurantId, warehouseId = null) => {
@@ -23,6 +24,18 @@ const useSupply = (restaurantId, warehouseId = null) => {
   );
 
   const supplies = data?.supplies ?? [];
+
+
+  const { data: categoryData } = useQuery(Q_SUPPLY_CATEGORIES, {
+    variables: { restaurantId, includeInactive: false, limit: 200 },
+    skip: !restaurantId,
+    fetchPolicy: "cache-and-network",
+  });
+
+  const supplyCategories = useMemo(
+    () => categoryData?.supplyCategories ?? [],
+    [categoryData?.supplyCategories],
+  );
 
   // Map supplyId -> stockItem
   const stockMap = useMemo(() => {
@@ -332,6 +345,7 @@ const useSupply = (restaurantId, warehouseId = null) => {
   return {
     supplies,
     stockMap,
+    supplyCategories,
     getStockItem,
     loading: loading || isRefetching,
     error,

@@ -28,6 +28,7 @@ const SupplyList = ({
   const { showNotification } = useNotification();
   const {
     supplies,
+    supplyCategories,
     getStockItem,
     loading,
     error,
@@ -315,6 +316,8 @@ const SupplyList = ({
           isOpen
           onClose={closeModal}
           initial={editing}
+          restaurantId={restaurantId}
+          categoryOptions={supplyCategories}
           onSubmit={submitSupply}
         />
       )}
