@@ -3,6 +3,7 @@ import { useMemo, useState, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useApolloClient } from "@apollo/client";
 import {
   INGREDIENTS_QUERY,
+  INGREDIENT_TRASH_QUERY,
   INGREDIENT_CATEGORIES_QUERY,
   INGREDIENT_CATEGORY_SYNC_LOGS_QUERY,
   CREATE_INGREDIENT_CATEGORY,
@@ -12,6 +13,8 @@ import {
   CREATE_INGREDIENT,
   UPDATE_INGREDIENT,
   DELETE_INGREDIENT,
+  RESTORE_INGREDIENT,
+  DELETE_INGREDIENT_PERMANENTLY,
   WAREHOUSES_QUERY,
   STOCK_ITEMS_QUERY,
   ADJUST_STOCK,
@@ -108,6 +111,7 @@ export function useIngredients(
       restaurantId,
       search: debouncedSearch?.trim() ? debouncedSearch.trim() : null,
       limit: 200,
+      includeDeleted: false,
     },
     skip: !restaurantId,
     fetchPolicy: "cache-and-network",
@@ -176,6 +180,19 @@ export function useIngredients(
   });
 
   const ingredientsRaw = useMemo(() => ingData?.ingredients || [], [ingData]);
+  const {
+    data: trashData,
+    refetch: refetchIngredientTrash,
+  } = useQuery(INGREDIENT_TRASH_QUERY, {
+    variables: { restaurantId, limit: 500 },
+    skip: !restaurantId,
+    fetchPolicy: "cache-and-network",
+  });
+
+  const ingredientTrashRaw = useMemo(
+    () => trashData?.ingredientTrash || [],
+    [trashData]
+  );
   const ingredientCategories = useMemo(
     () => categoryData?.ingredientCategories || [],
     [categoryData],
@@ -284,16 +301,27 @@ export function useIngredients(
   const [syncIngredientCategoriesMu] = useMutation(SYNC_INGREDIENT_CATEGORIES);
   const [updateIngredientMu] = useMutation(UPDATE_INGREDIENT);
   const [deleteIngredientMu] = useMutation(DELETE_INGREDIENT);
+  const [restoreIngredientMu] = useMutation(RESTORE_INGREDIENT);
+  const [deleteIngredientPermanentlyMu] = useMutation(
+    DELETE_INGREDIENT_PERMANENTLY
+  );
   const [adjustStockMu] = useMutation(ADJUST_STOCK);
   const [receiveStockMu] = useMutation(RECEIVE_STOCK);
 
   const safeRefetchAll = useCallback(async () => {
     await Promise.allSettled([
       refetchIngredients?.(),
+      refetchIngredientTrash?.(),
       refetchCategories?.(),
       withStock ? refetchStock?.() : Promise.resolve(),
     ]);
-  }, [refetchIngredients, refetchCategories, refetchStock, withStock]);
+  }, [
+    refetchIngredients,
+    refetchIngredientTrash,
+    refetchCategories,
+    refetchStock,
+    withStock,
+  ]);
 
   const createIngredientCategory = useCallback(
     async (name) => {
@@ -451,10 +479,29 @@ export function useIngredients(
 
   const deleteIngredient = useCallback(
     async (id) => {
-      await deleteIngredientMu({ variables: { id } });
+      const res = await deleteIngredientMu({ variables: { id } });
       await safeRefetchAll();
+      return res?.data?.deleteIngredient ?? false;
     },
     [deleteIngredientMu, safeRefetchAll]
+  );
+
+  const restoreIngredient = useCallback(
+    async (id) => {
+      const res = await restoreIngredientMu({ variables: { id } });
+      await safeRefetchAll();
+      return res?.data?.restoreIngredient || null;
+    },
+    [restoreIngredientMu, safeRefetchAll]
+  );
+
+  const deleteIngredientPermanently = useCallback(
+    async (id) => {
+      const res = await deleteIngredientPermanentlyMu({ variables: { id } });
+      await safeRefetchAll();
+      return res?.data?.deleteIngredientPermanently ?? false;
+    },
+    [deleteIngredientPermanentlyMu, safeRefetchAll]
   );
 
   const addStock = useCallback(
@@ -620,6 +667,7 @@ export function useIngredients(
     ingredientCategories,
     ingredientCategorySyncLogs,
     filteredIngredients,
+    ingredientTrash: ingredientTrashRaw,
     stockItems,
 
     // ui filters
@@ -630,6 +678,8 @@ export function useIngredients(
     addIngredient,
     updateIngredient,
     deleteIngredient,
+    restoreIngredient,
+    deleteIngredientPermanently,
     addStock,
     receiveStock,
     getPriceSuggestions,

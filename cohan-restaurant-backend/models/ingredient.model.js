@@ -49,6 +49,13 @@ const IngredientSchema = BaseSchemaModel({
   minStock: { type: Number, default: 0, min: 0 },
   notes: { type: String },
   isActive: { type: Boolean, default: true },
+  deletedAt: { type: Date, default: null, index: true },
+  deleteExpiresAt: { type: Date, default: null, index: true },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
+  },
 });
 
 IngredientSchema.index({ restaurantId: 1, name: 1 });
@@ -60,4 +67,5 @@ IngredientSchema.index(
   }
 );
 IngredientSchema.index({ restaurantId: 1, createdAt: -1 });
+IngredientSchema.index({ restaurantId: 1, deletedAt: 1, name: 1 });
 export default mongoose.model("Ingredient", IngredientSchema);

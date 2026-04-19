@@ -30,8 +30,18 @@ export const GET_MANAGER_RESTAURANTS = gql`
 
 /** ===== Ingredients ===== */
 export const INGREDIENTS_QUERY = gql`
-  query Ingredients($restaurantId: ID!, $search: String, $limit: Int = 200) {
-    ingredients(restaurantId: $restaurantId, search: $search, limit: $limit) {
+  query Ingredients(
+    $restaurantId: ID!
+    $search: String
+    $limit: Int = 200
+    $includeDeleted: Boolean = false
+  ) {
+    ingredients(
+      restaurantId: $restaurantId
+      search: $search
+      limit: $limit
+      includeDeleted: $includeDeleted
+    ) {
       id
       restaurantId
       name
@@ -53,7 +63,31 @@ export const INGREDIENTS_QUERY = gql`
       minStock
       notes
       isActive
+      deletedAt
+      deleteExpiresAt
       createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const INGREDIENT_TRASH_QUERY = gql`
+  query IngredientTrash($restaurantId: ID!, $limit: Int = 200) {
+    ingredientTrash(restaurantId: $restaurantId, limit: $limit) {
+      id
+      restaurantId
+      name
+      sku
+      category
+      ingredientCategoryId
+      ingredientCategory {
+        id
+        name
+      }
+      baseUnit
+      deletedAt
+      deleteExpiresAt
+      isActive
       updatedAt
     }
   }
@@ -218,6 +252,25 @@ export const UPDATE_INGREDIENT = gql`
 export const DELETE_INGREDIENT = gql`
   mutation DeleteIngredient($id: ID!) {
     deleteIngredient(id: $id)
+  }
+`;
+
+export const RESTORE_INGREDIENT = gql`
+  mutation RestoreIngredient($id: ID!) {
+    restoreIngredient(id: $id) {
+      id
+      name
+      deletedAt
+      deleteExpiresAt
+      isActive
+      updatedAt
+    }
+  }
+`;
+
+export const DELETE_INGREDIENT_PERMANENTLY = gql`
+  mutation DeleteIngredientPermanently($id: ID!) {
+    deleteIngredientPermanently(id: $id)
   }
 `;
 

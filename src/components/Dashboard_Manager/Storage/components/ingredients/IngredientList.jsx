@@ -8,6 +8,7 @@ import {
   PackageOpen,
   AlertCircle,
   ListFilter,
+  Trash2,
 } from "lucide-react";
 import { useApolloClient, useQuery } from "@apollo/client";
 import IngredientCard from "./IngredientCard";
@@ -52,6 +53,9 @@ const IngredientList = ({
     addIngredient,
     updateIngredient,
     deleteIngredient,
+    restoreIngredient,
+    deleteIngredientPermanently,
+    ingredientTrash,
     receiveStock,
     updateCostPerBaseUnit,
     getStockStatus,
@@ -84,6 +88,9 @@ const IngredientList = ({
   const [quickStockOpen, setQuickStockOpen] = useState(false);
   const [quickEntries, setQuickEntries] = useState([]);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState("active");
+  const [blockedDeleteModal, setBlockedDeleteModal] = useState(null);
+  const [trashBusyId, setTrashBusyId] = useState("");
 
   const [busyAction, setBusyAction] = useState("");
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -118,6 +125,26 @@ const IngredientList = ({
   };
 
   const hasActiveFilters = filters.search || filters.category || filters.status;
+  const trashIngredients = useMemo(
+    () =>
+      (ingredientTrash || []).filter((item) =>
+        filters.search?.trim()
+          ? String(item.name || "")
+              .toLowerCase()
+              .includes(filters.search.trim().toLowerCase())
+          : true
+      ),
+    [ingredientTrash, filters.search]
+  );
+
+  const getRemainingDaysLabel = (row) => {
+    const expires = row?.deleteExpiresAt ? new Date(row.deleteExpiresAt) : null;
+    if (!expires || Number.isNaN(expires.getTime())) return "Không xác định";
+    const diffMs = expires.getTime() - Date.now();
+    if (diffMs <= 0) return "Hết hạn khôi phục";
+    const days = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+    return `Còn ${days} ngày`;
+  };
 
   const toFriendlyIngredientError = (error) => {
     const graphQLErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
@@ -154,9 +181,66 @@ const IngredientList = ({
     if (!window.confirm("Bạn có chắc chắn muốn xóa nguyên liệu này?")) return;
     try {
       await deleteIngredient(id);
-      showNotification("Đã xoá nguyên liệu thành công.", "success");
+      showNotification(
+        {
+          message: "Đã chuyển nguyên liệu vào thùng rác (lưu 30 ngày).",
+          actionLabel: "Hoàn tác",
+          onAction: async () => {
+            try {
+              await restoreIngredient(id);
+              showNotification("Đã hoàn tác xóa nguyên liệu.", "success");
+            } catch (restoreErr) {
+              showNotification(
+                toFriendlyIngredientError(restoreErr),
+                "error"
+              );
+            }
+          },
+        },
+        "success",
+        8000
+      );
     } catch (e) {
-      showNotification(e?.message || "Có lỗi khi xóa nguyên liệu", "error");
+      const graphQLErrors = e?.graphQLErrors || e?.networkError?.result?.errors || [];
+      const blocker = graphQLErrors[0]?.extensions?.activeMenuItems;
+      if (Array.isArray(blocker) && blocker.length) {
+        setBlockedDeleteModal({
+          ingredientId: id,
+          items: blocker,
+          message:
+            graphQLErrors[0]?.message ||
+            "Không thể xóa vì nguyên liệu đang được dùng trong món đang hoạt động.",
+        });
+        return;
+      }
+      showNotification(toFriendlyIngredientError(e), "error");
+    }
+  };
+
+  const handleRestoreFromTrash = async (id) => {
+    try {
+      setTrashBusyId(`restore:${id}`);
+      await restoreIngredient(id);
+      showNotification("Đã khôi phục nguyên liệu từ thùng rác.", "success");
+    } catch (e) {
+      showNotification(toFriendlyIngredientError(e), "error");
+    } finally {
+      setTrashBusyId("");
+    }
+  };
+
+  const handlePermanentDelete = async (id) => {
+    if (!window.confirm("Xóa vĩnh viễn nguyên liệu này? Hành động không thể hoàn tác.")) {
+      return;
+    }
+    try {
+      setTrashBusyId(`delete:${id}`);
+      await deleteIngredientPermanently(id);
+      showNotification("Đã xóa vĩnh viễn nguyên liệu.", "success");
+    } catch (e) {
+      showNotification(toFriendlyIngredientError(e), "error");
+    } finally {
+      setTrashBusyId("");
     }
   };
 
@@ -451,7 +535,11 @@ const IngredientList = ({
         <div className="il-header__left">
           <h2>Danh sách nguyên liệu</h2>
           <span className="il-badge">
-            {loading ? "..." : filteredIngredients.length}
+            {loading
+              ? "..."
+              : viewMode === "active"
+              ? filteredIngredients.length
+              : trashIngredients.length}
           </span>
         </div>
 
@@ -492,36 +580,40 @@ const IngredientList = ({
           </div>
 
           {/* Category Filter */}
-          <div className="il-select-group">
-            <Filter size={16} className="il-icon-left" />
-            <select
-              className="il-select"
-              value={filters.category}
-              onChange={handleCategoryFilter}
-            >
-              <option value="">Tất cả danh mục</option>
-              {(ingredientCategories || []).map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {toIngredientCategoryVi(cat.name)}
-                </option>
-              ))}
-            </select>
-          </div>
+          {viewMode === "active" && (
+            <div className="il-select-group">
+              <Filter size={16} className="il-icon-left" />
+              <select
+                className="il-select"
+                value={filters.category}
+                onChange={handleCategoryFilter}
+              >
+                <option value="">Tất cả danh mục</option>
+                {(ingredientCategories || []).map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {toIngredientCategoryVi(cat.name)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Status Filter */}
-          <div className="il-select-group">
-            <ListFilter size={16} className="il-icon-left" />
-            <select
-              className="il-select"
-              value={filters.status}
-              onChange={handleStatusFilter}
-            >
-              <option value="">Tất cả trạng thái</option>
-              <option value="in-stock">Còn hàng</option>
-              <option value="low-stock">Sắp hết</option>
-              <option value="out-of-stock">Hết hàng</option>
-            </select>
-          </div>
+          {viewMode === "active" && (
+            <div className="il-select-group">
+              <ListFilter size={16} className="il-icon-left" />
+              <select
+                className="il-select"
+                value={filters.status}
+                onChange={handleStatusFilter}
+              >
+                <option value="">Tất cả trạng thái</option>
+                <option value="in-stock">Còn hàng</option>
+                <option value="low-stock">Sắp hết</option>
+                <option value="out-of-stock">Hết hàng</option>
+              </select>
+            </div>
+          )}
 
           {/* Reset Button */}
           {hasActiveFilters && (
@@ -538,15 +630,26 @@ const IngredientList = ({
         <div className="il-toolbar__actions">
           <button
             className="il-btn-icon"
+            onClick={() =>
+              setViewMode((prev) => (prev === "active" ? "trash" : "active"))
+            }
+            title="Thùng rác nguyên liệu"
+          >
+            <Trash2 size={16} />
+            {viewMode === "active" ? "Thùng rác" : "Danh sách chính"}
+          </button>
+          <button
+            className="il-btn-icon"
             onClick={() => setCategoryModalOpen(true)}
             title="Quản lý danh mục"
+            disabled={viewMode !== "active"}
           >
             Danh mục
           </button>
           <button
             className="il-btn-primary"
             onClick={openCreate}
-            disabled={!restaurantId || saving}
+            disabled={!restaurantId || saving || viewMode !== "active"}
           >
             <Plus size={18} /> Thêm mới
           </button>
@@ -578,7 +681,7 @@ const IngredientList = ({
             ></div>
             <p>Đang tải dữ liệu...</p>
           </div>
-        ) : filteredIngredients.length > 0 ? (
+        ) : viewMode === "active" && filteredIngredients.length > 0 ? (
           <div className="il-grid">
             {filteredIngredients.map((ingredient) => (
               <IngredientCard
@@ -595,6 +698,49 @@ const IngredientList = ({
               />
             ))}
           </div>
+        ) : viewMode === "trash" ? (
+          trashIngredients.length ? (
+            <div className="il-trash-list">
+              {trashIngredients.map((row) => (
+                <div className="il-trash-item" key={row.id}>
+                  <div>
+                    <strong>{row.name}</strong>
+                    <p>
+                      Xóa lúc:{" "}
+                      {row.deletedAt
+                        ? new Date(row.deletedAt).toLocaleString("vi-VN")
+                        : "Không xác định"}{" "}
+                      • {getRemainingDaysLabel(row)}
+                    </p>
+                  </div>
+                  <div className="il-trash-actions">
+                    <button
+                      className="il-btn-icon"
+                      disabled={Boolean(trashBusyId)}
+                      onClick={() => handleRestoreFromTrash(row.id)}
+                    >
+                      Khôi phục
+                    </button>
+                    <button
+                      className="il-btn-icon danger"
+                      disabled={Boolean(trashBusyId)}
+                      onClick={() => handlePermanentDelete(row.id)}
+                    >
+                      Xóa vĩnh viễn
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="il-empty">
+              <div className="il-empty__icon">
+                <Trash2 size={48} />
+              </div>
+              <h3>Thùng rác đang trống</h3>
+              <p>Nguyên liệu đã xóa mềm sẽ được giữ trong 30 ngày.</p>
+            </div>
+          )
         ) : (
           <div className="il-empty">
             <div className="il-empty__icon">
@@ -690,6 +836,34 @@ const IngredientList = ({
           return report;
         }}
       />
+
+      {blockedDeleteModal && (
+        <div className="il-report-modal-overlay">
+          <div className="il-report-modal il-blocked-modal">
+            <h3>Không thể xóa nguyên liệu</h3>
+            <p>
+              {blockedDeleteModal.message ||
+                "Nguyên liệu đang được sử dụng trong các món ăn đang hoạt động."}
+            </p>
+            <p>Vui lòng ngừng bán các món sau trước khi xóa:</p>
+            <div className="il-blocked-modal__list">
+              {(blockedDeleteModal.items || []).map((item) => (
+                <div key={item.id} className="il-blocked-modal__item">
+                  {item.name}
+                </div>
+              ))}
+            </div>
+            <div className="il-report-actions">
+              <button
+                className="il-btn-primary"
+                onClick={() => setBlockedDeleteModal(null)}
+              >
+                Đã hiểu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {reportModalOpen && (
         <div className="il-report-modal-overlay">

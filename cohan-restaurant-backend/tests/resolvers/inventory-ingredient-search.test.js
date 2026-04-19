@@ -1,6 +1,7 @@
 const modelMocks = vi.hoisted(() => ({
   Ingredient: {
     find: vi.fn(),
+    deleteMany: vi.fn(),
   },
   Recipe: {},
   IngredientRecent: {},

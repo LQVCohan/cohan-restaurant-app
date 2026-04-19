@@ -7,6 +7,15 @@ import {
   MenuItem,
   StockMovement,
 } from "../../../models/index.js";
+const ACTIVE_MENU_ITEM_STATUSES = ["available"];
+
+async function purgeExpiredIngredientsByRestaurant(restaurantId) {
+  await Ingredient.deleteMany({
+    restaurantId,
+    deletedAt: { $ne: null },
+    deleteExpiresAt: { $lte: new Date() },
+  });
+}
 
 function escapeRegex(input) {
   return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -41,14 +50,18 @@ function buildIngredientSearchSortKey(item, normalizedQuery) {
 }
 
 export default {
-  ingredients: async (_p, { restaurantId, search, limit }) => {
+  ingredients: async (_p, { restaurantId, search, limit, includeDeleted = false }) => {
     if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await purgeExpiredIngredientsByRestaurant(restaurantId);
 
     const normalizedSearch = normalizeSearchText(search);
     const maxLimit = Math.min(limit ?? 100, 500);
+    const deletedFilter = includeDeleted
+      ? { deletedAt: { $ne: null } }
+      : { deletedAt: null };
 
     if (!normalizedSearch) {
-      return Ingredient.find({ restaurantId, isActive: true })
+      return Ingredient.find({ restaurantId, isActive: true, ...deletedFilter })
         .sort({ name: 1 })
         .limit(maxLimit)
         .select({ __v: 0 })
@@ -73,6 +86,7 @@ export default {
     const candidates = await Ingredient.find({
       restaurantId,
       isActive: true,
+      ...deletedFilter,
       $or: [{ name: rx }, { sku: rx }],
     })
       .select({ __v: 0 })
@@ -95,6 +109,19 @@ export default {
   ingredient: async (_p, { id }) => {
     if (!mongoose.isValidObjectId(id)) return null;
     return Ingredient.findById(id).select({ __v: 0 }).lean({ virtuals: true });
+  },
+
+  ingredientTrash: async (_p, { restaurantId, limit = 200 }) => {
+    if (!mongoose.isValidObjectId(restaurantId)) return [];
+    await purgeExpiredIngredientsByRestaurant(restaurantId);
+    return Ingredient.find({
+      restaurantId,
+      deletedAt: { $ne: null },
+    })
+      .sort({ deletedAt: -1 })
+      .limit(Math.min(limit ?? 200, 500))
+      .select({ __v: 0 })
+      .lean({ virtuals: true });
   },
 
   /**
@@ -276,6 +303,7 @@ export default {
     // Tìm các recipe có chứa ingredientId
     const recipes = await Recipe.find({
       restaurantId,
+      isActive: true,
       "servingVariants.ingredients.ingredientId": ingredientId,
     })
       .select({ menuItemId: 1 })
@@ -296,6 +324,7 @@ export default {
     const menuItems = await MenuItem.find({
       _id: { $in: menuItemIds.map((id) => new mongoose.Types.ObjectId(id)) },
       restaurantId,
+      status: { $in: ACTIVE_MENU_ITEM_STATUSES },
     })
       .select({ __v: 0 })
       .lean({ virtuals: true });
