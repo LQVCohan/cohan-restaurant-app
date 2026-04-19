@@ -116,6 +116,8 @@ const TableManagement = () => {
   });
   const [floorForm, setFloorForm] = useState({ name: "" });
   const [vrSaving, setVrSaving] = useState(false);
+  const [tableSaving, setTableSaving] = useState(false);
+  const [tableErrors, setTableErrors] = useState({});
 
   const addTableDirty =
     !!tableForm.number.trim() ||
@@ -203,6 +205,13 @@ const TableManagement = () => {
     if (vrDraft.didRestore) return;
     setVrForm({ vrTourUrl: restaurant?.vrTourUrl || "" });
   }, [restaurant, vrDraft.didRestore]);
+
+  useEffect(() => {
+    if (!showAddTableModal) {
+      setTableSaving(false);
+      setTableErrors({});
+    }
+  }, [showAddTableModal]);
 
   const selectFloor = (floorId) => {
     setCurrentFloor(String(floorId));
@@ -320,9 +329,21 @@ const TableManagement = () => {
   };
 
   const handleSaveTable = async () => {
+    if (tableSaving) return;
     const { number, seats, floorId, area } = tableForm;
-    if (!number || !seats || !floorId)
-      return showNotification("Vui lòng điền đủ thông tin!", "error");
+    const nextErrors = {};
+    if (!number?.trim()) nextErrors.number = "Vui lòng nhập số bàn.";
+    if (!floorId) nextErrors.floorId = "Vui lòng chọn tầng cho bàn.";
+    if (!seats || Number(seats) < 1) {
+      nextErrors.seats = "Số ghế phải lớn hơn hoặc bằng 1.";
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setTableErrors(nextErrors);
+      showNotification("Vui lòng kiểm tra lại các trường bắt buộc.", "error");
+      return;
+    }
+    setTableErrors({});
+    setTableSaving(true);
     try {
       const position = findAvailablePosition(floorId);
       const existingCount = (tablesRaw || []).filter(
@@ -350,6 +371,8 @@ const TableManagement = () => {
       }
     } catch {
       showNotification("Lỗi thêm bàn!", "error");
+    } finally {
+      setTableSaving(false);
     }
   };
 
@@ -610,76 +633,139 @@ const TableManagement = () => {
       <Modal
         isOpen={showAddTableModal}
         onClose={() => addTableDraft.requestCloseWithDraft(() => setShowAddTableModal(false))}
-        title="Thêm bàn mới"
+        onBeforeClose={() => !tableSaving}
+        closeOnEscape={!tableSaving}
+        autoWrapBody={false}
       >
-        <div className="tm-form tm-form--add-table">
-          <div className="tm-form-header">
-            <h4>Thông tin bàn</h4>
-            <p>Thiết lập nhanh vị trí, số ghế và khu vực cho bàn mới.</p>
+        <Modal.Header>Thêm bàn mới</Modal.Header>
+        <Modal.Body className="tm-form tm-form--add-table">
+          <div className="tm-form-header tm-form-header--add-table">
+            <h4>Thiết lập thông tin bàn</h4>
+            <p>Điền thông tin cơ bản để tạo bàn mới trong khu vực quản lý.</p>
           </div>
-          <div className="tm-form-grid">
-            <div className="tm-field">
-              <label>Số bàn</label>
-              <input
-                value={tableForm.number}
-                onChange={(e) =>
-                  setTableForm({ ...tableForm, number: e.target.value })
-                }
-                placeholder="VD: A1, B2..."
-              />
-            </div>
-            <div className="tm-field">
-              <label>Số ghế</label>
-              <input
-                type="number"
-                value={tableForm.seats}
-                onChange={(e) =>
-                  setTableForm({ ...tableForm, seats: e.target.value })
-                }
-              />
-            </div>
-            <div className="tm-field">
-              <label>Tầng</label>
-              <select
-                value={tableForm.floorId}
-                onChange={(e) =>
-                  setTableForm({ ...tableForm, floorId: e.target.value })
-                }
-              >
-                <option value="">Chọn tầng...</option>
-                {floors.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="tm-field">
-              <label>Khu vực</label>
-              <select
-                value={tableForm.area}
-                onChange={(e) =>
-                  setTableForm({ ...tableForm, area: e.target.value })
-                }
-              >
-                <option value="standard">Trong nhà</option>
-                <option value="outdoor">Ngoài trời</option>
-                <option value="vip">VIP</option>
-              </select>
-            </div>
-            {tableForm.visualTemplate && (
-              <div className="tm-field tm-field--full">
-                <label>Mẫu 3D đã chọn</label>
-                <input value={tableForm.visualTemplate} disabled />
+          <div className="tm-form-section">
+            <div className="tm-form-section-title">Thông tin cơ bản</div>
+            <div className="tm-form-grid">
+              <div className={`tm-field ${tableErrors.number ? "is-invalid" : ""}`}>
+                <label>Số bàn *</label>
+                <input
+                  value={tableForm.number}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setTableForm({ ...tableForm, number: value });
+                    if (tableErrors.number && value.trim()) {
+                      setTableErrors((prev) => ({ ...prev, number: undefined }));
+                    }
+                  }}
+                  placeholder="VD: A1, B2..."
+                  aria-invalid={!!tableErrors.number}
+                />
+                <div className="tm-field-meta">
+                  <span className="tm-field-hint">Dùng mã ngắn, dễ nhận biết theo khu vực.</span>
+                  {tableErrors.number && (
+                    <span className="tm-field-error">{tableErrors.number}</span>
+                  )}
+                </div>
               </div>
-            )}
+              <div className={`tm-field ${tableErrors.seats ? "is-invalid" : ""}`}>
+                <label>Số ghế *</label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={tableForm.seats}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setTableForm({ ...tableForm, seats: value });
+                    if (tableErrors.seats && Number(value) >= 1) {
+                      setTableErrors((prev) => ({ ...prev, seats: undefined }));
+                    }
+                  }}
+                  aria-invalid={!!tableErrors.seats}
+                />
+                <div className="tm-field-meta">
+                  <span className="tm-field-hint">Nên khớp với sức chứa thực tế của bàn.</span>
+                  {tableErrors.seats && (
+                    <span className="tm-field-error">{tableErrors.seats}</span>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="modal-footer">
-            <Button variant="primary" onClick={handleSaveTable}>
-              Lưu
-            </Button>
+          <div className="tm-form-section">
+            <div className="tm-form-section-title">Vị trí phục vụ</div>
+            <div className="tm-form-grid">
+              <div className={`tm-field ${tableErrors.floorId ? "is-invalid" : ""}`}>
+                <label>Tầng *</label>
+                <select
+                  value={tableForm.floorId}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setTableForm({ ...tableForm, floorId: value });
+                    if (tableErrors.floorId && value) {
+                      setTableErrors((prev) => ({ ...prev, floorId: undefined }));
+                    }
+                  }}
+                  aria-invalid={!!tableErrors.floorId}
+                >
+                  <option value="">Chọn tầng...</option>
+                  {floors.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="tm-field-meta">
+                  <span className="tm-field-hint">Tầng giúp phân bổ bàn và sơ đồ chính xác.</span>
+                  {tableErrors.floorId && (
+                    <span className="tm-field-error">{tableErrors.floorId}</span>
+                  )}
+                </div>
+              </div>
+              <div className="tm-field">
+                <label>Khu vực</label>
+                <select
+                  value={tableForm.area}
+                  onChange={(e) =>
+                    setTableForm({ ...tableForm, area: e.target.value })
+                  }
+                >
+                  <option value="standard">Trong nhà</option>
+                  <option value="outdoor">Ngoài trời</option>
+                  <option value="vip">VIP</option>
+                </select>
+                <div className="tm-field-meta">
+                  <span className="tm-field-hint">Giúp lọc nhanh khi điều phối khách theo nhu cầu.</span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+          {tableForm.visualTemplate && (
+            <div className="tm-template-preview">
+              <div className="tm-template-preview__title">Mẫu 3D đã áp dụng</div>
+              <div className="tm-template-preview__value">{tableForm.visualTemplate}</div>
+              <div className="tm-template-preview__hint">
+                Số ghế, khu vực hoặc tầng có thể đã được gợi ý sẵn từ mẫu này.
+              </div>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="tm-add-table-footer">
+          <Button
+            variant="secondary"
+            onClick={() =>
+              addTableDraft.requestCloseWithDraft(() =>
+                setShowAddTableModal(false)
+              )
+            }
+            disabled={tableSaving}
+          >
+            Hủy
+          </Button>
+          <Button variant="primary" onClick={handleSaveTable} loading={tableSaving}>
+            {tableSaving ? "Đang lưu..." : "Lưu bàn"}
+          </Button>
+        </Modal.Footer>
       </Modal>
 
       {/* 3. Add Floor Modal (Stub) */}
