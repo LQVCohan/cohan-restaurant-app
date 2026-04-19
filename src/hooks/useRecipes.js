@@ -274,6 +274,10 @@ export function useRecipes(
   initialTimeSlot = null,
   initialFilters = {}
 ) {
+  const normalizeSearchInput = useCallback((value) => {
+    return String(value || "").replace(/\s+/g, " ").trim();
+  }, []);
+
   // --- like useIngredients: filters state inside hook
   const [filters, setFilters] = useState({
     search: initialFilters?.search || "",
@@ -281,6 +285,17 @@ export function useRecipes(
     timeSlot: initialTimeSlot || "",
     first: initialFilters?.first || 30,
   });
+  const [debouncedSearch, setDebouncedSearch] = useState(
+    normalizeSearchInput(initialFilters?.search)
+  );
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setDebouncedSearch(normalizeSearchInput(filters.search));
+    }, 250);
+
+    return () => clearTimeout(handle);
+  }, [filters.search, normalizeSearchInput]);
 
   // --- data state
   const [recipes, setRecipes] = useState([]);
@@ -321,8 +336,8 @@ export function useRecipes(
       const vars = {
         restaurantId,
         timeSlot: (override.timeSlot ?? filters.timeSlot) || null,
-        search: (override.search ?? filters.search)?.trim()
-          ? (override.search ?? filters.search).trim()
+        search: normalizeSearchInput(override.search ?? debouncedSearch)
+          ? normalizeSearchInput(override.search ?? debouncedSearch)
           : null,
         categoryId: (override.categoryId ?? filters.categoryId) || null,
         first: override.first ?? filters.first ?? 30,
@@ -333,7 +348,7 @@ export function useRecipes(
       setLocalError(null);
       return fetchList({ variables: vars });
     },
-    [restaurantId, filters, fetchList]
+    [restaurantId, filters, fetchList, debouncedSearch, normalizeSearchInput]
   );
 
   // auto fetch when restaurantId/filters change (like ingredient)
@@ -352,7 +367,7 @@ export function useRecipes(
     runFetch({ after: null });
   }, [
     restaurantId,
-    filters.search,
+    debouncedSearch,
     filters.categoryId,
     filters.timeSlot,
     filters.first,
@@ -390,7 +405,7 @@ export function useRecipes(
     const base = lastVarsRef.current || {
       restaurantId,
       timeSlot: filters.timeSlot || null,
-      search: filters.search?.trim() ? filters.search.trim() : null,
+      search: normalizeSearchInput(debouncedSearch) || null,
       categoryId: filters.categoryId || null,
       first: filters.first || 30,
       after: null,
@@ -420,7 +435,15 @@ export function useRecipes(
     setRecipes(merged.map(mapRowToFe));
     setPageInfo(res?.data?.menuItemsWithRecipes?.pageInfo || pageInfo);
     setTotal(res?.data?.menuItemsWithRecipes?.total ?? total);
-  }, [restaurantId, pageInfo, filters, listState.fetchMore, total]);
+  }, [
+    restaurantId,
+    pageInfo,
+    filters,
+    listState.fetchMore,
+    total,
+    debouncedSearch,
+    normalizeSearchInput,
+  ]);
 
   // ===== optimistic helpers =====
   const applyOptimisticUpsert = useCallback((menuItemId, form) => {

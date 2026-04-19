@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Recipe, MenuItem, Menu, Ingredient } from "../../../models/index.js";
+import { Recipe, MenuItem, Menu } from "../../../models/index.js";
 
 function toObjectIdOrNull(v) {
   if (!v) return null;
@@ -15,6 +15,71 @@ function toObjectIdOrNull(v) {
 
 function escapeRegex(input) {
   return String(input).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeSearchText(input) {
+  return String(input || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildUnaccentRegexFromNormalized(normalized) {
+  if (!normalized) return null;
+
+  const unaccentProbe = [...normalized]
+    .map((ch) => {
+      if (ch === "a") return "[aàáạảãâầấậẩẫăằắặẳẵ]";
+      if (ch === "e") return "[eèéẹẻẽêềếệểễ]";
+      if (ch === "i") return "[iìíịỉĩ]";
+      if (ch === "o") return "[oòóọỏõôồốộổỗơờớợởỡ]";
+      if (ch === "u") return "[uùúụủũưừứựửữ]";
+      if (ch === "y") return "[yỳýỵỷỹ]";
+      if (ch === "d") return "[dđ]";
+      if (ch === " ") return "\\s+";
+      return escapeRegex(ch);
+    })
+    .join("");
+
+  return new RegExp(unaccentProbe, "i");
+}
+
+function buildRecipeSearchSortKey({ menuItem, recipe }, normalizedQuery) {
+  const name = normalizeSearchText(menuItem?.name);
+  const description = normalizeSearchText(menuItem?.description);
+  const notes = normalizeSearchText(recipe?.notes);
+  const variantNames = Array.isArray(recipe?.servingVariants)
+    ? recipe.servingVariants.map((v) => normalizeSearchText(v?.name)).filter(Boolean)
+    : [];
+
+  if (name === normalizedQuery) return { group: 0, text: name };
+  if (name.startsWith(normalizedQuery)) return { group: 1, text: name };
+  if (name.includes(normalizedQuery)) return { group: 2, text: name };
+  if (variantNames.some((v) => v === normalizedQuery)) {
+    return { group: 3, text: variantNames.find((v) => v === normalizedQuery) };
+  }
+  if (variantNames.some((v) => v.startsWith(normalizedQuery))) {
+    return {
+      group: 4,
+      text: variantNames.find((v) => v.startsWith(normalizedQuery)),
+    };
+  }
+  if (variantNames.some((v) => v.includes(normalizedQuery))) {
+    return {
+      group: 5,
+      text: variantNames.find((v) => v.includes(normalizedQuery)),
+    };
+  }
+  if (description && description.includes(normalizedQuery)) {
+    return { group: 6, text: description };
+  }
+  if (notes && notes.includes(normalizedQuery)) {
+    return { group: 7, text: notes };
+  }
+  return null;
 }
 
 export default {
@@ -39,10 +104,11 @@ export default {
   },
 
   /**
-   * ✅ Search nâng cấp:
-   * - Search món: name/description/code/labels
-   * - Search công thức: notes, servingVariants.name, servingVariants.key
-   * - Search theo nguyên liệu: Ingredient.name/sku/category -> recipe chứa ingredientId
+   * ✅ Search cho tab Công thức:
+   * - Ưu tiên theo tên món/menu item
+   * - Hỗ trợ không dấu + không phân biệt hoa thường
+   * - Search phụ theo recipe notes + servingVariants.name
+   * - Tránh match quá rộng (code/labels/ingredient/category...)
    *
    * Output giữ nguyên shape:
    * { total, pageInfo, items: [{ menuItem, recipe }] }
@@ -109,19 +175,18 @@ export default {
 
     const safeLimit = Math.min(Math.max(first || 30, 1), 200);
 
-    // === SEARCH: menu item + recipe + ingredient ===
-    const s = search && String(search).trim() ? String(search).trim() : null;
+    // === SEARCH: menu item + recipe ===
+    const normalizedSearch = normalizeSearchText(search);
 
     let filteredMenuItemIds = null; // null = không áp filter search
 
-    if (s) {
-      const pattern = escapeRegex(s);
-      const rx = new RegExp(pattern, "i");
+    if (normalizedSearch) {
+      const rx = buildUnaccentRegexFromNormalized(normalizedSearch);
 
       // 2.1) menu item matches
       const miMatches = await MenuItem.find({
         ...qBase,
-        $or: [{ name: rx }, { description: rx }, { code: rx }, { labels: rx }],
+        $or: [{ name: rx }, { description: rx }],
       })
         .select({ _id: 1 })
         .limit(5000)
@@ -129,34 +194,10 @@ export default {
 
       const idsFromMenuItem = miMatches.map((d) => d._id);
 
-      // 2.2) ingredient matches -> lấy ingredientIds
-      const ingMatches = await Ingredient.find({
-        restaurantId,
-        isActive: true,
-        $or: [{ name: rx }, { sku: rx }, { category: rx }],
-      })
-        .select({ _id: 1 })
-        .limit(200)
-        .lean();
-
-      const ingredientIds = ingMatches.map((d) => d._id);
-
-      // 2.3) recipe matches
-      const recipeOr = [
-        { notes: rx },
-        { "servingVariants.name": rx },
-        { "servingVariants.key": rx },
-      ];
-
-      if (ingredientIds.length) {
-        recipeOr.push({
-          "servingVariants.ingredients.ingredientId": { $in: ingredientIds },
-        });
-      }
-
+      // 2.2) recipe matches
       const recipeMatches = await Recipe.find({
         restaurantId,
-        $or: recipeOr,
+        $or: [{ notes: rx }, { "servingVariants.name": rx }],
       })
         .select({ menuItemId: 1 })
         .limit(10000)
@@ -244,13 +285,27 @@ export default {
     );
 
     // 7) Build rows { menuItem, recipe }
-    const rows = items.map((mi) => ({
+    let rows = items.map((mi) => ({
       menuItem: {
         ...mi,
         id: String(mi._id),
       },
       recipe: recipeByMenuItem.get(String(mi._id)) || null,
     }));
+
+    if (normalizedSearch) {
+      rows = rows
+        .map((row) => ({
+          row,
+          rank: buildRecipeSearchSortKey(row, normalizedSearch),
+        }))
+        .filter((entry) => entry.rank !== null)
+        .sort((a, b) => {
+          if (a.rank.group !== b.rank.group) return a.rank.group - b.rank.group;
+          return String(a.rank.text || "").localeCompare(String(b.rank.text || ""), "vi");
+        })
+        .map((entry) => entry.row);
+    }
 
     const endCursor = String(items[items.length - 1]._id);
 
