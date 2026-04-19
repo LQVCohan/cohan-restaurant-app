@@ -25,6 +25,7 @@ type Supply {
   id: ID!
   restaurantId: ID!
   name: String!
+  sku: String
   category: String
   unit: Unit!
   costPerUnit: Float
@@ -59,6 +60,7 @@ type SupplyWithStock {
   id: ID!
   restaurantId: ID!
   name: String!
+  sku: String
   category: String
   unit: Unit!
   costPerUnit: Float
@@ -77,6 +79,7 @@ type SupplyWithStock {
 input CreateSupplyInput {
   restaurantId: ID!
   name: String!
+  sku: String
   category: String
   unit: Unit = unit
   costPerUnit: Float
@@ -88,6 +91,7 @@ input CreateSupplyInput {
 
 input UpdateSupplyInput {
   name: String
+  sku: String
   category: String
   unit: Unit
   costPerUnit: Float

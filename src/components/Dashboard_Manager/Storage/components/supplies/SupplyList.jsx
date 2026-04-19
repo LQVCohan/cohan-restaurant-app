@@ -393,13 +393,7 @@ function normalizeSearchText(value) {
 }
 
 function getSupplyCode(supply) {
-  return (
-    supply?.code ||
-    supply?.itemCode ||
-    supply?.item_code ||
-    supply?.sku ||
-    ""
-  );
+  return supply?.sku || "";
 }
 
 function normalizeFilterKey(value) {

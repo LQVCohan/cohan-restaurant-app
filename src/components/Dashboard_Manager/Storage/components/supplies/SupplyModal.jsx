@@ -22,6 +22,7 @@ const UNITS = [
 
 const defaultForm = {
   name: "",
+  sku: "",
   category: "Other",
   unit: "unit",
   costPerUnit: "",
@@ -35,6 +36,32 @@ const normalizeCategoryName = (value) =>
   String(value || "")
     .trim()
     .replace(/\s+/g, " ");
+
+const toFriendlySupplyError = (error) => {
+  const graphQLErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
+  const first = graphQLErrors[0];
+  const code = first?.extensions?.code;
+  const message = first?.message || error?.message || "";
+
+  if (code === "DUPLICATE_SUPPLY_CODE" || /Mã vật tư đã tồn tại/i.test(message)) {
+    return {
+      message: "Mã vật tư đã tồn tại. Vui lòng dùng mã khác.",
+      fieldErrors: { sku: "Mã vật tư đã tồn tại." },
+    };
+  }
+
+  if (code === "DUPLICATE_SUPPLY_NAME" || /đã tồn tại trong danh mục/i.test(message)) {
+    return {
+      message,
+      fieldErrors: { name: "Tên vật tư đã tồn tại trong danh mục này." },
+    };
+  }
+
+  return {
+    message: message.replace(/^GraphQL error:\s*/i, "").trim() || "Không thể lưu vật tư. Vui lòng thử lại.",
+    fieldErrors: {},
+  };
+};
 
 const SupplyModal = ({
   isOpen,
@@ -53,6 +80,7 @@ const SupplyModal = ({
   const [categoryTouched, setCategoryTouched] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState(null);
   const [aiState, setAiState] = useState("idle");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const requestIdRef = useRef(0);
 
   const [loadSuggestion] = useLazyQuery(Q_SUGGEST_SUPPLY_CATEGORY, {
@@ -87,6 +115,7 @@ const SupplyModal = ({
     if (initial) {
       setForm({
         name: initial.name ?? "",
+        sku: initial.sku ?? initial.code ?? initial.itemCode ?? initial.item_code ?? "",
         category: normalizeCategoryName(initial.category) || "Other",
         unit: initial.unit ?? "unit",
         costPerUnit: typeof initial.costPerUnit === "number" ? String(initial.costPerUnit) : "",
@@ -150,6 +179,7 @@ const SupplyModal = ({
     const base = initial
       ? {
           name: initial.name ?? "",
+          sku: initial.sku ?? initial.code ?? initial.itemCode ?? initial.item_code ?? "",
           category: normalizeCategoryName(initial.category) || "Other",
           unit: initial.unit ?? "unit",
           costPerUnit: typeof initial.costPerUnit === "number" ? String(initial.costPerUnit) : "",
@@ -178,6 +208,7 @@ const SupplyModal = ({
     isDirty,
     sanitize: (v) => ({
       name: v?.name || "",
+      sku: v?.sku || "",
       category: normalizeCategoryName(v?.category) || "Other",
       unit: v?.unit || "unit",
       costPerUnit: v?.costPerUnit ?? "",
@@ -202,9 +233,11 @@ const SupplyModal = ({
   };
 
   const handleSave = async () => {
+    if (isSubmitting) return;
     if (!validate()) return;
     const payload = {
       name: form.name.trim(),
+      sku: String(form.sku || "").trim(),
       category: normalizeCategoryName(form.category) || "Other",
       unit: form.unit || "unit",
       costPerUnit: Number(form.costPerUnit) || 0,
@@ -214,11 +247,17 @@ const SupplyModal = ({
       notes: form.notes?.trim() || "",
     };
     try {
+      setIsSubmitting(true);
       await onSubmit?.(payload);
       clearDraft();
       showNotification("Đã xóa dữ liệu nháp sau khi hoàn tất lưu.", "success", 2200);
-    } catch {
+    } catch (error) {
+      const friendly = toFriendlySupplyError(error);
+      setErrors((prev) => ({ ...prev, ...friendly.fieldErrors }));
+      showNotification(friendly.message, "error");
       // giữ draft khi submit lỗi
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -247,6 +286,17 @@ const SupplyModal = ({
               placeholder="VD: Coca-Cola 330ml"
             />
             {errors.name && <small className="sm-msg">{errors.name}</small>}
+          </label>
+
+          <label className="sm-field">
+            <span className="sm-label">Mã vật tư (code)</span>
+            <input
+              className={`sm-input ${errors.sku ? "error" : ""}`}
+              value={form.sku}
+              onChange={(e) => set({ sku: e.target.value })}
+              placeholder="VD: SUP-COCA-330"
+            />
+            {errors.sku && <small className="sm-msg">{errors.sku}</small>}
           </label>
 
           <label className="sm-field">
@@ -335,7 +385,9 @@ const SupplyModal = ({
 
       <Modal.Footer>
         <button className="sm-btn-cancel" onClick={() => requestCloseWithDraft(onClose)}>Hủy bỏ</button>
-        <button className="sm-btn-submit" onClick={handleSave}>{isEditing ? "Lưu Thay Đổi" : "Xác Nhận Tạo"}</button>
+        <button className="sm-btn-submit" onClick={handleSave} disabled={isSubmitting}>
+          {isSubmitting ? "Đang lưu..." : isEditing ? "Lưu Thay Đổi" : "Xác Nhận Tạo"}
+        </button>
       </Modal.Footer>
     </Modal>
   );

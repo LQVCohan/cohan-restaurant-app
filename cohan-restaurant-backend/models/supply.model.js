@@ -37,7 +37,17 @@ const SupplySchema = BaseSchemaModel({
   isActive: { type: Boolean, default: true },
 });
 
-// Đảm bảo mỗi nhà hàng không bị trùng tên Supply
-SupplySchema.index({ restaurantId: 1, name: 1 }, { unique: true });
+// Query/index hỗ trợ lọc theo nhà hàng + tên
+SupplySchema.index({ restaurantId: 1, name: 1 });
+// SKU unique theo nhà hàng, cho phép để trống
+SupplySchema.index(
+  { restaurantId: 1, sku: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      sku: { $exists: true, $type: "string", $ne: "" },
+    },
+  },
+);
 
 export default mongoose.model("Supply", SupplySchema);
