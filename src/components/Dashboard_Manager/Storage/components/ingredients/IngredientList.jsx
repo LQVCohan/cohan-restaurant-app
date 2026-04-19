@@ -669,8 +669,9 @@ const IngredientList = ({
         categories={ingredientCategories}
         syncLogs={ingredientCategorySyncLogs}
         onCreate={async (name) => {
-          await createIngredientCategory(name);
+          const created = await createIngredientCategory(name);
           showNotification("Đã thêm danh mục.", "success");
+          return created;
         }}
         onRename={async (id, name) => {
           await updateIngredientCategory(id, { name });

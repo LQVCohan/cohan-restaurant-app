@@ -298,10 +298,11 @@ export function useIngredients(
   const createIngredientCategory = useCallback(
     async (name) => {
       if (!restaurantId) throw new Error("restaurantId is required");
-      await createIngredientCategoryMu({
+      const res = await createIngredientCategoryMu({
         variables: { input: { restaurantId, name } },
       });
       await refetchCategories?.();
+      return res?.data?.createIngredientCategory || null;
     },
     [createIngredientCategoryMu, restaurantId, refetchCategories],
   );
