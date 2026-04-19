@@ -290,6 +290,35 @@ export function useRecipes(
   );
 
   useEffect(() => {
+    const nextTimeSlot = initialTimeSlot || "";
+    setFilters((prev) =>
+      prev.timeSlot === nextTimeSlot ? prev : { ...prev, timeSlot: nextTimeSlot }
+    );
+  }, [initialTimeSlot]);
+
+  useEffect(() => {
+    const nextCategoryId = initialFilters?.categoryId || "";
+    const nextSearch = initialFilters?.search || "";
+    const nextFirst = initialFilters?.first || 30;
+
+    setFilters((prev) => {
+      if (
+        prev.categoryId === nextCategoryId &&
+        prev.search === nextSearch &&
+        prev.first === nextFirst
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        categoryId: nextCategoryId,
+        search: nextSearch,
+        first: nextFirst,
+      };
+    });
+  }, [initialFilters?.categoryId, initialFilters?.search, initialFilters?.first]);
+
+  useEffect(() => {
     const handle = setTimeout(() => {
       setDebouncedSearch(normalizeSearchInput(filters.search));
     }, 250);

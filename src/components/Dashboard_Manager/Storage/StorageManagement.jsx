@@ -189,6 +189,29 @@ const StorageManagement = () => {
     categoryId: recipeCategoryId,
   });
 
+  const recipeCategoryOptions = useMemo(() => {
+    const map = new Map();
+
+    (recipes || []).forEach((row) => {
+      const id = String(row?.categoryId || "").trim();
+      if (!id || map.has(id)) return;
+      map.set(id, {
+        value: id,
+        label: `Danh mục ${id.slice(-6)}`,
+      });
+    });
+
+    const selectedId = String(recipeCategoryId || "").trim();
+    if (selectedId && !map.has(selectedId)) {
+      map.set(selectedId, {
+        value: selectedId,
+        label: `Danh mục ${selectedId.slice(-6)}`,
+      });
+    }
+
+    return Array.from(map.values());
+  }, [recipes, recipeCategoryId]);
+
   const reloadIngredientsAndStock = useCallback(async () => {
     await Promise.all([refetchIngredients?.(), refetchStock?.()]);
   }, [refetchIngredients, refetchStock]);
@@ -281,6 +304,7 @@ const StorageManagement = () => {
           onTimeSlotChange={setRecipeTimeSlot}
           onSearchChange={setRecipeSearch}
           onCategoryChange={setRecipeCategoryId}
+          categoryOptions={recipeCategoryOptions}
           loadMore={loadMoreRecipes}
           onAddRecipe={addRecipeHandler}
           onUpdateRecipe={updateRecipeHandler}
