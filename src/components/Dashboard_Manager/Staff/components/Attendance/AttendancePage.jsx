@@ -1,143 +1,67 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState, useContext } from "react";
+import { AuthContext } from "@/context/AuthContext";
+import useAttendanceManagement from "@/hooks/useAttendanceManagement";
 import "./Attendance.scss";
 
-// --- MOCK DATA: DANH SÁCH NHÂN VIÊN (Dùng cho Dropdown chọn nhanh) ---
-const MOCK_EMPLOYEES_LIST = [
-  { id: 1, name: "Nguyễn Văn A", code: "NV001", role: "Bếp" },
-  { id: 2, name: "Trần Thị B", code: "NV002", role: "Thu ngân" },
-  { id: 3, name: "Lê Văn C", code: "NV003", role: "Phục vụ" },
-  { id: 4, name: "Phạm Thị D", code: "NV004", role: "Quản lý" },
-  { id: 5, name: "Hoàng Văn E", code: "NV005", role: "Bếp phụ" },
-];
-
-// --- MOCK DATA: BẢNG CHẤM CÔNG HÔM NAY (Dữ liệu thực tế) ---
-const MOCK_ATTENDANCE_LOGS = [
-  {
-    id: 1,
-    name: "Nguyễn Văn A",
-    role: "Bếp trưởng",
-    shift: "08:00 - 17:00",
-    checkIn: "07:55",
-    checkOut: "17:05",
-    status: "on-time",
-    avatar: null,
-  },
-  {
-    id: 2,
-    name: "Trần Thị B",
-    role: "Thu ngân",
-    shift: "08:00 - 17:00",
-    checkIn: "08:15",
-    checkOut: null,
-    status: "late",
-    avatar: "https://i.pravatar.cc/150?u=2",
-  },
-  {
-    id: 3,
-    name: "Lê Văn C",
-    role: "Phục vụ",
-    shift: "14:00 - 22:00",
-    checkIn: null,
-    checkOut: null,
-    status: "not-checked-in",
-    avatar: null,
-  },
-  {
-    id: 4,
-    name: "Phạm Thị D",
-    role: "Quản lý",
-    shift: "08:00 - 17:00",
-    checkIn: "08:00",
-    checkOut: "16:30",
-    status: "early-leave",
-    avatar: "https://i.pravatar.cc/150?u=4",
-  },
-  {
-    id: 5,
-    name: "Hoàng Văn E",
-    role: "Bếp phụ",
-    shift: "08:00 - 17:00",
-    checkIn: "07:50",
-    checkOut: "17:00",
-    status: "on-time",
-    avatar: null,
-  },
+const STATUS_TABS = [
+  { key: "all", label: "Tất cả" },
+  { key: "late", label: "Đi muộn" },
+  { key: "early_leave", label: "Về sớm" },
+  { key: "scheduled_absent", label: "Vắng theo lịch" },
+  { key: "checked_in", label: "Đang trong ca" },
+  { key: "unscheduled_checkin", label: "Ngoài lịch" },
 ];
 
 const AttendancePage = () => {
-  // State quản lý chung
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
   const [filterStatus, setFilterStatus] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-
-  // State cho chức năng Chấm Công Nhanh
   const [quickId, setQuickId] = useState("");
   const [quickNote, setQuickNote] = useState("");
 
-  // --- 1. LOGIC THỐNG KÊ ---
-  const stats = useMemo(() => {
-    const total = MOCK_ATTENDANCE_LOGS.length;
-    const present = MOCK_ATTENDANCE_LOGS.filter(
-      (a) => a.checkIn !== null
-    ).length;
-    const late = MOCK_ATTENDANCE_LOGS.filter((a) => a.status === "late").length;
-    const absent = MOCK_ATTENDANCE_LOGS.filter(
-      (a) =>
-        a.status === "absent" ||
-        (a.status === "not-checked-in" && new Date().getHours() > 10)
-    ).length;
+  const { user } = useContext(AuthContext);
 
-    return { total, present, late, absent };
-  }, []);
+  const {
+    employees,
+    records,
+    stats,
+    loading,
+    error,
+    refetch,
+    mutateQuickAttendance,
+    mutationState,
+  } = useAttendanceManagement({
+    selectedDate,
+    status: filterStatus,
+    search: searchQuery,
+  });
 
-  // --- 2. LOGIC LỌC BẢNG ---
-  const filteredData = useMemo(() => {
-    return MOCK_ATTENDANCE_LOGS.filter((item) => {
-      const matchStatus =
-        filterStatus === "all" || item.status === filterStatus;
-      const matchSearch = item.name
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-      return matchStatus && matchSearch;
-    });
-  }, [filterStatus, searchQuery]);
+  const selectedEmployee = useMemo(
+    () => employees.find((emp) => emp.id === quickId),
+    [employees, quickId]
+  );
 
-  // --- 3. HANDLER CHẤM CÔNG NHANH ---
-  const handleQuickAction = (type) => {
-    if (!quickId) {
-      alert("⚠️ Vui lòng chọn nhân viên hoặc nhập mã NV trước!");
-      return;
-    }
-    const actionText = type === "in" ? "VÀO CA" : "TAN CA";
-    const timeNow = new Date().toLocaleTimeString("vi-VN", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const effectiveRestaurantId =
+    selectedEmployee?.primaryRestaurant?.id ||
+    user?.restaurantForStaff ||
+    user?.primaryRestaurantId ||
+    user?.primaryRestaurant?.id ||
+    null;
 
-    // Tại đây sẽ gọi API thực tế
-    alert(
-      `✅ Đã chấm công ${actionText} thành công!\n\n👤 Mã NV: ${quickId}\n⏰ Thời gian: ${timeNow}\n📝 Ghi chú: ${
-        quickNote || "Không có"
-      }`
-    );
-
-    // Reset form sau khi xong
-    setQuickId("");
-    setQuickNote("");
-  };
-
-  // --- HELPER: Status UI ---
   const getStatusBadge = (status) => {
     const config = {
-      "on-time": { label: "Đúng giờ", class: "success", icon: "✅" },
+      completed: { label: "Đúng ca", class: "success", icon: "✅" },
+      checked_in: { label: "Đang làm", class: "neutral", icon: "🟢" },
       late: { label: "Đi muộn", class: "warning", icon: "⚠️" },
-      "early-leave": { label: "Về sớm", class: "warning", icon: "🏃" },
-      "not-checked-in": { label: "Chưa vào", class: "neutral", icon: "⏳" },
-      absent: { label: "Vắng mặt", class: "danger", icon: "❌" },
+      early_leave: { label: "Về sớm", class: "warning", icon: "🏃" },
+      late_early_leave: { label: "Muộn & về sớm", class: "warning", icon: "⏱️" },
+      scheduled_absent: { label: "Vắng theo lịch", class: "danger", icon: "❌" },
+      unscheduled_checkin: { label: "Vào ca ngoài lịch", class: "neutral", icon: "🧭" },
+      unscheduled_completed: { label: "Hoàn tất ngoài lịch", class: "neutral", icon: "🧭" },
     };
-    const curr = config[status] || config["not-checked-in"];
+    const curr = config[status] || { label: status || "--", class: "neutral", icon: "⏳" };
     return (
       <span className={`status-badge ${curr.class}`}>
         {curr.icon} {curr.label}
@@ -145,19 +69,67 @@ const AttendancePage = () => {
     );
   };
 
-  const getAvatarColor = (name) => {
+  const getAvatarColor = (name = "?") => {
     const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
     return colors[name.length % colors.length];
   };
 
+  const formatTime = (value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const shiftLabel = (item) => {
+    if (item.plannedStartTime && item.plannedEndTime) {
+      return `${formatTime(item.plannedStartTime)} - ${formatTime(item.plannedEndTime)}`;
+    }
+    return item.isOffSchedule ? "Ngoài lịch" : "Chưa phân ca";
+  };
+
+  const handleQuickAction = async (type) => {
+    if (!quickId) {
+      alert("⚠️ Vui lòng chọn nhân viên!");
+      return;
+    }
+    if (!effectiveRestaurantId) {
+      alert("❌ Không xác định được nhà hàng để lưu chấm công.");
+      return;
+    }
+
+    try {
+      await mutateQuickAttendance({
+        variables: {
+          input: {
+            employeeId: quickId,
+            restaurantId: effectiveRestaurantId,
+            action: type === "in" ? "check_in" : "check_out",
+            workDate: selectedDate,
+            note: quickNote || undefined,
+            source: "quick",
+          },
+        },
+      });
+      await refetch();
+
+      const actionText = type === "in" ? "VÀO CA" : "TAN CA";
+      alert(`✅ Đã lưu chấm công ${actionText} vào database thành công.`);
+      setQuickId("");
+      setQuickNote("");
+    } catch (err) {
+      const message = err?.message || "Không thể lưu chấm công";
+      alert(`❌ Lưu chấm công thất bại: ${message}`);
+    }
+  };
+
   return (
     <div className="attendance-management-page">
-      {/* 1. PAGE HEADER */}
       <div className="page-header">
         <div className="header-left">
           <h2 className="page-title">Quản Lý Chấm Công</h2>
           <p className="page-subtitle">
-            Theo dõi thời gian làm việc và kỷ luật của nhân sự
+            Theo dõi thời gian làm việc thực tế và đối chiếu theo lịch phân ca
           </p>
         </div>
         <div className="header-controls">
@@ -171,19 +143,18 @@ const AttendancePage = () => {
         </div>
       </div>
 
-      {/* 2. STATS DASHBOARD */}
       <div className="stats-grid">
         <div className="stat-card total">
           <div className="icon-box">👥</div>
           <div className="info">
-            <span className="label">Tổng nhân sự (Ca)</span>
+            <span className="label">Tổng nhân sự (ca/ngày)</span>
             <span className="value">{stats.total}</span>
           </div>
         </div>
         <div className="stat-card present">
           <div className="icon-box">🟢</div>
           <div className="info">
-            <span className="label">Đang có mặt</span>
+            <span className="label">Đang/đã đi làm</span>
             <span className="value">{stats.present}</span>
           </div>
         </div>
@@ -191,25 +162,24 @@ const AttendancePage = () => {
           <div className="icon-box">🟠</div>
           <div className="info">
             <span className="label">Đi muộn / Về sớm</span>
-            <span className="value">{stats.late}</span>
+            <span className="value">{stats.lateOrEarly}</span>
           </div>
         </div>
         <div className="stat-card danger">
           <div className="icon-box">🔴</div>
           <div className="info">
-            <span className="label">Vắng mặt</span>
+            <span className="label">Vắng theo lịch</span>
             <span className="value">{stats.absent}</span>
           </div>
         </div>
       </div>
 
-      {/* 🔥 3. QUICK ACTION SECTION (MỚI) */}
       <div className="quick-action-section">
         <div className="quick-header">
           <div className="icon-flash">⚡</div>
           <div className="text">
-            <h4>Chấm Công Thủ Công</h4>
-            <p>Dùng khi nhân viên quên thẻ hoặc máy lỗi</p>
+            <h4>Chấm Công Nhanh</h4>
+            <p>Lưu trực tiếp vào database và cập nhật đối chiếu lịch làm việc</p>
           </div>
         </div>
 
@@ -222,9 +192,9 @@ const AttendancePage = () => {
               className="quick-select"
             >
               <option value="">-- Tìm theo tên / Mã NV --</option>
-              {MOCK_EMPLOYEES_LIST.map((emp) => (
-                <option key={emp.id} value={emp.code}>
-                  [{emp.code}] {emp.name}
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  [{emp.employeeCode || "--"}] {emp.fullName}
                 </option>
               ))}
             </select>
@@ -244,12 +214,14 @@ const AttendancePage = () => {
             <button
               className="btn-quick in"
               onClick={() => handleQuickAction("in")}
+              disabled={mutationState.loading}
             >
               🟢 VÀO CA
             </button>
             <button
               className="btn-quick out"
               onClick={() => handleQuickAction("out")}
+              disabled={mutationState.loading}
             >
               🔴 TAN CA
             </button>
@@ -257,21 +229,13 @@ const AttendancePage = () => {
         </div>
       </div>
 
-      {/* 4. MAIN TABLE SECTION */}
       <div className="table-section">
         <div className="table-toolbar">
           <div className="tabs">
-            {[
-              { key: "all", label: "Tất cả" },
-              { key: "late", label: "Đi muộn" },
-              { key: "early-leave", label: "Về sớm" },
-              { key: "not-checked-in", label: "Chưa vào ca" },
-            ].map((tab) => (
+            {STATUS_TABS.map((tab) => (
               <button
                 key={tab.key}
-                className={`tab-btn ${
-                  filterStatus === tab.key ? "active" : ""
-                }`}
+                className={`tab-btn ${filterStatus === tab.key ? "active" : ""}`}
                 onClick={() => setFilterStatus(tab.key)}
               >
                 {tab.label}
@@ -288,6 +252,8 @@ const AttendancePage = () => {
           </div>
         </div>
 
+        {error && <div className="empty-state">❌ Không tải được dữ liệu chấm công: {error.message}</div>}
+
         <div className="table-container">
           <table className="attendance-table">
             <thead>
@@ -303,61 +269,66 @@ const AttendancePage = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredData.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <div className="employee-cell">
-                      <div
-                        className="avatar"
-                        style={{
-                          backgroundImage: item.avatar
-                            ? `url(${item.avatar})`
-                            : "none",
-                          backgroundColor: !item.avatar
-                            ? getAvatarColor(item.name)
-                            : "transparent",
-                        }}
-                      >
-                        {!item.avatar && item.name.charAt(0)}
-                      </div>
-                      <div className="info">
-                        <div className="name">{item.name}</div>
-                        <div className="role">{item.role}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="shift-badge">{item.shift}</span>
-                  </td>
-                  <td>
-                    <span
-                      className={`time-text ${
-                        item.checkIn ? "bold" : "placeholder"
-                      }`}
-                    >
-                      {item.checkIn || "--:--"}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={`time-text ${
-                        item.checkOut ? "bold" : "placeholder"
-                      }`}
-                    >
-                      {item.checkOut || "--:--"}
-                    </span>
-                  </td>
-                  <td>{getStatusBadge(item.status)}</td>
-                  <td className="text-right">
-                    <button className="action-btn edit" title="Chỉnh sửa">
-                      ✏️
-                    </button>
-                    <button className="action-btn detail" title="Lịch sử">
-                      📜
-                    </button>
+              {!loading && records.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-center">
+                    Không có bản ghi chấm công cho ngày đã chọn.
                   </td>
                 </tr>
-              ))}
+              )}
+
+              {records.map((item) => {
+                const displayName = item.employeeName || "Chưa có tên";
+                const checkInText = formatTime(item.actualCheckInAt);
+                const checkOutText = formatTime(item.actualCheckOutAt);
+                return (
+                  <tr key={item.id}>
+                    <td>
+                      <div className="employee-cell">
+                        <div
+                          className="avatar"
+                          style={{
+                            backgroundImage: item.employeeAvatar
+                              ? `url(${item.employeeAvatar})`
+                              : "none",
+                            backgroundColor: !item.employeeAvatar
+                              ? getAvatarColor(displayName)
+                              : "transparent",
+                          }}
+                        >
+                          {!item.employeeAvatar && displayName.charAt(0)}
+                        </div>
+                        <div className="info">
+                          <div className="name">{displayName}</div>
+                          <div className="role">{item.employeeRole || "--"}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="shift-badge">{shiftLabel(item)}</span>
+                    </td>
+                    <td>
+                      <span className={`time-text ${checkInText ? "bold" : "placeholder"}`}>
+                        {checkInText || "--:--"}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`time-text ${checkOutText ? "bold" : "placeholder"}`}>
+                        {checkOutText || "--:--"}
+                      </span>
+                    </td>
+                    <td>{getStatusBadge(item.status)}</td>
+                    <td className="text-right">
+                      <button className="action-btn edit" title="Chỉnh sửa" disabled>
+                        ✏️
+                      </button>
+                      <button className="action-btn detail" title="Lịch sử" disabled>
+                        📜
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

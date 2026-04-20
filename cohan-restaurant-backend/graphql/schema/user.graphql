@@ -494,6 +494,45 @@ type StaffScheduleShift {
   notes: String
 }
 
+type StaffAttendanceRecord {
+  id: ID!
+  employeeId: ID!
+  employeeName: String
+  employeeCode: String
+  employeeRole: String
+  employeeAvatar: String
+  restaurantId: ID!
+  workDate: DateTime!
+  shiftId: ID
+  shiftType: String
+  plannedStartTime: DateTime
+  plannedEndTime: DateTime
+  actualCheckInAt: DateTime
+  actualCheckOutAt: DateTime
+  workedMinutes: Int!
+  hours: Float!
+  latenessMinutes: Int!
+  earlyLeaveMinutes: Int!
+  overtimeMinutes: Int!
+  status: String!
+  isOffSchedule: Boolean!
+  source: String!
+  note: String
+  approved: Boolean!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input UpsertStaffAttendanceInput {
+  employeeId: ID!
+  restaurantId: ID!
+  action: String!
+  timestamp: DateTime
+  workDate: DateTime
+  note: String
+  source: String
+}
+
 input CreateStaffShiftInput {
   employeeId: ID!
   restaurantId: ID!
@@ -603,6 +642,14 @@ type Query {
     status: String
     limit: Int = 500
   ): [StaffScheduleShift!]!
+  staffAttendanceRecords(
+    restaurantId: ID
+    startDate: DateTime!
+    endDate: DateTime!
+    employeeId: ID
+    status: String
+    search: String
+  ): [StaffAttendanceRecord!]!
   staffSchedulingAssistant(
     restaurantId: ID!
     horizonDays: Int = 2
@@ -665,4 +712,5 @@ type Mutation {
   createStaffShift(input: CreateStaffShiftInput!): StaffScheduleShift!
   updateStaffShift(shiftId: ID!, input: UpdateStaffShiftInput!): StaffScheduleShift!
   deleteStaffShift(shiftId: ID!): Boolean!
+  upsertStaffAttendance(input: UpsertStaffAttendanceInput!): StaffAttendanceRecord!
 }
