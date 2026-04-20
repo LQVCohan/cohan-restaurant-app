@@ -58,6 +58,12 @@ export default function TableActionsLiteModal({
   const [status, setStatusLocal] = useState("available");
   const [vrUrl, setVrUrl] = useState("");
   const [vrUploadStatus, setVrUploadStatus] = useState("");
+  const [vrUploadStatusTone, setVrUploadStatusTone] = useState("info");
+  const [vrUploadError, setVrUploadError] = useState("");
+  const [vrFileName, setVrFileName] = useState("");
+  const [vrFileSizeLabel, setVrFileSizeLabel] = useState("");
+  const [vrPreviewUrl, setVrPreviewUrl] = useState("");
+  const [vrUploading, setVrUploading] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
   const [selectedPromotions, setSelectedPromotions] = useState([]);
   const [quickPerk, setQuickPerk] = useState("");
@@ -217,6 +223,10 @@ export default function TableActionsLiteModal({
       !table?.vrUrl && storedImage ? `/vr/table/${table?.id}` : "";
     setVrUrl(table?.vrUrl || fallbackVrUrl);
     setVrUploadStatus("");
+    setVrUploadError("");
+    setVrFileName("");
+    setVrFileSizeLabel("");
+    setVrPreviewUrl(storedImage || "");
     setMoveLevel(table?.floorLevel ?? null);
     setSwapWithCode("");
     setMergeCodes("");
@@ -243,6 +253,15 @@ export default function TableActionsLiteModal({
     setQuickPerk("");
   }, [didRestore, isOpen, table]);
 
+  useEffect(
+    () => () => {
+      if (vrPreviewUrl && vrPreviewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(vrPreviewUrl);
+      }
+    },
+    [vrPreviewUrl]
+  );
+
   const { requestClose, onBackdropMouseDown } = useModalClosePipeline({
     isOpen,
     onClose: () => requestCloseWithDraft(() => onClose?.()),
@@ -266,10 +285,23 @@ export default function TableActionsLiteModal({
   if (!isOpen) return null;
 
   const hasStoredImage = !!loadTableVrImage(table?.id);
+  const isVrSaving = !!busy.save || vrUploading;
+  const hasVrConfigured = Boolean(vrUrl?.trim() || hasStoredImage);
+  const vrContextLabel = [
+    `Bàn ${code || table?.code || "--"}`,
+    zoneLabel?.trim() ? `Khu vực ${zoneLabel.trim()}` : null,
+    table?.floorLevel != null ? `Tầng ${table.floorLevel}` : null,
+  ]
+    .filter(Boolean)
+    .join(" • ");
 
   // ================= Actions =================
   const handleSaveBasics = async () => {
     if (!table?.id) return;
+    if (vrUploading) {
+      showNotification("Ảnh 360 đang xử lý. Vui lòng đợi xong rồi lưu.", "info");
+      return;
+    }
     setBusyKey("save", true);
     try {
       // CHÚ Ý: type chỉ cho phép: standard | vip | outdoor (không có "indoor")
@@ -300,9 +332,18 @@ export default function TableActionsLiteModal({
         cancelPolicy: cancelPolicy?.trim() || null,
       };
       await actions.updateTable(patch);
-      await onUpdated?.();
       clearDraft();
-      showNotification("Đã xóa dữ liệu nháp sau khi lưu bàn.", "success", 2200);
+      try {
+        await onUpdated?.();
+        showNotification("Đã lưu cấu hình bàn thành công.", "success", 2200);
+      } catch (syncError) {
+        console.error(syncError);
+        showNotification(
+          "Đã lưu thành công nhưng không thể đồng bộ danh sách ngay lúc này.",
+          "warning",
+          3600
+        );
+      }
     } catch (e) {
       console.error(e);
       const duplicateMessage = resolveTableDuplicateMessage(e, code?.trim());
@@ -319,29 +360,45 @@ export default function TableActionsLiteModal({
   const handleVrFileChange = (event) => {
     const file = event.target.files?.[0];
     if (!file || !table?.id) return;
+    setVrUploadError("");
+    setVrUploadStatus("");
+    setVrUploadStatusTone("info");
     if (!file.type.startsWith("image/")) {
-      alert("Vui lòng chọn file ảnh 360.");
+      setVrUploadError("Vui lòng chọn file ảnh hợp lệ để làm ảnh 360.");
       return;
     }
     const maxSizeMb = 4;
     if (file.size > maxSizeMb * 1024 * 1024) {
-      alert(`Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn ${maxSizeMb}MB.`);
+      setVrUploadError(`Ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn ${maxSizeMb}MB.`);
       return;
     }
+    if (vrPreviewUrl && vrPreviewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(vrPreviewUrl);
+    }
+    setVrFileName(file.name || "");
+    setVrFileSizeLabel(`${(file.size / (1024 * 1024)).toFixed(2)} MB`);
+    setVrPreviewUrl(URL.createObjectURL(file));
+    setVrUploading(true);
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result;
       if (typeof dataUrl !== "string") return;
       const stored = storeTableVrImage(table.id, dataUrl);
       if (!stored) {
-        alert("Không thể lưu ảnh 360. Vui lòng thử ảnh nhỏ hơn.");
+        setVrUploadError("Không thể lưu ảnh 360. Vui lòng thử ảnh nhỏ hơn.");
+        setVrUploading(false);
         return;
       }
       setVrUrl(`/vr/table/${table.id}`);
-      setVrUploadStatus("Đã lưu ảnh 360 vào Local Storage.");
+      setVrUploadStatus(
+        "Ảnh đã nạp vào phiên làm việc. Bấm “Lưu thay đổi” để lưu cấu hình chính thức."
+      );
+      setVrUploadStatusTone("info");
+      setVrUploading(false);
     };
     reader.onerror = () => {
-      alert("Không thể đọc file ảnh.");
+      setVrUploadError("Không thể đọc file ảnh.");
+      setVrUploading(false);
     };
     reader.readAsDataURL(file);
   };
@@ -349,7 +406,32 @@ export default function TableActionsLiteModal({
   const handleRemoveVrImage = () => {
     if (!table?.id) return;
     removeTableVrImage(table.id);
-    setVrUploadStatus("Đã xoá ảnh 360 khỏi Local Storage.");
+    if (vrPreviewUrl && vrPreviewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(vrPreviewUrl);
+    }
+    setVrPreviewUrl("");
+    setVrFileName("");
+    setVrFileSizeLabel("");
+    setVrUploadError("");
+    setVrUploadStatus("Đã xoá ảnh 360 khỏi phiên làm việc.");
+    setVrUploadStatusTone("info");
+  };
+
+  const handleRequestClose = (reason) => {
+    if (isVrSaving) {
+      showNotification("Đang lưu/xử lý ảnh. Vui lòng đợi hoàn tất trước khi đóng.", "info");
+      return;
+    }
+    requestClose(reason);
+  };
+
+  const handleBackdropMouseDownSafe = (event) => {
+    if (isVrSaving) {
+      event.preventDefault();
+      showNotification("Đang lưu/xử lý ảnh. Vui lòng đợi hoàn tất trước khi đóng.", "info");
+      return;
+    }
+    onBackdropMouseDown(event);
   };
 
   const handleChangeStatus = async (next) => {
@@ -580,7 +662,7 @@ export default function TableActionsLiteModal({
 
   // ================= Render =================
   return createPortal(
-    <div className="talite-backdrop" onMouseDown={onBackdropMouseDown}>
+    <div className="talite-backdrop" onMouseDown={handleBackdropMouseDownSafe}>
       <div
         className="talite-modal"
         role="dialog"
@@ -597,7 +679,12 @@ export default function TableActionsLiteModal({
               Thiết lập thông tin, VR và ưu đãi đi kèm cho bàn.
             </p>
           </div>
-          <button className="talite-close" onClick={() => requestClose("x")} aria-label="Đóng">
+          <button
+            className="talite-close"
+            onClick={() => handleRequestClose("x")}
+            aria-label="Đóng"
+            disabled={isVrSaving}
+          >
             ×
           </button>
         </div>
@@ -745,56 +832,130 @@ export default function TableActionsLiteModal({
                   <input
                     className="talite-input"
                     value={vrUrl}
-                    onChange={(e) => setVrUrl(e.target.value)}
+                    onChange={(e) => {
+                      setVrUrl(e.target.value);
+                      if (vrUploadError) setVrUploadError("");
+                    }}
                     placeholder="https://... hoặc /vr/table/123"
                   />
+                  <div className="hint">
+                    {vrContextLabel}. Dán link nếu dùng VR bên ngoài, hoặc tải
+                    ảnh 360 ở bước dưới.
+                  </div>
+                </div>
+                <div className={`talite-vr-state ${hasVrConfigured ? "ready" : "pending"}`}>
+                  <strong>Trạng thái cấu hình:</strong>{" "}
+                  {hasVrConfigured
+                    ? "Đã có nguồn VR (link hoặc ảnh 360)."
+                    : "Chưa có nguồn VR cho bàn này."}
                 </div>
                 <div className="talite-upload">
-                  <label className="talite-label">Tải ảnh 360°</label>
-                  <input
-                    className="talite-input"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleVrFileChange}
-                  />
-                  <div className="hint">
-                    Ảnh 360 được lưu ở Local Storage (máy hiện tại). Nên dùng
-                    ảnh nhỏ hơn 4MB để tránh đầy bộ nhớ trình duyệt.
+                  <div className="talite-upload-header">
+                    <div>
+                      <label className="talite-label">Tải ảnh 360°</label>
+                      <p className="hint">
+                        Chọn ảnh panorama để đại diện cho bàn này. Khuyến nghị
+                        tỉ lệ ngang rộng, dung lượng dưới 4MB.
+                      </p>
+                    </div>
+                    <span className="talite-step-chip">Bước 1</span>
                   </div>
-                  {vrUploadStatus && (
-                    <div className="hint">{vrUploadStatus}</div>
+                  <label className="talite-file-picker">
+                    <input
+                      className="talite-file-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleVrFileChange}
+                      disabled={vrUploading}
+                    />
+                    <span className="btn ghost">
+                      Chọn ảnh 360
+                    </span>
+                    <span className="talite-file-name">
+                      {vrFileName || "Chưa chọn tệp nào"}
+                    </span>
+                  </label>
+                  {!!vrFileSizeLabel && (
+                    <div className="hint">Dung lượng tệp: {vrFileSizeLabel}</div>
                   )}
-                  {hasStoredImage && (
+                  {vrPreviewUrl ? (
+                    <div className="talite-vr-preview-wrap">
+                      <div className="talite-vr-preview-head">
+                        <span className="talite-step-chip">Bước 2</span>
+                        <span>Xem trước ảnh 360 đã chọn</span>
+                      </div>
+                      <img
+                        className="talite-vr-preview"
+                        src={vrPreviewUrl}
+                        alt={`Ảnh 360 xem trước cho bàn ${code || table?.code || ""}`}
+                      />
+                    </div>
+                  ) : (
+                    <div className="talite-vr-empty">
+                      Chưa có ảnh xem trước. Hãy chọn ảnh để kiểm tra trước khi
+                      lưu.
+                    </div>
+                  )}
+                  {vrUploadError && (
+                    <div className="talite-vr-feedback error">{vrUploadError}</div>
+                  )}
+                  {vrUploadStatus && (
+                    <div className={`talite-vr-feedback ${vrUploadStatusTone}`}>
+                      {vrUploadStatus}
+                    </div>
+                  )}
+                  {!hasVrConfigured && !vrUploadError && (
+                    <div className="talite-vr-feedback warn">
+                      Bạn chưa gắn link VR hoặc ảnh 360 cho bàn này.
+                    </div>
+                  )}
+                  <div className="talite-vr-inline-actions">
+                    {hasStoredImage && (
+                      <button
+                        className="btn ghost"
+                        type="button"
+                        onClick={handleRemoveVrImage}
+                        disabled={vrUploading}
+                      >
+                        Xoá ảnh 360 đã lưu
+                      </button>
+                    )}
                     <button
                       className="btn ghost"
                       type="button"
-                      onClick={handleRemoveVrImage}
+                      onClick={() => {
+                        if (!vrUrl) {
+                          setVrUploadError("Chưa có link VR để mở thử.");
+                          return;
+                        }
+                        window.open(vrUrl, "_blank", "noopener,noreferrer");
+                      }}
+                      disabled={!vrUrl || vrUploading}
                     >
-                      Xoá ảnh 360 đã lưu
+                      Mở VR bàn
                     </button>
-                  )}
-                </div>
-                <div className="talite-vr-actions">
-                  <button
-                    className="btn ghost"
-                    type="button"
-                    onClick={() => {
-                      if (!vrUrl) return alert("Chưa có link VR.");
-                      window.open(vrUrl, "_blank", "noopener,noreferrer");
-                    }}
-                  >
-                    Mở VR bàn
-                  </button>
+                  </div>
+                  <div className="talite-vr-next-step">
+                    <span className="talite-step-chip">Bước 3</span>
+                    <span>
+                      Sau khi kiểm tra preview, bấm <b>Lưu thay đổi</b> để cập
+                      nhật cấu hình bàn.
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
             <div className="actions-end">
               <button
                 className="btn primary"
-                disabled={busy.save}
+                disabled={isVrSaving}
                 onClick={handleSaveBasics}
               >
-                {busy.save ? "Đang lưu…" : "Lưu thay đổi"}
+                {busy.save
+                  ? "Đang lưu…"
+                  : vrUploading
+                    ? "Đang xử lý ảnh…"
+                    : "Lưu thay đổi"}
               </button>
             </div>
           </div>
@@ -1180,15 +1341,19 @@ export default function TableActionsLiteModal({
         {/* Footer */}
         <div className="talite-footer">
           <div className="actions">
-            <button className="btn" onClick={() => requestClose("cancel")}>
+            <button className="btn" onClick={() => handleRequestClose("cancel")} disabled={isVrSaving}>
               Đóng
             </button>
             <button
               className="btn primary"
               onClick={handleSaveBasics}
-              disabled={busy.save}
+              disabled={isVrSaving}
             >
-              {busy.save ? "Đang lưu…" : "Lưu thay đổi"}
+              {busy.save
+                ? "Đang lưu…"
+                : vrUploading
+                  ? "Đang xử lý ảnh…"
+                  : "Lưu thay đổi"}
             </button>
           </div>
         </div>
@@ -1222,7 +1387,27 @@ export default function TableActionsLiteModal({
         .talite-vr-title{font-weight:700;color:#0f172a}
         .talite-vr-sub{font-size:12px;color:#64748b}
         .talite-vr-badge{background:#fff;border:1px solid #b89365;color:#b89365;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700}
+        .talite-vr-state{font-size:12px;border-radius:8px;padding:8px 10px;border:1px solid}
+        .talite-vr-state.ready{background:#ecfdf5;border-color:#86efac;color:#166534}
+        .talite-vr-state.pending{background:#fff7ed;border-color:#fdba74;color:#9a3412}
         .talite-upload{display:flex;flex-direction:column;gap:6px;background:#fff;border:1px dashed #e2e8f0;border-radius:10px;padding:10px}
+        .talite-upload-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+        .talite-step-chip{display:inline-flex;align-items:center;border-radius:999px;background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;padding:2px 8px;font-size:11px;font-weight:700}
+        .talite-file-picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid #e2e8f0;border-radius:8px;padding:8px;background:#f8fafc;cursor:pointer}
+        .talite-file-input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+        .talite-file-name{font-size:12px;color:#334155;font-weight:600}
+        .talite-vr-preview-wrap{display:flex;flex-direction:column;gap:8px;border:1px solid #e2e8f0;border-radius:10px;padding:8px;background:#fff}
+        .talite-vr-preview-head{display:flex;align-items:center;gap:8px;font-size:12px;color:#475569;font-weight:600}
+        .talite-vr-preview{width:100%;height:180px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;background:#f8fafc}
+        .talite-vr-empty{border:1px dashed #cbd5e1;border-radius:8px;padding:10px;font-size:12px;color:#64748b;background:#f8fafc}
+        .talite-vr-feedback{font-size:12px;border-radius:8px;padding:8px 10px;border:1px solid}
+        .talite-vr-feedback.success{background:#ecfdf5;border-color:#6ee7b7;color:#047857}
+        .talite-vr-feedback.info{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+        .talite-vr-feedback.error{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+        .talite-vr-feedback.warn{background:#fffbeb;border-color:#fde68a;color:#92400e}
+        .talite-vr-inline-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+        .talite-vr-next-step{display:flex;align-items:center;gap:8px;font-size:12px;color:#475569;border-top:1px dashed #e2e8f0;padding-top:8px}
+        .btn:disabled{opacity:.6;cursor:not-allowed}
         .talite-vr-actions{display:flex;justify-content:flex-end}
         .talite-promo-box{grid-column:1/-1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
         .talite-promo-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}

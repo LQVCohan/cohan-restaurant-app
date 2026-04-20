@@ -142,7 +142,13 @@ const TableManagement = () => {
     tableForm.area !== "standard" ||
     !!tableForm.visualTemplate;
   const floorDirty = !!floorForm.name.trim();
-  const vrDirty = !!(vrForm.vrTourUrl || "").trim();
+  const normalizeVrTourUrl = (value) => {
+    const normalized = String(value || "").trim();
+    return normalized;
+  };
+  const vrInitialUrl = normalizeVrTourUrl(restaurant?.vrTourUrl);
+  const vrCurrentUrl = normalizeVrTourUrl(vrForm.vrTourUrl);
+  const vrDirty = vrCurrentUrl !== vrInitialUrl;
 
   const addTableDraft = useModalDraft({
     enabled: showAddTableModal,
@@ -448,10 +454,14 @@ const TableManagement = () => {
 
   const handleSaveRestaurantVr = async () => {
     if (!restaurantId) return;
+    if (!vrDirty) {
+      showNotification("Không có thay đổi để lưu.", "info");
+      return;
+    }
     setVrSaving(true);
     try {
       await updateRestaurant(restaurantId, {
-        vrTourUrl: vrForm.vrTourUrl?.trim() || null,
+        vrTourUrl: vrCurrentUrl || null,
       });
       await refetchRestaurant?.();
       vrDraft.clearDraft();
@@ -958,9 +968,9 @@ const TableManagement = () => {
                     variant="secondary"
                     size="sm"
                     onClick={() => {
-                      if (vrForm.vrTourUrl) {
+                      if (vrCurrentUrl) {
                         window.open(
-                          vrForm.vrTourUrl,
+                          vrCurrentUrl,
                           "_blank",
                           "noopener,noreferrer"
                         );
@@ -1001,7 +1011,11 @@ const TableManagement = () => {
             </div>
           </div>
           <div className="modal-footer">
-            <Button variant="primary" onClick={handleSaveRestaurantVr}>
+            <Button
+              variant="primary"
+              onClick={handleSaveRestaurantVr}
+              disabled={vrSaving || !vrDirty}
+            >
               {vrSaving ? "Đang lưu..." : "Lưu VR"}
             </Button>
           </div>
