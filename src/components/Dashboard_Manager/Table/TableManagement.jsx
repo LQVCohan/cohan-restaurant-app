@@ -90,7 +90,7 @@ const TableManagement = () => {
     () =>
       (tablesRaw || []).map((t) => ({
         id: String(t.id),
-        number: t.code || "",
+        number: String(t.code || ""),
         seats: Number(t.capacity ?? 0),
         status: t.status || "available",
         floorId: t.floorId != null ? String(t.floorId) : null,
@@ -297,19 +297,42 @@ const TableManagement = () => {
     return { x: startX, y: startY };
   };
 
+  const normalizeSearch = (value) =>
+    String(value || "")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+
   const getFilteredTables = () => {
     let filtered = [...tablesMapped];
     if (currentFloor)
       filtered = filtered.filter(
         (t) => String(t.floorId) === String(currentFloor)
       );
-    if (searchQuery)
-      filtered = filtered.filter((t) =>
-        t.number.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+
+    const normalizedQuery = normalizeSearch(searchQuery);
+    if (normalizedQuery) {
+      const compactQuery = normalizedQuery.replace(/\s+/g, "");
+      filtered = filtered.filter((t) => {
+        const normalizedNumber = normalizeSearch(t.number);
+        const compactNumber = normalizedNumber.replace(/\s+/g, "");
+        return (
+          normalizedNumber.includes(normalizedQuery) ||
+          compactNumber.includes(compactQuery)
+        );
+      });
+    }
+
     if (currentFilters.status)
       filtered = filtered.filter((t) => t.status === currentFilters.status);
-    return filtered.sort((a, b) => a.number.localeCompare(b.number));
+    return filtered.sort((a, b) =>
+      String(a.number || "").localeCompare(String(b.number || ""), "vi", {
+        numeric: true,
+        sensitivity: "base",
+      })
+    );
   };
 
   // --- Handlers ---
@@ -559,7 +582,7 @@ const TableManagement = () => {
           <div className="tm-filter-box">
             <input
               type="text"
-              placeholder="🔍 Tìm số bàn..."
+              placeholder="🔍 Tìm mã/số bàn..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
