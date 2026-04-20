@@ -117,6 +117,73 @@ const safeJsonParse = (raw) => {
   }
 };
 
+const rectsOverlap = (a, b, gap = 0) =>
+  a.x < b.x + b.w + gap &&
+  a.x + a.w + gap > b.x &&
+  a.y < b.y + b.h + gap &&
+  a.y + a.h + gap > b.y;
+
+const normalizeRect = (item = {}) => ({
+  x: Number(item.x) || 0,
+  y: Number(item.y) || 0,
+  w: Math.max(20, Number(item.w) || 60),
+  h: Math.max(20, Number(item.h) || 60),
+});
+
+const expandRect = (rect, extra = 0) => ({
+  x: rect.x - extra,
+  y: rect.y - extra,
+  w: rect.w + extra * 2,
+  h: rect.h + extra * 2,
+});
+
+const findNearestFreeRect = ({
+  baseRect,
+  occupiedRects,
+  padding = 24,
+  step = 30,
+  maxRing = 14,
+}) => {
+  const collides = (candidate) =>
+    occupiedRects.some((rect) => rectsOverlap(candidate, rect, 0));
+
+  const baseExpanded = expandRect(baseRect, padding);
+  if (!collides(baseExpanded)) return baseRect;
+
+  for (let ring = 1; ring <= maxRing; ring += 1) {
+    for (let dx = -ring; dx <= ring; dx += 1) {
+      for (let dy = -ring; dy <= ring; dy += 1) {
+        if (Math.abs(dx) !== ring && Math.abs(dy) !== ring) continue;
+        const candidate = {
+          ...baseRect,
+          x: baseRect.x + dx * step,
+          y: baseRect.y + dy * step,
+        };
+        if (!collides(expandRect(candidate, padding))) return candidate;
+      }
+    }
+  }
+  return baseRect;
+};
+
+const getBounds = (rects = []) => {
+  if (!rects.length) return null;
+  return rects.reduce(
+    (acc, rect) => ({
+      minX: Math.min(acc.minX, rect.x),
+      minY: Math.min(acc.minY, rect.y),
+      maxX: Math.max(acc.maxX, rect.x + rect.w),
+      maxY: Math.max(acc.maxY, rect.y + rect.h),
+    }),
+    {
+      minX: rects[0].x,
+      minY: rects[0].y,
+      maxX: rects[0].x + rects[0].w,
+      maxY: rects[0].y + rects[0].h,
+    },
+  );
+};
+
 const normalizeLayoutFromAi = (layout, payload = {}) => {
   const tableCount = Math.max(1, Number(payload?.tableCount || 8));
   const prefix = String(payload?.codePrefix || "AI").trim() || "AI";
@@ -168,80 +235,131 @@ const fallbackSmartLayout = (payload = {}) => {
   );
   const startX = Number(payload?.startX || 0);
   const startY = Number(payload?.startY || 0);
+  const now = Date.now();
+  const currentItems = Array.isArray(payload?.currentItems)
+    ? payload.currentItems
+    : [];
+  const occupiedRects = currentItems
+    .filter((item) => item && Number.isFinite(Number(item.x)) && Number.isFinite(Number(item.y)))
+    .map((item) =>
+      normalizeRect({
+        x: Number(item.x),
+        y: Number(item.y),
+        w: Number(item.w) || (item.isRealTable ? 60 : 80),
+        h: Number(item.h) || (item.isRealTable ? 60 : 80),
+      }),
+    );
 
-  const tables = Array.from({ length: tableCount }).map((_, idx) => ({
-    code: `${prefix}-${idx + 1}`,
-    x: startX + (idx % 4) * 120,
-    y: startY + Math.floor(idx / 4) * 120,
-    rotation: 0,
-    capacity: 4,
-    type: "standard",
-  }));
+  const estimatedRows = Math.max(1, Math.round(Math.sqrt(tableCount / 1.6)));
+  const estimatedCols = Math.max(1, Math.ceil(tableCount / estimatedRows));
+  const spacingX = 118;
+  const spacingY = 104;
+  const laneEvery = 3;
+  const tables = [];
+
+  for (let idx = 0; idx < tableCount; idx += 1) {
+    const row = Math.floor(idx / estimatedCols);
+    const col = idx % estimatedCols;
+    const laneOffset = Math.floor(row / laneEvery) * 34;
+    const staggerOffset = row % 2 === 0 ? 0 : Math.round(spacingX * 0.34);
+    const baseRect = {
+      x: Math.round(startX + col * spacingX + staggerOffset),
+      y: Math.round(startY + row * spacingY + laneOffset),
+      w: 60,
+      h: 60,
+    };
+    const fitted = findNearestFreeRect({
+      baseRect,
+      occupiedRects,
+      padding: 20,
+      step: 28,
+      maxRing: 16,
+    });
+    occupiedRects.push(expandRect(fitted, 16));
+    tables.push({
+      code: `${prefix}-${idx + 1}`,
+      x: fitted.x,
+      y: fitted.y,
+      rotation: 0,
+      capacity: 4,
+      type: "standard",
+    });
+  }
 
   const decor = [];
+  const tableBounds = getBounds(tables.map((table) => normalizeRect({ ...table, w: 60, h: 60 }))) || {
+    minX: startX,
+    minY: startY,
+    maxX: startX + 420,
+    maxY: startY + 300,
+  };
+  const placeDecor = (id, config) => {
+    const fitted = findNearestFreeRect({
+      baseRect: normalizeRect(config),
+      occupiedRects,
+      padding: 18,
+      step: 26,
+      maxRing: 10,
+    });
+    occupiedRects.push(expandRect(fitted, 12));
+    decor.push({
+      id,
+      ...config,
+      x: fitted.x,
+      y: fitted.y,
+      isRealTable: false,
+    });
+  };
+
   if (selected.has("wall")) {
-    decor.push(
-      {
-        id: `ai_wall_${Date.now()}_1`,
-        type: "wall",
-        x: startX - 80,
-        y: startY - 60,
-        w: 640,
-        h: 10,
-        rotation: 0,
-        label: "Tường",
-        isRealTable: false,
-      },
-      {
-        id: `ai_wall_${Date.now()}_2`,
-        type: "wall",
-        x: startX - 80,
-        y: startY + 420,
-        w: 640,
-        h: 10,
-        rotation: 0,
-        label: "Tường",
-        isRealTable: false,
-      },
-    );
+    placeDecor(`ai_wall_${now}_1`, {
+      type: "wall",
+      x: tableBounds.minX - 80,
+      y: tableBounds.minY - 70,
+      w: Math.max(640, tableBounds.maxX - tableBounds.minX + 160),
+      h: 10,
+      rotation: 0,
+      label: "Tường",
+    });
+    placeDecor(`ai_wall_${now}_2`, {
+      type: "wall",
+      x: tableBounds.minX - 80,
+      y: tableBounds.maxY + 58,
+      w: Math.max(640, tableBounds.maxX - tableBounds.minX + 160),
+      h: 10,
+      rotation: 0,
+      label: "Tường",
+    });
   }
   if (selected.has("plant")) {
-    decor.push(
-      {
-        id: `ai_plant_${Date.now()}_1`,
-        type: "plant",
-        x: startX - 40,
-        y: startY + 40,
-        w: 40,
-        h: 40,
-        rotation: 0,
-        label: "Cây",
-        isRealTable: false,
-      },
-      {
-        id: `ai_plant_${Date.now()}_2`,
-        type: "plant",
-        x: startX + 520,
-        y: startY + 280,
-        w: 40,
-        h: 40,
-        rotation: 0,
-        label: "Cây",
-        isRealTable: false,
-      },
-    );
+    placeDecor(`ai_plant_${now}_1`, {
+      type: "plant",
+      x: tableBounds.minX - 56,
+      y: tableBounds.minY + 18,
+      w: 40,
+      h: 40,
+      rotation: 0,
+      label: "Cây",
+    });
+    placeDecor(`ai_plant_${now}_2`, {
+      type: "plant",
+      x: tableBounds.maxX + 28,
+      y: tableBounds.maxY - 52,
+      w: 40,
+      h: 40,
+      rotation: 0,
+      label: "Cây",
+    });
   }
   if (selected.has("stairs")) {
-    decor.push({
-      id: `ai_stairs_${Date.now()}`,
+    placeDecor(`ai_stairs_${now}`, {
       type: "stairs",
-      x: startX + 500,
-      y: startY - 20,
+      x: tableBounds.maxX + 20,
+      y: tableBounds.minY - 10,
       w: 100,
       h: 60,
       rotation: 0,
       label: "Cầu thang",
-      isRealTable: false,
     });
   }
   const maybe = [
@@ -255,12 +373,10 @@ const fallbackSmartLayout = (payload = {}) => {
   let offset = 0;
   for (const [key, base] of maybe) {
     if (!selected.has(key)) continue;
-    decor.push({
-      id: `ai_${key}_${Date.now()}_${offset}`,
-      x: startX + 480,
-      y: startY + offset * 72,
+    placeDecor(`ai_${key}_${now}_${offset}`, {
+      x: tableBounds.maxX + 28,
+      y: tableBounds.minY + offset * 78,
       rotation: 0,
-      isRealTable: false,
       ...base,
     });
     offset += 1;
@@ -270,25 +386,23 @@ const fallbackSmartLayout = (payload = {}) => {
 };
 
 export const generateSmartFloorLayout = async (payload = {}) => {
-  const selected = payload?.selectedComponents || [];
-  const useAiModel = selected.length >= 3;
-  if (useAiModel) {
-    const prompt = [
-      "Bạn là trợ lý thiết kế sơ đồ nhà hàng.",
-      "Trả về JSON thuần với shape {tables:[], decor:[]}.",
-      "tables gồm: code,x,y,rotation,capacity,type.",
-      "decor gồm: type,x,y,w,h,rotation,label.",
-      "Không trả markdown.",
-      `Yêu cầu: ${JSON.stringify(payload)}`,
-      `Thiết kế đẹp, chuẩn logic và các thành phần nằm đúng vị trí, không chồng lấn.`,
-      `phải phủ tường bao trọn các bàn.`,
-      `phải có đủ cửa ra vào và cầu thang nếu có.`,
-    ].join("\n");
+  const prompt = [
+    "Bạn là trợ lý thiết kế sơ đồ nhà hàng.",
+    "Trả về JSON thuần với shape {tables:[], decor:[]}.",
+    "tables gồm: code,x,y,rotation,capacity,type.",
+    "decor gồm: type,x,y,w,h,rotation,label.",
+    "Không trả markdown.",
+    "Ưu tiên không chồng lấn bàn với item hiện có; giữ lối đi tương đối thông thoáng.",
+    "Nếu có ít thành phần vẫn phải tạo bố cục cân đối, tránh dồn bàn vào một góc.",
+    `Yêu cầu: ${JSON.stringify(payload)}`,
+  ].join("\n");
 
-    const ai = await callOpenAI(prompt);
-    const parsed = safeJsonParse(ai);
-    if (parsed) {
-      return normalizeLayoutFromAi(parsed, payload);
+  const ai = await callOpenAI(prompt);
+  const parsed = safeJsonParse(ai);
+  if (parsed) {
+    const normalized = normalizeLayoutFromAi(parsed, payload);
+    if (Array.isArray(normalized?.tables) && normalized.tables.length > 0) {
+      return normalized;
     }
   }
   return fallbackSmartLayout(payload);
