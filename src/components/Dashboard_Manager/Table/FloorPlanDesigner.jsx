@@ -154,6 +154,8 @@ const PALETTE_ITEMS = [
 ];
 
 const FloorPlanDesigner = () => {
+  const MIN_ITEM_SIZE = 20;
+
   const { restaurantId } = useParams();
   const navigate = useNavigate();
   const { showNotification } = useNotification();
@@ -218,7 +220,7 @@ const FloorPlanDesigner = () => {
   const dragTarget = useRef(null);
   const startMouse = useRef({ x: 0, y: 0 });
   const startView = useRef({ x: 0, y: 0 });
-  const startItem = useRef({ x: 0, y: 0 });
+  const startItem = useRef({ x: 0, y: 0, w: 0, h: 0 });
   const containerRef = useRef(null);
   const savedSnapshotRef = useRef({ decor: new Map(), tables: new Map() });
   const historyRef = useRef([]);
@@ -749,8 +751,19 @@ const FloorPlanDesigner = () => {
       showNotification(lockMessage || "Không thể chỉnh sửa sơ đồ.", "warning");
       return;
     }
-    if (!tableForm.code.trim()) {
+    const normalizedCode = tableForm.code.trim();
+    if (!normalizedCode) {
       showNotification("Vui lòng nhập mã bàn.", "warning");
+      return;
+    }
+    const hasDuplicateCode = items.some(
+      (item) =>
+        item.isRealTable &&
+        String(item.code || item.label || "").trim().toUpperCase() ===
+          normalizedCode.toUpperCase()
+    );
+    if (hasDuplicateCode) {
+      showNotification("Mã bàn đã tồn tại trên sơ đồ hiện tại.", "warning");
       return;
     }
     const existingTables = items.filter((i) => i.isRealTable);
@@ -762,13 +775,45 @@ const FloorPlanDesigner = () => {
       startX: -view.x + centerX / view.scale,
       startY: -view.y + centerY / view.scale,
     });
+
+    const localTableItem = {
+      id: `tmp_table_${Date.now()}`,
+      type: "table",
+      x: Math.round(position.x),
+      y: Math.round(position.y),
+      w: 60,
+      h: 60,
+      rotation: 0,
+      label: normalizedCode,
+      code: normalizedCode,
+      capacity: Number(tableForm.capacity) || 4,
+      tableType: tableForm.type,
+      isRealTable: true,
+      isLocalOnly: true,
+    };
+
+    if (hasPendingChanges) {
+      setItems((prev) => {
+        pushHistory(prev);
+        return [...prev, localTableItem];
+      });
+      setSelectedId(localTableItem.id);
+      setShowAddTableModal(false);
+      setTableForm({ code: "", capacity: 4, type: "standard" });
+      showNotification(
+        `Đã thêm bàn ${normalizedCode} vào bản nháp. Nhấn Lưu để ghi nhận toàn bộ thay đổi.`,
+        "success"
+      );
+      return true;
+    }
+
     try {
       await createTable({
         variables: {
           input: {
             restaurantId,
             floorId: activeFloorId,
-            code: tableForm.code.trim(),
+            code: normalizedCode,
             capacity: Number(tableForm.capacity) || 4,
             type: tableForm.type,
             status: "available",
@@ -782,7 +827,7 @@ const FloorPlanDesigner = () => {
       });
       await refetch();
       showNotification(
-        `Đã thêm bàn ${tableForm.code} ở tầng đang chọn. Hãy kiểm tra vị trí nếu cần.`,
+        `Đã thêm bàn ${normalizedCode} ở tầng đang chọn. Hãy kiểm tra vị trí nếu cần.`,
         "success"
       );
       setShowAddTableModal(false);
@@ -799,6 +844,68 @@ const FloorPlanDesigner = () => {
       return;
     }
     setShowAiModal(true);
+  };
+
+  const sortTablesByCode = (tableA, tableB) => {
+    const codeA = String(tableA?.code || tableA?.label || "").trim();
+    const codeB = String(tableB?.code || tableB?.label || "").trim();
+    return codeA.localeCompare(codeB, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+  };
+
+  const pickNamingPattern = (codes, fallbackPrefix = "AI") => {
+    const stats = new Map();
+    let best = null;
+
+    codes.forEach((rawCode) => {
+      const cleaned = String(rawCode || "").trim().toUpperCase();
+      if (!cleaned) return;
+      const match = cleaned.match(/^([A-Z]+)([-_ ]?)(\d+)$/);
+      if (!match) return;
+      const [, prefix, separator, numText] = match;
+      const key = `${prefix}|${separator || ""}`;
+      const entry = stats.get(key) || {
+        prefix,
+        separator: separator || "",
+        count: 0,
+        maxNumber: 0,
+      };
+      entry.count += 1;
+      entry.maxNumber = Math.max(entry.maxNumber, Number(numText) || 0);
+      stats.set(key, entry);
+      if (
+        !best ||
+        entry.count > best.count ||
+        (entry.count === best.count && entry.maxNumber > best.maxNumber)
+      ) {
+        best = entry;
+      }
+    });
+
+    if (best) return best;
+
+    return {
+      prefix: String(fallbackPrefix || "AI")
+        .trim()
+        .toUpperCase()
+        .replace(/\s+/g, "") || "AI",
+      separator: "-",
+      count: 0,
+      maxNumber: 0,
+    };
+  };
+
+  const generateSequentialCode = (usedCodes, pattern, offset = 0) => {
+    let candidateNumber = pattern.maxNumber + 1 + offset;
+    let candidate = `${pattern.prefix}${pattern.separator}${candidateNumber}`;
+    while (usedCodes.has(candidate.toUpperCase())) {
+      candidateNumber += 1;
+      candidate = `${pattern.prefix}${pattern.separator}${candidateNumber}`;
+    }
+    usedCodes.add(candidate.toUpperCase());
+    return candidate;
   };
 
   const handleGenerateSmartLayout = async () => {
@@ -830,32 +937,47 @@ const FloorPlanDesigner = () => {
     ].filter(Boolean);
 
     let layoutPayload = null;
-    if (selectedComponents.length >= 3) {
-      try {
-        const res = await fetch(`${apiBase}/api/ai/floor/generate-layout`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tableCount: aiForm.tableCount,
-            codePrefix: aiForm.codePrefix,
-            selectedComponents,
-            startX,
-            startY,
-            floorId: activeFloorId,
-            restaurantId,
-          }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          layoutPayload = data?.layout || null;
-        }
-      } catch (err) {
-        console.error(err);
+    try {
+      const res = await fetch(`${apiBase}/api/ai/floor/generate-layout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tableCount: aiForm.tableCount,
+          codePrefix: aiForm.codePrefix,
+          selectedComponents,
+          startX,
+          startY,
+          floorId: activeFloorId,
+          restaurantId,
+          currentItems: items.map((item) => ({
+            id: item.id,
+            type: item.type,
+            x: item.x,
+            y: item.y,
+            w: item.w,
+            h: item.h,
+            isRealTable: item.isRealTable,
+          })),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        layoutPayload = data?.layout || null;
       }
+    } catch (err) {
+      console.error(err);
     }
 
     const generatedTables = layoutPayload?.tables || [];
     const generatedDecor = layoutPayload?.decor || [];
+
+    const existingRealTables = items
+      .filter((item) => item.isRealTable && !item.isLocalOnly)
+      .sort(sortTablesByCode);
+    const existingCodes = existingRealTables
+      .map((item) => String(item.code || item.label || "").trim())
+      .filter(Boolean);
+    const namingPattern = pickNamingPattern(existingCodes, aiForm.codePrefix);
 
     const usedCodes = new Set(
       items
@@ -875,17 +997,28 @@ const FloorPlanDesigner = () => {
           type: "standard",
         }));
 
-    const newLocalTables = sourceTables.map((pos, index) => {
-      const baseCode = String(pos.code || `${aiForm.codePrefix || "AI"}-${index + 1}`).trim();
-      let code = baseCode;
-      let suffix = 1;
-      while (usedCodes.has(code.toUpperCase())) {
-        suffix += 1;
-        code = `${baseCode}-${suffix}`;
-      }
-      usedCodes.add(code.toUpperCase());
+    const mappedCount = Math.min(sourceTables.length, existingRealTables.length);
+    const mappedExistingTables = existingRealTables
+      .slice(0, mappedCount)
+      .map((table, index) => {
+        const pos = sourceTables[index];
+        const canonicalCode = String(table.code || table.label || "").trim();
+        if (canonicalCode) usedCodes.add(canonicalCode.toUpperCase());
+        return {
+          ...table,
+          x: Number(pos.x) || startX,
+          y: Number(pos.y) || startY,
+          rotation: Number(pos.rotation) || 0,
+          label: canonicalCode || table.label,
+          code: canonicalCode || table.code,
+        };
+      });
 
-      return {
+    const newLocalTables = sourceTables
+      .slice(mappedCount)
+      .map((pos, index) => {
+        const generatedCode = generateSequentialCode(usedCodes, namingPattern, index);
+        return {
         id: `tmp_ai_${Date.now()}_${index}`,
         type: "table",
         x: Number(pos.x) || startX,
@@ -893,33 +1026,49 @@ const FloorPlanDesigner = () => {
         w: 60,
         h: 60,
         rotation: Number(pos.rotation) || 0,
-        label: code,
-        code,
+        label: generatedCode,
+        code: generatedCode,
         capacity: Number(pos.capacity) || 4,
         tableType: pos.type || "standard",
         isRealTable: true,
         isLocalOnly: true,
       };
-    });
+      });
 
     pushHistory(items);
-    setItems((prev) => [...prev.filter((i) => !i.isLocalOnly), ...generatedDecor, ...newLocalTables]);
+    setItems((prev) => {
+      const preservedItems = prev.filter((i) => !i.isLocalOnly);
+      const mappedById = new Map(mappedExistingTables.map((table) => [table.id, table]));
+      const withUpdatedTables = preservedItems.map((item) =>
+        mappedById.get(item.id) || item
+      );
+      return [...withUpdatedTables, ...generatedDecor, ...newLocalTables];
+    });
     setShowAiModal(false);
-    showNotification(selectedComponents.length >= 3 ? "Đã tạo sơ đồ thông minh bằng AI. Nhấn Lưu để ghi nhận." : "Đã tạo sơ đồ thông minh. Nhấn Lưu để ghi nhận thay đổi.", "success");
+    showNotification(
+      layoutPayload?.tables?.length
+        ? "Đã tạo sơ đồ thông minh bằng AI. Nhấn Lưu để ghi nhận."
+        : "AI tạm không khả dụng, đã tạo sơ đồ bằng chế độ dự phòng thông minh hơn. Nhấn Lưu để ghi nhận.",
+      "success"
+    );
   };
 
   // Mouse handlers
-  const handleMouseDown = (e, id = "CANVAS") => {
+  const handleMouseDown = (e, id = "CANVAS", mode = "move", resizeDir = null) => {
     if (e.button !== 0) return;
 
     // tránh bôi đen khi kéo
     e.preventDefault();
 
-    const isPanMode = isSpacePressed || toolMode === "hand" || id === "CANVAS";
+    const isPanMode =
+      mode === "pan" ||
+      isSpacePressed ||
+      toolMode === "hand" ||
+      id === "CANVAS";
 
     if (isPanMode) {
       setIsDragging(true);
-      dragTarget.current = "CANVAS";
+      dragTarget.current = { mode: "pan", id: "CANVAS" };
       startMouse.current = { x: e.clientX, y: e.clientY };
       startView.current = { x: view.x, y: view.y };
       if (id === "CANVAS") setSelectedId(null);
@@ -934,10 +1083,11 @@ const FloorPlanDesigner = () => {
       e.stopPropagation();
       setIsDragging(true);
       setSelectedId(id);
-      dragTarget.current = id;
+      dragTarget.current = { mode, id, resizeDir };
       startMouse.current = { x: e.clientX, y: e.clientY };
       const item = items.find((i) => i.id === id);
-      startItem.current = { x: item.x, y: item.y };
+      if (!item) return;
+      startItem.current = { x: item.x, y: item.y, w: item.w, h: item.h };
       dragStartItemsRef.current = cloneItems(items);
       dragMovedRef.current = false;
     }
@@ -950,13 +1100,13 @@ const FloorPlanDesigner = () => {
     const dx = e.clientX - startMouse.current.x;
     const dy = e.clientY - startMouse.current.y;
 
-    if (dragTarget.current === "CANVAS") {
+    if (dragTarget.current?.mode === "pan") {
       setView((v) => ({
         ...v,
         x: startView.current.x + dx,
         y: startView.current.y + dy,
       }));
-    } else {
+    } else if (dragTarget.current?.mode === "move") {
       const scaledDx = dx / view.scale;
       const scaledDy = dy / view.scale;
 
@@ -967,14 +1117,56 @@ const FloorPlanDesigner = () => {
       ny = Math.round(ny / 10) * 10;
 
       dragMovedRef.current = true;
-      updateLocalItem(dragTarget.current, { x: nx, y: ny });
+      updateLocalItem(dragTarget.current.id, { x: nx, y: ny });
+    } else if (dragTarget.current?.mode === "resize") {
+      const scaledDx = dx / view.scale;
+      const scaledDy = dy / view.scale;
+      const { resizeDir } = dragTarget.current;
+
+      let nx = startItem.current.x;
+      let ny = startItem.current.y;
+      let nw = startItem.current.w;
+      let nh = startItem.current.h;
+
+      if (resizeDir.includes("e")) {
+        nw = Math.max(MIN_ITEM_SIZE, startItem.current.w + scaledDx);
+      }
+      if (resizeDir.includes("s")) {
+        nh = Math.max(MIN_ITEM_SIZE, startItem.current.h + scaledDy);
+      }
+      if (resizeDir.includes("w")) {
+        const rightEdge = startItem.current.x + startItem.current.w;
+        const nextLeft = Math.min(
+          startItem.current.x + scaledDx,
+          rightEdge - MIN_ITEM_SIZE
+        );
+        nx = nextLeft;
+        nw = rightEdge - nextLeft;
+      }
+      if (resizeDir.includes("n")) {
+        const bottomEdge = startItem.current.y + startItem.current.h;
+        const nextTop = Math.min(
+          startItem.current.y + scaledDy,
+          bottomEdge - MIN_ITEM_SIZE
+        );
+        ny = nextTop;
+        nh = bottomEdge - nextTop;
+      }
+
+      nx = Math.round(nx);
+      ny = Math.round(ny);
+      nw = Math.round(nw);
+      nh = Math.round(nh);
+
+      dragMovedRef.current = true;
+      updateLocalItem(dragTarget.current.id, { x: nx, y: ny, w: nw, h: nh });
     }
   };
 
   const handleMouseUp = () => {
     if (
       dragTarget.current &&
-      dragTarget.current !== "CANVAS" &&
+      dragTarget.current.mode !== "pan" &&
       dragMovedRef.current &&
       dragStartItemsRef.current
     ) {
@@ -1006,6 +1198,7 @@ const FloorPlanDesigner = () => {
       transform: `rotate(${item.rotation}deg)`,
       zIndex: isSel ? 100 : item.type === "rug" ? 1 : 10,
     };
+    const canResize = !item.isRealTable;
     const cls = `fp-item ${item.type} ${isSel ? "selected" : ""} ${
       item.isRealTable ? "real" : ""
     }`;
@@ -1016,7 +1209,7 @@ const FloorPlanDesigner = () => {
         className={cls}
         style={style}
         title={item.type === "symbol" ? item.label : undefined}
-        onMouseDown={(e) => handleMouseDown(e, item.id)}
+        onMouseDown={(e) => handleMouseDown(e, item.id, "move")}
       >
         {item.type === "symbol" && (
           <>
@@ -1033,13 +1226,25 @@ const FloorPlanDesigner = () => {
             <span className="decor-label">{item.label}</span>
           )}
 
-        {isSel && (
+        {isSel && canResize && (
           <>
             <div className="selection-ring" />
-            <div className="corner nw" />
-            <div className="corner ne" />
-            <div className="corner sw" />
-            <div className="corner se" />
+            <div
+              className="corner nw"
+              onMouseDown={(e) => handleMouseDown(e, item.id, "resize", "nw")}
+            />
+            <div
+              className="corner ne"
+              onMouseDown={(e) => handleMouseDown(e, item.id, "resize", "ne")}
+            />
+            <div
+              className="corner sw"
+              onMouseDown={(e) => handleMouseDown(e, item.id, "resize", "sw")}
+            />
+            <div
+              className="corner se"
+              onMouseDown={(e) => handleMouseDown(e, item.id, "resize", "se")}
+            />
           </>
         )}
       </div>
