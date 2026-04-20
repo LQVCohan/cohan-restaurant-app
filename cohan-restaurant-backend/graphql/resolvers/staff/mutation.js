@@ -1,5 +1,70 @@
 // src/graphql/staff/mutation.js
-import { Staff, Role, EventLog, Shift } from "../../../models/index.js";
+import mongoose from "mongoose";
+import { Staff, Role, EventLog, Shift, Timesheet } from "../../../models/index.js";
+
+function toObjectId(id) {
+  if (!id || !mongoose.isValidObjectId(id)) return null;
+  return new mongoose.Types.ObjectId(id);
+}
+
+function toStartOfDay(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function toEndOfDay(date) {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+function mapAttendanceStatus(timesheet) {
+  if (!timesheet?.actualCheckInAt) return timesheet?.isOffSchedule ? "unscheduled_absent" : "scheduled_absent";
+  if (!timesheet?.actualCheckOutAt) return timesheet?.isOffSchedule ? "unscheduled_checkin" : "checked_in";
+  if (timesheet?.isOffSchedule) return "unscheduled_completed";
+  const hasLate = Number(timesheet?.latenessMinutes || 0) > 0;
+  const hasEarly = Number(timesheet?.earlyLeaveMinutes || 0) > 0;
+  if (hasLate && hasEarly) return "late_early_leave";
+  if (hasLate) return "late";
+  if (hasEarly) return "early_leave";
+  return "completed";
+}
+
+function toMinutes(ms) {
+  return Math.max(Math.round(ms / 60000), 0);
+}
+
+function mapAttendanceOutput(timesheet, staff) {
+  return {
+    id: String(timesheet._id),
+    employeeId: String(timesheet.employeeId),
+    employeeName: staff?.fullName || null,
+    employeeCode: staff?.employeeCode || null,
+    employeeRole: staff?.positionTitle || staff?.roleName || staff?.role?.name || null,
+    employeeAvatar: staff?.avatarUrl || staff?.avatar || null,
+    restaurantId: String(timesheet.restaurantId),
+    workDate: timesheet.workDate,
+    shiftId: timesheet.shiftId ? String(timesheet.shiftId._id || timesheet.shiftId) : null,
+    shiftType: timesheet.shiftId?.shiftType || null,
+    plannedStartTime: timesheet.plannedStartTime || timesheet.shiftId?.startTime || null,
+    plannedEndTime: timesheet.plannedEndTime || timesheet.shiftId?.endTime || null,
+    actualCheckInAt: timesheet.actualCheckInAt || null,
+    actualCheckOutAt: timesheet.actualCheckOutAt || null,
+    workedMinutes: Number(timesheet.workedMinutes || 0),
+    hours: Number(timesheet.hours || 0),
+    latenessMinutes: Number(timesheet.latenessMinutes || 0),
+    earlyLeaveMinutes: Number(timesheet.earlyLeaveMinutes || 0),
+    overtimeMinutes: Number(timesheet.overtimeMinutes || 0),
+    status: mapAttendanceStatus(timesheet),
+    isOffSchedule: Boolean(timesheet.isOffSchedule),
+    source: timesheet.source || "quick",
+    note: timesheet.note || "",
+    approved: Boolean(timesheet.approved),
+    createdAt: timesheet.createdAt || null,
+    updatedAt: timesheet.updatedAt || null,
+  };
+}
 
 async function logStaffEvent({
   staff,
@@ -390,5 +455,89 @@ export default {
   deleteStaffShift: async (_, { shiftId }) => {
     const deleted = await Shift.findByIdAndDelete(shiftId);
     return Boolean(deleted);
+  },
+
+  upsertStaffAttendance: async (_, { input }) => {
+    const employeeId = toObjectId(input.employeeId);
+    const restaurantId = toObjectId(input.restaurantId);
+    if (!employeeId || !restaurantId) throw new Error("Invalid employeeId or restaurantId");
+
+    const action = String(input.action || "").toLowerCase();
+    if (!["check_in", "check_out", "in", "out"].includes(action)) {
+      throw new Error("Invalid attendance action");
+    }
+    const normalizedAction = ["check_in", "in"].includes(action) ? "check_in" : "check_out";
+    const eventTime = input.timestamp ? new Date(input.timestamp) : new Date();
+    const workDate = input.workDate ? toStartOfDay(input.workDate) : toStartOfDay(eventTime);
+    const note = input.note?.trim() || "";
+    const source = ["manual", "system", "quick"].includes(String(input.source || "").toLowerCase())
+      ? String(input.source).toLowerCase()
+      : "quick";
+
+    const staff = await Staff.findById(employeeId).populate("role");
+    if (!staff || staff.userType !== "STAFF") throw new Error("Staff not found");
+
+    const assignedShift = await Shift.findOne({
+      employeeId,
+      restaurantId,
+      startTime: { $lte: toEndOfDay(workDate) },
+      endTime: { $gte: toStartOfDay(workDate) },
+      status: { $in: ["scheduled", "pending", "completed"] },
+    })
+      .sort({ startTime: 1 })
+      .lean();
+
+    const query = assignedShift
+      ? { employeeId, workDate, shiftId: assignedShift._id }
+      : { employeeId, workDate, isOffSchedule: true };
+
+    const defaults = {
+      employeeId,
+      restaurantId,
+      workDate,
+      shiftId: assignedShift?._id || null,
+      plannedStartTime: assignedShift?.startTime || null,
+      plannedEndTime: assignedShift?.endTime || null,
+      source,
+      isOffSchedule: !assignedShift,
+      note,
+      approved: false,
+    };
+
+    const record = (await Timesheet.findOne(query)) || new Timesheet(defaults);
+    record.employeeId = employeeId;
+    record.restaurantId = restaurantId;
+    record.workDate = workDate;
+    record.shiftId = assignedShift?._id || null;
+    record.plannedStartTime = assignedShift?.startTime || null;
+    record.plannedEndTime = assignedShift?.endTime || null;
+    record.isOffSchedule = !assignedShift;
+    record.source = source;
+    if (note) record.note = note;
+
+    if (normalizedAction === "check_in") {
+      if (record.actualCheckInAt) throw new Error("Nhân viên đã check-in trong ngày làm việc này");
+      record.actualCheckInAt = eventTime;
+    } else {
+      if (!record.actualCheckInAt) throw new Error("Nhân viên chưa check-in");
+      if (record.actualCheckOutAt) throw new Error("Nhân viên đã check-out");
+      if (eventTime < record.actualCheckInAt) throw new Error("Thời gian check-out không hợp lệ");
+      record.actualCheckOutAt = eventTime;
+    }
+
+    const checkInAt = record.actualCheckInAt;
+    const checkOutAt = record.actualCheckOutAt;
+    const plannedStart = record.plannedStartTime;
+    const plannedEnd = record.plannedEndTime;
+
+    record.latenessMinutes = plannedStart && checkInAt ? toMinutes(new Date(checkInAt) - new Date(plannedStart)) : 0;
+    record.earlyLeaveMinutes = plannedEnd && checkOutAt ? toMinutes(new Date(plannedEnd) - new Date(checkOutAt)) : 0;
+    record.workedMinutes = checkInAt && checkOutAt ? toMinutes(new Date(checkOutAt) - new Date(checkInAt)) : 0;
+    record.overtimeMinutes = plannedEnd && checkOutAt ? toMinutes(new Date(checkOutAt) - new Date(plannedEnd)) : 0;
+    record.hours = Number((record.workedMinutes / 60).toFixed(2));
+
+    await record.save();
+    const populated = await Timesheet.findById(record._id).populate("shiftId").lean();
+    return mapAttendanceOutput(populated, staff);
   },
 };

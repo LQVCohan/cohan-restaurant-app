@@ -34,6 +34,51 @@ function toEndOfDay(date) {
   return d;
 }
 
+function mapAttendanceStatus(timesheet) {
+  if (!timesheet?.actualCheckInAt) {
+    return timesheet?.isOffSchedule ? "unscheduled_absent" : "scheduled_absent";
+  }
+  if (!timesheet?.actualCheckOutAt) return timesheet?.isOffSchedule ? "unscheduled_checkin" : "checked_in";
+  if (timesheet?.isOffSchedule) return "unscheduled_completed";
+  const hasLate = Number(timesheet?.latenessMinutes || 0) > 0;
+  const hasEarly = Number(timesheet?.earlyLeaveMinutes || 0) > 0;
+  if (hasLate && hasEarly) return "late_early_leave";
+  if (hasLate) return "late";
+  if (hasEarly) return "early_leave";
+  return "completed";
+}
+
+function mapAttendanceRecord(timesheet, staff) {
+  return {
+    id: String(timesheet._id),
+    employeeId: String(timesheet.employeeId),
+    employeeName: staff?.fullName || null,
+    employeeCode: staff?.employeeCode || null,
+    employeeRole: staff?.positionTitle || staff?.roleName || staff?.role?.name || null,
+    employeeAvatar: staff?.avatarUrl || staff?.avatar || null,
+    restaurantId: String(timesheet.restaurantId),
+    workDate: timesheet.workDate,
+    shiftId: timesheet.shiftId ? String(timesheet.shiftId._id || timesheet.shiftId) : null,
+    shiftType: timesheet?.shiftId?.shiftType || null,
+    plannedStartTime: timesheet.plannedStartTime || timesheet?.shiftId?.startTime || null,
+    plannedEndTime: timesheet.plannedEndTime || timesheet?.shiftId?.endTime || null,
+    actualCheckInAt: timesheet.actualCheckInAt || null,
+    actualCheckOutAt: timesheet.actualCheckOutAt || null,
+    workedMinutes: Number(timesheet.workedMinutes || 0),
+    hours: Number(timesheet.hours || 0),
+    latenessMinutes: Number(timesheet.latenessMinutes || 0),
+    earlyLeaveMinutes: Number(timesheet.earlyLeaveMinutes || 0),
+    overtimeMinutes: Number(timesheet.overtimeMinutes || 0),
+    status: mapAttendanceStatus(timesheet),
+    isOffSchedule: Boolean(timesheet.isOffSchedule),
+    source: timesheet.source || "quick",
+    note: timesheet.note || "",
+    approved: Boolean(timesheet.approved),
+    createdAt: timesheet.createdAt || null,
+    updatedAt: timesheet.updatedAt || null,
+  };
+}
+
 function mapDepartmentLabel(department) {
   const map = {
     management: "Management",
@@ -595,5 +640,104 @@ export default {
       status: row.status || "scheduled",
       notes: row.notes || "",
     }));
+  },
+
+  staffAttendanceRecords: async (_, { restaurantId, startDate, endDate, employeeId, status, search }, ctx) => {
+    const start = toStartOfDay(startDate);
+    const end = toEndOfDay(endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return [];
+
+    const authUser = ctx?.user || null;
+    const fallbackRestaurantId =
+      restaurantId ||
+      authUser?.restaurantForStaff ||
+      authUser?.primaryRestaurantId ||
+      null;
+    const rid = toObjectId(fallbackRestaurantId);
+    if (!rid) return [];
+
+    const staffFilter = {
+      userType: "STAFF",
+      $or: [{ primaryRestaurant: rid }, { refRestaurants: rid }],
+    };
+    const eid = toObjectId(employeeId);
+    if (eid) staffFilter._id = eid;
+    if (search) {
+      const regex = new RegExp(search, "i");
+      staffFilter.$and = [
+        { $or: [{ primaryRestaurant: rid }, { refRestaurants: rid }] },
+        { $or: [{ fullName: regex }, { employeeCode: regex }, { phone: regex }, { email: regex }] },
+      ];
+      delete staffFilter.$or;
+    }
+
+    const staffs = await Staff.find(staffFilter)
+      .populate("role")
+      .select({ _id: 1, fullName: 1, employeeCode: 1, positionTitle: 1, roleName: 1, avatarUrl: 1, avatar: 1 })
+      .lean();
+    if (!staffs.length) return [];
+
+    const staffById = new Map(staffs.map((s) => [String(s._id), s]));
+    const staffIds = staffs.map((s) => s._id);
+
+    const shifts = await Shift.find({
+      employeeId: { $in: staffIds },
+      restaurantId: rid,
+      startTime: { $lte: end },
+      endTime: { $gte: start },
+    })
+      .select({ _id: 1, employeeId: 1, shiftType: 1, startTime: 1, endTime: 1, status: 1, createdAt: 1, updatedAt: 1 })
+      .lean();
+
+    const timesheets = await Timesheet.find({
+      restaurantId: rid,
+      employeeId: { $in: staffIds },
+      workDate: { $gte: start, $lte: end },
+    })
+      .populate("shiftId")
+      .sort({ workDate: -1, createdAt: -1 })
+      .lean();
+
+    const existingKey = new Set(
+      timesheets.map((ts) => {
+        const day = new Date(ts.workDate).toISOString().slice(0, 10);
+        return `${String(ts.employeeId)}|${day}|${ts.shiftId ? String(ts.shiftId._id || ts.shiftId) : "off"}`;
+      })
+    );
+
+    const records = [...timesheets];
+    for (const shift of shifts) {
+      const day = new Date(shift.startTime).toISOString().slice(0, 10);
+      const key = `${String(shift.employeeId)}|${day}|${String(shift._id)}`;
+      if (existingKey.has(key)) continue;
+      records.push({
+        _id: `${key}-virtual`,
+        employeeId: shift.employeeId,
+        restaurantId: rid,
+        workDate: toStartOfDay(shift.startTime),
+        shiftId: shift,
+        plannedStartTime: shift.startTime,
+        plannedEndTime: shift.endTime,
+        actualCheckInAt: null,
+        actualCheckOutAt: null,
+        workedMinutes: 0,
+        hours: 0,
+        latenessMinutes: 0,
+        earlyLeaveMinutes: 0,
+        overtimeMinutes: 0,
+        isOffSchedule: false,
+        source: "system",
+        note: "",
+        approved: false,
+        createdAt: shift.createdAt || null,
+        updatedAt: shift.updatedAt || null,
+      });
+    }
+
+    const mapped = records
+      .map((record) => mapAttendanceRecord(record, staffById.get(String(record.employeeId))))
+      .sort((a, b) => new Date(b.workDate).getTime() - new Date(a.workDate).getTime());
+    if (!status || status === "all") return mapped;
+    return mapped.filter((record) => record.status === status);
   },
 };
