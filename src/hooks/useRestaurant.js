@@ -324,17 +324,20 @@ export const useRestaurant = (restaurantId) => {
   };
 
   // 5) Theo manager (connection)
-  const listRestaurantsByManager = async ({
-    managerId,
-    limit = 20,
-    cursor = null,
-    restaurantFilter = {},
-  }) => {
-    const { data } = await runRestaurantsByManager({
-      variables: { managerId, limit, cursor, restaurantFilter },
-    });
-    return data?.restaurantsByManager || null;
-  };
+  const listRestaurantsByManager = useCallback(
+    async ({
+      managerId,
+      limit = 20,
+      cursor = null,
+      restaurantFilter = {},
+    }) => {
+      const { data } = await runRestaurantsByManager({
+        variables: { managerId, limit, cursor, restaurantFilter },
+      });
+      return data?.restaurantsByManager || null;
+    },
+    [runRestaurantsByManager]
+  );
 
   const loadMoreRestaurantsByManager = async () => {
     const pageInfo = byManagerData?.restaurantsByManager?.pageInfo;
@@ -348,22 +351,25 @@ export const useRestaurant = (restaurantId) => {
   };
 
   // 🔥 5b) Helper: trả về mảng nhà hàng đã normalize (không phải connection)
-  const listRestaurantsByManagerFlat = async ({
-    managerId,
-    limit = 100,
-    cursor = null,
-    restaurantFilter = {},
-  }) => {
-    const conn = await listRestaurantsByManager({
+  const listRestaurantsByManagerFlat = useCallback(
+    async ({
       managerId,
-      limit,
-      cursor,
-      restaurantFilter,
-    });
+      limit = 100,
+      cursor = null,
+      restaurantFilter = {},
+    }) => {
+      const conn = await listRestaurantsByManager({
+        managerId,
+        limit,
+        cursor,
+        restaurantFilter,
+      });
 
-    const edges = conn?.edges || [];
-    return edges.map((e) => normalizeRestaurant(e.node));
-  };
+      const edges = conn?.edges || [];
+      return edges.map((e) => normalizeRestaurant(e.node));
+    },
+    [listRestaurantsByManager, normalizeRestaurant]
+  );
 
   // 6) refRestaurants theo user
   const listRefRestaurants = async (userId) => {
@@ -405,21 +411,27 @@ export const useRestaurant = (restaurantId) => {
    * Lấy danh sách nhà hàng mà 1 manager quản lý (đã normalize, mảng thường).
    * Dùng cho case: "All" → lấy tất cả nhân viên trong các nhà hàng manager này quản lý.
    */
-  const getManagedRestaurants = async (managerId, options = {}) => {
-    if (!managerId) return [];
-    return listRestaurantsByManagerFlat({
-      managerId,
-      ...options,
-    });
-  };
+  const getManagedRestaurants = useCallback(
+    async (managerId, options = {}) => {
+      if (!managerId) return [];
+      return listRestaurantsByManagerFlat({
+        managerId,
+        ...options,
+      });
+    },
+    [listRestaurantsByManagerFlat]
+  );
 
   /**
    * Lấy mảng ID nhà hàng mà manager quản lý.
    */
-  const getManagedRestaurantIds = async (managerId, options = {}) => {
-    const list = await getManagedRestaurants(managerId, options);
-    return list.map((r) => r.id);
-  };
+  const getManagedRestaurantIds = useCallback(
+    async (managerId, options = {}) => {
+      const list = await getManagedRestaurants(managerId, options);
+      return list.map((r) => r.id);
+    },
+    [getManagedRestaurants]
+  );
 
   /* ========== UX helpers ========== */
 

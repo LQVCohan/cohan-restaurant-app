@@ -1,5 +1,5 @@
 // src/pages/StaffManagement/index.jsx
-import React, { useState, useEffect, useMemo, useContext } from "react";
+import React, { useState, useEffect, useMemo, useContext, useCallback } from "react";
 import StaffHeader from "./components/Header"; // Giả sử đã đổi tên file component Header mới
 import PageNavigation from "./components/PageNavigation";
 import EmployeeDashboard from "./components/EmployeeDashboard";
@@ -16,6 +16,7 @@ import useStaffManagement from "../../../hooks/useStaffManagement";
 import { useTime } from "../../../hooks/useTime";
 import { useRestaurant } from "../../../hooks/useRestaurant";
 import { AuthContext } from "@/context/AuthContext";
+import { matchesEmployeeSearch } from "../../../utils/employeeSearch";
 
 // Import styles
 import "./StaffManagement.scss";
@@ -26,6 +27,7 @@ const StaffManagement = () => {
   const [selectedRestaurant, setSelectedRestaurant] = useState("all");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
 
   const [modals, setModals] = useState({
@@ -85,12 +87,19 @@ const StaffManagement = () => {
 
   // --- FILTER & LOGIC ---
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
     setFilters((prev) => ({
       ...prev,
       restaurantId: selectedRestaurant === "all" ? null : selectedRestaurant,
-      search: searchQuery, // Truyền search query vào hook nếu API hỗ trợ search server-side
+      search: undefined,
     }));
-  }, [selectedRestaurant, searchQuery, setFilters]);
+  }, [selectedRestaurant, debouncedSearchQuery, setFilters]);
 
   // Client-side filtering (nếu cần filter thêm ở client)
   const filteredStaff = useMemo(() => {
@@ -110,12 +119,7 @@ const StaffManagement = () => {
 
     // Filter by Search (Local fallback)
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (s) =>
-          s.fullName?.toLowerCase().includes(q) ||
-          s.employeeCode?.toLowerCase().includes(q),
-      );
+      result = result.filter((s) => matchesEmployeeSearch(s, searchQuery));
     }
     return result;
   }, [staffList, selectedRestaurant, managedRestaurantIds, searchQuery]);
@@ -167,29 +171,60 @@ const StaffManagement = () => {
   );
 
   // --- HANDLERS ---
-  const toggleHeader = () => setIsHeaderCollapsed((prev) => !prev);
-  const openModal = (name) => setModals((prev) => ({ ...prev, [name]: true }));
-  const closeModal = (name) =>
-    setModals((prev) => ({ ...prev, [name]: false }));
+  const toggleHeader = useCallback(
+    () => setIsHeaderCollapsed((prev) => !prev),
+    [],
+  );
+  const openModal = useCallback(
+    (name) => setModals((prev) => ({ ...prev, [name]: true })),
+    [],
+  );
+  const closeModal = useCallback(
+    (name) => setModals((prev) => ({ ...prev, [name]: false })),
+    [],
+  );
 
   // Handlers CRUD (Giữ nguyên logic cũ)
-  const handleCRUD = {
-    add: async (val) => {
+  const handleAddEmployee = useCallback(
+    async (val) => {
       await createStaff(val);
       closeModal("addEmployee");
     },
-    edit: async (val) => {
+    [createStaff, closeModal],
+  );
+  const handleEditEmployee = useCallback(
+    async (val) => {
+      if (!selectedEmployee?.id) return;
       await updateStaff(selectedEmployee.id, val);
       closeModal("editEmployee");
     },
-    delete: deleteStaff,
-    setOnLeave: (id) => setStaffEmploymentStatus(id, "ON_LEAVE"),
-    setWorking: (id) => setStaffEmploymentStatus(id, "WORKING"),
-    lock: (id) => setStaffAccountStatus(id, "blocked"),
-    unlock: (id) => setStaffAccountStatus(id, "active"),
-    rate: rateStaff,
-  };
+    [closeModal, selectedEmployee?.id, updateStaff],
+  );
+  const handleSetOnLeave = useCallback(
+    (id) => setStaffEmploymentStatus(id, "ON_LEAVE"),
+    [setStaffEmploymentStatus],
+  );
+  const handleSetWorking = useCallback(
+    (id) => setStaffEmploymentStatus(id, "WORKING"),
+    [setStaffEmploymentStatus],
+  );
+  const handleLockAccount = useCallback(
+    (id) => setStaffAccountStatus(id, "blocked"),
+    [setStaffAccountStatus],
+  );
+  const handleUnlockAccount = useCallback(
+    (id) => setStaffAccountStatus(id, "active"),
+    [setStaffAccountStatus],
+  );
 
+  const handleOpenEditEmployee = useCallback(
+    () => openModal("editEmployee"),
+    [openModal],
+  );
+  const handleOpenWorkHistory = useCallback(
+    () => openModal("workHistory"),
+    [openModal],
+  );
 
   useEffect(() => {
     if (!selectedEmployee) return;
@@ -200,6 +235,48 @@ const StaffManagement = () => {
   }, [mappedStaff, selectedEmployee]);
 
   const isLoading = staffListLoading || restaurantLoading;
+
+  const mainContent = useMemo(() => {
+    if (currentPage === "dashboard") {
+      return (
+        <EmployeeDashboard
+          employees={mappedStaff}
+          selectedEmployee={selectedEmployee}
+          onEmployeeSelect={setSelectedEmployee}
+          onEditEmployee={handleOpenEditEmployee}
+          onViewHistory={handleOpenWorkHistory}
+          onDeleteEmployee={deleteStaff}
+          onSetOnLeave={handleSetOnLeave}
+          onSetWorking={handleSetWorking}
+          onLockAccount={handleLockAccount}
+          onUnlockAccount={handleUnlockAccount}
+          onRateStaff={rateStaff}
+          loading={isLoading}
+        />
+      );
+    }
+    if (currentPage === "attendance") {
+      return <AttendancePage currentTime={currentTime} currentDate={currentDate} />;
+    }
+    if (currentPage === "leave") return <LeaveManagement />;
+    if (currentPage === "schedule") return <SchedulePage />;
+    return null;
+  }, [
+    currentDate,
+    currentPage,
+    currentTime,
+    deleteStaff,
+    handleLockAccount,
+    handleOpenEditEmployee,
+    handleOpenWorkHistory,
+    handleSetOnLeave,
+    handleSetWorking,
+    handleUnlockAccount,
+    isLoading,
+    mappedStaff,
+    rateStaff,
+    selectedEmployee,
+  ]);
 
   return (
     <div className="staff-page-container">
@@ -238,33 +315,7 @@ const StaffManagement = () => {
 
         {/* MAIN CONTENT AREA */}
         <main className="page-main-view fade-in-up">
-          {currentPage === "dashboard" && (
-            <EmployeeDashboard
-              employees={mappedStaff}
-              selectedEmployee={selectedEmployee}
-              onEmployeeSelect={setSelectedEmployee}
-              onEditEmployee={() => openModal("editEmployee")}
-              onViewHistory={() => openModal("workHistory")}
-              onDeleteEmployee={handleCRUD.delete}
-              onSetOnLeave={handleCRUD.setOnLeave}
-              onSetWorking={handleCRUD.setWorking}
-              onLockAccount={handleCRUD.lock}
-              onUnlockAccount={handleCRUD.unlock}
-              onRateStaff={handleCRUD.rate}
-              loading={isLoading}
-            />
-          )}
-
-          {currentPage === "attendance" && (
-            <AttendancePage
-              currentTime={currentTime}
-              currentDate={currentDate}
-            />
-          )}
-
-          {currentPage === "leave" && <LeaveManagement />}
-
-          {currentPage === "schedule" && <SchedulePage />}
+          {mainContent}
         </main>
       </div>
 
@@ -272,14 +323,14 @@ const StaffManagement = () => {
       <AddEmployeeModal
         isOpen={modals.addEmployee}
         onClose={() => closeModal("addEmployee")}
-        onSubmit={handleCRUD.add}
+        onSubmit={handleAddEmployee}
         restaurantList={restaurantList}
       />
       <EditEmployeeModal
         isOpen={modals.editEmployee}
         employee={selectedEmployee}
         onClose={() => closeModal("editEmployee")}
-        onSubmit={handleCRUD.edit}
+        onSubmit={handleEditEmployee}
         restaurantList={restaurantList}
       />
       <WorkHistoryModal

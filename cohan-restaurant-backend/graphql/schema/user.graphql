@@ -159,6 +159,7 @@ type User {
 
   userType: UserType
   taxCode: String
+  department: DepartmentType
 
   employeeCode: String
   positionTitle: String
