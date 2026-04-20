@@ -524,6 +524,16 @@ $st-cleaning-text: #7e22ce;
     }
   }
 
+  .tm-form.tm-form--add-floor {
+    gap: 20px;
+  }
+
+  .tm-add-floor-footer {
+    .btn {
+      min-width: 108px;
+    }
+  }
+
   .tm-vr-panel {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
