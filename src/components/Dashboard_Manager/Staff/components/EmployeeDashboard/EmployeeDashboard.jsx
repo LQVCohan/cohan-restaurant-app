@@ -52,4 +52,4 @@ const EmployeeDashboard = ({
   );
 };
 
-export default EmployeeDashboard;
+export default React.memo(EmployeeDashboard);

@@ -1,9 +1,25 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Modal from "../../../../../common/Modal";
 import LoadingSpinner from "../../../../../common/LoadingSpinner";
 import Badge from "../../../../../common/Badge";
 import useModalDraft from "../../../../../../hooks/useModalDraft";
 import { useNotification } from "../../../../../../hooks/useNotification";
+import {
+  AI_POSITION_HINT,
+  getAiSuggestedPositionTitle,
+} from "../../../../../../utils/staffRoleSuggestion";
+import {
+  emailLooksValid,
+  getEmergencyPhoneError,
+  normalizeContactName,
+  phoneLooksValid,
+} from "../../../../../../utils/contactValidation";
+import {
+  formatCurrencyDisplay,
+  getLegalSalaryReference,
+  getSuggestedSalaryByEmploymentType,
+  parseCurrencyInputToNumber,
+} from "../../../../../../utils/legalSalaryReference";
 import "./EmployeeEditModal.scss";
 
 const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) => {
@@ -14,6 +30,9 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
+  const [salaryReference, setSalaryReference] = useState(null);
+  const [salaryReferenceLoading, setSalaryReferenceLoading] = useState(false);
+  const [salaryManuallyEdited, setSalaryManuallyEdited] = useState(false);
 
   const tabs = [
     { id: "basic", label: "👤 Cơ bản", icon: "👤" },
@@ -43,6 +62,7 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
         shiftType: source.shiftType || employee.shift || "",
         dateJoined: formatDateInput(source.dateJoined || employee.startDate),
         employmentStatus: source.employmentStatus || "WORKING",
+        employmentType: source.employmentType || "FULL_TIME",
         emergencyContact: source.emergencyContact?.name || "",
         emergencyPhone: source.emergencyContact?.phone || "",
         notes: source.noteInternal || "",
@@ -51,8 +71,25 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
       setOriginalData(data);
       setHasChanges(false);
       setActiveTab("basic");
+      setSalaryManuallyEdited(false);
     }
   }, [employee, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setSalaryReferenceLoading(true);
+    getLegalSalaryReference()
+      .then((ref) => {
+        if (!cancelled) setSalaryReference(ref);
+      })
+      .finally(() => {
+        if (!cancelled) setSalaryReferenceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     const changed = JSON.stringify(formData) !== JSON.stringify(originalData);
@@ -77,6 +114,7 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
       fullName: v?.fullName || "",
       positionTitle: v?.positionTitle || "",
       department: v?.department || "service",
+      employmentType: v?.employmentType || "FULL_TIME",
       baseSalary: v?.baseSalary || "",
       shiftType: v?.shiftType || "",
       dateJoined: v?.dateJoined || "",
@@ -97,9 +135,94 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (next[field]) next[field] = "";
+      if (
+        field === "emergencyContact" &&
+        !normalizeContactName(value) &&
+        !String(formData.emergencyPhone || "").trim()
+      ) {
+        next.emergencyPhone = "";
+      }
+      return next;
+    });
+
+    if (field === "baseSalary") setSalaryManuallyEdited(true);
+    if (field === "employmentType") {
+      const suggested = getSuggestedSalaryByEmploymentType(value, salaryReference);
+      if (!salaryManuallyEdited || !parseCurrencyInputToNumber(formData.baseSalary)) {
+        setFormData((prev) => ({
+          ...prev,
+          baseSalary: suggested ? formatCurrencyDisplay(suggested) : "",
+        }));
+      }
     }
+  };
+
+  useEffect(() => {
+    if (!isOpen || !salaryReference) return;
+    if (parseCurrencyInputToNumber(formData.baseSalary) > 0) return;
+    const suggested = getSuggestedSalaryByEmploymentType(
+      formData.employmentType,
+      salaryReference,
+    );
+    if (!suggested) return;
+    setFormData((prev) => ({ ...prev, baseSalary: formatCurrencyDisplay(suggested) }));
+  }, [formData.baseSalary, formData.employmentType, isOpen, salaryReference]);
+
+  const roleSuggestion = useMemo(
+    () => getAiSuggestedPositionTitle(formData.department),
+    [formData.department],
+  );
+
+  const applySuggestedRole = () => {
+    if (!roleSuggestion) return;
+    handleInputChange("positionTitle", roleSuggestion);
+  };
+
+  const validateContactFieldOnBlur = (field) => {
+    const value = formData[field] || "";
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+      return;
+    }
+
+    if (field === "phone") {
+      setErrors((prev) => ({
+        ...prev,
+        phone: phoneLooksValid(value) ? "" : "Số điện thoại không hợp lệ",
+      }));
+      return;
+    }
+
+    if (field === "email") {
+      setErrors((prev) => ({
+        ...prev,
+        email: emailLooksValid(value) ? "" : "Email không hợp lệ",
+      }));
+    }
+  };
+
+  const validateEmergencyPhoneOnBlur = () => {
+    const emergencyPhoneError = getEmergencyPhoneError({
+      emergencyName: formData.emergencyContact,
+      emergencyPhone: formData.emergencyPhone,
+      requiredMessage: "Vui lòng nhập số điện thoại liên hệ khẩn cấp.",
+      invalidMessage: "Số điện thoại liên hệ khẩn cấp không hợp lệ.",
+    });
+    setErrors((prev) => ({
+      ...prev,
+      emergencyPhone: emergencyPhoneError,
+    }));
+  };
+
+  const handleEmergencyNameBlur = () => {
+    const normalizedName = normalizeContactName(formData.emergencyContact);
+    if (!normalizedName) return;
+    validateEmergencyPhoneOnBlur();
   };
 
   const validateForm = () => {
@@ -115,11 +238,21 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
       newErrors.phone = "Nhập số điện thoại hoặc email liên hệ";
       newErrors.email = "Nhập số điện thoại hoặc email liên hệ";
     }
-    if (hasPhone && !/^[0-9]{9,11}$/.test(formData.phone.replace(/\s/g, ""))) {
+    if (hasPhone && !phoneLooksValid(formData.phone)) {
       newErrors.phone = "Số điện thoại không hợp lệ";
     }
-    if (hasEmail && !/\S+@\S+\.\S+/.test(formData.email)) {
+    if (hasEmail && !emailLooksValid(formData.email)) {
       newErrors.email = "Email không hợp lệ";
+    }
+
+    const emergencyPhoneError = getEmergencyPhoneError({
+      emergencyName: formData.emergencyContact,
+      emergencyPhone: formData.emergencyPhone,
+      requiredMessage: "Vui lòng nhập số điện thoại liên hệ khẩn cấp.",
+      invalidMessage: "Số điện thoại liên hệ khẩn cấp không hợp lệ.",
+    });
+    if (emergencyPhoneError) {
+      newErrors.emergencyPhone = emergencyPhoneError;
     }
 
     setErrors(newErrors);
@@ -142,6 +275,7 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
         fullName: formData.fullName.trim(),
         positionTitle: formData.positionTitle.trim(),
         department: formData.department,
+        employmentType: formData.employmentType || undefined,
         phone: formData.phone ? formData.phone.trim() : undefined,
         email: formData.email ? formData.email.trim() : undefined,
         address: formData.address ? { line1: formData.address } : undefined,
@@ -231,6 +365,7 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
 
         <div className="form-group">
           <label className="form-label">Chức vụ *</label>
+          <div className="form-help-text">{AI_POSITION_HINT}</div>
           <input
             type="text"
             className={`form-input ${errors.positionTitle ? "error" : ""}`}
@@ -239,6 +374,19 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
             placeholder="VD: Phục vụ, Bếp trưởng..."
             disabled={isSubmitting}
           />
+          {roleSuggestion && (
+            <div className="form-help-text">
+              Gợi ý A.I: <strong>{roleSuggestion}</strong>{" "}
+              <button
+                type="button"
+                className="suggestion-btn"
+                onClick={applySuggestedRole}
+                disabled={isSubmitting}
+              >
+                Dùng gợi ý
+              </button>
+            </div>
+          )}
           {errors.positionTitle && (
             <div className="error-message">{errors.positionTitle}</div>
           )}
@@ -304,6 +452,7 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
             className={`form-input ${errors.phone ? "error" : ""}`}
             value={formData.phone || ""}
             onChange={(e) => handleInputChange("phone", e.target.value)}
+            onBlur={() => validateContactFieldOnBlur("phone")}
             placeholder="0901234567"
             disabled={isSubmitting}
           />
@@ -317,6 +466,7 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
             className={`form-input ${errors.email ? "error" : ""}`}
             value={formData.email || ""}
             onChange={(e) => handleInputChange("email", e.target.value)}
+            onBlur={() => validateContactFieldOnBlur("email")}
             placeholder="email@foodhub.vn"
             disabled={isSubmitting}
           />
@@ -348,6 +498,7 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
               onChange={(e) =>
                 handleInputChange("emergencyContact", e.target.value)
               }
+              onBlur={handleEmergencyNameBlur}
               placeholder="Tên người thân"
               disabled={isSubmitting}
             />
@@ -357,14 +508,18 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
             <label className="form-label">Số điện thoại khẩn cấp</label>
             <input
               type="tel"
-              className="form-input"
+              className={`form-input ${errors.emergencyPhone ? "error" : ""}`}
               value={formData.emergencyPhone || ""}
               onChange={(e) =>
                 handleInputChange("emergencyPhone", e.target.value)
               }
+              onBlur={validateEmergencyPhoneOnBlur}
               placeholder="0901234567"
               disabled={isSubmitting}
             />
+            {errors.emergencyPhone && (
+              <div className="error-message">{errors.emergencyPhone}</div>
+            )}
           </div>
         </div>
       </div>
@@ -410,9 +565,25 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
         <div className="salary-card">
           <div className="salary-label">💰 Lương hiện tại</div>
           <div className="salary-value">
-            {formData.baseSalary || "Chưa thiết lập"}
+            {formatCurrencyDisplay(formData.baseSalary) || "Chưa thiết lập"}
           </div>
         </div>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">Loại hợp đồng</label>
+        <select
+          className="form-select"
+          value={formData.employmentType || "FULL_TIME"}
+          onChange={(e) => handleInputChange("employmentType", e.target.value)}
+          disabled={isSubmitting}
+        >
+          <option value="FULL_TIME">Toàn thời gian</option>
+          <option value="PART_TIME">Bán thời gian</option>
+          <option value="PROBATION">Thử việc</option>
+          <option value="SEASONAL">Thời vụ</option>
+          <option value="CONTRACT">Hợp đồng</option>
+        </select>
       </div>
 
       <div className="form-group">
@@ -422,7 +593,12 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
             type="text"
             className="form-input"
             value={formData.baseSalary || ""}
-            onChange={(e) => handleInputChange("baseSalary", e.target.value)}
+            onChange={(e) =>
+              handleInputChange(
+                "baseSalary",
+                formatCurrencyDisplay(parseCurrencyInputToNumber(e.target.value)),
+              )
+            }
             placeholder="8000000"
             disabled={isSubmitting}
           />
@@ -431,6 +607,31 @@ const EmployeeEditModal = ({ isOpen, onClose, employee, onSubmit, onUpdate }) =>
         <div className="salary-note">
           💡 Lương cơ bản chưa bao gồm thưởng và phụ cấp
         </div>
+        <div className="salary-note">
+          {salaryReferenceLoading
+            ? "Đang tải mức lương tham khảo từ nguồn văn bản nhà nước..."
+            : `Mức tham khảo: ${formatCurrencyDisplay(
+                getSuggestedSalaryByEmploymentType(
+                  formData.employmentType,
+                  salaryReference,
+                ),
+              )} VNĐ. Bạn có thể chỉnh sửa thủ công.`}
+        </div>
+        {salaryReference && (
+          <div className="salary-note">
+            Nguồn: {salaryReference.decreeName} ({salaryReference.year}) ·{" "}
+            <a href={salaryReference.decreeUrl} target="_blank" rel="noreferrer">
+              văn bản
+            </a>{" "}
+            ·{" "}
+            <a href={salaryReference.articleUrl} target="_blank" rel="noreferrer">
+              cổng công bố
+            </a>
+            {!salaryReference.isLive && (
+              <> · Đang dùng fallback tham chiếu khi chưa fetch được nguồn live.</>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
