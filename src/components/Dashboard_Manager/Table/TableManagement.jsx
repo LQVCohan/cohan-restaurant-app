@@ -14,6 +14,19 @@ import useModalDraft from "@/hooks/useModalDraft";
 import "./TableManagement.scss";
 import { mapModelToTableForm } from "@/config/table3dCatalog";
 
+const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
+  const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
+  const duplicateErr = gqlErrors.find(
+    (item) => item?.extensions?.code === "TABLE_CODE_DUPLICATE"
+  );
+  if (duplicateErr?.message) return duplicateErr.message;
+  const message = error?.message || "";
+  if (message.includes("TABLE_CODE_DUPLICATE")) {
+    return `Bàn '${fallbackCode}' đã tồn tại trong tầng này. Vui lòng dùng tên khác.`;
+  }
+  return "";
+};
+
 const TableManagement = () => {
   const navigate = useNavigate(); // 2. Init Hook
   const { showNotification } = useNotification();
@@ -45,6 +58,7 @@ const TableManagement = () => {
     setActiveLevel,
     getIdFromLevel,
     getLevelFromId,
+    createFloor,
   } = useFloorManagement({ restaurantId });
 
   const {
@@ -117,7 +131,9 @@ const TableManagement = () => {
   const [floorForm, setFloorForm] = useState({ name: "" });
   const [vrSaving, setVrSaving] = useState(false);
   const [tableSaving, setTableSaving] = useState(false);
+  const [floorSaving, setFloorSaving] = useState(false);
   const [tableErrors, setTableErrors] = useState({});
+  const [floorErrors, setFloorErrors] = useState({});
 
   const addTableDirty =
     !!tableForm.number.trim() ||
@@ -212,6 +228,13 @@ const TableManagement = () => {
       setTableErrors({});
     }
   }, [showAddTableModal]);
+
+  useEffect(() => {
+    if (!showFloorModal) {
+      setFloorSaving(false);
+      setFloorErrors({});
+    }
+  }, [showFloorModal]);
 
   const selectFloor = (floorId) => {
     setCurrentFloor(String(floorId));
@@ -369,7 +392,16 @@ const TableManagement = () => {
           "info"
         );
       }
-    } catch {
+    } catch (error) {
+      const duplicateMessage = resolveTableDuplicateMessage(error, number?.trim());
+      if (duplicateMessage) {
+        setTableErrors((prev) => ({
+          ...prev,
+          number: duplicateMessage,
+        }));
+        showNotification(duplicateMessage, "error");
+        return;
+      }
       showNotification("Lỗi thêm bàn!", "error");
     } finally {
       setTableSaving(false);
@@ -407,6 +439,40 @@ const TableManagement = () => {
       showNotification("Không thể cập nhật VR toàn quán.", "error");
     } finally {
       setVrSaving(false);
+    }
+  };
+
+  const handleSaveFloor = async () => {
+    if (floorSaving) return;
+    const normalizedName = floorForm.name.trim();
+    if (!normalizedName) {
+      setFloorErrors({ name: "Vui lòng nhập tên tầng." });
+      showNotification("Vui lòng nhập tên tầng trước khi lưu.", "error");
+      return;
+    }
+    setFloorSaving(true);
+    setFloorErrors({});
+    try {
+      const createdFloor = await createFloor({ name: normalizedName });
+      if (createdFloor?.id) {
+        setCurrentFloor(String(createdFloor.id));
+      }
+      if (createdFloor?.level != null) {
+        setActiveLevel(Number(createdFloor.level));
+      }
+      showNotification(`Đã thêm tầng '${normalizedName}' thành công.`, "success");
+      addFloorDraft.clearDraft();
+      setFloorForm({ name: "" });
+      setShowFloorModal(false);
+    } catch (error) {
+      const errMsg = error?.message || "Không thể thêm tầng. Vui lòng thử lại.";
+      setFloorErrors((prev) => ({
+        ...prev,
+        name: prev?.name || errMsg,
+      }));
+      showNotification(errMsg, "error");
+    } finally {
+      setFloorSaving(false);
     }
   };
 
@@ -771,29 +837,62 @@ const TableManagement = () => {
       {/* 3. Add Floor Modal (Stub) */}
       <Modal
         isOpen={showFloorModal}
-        onClose={() => addFloorDraft.requestCloseWithDraft(() => setShowFloorModal(false))}
-        title="Thêm tầng"
+        onClose={() =>
+          addFloorDraft.requestCloseWithDraft(() => setShowFloorModal(false))
+        }
+        onBeforeClose={() => !floorSaving}
+        closeOnEscape={!floorSaving}
       >
-        <div className="tm-form">
-          <label>Tên tầng</label>
-          <input
-            value={floorForm.name}
-            onChange={(e) =>
-              setFloorForm({ ...floorForm, name: e.target.value })
-            }
-          />
-          <div className="modal-footer">
-            <Button
-              onClick={() => {
-                showNotification("Đã thêm tầng demo", "success");
-                addFloorDraft.clearDraft();
-                setShowFloorModal(false);
-              }}
-            >
-              Lưu
-            </Button>
+        <Modal.Header>Thêm tầng mới</Modal.Header>
+        <Modal.Body className="tm-form tm-form--add-floor">
+          <div className="tm-form-header">
+            <h4>Cấu hình khu vực phục vụ theo tầng</h4>
+            <p>
+              Đặt tên tầng rõ ràng để phân bổ bàn và quản lý sơ đồ thuận tiện
+              hơn.
+            </p>
           </div>
-        </div>
+          <div className="tm-form-section">
+            <div className="tm-form-section-title">Thông tin tầng</div>
+            <div className={`tm-field ${floorErrors.name ? "is-invalid" : ""}`}>
+              <label>Tên tầng *</label>
+              <input
+                value={floorForm.name}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setFloorForm({ ...floorForm, name: value });
+                  if (floorErrors.name && value.trim()) {
+                    setFloorErrors((prev) => ({ ...prev, name: undefined }));
+                  }
+                }}
+                placeholder="VD: Tầng 1, Tầng 2, Sân thượng..."
+                aria-invalid={!!floorErrors.name}
+              />
+              <div className="tm-field-meta">
+                <span className="tm-field-hint">
+                  Tên nên ngắn gọn, dễ nhận diện khi điều phối bàn.
+                </span>
+                {floorErrors.name && (
+                  <span className="tm-field-error">{floorErrors.name}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="tm-add-floor-footer">
+          <Button
+            variant="secondary"
+            onClick={() =>
+              addFloorDraft.requestCloseWithDraft(() => setShowFloorModal(false))
+            }
+            disabled={floorSaving}
+          >
+            Hủy
+          </Button>
+          <Button variant="primary" onClick={handleSaveFloor} loading={floorSaving}>
+            {floorSaving ? "Đang lưu..." : "Lưu tầng"}
+          </Button>
+        </Modal.Footer>
       </Modal>
 
       <Table3DSimulatorModal

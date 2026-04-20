@@ -11,6 +11,19 @@ import useModalDraft from "@/hooks/useModalDraft";
 import useModalClosePipeline from "@/hooks/useModalClosePipeline";
 import { useNotification } from "@/hooks/useNotification";
 
+const resolveTableDuplicateMessage = (error, fallbackCode = "") => {
+  const gqlErrors = error?.graphQLErrors || error?.networkError?.result?.errors || [];
+  const duplicateErr = gqlErrors.find(
+    (item) => item?.extensions?.code === "TABLE_CODE_DUPLICATE"
+  );
+  if (duplicateErr?.message) return duplicateErr.message;
+  const message = error?.message || "";
+  if (message.includes("TABLE_CODE_DUPLICATE")) {
+    return `Bàn '${fallbackCode}' đã tồn tại trong tầng này. Vui lòng dùng tên khác.`;
+  }
+  return "";
+};
+
 export default function TableActionsLiteModal({
   open,
   table,
@@ -292,7 +305,12 @@ export default function TableActionsLiteModal({
       showNotification("Đã xóa dữ liệu nháp sau khi lưu bàn.", "success", 2200);
     } catch (e) {
       console.error(e);
-      alert("Cập nhật thông tin bàn thất bại.");
+      const duplicateMessage = resolveTableDuplicateMessage(e, code?.trim());
+      if (duplicateMessage) {
+        showNotification(duplicateMessage, "error");
+        return;
+      }
+      showNotification("Cập nhật thông tin bàn thất bại.", "error");
     } finally {
       setBusyKey("save", false);
     }

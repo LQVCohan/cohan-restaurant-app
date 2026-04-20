@@ -9,6 +9,57 @@ const ensureFloorLevel = async (floorId) => {
   return f.level ?? 1;
 };
 
+const normalizeTableCode = (value = "") =>
+  String(value).trim().replace(/\s+/g, " ").toLowerCase();
+
+const humanizeTableCode = (value = "") =>
+  String(value).trim().replace(/\s+/g, " ");
+
+const duplicateTableError = (code) =>
+  new GraphQLError(
+    `Bàn '${code}' đã tồn tại trong tầng này. Vui lòng dùng tên khác.`,
+    {
+      extensions: {
+        code: "TABLE_CODE_DUPLICATE",
+        field: "code",
+      },
+    }
+  );
+
+const ensureUniqueTableCodeInFloor = async ({
+  restaurantId,
+  floorId,
+  code,
+  excludeId,
+}) => {
+  const normalizedCode = normalizeTableCode(code);
+  if (!normalizedCode) {
+    throw new GraphQLError("Table code is required", {
+      extensions: { code: "BAD_USER_INPUT", field: "code" },
+    });
+  }
+  const records = await Table.find({
+    restaurantId,
+    floorId,
+    ...(excludeId ? { _id: { $ne: excludeId } } : {}),
+  })
+    .select({ _id: 1, code: 1 })
+    .lean();
+  const duplicated = records.some(
+    (record) => normalizeTableCode(record.code) === normalizedCode
+  );
+  if (duplicated) {
+    throw duplicateTableError(humanizeTableCode(code));
+  }
+};
+
+const mapDuplicateMongoError = (error, fallbackCode) => {
+  if (error?.code === 11000) {
+    throw duplicateTableError(humanizeTableCode(fallbackCode));
+  }
+  throw error;
+};
+
 export default {
   createTable: async (_p, { input }) => {
     const { restaurantId, floorId } = input;
@@ -18,10 +69,24 @@ export default {
     ) {
       throw new GraphQLError("Invalid restaurantId or floorId");
     }
-    const level = await ensureFloorLevel(floorId);
-    const created = await Table.create({ ...input, floorLevel: level });
+    const normalizedCode = humanizeTableCode(input.code);
+    await ensureUniqueTableCodeInFloor({
+      restaurantId,
+      floorId,
+      code: normalizedCode,
+    });
 
-    return created.toObject({ virtuals: true });
+    const level = await ensureFloorLevel(floorId);
+    try {
+      const created = await Table.create({
+        ...input,
+        code: normalizedCode,
+        floorLevel: level,
+      });
+      return created.toObject({ virtuals: true });
+    } catch (error) {
+      mapDuplicateMongoError(error, normalizedCode);
+    }
   },
   mergeTables: async (_p, { input }, ctx) => {
     const { restaurantId, tableIds, anchorId, joinGroupId } = input;
@@ -143,6 +208,24 @@ export default {
     const { id, ...patch } = input;
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid id");
 
+    const current = await Table.findById(id)
+      .select({ _id: 1, restaurantId: 1, floorId: 1, code: 1 })
+      .lean();
+    if (!current) throw new GraphQLError("Table not found");
+
+    const nextCode =
+      patch.code != null ? humanizeTableCode(patch.code) : current.code;
+    const nextFloorId = patch.floorId || current.floorId;
+
+    await ensureUniqueTableCodeInFloor({
+      restaurantId: current.restaurantId,
+      floorId: nextFloorId,
+      code: nextCode,
+      excludeId: id,
+    });
+
+    if (patch.code != null) patch.code = nextCode;
+
     // Nếu đổi floorId thì cập nhật floorLevel
     if (patch.floorId) {
       if (!mongoose.isValidObjectId(patch.floorId))
@@ -150,24 +233,28 @@ export default {
       const level = await ensureFloorLevel(patch.floorId);
       patch.floorLevel = level;
     }
-    const doc = await Table.findByIdAndUpdate(
-      id,
-      { $set: patch },
-      { new: true, runValidators: true }
-    ).lean({ virtuals: true });
-    if (!doc) throw new GraphQLError("Table not found");
-    await logEvent({
-      restaurantId: doc.restaurantId,
-      floorId: doc.floorId,
-      tableId: doc.id,
-      actorUserId: ctx.user?.id,
-      verb: "table.update",
-      object: { kind: "Table", id: doc.id, code: doc.code },
-      meta: { patch },
-      ip: ctx.req?.ip,
-      userAgent: ctx.req?.headers["user-agent"],
-    });
-    return doc;
+    try {
+      const doc = await Table.findByIdAndUpdate(
+        id,
+        { $set: patch },
+        { new: true, runValidators: true }
+      ).lean({ virtuals: true });
+      if (!doc) throw new GraphQLError("Table not found");
+      await logEvent({
+        restaurantId: doc.restaurantId,
+        floorId: doc.floorId,
+        tableId: doc.id,
+        actorUserId: ctx.user?.id,
+        verb: "table.update",
+        object: { kind: "Table", id: doc.id, code: doc.code },
+        meta: { patch },
+        ip: ctx.req?.ip,
+        userAgent: ctx.req?.headers["user-agent"],
+      });
+      return doc;
+    } catch (error) {
+      mapDuplicateMongoError(error, nextCode);
+    }
   },
 
   deleteTable: async (_p, { id }, ctx) => {
