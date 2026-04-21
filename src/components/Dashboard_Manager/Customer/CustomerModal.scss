@@ -16,7 +16,7 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 .customer-modal-content {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   padding: 4px;
   color: $cm-text-body;
 
@@ -26,7 +26,7 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     background: linear-gradient(to right, #fffbf8, #fff);
     border: 1px solid color.adjust($cm-border, $lightness: -2%);
     border-radius: 16px;
-    padding: 20px;
+    padding: 16px 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -48,11 +48,11 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     .profile-left {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
 
       .avatar-ring {
-        width: 68px;
-        height: 68px;
+        width: 60px;
+        height: 60px;
         border-radius: 50%;
         // CHANGE: Nền avatar nổi bật hơn
         background: white;
@@ -60,14 +60,14 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 28px;
+        font-size: 24px;
         color: $cm-primary;
         box-shadow: $cm-shadow-sm;
       }
 
       .info-block {
         h2 {
-          font-size: 22px;
+          font-size: clamp(18px, 1.6vw, 22px);
           font-weight: 800;
           color: $cm-text-main;
           margin: 0 0 6px 0;
@@ -79,14 +79,14 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
           align-items: center;
           .badge-id {
             font-family: monospace;
-            font-size: 13px;
+            font-size: 12px;
             color: $cm-text-sub;
             background: $cm-bg-inset;
             padding: 2px 8px;
             border-radius: 6px;
           }
           .badge-tier {
-            padding: 3px 10px;
+            padding: 4px 10px;
             border-radius: 100px;
             font-size: 12px;
             font-weight: 700;
@@ -106,22 +106,25 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
       // CHANGE: Sử dụng tông màu vàng Gold làm điểm nhấn cho khu vực điểm số
       background: #fffbea; // Very light amber
       border: 1px solid #fcd34d; // Amber 300 border
-      padding: 12px 24px;
+      padding: 10px 16px;
       border-radius: 12px;
+      min-width: 156px;
+      flex-shrink: 0;
 
       .pts-val {
-        font-size: 26px;
+        font-size: clamp(20px, 2.3vw, 28px);
         font-weight: 900;
         color: #b45309; // Dark amber text
         line-height: 1;
+        word-break: break-word;
       }
       .pts-lbl {
-        font-size: 13px;
+        font-size: 11px;
         color: #92400e;
         font-weight: 600;
-        margin-top: 4px;
+        margin-top: 6px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.35px;
       }
     }
   }
@@ -129,12 +132,12 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   /* --- 2. Stats Row (Metrics) --- */
   .cm-stats-modern {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
     gap: 12px;
 
     .stat-item {
       // CHANGE: Không dùng nền trắng viền màu nữa. Dùng nền màu khối (solid tinted background) để tạo sức nặng thị giác.
-      padding: 16px;
+      padding: 14px;
       border-radius: 14px;
       display: flex;
       flex-direction: column;
@@ -167,23 +170,25 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
       } // Orange
 
       .stat-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         background: white; // Icon nằm trong hộp trắng để nổi bật trên nền màu
         box-shadow: $cm-shadow-sm;
       }
       .stat-value {
-        font-size: 20px;
+        font-size: clamp(18px, 1.5vw, 22px);
         font-weight: 800;
-        line-height: 1.2;
+        line-height: 1.25;
+        word-break: break-word;
       }
       .stat-label {
-        font-size: 13px;
+        margin-top: 3px;
+        font-size: 12px;
         color: $cm-text-sub;
         font-weight: 600;
       }
@@ -194,7 +199,7 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   .cm-insights-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 14px;
 
     .insight-card {
       // CHANGE: Sử dụng nền xám nhẹ ($cm-bg-block) thay vì trắng.
@@ -202,7 +207,7 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
       background: $cm-bg-block;
       border: 1px solid $cm-border;
       border-radius: 14px;
-      padding: 18px;
+      padding: 16px;
       display: flex;
       flex-direction: column;
 
@@ -231,6 +236,8 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
           gap: 12px;
           font-size: 14px;
           font-weight: 500;
+          min-width: 0;
+          word-break: break-word;
           .icon {
             color: $cm-text-sub;
           }
@@ -253,9 +260,9 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
           gap: 6px;
         }
         .w-badge {
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 600;
-          padding: 4px 12px;
+          padding: 4px 10px;
           border-radius: 100px;
           display: flex;
           align-items: center;
@@ -287,8 +294,8 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         flex-wrap: wrap;
         gap: 8px;
         .chip {
-          font-size: 13px;
-          padding: 6px 12px;
+          font-size: 12px;
+          padding: 5px 10px;
           border-radius: 8px;
           background: white; // Chip màu trắng nổi trên nền xám của card
           color: $cm-text-body;
@@ -489,6 +496,51 @@ $cm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
           }
         }
       }
+    }
+  }
+
+  @media (max-width: 1024px) {
+    .cm-header-modern {
+      align-items: flex-start;
+      gap: 12px;
+
+      .points-right {
+        min-width: 140px;
+      }
+    }
+
+    .cm-insights-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .cm-body-split {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .cm-header-modern {
+      flex-direction: column;
+      align-items: stretch;
+      padding: 14px;
+
+      .profile-left {
+        .avatar-ring {
+          width: 52px;
+          height: 52px;
+        }
+      }
+
+      .points-right {
+        text-align: left;
+        width: 100%;
+        min-width: 0;
+      }
+    }
+
+    .cm-stats-modern {
+      grid-template-columns: 1fr;
+      gap: 10px;
     }
   }
 }

@@ -155,6 +155,8 @@ export default function useCommunication({ restaurantId = null } = {}) {
     refetchNotifications: notificationsQuery.refetch,
 
     thread: threadState.data?.chatThread || null,
+    threadLoading: threadState.loading,
+    threadError: threadState.error,
     loadThread,
 
     openThread: openThreadMut,

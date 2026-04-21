@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Modal from "../../common/Modal";
 import useUserManagement from "../../../hooks/useUserManagement";
 import { useNotification } from "../../../hooks/useNotification";
@@ -84,16 +84,9 @@ const AddCustomerModal = ({ onClose }) => {
       country: "Vietnam",
     },
     customerTypeVN: "Mới",
-    roleId: "",
   });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
-
-  useEffect(() => {
-    if (!form.roleId && defaultCustomerRoleId) {
-      setForm((f) => ({ ...f, roleId: defaultCustomerRoleId }));
-    }
-  }, [defaultCustomerRoleId]); // eslint-disable-line
 
   const onChange = (field, value) => setForm((f) => ({ ...f, [field]: value }));
   const onAddr = (field, value) =>
@@ -159,7 +152,8 @@ const AddCustomerModal = ({ onClose }) => {
         password: form.password,
         address: form.address,
         customerType: VN_TO_ENUM(form.customerTypeVN),
-        roleId: form.roleId || defaultCustomerRoleId,
+        roleSlug: "customer",
+        roleId: defaultCustomerRoleId || undefined,
         provider: "local",
         status: "active",
         captchaToken:
@@ -318,7 +312,7 @@ const AddCustomerModal = ({ onClose }) => {
               </div>
             </Section>
 
-            <Section title="Phân loại & vai trò">
+            <Section title="Phân loại khách hàng">
               <div className="acm-grid">
                 <Input label="Loại khách hàng" icon="🎯">
                   <select
@@ -329,20 +323,6 @@ const AddCustomerModal = ({ onClose }) => {
                     <option value="Mới">🆕 Mới</option>
                     <option value="Thường xuyên">🔥 Thường xuyên</option>
                     <option value="VIP">⭐ VIP</option>
-                  </select>
-                </Input>
-
-                <Input label="Vai trò" icon="🛡️">
-                  <select
-                    className="acm-input"
-                    value={form.roleId}
-                    onChange={(e) => onChange("roleId", e.target.value)}
-                  >
-                    {(roleList || []).map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.name} ({r.slug})
-                      </option>
-                    ))}
                   </select>
                 </Input>
               </div>
