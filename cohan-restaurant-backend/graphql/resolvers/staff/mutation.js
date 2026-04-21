@@ -1,6 +1,15 @@
 // src/graphql/staff/mutation.js
 import mongoose from "mongoose";
-import { Staff, Role, EventLog, Shift, Timesheet } from "../../../models/index.js";
+import {
+  Staff,
+  Role,
+  EventLog,
+  Shift,
+  Timesheet,
+  LeaveRequest,
+  LeaveBalance,
+} from "../../../models/index.js";
+import { mailer } from "../../../lib/mailer.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -64,6 +73,259 @@ function mapAttendanceOutput(timesheet, staff) {
     createdAt: timesheet.createdAt || null,
     updatedAt: timesheet.updatedAt || null,
   };
+}
+
+function fromGraphLeaveType(value) {
+  const map = {
+    ANNUAL: "annual",
+    SICK: "sick",
+    UNPAID: "unpaid",
+    PAID_PERSONAL: "paid_personal",
+    MATERNITY: "maternity",
+    COMPENSATORY: "compensatory",
+    HOLIDAY: "holiday",
+    HALF_DAY: "half_day",
+  };
+  return map[String(value || "").toUpperCase()] || "annual";
+}
+
+function fromGraphSession(value) {
+  const map = { FULL: "full", MORNING: "morning", AFTERNOON: "afternoon" };
+  return map[String(value || "").toUpperCase()] || "full";
+}
+
+function toGraphLeaveType(value) {
+  const reverse = {
+    annual: "ANNUAL",
+    sick: "SICK",
+    unpaid: "UNPAID",
+    paid_personal: "PAID_PERSONAL",
+    maternity: "MATERNITY",
+    compensatory: "COMPENSATORY",
+    holiday: "HOLIDAY",
+    half_day: "HALF_DAY",
+  };
+  return reverse[String(value || "").toLowerCase()] || "ANNUAL";
+}
+
+function toGraphLeaveStatus(value) {
+  const reverse = {
+    pending: "PENDING",
+    pending_replacement_confirmation: "PENDING_REPLACEMENT_CONFIRMATION",
+    approved: "APPROVED",
+    rejected: "REJECTED",
+  };
+  return reverse[String(value || "").toLowerCase()] || "PENDING";
+}
+
+function toGraphReplacementStatus(value) {
+  const reverse = {
+    not_required: "NOT_REQUIRED",
+    pending: "PENDING",
+    confirmed: "CONFIRMED",
+    rejected: "REJECTED",
+  };
+  return reverse[String(value || "").toLowerCase()] || "NOT_REQUIRED";
+}
+
+function toGraphSession(value) {
+  const reverse = { full: "FULL", morning: "MORNING", afternoon: "AFTERNOON" };
+  return reverse[String(value || "").toLowerCase()] || "FULL";
+}
+
+function calcLeaveDays(startDate, endDate, startSession = "full", endSession = "full", leaveType = "annual") {
+  if (leaveType === "half_day") return 0.5;
+  const start = toStartOfDay(startDate);
+  const end = toStartOfDay(endDate);
+  if (end < start) return 0;
+
+  let days = Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+  if (startSession !== "full") days -= 0.5;
+  if (endSession !== "full" && days > 0.5) days -= 0.5;
+  return Math.max(Number(days.toFixed(2)), 0);
+}
+
+function computeLeaveFlags(leaveType, requestedDays) {
+  const paidTypes = new Set(["annual", "sick", "paid_personal", "maternity", "compensatory", "holiday", "half_day"]);
+  const deductTypes = new Set(["annual", "sick", "compensatory", "half_day"]);
+  const isPaidLeave = paidTypes.has(leaveType);
+  const deductLeaveBalance = deductTypes.has(leaveType);
+  const isHalfDay = leaveType === "half_day" || requestedDays === 0.5;
+  const quotaImpact = {
+    deductAnnualDays: leaveType === "annual" || leaveType === "half_day" ? requestedDays : 0,
+    deductSickDays: leaveType === "sick" ? requestedDays : 0,
+    deductCompensatoryDays: leaveType === "compensatory" ? requestedDays : 0,
+    totalDeductDays: deductLeaveBalance ? requestedDays : 0,
+  };
+  return {
+    payrollFlags: {
+      isPaidLeave,
+      deductLeaveBalance,
+      payrollCountable: isPaidLeave,
+      halfDayFactor: isHalfDay ? 0.5 : 1,
+      maternityTreatment: leaveType === "maternity",
+      holidayTreatment: leaveType === "holiday",
+      compensatoryTreatment: leaveType === "compensatory",
+      unpaidFactor: isPaidLeave ? 0 : 1,
+    },
+    quotaImpact,
+  };
+}
+
+async function applyLeaveBalanceImpact({ employeeId, year, quotaImpact }) {
+  if (!quotaImpact || Number(quotaImpact.totalDeductDays || 0) <= 0) return null;
+  const balance =
+    (await LeaveBalance.findOne({ employeeId, year })) ||
+    (await LeaveBalance.create({ employeeId, year }));
+  balance.annualUsedDays += Number(quotaImpact.deductAnnualDays || 0);
+  balance.sickUsedDays += Number(quotaImpact.deductSickDays || 0);
+  balance.compensatoryUsedDays += Number(quotaImpact.deductCompensatoryDays || 0);
+  balance.annualRemainingDays = Math.max(balance.annualEntitledDays - balance.annualUsedDays, 0);
+  balance.sickRemainingDays = Math.max(balance.sickEntitledDays - balance.sickUsedDays, 0);
+  balance.compensatoryRemainingDays = Math.max(
+    balance.compensatoryEntitledDays - balance.compensatoryUsedDays,
+    0
+  );
+  await balance.save();
+  return balance;
+}
+
+function mapLeaveOutput(row) {
+  return {
+    id: String(row._id),
+    employeeId: String(row.employeeId?._id || row.employeeId),
+    employeeName: row.employeeId?.fullName || null,
+    employeeCode: row.employeeId?.employeeCode || null,
+    employeeRole: row.employeeId?.positionTitle || row.employeeId?.roleName || null,
+    employeeAvatar: row.employeeId?.avatarUrl || row.employeeId?.avatar || null,
+    restaurantId: String(row.restaurantId),
+    leaveType: toGraphLeaveType(row.leaveType),
+    startDate: row.startDate,
+    endDate: row.endDate,
+    startSession: toGraphSession(row.startSession),
+    endSession: toGraphSession(row.endSession),
+    requestedDays: Number(row.requestedDays || 0),
+    requestedHours: Number(row.requestedHours || 0),
+    reason: row.reason || "",
+    status: toGraphLeaveStatus(row.status),
+    approverId: row.approverId?._id ? String(row.approverId._id) : row.approverId ? String(row.approverId) : null,
+    approverName: row.approverId?.fullName || null,
+    approvedAt: row.approvedAt || null,
+    rejectedAt: row.rejectedAt || null,
+    rejectionReason: row.rejectionReason || "",
+    replacementManagerId: row.replacementManagerId?._id
+      ? String(row.replacementManagerId._id)
+      : row.replacementManagerId
+      ? String(row.replacementManagerId)
+      : null,
+    replacementManagerName: row.replacementManagerId?.fullName || null,
+    replacementStatus: toGraphReplacementStatus(row.replacementStatus),
+    replacementConfirmedAt: row.replacementConfirmedAt || null,
+    replacementConfirmedBy: row.replacementConfirmedBy?._id
+      ? String(row.replacementConfirmedBy._id)
+      : row.replacementConfirmedBy
+      ? String(row.replacementConfirmedBy)
+      : null,
+    payrollFlags: {
+      isPaidLeave: Boolean(row.payrollFlags?.isPaidLeave),
+      deductLeaveBalance: Boolean(row.payrollFlags?.deductLeaveBalance),
+      payrollCountable: Boolean(row.payrollFlags?.payrollCountable),
+      halfDayFactor: Number(row.payrollFlags?.halfDayFactor ?? 1),
+      maternityTreatment: Boolean(row.payrollFlags?.maternityTreatment),
+      holidayTreatment: Boolean(row.payrollFlags?.holidayTreatment),
+      compensatoryTreatment: Boolean(row.payrollFlags?.compensatoryTreatment),
+      unpaidFactor: Number(row.payrollFlags?.unpaidFactor ?? 0),
+    },
+    quotaImpact: {
+      deductAnnualDays: Number(row.quotaImpact?.deductAnnualDays || 0),
+      deductSickDays: Number(row.quotaImpact?.deductSickDays || 0),
+      deductCompensatoryDays: Number(row.quotaImpact?.deductCompensatoryDays || 0),
+      totalDeductDays: Number(row.quotaImpact?.totalDeductDays || 0),
+    },
+    leaveBalanceSnapshot: null,
+    auditLogs: (row.auditLogs || []).map((item) => ({
+      action: item.action,
+      actorId: item.actorId ? String(item.actorId) : null,
+      actorName: item.actorName || null,
+      note: item.note || "",
+      at: item.at || null,
+    })),
+    createdAt: row.createdAt || null,
+    updatedAt: row.updatedAt || null,
+  };
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+}
+
+function formatLeaveTypeLabel(leaveType) {
+  const map = {
+    annual: "Nghỉ năm",
+    sick: "Nghỉ bệnh",
+    unpaid: "Nghỉ không lương",
+    paid_personal: "Nghỉ việc riêng có lương",
+    maternity: "Nghỉ thai sản",
+    compensatory: "Nghỉ bù",
+    holiday: "Nghỉ lễ/tết",
+    half_day: "Nghỉ nửa ngày",
+  };
+  return map[String(leaveType || "").toLowerCase()] || leaveType;
+}
+
+function formatDateVi(date) {
+  const d = new Date(date);
+  return Number.isNaN(d.getTime()) ? String(date || "") : d.toLocaleDateString("vi-VN");
+}
+
+async function sendLeaveDecisionMail({ leaveDoc, decision }) {
+  const employeeEmail = String(leaveDoc?.employeeId?.email || "").trim().toLowerCase();
+  if (!isValidEmail(employeeEmail)) {
+    throw new Error("Nhân viên không có email hợp lệ để gửi thông báo nghỉ phép");
+  }
+
+  const employeeName = leaveDoc?.employeeId?.fullName || leaveDoc?.employeeId?.employeeCode || "Nhân viên";
+  const leaveTypeLabel = formatLeaveTypeLabel(leaveDoc?.leaveType);
+  const rangeText = `${formatDateVi(leaveDoc?.startDate)} - ${formatDateVi(leaveDoc?.endDate)}`;
+  const isApproved = decision === "approved";
+  const subject = isApproved
+    ? "Đơn nghỉ phép của bạn đã được duyệt"
+    : "Đơn nghỉ phép của bạn đã bị từ chối";
+  const statusText = isApproved ? "ĐÃ DUYỆT" : "BỊ TỪ CHỐI";
+  const rejectReason = !isApproved && leaveDoc?.rejectionReason
+    ? `<p><strong>Lý do từ chối:</strong> ${leaveDoc.rejectionReason}</p>`
+    : "";
+
+  const mailResult = await mailer.sendMail({
+    to: employeeEmail,
+    subject,
+    text: [
+      `Xin chào ${employeeName},`,
+      `Đơn nghỉ phép: ${leaveTypeLabel}`,
+      `Thời gian: ${rangeText}`,
+      `Kết quả xử lý: ${statusText}`,
+      !isApproved && leaveDoc?.rejectionReason ? `Lý do từ chối: ${leaveDoc.rejectionReason}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    html: `
+      <h3>Thông báo xử lý đơn nghỉ phép</h3>
+      <p>Xin chào <strong>${employeeName}</strong>,</p>
+      <p>Đơn nghỉ phép của bạn đã được xử lý.</p>
+      <ul>
+        <li><strong>Loại nghỉ:</strong> ${leaveTypeLabel}</li>
+        <li><strong>Thời gian:</strong> ${rangeText}</li>
+        <li><strong>Kết quả:</strong> ${statusText}</li>
+      </ul>
+      ${rejectReason}
+    `,
+  });
+
+  if (mailResult?.skipped || (Array.isArray(mailResult?.rejected) && mailResult.rejected.length > 0)) {
+    throw new Error("Email provider chưa sẵn sàng hoặc từ chối gửi email");
+  }
+
+  return mailResult;
 }
 
 async function logStaffEvent({
@@ -539,5 +801,257 @@ export default {
     await record.save();
     const populated = await Timesheet.findById(record._id).populate("shiftId").lean();
     return mapAttendanceOutput(populated, staff);
+  },
+
+  createLeaveRequest: async (_, { input }, ctx) => {
+    const employeeId = toObjectId(input.employeeId);
+    const restaurantId = toObjectId(input.restaurantId);
+    if (!employeeId || !restaurantId) throw new Error("Invalid employeeId or restaurantId");
+
+    const employee = await Staff.findById(employeeId)
+      .populate("role")
+      .select({ _id: 1, fullName: 1, employeeCode: 1, positionTitle: 1, roleName: 1, avatarUrl: 1, avatar: 1, department: 1 })
+      .lean();
+    if (!employee || employee.userType !== "STAFF") throw new Error("Staff not found");
+
+    const leaveType = fromGraphLeaveType(input.leaveType);
+    const startSession = fromGraphSession(input.startSession);
+    const endSession = fromGraphSession(input.endSession);
+    const startDate = new Date(input.startDate);
+    const endDate = new Date(input.endDate);
+    const requestedDays = calcLeaveDays(startDate, endDate, startSession, endSession, leaveType);
+    if (requestedDays <= 0) throw new Error("Invalid leave date range");
+    const requestedHours = Number((requestedDays * 8).toFixed(2));
+
+    const isManager =
+      String(employee.department || "").toLowerCase() === "management" ||
+      String(employee.positionTitle || "").toLowerCase().includes("manager") ||
+      String(employee.roleName || "").toLowerCase().includes("manager") ||
+      String(employee.role?.slug || "").toLowerCase().includes("manager");
+
+    let replacementManagerId = toObjectId(input.replacementManagerId);
+    let replacementStatus = "not_required";
+    let status = "pending";
+
+    if (isManager) {
+      if (!replacementManagerId) {
+        throw new Error("Manager leave requires replacement manager");
+      }
+      if (String(replacementManagerId) === String(employeeId)) {
+        throw new Error("Replacement manager cannot be requester");
+      }
+      const replacementManager = await Staff.findById(replacementManagerId)
+        .select({ _id: 1, department: 1, positionTitle: 1, roleName: 1 })
+        .lean();
+      if (!replacementManager) throw new Error("Replacement manager not found");
+      replacementStatus = "pending";
+      status = "pending_replacement_confirmation";
+    }
+
+    const { payrollFlags, quotaImpact } = computeLeaveFlags(leaveType, requestedDays);
+    const actorId = toObjectId(ctx?.user?.id || ctx?.user?._id || null);
+
+    const created = await LeaveRequest.create({
+      employeeId,
+      restaurantId,
+      leaveType,
+      startDate: toStartOfDay(startDate),
+      endDate: toStartOfDay(endDate),
+      startSession,
+      endSession,
+      requestedDays,
+      requestedHours,
+      reason: String(input.reason || "").trim(),
+      status,
+      replacementManagerId: replacementManagerId || null,
+      replacementStatus,
+      payrollFlags,
+      quotaImpact,
+      auditLogs: [
+        {
+          action: "created",
+          actorId: actorId || employeeId,
+          actorName: null,
+          note: "Leave request created",
+          at: new Date(),
+        },
+      ],
+    });
+
+    const populated = await LeaveRequest.findById(created._id)
+      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar")
+      .populate("replacementManagerId", "fullName")
+      .lean();
+    return mapLeaveOutput(populated);
+  },
+
+  approveLeaveRequest: async (_, { requestId, approverId, note }, ctx) => {
+    const request = await LeaveRequest.findById(requestId)
+      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar email")
+      .populate("replacementManagerId", "fullName")
+      .populate("approverId", "fullName");
+    if (!request) throw new Error("Leave request not found");
+    if (request.status === "rejected") return mapLeaveOutput(request.toObject());
+    if (request.status === "approved") return mapLeaveOutput(request.toObject());
+    if (request.replacementStatus === "pending") {
+      throw new Error("Replacement manager must confirm before approval");
+    }
+
+    request.status = "approved";
+    request.approvedAt = new Date();
+    request.rejectedAt = null;
+    request.rejectionReason = "";
+    request.approverId = toObjectId(approverId || ctx?.user?.id || ctx?.user?._id || null);
+    request.auditLogs.push({
+      action: "approved",
+      actorId: request.approverId,
+      actorName: null,
+      note: note || "Approved",
+      at: new Date(),
+    });
+    await request.save();
+
+    await applyLeaveBalanceImpact({
+      employeeId: request.employeeId?._id || request.employeeId,
+      year: new Date(request.startDate).getFullYear(),
+      quotaImpact: request.quotaImpact,
+    });
+
+    const populated = await LeaveRequest.findById(request._id)
+      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar email")
+      .populate("replacementManagerId", "fullName")
+      .populate("approverId", "fullName")
+      .lean();
+
+    try {
+      await sendLeaveDecisionMail({ leaveDoc: populated, decision: "approved" });
+      await LeaveRequest.findByIdAndUpdate(request._id, {
+        $push: {
+          auditLogs: {
+            action: "mail_sent",
+            actorId: request.approverId || null,
+            actorName: null,
+            note: "Sent approval email to employee",
+            at: new Date(),
+          },
+        },
+      });
+    } catch (mailErr) {
+      await LeaveRequest.findByIdAndUpdate(request._id, {
+        $push: {
+          auditLogs: {
+            action: "mail_failed",
+            actorId: request.approverId || null,
+            actorName: null,
+            note: `Approval email failed: ${mailErr.message}`,
+            at: new Date(),
+          },
+        },
+      });
+      throw new Error(
+        `Trạng thái đơn nghỉ đã được duyệt trong DB nhưng gửi email thất bại: ${mailErr.message}`
+      );
+    }
+    return mapLeaveOutput(populated);
+  },
+
+  rejectLeaveRequest: async (_, { requestId, approverId, reason }, ctx) => {
+    const request = await LeaveRequest.findById(requestId)
+      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar email")
+      .populate("replacementManagerId", "fullName")
+      .populate("approverId", "fullName");
+    if (!request) throw new Error("Leave request not found");
+
+    request.status = "rejected";
+    request.rejectedAt = new Date();
+    request.approvedAt = null;
+    request.rejectionReason = String(reason || "").trim();
+    request.approverId = toObjectId(approverId || ctx?.user?.id || ctx?.user?._id || null);
+    request.auditLogs.push({
+      action: "rejected",
+      actorId: request.approverId,
+      actorName: null,
+      note: reason || "Rejected",
+      at: new Date(),
+    });
+    await request.save();
+
+    const populated = await LeaveRequest.findById(request._id)
+      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar email")
+      .populate("replacementManagerId", "fullName")
+      .populate("approverId", "fullName")
+      .lean();
+
+    try {
+      await sendLeaveDecisionMail({ leaveDoc: populated, decision: "rejected" });
+      await LeaveRequest.findByIdAndUpdate(request._id, {
+        $push: {
+          auditLogs: {
+            action: "mail_sent",
+            actorId: request.approverId || null,
+            actorName: null,
+            note: "Sent rejection email to employee",
+            at: new Date(),
+          },
+        },
+      });
+    } catch (mailErr) {
+      await LeaveRequest.findByIdAndUpdate(request._id, {
+        $push: {
+          auditLogs: {
+            action: "mail_failed",
+            actorId: request.approverId || null,
+            actorName: null,
+            note: `Rejection email failed: ${mailErr.message}`,
+            at: new Date(),
+          },
+        },
+      });
+      throw new Error(
+        `Trạng thái đơn nghỉ đã được từ chối trong DB nhưng gửi email thất bại: ${mailErr.message}`
+      );
+    }
+    return mapLeaveOutput(populated);
+  },
+
+  confirmReplacementLeaveRequest: async (_, { requestId, managerId, note }, ctx) => {
+    const actorId = toObjectId(managerId || ctx?.user?.id || ctx?.user?._id || null);
+    const request = await LeaveRequest.findById(requestId)
+      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar")
+      .populate("replacementManagerId", "fullName")
+      .lean();
+    if (!request) throw new Error("Leave request not found");
+    if (!actorId) throw new Error("Replacement manager is required");
+    if (!request.replacementManagerId) throw new Error("Leave request does not require replacement");
+    if (String(request.replacementManagerId._id || request.replacementManagerId) !== String(actorId)) {
+      throw new Error("Only assigned replacement manager can confirm");
+    }
+
+    const updated = await LeaveRequest.findByIdAndUpdate(
+      requestId,
+      {
+        $set: {
+          replacementStatus: "confirmed",
+          replacementConfirmedAt: new Date(),
+          replacementConfirmedBy: actorId,
+          status: "pending",
+        },
+        $push: {
+          auditLogs: {
+            action: "replacement_confirmed",
+            actorId,
+            actorName: null,
+            note: note || "Replacement manager confirmed",
+            at: new Date(),
+          },
+        },
+      },
+      { new: true }
+    )
+      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar")
+      .populate("replacementManagerId", "fullName")
+      .lean();
+
+    return mapLeaveOutput(updated);
   },
 };

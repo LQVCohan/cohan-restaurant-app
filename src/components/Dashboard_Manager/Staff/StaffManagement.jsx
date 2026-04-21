@@ -6,6 +6,7 @@ import EmployeeDashboard from "./components/EmployeeDashboard";
 import AttendancePage from "./components/Attendance";
 import LeaveManagement from "./components/LeaveManagement";
 import SchedulePage from "./components/Schedule";
+import StaffReportsPage from "./components/Reports";
 import {
   AddEmployeeModal,
   EditEmployeeModal,
@@ -260,6 +261,7 @@ const StaffManagement = () => {
     }
     if (currentPage === "leave") return <LeaveManagement />;
     if (currentPage === "schedule") return <SchedulePage />;
+    if (currentPage === "reports") return <StaffReportsPage />;
     return null;
   }, [
     currentDate,

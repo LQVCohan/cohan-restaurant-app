@@ -5,16 +5,45 @@ import { useLeaveManagement } from "../../../../../hooks/useLeaveManagement";
 import "./LeaveManagement.scss";
 
 const LeaveManagement = () => {
-  const { leaveRequests, submitLeaveRequest, approveLeave, rejectLeave } =
-    useLeaveManagement();
+  const [selectedDate, setSelectedDate] = useState(
+    ""
+  );
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
+
+  const {
+    leaveRequests,
+    staffList,
+    submitLeaveRequest,
+    approveLeave,
+    rejectLeave,
+    confirmReplacement,
+    loading,
+    error,
+    isMutating,
+  } = useLeaveManagement({ selectedDate, status: statusFilter, search });
 
   return (
     <div className="leave-management-page">
-      {/* <LeaveRequestForm onSubmit={submitLeaveRequest} /> */}
+      <LeaveRequestForm
+        staffList={staffList}
+        onSubmit={submitLeaveRequest}
+        disabled={isMutating}
+      />
       <LeaveRequestsList
         requests={leaveRequests}
+        staffList={staffList}
         onApprove={approveLeave}
         onReject={rejectLeave}
+        onConfirmReplacement={confirmReplacement}
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        searchTerm={search}
+        onSearchChange={setSearch}
+        loading={loading}
+        error={error}
       />
     </div>
   );
