@@ -487,6 +487,7 @@ const CustomerManagement = () => {
         <PromotionModal
           onClose={() => setShowPromotionModal(false)}
           customers={customersDecorated}
+          restaurantId={selectedRestaurantId}
         />
       )}
 
