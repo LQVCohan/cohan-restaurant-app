@@ -495,6 +495,7 @@ const CustomerManagement = () => {
         <CustomerDetailModal
           isOpen={Boolean(selectedCustomer)}
           customer={selectedCustomer}
+          restaurantId={selectedRestaurantId}
           onClose={() => setSelectedCustomer(null)}
         />
       )}

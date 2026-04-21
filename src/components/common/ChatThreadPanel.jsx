@@ -5,9 +5,14 @@ import "./ChatThreadPanel.scss";
 export default function ChatThreadPanel({
   open,
   title,
+  subtitle = "",
   meId,
   messages = [],
+  loading = false,
+  error = null,
   sending = false,
+  composerDisabled = false,
+  composerPlaceholder = "Nhập tin nhắn...",
   onClose,
   onSend,
 }) {
@@ -20,26 +25,39 @@ export default function ChatThreadPanel({
 
   if (!open) return null;
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     const content = text.trim();
-    if (!content) return;
-    onSend?.(content);
-    setText("");
+    if (!content || sending || composerDisabled) return;
+    try {
+      await onSend?.(content);
+      setText("");
+    } catch {
+      // Parent sẽ hiển thị lỗi theo state của nó
+    }
   };
 
   return (
     <div className="chat-thread-overlay" onClick={onClose}>
       <div className="chat-thread-panel" onClick={(e) => e.stopPropagation()}>
         <header>
-          <h4>{title || "Hội thoại"}</h4>
+          <div>
+            <h4>{title || "Hội thoại"}</h4>
+            {subtitle ? <p>{subtitle}</p> : null}
+          </div>
           <button type="button" onClick={onClose}>
             <X size={18} />
           </button>
         </header>
 
         <div className="chat-thread-messages">
-          {sortedMessages.length === 0 ? (
+          {loading ? (
+            <div className="empty">Đang tải hội thoại...</div>
+          ) : error ? (
+            <div className="error">
+              Không thể tải hội thoại. Vui lòng thử lại.
+            </div>
+          ) : sortedMessages.length === 0 ? (
             <div className="empty">Chưa có tin nhắn nào.</div>
           ) : (
             sortedMessages.map((m, idx) => {
@@ -68,9 +86,13 @@ export default function ChatThreadPanel({
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Nhập tin nhắn..."
+            placeholder={composerPlaceholder}
+            disabled={composerDisabled}
           />
-          <button type="submit" disabled={sending || !text.trim()}>
+          <button
+            type="submit"
+            disabled={sending || composerDisabled || !text.trim()}
+          >
             <Send size={16} />
           </button>
         </form>
