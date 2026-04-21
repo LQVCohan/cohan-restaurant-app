@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import usePayroll from "@/hooks/usePayroll";
 import "./PayrollManagement.scss";
 
@@ -14,17 +14,42 @@ const getDefaultRange = () => {
 
 const PayrollManagement = () => {
   const [dateRange, setDateRange] = useState(getDefaultRange);
+  const [selectedPeriodId, setSelectedPeriodId] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [deptFilter, setDeptFilter] = useState("all");
   const [sortBy, setSortBy] = useState("net_desc");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [showPayslip, setShowPayslip] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [adjustmentAmount, setAdjustmentAmount] = useState("");
+  const [adjustmentType, setAdjustmentType] = useState("bonus");
+  const [adjustmentNote, setAdjustmentNote] = useState("");
 
-  const { payrollItems, payrollStats, loading, error, refetch } = usePayroll({
-    startDate: dateRange.start,
-    endDate: dateRange.end,
-  });
+  const {
+    periods,
+    currentPeriodId,
+    periodDetail,
+    payrollItems,
+    payrollStats,
+    payrollSettings,
+    loading,
+    error,
+    createPeriod,
+    recalculatePeriod,
+    finalizePeriod,
+    lockPeriod,
+    markPaid,
+    updateSettings,
+    upsertAdjustment,
+    refetchDetail,
+  } = usePayroll({ periodId: selectedPeriodId || undefined });
+
+  useEffect(() => {
+    if (!selectedPeriodId && currentPeriodId) {
+      setSelectedPeriodId(currentPeriodId);
+    }
+  }, [currentPeriodId, selectedPeriodId]);
 
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("vi-VN", {
@@ -33,22 +58,24 @@ const PayrollManagement = () => {
       maximumFractionDigits: 0,
     }).format(Number(amount || 0));
 
-  const calculateNet = (emp) => Number(emp.netSalary || 0);
+  const formatDate = (value) =>
+    value
+      ? new Date(value).toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+      : "--";
 
   const getStatusBadge = (status) => {
     const map = {
-      draft: { label: "Bản nháp", class: "draft" },
-      pending: { label: "Chờ duyệt", class: "warning" },
-      approved: { label: "Chờ chi", class: "info" },
-      paid: { label: "Đã chi", class: "success" },
+      draft: { label: "Nháp", class: "draft" },
+      finalized: { label: "Đã chốt", class: "info" },
+      locked: { label: "Đã khóa", class: "warning" },
+      paid: { label: "Đã trả", class: "success" },
     };
     const s = map[status] || map.draft;
     return <span className={`status-dot ${s.class}`}>{s.label}</span>;
-  };
-
-  const getAvatarColor = (name) => {
-    const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
-    return colors[String(name || "").length % colors.length];
   };
 
   const departmentOptions = useMemo(() => {
@@ -74,31 +101,11 @@ const PayrollManagement = () => {
   }, [payrollItems, activeTab, deptFilter, searchQuery, sortBy]);
 
   const stats = useMemo(() => {
-    if (payrollStats) {
-      return {
-        totalPayroll: Number(payrollStats.totalPayroll || 0),
-        paidAmount: Number(payrollStats.paidAmount || 0),
-        remaining: Number(payrollStats.remaining || 0),
-        progress: Number(payrollStats.progress || 0),
-      };
-    }
+    if (payrollStats) return payrollStats;
+    return { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 };
+  }, [payrollStats]);
 
-    let totalPayroll = 0;
-    let paidAmount = 0;
-    for (const emp of payrollItems) {
-      const net = Number(emp.netSalary || 0);
-      totalPayroll += net;
-      if (emp.status === "paid") paidAmount += net;
-    }
-    const progress = totalPayroll > 0 ? Math.round((paidAmount / totalPayroll) * 100) : 0;
-
-    return {
-      totalPayroll,
-      paidAmount,
-      remaining: totalPayroll - paidAmount,
-      progress,
-    };
-  }, [payrollStats, payrollItems]);
+  const periodStatus = periodDetail?.period?.status || "draft";
 
   const handleSelectAll = (e) => {
     if (e.target.checked) setSelectedIds(filteredData.map((i) => i.id));
@@ -107,129 +114,163 @@ const PayrollManagement = () => {
 
   const handleSelectRow = (id) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
     );
   };
 
   const handleDateChange = (e) => {
     const { name, value } = e.target;
     setDateRange((prev) => ({ ...prev, [name]: value }));
-    setSelectedIds([]);
   };
 
-  const handleExportCsv = () => {
+  const handleCreatePeriod = async () => {
+    const created = await createPeriod({
+      variables: {
+        input: {
+          startDate: dateRange.start,
+          endDate: dateRange.end,
+          name: `Kỳ ${dateRange.start} - ${dateRange.end}`,
+        },
+      },
+    });
+    const id = created?.data?.createPayrollPeriod?.id;
+    if (id) setSelectedPeriodId(id);
+  };
+
+  const handleExportExcel = () => {
     const header = [
-      "ID",
-      "Tên",
+      "Nhân viên",
       "Mã NV",
       "Phòng ban",
       "Lương cơ bản",
-      "Hệ số",
+      "Công thực tế",
+      "Giờ công",
+      "Phụ cấp",
+      "Thưởng",
+      "OT",
       "Tổng thu nhập",
-      "BHXH",
-      "BHYT",
-      "BHTN",
       "Tổng khấu trừ",
       "Thực lĩnh",
-      "Mã policy",
-      "Vùng lương",
       "Trạng thái",
-    ].join(",");
-    const rows = filteredData.map((item) =>
-      [
-        item.id,
-        `"${item.name || ""}"`,
-        item.code || "",
-        item.department || "",
-        Number(item.baseSalary || 0),
-        Number(item.coefficient || 0),
-        Number(item.totalIncome || 0),
-        Number(item.insuranceSocial || 0),
-        Number(item.insuranceHealth || 0),
-        Number(item.insuranceUnemployment || 0),
-        Number(item.totalDeduction || 0),
-        Number(item.netSalary || 0),
-        item.policyCode || "",
-        item.regionCode || "",
-        item.status || "",
-      ].join(","),
-    );
-    const blob = new Blob([[header, ...rows].join("\n")], {
-      type: "text/csv;charset=utf-8;",
-    });
+    ];
+
+    const rows = filteredData.map((item) => [
+      item.name,
+      item.code || "",
+      item.department || "",
+      Number(item.baseSalary || 0),
+      `${item.actualWorkDays}/${item.workDays}`,
+      Number(item.totalHours || 0),
+      Number(item.allowance || 0),
+      Number(item.bonus || 0),
+      Number(item.overtime || 0),
+      Number(item.totalIncome || 0),
+      Number(item.totalDeduction || 0),
+      Number(item.netSalary || 0),
+      item.status,
+    ]);
+
+    const html = `\n<table border="1"><tr>${header.map((h) => `<th>${h}</th>`).join("")}</tr>${rows
+      .map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`)
+      .join("")}</table>`;
+
+    const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "payroll_export.csv";
+    link.download = `bang-luong-${periodDetail?.period?.id || "period"}.xls`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleSaveSettings = async (formData) => {
+    await updateSettings({ variables: { input: formData } });
+    await refetchDetail?.();
+    setShowSettings(false);
+  };
+
+  const handleApplyAdjustment = async () => {
+    if (!showPayslip?.id || !selectedPeriodId) return;
+    const amount = Number(adjustmentAmount || 0);
+    if (!amount) return;
+    await upsertAdjustment({
+      variables: {
+        input: {
+          periodId: selectedPeriodId,
+          employeeId: showPayslip.id,
+          type: adjustmentType,
+          amount,
+          note: adjustmentNote,
+        },
+      },
+    });
+    setAdjustmentAmount("");
+    setAdjustmentNote("");
+    await refetchDetail?.();
   };
 
   return (
     <div className="payroll-page-compact">
       <div className="header-toolbar">
         <div className="left-section">
-          <h2 className="page-title">Bảng Lương</h2>
-
+          <h2 className="page-title">Quản lý lương</h2>
           <div className="cycle-picker-compact">
             <div className="input-group">
               <span className="label">Từ:</span>
-              <input
-                type="date"
-                name="start"
-                value={dateRange.start}
-                onChange={handleDateChange}
-              />
+              <input type="date" name="start" value={dateRange.start} onChange={handleDateChange} />
             </div>
             <span className="arrow">➝</span>
             <div className="input-group">
               <span className="label">Đến:</span>
-              <input
-                type="date"
-                name="end"
-                value={dateRange.end}
-                onChange={handleDateChange}
-              />
+              <input type="date" name="end" value={dateRange.end} onChange={handleDateChange} />
             </div>
+            <button className="btn btn-white" onClick={handleCreatePeriod}>+ Tạo kỳ</button>
           </div>
         </div>
 
         <div className="right-actions">
-          <button className="btn btn-white" onClick={handleExportCsv}>
-            📥 Xuất CSV
-          </button>
-          <button className="btn btn-primary" onClick={() => refetch?.()}>
-            🔄 Tính Lương
+          <select className="filter-select" value={selectedPeriodId} onChange={(e) => setSelectedPeriodId(e.target.value)}>
+            {periods.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name || `${formatDate(p.startDate)} - ${formatDate(p.endDate)}`} ({p.status})
+              </option>
+            ))}
+          </select>
+          <button className="btn btn-white" onClick={() => setShowSettings(true)}>⚙️ Cấu hình</button>
+          <button className="btn btn-white" onClick={handleExportExcel}>📥 Xuất Excel</button>
+          <button className="btn btn-primary" onClick={() => recalculatePeriod({ variables: { periodId: selectedPeriodId } })}>
+            🔄 Tính lại
           </button>
         </div>
       </div>
 
+      {periodDetail?.period && (
+        <div className="metrics-strip" style={{ marginBottom: 12 }}>
+          <div className="metric-group">
+            <div className="metric-item"><span className="label">Kỳ</span><span className="value">{formatDate(periodDetail.period.startDate)} - {formatDate(periodDetail.period.endDate)}</span></div>
+            <div className="separator"></div>
+            <div className="metric-item"><span className="label">Trạng thái kỳ</span><span className="value">{getStatusBadge(periodDetail.period.status)}</span></div>
+          </div>
+          <div className="right-actions" style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-white" disabled={periodStatus !== "draft"} onClick={() => finalizePeriod({ variables: { periodId: selectedPeriodId } })}>Chốt kỳ</button>
+            <button className="btn btn-white" disabled={! ["finalized", "locked"].includes(periodStatus)} onClick={() => lockPeriod({ variables: { periodId: selectedPeriodId } })}>Khóa kỳ</button>
+            <button className="btn btn-primary" disabled={periodStatus !== "locked"} onClick={() => markPaid({ variables: { periodId: selectedPeriodId } })}>Xác nhận đã trả</button>
+          </div>
+        </div>
+      )}
+
       <div className="metrics-strip">
         <div className="metric-group">
-          <div className="metric-item">
-            <span className="label">Tổng quỹ lương</span>
-            <span className="value highlight">{formatCurrency(stats.totalPayroll)}</span>
-          </div>
+          <div className="metric-item"><span className="label">Tổng quỹ lương</span><span className="value highlight">{formatCurrency(stats.totalPayroll)}</span></div>
           <div className="separator"></div>
-          <div className="metric-item">
-            <span className="label">Đã chi trả</span>
-            <span className="value success">{formatCurrency(stats.paidAmount)}</span>
-          </div>
+          <div className="metric-item"><span className="label">Đã chi trả</span><span className="value success">{formatCurrency(stats.paidAmount)}</span></div>
           <div className="separator"></div>
-          <div className="metric-item">
-            <span className="label">Còn lại</span>
-            <span className="value danger">{formatCurrency(stats.remaining)}</span>
-          </div>
+          <div className="metric-item"><span className="label">Còn lại</span><span className="value danger">{formatCurrency(stats.remaining)}</span></div>
         </div>
 
         <div className="progress-section">
-          <div className="progress-info">
-            <span>Tiến độ giải ngân</span>
-            <strong>{stats.progress}%</strong>
-          </div>
-          <div className="progress-track">
-            <div className="progress-fill" style={{ width: `${stats.progress}%` }}></div>
-          </div>
+          <div className="progress-info"><span>Tiến độ giải ngân</span><strong>{stats.progress}%</strong></div>
+          <div className="progress-track"><div className="progress-fill" style={{ width: `${stats.progress}%` }}></div></div>
         </div>
       </div>
 
@@ -237,68 +278,27 @@ const PayrollManagement = () => {
         <div className="table-controls">
           <div className="left-controls">
             <div className="workflow-tabs">
-              {[
-                { id: "all", label: "Tất cả" },
-                { id: "draft", label: "Nháp" },
-                { id: "pending", label: "Chờ duyệt" },
-                { id: "approved", label: "Chờ chi" },
-                { id: "paid", label: "Đã chi" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
-                  onClick={() => setActiveTab(tab.id)}
-                >
-                  {tab.label}
+              {["all", "draft", "finalized", "locked", "paid"].map((tab) => (
+                <button key={tab} className={`tab-btn ${activeTab === tab ? "active" : ""}`} onClick={() => setActiveTab(tab)}>
+                  {tab === "all" ? "Tất cả" : tab}
                 </button>
               ))}
             </div>
           </div>
-
           <div className="right-controls">
-            <select
-              className="filter-select"
-              value={deptFilter}
-              onChange={(e) => setDeptFilter(e.target.value)}
-            >
+            <select className="filter-select" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
               {departmentOptions.map((dep) => (
-                <option key={dep} value={dep}>
-                  {dep === "all" ? "🏢 Tất cả phòng ban" : dep}
-                </option>
+                <option key={dep} value={dep}>{dep === "all" ? "🏢 Tất cả phòng ban" : dep}</option>
               ))}
             </select>
-            <select
-              className="filter-select"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
+            <select className="filter-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
               <option value="net_desc">💰 Thực lĩnh giảm dần</option>
               <option value="net_asc">💰 Thực lĩnh tăng dần</option>
               <option value="name_asc">🔤 Tên A→Z</option>
               <option value="name_desc">🔤 Tên Z→A</option>
             </select>
-
-            <div className="search-box">
-              <span className="icon">🔍</span>
-              <input
-                type="text"
-                placeholder="Tìm tên, mã NV..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
+            <div className="search-box"><span className="icon">🔍</span><input type="text" placeholder="Tìm tên, mã NV..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
           </div>
-
-          {selectedIds.length > 0 && (
-            <div className="bulk-actions">
-              <span className="count">Đã chọn {selectedIds.length} nhân viên</span>
-              <div className="actions">
-                <button className="btn-xs btn-white" onClick={() => setSelectedIds([])}>
-                  Bỏ chọn
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {error && <div className="table-empty">Không tải được dữ liệu bảng lương.</div>}
@@ -307,130 +307,42 @@ const PayrollManagement = () => {
           <table className="payroll-table">
             <thead>
               <tr>
-                <th style={{ width: "50px" }} className="center">
-                  <input
-                    type="checkbox"
-                    onChange={handleSelectAll}
-                    checked={selectedIds.length === filteredData.length && filteredData.length > 0}
-                  />
-                </th>
-                <th style={{ width: "250px" }} className="sticky-left">
-                  Nhân viên
-                </th>
-                <th style={{ width: "130px" }}>Lương CB</th>
-                <th style={{ width: "80px" }} className="center">
-                  Công
-                </th>
-                <th style={{ width: "130px" }} className="text-right">
-                  Thu Nhập (+)
-                </th>
-                <th style={{ width: "130px" }} className="text-right">
-                  Khấu Trừ (-)
-                </th>
-                <th style={{ width: "120px" }} className="text-right">
-                  BH bắt buộc
-                </th>
-                <th style={{ width: "150px" }} className="text-right">
-                  Thực Lĩnh
-                </th>
-                <th style={{ width: "120px" }} className="center">
-                  Trạng thái
-                </th>
-                <th style={{ width: "80px" }} className="text-right"></th>
+                <th className="center"><input type="checkbox" onChange={handleSelectAll} checked={selectedIds.length === filteredData.length && filteredData.length > 0} /></th>
+                <th className="sticky-left">Nhân viên</th>
+                <th>Lương CB</th>
+                <th className="center">Công</th>
+                <th className="text-right">OT</th>
+                <th className="text-right">Đi muộn/về sớm</th>
+                <th className="text-right">Nghỉ không lương</th>
+                <th className="text-right">Thu Nhập (+)</th>
+                <th className="text-right">Khấu Trừ (-)</th>
+                <th className="text-right">Thực Lĩnh</th>
+                <th className="center">Trạng thái</th>
               </tr>
             </thead>
             <tbody>
-              {loading && (
-                <tr>
-                  <td colSpan={10} className="table-empty">
-                    Đang tải dữ liệu bảng lương...
-                  </td>
-                </tr>
-              )}
-
-              {!loading && filteredData.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="table-empty">
-                    Không có dữ liệu phù hợp.
-                  </td>
-                </tr>
-              )}
-
-              {!loading &&
-                filteredData.map((item) => {
-                  const net = calculateNet(item);
-                  const totalIncome = Number(item.totalIncome || 0);
-                  const totalDeduct = Number(item.totalDeduction || 0);
-                  const isSelected = selectedIds.includes(item.id);
-
-                  return (
-                    <tr
-                      key={item.id}
-                      className={isSelected ? "selected" : ""}
-                      onClick={() =>
-                        setShowPayslip({ ...item, net, totalIncome, totalDeduct })
-                      }
-                    >
-                      <td className="center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleSelectRow(item.id)}
-                        />
-                      </td>
-
-                      <td className="sticky-left">
-                        <div className="emp-cell">
-                          <div
-                            className="avatar"
-                            style={{
-                              backgroundColor: !item.avatar
-                                ? getAvatarColor(item.name)
-                                : "transparent",
-                              backgroundImage: item.avatar ? `url(${item.avatar})` : "none",
-                            }}
-                          >
-                            {!item.avatar && item.name.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="name">{item.name}</div>
-                            <div className="sub">
-                              {item.code || "—"} • {item.department}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td>{formatCurrency(item.baseSalary)}</td>
-
-                      <td className="center">
-                        <span className="work-tag">
-                          {item.actualWorkDays}/{item.workDays}
-                        </span>
-                      </td>
-
-                      <td className="text-right text-success">+{formatCurrency(totalIncome)}</td>
-                      <td className="text-right text-danger">-{formatCurrency(totalDeduct)}</td>
-                      <td className="text-right">
-                        {formatCurrency(item.insuranceTotal)}
-                      </td>
-
-                      <td className="text-right net-cell">
-                        <strong>{formatCurrency(net)}</strong>
-                      </td>
-
-                      <td className="center">
-                        <div className="status-badge-wrapper">{getStatusBadge(item.status)}</div>
-                      </td>
-
-                      <td className="text-right action-cell">
-                        <button className="btn-icon" title="Xem phiếu lương">
-                          📄
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+              {loading && <tr><td colSpan={11} className="table-empty">Đang tải dữ liệu bảng lương...</td></tr>}
+              {!loading && filteredData.length === 0 && <tr><td colSpan={11} className="table-empty">Không có dữ liệu phù hợp.</td></tr>}
+              {!loading && filteredData.map((item) => {
+                const isSelected = selectedIds.includes(item.id);
+                return (
+                  <tr key={item.id} className={isSelected ? "selected" : ""} onClick={() => setShowPayslip(item)}>
+                    <td className="center" onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={isSelected} onChange={() => handleSelectRow(item.id)} /></td>
+                    <td className="sticky-left">
+                      <div className="emp-cell"><div className="avatar">{item.name?.charAt(0) || "N"}</div><div><div className="name">{item.name}</div><div className="sub">{item.code || "—"} • {item.department}</div></div></div>
+                    </td>
+                    <td>{formatCurrency(item.baseSalary)}</td>
+                    <td className="center"><span className="work-tag">{item.actualWorkDays}/{item.workDays}</span></td>
+                    <td className="text-right">{formatCurrency(item.overtime)}</td>
+                    <td className="text-right">{item.lateMinutes || 0} / {item.earlyLeaveMinutes || 0} phút</td>
+                    <td className="text-right">{item.unpaidLeaveDays || 0} ngày</td>
+                    <td className="text-right text-success">+{formatCurrency(item.totalIncome)}</td>
+                    <td className="text-right text-danger">-{formatCurrency(item.totalDeduction)}</td>
+                    <td className="text-right net-cell"><strong>{formatCurrency(item.netSalary)}</strong></td>
+                    <td className="center"><div className="status-badge-wrapper">{getStatusBadge(item.status)}</div></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -439,146 +351,144 @@ const PayrollManagement = () => {
       {showPayslip && (
         <PayslipModal
           data={showPayslip}
-          dateRange={dateRange}
+          period={periodDetail?.period}
           onClose={() => setShowPayslip(null)}
           formatCurrency={formatCurrency}
+          adjustmentType={adjustmentType}
+          setAdjustmentType={setAdjustmentType}
+          adjustmentAmount={adjustmentAmount}
+          setAdjustmentAmount={setAdjustmentAmount}
+          adjustmentNote={adjustmentNote}
+          setAdjustmentNote={setAdjustmentNote}
+          onApplyAdjustment={handleApplyAdjustment}
+        />
+      )}
+
+      {showSettings && (
+        <PayrollSettingsModal
+          settings={payrollSettings}
+          onClose={() => setShowSettings(false)}
+          onSave={handleSaveSettings}
         />
       )}
     </div>
   );
 };
 
-const PayslipModal = ({ data, dateRange, onClose, formatCurrency }) => {
-  const formatDate = (d) =>
-    new Date(d).toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+const PayslipModal = ({
+  data,
+  period,
+  onClose,
+  formatCurrency,
+  adjustmentType,
+  setAdjustmentType,
+  adjustmentAmount,
+  setAdjustmentAmount,
+  adjustmentNote,
+  setAdjustmentNote,
+  onApplyAdjustment,
+}) => (
+  <div className="modal-overlay" onClick={onClose}>
+    <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-header">
+        <div className="brand">
+          <h3>PHIẾU LƯƠNG</h3>
+          <span>Kỳ: {period ? `${new Date(period.startDate).toLocaleDateString("vi-VN")} - ${new Date(period.endDate).toLocaleDateString("vi-VN")}` : "--"}</span>
+        </div>
+        <button className="close-btn" onClick={onClose}>✕</button>
+      </div>
+      <div className="modal-body">
+        <div className="emp-summary">
+          <div className="left">
+            <h4>{data.name}</h4>
+            <p>{data.code} - {data.role}</p>
+            <p>{data.department}</p>
+            <p>Ca kế hoạch: {data.scheduleShiftCount || 0}</p>
+            <p>Đi muộn: {data.lateMinutes || 0} phút | Về sớm: {data.earlyLeaveMinutes || 0} phút</p>
+            <p>Nghỉ có lương: {data.paidLeaveDays || 0} ngày | Nghỉ không lương: {data.unpaidLeaveDays || 0} ngày</p>
+          </div>
+          <div className="right"><div className="net-total-box"><span>Thực Lĩnh:</span><h2>{formatCurrency(data.netSalary)}</h2></div></div>
+        </div>
+
+        <div className="details-grid">
+          <div className="section">
+            <h5 className="section-title income">Thu nhập</h5>
+            <div className="row"><span>Lương cơ bản</span><span>{formatCurrency(data.baseSalary)}</span></div>
+            <div className="row"><span>Phụ cấp</span><span>{formatCurrency(data.allowance)}</span></div>
+            <div className="row"><span>Thưởng</span><span>{formatCurrency(data.bonus)}</span></div>
+            <div className="row"><span>OT</span><span>{formatCurrency(data.overtime)}</span></div>
+            <div className="row total text-success"><strong>Tổng thu nhập</strong><strong>{formatCurrency(data.totalIncome)}</strong></div>
+          </div>
+          <div className="section">
+            <h5 className="section-title deduction">Khấu trừ</h5>
+            <div className="row"><span>BH bắt buộc</span><span>{formatCurrency(data.insuranceTotal)}</span></div>
+            <div className="row"><span>Khấu trừ khác</span><span>{formatCurrency(data.otherDeduction)}</span></div>
+            <div className="row"><span>Tổng khấu trừ</span><span>{formatCurrency(data.totalDeduction)}</span></div>
+            <div className="row total text-danger"><strong>Thực lĩnh</strong><strong>{formatCurrency(data.netSalary)}</strong></div>
+          </div>
+        </div>
+
+        <div className="formula-note">
+          Điều chỉnh thủ công: {formatCurrency(data.manualAdjustmentTotal || 0)}
+        </div>
+
+        <div className="formula-note" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <select value={adjustmentType} onChange={(e) => setAdjustmentType(e.target.value)}>
+            <option value="bonus">Thưởng</option>
+            <option value="allowance">Phụ cấp</option>
+            <option value="deduction">Khấu trừ</option>
+            <option value="other">Điều chỉnh khác</option>
+          </select>
+          <input type="number" placeholder="Số tiền" value={adjustmentAmount} onChange={(e) => setAdjustmentAmount(e.target.value)} />
+          <input type="text" placeholder="Ghi chú" value={adjustmentNote} onChange={(e) => setAdjustmentNote(e.target.value)} />
+          <button className="btn btn-primary" onClick={onApplyAdjustment}>Áp dụng điều chỉnh</button>
+        </div>
+
+        {!!data.warningMessages?.length && <div className="formula-note">⚠️ {data.warningMessages.join(" | ")}</div>}
+      </div>
+      <div className="modal-footer">
+        <button className="btn btn-secondary" onClick={onClose}>Đóng</button>
+      </div>
+    </div>
+  </div>
+);
+
+const PayrollSettingsModal = ({ settings, onClose, onSave }) => {
+  const [form, setForm] = useState({
+    standardWorkDaysPerMonth: settings?.standardWorkDaysPerMonth ?? 26,
+    standardHoursPerDay: settings?.standardHoursPerDay ?? 8,
+    overtimeMultiplierWeekday: settings?.overtimeMultiplierWeekday ?? 1.5,
+    overtimeMultiplierWeekend: settings?.overtimeMultiplierWeekend ?? 2,
+    overtimeMultiplierHoliday: settings?.overtimeMultiplierHoliday ?? 3,
+    latenessPenaltyPerMinute: settings?.latenessPenaltyPerMinute ?? 0,
+    earlyLeavePenaltyPerMinute: settings?.earlyLeavePenaltyPerMinute ?? 0,
+    unpaidLeaveDeductionPerDay: settings?.unpaidLeaveDeductionPerDay ?? 0,
+    defaultAllowance: settings?.defaultAllowance ?? 0,
+    defaultBonus: settings?.defaultBonus ?? 0,
+    defaultDeduction: settings?.defaultDeduction ?? 0,
+    allowPaidLeaveInWorkDays: settings?.allowPaidLeaveInWorkDays ?? true,
+    notes: settings?.notes ?? "",
+  });
+
+  const setField = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div className="brand">
-            <h3>PHIẾU LƯƠNG (PAYSLIP)</h3>
-            <span>
-              Kỳ lương: {formatDate(dateRange.start)} - {formatDate(dateRange.end)}
-            </span>
-          </div>
-          <button className="close-btn" onClick={onClose}>
-            ✕
-          </button>
+        <div className="modal-header"><h3>Cấu hình payroll</h3><button className="close-btn" onClick={onClose}>✕</button></div>
+        <div className="modal-body" style={{ display: "grid", gap: 8 }}>
+          {["standardWorkDaysPerMonth", "standardHoursPerDay", "overtimeMultiplierWeekday", "overtimeMultiplierWeekend", "overtimeMultiplierHoliday", "latenessPenaltyPerMinute", "earlyLeavePenaltyPerMinute", "unpaidLeaveDeductionPerDay", "defaultAllowance", "defaultBonus", "defaultDeduction"].map((field) => (
+            <label key={field} style={{ display: "grid", gap: 4 }}>
+              <span>{field}</span>
+              <input type="number" value={form[field]} onChange={(e) => setField(field, Number(e.target.value || 0))} />
+            </label>
+          ))}
+          <label><input type="checkbox" checked={form.allowPaidLeaveInWorkDays} onChange={(e) => setField("allowPaidLeaveInWorkDays", e.target.checked)} /> Tính nghỉ có lương vào công thực tế</label>
+          <textarea rows={3} value={form.notes} onChange={(e) => setField("notes", e.target.value)} />
         </div>
-
-        <div className="modal-body">
-          <div className="emp-summary">
-            <div className="left">
-              <h4>{data.name}</h4>
-              <p>
-                {data.code} - {data.role}
-              </p>
-              <p>{data.department}</p>
-              <p>Hệ số lương: {Number(data.coefficient || 0).toFixed(2)}</p>
-              <p>Policy: {data.policyCode || "N/A"} • Vùng: {data.regionCode || "N/A"}</p>
-            </div>
-            <div className="right">
-              <div className="net-total-box">
-                <span>Thực Lĩnh:</span>
-                <h2>{formatCurrency(data.net)}</h2>
-              </div>
-            </div>
-          </div>
-
-          <div className="details-grid">
-            <div className="section">
-              <h5 className="section-title income">Các Khoản Thu Nhập</h5>
-              <div className="row">
-                <span>Lương cơ bản</span>
-                <span>{formatCurrency(data.baseSalary)}</span>
-              </div>
-              <div className="row">
-                <span>Lương theo công ({data.actualWorkDays} ngày)</span>
-                <span>
-                  {formatCurrency((data.workDays > 0 ? data.baseSalary / data.workDays : 0) * data.actualWorkDays)}
-                </span>
-              </div>
-              <div className="row">
-                <span>Phụ cấp trách nhiệm</span>
-                <span>{formatCurrency(data.allowance)}</span>
-              </div>
-              <div className="row">
-                <span>Thưởng hiệu suất & KPI</span>
-                <span>{formatCurrency(data.bonus)}</span>
-              </div>
-              <div className="row">
-                <span>Làm thêm giờ (OT)</span>
-                <span>{formatCurrency(data.overtime)}</span>
-              </div>
-              <div className="row">
-                <span>OT ngày thường</span>
-                <span>{formatCurrency(data.overtimeNormal)}</span>
-              </div>
-              <div className="row">
-                <span>OT ngày nghỉ/ lễ</span>
-                <span>{formatCurrency(Number(data.overtimeWeekend || 0) + Number(data.overtimeHoliday || 0))}</span>
-              </div>
-              <div className="row total text-success">
-                <strong>Tổng thu nhập</strong>
-                <strong>{formatCurrency(data.totalIncome)}</strong>
-              </div>
-            </div>
-
-            <div className="section">
-              <h5 className="section-title deduction">Các Khoản Khấu Trừ</h5>
-              <div className="row">
-                <span>BHXH</span>
-                <span>{formatCurrency(data.insuranceSocial)}</span>
-              </div>
-              <div className="row">
-                <span>BHYT</span>
-                <span>{formatCurrency(data.insuranceHealth)}</span>
-              </div>
-              <div className="row">
-                <span>BHTN</span>
-                <span>{formatCurrency(data.insuranceUnemployment)}</span>
-              </div>
-              <div className="row">
-                <span>Khấu trừ khác</span>
-                <span>{formatCurrency(data.otherDeduction)}</span>
-              </div>
-              <div className="row">
-                <span>Tạm ứng lương</span>
-                <span>{formatCurrency(data.advance)}</span>
-              </div>
-              <div className="row">
-                <span>Phạt vi phạm</span>
-                <span>{formatCurrency(Math.max(0, Number(data.deduction || 0) - Number(data.advance || 0)))}</span>
-              </div>
-              <div className="row total text-danger">
-                <strong>Tổng khấu trừ</strong>
-                <strong>{formatCurrency(data.totalDeduct)}</strong>
-              </div>
-            </div>
-          </div>
-          <div className="formula-note">
-            Công thức: <strong>Thực lĩnh = Tổng thu nhập - Tổng khấu trừ</strong> (hệ số công kỳ này:{" "}
-            <strong>{Number(data.coefficient || 0).toFixed(2)}</strong>).
-          </div>
-          {!!data.warningMessages?.length && (
-            <div className="formula-note">
-              ⚠️ Cảnh báo: {data.warningMessages.join(" | ")}
-            </div>
-          )}
-        </div>
-
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>
-            Đóng
-          </button>
-          <button className="btn btn-primary" onClick={() => window.print()}>
-            🖨️ In Phiếu
-          </button>
+          <button className="btn btn-secondary" onClick={onClose}>Hủy</button>
+          <button className="btn btn-primary" onClick={() => onSave(form)}>Lưu cấu hình</button>
         </div>
       </div>
     </div>

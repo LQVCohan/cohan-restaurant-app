@@ -8,8 +8,21 @@ import {
   Timesheet,
   LeaveRequest,
   LeaveBalance,
+  PayrollSetting,
+  PayrollPeriod,
+  PayrollItem,
+  PayrollAdjustment,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
+import {
+  getPayrollSettings,
+  getPeriodDetail,
+  mapPayrollDocToGql,
+  toEndOfDay as payrollToEndOfDay,
+  toObjectId as payrollToObjectId,
+  toStartOfDay as payrollToStartOfDay,
+  upsertPeriodItems,
+} from "../../../src/services/payroll/payrollRuntime.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -717,6 +730,201 @@ export default {
   deleteStaffShift: async (_, { shiftId }) => {
     const deleted = await Shift.findByIdAndDelete(shiftId);
     return Boolean(deleted);
+  },
+
+  createPayrollPeriod: async (_, { input }, ctx) => {
+    const actor = ctx?.user || {};
+    const rid = payrollToObjectId(input.restaurantId || actor.restaurantForStaff || actor.primaryRestaurantId);
+    if (!rid) throw new Error("Restaurant is required");
+    const startDate = payrollToStartOfDay(input.startDate);
+    const endDate = payrollToEndOfDay(input.endDate);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) {
+      throw new Error("Invalid payroll period range");
+    }
+
+    let period = await PayrollPeriod.findOne({ restaurantId: rid, startDate, endDate });
+    if (!period) {
+      const settings = await getPayrollSettings(rid);
+      period = await PayrollPeriod.create({
+        restaurantId: rid,
+        name: input.name || `Kỳ lương ${startDate.toISOString().slice(0, 10)} - ${endDate.toISOString().slice(0, 10)}`,
+        startDate,
+        endDate,
+        status: "draft",
+        settingsSnapshot: settings,
+        statsSnapshot: { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+      });
+    }
+
+    const detail = await upsertPeriodItems(period);
+    await PayrollPeriod.findByIdAndUpdate(period._id, { $set: { statsSnapshot: detail.stats } });
+
+    return {
+      id: String(period._id),
+      restaurantId: String(period.restaurantId),
+      name: period.name || "",
+      startDate: period.startDate,
+      endDate: period.endDate,
+      status: period.status,
+      finalizedAt: period.finalizedAt || null,
+      lockedAt: period.lockedAt || null,
+      paidAt: period.paidAt || null,
+      stats: detail.stats,
+    };
+  },
+
+  recalculatePayrollPeriod: async (_, { periodId }) => {
+    const period = await PayrollPeriod.findById(periodId);
+    if (!period) throw new Error("Payroll period not found");
+    if (["locked", "paid"].includes(period.status)) {
+      throw new Error("Payroll period is locked/paid and cannot be recalculated");
+    }
+    const { stats } = await upsertPeriodItems(period);
+    period.statsSnapshot = stats;
+    period.status = "draft";
+    await period.save();
+    return getPeriodDetail(periodId);
+  },
+
+  finalizePayrollPeriod: async (_, { periodId }) => {
+    const period = await PayrollPeriod.findById(periodId);
+    if (!period) throw new Error("Payroll period not found");
+    if (["locked", "paid"].includes(period.status)) throw new Error("Locked/Paid period cannot be finalized again");
+    const { stats } = await upsertPeriodItems(period);
+    period.status = "finalized";
+    period.finalizedAt = new Date();
+    period.statsSnapshot = stats;
+    await PayrollItem.updateMany({ periodId: period._id }, { $set: { status: "finalized" } });
+    await period.save();
+    return {
+      id: String(period._id),
+      restaurantId: String(period.restaurantId),
+      name: period.name || "",
+      startDate: period.startDate,
+      endDate: period.endDate,
+      status: period.status,
+      finalizedAt: period.finalizedAt,
+      lockedAt: period.lockedAt || null,
+      paidAt: period.paidAt || null,
+      stats,
+    };
+  },
+
+  lockPayrollPeriod: async (_, { periodId }) => {
+    const period = await PayrollPeriod.findById(periodId);
+    if (!period) throw new Error("Payroll period not found");
+    if (period.status === "paid") throw new Error("Paid period cannot be locked");
+    if (period.status === "draft") throw new Error("Finalize payroll period before locking");
+    period.status = "locked";
+    period.lockedAt = new Date();
+    await PayrollItem.updateMany({ periodId: period._id, status: { $ne: "paid" } }, { $set: { status: "locked" } });
+    await period.save();
+    return {
+      id: String(period._id),
+      restaurantId: String(period.restaurantId),
+      name: period.name || "",
+      startDate: period.startDate,
+      endDate: period.endDate,
+      status: period.status,
+      finalizedAt: period.finalizedAt || null,
+      lockedAt: period.lockedAt || null,
+      paidAt: period.paidAt || null,
+      stats: period.statsSnapshot || { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+    };
+  },
+
+  markPayrollPeriodPaid: async (_, { periodId, employeeIds = [] }) => {
+    const period = await PayrollPeriod.findById(periodId);
+    if (!period) throw new Error("Payroll period not found");
+    if (!["locked", "paid"].includes(period.status)) {
+      throw new Error("Only locked payroll period can be marked as paid");
+    }
+
+    const query = { periodId: period._id };
+    if (Array.isArray(employeeIds) && employeeIds.length) {
+      query.employeeId = { $in: employeeIds.map((id) => payrollToObjectId(id)).filter(Boolean) };
+    }
+
+    await PayrollItem.updateMany(query, { $set: { status: "paid", paidAt: new Date() } });
+    const remain = await PayrollItem.countDocuments({ periodId: period._id, status: { $ne: "paid" } });
+    if (remain === 0) {
+      period.status = "paid";
+      period.paidAt = new Date();
+      await period.save();
+    }
+    const detail = await getPeriodDetail(periodId);
+    await PayrollPeriod.findByIdAndUpdate(period._id, { $set: { statsSnapshot: detail.stats } });
+    return detail.period;
+  },
+
+  updatePayrollSettings: async (_, { input }, ctx) => {
+    const actor = ctx?.user || {};
+    const rid = payrollToObjectId(input.restaurantId || actor.restaurantForStaff || actor.primaryRestaurantId);
+    if (!rid) throw new Error("Restaurant is required");
+
+    const update = {
+      standardWorkDaysPerMonth: input.standardWorkDaysPerMonth,
+      standardHoursPerDay: input.standardHoursPerDay,
+      overtimeMultiplierWeekday: input.overtimeMultiplierWeekday,
+      overtimeMultiplierWeekend: input.overtimeMultiplierWeekend,
+      overtimeMultiplierHoliday: input.overtimeMultiplierHoliday,
+      latenessPenaltyPerMinute: input.latenessPenaltyPerMinute,
+      earlyLeavePenaltyPerMinute: input.earlyLeavePenaltyPerMinute,
+      unpaidLeaveDeductionPerDay: input.unpaidLeaveDeductionPerDay,
+      defaultAllowance: input.defaultAllowance,
+      allowPaidLeaveInWorkDays: input.allowPaidLeaveInWorkDays,
+      defaultBonus: input.defaultBonus,
+      defaultDeduction: input.defaultDeduction,
+      notes: input.notes,
+      updatedBy: payrollToObjectId(actor.id || actor._id),
+    };
+    Object.keys(update).forEach((key) => update[key] === undefined && delete update[key]);
+
+    const doc = await PayrollSetting.findOneAndUpdate(
+      { restaurantId: rid },
+      { $set: update },
+      { upsert: true, new: true },
+    );
+
+    return {
+      ...doc.toObject(),
+      restaurantId: String(doc.restaurantId),
+    };
+  },
+
+  upsertPayrollAdjustment: async (_, { input }, ctx) => {
+    const period = await PayrollPeriod.findById(input.periodId);
+    if (!period) throw new Error("Payroll period not found");
+    if (["locked", "paid"].includes(period.status)) throw new Error("Cannot adjust locked/paid payroll period");
+
+    await PayrollAdjustment.create({
+      periodId: period._id,
+      employeeId: payrollToObjectId(input.employeeId),
+      type: String(input.type || "other").toLowerCase(),
+      amount: Number(input.amount || 0),
+      note: input.note || "",
+      createdBy: payrollToObjectId(ctx?.user?.id || ctx?.user?._id),
+    });
+
+    await upsertPeriodItems(period);
+    const detail = await getPeriodDetail(input.periodId);
+    return detail.items.find((item) => String(item.id) === String(input.employeeId)) || null;
+  },
+
+  deletePayrollAdjustment: async (_, { periodId, employeeId, adjustmentId }) => {
+    const period = await PayrollPeriod.findById(periodId);
+    if (!period) throw new Error("Payroll period not found");
+    if (["locked", "paid"].includes(period.status)) throw new Error("Cannot adjust locked/paid payroll period");
+
+    await PayrollAdjustment.deleteOne({
+      _id: payrollToObjectId(adjustmentId),
+      periodId: period._id,
+      employeeId: payrollToObjectId(employeeId),
+    });
+
+    await upsertPeriodItems(period);
+    const detail = await getPeriodDetail(periodId);
+    return detail.items.find((item) => String(item.id) === String(employeeId)) || null;
   },
 
   upsertStaffAttendance: async (_, { input }) => {
