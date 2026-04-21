@@ -11,6 +11,8 @@ import {
   Category,
   Promotion,
   Restaurant,
+  PayrollPeriod,
+  PayrollItem,
 } from "../../../models/index.js";
 import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSchedulingAssistant.service.js";
 import {
@@ -18,6 +20,14 @@ import {
   calculatePeriodCalendarDays,
   normalizeRegionCode,
 } from "../../../src/services/payroll/payrollCalculator.service.js";
+import {
+  buildPayrollItemsForRange,
+  getPayrollSettings,
+  getPeriodDetail,
+  mapPayrollDocToGql,
+  summarize,
+  toObjectId as payrollToObjectId,
+} from "../../../src/services/payroll/payrollRuntime.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -423,7 +433,13 @@ export default {
     }));
   },
 
-  staffPayrollOverview: async (_, { startDate, endDate, restaurantId }, ctx) => {
+  staffPayrollOverview: async (_, { startDate, endDate, restaurantId, periodId }, ctx) => {
+    if (periodId && mongoose.isValidObjectId(periodId)) {
+      const docs = await PayrollItem.find({ periodId: payrollToObjectId(periodId) }).lean();
+      const items = docs.map(mapPayrollDocToGql);
+      return { stats: summarize(items), items };
+    }
+
     const start = toStartOfDay(startDate);
     const end = toEndOfDay(endDate);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
@@ -434,208 +450,51 @@ export default {
     }
 
     const authUser = ctx?.user || null;
-    const fallbackRestaurantId =
-      restaurantId ||
-      authUser?.restaurantForStaff ||
-      authUser?.primaryRestaurantId ||
-      null;
+    const fallbackRestaurantId = restaurantId || authUser?.restaurantForStaff || authUser?.primaryRestaurantId || null;
     const rid = toObjectId(fallbackRestaurantId);
-
-    const staffFilter = { userType: "STAFF" };
-    if (rid) {
-      staffFilter.$or = [{ primaryRestaurant: rid }, { refRestaurants: rid }];
-    }
-
-    const staffs = await Staff.find(staffFilter)
-      .select({
-        _id: 1,
-        fullName: 1,
-        employeeCode: 1,
-        positionTitle: 1,
-        roleName: 1,
-        department: 1,
-        avatarUrl: 1,
-        avatar: 1,
-        baseSalary: 1,
-      })
-      .lean();
-
-    if (!staffs.length) {
+    if (!rid) {
       return {
         stats: { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
         items: [],
       };
     }
+    const rows = await buildPayrollItemsForRange({ start, end, restaurantId: rid, forceStatus: "draft" });
+    const items = rows.map((row) => mapPayrollDocToGql(row));
+    return { stats: summarize(items), items };
+  },
 
-    const staffIds = staffs.map((s) => s._id);
-    const shiftMatch = {
-      employeeId: { $in: staffIds },
-      startTime: { $gte: start, $lte: end },
-    };
-    if (rid) shiftMatch.restaurantId = rid;
-
-    const shifts = await Shift.find(shiftMatch)
-      .select({ _id: 1, employeeId: 1, startTime: 1 })
+  payrollPeriods: async (_, { restaurantId, limit = 12 }, ctx) => {
+    const authUser = ctx?.user || null;
+    const rid = toObjectId(restaurantId || authUser?.restaurantForStaff || authUser?.primaryRestaurantId || null);
+    if (!rid) return [];
+    const rows = await PayrollPeriod.find({ restaurantId: rid })
+      .sort({ startDate: -1 })
+      .limit(Math.max(1, Math.min(Number(limit || 12), 52)))
       .lean();
+    return rows.map((row) => ({
+      id: String(row._id),
+      restaurantId: String(row.restaurantId),
+      name: row.name || "",
+      startDate: row.startDate,
+      endDate: row.endDate,
+      status: row.status,
+      finalizedAt: row.finalizedAt || null,
+      lockedAt: row.lockedAt || null,
+      paidAt: row.paidAt || null,
+      stats: row.statsSnapshot || { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+    }));
+  },
 
-    const shiftIds = shifts.map((s) => s._id);
-    const timesheetAgg = shiftIds.length
-      ? await Timesheet.aggregate([
-          { $match: { shiftId: { $in: shiftIds } } },
-          {
-            $group: {
-              _id: "$shiftId",
-              totalHours: { $sum: { $ifNull: ["$hours", 0] } },
-              totalWage: { $sum: { $ifNull: ["$wage", 0] } },
-              totalAmount: { $sum: { $ifNull: ["$amount", 0] } },
-            },
-          },
-        ])
-      : [];
+  payrollPeriodDetail: async (_, { periodId }) => getPeriodDetail(periodId),
 
-    const timesheetByShiftId = new Map(
-      timesheetAgg.map((row) => [
-        String(row._id),
-        {
-          totalHours: Number(row.totalHours || 0),
-          totalWage: Number(row.totalWage || 0),
-          totalAmount: Number(row.totalAmount || 0),
-        },
-      ])
-    );
-
-    const payrollByStaffId = new Map();
-    for (const shift of shifts) {
-      const sid = String(shift.employeeId);
-      if (!payrollByStaffId.has(sid)) {
-        payrollByStaffId.set(sid, {
-          workedDateKeys: new Set(),
-          totalHours: 0,
-          totalWage: 0,
-          totalAmount: 0,
-        });
-      }
-      const bucket = payrollByStaffId.get(sid);
-      bucket.workedDateKeys.add(new Date(shift.startTime).toISOString().slice(0, 10));
-      const ts = timesheetByShiftId.get(String(shift._id)) || {
-        totalHours: 0,
-        totalWage: 0,
-        totalAmount: 0,
-      };
-      bucket.totalHours += ts.totalHours;
-      bucket.totalWage += ts.totalWage;
-      bucket.totalAmount += ts.totalAmount;
-    }
-
-    const now = new Date();
-    const workDays = calculatePeriodCalendarDays(start, end);
-    const restaurant = rid ? await Restaurant.findById(rid).select({ address: 1, payrollRegionCode: 1 }).lean() : null;
-    const regionCode = normalizeRegionCode(inferRegionCodeFromRestaurant(restaurant));
-
-    const items = staffs.map((staff) => {
-      const sid = String(staff._id);
-      const agg = payrollByStaffId.get(sid) || {
-        workedDateKeys: new Set(),
-        totalHours: 0,
-        totalWage: 0,
-        totalAmount: 0,
-      };
-
-      const actualWorkDays = agg.workedDateKeys.size;
-      let status = "draft";
-      if (actualWorkDays > 0) status = end < now ? "paid" : "approved";
-
-      const payroll = buildPayrollItem({
-        staff,
-        period: { start, end, calendarDays: workDays },
-        aggregate: {
-          workedDateCount: actualWorkDays,
-          totalHours: agg.totalHours,
-          totalWage: agg.totalWage,
-          totalAmount: agg.totalAmount,
-        },
-        regionCode,
-        payrollStatus: status,
-      });
-
-      const warningMessages = [];
-      if (payroll.minimumWageViolation) warningMessages.push("Lương cơ bản thấp hơn lương tối thiểu vùng áp dụng.");
-      if (payroll.missingTimesheetData) warningMessages.push("Có ca làm nhưng thiếu dữ liệu timesheet giờ công.");
-      if (!payroll.insuranceEligible) warningMessages.push("Nhân sự chưa thuộc diện đóng BH bắt buộc theo cấu hình chính sách.");
-
-      return {
-        id: sid,
-        name: staff.fullName || "Nhân viên",
-        code: staff.employeeCode || null,
-        role: staff.positionTitle || staff.roleName || "Nhân viên",
-        department: mapDepartmentLabel(staff.department),
-        avatar: staff.avatarUrl || staff.avatar || null,
-        baseSalary: payroll.baseSalary,
-        workDays: payroll.workDays,
-        actualWorkDays: payroll.actualWorkDays,
-        totalHours: payroll.totalHours,
-        hourlyRate: payroll.hourlyRate,
-        allowance: payroll.allowance,
-        bonus: payroll.bonus,
-        otherAddition: payroll.otherAddition,
-        overtime: payroll.overtime,
-        overtimeNormal: payroll.overtimeNormal,
-        overtimeWeekend: payroll.overtimeWeekend,
-        overtimeHoliday: payroll.overtimeHoliday,
-        nightShiftExtra: payroll.nightShiftExtra,
-        overtimeHours: payroll.overtimeHours,
-        overtimeNormalHours: payroll.overtimeNormalHours,
-        overtimeWeekendHours: payroll.overtimeWeekendHours,
-        overtimeHolidayHours: payroll.overtimeHolidayHours,
-        nightHours: payroll.nightHours,
-        overtimeNightHours: payroll.overtimeNightHours,
-        deduction: payroll.deduction,
-        otherDeduction: payroll.otherDeduction,
-        advance: payroll.advance,
-        insuranceSocial: payroll.insuranceSocial,
-        insuranceHealth: payroll.insuranceHealth,
-        insuranceUnemployment: payroll.insuranceUnemployment,
-        insuranceTotal: payroll.insuranceTotal,
-        insuranceEmployerTotal: payroll.insuranceEmployerTotal,
-        personalIncomeTax: payroll.personalIncomeTax,
-        grossIncome: payroll.grossIncome,
-        totalIncome: payroll.totalIncome,
-        totalDeduction: payroll.totalDeduction,
-        netSalary: payroll.netSalary,
-        coefficient: Number(payroll.coefficient.toFixed(2)),
-        status: payroll.payrollStatus,
-        policyCode: payroll.policyCode,
-        policyEffectiveFrom: payroll.policyEffectiveFrom,
-        regionCode: payroll.regionCode,
-        minimumWageMonthly: payroll.minimumWageMonthly,
-        minimumWageHourly: payroll.minimumWageHourly,
-        minimumWageViolation: payroll.minimumWageViolation,
-        insuranceEligible: payroll.insuranceEligible,
-        warningMessages,
-      };
-    });
-
-    const totalPayroll = items.reduce(
-      (sum, item) => sum + Number(item.netSalary || 0),
-      0,
-    );
-
-    const paidAmount = items.reduce((sum, item) => {
-      if (item.status !== "paid") return sum;
-      return sum + Number(item.netSalary || 0);
-    }, 0);
-
-    const remaining = totalPayroll - paidAmount;
-    const progress = totalPayroll > 0 ? Math.round((paidAmount / totalPayroll) * 100) : 0;
-
+  payrollSettings: async (_, { restaurantId }, ctx) => {
+    const authUser = ctx?.user || null;
+    const rid = restaurantId || authUser?.restaurantForStaff || authUser?.primaryRestaurantId || null;
+    const settings = await getPayrollSettings(rid);
+    if (!settings) return null;
     return {
-      stats: {
-        totalPayroll,
-        paidAmount,
-        remaining,
-        progress,
-      },
-      items,
+      ...settings,
+      restaurantId: String(settings.restaurantId),
     };
   },
 

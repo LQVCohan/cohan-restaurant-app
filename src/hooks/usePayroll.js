@@ -1,16 +1,64 @@
-import { gql, useQuery } from "@apollo/client";
+import { gql, useMutation, useQuery } from "@apollo/client";
 
-export const QUERY_STAFF_PAYROLL_OVERVIEW = gql`
-  query StaffPayrollOverview(
-    $startDate: DateTime!
-    $endDate: DateTime!
-    $restaurantId: ID
-  ) {
-    staffPayrollOverview(
-      startDate: $startDate
-      endDate: $endDate
-      restaurantId: $restaurantId
-    ) {
+export const QUERY_PAYROLL_PERIODS = gql`
+  query PayrollPeriods($restaurantId: ID, $limit: Int = 12) {
+    payrollPeriods(restaurantId: $restaurantId, limit: $limit) {
+      id
+      name
+      restaurantId
+      startDate
+      endDate
+      status
+      finalizedAt
+      lockedAt
+      paidAt
+      stats {
+        totalPayroll
+        paidAmount
+        remaining
+        progress
+      }
+    }
+  }
+`;
+
+export const QUERY_PAYROLL_PERIOD_DETAIL = gql`
+  query PayrollPeriodDetail($periodId: ID!) {
+    payrollPeriodDetail(periodId: $periodId) {
+      period {
+        id
+        name
+        restaurantId
+        startDate
+        endDate
+        status
+        finalizedAt
+        lockedAt
+        paidAt
+        stats {
+          totalPayroll
+          paidAmount
+          remaining
+          progress
+        }
+      }
+      settings {
+        restaurantId
+        standardWorkDaysPerMonth
+        standardHoursPerDay
+        overtimeMultiplierWeekday
+        overtimeMultiplierWeekend
+        overtimeMultiplierHoliday
+        latenessPenaltyPerMinute
+        earlyLeavePenaltyPerMinute
+        unpaidLeaveDeductionPerDay
+        defaultAllowance
+        allowPaidLeaveInWorkDays
+        defaultBonus
+        defaultDeduction
+        notes
+        updatedAt
+      }
       stats {
         totalPayroll
         paidAmount
@@ -19,6 +67,7 @@ export const QUERY_STAFF_PAYROLL_OVERVIEW = gql`
       }
       items {
         id
+        payrollItemId
         name
         code
         role
@@ -66,29 +115,148 @@ export const QUERY_STAFF_PAYROLL_OVERVIEW = gql`
         insuranceEligible
         warningMessages
         status
+        paidAt
+        lateMinutes
+        earlyLeaveMinutes
+        unpaidLeaveDays
+        paidLeaveDays
+        scheduleShiftCount
+        manualAdjustmentTotal
       }
     }
   }
 `;
 
-const usePayroll = ({ startDate, endDate, restaurantId } = {}) => {
-  const hasDateRange = Boolean(startDate && endDate);
-  const { data, loading, error, refetch } = useQuery(QUERY_STAFF_PAYROLL_OVERVIEW, {
-    variables: {
-      startDate,
-      endDate,
-      restaurantId: restaurantId || undefined,
-    },
-    skip: !hasDateRange,
+export const MUT_CREATE_PERIOD = gql`
+  mutation CreatePayrollPeriod($input: CreatePayrollPeriodInput!) {
+    createPayrollPeriod(input: $input) {
+      id
+      status
+      startDate
+      endDate
+      name
+    }
+  }
+`;
+
+export const MUT_RECALC_PERIOD = gql`
+  mutation RecalculatePayrollPeriod($periodId: ID!) {
+    recalculatePayrollPeriod(periodId: $periodId) {
+      period {
+        id
+        status
+      }
+    }
+  }
+`;
+
+export const MUT_FINALIZE_PERIOD = gql`
+  mutation FinalizePayrollPeriod($periodId: ID!) {
+    finalizePayrollPeriod(periodId: $periodId) {
+      id
+      status
+      finalizedAt
+    }
+  }
+`;
+
+export const MUT_LOCK_PERIOD = gql`
+  mutation LockPayrollPeriod($periodId: ID!) {
+    lockPayrollPeriod(periodId: $periodId) {
+      id
+      status
+      lockedAt
+    }
+  }
+`;
+
+export const MUT_MARK_PAID = gql`
+  mutation MarkPayrollPeriodPaid($periodId: ID!, $employeeIds: [ID!]) {
+    markPayrollPeriodPaid(periodId: $periodId, employeeIds: $employeeIds) {
+      id
+      status
+      paidAt
+    }
+  }
+`;
+
+export const MUT_UPDATE_SETTINGS = gql`
+  mutation UpdatePayrollSettings($input: PayrollSettingsInput!) {
+    updatePayrollSettings(input: $input) {
+      restaurantId
+      standardWorkDaysPerMonth
+      standardHoursPerDay
+      overtimeMultiplierWeekday
+      overtimeMultiplierWeekend
+      overtimeMultiplierHoliday
+      latenessPenaltyPerMinute
+      earlyLeavePenaltyPerMinute
+      unpaidLeaveDeductionPerDay
+      defaultAllowance
+      allowPaidLeaveInWorkDays
+      defaultBonus
+      defaultDeduction
+      notes
+      updatedAt
+    }
+  }
+`;
+
+export const MUT_UPSERT_ADJUSTMENT = gql`
+  mutation UpsertPayrollAdjustment($input: PayrollAdjustmentInput!) {
+    upsertPayrollAdjustment(input: $input) {
+      id
+      name
+      totalIncome
+      totalDeduction
+      netSalary
+      manualAdjustmentTotal
+    }
+  }
+`;
+
+const usePayroll = ({ periodId, restaurantId } = {}) => {
+  const periodsQuery = useQuery(QUERY_PAYROLL_PERIODS, {
+    variables: { restaurantId: restaurantId || undefined, limit: 24 },
     fetchPolicy: "cache-and-network",
   });
 
+  const effectivePeriodId = periodId || periodsQuery.data?.payrollPeriods?.[0]?.id;
+
+  const detailQuery = useQuery(QUERY_PAYROLL_PERIOD_DETAIL, {
+    variables: { periodId: effectivePeriodId },
+    skip: !effectivePeriodId,
+    fetchPolicy: "cache-and-network",
+  });
+
+  const [createPeriod] = useMutation(MUT_CREATE_PERIOD, {
+    refetchQueries: [{ query: QUERY_PAYROLL_PERIODS, variables: { restaurantId: restaurantId || undefined, limit: 24 } }],
+  });
+  const [recalculatePeriod] = useMutation(MUT_RECALC_PERIOD);
+  const [finalizePeriod] = useMutation(MUT_FINALIZE_PERIOD);
+  const [lockPeriod] = useMutation(MUT_LOCK_PERIOD);
+  const [markPaid] = useMutation(MUT_MARK_PAID);
+  const [updateSettings] = useMutation(MUT_UPDATE_SETTINGS);
+  const [upsertAdjustment] = useMutation(MUT_UPSERT_ADJUSTMENT);
+
   return {
-    loading,
-    error,
-    refetch,
-    payrollStats: data?.staffPayrollOverview?.stats || null,
-    payrollItems: data?.staffPayrollOverview?.items || [],
+    loading: periodsQuery.loading || detailQuery.loading,
+    error: periodsQuery.error || detailQuery.error,
+    periods: periodsQuery.data?.payrollPeriods || [],
+    currentPeriodId: effectivePeriodId || null,
+    periodDetail: detailQuery.data?.payrollPeriodDetail || null,
+    payrollStats: detailQuery.data?.payrollPeriodDetail?.stats || null,
+    payrollItems: detailQuery.data?.payrollPeriodDetail?.items || [],
+    payrollSettings: detailQuery.data?.payrollPeriodDetail?.settings || null,
+    refetchPeriods: periodsQuery.refetch,
+    refetchDetail: detailQuery.refetch,
+    createPeriod,
+    recalculatePeriod,
+    finalizePeriod,
+    lockPeriod,
+    markPaid,
+    updateSettings,
+    upsertAdjustment,
   };
 };
 
