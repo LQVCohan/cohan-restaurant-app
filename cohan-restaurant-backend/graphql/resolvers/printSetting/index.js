@@ -97,8 +97,14 @@ function normalizeJobs(jobs) {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
-function normalizeStations(stations) {
-  return stations && typeof stations === "object" && !Array.isArray(stations) ? stations : {};
+function normalizeStations(stations, printers = []) {
+  if (!stations || typeof stations !== "object" || Array.isArray(stations)) return {};
+  const printerIds = new Set(normalizePrinters(printers).map((p) => p.id));
+  return Object.entries(stations).reduce((acc, [stationId, value]) => {
+    const ids = Array.isArray(value) ? value : [];
+    acc[String(stationId)] = Array.from(new Set(ids.map((id) => String(id)).filter((id) => printerIds.has(id))));
+    return acc;
+  }, {});
 }
 
 function toPrintSettingView(doc) {
@@ -107,7 +113,7 @@ function toPrintSettingView(doc) {
     id: String(doc._id),
     restaurantId: String(doc.restaurantId),
     printers: normalizePrinters(doc.printers),
-    stations: normalizeStations(doc.stations),
+    stations: normalizeStations(doc.stations, doc.printers),
     templates: normalizeTemplates(doc.templates),
     jobs: normalizeJobs(doc.jobs),
     createdAt: doc.createdAt || null,
@@ -165,7 +171,7 @@ export const Mutation = {
         $set: {
           restaurantId,
           printers: normalizePrinters(printers),
-          stations: normalizeStations(stations),
+          stations: normalizeStations(stations, printers),
           templates: normalizeTemplates(templates),
           updatedAt: now,
         },
@@ -312,9 +318,14 @@ export const Mutation = {
       printType: "test",
       templateKey: "receipt",
       status: online ? "completed" : "failed",
-      error: online ? null : "Printer offline",
+      error: online ? null : "Simulated check failed: missing printer IP",
       retryCount: 0,
-      payload: { label: "Test print" },
+      payload: {
+        label: "Test print",
+        simulated: true,
+        checkMode: "ip_presence_only",
+        hardwareHandshake: false,
+      },
       createdAt,
       updatedAt: createdAt,
     };

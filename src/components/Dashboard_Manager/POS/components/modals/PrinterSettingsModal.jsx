@@ -50,6 +50,7 @@ export function PrinterSettingsModal({
   });
 
   const [isTesting, setIsTesting] = useState(false);
+  const [testFeedback, setTestFeedback] = useState(null);
   useModalKeyboardClose({ isOpen, onClose, disabled: isTesting });
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export function PrinterSettingsModal({
         type: printer?.type || "thermal",
         location: printer?.location || "kitchen",
       });
+      setTestFeedback(null);
     }
   }, [isOpen, printer]);
 
@@ -68,11 +70,28 @@ export function PrinterSettingsModal({
 
   const change = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const handleTest = () => {
+  const handleTest = async () => {
     setIsTesting(true);
-    onTest?.(form);
-    // Giả lập delay để tạo cảm giác hệ thống đang xử lý
-    setTimeout(() => setIsTesting(false), 1500);
+    try {
+      const result = await onTest?.(form);
+      if (result?.message) {
+        setTestFeedback(result);
+      } else {
+        setTestFeedback({
+          ok: true,
+          mode: "validation",
+          message: "Đã hoàn tất kiểm tra cấu hình (simulated).",
+        });
+      }
+    } catch (err) {
+      setTestFeedback({
+        ok: false,
+        mode: "validation",
+        message: err?.message || "Kiểm tra thất bại.",
+      });
+    } finally {
+      setIsTesting(false);
+    }
   };
 
   return (
@@ -193,6 +212,12 @@ export function PrinterSettingsModal({
             <Save size={18} /> Lưu cấu hình
           </button>
         </div>
+
+        {testFeedback?.message && (
+          <div style={{ padding: "0 1.25rem 1rem", color: testFeedback.ok ? "#0f766e" : "#b91c1c", fontSize: 13 }}>
+            {testFeedback.message} {testFeedback.mode ? `(${testFeedback.mode})` : ""}
+          </div>
+        )}
       </div>
     </div>
   );

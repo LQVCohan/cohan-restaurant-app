@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { AuthContext } from "@/context/AuthContext";
 import { PRINT_STATIONS } from "@/utils/printStations";
@@ -130,6 +130,16 @@ const normalizeTemplates = (templates) => {
   return DEFAULT_TEMPLATES.map((t) => ({ ...t, ...(byKey.get(t.key) || {}) }));
 };
 
+
+const sanitizeStationsByPrinters = (stations, printers) => {
+  const printerIds = new Set((Array.isArray(printers) ? printers : []).map((p) => p?.id).filter(Boolean));
+  const next = { ...buildStationDefaults() };
+  Object.entries(stations || {}).forEach(([stationId, ids]) => {
+    next[stationId] = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((id) => printerIds.has(id))));
+  });
+  return next;
+};
+
 export default function PrintManagement() {
   const { restaurants } = useContext(AuthContext);
   const restaurantList = useMemo(() => restaurants || [], [restaurants]);
@@ -139,6 +149,7 @@ export default function PrintManagement() {
   const [templates, setTemplates] = useState(DEFAULT_TEMPLATES);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState(null);
+  const [saveError, setSaveError] = useState("");
   const hydrateRef = useRef(false);
   const debounceRef = useRef(null);
 
@@ -175,8 +186,9 @@ export default function PrintManagement() {
     }
 
     hydrateRef.current = true;
-    setPrinters(Array.isArray(settings?.printers) ? settings.printers : []);
-    setStationMap({ ...buildStationDefaults(), ...(settings?.stations || {}) });
+    const safePrinters = Array.isArray(settings?.printers) ? settings.printers : [];
+    setPrinters(safePrinters);
+    setStationMap(sanitizeStationsByPrinters(settings?.stations || {}, safePrinters));
     setTemplates(normalizeTemplates(settings?.templates));
     setTimeout(() => {
       hydrateRef.current = false;
@@ -192,11 +204,13 @@ export default function PrintManagement() {
           input: {
             restaurantId: selectedRestaurantId,
             printers,
-            stations: stationMap,
+            stations: sanitizeStationsByPrinters(stationMap, printers),
             templates,
           },
         },
-      }).catch(() => {});
+      })
+        .then(() => setSaveError(""))
+        .catch(() => setSaveError("Lưu cấu hình thất bại. Vui lòng kiểm tra kết nối và thử lại."));
     }, 400);
   }, [selectedRestaurantId, printers, stationMap, templates, upsertPrintSettings]);
 
@@ -209,6 +223,48 @@ export default function PrintManagement() {
     setEditingPrinter(printer);
     setSettingsModalOpen(true);
   };
+
+  const handleTestConfig = useCallback(
+    async (formPrinter) => {
+      if (!selectedRestaurantId) {
+        return { ok: false, mode: "validation", message: "Vui lòng chọn nhà hàng trước khi test." };
+      }
+
+      const draft = { ...(editingPrinter || {}), ...(formPrinter || {}) };
+      if (!draft.name?.trim() || !draft.ip?.trim()) {
+        return { ok: false, mode: "validation", message: "Thiếu tên hoặc IP. Đây là bước validate cấu hình, chưa test thiết bị thật." };
+      }
+
+      if (!draft.id) {
+        return {
+          ok: true,
+          mode: "validation",
+          message:
+            "Máy in chưa lưu DB. Đã validate cấu hình form thành công (simulated), chưa có kiểm tra phần cứng.",
+        };
+      }
+
+      const result = await testPrint({
+        variables: {
+          input: {
+            restaurantId: selectedRestaurantId,
+            printerId: draft.id,
+          },
+        },
+      });
+      await refetch();
+      const job = result?.data?.testPrint;
+      return {
+        ok: job?.status === "completed",
+        mode: "db_simulation",
+        message:
+          job?.status === "completed"
+            ? "Đã tạo test job và cập nhật trạng thái từ DB (simulated, không có handshake phần cứng)."
+            : `Test job thất bại: ${job?.error || "unknown error"}`,
+      };
+    },
+    [editingPrinter, refetch, selectedRestaurantId, testPrint],
+  );
 
   const handleSavePrinter = (payload) => {
     if (!payload?.name || !payload?.ip) return;
@@ -254,18 +310,6 @@ export default function PrintManagement() {
     });
   };
 
-  const handleTestPrinter = async (printer) => {
-    if (!selectedRestaurantId || !printer?.id) return;
-    await testPrint({
-      variables: {
-        input: {
-          restaurantId: selectedRestaurantId,
-          printerId: printer.id,
-        },
-      },
-    });
-    await refetch();
-  };
 
   const handleRetryJob = async (jobId) => {
     await retryPrintJob({
@@ -391,7 +435,7 @@ export default function PrintManagement() {
                       </div>
 
                       <div className="device-actions">
-                        <button onClick={() => handleTestPrinter(printer)} title="Test in">
+                        <button onClick={() => handleTestConfig(printer)} title="Test in">
                           <Send size={16} />
                         </button>
                         <button onClick={() => openEditPrinter(printer)} title="Cấu hình">
@@ -515,6 +559,7 @@ export default function PrintManagement() {
           </div>
 
           {saving && <div className="save-hint">Đang lưu cấu hình...</div>}
+          {saveError && <div className="save-hint">{saveError}</div>}
         </>
       )}
 
@@ -523,7 +568,7 @@ export default function PrintManagement() {
         printer={editingPrinter}
         onSave={handleSavePrinter}
         onClose={() => setSettingsModalOpen(false)}
-        onTest={() => handleTestPrinter(editingPrinter)}
+        onTest={handleTestConfig}
       />
     </div>
   );
