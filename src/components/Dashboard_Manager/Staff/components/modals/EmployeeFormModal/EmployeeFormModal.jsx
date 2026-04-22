@@ -1,9 +1,25 @@
 // src/pages/StaffManagement/components/modals/EmployeeFormModal.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Modal from "../../../../../common/Modal";
 import LoadingSpinner from "../../../../../common/LoadingSpinner";
 import useModalDraft from "../../../../../../hooks/useModalDraft";
 import { useNotification } from "../../../../../../hooks/useNotification";
+import {
+  AI_POSITION_HINT,
+  getAiSuggestedPositionTitle,
+} from "../../../../../../utils/staffRoleSuggestion";
+import {
+  emailLooksValid,
+  getEmergencyPhoneError,
+  normalizeContactName,
+  phoneLooksValid,
+} from "../../../../../../utils/contactValidation";
+import {
+  formatCurrencyDisplay,
+  getLegalSalaryReference,
+  getSuggestedSalaryByEmploymentType,
+  parseCurrencyInputToNumber,
+} from "../../../../../../utils/legalSalaryReference";
 import "./EmployeeFormModal.scss";
 
 const EmployeeFormModal = ({
@@ -32,7 +48,6 @@ const EmployeeFormModal = ({
     emergencyRelation: "",
     notes: "",
     primaryRestaurantId: defaultRestaurantId || "",
-    refRestaurantIds: [],
     userType: "STAFF",
     employmentType: "FULL_TIME",
     password: "",
@@ -47,6 +62,9 @@ const EmployeeFormModal = ({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSensitiveNotice, setShowSensitiveNotice] = useState(false);
+  const [salaryReference, setSalaryReference] = useState(null);
+  const [salaryReferenceLoading, setSalaryReferenceLoading] = useState(false);
+  const [salaryManuallyEdited, setSalaryManuallyEdited] = useState(false);
 
   const departmentOptions = [
     {
@@ -102,7 +120,6 @@ const EmployeeFormModal = ({
       emergencyRelation: "",
       notes: "",
       primaryRestaurantId: defaultRestaurantId || "",
-      refRestaurantIds: [],
       userType: "STAFF",
       employmentType: "FULL_TIME",
       password: "",
@@ -113,6 +130,7 @@ const EmployeeFormModal = ({
     setShowPassword(false);
     setShowConfirmPassword(false);
     setShowSensitiveNotice(false);
+    setSalaryManuallyEdited(false);
   }, [defaultRestaurantId]);
 
   useEffect(() => {
@@ -121,6 +139,22 @@ const EmployeeFormModal = ({
       setCurrentStep(1);
     }
   }, [isOpen, mode, resetForm]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setSalaryReferenceLoading(true);
+    getLegalSalaryReference()
+      .then((ref) => {
+        if (!cancelled) setSalaryReference(ref);
+      })
+      .finally(() => {
+        if (!cancelled) setSalaryReferenceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   const { requestCloseWithDraft, clearDraft } = useModalDraft({
     enabled: isOpen && mode === "add",
@@ -132,7 +166,7 @@ const EmployeeFormModal = ({
       entityType: "employee",
       recordId: null,
       context: defaultRestaurantId || "default",
-      schemaVersion: "1",
+      schemaVersion: "2",
     },
     formValue: formData,
     isDirty,
@@ -147,7 +181,6 @@ const EmployeeFormModal = ({
       emergencyRelation: v?.emergencyRelation || "",
       notes: v?.notes || "",
       primaryRestaurantId: v?.primaryRestaurantId || "",
-      refRestaurantIds: Array.isArray(v?.refRestaurantIds) ? v.refRestaurantIds : [],
       userType: v?.userType || "STAFF",
       employmentType: v?.employmentType || "FULL_TIME",
     }),
@@ -184,16 +217,23 @@ const EmployeeFormModal = ({
       }
 
       // Nếu nhập phone thì kiểm tra định dạng
-      if (hasPhone) {
-        const digits = formData.phone.replace(/\s/g, "");
-        if (!/^[0-9]{9,11}$/.test(digits)) {
-          newErrors.phone = "SĐT không hợp lệ";
-        }
+      if (hasPhone && !phoneLooksValid(formData.phone)) {
+        newErrors.phone = "SĐT không hợp lệ";
       }
 
       // Nếu nhập email thì kiểm tra định dạng
-      if (hasEmail && !/\S+@\S+\.\S+/.test(formData.email)) {
+      if (hasEmail && !emailLooksValid(formData.email)) {
         newErrors.email = "Email không hợp lệ";
+      }
+
+      const emergencyPhoneError = getEmergencyPhoneError({
+        emergencyName: formData.emergencyContact,
+        emergencyPhone: formData.emergencyPhone,
+        requiredMessage: "Vui lòng nhập số điện thoại liên hệ khẩn cấp.",
+        invalidMessage: "Số điện thoại liên hệ khẩn cấp không hợp lệ.",
+      });
+      if (emergencyPhoneError) {
+        newErrors.emergencyPhone = emergencyPhoneError;
       }
 
       // Mật khẩu: HOÀN TOÀN KHÔNG BẮT BUỘC
@@ -218,18 +258,94 @@ const EmployeeFormModal = ({
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setIsDirty(true);
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (next[field]) next[field] = "";
+      if (
+        field === "emergencyContact" &&
+        !normalizeContactName(value) &&
+        !String(formData.emergencyPhone || "").trim()
+      ) {
+        next.emergencyPhone = "";
+      }
+      return next;
+    });
+
+    if (field === "salary") setSalaryManuallyEdited(true);
+    if (field === "employmentType") {
+      const suggested = getSuggestedSalaryByEmploymentType(value, salaryReference);
+      if (!salaryManuallyEdited || !parseCurrencyInputToNumber(formData.salary)) {
+        setFormData((prev) => ({
+          ...prev,
+          salary: suggested ? formatCurrencyDisplay(suggested) : "",
+        }));
+      }
+    }
   };
 
-  const handleToggleRefRestaurant = (id) => {
-    setFormData((prev) => {
-      const exists = prev.refRestaurantIds.includes(id);
-      const next = exists
-        ? prev.refRestaurantIds.filter((rid) => rid !== id)
-        : [...prev.refRestaurantIds, id];
-      return { ...prev, refRestaurantIds: next };
+  useEffect(() => {
+    if (!isOpen || !salaryReference) return;
+    if (parseCurrencyInputToNumber(formData.salary) > 0) return;
+    const suggested = getSuggestedSalaryByEmploymentType(
+      formData.employmentType,
+      salaryReference,
+    );
+    if (!suggested) return;
+    setFormData((prev) => ({ ...prev, salary: formatCurrencyDisplay(suggested) }));
+  }, [formData.employmentType, formData.salary, isOpen, salaryReference]);
+
+  const roleSuggestion = useMemo(
+    () => getAiSuggestedPositionTitle(formData.department),
+    [formData.department],
+  );
+
+  const applySuggestedRole = () => {
+    if (!roleSuggestion) return;
+    handleInputChange("role", roleSuggestion);
+  };
+
+  const validateContactFieldOnBlur = (field) => {
+    const value = formData[field] || "";
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+      return;
+    }
+
+    if (field === "phone") {
+      setErrors((prev) => ({
+        ...prev,
+        phone: phoneLooksValid(value) ? "" : "SĐT không hợp lệ",
+      }));
+      return;
+    }
+
+    if (field === "email") {
+      setErrors((prev) => ({
+        ...prev,
+        email: emailLooksValid(value) ? "" : "Email không hợp lệ",
+      }));
+    }
+  };
+
+  const validateEmergencyPhoneOnBlur = () => {
+    const emergencyPhoneError = getEmergencyPhoneError({
+      emergencyName: formData.emergencyContact,
+      emergencyPhone: formData.emergencyPhone,
+      requiredMessage: "Vui lòng nhập số điện thoại liên hệ khẩn cấp.",
+      invalidMessage: "Số điện thoại liên hệ khẩn cấp không hợp lệ.",
     });
-    setIsDirty(true);
+    setErrors((prev) => ({
+      ...prev,
+      emergencyPhone: emergencyPhoneError,
+    }));
+  };
+
+  const handleEmergencyNameBlur = () => {
+    const normalizedName = normalizeContactName(formData.emergencyContact);
+    if (!normalizedName) return;
+    validateEmergencyPhoneOnBlur();
   };
 
   const handleNextStep = () => {
@@ -292,7 +408,6 @@ const EmployeeFormModal = ({
         positionTitle: formData.role.trim(),
         department: formData.department,
         primaryRestaurantId: formData.primaryRestaurantId || undefined,
-        refRestaurantIds: formData.refRestaurantIds,
         employmentType: formData.employmentType,
         shiftType: formData.shift || undefined,
         dateJoined,
@@ -364,6 +479,7 @@ const EmployeeFormModal = ({
           <label className="form-label">
             Chức vụ <span className="req">*</span>
           </label>
+          <div className="hint-text">{AI_POSITION_HINT}</div>
           <input
             type="text"
             className={`form-input ${errors.role ? "error" : ""}`}
@@ -371,6 +487,18 @@ const EmployeeFormModal = ({
             onChange={(e) => handleInputChange("role", e.target.value)}
             placeholder="VD: Quản lý kho"
           />
+          {roleSuggestion && (
+            <div className="hint-text">
+              Gợi ý A.I: <b>{roleSuggestion}</b>{" "}
+              <button
+                type="button"
+                className="btn btn-text"
+                onClick={applySuggestedRole}
+              >
+                Dùng gợi ý
+              </button>
+            </div>
+          )}
           {errors.role && <span className="error-msg">{errors.role}</span>}
         </div>
       </div>
@@ -444,29 +572,6 @@ const EmployeeFormModal = ({
           <span className="error-msg">{errors.department}</span>
         )}
       </div>
-      {restaurantList.length > 1 && (
-        <div className="form-group mt-3">
-          <label className="form-label">Địa điểm làm thêm</label>
-          <div className="ref-tags">
-            {restaurantList.map((r) => (
-              <label
-                key={r.id}
-                className={`tag-item ${
-                  formData.refRestaurantIds.includes(r.id) ? "active" : ""
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={formData.refRestaurantIds.includes(r.id)}
-                  onChange={() => handleToggleRefRestaurant(r.id)}
-                  hidden
-                />
-                {r.name}
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 
@@ -487,6 +592,7 @@ const EmployeeFormModal = ({
             className={`form-input ${errors.phone ? "error" : ""}`}
             value={formData.phone}
             onChange={(e) => handleInputChange("phone", e.target.value)}
+            onBlur={() => validateContactFieldOnBlur("phone")}
             placeholder="09..."
           />
           {errors.phone && <span className="error-msg">{errors.phone}</span>}
@@ -498,6 +604,7 @@ const EmployeeFormModal = ({
             className={`form-input ${errors.email ? "error" : ""}`}
             value={formData.email}
             onChange={(e) => handleInputChange("email", e.target.value)}
+            onBlur={() => validateContactFieldOnBlur("email")}
             placeholder="example@mail.com"
           />
           {errors.email && <span className="error-msg">{errors.email}</span>}
@@ -579,18 +686,23 @@ const EmployeeFormModal = ({
               onChange={(e) =>
                 handleInputChange("emergencyContact", e.target.value)
               }
+              onBlur={handleEmergencyNameBlur}
             />
           </div>
           <div className="form-group">
             <label className="sub-label">Số điện thoại</label>
             <input
               type="tel"
-              className="form-input"
+              className={`form-input ${errors.emergencyPhone ? "error" : ""}`}
               value={formData.emergencyPhone}
               onChange={(e) =>
                 handleInputChange("emergencyPhone", e.target.value)
               }
+              onBlur={validateEmergencyPhoneOnBlur}
             />
+            {errors.emergencyPhone && (
+              <span className="error-msg">{errors.emergencyPhone}</span>
+            )}
           </div>
         </div>
       </div>
@@ -639,12 +751,55 @@ const EmployeeFormModal = ({
             type="text"
             className="salary-input-field"
             value={formData.salary}
-            onChange={(e) => handleInputChange("salary", e.target.value)}
+            onChange={(e) =>
+              handleInputChange(
+                "salary",
+                formatCurrencyDisplay(parseCurrencyInputToNumber(e.target.value)),
+              )
+            }
             placeholder="0"
           />
           <span className="currency-badge">VNĐ</span>
         </div>
         <p className="hint-text">Chưa bao gồm phụ cấp & thưởng.</p>
+        <p className="hint-text">
+          {salaryReferenceLoading
+            ? "Đang tải mức lương tham khảo từ nguồn văn bản nhà nước..."
+            : `Mức tham khảo: ${formatCurrencyDisplay(
+                getSuggestedSalaryByEmploymentType(
+                  formData.employmentType,
+                  salaryReference,
+                ),
+              )} VNĐ (${formData.employmentType === "PART_TIME" ? "quy đổi từ mức giờ tối thiểu" : "mức tháng tối thiểu"}). Bạn có thể chỉnh sửa thủ công.`}
+        </p>
+        {salaryReference && (
+          <p className="hint-text">
+            Nguồn: {salaryReference.decreeName} ({salaryReference.year}) ·{" "}
+            <a href={salaryReference.decreeUrl} target="_blank" rel="noreferrer">
+              văn bản
+            </a>{" "}
+            ·{" "}
+            <a href={salaryReference.articleUrl} target="_blank" rel="noreferrer">
+              cổng công bố
+            </a>
+            {formData.employmentType === "PROBATION" && (
+              <>
+                {" "}
+                · Quy tắc thử việc 85%:{" "}
+                <a
+                  href={salaryReference.probationRuleUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Bộ luật Lao động
+                </a>
+              </>
+            )}
+            {!salaryReference.isLive && (
+              <> · Đang dùng fallback tham chiếu khi chưa fetch được nguồn live.</>
+            )}
+          </p>
+        )}
       </div>
       <div className="form-group">
         <label className="form-label">Ghi chú</label>

@@ -8,6 +8,7 @@ import {
   SearchX,
 } from "lucide-react";
 import EmployeeItem from "./EmployeeItem";
+import { matchesEmployeeSearch } from "../../../../../utils/employeeSearch";
 import "./EmployeeList.scss";
 
 const EmployeeList = ({
@@ -27,12 +28,7 @@ const EmployeeList = ({
   // --- LOGIC LỌC ---
   const filteredEmployees = useMemo(() => {
     return dataSource.filter((employee) => {
-      const searchLower = searchQuery.toLowerCase();
-      // Tìm kiếm an toàn (null check)
-      const matchesSearch =
-        (employee.name && employee.name.toLowerCase().includes(searchLower)) ||
-        (employee.role && employee.role.toLowerCase().includes(searchLower)) ||
-        (employee.code && employee.code.toLowerCase().includes(searchLower));
+      const matchesSearch = matchesEmployeeSearch(employee, searchQuery);
 
       const matchesDepartment =
         departmentFilter === "all" || employee.department === departmentFilter;
@@ -91,7 +87,7 @@ const EmployeeList = ({
           <Search className="search-icon" size={18} />
           <input
             type="text"
-            placeholder="Tìm theo tên, mã NV..."
+            placeholder="Tìm theo tên, SĐT, email, mã, chức vụ..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
