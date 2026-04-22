@@ -107,15 +107,25 @@ const StaffManagement = () => {
     if (!staffList) return [];
     let result = staffList;
 
+    const hasRestaurantMatch = (staff, restaurantIds) => {
+      const allowedIds = Array.isArray(restaurantIds)
+        ? restaurantIds.filter(Boolean)
+        : [restaurantIds].filter(Boolean);
+      if (!allowedIds.length) return true;
+
+      const staffRestaurantIds = [
+        ...(staff.refRestaurants || []).map((restaurant) => restaurant?.id),
+        staff.primaryRestaurant?.id,
+      ].filter(Boolean);
+
+      return staffRestaurantIds.some((id) => allowedIds.includes(id));
+    };
+
     // Filter by Restaurant
     if (selectedRestaurant !== "all") {
-      result = result.filter((s) =>
-        s.refRestaurants?.some((r) => r.id === selectedRestaurant),
-      );
+      result = result.filter((s) => hasRestaurantMatch(s, selectedRestaurant));
     } else if (managedRestaurantIds.length > 0) {
-      result = result.filter((s) =>
-        s.refRestaurants?.some((r) => managedRestaurantIds.includes(r.id)),
-      );
+      result = result.filter((s) => hasRestaurantMatch(s, managedRestaurantIds));
     }
 
     // Filter by Search (Local fallback)
@@ -261,7 +271,6 @@ const StaffManagement = () => {
     }
     if (currentPage === "leave") return <LeaveManagement />;
     if (currentPage === "schedule") return <SchedulePage />;
-    if (currentPage === "reports") return <StaffReportsPage />;
     return null;
   }, [
     currentDate,

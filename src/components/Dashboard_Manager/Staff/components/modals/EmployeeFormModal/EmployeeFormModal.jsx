@@ -91,9 +91,7 @@ const EmployeeFormModal = ({
     },
   ];
 
-  const userTypeOptions = [
-    { value: "STAFF", label: "Nhân viên", icon: "👤" },
-  ];
+  const userTypeOptions = [{ value: "STAFF", label: "Nhân viên", icon: "👤" }];
 
   const employmentTypeOptions = [
     { value: "FULL_TIME", label: "Toàn thời gian" },
@@ -161,7 +159,8 @@ const EmployeeFormModal = ({
     draftIdentity: {
       module: "staff",
       modal: "employee-form-modal",
-      route: typeof window !== "undefined" ? window.location.pathname : "unknown",
+      route:
+        typeof window !== "undefined" ? window.location.pathname : "unknown",
       mode: "create",
       entityType: "employee",
       recordId: null,
@@ -273,8 +272,14 @@ const EmployeeFormModal = ({
 
     if (field === "salary") setSalaryManuallyEdited(true);
     if (field === "employmentType") {
-      const suggested = getSuggestedSalaryByEmploymentType(value, salaryReference);
-      if (!salaryManuallyEdited || !parseCurrencyInputToNumber(formData.salary)) {
+      const suggested = getSuggestedSalaryByEmploymentType(
+        value,
+        salaryReference,
+      );
+      if (
+        !salaryManuallyEdited ||
+        !parseCurrencyInputToNumber(formData.salary)
+      ) {
         setFormData((prev) => ({
           ...prev,
           salary: suggested ? formatCurrencyDisplay(suggested) : "",
@@ -291,7 +296,10 @@ const EmployeeFormModal = ({
       salaryReference,
     );
     if (!suggested) return;
-    setFormData((prev) => ({ ...prev, salary: formatCurrencyDisplay(suggested) }));
+    setFormData((prev) => ({
+      ...prev,
+      salary: formatCurrencyDisplay(suggested),
+    }));
   }, [formData.employmentType, formData.salary, isOpen, salaryReference]);
 
   const roleSuggestion = useMemo(
@@ -424,7 +432,11 @@ const EmployeeFormModal = ({
 
       await onSubmit(staffPayload);
       clearDraft();
-      showNotification("Đã xóa dữ liệu nháp sau khi tạo nhân viên.", "success", 2200);
+      showNotification(
+        "Đã xóa dữ liệu nháp sau khi tạo nhân viên.",
+        "success",
+        2200,
+      );
       onClose();
     } catch (error) {
       console.error("Error creating employee:", error);
@@ -489,7 +501,7 @@ const EmployeeFormModal = ({
           />
           {roleSuggestion && (
             <div className="hint-text">
-              Gợi ý A.I: <b>{roleSuggestion}</b>{" "}
+              Gợi ý: <b>{roleSuggestion}</b>{" "}
               <button
                 type="button"
                 className="btn btn-text"
@@ -754,7 +766,9 @@ const EmployeeFormModal = ({
             onChange={(e) =>
               handleInputChange(
                 "salary",
-                formatCurrencyDisplay(parseCurrencyInputToNumber(e.target.value)),
+                formatCurrencyDisplay(
+                  parseCurrencyInputToNumber(e.target.value),
+                ),
               )
             }
             placeholder="0"
@@ -775,11 +789,19 @@ const EmployeeFormModal = ({
         {salaryReference && (
           <p className="hint-text">
             Nguồn: {salaryReference.decreeName} ({salaryReference.year}) ·{" "}
-            <a href={salaryReference.decreeUrl} target="_blank" rel="noreferrer">
+            <a
+              href={salaryReference.decreeUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
               văn bản
             </a>{" "}
             ·{" "}
-            <a href={salaryReference.articleUrl} target="_blank" rel="noreferrer">
+            <a
+              href={salaryReference.articleUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
               cổng công bố
             </a>
             {formData.employmentType === "PROBATION" && (
@@ -796,7 +818,10 @@ const EmployeeFormModal = ({
               </>
             )}
             {!salaryReference.isLive && (
-              <> · Đang dùng fallback tham chiếu khi chưa fetch được nguồn live.</>
+              <>
+                {" "}
+                · Đang dùng fallback tham chiếu khi chưa fetch được nguồn live.
+              </>
             )}
           </p>
         )}
@@ -841,7 +866,8 @@ const EmployeeFormModal = ({
       </div>
       {showSensitiveNotice && (
         <div className="submit-error-box">
-          Một số trường nhạy cảm (SĐT, email, mật khẩu, liên hệ khẩn cấp) không được khôi phục tự động.
+          Một số trường nhạy cảm (SĐT, email, mật khẩu, liên hệ khẩn cấp) không
+          được khôi phục tự động.
         </div>
       )}
 
