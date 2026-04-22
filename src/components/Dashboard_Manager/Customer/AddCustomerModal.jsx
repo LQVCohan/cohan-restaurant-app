@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Modal from "../../common/Modal";
 import useUserManagement from "../../../hooks/useUserManagement";
 import { useVnAddressLazy } from "../../../hooks/useVnAddressLazy";
