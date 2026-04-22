@@ -6,7 +6,6 @@ const staffSchema = new mongoose.Schema(
     employeeCode: {
       type: String,
       trim: true,
-      unique: true,
       sparse: true,
     },
 
@@ -73,7 +72,16 @@ const staffSchema = new mongoose.Schema(
   }
 );
 
-staffSchema.index({ employeeCode: 1 });
+staffSchema.index(
+  { primaryRestaurant: 1, employeeCode: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      employeeCode: { $exists: true, $type: "string", $ne: "" },
+      primaryRestaurant: { $exists: true, $type: "objectId" },
+    },
+  }
+);
 staffSchema.index({ userType: 1, employmentStatus: 1, primaryRestaurant: 1 });
 
 export const Staff =

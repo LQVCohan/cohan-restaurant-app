@@ -59,7 +59,14 @@ import FoodDetail from "@/components/Customer/Food/FoodDetail";
 // 🔒 Auth Hook
 // =========================
 const useAuth = () => {
-  const { token, user, loading, isAuthenticated } = useContext(AuthContext);
+  const {
+    token,
+    user,
+    loading,
+    isAuthenticated,
+    sessionState,
+    sessionWarning,
+  } = useContext(AuthContext);
   const role = resolveRoleName(user);
   const emailVerified = user?.emailVerified ?? false;
   return {
@@ -67,6 +74,8 @@ const useAuth = () => {
     role,
     emailVerified,
     loading,
+    sessionState,
+    sessionWarning,
     isAuthenticated,
   };
 };
@@ -81,11 +90,29 @@ export const PrivateRoute = ({
   authState,
 }) => {
   const fallbackAuthState = useAuth();
-  const { token, role, emailVerified, loading, isAuthenticated } =
+  const {
+    token,
+    role,
+    emailVerified,
+    loading,
+    sessionState,
+    sessionWarning,
+    isAuthenticated,
+  } =
     authState || fallbackAuthState;
   const location = useLocation();
 
-  if (loading) return null;
+  if (loading || (token && sessionState === "restoring")) return null;
+
+  if (token && sessionState === "network_unstable") {
+    return (
+      <div className="min-h-[40vh] w-full flex flex-col items-center justify-center px-4 text-center">
+        <p className="text-sm font-medium text-amber-700">
+          {sessionWarning || "Mạng không ổn định. Đang chờ xác minh phiên đăng nhập..."}
+        </p>
+      </div>
+    );
+  }
 
   if (!isAuthenticated || !token)
     return <Navigate to="/login" state={{ from: location }} replace />;

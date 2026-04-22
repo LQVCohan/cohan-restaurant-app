@@ -26,7 +26,6 @@ const EmployeeDetail = ({
   onSetWorking,
   onLockAccount,
   onUnlockAccount,
-  onRate,
 }) => {
   // --- EMPTY STATE ---
   if (!employee) {
@@ -59,6 +58,13 @@ const EmployeeDetail = ({
   };
 
   const statusInfo = getStatusInfo(employee.status);
+  const resolvedBaseSalary =
+    employee?.raw?.baseSalary ?? employee?.baseSalary ?? employee?.salary ?? null;
+
+  const salaryDisplay =
+    Number(resolvedBaseSalary) > 0
+      ? `${Number(resolvedBaseSalary).toLocaleString("vi-VN")} đ`
+      : "Chưa thiết lập";
 
   const canSetOnLeave = employee.status === "active";
   const canSetWorking = employee.status === "break";
@@ -145,11 +151,7 @@ const EmployeeDetail = ({
             <InfoRow
               icon={DollarSign}
               label="Lương cơ bản"
-              value={
-                employee.salary
-                  ? `${employee.salary.toLocaleString()} đ`
-                  : "---"
-              }
+              value={salaryDisplay}
               isHighlight
             />
           </div>
@@ -191,7 +193,7 @@ const EmployeeDetail = ({
           </button>
           <button
             className="btn btn-secondary"
-            onClick={onCalculateSalary}
+            onClick={() => onCalculateSalary?.(employee)}
             title="Tính lương"
           >
             <Calculator size={18} />
@@ -199,13 +201,6 @@ const EmployeeDetail = ({
         </div>
 
         <div className="main-actions">
-          <button
-            className="btn btn-secondary"
-            onClick={() => onRate?.(employee.id, 5)}
-            title="Đánh giá 5 sao"
-          >
-            <Award size={18} />
-          </button>
           <button
             className="btn btn-secondary"
             onClick={() => onSetOnLeave?.(employee.id)}

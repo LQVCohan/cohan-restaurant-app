@@ -18,6 +18,7 @@ const StaffHeader = ({
   onToggle,
   searchValue = "",
   onSearchChange,
+  pendingLeaveCount = 0,
 }) => {
   // --- TIME & GREETING LOGIC ---
   const [currentTime, setCurrentTime] = useState(() => new Date());
@@ -62,7 +63,7 @@ const StaffHeader = ({
       {
         id: "active",
         icon: "🟢",
-        label: "Đang làm việc",
+        label: "Đang trực tuyến",
         value: stats.activeStaff || 0,
         tone: "success",
         suffix: "Online",
@@ -85,12 +86,6 @@ const StaffHeader = ({
       },
     ];
   }, [stats]);
-
-  const activeAvatars = [
-    { id: 1, img: "https://i.pravatar.cc/100?img=11" },
-    { id: 2, img: "https://i.pravatar.cc/100?img=5" },
-    { id: 3, img: "https://i.pravatar.cc/100?img=8" },
-  ];
 
   const quickActions = [
     {
@@ -239,20 +234,18 @@ const StaffHeader = ({
           <div className="info-footer-row">
             <div className="active-users-stack">
               <span className="footer-label">Đang trực tuyến:</span>
-              <div className="avatar-group">
-                {activeAvatars.map((u) => (
-                  <img key={u.id} src={u.img} alt="User" className="avatar" />
-                ))}
+              <div className="avatar-group summary-only">
                 <div className="avatar-counter">
-                  +{stats.activeStaff > 3 ? stats.activeStaff - 3 : 0}
+                  {loading ? "--" : formatNumber(stats.activeStaff || 0)}
                 </div>
               </div>
             </div>
 
             <div className="pending-tasks">
               <span className="footer-label">Cần duyệt:</span>
-              <span className="task-badge warn">2 Nghỉ phép</span>
-              <span className="task-badge info">1 Ứng lương</span>
+              <span className="task-badge warn">
+                {loading ? "--" : formatNumber(pendingLeaveCount)} Nghỉ phép
+              </span>
             </div>
           </div>
         )}

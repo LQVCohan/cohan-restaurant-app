@@ -13,6 +13,14 @@ const TOKEN_KEYS = {
 };
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const AUTH_ERROR_CODES = new Set([
+  "UNAUTHENTICATED",
+  "FORBIDDEN",
+  "INVALID_TOKEN",
+  "TOKEN_EXPIRED",
+  "TOKEN_REVOKED",
+  "UNAUTHORIZED",
+]);
 
 // GraphQL query để lấy danh sách nhà hàng của người quản lý
 const GET_USER_REFRESTAURANTS = gql`
@@ -151,6 +159,38 @@ function clearStoredAuth() {
   });
 }
 
+function getNetworkStatusCode(error) {
+  return (
+    error?.networkError?.statusCode ||
+    error?.networkError?.response?.status ||
+    error?.networkError?.status ||
+    null
+  );
+}
+
+function isAuthFailure(error) {
+  const gqlErrors = Array.isArray(error?.graphQLErrors) ? error.graphQLErrors : [];
+  const hasAuthCode = gqlErrors.some((item) =>
+    AUTH_ERROR_CODES.has(String(item?.extensions?.code || "").toUpperCase())
+  );
+  if (hasAuthCode) return true;
+
+  const hasAuthMessage = gqlErrors.some((item) => {
+    const msg = String(item?.message || "").toLowerCase();
+    return (
+      msg.includes("unauthorized") ||
+      msg.includes("unauthenticated") ||
+      msg.includes("invalid token") ||
+      msg.includes("token expired") ||
+      msg.includes("jwt")
+    );
+  });
+  if (hasAuthMessage) return true;
+
+  const status = getNetworkStatusCode(error);
+  return status === 401 || status === 403;
+}
+
 function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
   const roleName = String(
     rawUser?.roleName ||
@@ -200,6 +240,8 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [sessionState, setSessionState] = useState("anonymous");
+  const [sessionWarning, setSessionWarning] = useState("");
   const [restaurants, setRestaurants] = useState([]);
   const [refRestaurant, setRefRestaurant] = useState([]);
   useEffect(() => {
@@ -207,6 +249,9 @@ export const AuthProvider = ({ children }) => {
     if (t) {
       setToken(t);
       setUser(normalizeUserModel(u));
+      setSessionState("restoring");
+    } else {
+      setSessionState("anonymous");
     }
     setLoading(false);
   }, []);
@@ -221,12 +266,15 @@ export const AuthProvider = ({ children }) => {
     skip: !managerId || !["manager", "admin"].includes(roleName),
   });
 
-  const { loading: meLoading } = useQuery(ME_QUERY, {
+  const { loading: meLoading, refetch: refetchMe } = useQuery(ME_QUERY, {
     skip: !token,
     fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
     onCompleted: (data) => {
       const me = data?.me;
       if (!me) return;
+      setSessionState("authenticated");
+      setSessionWarning("");
       setUser((prev) => {
         const merged = normalizeUserModel(me, prev);
         try {
@@ -240,15 +288,41 @@ export const AuthProvider = ({ children }) => {
         return merged;
       });
     },
-    onError: () => {
-      clearStoredAuth();
-      setToken(null);
-      setUser(null);
-      setRestaurants([]);
-      setRefRestaurant([]);
+    onError: (error) => {
+      if (isAuthFailure(error)) {
+        clearStoredAuth();
+        setToken(null);
+        setUser(null);
+        setRestaurants([]);
+        setRefRestaurant([]);
+        setSessionState("anonymous");
+        setSessionWarning("");
+        return;
+      }
+      setSessionState("network_unstable");
+      setSessionWarning("Mạng không ổn định. Đang cố khôi phục phiên đăng nhập...");
     },
   });
 
+  useEffect(() => {
+    if (!token) return undefined;
+    if (sessionState !== "network_unstable") return undefined;
+
+    const handleOnline = () => {
+      setSessionState("restoring");
+      refetchMe().catch(() => {
+        setSessionState("network_unstable");
+        setSessionWarning("Mạng chưa ổn định. Vui lòng kiểm tra kết nối và thử lại.");
+      });
+    };
+
+    window.addEventListener("online", handleOnline);
+    const retryTimer = window.setTimeout(handleOnline, 5000);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.clearTimeout(retryTimer);
+    };
+  }, [token, sessionState, refetchMe]);
 
   useEffect(() => {
     if (roleName === "staff") {
@@ -307,6 +381,8 @@ export const AuthProvider = ({ children }) => {
 
       setToken(newToken);
       setUser(newUser);
+      setSessionState("authenticated");
+      setSessionWarning("");
       writeStoredAuth(newToken, newUser, options);
     },
     [user]
@@ -320,6 +396,8 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setRestaurants([]);
     setRefRestaurant([]);
+    setSessionState("anonymous");
+    setSessionWarning("");
     clearStoredAuth();
     navigate("/login", { replace: true });
   }, [navigate]);
@@ -328,7 +406,9 @@ export const AuthProvider = ({ children }) => {
     () => ({
       token,
       user,
-      loading: loading || (!!token && meLoading),
+      loading: loading || (!!token && sessionState === "restoring" && meLoading),
+      sessionState,
+      sessionWarning,
       isAuthenticated,
       login,
       logout,
@@ -341,6 +421,8 @@ export const AuthProvider = ({ children }) => {
       user,
       loading,
       meLoading,
+      sessionState,
+      sessionWarning,
       isAuthenticated,
       login,
       logout,

@@ -58,6 +58,7 @@ const STAFF_FIELDS = gql`
 
     rate
     rateCount
+    isOnline
 
     lastLoginAt
     lastLoginIp
@@ -127,6 +128,12 @@ const MUTATION_DELETE_STAFF = gql`
   }
 `;
 
+const MUTATION_SOFT_DELETE_USER = gql`
+  mutation SoftDeleteUser($userId: ID!) {
+    softDeleteUser(userId: $userId)
+  }
+`;
+
 const MUTATION_SET_STAFF_EMPLOYMENT_STATUS = gql`
   mutation SetStaffEmploymentStatus(
     $userId: ID!
@@ -180,6 +187,7 @@ const useStaffManagement = (initialFilters = {}) => {
    * -----------------------------------------*/
   const [page, setPage] = useState(initialFilters.page || 1);
   const [pageSize, setPageSize] = useState(initialFilters.pageSize || 20);
+  const pollInterval = Number(initialFilters.pollInterval) || 0;
 
   const staffListVariables = useMemo(
     () => ({
@@ -202,6 +210,8 @@ const useStaffManagement = (initialFilters = {}) => {
   } = useQuery(QUERY_STAFF_LIST, {
     variables: staffListVariables,
     fetchPolicy: "cache-and-network",
+    pollInterval: pollInterval > 0 ? pollInterval : undefined,
+    notifyOnNetworkStatusChange: true,
   });
 
   const staffList = useMemo(
@@ -305,12 +315,27 @@ const useStaffManagement = (initialFilters = {}) => {
     onCompleted: () => refetchStaffList(),
   });
 
+  const [
+    softDeleteUserMutation,
+    { loading: softDeletingStaff, error: softDeleteStaffError },
+  ] = useMutation(MUTATION_SOFT_DELETE_USER, {
+    onCompleted: () => refetchStaffList(),
+  });
+
   const deleteStaff = useCallback(
     async (userId) => {
       const res = await deleteStaffMutation({ variables: { userId } });
       return res.data?.deleteStaff ?? false;
     },
     [deleteStaffMutation]
+  );
+
+  const softDeleteStaff = useCallback(
+    async (userId) => {
+      const res = await softDeleteUserMutation({ variables: { userId } });
+      return res.data?.softDeleteUser ?? false;
+    },
+    [softDeleteUserMutation]
   );
 
   /** SET EMPLOYMENT STATUS (ON_LEAVE, WORKING, ...) */
@@ -375,6 +400,7 @@ const useStaffManagement = (initialFilters = {}) => {
     creatingStaff ||
     updatingStaff ||
     deletingStaff ||
+    softDeletingStaff ||
     changingEmploymentStatus ||
     changingUserStatus ||
     ratingStaff;
@@ -385,6 +411,7 @@ const useStaffManagement = (initialFilters = {}) => {
     create: createStaffError,
     update: updateStaffError,
     delete: deleteStaffError,
+    softDelete: softDeleteStaffError,
     setEmploymentStatus: setEmploymentStatusError,
     setUserStatus: setUserStatusError,
     rate: rateStaffError,
@@ -416,6 +443,7 @@ const useStaffManagement = (initialFilters = {}) => {
     createStaff,
     updateStaff,
     deleteStaff,
+    softDeleteStaff,
     setStaffEmploymentStatus,
     setStaffAccountStatus,
     rateStaff,
@@ -426,6 +454,7 @@ const useStaffManagement = (initialFilters = {}) => {
     creatingStaff,
     updatingStaff,
     deletingStaff,
+    softDeletingStaff,
     changingEmploymentStatus,
     changingUserStatus,
     ratingStaff,

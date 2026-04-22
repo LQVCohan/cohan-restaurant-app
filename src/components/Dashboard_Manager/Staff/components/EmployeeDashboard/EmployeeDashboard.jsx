@@ -10,17 +10,13 @@ const EmployeeDashboard = ({
   onEditEmployee,
   onViewHistory,
   onDeleteEmployee,
+  onCalculateSalary,
   onSetOnLeave,
   onSetWorking,
   onLockAccount,
   onUnlockAccount,
-  onRateStaff,
   loading = false,
 }) => {
-  const handleCalculateSalary = () => {
-    alert("💰 Tính lương tháng cho nhân viên...\n(Tính năng demo)");
-  };
-
   return (
     <div className="employee-dashboard">
       {/* CỘT TRÁI: Danh sách (Chiếm 40%) */}
@@ -39,13 +35,12 @@ const EmployeeDashboard = ({
           employee={selectedEmployee}
           onEdit={onEditEmployee}
           onViewHistory={onViewHistory}
-          onCalculateSalary={handleCalculateSalary}
           onDelete={onDeleteEmployee}
           onSetOnLeave={onSetOnLeave}
           onSetWorking={onSetWorking}
           onLockAccount={onLockAccount}
           onUnlockAccount={onUnlockAccount}
-          onRate={onRateStaff}
+          onCalculateSalary={onCalculateSalary}
         />
       </div>
     </div>

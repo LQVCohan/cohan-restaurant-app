@@ -1,5 +1,7 @@
 // src/pages/StaffManagement/index.jsx
 import React, { useState, useEffect, useMemo, useContext, useCallback } from "react";
+import { gql, useQuery } from "@apollo/client";
+import { useNavigate } from "react-router-dom";
 import StaffHeader from "./components/Header"; // Giả sử đã đổi tên file component Header mới
 import PageNavigation from "./components/PageNavigation";
 import EmployeeDashboard from "./components/EmployeeDashboard";
@@ -22,6 +24,16 @@ import { matchesEmployeeSearch } from "../../../utils/employeeSearch";
 // Import styles
 import "./StaffManagement.scss";
 
+const QUERY_PENDING_LEAVE_REQUESTS = gql`
+  query PendingLeaveRequests($filter: LeaveRequestFilterInput) {
+    leaveRequests(filter: $filter) {
+      id
+      restaurantId
+      status
+    }
+  }
+`;
+
 const StaffManagement = () => {
   // --- STATE ---
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -30,6 +42,7 @@ const StaffManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const navigate = useNavigate();
 
   const [modals, setModals] = useState({
     addEmployee: false,
@@ -78,13 +91,27 @@ const StaffManagement = () => {
     staffList,
     createStaff,
     updateStaff,
-    deleteStaff,
+    softDeleteStaff,
     setStaffEmploymentStatus,
     setStaffAccountStatus,
-    rateStaff,
     setFilters,
     staffListLoading,
-  } = useStaffManagement({ page: 1, pageSize: 50 }); // Tăng pageSize để demo mượt
+  } = useStaffManagement({
+    page: 1,
+    pageSize: 50,
+    pollInterval: 15000,
+  }); // Tăng pageSize để demo mượt
+
+  const leaveFilter = useMemo(() => ({ status: "PENDING" }), []);
+  const { data: pendingLeaveData, loading: pendingLeaveLoading } = useQuery(
+    QUERY_PENDING_LEAVE_REQUESTS,
+    {
+      variables: { filter: leaveFilter },
+      fetchPolicy: "cache-and-network",
+      pollInterval: 30000,
+      notifyOnNetworkStatusChange: true,
+    },
+  );
 
   // --- FILTER & LOGIC ---
   useEffect(() => {
@@ -159,6 +186,8 @@ const StaffManagement = () => {
             ? new Date(staff.dateJoined).toLocaleDateString("vi-VN")
             : "---",
           shift: staff.shiftType || "Ca xoay",
+          baseSalary: staff.baseSalary ?? null,
+          salary: staff.baseSalary ?? null,
           primaryRestaurantId: staff.primaryRestaurant?.id,
           raw: staff,
         };
@@ -170,7 +199,7 @@ const StaffManagement = () => {
   const stats = useMemo(
     () => ({
       totalStaff: filteredStaff.length,
-      activeStaff: filteredStaff.filter((s) => s.status === "active").length,
+      activeStaff: filteredStaff.filter((s) => s.isOnline).length,
       onLeaveStaff: filteredStaff.filter(
         (s) => s.employmentStatus === "ON_LEAVE",
       ).length,
@@ -180,6 +209,18 @@ const StaffManagement = () => {
     }),
     [filteredStaff],
   );
+
+  const pendingLeaveCount = useMemo(() => {
+    const requests = pendingLeaveData?.leaveRequests || [];
+    if (!requests.length) return 0;
+    if (selectedRestaurant !== "all") {
+      return requests.filter((request) => request.restaurantId === selectedRestaurant).length;
+    }
+    if (managedRestaurantIds.length > 0) {
+      return requests.filter((request) => managedRestaurantIds.includes(request.restaurantId)).length;
+    }
+    return requests.length;
+  }, [managedRestaurantIds, pendingLeaveData?.leaveRequests, selectedRestaurant]);
 
   // --- HANDLERS ---
   const toggleHeader = useCallback(
@@ -212,7 +253,19 @@ const StaffManagement = () => {
     [closeModal, selectedEmployee?.id, updateStaff],
   );
   const handleSetOnLeave = useCallback(
-    (id) => setStaffEmploymentStatus(id, "ON_LEAVE"),
+    async (id) => {
+      const statusChoice = window.prompt(
+        "Chọn trạng thái:\n1 - Tạm nghỉ (ON_LEAVE)\n2 - Nghỉ việc (RESIGNED)",
+        "1",
+      );
+      if (!statusChoice) return;
+      const nextStatus = statusChoice === "2" ? "RESIGNED" : "ON_LEAVE";
+      const statusLabel = nextStatus === "RESIGNED" ? "nghỉ việc" : "tạm nghỉ";
+      if (!window.confirm(`Xác nhận chuyển nhân viên sang trạng thái ${statusLabel}?`)) {
+        return;
+      }
+      await setStaffEmploymentStatus(id, nextStatus);
+    },
     [setStaffEmploymentStatus],
   );
   const handleSetWorking = useCallback(
@@ -226,6 +279,25 @@ const StaffManagement = () => {
   const handleUnlockAccount = useCallback(
     (id) => setStaffAccountStatus(id, "active"),
     [setStaffAccountStatus],
+  );
+  const handleCalculateSalary = useCallback(
+    (employee) => {
+      if (!employee?.id) return;
+      navigate(`/manager?employeeId=${encodeURIComponent(employee.id)}#payroll`);
+    },
+    [navigate],
+  );
+  const handleSoftDeleteAccount = useCallback(
+    async (id) => {
+      if (!window.confirm("Tài khoản sẽ vào thùng rác trong 30 ngày. Bạn có chắc chắn muốn tiếp tục?")) {
+        return;
+      }
+      await softDeleteStaff(id);
+      if (selectedEmployee?.id === id) {
+        setSelectedEmployee(null);
+      }
+    },
+    [selectedEmployee?.id, softDeleteStaff],
   );
 
   const handleOpenEditEmployee = useCallback(
@@ -246,6 +318,7 @@ const StaffManagement = () => {
   }, [mappedStaff, selectedEmployee]);
 
   const isLoading = staffListLoading || restaurantLoading;
+  const isHeaderLoading = isLoading || pendingLeaveLoading;
 
   const mainContent = useMemo(() => {
     if (currentPage === "dashboard") {
@@ -256,12 +329,12 @@ const StaffManagement = () => {
           onEmployeeSelect={setSelectedEmployee}
           onEditEmployee={handleOpenEditEmployee}
           onViewHistory={handleOpenWorkHistory}
-          onDeleteEmployee={deleteStaff}
+          onDeleteEmployee={handleSoftDeleteAccount}
           onSetOnLeave={handleSetOnLeave}
           onSetWorking={handleSetWorking}
           onLockAccount={handleLockAccount}
           onUnlockAccount={handleUnlockAccount}
-          onRateStaff={rateStaff}
+          onCalculateSalary={handleCalculateSalary}
           loading={isLoading}
         />
       );
@@ -276,7 +349,8 @@ const StaffManagement = () => {
     currentDate,
     currentPage,
     currentTime,
-    deleteStaff,
+    handleCalculateSalary,
+    handleSoftDeleteAccount,
     handleLockAccount,
     handleOpenEditEmployee,
     handleOpenWorkHistory,
@@ -285,8 +359,8 @@ const StaffManagement = () => {
     handleUnlockAccount,
     isLoading,
     mappedStaff,
-    rateStaff,
     selectedEmployee,
+    setSelectedEmployee,
   ]);
 
   return (
@@ -305,7 +379,8 @@ const StaffManagement = () => {
             onExportData={() => console.log("Export")}
             restaurantList={restaurantList}
             stats={stats}
-            loading={isLoading}
+            loading={isHeaderLoading}
+            pendingLeaveCount={pendingLeaveCount}
             onPageChange={setCurrentPage}
             isCollapsed={isHeaderCollapsed}
             onToggle={toggleHeader}

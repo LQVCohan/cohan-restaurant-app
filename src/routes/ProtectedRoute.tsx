@@ -19,6 +19,8 @@ interface AuthContextValue {
   user: UserLike | null;
   token: string | null;
   loading: boolean;
+  sessionState?: string;
+  sessionWarning?: string;
   isAuthenticated: boolean;
   login: (
     token: string,
@@ -53,6 +55,23 @@ function LoadingScreen(): JSX.Element {
   );
 }
 
+function SessionNetworkWarning({
+  message,
+}: {
+  message?: string;
+}): JSX.Element {
+  return (
+    <div className="min-h-[40vh] w-full flex flex-col items-center justify-center px-4 text-center">
+      <p className="text-sm font-medium text-amber-700">
+        {message || "Mạng không ổn định. Đang chờ khôi phục phiên..."}
+      </p>
+      <p className="mt-2 text-xs text-gray-500">
+        Bạn vẫn đang được giữ phiên tạm thời, vui lòng kiểm tra kết nối mạng.
+      </p>
+    </div>
+  );
+}
+
 /** ---- ProtectedRoute ----
  * - Yêu cầu đã đăng nhập
  * - Nếu chưa → chuyển /login (lưu from)
@@ -65,6 +84,9 @@ export default function ProtectedRoute(): JSX.Element {
   // Đưa default để tránh undefined khi context chưa sẵn
   const {
     loading = false,
+    token = null,
+    sessionState = "anonymous",
+    sessionWarning = "",
     isAuthenticated = false,
     user = null,
   } = (auth || {}) as Partial<AuthContextValue>;
@@ -72,6 +94,10 @@ export default function ProtectedRoute(): JSX.Element {
   const location = useLocation();
 
   if (loading) return <LoadingScreen />;
+
+  if (token && sessionState === "network_unstable") {
+    return <SessionNetworkWarning message={sessionWarning} />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />;
@@ -95,6 +121,9 @@ export function RequireRole({
   const auth = React.useContext(AuthContext) as AuthContextValue | null;
   const {
     loading = false,
+    token = null,
+    sessionState = "anonymous",
+    sessionWarning = "",
     isAuthenticated = false,
     user = null,
   } = (auth || {}) as Partial<AuthContextValue>;
@@ -102,6 +131,10 @@ export function RequireRole({
   const location = useLocation();
 
   if (loading) return <LoadingScreen />;
+
+  if (token && sessionState === "network_unstable") {
+    return <SessionNetworkWarning message={sessionWarning} />;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />;
