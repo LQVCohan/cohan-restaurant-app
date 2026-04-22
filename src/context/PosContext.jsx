@@ -42,6 +42,20 @@ const M_UPSERT_PRINT_SETTINGS = gql`
 
 const PosContext = createContext(undefined);
 
+
+const sanitizeStationsByPrinters = (stations, printersList) => {
+  const printerIds = new Set((Array.isArray(printersList) ? printersList : []).map((p) => p?.id).filter(Boolean));
+  const fallback = PRINT_STATIONS.reduce((acc, st) => {
+    acc[st.id] = [];
+    return acc;
+  }, {});
+  Object.entries(stations || {}).forEach(([stationId, ids]) => {
+    fallback[stationId] = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((id) => printerIds.has(id))));
+  });
+  return fallback;
+};
+
+
 export function usePos() {
   const ctx = useContext(PosContext);
   if (!ctx) throw new Error("usePos must be used within a <PosProvider>.");
@@ -91,13 +105,10 @@ export default function PosProvider({
         acc[printer.id] = printer;
         return acc;
       }, {});
-      const fallbackStations = PRINT_STATIONS.reduce((acc, st) => {
-        acc[st.id] = [];
-        return acc;
-      }, {});
+      const safeStations = sanitizeStationsByPrinters(settings?.stations, printersList);
       printSettingsHydratingRef.current = true;
       setPrinters(printerMap);
-      setPrintStations(settings?.stations || fallbackStations);
+      setPrintStations(safeStations);
       setTimeout(() => {
         printSettingsHydratingRef.current = false;
       }, 0);
@@ -118,16 +129,10 @@ export default function PosProvider({
       clearTimeout(printSettingsDebounceRef.current);
     }
     const list = Object.values(printers || {});
-    const fallbackStations = PRINT_STATIONS.reduce((acc, st) => {
-      acc[st.id] = [];
-      return acc;
-    }, {});
     const payload = {
       restaurantId,
       printers: list,
-      stations: Object.keys(printStations || {}).length
-        ? printStations
-        : fallbackStations,
+      stations: sanitizeStationsByPrinters(printStations, list),
     };
     printSettingsDebounceRef.current = setTimeout(() => {
       upsertPrintSettings({ variables: { input: payload } }).catch(() => {});

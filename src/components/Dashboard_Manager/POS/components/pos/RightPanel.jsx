@@ -5,6 +5,7 @@ import React, {
   useRef,
   useEffect,
 } from "react";
+import { gql, useMutation } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import cls from "./RightPanel.module.scss";
 import { usePos } from "../../../../../context/PosContext";
@@ -130,6 +131,25 @@ const PRIORITY_LABELS = {
   LOW: "Ưu tiên thấp",
 };
 
+
+const M_ENQUEUE_PRINT_JOB = gql`
+  mutation EnqueuePrintJob($input: EnqueuePrintJobInput!) {
+    enqueuePrintJob(input: $input) {
+      id
+      printerId
+      printerName
+      stationId
+      printType
+      templateKey
+      status
+      error
+      retryCount
+      payload
+      createdAt
+    }
+  }
+`;
+
 export default function RightPanel() {
   const navigate = useNavigate();
   const {
@@ -181,6 +201,7 @@ export default function RightPanel() {
   const [isPrintModalOpen, setPrintModalOpen] = useState(false);
   const [isPrintQueueOpen, setPrintQueueOpen] = useState(false);
   const [printMode, setPrintMode] = useState("temp");
+  const [enqueuePrintJob] = useMutation(M_ENQUEUE_PRINT_JOB);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -533,9 +554,7 @@ export default function RightPanel() {
       const mappedPrinters = (printStations?.[station.id] || [])
         .map((pid) => printers?.[pid])
         .filter(Boolean);
-      const fallbackPrinters = mappedPrinters.length
-        ? mappedPrinters
-        : printerList.filter((p) => p.location === station.id);
+      const fallbackPrinters = mappedPrinters;
       return {
         id: station.id,
         label: station.label,
@@ -549,147 +568,135 @@ export default function RightPanel() {
   }, [
     buildPreview,
     currentOrder,
-    printerList,
     printers,
     printStations,
     resolveStationId,
   ]);
 
-  const queuePrintJob = useCallback(
-    ({ label, printer, items, mode, status = "pending" }) => {
-      const id = `print_${Date.now()}_${Math.random()}`;
-      return {
-        id,
-        label,
-        printerId: printer?.id || null,
-        printerName: printer?.name || null,
-        count: items.length,
-        items,
-        table: currentTable?.code || "Đơn",
-        status,
-        type: mode,
-      };
-    },
+  const toLocalQueueJob = useCallback(
+    ({ source, statusOverride }) => ({
+      id: source.id,
+      label: source.stationId
+        ? PRINT_STATIONS.find((s) => s.id === source.stationId)?.label || source.printType
+        : source.printType,
+      printerId: source.printerId || null,
+      printerName: source.printerName || null,
+      count: Number(source?.payload?.count || 0),
+      items: source?.payload?.items || [],
+      table: source?.payload?.table || currentTable?.code || "Đơn",
+      status: statusOverride || source.status || "pending",
+      type: source.printType,
+    }),
     [currentTable?.code]
   );
 
-  const handleAddToQueue = useCallback(
-    (mode) => {
-      if (!hasItems) return;
+  const persistPrintJobs = useCallback(
+    async ({ mode, status }) => {
+      if (!restaurantId) {
+        showNotification("Thiếu restaurantId để tạo print job.", "error");
+        return [];
+      }
+
+      const requests = [];
       if (mode === "temp") {
         if (!selectedPrinter) {
           showNotification("Vui lòng chọn máy in tạm tính.", "warning");
-          return;
+          return [];
         }
-        const job = queuePrintJob({
-          label: "Tạm tính",
+        requests.push({
           printer: selectedPrinter,
-          items: currentOrder || [],
-          mode: "temp",
-          status: "pending",
+          stationId: "cashier",
+          printType: status === "printing" ? "temp_print_now" : "temp_queue",
+          templateKey: "receipt",
+          payload: { table: currentTable?.code || "Đơn", count: (currentOrder || []).length, items: currentOrder || [] },
         });
-        setPrintQueue((prev) => [...prev, job]);
-        showNotification("Đã thêm vào hàng đợi in.", "success");
-        return;
+      } else {
+        stationPreviews.forEach((station) => {
+          if (!station.items.length) return;
+          if (!station.printers.length) {
+            showNotification(`Chưa gán máy in cho ${station.label}.`, "warning");
+            return;
+          }
+          station.printers.forEach((printer) => {
+            requests.push({
+              printer,
+              stationId: station.id,
+              printType: status === "printing" ? "station_print_now" : "station_queue",
+              templateKey: station.id,
+              payload: { table: currentTable?.code || "Đơn", count: station.items.length, items: station.items },
+            });
+          });
+        });
       }
 
-      const jobs = [];
-      stationPreviews.forEach((station) => {
-        if (!station.items.length) return;
-        if (!station.printers.length) {
-          showNotification(
-            `Chưa gán máy in cho ${station.label}.`,
-            "warning"
-          );
-          return;
-        }
-        station.printers.forEach((printer) => {
-          jobs.push(
-            queuePrintJob({
-              label: station.label,
-              printer,
-              items: station.items,
-              mode: "station",
-              status: "pending",
-            })
-          );
-        });
-      });
-      if (!jobs.length) {
+      if (!requests.length) {
         showNotification("Không có món để in.", "warning");
-        return;
+        return [];
       }
-      setPrintQueue((prev) => [...prev, ...jobs]);
-      showNotification("Đã thêm đơn in theo quầy.", "success");
+
+      const results = await Promise.all(
+        requests.map(async (req) => {
+          const res = await enqueuePrintJob({
+            variables: {
+              input: {
+                restaurantId,
+                printerId: req.printer?.id || null,
+                stationId: req.stationId,
+                printType: req.printType,
+                templateKey: req.templateKey,
+                payload: req.payload,
+              },
+            },
+          });
+          return toLocalQueueJob({ source: res?.data?.enqueuePrintJob || {}, statusOverride: status });
+        })
+      );
+
+      setPrintQueue((prev) => [...prev, ...results]);
+      return results;
     },
     [
       currentOrder,
-      hasItems,
-      queuePrintJob,
+      currentTable?.code,
+      enqueuePrintJob,
+      restaurantId,
       selectedPrinter,
       setPrintQueue,
       showNotification,
       stationPreviews,
+      toLocalQueueJob,
     ]
   );
 
-  const handlePrintNow = useCallback(
-    (mode) => {
+  const handleAddToQueue = useCallback(
+    async (mode) => {
       if (!hasItems) return;
-      if (mode === "temp") {
-        if (!selectedPrinter) {
-          showNotification("Vui lòng chọn máy in tạm tính.", "warning");
-          return;
-        }
-        const job = queuePrintJob({
-          label: "Tạm tính",
-          printer: selectedPrinter,
-          items: currentOrder || [],
-          mode: "temp",
-          status: "printing",
-        });
-        setPrintQueue((prev) => [...prev, job]);
-        showNotification("Đang in tạm tính...", "info");
-        return;
+      try {
+        const jobs = await persistPrintJobs({ mode, status: "pending" });
+        if (jobs.length) showNotification("Đã thêm vào hàng đợi in (đã lưu DB).", "success");
+      } catch (err) {
+        showNotification(err?.message || "Không thể enqueue print job vào DB.", "error");
       }
-      const jobs = [];
-      stationPreviews.forEach((station) => {
-        if (!station.items.length) return;
-        if (!station.printers.length) {
-          showNotification(
-            `Chưa gán máy in cho ${station.label}.`,
-            "warning"
-          );
-          return;
-        }
-        station.printers.forEach((printer) => {
-          jobs.push(
-            queuePrintJob({
-              label: station.label,
-              printer,
-              items: station.items,
-              mode: "station",
-              status: "printing",
-            })
-          );
-        });
-      });
-      if (!jobs.length) {
-        showNotification("Không có món để in.", "warning");
-        return;
-      }
-      setPrintQueue((prev) => [...prev, ...jobs]);
-      showNotification("Đang in theo quầy...", "info");
     },
-    [
-      currentOrder,
-      hasItems,
-      queuePrintJob,
-      selectedPrinter,
-      setPrintQueue,
-      showNotification,
-      stationPreviews,
-    ]
+    [hasItems, persistPrintJobs, showNotification]
+  );
+
+  const handlePrintNow = useCallback(
+    async (mode) => {
+      if (!hasItems) return;
+      try {
+        const jobs = await persistPrintJobs({ mode, status: "printing" });
+        if (jobs.length) {
+          showNotification(
+            mode === "temp" ? "Đang in tạm tính (DB job simulated)..." : "Đang in theo quầy (DB job simulated)...",
+            "info"
+          );
+        }
+      } catch (err) {
+        showNotification(err?.message || "Không thể tạo print job để in ngay.", "error");
+      }
+    },
+    [hasItems, persistPrintJobs, showNotification]
   );
 
   const handleItemClick = (item) => {

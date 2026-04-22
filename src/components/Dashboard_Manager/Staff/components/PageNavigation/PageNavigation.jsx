@@ -5,7 +5,6 @@ import {
   Palmtree,
   CalendarRange,
   BarChart3,
-  Bell,
 } from "lucide-react";
 import "./PageNavigation.scss";
 
@@ -68,7 +67,7 @@ const PageNavigation = ({ currentPage, onPageChange, badgeCounts = {} }) => {
               <span className="nav-label">{page.label}</span>
 
               {/* Hiệu ứng nền chuyển động (Active Background) */}
-              {isActive && <div className="active-bg" layoutId="nav-bg" />}
+              {isActive && <div className="active-bg" />}
             </button>
           );
         })}
