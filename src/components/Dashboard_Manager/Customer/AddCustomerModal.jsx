@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Modal from "../../common/Modal";
 import useUserManagement from "../../../hooks/useUserManagement";
 import { useVnAddressLazy } from "../../../hooks/useVnAddressLazy";
@@ -45,7 +45,7 @@ async function reverseGeocodeOSM(lat, lng) {
   const url =
     `https://nominatim.openstreetmap.org/reverse?format=jsonv2&` +
     `lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(
-      lng
+      lng,
     )}&accept-language=vi`;
   const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) throw new Error("reverse_geocode_failed");
@@ -88,7 +88,7 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
   const defaultCustomerRoleId = useMemo(() => {
     const found =
       (roleList || []).find(
-        (r) => (r.slug || "").toLowerCase() === "customer"
+        (r) => (r.slug || "").toLowerCase() === "customer",
       ) || (roleList || [])[0];
     return found?.id || "";
   }, [roleList]);
@@ -135,7 +135,9 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
   });
 
   const selectedWard = useMemo(() => {
-    return (wards || []).find((w) => String(w.code) === String(wardKey)) || null;
+    return (
+      (wards || []).find((w) => String(w.code) === String(wardKey)) || null
+    );
   }, [wards, wardKey]);
 
   useEffect(() => {
@@ -217,7 +219,7 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
         const house = normalizePart(addr.house_number);
         const road = normalizePart(addr.road);
         const neighbourhood = normalizePart(
-          addr.neighbourhood || addr.suburb || addr.quarter
+          addr.neighbourhood || addr.suburb || addr.quarter,
         );
         const detailLine = dedupeParts([house, road, neighbourhood]).join(" ");
         onChange("addressDetail", detailLine || displayName || "");
@@ -227,36 +229,42 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
 
       if (addr && Array.isArray(provinces) && provinces.length > 0) {
         const provName = safeStr(
-          addr.state || addr.city || addr.county || addr.province
+          addr.state || addr.city || addr.county || addr.province,
         ).toLowerCase();
         const foundProv =
           provinces.find((p) => safeStr(p.name).toLowerCase() === provName) ||
-          provinces.find((p) => safeStr(p.name).toLowerCase().includes(provName));
+          provinces.find((p) =>
+            safeStr(p.name).toLowerCase().includes(provName),
+          );
         if (foundProv?.code) {
           handleProvinceChange(String(foundProv.code));
           setTimeout(async () => {
             const distName = safeStr(
-              addr.county || addr.city_district || addr.district || ""
+              addr.county || addr.city_district || addr.district || "",
             ).toLowerCase();
             const foundDist =
               (foundProv.districts || []).find(
-                (d) => safeStr(d.name).toLowerCase() === distName
+                (d) => safeStr(d.name).toLowerCase() === distName,
               ) ||
               (foundProv.districts || []).find((d) =>
-                safeStr(d.name).toLowerCase().includes(distName)
+                safeStr(d.name).toLowerCase().includes(distName),
               );
             if (foundDist?.code) {
               await handleDistrictChange(String(foundDist.code));
               setTimeout(() => {
                 const wardName = safeStr(
-                  addr.suburb || addr.village || addr.town || addr.quarter || ""
+                  addr.suburb ||
+                    addr.village ||
+                    addr.town ||
+                    addr.quarter ||
+                    "",
                 ).toLowerCase();
                 const foundWard =
                   (wards || []).find(
-                    (w) => safeStr(w.name).toLowerCase() === wardName
+                    (w) => safeStr(w.name).toLowerCase() === wardName,
                   ) ||
                   (wards || []).find((w) =>
-                    safeStr(w.name).toLowerCase().includes(wardName)
+                    safeStr(w.name).toLowerCase().includes(wardName),
                   );
                 if (foundWard?.code) handleWardChange(String(foundWard.code));
               }, 160);
@@ -268,7 +276,7 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
       console.warn(err);
       showNotification(
         "Không lấy được địa chỉ hiện tại. Vui lòng chọn tay hoặc nhập chi tiết.",
-        "warning"
+        "warning",
       );
     } finally {
       setLocating(false);
@@ -329,7 +337,7 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
         if (syncResult?.visibleInCurrentList === false) {
           showNotification(
             "Tạo khách vãng lai thành công. Bản ghi mới không thuộc bộ lọc/tìm kiếm hiện tại.",
-            "success"
+            "success",
           );
         } else {
           showNotification("Tạo khách vãng lai thành công.", "success");
@@ -371,7 +379,7 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
       if (syncResult?.visibleInCurrentList === false) {
         showNotification(
           "Tạo khách hàng thành công. Khách hàng mới không nằm trong bộ lọc/tìm kiếm hiện tại.",
-          "success"
+          "success",
         );
       } else {
         showNotification("Tạo khách hàng thành công.", "success");
@@ -611,7 +619,9 @@ const AddCustomerModal = ({ onClose, onCreated }) => {
                       className="acm-input"
                       placeholder="Số nhà, tên đường, tòa nhà..."
                       value={form.addressDetail}
-                      onChange={(e) => onChange("addressDetail", e.target.value)}
+                      onChange={(e) =>
+                        onChange("addressDetail", e.target.value)
+                      }
                     />
                   </Input>
                   <div className="acm-address-preview">
