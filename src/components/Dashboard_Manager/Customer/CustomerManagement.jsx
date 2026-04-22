@@ -234,6 +234,53 @@ const CustomerManagement = () => {
     await refetchRankSettings();
   };
 
+  const refreshCustomerListAfterCreate = async (createdUser = null) => {
+    await getCustomers({ includeGuests: true, search: "" });
+    if (selectedRestaurantId) {
+      await loadOrdersAll({
+        variables: {
+          restaurantId: selectedRestaurantId,
+          limit: 300,
+          cursor: null,
+        },
+        fetchPolicy: "network-only",
+      });
+    }
+
+    if (!createdUser) {
+      return { visibleInCurrentList: null };
+    }
+
+    const name = (
+      createdUser.fullName ||
+      createdUser.username ||
+      ""
+    ).toLowerCase();
+    const email = (createdUser.email || "").toLowerCase();
+    const phone = createdUser.phone || "";
+    const q = (searchQuery || "").trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      name.includes(q) ||
+      email.includes(q) ||
+      phone.includes(searchQuery || "");
+
+    const typeRaw = (createdUser.customerType || "NEW").toUpperCase();
+    const typeVN =
+      typeRaw === "VIP"
+        ? "VIP"
+        : typeRaw === "OFTEN"
+          ? "Thường xuyên"
+          : "Mới";
+    const matchesFilter =
+      activeFilter === "all" ||
+      (activeFilter === "vip" && typeVN === "VIP") ||
+      (activeFilter === "new" && typeVN === "Mới") ||
+      (activeFilter === "frequent" && typeVN === "Thường xuyên");
+
+    return { visibleInCurrentList: matchesSearch && matchesFilter };
+  };
+
   // --- 4. Data Processing (Memoized) ---
 
   // Gom nhóm đơn hàng theo UserID để map vào Customer
@@ -601,7 +648,81 @@ const CustomerManagement = () => {
 
       {/* Modal thêm khách hàng mới */}
       {showAddModal && (
-        <AddCustomerModal onClose={() => setShowAddModal(false)} />
+        <AddCustomerModal
+          onClose={() => setShowAddModal(false)}
+          onCreated={refreshCustomerListAfterCreate}
+        />
+      )}
+
+      {showExportModal && (
+        <Modal
+          isOpen
+          onClose={() => {
+            if (!exporting) setShowExportModal(false);
+          }}
+          title="Xuất danh sách khách hàng (.xlsx)"
+          size="md"
+        >
+          <Modal.Body>
+            <div className="space-y-3">
+              <p className="text-sm text-slate-600">
+                Chọn 1 trong 3 phạm vi xuất cho danh sách đang lọc/tìm kiếm hiện tại.
+              </p>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="exportScope"
+                  checked={exportScope === "current_list"}
+                  onChange={() => setExportScope("current_list")}
+                />
+                <span>
+                  <strong>Danh sách hiện tại</strong> — 1 sheet: toàn bộ khách đang hiển thị.
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="exportScope"
+                  checked={exportScope === "customer_type"}
+                  onChange={() => setExportScope("customer_type")}
+                />
+                <span>
+                  <strong>Phân loại Guest/Registered</strong> — 2 sheet: khách guest và khách đăng ký.
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="exportScope"
+                  checked={exportScope === "loyalty_tier"}
+                  onChange={() => setExportScope("loyalty_tier")}
+                />
+                <span>
+                  <strong>Phân loại theo hạng</strong> — 3 sheet: VIP, Thân thiết, Mới (theo loyalty points).
+                </span>
+              </label>
+              {exportError ? (
+                <div className="text-sm text-red-600">{exportError}</div>
+              ) : null}
+            </div>
+          </Modal.Body>
+          <Modal.Footer>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setShowExportModal(false)}
+              disabled={exporting}
+            >
+              Hủy
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleExportExcel}
+              disabled={exporting}
+            >
+              {exporting ? "Đang xuất..." : "Xuất .xlsx"}
+            </button>
+          </Modal.Footer>
+        </Modal>
       )}
 
       {showExportModal && (

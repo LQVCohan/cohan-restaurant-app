@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import Modal from "../../common/Modal";
 import useUserManagement from "../../../hooks/useUserManagement";
+import { useVnAddressLazy } from "../../../hooks/useVnAddressLazy";
 import { useNotification } from "../../../hooks/useNotification";
 import "./AddCustomerModal.scss";
 
@@ -25,6 +26,31 @@ const isPhoneVN = (v) =>
   /^(0|\+?84)(\d{9,10})$/.test((v || "").replace(/\s+/g, ""));
 const strongPassword = (v) =>
   typeof v === "string" && v.length >= 8 && /[A-Za-z]/.test(v) && /\d/.test(v);
+
+const safeStr = (v) => (v || "").toString().trim();
+const normalizePart = (v) => safeStr(v).replace(/\s+/g, " ");
+const dedupeParts = (parts) => {
+  const seen = new Set();
+  const out = [];
+  for (const p of (parts || []).map(normalizePart).filter(Boolean)) {
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(p);
+  }
+  return out;
+};
+
+async function reverseGeocodeOSM(lat, lng) {
+  const url =
+    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&` +
+    `lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(
+      lng
+    )}&accept-language=vi`;
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error("reverse_geocode_failed");
+  return res.json();
+}
 
 /* ===== UI atoms ===== */
 const Input = ({ label, required = false, error, children, hint, icon }) => (
@@ -52,7 +78,7 @@ const Section = ({ title, children, badge }) => (
   </div>
 );
 
-const AddCustomerModal = ({ onClose }) => {
+const AddCustomerModal = ({ onClose, onCreated }) => {
   const { roleList, createUser, createGuest, creating, creatingGuest } =
     useUserManagement(); // dùng đúng flags để disable nút
   const { showNotification } = useNotification();
@@ -75,22 +101,179 @@ const AddCustomerModal = ({ onClose }) => {
     phone: "",
     password: "",
     confirmPassword: "",
-    address: {
-      line1: "",
-      line2: "",
-      ward: "",
-      district: "",
-      city: "",
-      country: "Vietnam",
-    },
     customerTypeVN: "Mới",
+    addressDetail: "",
+    provinceKey: "",
+    districtKey: "",
+    wardKey: "",
   });
+  const [locating, setLocating] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
 
+  const {
+    loading: addressLoading,
+    error: addressError,
+    provinces,
+    districts,
+    wards,
+    provinceKey,
+    districtKey,
+    wardKey,
+    setProvince,
+    setDistrict,
+    setWard,
+    selectedProvince,
+    selectedDistrict,
+  } = useVnAddressLazy({
+    enabled: !asGuest,
+    initial: {
+      city: form.provinceKey || "",
+      district: form.districtKey || "",
+      ward: form.wardKey || "",
+    },
+  });
+
+  const selectedWard = useMemo(() => {
+    return (wards || []).find((w) => String(w.code) === String(wardKey)) || null;
+  }, [wards, wardKey]);
+
+  useEffect(() => {
+    if (asGuest) return;
+    setForm((prev) => ({
+      ...prev,
+      provinceKey: provinceKey || "",
+      districtKey: districtKey || "",
+      wardKey: wardKey || "",
+    }));
+  }, [asGuest, provinceKey, districtKey, wardKey]);
+
+  const previewAddress = useMemo(() => {
+    if (asGuest) return "";
+    const detail = normalizePart(form.addressDetail);
+    const wardName = normalizePart(selectedWard?.name);
+    const districtName = normalizePart(selectedDistrict?.name);
+    const cityName = normalizePart(selectedProvince?.name);
+    return dedupeParts([detail, wardName, districtName, cityName]).join(", ");
+  }, [
+    asGuest,
+    form.addressDetail,
+    selectedWard?.name,
+    selectedDistrict?.name,
+    selectedProvince?.name,
+  ]);
+
   const onChange = (field, value) => setForm((f) => ({ ...f, [field]: value }));
-  const onAddr = (field, value) =>
-    setForm((f) => ({ ...f, address: { ...f.address, [field]: value } }));
+  const handleProvinceChange = (code) => {
+    setProvince?.(code);
+    setForm((prev) => ({
+      ...prev,
+      provinceKey: code,
+      districtKey: "",
+      wardKey: "",
+    }));
+  };
+  const handleDistrictChange = async (code) => {
+    await setDistrict?.(code);
+    setForm((prev) => ({ ...prev, districtKey: code, wardKey: "" }));
+  };
+  const handleWardChange = (code) => {
+    setWard?.(code);
+    setForm((prev) => ({ ...prev, wardKey: code }));
+  };
+
+  const handleGetCurrentAddress = async () => {
+    if (asGuest || locating) return;
+    if (!navigator.geolocation) {
+      showNotification("Trình duyệt không hỗ trợ định vị.", "warning");
+      return;
+    }
+    setLocating(true);
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+        });
+      });
+      const lat = pos?.coords?.latitude;
+      const lng = pos?.coords?.longitude;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        throw new Error("invalid_coords");
+      }
+
+      let displayName = "";
+      let addr = null;
+      try {
+        const r = await reverseGeocodeOSM(lat, lng);
+        displayName = safeStr(r?.display_name);
+        addr = r?.address || null;
+      } catch {
+        displayName = "";
+        addr = null;
+      }
+
+      if (addr) {
+        const house = normalizePart(addr.house_number);
+        const road = normalizePart(addr.road);
+        const neighbourhood = normalizePart(
+          addr.neighbourhood || addr.suburb || addr.quarter
+        );
+        const detailLine = dedupeParts([house, road, neighbourhood]).join(" ");
+        onChange("addressDetail", detailLine || displayName || "");
+      } else {
+        onChange("addressDetail", displayName || "");
+      }
+
+      if (addr && Array.isArray(provinces) && provinces.length > 0) {
+        const provName = safeStr(
+          addr.state || addr.city || addr.county || addr.province
+        ).toLowerCase();
+        const foundProv =
+          provinces.find((p) => safeStr(p.name).toLowerCase() === provName) ||
+          provinces.find((p) => safeStr(p.name).toLowerCase().includes(provName));
+        if (foundProv?.code) {
+          handleProvinceChange(String(foundProv.code));
+          setTimeout(async () => {
+            const distName = safeStr(
+              addr.county || addr.city_district || addr.district || ""
+            ).toLowerCase();
+            const foundDist =
+              (foundProv.districts || []).find(
+                (d) => safeStr(d.name).toLowerCase() === distName
+              ) ||
+              (foundProv.districts || []).find((d) =>
+                safeStr(d.name).toLowerCase().includes(distName)
+              );
+            if (foundDist?.code) {
+              await handleDistrictChange(String(foundDist.code));
+              setTimeout(() => {
+                const wardName = safeStr(
+                  addr.suburb || addr.village || addr.town || addr.quarter || ""
+                ).toLowerCase();
+                const foundWard =
+                  (wards || []).find(
+                    (w) => safeStr(w.name).toLowerCase() === wardName
+                  ) ||
+                  (wards || []).find((w) =>
+                    safeStr(w.name).toLowerCase().includes(wardName)
+                  );
+                if (foundWard?.code) handleWardChange(String(foundWard.code));
+              }, 160);
+            }
+          }, 160);
+        }
+      }
+    } catch (err) {
+      console.warn(err);
+      showNotification(
+        "Không lấy được địa chỉ hiện tại. Vui lòng chọn tay hoặc nhập chi tiết.",
+        "warning"
+      );
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const validate = () => {
     const e = {};
@@ -139,30 +322,60 @@ const AddCustomerModal = ({ onClose }) => {
           phone: normalizePhoneVN(form.phone),
           expiresInDays: 30,
         });
-        showNotification("Tạo khách vãng lai thành công.", "success");
+        let syncResult = null;
+        if (typeof onCreated === "function") {
+          syncResult = await onCreated();
+        }
+        if (syncResult?.visibleInCurrentList === false) {
+          showNotification(
+            "Tạo khách vãng lai thành công. Bản ghi mới không thuộc bộ lọc/tìm kiếm hiện tại.",
+            "success"
+          );
+        } else {
+          showNotification("Tạo khách vãng lai thành công.", "success");
+        }
         onClose?.();
         return;
       }
 
-      await createUser({
+      const created = await createUser({
         fullName: form.fullName.trim(),
         username: form.username.trim() || undefined,
         email: form.email.trim() || undefined,
         phone: normalizePhoneVN(form.phone) || undefined,
         password: form.password,
-        address: form.address,
         customerType: VN_TO_ENUM(form.customerTypeVN),
         roleSlug: "customer",
         roleId: defaultCustomerRoleId || undefined,
         provider: "local",
         status: "active",
+        address: {
+          line1: safeStr(form.addressDetail),
+          line2: safeStr(previewAddress),
+          ward: safeStr(selectedWard?.name),
+          district: safeStr(selectedDistrict?.name),
+          city: safeStr(selectedProvince?.name),
+          country: "Vietnam",
+        },
         captchaToken:
           typeof window !== "undefined" && window.__recaptchaToken
             ? window.__recaptchaToken
             : undefined,
       });
+      const createdUser = created?.data?.createUser?.user || null;
+      let syncResult = null;
+      if (typeof onCreated === "function") {
+        syncResult = await onCreated(createdUser);
+      }
 
-      showNotification("Tạo khách hàng thành công.", "success");
+      if (syncResult?.visibleInCurrentList === false) {
+        showNotification(
+          "Tạo khách hàng thành công. Khách hàng mới không nằm trong bộ lọc/tìm kiếm hiện tại.",
+          "success"
+        );
+      } else {
+        showNotification("Tạo khách hàng thành công.", "success");
+      }
       onClose?.();
     } catch (err) {
       // Ưu tiên thông điệp BE
@@ -328,52 +541,89 @@ const AddCustomerModal = ({ onClose }) => {
               </div>
             </Section>
 
-            <Section title="Địa chỉ" badge="Tuỳ chọn">
+            <Section title="Địa chỉ">
               <div className="acm-grid">
-                <Input label="Dòng 1" icon="🏠">
-                  <input
+                <div className="acm-col-2">
+                  <div className="acm-address-head">
+                    <span className="acm-address-title">Địa chỉ nhận diện</span>
+                    <button
+                      type="button"
+                      className="acm-btn-locate"
+                      onClick={handleGetCurrentAddress}
+                      disabled={addressLoading || locating}
+                    >
+                      {locating ? "Đang lấy..." : "Lấy địa chỉ hiện tại"}
+                    </button>
+                  </div>
+                </div>
+
+                <Input label="Tỉnh/Thành phố" icon="🏙️">
+                  <select
                     className="acm-input"
-                    placeholder="Số nhà, đường"
-                    value={form.address.line1}
-                    onChange={(e) => onAddr("line1", e.target.value)}
-                  />
+                    value={provinceKey || ""}
+                    onChange={(e) => handleProvinceChange(e.target.value)}
+                    disabled={addressLoading}
+                  >
+                    <option value="">Chọn tỉnh/thành</option>
+                    {(provinces || []).map((p) => (
+                      <option key={p.code} value={p.code}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
                 </Input>
-                <Input label="Dòng 2">
-                  <input
+
+                <Input label="Quận/Huyện" icon="🏘️">
+                  <select
                     className="acm-input"
-                    placeholder="Khu, tòa nhà (nếu có)"
-                    value={form.address.line2}
-                    onChange={(e) => onAddr("line2", e.target.value)}
-                  />
+                    value={districtKey || ""}
+                    onChange={(e) => handleDistrictChange(e.target.value)}
+                    disabled={!provinceKey || addressLoading}
+                  >
+                    <option value="">Chọn quận/huyện</option>
+                    {(districts || []).map((d) => (
+                      <option key={d.code} value={d.code}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
                 </Input>
-                <Input label="Phường/Xã">
-                  <input
+
+                <Input label="Phường/Xã" icon="🧭">
+                  <select
                     className="acm-input"
-                    value={form.address.ward}
-                    onChange={(e) => onAddr("ward", e.target.value)}
-                  />
+                    value={wardKey || ""}
+                    onChange={(e) => handleWardChange(e.target.value)}
+                    disabled={!districtKey || addressLoading}
+                  >
+                    <option value="">Chọn phường/xã</option>
+                    {(wards || []).map((w) => (
+                      <option key={w.code} value={w.code}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
                 </Input>
-                <Input label="Quận/Huyện">
-                  <input
-                    className="acm-input"
-                    value={form.address.district}
-                    onChange={(e) => onAddr("district", e.target.value)}
-                  />
-                </Input>
-                <Input label="Thành phố/Tỉnh">
-                  <input
-                    className="acm-input"
-                    value={form.address.city}
-                    onChange={(e) => onAddr("city", e.target.value)}
-                  />
-                </Input>
-                <Input label="Quốc gia">
-                  <input
-                    className="acm-input"
-                    value={form.address.country}
-                    onChange={(e) => onAddr("country", e.target.value)}
-                  />
-                </Input>
+
+                <div className="acm-col-2">
+                  <Input label="Chi tiết địa chỉ" icon="📍">
+                    <input
+                      className="acm-input"
+                      placeholder="Số nhà, tên đường, tòa nhà..."
+                      value={form.addressDetail}
+                      onChange={(e) => onChange("addressDetail", e.target.value)}
+                    />
+                  </Input>
+                  <div className="acm-address-preview">
+                    <span>Địa chỉ hiển thị:</span>
+                    <strong>{previewAddress || "—"}</strong>
+                  </div>
+                  {addressError ? (
+                    <div className="acm-field__error acm-field__error--block">
+                      {addressError}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </Section>
           </>
