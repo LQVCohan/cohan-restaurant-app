@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -10,6 +11,7 @@ import {
 import "./PageNavigation.scss";
 
 const PageNavigation = ({ currentPage, onPageChange, badgeCounts = {} }) => {
+  const ActiveBackground = motion.div;
   // Định nghĩa danh sách trang kèm Icon component
   const pages = [
     {
@@ -68,7 +70,7 @@ const PageNavigation = ({ currentPage, onPageChange, badgeCounts = {} }) => {
               <span className="nav-label">{page.label}</span>
 
               {/* Hiệu ứng nền chuyển động (Active Background) */}
-              {isActive && <div className="active-bg" layoutId="nav-bg" />}
+              {isActive && <ActiveBackground className="active-bg" layoutId="nav-bg" />}
             </button>
           );
         })}
