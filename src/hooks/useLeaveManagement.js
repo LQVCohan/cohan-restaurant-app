@@ -1,127 +1,181 @@
-import { useState, useEffect } from "react";
+import { gql, useMutation, useQuery } from "@apollo/client";
+import { useMemo } from "react";
 
-export const useLeaveManagement = () => {
-  const [leaveRequests, setLeaveRequests] = useState([]);
+const Q_LEAVE_PAGE = gql`
+  query LeavePageData($filter: LeaveRequestFilterInput) {
+    staffList {
+      id
+      fullName
+      employeeCode
+      positionTitle
+      roleName
+      department
+      avatarUrl
+      avatar
+      primaryRestaurant {
+        id
+      }
+    }
+    leaveRequests(filter: $filter) {
+      id
+      employeeId
+      employeeName
+      employeeCode
+      employeeRole
+      employeeAvatar
+      restaurantId
+      leaveType
+      startDate
+      endDate
+      startSession
+      endSession
+      requestedDays
+      requestedHours
+      reason
+      status
+      approverId
+      approverName
+      approvedAt
+      rejectedAt
+      rejectionReason
+      replacementManagerId
+      replacementManagerName
+      replacementStatus
+      replacementConfirmedAt
+      replacementConfirmedBy
+      payrollFlags {
+        isPaidLeave
+        deductLeaveBalance
+        payrollCountable
+        halfDayFactor
+        maternityTreatment
+        holidayTreatment
+        compensatoryTreatment
+        unpaidFactor
+      }
+      quotaImpact {
+        deductAnnualDays
+        deductSickDays
+        deductCompensatoryDays
+        totalDeductDays
+      }
+      auditLogs {
+        action
+        actorId
+        actorName
+        note
+        at
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
 
-  useEffect(() => {
-    // Initialize with sample data
-    const sampleRequests = [
-      {
-        id: "leave-001",
-        employeeId: "nguyen-van-a",
-        employeeName: "Nguyễn Văn An",
-        leaveType: "annual",
-        startDate: "2024-01-15",
-        endDate: "2024-01-17",
-        reason: "Nghỉ phép thăm gia đình ở quê nhà",
-        status: "pending",
-        createdAt: "2024-01-10",
-        processedAt: null,
-        rejectionReason: null,
-      },
-      {
-        id: "leave-002",
-        employeeId: "tran-thi-b",
-        employeeName: "Trần Thị Bình",
-        leaveType: "sick",
-        startDate: "2024-01-12",
-        endDate: "2024-01-13",
-        reason: "Bị cảm sốt, cần nghỉ ngơi điều trị",
-        status: "approved",
-        createdAt: "2024-01-11",
-        processedAt: "2024-01-11",
-        rejectionReason: null,
-      },
-      {
-        id: "leave-003",
-        employeeId: "le-van-c",
-        employeeName: "Lê Văn Cường",
-        leaveType: "personal",
-        startDate: "2024-01-10",
-        endDate: "2024-01-12",
-        reason: "Có việc cá nhân cần giải quyết",
-        status: "rejected",
-        createdAt: "2024-01-08",
-        processedAt: "2024-01-09",
-        rejectionReason: "Thời gian này nhà hàng đang bận, không thể nghỉ",
-      },
-    ];
+const M_CREATE = gql`
+  mutation CreateLeave($input: CreateLeaveRequestInput!) {
+    createLeaveRequest(input: $input) {
+      id
+      status
+      replacementStatus
+    }
+  }
+`;
 
-    setLeaveRequests(sampleRequests);
-  }, []);
+const M_APPROVE = gql`
+  mutation ApproveLeave($requestId: ID!, $note: String) {
+    approveLeaveRequest(requestId: $requestId, note: $note) {
+      id
+      status
+      approvedAt
+    }
+  }
+`;
 
-  const submitLeaveRequest = (requestData) => {
-    const newRequest = {
-      id: `leave-${Date.now()}`,
-      ...requestData,
-      employeeName: getEmployeeName(requestData.employee),
-      status: "pending",
-      createdAt: new Date().toISOString().split("T")[0],
-      processedAt: null,
-      rejectionReason: null,
-    };
+const M_REJECT = gql`
+  mutation RejectLeave($requestId: ID!, $reason: String!) {
+    rejectLeaveRequest(requestId: $requestId, reason: $reason) {
+      id
+      status
+      rejectedAt
+      rejectionReason
+    }
+  }
+`;
 
-    setLeaveRequests((prev) => [newRequest, ...prev]);
+const M_CONFIRM_REPLACEMENT = gql`
+  mutation ConfirmReplacement($requestId: ID!, $note: String) {
+    confirmReplacementLeaveRequest(requestId: $requestId, note: $note) {
+      id
+      status
+      replacementStatus
+      replacementConfirmedAt
+    }
+  }
+`;
 
-    // Show success message
-    alert(
-      "✅ Đã gửi đơn nghỉ phép thành công!\nĐơn sẽ được xem xét và phản hồi sớm nhất."
-    );
+export const useLeaveManagement = ({ selectedDate, status, search }) => {
+  const filter = useMemo(
+    () => ({
+      startDate: selectedDate || undefined,
+      endDate: selectedDate || undefined,
+      status: status === "all" ? undefined : status,
+      search: search?.trim() || undefined,
+    }),
+    [search, selectedDate, status]
+  );
+
+  const { data, loading, error, refetch } = useQuery(Q_LEAVE_PAGE, {
+    variables: { filter },
+    fetchPolicy: "cache-and-network",
+  });
+
+  const [createLeaveMutation, createState] = useMutation(M_CREATE);
+  const [approveLeaveMutation, approveState] = useMutation(M_APPROVE);
+  const [rejectLeaveMutation, rejectState] = useMutation(M_REJECT);
+  const [confirmReplacementMutation, confirmState] = useMutation(
+    M_CONFIRM_REPLACEMENT
+  );
+
+  const leaveRequests = useMemo(() => data?.leaveRequests || [], [data?.leaveRequests]);
+  const staffList = useMemo(() => data?.staffList || [], [data?.staffList]);
+
+  const submitLeaveRequest = async (input) => {
+    await createLeaveMutation({ variables: { input } });
+    await refetch();
   };
 
-  const approveLeave = async (requestId) => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    setLeaveRequests((prev) =>
-      prev.map((request) =>
-        request.id === requestId
-          ? {
-              ...request,
-              status: "approved",
-              processedAt: new Date().toISOString().split("T")[0],
-            }
-          : request
-      )
-    );
-
-    alert("✅ Đã duyệt đơn nghỉ phép thành công!");
+  const approveLeave = async (requestId, note) => {
+    await approveLeaveMutation({ variables: { requestId, note: note || undefined } });
+    await refetch();
   };
 
-  const rejectLeave = async (requestId, reason = "") => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    setLeaveRequests((prev) =>
-      prev.map((request) =>
-        request.id === requestId
-          ? {
-              ...request,
-              status: "rejected",
-              processedAt: new Date().toISOString().split("T")[0],
-              rejectionReason: reason || "Không có lý do cụ thể",
-            }
-          : request
-      )
-    );
-
-    alert("❌ Đã từ chối đơn nghỉ phép!");
+  const rejectLeave = async (requestId, reason) => {
+    await rejectLeaveMutation({ variables: { requestId, reason } });
+    await refetch();
   };
 
-  const getEmployeeName = (employeeId) => {
-    const employees = {
-      "nguyen-van-a": "Nguyễn Văn An",
-      "tran-thi-b": "Trần Thị Bình",
-      "le-van-c": "Lê Văn Cường",
-      "pham-thi-d": "Phạm Thị Dung",
-    };
-    return employees[employeeId] || "Không xác định";
+  const confirmReplacement = async (requestId, note) => {
+    await confirmReplacementMutation({ variables: { requestId, note: note || undefined } });
+    await refetch();
   };
+
+  const isMutating =
+    createState.loading ||
+    approveState.loading ||
+    rejectState.loading ||
+    confirmState.loading;
 
   return {
     leaveRequests,
+    staffList,
+    loading,
+    error,
+    isMutating,
     submitLeaveRequest,
     approveLeave,
     rejectLeave,
+    confirmReplacement,
+    refetch,
   };
 };

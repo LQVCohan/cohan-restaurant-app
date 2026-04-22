@@ -6,6 +6,7 @@ import EmployeeDashboard from "./components/EmployeeDashboard";
 import AttendancePage from "./components/Attendance";
 import LeaveManagement from "./components/LeaveManagement";
 import SchedulePage from "./components/Schedule";
+import StaffReportsPage from "./components/Reports";
 import {
   AddEmployeeModal,
   EditEmployeeModal,

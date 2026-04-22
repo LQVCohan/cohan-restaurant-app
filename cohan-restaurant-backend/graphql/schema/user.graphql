@@ -428,6 +428,7 @@ type PayrollStats {
 
 type StaffPayrollItem {
   id: ID!
+  payrollItemId: ID
   name: String!
   code: String
   role: String
@@ -475,11 +476,88 @@ type StaffPayrollItem {
   insuranceEligible: Boolean!
   warningMessages: [String!]!
   status: String!
+  paidAt: DateTime
+  lateMinutes: Float!
+  earlyLeaveMinutes: Float!
+  unpaidLeaveDays: Float!
+  paidLeaveDays: Float!
+  scheduleShiftCount: Int!
+  manualAdjustmentTotal: Float!
 }
 
 type StaffPayrollOverview {
   stats: PayrollStats!
   items: [StaffPayrollItem!]!
+}
+
+type PayrollSettings {
+  restaurantId: ID!
+  standardWorkDaysPerMonth: Float!
+  standardHoursPerDay: Float!
+  overtimeMultiplierWeekday: Float!
+  overtimeMultiplierWeekend: Float!
+  overtimeMultiplierHoliday: Float!
+  latenessPenaltyPerMinute: Float!
+  earlyLeavePenaltyPerMinute: Float!
+  unpaidLeaveDeductionPerDay: Float!
+  defaultAllowance: Float!
+  allowPaidLeaveInWorkDays: Boolean!
+  defaultBonus: Float!
+  defaultDeduction: Float!
+  notes: String
+  updatedAt: DateTime
+}
+
+input PayrollSettingsInput {
+  restaurantId: ID
+  standardWorkDaysPerMonth: Float
+  standardHoursPerDay: Float
+  overtimeMultiplierWeekday: Float
+  overtimeMultiplierWeekend: Float
+  overtimeMultiplierHoliday: Float
+  latenessPenaltyPerMinute: Float
+  earlyLeavePenaltyPerMinute: Float
+  unpaidLeaveDeductionPerDay: Float
+  defaultAllowance: Float
+  allowPaidLeaveInWorkDays: Boolean
+  defaultBonus: Float
+  defaultDeduction: Float
+  notes: String
+}
+
+type PayrollPeriod {
+  id: ID!
+  restaurantId: ID!
+  name: String
+  startDate: DateTime!
+  endDate: DateTime!
+  status: String!
+  finalizedAt: DateTime
+  lockedAt: DateTime
+  paidAt: DateTime
+  stats: PayrollStats!
+}
+
+type PayrollPeriodDetail {
+  period: PayrollPeriod!
+  settings: PayrollSettings!
+  stats: PayrollStats!
+  items: [StaffPayrollItem!]!
+}
+
+input CreatePayrollPeriodInput {
+  restaurantId: ID
+  name: String
+  startDate: DateTime!
+  endDate: DateTime!
+}
+
+input PayrollAdjustmentInput {
+  periodId: ID!
+  employeeId: ID!
+  type: String!
+  amount: Float!
+  note: String
 }
 
 type StaffScheduleShift {
@@ -492,6 +570,173 @@ type StaffScheduleShift {
   endTime: DateTime!
   status: String!
   notes: String
+}
+
+enum LeaveRequestType {
+  ANNUAL
+  SICK
+  UNPAID
+  PAID_PERSONAL
+  MATERNITY
+  COMPENSATORY
+  HOLIDAY
+  HALF_DAY
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  PENDING_REPLACEMENT_CONFIRMATION
+  APPROVED
+  REJECTED
+}
+
+enum LeaveSession {
+  FULL
+  MORNING
+  AFTERNOON
+}
+
+enum ReplacementStatus {
+  NOT_REQUIRED
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+type LeavePayrollFlags {
+  isPaidLeave: Boolean!
+  deductLeaveBalance: Boolean!
+  payrollCountable: Boolean!
+  halfDayFactor: Float!
+  maternityTreatment: Boolean!
+  holidayTreatment: Boolean!
+  compensatoryTreatment: Boolean!
+  unpaidFactor: Float!
+}
+
+type LeaveQuotaImpact {
+  deductAnnualDays: Float!
+  deductSickDays: Float!
+  deductCompensatoryDays: Float!
+  totalDeductDays: Float!
+}
+
+type LeaveAuditLog {
+  action: String!
+  actorId: ID
+  actorName: String
+  note: String
+  at: DateTime
+}
+
+type LeaveBalance {
+  id: ID!
+  employeeId: ID!
+  year: Int!
+  annualEntitledDays: Float!
+  annualUsedDays: Float!
+  annualRemainingDays: Float!
+  sickEntitledDays: Float!
+  sickUsedDays: Float!
+  sickRemainingDays: Float!
+  compensatoryEntitledDays: Float!
+  compensatoryUsedDays: Float!
+  compensatoryRemainingDays: Float!
+}
+
+type LeaveRequest {
+  id: ID!
+  employeeId: ID!
+  employeeName: String
+  employeeCode: String
+  employeeRole: String
+  employeeAvatar: String
+  restaurantId: ID!
+  leaveType: LeaveRequestType!
+  startDate: DateTime!
+  endDate: DateTime!
+  startSession: LeaveSession!
+  endSession: LeaveSession!
+  requestedDays: Float!
+  requestedHours: Float!
+  reason: String!
+  status: LeaveRequestStatus!
+  approverId: ID
+  approverName: String
+  approvedAt: DateTime
+  rejectedAt: DateTime
+  rejectionReason: String
+  replacementManagerId: ID
+  replacementManagerName: String
+  replacementStatus: ReplacementStatus!
+  replacementConfirmedAt: DateTime
+  replacementConfirmedBy: ID
+  payrollFlags: LeavePayrollFlags!
+  quotaImpact: LeaveQuotaImpact!
+  leaveBalanceSnapshot: LeaveBalance
+  auditLogs: [LeaveAuditLog!]!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type StaffAttendanceRecord {
+  id: ID!
+  employeeId: ID!
+  employeeName: String
+  employeeCode: String
+  employeeRole: String
+  employeeAvatar: String
+  restaurantId: ID!
+  workDate: DateTime!
+  shiftId: ID
+  shiftType: String
+  plannedStartTime: DateTime
+  plannedEndTime: DateTime
+  actualCheckInAt: DateTime
+  actualCheckOutAt: DateTime
+  workedMinutes: Int!
+  hours: Float!
+  latenessMinutes: Int!
+  earlyLeaveMinutes: Int!
+  overtimeMinutes: Int!
+  status: String!
+  isOffSchedule: Boolean!
+  source: String!
+  note: String
+  approved: Boolean!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input UpsertStaffAttendanceInput {
+  employeeId: ID!
+  restaurantId: ID!
+  action: String!
+  timestamp: DateTime
+  workDate: DateTime
+  note: String
+  source: String
+}
+
+input CreateLeaveRequestInput {
+  employeeId: ID!
+  restaurantId: ID!
+  leaveType: LeaveRequestType!
+  startDate: DateTime!
+  endDate: DateTime!
+  startSession: LeaveSession = FULL
+  endSession: LeaveSession = FULL
+  reason: String!
+  replacementManagerId: ID
+}
+
+input LeaveRequestFilterInput {
+  restaurantId: ID
+  employeeId: ID
+  status: LeaveRequestStatus
+  startDate: DateTime
+  endDate: DateTime
+  search: String
 }
 
 input CreateStaffShiftInput {
@@ -567,6 +812,117 @@ type StaffSchedulingAssistant {
   meta: StaffSchedulingMeta!
 }
 
+type StaffReportSummary {
+  activeEmployees: Int!
+  terminatedEmployees: Int!
+  joinedEmployees: Int!
+  leftEmployees: Int!
+  attendanceRecords: Int!
+  presentCount: Int!
+  absentCount: Int!
+  lateCount: Int!
+  earlyLeaveCount: Int!
+  leaveTotal: Int!
+  leaveApproved: Int!
+  leaveRejected: Int!
+  leavePending: Int!
+  leaveDaysUsed: Float!
+  paidLeaveDays: Float!
+  unpaidLeaveDays: Float!
+  remainingLeaveBalanceDays: Float!
+}
+
+type StaffReportComparisonItem {
+  metric: String!
+  current: Float!
+  previous: Float!
+  delta: Float!
+  deltaPct: Float!
+}
+
+type StaffReportPeriod {
+  startDate: DateTime!
+  endDate: DateTime!
+}
+
+type StaffAttendanceTrendPoint {
+  date: String!
+  present: Int!
+  absent: Int!
+  late: Int!
+  earlyLeave: Int!
+}
+
+type StaffAttendanceShiftPoint {
+  shiftType: String!
+  records: Int!
+  present: Int!
+  absent: Int!
+  late: Int!
+  earlyLeave: Int!
+}
+
+type StaffLeaveTypePoint {
+  leaveType: String!
+  count: Int!
+  days: Float!
+}
+
+type StaffStatusDistributionPoint {
+  label: String!
+  count: Int!
+}
+
+type StaffAttendanceDetailRow {
+  employeeId: ID!
+  employeeName: String
+  employeeCode: String
+  date: String!
+  shiftType: String
+  status: String!
+  checkInAt: DateTime
+  checkOutAt: DateTime
+  workedMinutes: Int!
+  lateMinutes: Int!
+  earlyLeaveMinutes: Int!
+}
+
+type StaffLeaveDetailRow {
+  requestId: ID!
+  employeeId: ID!
+  employeeName: String
+  employeeCode: String
+  leaveType: String!
+  status: String!
+  startDate: DateTime
+  endDate: DateTime
+  requestedDays: Float!
+  reason: String
+}
+
+type StaffReportsOverview {
+  currentPeriod: StaffReportPeriod!
+  comparisonPeriod: StaffReportPeriod!
+  summary: StaffReportSummary!
+  comparison: [StaffReportComparisonItem!]!
+  attendanceTrend: [StaffAttendanceTrendPoint!]!
+  attendanceByShift: [StaffAttendanceShiftPoint!]!
+  attendanceIssueDistribution: [StaffStatusDistributionPoint!]!
+  leaveByType: [StaffLeaveTypePoint!]!
+  leaveStatusDistribution: [StaffStatusDistributionPoint!]!
+  workforceStatusDistribution: [StaffStatusDistributionPoint!]!
+  attendanceDetails: [StaffAttendanceDetailRow!]!
+  leaveDetails: [StaffLeaveDetailRow!]!
+}
+
+input StaffReportsInput {
+  restaurantId: ID
+  startDate: DateTime!
+  endDate: DateTime!
+  compareStartDate: DateTime
+  compareEndDate: DateTime
+}
+
 # =========================
 # Queries
 # =========================
@@ -594,7 +950,11 @@ type Query {
     startDate: DateTime!
     endDate: DateTime!
     restaurantId: ID
+    periodId: ID
   ): StaffPayrollOverview!
+  payrollPeriods(restaurantId: ID, limit: Int = 12): [PayrollPeriod!]!
+  payrollPeriodDetail(periodId: ID!): PayrollPeriodDetail
+  payrollSettings(restaurantId: ID): PayrollSettings
   staffShifts(
     restaurantId: ID
     employeeId: ID
@@ -603,6 +963,21 @@ type Query {
     status: String
     limit: Int = 500
   ): [StaffScheduleShift!]!
+  staffAttendanceRecords(
+    restaurantId: ID
+    startDate: DateTime!
+    endDate: DateTime!
+    employeeId: ID
+    status: String
+    search: String
+  ): [StaffAttendanceRecord!]!
+  leaveRequests(filter: LeaveRequestFilterInput): [LeaveRequest!]!
+  myReplacementLeaveRequests(
+    restaurantId: ID
+    status: ReplacementStatus
+  ): [LeaveRequest!]!
+  leaveBalance(employeeId: ID!, year: Int): LeaveBalance
+  staffReportsOverview(input: StaffReportsInput!): StaffReportsOverview!
   staffSchedulingAssistant(
     restaurantId: ID!
     horizonDays: Int = 2
@@ -665,4 +1040,17 @@ type Mutation {
   createStaffShift(input: CreateStaffShiftInput!): StaffScheduleShift!
   updateStaffShift(shiftId: ID!, input: UpdateStaffShiftInput!): StaffScheduleShift!
   deleteStaffShift(shiftId: ID!): Boolean!
+  createPayrollPeriod(input: CreatePayrollPeriodInput!): PayrollPeriod!
+  recalculatePayrollPeriod(periodId: ID!): PayrollPeriodDetail!
+  finalizePayrollPeriod(periodId: ID!): PayrollPeriod!
+  lockPayrollPeriod(periodId: ID!): PayrollPeriod!
+  markPayrollPeriodPaid(periodId: ID!, employeeIds: [ID!]): PayrollPeriod!
+  updatePayrollSettings(input: PayrollSettingsInput!): PayrollSettings!
+  upsertPayrollAdjustment(input: PayrollAdjustmentInput!): StaffPayrollItem!
+  deletePayrollAdjustment(periodId: ID!, employeeId: ID!, adjustmentId: ID!): StaffPayrollItem!
+  upsertStaffAttendance(input: UpsertStaffAttendanceInput!): StaffAttendanceRecord!
+  createLeaveRequest(input: CreateLeaveRequestInput!): LeaveRequest!
+  approveLeaveRequest(requestId: ID!, approverId: ID, note: String): LeaveRequest!
+  rejectLeaveRequest(requestId: ID!, approverId: ID, reason: String!): LeaveRequest!
+  confirmReplacementLeaveRequest(requestId: ID!, managerId: ID, note: String): LeaveRequest!
 }

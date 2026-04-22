@@ -1,62 +1,63 @@
-import React, { useState, useMemo } from "react";
-import "./LeaveRequestsList.scss"; // Import file SCSS mới
+import React, { useMemo } from "react";
+import { AuthContext } from "@/context/AuthContext";
+import "./LeaveRequestsList.scss";
 
-const LeaveRequestsList = ({ requests = [], onApprove, onReject }) => {
-  const [filterStatus, setFilterStatus] = useState("all"); // all | pending | approved | rejected
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+const statusLabel = {
+  PENDING: "⏳ Chờ duyệt",
+  PENDING_REPLACEMENT_CONFIRMATION: "🧾 Chờ quản lý thay thế xác nhận",
+  APPROVED: "✅ Đã duyệt",
+  REJECTED: "❌ Từ chối",
+};
 
-  // --- STATS CALCULATION ---
-  const stats = useMemo(() => {
-    return {
+const leaveTypeLabel = {
+  ANNUAL: "Nghỉ năm",
+  SICK: "Nghỉ bệnh",
+  UNPAID: "Nghỉ không lương",
+  PAID_PERSONAL: "Nghỉ việc riêng có lương",
+  MATERNITY: "Nghỉ thai sản",
+  COMPENSATORY: "Nghỉ bù",
+  HOLIDAY: "Nghỉ lễ/tết",
+  HALF_DAY: "Nghỉ nửa ngày",
+};
+
+const LeaveRequestsList = ({
+  requests = [],
+  onApprove,
+  onReject,
+  onConfirmReplacement,
+  selectedDate,
+  onDateChange,
+  statusFilter,
+  onStatusFilterChange,
+  searchTerm,
+  onSearchChange,
+  loading,
+  error,
+}) => {
+  const { user } = React.useContext(AuthContext);
+  const currentUserId = user?.id || user?._id || null;
+
+  const stats = useMemo(
+    () => ({
       total: requests.length,
-      pending: requests.filter((r) => r.status === "pending").length,
-      approved: requests.filter((r) => r.status === "approved").length,
-      rejected: requests.filter((r) => r.status === "rejected").length,
-    };
-  }, [requests]);
-
-  // --- FILTER & SEARCH LOGIC ---
-  const filteredData = useMemo(() => {
-    return requests.filter((req) => {
-      const matchesStatus =
-        filterStatus === "all" || req.status === filterStatus;
-      const matchesSearch = req.employeeName
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase());
-      return matchesStatus && matchesSearch;
-    });
-  }, [requests, filterStatus, searchTerm]);
-
-  // --- PAGINATION ---
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const currentData = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+      pending: requests.filter((r) => r.status === "PENDING").length,
+      approved: requests.filter((r) => r.status === "APPROVED").length,
+      rejected: requests.filter((r) => r.status === "REJECTED").length,
+      pendingReplacement: requests.filter(
+        (r) => r.status === "PENDING_REPLACEMENT_CONFIRMATION"
+      ).length,
+    }),
+    [requests]
   );
 
-  // --- HELPER: Badge Status ---
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "pending":
-        return <span className="status-badge pending">⏳ Chờ duyệt</span>;
-      case "approved":
-        return <span className="status-badge approved">✅ Đã duyệt</span>;
-      case "rejected":
-        return <span className="status-badge rejected">❌ Từ chối</span>;
-      default:
-        return <span className="status-badge">{status}</span>;
-    }
-  };
+  const requestRows = useMemo(() => requests, [requests]);
 
   return (
     <div className="leave-list-container">
-      {/* 1. HEADER & STATS CARDS */}
       <div className="dashboard-header">
         <div className="header-title">
           <h3>📋 Quản Lý Nghỉ Phép</h3>
-          <p>Theo dõi và xử lý các yêu cầu nghỉ phép của nhân viên</p>
+          <p>Theo dõi và xử lý đơn nghỉ thật từ database</p>
         </div>
 
         <div className="stats-grid">
@@ -84,149 +85,154 @@ const LeaveRequestsList = ({ requests = [], onApprove, onReject }) => {
         </div>
       </div>
 
-      {/* 2. CONTROLS (TABS & SEARCH) */}
       <div className="controls-bar">
         <div className="tabs">
           {[
             { key: "all", label: "Tất cả" },
-            { key: "pending", label: "Chờ duyệt", count: stats.pending },
-            { key: "approved", label: "Đã duyệt" },
-            { key: "rejected", label: "Từ chối" },
+            { key: "PENDING", label: "Chờ duyệt" },
+            { key: "PENDING_REPLACEMENT_CONFIRMATION", label: "Chờ thay thế", count: stats.pendingReplacement },
+            { key: "APPROVED", label: "Đã duyệt" },
+            { key: "REJECTED", label: "Từ chối" },
           ].map((tab) => (
             <button
               key={tab.key}
-              className={`tab-btn ${filterStatus === tab.key ? "active" : ""}`}
-              onClick={() => {
-                setFilterStatus(tab.key);
-                setCurrentPage(1);
-              }}
+              className={`tab-btn ${statusFilter === tab.key ? "active" : ""}`}
+              onClick={() => onStatusFilterChange(tab.key)}
             >
-              {tab.label}{" "}
-              {tab.count > 0 && (
-                <span className="badge-count">{tab.count}</span>
-              )}
+              {tab.label} {tab.count > 0 && <span className="badge-count">{tab.count}</span>}
             </button>
           ))}
         </div>
 
         <div className="search-box">
           <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => onDateChange(e.target.value)}
+            style={{ marginRight: 8 }}
+          />
+          <input
             type="text"
             placeholder="🔍 Tìm nhân viên..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => onSearchChange(e.target.value)}
           />
         </div>
       </div>
 
-      {/* 3. DATA TABLE */}
+      {error && <div className="empty-row">❌ Không tải được dữ liệu nghỉ phép: {error.message}</div>}
+
       <div className="table-container">
         <table className="leave-table">
           <thead>
             <tr>
-              <th style={{ width: "25%" }}>Nhân viên</th>
-              <th style={{ width: "15%" }}>Loại nghỉ</th>
+              <th style={{ width: "22%" }}>Nhân viên</th>
+              <th style={{ width: "12%" }}>Loại nghỉ</th>
               <th style={{ width: "20%" }}>Thời gian</th>
               <th style={{ width: "10%" }}>Số ngày</th>
-              <th style={{ width: "15%" }}>Trạng thái</th>
-              <th style={{ width: "15%", textAlign: "right" }}>Hành động</th>
+              <th style={{ width: "18%" }}>Trạng thái</th>
+              <th style={{ width: "18%", textAlign: "right" }}>Hành động</th>
             </tr>
           </thead>
           <tbody>
-            {currentData.length > 0 ? (
-              currentData.map((req) => (
+            {!loading && requestRows.length === 0 && (
+              <tr>
+                <td colSpan="6" className="empty-row">Không có đơn nghỉ phép.</td>
+              </tr>
+            )}
+
+            {requestRows.map((req) => {
+              const canConfirmReplacement =
+                req.replacementStatus === "PENDING" &&
+                currentUserId &&
+                req.replacementManagerId === currentUserId;
+
+              return (
                 <tr key={req.id} className="hover-row">
                   <td>
                     <div className="employee-cell">
-                      <div className="avatar">{req.employeeName.charAt(0)}</div>
+                      <div className="avatar">{(req.employeeName || "?").charAt(0)}</div>
                       <div className="info">
                         <div className="name">{req.employeeName}</div>
-                        <div className="date-sub">
-                          Tạo ngày:{" "}
-                          {new Date(req.createdAt).toLocaleDateString("vi-VN")}
-                        </div>
+                        <div className="date-sub">Mã: {req.employeeCode || "--"}</div>
                       </div>
                     </div>
                   </td>
                   <td>
-                    <span className="leave-type">{req.leaveType}</span>
+                    <span className="leave-type">{leaveTypeLabel[req.leaveType] || req.leaveType}</span>
                   </td>
                   <td>
                     <div className="date-range">
-                      <span>
-                        {new Date(req.startDate).toLocaleDateString("vi-VN")}
-                      </span>
+                      <span>{new Date(req.startDate).toLocaleDateString("vi-VN")}</span>
                       <span className="arrow">➝</span>
-                      <span>
-                        {new Date(req.endDate).toLocaleDateString("vi-VN")}
-                      </span>
+                      <span>{new Date(req.endDate).toLocaleDateString("vi-VN")}</span>
                     </div>
                   </td>
                   <td>
-                    <strong>{req.daysCount}</strong> ngày
+                    <strong>{req.requestedDays}</strong> ngày
                   </td>
-                  <td>{getStatusBadge(req.status)}</td>
+                  <td>
+                    <span className={`status-badge ${String(req.status).toLowerCase()}`}>
+                      {statusLabel[req.status] || req.status}
+                    </span>
+                  </td>
                   <td className="actions-cell">
-                    {req.status === "pending" && (
+                    {canConfirmReplacement && (
+                      <button
+                        className="btn-icon approve"
+                        title="Xác nhận thay thế"
+                        onClick={async () => {
+                          try {
+                            await onConfirmReplacement(req.id, "Đã xác nhận thay thế");
+                            alert("✅ Đã xác nhận thay thế thành công.");
+                          } catch (err) {
+                            alert(`❌ Xác nhận thay thế thất bại: ${err?.message || "Unknown error"}`);
+                          }
+                        }}
+                      >
+                        ↔
+                      </button>
+                    )}
+
+                    {req.status === "PENDING" && (
                       <div className="action-buttons">
                         <button
                           className="btn-icon approve"
-                          title="Duyệt"
-                          onClick={() => onApprove(req.id)}
+                          onClick={async () => {
+                            try {
+                              await onApprove(req.id, "Duyệt đơn");
+                              alert("✅ Duyệt đơn thành công và đã gửi email cho nhân viên.");
+                            } catch (err) {
+                              alert(`⚠️ ${err?.message || "Duyệt đơn thất bại"}`);
+                            }
+                          }}
                         >
                           ✓
                         </button>
                         <button
                           className="btn-icon reject"
-                          title="Từ chối"
-                          onClick={() => onReject(req.id)}
+                          onClick={async () => {
+                            const reason = window.prompt("Lý do từ chối", "Không phù hợp lịch làm việc");
+                            if (!reason) return;
+                            try {
+                              await onReject(req.id, reason);
+                              alert("✅ Từ chối đơn thành công và đã gửi email cho nhân viên.");
+                            } catch (err) {
+                              alert(`⚠️ ${err?.message || "Từ chối đơn thất bại"}`);
+                            }
+                          }}
                         >
                           ✕
                         </button>
                       </div>
                     )}
-                    {req.status !== "pending" && (
-                      <span className="text-muted">---</span>
-                    )}
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="6" className="empty-row">
-                  <div className="empty-content">
-                    <span className="icon">📭</span>
-                    <p>Không tìm thấy đơn nào.</p>
-                  </div>
-                </td>
-              </tr>
-            )}
+              );
+            })}
           </tbody>
         </table>
       </div>
-
-      {/* 4. PAGINATION */}
-      {totalPages > 1 && (
-        <div className="pagination-footer">
-          <span className="page-info">
-            Trang <b>{currentPage}</b> / {totalPages}
-          </span>
-          <div className="page-nav">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => p - 1)}
-            >
-              ←
-            </button>
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => p + 1)}
-            >
-              →
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
