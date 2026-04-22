@@ -185,7 +185,7 @@ export default {
       .populate("refRestaurants")
       .populate("primaryRestaurant");
 
-    if (!user || user.userType !== "STAFF") {
+    if (!user || user.userType !== "STAFF" || user.deletedAt) {
       throw new Error("Staff not found");
     }
 
@@ -199,7 +199,7 @@ export default {
     _,
     { restaurantId, roleId, search, employmentStatus }
   ) => {
-    const filter = { userType: "STAFF" };
+    const filter = { userType: "STAFF", deletedAt: null };
 
     if (restaurantId) filter.refRestaurants = restaurantId;
     if (roleId) filter.role = roleId;

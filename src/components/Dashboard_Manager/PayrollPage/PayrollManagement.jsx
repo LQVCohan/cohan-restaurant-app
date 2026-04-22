@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import usePayroll from "@/hooks/usePayroll";
 import "./PayrollManagement.scss";
 
@@ -13,8 +14,10 @@ const getDefaultRange = () => {
 };
 
 const PayrollManagement = () => {
+  const location = useLocation();
   const [dateRange, setDateRange] = useState(getDefaultRange);
   const [selectedPeriodId, setSelectedPeriodId] = useState("");
+  const [employeeFilterId, setEmployeeFilterId] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [deptFilter, setDeptFilter] = useState("all");
   const [sortBy, setSortBy] = useState("net_desc");
@@ -45,11 +48,20 @@ const PayrollManagement = () => {
     refetchDetail,
   } = usePayroll({ periodId: selectedPeriodId || undefined });
 
+  const employeeIdFromQuery = useMemo(() => {
+    const params = new URLSearchParams(location.search || "");
+    return params.get("employeeId") || "";
+  }, [location.search]);
+
   useEffect(() => {
     if (!selectedPeriodId && currentPeriodId) {
       setSelectedPeriodId(currentPeriodId);
     }
   }, [currentPeriodId, selectedPeriodId]);
+
+  useEffect(() => {
+    setEmployeeFilterId(employeeIdFromQuery || "");
+  }, [employeeIdFromQuery]);
 
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("vi-VN", {
@@ -91,14 +103,15 @@ const PayrollManagement = () => {
       const matchSearch =
         String(item.name || "").toLowerCase().includes(q) ||
         String(item.code || "").toLowerCase().includes(q);
-      return matchTab && matchDept && matchSearch;
+      const matchEmployee = !employeeFilterId || String(item.id) === String(employeeFilterId);
+      return matchTab && matchDept && matchSearch && matchEmployee;
     });
     if (sortBy === "name_asc") list.sort((a, b) => String(a.name).localeCompare(String(b.name)));
     else if (sortBy === "name_desc") list.sort((a, b) => String(b.name).localeCompare(String(a.name)));
     else if (sortBy === "net_asc") list.sort((a, b) => Number(a.netSalary || 0) - Number(b.netSalary || 0));
     else list.sort((a, b) => Number(b.netSalary || 0) - Number(a.netSalary || 0));
     return list;
-  }, [payrollItems, activeTab, deptFilter, searchQuery, sortBy]);
+  }, [payrollItems, activeTab, deptFilter, employeeFilterId, searchQuery, sortBy]);
 
   const stats = useMemo(() => {
     if (payrollStats) return payrollStats;
@@ -106,6 +119,20 @@ const PayrollManagement = () => {
   }, [payrollStats]);
 
   const periodStatus = periodDetail?.period?.status || "draft";
+
+  const handleSelectPeriod = (nextPeriodId) => {
+    if (!nextPeriodId || nextPeriodId === selectedPeriodId) return;
+    const currentPeriod = periods.find((p) => p.id === selectedPeriodId);
+    if (
+      currentPeriod &&
+      currentPeriod.id === currentPeriodId &&
+      currentPeriod.status !== "paid"
+    ) {
+      alert("Chỉ được đổi kỳ khi kỳ hiện tại đã tính xong và xác nhận trả đủ.");
+      return;
+    }
+    setSelectedPeriodId(nextPeriodId);
+  };
 
   const handleSelectAll = (e) => {
     if (e.target.checked) setSelectedIds(filteredData.map((i) => i.id));
@@ -229,7 +256,7 @@ const PayrollManagement = () => {
         </div>
 
         <div className="right-actions">
-          <select className="filter-select" value={selectedPeriodId} onChange={(e) => setSelectedPeriodId(e.target.value)}>
+          <select className="filter-select" value={selectedPeriodId} onChange={(e) => handleSelectPeriod(e.target.value)}>
             {periods.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name || `${formatDate(p.startDate)} - ${formatDate(p.endDate)}`} ({p.status})
@@ -298,6 +325,11 @@ const PayrollManagement = () => {
               <option value="name_desc">🔤 Tên Z→A</option>
             </select>
             <div className="search-box"><span className="icon">🔍</span><input type="text" placeholder="Tìm tên, mã NV..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} /></div>
+            {employeeFilterId && (
+              <button className="btn btn-white" onClick={() => setEmployeeFilterId("")}>
+                Bỏ lọc nhân viên
+              </button>
+            )}
           </div>
         </div>
 

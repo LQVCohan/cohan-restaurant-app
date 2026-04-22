@@ -970,15 +970,22 @@ export const UserMutation = {
 
   // === Soft delete ===
   async softDeleteUser(_, { userId }, { user: authUser }) {
-    requireRole(authUser, ["admin"]);
+    requireRole(authUser, ["admin", "manager"]);
     if (!mongoose.isValidObjectId(userId)) {
       throw new GraphQLError("Invalid userId", {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const now = new Date();
+    const deleteExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const saved = await User.findByIdAndUpdate(
       userId,
-      { status: "inactive" },
+      {
+        status: "inactive",
+        deletedAt: now,
+        deleteExpiresAt,
+        deletedBy: authUser?._id || null,
+      },
       { new: true },
     ).lean();
     if (!saved) {

@@ -163,6 +163,14 @@ const userSchema = BaseSchemaModel(
     lastLoginIp: { type: String },
 
     forcePasswordChange: { type: Boolean, default: false },
+
+    deletedAt: { type: Date, default: null, index: true },
+    deleteExpiresAt: { type: Date, default: null, index: true },
+    deletedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   { discriminatorKey: "userType" }
 );

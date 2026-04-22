@@ -22,6 +22,23 @@ import {
 } from "../../../../../../utils/legalSalaryReference";
 import "./EmployeeFormModal.scss";
 
+const normalizeDraftText = (value) => String(value || "").trim();
+
+const toDraftComparableForm = (value, fallbackStartDate, fallbackRestaurantId) => ({
+  name: normalizeDraftText(value?.name),
+  role: normalizeDraftText(value?.role),
+  department: value?.department || "service",
+  address: normalizeDraftText(value?.address),
+  salary: normalizeDraftText(value?.salary),
+  shift: normalizeDraftText(value?.shift),
+  startDate: value?.startDate || fallbackStartDate,
+  emergencyRelation: normalizeDraftText(value?.emergencyRelation),
+  notes: normalizeDraftText(value?.notes),
+  primaryRestaurantId: value?.primaryRestaurantId || fallbackRestaurantId || "",
+  userType: value?.userType || "STAFF",
+  employmentType: value?.employmentType || "FULL_TIME",
+});
+
 const EmployeeFormModal = ({
   isOpen,
   onClose,
@@ -57,7 +74,6 @@ const EmployeeFormModal = ({
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [isDirty, setIsDirty] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -124,12 +140,44 @@ const EmployeeFormModal = ({
       confirmPassword: "",
     });
     setErrors({});
-    setIsDirty(false);
     setShowPassword(false);
     setShowConfirmPassword(false);
     setShowSensitiveNotice(false);
     setSalaryManuallyEdited(false);
   }, [defaultRestaurantId]);
+
+  const baselineForm = useMemo(
+    () =>
+      toDraftComparableForm(
+        {
+          name: "",
+          role: "",
+          department: "service",
+          address: "",
+          salary: "",
+          shift: "",
+          startDate: todayStr,
+          emergencyRelation: "",
+          notes: "",
+          primaryRestaurantId: defaultRestaurantId || "",
+          userType: "STAFF",
+          employmentType: "FULL_TIME",
+        },
+        todayStr,
+        defaultRestaurantId,
+      ),
+    [defaultRestaurantId, todayStr],
+  );
+
+  const comparableForm = useMemo(
+    () => toDraftComparableForm(formData, todayStr, defaultRestaurantId),
+    [defaultRestaurantId, formData, todayStr],
+  );
+
+  const isDirty = useMemo(
+    () => JSON.stringify(comparableForm) !== JSON.stringify(baselineForm),
+    [baselineForm, comparableForm],
+  );
 
   useEffect(() => {
     if (isOpen && mode === "add") {
@@ -169,23 +217,22 @@ const EmployeeFormModal = ({
     },
     formValue: formData,
     isDirty,
-    sanitize: (v) => ({
-      name: v?.name || "",
-      role: v?.role || "",
-      department: v?.department || "service",
-      address: v?.address || "",
-      salary: v?.salary || "",
-      shift: v?.shift || "",
-      startDate: v?.startDate || todayStr,
-      emergencyRelation: v?.emergencyRelation || "",
-      notes: v?.notes || "",
-      primaryRestaurantId: v?.primaryRestaurantId || "",
-      userType: v?.userType || "STAFF",
-      employmentType: v?.employmentType || "FULL_TIME",
-    }),
+    sanitize: (v) => {
+      const normalized = toDraftComparableForm(v, todayStr, defaultRestaurantId);
+      return JSON.stringify(normalized) === JSON.stringify(baselineForm)
+        ? null
+        : normalized;
+    },
+    canRestoreDraft: (draft) => {
+      const restored = toDraftComparableForm(
+        draft,
+        todayStr,
+        defaultRestaurantId,
+      );
+      return JSON.stringify(restored) !== JSON.stringify(baselineForm);
+    },
     onRestore: (draft) => {
       setFormData((prev) => ({ ...prev, ...draft }));
-      setIsDirty(true);
       setShowSensitiveNotice(true);
     },
     notify: showNotification,
@@ -256,7 +303,6 @@ const EmployeeFormModal = ({
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    setIsDirty(true);
     setErrors((prev) => {
       const next = { ...prev };
       if (next[field]) next[field] = "";

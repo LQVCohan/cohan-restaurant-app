@@ -12,6 +12,7 @@ import {
   PayrollPeriod,
   PayrollItem,
   PayrollAdjustment,
+  EmployeeCodeCounter,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
 import {
@@ -27,6 +28,26 @@ import {
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
   return new mongoose.Types.ObjectId(id);
+}
+
+const EMPLOYEE_CODE_PREFIX = "NV";
+
+function formatEmployeeCode(sequence) {
+  const padded = String(Math.max(Number(sequence) || 0, 0)).padStart(4, "0");
+  return `${EMPLOYEE_CODE_PREFIX}${padded}`;
+}
+
+async function getNextEmployeeCode(restaurantId) {
+  const rid = toObjectId(restaurantId);
+  if (!rid) {
+    throw new Error("Missing primary restaurant to generate employee code");
+  }
+  const counter = await EmployeeCodeCounter.findOneAndUpdate(
+    { restaurantId: rid },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+  return formatEmployeeCode(counter?.seq);
 }
 
 function toStartOfDay(date) {
@@ -463,18 +484,53 @@ export default {
     // DepartmentType đã là lowercase (service, kitchen, ...) -> không cần đổi
 
     // Gán nhà hàng
-    if (primaryRestaurantId) doc.primaryRestaurant = primaryRestaurantId;
-    if (refRestaurantIds) doc.refRestaurants = refRestaurantIds;
-
-    const staff = new Staff(doc);
-
-    // Nếu FE có truyền password → hash luôn
-    // Nếu không → hook pre('save') trong User.js sẽ tự generate (nếu em có thêm logic đó)
-    if (password && password.trim() !== "") {
-      await staff.setPassword(password.trim());
+    const sequenceRestaurantId =
+      primaryRestaurantId ||
+      input.restaurantForStaff ||
+      (Array.isArray(refRestaurantIds) ? refRestaurantIds[0] : null);
+    if (!sequenceRestaurantId) {
+      throw new Error("primaryRestaurantId is required to generate employee code");
     }
 
-    await staff.save();
+    doc.primaryRestaurant = sequenceRestaurantId;
+    if (!doc.restaurantForStaff) {
+      doc.restaurantForStaff = sequenceRestaurantId;
+    }
+    if (refRestaurantIds) doc.refRestaurants = refRestaurantIds;
+
+    let staff = null;
+    let lastCreateError = null;
+    const MAX_RETRIES = 3;
+
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+      const employeeCode = await getNextEmployeeCode(sequenceRestaurantId);
+      const candidate = new Staff({
+        ...doc,
+        employeeCode,
+      });
+
+      // Nếu FE có truyền password → hash luôn
+      // Nếu không → hook pre('save') trong User.js sẽ tự generate (nếu em có thêm logic đó)
+      if (password && password.trim() !== "") {
+        await candidate.setPassword(password.trim());
+      }
+
+      try {
+        await candidate.save();
+        staff = candidate;
+        break;
+      } catch (error) {
+        lastCreateError = error;
+        if (error?.code !== 11000 || attempt === MAX_RETRIES) {
+          throw error;
+        }
+      }
+    }
+
+    if (!staff) {
+      throw lastCreateError || new Error("Failed to create staff");
+    }
+
     await staff.populate(["role", "refRestaurants", "primaryRestaurant"]);
 
     await logStaffEvent({
