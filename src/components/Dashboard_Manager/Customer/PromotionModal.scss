@@ -244,89 +244,84 @@ $pm-radius: 12px;
   }
 
   /* Step 2: Customer Groups */
-  .group-selection {
-    .gs-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      h3 {
-        margin: 0;
-        font-size: 16px;
-      }
-      .select-all-btn {
-        font-size: 13px;
-        color: $pm-primary;
-        background: none;
-        border: none;
-        font-weight: 600;
-        cursor: pointer;
-        &:hover {
-          text-decoration: underline;
-        }
-      }
-    }
-
-    .group-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .group-item {
-      display: flex;
-      align-items: center;
-      background: #fff;
-      padding: 16px;
-      border-radius: $pm-radius;
+  .target-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+    button {
       border: 1px solid $pm-border;
+      background: #fff;
+      border-radius: 999px;
+      padding: 8px 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #334155;
       cursor: pointer;
-      transition: all 0.2s;
-
-      &:hover {
-        background: #f8fafc;
-      }
       &.active {
-        border-color: $pm-primary;
         background: #eff6ff;
-      }
-
-      input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-        accent-color: $pm-primary;
-        margin-right: 16px;
-        cursor: pointer;
-      }
-
-      .gi-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: #f1f5f9;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        margin-right: 16px;
-      }
-
-      .gi-info {
-        flex: 1;
-        .gi-name {
-          display: block;
-          font-weight: 600;
-          color: #1e293b;
-          font-size: 14px;
-        }
-        .gi-count {
-          display: block;
-          font-size: 12px;
-          color: #64748b;
-          margin-top: 2px;
-        }
+        border-color: $pm-primary;
+        color: $pm-primary;
       }
     }
+  }
+
+  .segment-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+    label {
+      background: #fff;
+      border: 1px solid $pm-border;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      input {
+        accent-color: $pm-primary;
+      }
+    }
+  }
+
+  .manual-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 10px;
+    .manual-item {
+      background: #fff;
+      border: 1px solid $pm-border;
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      input {
+        margin-top: 4px;
+        accent-color: $pm-primary;
+      }
+      strong {
+        display: block;
+        color: #1e293b;
+        font-size: 14px;
+      }
+      span {
+        display: block;
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 2px;
+      }
+    }
+  }
+
+  .recipient-summary {
+    margin-top: 14px;
+    font-size: 14px;
+    color: #334155;
   }
 
   /* Step 3: Review & Schedule */
@@ -371,6 +366,34 @@ $pm-radius: 12px;
             width: 18px;
             height: 18px;
             accent-color: $pm-primary;
+          }
+        }
+      }
+
+      .channel-options {
+        margin-bottom: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        label {
+          background: #f8fafc;
+          border: 1px solid $pm-border;
+          border-radius: 10px;
+          padding: 10px 12px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 14px;
+          input {
+            accent-color: $pm-primary;
+          }
+          small {
+            margin-left: auto;
+            color: #94a3b8;
+            font-size: 11px;
+          }
+          &.is-disabled {
+            opacity: 0.75;
           }
         }
       }
@@ -457,6 +480,43 @@ $pm-radius: 12px;
           text-align: right;
           max-width: 60%;
         }
+      }
+    }
+  }
+
+  .pm-error {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    background: #fee2e2;
+    font-size: 13px;
+  }
+
+  .pm-state {
+    color: #64748b;
+    font-size: 13px;
+  }
+
+  .campaign-history {
+    margin-top: 16px;
+    background: #fff;
+    border: 1px solid $pm-border;
+    border-radius: 10px;
+    padding: 12px 14px;
+    h4 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: #334155;
+    }
+    ul {
+      margin: 0;
+      padding-left: 16px;
+      li {
+        font-size: 12px;
+        color: #475569;
+        margin-bottom: 4px;
       }
     }
   }

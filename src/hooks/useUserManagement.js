@@ -646,7 +646,7 @@ const useUserManagement = () => {
     if (!input.roleId && payload?.roleSlug && roleMap[payload.roleSlug]) {
       input.roleId = roleMap[payload.roleSlug];
     }
-    await createUserMut({ variables: { input } });
+    return createUserMut({ variables: { input } });
   };
 
   const createGuest = async ({

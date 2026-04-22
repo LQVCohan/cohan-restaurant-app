@@ -1,5 +1,5 @@
 // src/components/CustomerManagement/CustomerModal.jsx
-import React, { useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   Mail,
   Phone,
@@ -19,6 +19,9 @@ import {
   UserCheck,
 } from "lucide-react";
 import Modal from "../../../components/common/Modal";
+import ChatThreadPanel from "../../../components/common/ChatThreadPanel";
+import useCommunication from "../../../hooks/useCommunication";
+import { AuthContext } from "../../../context/AuthContext";
 import "./CustomerModal.scss";
 
 /* ===== Helpers & Utils ===== */
@@ -80,10 +83,41 @@ const STATUS_CONFIG = {
 };
 
 // Thêm prop isOpen vào đây để điều khiển modal
-const CustomerModal = ({ isOpen, customer, onClose, onShowBill }) => {
+const CustomerModal = ({
+  isOpen,
+  customer,
+  onClose,
+  onShowBill,
+  restaurantId: restaurantIdProp = null,
+}) => {
+  const { user, restaurants = [] } = useContext(AuthContext) || {};
   const [notes, setNotes] = useState(customer?.notes || "");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [tempNotes, setTempNotes] = useState(customer?.notes || "");
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatThreadId, setChatThreadId] = useState(null);
+  const [chatError, setChatError] = useState("");
+
+  const restaurantId = useMemo(() => {
+    if (restaurantIdProp) return restaurantIdProp;
+    return (
+      user?.restaurantForStaff ||
+      user?.refRestaurants?.[0] ||
+      restaurants?.[0]?.id ||
+      null
+    );
+  }, [restaurantIdProp, restaurants, user]);
+
+  const {
+    thread,
+    threadLoading,
+    threadError,
+    loadThread,
+    openThread,
+    openThreadState,
+    sendMessage,
+    sendMessageState,
+  } = useCommunication({ restaurantId });
 
   // 1. Data Processing
   const recentOrders = useMemo(() => customer?.recentOrders || [], [customer]);
@@ -130,10 +164,84 @@ const CustomerModal = ({ isOpen, customer, onClose, onShowBill }) => {
   const tier = CUSTOMER_TIERS[stats.type] || CUSTOMER_TIERS.NEW;
   const joinDate = formatDate(customer?.joinDate);
 
+  useEffect(() => {
+    setChatOpen(false);
+    setChatThreadId(null);
+    setChatError("");
+  }, [customer?.id]);
+
   const handleSaveNotes = () => {
     setNotes(tempNotes);
     setIsEditingNotes(false);
   };
+
+  const openCustomerChat = async () => {
+    setChatOpen(true);
+    setChatError("");
+
+    if (!customer?.id) {
+      setChatError("Không xác định được khách hàng để mở hội thoại.");
+      return;
+    }
+    if (!restaurantId) {
+      setChatError("Thiếu ngữ cảnh nhà hàng, chưa thể mở hội thoại.");
+      return;
+    }
+
+    try {
+      const { data } = await openThread({
+        variables: {
+          input: {
+            restaurantId,
+            channel: "support",
+            targetRole: "support",
+            subject: `Khách hàng #${String(customer.id).padStart(4, "0")} - ${
+              customer?.name || "Khách vãng lai"
+            }`,
+          },
+        },
+      });
+
+      const openedId = data?.openChatThread?.id || null;
+      if (!openedId) {
+        setChatError("Không thể khởi tạo hội thoại lúc này.");
+        return;
+      }
+
+      setChatThreadId(openedId);
+      await loadThread({ variables: { id: openedId } });
+    } catch (err) {
+      setChatError(err?.message || "Không thể mở hội thoại.");
+    }
+  };
+
+  const handleSendMessage = async (content) => {
+    setChatError("");
+
+    if (!chatThreadId) {
+      setChatError("Chưa có hội thoại để gửi tin.");
+      throw new Error("Missing thread");
+    }
+
+    try {
+      await sendMessage({
+        variables: {
+          input: {
+            threadId: chatThreadId,
+            content,
+          },
+        },
+      });
+      await loadThread({ variables: { id: chatThreadId } });
+    } catch (err) {
+      setChatError(err?.message || "Gửi tin nhắn thất bại.");
+      throw err;
+    }
+  };
+
+  const chatSubtitle = `${customer?.phone || "Chưa có SĐT"}${
+    customer?.email ? ` • ${customer.email}` : ""
+  }`;
 
   return (
     <Modal
@@ -397,10 +505,32 @@ const CustomerModal = ({ isOpen, customer, onClose, onShowBill }) => {
         <button className="btn btn-secondary" onClick={onClose}>
           Đóng
         </button>
-        <button className="btn btn-primary">
+        <button className="btn btn-primary" onClick={openCustomerChat}>
           <MessageSquare size={16} className="mr-2" /> Gửi tin nhắn
         </button>
       </Modal.Footer>
+
+      <ChatThreadPanel
+        open={chatOpen}
+        title={`Nhắn tin: ${customer?.name || "Khách hàng"}`}
+        subtitle={chatSubtitle}
+        meId={user?.id}
+        messages={thread?.messages || []}
+        loading={openThreadState.loading || threadLoading}
+        error={chatError || threadError}
+        sending={sendMessageState.loading}
+        composerDisabled={!chatThreadId || Boolean(chatError)}
+        composerPlaceholder={
+          chatThreadId
+            ? "Nhập nội dung tin nhắn..."
+            : "Đang khởi tạo hội thoại..."
+        }
+        onClose={() => {
+          setChatOpen(false);
+          setChatError("");
+        }}
+        onSend={handleSendMessage}
+      />
     </Modal>
   );
 };

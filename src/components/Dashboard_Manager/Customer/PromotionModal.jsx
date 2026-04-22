@@ -1,5 +1,4 @@
-// src/pages/CustomerManagement/PromotionModal.jsx
-import React, { useState, useMemo } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   Gift,
   Check,
@@ -8,297 +7,475 @@ import {
   X,
   Clock,
   Zap,
-  Star,
-  Sparkles,
-  Cake,
+  Target,
+  Mail,
+  Smartphone,
+  MessageCircle,
 } from "lucide-react";
-import Modal from "../../common/Modal"; // Đảm bảo đường dẫn đúng
+import Modal from "../../common/Modal";
+import { AuthContext } from "../../../context/AuthContext";
+import useCommunication from "../../../hooks/useCommunication";
+import { usePromotions } from "../../../hooks/usePromotions";
+import { useVouchers } from "../../../hooks/useVouchers";
 import "./PromotionModal.scss";
 
-// Dữ liệu giả lập (Move outside component to avoid recreate)
-const CAMPAIGN_DATA = [
-  {
-    id: "welcome",
-    title: "Chào Bạn Mới",
-    description:
-      "Giảm 20% cho đơn hàng đầu tiên, tối đa 100k. Áp dụng cho menu chính.",
-    icon: <Gift size={24} className="text-green-600" />,
-    bgColor: "bg-green-100",
-    validDays: 30,
-    targetGroup: "Khách mới",
-    kind: "promotion",
-  },
-  {
-    id: "vip",
-    title: "Tri Ân VIP",
-    description:
-      "Giảm 15% tổng bill + Tặng món tráng miệng đặc biệt theo ngày.",
-    icon: <Star size={24} className="text-yellow-600" />,
-    bgColor: "bg-yellow-100",
-    validDays: 15,
-    targetGroup: "Khách VIP",
-    kind: "promotion",
-  },
-  {
-    id: "weekend",
-    title: "Happy Weekend",
-    description: "Mua 2 tặng 1 cho nhóm đồ uống. Áp dụng T7 & CN.",
-    icon: <Zap size={24} className="text-purple-600" />,
-    bgColor: "bg-purple-100",
-    validDays: 3,
-    targetGroup: "Tất cả khách",
-    kind: "promotion",
-  },
-  {
-    id: "birthday",
-    title: "Sinh Nhật Vui Vẻ",
-    description:
-      "Giảm 25% bill + Tặng bánh kem mini. Áp dụng trong tháng sinh nhật.",
-    icon: <Cake size={24} className="text-pink-600" />,
-    bgColor: "bg-pink-100",
-    validDays: 30,
-    targetGroup: "Sinh nhật",
-    kind: "promotion",
-  },
-  {
-    id: "tet-voucher",
-    title: "Voucher Tết Sum Vầy",
-    description: "Giảm 20% cho nhóm món ăn chính dịp Tết.",
-    icon: <Sparkles size={24} className="text-red-600" />,
-    bgColor: "bg-red-100",
-    validDays: 20,
-    targetGroup: "Tất cả khách",
-    kind: "voucher",
-  },
-  {
-    id: "shipping-voucher",
-    title: "Voucher Freeship",
-    description: "Miễn phí giao hàng cho đơn đủ điều kiện.",
-    icon: <Zap size={24} className="text-blue-600" />,
-    bgColor: "bg-blue-100",
-    validDays: 15,
-    targetGroup: "Khách đặt món",
-    kind: "voucher",
-  },
-  {
-    id: "newbie-pack",
-    title: "Gói Voucher Người Mới",
-    description: "Bao gồm voucher món ăn, đặt bàn và freeship.",
-    icon: <Gift size={24} className="text-emerald-600" />,
-    bgColor: "bg-emerald-100",
-    validDays: 45,
-    targetGroup: "Khách mới",
-    kind: "package",
-  },
-];
+const CAMPAIGN_LOG_SUBJECT = "__PROMO_CAMPAIGN_LOG__";
+const SUPPORTED_CHANNELS = {
+  inapp: { label: "Thông báo trong app", enabled: true },
+  email: { label: "Email", enabled: false, reason: "Chưa có mutation gửi email trong hạ tầng hiện tại" },
+  zalo: { label: "Zalo", enabled: false, reason: "Chưa có tích hợp Zalo an toàn trong codebase hiện tại" },
+};
 
-const CUSTOMER_GROUPS = [
-  { id: "vip", name: "Khách VIP (Vàng/Kim Cương)", icon: "⭐", count: 89 },
-  { id: "frequent", name: "Khách Thường Xuyên", icon: "🔥", count: 234 },
-  { id: "new", name: "Khách Mới (Đăng ký < 30 ngày)", icon: "🆕", count: 156 },
-  { id: "birthday", name: "Sinh Nhật Tháng Này", icon: "🎂", count: 23 },
-  { id: "inactive", name: "Khách Cần Tương Tác Lại", icon: "💤", count: 67 },
-  { id: "all", name: "Tất Cả Khách Hàng", icon: "👥", count: 1247 },
-];
+const getCustomerTier = (customer) => {
+  const points = Number(customer?.loyaltyPoints || 0);
+  if (points > 15000) return "vip";
+  if (points > 5000) return "frequent";
+  return "new";
+};
 
-const PromotionModal = ({ onClose }) => {
-  // State
-  const [currentStep, setCurrentStep] = useState(1);
-  const [selectedCampaign, setSelectedCampaign] = useState(null);
-  const [selectedGroupIds, setSelectedGroupIds] = useState([]);
-  const [scheduleType, setScheduleType] = useState("now"); // 'now' | 'later'
-  const [scheduleDate, setScheduleDate] = useState("");
-  const [scheduleTime, setScheduleTime] = useState("");
-  const [isSending, setIsSending] = useState(false);
+const buildRecipientSet = (customers, targetMode, manualIds, segment) => {
+  if (targetMode === "all") return customers;
+  if (targetMode === "manual") {
+    const picked = new Set(manualIds);
+    return customers.filter((c) => picked.has(String(c.id)));
+  }
+  return customers.filter((c) => {
+    if (segment === "vip") return getCustomerTier(c) === "vip";
+    if (segment === "frequent") return getCustomerTier(c) === "frequent";
+    if (segment === "new") return getCustomerTier(c) === "new";
+    if (segment === "inactive") return !c.online;
+    return true;
+  });
+};
 
-  // Derived Values
-  const totalRecipients = useMemo(() => {
-    if (selectedGroupIds.includes("all")) {
-      const allGroup = CUSTOMER_GROUPS.find((g) => g.id === "all");
-      return allGroup ? allGroup.count : 0;
-    }
-    return selectedGroupIds.reduce((sum, id) => {
-      const group = CUSTOMER_GROUPS.find((g) => g.id === id);
-      return sum + (group ? group.count : 0);
-    }, 0);
-  }, [selectedGroupIds]);
+const buildOfferOptions = (promotions, vouchers, packages, restaurantId) => {
+  const rows = [];
+  promotions
+    .filter((p) => !restaurantId || String(p.restaurantId) === String(restaurantId))
+    .forEach((p) => {
+      rows.push({
+        id: `promotion:${p.id}`,
+        sourceId: p.id,
+        kind: "promotion",
+        title: p.name,
+        description: p.description || `Mã: ${p.code || "N/A"}`,
+        code: p.code || "",
+      });
+    });
+  vouchers.forEach((v) => {
+    rows.push({
+      id: `voucher:${v.id}`,
+      sourceId: v.id,
+      kind: "voucher",
+      title: v.name,
+      description: v.description || `Mã: ${v.code || "N/A"}`,
+      code: v.code || "",
+    });
+  });
+  packages.forEach((pkg) => {
+    rows.push({
+      id: `package:${pkg.id}`,
+      sourceId: pkg.id,
+      kind: "package",
+      title: pkg.name,
+      description: pkg.description || `Mã: ${pkg.code || "N/A"}`,
+      code: pkg.code || "",
+    });
+  });
+  return rows;
+};
 
-  // Handlers
-  const handleGroupToggle = (id) => {
-    if (id === "all") {
-      if (selectedGroupIds.includes("all")) {
-        setSelectedGroupIds([]);
-      } else {
-        setSelectedGroupIds(["all"]);
+const parseCampaignHistory = (messages = []) =>
+  messages
+    .map((m) => {
+      if (!m?.content?.startsWith("[PROMO_CAMPAIGN]")) return null;
+      try {
+        return JSON.parse(m.content.replace("[PROMO_CAMPAIGN]", "").trim());
+      } catch {
+        return null;
       }
-      return;
-    }
+    })
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.sentAt || b.createdAt || 0) - new Date(a.sentAt || a.createdAt || 0));
 
-    // Nếu đang chọn "all" mà click cái khác -> bỏ "all"
-    let newSelection = selectedGroupIds.filter((gid) => gid !== "all");
+const PromotionModal = ({ onClose, customers = [], restaurantId: restaurantIdProp = null }) => {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedOfferId, setSelectedOfferId] = useState("");
+  const [targetMode, setTargetMode] = useState("all");
+  const [manualRecipientIds, setManualRecipientIds] = useState([]);
+  const [segmentKey, setSegmentKey] = useState("vip");
+  const [scheduleType, setScheduleType] = useState("now");
+  const [selectedChannels, setSelectedChannels] = useState(["inapp"]);
+  const [isSending, setIsSending] = useState(false);
+  const [sendSummary, setSendSummary] = useState(null);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [historyThreadId, setHistoryThreadId] = useState(null);
 
-    if (newSelection.includes(id)) {
-      newSelection = newSelection.filter((gid) => gid !== id);
-    } else {
-      newSelection.push(id);
-    }
-    setSelectedGroupIds(newSelection);
-  };
+  const { user, restaurants = [] } = useContext(AuthContext) || {};
+  const restaurantId = useMemo(
+    () => restaurantIdProp || restaurants?.[0]?.id || user?.restaurantForStaff || null,
+    [restaurantIdProp, restaurants, user]
+  );
 
-  const handleSelectAll = () => {
-    if (selectedGroupIds.includes("all")) setSelectedGroupIds([]);
-    else setSelectedGroupIds(["all"]);
-  };
+  const { allPromotions, loading: promotionsLoading } = usePromotions();
+  const { allVouchers, allPackages } = useVouchers();
+  const {
+    thread,
+    threadLoading,
+    loadThread,
+    openThread,
+    sendMessage,
+  } = useCommunication({ restaurantId });
 
-  const handleSend = () => {
-    setIsSending(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsSending(false);
-      alert(
-        `✅ Đã gửi chiến dịch "${selectedCampaign.title}" tới ${totalRecipients} khách hàng!`
-      );
-      onClose();
-    }, 1500);
-  };
+  const offerOptions = useMemo(
+    () => buildOfferOptions(allPromotions, allVouchers, allPackages, restaurantId),
+    [allPromotions, allVouchers, allPackages, restaurantId]
+  );
 
-  // Render Steps
-  const renderStepIndicator = () => {
-    const steps = [
-      { num: 1, label: "Chọn ưu đãi/Voucher" },
-      { num: 2, label: "Đối Tượng" },
-      { num: 3, label: "Lên Lịch & Gửi" },
-    ];
-    return (
-      <div className="pm-steps">
-        {steps.map((s) => (
-          <div
-            key={s.num}
-            className={`step-item ${currentStep === s.num ? "active" : ""} ${
-              currentStep > s.num ? "completed" : ""
-            }`}
-          >
-            <div className="step-num">
-              {currentStep > s.num ? <Check size={14} /> : s.num}
-            </div>
-            <span>{s.label}</span>
-          </div>
-        ))}
-      </div>
+  const selectedOffer = useMemo(
+    () => offerOptions.find((o) => o.id === selectedOfferId) || null,
+    [offerOptions, selectedOfferId]
+  );
+
+  const recipients = useMemo(
+    () => buildRecipientSet(customers, targetMode, manualRecipientIds, segmentKey),
+    [customers, targetMode, manualRecipientIds, segmentKey]
+  );
+
+  const campaignHistory = useMemo(() => parseCampaignHistory(thread?.messages || []), [thread?.messages]);
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!restaurantId) return;
+      try {
+        const { data } = await openThread({
+          variables: {
+            input: {
+              restaurantId,
+              channel: "other",
+              targetRole: "management",
+              subject: CAMPAIGN_LOG_SUBJECT,
+            },
+          },
+        });
+        const tid = data?.openChatThread?.id;
+        if (!tid) return;
+        setHistoryThreadId(tid);
+        await loadThread({ variables: { id: tid } });
+      } catch {
+        // giữ im lặng để không chặn flow gửi
+      }
+    };
+    loadHistory();
+  }, [restaurantId, openThread, loadThread]);
+
+  const toggleManualCustomer = (id) => {
+    const key = String(id);
+    setManualRecipientIds((prev) =>
+      prev.includes(key) ? prev.filter((v) => v !== key) : [...prev, key]
     );
   };
 
+  const toggleChannel = (key) => {
+    if (!SUPPORTED_CHANNELS[key]?.enabled) return;
+    setSelectedChannels((prev) =>
+      prev.includes(key) ? prev.filter((v) => v !== key) : [...prev, key]
+    );
+  };
+
+  const ensureRecipientThread = async (customer) => {
+    const { data } = await openThread({
+      variables: {
+        input: {
+          restaurantId,
+          channel: "support",
+          targetRole: "support",
+          subject: `Khách hàng #${String(customer.id).padStart(4, "0")} - ${
+            customer?.name || "Khách hàng"
+          }`,
+        },
+      },
+    });
+    return data?.openChatThread?.id || null;
+  };
+
+  const handleSend = async () => {
+    setErrorMsg("");
+    setSendSummary(null);
+
+    if (!selectedOffer) {
+      setErrorMsg("Vui lòng chọn ưu đãi trước khi gửi.");
+      return;
+    }
+    if (!restaurantId) {
+      setErrorMsg("Thiếu ngữ cảnh nhà hàng, chưa thể gửi chiến dịch.");
+      return;
+    }
+    if (!selectedChannels.length) {
+      setErrorMsg("Cần chọn ít nhất 1 kênh gửi.");
+      return;
+    }
+    if (selectedChannels.some((ch) => !SUPPORTED_CHANNELS[ch]?.enabled)) {
+      setErrorMsg("Có kênh chưa sẵn sàng trong hạ tầng hiện tại.");
+      return;
+    }
+    if (!recipients.length) {
+      setErrorMsg("Không có người nhận hợp lệ.");
+      return;
+    }
+    if (scheduleType === "later") {
+      setErrorMsg("Lên lịch gửi sau chưa có job queue thật, chỉ hỗ trợ gửi ngay.");
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const deliveryResults = [];
+      const content = `🎁 Ưu đãi mới: ${selectedOffer.title}\n${selectedOffer.description}`;
+
+      for (const customer of recipients) {
+        let status = "failed";
+        let reason = "";
+        try {
+          const threadId = await ensureRecipientThread(customer);
+          if (!threadId) throw new Error("Không tạo được hội thoại");
+
+          if (selectedChannels.includes("inapp")) {
+            await sendMessage({
+              variables: {
+                input: {
+                  threadId,
+                  content,
+                },
+              },
+            });
+          }
+
+          status = "sent";
+        } catch (err) {
+          reason = err?.message || "Gửi thất bại";
+        }
+
+        deliveryResults.push({
+          customerId: String(customer.id),
+          customerName: customer.name || customer.displayName || "Khách hàng",
+          channels: selectedChannels,
+          status,
+          reason,
+        });
+      }
+
+      const successCount = deliveryResults.filter((r) => r.status === "sent").length;
+      const failedCount = deliveryResults.length - successCount;
+
+      const logPayload = {
+        createdAt: new Date().toISOString(),
+        sentAt: new Date().toISOString(),
+        operatorId: user?.id || null,
+        operatorName: user?.fullName || user?.name || "Manager",
+        restaurantId,
+        offer: {
+          id: selectedOffer.sourceId,
+          kind: selectedOffer.kind,
+          title: selectedOffer.title,
+          code: selectedOffer.code || "",
+        },
+        target: {
+          mode: targetMode,
+          segment: targetMode === "segment" ? segmentKey : null,
+          recipientCount: recipients.length,
+        },
+        channels: selectedChannels,
+        summary: {
+          total: deliveryResults.length,
+          sent: successCount,
+          failed: failedCount,
+        },
+        deliveryResults,
+      };
+
+      let logThreadId = historyThreadId;
+      if (!logThreadId) {
+        const { data } = await openThread({
+          variables: {
+            input: {
+              restaurantId,
+              channel: "other",
+              targetRole: "management",
+              subject: CAMPAIGN_LOG_SUBJECT,
+            },
+          },
+        });
+        logThreadId = data?.openChatThread?.id || null;
+      }
+      if (logThreadId) {
+        await sendMessage({
+          variables: {
+            input: {
+              threadId: logThreadId,
+              content: `[PROMO_CAMPAIGN] ${JSON.stringify(logPayload)}`,
+            },
+          },
+        });
+        await loadThread({ variables: { id: logThreadId } });
+      }
+
+      setSendSummary(logPayload.summary);
+      if (failedCount > 0) {
+        setErrorMsg(`Gửi một phần: ${successCount}/${deliveryResults.length} thành công.`);
+      }
+    } catch (err) {
+      setErrorMsg(err?.message || "Gửi chiến dịch thất bại.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const canNext =
+    (currentStep === 1 && !!selectedOffer) ||
+    (currentStep === 2 && recipients.length > 0) ||
+    currentStep === 3;
+
   return (
-    <Modal
-      isOpen
-      onClose={onClose}
-      size="xl"
-      className="promotion-modal-wrapper"
-    >
+    <Modal isOpen onClose={onClose} size="xl" className="promotion-modal-wrapper">
       <div className="pm-container">
-        {/* HEADER */}
         <div className="pm-header">
           <h2>
             <Gift className="text-blue-500" />
-            Tạo Chiến Dịch Mới
+            Gửi ưu đãi tới khách hàng
           </h2>
           <button className="pm-close-btn" onClick={onClose}>
             <X size={24} />
           </button>
         </div>
 
-        {/* STEPS */}
-        {renderStepIndicator()}
+        <div className="pm-steps">
+          {[1, 2, 3].map((num) => (
+            <div key={num} className={`step-item ${currentStep === num ? "active" : ""} ${currentStep > num ? "completed" : ""}`}>
+              <div className="step-num">{currentStep > num ? <Check size={14} /> : num}</div>
+              <span>{num === 1 ? "Ưu đãi" : num === 2 ? "Đối tượng" : "Kênh & Gửi"}</span>
+            </div>
+          ))}
+        </div>
 
-        {/* BODY */}
         <div className="pm-body">
-          {/* STEP 1: CHỌN CHIẾN DỊCH */}
           {currentStep === 1 && (
             <div className="step-content">
+              {promotionsLoading && <div className="pm-state">Đang tải ưu đãi từ database...</div>}
+              {!promotionsLoading && offerOptions.length === 0 && (
+                <div className="pm-state">Không có ưu đãi/voucher nào trong database.</div>
+              )}
               <div className="promo-grid">
-                {CAMPAIGN_DATA.map((promo) => (
+                {offerOptions.map((offer) => (
                   <div
-                    key={promo.id}
-                    className={`promo-card ${
-                      selectedCampaign?.id === promo.id ? "selected" : ""
-                    }`}
-                    onClick={() => setSelectedCampaign(promo)}
+                    key={offer.id}
+                    className={`promo-card ${selectedOfferId === offer.id ? "selected" : ""}`}
+                    onClick={() => setSelectedOfferId(offer.id)}
                   >
                     <div className="check-mark">
                       <Check size={14} />
                     </div>
-                    <div className={`pc-icon ${promo.bgColor}`}>
-                      {promo.icon}
+                    <div className="pc-icon bg-blue-100">
+                      <Gift size={22} className="text-blue-600" />
                     </div>
-                    <h4>{promo.title}</h4>
-                    <p>{promo.description}</p>
-                    <div className="pc-footer">
-                      <span>Hiệu lực: {promo.validDays} ngày</span>
-                      <span>{promo.targetGroup}</span>
-                    </div>
-                    <span className={`promo-tag type-${promo.kind}`}>
-                      {promo.kind === "voucher"
-                        ? "Voucher"
-                        : promo.kind === "package"
-                          ? "Gói voucher"
-                          : "Khuyến mãi"}
-                    </span>
+                    <h4>{offer.title}</h4>
+                    <p>{offer.description}</p>
+                    <span className={`promo-tag type-${offer.kind}`}>{offer.kind}</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* STEP 2: CHỌN KHÁCH HÀNG */}
           {currentStep === 2 && (
-            <div className="step-content group-selection">
-              <div className="gs-header">
-                <h3>Chọn nhóm khách hàng mục tiêu</h3>
-                <button className="select-all-btn" onClick={handleSelectAll}>
-                  {selectedGroupIds.includes("all")
-                    ? "Bỏ chọn tất cả"
-                    : "Chọn tất cả"}
-                </button>
+            <div className="step-content">
+              <div className="target-tabs">
+                {[
+                  { id: "all", label: "Tất cả khách hàng", icon: <Target size={14} /> },
+                  { id: "manual", label: "Chọn thủ công", icon: <Check size={14} /> },
+                  { id: "segment", label: "Theo segment", icon: <Zap size={14} /> },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    className={targetMode === tab.id ? "active" : ""}
+                    onClick={() => setTargetMode(tab.id)}
+                  >
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
               </div>
-              <div className="group-list">
-                {CUSTOMER_GROUPS.map((group) => {
-                  const isChecked =
-                    selectedGroupIds.includes("all") ||
-                    selectedGroupIds.includes(group.id);
-                  const disabled =
-                    selectedGroupIds.includes("all") && group.id !== "all"; // Disable others if All is selected
 
-                  return (
-                    <div
-                      key={group.id}
-                      className={`group-item ${isChecked ? "active" : ""} ${
-                        disabled ? "opacity-50 pointer-events-none" : ""
-                      }`}
-                      onClick={() => !disabled && handleGroupToggle(group.id)}
-                    >
-                      <input type="checkbox" checked={isChecked} readOnly />
-                      <div className="gi-icon">{group.icon}</div>
-                      <div className="gi-info">
-                        <span className="gi-name">{group.name}</span>
-                        <span className="gi-count">
-                          {group.count.toLocaleString()} khách
-                        </span>
+              {targetMode === "segment" && (
+                <div className="segment-picker">
+                  {[
+                    { id: "vip", label: "VIP (điểm > 15.000)" },
+                    { id: "frequent", label: "Thân thiết (5.001 - 15.000)" },
+                    { id: "new", label: "Khách mới (<= 5.000)" },
+                    { id: "inactive", label: "Khách không online" },
+                  ].map((s) => (
+                    <label key={s.id}>
+                      <input
+                        type="radio"
+                        checked={segmentKey === s.id}
+                        onChange={() => setSegmentKey(s.id)}
+                      />
+                      {s.label}
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {targetMode === "manual" && (
+                <div className="manual-list">
+                  {customers.map((c) => (
+                    <label key={c.id} className="manual-item">
+                      <input
+                        type="checkbox"
+                        checked={manualRecipientIds.includes(String(c.id))}
+                        onChange={() => toggleManualCustomer(c.id)}
+                      />
+                      <div>
+                        <strong>{c.name || c.displayName || `KH#${c.id}`}</strong>
+                        <span>{c.phone || c.email || "Không có thông tin liên hệ"}</span>
                       </div>
-                    </div>
-                  );
-                })}
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              <div className="recipient-summary">
+                Tổng người nhận: <b>{recipients.length}</b>
               </div>
             </div>
           )}
 
-          {/* STEP 3: REVIEW & SCHEDULE */}
           {currentStep === 3 && (
             <div className="step-content review-layout">
-              {/* Cột trái: Lên lịch */}
               <div className="schedule-section">
                 <h3>
-                  <Clock size={18} /> Thời gian gửi tin
+                  <Clock size={18} /> Kênh và thời gian gửi
                 </h3>
+                <div className="channel-options">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={selectedChannels.includes("inapp")}
+                      onChange={() => toggleChannel("inapp")}
+                    />
+                    <Smartphone size={14} /> {SUPPORTED_CHANNELS.inapp.label}
+                  </label>
+                  <label className="is-disabled">
+                    <input type="checkbox" checked={false} disabled />
+                    <Mail size={14} /> {SUPPORTED_CHANNELS.email.label}
+                    <small>{SUPPORTED_CHANNELS.email.reason}</small>
+                  </label>
+                  <label className="is-disabled">
+                    <input type="checkbox" checked={false} disabled />
+                    <MessageCircle size={14} /> {SUPPORTED_CHANNELS.zalo.label}
+                    <small>{SUPPORTED_CHANNELS.zalo.reason}</small>
+                  </label>
+                </div>
+
                 <div className="radio-options">
                   <label>
                     <input
@@ -308,12 +485,7 @@ const PromotionModal = ({ onClose }) => {
                       checked={scheduleType === "now"}
                       onChange={(e) => setScheduleType(e.target.value)}
                     />
-                    <div>
-                      <div>Gửi ngay bây giờ</div>
-                      <div className="text-xs text-gray-400 font-normal">
-                        Hệ thống sẽ bắt đầu gửi ngay sau khi duyệt
-                      </div>
-                    </div>
+                    <div>Gửi ngay</div>
                   </label>
                   <label>
                     <input
@@ -323,106 +495,72 @@ const PromotionModal = ({ onClose }) => {
                       checked={scheduleType === "later"}
                       onChange={(e) => setScheduleType(e.target.value)}
                     />
-                    <div>Lên lịch gửi sau</div>
+                    <div>Lên lịch gửi sau (chưa hỗ trợ)</div>
                   </label>
                 </div>
-
-                {scheduleType === "later" && (
-                  <div className="datetime-inputs">
-                    <div className="field">
-                      <label>Ngày gửi</label>
-                      <input
-                        type="date"
-                        value={scheduleDate}
-                        onChange={(e) => setScheduleDate(e.target.value)}
-                        min={new Date().toISOString().split("T")[0]}
-                      />
-                    </div>
-                    <div className="field">
-                      <label>Giờ gửi</label>
-                      <input
-                        type="time"
-                        value={scheduleTime}
-                        onChange={(e) => setScheduleTime(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Cột phải: Summary */}
               <div className="summary-card">
-                <h4>Xác nhận thông tin</h4>
+                <h4>Xác nhận gửi thật</h4>
                 <div className="sum-row">
-                  <span className="label">Chiến dịch:</span>
-                  <span className="val">{selectedCampaign?.title}</span>
+                  <span className="label">Ưu đãi:</span>
+                  <span className="val">{selectedOffer?.title || "—"}</span>
                 </div>
                 <div className="sum-row">
                   <span className="label">Đối tượng:</span>
-                  <span className="val">
-                    {selectedGroupIds.includes("all")
-                      ? "Tất cả khách hàng"
-                      : `${selectedGroupIds.length} nhóm khách`}
-                  </span>
+                  <span className="val">{recipients.length} khách hàng</span>
                 </div>
                 <div className="sum-row">
-                  <span className="label">Thời gian:</span>
-                  <span className="val">
-                    {scheduleType === "now"
-                      ? "Ngay lập tức"
-                      : `${scheduleTime}, ${scheduleDate}`}
-                  </span>
+                  <span className="label">Kênh:</span>
+                  <span className="val">{selectedChannels.join(", ") || "—"}</span>
                 </div>
-                <div className="sum-row">
-                  <span className="label">Tổng gửi dự kiến:</span>
-                  <span className="val text-blue-600">
-                    {totalRecipients.toLocaleString()}
-                  </span>
-                </div>
+                {sendSummary && (
+                  <div className="sum-row">
+                    <span className="label">KQ gửi:</span>
+                    <span className="val">
+                      {sendSummary.sent}/{sendSummary.total} thành công
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
+
+          {errorMsg && <div className="pm-error">{errorMsg}</div>}
+
+          <div className="campaign-history">
+            <h4>Lịch sử chiến dịch (DB - từ chat log)</h4>
+            {threadLoading ? (
+              <div className="pm-state">Đang tải lịch sử...</div>
+            ) : campaignHistory.length === 0 ? (
+              <div className="pm-state">Chưa có lịch sử gửi ưu đãi.</div>
+            ) : (
+              <ul>
+                {campaignHistory.slice(0, 6).map((item, idx) => (
+                  <li key={`${item.sentAt || item.createdAt}-${idx}`}>
+                    <strong>{item.offer?.title}</strong> • {item.summary?.sent}/{item.summary?.total} thành công •{" "}
+                    {new Date(item.sentAt || item.createdAt).toLocaleString("vi-VN")}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
-        {/* FOOTER ACTIONS */}
         <div className="pm-footer">
           {currentStep > 1 && (
-            <button
-              className="btn-back"
-              onClick={() => setCurrentStep((p) => p - 1)}
-              disabled={isSending}
-            >
+            <button className="btn-back" onClick={() => setCurrentStep((p) => p - 1)} disabled={isSending}>
               <ArrowLeft size={16} /> Quay lại
             </button>
           )}
 
           {currentStep < 3 ? (
-            <button
-              className="btn-next"
-              onClick={() => setCurrentStep((p) => p + 1)}
-              disabled={
-                (currentStep === 1 && !selectedCampaign) ||
-                (currentStep === 2 && selectedGroupIds.length === 0)
-              }
-            >
+            <button className="btn-next" onClick={() => setCurrentStep((p) => p + 1)} disabled={!canNext}>
               Tiếp theo <ArrowRight size={16} />
             </button>
           ) : (
-            <button
-              className="btn-send"
-              onClick={handleSend}
-              disabled={
-                isSending ||
-                (scheduleType === "later" && (!scheduleDate || !scheduleTime))
-              }
-            >
-              {isSending ? (
-                <>Đang xử lý...</>
-              ) : (
-                <>
-                  <Zap size={16} /> Gửi Chiến Dịch
-                </>
-              )}
+            <button className="btn-send" onClick={handleSend} disabled={isSending}>
+              {isSending ? "Đang gửi thật..." : <><Zap size={16} /> Gửi chiến dịch</>}
             </button>
           )}
         </div>
