@@ -20,6 +20,11 @@ import { useTime } from "../../../hooks/useTime";
 import { useRestaurant } from "../../../hooks/useRestaurant";
 import { AuthContext } from "@/context/AuthContext";
 import { matchesEmployeeSearch } from "../../../utils/employeeSearch";
+import {
+  getStaffListStatus,
+  normalizeAccountStatus,
+  normalizeEmploymentStatus,
+} from "./staffStatus";
 
 // Import styles
 import "./StaffManagement.scss";
@@ -166,19 +171,19 @@ const StaffManagement = () => {
   const mappedStaff = useMemo(
     () =>
       filteredStaff.map((staff) => {
-        // ... (Giữ nguyên logic mapStaffToEmployee của bạn ở đây)
-        // Để code gọn, tôi tóm tắt lại logic map
-        const isInactive =
-          staff.status !== "active" ||
-          ["RESIGNED", "SUSPENDED"].includes(staff.employmentStatus);
-        const isOnLeave = staff.employmentStatus === "ON_LEAVE";
+        const accountStatus = normalizeAccountStatus(staff.status);
+        const employmentStatus = normalizeEmploymentStatus(
+          staff.employmentStatus,
+        );
         return {
           id: staff.id,
           name: staff.fullName,
           code: staff.employeeCode,
           role: staff.positionTitle || staff.role?.name || "N/A",
           department: staff.department,
-          status: isInactive ? "inactive" : isOnLeave ? "break" : "active",
+          status: getStaffListStatus({ accountStatus, employmentStatus }),
+          accountStatus,
+          employmentStatus,
           email: staff.email,
           phone: staff.phone,
           avatar: staff.avatarUrl,
@@ -309,16 +314,26 @@ const StaffManagement = () => {
     [openModal],
   );
 
-  useEffect(() => {
-    if (!selectedEmployee) return;
-    const stillVisible = mappedStaff.some(
-      (item) => item.id === selectedEmployee.id,
-    );
-    if (!stillVisible) setSelectedEmployee(null);
-  }, [mappedStaff, selectedEmployee]);
-
   const isLoading = staffListLoading || restaurantLoading;
   const isHeaderLoading = isLoading || pendingLeaveLoading;
+
+  useEffect(() => {
+    if (!selectedEmployee) return;
+    const nextSelectedEmployee = mappedStaff.find(
+      (item) => item.id === selectedEmployee.id,
+    );
+
+    if (nextSelectedEmployee) {
+      if (nextSelectedEmployee !== selectedEmployee) {
+        setSelectedEmployee(nextSelectedEmployee);
+      }
+      return;
+    }
+
+    if (!isLoading) {
+      setSelectedEmployee(null);
+    }
+  }, [isLoading, mappedStaff, selectedEmployee]);
 
   const mainContent = useMemo(() => {
     if (currentPage === "dashboard") {
@@ -344,6 +359,7 @@ const StaffManagement = () => {
     }
     if (currentPage === "leave") return <LeaveManagement />;
     if (currentPage === "schedule") return <SchedulePage />;
+    if (currentPage === "reports") return <StaffReportsPage />;
     return null;
   }, [
     currentDate,

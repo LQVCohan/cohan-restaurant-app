@@ -15,6 +15,10 @@ import {
   Award,
 } from "lucide-react";
 import "./EmployeeDetail.scss";
+import {
+  getStaffActionAvailability,
+  getStaffDetailStatusInfo,
+} from "../../staffStatus";
 
 const EmployeeDetail = ({
   employee,
@@ -27,7 +31,6 @@ const EmployeeDetail = ({
   onLockAccount,
   onUnlockAccount,
 }) => {
-  // --- EMPTY STATE ---
   if (!employee) {
     return (
       <div className="employee-detail-card empty">
@@ -42,22 +45,14 @@ const EmployeeDetail = ({
     );
   }
 
-  // --- HELPERS ---
   const getAvatarColor = (name) => {
     const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
     return colors[(name?.length || 0) % colors.length];
   };
 
-  const getStatusInfo = (status) => {
-    const map = {
-      active: { label: "Đang làm việc", color: "success" },
-      break: { label: "Nghỉ phép", color: "warning" },
-      inactive: { label: "Đã nghỉ/Khoá", color: "danger" },
-    };
-    return map[status] || map.active;
-  };
-
-  const statusInfo = getStatusInfo(employee.status);
+  const statusInfo = getStaffDetailStatusInfo(employee);
+  const { canSetOnLeave, canSetWorking, canLock, canUnlock } =
+    getStaffActionAvailability(employee);
   const resolvedBaseSalary =
     employee?.raw?.baseSalary ?? employee?.baseSalary ?? employee?.salary ?? null;
 
@@ -66,14 +61,8 @@ const EmployeeDetail = ({
       ? `${Number(resolvedBaseSalary).toLocaleString("vi-VN")} đ`
       : "Chưa thiết lập";
 
-  const canSetOnLeave = employee.status === "active";
-  const canSetWorking = employee.status === "break";
-  const canLock = employee.status !== "inactive";
-  const canUnlock = employee.status === "inactive";
-
   return (
     <div className="employee-detail-card fade-in">
-      {/* 1. PROFILE HEADER */}
       <div className="detail-header">
         <div className="cover-image"></div>
         <div className="header-content">
@@ -108,9 +97,7 @@ const EmployeeDetail = ({
         </div>
       </div>
 
-      {/* 2. SCROLLABLE CONTENT */}
       <div className="detail-body custom-scrollbar">
-        {/* Contact Section */}
         <div className="section">
           <h4 className="section-title">Thông tin liên hệ</h4>
           <div className="info-list">
@@ -123,7 +110,6 @@ const EmployeeDetail = ({
 
         <div className="divider" />
 
-        {/* Job Section */}
         <div className="section">
           <h4 className="section-title">Công việc & Lương</h4>
           <div className="info-list">
@@ -157,7 +143,6 @@ const EmployeeDetail = ({
           </div>
         </div>
 
-        {/* Performance Widget */}
         <div className="performance-widget">
           <div className="widget-header">
             <div className="title-box">
@@ -173,7 +158,6 @@ const EmployeeDetail = ({
         </div>
       </div>
 
-      {/* 3. FIXED FOOTER ACTIONS */}
       <div className="detail-footer">
         <div className="main-actions">
           <button
@@ -221,7 +205,7 @@ const EmployeeDetail = ({
             className="btn btn-secondary"
             onClick={() => onLockAccount?.(employee.id)}
             disabled={!canLock}
-            title="Khoá tài khoản"
+            title="Khóa tài khoản"
           >
             <span>🔒</span>
           </button>
@@ -229,7 +213,7 @@ const EmployeeDetail = ({
             className="btn btn-secondary"
             onClick={() => onUnlockAccount?.(employee.id)}
             disabled={!canUnlock}
-            title="Mở khoá tài khoản"
+            title="Mở khóa tài khoản"
           >
             <span>🔓</span>
           </button>
@@ -249,7 +233,6 @@ const EmployeeDetail = ({
   );
 };
 
-// Reusable Info Row Component
 const InfoRow = ({ icon, label, value, isLink, isHighlight }) => {
   const IconComponent = icon;
 

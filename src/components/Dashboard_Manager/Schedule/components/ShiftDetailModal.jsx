@@ -1,16 +1,16 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Modal from "../../../common/Modal";
 import "./ShiftDetailModal.scss";
 import {
-  Clock,
+  AlertTriangle,
   Calendar,
-  Trash2,
+  CheckCircle,
+  Clock,
   Plus,
   Search,
-  X,
-  AlertTriangle,
-  CheckCircle,
+  Trash2,
   UserMinus,
+  X,
 } from "lucide-react";
 import { shiftTypes, formatDate, getDayName } from "../utils/scheduleHelpers";
 
@@ -28,6 +28,7 @@ const ShiftDetailModal = ({
   onClose,
   shift,
   staffList,
+  readOnly = false,
   onRemoveStaff,
   onAddStaff,
   onDeleteShift,
@@ -37,45 +38,33 @@ const ShiftDetailModal = ({
   const [jobFilter, setJobFilter] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
 
-  // --- 1. SỬA LỖI: Tạo các biến an toàn để dùng trong Hooks ---
-  // Nếu shift là null, ta dùng mảng rỗng để tránh lỗi "reading properties of null"
   const shiftStaffIds = useMemo(() => shift?.staffIds || [], [shift?.staffIds]);
-  const shiftEssentialJobs = useMemo(
-    () => shift?.essentialJobs || [],
-    [shift?.essentialJobs],
-  );
+  const shiftEssentialJobs = useMemo(() => shift?.essentialJobs || [], [shift?.essentialJobs]);
 
-  // --- 2. SỬA LỖI: Gọi useMemo TRƯỚC khi return null ---
   const availableStaff = useMemo(() => {
-    if (!shift) return []; // Guard clause bên trong useMemo
+    if (!shift || readOnly) return [];
 
-    return staffList.filter((s) => {
-      // Dùng biến an toàn shiftStaffIds
-      const notInShift = !shiftStaffIds.includes(s.id);
-      const matchSearch = s.name.toLowerCase().includes(search.toLowerCase());
-      const matchJob = jobFilter ? s.job === jobFilter : true;
+    return staffList.filter((staff) => {
+      const notInShift = !shiftStaffIds.includes(staff.id);
+      const matchSearch = staff.name.toLowerCase().includes(search.toLowerCase());
+      const matchJob = jobFilter ? staff.job === jobFilter : true;
       return notInShift && matchSearch && matchJob;
     });
-  }, [staffList, shiftStaffIds, search, jobFilter, shift]); // Dependency safe
+  }, [jobFilter, readOnly, search, shift, shiftStaffIds, staffList]);
 
   useEffect(() => {
     setNoteDraft(shift?.notes || "");
   }, [shift]);
 
-  // --- 3. Return null NẾU không có dữ liệu (đặt sau Hooks) ---
   if (!isOpen || !shift) return null;
 
   const currentShiftType = shiftTypes[shift.shiftType];
-  const missingCount = Math.max(
-    0,
-    shiftEssentialJobs.length - shiftStaffIds.length
-  );
+  const missingCount = Math.max(0, shiftEssentialJobs.length - shiftStaffIds.length);
   const isComplete = missingCount === 0;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Chi Tiết Ca Làm Việc">
       <div className="shift-detail-content">
-        {/* 1. Header Summary */}
         <div className={`summary-card ${isComplete ? "success" : "warning"}`}>
           <div className="card-row">
             <div className="main-info">
@@ -87,17 +76,9 @@ const ShiftDetailModal = ({
                 </span>
               </div>
             </div>
-            <div
-              className={`status-badge ${isComplete ? "complete" : "missing"}`}
-            >
-              {isComplete ? (
-                <CheckCircle size={16} />
-              ) : (
-                <AlertTriangle size={16} />
-              )}
-              <span>
-                {isComplete ? "Đủ nhân sự" : `Thiếu ${missingCount} người`}
-              </span>
+            <div className={`status-badge ${isComplete ? "complete" : "missing"}`}>
+              {isComplete ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+              <span>{isComplete ? "Đủ nhân sự" : `Thiếu ${missingCount} người`}</span>
             </div>
           </div>
 
@@ -116,7 +97,6 @@ const ShiftDetailModal = ({
           </div>
         </div>
 
-        {/* 2. Assigned Staff Section */}
         <div className="section-block">
           <div className="section-header">
             <h4>Nhân viên trong ca ({shiftStaffIds.length})</h4>
@@ -125,8 +105,9 @@ const ShiftDetailModal = ({
           <div className="assigned-list">
             {shiftStaffIds.length > 0 ? (
               shiftStaffIds.map((staffId) => {
-                const person = staffList.find((s) => s.id === staffId);
+                const person = staffList.find((staff) => staff.id === staffId);
                 if (!person) return null;
+
                 return (
                   <div key={staffId} className="staff-row assigned">
                     <div className="info">
@@ -136,13 +117,15 @@ const ShiftDetailModal = ({
                         <span className="role">{person.job}</span>
                       </div>
                     </div>
-                    <button
-                      className="btn-icon remove"
-                      onClick={() => onRemoveStaff(shift.id, staffId)}
-                      title="Xóa khỏi ca"
-                    >
-                      <UserMinus size={18} />
-                    </button>
+                    {!readOnly && (
+                      <button
+                        className="btn-icon remove"
+                        onClick={() => onRemoveStaff(shift.id, staffId)}
+                        title="Xóa khỏi ca"
+                      >
+                        <UserMinus size={18} />
+                      </button>
+                    )}
                   </div>
                 );
               })
@@ -158,110 +141,105 @@ const ShiftDetailModal = ({
           </div>
           <textarea
             value={noteDraft}
-            onChange={(e) => setNoteDraft(e.target.value)}
+            onChange={(event) => setNoteDraft(event.target.value)}
             placeholder="Nhập ghi chú ca làm..."
             rows={2}
             style={{ width: "100%" }}
+            readOnly={readOnly}
+            disabled={readOnly}
           />
         </div>
 
-        {/* 3. Add Staff Section */}
-        <div className="section-block add-section">
-          <div className="section-header">
-            <h4>Thêm nhân sự</h4>
-            {(search || jobFilter) && (
-              <button
-                className="clear-filter"
-                onClick={() => {
-                  setSearch("");
-                  setJobFilter("");
-                }}
-              >
-                Xóa lọc
-              </button>
-            )}
-          </div>
-
-          <div className="filter-bar">
-            <div className="search-box">
-              <Search size={16} />
-              <input
-                placeholder="Tìm tên..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              {search && (
-                <X
-                  size={14}
-                  className="clear-icon"
-                  onClick={() => setSearch("")}
-                />
+        {!readOnly && (
+          <div className="section-block add-section">
+            <div className="section-header">
+              <h4>Thêm nhân sự</h4>
+              {(search || jobFilter) && (
+                <button
+                  className="clear-filter"
+                  onClick={() => {
+                    setSearch("");
+                    setJobFilter("");
+                  }}
+                >
+                  Xóa lọc
+                </button>
               )}
             </div>
-            <select
-              value={jobFilter}
-              onChange={(e) => setJobFilter(e.target.value)}
-              className="job-select"
-            >
-              <option value="">Tất cả vị trí</option>
-              {jobOptions.map((j) => (
-                <option key={j.value} value={j.value}>
-                  {j.label}
-                </option>
-              ))}
-            </select>
-          </div>
 
-          <div className="candidate-list">
-            {availableStaff.length > 0 ? (
-              availableStaff.map((person) => {
-                const isRecommended = shiftEssentialJobs.includes(person.job);
-                return (
-                  <div key={person.id} className="staff-row candidate">
-                    <div className="info">
-                      <div className="details">
-                        <span className="name">{person.name}</span>
-                        <div className="sub-row">
-                          <span className="role">{person.job}</span>
-                          {isRecommended && (
-                            <span className="tag-rec">Ưu tiên</span>
-                          )}
+            <div className="filter-bar">
+              <div className="search-box">
+                <Search size={16} />
+                <input
+                  placeholder="Tìm tên..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+                {search && (
+                  <X size={14} className="clear-icon" onClick={() => setSearch("")} />
+                )}
+              </div>
+              <select
+                value={jobFilter}
+                onChange={(event) => setJobFilter(event.target.value)}
+                className="job-select"
+              >
+                <option value="">Tất cả vị trí</option>
+                {jobOptions.map((job) => (
+                  <option key={job.value} value={job.value}>
+                    {job.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="candidate-list">
+              {availableStaff.length > 0 ? (
+                availableStaff.map((person) => {
+                  const isRecommended = shiftEssentialJobs.includes(person.job);
+                  return (
+                    <div key={person.id} className="staff-row candidate">
+                      <div className="info">
+                        <div className="details">
+                          <span className="name">{person.name}</span>
+                          <div className="sub-row">
+                            <span className="role">{person.job}</span>
+                            {isRecommended && <span className="tag-rec">Ưu tiên</span>}
+                          </div>
                         </div>
                       </div>
+                      <button className="btn-icon add" onClick={() => onAddStaff(shift.id, person.id)}>
+                        <Plus size={18} />
+                      </button>
                     </div>
-                    <button
-                      className="btn-icon add"
-                      onClick={() => onAddStaff(shift.id, person.id)}
-                    >
-                      <Plus size={18} />
-                    </button>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="empty-placeholder">Không tìm thấy nhân viên</div>
-            )}
+                  );
+                })
+              ) : (
+                <div className="empty-placeholder">Không tìm thấy nhân viên</div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* 4. Footer Actions */}
         <div className="modal-footer-actions">
-          <button
-            className="btn-close"
-            onClick={() => onUpdateNotes && onUpdateNotes(noteDraft)}
-          >
-            Lưu ghi chú
-          </button>
-          <button
-            className="btn-delete"
-            onClick={() => {
-              if (window.confirm("Bạn có chắc chắn muốn xóa ca này?"))
-                onDeleteShift(shift.id);
-            }}
-          >
-            <Trash2 size={16} />
-            Xóa Ca
-          </button>
+          {!readOnly && (
+            <>
+              <button className="btn-close" onClick={() => onUpdateNotes && onUpdateNotes(noteDraft)}>
+                Lưu ghi chú
+              </button>
+              <button
+                className="btn-delete"
+                onClick={() => {
+                  if (window.confirm("Bạn có chắc chắn muốn xóa ca này?")) {
+                    onDeleteShift(shift.id);
+                  }
+                }}
+              >
+                <Trash2 size={16} />
+                Xóa Ca
+              </button>
+            </>
+          )}
           <button className="btn-close" onClick={onClose}>
             Đóng
           </button>

@@ -1,360 +1,359 @@
-import React, { useState, useEffect } from "react";
-import Modal from "../../../common/Modal"; // Đảm bảo import đúng đường dẫn Base Modal mới
-import "./AutoScheduleModal.scss";
+import React from "react";
+import Modal from "../../../common/Modal";
 import {
-  Calendar,
-  Settings,
-  Zap,
-  ChevronDown,
-  ChevronUp,
   AlertTriangle,
-  ShieldCheck,
-  Users,
+  CalendarRange,
   CheckCircle2,
+  Clock3,
+  Info,
+  Settings2,
+  Sparkles,
+  Users,
 } from "lucide-react";
 
-const AutoScheduleModal = ({ isOpen, onClose, onConfirm }) => {
-  // --- STATE ---
-  const [config, setConfig] = useState({
-    startDate: new Date().toISOString().split("T")[0],
-    endDate: new Date(new Date().setDate(new Date().getDate() + 6))
-      .toISOString()
-      .split("T")[0],
-    strategy: "balanced", // balanced | cost | quality
-    // Advanced Constraints
-    fillEmpty: true,
-    avoidOvertime: true,
-    respectAvailability: true,
-    prioritizeFullTime: false,
-  });
+import "./AutoScheduleModal.scss";
 
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [logs, setLogs] = useState([]);
+const SHIFT_LABELS = {
+  morning: "Ca sáng",
+  afternoon: "Ca chiều",
+  evening: "Ca tối",
+  full_day: "Cả ngày",
+  rotating: "Luân phiên",
+};
 
-  // --- EFFECT: RESET ON OPEN ---
-  useEffect(() => {
-    if (isOpen) {
-      setIsProcessing(false);
-      setProgress(0);
-      setLogs([]);
-      setShowAdvanced(false);
-    }
-  }, [isOpen]);
+const compactNumber = (value) =>
+  new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(Number(value || 0));
 
-  // --- HANDLER: RUN SIMULATION ---
-  const handleRun = () => {
-    setIsProcessing(true);
-    setProgress(0);
-    setLogs([]);
+const severityLabel = (severity) => {
+  if (severity === "high") return "Cao";
+  if (severity === "medium") return "Trung bình";
+  return "Thấp";
+};
 
-    const processSteps = [
-      { pct: 10, msg: "Đang kết nối cơ sở dữ liệu nhân sự..." },
-      { pct: 30, msg: "Phân tích yêu cầu ca làm việc..." },
-      { pct: 50, msg: "Kiểm tra đơn xin nghỉ phép & tính khả dụng..." },
-      { pct: 70, msg: "Tối ưu hóa chi phí theo chiến lược..." },
-      { pct: 85, msg: "Kiểm tra ràng buộc tăng ca (Overtime)..." },
-      { pct: 95, msg: "Đang hoàn tất và xuất bản lịch..." },
-    ];
+const statusLabel = (status) => {
+  if (status === "understaffed") return "Thiếu người";
+  if (status === "overstaffed") return "Dư người";
+  return "Cân bằng";
+};
 
-    let currentStepIndex = 0;
-
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            onConfirm(config);
-            onClose();
-          }, 800);
-          return 100;
-        }
-
-        const nextPct = prev + Math.floor(Math.random() * 8) + 2;
-
-        if (
-          currentStepIndex < processSteps.length &&
-          nextPct >= processSteps[currentStepIndex].pct
-        ) {
-          setLogs((prevLogs) => [
-            ...prevLogs,
-            processSteps[currentStepIndex].msg,
-          ]);
-          currentStepIndex++;
-        }
-
-        return Math.min(nextPct, 100);
-      });
-    }, 150);
-  };
-
-  // --- FOOTER RENDER ---
-  // Chỉ hiển thị nút khi KHÔNG xử lý. Khi xử lý thì ẩn footer đi.
-  const footerContent = !isProcessing ? (
-    <>
-      <button className="btn btn--secondary" onClick={onClose}>
-        Hủy bỏ
-      </button>
-      <button className="btn btn--primary" onClick={handleRun}>
-        <Zap size={16} fill="currentColor" style={{ marginRight: "8px" }} />
-        Bắt đầu xếp lịch
-      </button>
-    </>
-  ) : null;
+const AutoScheduleModal = ({
+  isOpen,
+  onClose,
+  config,
+  onConfigChange,
+  onGenerate,
+  generating = false,
+  generateError = "",
+  assistantMeta = null,
+  assistantSummary = null,
+  preview = null,
+  selectedShiftKeys = {},
+  onToggleShift,
+  onApply,
+  applying = false,
+}) => {
+  const previewItems = preview?.items || [];
+  const selectedCount = previewItems.filter((item) => selectedShiftKeys[item.shiftKey]).length;
+  const applicableCount = previewItems.filter((item) => item.canApply).length;
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={!isProcessing ? onClose : undefined} // Không cho đóng khi đang chạy
-      title="AI Auto Schedule"
-      size="md"
-      footer={footerContent}
-      className="auto-schedule-modal" // Class scope cho nội dung
-    >
-      <div className="auto-schedule-body">
-        {!isProcessing ? (
-          /* --- VIEW 1: CONFIGURATION FORM --- */
-          <>
-            {/* 1. Intro Banner */}
-            <div className="ai-banner">
-              <div className="ai-icon">
-                <Zap size={24} fill="currentColor" />
-              </div>
-              <div className="ai-text">
-                <strong>Trợ lý xếp lịch thông minh</strong>
-                <p>
-                  Hệ thống tự động phân bổ nhân sự tối ưu dựa trên KPI, chi phí
-                  và luật lao động.
-                </p>
-              </div>
-            </div>
+    <Modal isOpen={isOpen} onClose={!generating && !applying ? onClose : undefined} size="xl">
+      <Modal.Header>Chia ca tự động</Modal.Header>
 
-            {/* 2. Date Range */}
-            <div className="section-group">
-              <div className="group-header">
-                <Calendar size={18} className="icon-blue" />
-                <span>Phạm vi thời gian</span>
-              </div>
-              <div className="date-inputs">
-                <div className="input-wrap">
-                  <span className="label">Từ ngày</span>
-                  <input
-                    type="date"
-                    value={config.startDate}
-                    onChange={(e) =>
-                      setConfig({ ...config, startDate: e.target.value })
-                    }
-                  />
-                </div>
-                <span className="arrow">➝</span>
-                <div className="input-wrap">
-                  <span className="label">Đến ngày</span>
-                  <input
-                    type="date"
-                    value={config.endDate}
-                    onChange={(e) =>
-                      setConfig({ ...config, endDate: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
+      <Modal.Body className="auto-schedule-body">
+        <div className="auto-banner">
+          <div className="banner-icon">
+            <Sparkles size={20} />
+          </div>
+          <div className="banner-copy">
+            <strong>Scheduling assistant dùng dữ liệu thật từ backend</strong>
+            <p>
+              Hệ thống phân tích forecast, staff, lịch hiện có rồi tạo preview trước khi áp dụng.
+              Luồng này chỉ bổ sung ca còn thiếu, không tự xóa lịch đang có.
+            </p>
+          </div>
+        </div>
 
-            {/* 3. Strategy Selector */}
-            <div className="section-group">
-              <div className="group-header">
-                <Settings size={18} className="icon-blue" />
-                <span>Chiến lược ưu tiên</span>
-              </div>
-              <div className="strategy-options">
-                {[
-                  {
-                    id: "balanced",
-                    icon: "⚖️",
-                    title: "Cân bằng",
-                    desc: "Hài hòa chi phí & vận hành",
-                  },
-                  {
-                    id: "cost",
-                    icon: "💰",
-                    title: "Tiết kiệm",
-                    desc: "Tối ưu chi phí lương",
-                  },
-                  {
-                    id: "quality",
-                    icon: "⭐",
-                    title: "Chất lượng",
-                    desc: "Ưu tiên nhân sự giỏi",
-                  },
-                ].map((opt) => (
-                  <div
-                    key={opt.id}
-                    className={`strategy-item ${
-                      config.strategy === opt.id ? "active" : ""
-                    }`}
-                    onClick={() => setConfig({ ...config, strategy: opt.id })}
-                  >
-                    <div className="header-row">
-                      <span className="icon">{opt.icon}</span>
-                      <div className="radio-circle"></div>
-                    </div>
-                    <span className="title">{opt.title}</span>
-                    <span className="desc">{opt.desc}</span>
-                  </div>
-                ))}
-              </div>
+        <div className="auto-config-grid">
+          <div className="config-card">
+            <div className="config-head">
+              <CalendarRange size={16} />
+              <span>Phạm vi assistant</span>
             </div>
-
-            {/* 4. Advanced Settings (Collapsible) */}
-            <div className={`advanced-section ${showAdvanced ? "open" : ""}`}>
-              <div
-                className="advanced-toggle"
-                onClick={() => setShowAdvanced(!showAdvanced)}
+            <label>
+              <span>Số ngày tới</span>
+              <select
+                value={config.horizonDays}
+                onChange={(event) =>
+                  onConfigChange({
+                    ...config,
+                    horizonDays: Number(event.target.value),
+                  })
+                }
+                disabled={generating || applying}
               >
-                <span>Cấu hình nâng cao & Ràng buộc</span>
-                {showAdvanced ? (
-                  <ChevronUp size={16} />
-                ) : (
-                  <ChevronDown size={16} />
-                )}
-              </div>
-
-              {showAdvanced && (
-                <div className="advanced-panel">
-                  {/* Switch: Overtime */}
-                  <label className="switch-row">
-                    <div className="label-text">
-                      <ShieldCheck size={18} className="text-indigo" />
-                      <div className="text-col">
-                        <strong>Tránh tăng ca (Overtime)</strong>
-                        <span>Giới hạn tối đa 40h/tuần/người</span>
-                      </div>
-                    </div>
-                    <div
-                      className={`switch-control ${
-                        config.avoidOvertime ? "checked" : ""
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        hidden
-                        checked={config.avoidOvertime}
-                        onChange={(e) =>
-                          setConfig({
-                            ...config,
-                            avoidOvertime: e.target.checked,
-                          })
-                        }
-                      />
-                      <div className="switch-circle"></div>
-                    </div>
-                  </label>
-
-                  {/* Switch: Availability */}
-                  <label className="switch-row">
-                    <div className="label-text">
-                      <AlertTriangle size={18} className="text-orange" />
-                      <div className="text-col">
-                        <strong>Tôn trọng lịch nghỉ</strong>
-                        <span>Không xếp vào ngày phép/bận</span>
-                      </div>
-                    </div>
-                    <div
-                      className={`switch-control ${
-                        config.respectAvailability ? "checked" : ""
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        hidden
-                        checked={config.respectAvailability}
-                        onChange={(e) =>
-                          setConfig({
-                            ...config,
-                            respectAvailability: e.target.checked,
-                          })
-                        }
-                      />
-                      <div className="switch-circle"></div>
-                    </div>
-                  </label>
-
-                  {/* Switch: Full-time */}
-                  <label className="switch-row">
-                    <div className="label-text">
-                      <Users size={18} className="text-green" />
-                      <div className="text-col">
-                        <strong>Ưu tiên Full-time</strong>
-                        <span>Xếp lịch cho NV chính thức trước</span>
-                      </div>
-                    </div>
-                    <div
-                      className={`switch-control ${
-                        config.prioritizeFullTime ? "checked" : ""
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        hidden
-                        checked={config.prioritizeFullTime}
-                        onChange={(e) =>
-                          setConfig({
-                            ...config,
-                            prioritizeFullTime: e.target.checked,
-                          })
-                        }
-                      />
-                      <div className="switch-circle"></div>
-                    </div>
-                  </label>
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          /* --- VIEW 2: PROCESSING STATE --- */
-          <div className="processing-view">
-            <div className="circular-progress-container">
-              <svg viewBox="0 0 36 36" className="circular-chart">
-                <path
-                  className="circle-bg"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                <path
-                  className="circle"
-                  strokeDasharray={`${progress}, 100`}
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-              </svg>
-              <div className="percentage">
-                <span className="number">{progress}%</span>
-              </div>
-            </div>
-
-            <h3 className="process-title">AI đang tối ưu hóa lịch trình...</h3>
-            <p className="process-subtitle">Vui lòng không tắt trình duyệt</p>
-
-            <div className="terminal-logs">
-              <div className="log-header">
-                <span className="dot red"></span>
-                <span className="dot yellow"></span>
-                <span className="dot green"></span>
-                <span className="title">System Logs</span>
-              </div>
-              <div className="log-content">
-                {logs.map((log, idx) => (
-                  <div key={idx} className="log-line">
-                    <CheckCircle2 size={12} className="tick" />
-                    <span className="text">{log}</span>
-                  </div>
+                {[1, 2, 3, 4, 5, 6, 7].map((value) => (
+                  <option key={value} value={value}>
+                    {value} ngày
+                  </option>
                 ))}
-                <div className="log-line blinking">_</div>
-              </div>
+              </select>
+            </label>
+            <p className="config-hint">
+              Backend assistant hiện hỗ trợ phân tích từ hôm nay tới tối đa 7 ngày tiếp theo.
+            </p>
+          </div>
+
+          <div className="config-card">
+            <div className="config-head">
+              <Clock3 size={16} />
+              <span>Giới hạn giờ làm</span>
+            </div>
+            <label>
+              <span>Giờ tối đa mỗi tuần</span>
+              <input
+                type="number"
+                min="1"
+                max="80"
+                value={config.weeklyHoursCap}
+                onChange={(event) =>
+                  onConfigChange({
+                    ...config,
+                    weeklyHoursCap: Number(event.target.value || 40),
+                  })
+                }
+                disabled={generating || applying}
+              />
+            </label>
+            <p className="config-hint">
+              Preview và apply sẽ chặn nhân sự vượt ngưỡng giờ/tuần này.
+            </p>
+          </div>
+
+          <div className="config-card">
+            <div className="config-head">
+              <Settings2 size={16} />
+              <span>Ràng buộc áp dụng</span>
+            </div>
+            <label className="toggle-row">
+              <span>Tôn trọng nghỉ phép / ngày nghỉ</span>
+              <input
+                type="checkbox"
+                checked={config.respectAvailability}
+                onChange={(event) =>
+                  onConfigChange({
+                    ...config,
+                    respectAvailability: event.target.checked,
+                  })
+                }
+                disabled={generating || applying}
+              />
+            </label>
+            <label className="toggle-row">
+              <span>Chặn vượt giờ tuần</span>
+              <input
+                type="checkbox"
+                checked={config.avoidOvertime}
+                onChange={(event) =>
+                  onConfigChange({
+                    ...config,
+                    avoidOvertime: event.target.checked,
+                  })
+                }
+                disabled={generating || applying}
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="auto-actions-strip">
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={onGenerate}
+            disabled={generating || applying}
+          >
+            <Sparkles size={16} />
+            {generating ? "Đang phân tích..." : "Phân tích & tạo preview"}
+          </button>
+          {assistantMeta ? (
+            <div className="assistant-meta">
+              <span className={`meta-pill ${assistantMeta.fallbackUsed ? "fallback" : "forecast"}`}>
+                {assistantMeta.fallbackUsed ? "Fallback demand" : "Forecast demand"}
+              </span>
+              <span>TZ: {assistantMeta.timezone}</span>
+            </div>
+          ) : null}
+        </div>
+
+        {generateError ? (
+          <div className="auto-state error">
+            <AlertTriangle size={18} />
+            <span>{generateError}</span>
+          </div>
+        ) : null}
+
+        {!generateError && generating ? (
+          <div className="auto-state loading">
+            <Sparkles size={18} />
+            <span>Đang gọi scheduling assistant và kiểm tra xung đột lịch thật...</span>
+          </div>
+        ) : null}
+
+        {!generating && assistantSummary ? (
+          <div className="summary-grid">
+            <div className="summary-card">
+              <span className="label">Nhóm ca phân tích</span>
+              <strong>{compactNumber(assistantSummary.totalShiftGroups)}</strong>
+            </div>
+            <div className="summary-card warning">
+              <span className="label">Ca thiếu người</span>
+              <strong>{compactNumber(assistantSummary.underStaffedShifts)}</strong>
+            </div>
+            <div className="summary-card success">
+              <span className="label">Phân công tạo được</span>
+              <strong>{compactNumber(preview?.summary?.recommendedAssignments)}</strong>
+            </div>
+            <div className="summary-card muted">
+              <span className="label">Bị chặn bởi guard</span>
+              <strong>{compactNumber(preview?.summary?.blockedAssignments)}</strong>
             </div>
           </div>
-        )}
-      </div>
+        ) : null}
+
+        {!generating && preview && !previewItems.length ? (
+          <div className="auto-state empty">
+            <Info size={18} />
+            <span>Assistant chưa có gợi ý nào trong phạm vi hiện tại.</span>
+          </div>
+        ) : null}
+
+        {!generating && previewItems.length ? (
+          <div className="preview-list">
+            <div className="preview-head">
+              <div>
+                <h4>Preview phân ca</h4>
+                <p>
+                  Chọn các ca muốn áp dụng. Chỉ những ca có nhân sự hợp lệ sau khi qua guard mới được
+                  bật chọn.
+                </p>
+              </div>
+              <div className="preview-stats">
+                <span>
+                  <Users size={14} />
+                  {selectedCount}/{applicableCount} ca sẵn sàng áp dụng
+                </span>
+              </div>
+            </div>
+
+            {previewItems.map((item) => (
+              <div key={item.shiftKey} className={`preview-item ${item.canApply ? "" : "blocked"}`}>
+                <label className="preview-toggle">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(selectedShiftKeys[item.shiftKey])}
+                    onChange={() => onToggleShift(item.shiftKey)}
+                    disabled={!item.canApply || applying}
+                  />
+                  <div className="preview-main">
+                    <div className="preview-title-row">
+                      <div>
+                        <strong>{SHIFT_LABELS[item.shiftType] || item.shiftType}</strong>
+                        <span>
+                          {item.date} • {statusLabel(item.status)} • độ tin cậy {compactNumber(item.confidence * 100)}
+                          %
+                        </span>
+                      </div>
+                      <div className={`severity-pill ${item.severity || "low"}`}>
+                        {severityLabel(item.severity)}
+                      </div>
+                    </div>
+
+                    <div className="preview-meta-row">
+                      <span>Thiếu {compactNumber(item.missingHeadcount)} người</span>
+                      <span>Hiện có {compactNumber(item.currentAssignedStaff)}</span>
+                      <span>Đề xuất tổng {compactNumber(item.recommendedTotalStaff)}</span>
+                    </div>
+
+                    <div className="preview-role-list">
+                      {(item.recommendedRoles || [])
+                        .filter((role) => Number(role.delta || 0) < 0)
+                        .map((role) => (
+                          <span key={`${item.shiftKey}-${role.role}`} className="role-pill">
+                            {role.role} x{Math.abs(Number(role.delta || 0))}
+                          </span>
+                        ))}
+                    </div>
+
+                    <div className="assignment-block">
+                      <h5>Nhân sự dự kiến áp dụng</h5>
+                      {(item.plannedAssignments || []).length ? (
+                        <ul>
+                          {item.plannedAssignments.map((assignment) => (
+                            <li key={`${item.shiftKey}-${assignment.staffId}`}>
+                              <CheckCircle2 size={14} />
+                              <div>
+                                <strong>
+                                  {assignment.fullName} • {assignment.role}
+                                </strong>
+                                <span>
+                                  {assignment.reason}. Giờ tuần sau áp dụng:{" "}
+                                  {compactNumber(assignment.projectedWeekHours)}h
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="note-line">Không còn ứng viên hợp lệ sau bước kiểm tra xung đột.</div>
+                      )}
+                    </div>
+
+                    {(item.blockedCandidates || []).length ? (
+                      <div className="assignment-block warning">
+                        <h5>Ứng viên bị chặn</h5>
+                        <ul>
+                          {item.blockedCandidates.slice(0, 4).map((candidate) => (
+                            <li key={`${item.shiftKey}-${candidate.staffId}`}>
+                              <AlertTriangle size={14} />
+                              <div>
+                                <strong>
+                                  {candidate.fullName} • {candidate.role}
+                                </strong>
+                                <span>{candidate.reason}</span>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {item.unresolvedCount > 0 ? (
+                      <div className="note-line danger">
+                        Vẫn còn thiếu {item.unresolvedCount} người sau khi áp dụng các gợi ý hợp lệ.
+                      </div>
+                    ) : null}
+                  </div>
+                </label>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </Modal.Body>
+
+      <Modal.Footer className="auto-schedule-footer">
+        <button type="button" className="btn-secondary" onClick={onClose} disabled={generating || applying}>
+          Đóng
+        </button>
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={onApply}
+          disabled={generating || applying || selectedCount === 0}
+        >
+          {applying ? "Đang áp dụng..." : `Áp dụng ${selectedCount} ca đã chọn`}
+        </button>
+      </Modal.Footer>
     </Modal>
   );
 };

@@ -1,7 +1,7 @@
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { useMemo } from "react";
 
-const QUERY_ATTENDANCE_PAGE = gql`
+export const QUERY_ATTENDANCE_PAGE = gql`
   query AttendancePageData(
     $startDate: DateTime!
     $endDate: DateTime!
@@ -15,7 +15,6 @@ const QUERY_ATTENDANCE_PAGE = gql`
       positionTitle
       roleName
       avatarUrl
-      avatar
       primaryRestaurant {
         id
       }

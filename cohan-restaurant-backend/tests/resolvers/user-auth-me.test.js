@@ -4,6 +4,7 @@ const modelMocks = vi.hoisted(() => ({
   User: {
     findById: vi.fn(),
     findOne: vi.fn(),
+    findByIdAndUpdate: vi.fn(),
   },
   Role: {},
   Customer: {},
@@ -89,5 +90,42 @@ describe('User resolvers integration', () => {
 
     expect(result.user.roleName).toBe('manager');
     expect(typeof result.token).toBe('string');
+  });
+
+  it('setUserStatus reloads the updated user with populated staff relations', async () => {
+    const updatedUser = {
+      _id: '67a1f8f6a2df3b17f0c12345',
+      status: 'blocked',
+    };
+    const hydratedUser = {
+      _id: updatedUser._id,
+      status: 'blocked',
+      role: { slug: 'staff' },
+      refRestaurants: [{ id: 'r1', name: 'Main branch' }],
+      primaryRestaurant: { id: 'r1', name: 'Main branch' },
+    };
+
+    modelMocks.User.findByIdAndUpdate.mockReturnValue({
+      lean: async () => updatedUser,
+    });
+    modelMocks.User.findById.mockReturnValue({
+      populate: vi.fn().mockReturnThis(),
+      lean: async () => hydratedUser,
+    });
+
+    const { UserMutation } = await import('../../graphql/resolvers/user/mutation.js');
+    const result = await UserMutation.setUserStatus(
+      null,
+      { userId: updatedUser._id, status: 'blocked' },
+      { user: { roleName: 'manager' } },
+    );
+
+    expect(modelMocks.User.findByIdAndUpdate).toHaveBeenCalledWith(
+      updatedUser._id,
+      { status: 'blocked' },
+      { new: true },
+    );
+    expect(modelMocks.User.findById).toHaveBeenCalledWith(updatedUser._id);
+    expect(result).toEqual(hydratedUser);
   });
 });

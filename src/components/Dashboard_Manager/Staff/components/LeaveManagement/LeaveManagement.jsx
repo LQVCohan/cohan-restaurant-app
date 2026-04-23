@@ -29,6 +29,8 @@ const LeaveManagement = () => {
         staffList={staffList}
         onSubmit={submitLeaveRequest}
         disabled={isMutating}
+        loading={loading}
+        error={error}
       />
       <LeaveRequestsList
         requests={leaveRequests}

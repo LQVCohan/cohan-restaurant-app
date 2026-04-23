@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { matchesEmployeeSearch } from "../../../../../utils/employeeSearch";
 import "./LeaveRequestForm.scss";
 
 const leaveTypes = [
@@ -9,36 +10,78 @@ const leaveTypes = [
   { value: "MATERNITY", label: "Nghỉ thai sản", icon: "🤱" },
   { value: "COMPENSATORY", label: "Nghỉ bù", icon: "🔁" },
   { value: "HOLIDAY", label: "Nghỉ lễ/tết", icon: "🎉" },
-  { value: "HALF_DAY", label: "Nghỉ nửa ngày", icon: "🌓" },
+  { value: "HALF_DAY", label: "Nghỉ nửa ngày", icon: "🌗" },
 ];
 
 const isManagerStaff = (staff) => {
   const roleText = `${staff?.positionTitle || ""} ${staff?.roleName || ""}`.toLowerCase();
-  return staff?.department === "management" || roleText.includes("manager") || roleText.includes("quản lý");
+  return (
+    staff?.department === "management" ||
+    roleText.includes("manager") ||
+    roleText.includes("quản lý")
+  );
 };
 
-const LeaveRequestForm = ({ onSubmit, staffList = [], disabled = false }) => {
-  const [formData, setFormData] = useState({
-    employee: "",
-    backupPerson: "",
-    leaveType: "",
-    startDate: "",
-    startSession: "FULL",
-    endDate: "",
-    endSession: "FULL",
-    reason: "",
-  });
+const initialFormData = {
+  employee: "",
+  backupPerson: "",
+  leaveType: "",
+  startDate: "",
+  startSession: "FULL",
+  endDate: "",
+  endSession: "FULL",
+  reason: "",
+};
+
+const LeaveRequestForm = ({
+  onSubmit,
+  staffList = [],
+  disabled = false,
+  loading = false,
+  error = null,
+}) => {
+  const [formData, setFormData] = useState(initialFormData);
+  const [employeeSearch, setEmployeeSearch] = useState("");
   const [errors, setErrors] = useState({});
 
   const selectedEmployee = useMemo(
     () => staffList.find((item) => item.id === formData.employee),
-    [staffList, formData.employee]
+    [formData.employee, staffList]
   );
+
+  const requiresReplacementManager = useMemo(
+    () => isManagerStaff(selectedEmployee),
+    [selectedEmployee]
+  );
+
+  const filteredStaffList = useMemo(() => {
+    const matched = staffList.filter((item) => matchesEmployeeSearch(item, employeeSearch));
+    if (selectedEmployee && !matched.some((item) => item.id === selectedEmployee.id)) {
+      return [selectedEmployee, ...matched];
+    }
+    return matched;
+  }, [employeeSearch, selectedEmployee, staffList]);
 
   const managerCandidates = useMemo(
     () => staffList.filter((item) => isManagerStaff(item) && item.id !== formData.employee),
     [formData.employee, staffList]
   );
+
+  const hasStaffList = staffList.length > 0;
+  const hasEmployeeMatches = filteredStaffList.length > 0;
+
+  useEffect(() => {
+    if (!formData.backupPerson) return;
+    if (!requiresReplacementManager) {
+      setFormData((prev) => ({ ...prev, backupPerson: "" }));
+      return;
+    }
+
+    const isValidBackup = managerCandidates.some((item) => item.id === formData.backupPerson);
+    if (!isValidBackup) {
+      setFormData((prev) => ({ ...prev, backupPerson: "" }));
+    }
+  }, [formData.backupPerson, managerCandidates, requiresReplacementManager]);
 
   const totalDays = useMemo(() => {
     if (!formData.startDate || !formData.endDate) return 0;
@@ -55,7 +98,16 @@ const LeaveRequestForm = ({ onSubmit, staffList = [], disabled = false }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleEmployeeSearchChange = (e) => {
+    setEmployeeSearch(e.target.value);
+    if (errors.employee) {
+      setErrors((prev) => ({ ...prev, employee: "" }));
+    }
   };
 
   const validateForm = () => {
@@ -69,7 +121,7 @@ const LeaveRequestForm = ({ onSubmit, staffList = [], disabled = false }) => {
       next.endDate = "Ngày kết thúc không hợp lệ";
     }
 
-    if (isManagerStaff(selectedEmployee)) {
+    if (requiresReplacementManager) {
       if (!formData.backupPerson) {
         next.backupPerson = "Quản lý xin nghỉ phải chọn quản lý thay thế";
       }
@@ -86,16 +138,8 @@ const LeaveRequestForm = ({ onSubmit, staffList = [], disabled = false }) => {
   };
 
   const resetForm = () => {
-    setFormData({
-      employee: "",
-      backupPerson: "",
-      leaveType: "",
-      startDate: "",
-      startSession: "FULL",
-      endDate: "",
-      endSession: "FULL",
-      reason: "",
-    });
+    setFormData(initialFormData);
+    setEmployeeSearch("");
     setErrors({});
   };
 
@@ -111,7 +155,7 @@ const LeaveRequestForm = ({ onSubmit, staffList = [], disabled = false }) => {
       selectedEmployee?.primaryRestaurant?.id || selectedEmployee?.primaryRestaurantId;
 
     if (!restaurantId) {
-      alert("❌ Không xác định được nhà hàng của nhân sự.");
+      alert("Không xác định được nhà hàng của nhân sự.");
       return;
     }
 
@@ -125,12 +169,14 @@ const LeaveRequestForm = ({ onSubmit, staffList = [], disabled = false }) => {
         startSession: formData.startSession,
         endSession: formData.endSession,
         reason: formData.reason.trim(),
-        replacementManagerId: formData.backupPerson || undefined,
+        ...(requiresReplacementManager && formData.backupPerson
+          ? { replacementManagerId: formData.backupPerson }
+          : {}),
       });
-      alert("✅ Đã tạo đơn nghỉ phép và lưu database.");
+      alert("Đã tạo đơn nghỉ phép và lưu database.");
       resetForm();
-    } catch (error) {
-      alert(`❌ Tạo đơn thất bại: ${error?.message || "Unknown error"}`);
+    } catch (submitError) {
+      alert(`Tạo đơn thất bại: ${submitError?.message || "Unknown error"}`);
     }
   };
 
@@ -146,29 +192,79 @@ const LeaveRequestForm = ({ onSubmit, staffList = [], disabled = false }) => {
           <div className="form-row two-col">
             <div className="form-group">
               <label>Người làm đơn *</label>
-              <select name="employee" value={formData.employee} onChange={handleChange}>
+              <input
+                type="search"
+                value={employeeSearch}
+                onChange={handleEmployeeSearchChange}
+                placeholder="Tìm theo tên hoặc mã nhân viên"
+                className="employee-search-input"
+                aria-label="Tìm nhân viên"
+                data-testid="leave-employee-search"
+                disabled={disabled || (!hasStaffList && loading)}
+              />
+              <select
+                name="employee"
+                value={formData.employee}
+                onChange={handleChange}
+                aria-label="Người làm đơn"
+                data-testid="leave-employee-select"
+                disabled={disabled || !hasStaffList}
+              >
                 <option value="">-- Chọn nhân viên --</option>
-                {staffList.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    [{e.employeeCode || "--"}] {e.fullName}
+                {filteredStaffList.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    [{employee.employeeCode || "--"}] {employee.fullName}
                   </option>
                 ))}
               </select>
+              {loading && !hasStaffList && (
+                <span className="hint state-msg">Đang tải danh sách nhân viên từ dữ liệu thật...</span>
+              )}
+              {error && !hasStaffList && (
+                <span className="err-msg state-msg">
+                  Không tải được danh sách nhân viên: {error.message}
+                </span>
+              )}
+              {!loading && !error && !hasStaffList && (
+                <span className="hint state-msg">Chưa có nhân viên nào trong danh sách.</span>
+              )}
+              {hasStaffList && employeeSearch && !hasEmployeeMatches && (
+                <span className="hint state-msg">
+                  Không tìm thấy nhân viên phù hợp với từ khóa đã nhập.
+                </span>
+              )}
               {errors.employee && <span className="err-msg">{errors.employee}</span>}
             </div>
 
-            <div className="form-group">
-              <label>Quản lý thay thế</label>
-              <select name="backupPerson" value={formData.backupPerson} onChange={handleChange}>
-                <option value="">-- Chọn quản lý thay thế --</option>
-                {managerCandidates.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    [{m.employeeCode || "--"}] {m.fullName}
-                  </option>
-                ))}
-              </select>
-              {errors.backupPerson && <span className="err-msg">{errors.backupPerson}</span>}
-            </div>
+            {requiresReplacementManager && (
+              <div className="form-group">
+                <label>Quản lý thay thế *</label>
+                <select
+                  name="backupPerson"
+                  value={formData.backupPerson}
+                  onChange={handleChange}
+                  aria-label="Quản lý thay thế"
+                  data-testid="leave-replacement-select"
+                  disabled={disabled || managerCandidates.length === 0}
+                >
+                  <option value="">-- Chọn quản lý thay thế --</option>
+                  {managerCandidates.map((manager) => (
+                    <option key={manager.id} value={manager.id}>
+                      [{manager.employeeCode || "--"}] {manager.fullName}
+                    </option>
+                  ))}
+                </select>
+                <span className="hint">
+                  Chỉ nhân sự quản lý xin nghỉ mới cần chọn người thay thế.
+                </span>
+                {managerCandidates.length === 0 && (
+                  <span className="err-msg state-msg">
+                    Chưa có quản lý thay thế hợp lệ cho nhân sự này.
+                  </span>
+                )}
+                {errors.backupPerson && <span className="err-msg">{errors.backupPerson}</span>}
+              </div>
+            )}
           </div>
         </div>
 
@@ -229,7 +325,7 @@ const LeaveRequestForm = ({ onSubmit, staffList = [], disabled = false }) => {
           </div>
 
           <div className="total-days-bar">
-            <span>📅 Tổng số ngày nghỉ dự kiến:</span>
+            <span>📆 Tổng số ngày nghỉ dự kiến:</span>
             <span className="days-count">{totalDays} ngày</span>
           </div>
         </div>
@@ -252,7 +348,7 @@ const LeaveRequestForm = ({ onSubmit, staffList = [], disabled = false }) => {
           <button type="button" className="btn btn-secondary" onClick={resetForm} disabled={disabled}>
             Hủy
           </button>
-          <button type="submit" className="btn btn-primary" disabled={disabled}>
+          <button type="submit" className="btn btn-primary" disabled={disabled || !hasStaffList}>
             Gửi Đơn
           </button>
         </div>

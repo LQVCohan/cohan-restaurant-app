@@ -1,0 +1,474 @@
+import { format, startOfWeek } from "date-fns";
+
+import { shiftTypes } from "./scheduleHelpers";
+
+const ROLE_BY_DEPARTMENT = {
+  management: "host",
+  kitchen: "cook",
+  service: "waiter",
+  cashier: "cashier",
+  cleaning: "cleaner",
+  delivery: "waiter",
+};
+
+const SHIFT_ORDER = {
+  morning: 0,
+  afternoon: 1,
+  evening: 2,
+  full_day: 3,
+  rotating: 4,
+};
+
+const DAY_KEYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+const formatYmd = (value) => format(new Date(value), "yyyy-MM-dd");
+
+const toValidDate = (value) => {
+  const date = value instanceof Date ? new Date(value) : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
+
+const getShiftSortOrder = (shiftType) => SHIFT_ORDER[String(shiftType || "").toLowerCase()] ?? 99;
+
+export const mapDepartmentToJob = (department) =>
+  ROLE_BY_DEPARTMENT[String(department || "").toLowerCase()] || "waiter";
+
+export const calculateShiftHours = (startTime, endTime) => {
+  const start = toValidDate(startTime);
+  const end = toValidDate(endTime);
+  if (!start || !end || end <= start) return 8;
+  return Number((((end.getTime() - start.getTime()) / 3600000) || 8).toFixed(2));
+};
+
+export const buildShiftWindow = (dateKey, shiftType) => {
+  const safeDateKey = String(dateKey || "");
+  const safeType = String(shiftType || "").toLowerCase();
+  const config = shiftTypes[safeType] || shiftTypes.morning;
+  const [startHour, startMinute] = String(config.startTime || "06:00")
+    .split(":")
+    .map(Number);
+  const [endHour, endMinute] = String(config.endTime || "14:00")
+    .split(":")
+    .map(Number);
+
+  const start = new Date(`${safeDateKey}T00:00:00`);
+  start.setHours(startHour || 0, startMinute || 0, 0, 0);
+
+  const end = new Date(`${safeDateKey}T00:00:00`);
+  end.setHours(endHour || 0, endMinute || 0, 0, 0);
+  if (end <= start) end.setDate(end.getDate() + 1);
+
+  return {
+    start,
+    end,
+    startTime: start.toISOString(),
+    endTime: end.toISOString(),
+    hours: calculateShiftHours(start, end),
+  };
+};
+
+const getWeekKey = (value) => {
+  const date = toValidDate(value);
+  if (!date) return "";
+  return format(startOfWeek(date, { weekStartsOn: 1 }), "yyyy-MM-dd");
+};
+
+const getWorkingDayKey = (dateKey) => {
+  const date = toValidDate(`${dateKey}T12:00:00`);
+  if (!date) return "";
+  return DAY_KEYS[date.getDay()] || "";
+};
+
+const staffWorksThatDay = (staff, dateKey) => {
+  const workingDays = Array.isArray(staff?.workingDays) ? staff.workingDays : [];
+  if (!workingDays.length) return true;
+  return workingDays.includes(getWorkingDayKey(dateKey));
+};
+
+const leaveBlocksShift = (leave, dateKey, shiftType) => {
+  if (!leave || String(leave.status || "").toUpperCase() === "REJECTED") return false;
+
+  const shiftDay = String(dateKey || "");
+  const startDay = formatYmd(leave.startDate);
+  const endDay = formatYmd(leave.endDate);
+
+  if (shiftDay < startDay || shiftDay > endDay) return false;
+
+  const safeShiftType = String(shiftType || "").toLowerCase();
+  const startSession = String(leave.startSession || "FULL").toUpperCase();
+  const endSession = String(leave.endSession || "FULL").toUpperCase();
+
+  if (startDay === endDay) {
+    if (startSession === "MORNING" && endSession === "MORNING") {
+      return safeShiftType === "morning";
+    }
+    if (startSession === "AFTERNOON" && endSession === "AFTERNOON") {
+      return safeShiftType === "afternoon" || safeShiftType === "evening";
+    }
+    return true;
+  }
+
+  if (shiftDay === startDay && startSession === "AFTERNOON") {
+    return safeShiftType === "afternoon" || safeShiftType === "evening";
+  }
+
+  if (shiftDay === endDay && endSession === "MORNING") {
+    return safeShiftType === "morning";
+  }
+
+  return true;
+};
+
+const getWeeklyHours = (weekHoursByStaff, staffId, weekKey) =>
+  Number(weekHoursByStaff.get(`${staffId}|${weekKey}`) || 0);
+
+const increaseWeeklyHours = (weekHoursByStaff, staffId, weekKey, hours) => {
+  const key = `${staffId}|${weekKey}`;
+  weekHoursByStaff.set(key, Number((getWeeklyHours(weekHoursByStaff, staffId, weekKey) + hours).toFixed(2)));
+};
+
+const buildExistingAssignmentsMap = (existingShiftRows = []) => {
+  const map = new Map();
+
+  for (const row of existingShiftRows) {
+    const employeeId = String(row?.employeeId || "");
+    const start = toValidDate(row?.startTime);
+    const end = toValidDate(row?.endTime);
+    if (!employeeId || !start || !end) continue;
+
+    if (!map.has(employeeId)) {
+      map.set(employeeId, []);
+    }
+    map.get(employeeId).push({
+      start,
+      end,
+      shiftType: String(row?.shiftType || "").toLowerCase(),
+      date: format(start, "yyyy-MM-dd"),
+    });
+  }
+
+  return map;
+};
+
+const buildWeekHoursMap = (existingShiftRows = []) => {
+  const map = new Map();
+
+  for (const row of existingShiftRows) {
+    const employeeId = String(row?.employeeId || "");
+    const weekKey = getWeekKey(row?.startTime);
+    if (!employeeId || !weekKey) continue;
+
+    increaseWeeklyHours(map, employeeId, weekKey, calculateShiftHours(row?.startTime, row?.endTime));
+  }
+
+  return map;
+};
+
+const buildLeaveMap = (leaveRequests = []) => {
+  const map = new Map();
+
+  for (const leave of leaveRequests) {
+    const employeeId = String(leave?.employeeId || "");
+    if (!employeeId) continue;
+
+    if (!map.has(employeeId)) {
+      map.set(employeeId, []);
+    }
+    map.get(employeeId).push(leave);
+  }
+
+  return map;
+};
+
+const pushAssignment = (assignmentMap, staffId, assignment) => {
+  if (!assignmentMap.has(staffId)) {
+    assignmentMap.set(staffId, []);
+  }
+  assignmentMap.get(staffId).push(assignment);
+};
+
+const getCandidateOrder = (shiftInsight) => {
+  const order = new Map();
+  (shiftInsight?.suggestedCandidates || []).forEach((candidate, index) => {
+    const key = `${candidate.staffId}|${candidate.role}`;
+    if (!order.has(key)) {
+      order.set(key, index);
+    }
+  });
+  return order;
+};
+
+const evaluateCandidate = ({
+  candidate,
+  staff,
+  shiftInsight,
+  shiftWindow,
+  existingAssignedIds,
+  currentShiftAssignedIds,
+  existingAssignmentsByStaff,
+  plannedAssignmentsByStaff,
+  leaveByStaff,
+  weekHoursByStaff,
+  weeklyHoursCap,
+  respectAvailability,
+  avoidOvertime,
+}) => {
+  const staffId = String(candidate.staffId || "");
+  const staffAssignments = existingAssignmentsByStaff.get(staffId) || [];
+  const plannedAssignments = plannedAssignmentsByStaff.get(staffId) || [];
+  const leaveRows = leaveByStaff.get(staffId) || [];
+  const weekKey = getWeekKey(shiftWindow.startTime);
+  const shiftHours = Number(shiftWindow.hours || 0);
+
+  if (!staff) return "Không tìm thấy hồ sơ nhân sự trong staff list";
+  if (String(staff.employmentStatus || "").toLowerCase() !== "working") {
+    return "Nhân sự không ở trạng thái làm việc";
+  }
+  if (mapDepartmentToJob(staff.department) !== candidate.role) {
+    return "Vai trò thực tế không khớp với gợi ý assistant";
+  }
+  if (existingAssignedIds.has(staffId) || currentShiftAssignedIds.has(staffId)) {
+    return "Đã có trong ca hoặc đã được chọn cho ca này";
+  }
+  if (respectAvailability && !staffWorksThatDay(staff, shiftInsight.date)) {
+    return "Không nằm trong workingDays của nhân sự";
+  }
+  if (
+    respectAvailability &&
+    leaveRows.some((leave) => leaveBlocksShift(leave, shiftInsight.date, shiftInsight.shiftType))
+  ) {
+    return "Đang có lịch nghỉ/nghỉ phép trong ngày này";
+  }
+  if (
+    [...staffAssignments, ...plannedAssignments].some((assignment) =>
+      overlaps(
+        shiftWindow.start,
+        shiftWindow.end,
+        assignment.start,
+        assignment.end
+      )
+    )
+  ) {
+    return "Bị trùng với ca hiện có";
+  }
+  if (avoidOvertime && weeklyHoursCap > 0) {
+    const nextWeekHours = getWeeklyHours(weekHoursByStaff, staffId, weekKey) + shiftHours;
+    if (nextWeekHours > weeklyHoursCap) {
+      return `Vượt giới hạn ${weeklyHoursCap} giờ/tuần`;
+    }
+  }
+  return "";
+};
+
+export const buildAutoSchedulePreview = ({
+  assistant,
+  staffList = [],
+  existingShiftRows = [],
+  leaveRequests = [],
+  weeklyHoursCap = 40,
+  respectAvailability = true,
+  avoidOvertime = true,
+}) => {
+  const shiftInsights = assistant?.shifts || [];
+  if (!shiftInsights.length) {
+    return {
+      items: [],
+      summary: {
+        totalShiftGroups: 0,
+        recommendedAssignments: 0,
+        blockedAssignments: 0,
+        unresolvedShifts: 0,
+      },
+    };
+  }
+
+  const staffById = new Map(
+    staffList.map((staff) => [
+      String(staff.id),
+      {
+        id: String(staff.id),
+        fullName: staff.fullName || staff.name || "Nhân viên",
+        department: String(staff.department || "").toLowerCase(),
+        employmentStatus: String(staff.employmentStatus || "").toLowerCase(),
+        workingDays: Array.isArray(staff.workingDays) ? staff.workingDays : [],
+      },
+    ])
+  );
+
+  const existingAssignmentsByStaff = buildExistingAssignmentsMap(existingShiftRows);
+  const plannedAssignmentsByStaff = new Map();
+  const leaveByStaff = buildLeaveMap(leaveRequests);
+  const weekHoursByStaff = buildWeekHoursMap(existingShiftRows);
+
+  const sortedInsights = [...shiftInsights].sort(
+    (a, b) =>
+      String(a.date || "").localeCompare(String(b.date || "")) ||
+      getShiftSortOrder(a.shiftType) - getShiftSortOrder(b.shiftType)
+  );
+
+  let recommendedAssignments = 0;
+  let blockedAssignments = 0;
+  let unresolvedShifts = 0;
+
+  const items = sortedInsights.map((shiftInsight) => {
+    const shiftWindow = buildShiftWindow(shiftInsight.date, shiftInsight.shiftType);
+    const weekKey = getWeekKey(shiftWindow.startTime);
+    const currentShiftAssignedIds = new Set();
+    const candidateOrder = getCandidateOrder(shiftInsight);
+    const blockedCandidates = [];
+
+    const existingAssignedIds = new Set(
+      existingShiftRows
+        .filter((row) => {
+          const start = toValidDate(row?.startTime);
+          return (
+            start &&
+            format(start, "yyyy-MM-dd") === shiftInsight.date &&
+            String(row?.shiftType || "").toLowerCase() === String(shiftInsight.shiftType || "").toLowerCase()
+          );
+        })
+        .map((row) => String(row.employeeId))
+    );
+
+    const missingRoles = (shiftInsight.recommendedRoles || []).filter((role) => Number(role.delta || 0) < 0);
+    const plannedAssignments = [];
+
+    for (const roleNeed of missingRoles) {
+      const needed = Math.abs(Number(roleNeed.delta || 0));
+      let assignedForRole = 0;
+
+      const roleCandidates = (shiftInsight.suggestedCandidates || [])
+        .filter((candidate) => candidate.role === roleNeed.role)
+        .sort((left, right) => {
+          const leftHours = getWeeklyHours(weekHoursByStaff, String(left.staffId), weekKey);
+          const rightHours = getWeeklyHours(weekHoursByStaff, String(right.staffId), weekKey);
+          if (leftHours !== rightHours) return leftHours - rightHours;
+          return (
+            (candidateOrder.get(`${left.staffId}|${left.role}`) ?? 99) -
+            (candidateOrder.get(`${right.staffId}|${right.role}`) ?? 99)
+          );
+        });
+
+      for (const candidate of roleCandidates) {
+        if (assignedForRole >= needed) break;
+
+        const staff = staffById.get(String(candidate.staffId));
+        const rejectionReason = evaluateCandidate({
+          candidate,
+          staff,
+          shiftInsight,
+          shiftWindow,
+          existingAssignedIds,
+          currentShiftAssignedIds,
+          existingAssignmentsByStaff,
+          plannedAssignmentsByStaff,
+          leaveByStaff,
+          weekHoursByStaff,
+          weeklyHoursCap,
+          respectAvailability,
+          avoidOvertime,
+        });
+
+        if (rejectionReason) {
+          blockedAssignments += 1;
+          blockedCandidates.push({
+            staffId: String(candidate.staffId),
+            fullName: candidate.fullName || staff?.fullName || "Nhân viên",
+            role: candidate.role,
+            reason: rejectionReason,
+          });
+          continue;
+        }
+
+        const staffId = String(candidate.staffId);
+        assignedForRole += 1;
+        currentShiftAssignedIds.add(staffId);
+        plannedAssignments.push({
+          staffId,
+          fullName: candidate.fullName || staff?.fullName || "Nhân viên",
+          role: candidate.role,
+          reason: candidate.reason || "Đề xuất từ scheduling assistant",
+          currentWeekHours: getWeeklyHours(weekHoursByStaff, staffId, weekKey),
+          projectedWeekHours: Number(
+            (getWeeklyHours(weekHoursByStaff, staffId, weekKey) + shiftWindow.hours).toFixed(2)
+          ),
+        });
+        recommendedAssignments += 1;
+        increaseWeeklyHours(weekHoursByStaff, staffId, weekKey, shiftWindow.hours);
+        pushAssignment(plannedAssignmentsByStaff, staffId, {
+          start: toValidDate(shiftWindow.startTime),
+          end: toValidDate(shiftWindow.endTime),
+          shiftType: shiftInsight.shiftType,
+          date: shiftInsight.date,
+        });
+      }
+    }
+
+    const missingHeadcount = Math.max(
+      0,
+      Number(shiftInsight.recommendedTotalStaff || 0) - Number(shiftInsight.currentAssignedStaff || 0)
+    );
+    const unresolvedCount = Math.max(0, missingHeadcount - plannedAssignments.length);
+    if (unresolvedCount > 0) unresolvedShifts += 1;
+
+    return {
+      shiftKey: shiftInsight.shiftKey,
+      date: shiftInsight.date,
+      shiftType: String(shiftInsight.shiftType || "").toLowerCase(),
+      demandLevel: shiftInsight.demandLevel,
+      severity: shiftInsight.severity,
+      status: shiftInsight.status,
+      confidence: Number(shiftInsight.confidence || 0),
+      recommendedTotalStaff: Number(shiftInsight.recommendedTotalStaff || 0),
+      currentAssignedStaff: Number(shiftInsight.currentAssignedStaff || 0),
+      missingHeadcount,
+      unresolvedCount,
+      recommendedRoles: shiftInsight.recommendedRoles || [],
+      plannedAssignments,
+      blockedCandidates,
+      canApply: plannedAssignments.length > 0,
+      startTime: shiftWindow.startTime,
+      endTime: shiftWindow.endTime,
+      hours: shiftWindow.hours,
+    };
+  });
+
+  return {
+    items,
+    summary: {
+      totalShiftGroups: items.length,
+      recommendedAssignments,
+      blockedAssignments,
+      unresolvedShifts,
+    },
+  };
+};
+
+export const buildAutoScheduleCreateInputs = ({ previewItems = [], selectedShiftKeys = {}, restaurantId }) => {
+  const inputs = [];
+  const dedupe = new Set();
+
+  for (const item of previewItems) {
+    if (!selectedShiftKeys[item.shiftKey]) continue;
+
+    for (const assignment of item.plannedAssignments || []) {
+      const dedupeKey = `${assignment.staffId}|${item.startTime}|${item.endTime}`;
+      if (dedupe.has(dedupeKey)) continue;
+      dedupe.add(dedupeKey);
+
+      inputs.push({
+        employeeId: assignment.staffId,
+        restaurantId,
+        shiftType: String(item.shiftType || "").toUpperCase(),
+        startTime: item.startTime,
+        endTime: item.endTime,
+        status: "scheduled",
+        notes: "Auto scheduled",
+      });
+    }
+  }
+
+  return inputs;
+};

@@ -119,6 +119,13 @@ const _computeTypeFromPoints = (points) => {
   return "VIP";
 };
 
+const loadUserForGraph = async (userId) =>
+  User.findById(userId)
+    .populate("role")
+    .populate("refRestaurants")
+    .populate("primaryRestaurant")
+    .lean({ virtuals: true });
+
 export const UserMutation = {
   // ========== Role ==========
   assignRoleToUser: async (_, { input }, { user }) => {
@@ -965,7 +972,7 @@ export const UserMutation = {
         extensions: { code: "NOT_FOUND" },
       });
     }
-    return saved;
+    return loadUserForGraph(saved._id);
   },
 
   // === Soft delete ===

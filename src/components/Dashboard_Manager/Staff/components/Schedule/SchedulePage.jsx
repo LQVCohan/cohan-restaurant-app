@@ -5,7 +5,7 @@ import "./SchedulePage.scss";
 const SchedulePage = () => {
   return (
     <div className="staff-schedule-page">
-      <ScheduleManagement />
+      <ScheduleManagement readOnly />
     </div>
   );
 };

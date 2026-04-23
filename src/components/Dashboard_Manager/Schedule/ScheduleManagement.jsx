@@ -1,27 +1,33 @@
-import React, { useMemo, useState } from "react";
-import { gql, useMutation, useQuery } from "@apollo/client";
+import React, { useEffect, useMemo, useState } from "react";
+import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import {
-  format,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
   addDays,
-  addWeeks,
   addMonths,
-  subDays,
-  subWeeks,
-  subMonths,
+  addWeeks,
+  endOfMonth,
+  endOfWeek,
+  format,
   isSameDay,
+  startOfMonth,
+  startOfWeek,
+  subDays,
+  subMonths,
+  subWeeks,
 } from "date-fns";
 import { vi } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 
 import "./ScheduleManagement.scss";
 import { shiftTypes } from "./utils/scheduleHelpers";
+import {
+  buildAutoScheduleCreateInputs,
+  buildAutoSchedulePreview,
+  mapDepartmentToJob,
+} from "./utils/autoSchedule";
 import ShiftCard from "./components/ShiftCard";
 import AddShiftModal from "./components/AddShiftModal";
 import ShiftDetailModal from "./components/ShiftDetailModal";
+import AutoScheduleModal from "./components/AutoScheduleModal";
 import DailyView from "./DailyView";
 
 const ME_QUERY = gql`
@@ -56,8 +62,10 @@ const GET_STAFF_LIST = gql`
     staffList(restaurantId: $restaurantId, search: $search) {
       id
       fullName
+      employeeCode
       department
       employmentStatus
+      workingDays
       baseSalary
     }
   }
@@ -92,6 +100,71 @@ const GET_STAFF_SHIFTS = gql`
   }
 `;
 
+const GET_LEAVE_REQUESTS = gql`
+  query ScheduleLeaveRequests($filter: LeaveRequestFilterInput) {
+    leaveRequests(filter: $filter) {
+      id
+      employeeId
+      startDate
+      endDate
+      startSession
+      endSession
+      status
+    }
+  }
+`;
+
+const GET_SCHEDULING_ASSISTANT = gql`
+  query StaffSchedulingAssistant($restaurantId: ID!, $horizonDays: Int!, $timezone: String!) {
+    staffSchedulingAssistant(
+      restaurantId: $restaurantId
+      horizonDays: $horizonDays
+      timezone: $timezone
+    ) {
+      summary {
+        totalShiftGroups
+        underStaffedShifts
+        overStaffedShifts
+        highestRiskShift
+        notes
+      }
+      shifts {
+        shiftKey
+        date
+        shiftType
+        demandLevel
+        expectedOrders
+        expectedGuests
+        recommendedTotalStaff
+        currentAssignedStaff
+        deltaStaff
+        status
+        severity
+        confidence
+        recommendedRoles {
+          role
+          required
+          assigned
+          delta
+        }
+        suggestedCandidates {
+          staffId
+          fullName
+          role
+          reason
+        }
+      }
+      meta {
+        method
+        basedOnForecast
+        fallbackUsed
+        generatedAt
+        timezone
+      }
+    }
+  }
+`;
+
 const CREATE_STAFF_SHIFT = gql`
   mutation CreateStaffShift($input: CreateStaffShiftInput!) {
     createStaffShift(input: $input) {
@@ -116,22 +189,14 @@ const DELETE_STAFF_SHIFT = gql`
   }
 `;
 
-const mapDepartmentToJob = (department) =>
-  ({
-    management: "host",
-    kitchen: "cook",
-    service: "waiter",
-    cashier: "cashier",
-    cleaning: "cleaner",
-    delivery: "waiter",
-  }[String(department || "").toLowerCase()] || "waiter");
-
 const normalizeTime = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : format(date, "HH:mm");
 };
 
-const ScheduleManagement = () => {
+const SCHEDULING_TIMEZONE = "Asia/Ho_Chi_Minh";
+
+const ScheduleManagement = ({ readOnly = false }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState("week");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
@@ -143,6 +208,19 @@ const ScheduleManagement = () => {
     shiftType: "",
   });
   const [selectedShift, setSelectedShift] = useState(null);
+  const [isAutoScheduleOpen, setIsAutoScheduleOpen] = useState(false);
+  const [autoScheduleConfig, setAutoScheduleConfig] = useState({
+    horizonDays: 7,
+    weeklyHoursCap: 40,
+    respectAvailability: true,
+    avoidOvertime: true,
+  });
+  const [assistantPayload, setAssistantPayload] = useState(null);
+  const [assistantLeaveRows, setAssistantLeaveRows] = useState([]);
+  const [assistantShiftRows, setAssistantShiftRows] = useState([]);
+  const [selectedAutoShiftKeys, setSelectedAutoShiftKeys] = useState({});
+  const [autoScheduleError, setAutoScheduleError] = useState("");
+  const [isApplyingAutoSchedule, setIsApplyingAutoSchedule] = useState(false);
 
   const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "network-only" });
   const me = meData?.me;
@@ -157,10 +235,14 @@ const ScheduleManagement = () => {
     if (me?.roleName === "admin") {
       return (allRestaurantsData?.restaurants?.edges || []).map((edge) => edge.node);
     }
-    return (me?.refRestaurants || []).map((r) => ({ id: r.id, name: r.name }));
+    return (me?.refRestaurants || []).map((restaurant) => ({
+      id: restaurant.id,
+      name: restaurant.name,
+    }));
   }, [allRestaurantsData, me]);
 
-  const effectiveRestaurantId = selectedRestaurantId || me?.restaurantForStaff || restaurantOptions[0]?.id || "";
+  const effectiveRestaurantId =
+    selectedRestaurantId || me?.restaurantForStaff || restaurantOptions[0]?.id || "";
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
   const monthStart = startOfMonth(currentDate);
@@ -175,39 +257,59 @@ const ScheduleManagement = () => {
     fetchPolicy: "network-only",
     skip: !effectiveRestaurantId,
   });
-  const { data: shiftsData, loading: shiftsLoading, error: shiftsError, refetch } = useQuery(
-    GET_STAFF_SHIFTS,
-    {
-      variables: {
-        restaurantId: effectiveRestaurantId || undefined,
-        employeeId: selectedStaffId || undefined,
-        startDate: rangeStart.toISOString(),
-        endDate: rangeEnd.toISOString(),
-      },
-      fetchPolicy: "network-only",
-      skip: !effectiveRestaurantId,
+
+  const {
+    data: shiftsData,
+    loading: shiftsLoading,
+    error: shiftsError,
+    refetch,
+  } = useQuery(GET_STAFF_SHIFTS, {
+    variables: {
+      restaurantId: effectiveRestaurantId || undefined,
+      employeeId: selectedStaffId || undefined,
+      startDate: rangeStart.toISOString(),
+      endDate: rangeEnd.toISOString(),
     },
-  );
+    fetchPolicy: "network-only",
+    skip: !effectiveRestaurantId,
+  });
 
   const [createShift] = useMutation(CREATE_STAFF_SHIFT);
   const [updateShift] = useMutation(UPDATE_STAFF_SHIFT);
   const [deleteShift] = useMutation(DELETE_STAFF_SHIFT);
+  const [loadSchedulingAssistant, schedulingAssistantState] = useLazyQuery(GET_SCHEDULING_ASSISTANT, {
+    fetchPolicy: "network-only",
+  });
+  const [loadLeaveRequests, leaveRequestsState] = useLazyQuery(GET_LEAVE_REQUESTS, {
+    fetchPolicy: "network-only",
+  });
+  const [loadAssistantContextShifts, assistantContextState] = useLazyQuery(GET_STAFF_SHIFTS, {
+    fetchPolicy: "network-only",
+  });
+
+  const rawStaffList = useMemo(() => staffData?.staffList || [], [staffData?.staffList]);
 
   const staff = useMemo(
     () =>
-      (staffData?.staffList || []).map((item) => ({
+      rawStaffList.map((item) => ({
         id: item.id,
         name: item.fullName || "Nhân viên",
+        fullName: item.fullName || "Nhân viên",
+        employeeCode: item.employeeCode || "",
+        department: item.department,
         job: mapDepartmentToJob(item.department),
         status: item.employmentStatus === "working" ? "active" : "off",
+        employmentStatus: item.employmentStatus,
+        workingDays: item.workingDays || [],
         salary: Number(item.baseSalary || 0) / 26 / 8,
       })),
-    [staffData],
+    [rawStaffList]
   );
 
   const shifts = useMemo(() => {
     const rows = shiftsData?.staffShifts || [];
     const map = new Map();
+
     rows.forEach((row) => {
       const date = format(new Date(row.startTime), "yyyy-MM-dd");
       const key = `${date}|${row.shiftType}`;
@@ -228,19 +330,20 @@ const ScheduleManagement = () => {
       const bucket = map.get(key);
       bucket.records.push(row);
       bucket.staffIds.push(row.employeeId);
-      const staffItem = staff.find((s) => String(s.id) === String(row.employeeId));
+      const staffItem = staff.find((item) => String(item.id) === String(row.employeeId));
       if (staffItem?.job && !bucket.essentialJobs.includes(staffItem.job)) {
         bucket.essentialJobs.push(staffItem.job);
       }
     });
-    return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    return Array.from(map.values()).sort((left, right) => left.date.localeCompare(right.date));
   }, [shiftsData, staff]);
 
   const dateLabel = useMemo(() => {
     if (viewMode === "week") {
       return `Tuần ${format(weekStart, "w")}, ${format(weekStart, "yyyy")} (${format(
         weekStart,
-        "dd/MM",
+        "dd/MM"
       )} - ${format(weekEnd, "dd/MM")})`;
     }
     if (viewMode === "month") {
@@ -251,13 +354,13 @@ const ScheduleManagement = () => {
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
-    [weekStart],
+    [weekStart]
   );
 
   const kpis = useMemo(() => {
     const totalShifts = shifts.length;
     const alertShifts = shifts.filter(
-      (s) => s.staffIds.length < Math.max(1, s.essentialJobs.length),
+      (shift) => shift.staffIds.length < Math.max(1, shift.essentialJobs.length)
     ).length;
     const totalCost = shifts.reduce((sum, shift) => {
       const shiftCost = shift.staffIds.reduce((acc, staffId) => {
@@ -266,27 +369,72 @@ const ScheduleManagement = () => {
       }, 0);
       return sum + shiftCost;
     }, 0);
+
     return { totalShifts, alertShifts, totalCost };
   }, [shifts, staff]);
+
+  const autoSchedulePreview = useMemo(
+    () =>
+      buildAutoSchedulePreview({
+        assistant: assistantPayload,
+        staffList: rawStaffList,
+        existingShiftRows: assistantShiftRows,
+        leaveRequests: assistantLeaveRows,
+        weeklyHoursCap: autoScheduleConfig.weeklyHoursCap,
+        respectAvailability: autoScheduleConfig.respectAvailability,
+        avoidOvertime: autoScheduleConfig.avoidOvertime,
+      }),
+    [assistantLeaveRows, assistantPayload, assistantShiftRows, autoScheduleConfig, rawStaffList]
+  );
+
+  const isGeneratingAutoSchedule =
+    schedulingAssistantState.loading || leaveRequestsState.loading || assistantContextState.loading;
+
+  useEffect(() => {
+    if (!isAutoScheduleOpen) return;
+
+    setSelectedAutoShiftKeys((prev) => {
+      const next = {};
+      (autoSchedulePreview.items || []).forEach((item) => {
+        if (item.canApply) {
+          next[item.shiftKey] = prev[item.shiftKey] ?? true;
+        }
+      });
+      return next;
+    });
+  }, [autoSchedulePreview.items, isAutoScheduleOpen]);
+
+  useEffect(() => {
+    setAssistantPayload(null);
+    setAssistantLeaveRows([]);
+    setAssistantShiftRows([]);
+    setSelectedAutoShiftKeys({});
+    setAutoScheduleError("");
+  }, [effectiveRestaurantId]);
 
   const handleNavigate = (direction) => {
     if (viewMode === "week") {
       setCurrentDate((prev) => (direction === "next" ? addWeeks(prev, 1) : subWeeks(prev, 1)));
-    } else if (viewMode === "month") {
-      setCurrentDate((prev) => (direction === "next" ? addMonths(prev, 1) : subMonths(prev, 1)));
-    } else {
-      setCurrentDate((prev) => (direction === "next" ? addDays(prev, 1) : subDays(prev, 1)));
+      return;
     }
+    if (viewMode === "month") {
+      setCurrentDate((prev) => (direction === "next" ? addMonths(prev, 1) : subMonths(prev, 1)));
+      return;
+    }
+    setCurrentDate((prev) => (direction === "next" ? addDays(prev, 1) : subDays(prev, 1)));
   };
 
   const openAddShiftModal = (dateObj, shiftType) => {
+    if (readOnly) return;
     setAddModalContext({ date: format(dateObj, "yyyy-MM-dd"), shiftType });
     setIsAddModalOpen(true);
   };
 
   const handleCreateShift = async (newShiftData) => {
+    if (readOnly) return;
     const config = shiftTypes[newShiftData.shiftType];
     if (!config || !effectiveRestaurantId) return;
+
     const [year, month, day] = newShiftData.date.split("-").map(Number);
     const [startHour, startMin] = config.startTime.split(":").map(Number);
     const [endHour, endMin] = config.endTime.split(":").map(Number);
@@ -309,14 +457,16 @@ const ScheduleManagement = () => {
               notes: newShiftData.notes || "",
             },
           },
-        }),
-      ),
+        })
+      )
     );
+
     await refetch();
     setIsAddModalOpen(false);
   };
 
   const handleDeleteShift = async (shiftGroupId) => {
+    if (readOnly) return;
     const found = shifts.find((item) => item.id === shiftGroupId);
     if (!found) return;
     await Promise.all(found.records.map((row) => deleteShift({ variables: { shiftId: row.id } })));
@@ -325,8 +475,11 @@ const ScheduleManagement = () => {
   };
 
   const handleRemoveStaff = async (shiftGroupId, staffId) => {
+    if (readOnly) return;
     const found = shifts.find((item) => item.id === shiftGroupId);
-    const targetRecord = found?.records?.find((record) => String(record.employeeId) === String(staffId));
+    const targetRecord = found?.records?.find(
+      (record) => String(record.employeeId) === String(staffId)
+    );
     if (!targetRecord) return;
     await deleteShift({ variables: { shiftId: targetRecord.id } });
     await refetch();
@@ -334,6 +487,7 @@ const ScheduleManagement = () => {
   };
 
   const handleAddStaff = async (shiftGroupId, staffId) => {
+    if (readOnly) return;
     const found = shifts.find((item) => item.id === shiftGroupId);
     if (!found || !effectiveRestaurantId) return;
     if (found.staffIds.includes(staffId)) return;
@@ -363,27 +517,125 @@ const ScheduleManagement = () => {
   };
 
   const handleUpdateSelectedNotes = async (notes) => {
+    if (readOnly) return;
     if (!selectedShift?.records?.length) return;
     await Promise.all(
       selectedShift.records.map((record) =>
-        updateShift({ variables: { shiftId: record.id, input: { notes } } }),
-      ),
+        updateShift({ variables: { shiftId: record.id, input: { notes } } })
+      )
     );
     await refetch();
   };
 
+  const handleGenerateAutoSchedule = async () => {
+    if (readOnly) return;
+    if (!effectiveRestaurantId) {
+      setAutoScheduleError("Chưa xác định được nhà hàng để gọi scheduling assistant.");
+      return;
+    }
+
+    setAutoScheduleError("");
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const analysisEnd = addDays(today, Math.max(0, Number(autoScheduleConfig.horizonDays || 1) - 1));
+    const contextStart = startOfWeek(today, { weekStartsOn: 1 });
+    const contextEnd = endOfWeek(analysisEnd, { weekStartsOn: 1 });
+
+    try {
+      const [assistantResult, leaveResult, shiftResult] = await Promise.all([
+        loadSchedulingAssistant({
+          variables: {
+            restaurantId: effectiveRestaurantId,
+            horizonDays: Number(autoScheduleConfig.horizonDays || 1),
+            timezone: SCHEDULING_TIMEZONE,
+          },
+        }),
+        loadLeaveRequests({
+          variables: {
+            filter: {
+              restaurantId: effectiveRestaurantId,
+              startDate: today.toISOString(),
+              endDate: analysisEnd.toISOString(),
+            },
+          },
+        }),
+        loadAssistantContextShifts({
+          variables: {
+            restaurantId: effectiveRestaurantId,
+            startDate: contextStart.toISOString(),
+            endDate: contextEnd.toISOString(),
+          },
+        }),
+      ]);
+
+      setAssistantPayload(assistantResult?.data?.staffSchedulingAssistant || null);
+      setAssistantLeaveRows(leaveResult?.data?.leaveRequests || []);
+      setAssistantShiftRows(shiftResult?.data?.staffShifts || []);
+    } catch (error) {
+      setAutoScheduleError(error?.message || "Không thể tạo preview chia ca tự động.");
+    }
+  };
+
+  const handleToggleAutoShift = (shiftKey) => {
+    setSelectedAutoShiftKeys((prev) => ({
+      ...prev,
+      [shiftKey]: !prev[shiftKey],
+    }));
+  };
+
+  const handleApplyAutoSchedule = async () => {
+    const inputs = buildAutoScheduleCreateInputs({
+      previewItems: autoSchedulePreview.items,
+      selectedShiftKeys: selectedAutoShiftKeys,
+      restaurantId: effectiveRestaurantId,
+    });
+
+    if (!inputs.length) {
+      setAutoScheduleError("Không có phân công hợp lệ để áp dụng.");
+      return;
+    }
+
+    setIsApplyingAutoSchedule(true);
+    setAutoScheduleError("");
+
+    try {
+      await Promise.all(
+        inputs.map((input) =>
+          createShift({
+            variables: {
+              input,
+            },
+          })
+        )
+      );
+
+      await refetch();
+      setIsAutoScheduleOpen(false);
+      setSelectedAutoShiftKeys({});
+    } catch (error) {
+      setAutoScheduleError(error?.message || "Không thể áp dụng gợi ý chia ca.");
+    } finally {
+      setIsApplyingAutoSchedule(false);
+    }
+  };
+
   return (
-    <div className="schedule-container">
+    <div className={`schedule-container ${readOnly ? "read-only" : ""}`}>
       <header className="schedule-header">
         <div className="header-top">
           <div className="title-group">
-            <h1>Quản Lý Lịch Làm Việc</h1>
-            <p className="subtitle">Lịch ca theo dữ liệu thật từ backend</p>
+            <h1>{readOnly ? "Thông Tin Ca Làm Việc" : "Quản Lý Lịch Làm Việc"}</h1>
+            <p className="subtitle">
+              {readOnly
+                ? "Xem lịch ca theo dữ liệu thật từ backend. Màn này chỉ hỗ trợ xem, lọc và xem chi tiết."
+                : "Lịch ca theo dữ liệu thật từ backend"}
+            </p>
           </div>
           <div className="user-profile">
             <div className="user-info">
               <span className="name">{me?.roleName || "manager"}</span>
-              <span className="role">Schedule Control</span>
+              <span className="role">{readOnly ? "Read Only" : "Schedule Control"}</span>
             </div>
           </div>
         </div>
@@ -397,7 +649,7 @@ const ScheduleManagement = () => {
             </div>
           </div>
           <div className="kpi-card shifts">
-            <div className="kpi-icon">📅</div>
+            <div className="kpi-icon">📆</div>
             <div className="kpi-content">
               <span className="label">Nhóm ca</span>
               <span className="value">{kpis.totalShifts}</span>
@@ -436,25 +688,50 @@ const ScheduleManagement = () => {
             </button>
           </div>
 
-          <div className="date-navigation" style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 16 }}>
-            <button onClick={() => handleNavigate("prev")} className="nav-btn"><ChevronLeft size={20} /></button>
+          <div
+            className="date-navigation"
+            style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 16 }}
+          >
+            <button onClick={() => handleNavigate("prev")} className="nav-btn">
+              <ChevronLeft size={20} />
+            </button>
             <span className="week-label">{dateLabel}</span>
-            <button onClick={() => handleNavigate("next")} className="nav-btn"><ChevronRight size={20} /></button>
+            <button onClick={() => handleNavigate("next")} className="nav-btn">
+              <ChevronRight size={20} />
+            </button>
           </div>
         </div>
+
         <div className="toolbar-right">
-          <select value={selectedRestaurantId} onChange={(e) => setSelectedRestaurantId(e.target.value)}>
+          <select value={selectedRestaurantId} onChange={(event) => setSelectedRestaurantId(event.target.value)}>
             <option value="">Nhà hàng hiện tại</option>
-            {restaurantOptions.map((r) => (
-              <option key={r.id} value={r.id}>{r.name}</option>
+            {restaurantOptions.map((restaurant) => (
+              <option key={restaurant.id} value={restaurant.id}>
+                {restaurant.name}
+              </option>
             ))}
           </select>
-          <select value={selectedStaffId} onChange={(e) => setSelectedStaffId(e.target.value)}>
+
+          <select value={selectedStaffId} onChange={(event) => setSelectedStaffId(event.target.value)}>
             <option value="">Tất cả nhân viên</option>
             {staff.map((person) => (
-              <option key={person.id} value={person.id}>{person.name}</option>
+              <option key={person.id} value={person.id}>
+                {person.name}
+              </option>
             ))}
           </select>
+
+          {!readOnly && (
+            <button
+              type="button"
+              className="btn-auto-schedule"
+              onClick={() => setIsAutoScheduleOpen(true)}
+            >
+              <Sparkles size={16} />
+              Chia ca tự động
+            </button>
+          )}
+
           <button onClick={() => setIsPublished((prev) => !prev)}>
             {isPublished ? "Chuyển về nháp" : "Xuất bản"}
           </button>
@@ -462,12 +739,17 @@ const ScheduleManagement = () => {
       </div>
 
       {shiftsError ? (
-        <div className="empty-state" style={{ marginTop: 20 }}>Không tải được lịch làm việc.</div>
+        <div className="empty-state" style={{ marginTop: 20 }}>
+          Không tải được lịch làm việc.
+        </div>
       ) : viewMode === "day" ? (
         <DailyView currentDate={currentDate} shifts={shifts} staffList={staff} />
       ) : viewMode === "month" ? (
         <div className="schedule-board">
-          {Array.from({ length: 42 }, (_, index) => addDays(startOfWeek(monthStart, { weekStartsOn: 1 }), index)).map((day) => {
+          {Array.from(
+            { length: 42 },
+            (_, index) => addDays(startOfWeek(monthStart, { weekStartsOn: 1 }), index)
+          ).map((day) => {
             const dayStr = format(day, "yyyy-MM-dd");
             const shiftsForDay = shifts.filter((shift) => shift.date === dayStr);
             return (
@@ -506,6 +788,10 @@ const ScheduleManagement = () => {
                       <div key={type} className="shift-slot">
                         {shift ? (
                           <ShiftCard shift={shift} staffList={staff} onClick={setSelectedShift} />
+                        ) : readOnly ? (
+                          <div className="empty-shift-slot">
+                            Chưa phân {shiftTypes[type].label.toLowerCase()}
+                          </div>
                         ) : (
                           <button className="add-shift-btn" onClick={() => openAddShiftModal(day, type)}>
                             + {shiftTypes[type].label}
@@ -522,28 +808,52 @@ const ScheduleManagement = () => {
       )}
 
       {(staffLoading || shiftsLoading) && (
-        <div className="empty-state" style={{ marginTop: 12 }}>Đang tải dữ liệu lịch làm việc...</div>
+        <div className="empty-state" style={{ marginTop: 12 }}>
+          Đang tải dữ liệu lịch làm việc...
+        </div>
       )}
 
-      <AddShiftModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        selectedDate={addModalContext.date}
-        selectedShiftType={addModalContext.shiftType}
-        staffList={staff}
-        onConfirm={handleCreateShift}
-      />
+      {!readOnly && (
+        <AddShiftModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          selectedDate={addModalContext.date}
+          selectedShiftType={addModalContext.shiftType}
+          staffList={staff}
+          onConfirm={handleCreateShift}
+        />
+      )}
 
       <ShiftDetailModal
         isOpen={Boolean(selectedShift)}
         onClose={() => setSelectedShift(null)}
         shift={selectedShift}
         staffList={staff}
+        readOnly={readOnly}
         onRemoveStaff={handleRemoveStaff}
         onAddStaff={handleAddStaff}
         onDeleteShift={handleDeleteShift}
         onUpdateNotes={handleUpdateSelectedNotes}
       />
+
+      {!readOnly && (
+        <AutoScheduleModal
+          isOpen={isAutoScheduleOpen}
+          onClose={() => setIsAutoScheduleOpen(false)}
+          config={autoScheduleConfig}
+          onConfigChange={setAutoScheduleConfig}
+          onGenerate={handleGenerateAutoSchedule}
+          generating={isGeneratingAutoSchedule}
+          generateError={autoScheduleError}
+          assistantMeta={assistantPayload?.meta || null}
+          assistantSummary={assistantPayload?.summary || null}
+          preview={autoSchedulePreview}
+          selectedShiftKeys={selectedAutoShiftKeys}
+          onToggleShift={handleToggleAutoShift}
+          onApply={handleApplyAutoSchedule}
+          applying={isApplyingAutoSchedule}
+        />
+      )}
     </div>
   );
 };

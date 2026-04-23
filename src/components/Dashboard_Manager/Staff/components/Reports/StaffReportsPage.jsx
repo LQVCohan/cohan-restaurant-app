@@ -15,6 +15,7 @@ import {
   Bar,
 } from "recharts";
 import useStaffReports, { buildPresetRange } from "@/hooks/useStaffReports";
+import { downloadXlsxWorkbook } from "@/utils/xlsxWorkbook";
 import "./StaffReportsPage.scss";
 
 const PIE_COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
@@ -33,20 +34,100 @@ const KPI_CONFIG = [
   { key: "remainingLeaveBalanceDays", label: "Quỹ nghỉ còn lại" },
 ];
 
-const toCsv = (rows, columns) => {
-  const header = columns.map((c) => c.label).join(",");
-  const body = rows
-    .map((row) =>
-      columns
-        .map((col) => {
-          const value = row[col.key] ?? "";
-          const safe = String(value).replace(/"/g, '""');
-          return `"${safe}"`;
-        })
-        .join(",")
-    )
-    .join("\n");
-  return `${header}\n${body}`;
+const toDateLabel = (value) =>
+  value ? new Date(value).toLocaleDateString("vi-VN") : "--";
+
+const formatDelta = (comparisonItem) => {
+  if (!comparisonItem) return "--";
+  const delta = Number(comparisonItem.delta || 0);
+  const deltaPct = Number(comparisonItem.deltaPct || 0);
+  return `${delta >= 0 ? "+" : ""}${delta} (${deltaPct}%)`;
+};
+
+const buildStaffReportSheets = ({ report, summary, comparisonMap }) => {
+  const summaryRows = [
+    [
+      "Chỉ số",
+      "Kỳ hiện tại",
+      "Kỳ so sánh",
+      "Chênh lệch",
+      "% chênh lệch",
+    ],
+    ...KPI_CONFIG.map((kpi) => {
+      const cmp = comparisonMap.get(kpi.key);
+      return [
+        kpi.label,
+        summary[kpi.key] ?? 0,
+        cmp?.previous ?? 0,
+        cmp?.delta ?? 0,
+        cmp?.deltaPct ?? 0,
+      ];
+    }),
+  ];
+
+  const attendanceTrendRows = [
+    ["Ngày", "Có mặt", "Vắng", "Đi muộn", "Về sớm"],
+    ...(report?.attendanceTrend || []).map((row) => [
+      row.date || "",
+      row.present ?? 0,
+      row.absent ?? 0,
+      row.late ?? 0,
+      row.earlyLeave ?? 0,
+    ]),
+  ];
+
+  const attendanceRows = [
+    [
+      "Nhân viên",
+      "Mã NV",
+      "Ngày",
+      "Ca",
+      "Trạng thái",
+      "Phút làm",
+      "Phút muộn",
+      "Phút về sớm",
+    ],
+    ...(report?.attendanceDetails || []).map((row) => [
+      row.employeeName || "--",
+      row.employeeCode || "--",
+      row.date || "",
+      row.shiftType || "--",
+      row.status || "--",
+      row.workedMinutes ?? 0,
+      row.lateMinutes ?? 0,
+      row.earlyLeaveMinutes ?? 0,
+    ]),
+  ];
+
+  const leaveRows = [
+    [
+      "Nhân viên",
+      "Mã NV",
+      "Loại nghỉ",
+      "Trạng thái",
+      "Từ ngày",
+      "Đến ngày",
+      "Số ngày",
+      "Lý do",
+    ],
+    ...(report?.leaveDetails || []).map((row) => [
+      row.employeeName || "--",
+      row.employeeCode || "--",
+      row.leaveType || "--",
+      row.status || "--",
+      toDateLabel(row.startDate),
+      toDateLabel(row.endDate),
+      row.requestedDays ?? 0,
+      row.reason || "--",
+    ]),
+  ];
+
+  return [
+    { name: "TongQuan", rows: summaryRows },
+    { name: "XuHuongChamCong", rows: attendanceTrendRows },
+    { name: "ChiTietChamCong", rows: attendanceRows },
+    { name: "ChiTietNghiPhep", rows: leaveRows },
+  ];
 };
 
 const StaffReportsPage = () => {
@@ -77,7 +158,8 @@ const StaffReportsPage = () => {
     () =>
       (report?.leaveStatusDistribution || []).map((item) => {
         const key = String(item.label || "").toLowerCase();
-        const viLabel = key === "approved" ? "Đã duyệt" : key === "rejected" ? "Từ chối" : "Chờ duyệt";
+        const viLabel =
+          key === "approved" ? "Đã duyệt" : key === "rejected" ? "Từ chối" : "Chờ duyệt";
         return { ...item, label: viLabel };
       }),
     [report?.leaveStatusDistribution]
@@ -90,54 +172,16 @@ const StaffReportsPage = () => {
     setEndDate(range.endDate);
   };
 
-  const exportExcel = () => {
+  const handleExportExcel = () => {
     if (!report) return;
-    const summaryRows = KPI_CONFIG.map((kpi) => ({
-      metric: kpi.label,
-      value: summary[kpi.key] ?? 0,
-      previous: comparisonMap.get(kpi.key)?.previous ?? 0,
-      delta: comparisonMap.get(kpi.key)?.delta ?? 0,
-      deltaPct: comparisonMap.get(kpi.key)?.deltaPct ?? 0,
-    }));
 
-    const summaryCsv = toCsv(summaryRows, [
-      { key: "metric", label: "Chỉ số" },
-      { key: "value", label: "Kỳ hiện tại" },
-      { key: "previous", label: "Kỳ so sánh" },
-      { key: "delta", label: "Chênh lệch" },
-      { key: "deltaPct", label: "% chênh lệch" },
-    ]);
+    const sheets = buildStaffReportSheets({
+      report,
+      summary,
+      comparisonMap,
+    });
 
-    const attendanceCsv = toCsv(report.attendanceDetails || [], [
-      { key: "employeeName", label: "Nhân viên" },
-      { key: "employeeCode", label: "Mã NV" },
-      { key: "date", label: "Ngày" },
-      { key: "shiftType", label: "Ca" },
-      { key: "status", label: "Trạng thái" },
-      { key: "workedMinutes", label: "Phút làm" },
-      { key: "lateMinutes", label: "Phút muộn" },
-      { key: "earlyLeaveMinutes", label: "Phút về sớm" },
-    ]);
-
-    const leaveCsv = toCsv(report.leaveDetails || [], [
-      { key: "employeeName", label: "Nhân viên" },
-      { key: "employeeCode", label: "Mã NV" },
-      { key: "leaveType", label: "Loại nghỉ" },
-      { key: "status", label: "Trạng thái" },
-      { key: "requestedDays", label: "Số ngày" },
-      { key: "startDate", label: "Từ ngày" },
-      { key: "endDate", label: "Đến ngày" },
-      { key: "reason", label: "Lý do" },
-    ]);
-
-    const merged = `=== SUMMARY ===\n${summaryCsv}\n\n=== ATTENDANCE DETAILS ===\n${attendanceCsv}\n\n=== LEAVE DETAILS ===\n${leaveCsv}`;
-    const blob = new Blob(["\uFEFF" + merged], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `staff-reports-${startDate}-${endDate}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadXlsxWorkbook(sheets, `staff-reports-${startDate}-${endDate}.xlsx`);
   };
 
   return (
@@ -172,14 +216,16 @@ const StaffReportsPage = () => {
             </>
           )}
         </div>
-        <button className="btn-export" onClick={exportExcel} disabled={!report}>
+        <button className="btn-export" onClick={handleExportExcel} disabled={!report}>
           📥 Xuất Excel
         </button>
       </div>
 
       {loading && <div className="report-state">Đang tải báo cáo nhân sự...</div>}
       {error && <div className="report-state error">Lỗi tải báo cáo: {error.message}</div>}
-      {!loading && !error && !report && <div className="report-state">Không có dữ liệu để hiển thị.</div>}
+      {!loading && !error && !report && (
+        <div className="report-state">Không có dữ liệu để hiển thị.</div>
+      )}
 
       {report && (
         <>
@@ -191,7 +237,7 @@ const StaffReportsPage = () => {
                   <div className="label">{kpi.label}</div>
                   <div className="value">{summary[kpi.key] ?? 0}</div>
                   <div className={`delta ${(cmp?.delta || 0) >= 0 ? "up" : "down"}`}>
-                    {cmp ? `${cmp.delta >= 0 ? "+" : ""}${cmp.delta} (${cmp.deltaPct}%)` : "--"}
+                    {formatDelta(cmp)}
                   </div>
                 </div>
               );
@@ -355,8 +401,8 @@ const StaffReportsPage = () => {
                         <td>{row.employeeCode || "--"}</td>
                         <td>{row.leaveType}</td>
                         <td>{row.status}</td>
-                        <td>{row.startDate ? new Date(row.startDate).toLocaleDateString("vi-VN") : "--"}</td>
-                        <td>{row.endDate ? new Date(row.endDate).toLocaleDateString("vi-VN") : "--"}</td>
+                        <td>{toDateLabel(row.startDate)}</td>
+                        <td>{toDateLabel(row.endDate)}</td>
                         <td>{row.requestedDays}</td>
                         <td>{row.reason || "--"}</td>
                       </tr>

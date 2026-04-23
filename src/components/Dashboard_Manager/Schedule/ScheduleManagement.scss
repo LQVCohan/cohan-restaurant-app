@@ -261,6 +261,10 @@ $danger: #ef4444;
       button {
         font-weight: 600;
         cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
 
         &:hover {
           border-color: #cbd5e1;
@@ -271,6 +275,10 @@ $danger: #ef4444;
       // Note: btn-auto-schedule styles are also handled inline in JSX for the icon,
       // but we add hover effects here.
       .btn-auto-schedule {
+        color: #4338ca;
+        border-color: #c7d2fe;
+        background: #eef2ff;
+
         &:hover {
           background-color: #f5f3ff !important;
           border-color: #6366f1 !important;
@@ -564,6 +572,18 @@ $danger: #ef4444;
       color: #4f46e5;
       background: #eef2ff;
     }
+  }
+
+  .empty-shift-slot {
+    width: 100%;
+    border: 1px dashed #e2e8f0;
+    border-radius: 0.5rem;
+    background: #f8fafc;
+    color: #94a3b8;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.55rem;
+    text-align: center;
   }
 
   .empty-state {

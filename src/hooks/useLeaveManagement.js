@@ -1,7 +1,7 @@
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { useMemo } from "react";
 
-const Q_LEAVE_PAGE = gql`
+export const Q_LEAVE_PAGE = gql`
   query LeavePageData($filter: LeaveRequestFilterInput) {
     staffList {
       id
@@ -11,7 +11,6 @@ const Q_LEAVE_PAGE = gql`
       roleName
       department
       avatarUrl
-      avatar
       primaryRestaurant {
         id
       }
