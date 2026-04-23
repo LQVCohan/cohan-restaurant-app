@@ -33,10 +33,13 @@ const ShiftDetailModal = ({
   onAddStaff,
   onDeleteShift,
   onUpdateNotes,
+  onUpdateTime,
 }) => {
   const [search, setSearch] = useState("");
   const [jobFilter, setJobFilter] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
+  const [timeDraft, setTimeDraft] = useState({ startTime: "", endTime: "" });
+  const [timeError, setTimeError] = useState("");
 
   const shiftStaffIds = useMemo(() => shift?.staffIds || [], [shift?.staffIds]);
   const shiftEssentialJobs = useMemo(() => shift?.essentialJobs || [], [shift?.essentialJobs]);
@@ -54,6 +57,11 @@ const ShiftDetailModal = ({
 
   useEffect(() => {
     setNoteDraft(shift?.notes || "");
+    setTimeDraft({
+      startTime: shift?.startTime || "",
+      endTime: shift?.endTime || "",
+    });
+    setTimeError("");
   }, [shift]);
 
   if (!isOpen || !shift) return null;
@@ -149,6 +157,54 @@ const ShiftDetailModal = ({
             disabled={readOnly}
           />
         </div>
+
+        {!readOnly && (
+          <div className="section-block">
+            <div className="section-header">
+              <h4>Thời gian ca</h4>
+            </div>
+            <div className="time-editor">
+              <label>
+                Bắt đầu
+                <input
+                  type="time"
+                  value={timeDraft.startTime}
+                  onChange={(event) =>
+                    setTimeDraft((prev) => ({ ...prev, startTime: event.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                Kết thúc
+                <input
+                  type="time"
+                  value={timeDraft.endTime}
+                  onChange={(event) =>
+                    setTimeDraft((prev) => ({ ...prev, endTime: event.target.value }))
+                  }
+                />
+              </label>
+              <button
+                type="button"
+                className="btn-close"
+                onClick={async () => {
+                  setTimeError("");
+                  try {
+                    await onUpdateTime?.(timeDraft);
+                  } catch (error) {
+                    setTimeError(error?.message || "Không thể cập nhật thời gian ca.");
+                  }
+                }}
+              >
+                Lưu thời gian
+              </button>
+            </div>
+            {timeError && <div className="time-error">{timeError}</div>}
+            <div className="time-help">
+              Hệ thống hỗ trợ ca qua ngày (giờ kết thúc nhỏ hơn giờ bắt đầu).
+            </div>
+          </div>
+        )}
 
         {!readOnly && (
           <div className="section-block add-section">
