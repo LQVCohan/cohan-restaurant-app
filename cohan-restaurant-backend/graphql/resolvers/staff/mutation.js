@@ -981,10 +981,28 @@ export default {
     const rid = payrollToObjectId(input.restaurantId || actor.restaurantForStaff || actor.primaryRestaurantId);
     if (!rid) throw new Error("Restaurant is required");
 
+    const existingSettings = await PayrollSetting.findOne({ restaurantId: rid });
+    const nextCurrentPeriodId = input.currentPayrollPeriodId
+      ? payrollToObjectId(input.currentPayrollPeriodId)
+      : input.currentPayrollPeriodId;
+    const existingCurrentPeriodId = existingSettings?.currentPayrollPeriodId
+      ? String(existingSettings.currentPayrollPeriodId)
+      : null;
+    const requestedCurrentPeriodId = nextCurrentPeriodId ? String(nextCurrentPeriodId) : null;
+
+    if (
+      requestedCurrentPeriodId &&
+      existingCurrentPeriodId &&
+      existingCurrentPeriodId !== requestedCurrentPeriodId
+    ) {
+      const currentPeriod = await PayrollPeriod.findById(existingCurrentPeriodId);
+      if (currentPeriod && currentPeriod.status !== "paid") {
+        throw new Error("Current payroll period must be fully paid before changing the applied payroll cycle");
+      }
+    }
+
     const update = {
-      currentPayrollPeriodId: input.currentPayrollPeriodId
-        ? payrollToObjectId(input.currentPayrollPeriodId)
-        : input.currentPayrollPeriodId,
+      currentPayrollPeriodId: nextCurrentPeriodId,
       standardWorkDaysPerMonth: input.standardWorkDaysPerMonth,
       standardHoursPerDay: input.standardHoursPerDay,
       overtimeMultiplierWeekday: input.overtimeMultiplierWeekday,
