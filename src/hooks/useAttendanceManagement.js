@@ -52,6 +52,19 @@ export const QUERY_ATTENDANCE_PAGE = gql`
   }
 `;
 
+export const toAttendanceIsoStartOfDay = (value) =>
+  value ? `${value}T00:00:00.000Z` : null;
+
+export const toAttendanceIsoEndOfDay = (value) =>
+  value ? `${value}T23:59:59.999Z` : null;
+
+export const buildAttendanceQueryVars = ({ selectedDate, status, search }) => ({
+  startDate: toAttendanceIsoStartOfDay(selectedDate),
+  endDate: toAttendanceIsoEndOfDay(selectedDate),
+  status: status === "all" ? undefined : status,
+  search: search?.trim() || undefined,
+});
+
 const MUTATION_UPSERT_ATTENDANCE = gql`
   mutation UpsertAttendance($input: UpsertStaffAttendanceInput!) {
     upsertStaffAttendance(input: $input) {
@@ -76,12 +89,7 @@ const MUTATION_UPSERT_ATTENDANCE = gql`
 
 export default function useAttendanceManagement({ selectedDate, status, search }) {
   const queryVars = useMemo(
-    () => ({
-      startDate: selectedDate,
-      endDate: selectedDate,
-      status: status === "all" ? undefined : status,
-      search: search?.trim() || undefined,
-    }),
+    () => buildAttendanceQueryVars({ selectedDate, status, search }),
     [search, selectedDate, status]
   );
 

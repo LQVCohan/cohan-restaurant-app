@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useContext } from "react";
 import { AuthContext } from "@/context/AuthContext";
-import useAttendanceManagement from "@/hooks/useAttendanceManagement";
+import useAttendanceManagement, {
+  toAttendanceIsoStartOfDay,
+} from "@/hooks/useAttendanceManagement";
 import "./Attendance.scss";
 
 const STATUS_TABS = [
@@ -105,7 +107,7 @@ const AttendancePage = () => {
             employeeId: quickId,
             restaurantId: effectiveRestaurantId,
             action: type === "in" ? "check_in" : "check_out",
-            workDate: selectedDate,
+            workDate: toAttendanceIsoStartOfDay(selectedDate),
             note: quickNote || undefined,
             source: "quick",
           },
