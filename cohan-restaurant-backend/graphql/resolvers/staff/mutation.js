@@ -31,6 +31,7 @@ function toObjectId(id) {
 }
 
 const EMPLOYEE_CODE_PREFIX = "NV";
+const EMPLOYEE_CODE_COUNTER_RETRIES = 3;
 
 function formatEmployeeCode(sequence) {
   const padded = String(Math.max(Number(sequence) || 0, 0)).padStart(4, "0");
@@ -42,12 +43,28 @@ async function getNextEmployeeCode(restaurantId) {
   if (!rid) {
     throw new Error("Missing primary restaurant to generate employee code");
   }
-  const counter = await EmployeeCodeCounter.findOneAndUpdate(
-    { restaurantId: rid },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true, setDefaultsOnInsert: true }
-  );
-  return formatEmployeeCode(counter?.seq);
+
+  let lastError = null;
+  for (let attempt = 1; attempt <= EMPLOYEE_CODE_COUNTER_RETRIES; attempt += 1) {
+    try {
+      const counter = await EmployeeCodeCounter.findOneAndUpdate(
+        { restaurantId: rid },
+        {
+          $setOnInsert: { restaurantId: rid },
+          $inc: { seq: 1 },
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+      return formatEmployeeCode(counter?.seq);
+    } catch (error) {
+      lastError = error;
+      if (error?.code !== 11000 || attempt === EMPLOYEE_CODE_COUNTER_RETRIES) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError || new Error("Failed to generate employee code");
 }
 
 function toStartOfDay(date) {
@@ -399,6 +416,11 @@ async function logStaffEvent({
   }
 }
 
+export const __testables = {
+  formatEmployeeCode,
+  getNextEmployeeCode,
+};
+
 export default {
   // =========================
   // CREATE STAFF
@@ -451,7 +473,13 @@ export default {
 
     const roleId = roleDoc._id;
 
-    const { password, primaryRestaurantId, refRestaurantIds, ...rest } = input;
+    const {
+      password,
+      primaryRestaurantId,
+      refRestaurantIds,
+      employeeCode: _ignoredEmployeeCode,
+      ...rest
+    } = input;
 
     const doc = {
       ...rest,
@@ -554,6 +582,10 @@ export default {
     const staff = await Staff.findById(userId);
     if (!staff || staff.userType !== "STAFF") {
       throw new Error("Staff not found");
+    }
+
+    if ("employeeCode" in input) {
+      delete input.employeeCode;
     }
 
     const before = staff.toObject();

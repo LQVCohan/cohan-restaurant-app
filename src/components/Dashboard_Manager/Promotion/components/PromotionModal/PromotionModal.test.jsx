@@ -9,36 +9,39 @@ const restaurants = [
   { id: "restaurant-2", name: "Chi nhanh Phu Nhuan" },
 ];
 
-describe("PromotionModal restaurant data", () => {
-  it("renders restaurant options from real props and submits the selected restaurant id", async () => {
+const categories = [
+  { id: "cat-1", name: "Mon chinh" },
+  { id: "cat-2", name: "Do uong" },
+];
+
+const menuItems = [
+  { id: "item-1", name: "Pho bo", categoryId: "cat-1" },
+  { id: "item-2", name: "Com tam", categoryId: "cat-1" },
+  { id: "item-3", name: "Tra da", categoryId: "cat-2" },
+];
+
+describe("PromotionModal", () => {
+  it("renders restaurant options from props and submits the selected restaurant id", async () => {
     const onSave = vi.fn();
-    const onClose = vi.fn();
 
     render(
       <PromotionModal
-        restaurants={restaurants}
+        categories={categories}
         defaultRestaurantId="restaurant-1"
+        menuItems={menuItems}
+        onClose={vi.fn()}
         onSave={onSave}
-        onClose={onClose}
-      />
+        restaurants={restaurants}
+      />,
     );
 
-    const restaurantSelect = document.querySelector(
-      'select[name="restaurantId"]'
-    );
-
-    expect(screen.getByRole("option", { name: "Chi nhanh Quan 1" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Chi nhanh Phu Nhuan" })).toBeInTheDocument();
-    expect(restaurantSelect.value).toBe("restaurant-1");
+    const restaurantSelect = document.querySelector('select[name="restaurantId"]');
 
     fireEvent.change(document.querySelector('input[name="name"]'), {
       target: { name: "name", value: "Mung le" },
     });
     fireEvent.change(document.querySelector('input[name="code"]'), {
       target: { name: "code", value: "LE2026" },
-    });
-    fireEvent.change(document.querySelector('select[name="type"]'), {
-      target: { name: "type", value: "percentage" },
     });
     fireEvent.change(document.querySelector('input[name="discountValue"]'), {
       target: { name: "discountValue", value: "15" },
@@ -61,7 +64,71 @@ describe("PromotionModal restaurant data", () => {
           name: "Mung le",
           code: "LE2026",
           restaurantId: "restaurant-2",
-        })
+          type: "percentage",
+        }),
+      );
+    });
+  });
+
+  it("forces BOGO promotions to capture both the purchased item and the gifted item", async () => {
+    const onSave = vi.fn();
+
+    render(
+      <PromotionModal
+        categories={categories}
+        defaultRestaurantId="restaurant-1"
+        menuItems={menuItems}
+        onClose={vi.fn()}
+        onSave={onSave}
+        restaurants={restaurants}
+      />,
+    );
+
+    fireEvent.change(document.querySelector('input[name="name"]'), {
+      target: { name: "name", value: "Mua 1 tang 1 pho" },
+    });
+    fireEvent.change(document.querySelector('input[name="code"]'), {
+      target: { name: "code", value: "BOGO-PHO" },
+    });
+    fireEvent.change(document.querySelector('select[name="type"]'), {
+      target: { name: "type", value: "bogo" },
+    });
+    fireEvent.change(document.querySelector('input[name="startDate"]'), {
+      target: { name: "startDate", value: "2026-05-01T10:00" },
+    });
+    fireEvent.change(document.querySelector('input[name="endDate"]'), {
+      target: { name: "endDate", value: "2026-05-05T22:00" },
+    });
+    fireEvent.change(document.querySelector('select[name="categoryId"]'), {
+      target: { name: "categoryId", value: "cat-1" },
+    });
+    fireEvent.change(document.querySelector('select[name="itemId"]'), {
+      target: { name: "itemId", value: "item-1" },
+    });
+    fireEvent.change(document.querySelector('select[name="giftItemId"]'), {
+      target: { name: "giftItemId", value: "item-2" },
+    });
+    fireEvent.change(document.querySelector('input[name="buyQuantity"]'), {
+      target: { name: "buyQuantity", value: "1" },
+    });
+    fireEvent.change(document.querySelector('input[name="getQuantity"]'), {
+      target: { name: "getQuantity", value: "1" },
+    });
+
+    fireEvent.click(document.querySelector('button[form="promoForm"]'));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "bogo",
+          scope: "item",
+          itemId: "item-1",
+          giftItemId: "item-2",
+          productId: "item-2",
+          buyQuantity: 1,
+          getQuantity: 1,
+          discountValue: 0,
+        }),
       );
     });
   });
@@ -69,6 +136,11 @@ describe("PromotionModal restaurant data", () => {
   it("shows the promotion restaurant when editing an existing record", () => {
     render(
       <PromotionModal
+        categories={categories}
+        defaultRestaurantId="restaurant-1"
+        menuItems={menuItems}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
         promotion={{
           id: "promotion-1",
           name: "Khuyen mai cu",
@@ -81,16 +153,13 @@ describe("PromotionModal restaurant data", () => {
           conditions: [],
         }}
         restaurants={restaurants}
-        defaultRestaurantId="restaurant-1"
-        onSave={vi.fn()}
-        onClose={vi.fn()}
-      />
+      />,
     );
 
-    const restaurantSelect = document.querySelector(
-      'select[name="restaurantId"]'
-    );
+    const restaurantSelect = document.querySelector('select[name="restaurantId"]');
 
+    expect(screen.getByRole("option", { name: "Chi nhanh Quan 1" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Chi nhanh Phu Nhuan" })).toBeInTheDocument();
     expect(restaurantSelect.value).toBe("restaurant-2");
   });
 });

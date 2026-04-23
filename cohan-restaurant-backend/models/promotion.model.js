@@ -8,6 +8,11 @@ const PromotionSchema = new Schema(
     name: { type: String, required: true },
     code: { type: String, trim: true, uppercase: true },
     description: String,
+    promotionType: {
+      type: String,
+      enum: ["PERCENTAGE", "FIXED", "BOGO", "COMBO", "FREESHIP"],
+      default: "PERCENTAGE",
+    },
     scope: {
       type: String,
       enum: ["ORDER", "CATEGORY", "ITEM"],
@@ -16,12 +21,15 @@ const PromotionSchema = new Schema(
     restaurantId: { type: Types.ObjectId, ref: "Restaurant" },
     categoryId: { type: Types.ObjectId, ref: "Category" },
     itemId: { type: Types.ObjectId, ref: "MenuItem" },
+    giftItemId: { type: Types.ObjectId, ref: "MenuItem", default: null },
     discountType: {
       type: String,
       enum: ["PERCENT", "AMOUNT"],
       default: "PERCENT",
     },
     discountValue: { type: Number, required: true },
+    buyQuantity: { type: Number, default: 0, min: 0 },
+    getQuantity: { type: Number, default: 0, min: 0 },
     minOrderValue: { type: Number, default: 0 },
     maxDiscount: { type: Number, default: 0 },
     usageLimit: { type: Number, default: 0 },

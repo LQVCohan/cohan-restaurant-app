@@ -39,6 +39,7 @@ type VoucherPackage {
 
 extend type Query {
   coupons(
+    restaurantId: ID
     activeOnly: Boolean = true
     limit: Int = 50
     offset: Int = 0

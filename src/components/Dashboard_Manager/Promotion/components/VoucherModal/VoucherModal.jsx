@@ -15,42 +15,29 @@ import {
 } from "../../../../../utils/constants";
 import "./VoucherModal.scss";
 
+const buildInitialFormData = (voucher) => ({
+  name: voucher?.name || "",
+  code: voucher?.code || "",
+  category: voucher?.category || "",
+  discountType: voucher?.discountType || "",
+  discountValue: voucher?.discountValue || "",
+  minOrderValue: voucher?.minOrderValue || "",
+  maxDiscount: voucher?.maxDiscount || "",
+  usageLimit: voucher?.usageLimit || "",
+  startDate: voucher?.startDate || "",
+  endDate: voucher?.endDate || "",
+  publishAt: voucher?.publishAt || "",
+  description: voucher?.description || "",
+  conditions: voucher?.conditions ? voucher.conditions.join("\n") : "",
+});
+
 const VoucherModal = ({ voucher, onSave, onClose }) => {
-  const [formData, setFormData] = useState({
-    name: "",
-    code: "",
-    category: "",
-    discountType: "",
-    discountValue: "",
-    minOrderValue: "",
-    maxDiscount: "",
-    usageLimit: "",
-    startDate: "",
-    endDate: "",
-    publishAt: "",
-    description: "",
-    conditions: "",
-  });
+  const [formData, setFormData] = useState(buildInitialFormData(voucher));
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (voucher) {
-      setFormData({
-        name: voucher.name || "",
-        code: voucher.code || "",
-        category: voucher.category || "",
-        discountType: voucher.discountType || "",
-        discountValue: voucher.discountValue || "",
-        minOrderValue: voucher.minOrderValue || "",
-        maxDiscount: voucher.maxDiscount || "",
-        usageLimit: voucher.usageLimit || "",
-        startDate: voucher.startDate || "",
-        endDate: voucher.endDate || "",
-        publishAt: voucher.publishAt || "",
-        description: voucher.description || "",
-        conditions: voucher.conditions ? voucher.conditions.join("\n") : "",
-      });
-    }
+    setFormData(buildInitialFormData(voucher));
+    setErrors({});
   }, [voucher]);
 
   const handleInputChange = (event) => {

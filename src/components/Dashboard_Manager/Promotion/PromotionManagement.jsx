@@ -23,6 +23,7 @@ import PromotionModal from "./components/PromotionModal/PromotionModal";
 import VoucherModal from "./components/VoucherModal/VoucherModal";
 import VoucherPackageModal from "./components/VoucherPackageModal/VoucherPackageModal";
 import { VOUCHER_CATEGORIES } from "../../../utils/constants";
+import { downloadXlsxWorkbook } from "../../../utils/xlsxWorkbook";
 
 // --- Hooks ---
 import { usePromotions } from "../../../hooks/usePromotions";
@@ -38,6 +39,8 @@ const PromotionManagement = () => {
     restaurants: promotionRestaurants,
     selectedRestaurantId,
     filters,
+    categories,
+    menuItems,
     addPromotion,
     updatePromotion,
     deletePromotion,
@@ -63,7 +66,7 @@ const PromotionManagement = () => {
     deletePackage,
     duplicatePackage,
     resolveStatus,
-  } = useVouchers();
+  } = useVouchers(selectedRestaurantId);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState(null);
@@ -74,6 +77,205 @@ const PromotionManagement = () => {
   const [viewMode, setViewMode] = useState("grid"); // 'list' | 'grid'
   const [activeTab, setActiveTab] = useState("all");
   const [activeSection, setActiveSection] = useState("promotions");
+
+  const selectedRestaurant = useMemo(
+    () =>
+      promotionRestaurants.find(
+        (restaurant) =>
+          String(restaurant.id) === String(selectedRestaurantId || ""),
+      ) || null,
+    [promotionRestaurants, selectedRestaurantId],
+  );
+
+  const formatPromotionValue = (promotion) => {
+    if (promotion.type === "bogo") {
+      return `Mua ${promotion.buyQuantity || 1} tặng ${promotion.getQuantity || 1}`;
+    }
+    if (promotion.type === "freeship") {
+      return "Miễn phí vận chuyển";
+    }
+    if (promotion.type === "percentage") {
+      return `${promotion.discountValue}%`;
+    }
+    return `${Number(promotion.discountValue || 0).toLocaleString()}đ`;
+  };
+
+  const resolvePromotionTargetLabel = (promotion) => {
+    if (promotion.scope === "item") {
+      const item = menuItems.find(
+        (menuItem) => String(menuItem.id) === String(promotion.itemId || ""),
+      );
+      return item?.name || promotion.itemId || "Món áp dụng";
+    }
+    if (promotion.scope === "category") {
+      const category = categories.find(
+        (item) => String(item.id) === String(promotion.categoryId || ""),
+      );
+      return category?.name || promotion.categoryId || "Danh mục áp dụng";
+    }
+    return "Toàn bộ đơn hàng";
+  };
+
+  const resolveGiftItemLabel = (promotion) => {
+    if (!promotion.giftItemId) return "";
+    const item = menuItems.find(
+      (menuItem) => String(menuItem.id) === String(promotion.giftItemId || ""),
+    );
+    return item?.name || promotion.giftItemId;
+  };
+
+  const buildExportSheets = () => {
+    const restaurantName =
+      selectedRestaurant?.name || `Restaurant-${selectedRestaurantId || "all"}`;
+
+    if (activeSection === "vouchers") {
+      return [
+        {
+          name: "Vouchers",
+          rows: [
+            [
+              "Tên voucher",
+              "Mã",
+              "Nhóm",
+              "Giảm giá",
+              "Đơn tối thiểu",
+              "Giảm tối đa",
+              "Lượt dùng",
+              "Đã dùng",
+              "Công bố",
+              "Bắt đầu",
+              "Kết thúc",
+              "Trạng thái",
+              "Nhà hàng",
+            ],
+            ...vouchers.map((voucher) => [
+              voucher.name,
+              voucher.code,
+              VOUCHER_CATEGORIES[voucher.category] || voucher.category,
+              voucher.discountType === "percent"
+                ? `${voucher.discountValue}%`
+                : voucher.discountValue,
+              voucher.minOrderValue,
+              voucher.maxDiscount,
+              voucher.usageLimit,
+              voucher.usageCount,
+              voucher.publishAt,
+              voucher.startDate,
+              voucher.endDate,
+              resolveStatus(voucher),
+              restaurantName,
+            ]),
+          ],
+        },
+      ];
+    }
+
+    if (activeSection === "packages") {
+      return [
+        {
+          name: "VoucherPackages",
+          rows: [
+            [
+              "Tên gói",
+              "Mã",
+              "Voucher",
+              "Công bố",
+              "Bắt đầu",
+              "Kết thúc",
+              "Trạng thái",
+              "Nhà hàng",
+              "Điều kiện",
+            ],
+            ...packages.map((pkg) => [
+              pkg.name,
+              pkg.code,
+              (pkg.voucherIds || [])
+                .map((voucherId) => {
+                  const voucher = allVouchers.find(
+                    (item) => String(item.id) === String(voucherId),
+                  );
+                  return voucher?.name || voucherId;
+                })
+                .join(", "),
+              pkg.publishAt,
+              pkg.startDate,
+              pkg.endDate,
+              resolveStatus(pkg),
+              restaurantName,
+              (pkg.conditions || []).join(" | "),
+            ]),
+          ],
+        },
+      ];
+    }
+
+    return [
+      {
+        name: "Promotions",
+        rows: [
+          [
+            "Tên chương trình",
+            "Mã",
+            "Loại",
+            "Phạm vi",
+            "Đối tượng áp dụng",
+            "Món tặng",
+            "Mua",
+            "Tặng",
+            "Giảm giá",
+            "Đơn tối thiểu",
+            "Giảm tối đa",
+            "Lượt dùng",
+            "Đã dùng",
+            "Bắt đầu",
+            "Kết thúc",
+            "Trạng thái",
+            "Nhà hàng",
+            "Mô tả",
+            "Điều kiện",
+          ],
+          ...promotions.map((promotion) => [
+            promotion.name,
+            promotion.code,
+            promotion.type,
+            promotion.scope,
+            resolvePromotionTargetLabel(promotion),
+            resolveGiftItemLabel(promotion),
+            promotion.buyQuantity,
+            promotion.getQuantity,
+            formatPromotionValue(promotion),
+            promotion.minOrderValue,
+            promotion.maxDiscount,
+            promotion.usageLimit,
+            promotion.usageCount,
+            promotion.startDate,
+            promotion.endDate,
+            promotion.status,
+            restaurantName,
+            promotion.description,
+            (promotion.conditions || []).join(" | "),
+          ]),
+        ],
+      },
+    ];
+  };
+
+  const handleExport = () => {
+    const rows =
+      activeSection === "promotions"
+        ? promotions
+        : activeSection === "vouchers"
+          ? vouchers
+          : packages;
+
+    if (!rows.length) return;
+
+    const dateSuffix = new Date().toISOString().slice(0, 10);
+    downloadXlsxWorkbook(
+      buildExportSheets(),
+      `promotion-${activeSection}-${selectedRestaurantId || "all"}-${dateSuffix}.xlsx`,
+    );
+  };
 
   // --- Derived Data (Tính toán số liệu) ---
   const statsData = useMemo(
@@ -190,13 +392,17 @@ const PromotionManagement = () => {
     setEditingVoucher(null);
   };
 
-  const handleSaveVoucher = (voucherData) => {
-    if (editingVoucher) {
-      updateVoucher(editingVoucher.id, voucherData);
-    } else {
-      addVoucher(voucherData);
+  const handleSaveVoucher = async (voucherData) => {
+    try {
+      if (editingVoucher) {
+        await updateVoucher(editingVoucher.id, voucherData);
+      } else {
+        await addVoucher(voucherData);
+      }
+      handleCloseVoucherModal();
+    } catch (error) {
+      console.error("Khong the luu voucher.", error);
     }
-    handleCloseVoucherModal();
   };
 
   const handleDeleteVoucher = (id) => {
@@ -215,13 +421,17 @@ const PromotionManagement = () => {
     setEditingPackage(null);
   };
 
-  const handleSavePackage = (packageData) => {
-    if (editingPackage) {
-      updatePackage(editingPackage.id, packageData);
-    } else {
-      addPackage(packageData);
+  const handleSavePackage = async (packageData) => {
+    try {
+      if (editingPackage) {
+        await updatePackage(editingPackage.id, packageData);
+      } else {
+        await addPackage(packageData);
+      }
+      handleClosePackageModal();
+    } catch (error) {
+      console.error("Khong the luu goi voucher.", error);
     }
-    handleClosePackageModal();
   };
 
   const handleDeletePackage = (id) => {
@@ -382,7 +592,7 @@ const PromotionManagement = () => {
               <td className="text-primary font-bold">
                 {voucher.discountType === "percent"
                   ? `${voucher.discountValue}%`
-                  : `${voucher.discountValue.toLocaleString()}đ`}
+                  : `${Number(voucher.discountValue || 0).toLocaleString()}đ`}
               </td>
               <td>{renderStatusBadge(resolveStatus(voucher))}</td>
               <td className="text-right">
@@ -663,7 +873,7 @@ const PromotionManagement = () => {
 
             <button
               className="btn-secondary"
-              onClick={() => alert("Đang xuất file...")}
+              onClick={handleExport}
             >
               <Download size={18} />
               <span>Xuất</span>
@@ -744,9 +954,7 @@ const PromotionManagement = () => {
                               </div>
                             </td>
                             <td className="text-primary font-bold">
-                              {item.type === "percent"
-                                ? `${item.discountValue}%`
-                                : `${item.discountValue.toLocaleString()}đ`}
+                              {formatPromotionValue(item)}
                             </td>
                             <td>
                               <div className="usage-bar">
@@ -832,6 +1040,8 @@ const PromotionManagement = () => {
           promotion={editingPromotion}
           restaurants={promotionRestaurants}
           defaultRestaurantId={selectedRestaurantId}
+          categories={categories}
+          menuItems={menuItems}
           onSave={handleSavePromotion}
           onClose={handleCloseModal}
         />

@@ -22,11 +22,14 @@ function buildActiveQuery(activeOnly, now) {
 }
 
 export const CouponQuery = {
-  async coupons(_, { activeOnly = true, limit = 50, offset = 0, now }) {
+  async coupons(_, { restaurantId, activeOnly = true, limit = 50, offset = 0, now }) {
     const safeLimit = clamp(limit, 1, 200);
     const safeOffset = Math.max(0, Number(offset) || 0);
 
     const query = buildActiveQuery(activeOnly, now);
+    if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
+      query.restaurantId = new mongoose.Types.ObjectId(restaurantId);
+    }
 
     return Coupon.find(query)
       .sort({ startAt: -1, _id: -1 })

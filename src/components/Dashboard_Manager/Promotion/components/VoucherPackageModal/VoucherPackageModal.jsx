@@ -11,39 +11,31 @@ import {
 import { VOUCHER_CATEGORIES } from "../../../../../utils/constants";
 import "./VoucherPackageModal.scss";
 
+const buildInitialFormData = (voucherPackage) => ({
+  name: voucherPackage?.name || "",
+  code: voucherPackage?.code || "",
+  description: voucherPackage?.description || "",
+  voucherIds: voucherPackage?.voucherIds || [],
+  startDate: voucherPackage?.startDate || "",
+  endDate: voucherPackage?.endDate || "",
+  publishAt: voucherPackage?.publishAt || "",
+  conditions: voucherPackage?.conditions
+    ? voucherPackage.conditions.join("\n")
+    : "",
+});
+
 const VoucherPackageModal = ({
   voucherPackage,
   availableVouchers,
   onSave,
   onClose,
 }) => {
-  const [formData, setFormData] = useState({
-    name: "",
-    code: "",
-    description: "",
-    voucherIds: [],
-    startDate: "",
-    endDate: "",
-    publishAt: "",
-    conditions: "",
-  });
+  const [formData, setFormData] = useState(buildInitialFormData(voucherPackage));
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (voucherPackage) {
-      setFormData({
-        name: voucherPackage.name || "",
-        code: voucherPackage.code || "",
-        description: voucherPackage.description || "",
-        voucherIds: voucherPackage.voucherIds || [],
-        startDate: voucherPackage.startDate || "",
-        endDate: voucherPackage.endDate || "",
-        publishAt: voucherPackage.publishAt || "",
-        conditions: voucherPackage.conditions
-          ? voucherPackage.conditions.join("\n")
-          : "",
-      });
-    }
+    setFormData(buildInitialFormData(voucherPackage));
+    setErrors({});
   }, [voucherPackage]);
 
   const handleInputChange = (event) => {

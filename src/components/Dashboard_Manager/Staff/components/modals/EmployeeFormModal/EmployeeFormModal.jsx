@@ -39,6 +39,26 @@ const toDraftComparableForm = (value, fallbackStartDate, fallbackRestaurantId) =
   employmentType: value?.employmentType || "FULL_TIME",
 });
 
+const createBaselineForm = (fallbackStartDate, fallbackRestaurantId) =>
+  toDraftComparableForm(
+    {
+      name: "",
+      role: "",
+      department: "service",
+      address: "",
+      salary: "",
+      shift: "",
+      startDate: fallbackStartDate,
+      emergencyRelation: "",
+      notes: "",
+      primaryRestaurantId: fallbackRestaurantId || "",
+      userType: "STAFF",
+      employmentType: "FULL_TIME",
+    },
+    fallbackStartDate,
+    fallbackRestaurantId,
+  );
+
 const EmployeeFormModal = ({
   isOpen,
   onClose,
@@ -81,6 +101,7 @@ const EmployeeFormModal = ({
   const [salaryReference, setSalaryReference] = useState(null);
   const [salaryReferenceLoading, setSalaryReferenceLoading] = useState(false);
   const [salaryManuallyEdited, setSalaryManuallyEdited] = useState(false);
+  const [roleSelectionSource, setRoleSelectionSource] = useState(null);
 
   const departmentOptions = [
     {
@@ -144,28 +165,11 @@ const EmployeeFormModal = ({
     setShowConfirmPassword(false);
     setShowSensitiveNotice(false);
     setSalaryManuallyEdited(false);
+    setRoleSelectionSource(null);
   }, [defaultRestaurantId]);
 
   const baselineForm = useMemo(
-    () =>
-      toDraftComparableForm(
-        {
-          name: "",
-          role: "",
-          department: "service",
-          address: "",
-          salary: "",
-          shift: "",
-          startDate: todayStr,
-          emergencyRelation: "",
-          notes: "",
-          primaryRestaurantId: defaultRestaurantId || "",
-          userType: "STAFF",
-          employmentType: "FULL_TIME",
-        },
-        todayStr,
-        defaultRestaurantId,
-      ),
+    () => createBaselineForm(todayStr, defaultRestaurantId),
     [defaultRestaurantId, todayStr],
   );
 
@@ -174,9 +178,52 @@ const EmployeeFormModal = ({
     [defaultRestaurantId, formData, todayStr],
   );
 
+  const autoSuggestedSalary = useMemo(
+    () =>
+      formatCurrencyDisplay(
+        getSuggestedSalaryByEmploymentType(
+          formData.employmentType,
+          salaryReference,
+        ),
+      ),
+    [formData.employmentType, salaryReference],
+  );
+
+  const roleSuggestion = useMemo(
+    () => getAiSuggestedPositionTitle(formData.department),
+    [formData.department],
+  );
+
   const isDirty = useMemo(
-    () => JSON.stringify(comparableForm) !== JSON.stringify(baselineForm),
-    [baselineForm, comparableForm],
+    () => {
+      const meaningfulForm = { ...comparableForm };
+
+      if (
+        !salaryManuallyEdited &&
+        meaningfulForm.salary &&
+        meaningfulForm.salary === normalizeDraftText(autoSuggestedSalary)
+      ) {
+        meaningfulForm.salary = baselineForm.salary;
+      }
+
+      if (
+        roleSelectionSource === "suggested" &&
+        meaningfulForm.role &&
+        meaningfulForm.role === normalizeDraftText(roleSuggestion)
+      ) {
+        meaningfulForm.role = baselineForm.role;
+      }
+
+      return JSON.stringify(meaningfulForm) !== JSON.stringify(baselineForm);
+    },
+    [
+      autoSuggestedSalary,
+      baselineForm,
+      comparableForm,
+      roleSuggestion,
+      roleSelectionSource,
+      salaryManuallyEdited,
+    ],
   );
 
   useEffect(() => {
@@ -219,9 +266,22 @@ const EmployeeFormModal = ({
     isDirty,
     sanitize: (v) => {
       const normalized = toDraftComparableForm(v, todayStr, defaultRestaurantId);
-      return JSON.stringify(normalized) === JSON.stringify(baselineForm)
-        ? null
-        : normalized;
+      const normalizedAutoSalary = normalizeDraftText(autoSuggestedSalary);
+      const sanitized = { ...normalized };
+
+      if (
+        !salaryManuallyEdited &&
+        sanitized.salary &&
+        sanitized.salary === normalizedAutoSalary
+      ) {
+        sanitized.salary = baselineForm.salary;
+      }
+
+      if (JSON.stringify(sanitized) === JSON.stringify(baselineForm)) {
+        return null;
+      }
+
+      return sanitized;
     },
     canRestoreDraft: (draft) => {
       const restored = toDraftComparableForm(
@@ -234,6 +294,8 @@ const EmployeeFormModal = ({
     onRestore: (draft) => {
       setFormData((prev) => ({ ...prev, ...draft }));
       setShowSensitiveNotice(true);
+      setRoleSelectionSource(draft?.role ? "restored" : null);
+      setSalaryManuallyEdited(Boolean(draft?.salary));
     },
     notify: showNotification,
   });
@@ -301,7 +363,7 @@ const EmployeeFormModal = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field, value, options = {}) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrors((prev) => {
       const next = { ...prev };
@@ -317,6 +379,11 @@ const EmployeeFormModal = ({
     });
 
     if (field === "salary") setSalaryManuallyEdited(true);
+    if (field === "role") {
+      setRoleSelectionSource(
+        options.source === "suggested" ? "suggested" : "manual",
+      );
+    }
     if (field === "employmentType") {
       const suggested = getSuggestedSalaryByEmploymentType(
         value,
@@ -348,14 +415,9 @@ const EmployeeFormModal = ({
     }));
   }, [formData.employmentType, formData.salary, isOpen, salaryReference]);
 
-  const roleSuggestion = useMemo(
-    () => getAiSuggestedPositionTitle(formData.department),
-    [formData.department],
-  );
-
   const applySuggestedRole = () => {
     if (!roleSuggestion) return;
-    handleInputChange("role", roleSuggestion);
+    handleInputChange("role", roleSuggestion, { source: "suggested" });
   };
 
   const validateContactFieldOnBlur = (field) => {
@@ -412,12 +474,18 @@ const EmployeeFormModal = ({
 
   const handleRequestClose = () => {
     if (isSubmitting) return;
+    requestCloseWithDraft(() => onClose?.());
+    return;
+  };
+    /*
     if (!isDirty) {
       onClose?.();
       return;
     }
     if (window.confirm("Dữ liệu chưa lưu sẽ bị mất. Thoát?")) onClose?.();
   };
+
+  */
 
   const handleSubmit = async () => {
     const isValidCurrent = validateStep(currentStep);
@@ -888,7 +956,7 @@ const EmployeeFormModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={() => requestCloseWithDraft(handleRequestClose)}
+      onClose={handleRequestClose}
       size="lg"
       className="employee-form-modal"
       showCloseButton={false}
@@ -905,7 +973,7 @@ const EmployeeFormModal = ({
         <button
           type="button"
           className="close-btn"
-          onClick={() => requestCloseWithDraft(handleRequestClose)}
+          onClick={handleRequestClose}
         >
           ×
         </button>
@@ -933,7 +1001,7 @@ const EmployeeFormModal = ({
           <button
             type="button"
             className="btn btn-text"
-            onClick={() => requestCloseWithDraft(handleRequestClose)}
+            onClick={handleRequestClose}
             disabled={isSubmitting}
           >
             Hủy bỏ

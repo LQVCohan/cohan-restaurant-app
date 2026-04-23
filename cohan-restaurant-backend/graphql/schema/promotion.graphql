@@ -4,12 +4,16 @@ type Promotion {
   name: String!
   code: String
   description: String
+  promotionType: String
   scope: String
   restaurantId: ID
   categoryId: ID
   itemId: ID
+  giftItemId: ID
   discountType: String
   discountValue: Float
+  buyQuantity: Int
+  getQuantity: Int
   minOrderValue: Float
   maxDiscount: Float
   usageLimit: Int
@@ -39,12 +43,16 @@ input PromotionInput {
   name: String!
   code: String
   description: String
+  promotionType: String
   scope: String
   restaurantId: ID!
   categoryId: ID
   itemId: ID
+  giftItemId: ID
   discountType: String
   discountValue: Float!
+  buyQuantity: Int
+  getQuantity: Int
   minOrderValue: Float
   maxDiscount: Float
   usageLimit: Int
