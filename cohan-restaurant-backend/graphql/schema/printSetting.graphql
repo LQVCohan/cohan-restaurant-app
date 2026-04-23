@@ -72,6 +72,10 @@ input UpdatePrintJobStatusInput {
 input TestPrintInput {
   restaurantId: ID!
   printerId: String!
+  draftName: String
+  draftIp: String
+  draftType: String
+  draftLocation: String
 }
 
 extend type Query {

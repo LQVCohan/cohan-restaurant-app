@@ -151,6 +151,97 @@ export const QUERY_PAYROLL_SETTINGS = gql`
   }
 `;
 
+export const QUERY_PAYROLL_CONTEXT = gql`
+  query PayrollContextMe {
+    me {
+      id
+      restaurantForStaff
+      primaryRestaurantId
+    }
+  }
+`;
+
+export const QUERY_STAFF_PAYROLL_OVERVIEW = gql`
+  query StaffPayrollOverview(
+    $startDate: DateTime!
+    $endDate: DateTime!
+    $restaurantId: ID
+    $periodId: ID
+  ) {
+    staffPayrollOverview(
+      startDate: $startDate
+      endDate: $endDate
+      restaurantId: $restaurantId
+      periodId: $periodId
+    ) {
+      stats {
+        totalPayroll
+        paidAmount
+        remaining
+        progress
+      }
+      items {
+        id
+        payrollItemId
+        name
+        code
+        role
+        department
+        avatar
+        baseSalary
+        workDays
+        actualWorkDays
+        totalHours
+        hourlyRate
+        allowance
+        bonus
+        otherAddition
+        overtime
+        overtimeNormal
+        overtimeWeekend
+        overtimeHoliday
+        nightShiftExtra
+        overtimeHours
+        overtimeNormalHours
+        overtimeWeekendHours
+        overtimeHolidayHours
+        nightHours
+        overtimeNightHours
+        deduction
+        otherDeduction
+        advance
+        insuranceSocial
+        insuranceHealth
+        insuranceUnemployment
+        insuranceTotal
+        insuranceEmployerTotal
+        personalIncomeTax
+        grossIncome
+        coefficient
+        totalIncome
+        totalDeduction
+        netSalary
+        policyCode
+        policyEffectiveFrom
+        regionCode
+        minimumWageMonthly
+        minimumWageHourly
+        minimumWageViolation
+        insuranceEligible
+        warningMessages
+        status
+        paidAt
+        lateMinutes
+        earlyLeaveMinutes
+        unpaidLeaveDays
+        paidLeaveDays
+        scheduleShiftCount
+        manualAdjustmentTotal
+      }
+    }
+  }
+`;
+
 export const MUT_CREATE_PERIOD = gql`
   mutation CreatePayrollPeriod($input: CreatePayrollPeriodInput!) {
     createPayrollPeriod(input: $input) {
@@ -240,7 +331,7 @@ export const MUT_UPSERT_ADJUSTMENT = gql`
   }
 `;
 
-const usePayroll = ({ periodId, restaurantId } = {}) => {
+const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
   const periodsQuery = useQuery(QUERY_PAYROLL_PERIODS, {
     variables: { restaurantId: restaurantId || undefined, limit: 24 },
     fetchPolicy: "cache-and-network",
@@ -249,6 +340,9 @@ const usePayroll = ({ periodId, restaurantId } = {}) => {
   const settingsQuery = useQuery(QUERY_PAYROLL_SETTINGS, {
     variables: { restaurantId: restaurantId || undefined },
     fetchPolicy: "cache-and-network",
+  });
+  const meQuery = useQuery(QUERY_PAYROLL_CONTEXT, {
+    fetchPolicy: "cache-first",
   });
 
   const appliedPeriodId =
@@ -260,6 +354,18 @@ const usePayroll = ({ periodId, restaurantId } = {}) => {
   const detailQuery = useQuery(QUERY_PAYROLL_PERIOD_DETAIL, {
     variables: { periodId: effectivePeriodId },
     skip: !effectivePeriodId,
+    fetchPolicy: "cache-and-network",
+  });
+  const hasSnapshotItems = Boolean(detailQuery.data?.payrollPeriodDetail?.items?.length);
+  const canQueryOverviewByRange = Boolean(startDate && endDate);
+  const overviewQuery = useQuery(QUERY_STAFF_PAYROLL_OVERVIEW, {
+    variables: {
+      startDate,
+      endDate,
+      restaurantId: restaurantId || undefined,
+      periodId: effectivePeriodId || undefined,
+    },
+    skip: !(effectivePeriodId || canQueryOverviewByRange) || hasSnapshotItems,
     fetchPolicy: "cache-and-network",
   });
 
@@ -274,18 +380,31 @@ const usePayroll = ({ periodId, restaurantId } = {}) => {
   const [upsertAdjustment] = useMutation(MUT_UPSERT_ADJUSTMENT);
 
   return {
-    loading: periodsQuery.loading || detailQuery.loading,
+    loading: periodsQuery.loading || detailQuery.loading || overviewQuery.loading,
     settingsLoading: settingsQuery.loading,
-    error: periodsQuery.error || detailQuery.error,
+    error: periodsQuery.error || detailQuery.error || overviewQuery.error,
     settingsError: settingsQuery.error,
     periods: periodsQuery.data?.payrollPeriods || [],
     currentPeriodId: appliedPeriodId,
     periodDetail: detailQuery.data?.payrollPeriodDetail || null,
-    payrollStats: detailQuery.data?.payrollPeriodDetail?.stats || null,
-    payrollItems: detailQuery.data?.payrollPeriodDetail?.items || [],
+    payrollStats:
+      detailQuery.data?.payrollPeriodDetail?.stats ||
+      overviewQuery.data?.staffPayrollOverview?.stats ||
+      null,
+    payrollItems:
+      detailQuery.data?.payrollPeriodDetail?.items?.length
+        ? detailQuery.data?.payrollPeriodDetail?.items
+        : (overviewQuery.data?.staffPayrollOverview?.items || []),
     payrollSettings:
       settingsQuery.data?.payrollSettings ||
       detailQuery.data?.payrollPeriodDetail?.settings ||
+      null,
+    resolvedRestaurantId:
+      restaurantId ||
+      settingsQuery.data?.payrollSettings?.restaurantId ||
+      periodsQuery.data?.payrollPeriods?.[0]?.restaurantId ||
+      meQuery.data?.me?.restaurantForStaff ||
+      meQuery.data?.me?.primaryRestaurantId ||
       null,
     refetchPeriods: periodsQuery.refetch,
     refetchDetail: detailQuery.refetch,

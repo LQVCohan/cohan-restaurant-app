@@ -249,6 +249,10 @@ export default function PrintManagement() {
           input: {
             restaurantId: selectedRestaurantId,
             printerId: draft.id,
+            draftName: draft.name,
+            draftIp: draft.ip,
+            draftType: draft.type,
+            draftLocation: draft.location,
           },
         },
       });
@@ -435,7 +439,7 @@ export default function PrintManagement() {
                       </div>
 
                       <div className="device-actions">
-                        <button onClick={() => handleTestConfig(printer)} title="Test in">
+                        <button onClick={() => handleTestConfig(printer)} title="Test cấu hình (simulated)">
                           <Send size={16} />
                         </button>
                         <button onClick={() => openEditPrinter(printer)} title="Cấu hình">

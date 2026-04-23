@@ -200,7 +200,7 @@ export function PrinterSettingsModal({
               <>Running...</>
             ) : (
               <>
-                <Zap size={18} /> Test Connection
+                <Zap size={18} /> Test cấu hình (simulated)
               </>
             )}
           </button>

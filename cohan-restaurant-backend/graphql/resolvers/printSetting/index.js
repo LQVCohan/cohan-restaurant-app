@@ -156,23 +156,32 @@ export const Query = {
 
 export const Mutation = {
   async upsertPrintSettings(_, { input }, { user }) {
-    const {
-      restaurantId,
-      printers = [],
-      stations = {},
-      templates = DEFAULT_TEMPLATES,
-    } = input || {};
+    const { restaurantId } = input || {};
     await assertRestaurantAccess(user, restaurantId);
+    const doc = await findOrCreatePrintSetting(restaurantId);
+    const hasPrinters = Object.prototype.hasOwnProperty.call(input || {}, "printers");
+    const hasStations = Object.prototype.hasOwnProperty.call(input || {}, "stations");
+    const hasTemplates = Object.prototype.hasOwnProperty.call(input || {}, "templates");
+
+    const normalizedPrinters = hasPrinters
+      ? normalizePrinters(input?.printers)
+      : normalizePrinters(doc.printers);
+    const normalizedStations = hasStations
+      ? normalizeStations(input?.stations, normalizedPrinters)
+      : normalizeStations(doc.stations, normalizedPrinters);
+    const normalizedTemplates = hasTemplates
+      ? normalizeTemplates(input?.templates)
+      : normalizeTemplates(doc.templates);
 
     const now = new Date();
-    const doc = await PrintSetting.findOneAndUpdate(
+    const updated = await PrintSetting.findOneAndUpdate(
       { restaurantId },
       {
         $set: {
           restaurantId,
-          printers: normalizePrinters(printers),
-          stations: normalizeStations(stations, printers),
-          templates: normalizeTemplates(templates),
+          printers: normalizedPrinters,
+          stations: normalizedStations,
+          templates: normalizedTemplates,
           updatedAt: now,
         },
         $setOnInsert: {
@@ -183,7 +192,7 @@ export const Mutation = {
       { new: true, upsert: true, setDefaultsOnInsert: true }
     ).lean();
 
-    return toPrintSettingView(doc);
+    return toPrintSettingView(updated);
   },
 
   async enqueuePrintJob(_, { input }, { user }) {
@@ -292,7 +301,7 @@ export const Mutation = {
   },
 
   async testPrint(_, { input }, { user }) {
-    const { restaurantId, printerId } = input || {};
+    const { restaurantId, printerId, draftName, draftIp, draftType, draftLocation } = input || {};
     await assertRestaurantAccess(user, restaurantId);
 
     const doc = await findOrCreatePrintSetting(restaurantId);
@@ -301,7 +310,14 @@ export const Mutation = {
     if (targetIndex < 0) throw notFound("Printer not found");
 
     const target = printers[targetIndex];
-    const online = Boolean(target.ip);
+    const effectivePrinter = {
+      ...target,
+      name: draftName != null ? String(draftName) : target.name,
+      ip: draftIp != null ? String(draftIp) : target.ip,
+      type: draftType != null ? String(draftType) : target.type,
+      location: draftLocation != null ? String(draftLocation) : target.location,
+    };
+    const online = Boolean(String(effectivePrinter.ip || "").trim());
     printers[targetIndex] = {
       ...target,
       status: online ? "online" : "offline",
@@ -312,9 +328,9 @@ export const Mutation = {
     const createdAt = toIsoNow();
     const job = {
       id: `job_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
-      printerId: target.id,
-      printerName: target.name,
-      stationId: target.location || null,
+      printerId: effectivePrinter.id,
+      printerName: effectivePrinter.name,
+      stationId: effectivePrinter.location || null,
       printType: "test",
       templateKey: "receipt",
       status: online ? "completed" : "failed",
@@ -323,7 +339,10 @@ export const Mutation = {
       payload: {
         label: "Test print",
         simulated: true,
-        checkMode: "ip_presence_only",
+        checkMode: "ip_presence_only_draft_aware",
+        source: draftIp != null || draftName != null || draftType != null || draftLocation != null
+          ? "draft_payload"
+          : "persisted_printer",
         hardwareHandshake: false,
       },
       createdAt,

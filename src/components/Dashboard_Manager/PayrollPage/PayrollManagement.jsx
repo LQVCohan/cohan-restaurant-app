@@ -55,6 +55,141 @@ const buildPayrollSettingsForm = (settings) => ({
 const toInputDate = (value) =>
   value ? new Date(value).toISOString().slice(0, 10) : "";
 
+const escapeXml = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+
+const CRC_TABLE = new Uint32Array(256).map((_, index) => {
+  let c = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+  }
+  return c >>> 0;
+});
+
+const crc32 = (input) => {
+  let crc = 0xffffffff;
+  for (let i = 0; i < input.length; i += 1) {
+    crc = CRC_TABLE[(crc ^ input[i]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+};
+
+const createZipBuffer = (files) => {
+  const writeU16 = (view, offset, value) => view.setUint16(offset, value, true);
+  const writeU32 = (view, offset, value) => view.setUint32(offset, value, true);
+  const localFileRecords = [];
+  const centralDirectory = [];
+  let offset = 0;
+
+  files.forEach(({ name, data }) => {
+    const nameBytes = new TextEncoder().encode(name);
+    const checksum = crc32(data);
+
+    const localHeader = new Uint8Array(30 + nameBytes.length + data.length);
+    const localView = new DataView(localHeader.buffer);
+    writeU32(localView, 0, 0x04034b50);
+    writeU16(localView, 4, 20);
+    writeU16(localView, 6, 0);
+    writeU16(localView, 8, 0);
+    writeU16(localView, 10, 0);
+    writeU16(localView, 12, 0);
+    writeU32(localView, 14, checksum);
+    writeU32(localView, 18, data.length);
+    writeU32(localView, 22, data.length);
+    writeU16(localView, 26, nameBytes.length);
+    writeU16(localView, 28, 0);
+    localHeader.set(nameBytes, 30);
+    localHeader.set(data, 30 + nameBytes.length);
+    localFileRecords.push(localHeader);
+
+    const centralHeader = new Uint8Array(46 + nameBytes.length);
+    const centralView = new DataView(centralHeader.buffer);
+    writeU32(centralView, 0, 0x02014b50);
+    writeU16(centralView, 4, 20);
+    writeU16(centralView, 6, 20);
+    writeU16(centralView, 8, 0);
+    writeU16(centralView, 10, 0);
+    writeU16(centralView, 12, 0);
+    writeU16(centralView, 14, 0);
+    writeU32(centralView, 16, checksum);
+    writeU32(centralView, 20, data.length);
+    writeU32(centralView, 24, data.length);
+    writeU16(centralView, 28, nameBytes.length);
+    writeU16(centralView, 30, 0);
+    writeU16(centralView, 32, 0);
+    writeU16(centralView, 34, 0);
+    writeU16(centralView, 36, 0);
+    writeU32(centralView, 38, 0);
+    writeU32(centralView, 42, offset);
+    centralHeader.set(nameBytes, 46);
+    centralDirectory.push(centralHeader);
+
+    offset += localHeader.length;
+  });
+
+  const centralSize = centralDirectory.reduce((sum, row) => sum + row.length, 0);
+  const endRecord = new Uint8Array(22);
+  const endView = new DataView(endRecord.buffer);
+  writeU32(endView, 0, 0x06054b50);
+  writeU16(endView, 4, 0);
+  writeU16(endView, 6, 0);
+  writeU16(endView, 8, files.length);
+  writeU16(endView, 10, files.length);
+  writeU32(endView, 12, centralSize);
+  writeU32(endView, 16, offset);
+  writeU16(endView, 20, 0);
+
+  const output = new Uint8Array(offset + centralSize + endRecord.length);
+  let cursor = 0;
+  [...localFileRecords, ...centralDirectory, endRecord].forEach((chunk) => {
+    output.set(chunk, cursor);
+    cursor += chunk.length;
+  });
+  return output;
+};
+
+const buildPayrollXlsxBlob = ({ rows, sheetName = "BangLuong" }) => {
+  const xmlHeader = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const sheetRows = rows
+    .map(
+      (row, rowIndex) =>
+        `<row r="${rowIndex + 1}">${row
+          .map((cell, cellIndex) => {
+            const col = String.fromCharCode(65 + cellIndex);
+            const isNumber = typeof cell === "number" && Number.isFinite(cell);
+            return isNumber
+              ? `<c r="${col}${rowIndex + 1}"><v>${cell}</v></c>`
+              : `<c r="${col}${rowIndex + 1}" t="inlineStr"><is><t>${escapeXml(cell)}</t></is></c>`;
+          })
+          .join("")}</row>`,
+    )
+    .join("");
+  const worksheet = `${xmlHeader}<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${sheetRows}</sheetData></worksheet>`;
+  const workbook = `${xmlHeader}<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${escapeXml(sheetName)}" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+  const workbookRels = `${xmlHeader}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  const rootRels = `${xmlHeader}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const styles = `${xmlHeader}<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts><fills count="1"><fill><patternFill patternType="none"/></fill></fills><borders count="1"><border/></borders><cellXfs count="1"><xf fontId="0" fillId="0" borderId="0"/></cellXfs></styleSheet>`;
+  const contentTypes = `${xmlHeader}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+  const encoder = new TextEncoder();
+  const zipBytes = createZipBuffer([
+    { name: "[Content_Types].xml", data: encoder.encode(contentTypes) },
+    { name: "_rels/.rels", data: encoder.encode(rootRels) },
+    { name: "xl/workbook.xml", data: encoder.encode(workbook) },
+    { name: "xl/_rels/workbook.xml.rels", data: encoder.encode(workbookRels) },
+    { name: "xl/worksheets/sheet1.xml", data: encoder.encode(worksheet) },
+    { name: "xl/styles.xml", data: encoder.encode(styles) },
+  ]);
+
+  return new Blob([zipBytes], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+};
+
 const getSettingsRestaurantId = ({ settings, periodDetail, periods }) =>
   settings?.restaurantId ||
   periodDetail?.period?.restaurantId ||
@@ -199,6 +334,7 @@ const PayrollManagement = () => {
     payrollItems,
     payrollStats,
     payrollSettings,
+    resolvedRestaurantId,
     settingsLoading,
     settingsError,
     loading,
@@ -212,7 +348,11 @@ const PayrollManagement = () => {
     upsertAdjustment,
     refetchDetail,
     refetchSettings,
-  } = usePayroll({ periodId: selectedPeriodId || undefined });
+  } = usePayroll({
+    periodId: selectedPeriodId || undefined,
+    startDate: dateRange.start ? new Date(dateRange.start).toISOString() : undefined,
+    endDate: dateRange.end ? new Date(dateRange.end).toISOString() : undefined,
+  });
 
   const employeeIdFromQuery = useMemo(() => {
     const params = new URLSearchParams(location.search || "");
@@ -286,6 +426,7 @@ const PayrollManagement = () => {
 
   const displayedPeriod = periodDetail?.period || null;
   const periodStatus = displayedPeriod?.status || "draft";
+  const hasRealItems = payrollItems.length > 0;
   const currentAppliedPeriod = useMemo(
     () =>
       periods.find((period) => String(period.id) === String(currentPeriodId)) ||
@@ -298,8 +439,8 @@ const PayrollManagement = () => {
         settings: payrollSettings,
         periodDetail,
         periods,
-      }),
-    [payrollSettings, periodDetail, periods],
+      }) || resolvedRestaurantId,
+    [payrollSettings, periodDetail, periods, resolvedRestaurantId],
   );
 
   useEffect(() => {
@@ -405,15 +546,14 @@ const PayrollManagement = () => {
       item.status,
     ]);
 
-    const html = `\n<table border="1"><tr>${header.map((h) => `<th>${h}</th>`).join("")}</tr>${rows
-      .map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`)
-      .join("")}</table>`;
-
-    const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const blob = buildPayrollXlsxBlob({
+      rows: [header, ...rows],
+      sheetName: "BangLuong",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `bang-luong-${periodDetail?.period?.id || "period"}.xls`;
+    link.download = `bang-luong-${periodDetail?.period?.id || "period"}.xlsx`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -594,7 +734,15 @@ const PayrollManagement = () => {
             </thead>
             <tbody>
               {loading && <tr><td colSpan={11} className="table-empty">Đang tải dữ liệu bảng lương...</td></tr>}
-              {!loading && filteredData.length === 0 && <tr><td colSpan={11} className="table-empty">Không có dữ liệu phù hợp.</td></tr>}
+              {!loading && filteredData.length === 0 && (
+                <tr>
+                  <td colSpan={11} className="table-empty">
+                    {!currentPeriodId && !hasRealItems
+                      ? "Chưa có kỳ lương đang áp dụng. Hãy thiết lập kỳ lương để bắt đầu."
+                      : "Không có dữ liệu phù hợp."}
+                  </td>
+                </tr>
+              )}
               {!loading && filteredData.map((item) => {
                 const isSelected = selectedIds.includes(item.id);
                 return (
@@ -730,5 +878,3 @@ const PayslipModal = ({
 );
 
 export default PayrollManagement;
-
-
