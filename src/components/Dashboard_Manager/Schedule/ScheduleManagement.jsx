@@ -203,6 +203,10 @@ const buildShiftRange = ({ date, startTimeText, endTimeText }) => {
     throw new Error("Giờ bắt đầu/kết thúc không hợp lệ.");
   }
 
+  if (startTimeText === endTimeText) {
+    throw new Error("Giờ kết thúc phải khác giờ bắt đầu.");
+  }
+
   const [year, month, day] = date.split("-").map(Number);
   const [startHour, startMin] = startTimeText.split(":").map(Number);
   const [endHour, endMin] = endTimeText.split(":").map(Number);

@@ -44,6 +44,7 @@ export const QUERY_PAYROLL_PERIOD_DETAIL = gql`
       }
       settings {
         restaurantId
+        currentPayrollPeriodId
         standardWorkDaysPerMonth
         standardHoursPerDay
         overtimeMultiplierWeekday
@@ -127,6 +128,29 @@ export const QUERY_PAYROLL_PERIOD_DETAIL = gql`
   }
 `;
 
+export const QUERY_PAYROLL_SETTINGS = gql`
+  query PayrollSettings($restaurantId: ID) {
+    payrollSettings(restaurantId: $restaurantId) {
+      restaurantId
+      currentPayrollPeriodId
+      standardWorkDaysPerMonth
+      standardHoursPerDay
+      overtimeMultiplierWeekday
+      overtimeMultiplierWeekend
+      overtimeMultiplierHoliday
+      latenessPenaltyPerMinute
+      earlyLeavePenaltyPerMinute
+      unpaidLeaveDeductionPerDay
+      defaultAllowance
+      allowPaidLeaveInWorkDays
+      defaultBonus
+      defaultDeduction
+      notes
+      updatedAt
+    }
+  }
+`;
+
 export const MUT_CREATE_PERIOD = gql`
   mutation CreatePayrollPeriod($input: CreatePayrollPeriodInput!) {
     createPayrollPeriod(input: $input) {
@@ -184,6 +208,7 @@ export const MUT_UPDATE_SETTINGS = gql`
   mutation UpdatePayrollSettings($input: PayrollSettingsInput!) {
     updatePayrollSettings(input: $input) {
       restaurantId
+      currentPayrollPeriodId
       standardWorkDaysPerMonth
       standardHoursPerDay
       overtimeMultiplierWeekday
@@ -221,7 +246,16 @@ const usePayroll = ({ periodId, restaurantId } = {}) => {
     fetchPolicy: "cache-and-network",
   });
 
-  const effectivePeriodId = periodId || periodsQuery.data?.payrollPeriods?.[0]?.id;
+  const settingsQuery = useQuery(QUERY_PAYROLL_SETTINGS, {
+    variables: { restaurantId: restaurantId || undefined },
+    fetchPolicy: "cache-and-network",
+  });
+
+  const appliedPeriodId =
+    settingsQuery.data?.payrollSettings?.currentPayrollPeriodId ||
+    periodsQuery.data?.payrollPeriods?.[0]?.id ||
+    null;
+  const effectivePeriodId = periodId || appliedPeriodId;
 
   const detailQuery = useQuery(QUERY_PAYROLL_PERIOD_DETAIL, {
     variables: { periodId: effectivePeriodId },
@@ -241,15 +275,21 @@ const usePayroll = ({ periodId, restaurantId } = {}) => {
 
   return {
     loading: periodsQuery.loading || detailQuery.loading,
+    settingsLoading: settingsQuery.loading,
     error: periodsQuery.error || detailQuery.error,
+    settingsError: settingsQuery.error,
     periods: periodsQuery.data?.payrollPeriods || [],
-    currentPeriodId: effectivePeriodId || null,
+    currentPeriodId: appliedPeriodId,
     periodDetail: detailQuery.data?.payrollPeriodDetail || null,
     payrollStats: detailQuery.data?.payrollPeriodDetail?.stats || null,
     payrollItems: detailQuery.data?.payrollPeriodDetail?.items || [],
-    payrollSettings: detailQuery.data?.payrollPeriodDetail?.settings || null,
+    payrollSettings:
+      settingsQuery.data?.payrollSettings ||
+      detailQuery.data?.payrollPeriodDetail?.settings ||
+      null,
     refetchPeriods: periodsQuery.refetch,
     refetchDetail: detailQuery.refetch,
+    refetchSettings: settingsQuery.refetch,
     createPeriod,
     recalculatePeriod,
     finalizePeriod,

@@ -798,6 +798,27 @@ export default {
       throw new Error("Invalid payroll period range");
     }
 
+    const payrollSetting = await PayrollSetting.findOne({ restaurantId: rid });
+    const currentPeriodId = payrollSetting?.currentPayrollPeriodId
+      ? String(payrollSetting.currentPayrollPeriodId)
+      : null;
+    const currentPeriod = currentPeriodId
+      ? await PayrollPeriod.findById(currentPeriodId)
+      : null;
+
+    const isSameCurrentRange =
+      currentPeriod &&
+      currentPeriod.startDate?.getTime?.() === startDate.getTime() &&
+      currentPeriod.endDate?.getTime?.() === endDate.getTime();
+
+    if (
+      currentPeriod &&
+      !isSameCurrentRange &&
+      currentPeriod.status !== "paid"
+    ) {
+      throw new Error("Current payroll period must be fully paid before changing the applied payroll cycle");
+    }
+
     let period = await PayrollPeriod.findOne({ restaurantId: rid, startDate, endDate });
     if (!period) {
       const settings = await getPayrollSettings(rid);
@@ -814,6 +835,16 @@ export default {
 
     const detail = await upsertPeriodItems(period);
     await PayrollPeriod.findByIdAndUpdate(period._id, { $set: { statsSnapshot: detail.stats } });
+    await PayrollSetting.findOneAndUpdate(
+      { restaurantId: rid },
+      {
+        $set: {
+          currentPayrollPeriodId: period._id,
+          updatedBy: payrollToObjectId(actor.id || actor._id),
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
 
     return {
       id: String(period._id),
@@ -919,6 +950,9 @@ export default {
     if (!rid) throw new Error("Restaurant is required");
 
     const update = {
+      currentPayrollPeriodId: input.currentPayrollPeriodId
+        ? payrollToObjectId(input.currentPayrollPeriodId)
+        : input.currentPayrollPeriodId,
       standardWorkDaysPerMonth: input.standardWorkDaysPerMonth,
       standardHoursPerDay: input.standardHoursPerDay,
       overtimeMultiplierWeekday: input.overtimeMultiplierWeekday,

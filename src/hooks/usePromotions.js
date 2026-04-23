@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { gql, useMutation, useQuery } from "@apollo/client";
 import { useContext } from "react";
 import { AuthContext } from "@/context/AuthContext";
@@ -99,10 +99,37 @@ const mapToInput = (data, restaurantId) => ({
 
 export const usePromotions = () => {
   const { restaurants } = useContext(AuthContext);
-  const defaultRestaurantId = restaurants?.[0]?.id || "";
-  const [filters, setFilters] = useState({ search: "", status: "all", restaurant: "all" });
+  const restaurantOptions = useMemo(
+    () =>
+      Array.isArray(restaurants)
+        ? restaurants.filter((restaurant) => restaurant?.id)
+        : [],
+    [restaurants]
+  );
+  const defaultRestaurantId = restaurantOptions[0]?.id || "";
+  const [filters, setFilters] = useState({
+    search: "",
+    status: "all",
+    restaurant: "",
+  });
 
-  const selectedRestaurantId = filters.restaurant !== "all" ? filters.restaurant : defaultRestaurantId;
+  useEffect(() => {
+    if (!restaurantOptions.length) return;
+
+    const hasSelectedRestaurant = restaurantOptions.some(
+      (restaurant) =>
+        String(restaurant.id) === String(filters.restaurant || "")
+    );
+
+    if (!filters.restaurant || !hasSelectedRestaurant) {
+      setFilters((prev) => ({
+        ...prev,
+        restaurant: String(restaurantOptions[0].id),
+      }));
+    }
+  }, [restaurantOptions, filters.restaurant]);
+
+  const selectedRestaurantId = filters.restaurant || defaultRestaurantId;
 
   const { data, loading, error, refetch } = useQuery(Q_PROMOTIONS, {
     variables: {
@@ -132,22 +159,52 @@ export const usePromotions = () => {
         promotion.code.toLowerCase().includes(q) ||
         (promotion.description || "").toLowerCase().includes(q);
       const matchesStatus = filters.status === "all" || promotion.status === filters.status;
-      const matchesRestaurant =
-        filters.restaurant === "all" || String(promotion.restaurantId) === String(filters.restaurant);
-      return matchesSearch && matchesStatus && matchesRestaurant;
+      return matchesSearch && matchesStatus;
     });
   }, [allPromotions, filters]);
 
   const addPromotion = async (promotionData) => {
-    if (!selectedRestaurantId) return;
-    await createPromotion({ variables: { input: mapToInput(promotionData, selectedRestaurantId) } });
-    await refetch();
+    const targetRestaurantId = String(
+      promotionData?.restaurantId || selectedRestaurantId || ""
+    );
+    if (!targetRestaurantId) return null;
+
+    await createPromotion({
+      variables: { input: mapToInput(promotionData, targetRestaurantId) },
+    });
+
+    if (String(selectedRestaurantId) === targetRestaurantId) {
+      await refetch({
+        restaurantId: targetRestaurantId,
+        activeOnly: false,
+        limit: 500,
+        offset: 0,
+      });
+    }
+
+    return targetRestaurantId;
   };
 
   const updatePromotion = async (id, promotionData) => {
-    if (!selectedRestaurantId) return;
-    await updatePromotionMu({ variables: { id, input: mapToInput(promotionData, selectedRestaurantId) } });
-    await refetch();
+    const targetRestaurantId = String(
+      promotionData?.restaurantId || selectedRestaurantId || ""
+    );
+    if (!targetRestaurantId) return null;
+
+    await updatePromotionMu({
+      variables: { id, input: mapToInput(promotionData, targetRestaurantId) },
+    });
+
+    if (String(selectedRestaurantId) === targetRestaurantId) {
+      await refetch({
+        restaurantId: targetRestaurantId,
+        activeOnly: false,
+        limit: 500,
+        offset: 0,
+      });
+    }
+
+    return targetRestaurantId;
   };
 
   const deletePromotion = async (id) => {
@@ -174,6 +231,8 @@ export const usePromotions = () => {
   return {
     promotions,
     allPromotions,
+    restaurants: restaurantOptions,
+    selectedRestaurantId,
     filters,
     addPromotion,
     updatePromotion,

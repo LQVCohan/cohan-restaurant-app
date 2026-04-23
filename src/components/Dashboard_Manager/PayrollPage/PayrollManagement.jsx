@@ -13,6 +13,167 @@ const getDefaultRange = () => {
   };
 };
 
+const PAYROLL_SETTINGS_DEFAULTS = {
+  standardWorkDaysPerMonth: 26,
+  standardHoursPerDay: 8,
+  overtimeMultiplierWeekday: 1.5,
+  overtimeMultiplierWeekend: 2,
+  overtimeMultiplierHoliday: 3,
+  latenessPenaltyPerMinute: 0,
+  earlyLeavePenaltyPerMinute: 0,
+  unpaidLeaveDeductionPerDay: 0,
+  defaultAllowance: 0,
+  defaultBonus: 0,
+  defaultDeduction: 0,
+  allowPaidLeaveInWorkDays: true,
+  notes: "",
+};
+
+const PAYROLL_SETTINGS_FIELDS = [
+  "standardWorkDaysPerMonth",
+  "standardHoursPerDay",
+  "overtimeMultiplierWeekday",
+  "overtimeMultiplierWeekend",
+  "overtimeMultiplierHoliday",
+  "latenessPenaltyPerMinute",
+  "earlyLeavePenaltyPerMinute",
+  "unpaidLeaveDeductionPerDay",
+  "defaultAllowance",
+  "defaultBonus",
+  "defaultDeduction",
+];
+
+const buildPayrollSettingsForm = (settings) => ({
+  ...PAYROLL_SETTINGS_DEFAULTS,
+  ...settings,
+  allowPaidLeaveInWorkDays:
+    settings?.allowPaidLeaveInWorkDays ??
+    PAYROLL_SETTINGS_DEFAULTS.allowPaidLeaveInWorkDays,
+  notes: settings?.notes ?? PAYROLL_SETTINGS_DEFAULTS.notes,
+});
+
+const toInputDate = (value) =>
+  value ? new Date(value).toISOString().slice(0, 10) : "";
+
+const getSettingsRestaurantId = ({ settings, periodDetail, periods }) =>
+  settings?.restaurantId ||
+  periodDetail?.period?.restaurantId ||
+  periods?.[0]?.restaurantId ||
+  null;
+
+const PayrollSettingsModal = ({
+  settings,
+  loading,
+  loadError,
+  saveError,
+  isSaving,
+  onClose,
+  onSave,
+}) => {
+  const [form, setForm] = useState(() => buildPayrollSettingsForm(settings));
+
+  useEffect(() => {
+    setForm(buildPayrollSettingsForm(settings));
+  }, [settings]);
+
+  const setField = (key, value) =>
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+
+  const hasPersistedSettings = Boolean(settings?.updatedAt);
+
+  return (
+    <div
+      className="modal-overlay"
+      data-testid="payroll-settings-modal"
+      onClick={onClose}
+    >
+      <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>Cấu hình lương</h3>
+          <button className="close-btn" type="button" onClick={onClose}>
+            x
+          </button>
+        </div>
+        <div className="modal-body">
+          {loading && (
+            <div className="settings-modal-state">
+              Đang tải cấu hình lương...
+            </div>
+          )}
+          {!loading && !hasPersistedSettings && (
+            <div className="settings-modal-state">
+              Chưa có cấu hình lương trong dữ liệu. Hệ thống sẽ tạo mới khi bạn lưu.
+            </div>
+          )}
+          {loadError && (
+            <div className="settings-modal-state settings-modal-state--error">
+              Không tải được cấu hình hiện tại. Bạn vẫn có thể nhập và lưu cấu hình mới.
+            </div>
+          )}
+          {saveError && (
+            <div
+              className="settings-modal-state settings-modal-state--error"
+              data-testid="payroll-settings-save-error"
+            >
+              {saveError}
+            </div>
+          )}
+
+          <div className="settings-form-grid">
+            {PAYROLL_SETTINGS_FIELDS.map((field) => (
+              <label key={field} className="settings-field">
+                <span>{field}</span>
+                <input
+                  type="number"
+                  value={form[field]}
+                  onChange={(e) => setField(field, Number(e.target.value || 0))}
+                />
+              </label>
+            ))}
+
+            <label className="settings-field settings-field--checkbox">
+              <input
+                type="checkbox"
+                checked={form.allowPaidLeaveInWorkDays}
+                onChange={(e) =>
+                  setField("allowPaidLeaveInWorkDays", e.target.checked)
+                }
+              />
+              <span>Tính nghỉ có lương vào công thực tế</span>
+            </label>
+
+            <label className="settings-field">
+              <span>Ghi chú</span>
+              <textarea
+                rows={3}
+                value={form.notes}
+                onChange={(e) => setField("notes", e.target.value)}
+              />
+            </label>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" type="button" onClick={onClose}>
+            Hủy
+          </button>
+          <button
+            className="btn btn-primary"
+            data-testid="payroll-settings-save"
+            type="button"
+            disabled={isSaving}
+            onClick={() => onSave(form)}
+          >
+            {isSaving ? "Đang lưu..." : "Lưu cấu hình"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PayrollManagement = () => {
   const location = useLocation();
   const [dateRange, setDateRange] = useState(getDefaultRange);
@@ -25,6 +186,8 @@ const PayrollManagement = () => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [showPayslip, setShowPayslip] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsSaveError, setSettingsSaveError] = useState("");
+  const [settingsSaving, setSettingsSaving] = useState(false);
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
   const [adjustmentType, setAdjustmentType] = useState("bonus");
   const [adjustmentNote, setAdjustmentNote] = useState("");
@@ -36,6 +199,8 @@ const PayrollManagement = () => {
     payrollItems,
     payrollStats,
     payrollSettings,
+    settingsLoading,
+    settingsError,
     loading,
     error,
     createPeriod,
@@ -46,6 +211,7 @@ const PayrollManagement = () => {
     updateSettings,
     upsertAdjustment,
     refetchDetail,
+    refetchSettings,
   } = usePayroll({ periodId: selectedPeriodId || undefined });
 
   const employeeIdFromQuery = useMemo(() => {
@@ -118,7 +284,31 @@ const PayrollManagement = () => {
     return { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 };
   }, [payrollStats]);
 
-  const periodStatus = periodDetail?.period?.status || "draft";
+  const displayedPeriod = periodDetail?.period || null;
+  const periodStatus = displayedPeriod?.status || "draft";
+  const currentAppliedPeriod = useMemo(
+    () =>
+      periods.find((period) => String(period.id) === String(currentPeriodId)) ||
+      null,
+    [periods, currentPeriodId],
+  );
+  const settingsRestaurantId = useMemo(
+    () =>
+      getSettingsRestaurantId({
+        settings: payrollSettings,
+        periodDetail,
+        periods,
+      }),
+    [payrollSettings, periodDetail, periods],
+  );
+
+  useEffect(() => {
+    if (!displayedPeriod) return;
+    setDateRange({
+      start: toInputDate(displayedPeriod.startDate),
+      end: toInputDate(displayedPeriod.endDate),
+    });
+  }, [displayedPeriod]);
 
   const handleSelectPeriod = (nextPeriodId) => {
     if (!nextPeriodId || nextPeriodId === selectedPeriodId) return;
@@ -151,6 +341,21 @@ const PayrollManagement = () => {
   };
 
   const handleCreatePeriod = async () => {
+    const isDifferentFromCurrentApplied =
+      currentAppliedPeriod &&
+      (toInputDate(currentAppliedPeriod.startDate) !== dateRange.start ||
+        toInputDate(currentAppliedPeriod.endDate) !== dateRange.end);
+
+    if (
+      isDifferentFromCurrentApplied &&
+      currentAppliedPeriod?.status !== "paid"
+    ) {
+      alert(
+        "Chi duoc doi ky luong sau khi ky dang ap dung da tinh xong va da xac nhan tra du.",
+      );
+      return;
+    }
+
     const created = await createPeriod({
       variables: {
         input: {
@@ -161,7 +366,10 @@ const PayrollManagement = () => {
       },
     });
     const id = created?.data?.createPayrollPeriod?.id;
-    if (id) setSelectedPeriodId(id);
+    if (id) {
+      await refetchSettings?.();
+      setSelectedPeriodId(id);
+    }
   };
 
   const handleExportExcel = () => {
@@ -210,12 +418,44 @@ const PayrollManagement = () => {
     URL.revokeObjectURL(url);
   };
 
-  const handleSaveSettings = async (formData) => {
-    await updateSettings({ variables: { input: formData } });
-    await refetchDetail?.();
+  const handleOpenSettings = () => {
+    setSettingsSaveError("");
+    setShowSettings(true);
+  };
+
+  const handleCloseSettings = () => {
+    if (settingsSaving) return;
+    setSettingsSaveError("");
     setShowSettings(false);
   };
 
+  const handleSaveSettings = async (formData) => {
+    setSettingsSaveError("");
+    setSettingsSaving(true);
+
+    try {
+      const input = settingsRestaurantId
+        ? { ...formData, restaurantId: settingsRestaurantId }
+        : formData;
+
+      await updateSettings({ variables: { input } });
+
+      const refetchTasks = [];
+      if (selectedPeriodId || currentPeriodId) {
+        refetchTasks.push(refetchDetail?.());
+      }
+      refetchTasks.push(refetchSettings?.());
+      await Promise.all(refetchTasks.filter(Boolean));
+
+      setShowSettings(false);
+    } catch (saveError) {
+      setSettingsSaveError(
+        saveError?.message || "Không thể lưu cấu hình lương.",
+      );
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
   const handleApplyAdjustment = async () => {
     if (!showPayslip?.id || !selectedPeriodId) return;
     const amount = Number(adjustmentAmount || 0);
@@ -251,7 +491,7 @@ const PayrollManagement = () => {
               <span className="label">Đến:</span>
               <input type="date" name="end" value={dateRange.end} onChange={handleDateChange} />
             </div>
-            <button className="btn btn-white" onClick={handleCreatePeriod}>+ Tạo kỳ</button>
+            <button className="btn btn-white" data-testid="payroll-period-setup" onClick={handleCreatePeriod}>Thiết lập kỳ lương</button>
           </div>
         </div>
 
@@ -263,7 +503,7 @@ const PayrollManagement = () => {
               </option>
             ))}
           </select>
-          <button className="btn btn-white" onClick={() => setShowSettings(true)}>⚙️ Cấu hình</button>
+          <button className="btn btn-white" data-testid="payroll-settings-open" onClick={handleOpenSettings}>⚙️ Cấu hình</button>
           <button className="btn btn-white" onClick={handleExportExcel}>📥 Xuất Excel</button>
           <button className="btn btn-primary" onClick={() => recalculatePeriod({ variables: { periodId: selectedPeriodId } })}>
             🔄 Tính lại
@@ -274,7 +514,7 @@ const PayrollManagement = () => {
       {periodDetail?.period && (
         <div className="metrics-strip" style={{ marginBottom: 12 }}>
           <div className="metric-group">
-            <div className="metric-item"><span className="label">Kỳ</span><span className="value">{formatDate(periodDetail.period.startDate)} - {formatDate(periodDetail.period.endDate)}</span></div>
+            <div className="metric-item"><span className="label">Kỳ đang áp dụng</span><span className="value">{formatDate(periodDetail.period.startDate)} - {formatDate(periodDetail.period.endDate)}</span></div>
             <div className="separator"></div>
             <div className="metric-item"><span className="label">Trạng thái kỳ</span><span className="value">{getStatusBadge(periodDetail.period.status)}</span></div>
           </div>
@@ -399,7 +639,11 @@ const PayrollManagement = () => {
       {showSettings && (
         <PayrollSettingsModal
           settings={payrollSettings}
-          onClose={() => setShowSettings(false)}
+          loading={settingsLoading}
+          loadError={settingsError}
+          saveError={settingsSaveError}
+          isSaving={settingsSaving}
+          onClose={handleCloseSettings}
           onSave={handleSaveSettings}
         />
       )}
@@ -485,46 +729,6 @@ const PayslipModal = ({
   </div>
 );
 
-const PayrollSettingsModal = ({ settings, onClose, onSave }) => {
-  const [form, setForm] = useState({
-    standardWorkDaysPerMonth: settings?.standardWorkDaysPerMonth ?? 26,
-    standardHoursPerDay: settings?.standardHoursPerDay ?? 8,
-    overtimeMultiplierWeekday: settings?.overtimeMultiplierWeekday ?? 1.5,
-    overtimeMultiplierWeekend: settings?.overtimeMultiplierWeekend ?? 2,
-    overtimeMultiplierHoliday: settings?.overtimeMultiplierHoliday ?? 3,
-    latenessPenaltyPerMinute: settings?.latenessPenaltyPerMinute ?? 0,
-    earlyLeavePenaltyPerMinute: settings?.earlyLeavePenaltyPerMinute ?? 0,
-    unpaidLeaveDeductionPerDay: settings?.unpaidLeaveDeductionPerDay ?? 0,
-    defaultAllowance: settings?.defaultAllowance ?? 0,
-    defaultBonus: settings?.defaultBonus ?? 0,
-    defaultDeduction: settings?.defaultDeduction ?? 0,
-    allowPaidLeaveInWorkDays: settings?.allowPaidLeaveInWorkDays ?? true,
-    notes: settings?.notes ?? "",
-  });
-
-  const setField = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header"><h3>Cấu hình payroll</h3><button className="close-btn" onClick={onClose}>✕</button></div>
-        <div className="modal-body" style={{ display: "grid", gap: 8 }}>
-          {["standardWorkDaysPerMonth", "standardHoursPerDay", "overtimeMultiplierWeekday", "overtimeMultiplierWeekend", "overtimeMultiplierHoliday", "latenessPenaltyPerMinute", "earlyLeavePenaltyPerMinute", "unpaidLeaveDeductionPerDay", "defaultAllowance", "defaultBonus", "defaultDeduction"].map((field) => (
-            <label key={field} style={{ display: "grid", gap: 4 }}>
-              <span>{field}</span>
-              <input type="number" value={form[field]} onChange={(e) => setField(field, Number(e.target.value || 0))} />
-            </label>
-          ))}
-          <label><input type="checkbox" checked={form.allowPaidLeaveInWorkDays} onChange={(e) => setField("allowPaidLeaveInWorkDays", e.target.checked)} /> Tính nghỉ có lương vào công thực tế</label>
-          <textarea rows={3} value={form.notes} onChange={(e) => setField("notes", e.target.value)} />
-        </div>
-        <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>Hủy</button>
-          <button className="btn btn-primary" onClick={() => onSave(form)}>Lưu cấu hình</button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export default PayrollManagement;
+
+

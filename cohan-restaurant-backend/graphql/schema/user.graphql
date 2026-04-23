@@ -492,6 +492,7 @@ type StaffPayrollOverview {
 
 type PayrollSettings {
   restaurantId: ID!
+  currentPayrollPeriodId: ID
   standardWorkDaysPerMonth: Float!
   standardHoursPerDay: Float!
   overtimeMultiplierWeekday: Float!
@@ -510,6 +511,7 @@ type PayrollSettings {
 
 input PayrollSettingsInput {
   restaurantId: ID
+  currentPayrollPeriodId: ID
   standardWorkDaysPerMonth: Float
   standardHoursPerDay: Float
   overtimeMultiplierWeekday: Float

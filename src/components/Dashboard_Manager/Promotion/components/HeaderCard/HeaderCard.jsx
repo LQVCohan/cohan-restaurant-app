@@ -1,20 +1,23 @@
 import React from "react";
 import { Store, Ticket, Activity, TrendingUp, Gift } from "lucide-react";
-import { RESTAURANTS } from "../../../../../utils/constants";
 import "./HeaderCard.scss";
 
-const HeaderCard = ({ stats, selectedRestaurant, onRestaurantChange }) => {
+const HeaderCard = ({
+  stats,
+  selectedRestaurant,
+  onRestaurantChange,
+  restaurants = [],
+}) => {
   return (
     <div className="header-card">
-      {/* --- DÒNG 1: TIÊU ĐỀ & BỘ LỌC --- */}
       <div className="header-top">
         <div className="title-section">
           <div className="icon-box">
             <Gift size={24} color="#fff" />
           </div>
           <div className="text-content">
-            <h1>Quản Lý Khuyến Mãi</h1>
-            <p className="subtitle">Hệ thống tối ưu doanh thu FoodHub</p>
+            <h1>Quan Ly Khuyen Mai</h1>
+            <p className="subtitle">He thong toi uu doanh thu FoodHub</p>
           </div>
         </div>
 
@@ -24,14 +27,18 @@ const HeaderCard = ({ stats, selectedRestaurant, onRestaurantChange }) => {
             <select
               className="restaurant-selector"
               value={selectedRestaurant}
-              onChange={(e) => onRestaurantChange(e.target.value)}
+              onChange={(event) => onRestaurantChange(event.target.value)}
+              disabled={!restaurants.length}
             >
-              <option value="all">Tất cả nhà hàng</option>
-              {Object.entries(RESTAURANTS).map(([key, name]) => (
-                <option key={key} value={key}>
-                  {name}
-                </option>
-              ))}
+              {restaurants.length ? (
+                restaurants.map((restaurant) => (
+                  <option key={restaurant.id} value={restaurant.id}>
+                    {restaurant.name || `Nha hang ${restaurant.id}`}
+                  </option>
+                ))
+              ) : (
+                <option value="">Chua co nha hang kha dung</option>
+              )}
             </select>
             <div className="arrow-icon" />
           </div>
@@ -40,14 +47,13 @@ const HeaderCard = ({ stats, selectedRestaurant, onRestaurantChange }) => {
 
       <div className="divider" />
 
-      {/* --- DÒNG 2: CHỈ SỐ (STATS) --- */}
       <div className="header-bottom">
         <div className="stat-card blue">
           <div className="stat-icon">
             <Ticket size={22} />
           </div>
           <div className="stat-content">
-            <span className="label">Tổng Voucher</span>
+            <span className="label">Tong Voucher</span>
             <span className="value">{stats.total}</span>
           </div>
         </div>
@@ -57,7 +63,7 @@ const HeaderCard = ({ stats, selectedRestaurant, onRestaurantChange }) => {
             <Activity size={22} />
           </div>
           <div className="stat-content">
-            <span className="label">Đang chạy</span>
+            <span className="label">Dang chay</span>
             <span className="value">{stats.active}</span>
           </div>
         </div>
@@ -67,7 +73,7 @@ const HeaderCard = ({ stats, selectedRestaurant, onRestaurantChange }) => {
             <TrendingUp size={22} />
           </div>
           <div className="stat-content">
-            <span className="label">Lượt sử dụng</span>
+            <span className="label">Luot su dung</span>
             <span className="value">{stats.totalUsage}</span>
           </div>
         </div>

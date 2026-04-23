@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   X,
   Save,
@@ -8,12 +8,62 @@ import {
   Percent,
   DollarSign,
   Users,
-  Store,
 } from "lucide-react";
-import { RESTAURANTS, PROMOTION_TYPES } from "../../../../../utils/constants";
+import { PROMOTION_TYPES } from "../../../../../utils/constants";
 import "./PromotionModal.scss";
 
-const PromotionModal = ({ promotion, onSave, onClose }) => {
+const buildInitialFormData = (promotion, fallbackRestaurantId = "") => {
+  if (promotion) {
+    return {
+      name: promotion.name || "",
+      code: promotion.code || "",
+      type: promotion.type || "",
+      discountValue: promotion.discountValue || "",
+      minOrderValue: promotion.minOrderValue || "",
+      maxDiscount: promotion.maxDiscount || "",
+      startDate: promotion.startDate || "",
+      endDate: promotion.endDate || "",
+      usageLimit: promotion.usageLimit || "",
+      targetAudience: promotion.targetAudience || "all",
+      restaurantId: promotion.restaurantId || fallbackRestaurantId,
+      description: promotion.description || "",
+      conditions: promotion.conditions ? promotion.conditions.join("\n") : "",
+    };
+  }
+
+  return {
+    name: "",
+    code: "",
+    type: "",
+    discountValue: "",
+    minOrderValue: "",
+    maxDiscount: "",
+    startDate: "",
+    endDate: "",
+    usageLimit: "",
+    targetAudience: "all",
+    restaurantId: fallbackRestaurantId,
+    description: "",
+    conditions: "",
+  };
+};
+
+const PromotionModal = ({
+  promotion,
+  restaurants = [],
+  defaultRestaurantId = "",
+  onSave,
+  onClose,
+}) => {
+  const restaurantOptions = useMemo(
+    () =>
+      Array.isArray(restaurants)
+        ? restaurants.filter((restaurant) => restaurant?.id)
+        : [],
+    [restaurants]
+  );
+  const fallbackRestaurantId =
+    promotion?.restaurantId || defaultRestaurantId || restaurantOptions[0]?.id || "";
   const [formData, setFormData] = useState({
     name: "",
     code: "",
@@ -33,24 +83,9 @@ const PromotionModal = ({ promotion, onSave, onClose }) => {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (promotion) {
-      setFormData({
-        name: promotion.name || "",
-        code: promotion.code || "",
-        type: promotion.type || "",
-        discountValue: promotion.discountValue || "",
-        minOrderValue: promotion.minOrderValue || "",
-        maxDiscount: promotion.maxDiscount || "",
-        startDate: promotion.startDate || "",
-        endDate: promotion.endDate || "",
-        usageLimit: promotion.usageLimit || "",
-        targetAudience: promotion.targetAudience || "all",
-        restaurantId: promotion.restaurantId || "",
-        description: promotion.description || "",
-        conditions: promotion.conditions ? promotion.conditions.join("\n") : "",
-      });
-    }
-  }, [promotion]);
+    setFormData(buildInitialFormData(promotion, fallbackRestaurantId));
+    setErrors({});
+  }, [promotion, fallbackRestaurantId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -168,11 +203,16 @@ const PromotionModal = ({ promotion, onSave, onClose }) => {
                     value={formData.restaurantId}
                     onChange={handleInputChange}
                     className={errors.restaurantId ? "error" : ""}
+                    disabled={!restaurantOptions.length}
                   >
-                    <option value="">-- Chọn chi nhánh --</option>
-                    {Object.entries(RESTAURANTS).map(([key, name]) => (
-                      <option key={key} value={key}>
-                        {name}
+                    <option value="">
+                      {restaurantOptions.length
+                        ? "-- Chọn chi nhánh --"
+                        : "-- Chưa có nhà hàng khả dụng --"}
+                    </option>
+                    {restaurantOptions.map((restaurant) => (
+                      <option key={restaurant.id} value={restaurant.id}>
+                        {restaurant.name || `Nhà hàng ${restaurant.id}`}
                       </option>
                     ))}
                   </select>

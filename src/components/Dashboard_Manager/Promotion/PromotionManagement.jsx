@@ -35,6 +35,8 @@ const PromotionManagement = () => {
   const {
     promotions,
     allPromotions,
+    restaurants: promotionRestaurants,
+    selectedRestaurantId,
     filters,
     addPromotion,
     updatePromotion,
@@ -153,13 +155,23 @@ const PromotionManagement = () => {
     setEditingPromotion(null);
   };
 
-  const handleSavePromotion = (promotionData) => {
-    if (editingPromotion) {
-      updatePromotion(editingPromotion.id, promotionData);
-    } else {
-      addPromotion(promotionData);
+  const handleSavePromotion = async (promotionData) => {
+    try {
+      const targetRestaurantId = editingPromotion
+        ? await updatePromotion(editingPromotion.id, promotionData)
+        : await addPromotion(promotionData);
+
+      if (
+        targetRestaurantId &&
+        String(targetRestaurantId) !== String(selectedRestaurantId)
+      ) {
+        updateFilters({ restaurant: targetRestaurantId });
+      }
+
+      handleCloseModal();
+    } catch (error) {
+      console.error("Khong the luu khuyen mai.", error);
     }
-    handleCloseModal();
   };
 
   const handleDelete = (id) => {
@@ -287,7 +299,11 @@ const PromotionManagement = () => {
   const handleClearFilters = () => {
     setActiveTab("all");
     if (activeSection === "promotions") {
-      updateFilters({ search: "", status: "all" });
+      updateFilters({
+        search: "",
+        status: "all",
+        restaurant: selectedRestaurantId,
+      });
       return;
     }
     if (activeSection === "vouchers") {
@@ -484,10 +500,28 @@ const PromotionManagement = () => {
           <h1>{currentSection.title}</h1>
           <p>{currentSection.subtitle}</p>
         </div>
-        <button className="restaurant-selector">
-          <span>🏠 Tất cả nhà hàng</span>
+        <div className="restaurant-selector">
+          <span className="restaurant-selector__icon">🏠</span>
+          <select
+            aria-label="Chon nha hang khuyen mai"
+            value={selectedRestaurantId}
+            onChange={(event) =>
+              updateFilters({ restaurant: event.target.value })
+            }
+            disabled={!promotionRestaurants.length}
+          >
+            {promotionRestaurants.length ? (
+              promotionRestaurants.map((restaurant) => (
+                <option key={restaurant.id} value={restaurant.id}>
+                  {restaurant.name || `Nha hang ${restaurant.id}`}
+                </option>
+              ))
+            ) : (
+              <option value="">Chua co nha hang kha dung</option>
+            )}
+          </select>
           <ChevronDown size={16} />
-        </button>
+        </div>
       </header>
 
       <div className="section-tabs">
@@ -796,6 +830,8 @@ const PromotionManagement = () => {
       {isModalOpen && (
         <PromotionModal
           promotion={editingPromotion}
+          restaurants={promotionRestaurants}
+          defaultRestaurantId={selectedRestaurantId}
           onSave={handleSavePromotion}
           onClose={handleCloseModal}
         />

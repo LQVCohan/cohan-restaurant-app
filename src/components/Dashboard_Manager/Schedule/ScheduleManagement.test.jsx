@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import ScheduleManagement from "./ScheduleManagement";
@@ -100,6 +100,7 @@ describe("ScheduleManagement", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -108,7 +109,7 @@ describe("ScheduleManagement", () => {
 
     expect(screen.getByText("Thông Tin Ca Làm Việc")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Xuất bản/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /\+ Ca sáng/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /\+ Ca Sáng/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Chia ca tự động/i })).not.toBeInTheDocument();
 
     fireEvent.click(container.querySelector(".shift-card"));
@@ -120,23 +121,75 @@ describe("ScheduleManagement", () => {
     expect(screen.getByRole("button", { name: /Đóng/i })).toBeInTheDocument();
   });
 
-  it("keeps manual actions and exposes auto scheduling in the dedicated schedule module", () => {
+  it("creates a real shift payload from the add-shift modal", async () => {
     mockShiftsData = { staffShifts: [] };
 
     render(<ScheduleManagement />);
 
-    expect(screen.getByText("Quản Lý Lịch Làm Việc")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /\+ Ca sáng/i }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: /Chia ca tự động/i })).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: /\+ Ca Sáng/i })[0]);
+    const modal = document.body.querySelector(".modal-container");
+    fireEvent.click(within(modal).getByText("Lan Manager"));
+    fireEvent.click(within(modal).getByRole("button", { name: /Lưu & Tạo Lịch/i }));
+
+    await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
+    const createCall = mutationSpy.mock.calls[0][0];
+
+    expect(createCall.variables.input.employeeId).toBe("staff-1");
+    expect(createCall.variables.input.restaurantId).toBe("restaurant-1");
+    expect(createCall.variables.input.shiftType).toBe("MORNING");
+    expect(createCall.variables.input.status).toBe("scheduled");
+    expect(new Date(createCall.variables.input.startTime).toString()).not.toBe("Invalid Date");
+    expect(new Date(createCall.variables.input.endTime).toString()).not.toBe("Invalid Date");
   });
 
-  it("opens the auto scheduling preview modal from the schedule toolbar", () => {
-    render(<ScheduleManagement />);
+  it("deletes a shift group through the detail modal", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { container } = render(<ScheduleManagement />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Chia ca tự động/i }));
+    fireEvent.click(container.querySelector(".shift-card"));
+    fireEvent.click(screen.getByRole("button", { name: /Xóa Ca/i }));
 
-    expect(screen.getByText("Scheduling assistant dùng dữ liệu thật từ backend")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Phân tích & tạo preview/i })).toBeInTheDocument();
-    expect(screen.getByDisplayValue("40")).toBeInTheDocument();
+    await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(mutationSpy.mock.calls[0][0]).toEqual({
+      variables: { shiftId: "shift-row-1" },
+    });
+  });
+
+  it("updates start and end time for the whole grouped shift", async () => {
+    const { container } = render(<ScheduleManagement />);
+
+    fireEvent.click(container.querySelector(".shift-card"));
+    const modal = document.body.querySelector(".modal-container");
+    fireEvent.change(within(modal).getByLabelText(/Bắt đầu/i), { target: { value: "07:30" } });
+    fireEvent.change(within(modal).getByLabelText(/Kết thúc/i), { target: { value: "15:30" } });
+    fireEvent.click(within(modal).getByRole("button", { name: /Lưu thời gian/i }));
+
+    await waitFor(() => expect(mutationSpy).toHaveBeenCalled());
+    const updateCall = mutationSpy.mock.calls[0][0];
+
+    expect(updateCall.variables.shiftId).toBe("shift-row-1");
+    expect(updateCall.variables.input).toEqual(
+      expect.objectContaining({
+        startTime: expect.any(String),
+        endTime: expect.any(String),
+      })
+    );
+    expect(new Date(updateCall.variables.input.endTime).getTime()).toBeGreaterThan(
+      new Date(updateCall.variables.input.startTime).getTime()
+    );
+  });
+
+  it("shows a validation message when start and end time are identical", async () => {
+    const { container } = render(<ScheduleManagement />);
+
+    fireEvent.click(container.querySelector(".shift-card"));
+    const modal = document.body.querySelector(".modal-container");
+    fireEvent.change(within(modal).getByLabelText(/Bắt đầu/i), { target: { value: "09:00" } });
+    fireEvent.change(within(modal).getByLabelText(/Kết thúc/i), { target: { value: "09:00" } });
+    fireEvent.click(within(modal).getByRole("button", { name: /Lưu thời gian/i }));
+
+    expect(await screen.findByText("Giờ kết thúc phải khác giờ bắt đầu.")).toBeInTheDocument();
+    expect(mutationSpy).not.toHaveBeenCalled();
   });
 });

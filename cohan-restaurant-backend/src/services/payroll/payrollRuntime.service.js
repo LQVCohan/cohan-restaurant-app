@@ -61,10 +61,19 @@ export async function getPayrollSettings(restaurantId) {
   if (!rid) return null;
 
   const doc = await PayrollSetting.findOne({ restaurantId: rid }).lean();
-  if (doc) return doc;
+  if (doc) {
+    return {
+      ...doc,
+      restaurantId: String(doc.restaurantId),
+      currentPayrollPeriodId: doc.currentPayrollPeriodId
+        ? String(doc.currentPayrollPeriodId)
+        : null,
+    };
+  }
 
   return {
-    restaurantId: rid,
+    restaurantId: String(rid),
+    currentPayrollPeriodId: null,
     standardWorkDaysPerMonth: 26,
     standardHoursPerDay: 8,
     overtimeMultiplierWeekday: 1.5,
