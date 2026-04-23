@@ -177,6 +177,8 @@ const UPDATE_STAFF_SHIFT = gql`
   mutation UpdateStaffShift($shiftId: ID!, $input: UpdateStaffShiftInput!) {
     updateStaffShift(shiftId: $shiftId, input: $input) {
       id
+      startTime
+      endTime
       notes
       status
     }
@@ -192,6 +194,26 @@ const DELETE_STAFF_SHIFT = gql`
 const normalizeTime = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : format(date, "HH:mm");
+};
+
+const isValidTimeValue = (value) => /^\d{2}:\d{2}$/.test(String(value || ""));
+
+const buildShiftRange = ({ date, startTimeText, endTimeText }) => {
+  if (!date || !isValidTimeValue(startTimeText) || !isValidTimeValue(endTimeText)) {
+    throw new Error("Giờ bắt đầu/kết thúc không hợp lệ.");
+  }
+
+  const [year, month, day] = date.split("-").map(Number);
+  const [startHour, startMin] = startTimeText.split(":").map(Number);
+  const [endHour, endMin] = endTimeText.split(":").map(Number);
+  const startTime = new Date(year, month - 1, day, startHour, startMin, 0, 0);
+  const endTime = new Date(year, month - 1, day, endHour, endMin, 0, 0);
+
+  if (endTime <= startTime) {
+    endTime.setDate(endTime.getDate() + 1);
+  }
+
+  return { startTime, endTime };
 };
 
 const SCHEDULING_TIMEZONE = "Asia/Ho_Chi_Minh";
@@ -435,13 +457,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
     const config = shiftTypes[newShiftData.shiftType];
     if (!config || !effectiveRestaurantId) return;
 
-    const [year, month, day] = newShiftData.date.split("-").map(Number);
-    const [startHour, startMin] = config.startTime.split(":").map(Number);
-    const [endHour, endMin] = config.endTime.split(":").map(Number);
-
-    const startTime = new Date(year, month - 1, day, startHour, startMin, 0, 0);
-    const endTime = new Date(year, month - 1, day, endHour, endMin, 0, 0);
-    if (endTime <= startTime) endTime.setDate(endTime.getDate() + 1);
+    const { startTime, endTime } = buildShiftRange({
+      date: newShiftData.date,
+      startTimeText: config.startTime,
+      endTimeText: config.endTime,
+    });
 
     await Promise.all(
       (newShiftData.staffIds || []).map((employeeId) =>
@@ -492,12 +512,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
     if (!found || !effectiveRestaurantId) return;
     if (found.staffIds.includes(staffId)) return;
 
-    const [year, month, day] = found.date.split("-").map(Number);
-    const [startHour, startMin] = found.startTime.split(":").map(Number);
-    const [endHour, endMin] = found.endTime.split(":").map(Number);
-    const startTime = new Date(year, month - 1, day, startHour, startMin, 0, 0);
-    const endTime = new Date(year, month - 1, day, endHour, endMin, 0, 0);
-    if (endTime <= startTime) endTime.setDate(endTime.getDate() + 1);
+    const { startTime, endTime } = buildShiftRange({
+      date: found.date,
+      startTimeText: found.startTime,
+      endTimeText: found.endTime,
+    });
 
     await createShift({
       variables: {
@@ -525,6 +544,34 @@ const ScheduleManagement = ({ readOnly = false }) => {
       )
     );
     await refetch();
+    setSelectedShift(null);
+  };
+
+  const handleUpdateSelectedTime = async ({ startTime, endTime }) => {
+    if (readOnly) return;
+    if (!selectedShift?.records?.length) return;
+
+    const { startTime: nextStart, endTime: nextEnd } = buildShiftRange({
+      date: selectedShift.date,
+      startTimeText: startTime,
+      endTimeText: endTime,
+    });
+
+    await Promise.all(
+      selectedShift.records.map((record) =>
+        updateShift({
+          variables: {
+            shiftId: record.id,
+            input: {
+              startTime: nextStart.toISOString(),
+              endTime: nextEnd.toISOString(),
+            },
+          },
+        })
+      )
+    );
+    await refetch();
+    setSelectedShift(null);
   };
 
   const handleGenerateAutoSchedule = async () => {
@@ -834,6 +881,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         onAddStaff={handleAddStaff}
         onDeleteShift={handleDeleteShift}
         onUpdateNotes={handleUpdateSelectedNotes}
+        onUpdateTime={handleUpdateSelectedTime}
       />
 
       {!readOnly && (
