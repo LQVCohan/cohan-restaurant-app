@@ -51,6 +51,8 @@ test("hasAllowedRole so khớp không phân biệt hoa thường", () => {
 test("getRoleHomeRoute mapping đúng theo role", () => {
   assert.equal(getRoleHomeRoute("admin"), "/manager");
   assert.equal(getRoleHomeRoute("manager"), "/manager");
+  assert.equal(getRoleHomeRoute("hr"), "/manager");
+  assert.equal(getRoleHomeRoute("accountant"), "/manager");
   assert.equal(getRoleHomeRoute("staff"), "/staff/orders");
   assert.equal(getRoleHomeRoute("customer"), "/");
   assert.equal(getRoleHomeRoute("unknown"), "/");

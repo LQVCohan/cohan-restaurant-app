@@ -8,6 +8,8 @@ enum UserType {
   CUSTOMER
   STAFF
   MANAGER
+  HR
+  ACCOUNTANT
   ADMIN
 }
 

@@ -13,6 +13,8 @@ const roles = [
   // Base system roles
   { name: "Admin", slug: "admin", parentRole: "admin", isSystem: true },
   { name: "Manager", slug: "manager", parentRole: "manager", isSystem: true },
+  { name: "HR", slug: "hr", parentRole: "hr", isSystem: true },
+  { name: "Accountant", slug: "accountant", parentRole: "accountant", isSystem: true },
   { name: "Customer", slug: "customer", parentRole: "customer", isSystem: true },
   { name: "Staff", slug: "staff", parentRole: "staff", isSystem: true },
 
@@ -51,6 +53,8 @@ async function run() {
   for (const parentRole of [
     { name: "Admin", slug: "admin" },
     { name: "Manager", slug: "manager" },
+    { name: "HR", slug: "hr" },
+    { name: "Accountant", slug: "accountant" },
     { name: "Customer", slug: "customer" },
     { name: "Staff", slug: "staff" },
   ]) {

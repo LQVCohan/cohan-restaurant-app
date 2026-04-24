@@ -37,7 +37,7 @@ export const hasAllowedRole = (allowedRoles, roleName) => {
 
 export const getRoleHomeRoute = (roleName) => {
   const role = normalizeRole(roleName);
-  if (role === "admin" || role === "manager") return "/manager";
+  if (["admin", "manager", "hr", "accountant"].includes(role)) return "/manager";
   if (role === "staff") return "/staff/orders";
   return "/";
 };

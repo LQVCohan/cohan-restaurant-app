@@ -263,7 +263,7 @@ export const AuthProvider = ({ children }) => {
     data: mgrData,
   } = useQuery(GET_MANAGER_RESTAURANTS, {
     variables: { managerId, limit: 50 },
-    skip: !managerId || !["manager", "admin"].includes(roleName),
+    skip: !managerId || !["manager", "admin", "hr", "accountant"].includes(roleName),
   });
 
   const { loading: meLoading, refetch: refetchMe } = useQuery(ME_QUERY, {

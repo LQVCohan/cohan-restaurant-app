@@ -10,6 +10,8 @@ await mongoose.connect(process.env.MONGO_URI, {
 const parentRoles = [
   { name: "Admin", slug: "admin" },
   { name: "Manager", slug: "manager" },
+  { name: "HR", slug: "hr" },
+  { name: "Accountant", slug: "accountant" },
   { name: "Customer", slug: "customer" },
   { name: "Staff", slug: "staff" },
 ];
