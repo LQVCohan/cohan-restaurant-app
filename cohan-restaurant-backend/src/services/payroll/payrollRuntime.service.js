@@ -48,11 +48,18 @@ function mapDepartmentLabel(department) {
 }
 
 function inferRegionCodeFromRestaurant(restaurant) {
-  const manual = String(restaurant?.payrollRegionCode || "").trim().toUpperCase();
+  const manual = String(restaurant?.payrollRegionCode || "")
+    .trim()
+    .toUpperCase();
   if (["I", "II", "III", "IV"].includes(manual)) return manual;
 
   const city = String(restaurant?.address?.city || "").toLowerCase();
-  if (city.includes("hà nội") || city.includes("ha noi") || city.includes("hồ chí minh") || city.includes("ho chi minh")) {
+  if (
+    city.includes("hà nội") ||
+    city.includes("ha noi") ||
+    city.includes("hồ chí minh") ||
+    city.includes("ho chi minh")
+  ) {
     return "I";
   }
   return "II";
@@ -102,18 +109,35 @@ export async function getPayrollSettings(restaurantId) {
 }
 
 function summarize(items) {
-  const totalPayroll = items.reduce((sum, row) => sum + Number(row.netSalary || 0), 0);
-  const paidAmount = items.reduce((sum, row) => sum + (row.status === "paid" ? Number(row.netSalary || 0) : 0), 0);
-  const totalAllowance = items.reduce((sum, row) => sum + Number(row.allowance || 0), 0);
-  const totalBonus = items.reduce((sum, row) => sum + Number(row.bonus || 0), 0);
-  const totalDeduction = items.reduce((sum, row) => sum + Number(row.totalDeduction || 0), 0);
+  const totalPayroll = items.reduce(
+    (sum, row) => sum + Number(row.netSalary || 0),
+    0,
+  );
+  const paidAmount = items.reduce(
+    (sum, row) =>
+      sum + (row.status === "paid" ? Number(row.netSalary || 0) : 0),
+    0,
+  );
+  const totalAllowance = items.reduce(
+    (sum, row) => sum + Number(row.allowance || 0),
+    0,
+  );
+  const totalBonus = items.reduce(
+    (sum, row) => sum + Number(row.bonus || 0),
+    0,
+  );
+  const totalDeduction = items.reduce(
+    (sum, row) => sum + Number(row.totalDeduction || 0),
+    0,
+  );
   const paidEmployees = items.filter((row) => row.status === "paid").length;
   const remaining = totalPayroll - paidAmount;
   return {
     totalPayroll,
     paidAmount,
     remaining,
-    progress: totalPayroll > 0 ? Math.round((paidAmount / totalPayroll) * 100) : 0,
+    progress:
+      totalPayroll > 0 ? Math.round((paidAmount / totalPayroll) * 100) : 0,
     totalAllowance,
     totalBonus,
     totalDeduction,
@@ -124,31 +148,51 @@ function summarize(items) {
 }
 
 function applySettingOverrides(payroll, aggregate, settings) {
-  const dailyRate = payroll.workDays > 0 ? payroll.baseSalary / payroll.workDays : 0;
-  const latenessPenalty = Number(aggregate.totalLatenessMinutes || 0) * Number(settings.latenessPenaltyPerMinute || 0);
-  const earlyLeavePenalty = Number(aggregate.totalEarlyLeaveMinutes || 0) * Number(settings.earlyLeavePenaltyPerMinute || 0);
-  const unpaidLeaveDeduction = Number(aggregate.unpaidLeaveDays || 0) * (
-    Number(settings.unpaidLeaveDeductionPerDay || 0) || dailyRate
-  );
+  const dailyRate =
+    payroll.workDays > 0 ? payroll.baseSalary / payroll.workDays : 0;
+  const latenessPenalty =
+    Number(aggregate.totalLatenessMinutes || 0) *
+    Number(settings.latenessPenaltyPerMinute || 0);
+  const earlyLeavePenalty =
+    Number(aggregate.totalEarlyLeaveMinutes || 0) *
+    Number(settings.earlyLeavePenaltyPerMinute || 0);
+  const unpaidLeaveDeduction =
+    Number(aggregate.unpaidLeaveDays || 0) *
+    (Number(settings.unpaidLeaveDeductionPerDay || 0) || dailyRate);
 
-  const allowance = Number(payroll.allowance || 0) + Number(settings.defaultAllowance || 0) + Number(aggregate.adjustmentAllowance || 0);
-  const bonus = Number(payroll.bonus || 0) + Number(settings.defaultBonus || 0) + Number(aggregate.adjustmentBonus || 0);
-  const otherAddition = Number(payroll.otherAddition || 0) + Number(aggregate.adjustmentOtherAddition || 0);
+  const allowance =
+    Number(payroll.allowance || 0) +
+    Number(settings.defaultAllowance || 0) +
+    Number(aggregate.adjustmentAllowance || 0);
+  const bonus =
+    Number(payroll.bonus || 0) +
+    Number(settings.defaultBonus || 0) +
+    Number(aggregate.adjustmentBonus || 0);
+  const otherAddition =
+    Number(payroll.otherAddition || 0) +
+    Number(aggregate.adjustmentOtherAddition || 0);
 
-  const extraPenalty = latenessPenalty + earlyLeavePenalty + unpaidLeaveDeduction;
-  const deduction = Number(payroll.deduction || 0) + Number(aggregate.adjustmentDeduction || 0);
-  const advance = Number(payroll.advance || 0) + Number(aggregate.adjustmentAdvance || 0);
-  const otherDeduction = Number(payroll.otherDeduction || 0) + Number(settings.defaultDeduction || 0) + Number(aggregate.adjustmentOtherDeduction || 0);
+  const extraPenalty =
+    latenessPenalty + earlyLeavePenalty + unpaidLeaveDeduction;
+  const deduction =
+    Number(payroll.deduction || 0) + Number(aggregate.adjustmentDeduction || 0);
+  const advance =
+    Number(payroll.advance || 0) + Number(aggregate.adjustmentAdvance || 0);
+  const otherDeduction =
+    Number(payroll.otherDeduction || 0) +
+    Number(settings.defaultDeduction || 0) +
+    Number(aggregate.adjustmentOtherDeduction || 0);
 
   const baseWorkIncome = Number(payroll.grossIncome || 0);
   const totalIncome = baseWorkIncome + allowance + bonus + otherAddition;
 
-  const totalDeduction = deduction
-    + otherDeduction
-    + advance
-    + Number(payroll.insuranceTotal || 0)
-    + Number(payroll.personalIncomeTax || 0)
-    + extraPenalty;
+  const totalDeduction =
+    deduction +
+    otherDeduction +
+    advance +
+    Number(payroll.insuranceTotal || 0) +
+    Number(payroll.personalIncomeTax || 0) +
+    extraPenalty;
 
   const netSalary = totalIncome - totalDeduction;
 
@@ -169,12 +213,13 @@ function applySettingOverrides(payroll, aggregate, settings) {
     unpaidLeaveDays: Number(aggregate.unpaidLeaveDays || 0),
     paidLeaveDays: Number(aggregate.paidLeaveDays || 0),
     scheduleShiftCount: Number(aggregate.scheduleShiftCount || 0),
-    manualAdjustmentTotal: Number(aggregate.adjustmentAllowance || 0)
-      + Number(aggregate.adjustmentBonus || 0)
-      + Number(aggregate.adjustmentOtherAddition || 0)
-      - Number(aggregate.adjustmentDeduction || 0)
-      - Number(aggregate.adjustmentAdvance || 0)
-      - Number(aggregate.adjustmentOtherDeduction || 0),
+    manualAdjustmentTotal:
+      Number(aggregate.adjustmentAllowance || 0) +
+      Number(aggregate.adjustmentBonus || 0) +
+      Number(aggregate.adjustmentOtherAddition || 0) -
+      Number(aggregate.adjustmentDeduction || 0) -
+      Number(aggregate.adjustmentAdvance || 0) -
+      Number(aggregate.adjustmentOtherDeduction || 0),
   };
 }
 
@@ -240,13 +285,22 @@ export function mapPayrollDocToGql(row) {
   };
 }
 
-export async function buildPayrollItemsForRange({ start, end, restaurantId, periodId = null, forceStatus = null }) {
+export async function buildPayrollItemsForRange({
+  start,
+  end,
+  restaurantId,
+  periodId = null,
+  forceStatus = null,
+}) {
   const rid = toObjectId(restaurantId);
   if (!rid) return [];
 
   const settings = await getPayrollSettings(rid);
 
-  const staffFilter = { userType: "STAFF", $or: [{ primaryRestaurant: rid }, { refRestaurants: rid }] };
+  const staffFilter = {
+    userType: "STAFF",
+    $or: [{ primaryRestaurant: rid }, { refRestaurants: rid }],
+  };
   const staffs = await Staff.find(staffFilter)
     .select({
       _id: 1,
@@ -292,12 +346,19 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
         totalWage: { $sum: { $ifNull: ["$wage", 0] } },
         totalAmount: { $sum: { $ifNull: ["$amount", 0] } },
         totalLatenessMinutes: { $sum: { $ifNull: ["$latenessMinutes", 0] } },
-        totalEarlyLeaveMinutes: { $sum: { $ifNull: ["$earlyLeaveMinutes", 0] } },
+        totalEarlyLeaveMinutes: {
+          $sum: { $ifNull: ["$earlyLeaveMinutes", 0] },
+        },
         overtimeNormalMinutes: {
           $sum: {
             $cond: [
-              { $and: [{ $ne: [{ $dayOfWeek: "$workDate" }, 1] }, { $gt: [{ $ifNull: ["$overtimeMinutes", 0] }, 0] }] },
-              { $ifNull: ["$overtimeMinutes", 0] },
+              {
+                $and: [
+                  { $ne: [{ $dayOfWeek: "$workDate" }, 1] },
+                  { $gt: [{ $ifNull: ["$approvedOvertimeMinutes", 0] }, 0] },
+                ],
+              },
+              { $ifNull: ["$approvedOvertimeMinutes", 0] },
               0,
             ],
           },
@@ -305,7 +366,12 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
         overtimeWeekendMinutes: {
           $sum: {
             $cond: [
-              { $and: [{ $eq: [{ $dayOfWeek: "$workDate" }, 1] }, { $gt: [{ $ifNull: ["$overtimeMinutes", 0] }, 0] }] },
+              {
+                $and: [
+                  { $eq: [{ $dayOfWeek: "$workDate" }, 1] },
+                  { $gt: [{ $ifNull: ["$overtimeMinutes", 0] }, 0] },
+                ],
+              },
               { $ifNull: ["$overtimeMinutes", 0] },
               0,
             ],
@@ -314,7 +380,11 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
         overtimeHolidayMinutes: { $sum: 0 },
         nightMinutes: { $sum: 0 },
         overtimeNightMinutes: { $sum: 0 },
-        workedDateKeys: { $addToSet: { $dateToString: { format: "%Y-%m-%d", date: "$workDate" } } },
+        workedDateKeys: {
+          $addToSet: {
+            $dateToString: { format: "%Y-%m-%d", date: "$workDate" },
+          },
+        },
       },
     },
   ]);
@@ -334,12 +404,20 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
         _id: "$employeeId",
         paidLeaveDays: {
           $sum: {
-            $cond: [{ $eq: ["$payrollFlags.isPaidLeave", true] }, { $ifNull: ["$requestedDays", 0] }, 0],
+            $cond: [
+              { $eq: ["$payrollFlags.isPaidLeave", true] },
+              { $ifNull: ["$requestedDays", 0] },
+              0,
+            ],
           },
         },
         unpaidLeaveDays: {
           $sum: {
-            $cond: [{ $ne: ["$payrollFlags.isPaidLeave", true] }, { $ifNull: ["$requestedDays", 0] }, 0],
+            $cond: [
+              { $ne: ["$payrollFlags.isPaidLeave", true] },
+              { $ifNull: ["$requestedDays", 0] },
+              0,
+            ],
           },
         },
       },
@@ -364,35 +442,46 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
       });
     }
     const bucket = adjustmentMap.get(sid);
-    if (adj.type === "allowance") bucket.adjustmentAllowance += Number(adj.amount || 0);
-    else if (adj.type === "bonus") bucket.adjustmentBonus += Number(adj.amount || 0);
-    else if (adj.type === "deduction") bucket.adjustmentDeduction += Math.abs(Number(adj.amount || 0));
-    else if (adj.type === "advance") bucket.adjustmentAdvance += Math.abs(Number(adj.amount || 0));
-    else if (adj.type === "other_deduction") bucket.adjustmentOtherDeduction += Math.abs(Number(adj.amount || 0));
+    if (adj.type === "allowance")
+      bucket.adjustmentAllowance += Number(adj.amount || 0);
+    else if (adj.type === "bonus")
+      bucket.adjustmentBonus += Number(adj.amount || 0);
+    else if (adj.type === "deduction")
+      bucket.adjustmentDeduction += Math.abs(Number(adj.amount || 0));
+    else if (adj.type === "advance")
+      bucket.adjustmentAdvance += Math.abs(Number(adj.amount || 0));
+    else if (adj.type === "other_deduction")
+      bucket.adjustmentOtherDeduction += Math.abs(Number(adj.amount || 0));
     else bucket.adjustmentOtherAddition += Number(adj.amount || 0);
   });
 
   const timesheetMap = new Map(
-    timesheetAgg.map((row) => [String(row._id), {
-      totalHours: Number(row.totalHours || 0),
-      totalWage: Number(row.totalWage || 0),
-      totalAmount: Number(row.totalAmount || 0),
-      totalLatenessMinutes: Number(row.totalLatenessMinutes || 0),
-      totalEarlyLeaveMinutes: Number(row.totalEarlyLeaveMinutes || 0),
-      overtimeNormalHours: Number(row.overtimeNormalMinutes || 0) / 60,
-      overtimeWeekendHours: Number(row.overtimeWeekendMinutes || 0) / 60,
-      overtimeHolidayHours: Number(row.overtimeHolidayMinutes || 0) / 60,
-      nightHours: Number(row.nightMinutes || 0) / 60,
-      overtimeNightHours: Number(row.overtimeNightMinutes || 0) / 60,
-      workedDateCount: (row.workedDateKeys || []).length,
-    }]),
+    timesheetAgg.map((row) => [
+      String(row._id),
+      {
+        totalHours: Number(row.totalHours || 0),
+        totalWage: Number(row.totalWage || 0),
+        totalAmount: Number(row.totalAmount || 0),
+        totalLatenessMinutes: Number(row.totalLatenessMinutes || 0),
+        totalEarlyLeaveMinutes: Number(row.totalEarlyLeaveMinutes || 0),
+        overtimeNormalHours: Number(row.overtimeNormalMinutes || 0) / 60,
+        overtimeWeekendHours: Number(row.overtimeWeekendMinutes || 0) / 60,
+        overtimeHolidayHours: Number(row.overtimeHolidayMinutes || 0) / 60,
+        nightHours: Number(row.nightMinutes || 0) / 60,
+        overtimeNightHours: Number(row.overtimeNightMinutes || 0) / 60,
+        workedDateCount: (row.workedDateKeys || []).length,
+      },
+    ]),
   );
 
   const leaveMap = new Map(
-    leaveAgg.map((row) => [String(row._id), {
-      paidLeaveDays: Number(row.paidLeaveDays || 0),
-      unpaidLeaveDays: Number(row.unpaidLeaveDays || 0),
-    }]),
+    leaveAgg.map((row) => [
+      String(row._id),
+      {
+        paidLeaveDays: Number(row.paidLeaveDays || 0),
+        unpaidLeaveDays: Number(row.unpaidLeaveDays || 0),
+      },
+    ]),
   );
 
   const shiftCountByStaff = new Map();
@@ -402,8 +491,12 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
   });
 
   const workDays = calculatePeriodCalendarDays(start, end);
-  const restaurant = await Restaurant.findById(rid).select({ address: 1, payrollRegionCode: 1 }).lean();
-  const regionCode = normalizeRegionCode(inferRegionCodeFromRestaurant(restaurant));
+  const restaurant = await Restaurant.findById(rid)
+    .select({ address: 1, payrollRegionCode: 1 })
+    .lean();
+  const regionCode = normalizeRegionCode(
+    inferRegionCodeFromRestaurant(restaurant),
+  );
 
   const items = staffs.map((staff) => {
     const sid = String(staff._id);
@@ -443,21 +536,38 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
     if (settings.allowPaidLeaveInWorkDays) {
       effectiveActualWorkDays += leave.paidLeaveDays;
       payroll.actualWorkDays = effectiveActualWorkDays;
-      payroll.coefficient = workDays > 0 ? effectiveActualWorkDays / workDays : 0;
+      payroll.coefficient =
+        workDays > 0 ? effectiveActualWorkDays / workDays : 0;
     }
 
-    const withSettings = applySettingOverrides(payroll, {
-      ...ts,
-      ...leave,
-      ...adjustmentsForStaff,
-      scheduleShiftCount: shiftCountByStaff.get(sid) || 0,
-    }, settings);
+    const withSettings = applySettingOverrides(
+      payroll,
+      {
+        ...ts,
+        ...leave,
+        ...adjustmentsForStaff,
+        scheduleShiftCount: shiftCountByStaff.get(sid) || 0,
+      },
+      settings,
+    );
 
     const warningMessages = [];
-    if (withSettings.minimumWageViolation) warningMessages.push("Lương cơ bản thấp hơn lương tối thiểu vùng áp dụng.");
-    if (!withSettings.insuranceEligible) warningMessages.push("Nhân sự chưa thuộc diện đóng BH bắt buộc theo cấu hình chính sách.");
-    if (Number(withSettings.lateMinutes || 0) > 0) warningMessages.push(`Đi muộn ${withSettings.lateMinutes} phút trong kỳ.`);
-    if (Number(withSettings.unpaidLeaveDays || 0) > 0) warningMessages.push(`Có ${withSettings.unpaidLeaveDays} ngày nghỉ không lương.`);
+    if (withSettings.minimumWageViolation)
+      warningMessages.push(
+        "Lương cơ bản thấp hơn lương tối thiểu vùng áp dụng.",
+      );
+    if (!withSettings.insuranceEligible)
+      warningMessages.push(
+        "Nhân sự chưa thuộc diện đóng BH bắt buộc theo cấu hình chính sách.",
+      );
+    if (Number(withSettings.lateMinutes || 0) > 0)
+      warningMessages.push(
+        `Đi muộn ${withSettings.lateMinutes} phút trong kỳ.`,
+      );
+    if (Number(withSettings.unpaidLeaveDays || 0) > 0)
+      warningMessages.push(
+        `Có ${withSettings.unpaidLeaveDays} ngày nghỉ không lương.`,
+      );
 
     return {
       employeeId: staff._id,
@@ -487,25 +597,29 @@ export async function upsertPeriodItems(periodDoc) {
     forceStatus: periodDoc.status === "paid" ? "paid" : periodDoc.status,
   });
 
-  await Promise.all(items.map((row) => PayrollItem.findOneAndUpdate(
-    { periodId: periodDoc._id, employeeId: row.employeeId },
-    {
-      $set: {
-        periodId: periodDoc._id,
-        restaurantId: periodDoc.restaurantId,
-        employeeId: row.employeeId,
-        employeeName: row.employeeName,
-        employeeCode: row.employeeCode,
-        role: row.role,
-        department: row.department,
-        avatar: row.avatar,
-        breakdown: row.breakdown,
-        warningMessages: row.warningMessages,
-        status: row.status,
-      },
-    },
-    { upsert: true, new: true },
-  )));
+  await Promise.all(
+    items.map((row) =>
+      PayrollItem.findOneAndUpdate(
+        { periodId: periodDoc._id, employeeId: row.employeeId },
+        {
+          $set: {
+            periodId: periodDoc._id,
+            restaurantId: periodDoc.restaurantId,
+            employeeId: row.employeeId,
+            employeeName: row.employeeName,
+            employeeCode: row.employeeCode,
+            role: row.role,
+            department: row.department,
+            avatar: row.avatar,
+            breakdown: row.breakdown,
+            warningMessages: row.warningMessages,
+            status: row.status,
+          },
+        },
+        { upsert: true, new: true },
+      ),
+    ),
+  );
 
   const docs = await PayrollItem.find({ periodId: periodDoc._id }).lean();
   const gqlItems = docs.map(mapPayrollDocToGql);
@@ -526,8 +640,10 @@ export async function upsertPeriodItems(periodDoc) {
 export async function getPeriodDetail(periodId) {
   const period = await PayrollPeriod.findById(periodId).lean();
   if (!period) return null;
-  const settings = ["finalized", "locked", "paid"].includes(String(period.status))
-    ? (period.settingsSnapshot || await getPayrollSettings(period.restaurantId))
+  const settings = ["finalized", "locked", "paid"].includes(
+    String(period.status),
+  )
+    ? period.settingsSnapshot || (await getPayrollSettings(period.restaurantId))
     : await getPayrollSettings(period.restaurantId);
   const docs = await PayrollItem.find({ periodId: period._id }).lean();
   const items = docs.map(mapPayrollDocToGql);

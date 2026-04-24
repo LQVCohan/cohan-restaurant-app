@@ -4,7 +4,7 @@ import useAttendanceManagement, {
   toAttendanceIsoStartOfDay,
 } from "@/hooks/useAttendanceManagement";
 import "./Attendance.scss";
-
+import OvertimePanel from "./OvertimePanel";
 const STATUS_TABS = [
   { key: "all", label: "Tất cả" },
   { key: "late", label: "Đi muộn" },
@@ -604,6 +604,7 @@ const AttendancePage = () => {
         >
           Bảng công
         </button>
+
         <button
           type="button"
           className={activeView === "corrections" ? "active" : ""}
@@ -613,6 +614,14 @@ const AttendancePage = () => {
           {correctionStats.pending > 0 && (
             <span className="count-badge">{correctionStats.pending}</span>
           )}
+        </button>
+
+        <button
+          type="button"
+          className={activeView === "overtime" ? "active" : ""}
+          onClick={() => setActiveView("overtime")}
+        >
+          Tăng ca
         </button>
       </div>
 
@@ -750,7 +759,7 @@ const AttendancePage = () => {
             </table>
           </div>
         </div>
-      ) : (
+      ) : activeView === "corrections" ? (
         <div className="table-section correction-section">
           <div className="table-toolbar">
             <div className="tabs">
@@ -921,6 +930,14 @@ const AttendancePage = () => {
             </table>
           </div>
         </div>
+      ) : (
+        <OvertimePanel
+          user={user}
+          employees={employees}
+          selectedDate={selectedDate}
+          searchQuery={searchQuery}
+          restaurantId={userRestaurantId}
+        />
       )}
 
       {selectedCorrectionRecord && correctionForm && (

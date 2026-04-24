@@ -15,6 +15,10 @@ import {
   PayrollItem,
 } from "../../../models/index.js";
 import {
+  getOvertimeRequest,
+  listOvertimeRequests,
+} from "../../../src/services/overtime/overtimeRequest.service.js";
+import {
   getAttendanceCorrectionRequest,
   listAttendanceCorrectionRequests,
 } from "../../../src/services/attendance/attendanceCorrectionWorkflow.service.js";
@@ -563,7 +567,19 @@ export default {
       restaurantId: String(settings.restaurantId),
     };
   },
+  overtimeRequests: async (_, { filter }, ctx) => {
+    return listOvertimeRequests({
+      filter: filter || {},
+      ctx,
+    });
+  },
 
+  overtimeRequest: async (_, { id }, ctx) => {
+    return getOvertimeRequest({
+      id,
+      ctx,
+    });
+  },
   validatePayrollPeriod: async (_, { periodId }, ctx) => {
     assertPayrollPermission(ctx, "payroll.validate");
     return validatePayrollPeriodService(periodId);

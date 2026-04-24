@@ -750,6 +750,136 @@ type StaffAttendanceRecord {
   createdAt: DateTime
   updatedAt: DateTime
 }
+
+type OvertimeAuditLog {
+  action: String!
+  actorId: ID
+  actorName: String
+  note: String
+  at: DateTime
+  meta: JSON
+}
+
+type OvertimeRequest {
+  id: ID!
+
+  employeeId: ID!
+  employeeName: String
+  employeeCode: String
+  employeeRole: String
+  employeeAvatar: String
+
+  restaurantId: ID!
+  shiftId: ID
+  timesheetId: ID
+  workDate: DateTime!
+
+  plannedStartTime: DateTime!
+  plannedEndTime: DateTime!
+  plannedOvertimeMinutes: Int!
+
+  actualStartTime: DateTime
+  actualEndTime: DateTime
+  actualOvertimeMinutes: Int!
+
+  approvedOvertimeMinutes: Int!
+
+  overtimeType: String!
+  reason: String!
+  status: String!
+
+  employeeConfirmationRequired: Boolean!
+  employeeConfirmedAt: DateTime
+  employeeConfirmedBy: ID
+  employeeConfirmedByName: String
+  employeeConfirmationNote: String
+
+  requestedBy: ID
+  requestedByName: String
+  requestedByRole: String
+  requestedAt: DateTime
+
+  approvedBy: ID
+  approvedByName: String
+  approvedAt: DateTime
+  approvalNote: String
+
+  rejectedBy: ID
+  rejectedByName: String
+  rejectedAt: DateTime
+  rejectionReason: String
+
+  cancelledBy: ID
+  cancelledByName: String
+  cancelledAt: DateTime
+  cancelReason: String
+
+  completedBy: ID
+  completedByName: String
+  completedAt: DateTime
+  completionNote: String
+
+  payrollPeriodId: ID
+
+  auditLogs: [OvertimeAuditLog!]!
+
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input OvertimeRequestFilterInput {
+  restaurantId: ID
+  employeeId: ID
+  status: String
+  overtimeType: String
+  startDate: DateTime
+  endDate: DateTime
+  search: String
+}
+
+input CreateOvertimeRequestInput {
+  employeeId: ID!
+  restaurantId: ID!
+  shiftId: ID
+  timesheetId: ID
+  workDate: DateTime
+
+  plannedStartTime: DateTime!
+  plannedEndTime: DateTime!
+  plannedOvertimeMinutes: Int
+
+  overtimeType: String
+  reason: String!
+  employeeConfirmationRequired: Boolean
+}
+
+input ConfirmOvertimeRequestInput {
+  requestId: ID!
+  note: String
+}
+
+input ApproveOvertimeRequestInput {
+  requestId: ID!
+  approvedOvertimeMinutes: Int
+  note: String
+}
+
+input RejectOvertimeRequestInput {
+  requestId: ID!
+  reason: String!
+}
+
+input CancelOvertimeRequestInput {
+  requestId: ID!
+  reason: String
+}
+
+input CompleteOvertimeRequestInput {
+  requestId: ID!
+  actualOvertimeMinutes: Int
+  approvedOvertimeMinutes: Int
+  note: String
+}
 type AttendanceCorrectionAuditLog {
   action: String!
   actorId: ID
@@ -1070,6 +1200,8 @@ input StaffReportsInput {
 # =========================
 
 type Query {
+  overtimeRequests(filter: OvertimeRequestFilterInput): [OvertimeRequest!]!
+  overtimeRequest(id: ID!): OvertimeRequest
   attendanceCorrectionRequests(
     filter: AttendanceCorrectionFilterInput
   ): [AttendanceCorrectionRequest!]!
@@ -1144,6 +1276,14 @@ type Query {
 # =========================
 
 type Mutation {
+  createOvertimeRequest(input: CreateOvertimeRequestInput!): OvertimeRequest!
+  confirmOvertimeRequest(input: ConfirmOvertimeRequestInput!): OvertimeRequest!
+  approveOvertimeRequest(input: ApproveOvertimeRequestInput!): OvertimeRequest!
+  rejectOvertimeRequest(input: RejectOvertimeRequestInput!): OvertimeRequest!
+  cancelOvertimeRequest(input: CancelOvertimeRequestInput!): OvertimeRequest!
+  completeOvertimeRequest(
+    input: CompleteOvertimeRequestInput!
+  ): OvertimeRequest!
   createAttendanceCorrectionRequest(
     input: CreateAttendanceCorrectionRequestInput!
   ): AttendanceCorrectionRequest!

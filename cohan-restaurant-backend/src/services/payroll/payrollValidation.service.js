@@ -7,6 +7,7 @@ import {
   PayrollPeriod,
   PayrollItem,
   PayrollAdjustment,
+  OvertimeRequest,
 } from "../../../models/index.js";
 import {
   getPayrollSettings,
@@ -46,6 +47,72 @@ export function hasBlockingPayrollIssues(issues = []) {
 export async function validatePayrollPeriod(periodId, options = {}) {
   const period = await PayrollPeriod.findById(periodId).lean();
   if (!period) throw new Error("Không tìm thấy kỳ lương.");
+  const pendingOvertimeRequests = await OvertimeRequest.find({
+    restaurantId: period.restaurantId,
+    workDate: {
+      $gte: period.startDate,
+      $lte: period.endDate,
+    },
+    status: {
+      $in: ["pending_employee_confirmation", "pending_approval", "approved"],
+    },
+  })
+    .populate("employeeId", "fullName employeeCode")
+    .lean();
+
+  pendingOvertimeRequests.forEach((request) => {
+    issues.push({
+      code: "OVERTIME_REQUEST_NOT_COMPLETED",
+      severity: "error",
+      message: "Còn yêu cầu tăng ca chưa hoàn tất trong kỳ lương.",
+      employeeId: request.employeeId?._id
+        ? String(request.employeeId._id)
+        : request.employeeId
+          ? String(request.employeeId)
+          : null,
+      employeeName: request.employeeId?.fullName || null,
+      employeeCode: request.employeeId?.employeeCode || null,
+      sourceType: "overtime_request",
+      sourceId: String(request._id),
+      suggestedAction:
+        "Xác nhận, duyệt, từ chối hoặc hoàn tất yêu cầu tăng ca trước khi chốt kỳ lương.",
+    });
+  });
+
+  const unapprovedOvertimeTimesheets = await Timesheet.find({
+    restaurantId: period.restaurantId,
+    workDate: {
+      $gte: period.startDate,
+      $lte: period.endDate,
+    },
+    overtimeMinutes: { $gt: 0 },
+    $or: [
+      { approvedOvertimeMinutes: { $exists: false } },
+      { approvedOvertimeMinutes: { $lte: 0 } },
+      { overtimeApprovalStatus: { $ne: "approved" } },
+    ],
+  })
+    .populate("employeeId", "fullName employeeCode")
+    .lean();
+
+  unapprovedOvertimeTimesheets.forEach((timesheet) => {
+    issues.push({
+      code: "UNAPPROVED_OVERTIME",
+      severity: "error",
+      message: "Có giờ tăng ca thực tế nhưng chưa được duyệt để tính lương.",
+      employeeId: timesheet.employeeId?._id
+        ? String(timesheet.employeeId._id)
+        : timesheet.employeeId
+          ? String(timesheet.employeeId)
+          : null,
+      employeeName: timesheet.employeeId?.fullName || null,
+      employeeCode: timesheet.employeeId?.employeeCode || null,
+      sourceType: "timesheet",
+      sourceId: String(timesheet._id),
+      suggestedAction:
+        "Tạo hoặc hoàn tất yêu cầu tăng ca, hoặc xác nhận không tính lương tăng ca cho bản ghi này.",
+    });
+  });
   const pendingAttendanceCorrections = await AttendanceCorrectionRequest.find({
     restaurantId: period.restaurantId,
     status: "pending",

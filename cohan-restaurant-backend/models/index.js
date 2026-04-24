@@ -71,3 +71,4 @@ export { default as PayrollItem } from "./payroll-item.model.js";
 export { default as PayrollAdjustment } from "./payroll-adjustment.model.js";
 export { default as EmployeeCodeCounter } from "./employee-code-counter.model.js";
 export { default as AttendanceCorrectionRequest } from "./attendanceCorrectionRequest.model.js";
+export { default as OvertimeRequest } from "./overtime-request.model.js";

@@ -22,6 +22,14 @@ import {
   rejectAttendanceCorrectionRequest as rejectAttendanceCorrectionRequestService,
 } from "../../../src/services/attendance/attendanceCorrectionWorkflow.service.js";
 import {
+  approveOvertimeRequest as approveOvertimeRequestService,
+  cancelOvertimeRequest as cancelOvertimeRequestService,
+  completeOvertimeRequest as completeOvertimeRequestService,
+  confirmOvertimeRequest as confirmOvertimeRequestService,
+  createOvertimeRequest as createOvertimeRequestService,
+  rejectOvertimeRequest as rejectOvertimeRequestService,
+} from "../../../src/services/overtime/overtimeRequest.service.js";
+import {
   getPayrollSettings,
   getPeriodDetail,
   mapPayrollDocToGql,
@@ -1417,6 +1425,30 @@ export default {
 
   cancelAttendanceCorrectionRequest: async (_, { requestId }, ctx) => {
     return cancelAttendanceCorrectionRequestService({ requestId, ctx });
+  },
+
+  createOvertimeRequest: async (_, { input }, ctx) => {
+    return createOvertimeRequestService({ input, ctx });
+  },
+
+  confirmOvertimeRequest: async (_, { input }, ctx) => {
+    return confirmOvertimeRequestService({ input, ctx });
+  },
+
+  approveOvertimeRequest: async (_, { input }, ctx) => {
+    return approveOvertimeRequestService({ input, ctx });
+  },
+
+  rejectOvertimeRequest: async (_, { input }, ctx) => {
+    return rejectOvertimeRequestService({ input, ctx });
+  },
+
+  cancelOvertimeRequest: async (_, { input }, ctx) => {
+    return cancelOvertimeRequestService({ input, ctx });
+  },
+
+  completeOvertimeRequest: async (_, { input }, ctx) => {
+    return completeOvertimeRequestService({ input, ctx });
   },
   upsertStaffAttendance: async (_, { input }) => {
     const employeeId = toObjectId(input.employeeId);

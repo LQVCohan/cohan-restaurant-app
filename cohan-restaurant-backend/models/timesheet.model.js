@@ -31,6 +31,20 @@ const TimesheetSchema = new Schema(
     latenessMinutes: { type: Number, default: 0 },
     earlyLeaveMinutes: { type: Number, default: 0 },
     overtimeMinutes: { type: Number, default: 0 },
+    approvedOvertimeMinutes: { type: Number, default: 0 },
+    overtimeApprovalStatus: {
+      type: String,
+      enum: ["none", "pending", "approved", "rejected"],
+      default: "none",
+      index: true,
+    },
+    overtimeRequestId: {
+      type: Types.ObjectId,
+      ref: "OvertimeRequest",
+      default: null,
+    },
+    overtimeApprovalNote: { type: String, default: "" },
+
     workedMinutes: { type: Number, default: 0 },
     status: {
       type: String,
