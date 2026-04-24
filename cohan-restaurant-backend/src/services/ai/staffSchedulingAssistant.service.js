@@ -5,10 +5,12 @@ import { buildDemandForecast } from "./demandForecast.service.js";
 const ROLE_BY_DEPARTMENT = {
   management: "host",
   kitchen: "cook",
-  service: "waiter",
+  service: "server",
   cashier: "cashier",
   cleaning: "cleaner",
-  delivery: "waiter",
+  delivery: "shipper",
+  inventory: "storekeeper",
+  bar: "bartender",
 };
 
 const SHIFT_WINDOWS = {
@@ -61,16 +63,17 @@ const normalizeShiftType = (value) => {
 };
 
 const roleFromDepartment = (department) =>
-  ROLE_BY_DEPARTMENT[String(department || "").toLowerCase()] || "waiter";
+  ROLE_BY_DEPARTMENT[String(department || "").toLowerCase()] || "server";
 
 function buildBaseRoleNeed(expectedOrders, expectedGuests, demandLevel) {
-  const waiter = Math.max(1, Math.ceil(expectedGuests / (demandLevel === "high" ? 22 : 26)));
+  const server = Math.max(1, Math.ceil(expectedGuests / (demandLevel === "high" ? 22 : 26)));
   const cook = Math.max(1, Math.ceil(expectedOrders / (demandLevel === "high" ? 16 : 20)));
   const cashier = expectedOrders > 0 ? 1 : 0;
   const cleaner = demandLevel === "high" ? 1 : expectedOrders >= 8 ? 1 : 0;
   const host = expectedGuests >= 28 ? 1 : demandLevel === "high" ? 1 : 0;
+  const bartender = expectedGuests >= 35 || demandLevel === "high" ? 1 : 0;
 
-  return { waiter, cook, cashier, cleaner, host };
+  return { server, cook, cashier, cleaner, host, bartender };
 }
 
 function demandLevelFromExpected(expectedOrders, expectedGuests) {
@@ -156,7 +159,7 @@ function buildFallbackDemandByShift(orders, timezone, horizonDays) {
   return fallbackShiftDemand;
 }
 
-function convertHourlyForecastToShiftDemand(hourlyForecast = [], timezone) {
+function convertHourlyForecastToShiftDemand(hourlyForecast = []) {
   const grouped = new Map();
 
   for (const row of hourlyForecast || []) {
@@ -263,7 +266,7 @@ export async function buildStaffSchedulingAssistant({
       timezone,
       horizonDays: safeHorizonDays,
     });
-    shiftDemand = convertHourlyForecastToShiftDemand(forecast?.hourlyForecast || [], timezone);
+    shiftDemand = convertHourlyForecastToShiftDemand(forecast?.hourlyForecast || []);
     if (!shiftDemand.length) {
       basedOnForecast = false;
       shiftDemand = buildFallbackDemandByShift(recentOrders, timezone, safeHorizonDays);

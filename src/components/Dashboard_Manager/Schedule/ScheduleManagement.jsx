@@ -15,10 +15,15 @@ import {
   subWeeks,
 } from "date-fns";
 import { vi } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Sparkles } from "lucide-react";
 
 import "./ScheduleManagement.scss";
-import { shiftTypes } from "./utils/scheduleHelpers";
+import {
+  loadStoredShiftRules,
+  persistShiftRules,
+  shiftRulesToTypes,
+  validateShiftRules,
+} from "./utils/scheduleHelpers";
 import {
   buildAutoScheduleCreateInputs,
   buildAutoSchedulePreview,
@@ -28,6 +33,7 @@ import ShiftCard from "./components/ShiftCard";
 import AddShiftModal from "./components/AddShiftModal";
 import ShiftDetailModal from "./components/ShiftDetailModal";
 import AutoScheduleModal from "./components/AutoScheduleModal";
+import ShiftRulesModal from "./components/ShiftRulesModal";
 import DailyView from "./DailyView";
 
 const ME_QUERY = gql`
@@ -198,6 +204,9 @@ const normalizeTime = (value) => {
 
 const isValidTimeValue = (value) => /^\d{2}:\d{2}$/.test(String(value || ""));
 
+const rangesOverlap = (leftStart, leftEnd, rightStart, rightEnd) =>
+  leftStart < rightEnd && rightStart < leftEnd;
+
 const buildShiftRange = ({ date, startTimeText, endTimeText }) => {
   if (!date || !isValidTimeValue(startTimeText) || !isValidTimeValue(endTimeText)) {
     throw new Error("Giờ bắt đầu/kết thúc không hợp lệ.");
@@ -228,6 +237,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [isPublished, setIsPublished] = useState(false);
+  const [shiftRules, setShiftRules] = useState(() => loadStoredShiftRules());
+  const [isShiftSettingsOpen, setIsShiftSettingsOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addModalContext, setAddModalContext] = useState({
     date: "",
@@ -277,6 +288,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
     viewMode === "week" ? weekStart : viewMode === "month" ? monthStart : currentDate;
   const rangeEnd =
     viewMode === "week" ? weekEnd : viewMode === "month" ? monthEnd : currentDate;
+  const configuredShiftTypes = useMemo(() => shiftRulesToTypes(shiftRules), [shiftRules]);
+  const configuredShiftKeys = useMemo(
+    () => Object.keys(configuredShiftTypes),
+    [configuredShiftTypes],
+  );
 
   const { data: staffData, loading: staffLoading } = useQuery(GET_STAFF_LIST, {
     variables: { restaurantId: effectiveRestaurantId || undefined },
@@ -409,8 +425,16 @@ const ScheduleManagement = ({ readOnly = false }) => {
         weeklyHoursCap: autoScheduleConfig.weeklyHoursCap,
         respectAvailability: autoScheduleConfig.respectAvailability,
         avoidOvertime: autoScheduleConfig.avoidOvertime,
+        shiftConfig: configuredShiftTypes,
       }),
-    [assistantLeaveRows, assistantPayload, assistantShiftRows, autoScheduleConfig, rawStaffList]
+    [
+      assistantLeaveRows,
+      assistantPayload,
+      assistantShiftRows,
+      autoScheduleConfig,
+      configuredShiftTypes,
+      rawStaffList,
+    ],
   );
 
   const isGeneratingAutoSchedule =
@@ -450,6 +474,25 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setCurrentDate((prev) => (direction === "next" ? addDays(prev, 1) : subDays(prev, 1)));
   };
 
+  const handleApplyShiftRules = (nextRules) => {
+    const validation = validateShiftRules(nextRules);
+    if (!validation.ok) return;
+    setShiftRules(nextRules);
+    persistShiftRules(nextRules);
+    setIsShiftSettingsOpen(false);
+  };
+
+  const overlapsExistingShiftGroup = ({ date, shiftGroupId, startTime, endTime }) =>
+    shifts.some((shift) => {
+      if (shift.id === shiftGroupId || shift.date !== date) return false;
+      const other = buildShiftRange({
+        date: shift.date,
+        startTimeText: shift.startTime,
+        endTimeText: shift.endTime,
+      });
+      return rangesOverlap(startTime, endTime, other.startTime, other.endTime);
+    });
+
   const openAddShiftModal = (dateObj, shiftType) => {
     if (readOnly) return;
     setAddModalContext({ date: format(dateObj, "yyyy-MM-dd"), shiftType });
@@ -458,7 +501,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const handleCreateShift = async (newShiftData) => {
     if (readOnly) return;
-    const config = shiftTypes[newShiftData.shiftType];
+    const config = configuredShiftTypes[newShiftData.shiftType];
     if (!config || !effectiveRestaurantId) return;
 
     const { startTime, endTime } = buildShiftRange({
@@ -466,6 +509,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
       startTimeText: config.startTime,
       endTimeText: config.endTime,
     });
+
+    if (
+      overlapsExistingShiftGroup({
+        date: newShiftData.date,
+        shiftGroupId: "",
+        startTime,
+        endTime,
+      })
+    ) {
+      throw new Error("Thời gian ca mới đang chồng với ca khác trong ngày.");
+    }
 
     await Promise.all(
       (newShiftData.staffIds || []).map((employeeId) =>
@@ -560,6 +614,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
       startTimeText: startTime,
       endTimeText: endTime,
     });
+
+    if (
+      overlapsExistingShiftGroup({
+        date: selectedShift.date,
+        shiftGroupId: selectedShift.id,
+        startTime: nextStart,
+        endTime: nextEnd,
+      })
+    ) {
+      throw new Error("Thời gian ca đang chồng với ca khác trong ngày.");
+    }
 
     await Promise.all(
       selectedShift.records.map((record) =>
@@ -683,12 +748,18 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 : "Lịch ca theo dữ liệu thật từ backend"}
             </p>
           </div>
-          <div className="user-profile">
+          <button
+            type="button"
+            className="schedule-settings-trigger"
+            onClick={() => setIsShiftSettingsOpen(true)}
+            disabled={readOnly}
+          >
+            <Settings size={18} />
             <div className="user-info">
               <span className="name">{me?.roleName || "manager"}</span>
-              <span className="role">{readOnly ? "Read Only" : "Schedule Control"}</span>
+              <span className="role">{readOnly ? "Chỉ xem" : "Cài đặt ca làm"}</span>
             </div>
-          </div>
+          </button>
         </div>
 
         <div className="kpi-grid">
@@ -794,7 +865,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
           Không tải được lịch làm việc.
         </div>
       ) : viewMode === "day" ? (
-        <DailyView currentDate={currentDate} shifts={shifts} staffList={staff} />
+        <DailyView
+          currentDate={currentDate}
+          shifts={shifts}
+          staffList={staff}
+          shiftConfig={configuredShiftTypes}
+        />
       ) : viewMode === "month" ? (
         <div className="schedule-board">
           {Array.from(
@@ -833,7 +909,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   <strong>{format(day, "dd/MM")}</strong>
                 </div>
                 <div className="day-body">
-                  {Object.keys(shiftTypes).map((type) => {
+                  {Array.from(
+                    new Set([
+                      ...configuredShiftKeys,
+                      ...shiftsForDay.map((item) => item.shiftType),
+                    ]),
+                  ).map((type) => {
+                    const shiftConfig = configuredShiftTypes[type];
                     const shift = shiftsForDay.find((item) => item.shiftType === type);
                     return (
                       <div key={type} className="shift-slot">
@@ -841,11 +923,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
                           <ShiftCard shift={shift} staffList={staff} onClick={setSelectedShift} />
                         ) : readOnly ? (
                           <div className="empty-shift-slot">
-                            Chưa phân {shiftTypes[type].label.toLowerCase()}
+                            Chưa phân {shiftConfig?.label?.toLowerCase() || "ca"}
                           </div>
                         ) : (
                           <button className="add-shift-btn" onClick={() => openAddShiftModal(day, type)}>
-                            + {shiftTypes[type].label}
+                            + {shiftConfig?.label || "Ca"}
                           </button>
                         )}
                       </div>
@@ -870,6 +952,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           onClose={() => setIsAddModalOpen(false)}
           selectedDate={addModalContext.date}
           selectedShiftType={addModalContext.shiftType}
+          shiftConfig={configuredShiftTypes}
           staffList={staff}
           onConfirm={handleCreateShift}
         />
@@ -886,7 +969,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
         onDeleteShift={handleDeleteShift}
         onUpdateNotes={handleUpdateSelectedNotes}
         onUpdateTime={handleUpdateSelectedTime}
+        shiftConfig={configuredShiftTypes}
       />
+
+      {!readOnly && (
+        <ShiftRulesModal
+          isOpen={isShiftSettingsOpen}
+          onClose={() => setIsShiftSettingsOpen(false)}
+          rules={shiftRules}
+          onApply={handleApplyShiftRules}
+        />
+      )}
 
       {!readOnly && (
         <AutoScheduleModal

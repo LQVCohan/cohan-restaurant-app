@@ -1,24 +1,15 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Modal from "../../../common/Modal"; // Đảm bảo đường dẫn đúng
 import "./AddShiftModal.scss";
-import { shiftTypes, formatDate } from "../utils/scheduleHelpers";
+import { shiftTypes, formatDate, jobOptions, getJobName } from "../utils/scheduleHelpers";
 import { Search, Check } from "lucide-react"; // Import icon từ lucide-react
-
-// Mock Job Options (Nếu chưa có file utils)
-const jobOptions = [
-  { value: "chef", label: "Bếp trưởng", emoji: "👨‍🍳" },
-  { value: "cook", label: "Phụ bếp", emoji: "🍳" },
-  { value: "waiter", label: "Phục vụ", emoji: "💁" },
-  { value: "bartender", label: "Pha chế", emoji: "🍹" },
-  { value: "cashier", label: "Thu ngân", emoji: "💻" },
-  { value: "cleaner", label: "Tạp vụ", emoji: "🧹" },
-];
 
 const AddShiftModal = ({
   isOpen,
   onClose,
   selectedDate,
   selectedShiftType,
+  shiftConfig = shiftTypes,
   staffList,
   onConfirm,
 }) => {
@@ -28,6 +19,7 @@ const AddShiftModal = ({
     notes: "",
   });
   const [search, setSearch] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
   // Reset form khi mở modal
   useEffect(() => {
@@ -38,6 +30,7 @@ const AddShiftModal = ({
         notes: "",
       });
       setSearch("");
+      setSubmitError("");
     }
   }, [isOpen, selectedDate, selectedShiftType]);
 
@@ -74,13 +67,18 @@ const AddShiftModal = ({
     );
   }, [staffList, search]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onConfirm({
-      ...newShift,
-      date: selectedDate,
-      shiftType: selectedShiftType,
-    });
+    setSubmitError("");
+    try {
+      await onConfirm({
+        ...newShift,
+        date: selectedDate,
+        shiftType: selectedShiftType,
+      });
+    } catch (error) {
+      setSubmitError(error?.message || "Không thể tạo ca làm.");
+    }
   };
 
   return (
@@ -91,13 +89,13 @@ const AddShiftModal = ({
           <div className="info-item">
             <span className="label">Loại ca:</span>
             <span className="value">
-              {shiftTypes[selectedShiftType]?.label || "N/A"}
+              {shiftConfig[selectedShiftType]?.label || "N/A"}
             </span>
           </div>
           <div className="info-item">
             <span className="label">Thời gian:</span>
             <span className="value">
-              {shiftTypes[selectedShiftType]?.time || "--:--"}
+              {shiftConfig[selectedShiftType]?.time || "--:--"}
             </span>
           </div>
           <div className="info-item">
@@ -157,7 +155,7 @@ const AddShiftModal = ({
                     </div>
                     <div className="staff-info">
                       <span className="name">{s.name}</span>
-                      <span className="role">{s.job}</span>
+                      <span className="role">{getJobName(s.job)}</span>
                     </div>
                     <span className="salary">
                       {s.salary.toLocaleString()}đ/h
@@ -185,6 +183,8 @@ const AddShiftModal = ({
             }
           />
         </div>
+
+        {submitError ? <div className="submit-error">{submitError}</div> : null}
 
         {/* Footer Actions */}
         <div className="actions">

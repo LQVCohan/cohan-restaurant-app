@@ -10,18 +10,19 @@ await mongoose.connect(process.env.MONGO_URI, {
 const parentRoles = [
   { name: "Admin", slug: "admin" },
   { name: "Manager", slug: "manager" },
+  { name: "Customer", slug: "customer" },
   { name: "Staff", slug: "staff" },
 ];
 
 async function run() {
   for (const r of parentRoles) {
     const exists = await ParentRole.findOne({ slug: r.slug }).lean();
-    if (!exists) {
-      await ParentRole.create(r);
-      console.log(`+ Created ParentRole: ${r.slug}`);
-    } else {
-      console.log(`= Skipped ParentRole (exists): ${r.slug}`);
-    }
+    await ParentRole.findOneAndUpdate(
+      { slug: r.slug },
+      { $set: { name: r.name, slug: r.slug } },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+    console.log(`${exists ? "Updated" : "Created"} ParentRole: ${r.slug}`);
   }
 
   await mongoose.disconnect();

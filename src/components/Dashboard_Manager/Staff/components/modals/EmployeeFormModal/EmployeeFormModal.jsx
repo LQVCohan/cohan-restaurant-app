@@ -9,6 +9,11 @@ import {
   getAiSuggestedPositionTitle,
 } from "../../../../../../utils/staffRoleSuggestion";
 import {
+  DEPARTMENT_OPTIONS,
+  getDefaultRoleByDepartment,
+  getStaffRolesByDepartment,
+} from "../../../../../../utils/staffRoleOptions";
+import {
   emailLooksValid,
   getEmergencyPhoneError,
   normalizeContactName,
@@ -24,10 +29,14 @@ import "./EmployeeFormModal.scss";
 
 const normalizeDraftText = (value) => String(value || "").trim();
 
+const getDefaultRoleSlug = (department) =>
+  getDefaultRoleByDepartment(department)?.slug || "";
+
 const toDraftComparableForm = (value, fallbackStartDate, fallbackRestaurantId) => ({
   name: normalizeDraftText(value?.name),
-  role: normalizeDraftText(value?.role),
   department: value?.department || "service",
+  roleSlug: value?.roleSlug || getDefaultRoleSlug(value?.department || "service"),
+  positionTitle: normalizeDraftText(value?.positionTitle ?? value?.role),
   address: normalizeDraftText(value?.address),
   salary: normalizeDraftText(value?.salary),
   shift: normalizeDraftText(value?.shift),
@@ -43,8 +52,9 @@ const createBaselineForm = (fallbackStartDate, fallbackRestaurantId) =>
   toDraftComparableForm(
     {
       name: "",
-      role: "",
       department: "service",
+      roleSlug: getDefaultRoleSlug("service"),
+      positionTitle: "",
       address: "",
       salary: "",
       shift: "",
@@ -66,14 +76,16 @@ const EmployeeFormModal = ({
   mode = "add",
   restaurantList = [],
   defaultRestaurantId = "",
+  roleList = [],
 }) => {
   const todayStr = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
   const { showNotification } = useNotification();
 
   const [formData, setFormData] = useState({
     name: "",
-    role: "",
     department: "service",
+    roleSlug: getDefaultRoleSlug("service"),
+    positionTitle: getAiSuggestedPositionTitle("service", getDefaultRoleSlug("service")),
     phone: "",
     email: "",
     address: "",
@@ -101,32 +113,8 @@ const EmployeeFormModal = ({
   const [salaryReference, setSalaryReference] = useState(null);
   const [salaryReferenceLoading, setSalaryReferenceLoading] = useState(false);
   const [salaryManuallyEdited, setSalaryManuallyEdited] = useState(false);
-  const [roleSelectionSource, setRoleSelectionSource] = useState(null);
-
-  const departmentOptions = [
-    {
-      value: "service",
-      label: "🍽️ Phục vụ",
-      description: "Phục vụ khách hàng",
-    },
-    { value: "kitchen", label: "👨‍🍳 Bếp", description: "Chế biến món ăn" },
-    {
-      value: "cashier",
-      label: "💰 Thu ngân",
-      description: "Thanh toán, thu chi",
-    },
-    {
-      value: "management",
-      label: "👔 Quản lý",
-      description: "Điều hành chung",
-    },
-    { value: "cleaning", label: "🧹 Vệ sinh", description: "Giữ gìn vệ sinh" },
-    {
-      value: "delivery",
-      label: "🚚 Giao hàng",
-      description: "Giao đơn cho khách",
-    },
-  ];
+  const [positionTitleSelectionSource, setPositionTitleSelectionSource] =
+    useState("suggested");
 
   const userTypeOptions = [{ value: "STAFF", label: "Nhân viên", icon: "👤" }];
 
@@ -140,10 +128,12 @@ const EmployeeFormModal = ({
 
   const resetForm = useCallback(() => {
     const today = new Date().toISOString().split("T")[0];
+    const defaultRoleSlug = getDefaultRoleSlug("service");
     setFormData({
       name: "",
-      role: "",
       department: "service",
+      roleSlug: defaultRoleSlug,
+      positionTitle: getAiSuggestedPositionTitle("service", defaultRoleSlug),
       phone: "",
       email: "",
       address: "",
@@ -165,7 +155,7 @@ const EmployeeFormModal = ({
     setShowConfirmPassword(false);
     setShowSensitiveNotice(false);
     setSalaryManuallyEdited(false);
-    setRoleSelectionSource(null);
+    setPositionTitleSelectionSource("suggested");
   }, [defaultRestaurantId]);
 
   const baselineForm = useMemo(
@@ -189,9 +179,24 @@ const EmployeeFormModal = ({
     [formData.employmentType, salaryReference],
   );
 
-  const roleSuggestion = useMemo(
-    () => getAiSuggestedPositionTitle(formData.department),
+  const availableRoleOptions = useMemo(
+    () => getStaffRolesByDepartment(formData.department),
     [formData.department],
+  );
+
+  const roleRecordsBySlug = useMemo(() => {
+    const map = {};
+    roleList.forEach((role) => {
+      if (role?.slug) map[role.slug.toLowerCase()] = role;
+    });
+    return map;
+  }, [roleList]);
+
+  const selectedRoleRecord = roleRecordsBySlug[String(formData.roleSlug || "").toLowerCase()] || null;
+
+  const positionTitleSuggestion = useMemo(
+    () => getAiSuggestedPositionTitle(formData.department, formData.roleSlug),
+    [formData.department, formData.roleSlug],
   );
 
   const isDirty = useMemo(
@@ -207,11 +212,11 @@ const EmployeeFormModal = ({
       }
 
       if (
-        roleSelectionSource === "suggested" &&
-        meaningfulForm.role &&
-        meaningfulForm.role === normalizeDraftText(roleSuggestion)
+        positionTitleSelectionSource === "suggested" &&
+        meaningfulForm.positionTitle &&
+        meaningfulForm.positionTitle === normalizeDraftText(positionTitleSuggestion)
       ) {
-        meaningfulForm.role = baselineForm.role;
+        meaningfulForm.positionTitle = baselineForm.positionTitle;
       }
 
       return JSON.stringify(meaningfulForm) !== JSON.stringify(baselineForm);
@@ -220,8 +225,8 @@ const EmployeeFormModal = ({
       autoSuggestedSalary,
       baselineForm,
       comparableForm,
-      roleSuggestion,
-      roleSelectionSource,
+      positionTitleSelectionSource,
+      positionTitleSuggestion,
       salaryManuallyEdited,
     ],
   );
@@ -260,7 +265,7 @@ const EmployeeFormModal = ({
       entityType: "employee",
       recordId: null,
       context: defaultRestaurantId || "default",
-      schemaVersion: "2",
+      schemaVersion: "3",
     },
     formValue: formData,
     isDirty,
@@ -275,6 +280,14 @@ const EmployeeFormModal = ({
         sanitized.salary === normalizedAutoSalary
       ) {
         sanitized.salary = baselineForm.salary;
+      }
+
+      if (
+        positionTitleSelectionSource === "suggested" &&
+        sanitized.positionTitle &&
+        sanitized.positionTitle === normalizeDraftText(positionTitleSuggestion)
+      ) {
+        sanitized.positionTitle = baselineForm.positionTitle;
       }
 
       if (JSON.stringify(sanitized) === JSON.stringify(baselineForm)) {
@@ -292,9 +305,18 @@ const EmployeeFormModal = ({
       return JSON.stringify(restored) !== JSON.stringify(baselineForm);
     },
     onRestore: (draft) => {
-      setFormData((prev) => ({ ...prev, ...draft }));
+      const restored = toDraftComparableForm(draft, todayStr, defaultRestaurantId);
+      const restoredSuggestion = getAiSuggestedPositionTitle(
+        restored.department,
+        restored.roleSlug,
+      );
+      setFormData((prev) => ({
+        ...prev,
+        ...restored,
+        positionTitle: restored.positionTitle || restoredSuggestion,
+      }));
       setShowSensitiveNotice(true);
-      setRoleSelectionSource(draft?.role ? "restored" : null);
+      setPositionTitleSelectionSource(restored?.positionTitle ? "restored" : "suggested");
       setSalaryManuallyEdited(Boolean(draft?.salary));
     },
     notify: showNotification,
@@ -306,8 +328,10 @@ const EmployeeFormModal = ({
     // --- STEP 1 ---
     if (step === 1) {
       if (!formData.name.trim()) newErrors.name = "Vui lòng nhập họ tên";
-      if (!formData.role.trim()) newErrors.role = "Vui lòng nhập chức vụ";
       if (!formData.department) newErrors.department = "Vui lòng chọn bộ phận";
+      if (!formData.roleSlug) newErrors.roleSlug = "Vui lòng chọn vai trò";
+      if (!formData.positionTitle.trim())
+        newErrors.positionTitle = "Vui lòng nhập tên hiển thị/chức danh";
       if (!formData.primaryRestaurantId)
         newErrors.primaryRestaurantId = "Chọn nhà hàng";
     }
@@ -379,8 +403,8 @@ const EmployeeFormModal = ({
     });
 
     if (field === "salary") setSalaryManuallyEdited(true);
-    if (field === "role") {
-      setRoleSelectionSource(
+    if (field === "positionTitle") {
+      setPositionTitleSelectionSource(
         options.source === "suggested" ? "suggested" : "manual",
       );
     }
@@ -401,6 +425,63 @@ const EmployeeFormModal = ({
     }
   };
 
+  const handleDepartmentChange = (department) => {
+    setFormData((prev) => {
+      const rolesForDepartment = getStaffRolesByDepartment(department);
+      const currentRoleStillValid = rolesForDepartment.some(
+        (role) => role.slug === prev.roleSlug,
+      );
+      const nextRoleSlug = currentRoleStillValid
+        ? prev.roleSlug
+        : getDefaultRoleSlug(department);
+      const previousSuggestion = getAiSuggestedPositionTitle(prev.department, prev.roleSlug);
+      const nextSuggestion = getAiSuggestedPositionTitle(department, nextRoleSlug);
+      const shouldUseSuggestion =
+        !normalizeDraftText(prev.positionTitle) ||
+        positionTitleSelectionSource === "suggested" ||
+        normalizeDraftText(prev.positionTitle) === normalizeDraftText(previousSuggestion);
+
+      if (shouldUseSuggestion) {
+        setPositionTitleSelectionSource("suggested");
+      }
+
+      return {
+        ...prev,
+        department,
+        roleSlug: nextRoleSlug,
+        positionTitle: shouldUseSuggestion ? nextSuggestion : prev.positionTitle,
+      };
+    });
+    setErrors((prev) => ({
+      ...prev,
+      department: "",
+      roleSlug: "",
+      positionTitle: "",
+    }));
+  };
+
+  const handleRoleSlugChange = (roleSlug) => {
+    setFormData((prev) => {
+      const previousSuggestion = getAiSuggestedPositionTitle(prev.department, prev.roleSlug);
+      const nextSuggestion = getAiSuggestedPositionTitle(prev.department, roleSlug);
+      const shouldUseSuggestion =
+        !normalizeDraftText(prev.positionTitle) ||
+        positionTitleSelectionSource === "suggested" ||
+        normalizeDraftText(prev.positionTitle) === normalizeDraftText(previousSuggestion);
+
+      if (shouldUseSuggestion) {
+        setPositionTitleSelectionSource("suggested");
+      }
+
+      return {
+        ...prev,
+        roleSlug,
+        positionTitle: shouldUseSuggestion ? nextSuggestion : prev.positionTitle,
+      };
+    });
+    setErrors((prev) => ({ ...prev, roleSlug: "", positionTitle: "" }));
+  };
+
   useEffect(() => {
     if (!isOpen || !salaryReference) return;
     if (parseCurrencyInputToNumber(formData.salary) > 0) return;
@@ -415,9 +496,9 @@ const EmployeeFormModal = ({
     }));
   }, [formData.employmentType, formData.salary, isOpen, salaryReference]);
 
-  const applySuggestedRole = () => {
-    if (!roleSuggestion) return;
-    handleInputChange("role", roleSuggestion, { source: "suggested" });
+  const applySuggestedPositionTitle = () => {
+    if (!positionTitleSuggestion) return;
+    handleInputChange("positionTitle", positionTitleSuggestion, { source: "suggested" });
   };
 
   const validateContactFieldOnBlur = (field) => {
@@ -527,7 +608,9 @@ const EmployeeFormModal = ({
         email: hasEmail ? formData.email.trim() : undefined,
         password: hasPassword ? formData.password.trim() : undefined,
         userType: formData.userType,
-        positionTitle: formData.role.trim(),
+        roleId: selectedRoleRecord?.id || undefined,
+        roleSlug: formData.roleSlug || undefined,
+        positionTitle: formData.positionTitle.trim(),
         department: formData.department,
         primaryRestaurantId: formData.primaryRestaurantId || undefined,
         employmentType: formData.employmentType,
@@ -585,8 +668,9 @@ const EmployeeFormModal = ({
     <div className="form-step">
       <div className="form-header">
         <h3>Thông Tin Cơ Bản</h3>
-        <p>Nhập các thông tin định danh và vị trí làm việc</p>
+        <p>Chọn bộ phận, vai trò con và tên hiển thị cho nhân viên</p>
       </div>
+
       <div className="form-grid">
         <div className="form-group">
           <label className="form-label">
@@ -601,39 +685,13 @@ const EmployeeFormModal = ({
           />
           {errors.name && <span className="error-msg">{errors.name}</span>}
         </div>
-        <div className="form-group">
-          <label className="form-label">
-            Chức vụ <span className="req">*</span>
-          </label>
-          <div className="hint-text">{AI_POSITION_HINT}</div>
-          <input
-            type="text"
-            className={`form-input ${errors.role ? "error" : ""}`}
-            value={formData.role}
-            onChange={(e) => handleInputChange("role", e.target.value)}
-            placeholder="VD: Quản lý kho"
-          />
-          {roleSuggestion && (
-            <div className="hint-text">
-              Gợi ý: <b>{roleSuggestion}</b>{" "}
-              <button
-                type="button"
-                className="btn btn-text"
-                onClick={applySuggestedRole}
-              >
-                Dùng gợi ý
-              </button>
-            </div>
-          )}
-          {errors.role && <span className="error-msg">{errors.role}</span>}
-        </div>
-      </div>
-      <div className="form-grid">
+
         <div className="form-group">
           <label className="form-label">
             Nhà hàng chính <span className="req">*</span>
           </label>
           <select
+            aria-label="Nhà hàng chính"
             className={`form-input form-select ${
               errors.primaryRestaurantId ? "error" : ""
             }`}
@@ -653,38 +711,20 @@ const EmployeeFormModal = ({
             <span className="error-msg">{errors.primaryRestaurantId}</span>
           )}
         </div>
-        <div className="form-group">
-          <label className="form-label">
-            Phân loại <span className="req">*</span>
-          </label>
-          <div className="user-type-group">
-            {userTypeOptions.map((opt) => (
-              <div
-                key={opt.value}
-                className={`type-option ${
-                  formData.userType === opt.value ? "active" : ""
-                }`}
-                onClick={() => handleInputChange("userType", opt.value)}
-              >
-                <span className="type-icon">{opt.icon}</span>{" "}
-                <span className="type-label">{opt.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
+
       <div className="form-group mt-2">
         <label className="form-label">
           Bộ phận <span className="req">*</span>
         </label>
         <div className="department-grid">
-          {departmentOptions.map((option) => (
+          {DEPARTMENT_OPTIONS.map((option) => (
             <div
               key={option.value}
               className={`dept-card ${
                 formData.department === option.value ? "active" : ""
               }`}
-              onClick={() => handleInputChange("department", option.value)}
+              onClick={() => handleDepartmentChange(option.value)}
             >
               <span className="dept-title">{option.label}</span>
               <span className="dept-desc">{option.description}</span>
@@ -697,6 +737,77 @@ const EmployeeFormModal = ({
         {errors.department && (
           <span className="error-msg">{errors.department}</span>
         )}
+      </div>
+
+      <div className="form-grid">
+        <div className="form-group">
+          <label className="form-label">
+            Vai trò <span className="req">*</span>
+          </label>
+          <select
+            aria-label="Vai trò"
+            className={`form-input form-select ${errors.roleSlug ? "error" : ""}`}
+            value={formData.roleSlug}
+            onChange={(e) => handleRoleSlugChange(e.target.value)}
+          >
+            <option value="">-- Chọn vai trò --</option>
+            {availableRoleOptions.map((role) => (
+              <option key={role.slug} value={role.slug}>
+                {role.name} - {role.label}
+              </option>
+            ))}
+          </select>
+          {errors.roleSlug && <span className="error-msg">{errors.roleSlug}</span>}
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">
+            Tên hiển thị / Chức danh <span className="req">*</span>
+          </label>
+          <div className="hint-text">{AI_POSITION_HINT}</div>
+          <input
+            type="text"
+            className={`form-input ${errors.positionTitle ? "error" : ""}`}
+            value={formData.positionTitle}
+            onChange={(e) => handleInputChange("positionTitle", e.target.value)}
+            placeholder="VD: Nhân viên phục vụ"
+          />
+          {positionTitleSuggestion && (
+            <div className="hint-text">
+              Gợi ý: <b>{positionTitleSuggestion}</b>{" "}
+              <button
+                type="button"
+                className="btn btn-text"
+                onClick={applySuggestedPositionTitle}
+              >
+                Dùng gợi ý
+              </button>
+            </div>
+          )}
+          {errors.positionTitle && (
+            <span className="error-msg">{errors.positionTitle}</span>
+          )}
+        </div>
+      </div>
+
+      <div className="form-group">
+        <label className="form-label">
+          Phân loại <span className="req">*</span>
+        </label>
+        <div className="user-type-group">
+          {userTypeOptions.map((opt) => (
+            <div
+              key={opt.value}
+              className={`type-option ${
+                formData.userType === opt.value ? "active" : ""
+              }`}
+              onClick={() => handleInputChange("userType", opt.value)}
+            >
+              <span className="type-icon">{opt.icon}</span>{" "}
+              <span className="type-label">{opt.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

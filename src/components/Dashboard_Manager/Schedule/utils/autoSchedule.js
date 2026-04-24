@@ -5,10 +5,12 @@ import { shiftTypes } from "./scheduleHelpers";
 const ROLE_BY_DEPARTMENT = {
   management: "host",
   kitchen: "cook",
-  service: "waiter",
+  service: "server",
   cashier: "cashier",
   cleaning: "cleaner",
-  delivery: "waiter",
+  delivery: "shipper",
+  inventory: "storekeeper",
+  bar: "bartender",
 };
 
 const SHIFT_ORDER = {
@@ -33,7 +35,7 @@ const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
 const getShiftSortOrder = (shiftType) => SHIFT_ORDER[String(shiftType || "").toLowerCase()] ?? 99;
 
 export const mapDepartmentToJob = (department) =>
-  ROLE_BY_DEPARTMENT[String(department || "").toLowerCase()] || "waiter";
+  ROLE_BY_DEPARTMENT[String(department || "").toLowerCase()] || "server";
 
 export const calculateShiftHours = (startTime, endTime) => {
   const start = toValidDate(startTime);
@@ -42,10 +44,10 @@ export const calculateShiftHours = (startTime, endTime) => {
   return Number((((end.getTime() - start.getTime()) / 3600000) || 8).toFixed(2));
 };
 
-export const buildShiftWindow = (dateKey, shiftType) => {
+export const buildShiftWindow = (dateKey, shiftType, shiftConfig = shiftTypes) => {
   const safeDateKey = String(dateKey || "");
   const safeType = String(shiftType || "").toLowerCase();
-  const config = shiftTypes[safeType] || shiftTypes.morning;
+  const config = shiftConfig[safeType] || shiftTypes[safeType] || shiftTypes.morning;
   const [startHour, startMinute] = String(config.startTime || "06:00")
     .split(":")
     .map(Number);
@@ -270,6 +272,7 @@ export const buildAutoSchedulePreview = ({
   weeklyHoursCap = 40,
   respectAvailability = true,
   avoidOvertime = true,
+  shiftConfig = shiftTypes,
 }) => {
   const shiftInsights = assistant?.shifts || [];
   if (!shiftInsights.length) {
@@ -313,7 +316,7 @@ export const buildAutoSchedulePreview = ({
   let unresolvedShifts = 0;
 
   const items = sortedInsights.map((shiftInsight) => {
-    const shiftWindow = buildShiftWindow(shiftInsight.date, shiftInsight.shiftType);
+    const shiftWindow = buildShiftWindow(shiftInsight.date, shiftInsight.shiftType, shiftConfig);
     const weekKey = getWeekKey(shiftWindow.startTime);
     const currentShiftAssignedIds = new Set();
     const candidateOrder = getCandidateOrder(shiftInsight);

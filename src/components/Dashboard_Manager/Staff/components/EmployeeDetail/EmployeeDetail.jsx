@@ -14,7 +14,13 @@ import {
   Calculator,
   Award,
 } from "lucide-react";
+import { DEPARTMENT_OPTIONS } from "../../../../../utils/staffRoleOptions";
 import "./EmployeeDetail.scss";
+
+const getDepartmentLabel = (department) => {
+  const option = DEPARTMENT_OPTIONS.find((item) => item.value === department);
+  return option?.label?.replace(/^\S+\s*/, "") || "Khác";
+};
 import {
   getStaffActionAvailability,
   getStaffDetailStatusInfo,
@@ -116,13 +122,7 @@ const EmployeeDetail = ({
             <InfoRow
               icon={Briefcase}
               label="Bộ phận"
-              value={
-                employee.department === "kitchen"
-                  ? "Bếp"
-                  : employee.department === "service"
-                    ? "Phục vụ"
-                    : "Khác"
-              }
+              value={getDepartmentLabel(employee.department)}
             />
             <InfoRow
               icon={CalendarDays}

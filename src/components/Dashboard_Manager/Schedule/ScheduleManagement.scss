@@ -52,7 +52,8 @@ $danger: #ef4444;
         }
       }
 
-      .user-profile {
+      .user-profile,
+      .schedule-settings-trigger {
         display: flex;
         align-items: center;
         gap: 0.75rem;
@@ -60,6 +61,16 @@ $danger: #ef4444;
         padding: 0.5rem 0.75rem;
         border-radius: 2rem;
         border: 1px solid $border;
+        cursor: pointer;
+
+        &:disabled {
+          cursor: default;
+          opacity: 0.8;
+        }
+
+        > svg {
+          color: $primary;
+        }
 
         .user-info {
           text-align: right;

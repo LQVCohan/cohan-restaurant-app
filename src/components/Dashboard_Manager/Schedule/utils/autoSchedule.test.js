@@ -16,20 +16,20 @@ describe("buildAutoSchedulePreview", () => {
           severity: "high",
           confidence: 0.88,
           recommendedRoles: [
-            { role: "waiter", required: 1, assigned: 0, delta: -1 },
+            { role: "server", required: 1, assigned: 0, delta: -1 },
             { role: "cook", required: 1, assigned: 0, delta: -1 },
           ],
           suggestedCandidates: [
             {
               staffId: "staff-overlap",
               fullName: "Server Overlap",
-              role: "waiter",
+              role: "server",
               reason: "assistant recommendation",
             },
             {
               staffId: "staff-ok",
               fullName: "Server Available",
-              role: "waiter",
+              role: "server",
               reason: "assistant recommendation",
             },
             {

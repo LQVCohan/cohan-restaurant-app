@@ -10,6 +10,11 @@ export const GET_ROLE_LIST = gql`
       id
       name
       slug
+      department
+      parentRole {
+        id
+        slug
+      }
       description
       createdAt
       updatedAt
@@ -642,9 +647,10 @@ const useUserManagement = () => {
   /* ===== Admin actions ===== */
 
   const createUser = async (payload) => {
-    const input = { ...payload };
-    if (!input.roleId && payload?.roleSlug && roleMap[payload.roleSlug]) {
-      input.roleId = roleMap[payload.roleSlug];
+    const { roleSlug: rawRoleSlug, ...input } = payload;
+    const roleSlug = rawRoleSlug ? String(rawRoleSlug).toLowerCase() : "";
+    if (!input.roleId && roleSlug && roleMap[roleSlug]) {
+      input.roleId = roleMap[roleSlug];
     }
     return createUserMut({ variables: { input } });
   };

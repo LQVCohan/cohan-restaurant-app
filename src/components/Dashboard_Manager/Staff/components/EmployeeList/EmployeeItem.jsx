@@ -7,6 +7,7 @@ import {
   Trash2,
   Briefcase,
 } from "lucide-react";
+import { DEPARTMENT_OPTIONS } from "../../../../../utils/staffRoleOptions";
 import "./EmployeeItem.scss";
 
 const EmployeeItem = ({ employee, isSelected, onClick, onAction }) => {
@@ -24,14 +25,19 @@ const EmployeeItem = ({ employee, isSelected, onClick, onAction }) => {
   };
 
   const getDeptConfig = (dept) => {
+    const option = DEPARTMENT_OPTIONS.find((item) => item.value === dept);
     const map = {
       kitchen: { label: "Bếp", color: "orange" },
       service: { label: "Phục vụ", color: "blue" },
       cashier: { label: "Thu ngân", color: "green" },
       management: { label: "Quản lý", color: "purple" },
       cleaning: { label: "Vệ sinh", color: "gray" },
+      delivery: { label: "Giao hàng", color: "blue" },
+      inventory: { label: "Kho", color: "gray" },
+      bar: { label: "Quầy bar", color: "purple" },
     };
-    return map[dept] || { label: "Khác", color: "gray" };
+    const mapped = map[dept] || { label: "Khác", color: "gray" };
+    return option ? { ...mapped, label: option.label.replace(/^\S+\s*/, "") } : mapped;
   };
 
   const handleActionClick = (e, type) => {

@@ -12,16 +12,13 @@ import {
   UserMinus,
   X,
 } from "lucide-react";
-import { shiftTypes, formatDate, getDayName } from "../utils/scheduleHelpers";
-
-const jobOptions = [
-  { value: "chef", label: "Bếp trưởng" },
-  { value: "cook", label: "Phụ bếp" },
-  { value: "waiter", label: "Phục vụ" },
-  { value: "bartender", label: "Pha chế" },
-  { value: "cashier", label: "Thu ngân" },
-  { value: "cleaner", label: "Tạp vụ" },
-];
+import {
+  shiftTypes,
+  formatDate,
+  getDayName,
+  jobOptions,
+  getJobName,
+} from "../utils/scheduleHelpers";
 
 const ShiftDetailModal = ({
   isOpen,
@@ -34,6 +31,7 @@ const ShiftDetailModal = ({
   onDeleteShift,
   onUpdateNotes,
   onUpdateTime,
+  shiftConfig = shiftTypes,
 }) => {
   const [search, setSearch] = useState("");
   const [jobFilter, setJobFilter] = useState("");
@@ -70,7 +68,7 @@ const ShiftDetailModal = ({
 
   if (!isOpen || !shift) return null;
 
-  const currentShiftType = shiftTypes[shift.shiftType];
+  const currentShiftType = shiftConfig[shift.shiftType] || shiftTypes[shift.shiftType];
   const missingCount = Math.max(0, shiftEssentialJobs.length - shiftStaffIds.length);
   const isComplete = missingCount === 0;
 
@@ -160,7 +158,7 @@ const ShiftDetailModal = ({
                         <div className="avatar">{person.name.charAt(0)}</div>
                         <div className="details">
                           <span className="name">{person.name}</span>
-                          <span className="role">{person.job}</span>
+                          <span className="role">{getJobName(person.job)}</span>
                         </div>
                       </div>
                       {!readOnly ? (
@@ -289,7 +287,7 @@ const ShiftDetailModal = ({
                           <div className="details">
                             <span className="name">{person.name}</span>
                             <div className="sub-row">
-                              <span className="role">{person.job}</span>
+                              <span className="role">{getJobName(person.job)}</span>
                               {isRecommended ? <span className="tag-rec">Ưu tiên</span> : null}
                             </div>
                           </div>

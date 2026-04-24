@@ -17,8 +17,6 @@ import {
 import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSchedulingAssistant.service.js";
 import {
   buildPayrollItem,
-  calculatePeriodCalendarDays,
-  normalizeRegionCode,
 } from "../../../src/services/payroll/payrollCalculator.service.js";
 import {
   buildPayrollItemsForRange,
@@ -140,19 +138,7 @@ function toNumber(v) {
   return Number(v || 0);
 }
 
-function mapDepartmentLabel(department) {
-  const map = {
-    management: "Management",
-    kitchen: "Kitchen",
-    service: "Service",
-    cashier: "Cashier",
-    cleaning: "Cleaning",
-    delivery: "Delivery",
-  };
-  return map[String(department || "").toLowerCase()] || "Other";
-}
-
-function inferRegionCodeFromRestaurant(restaurant) {
+function _inferRegionCodeFromRestaurant(restaurant) {
   const manual = String(restaurant?.payrollRegionCode || "").trim().toUpperCase();
   if (["I", "II", "III", "IV"].includes(manual)) return manual;
 
@@ -201,19 +187,32 @@ export default {
   ) => {
     const filter = { userType: "STAFF", deletedAt: null };
 
-    if (restaurantId) filter.refRestaurants = restaurantId;
+    const rid = toObjectId(restaurantId);
+    if (restaurantId) {
+      filter.$or = [
+        { refRestaurants: rid || restaurantId },
+        { primaryRestaurant: rid || restaurantId },
+        { restaurantForStaff: rid || restaurantId },
+      ];
+    }
     if (roleId) filter.role = roleId;
     if (employmentStatus) filter.employmentStatus = employmentStatus;
 
     if (search) {
       const regex = new RegExp(search, "i");
-      filter.$or = [
+      const searchFilter = [
         { fullName: regex },
         { email: regex },
         { phone: regex },
         { username: regex },
         { employeeCode: regex },
       ];
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: searchFilter }];
+        delete filter.$or;
+      } else {
+        filter.$or = searchFilter;
+      }
     }
 
     return Staff.find(filter)

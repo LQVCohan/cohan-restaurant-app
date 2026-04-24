@@ -80,7 +80,10 @@ export const UserQuery = {
       // Cho phép admin/manager xem role list (tuỳ chính sách của bạn)
       requireRole(authUser, ["admin", "manager"]);
 
-      const list = await Role.find({}).sort({ createdAt: 1 }).lean();
+      const list = await Role.find({})
+        .populate({ path: "parentRole", select: "name slug" })
+        .sort({ createdAt: 1 })
+        .lean();
       return list;
     } catch (err) {
       if (err instanceof GraphQLError) throw err;

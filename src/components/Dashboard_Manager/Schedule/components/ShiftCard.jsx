@@ -1,6 +1,6 @@
 import React from "react";
 import "./ShiftCard.scss";
-import { getAvatarUrl } from "../utils/scheduleHelpers";
+import { getAvatarUrl, getJobName } from "../utils/scheduleHelpers";
 import { Clock, AlertCircle } from "lucide-react";
 
 // Helper map màu job sang CSS variables hoặc class
@@ -8,26 +8,17 @@ const getJobClass = (job) => {
   const map = {
     chef: "job-purple",
     cook: "job-indigo",
-    waiter: "job-blue",
+    kitchen_helper: "job-indigo",
+    server: "job-blue",
+    supervisor: "job-teal",
     bartender: "job-pink",
     cashier: "job-teal",
     cleaner: "job-gray",
     host: "job-orange",
+    shipper: "job-blue",
+    storekeeper: "job-gray",
   };
   return map[job] || "job-gray";
-};
-
-const getJobLabel = (job) => {
-  const map = {
-    chef: "Bếp trưởng",
-    cook: "Bếp",
-    waiter: "Phục vụ",
-    bartender: "Pha chế",
-    cashier: "Thu ngân",
-    cleaner: "Tạp vụ",
-    host: "Lễ tân",
-  };
-  return map[job] || job;
 };
 
 const ShiftCard = ({ shift, staffList, onClick }) => {
@@ -41,7 +32,6 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
 
   // Logic trạng thái
   const isCritical = missingCount > 0;
-  const isFull = missingCount === 0;
 
   return (
     <div
@@ -72,7 +62,7 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
               <img
                 src={getAvatarUrl(staff.name)}
                 alt={staff.name}
-                title={`${staff.name} - ${getJobLabel(staff.job)}`}
+                title={`${staff.name} - ${getJobName(staff.job)}`}
               />
             </div>
           ))}
@@ -107,7 +97,7 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
             <span
               key={idx}
               className={`job-dot ${getJobClass(job)}`}
-              title={getJobLabel(job)}
+              title={getJobName(job)}
             ></span>
           ))}
           {shift.essentialJobs.length > 4 && (

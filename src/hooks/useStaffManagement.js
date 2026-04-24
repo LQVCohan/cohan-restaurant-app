@@ -76,6 +76,21 @@ const STAFF_FIELDS = gql`
   }
 `;
 
+const QUERY_ROLE_LIST = gql`
+  query StaffRoleListForManagement {
+    roleList {
+      id
+      name
+      slug
+      department
+      parentRole {
+        id
+        slug
+      }
+    }
+  }
+`;
+
 const QUERY_STAFF = gql`
   query Staff($id: ID!) {
     staff(id: $id) {
@@ -214,10 +229,24 @@ const useStaffManagement = (initialFilters = {}) => {
     notifyOnNetworkStatusChange: true,
   });
 
+  const { data: roleListData } = useQuery(QUERY_ROLE_LIST, {
+    fetchPolicy: "cache-first",
+  });
+
   const staffList = useMemo(
     () => staffListData?.staffList ?? [],
     [staffListData]
   );
+
+  const roleList = useMemo(() => roleListData?.roleList ?? [], [roleListData]);
+
+  const roleMap = useMemo(() => {
+    const map = {};
+    roleList.forEach((role) => {
+      if (role?.slug) map[role.slug.toLowerCase()] = role.id;
+    });
+    return map;
+  }, [roleList]);
 
   const totalItems = staffList.length;
   const totalPages = useMemo(
@@ -275,10 +304,18 @@ const useStaffManagement = (initialFilters = {}) => {
 
   const createStaff = useCallback(
     async (input) => {
+      const { roleSlug, ...restInput } = input;
       const finalInput = {
-        ...input,
+        ...restInput,
         userType: input.userType || "STAFF",
       };
+      if (!finalInput.roleId && roleSlug) {
+        const resolvedRoleId = roleMap[String(roleSlug).toLowerCase()];
+        if (!resolvedRoleId) {
+          throw new Error("Không tìm thấy roleId hợp lệ cho vai trò nhân viên đã chọn");
+        }
+        finalInput.roleId = resolvedRoleId;
+      }
 
       const res = await createStaffMutation({
         variables: { input: finalInput },
@@ -286,7 +323,7 @@ const useStaffManagement = (initialFilters = {}) => {
 
       return res.data?.createStaff ?? null;
     },
-    [createStaffMutation]
+    [createStaffMutation, roleMap]
   );
 
   /** UPDATE */
@@ -299,12 +336,21 @@ const useStaffManagement = (initialFilters = {}) => {
 
   const updateStaff = useCallback(
     async (userId, input) => {
+      const { roleSlug, ...restInput } = input;
+      const finalInput = { ...restInput };
+      if (!finalInput.roleId && roleSlug) {
+        const resolvedRoleId = roleMap[String(roleSlug).toLowerCase()];
+        if (!resolvedRoleId) {
+          throw new Error("Không tìm thấy roleId hợp lệ cho vai trò nhân viên đã chọn");
+        }
+        finalInput.roleId = resolvedRoleId;
+      }
       const res = await updateStaffMutation({
-        variables: { userId, input },
+        variables: { userId, input: finalInput },
       });
       return res.data?.updateStaff ?? null;
     },
-    [updateStaffMutation]
+    [roleMap, updateStaffMutation]
   );
 
   /** DELETE */
@@ -423,6 +469,8 @@ const useStaffManagement = (initialFilters = {}) => {
   return {
     // data
     staffList,
+    roleList,
+    roleMap,
     paginatedStaff,
     selectedStaff,
 

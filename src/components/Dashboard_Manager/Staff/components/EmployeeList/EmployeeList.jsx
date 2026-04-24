@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import EmployeeItem from "./EmployeeItem";
 import { matchesEmployeeSearch } from "../../../../../utils/employeeSearch";
+import { DEPARTMENT_OPTIONS } from "../../../../../utils/staffRoleOptions";
 import "./EmployeeList.scss";
 
 const EmployeeList = ({
@@ -123,11 +124,11 @@ const EmployeeList = ({
             className="custom-select"
           >
             <option value="all">Tất cả bộ phận</option>
-            <option value="kitchen">Bếp</option>
-            <option value="service">Phục vụ</option>
-            <option value="cashier">Thu ngân</option>
-            <option value="management">Quản lý</option>
-            <option value="cleaning">Vệ sinh</option>
+            {DEPARTMENT_OPTIONS.map((department) => (
+              <option key={department.value} value={department.value}>
+                {department.label}
+              </option>
+            ))}
           </select>
         </div>
       </div>

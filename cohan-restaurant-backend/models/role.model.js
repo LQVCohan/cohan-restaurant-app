@@ -11,6 +11,20 @@ const roleSchema = BaseSchemaModel({
     unique: true,
   },
   description: { type: String },
+  department: {
+    type: String,
+    enum: [
+      "service",
+      "kitchen",
+      "cashier",
+      "management",
+      "cleaning",
+      "delivery",
+      "inventory",
+      "bar",
+    ],
+    default: null,
+  },
 
   permissions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Permission" }],
   parentRole: { type: mongoose.Schema.Types.ObjectId, ref: "ParentRole" },

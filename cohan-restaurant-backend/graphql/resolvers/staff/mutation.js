@@ -416,6 +416,39 @@ async function logStaffEvent({
   }
 }
 
+function getRoleParentSlug(roleDoc) {
+  return String(roleDoc?.parentRole?.slug || roleDoc?.parentRole || "").toLowerCase();
+}
+
+function normalizeRoleDepartment(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+async function resolveStaffRoleById(roleId, department) {
+  if (!mongoose.isValidObjectId(roleId)) {
+    throw new Error("Invalid roleId");
+  }
+
+  const roleDoc = await Role.findById(roleId).populate("parentRole");
+  if (!roleDoc) {
+    throw new Error("Role not found");
+  }
+
+  const parentSlug = getRoleParentSlug(roleDoc);
+  const roleSlug = String(roleDoc.slug || "").toLowerCase();
+  if (parentSlug !== "staff" && roleSlug !== "staff") {
+    throw new Error("Role không hợp lệ: STAFF chỉ được nhận role thuộc nhóm staff");
+  }
+
+  const roleDepartment = normalizeRoleDepartment(roleDoc.department);
+  const selectedDepartment = normalizeRoleDepartment(department);
+  if (roleSlug !== "staff" && roleDepartment && selectedDepartment && roleDepartment !== selectedDepartment) {
+    throw new Error("Role không thuộc bộ phận đã chọn");
+  }
+
+  return roleDoc;
+}
+
 export const __testables = {
   formatEmployeeCode,
   getNextEmployeeCode,
@@ -437,26 +470,8 @@ export default {
     // =========================
     let roleDoc = null;
 
-    // Nếu FE truyền roleId vào
     if (input.roleId) {
-      roleDoc = await Role.findById(input.roleId).populate("parentRole");
-
-      if (!roleDoc) {
-        throw new Error("Role not found");
-      }
-
-      // Nếu userType là STAFF thì role phải thuộc nhóm 'staff'
-      if (normalizedUserType === "STAFF") {
-        const parentSlug =
-          roleDoc.parentRole?.slug ||
-          (roleDoc.parent ? roleDoc.parent.toString().toLowerCase() : null);
-
-        if (parentSlug !== "staff" && roleDoc.slug !== "staff") {
-          throw new Error(
-            "Role không hợp lệ: nhân viên STAFF phải có role thuộc nhóm 'staff'"
-          );
-        }
-      }
+      roleDoc = await resolveStaffRoleById(input.roleId, input.department);
     } else {
       // Không truyền roleId -> dùng default staff role
       roleDoc =
@@ -566,7 +581,8 @@ export default {
       verb: "staff.create",
       ctx,
       meta: {
-        roleId,
+        roleId: String(roleId),
+        roleSlug: roleDoc.slug,
         userType: staff.userType,
         department: staff.department || null,
       },
@@ -620,7 +636,11 @@ export default {
       );
     }
 
-    // department từ GraphQL là DepartmentType (service, kitchen...) -> đã đúng format
+    if (input.roleId) {
+      const roleDoc = await resolveStaffRoleById(input.roleId, input.department || staff.department);
+      input.role = roleDoc._id;
+      delete input.roleId;
+    }
 
     // Hỗ trợ đổi mật khẩu nếu có truyền trong input
     if (input.password && input.password.trim() !== "") {
@@ -645,6 +665,7 @@ export default {
           employmentType: before.employmentType,
           employmentStatus: before.employmentStatus,
           primaryRestaurant: before.primaryRestaurant,
+          role: before.role ? String(before.role) : null,
         },
         after: {
           fullName: staff.fullName,
@@ -654,6 +675,7 @@ export default {
           employmentType: staff.employmentType,
           employmentStatus: staff.employmentStatus,
           primaryRestaurant: staff.primaryRestaurant,
+          role: staff.role ? String(staff.role._id || staff.role) : null,
         },
       },
     });

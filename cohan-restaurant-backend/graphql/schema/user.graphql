@@ -51,6 +51,8 @@ enum DepartmentType {
   management
   cleaning
   delivery
+  inventory
+  bar
 }
 
 enum CustomerType {
@@ -337,6 +339,7 @@ input AdminUpdateUserInput {
   taxCode: String
 
   employeeCode: String
+  department: DepartmentType
   positionTitle: String
   employmentType: EmploymentType
   employmentStatus: EmploymentStatus

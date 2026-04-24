@@ -1,9 +1,10 @@
 import React from "react";
 import { format } from "date-fns";
-import { Clock, Users, AlertCircle } from "lucide-react";
+import { Clock, AlertCircle } from "lucide-react";
 import "./DailyView.scss";
+import { shiftTypes } from "./utils/scheduleHelpers";
 
-const DailyView = ({ currentDate, shifts, staffList }) => {
+const DailyView = ({ currentDate, shifts, staffList, shiftConfig = shiftTypes }) => {
   // 1. Lọc ca làm việc trong ngày
   const currentDateStr = format(currentDate, "yyyy-MM-dd");
   const dayShifts = shifts.filter((s) => s.date === currentDateStr);
@@ -31,12 +32,7 @@ const DailyView = ({ currentDate, shifts, staffList }) => {
     return { left: `${left}%`, width: `${width}%` };
   };
 
-  // 3. Nhóm ca theo loại (để hiển thị thành các dòng gọn gàng)
-  const groupedShifts = {
-    morning: dayShifts.filter((s) => s.shiftType === "morning"),
-    afternoon: dayShifts.filter((s) => s.shiftType === "afternoon"),
-    evening: dayShifts.filter((s) => s.shiftType === "evening"),
-  };
+  const shiftRows = Object.entries(shiftConfig);
 
   return (
     <div className="daily-view-horizontal">
@@ -64,58 +60,26 @@ const DailyView = ({ currentDate, shifts, staffList }) => {
           </div>
         </div>
 
-        {/* Dòng Ca Sáng */}
-        <div className="timeline-row">
-          <div className="row-label">
-            <div className="icon morning">☀️</div>
-            <span>Ca Sáng</span>
+        {shiftRows.map(([type, config]) => (
+          <div className="timeline-row" key={type}>
+            <div className="row-label">
+              <div className={`icon ${type}`}>{config.icon || "⏱️"}</div>
+              <span>{config.label}</span>
+            </div>
+            <div className="row-track">
+              {dayShifts
+                .filter((shift) => shift.shiftType === type)
+                .map((shift) => (
+                  <ShiftItem
+                    key={shift.id}
+                    shift={shift}
+                    staffList={staffList}
+                    getPos={getHorizontalPosition}
+                  />
+                ))}
+            </div>
           </div>
-          <div className="row-track">
-            {groupedShifts.morning.map((shift) => (
-              <ShiftItem
-                key={shift.id}
-                shift={shift}
-                staffList={staffList}
-                getPos={getHorizontalPosition}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Dòng Ca Chiều */}
-        <div className="timeline-row">
-          <div className="row-label">
-            <div className="icon afternoon">🌙</div>
-            <span>Ca Chiều</span>
-          </div>
-          <div className="row-track">
-            {groupedShifts.afternoon.map((shift) => (
-              <ShiftItem
-                key={shift.id}
-                shift={shift}
-                staffList={staffList}
-                getPos={getHorizontalPosition}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="timeline-row">
-          <div className="row-label">
-            <div className="icon afternoon">🌃</div>
-            <span>Ca Tối</span>
-          </div>
-          <div className="row-track">
-            {groupedShifts.evening.map((shift) => (
-              <ShiftItem
-                key={shift.id}
-                shift={shift}
-                staffList={staffList}
-                getPos={getHorizontalPosition}
-              />
-            ))}
-          </div>
-        </div>
+        ))}
 
         {/* Hiển thị thông báo nếu không có ca */}
         {dayShifts.length === 0 && (

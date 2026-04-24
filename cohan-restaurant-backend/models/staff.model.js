@@ -19,6 +19,8 @@ const staffSchema = new mongoose.Schema(
         "management",
         "cleaning",
         "delivery",
+        "inventory",
+        "bar",
       ],
     },
 

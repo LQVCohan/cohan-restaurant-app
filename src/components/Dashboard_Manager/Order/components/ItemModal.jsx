@@ -150,7 +150,7 @@ const ItemModal = ({ item, onClose }) => {
             </div>
           </div>
 
-          {/* Section: Customer Note (Ghi chú từ khách/waiter) */}
+          {/* Section: Customer Note (Ghi chú từ khách/nhân viên) */}
           {item.note && (
             <div className={styles.noteBlock}>
               <h4>

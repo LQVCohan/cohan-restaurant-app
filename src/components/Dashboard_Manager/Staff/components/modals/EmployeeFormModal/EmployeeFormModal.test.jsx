@@ -103,7 +103,7 @@ describe("EmployeeFormModal draft lifecycle", () => {
     const stepOneInputs = screen.getAllByRole("textbox");
     fireEvent.change(stepOneInputs[0], { target: { value: "Nguyen Test" } });
     fireEvent.click(screen.getByRole("button", { name: /dùng gợi ý/i }));
-    fireEvent.change(screen.getByRole("combobox"), {
+    fireEvent.change(screen.getByLabelText("Nhà hàng chính"), {
       target: { value: "rest-1" },
     });
 
