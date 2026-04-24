@@ -36,20 +36,14 @@ export function computeInsuranceDeductions({ baseSalary, policy, regionCode, isE
     };
   }
 
-  const referenceSalary = Number(
-    policy.insurance.salaryCaps.socialAndHealthByReferenceSalary.amount || 0,
-  );
-
+  const referenceSalary = Number(policy.insurance.salaryCaps.socialAndHealthByReferenceSalary.amount || 0);
   const socialHealthCap = referenceSalary > 0 ? referenceSalary * 20 : Number.MAX_SAFE_INTEGER;
   const regionMinimum = Number(policy.minimumWageByRegion[regionCode]?.monthly || 0);
   const unemploymentCap = regionMinimum > 0
     ? regionMinimum * Number(policy.insurance.salaryCaps.unemploymentByRegionalMinimumWage || 20)
     : Number.MAX_SAFE_INTEGER;
 
-  const insuranceBaseSalary = Math.max(
-    0,
-    Math.min(Number(baseSalary || 0), socialHealthCap, unemploymentCap),
-  );
+  const insuranceBaseSalary = Math.max(0, Math.min(Number(baseSalary || 0), socialHealthCap, unemploymentCap));
 
   const insuranceSocial = insuranceBaseSalary * Number(policy.insurance.employee.social || 0);
   const insuranceHealth = insuranceBaseSalary * Number(policy.insurance.employee.health || 0);
@@ -73,24 +67,20 @@ export function computeInsuranceDeductions({ baseSalary, policy, regionCode, isE
   };
 }
 
-export function computeOvertimeComponents({ totalHours, actualWorkDays, hourlyRate, policy }) {
-  const standardHours = Math.max(actualWorkDays * Number(policy.payrollDefaults.standardHoursPerDay || 8), 0);
-  const overtimeHours = Math.max(Number(totalHours || 0) - standardHours, 0);
+export function computeOvertimeComponents({ aggregate, hourlyRate, settings, policy }) {
+  const overtimeNormalHours = Number(aggregate?.overtimeNormalHours || 0);
+  const overtimeWeekendHours = Number(aggregate?.overtimeWeekendHours || 0);
+  const overtimeHolidayHours = Number(aggregate?.overtimeHolidayHours || 0);
+  const nightHours = Number(aggregate?.nightHours || 0);
+  const overtimeNightHours = Number(aggregate?.overtimeNightHours || 0);
+  const overtimeHours = overtimeNormalHours + overtimeWeekendHours + overtimeHolidayHours;
 
-  const overtimeNormalHours = overtimeHours;
-  const overtimeWeekendHours = 0;
-  const overtimeHolidayHours = 0;
-  const nightHours = 0;
-  const overtimeNightHours = 0;
-
-  const overtimeNormal = overtimeNormalHours * hourlyRate * Number(policy.overtimeMultipliers.normalDay || 1.5);
-  const overtimeWeekend = overtimeWeekendHours * hourlyRate * Number(policy.overtimeMultipliers.weekendDay || 2);
-  const overtimeHoliday = overtimeHolidayHours * hourlyRate * Number(policy.overtimeMultipliers.holidayDay || 3);
-  const nightShiftExtra = nightHours * hourlyRate * Number(policy.overtimeMultipliers.nightWorkExtra || 0);
-  const overtimeNightExtra = overtimeNightHours * hourlyRate * Number(policy.overtimeMultipliers.overtimeAtNightExtra || 0);
+  const overtimeNormal = overtimeNormalHours * hourlyRate * Number(settings?.overtimeMultiplierWeekday || policy.overtimeMultipliers.normalDay || 1.5);
+  const overtimeWeekend = overtimeWeekendHours * hourlyRate * Number(settings?.overtimeMultiplierWeekend || policy.overtimeMultipliers.weekendDay || 2);
+  const overtimeHoliday = overtimeHolidayHours * hourlyRate * Number(settings?.overtimeMultiplierHoliday || policy.overtimeMultipliers.holidayDay || 3);
+  const nightShiftExtra = nightHours * hourlyRate * Number(settings?.nightShiftAllowanceRate ?? policy.overtimeMultipliers.nightWorkExtra ?? 0);
 
   return {
-    standardHours,
     overtimeHours,
     overtimeNormalHours,
     overtimeWeekendHours,
@@ -101,66 +91,56 @@ export function computeOvertimeComponents({ totalHours, actualWorkDays, hourlyRa
     overtimeWeekend,
     overtimeHoliday,
     nightShiftExtra,
-    overtimeNightExtra,
-    overtimeTotal: overtimeNormal + overtimeWeekend + overtimeHoliday + nightShiftExtra + overtimeNightExtra,
+    overtimeNightExtra: 0,
+    overtimeTotal: overtimeNormal + overtimeWeekend + overtimeHoliday + nightShiftExtra,
   };
 }
 
-export function buildPayrollItem({
-  staff,
-  period,
-  aggregate,
-  regionCode,
-  payrollStatus,
-}) {
+export function buildPayrollItem({ staff, period, aggregate, regionCode, payrollStatus, settings = {} }) {
   const policy = getPayrollPolicyForDate(period.end);
   const baseSalary = Number(staff.baseSalary || 0);
-  const workDays = Number(period.calendarDays || 0);
+  const workDays = Number(settings.standardWorkDaysPerMonth || period.calendarDays || policy.payrollDefaults.standardDaysPerMonth || 26);
+  const standardHoursPerDay = Number(settings.standardHoursPerDay || policy.payrollDefaults.standardHoursPerDay || 8);
   const actualWorkDays = Number(aggregate.workedDateCount || 0);
-
-  const hourlyRate = workDays > 0
-    ? baseSalary / Math.max(workDays * Number(policy.payrollDefaults.standardHoursPerDay || 8), 1)
-    : 0;
+  const totalHours = Number(aggregate.totalHours || 0);
 
   const dailyRate = workDays > 0 ? baseSalary / workDays : 0;
-  const proratedBaseSalary = dailyRate * actualWorkDays;
+  const hourlyRate = standardHoursPerDay > 0 ? dailyRate / standardHoursPerDay : 0;
+  const baseWorkIncome = actualWorkDays * dailyRate;
 
-  const overtimeBreakdown = computeOvertimeComponents({
-    totalHours: aggregate.totalHours,
-    actualWorkDays,
-    hourlyRate,
-    policy,
-  });
+  const overtimeBreakdown = computeOvertimeComponents({ aggregate, hourlyRate, settings, policy });
 
   const allowance = 0;
-  const bonus = Math.max(0, Number(aggregate.totalAmount || 0) - Number(aggregate.totalWage || 0));
+  const bonus = 0;
   const otherAddition = 0;
-  const grossIncome = proratedBaseSalary + overtimeBreakdown.overtimeTotal + allowance + bonus + otherAddition;
+
+  const grossIncome = baseWorkIncome + overtimeBreakdown.overtimeNormal + overtimeBreakdown.overtimeWeekend + overtimeBreakdown.overtimeHoliday + overtimeBreakdown.nightShiftExtra;
+  const totalIncome = grossIncome + allowance + bonus + otherAddition;
 
   const insuranceEligible = calculateInsuranceEligibility(staff, policy);
-  const insurance = computeInsuranceDeductions({
-    baseSalary,
-    policy,
-    regionCode,
-    isEligible: insuranceEligible,
-  });
+  const insurance = computeInsuranceDeductions({ baseSalary, policy, regionCode, isEligible: insuranceEligible });
 
-  const deduction = Math.max(0, Number(aggregate.totalWage || 0) - Number(aggregate.totalAmount || 0));
+  const deduction = 0;
+  const otherDeduction = 0;
   const advance = 0;
-  const otherDeduction = deduction;
-  const personalIncomeTax = 0;
-  const totalDeduction = insurance.insuranceTotal + advance + otherDeduction + personalIncomeTax;
-  const netSalary = grossIncome - totalDeduction;
+
+  const taxFreeThreshold = Number(settings.personalIncomeTaxFreeThreshold || 0);
+  const taxableIncome = Math.max(totalIncome - insurance.insuranceTotal - taxFreeThreshold, 0);
+  const personalIncomeTax = settings.enablePersonalIncomeTax
+    ? taxableIncome * Number(settings.personalIncomeTaxRate || 0)
+    : 0;
+
+  const totalDeduction = deduction + otherDeduction + advance + insurance.insuranceTotal + personalIncomeTax;
+  const netSalary = totalIncome - totalDeduction;
 
   const minWageMonthly = Number(policy.minimumWageByRegion[regionCode]?.monthly || 0);
   const minimumWageViolation = baseSalary > 0 && baseSalary < minWageMonthly;
-  const missingTimesheetData = actualWorkDays > 0 && Number(aggregate.totalHours || 0) <= 0;
 
   return {
     baseSalary,
     workDays,
     actualWorkDays,
-    totalHours: Number(aggregate.totalHours || 0),
+    totalHours,
     hourlyRate,
     allowance,
     bonus,
@@ -186,7 +166,7 @@ export function buildPayrollItem({
     insuranceTotal: insurance.insuranceTotal,
     insuranceEmployerTotal: insurance.insuranceEmployerTotal,
     personalIncomeTax,
-    totalIncome: grossIncome,
+    totalIncome,
     totalDeduction,
     netSalary,
     coefficient: workDays > 0 ? actualWorkDays / workDays : 0,
@@ -196,7 +176,7 @@ export function buildPayrollItem({
     minimumWageHourly: Number(policy.minimumWageByRegion[regionCode]?.hourly || 0),
     minimumWageViolation,
     insuranceEligible,
-    missingTimesheetData,
+    missingTimesheetData: actualWorkDays > 0 && totalHours <= 0,
     policyCode: policy.policyCode,
     policyEffectiveFrom: policy.effectiveFrom,
     policyLegalReferences: Object.values(policy.legalReferences || {}),

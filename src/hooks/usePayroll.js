@@ -151,6 +151,62 @@ export const QUERY_PAYROLL_SETTINGS = gql`
   }
 `;
 
+export const QUERY_VALIDATE_PAYROLL_PERIOD = gql`
+  query ValidatePayrollPeriod($periodId: ID!) {
+    validatePayrollPeriod(periodId: $periodId) {
+      periodId
+      status
+      errorCount
+      warningCount
+      issues {
+        code
+        severity
+        message
+        employeeId
+        employeeName
+        employeeCode
+        sourceType
+        sourceId
+        suggestedAction
+      }
+    }
+  }
+`;
+
+export const QUERY_MY_PAYSLIPS = gql`
+  query MyPayslips($limit: Int = 12) {
+    myPayslips(limit: $limit) {
+      id
+      payrollItemId
+      name
+      code
+      totalIncome
+      totalDeduction
+      netSalary
+      status
+      paidAt
+      warningMessages
+    }
+  }
+`;
+
+export const QUERY_MY_PAYSLIP = gql`
+  query MyPayslip($periodId: ID!) {
+    myPayslip(periodId: $periodId) {
+      id
+      payrollItemId
+      name
+      code
+      totalIncome
+      totalDeduction
+      netSalary
+      status
+      paidAt
+      warningMessages
+    }
+  }
+`;
+
 export const QUERY_PAYROLL_CONTEXT = gql`
   query PayrollContextMe {
     me {
@@ -331,6 +387,18 @@ export const MUT_UPSERT_ADJUSTMENT = gql`
   }
 `;
 
+export const MUT_DELETE_ADJUSTMENT = gql`
+  mutation DeletePayrollAdjustment($periodId: ID!, $employeeId: ID!, $adjustmentId: ID!) {
+    deletePayrollAdjustment(periodId: $periodId, employeeId: $employeeId, adjustmentId: $adjustmentId) {
+      id
+      totalIncome
+      totalDeduction
+      netSalary
+      manualAdjustmentTotal
+    }
+  }
+`;
+
 const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
   const periodsQuery = useQuery(QUERY_PAYROLL_PERIODS, {
     variables: { restaurantId: restaurantId || undefined, limit: 24 },
@@ -356,6 +424,11 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     skip: !effectivePeriodId,
     fetchPolicy: "cache-and-network",
   });
+  const validationQuery = useQuery(QUERY_VALIDATE_PAYROLL_PERIOD, {
+    variables: { periodId: effectivePeriodId },
+    skip: !effectivePeriodId,
+    fetchPolicy: "network-only",
+  });
   const hasSnapshotItems = Boolean(detailQuery.data?.payrollPeriodDetail?.items?.length);
   const canQueryOverviewByRange = Boolean(startDate && endDate);
   const overviewQuery = useQuery(QUERY_STAFF_PAYROLL_OVERVIEW, {
@@ -378,6 +451,7 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
   const [markPaid] = useMutation(MUT_MARK_PAID);
   const [updateSettings] = useMutation(MUT_UPDATE_SETTINGS);
   const [upsertAdjustment] = useMutation(MUT_UPSERT_ADJUSTMENT);
+  const [deleteAdjustment] = useMutation(MUT_DELETE_ADJUSTMENT);
 
   return {
     loading: periodsQuery.loading || detailQuery.loading || overviewQuery.loading,
@@ -409,6 +483,8 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     refetchPeriods: periodsQuery.refetch,
     refetchDetail: detailQuery.refetch,
     refetchSettings: settingsQuery.refetch,
+    validationResult: validationQuery.data?.validatePayrollPeriod || null,
+    refetchValidation: validationQuery.refetch,
     createPeriod,
     recalculatePeriod,
     finalizePeriod,
@@ -416,6 +492,7 @@ const usePayroll = ({ periodId, restaurantId, startDate, endDate } = {}) => {
     markPaid,
     updateSettings,
     upsertAdjustment,
+    deleteAdjustment,
   };
 };
 

@@ -60,6 +60,11 @@ export const PAYROLL_VN_POLICY_VERSIONS = [
       standardDaysPerMonth: 26,
       defaultPayrollStatus: "draft",
       personalIncomeTaxEnabled: false,
+      weekendDays: ["SUN"],
+      holidayDates: [],
+      nightShiftStart: "22:00",
+      nightShiftEnd: "06:00",
+      nightShiftAllowanceRate: 0.3,
     },
   },
 ];
