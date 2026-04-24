@@ -24,6 +24,11 @@ import {
   toStartOfDay as payrollToStartOfDay,
   upsertPeriodItems,
 } from "../../../src/services/payroll/payrollRuntime.service.js";
+import { assertNoLockedPayrollPeriodOverlap } from "../../../src/services/payroll/payrollLockGuard.service.js";
+import { validatePayrollPeriod as validatePayrollPeriodService, hasBlockingPayrollIssues } from "../../../src/services/payroll/payrollValidation.service.js";
+import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
+import { logPayrollEvent } from "../../../src/services/payroll/payrollEventLog.service.js";
+import { getPayrollPolicyForDate } from "../../../src/config/payrollPolicy.vn.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -605,6 +610,26 @@ export default {
     }
 
     const before = staff.toObject();
+    const payrollSensitiveFields = [
+      "baseSalary",
+      "employmentType",
+      "employmentStatus",
+      "department",
+      "positionTitle",
+      "roleId",
+      "dateJoined",
+      "dateLeft",
+      "primaryRestaurantId",
+    ];
+    if (Object.keys(input || {}).some((key) => payrollSensitiveFields.includes(key))) {
+      await assertNoLockedPayrollPeriodOverlap({
+        restaurantId: staff.primaryRestaurant || staff.restaurantForStaff,
+        employeeId: staff._id,
+        startDate: staff.dateJoined || new Date("2000-01-01"),
+        endDate: new Date(),
+        action: "update_staff",
+      });
+    }
 
     // Map các field ID sang schema thực tế
     if (input.primaryRestaurantId) {
@@ -786,6 +811,13 @@ export default {
   },
 
   createStaffShift: async (_, { input }) => {
+    await assertNoLockedPayrollPeriodOverlap({
+      restaurantId: input.restaurantId,
+      employeeId: input.employeeId,
+      startDate: new Date(input.startTime),
+      endDate: new Date(input.endTime),
+      action: "shift",
+    });
     const staff = await Staff.findById(input.employeeId).lean();
     if (!staff || staff.userType !== "STAFF") {
       throw new Error("Staff not found");
@@ -815,6 +847,16 @@ export default {
   },
 
   updateStaffShift: async (_, { shiftId, input }) => {
+    const oldShift = await Shift.findById(shiftId).lean();
+    if (oldShift) {
+      await assertNoLockedPayrollPeriodOverlap({
+        restaurantId: oldShift.restaurantId,
+        employeeId: oldShift.employeeId,
+        startDate: oldShift.startTime,
+        endDate: oldShift.endTime,
+        action: "shift",
+      });
+    }
     const payload = { ...input };
     if (payload.shiftType) payload.shiftType = payload.shiftType.toString().toLowerCase();
     if (payload.startTime) payload.startTime = new Date(payload.startTime);
@@ -838,11 +880,22 @@ export default {
   },
 
   deleteStaffShift: async (_, { shiftId }) => {
+    const oldShift = await Shift.findById(shiftId).lean();
+    if (oldShift) {
+      await assertNoLockedPayrollPeriodOverlap({
+        restaurantId: oldShift.restaurantId,
+        employeeId: oldShift.employeeId,
+        startDate: oldShift.startTime,
+        endDate: oldShift.endTime,
+        action: "shift",
+      });
+    }
     const deleted = await Shift.findByIdAndDelete(shiftId);
     return Boolean(deleted);
   },
 
   createPayrollPeriod: async (_, { input }, ctx) => {
+    assertPayrollPermission(ctx, "payroll.period.create");
     const actor = ctx?.user || {};
     const rid = payrollToObjectId(input.restaurantId || actor.restaurantForStaff || actor.primaryRestaurantId);
     if (!rid) throw new Error("Restaurant is required");
@@ -883,12 +936,21 @@ export default {
         endDate,
         status: "draft",
         settingsSnapshot: settings,
+        policySnapshot: getPayrollPolicyForDate(endDate),
+        calculationVersion: "payroll_v1",
         statsSnapshot: { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
       });
     }
 
     const detail = await upsertPeriodItems(period);
     await PayrollPeriod.findByIdAndUpdate(period._id, { $set: { statsSnapshot: detail.stats } });
+    await logPayrollEvent({
+      ctx,
+      restaurantId: rid,
+      verb: "payroll.period.create",
+      objectKind: "PayrollPeriod",
+      objectId: period._id,
+    });
     await PayrollSetting.findOneAndUpdate(
       { restaurantId: rid },
       {
@@ -914,11 +976,12 @@ export default {
     };
   },
 
-  recalculatePayrollPeriod: async (_, { periodId }) => {
+  recalculatePayrollPeriod: async (_, { periodId }, ctx) => {
+    assertPayrollPermission(ctx, "payroll.period.recalculate");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
-    if (["locked", "paid"].includes(period.status)) {
-      throw new Error("Payroll period is locked/paid and cannot be recalculated");
+    if (period.status !== "draft") {
+      throw new Error("Chỉ có thể tính lại kỳ lương đang ở trạng thái nháp.");
     }
     const { stats } = await upsertPeriodItems(period);
     period.statsSnapshot = stats;
@@ -927,16 +990,41 @@ export default {
     return getPeriodDetail(periodId);
   },
 
-  finalizePayrollPeriod: async (_, { periodId }) => {
+  finalizePayrollPeriod: async (_, { periodId }, ctx) => {
+    assertPayrollPermission(ctx, "payroll.period.finalize");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
-    if (["locked", "paid"].includes(period.status)) throw new Error("Locked/Paid period cannot be finalized again");
+    if (period.status !== "draft") throw new Error("Chỉ có thể chốt kỳ lương đang ở trạng thái nháp.");
+    const validation = await validatePayrollPeriodService(periodId);
+    if (hasBlockingPayrollIssues(validation.issues)) {
+      await logPayrollEvent({
+        ctx,
+        restaurantId: period.restaurantId,
+        verb: "payroll.validation.failed",
+        objectKind: "PayrollPeriod",
+        objectId: period._id,
+        status: "failed",
+        meta: { errorCount: validation.errorCount, warningCount: validation.warningCount },
+      });
+      throw new Error("Không thể chốt kỳ lương vì còn lỗi dữ liệu. Vui lòng kiểm tra danh sách lỗi trước khi chốt.");
+    }
     const { stats } = await upsertPeriodItems(period);
     period.status = "finalized";
     period.finalizedAt = new Date();
+    period.finalizedBy = payrollToObjectId(ctx?.user?.id || ctx?.user?._id);
+    period.validationSnapshot = validation;
+    period.policySnapshot = period.policySnapshot || getPayrollPolicyForDate(period.endDate);
     period.statsSnapshot = stats;
     await PayrollItem.updateMany({ periodId: period._id }, { $set: { status: "finalized" } });
     await period.save();
+    await logPayrollEvent({
+      ctx,
+      restaurantId: period.restaurantId,
+      verb: "payroll.period.finalize",
+      objectKind: "PayrollPeriod",
+      objectId: period._id,
+      meta: { warningCount: validation.warningCount },
+    });
     return {
       id: String(period._id),
       restaurantId: String(period.restaurantId),
@@ -951,15 +1039,23 @@ export default {
     };
   },
 
-  lockPayrollPeriod: async (_, { periodId }) => {
+  lockPayrollPeriod: async (_, { periodId }, ctx) => {
+    assertPayrollPermission(ctx, "payroll.period.lock");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
-    if (period.status === "paid") throw new Error("Paid period cannot be locked");
-    if (period.status === "draft") throw new Error("Finalize payroll period before locking");
+    if (period.status !== "finalized") throw new Error("Chỉ có thể khóa kỳ lương đã chốt.");
     period.status = "locked";
     period.lockedAt = new Date();
+    period.lockedBy = payrollToObjectId(ctx?.user?.id || ctx?.user?._id);
     await PayrollItem.updateMany({ periodId: period._id, status: { $ne: "paid" } }, { $set: { status: "locked" } });
     await period.save();
+    await logPayrollEvent({
+      ctx,
+      restaurantId: period.restaurantId,
+      verb: "payroll.period.lock",
+      objectKind: "PayrollPeriod",
+      objectId: period._id,
+    });
     return {
       id: String(period._id),
       restaurantId: String(period.restaurantId),
@@ -974,11 +1070,12 @@ export default {
     };
   },
 
-  markPayrollPeriodPaid: async (_, { periodId, employeeIds = [] }) => {
+  markPayrollPeriodPaid: async (_, { periodId, employeeIds = [] }, ctx) => {
+    assertPayrollPermission(ctx, "payroll.period.markPaid");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
     if (!["locked", "paid"].includes(period.status)) {
-      throw new Error("Only locked payroll period can be marked as paid");
+      throw new Error("Chỉ có thể thanh toán kỳ lương đã khóa.");
     }
 
     const query = { periodId: period._id };
@@ -986,19 +1083,35 @@ export default {
       query.employeeId = { $in: employeeIds.map((id) => payrollToObjectId(id)).filter(Boolean) };
     }
 
-    await PayrollItem.updateMany(query, { $set: { status: "paid", paidAt: new Date() } });
+    await PayrollItem.updateMany(query, {
+      $set: {
+        status: "paid",
+        paidAt: new Date(),
+        paidBy: payrollToObjectId(ctx?.user?.id || ctx?.user?._id),
+      },
+    });
     const remain = await PayrollItem.countDocuments({ periodId: period._id, status: { $ne: "paid" } });
     if (remain === 0) {
       period.status = "paid";
       period.paidAt = new Date();
+      period.paidBy = payrollToObjectId(ctx?.user?.id || ctx?.user?._id);
       await period.save();
     }
     const detail = await getPeriodDetail(periodId);
     await PayrollPeriod.findByIdAndUpdate(period._id, { $set: { statsSnapshot: detail.stats } });
+    await logPayrollEvent({
+      ctx,
+      restaurantId: period.restaurantId,
+      verb: "payroll.period.markPaid",
+      objectKind: "PayrollPeriod",
+      objectId: period._id,
+      meta: { employeeIds },
+    });
     return detail.period;
   },
 
   updatePayrollSettings: async (_, { input }, ctx) => {
+    assertPayrollPermission(ctx, "payroll.settings.update");
     const actor = ctx?.user || {};
     const rid = payrollToObjectId(input.restaurantId || actor.restaurantForStaff || actor.primaryRestaurantId);
     if (!rid) throw new Error("Restaurant is required");
@@ -1037,6 +1150,14 @@ export default {
       allowPaidLeaveInWorkDays: input.allowPaidLeaveInWorkDays,
       defaultBonus: input.defaultBonus,
       defaultDeduction: input.defaultDeduction,
+      weekendDays: input.weekendDays,
+      holidayDates: input.holidayDates,
+      nightShiftStart: input.nightShiftStart,
+      nightShiftEnd: input.nightShiftEnd,
+      nightShiftAllowanceRate: input.nightShiftAllowanceRate,
+      enablePersonalIncomeTax: input.enablePersonalIncomeTax,
+      personalIncomeTaxRate: input.personalIncomeTaxRate,
+      personalIncomeTaxFreeThreshold: input.personalIncomeTaxFreeThreshold,
       notes: input.notes,
       updatedBy: payrollToObjectId(actor.id || actor._id),
     };
@@ -1055,15 +1176,32 @@ export default {
   },
 
   upsertPayrollAdjustment: async (_, { input }, ctx) => {
+    assertPayrollPermission(ctx, "payroll.adjustment.write");
     const period = await PayrollPeriod.findById(input.periodId);
     if (!period) throw new Error("Payroll period not found");
-    if (["locked", "paid"].includes(period.status)) throw new Error("Cannot adjust locked/paid payroll period");
+    if (period.status !== "draft") throw new Error("Chỉ có thể điều chỉnh kỳ lương ở trạng thái nháp.");
+
+    const legacyTypeMap = {
+      other: "other_addition",
+      penalty: "deduction",
+      loan: "advance",
+      advance_payment: "advance",
+    };
+    const rawType = String(input.type || "").toLowerCase();
+    const normalizedType = legacyTypeMap[rawType] || rawType;
+    const validTypes = ["allowance", "bonus", "deduction", "advance", "other_addition", "other_deduction"];
+    if (!validTypes.includes(normalizedType)) throw new Error("Loại điều chỉnh lương không hợp lệ.");
+    const amount = Number(input.amount || 0);
+    if (!(amount > 0)) throw new Error("Số tiền điều chỉnh phải lớn hơn 0.");
+    if (["deduction", "advance", "other_deduction"].includes(normalizedType) && !String(input.note || "").trim()) {
+      throw new Error("Vui lòng nhập ghi chú cho khoản khấu trừ/tạm ứng.");
+    }
 
     await PayrollAdjustment.create({
       periodId: period._id,
       employeeId: payrollToObjectId(input.employeeId),
-      type: String(input.type || "other").toLowerCase(),
-      amount: Number(input.amount || 0),
+      type: normalizedType,
+      amount,
       note: input.note || "",
       createdBy: payrollToObjectId(ctx?.user?.id || ctx?.user?._id),
     });
@@ -1073,10 +1211,11 @@ export default {
     return detail.items.find((item) => String(item.id) === String(input.employeeId)) || null;
   },
 
-  deletePayrollAdjustment: async (_, { periodId, employeeId, adjustmentId }) => {
+  deletePayrollAdjustment: async (_, { periodId, employeeId, adjustmentId }, ctx) => {
+    assertPayrollPermission(ctx, "payroll.adjustment.write");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
-    if (["locked", "paid"].includes(period.status)) throw new Error("Cannot adjust locked/paid payroll period");
+    if (period.status !== "draft") throw new Error("Chỉ có thể điều chỉnh kỳ lương ở trạng thái nháp.");
 
     await PayrollAdjustment.deleteOne({
       _id: payrollToObjectId(adjustmentId),
@@ -1101,6 +1240,13 @@ export default {
     const normalizedAction = ["check_in", "in"].includes(action) ? "check_in" : "check_out";
     const eventTime = input.timestamp ? new Date(input.timestamp) : new Date();
     const workDate = input.workDate ? toStartOfDay(input.workDate) : toStartOfDay(eventTime);
+    await assertNoLockedPayrollPeriodOverlap({
+      restaurantId,
+      employeeId,
+      startDate: workDate,
+      endDate: workDate,
+      action: "attendance",
+    });
     const note = input.note?.trim() || "";
     const source = ["manual", "system", "quick"].includes(String(input.source || "").toLowerCase())
       ? String(input.source).toLowerCase()
@@ -1261,6 +1407,13 @@ export default {
       .populate("replacementManagerId", "fullName")
       .populate("approverId", "fullName");
     if (!request) throw new Error("Leave request not found");
+    await assertNoLockedPayrollPeriodOverlap({
+      restaurantId: request.restaurantId,
+      employeeId: request.employeeId?._id || request.employeeId,
+      startDate: request.startDate,
+      endDate: request.endDate,
+      action: "leave",
+    });
     if (request.status === "rejected") return mapLeaveOutput(request.toObject());
     if (request.status === "approved") return mapLeaveOutput(request.toObject());
     if (request.replacementStatus === "pending") {
@@ -1331,6 +1484,13 @@ export default {
       .populate("replacementManagerId", "fullName")
       .populate("approverId", "fullName");
     if (!request) throw new Error("Leave request not found");
+    await assertNoLockedPayrollPeriodOverlap({
+      restaurantId: request.restaurantId,
+      employeeId: request.employeeId?._id || request.employeeId,
+      startDate: request.startDate,
+      endDate: request.endDate,
+      action: "leave",
+    });
 
     request.status = "rejected";
     request.rejectedAt = new Date();
@@ -1391,6 +1551,13 @@ export default {
       .populate("replacementManagerId", "fullName")
       .lean();
     if (!request) throw new Error("Leave request not found");
+    await assertNoLockedPayrollPeriodOverlap({
+      restaurantId: request.restaurantId,
+      employeeId: request.employeeId?._id || request.employeeId,
+      startDate: request.startDate,
+      endDate: request.endDate,
+      action: "leave",
+    });
     if (!actorId) throw new Error("Replacement manager is required");
     if (!request.replacementManagerId) throw new Error("Leave request does not require replacement");
     if (String(request.replacementManagerId._id || request.replacementManagerId) !== String(actorId)) {

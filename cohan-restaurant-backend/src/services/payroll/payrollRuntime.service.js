@@ -15,6 +15,8 @@ import {
   calculatePeriodCalendarDays,
   normalizeRegionCode,
 } from "./payrollCalculator.service.js";
+import { getPayrollPolicyForDate } from "../../config/payrollPolicy.vn.js";
+import { assertPayrollPeriodEditable } from "./payrollLockGuard.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -86,6 +88,14 @@ export async function getPayrollSettings(restaurantId) {
     allowPaidLeaveInWorkDays: true,
     defaultBonus: 0,
     defaultDeduction: 0,
+    weekendDays: ["SUN"],
+    holidayDates: [],
+    nightShiftStart: "22:00",
+    nightShiftEnd: "06:00",
+    nightShiftAllowanceRate: 0.3,
+    enablePersonalIncomeTax: false,
+    personalIncomeTaxRate: 0,
+    personalIncomeTaxFreeThreshold: 0,
     notes: "",
     updatedAt: null,
   };
@@ -123,18 +133,22 @@ function applySettingOverrides(payroll, aggregate, settings) {
 
   const allowance = Number(payroll.allowance || 0) + Number(settings.defaultAllowance || 0) + Number(aggregate.adjustmentAllowance || 0);
   const bonus = Number(payroll.bonus || 0) + Number(settings.defaultBonus || 0) + Number(aggregate.adjustmentBonus || 0);
-  const otherAddition = Number(payroll.otherAddition || 0) + Number(aggregate.adjustmentOther || 0);
+  const otherAddition = Number(payroll.otherAddition || 0) + Number(aggregate.adjustmentOtherAddition || 0);
 
   const extraPenalty = latenessPenalty + earlyLeavePenalty + unpaidLeaveDeduction;
-  const otherDeduction = Number(payroll.otherDeduction || 0) + Number(settings.defaultDeduction || 0) + Number(aggregate.adjustmentDeduction || 0) + extraPenalty;
+  const deduction = Number(payroll.deduction || 0) + Number(aggregate.adjustmentDeduction || 0);
+  const advance = Number(payroll.advance || 0) + Number(aggregate.adjustmentAdvance || 0);
+  const otherDeduction = Number(payroll.otherDeduction || 0) + Number(settings.defaultDeduction || 0) + Number(aggregate.adjustmentOtherDeduction || 0);
 
-  const totalIncome = Number(payroll.grossIncome || 0) + Number(settings.defaultAllowance || 0) + Number(settings.defaultBonus || 0)
-    + Number(aggregate.adjustmentAllowance || 0) + Number(aggregate.adjustmentBonus || 0) + Number(aggregate.adjustmentOther || 0);
+  const baseWorkIncome = Number(payroll.grossIncome || 0);
+  const totalIncome = baseWorkIncome + allowance + bonus + otherAddition;
 
-  const totalDeduction = Number(payroll.insuranceTotal || 0)
-    + Number(payroll.advance || 0)
+  const totalDeduction = deduction
+    + otherDeduction
+    + advance
+    + Number(payroll.insuranceTotal || 0)
     + Number(payroll.personalIncomeTax || 0)
-    + otherDeduction;
+    + extraPenalty;
 
   const netSalary = totalIncome - totalDeduction;
 
@@ -143,9 +157,10 @@ function applySettingOverrides(payroll, aggregate, settings) {
     allowance,
     bonus,
     otherAddition,
-    deduction: Number(payroll.deduction || 0) + extraPenalty,
+    deduction,
+    advance,
     otherDeduction,
-    grossIncome: totalIncome,
+    grossIncome: baseWorkIncome,
     totalIncome,
     totalDeduction,
     netSalary,
@@ -156,8 +171,10 @@ function applySettingOverrides(payroll, aggregate, settings) {
     scheduleShiftCount: Number(aggregate.scheduleShiftCount || 0),
     manualAdjustmentTotal: Number(aggregate.adjustmentAllowance || 0)
       + Number(aggregate.adjustmentBonus || 0)
-      + Number(aggregate.adjustmentOther || 0)
-      - Number(aggregate.adjustmentDeduction || 0),
+      + Number(aggregate.adjustmentOtherAddition || 0)
+      - Number(aggregate.adjustmentDeduction || 0)
+      - Number(aggregate.adjustmentAdvance || 0)
+      - Number(aggregate.adjustmentOtherDeduction || 0),
   };
 }
 
@@ -276,6 +293,27 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
         totalAmount: { $sum: { $ifNull: ["$amount", 0] } },
         totalLatenessMinutes: { $sum: { $ifNull: ["$latenessMinutes", 0] } },
         totalEarlyLeaveMinutes: { $sum: { $ifNull: ["$earlyLeaveMinutes", 0] } },
+        overtimeNormalMinutes: {
+          $sum: {
+            $cond: [
+              { $and: [{ $ne: [{ $dayOfWeek: "$workDate" }, 1] }, { $gt: [{ $ifNull: ["$overtimeMinutes", 0] }, 0] }] },
+              { $ifNull: ["$overtimeMinutes", 0] },
+              0,
+            ],
+          },
+        },
+        overtimeWeekendMinutes: {
+          $sum: {
+            $cond: [
+              { $and: [{ $eq: [{ $dayOfWeek: "$workDate" }, 1] }, { $gt: [{ $ifNull: ["$overtimeMinutes", 0] }, 0] }] },
+              { $ifNull: ["$overtimeMinutes", 0] },
+              0,
+            ],
+          },
+        },
+        overtimeHolidayMinutes: { $sum: 0 },
+        nightMinutes: { $sum: 0 },
+        overtimeNightMinutes: { $sum: 0 },
         workedDateKeys: { $addToSet: { $dateToString: { format: "%Y-%m-%d", date: "$workDate" } } },
       },
     },
@@ -320,14 +358,18 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
         adjustmentAllowance: 0,
         adjustmentBonus: 0,
         adjustmentDeduction: 0,
-        adjustmentOther: 0,
+        adjustmentAdvance: 0,
+        adjustmentOtherAddition: 0,
+        adjustmentOtherDeduction: 0,
       });
     }
     const bucket = adjustmentMap.get(sid);
     if (adj.type === "allowance") bucket.adjustmentAllowance += Number(adj.amount || 0);
     else if (adj.type === "bonus") bucket.adjustmentBonus += Number(adj.amount || 0);
     else if (adj.type === "deduction") bucket.adjustmentDeduction += Math.abs(Number(adj.amount || 0));
-    else bucket.adjustmentOther += Number(adj.amount || 0);
+    else if (adj.type === "advance") bucket.adjustmentAdvance += Math.abs(Number(adj.amount || 0));
+    else if (adj.type === "other_deduction") bucket.adjustmentOtherDeduction += Math.abs(Number(adj.amount || 0));
+    else bucket.adjustmentOtherAddition += Number(adj.amount || 0);
   });
 
   const timesheetMap = new Map(
@@ -337,6 +379,11 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
       totalAmount: Number(row.totalAmount || 0),
       totalLatenessMinutes: Number(row.totalLatenessMinutes || 0),
       totalEarlyLeaveMinutes: Number(row.totalEarlyLeaveMinutes || 0),
+      overtimeNormalHours: Number(row.overtimeNormalMinutes || 0) / 60,
+      overtimeWeekendHours: Number(row.overtimeWeekendMinutes || 0) / 60,
+      overtimeHolidayHours: Number(row.overtimeHolidayMinutes || 0) / 60,
+      nightHours: Number(row.nightMinutes || 0) / 60,
+      overtimeNightHours: Number(row.overtimeNightMinutes || 0) / 60,
       workedDateCount: (row.workedDateKeys || []).length,
     }]),
   );
@@ -373,7 +420,9 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
       adjustmentAllowance: 0,
       adjustmentBonus: 0,
       adjustmentDeduction: 0,
-      adjustmentOther: 0,
+      adjustmentAdvance: 0,
+      adjustmentOtherAddition: 0,
+      adjustmentOtherDeduction: 0,
     };
 
     const payroll = buildPayrollItem({
@@ -387,6 +436,7 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
       },
       regionCode,
       payrollStatus: forceStatus || "draft",
+      settings,
     });
 
     let effectiveActualWorkDays = ts.workedDateCount;
@@ -427,6 +477,7 @@ export async function buildPayrollItemsForRange({ start, end, restaurantId, peri
 }
 
 export async function upsertPeriodItems(periodDoc) {
+  assertPayrollPeriodEditable(periodDoc);
   const periodId = String(periodDoc._id);
   const items = await buildPayrollItemsForRange({
     start: toStartOfDay(periodDoc.startDate),
@@ -463,7 +514,9 @@ export async function upsertPeriodItems(periodDoc) {
   await PayrollPeriod.findByIdAndUpdate(periodDoc._id, {
     $set: {
       settingsSnapshot: await getPayrollSettings(periodDoc.restaurantId),
+      policySnapshot: getPayrollPolicyForDate(periodDoc.endDate),
       statsSnapshot: stats,
+      calculationVersion: "payroll_v1",
     },
   });
 
@@ -473,7 +526,9 @@ export async function upsertPeriodItems(periodDoc) {
 export async function getPeriodDetail(periodId) {
   const period = await PayrollPeriod.findById(periodId).lean();
   if (!period) return null;
-  const settings = await getPayrollSettings(period.restaurantId);
+  const settings = ["finalized", "locked", "paid"].includes(String(period.status))
+    ? (period.settingsSnapshot || await getPayrollSettings(period.restaurantId))
+    : await getPayrollSettings(period.restaurantId);
   const docs = await PayrollItem.find({ periodId: period._id }).lean();
   const items = docs.map(mapPayrollDocToGql);
   const stats = summarize(items);
