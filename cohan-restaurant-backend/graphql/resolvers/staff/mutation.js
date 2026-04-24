@@ -16,6 +16,12 @@ import {
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
 import {
+  approveAttendanceCorrectionRequest as approveAttendanceCorrectionRequestService,
+  cancelAttendanceCorrectionRequest as cancelAttendanceCorrectionRequestService,
+  createAttendanceCorrectionRequest as createAttendanceCorrectionRequestService,
+  rejectAttendanceCorrectionRequest as rejectAttendanceCorrectionRequestService,
+} from "../../../src/services/attendance/attendanceCorrectionWorkflow.service.js";
+import {
   getPayrollSettings,
   getPeriodDetail,
   mapPayrollDocToGql,
@@ -25,7 +31,10 @@ import {
   upsertPeriodItems,
 } from "../../../src/services/payroll/payrollRuntime.service.js";
 import { assertNoLockedPayrollPeriodOverlap } from "../../../src/services/payroll/payrollLockGuard.service.js";
-import { validatePayrollPeriod as validatePayrollPeriodService, hasBlockingPayrollIssues } from "../../../src/services/payroll/payrollValidation.service.js";
+import {
+  validatePayrollPeriod as validatePayrollPeriodService,
+  hasBlockingPayrollIssues,
+} from "../../../src/services/payroll/payrollValidation.service.js";
 import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
 import { logPayrollEvent } from "../../../src/services/payroll/payrollEventLog.service.js";
 import { getPayrollPolicyForDate } from "../../../src/config/payrollPolicy.vn.js";
@@ -50,7 +59,11 @@ async function getNextEmployeeCode(restaurantId) {
   }
 
   let lastError = null;
-  for (let attempt = 1; attempt <= EMPLOYEE_CODE_COUNTER_RETRIES; attempt += 1) {
+  for (
+    let attempt = 1;
+    attempt <= EMPLOYEE_CODE_COUNTER_RETRIES;
+    attempt += 1
+  ) {
     try {
       const counter = await EmployeeCodeCounter.findOneAndUpdate(
         { restaurantId: rid },
@@ -58,7 +71,7 @@ async function getNextEmployeeCode(restaurantId) {
           $setOnInsert: { restaurantId: rid },
           $inc: { seq: 1 },
         },
-        { new: true, upsert: true, setDefaultsOnInsert: true }
+        { new: true, upsert: true, setDefaultsOnInsert: true },
       );
       return formatEmployeeCode(counter?.seq);
     } catch (error) {
@@ -85,8 +98,10 @@ function toEndOfDay(date) {
 }
 
 function mapAttendanceStatus(timesheet) {
-  if (!timesheet?.actualCheckInAt) return timesheet?.isOffSchedule ? "unscheduled_absent" : "scheduled_absent";
-  if (!timesheet?.actualCheckOutAt) return timesheet?.isOffSchedule ? "unscheduled_checkin" : "checked_in";
+  if (!timesheet?.actualCheckInAt)
+    return timesheet?.isOffSchedule ? "unscheduled_absent" : "scheduled_absent";
+  if (!timesheet?.actualCheckOutAt)
+    return timesheet?.isOffSchedule ? "unscheduled_checkin" : "checked_in";
   if (timesheet?.isOffSchedule) return "unscheduled_completed";
   const hasLate = Number(timesheet?.latenessMinutes || 0) > 0;
   const hasEarly = Number(timesheet?.earlyLeaveMinutes || 0) > 0;
@@ -106,14 +121,19 @@ function mapAttendanceOutput(timesheet, staff) {
     employeeId: String(timesheet.employeeId),
     employeeName: staff?.fullName || null,
     employeeCode: staff?.employeeCode || null,
-    employeeRole: staff?.positionTitle || staff?.roleName || staff?.role?.name || null,
+    employeeRole:
+      staff?.positionTitle || staff?.roleName || staff?.role?.name || null,
     employeeAvatar: staff?.avatarUrl || staff?.avatar || null,
     restaurantId: String(timesheet.restaurantId),
     workDate: timesheet.workDate,
-    shiftId: timesheet.shiftId ? String(timesheet.shiftId._id || timesheet.shiftId) : null,
+    shiftId: timesheet.shiftId
+      ? String(timesheet.shiftId._id || timesheet.shiftId)
+      : null,
     shiftType: timesheet.shiftId?.shiftType || null,
-    plannedStartTime: timesheet.plannedStartTime || timesheet.shiftId?.startTime || null,
-    plannedEndTime: timesheet.plannedEndTime || timesheet.shiftId?.endTime || null,
+    plannedStartTime:
+      timesheet.plannedStartTime || timesheet.shiftId?.startTime || null,
+    plannedEndTime:
+      timesheet.plannedEndTime || timesheet.shiftId?.endTime || null,
     actualCheckInAt: timesheet.actualCheckInAt || null,
     actualCheckOutAt: timesheet.actualCheckOutAt || null,
     workedMinutes: Number(timesheet.workedMinutes || 0),
@@ -189,26 +209,42 @@ function toGraphSession(value) {
   return reverse[String(value || "").toLowerCase()] || "FULL";
 }
 
-function calcLeaveDays(startDate, endDate, startSession = "full", endSession = "full", leaveType = "annual") {
+function calcLeaveDays(
+  startDate,
+  endDate,
+  startSession = "full",
+  endSession = "full",
+  leaveType = "annual",
+) {
   if (leaveType === "half_day") return 0.5;
   const start = toStartOfDay(startDate);
   const end = toStartOfDay(endDate);
   if (end < start) return 0;
 
-  let days = Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+  let days =
+    Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)) + 1;
   if (startSession !== "full") days -= 0.5;
   if (endSession !== "full" && days > 0.5) days -= 0.5;
   return Math.max(Number(days.toFixed(2)), 0);
 }
 
 function computeLeaveFlags(leaveType, requestedDays) {
-  const paidTypes = new Set(["annual", "sick", "paid_personal", "maternity", "compensatory", "holiday", "half_day"]);
+  const paidTypes = new Set([
+    "annual",
+    "sick",
+    "paid_personal",
+    "maternity",
+    "compensatory",
+    "holiday",
+    "half_day",
+  ]);
   const deductTypes = new Set(["annual", "sick", "compensatory", "half_day"]);
   const isPaidLeave = paidTypes.has(leaveType);
   const deductLeaveBalance = deductTypes.has(leaveType);
   const isHalfDay = leaveType === "half_day" || requestedDays === 0.5;
   const quotaImpact = {
-    deductAnnualDays: leaveType === "annual" || leaveType === "half_day" ? requestedDays : 0,
+    deductAnnualDays:
+      leaveType === "annual" || leaveType === "half_day" ? requestedDays : 0,
     deductSickDays: leaveType === "sick" ? requestedDays : 0,
     deductCompensatoryDays: leaveType === "compensatory" ? requestedDays : 0,
     totalDeductDays: deductLeaveBalance ? requestedDays : 0,
@@ -229,18 +265,27 @@ function computeLeaveFlags(leaveType, requestedDays) {
 }
 
 async function applyLeaveBalanceImpact({ employeeId, year, quotaImpact }) {
-  if (!quotaImpact || Number(quotaImpact.totalDeductDays || 0) <= 0) return null;
+  if (!quotaImpact || Number(quotaImpact.totalDeductDays || 0) <= 0)
+    return null;
   const balance =
     (await LeaveBalance.findOne({ employeeId, year })) ||
     (await LeaveBalance.create({ employeeId, year }));
   balance.annualUsedDays += Number(quotaImpact.deductAnnualDays || 0);
   balance.sickUsedDays += Number(quotaImpact.deductSickDays || 0);
-  balance.compensatoryUsedDays += Number(quotaImpact.deductCompensatoryDays || 0);
-  balance.annualRemainingDays = Math.max(balance.annualEntitledDays - balance.annualUsedDays, 0);
-  balance.sickRemainingDays = Math.max(balance.sickEntitledDays - balance.sickUsedDays, 0);
+  balance.compensatoryUsedDays += Number(
+    quotaImpact.deductCompensatoryDays || 0,
+  );
+  balance.annualRemainingDays = Math.max(
+    balance.annualEntitledDays - balance.annualUsedDays,
+    0,
+  );
+  balance.sickRemainingDays = Math.max(
+    balance.sickEntitledDays - balance.sickUsedDays,
+    0,
+  );
   balance.compensatoryRemainingDays = Math.max(
     balance.compensatoryEntitledDays - balance.compensatoryUsedDays,
-    0
+    0,
   );
   await balance.save();
   return balance;
@@ -252,7 +297,8 @@ function mapLeaveOutput(row) {
     employeeId: String(row.employeeId?._id || row.employeeId),
     employeeName: row.employeeId?.fullName || null,
     employeeCode: row.employeeId?.employeeCode || null,
-    employeeRole: row.employeeId?.positionTitle || row.employeeId?.roleName || null,
+    employeeRole:
+      row.employeeId?.positionTitle || row.employeeId?.roleName || null,
     employeeAvatar: row.employeeId?.avatarUrl || row.employeeId?.avatar || null,
     restaurantId: String(row.restaurantId),
     leaveType: toGraphLeaveType(row.leaveType),
@@ -264,7 +310,11 @@ function mapLeaveOutput(row) {
     requestedHours: Number(row.requestedHours || 0),
     reason: row.reason || "",
     status: toGraphLeaveStatus(row.status),
-    approverId: row.approverId?._id ? String(row.approverId._id) : row.approverId ? String(row.approverId) : null,
+    approverId: row.approverId?._id
+      ? String(row.approverId._id)
+      : row.approverId
+        ? String(row.approverId)
+        : null,
     approverName: row.approverId?.fullName || null,
     approvedAt: row.approvedAt || null,
     rejectedAt: row.rejectedAt || null,
@@ -272,16 +322,16 @@ function mapLeaveOutput(row) {
     replacementManagerId: row.replacementManagerId?._id
       ? String(row.replacementManagerId._id)
       : row.replacementManagerId
-      ? String(row.replacementManagerId)
-      : null,
+        ? String(row.replacementManagerId)
+        : null,
     replacementManagerName: row.replacementManagerId?.fullName || null,
     replacementStatus: toGraphReplacementStatus(row.replacementStatus),
     replacementConfirmedAt: row.replacementConfirmedAt || null,
     replacementConfirmedBy: row.replacementConfirmedBy?._id
       ? String(row.replacementConfirmedBy._id)
       : row.replacementConfirmedBy
-      ? String(row.replacementConfirmedBy)
-      : null,
+        ? String(row.replacementConfirmedBy)
+        : null,
     payrollFlags: {
       isPaidLeave: Boolean(row.payrollFlags?.isPaidLeave),
       deductLeaveBalance: Boolean(row.payrollFlags?.deductLeaveBalance),
@@ -295,7 +345,9 @@ function mapLeaveOutput(row) {
     quotaImpact: {
       deductAnnualDays: Number(row.quotaImpact?.deductAnnualDays || 0),
       deductSickDays: Number(row.quotaImpact?.deductSickDays || 0),
-      deductCompensatoryDays: Number(row.quotaImpact?.deductCompensatoryDays || 0),
+      deductCompensatoryDays: Number(
+        row.quotaImpact?.deductCompensatoryDays || 0,
+      ),
       totalDeductDays: Number(row.quotaImpact?.totalDeductDays || 0),
     },
     leaveBalanceSnapshot: null,
@@ -331,16 +383,25 @@ function formatLeaveTypeLabel(leaveType) {
 
 function formatDateVi(date) {
   const d = new Date(date);
-  return Number.isNaN(d.getTime()) ? String(date || "") : d.toLocaleDateString("vi-VN");
+  return Number.isNaN(d.getTime())
+    ? String(date || "")
+    : d.toLocaleDateString("vi-VN");
 }
 
 async function sendLeaveDecisionMail({ leaveDoc, decision }) {
-  const employeeEmail = String(leaveDoc?.employeeId?.email || "").trim().toLowerCase();
+  const employeeEmail = String(leaveDoc?.employeeId?.email || "")
+    .trim()
+    .toLowerCase();
   if (!isValidEmail(employeeEmail)) {
-    throw new Error("Nhân viên không có email hợp lệ để gửi thông báo nghỉ phép");
+    throw new Error(
+      "Nhân viên không có email hợp lệ để gửi thông báo nghỉ phép",
+    );
   }
 
-  const employeeName = leaveDoc?.employeeId?.fullName || leaveDoc?.employeeId?.employeeCode || "Nhân viên";
+  const employeeName =
+    leaveDoc?.employeeId?.fullName ||
+    leaveDoc?.employeeId?.employeeCode ||
+    "Nhân viên";
   const leaveTypeLabel = formatLeaveTypeLabel(leaveDoc?.leaveType);
   const rangeText = `${formatDateVi(leaveDoc?.startDate)} - ${formatDateVi(leaveDoc?.endDate)}`;
   const isApproved = decision === "approved";
@@ -348,9 +409,10 @@ async function sendLeaveDecisionMail({ leaveDoc, decision }) {
     ? "Đơn nghỉ phép của bạn đã được duyệt"
     : "Đơn nghỉ phép của bạn đã bị từ chối";
   const statusText = isApproved ? "ĐÃ DUYỆT" : "BỊ TỪ CHỐI";
-  const rejectReason = !isApproved && leaveDoc?.rejectionReason
-    ? `<p><strong>Lý do từ chối:</strong> ${leaveDoc.rejectionReason}</p>`
-    : "";
+  const rejectReason =
+    !isApproved && leaveDoc?.rejectionReason
+      ? `<p><strong>Lý do từ chối:</strong> ${leaveDoc.rejectionReason}</p>`
+      : "";
 
   const mailResult = await mailer.sendMail({
     to: employeeEmail,
@@ -360,7 +422,9 @@ async function sendLeaveDecisionMail({ leaveDoc, decision }) {
       `Đơn nghỉ phép: ${leaveTypeLabel}`,
       `Thời gian: ${rangeText}`,
       `Kết quả xử lý: ${statusText}`,
-      !isApproved && leaveDoc?.rejectionReason ? `Lý do từ chối: ${leaveDoc.rejectionReason}` : "",
+      !isApproved && leaveDoc?.rejectionReason
+        ? `Lý do từ chối: ${leaveDoc.rejectionReason}`
+        : "",
     ]
       .filter(Boolean)
       .join("\n"),
@@ -377,7 +441,10 @@ async function sendLeaveDecisionMail({ leaveDoc, decision }) {
     `,
   });
 
-  if (mailResult?.skipped || (Array.isArray(mailResult?.rejected) && mailResult.rejected.length > 0)) {
+  if (
+    mailResult?.skipped ||
+    (Array.isArray(mailResult?.rejected) && mailResult.rejected.length > 0)
+  ) {
     throw new Error("Email provider chưa sẵn sàng hoặc từ chối gửi email");
   }
 
@@ -422,11 +489,15 @@ async function logStaffEvent({
 }
 
 function getRoleParentSlug(roleDoc) {
-  return String(roleDoc?.parentRole?.slug || roleDoc?.parentRole || "").toLowerCase();
+  return String(
+    roleDoc?.parentRole?.slug || roleDoc?.parentRole || "",
+  ).toLowerCase();
 }
 
 function normalizeRoleDepartment(value) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 }
 
 async function resolveStaffRoleById(roleId, department) {
@@ -442,12 +513,19 @@ async function resolveStaffRoleById(roleId, department) {
   const parentSlug = getRoleParentSlug(roleDoc);
   const roleSlug = String(roleDoc.slug || "").toLowerCase();
   if (parentSlug !== "staff" && roleSlug !== "staff") {
-    throw new Error("Role không hợp lệ: STAFF chỉ được nhận role thuộc nhóm staff");
+    throw new Error(
+      "Role không hợp lệ: STAFF chỉ được nhận role thuộc nhóm staff",
+    );
   }
 
   const roleDepartment = normalizeRoleDepartment(roleDoc.department);
   const selectedDepartment = normalizeRoleDepartment(department);
-  if (roleSlug !== "staff" && roleDepartment && selectedDepartment && roleDepartment !== selectedDepartment) {
+  if (
+    roleSlug !== "staff" &&
+    roleDepartment &&
+    selectedDepartment &&
+    roleDepartment !== selectedDepartment
+  ) {
     throw new Error("Role không thuộc bộ phận đã chọn");
   }
 
@@ -485,7 +563,7 @@ export default {
 
       if (!roleDoc) {
         throw new Error(
-          "Default staff role not found (slug='staff' or parent='staff')"
+          "Default staff role not found (slug='staff' or parent='staff')",
         );
       }
       // Với default này thì đương nhiên thuộc nhóm staff nên không cần check thêm
@@ -525,7 +603,7 @@ export default {
     // StaffWorkingDay: [MON, TUE] -> ["mon", "tue"]
     if (doc.workingDays && Array.isArray(doc.workingDays)) {
       doc.workingDays = doc.workingDays.map((d) =>
-        d != null ? d.toString().toLowerCase() : d
+        d != null ? d.toString().toLowerCase() : d,
       );
     }
 
@@ -537,7 +615,9 @@ export default {
       input.restaurantForStaff ||
       (Array.isArray(refRestaurantIds) ? refRestaurantIds[0] : null);
     if (!sequenceRestaurantId) {
-      throw new Error("primaryRestaurantId is required to generate employee code");
+      throw new Error(
+        "primaryRestaurantId is required to generate employee code",
+      );
     }
 
     doc.primaryRestaurant = sequenceRestaurantId;
@@ -621,7 +701,11 @@ export default {
       "dateLeft",
       "primaryRestaurantId",
     ];
-    if (Object.keys(input || {}).some((key) => payrollSensitiveFields.includes(key))) {
+    if (
+      Object.keys(input || {}).some((key) =>
+        payrollSensitiveFields.includes(key),
+      )
+    ) {
       await assertNoLockedPayrollPeriodOverlap({
         restaurantId: staff.primaryRestaurant || staff.restaurantForStaff,
         employeeId: staff._id,
@@ -657,12 +741,15 @@ export default {
 
     if (input.workingDays && Array.isArray(input.workingDays)) {
       input.workingDays = input.workingDays.map((d) =>
-        d != null ? d.toString().toLowerCase() : d
+        d != null ? d.toString().toLowerCase() : d,
       );
     }
 
     if (input.roleId) {
-      const roleDoc = await resolveStaffRoleById(input.roleId, input.department || staff.department);
+      const roleDoc = await resolveStaffRoleById(
+        input.roleId,
+        input.department || staff.department,
+      );
       input.role = roleDoc._id;
       delete input.roleId;
     }
@@ -858,12 +945,14 @@ export default {
       });
     }
     const payload = { ...input };
-    if (payload.shiftType) payload.shiftType = payload.shiftType.toString().toLowerCase();
+    if (payload.shiftType)
+      payload.shiftType = payload.shiftType.toString().toLowerCase();
     if (payload.startTime) payload.startTime = new Date(payload.startTime);
     if (payload.endTime) payload.endTime = new Date(payload.endTime);
 
-    const updated = await Shift.findByIdAndUpdate(shiftId, payload, { new: true })
-      .populate("employeeId", "fullName");
+    const updated = await Shift.findByIdAndUpdate(shiftId, payload, {
+      new: true,
+    }).populate("employeeId", "fullName");
     if (!updated) throw new Error("Shift not found");
 
     return {
@@ -897,11 +986,19 @@ export default {
   createPayrollPeriod: async (_, { input }, ctx) => {
     assertPayrollPermission(ctx, "payroll.period.create");
     const actor = ctx?.user || {};
-    const rid = payrollToObjectId(input.restaurantId || actor.restaurantForStaff || actor.primaryRestaurantId);
+    const rid = payrollToObjectId(
+      input.restaurantId ||
+        actor.restaurantForStaff ||
+        actor.primaryRestaurantId,
+    );
     if (!rid) throw new Error("Restaurant is required");
     const startDate = payrollToStartOfDay(input.startDate);
     const endDate = payrollToEndOfDay(input.endDate);
-    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) {
+    if (
+      Number.isNaN(startDate.getTime()) ||
+      Number.isNaN(endDate.getTime()) ||
+      endDate < startDate
+    ) {
       throw new Error("Invalid payroll period range");
     }
 
@@ -923,27 +1020,42 @@ export default {
       !isSameCurrentRange &&
       currentPeriod.status !== "paid"
     ) {
-      throw new Error("Current payroll period must be fully paid before changing the applied payroll cycle");
+      throw new Error(
+        "Current payroll period must be fully paid before changing the applied payroll cycle",
+      );
     }
 
-    let period = await PayrollPeriod.findOne({ restaurantId: rid, startDate, endDate });
+    let period = await PayrollPeriod.findOne({
+      restaurantId: rid,
+      startDate,
+      endDate,
+    });
     if (!period) {
       const settings = await getPayrollSettings(rid);
       period = await PayrollPeriod.create({
         restaurantId: rid,
-        name: input.name || `Kỳ lương ${startDate.toISOString().slice(0, 10)} - ${endDate.toISOString().slice(0, 10)}`,
+        name:
+          input.name ||
+          `Kỳ lương ${startDate.toISOString().slice(0, 10)} - ${endDate.toISOString().slice(0, 10)}`,
         startDate,
         endDate,
         status: "draft",
         settingsSnapshot: settings,
         policySnapshot: getPayrollPolicyForDate(endDate),
         calculationVersion: "payroll_v1",
-        statsSnapshot: { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+        statsSnapshot: {
+          totalPayroll: 0,
+          paidAmount: 0,
+          remaining: 0,
+          progress: 0,
+        },
       });
     }
 
     const detail = await upsertPeriodItems(period);
-    await PayrollPeriod.findByIdAndUpdate(period._id, { $set: { statsSnapshot: detail.stats } });
+    await PayrollPeriod.findByIdAndUpdate(period._id, {
+      $set: { statsSnapshot: detail.stats },
+    });
     await logPayrollEvent({
       ctx,
       restaurantId: rid,
@@ -994,7 +1106,8 @@ export default {
     assertPayrollPermission(ctx, "payroll.period.finalize");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
-    if (period.status !== "draft") throw new Error("Chỉ có thể chốt kỳ lương đang ở trạng thái nháp.");
+    if (period.status !== "draft")
+      throw new Error("Chỉ có thể chốt kỳ lương đang ở trạng thái nháp.");
     const validation = await validatePayrollPeriodService(periodId);
     if (hasBlockingPayrollIssues(validation.issues)) {
       await logPayrollEvent({
@@ -1004,18 +1117,27 @@ export default {
         objectKind: "PayrollPeriod",
         objectId: period._id,
         status: "failed",
-        meta: { errorCount: validation.errorCount, warningCount: validation.warningCount },
+        meta: {
+          errorCount: validation.errorCount,
+          warningCount: validation.warningCount,
+        },
       });
-      throw new Error("Không thể chốt kỳ lương vì còn lỗi dữ liệu. Vui lòng kiểm tra danh sách lỗi trước khi chốt.");
+      throw new Error(
+        "Không thể chốt kỳ lương vì còn lỗi dữ liệu. Vui lòng kiểm tra danh sách lỗi trước khi chốt.",
+      );
     }
     const { stats } = await upsertPeriodItems(period);
     period.status = "finalized";
     period.finalizedAt = new Date();
     period.finalizedBy = payrollToObjectId(ctx?.user?.id || ctx?.user?._id);
     period.validationSnapshot = validation;
-    period.policySnapshot = period.policySnapshot || getPayrollPolicyForDate(period.endDate);
+    period.policySnapshot =
+      period.policySnapshot || getPayrollPolicyForDate(period.endDate);
     period.statsSnapshot = stats;
-    await PayrollItem.updateMany({ periodId: period._id }, { $set: { status: "finalized" } });
+    await PayrollItem.updateMany(
+      { periodId: period._id },
+      { $set: { status: "finalized" } },
+    );
     await period.save();
     await logPayrollEvent({
       ctx,
@@ -1043,11 +1165,15 @@ export default {
     assertPayrollPermission(ctx, "payroll.period.lock");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
-    if (period.status !== "finalized") throw new Error("Chỉ có thể khóa kỳ lương đã chốt.");
+    if (period.status !== "finalized")
+      throw new Error("Chỉ có thể khóa kỳ lương đã chốt.");
     period.status = "locked";
     period.lockedAt = new Date();
     period.lockedBy = payrollToObjectId(ctx?.user?.id || ctx?.user?._id);
-    await PayrollItem.updateMany({ periodId: period._id, status: { $ne: "paid" } }, { $set: { status: "locked" } });
+    await PayrollItem.updateMany(
+      { periodId: period._id, status: { $ne: "paid" } },
+      { $set: { status: "locked" } },
+    );
     await period.save();
     await logPayrollEvent({
       ctx,
@@ -1066,7 +1192,12 @@ export default {
       finalizedAt: period.finalizedAt || null,
       lockedAt: period.lockedAt || null,
       paidAt: period.paidAt || null,
-      stats: period.statsSnapshot || { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+      stats: period.statsSnapshot || {
+        totalPayroll: 0,
+        paidAmount: 0,
+        remaining: 0,
+        progress: 0,
+      },
     };
   },
 
@@ -1080,7 +1211,9 @@ export default {
 
     const query = { periodId: period._id };
     if (Array.isArray(employeeIds) && employeeIds.length) {
-      query.employeeId = { $in: employeeIds.map((id) => payrollToObjectId(id)).filter(Boolean) };
+      query.employeeId = {
+        $in: employeeIds.map((id) => payrollToObjectId(id)).filter(Boolean),
+      };
     }
 
     await PayrollItem.updateMany(query, {
@@ -1090,7 +1223,10 @@ export default {
         paidBy: payrollToObjectId(ctx?.user?.id || ctx?.user?._id),
       },
     });
-    const remain = await PayrollItem.countDocuments({ periodId: period._id, status: { $ne: "paid" } });
+    const remain = await PayrollItem.countDocuments({
+      periodId: period._id,
+      status: { $ne: "paid" },
+    });
     if (remain === 0) {
       period.status = "paid";
       period.paidAt = new Date();
@@ -1098,7 +1234,9 @@ export default {
       await period.save();
     }
     const detail = await getPeriodDetail(periodId);
-    await PayrollPeriod.findByIdAndUpdate(period._id, { $set: { statsSnapshot: detail.stats } });
+    await PayrollPeriod.findByIdAndUpdate(period._id, {
+      $set: { statsSnapshot: detail.stats },
+    });
     await logPayrollEvent({
       ctx,
       restaurantId: period.restaurantId,
@@ -1113,26 +1251,38 @@ export default {
   updatePayrollSettings: async (_, { input }, ctx) => {
     assertPayrollPermission(ctx, "payroll.settings.update");
     const actor = ctx?.user || {};
-    const rid = payrollToObjectId(input.restaurantId || actor.restaurantForStaff || actor.primaryRestaurantId);
+    const rid = payrollToObjectId(
+      input.restaurantId ||
+        actor.restaurantForStaff ||
+        actor.primaryRestaurantId,
+    );
     if (!rid) throw new Error("Restaurant is required");
 
-    const existingSettings = await PayrollSetting.findOne({ restaurantId: rid });
+    const existingSettings = await PayrollSetting.findOne({
+      restaurantId: rid,
+    });
     const nextCurrentPeriodId = input.currentPayrollPeriodId
       ? payrollToObjectId(input.currentPayrollPeriodId)
       : input.currentPayrollPeriodId;
     const existingCurrentPeriodId = existingSettings?.currentPayrollPeriodId
       ? String(existingSettings.currentPayrollPeriodId)
       : null;
-    const requestedCurrentPeriodId = nextCurrentPeriodId ? String(nextCurrentPeriodId) : null;
+    const requestedCurrentPeriodId = nextCurrentPeriodId
+      ? String(nextCurrentPeriodId)
+      : null;
 
     if (
       requestedCurrentPeriodId &&
       existingCurrentPeriodId &&
       existingCurrentPeriodId !== requestedCurrentPeriodId
     ) {
-      const currentPeriod = await PayrollPeriod.findById(existingCurrentPeriodId);
+      const currentPeriod = await PayrollPeriod.findById(
+        existingCurrentPeriodId,
+      );
       if (currentPeriod && currentPeriod.status !== "paid") {
-        throw new Error("Current payroll period must be fully paid before changing the applied payroll cycle");
+        throw new Error(
+          "Current payroll period must be fully paid before changing the applied payroll cycle",
+        );
       }
     }
 
@@ -1161,7 +1311,9 @@ export default {
       notes: input.notes,
       updatedBy: payrollToObjectId(actor.id || actor._id),
     };
-    Object.keys(update).forEach((key) => update[key] === undefined && delete update[key]);
+    Object.keys(update).forEach(
+      (key) => update[key] === undefined && delete update[key],
+    );
 
     const doc = await PayrollSetting.findOneAndUpdate(
       { restaurantId: rid },
@@ -1179,7 +1331,8 @@ export default {
     assertPayrollPermission(ctx, "payroll.adjustment.write");
     const period = await PayrollPeriod.findById(input.periodId);
     if (!period) throw new Error("Payroll period not found");
-    if (period.status !== "draft") throw new Error("Chỉ có thể điều chỉnh kỳ lương ở trạng thái nháp.");
+    if (period.status !== "draft")
+      throw new Error("Chỉ có thể điều chỉnh kỳ lương ở trạng thái nháp.");
 
     const legacyTypeMap = {
       other: "other_addition",
@@ -1189,11 +1342,22 @@ export default {
     };
     const rawType = String(input.type || "").toLowerCase();
     const normalizedType = legacyTypeMap[rawType] || rawType;
-    const validTypes = ["allowance", "bonus", "deduction", "advance", "other_addition", "other_deduction"];
-    if (!validTypes.includes(normalizedType)) throw new Error("Loại điều chỉnh lương không hợp lệ.");
+    const validTypes = [
+      "allowance",
+      "bonus",
+      "deduction",
+      "advance",
+      "other_addition",
+      "other_deduction",
+    ];
+    if (!validTypes.includes(normalizedType))
+      throw new Error("Loại điều chỉnh lương không hợp lệ.");
     const amount = Number(input.amount || 0);
     if (!(amount > 0)) throw new Error("Số tiền điều chỉnh phải lớn hơn 0.");
-    if (["deduction", "advance", "other_deduction"].includes(normalizedType) && !String(input.note || "").trim()) {
+    if (
+      ["deduction", "advance", "other_deduction"].includes(normalizedType) &&
+      !String(input.note || "").trim()
+    ) {
       throw new Error("Vui lòng nhập ghi chú cho khoản khấu trừ/tạm ứng.");
     }
 
@@ -1208,14 +1372,23 @@ export default {
 
     await upsertPeriodItems(period);
     const detail = await getPeriodDetail(input.periodId);
-    return detail.items.find((item) => String(item.id) === String(input.employeeId)) || null;
+    return (
+      detail.items.find(
+        (item) => String(item.id) === String(input.employeeId),
+      ) || null
+    );
   },
 
-  deletePayrollAdjustment: async (_, { periodId, employeeId, adjustmentId }, ctx) => {
+  deletePayrollAdjustment: async (
+    _,
+    { periodId, employeeId, adjustmentId },
+    ctx,
+  ) => {
     assertPayrollPermission(ctx, "payroll.adjustment.write");
     const period = await PayrollPeriod.findById(periodId);
     if (!period) throw new Error("Payroll period not found");
-    if (period.status !== "draft") throw new Error("Chỉ có thể điều chỉnh kỳ lương ở trạng thái nháp.");
+    if (period.status !== "draft")
+      throw new Error("Chỉ có thể điều chỉnh kỳ lương ở trạng thái nháp.");
 
     await PayrollAdjustment.deleteOne({
       _id: payrollToObjectId(adjustmentId),
@@ -1225,21 +1398,43 @@ export default {
 
     await upsertPeriodItems(period);
     const detail = await getPeriodDetail(periodId);
-    return detail.items.find((item) => String(item.id) === String(employeeId)) || null;
+    return (
+      detail.items.find((item) => String(item.id) === String(employeeId)) ||
+      null
+    );
+  },
+  createAttendanceCorrectionRequest: async (_, { input }, ctx) => {
+    return createAttendanceCorrectionRequestService({ input, ctx });
   },
 
+  approveAttendanceCorrectionRequest: async (_, { input }, ctx) => {
+    return approveAttendanceCorrectionRequestService({ input, ctx });
+  },
+
+  rejectAttendanceCorrectionRequest: async (_, { input }, ctx) => {
+    return rejectAttendanceCorrectionRequestService({ input, ctx });
+  },
+
+  cancelAttendanceCorrectionRequest: async (_, { requestId }, ctx) => {
+    return cancelAttendanceCorrectionRequestService({ requestId, ctx });
+  },
   upsertStaffAttendance: async (_, { input }) => {
     const employeeId = toObjectId(input.employeeId);
     const restaurantId = toObjectId(input.restaurantId);
-    if (!employeeId || !restaurantId) throw new Error("Invalid employeeId or restaurantId");
+    if (!employeeId || !restaurantId)
+      throw new Error("Invalid employeeId or restaurantId");
 
     const action = String(input.action || "").toLowerCase();
     if (!["check_in", "check_out", "in", "out"].includes(action)) {
       throw new Error("Invalid attendance action");
     }
-    const normalizedAction = ["check_in", "in"].includes(action) ? "check_in" : "check_out";
+    const normalizedAction = ["check_in", "in"].includes(action)
+      ? "check_in"
+      : "check_out";
     const eventTime = input.timestamp ? new Date(input.timestamp) : new Date();
-    const workDate = input.workDate ? toStartOfDay(input.workDate) : toStartOfDay(eventTime);
+    const workDate = input.workDate
+      ? toStartOfDay(input.workDate)
+      : toStartOfDay(eventTime);
     await assertNoLockedPayrollPeriodOverlap({
       restaurantId,
       employeeId,
@@ -1248,12 +1443,15 @@ export default {
       action: "attendance",
     });
     const note = input.note?.trim() || "";
-    const source = ["manual", "system", "quick"].includes(String(input.source || "").toLowerCase())
+    const source = ["manual", "system", "quick"].includes(
+      String(input.source || "").toLowerCase(),
+    )
       ? String(input.source).toLowerCase()
       : "quick";
 
     const staff = await Staff.findById(employeeId).populate("role");
-    if (!staff || staff.userType !== "STAFF") throw new Error("Staff not found");
+    if (!staff || staff.userType !== "STAFF")
+      throw new Error("Staff not found");
 
     const assignedShift = await Shift.findOne({
       employeeId,
@@ -1294,12 +1492,14 @@ export default {
     if (note) record.note = note;
 
     if (normalizedAction === "check_in") {
-      if (record.actualCheckInAt) throw new Error("Nhân viên đã check-in trong ngày làm việc này");
+      if (record.actualCheckInAt)
+        throw new Error("Nhân viên đã check-in trong ngày làm việc này");
       record.actualCheckInAt = eventTime;
     } else {
       if (!record.actualCheckInAt) throw new Error("Nhân viên chưa check-in");
       if (record.actualCheckOutAt) throw new Error("Nhân viên đã check-out");
-      if (eventTime < record.actualCheckInAt) throw new Error("Thời gian check-out không hợp lệ");
+      if (eventTime < record.actualCheckInAt)
+        throw new Error("Thời gian check-out không hợp lệ");
       record.actualCheckOutAt = eventTime;
     }
 
@@ -1308,42 +1508,79 @@ export default {
     const plannedStart = record.plannedStartTime;
     const plannedEnd = record.plannedEndTime;
 
-    record.latenessMinutes = plannedStart && checkInAt ? toMinutes(new Date(checkInAt) - new Date(plannedStart)) : 0;
-    record.earlyLeaveMinutes = plannedEnd && checkOutAt ? toMinutes(new Date(plannedEnd) - new Date(checkOutAt)) : 0;
-    record.workedMinutes = checkInAt && checkOutAt ? toMinutes(new Date(checkOutAt) - new Date(checkInAt)) : 0;
-    record.overtimeMinutes = plannedEnd && checkOutAt ? toMinutes(new Date(checkOutAt) - new Date(plannedEnd)) : 0;
+    record.latenessMinutes =
+      plannedStart && checkInAt
+        ? toMinutes(new Date(checkInAt) - new Date(plannedStart))
+        : 0;
+    record.earlyLeaveMinutes =
+      plannedEnd && checkOutAt
+        ? toMinutes(new Date(plannedEnd) - new Date(checkOutAt))
+        : 0;
+    record.workedMinutes =
+      checkInAt && checkOutAt
+        ? toMinutes(new Date(checkOutAt) - new Date(checkInAt))
+        : 0;
+    record.overtimeMinutes =
+      plannedEnd && checkOutAt
+        ? toMinutes(new Date(checkOutAt) - new Date(plannedEnd))
+        : 0;
     record.hours = Number((record.workedMinutes / 60).toFixed(2));
 
     await record.save();
-    const populated = await Timesheet.findById(record._id).populate("shiftId").lean();
+    const populated = await Timesheet.findById(record._id)
+      .populate("shiftId")
+      .lean();
     return mapAttendanceOutput(populated, staff);
   },
 
   createLeaveRequest: async (_, { input }, ctx) => {
     const employeeId = toObjectId(input.employeeId);
     const restaurantId = toObjectId(input.restaurantId);
-    if (!employeeId || !restaurantId) throw new Error("Invalid employeeId or restaurantId");
+    if (!employeeId || !restaurantId)
+      throw new Error("Invalid employeeId or restaurantId");
 
     const employee = await Staff.findById(employeeId)
       .populate("role")
-      .select({ _id: 1, fullName: 1, employeeCode: 1, positionTitle: 1, roleName: 1, avatarUrl: 1, avatar: 1, department: 1 })
+      .select({
+        _id: 1,
+        fullName: 1,
+        employeeCode: 1,
+        positionTitle: 1,
+        roleName: 1,
+        avatarUrl: 1,
+        avatar: 1,
+        department: 1,
+      })
       .lean();
-    if (!employee || employee.userType !== "STAFF") throw new Error("Staff not found");
+    if (!employee || employee.userType !== "STAFF")
+      throw new Error("Staff not found");
 
     const leaveType = fromGraphLeaveType(input.leaveType);
     const startSession = fromGraphSession(input.startSession);
     const endSession = fromGraphSession(input.endSession);
     const startDate = new Date(input.startDate);
     const endDate = new Date(input.endDate);
-    const requestedDays = calcLeaveDays(startDate, endDate, startSession, endSession, leaveType);
+    const requestedDays = calcLeaveDays(
+      startDate,
+      endDate,
+      startSession,
+      endSession,
+      leaveType,
+    );
     if (requestedDays <= 0) throw new Error("Invalid leave date range");
     const requestedHours = Number((requestedDays * 8).toFixed(2));
 
     const isManager =
       String(employee.department || "").toLowerCase() === "management" ||
-      String(employee.positionTitle || "").toLowerCase().includes("manager") ||
-      String(employee.roleName || "").toLowerCase().includes("manager") ||
-      String(employee.role?.slug || "").toLowerCase().includes("manager");
+      String(employee.positionTitle || "")
+        .toLowerCase()
+        .includes("manager") ||
+      String(employee.roleName || "")
+        .toLowerCase()
+        .includes("manager") ||
+      String(employee.role?.slug || "")
+        .toLowerCase()
+        .includes("manager");
 
     let replacementManagerId = toObjectId(input.replacementManagerId);
     let replacementStatus = "not_required";
@@ -1364,7 +1601,10 @@ export default {
       status = "pending_replacement_confirmation";
     }
 
-    const { payrollFlags, quotaImpact } = computeLeaveFlags(leaveType, requestedDays);
+    const { payrollFlags, quotaImpact } = computeLeaveFlags(
+      leaveType,
+      requestedDays,
+    );
     const actorId = toObjectId(ctx?.user?.id || ctx?.user?._id || null);
 
     const created = await LeaveRequest.create({
@@ -1395,7 +1635,10 @@ export default {
     });
 
     const populated = await LeaveRequest.findById(created._id)
-      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar")
+      .populate(
+        "employeeId",
+        "fullName employeeCode positionTitle roleName avatarUrl avatar",
+      )
       .populate("replacementManagerId", "fullName")
       .lean();
     return mapLeaveOutput(populated);
@@ -1403,7 +1646,10 @@ export default {
 
   approveLeaveRequest: async (_, { requestId, approverId, note }, ctx) => {
     const request = await LeaveRequest.findById(requestId)
-      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar email")
+      .populate(
+        "employeeId",
+        "fullName employeeCode positionTitle roleName avatarUrl avatar email",
+      )
       .populate("replacementManagerId", "fullName")
       .populate("approverId", "fullName");
     if (!request) throw new Error("Leave request not found");
@@ -1414,8 +1660,10 @@ export default {
       endDate: request.endDate,
       action: "leave",
     });
-    if (request.status === "rejected") return mapLeaveOutput(request.toObject());
-    if (request.status === "approved") return mapLeaveOutput(request.toObject());
+    if (request.status === "rejected")
+      return mapLeaveOutput(request.toObject());
+    if (request.status === "approved")
+      return mapLeaveOutput(request.toObject());
     if (request.replacementStatus === "pending") {
       throw new Error("Replacement manager must confirm before approval");
     }
@@ -1424,7 +1672,9 @@ export default {
     request.approvedAt = new Date();
     request.rejectedAt = null;
     request.rejectionReason = "";
-    request.approverId = toObjectId(approverId || ctx?.user?.id || ctx?.user?._id || null);
+    request.approverId = toObjectId(
+      approverId || ctx?.user?.id || ctx?.user?._id || null,
+    );
     request.auditLogs.push({
       action: "approved",
       actorId: request.approverId,
@@ -1441,13 +1691,19 @@ export default {
     });
 
     const populated = await LeaveRequest.findById(request._id)
-      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar email")
+      .populate(
+        "employeeId",
+        "fullName employeeCode positionTitle roleName avatarUrl avatar email",
+      )
       .populate("replacementManagerId", "fullName")
       .populate("approverId", "fullName")
       .lean();
 
     try {
-      await sendLeaveDecisionMail({ leaveDoc: populated, decision: "approved" });
+      await sendLeaveDecisionMail({
+        leaveDoc: populated,
+        decision: "approved",
+      });
       await LeaveRequest.findByIdAndUpdate(request._id, {
         $push: {
           auditLogs: {
@@ -1472,7 +1728,7 @@ export default {
         },
       });
       throw new Error(
-        `Trạng thái đơn nghỉ đã được duyệt trong DB nhưng gửi email thất bại: ${mailErr.message}`
+        `Trạng thái đơn nghỉ đã được duyệt trong DB nhưng gửi email thất bại: ${mailErr.message}`,
       );
     }
     return mapLeaveOutput(populated);
@@ -1480,7 +1736,10 @@ export default {
 
   rejectLeaveRequest: async (_, { requestId, approverId, reason }, ctx) => {
     const request = await LeaveRequest.findById(requestId)
-      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar email")
+      .populate(
+        "employeeId",
+        "fullName employeeCode positionTitle roleName avatarUrl avatar email",
+      )
       .populate("replacementManagerId", "fullName")
       .populate("approverId", "fullName");
     if (!request) throw new Error("Leave request not found");
@@ -1496,7 +1755,9 @@ export default {
     request.rejectedAt = new Date();
     request.approvedAt = null;
     request.rejectionReason = String(reason || "").trim();
-    request.approverId = toObjectId(approverId || ctx?.user?.id || ctx?.user?._id || null);
+    request.approverId = toObjectId(
+      approverId || ctx?.user?.id || ctx?.user?._id || null,
+    );
     request.auditLogs.push({
       action: "rejected",
       actorId: request.approverId,
@@ -1507,13 +1768,19 @@ export default {
     await request.save();
 
     const populated = await LeaveRequest.findById(request._id)
-      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar email")
+      .populate(
+        "employeeId",
+        "fullName employeeCode positionTitle roleName avatarUrl avatar email",
+      )
       .populate("replacementManagerId", "fullName")
       .populate("approverId", "fullName")
       .lean();
 
     try {
-      await sendLeaveDecisionMail({ leaveDoc: populated, decision: "rejected" });
+      await sendLeaveDecisionMail({
+        leaveDoc: populated,
+        decision: "rejected",
+      });
       await LeaveRequest.findByIdAndUpdate(request._id, {
         $push: {
           auditLogs: {
@@ -1538,16 +1805,25 @@ export default {
         },
       });
       throw new Error(
-        `Trạng thái đơn nghỉ đã được từ chối trong DB nhưng gửi email thất bại: ${mailErr.message}`
+        `Trạng thái đơn nghỉ đã được từ chối trong DB nhưng gửi email thất bại: ${mailErr.message}`,
       );
     }
     return mapLeaveOutput(populated);
   },
 
-  confirmReplacementLeaveRequest: async (_, { requestId, managerId, note }, ctx) => {
-    const actorId = toObjectId(managerId || ctx?.user?.id || ctx?.user?._id || null);
+  confirmReplacementLeaveRequest: async (
+    _,
+    { requestId, managerId, note },
+    ctx,
+  ) => {
+    const actorId = toObjectId(
+      managerId || ctx?.user?.id || ctx?.user?._id || null,
+    );
     const request = await LeaveRequest.findById(requestId)
-      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar")
+      .populate(
+        "employeeId",
+        "fullName employeeCode positionTitle roleName avatarUrl avatar",
+      )
       .populate("replacementManagerId", "fullName")
       .lean();
     if (!request) throw new Error("Leave request not found");
@@ -1559,8 +1835,13 @@ export default {
       action: "leave",
     });
     if (!actorId) throw new Error("Replacement manager is required");
-    if (!request.replacementManagerId) throw new Error("Leave request does not require replacement");
-    if (String(request.replacementManagerId._id || request.replacementManagerId) !== String(actorId)) {
+    if (!request.replacementManagerId)
+      throw new Error("Leave request does not require replacement");
+    if (
+      String(
+        request.replacementManagerId._id || request.replacementManagerId,
+      ) !== String(actorId)
+    ) {
       throw new Error("Only assigned replacement manager can confirm");
     }
 
@@ -1583,9 +1864,12 @@ export default {
           },
         },
       },
-      { new: true }
+      { new: true },
     )
-      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar")
+      .populate(
+        "employeeId",
+        "fullName employeeCode positionTitle roleName avatarUrl avatar",
+      )
       .populate("replacementManagerId", "fullName")
       .lean();
 

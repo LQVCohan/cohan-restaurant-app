@@ -15,7 +15,18 @@ import {
   subWeeks,
 } from "date-fns";
 import { vi } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Settings, Sparkles } from "lucide-react";
+import {
+  AlertTriangle,
+  BarChart3,
+  CalendarCheck2,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Settings,
+  Sparkles,
+  Wallet,
+  X,
+} from "lucide-react";
 
 import "./ScheduleManagement.scss";
 import {
@@ -27,6 +38,7 @@ import {
 import {
   buildAutoScheduleCreateInputs,
   buildAutoSchedulePreview,
+  calculateShiftHours,
   mapDepartmentToJob,
 } from "./utils/autoSchedule";
 import ShiftCard from "./components/ShiftCard";
@@ -121,7 +133,11 @@ const GET_LEAVE_REQUESTS = gql`
 `;
 
 const GET_SCHEDULING_ASSISTANT = gql`
-  query StaffSchedulingAssistant($restaurantId: ID!, $horizonDays: Int!, $timezone: String!) {
+  query StaffSchedulingAssistant(
+    $restaurantId: ID!
+    $horizonDays: Int!
+    $timezone: String!
+  ) {
     staffSchedulingAssistant(
       restaurantId: $restaurantId
       horizonDays: $horizonDays
@@ -197,6 +213,19 @@ const DELETE_STAFF_SHIFT = gql`
   }
 `;
 
+const SCHEDULING_TIMEZONE = "Asia/Ho_Chi_Minh";
+
+const DEPARTMENT_LABELS = {
+  service: "Phục vụ",
+  kitchen: "Bếp",
+  cashier: "Thu ngân",
+  cleaning: "Vệ sinh",
+  delivery: "Giao hàng",
+  management: "Quản lý",
+  inventory: "Kho",
+  bar: "Quầy bar",
+};
+
 const normalizeTime = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : format(date, "HH:mm");
@@ -207,8 +236,23 @@ const isValidTimeValue = (value) => /^\d{2}:\d{2}$/.test(String(value || ""));
 const rangesOverlap = (leftStart, leftEnd, rightStart, rightEnd) =>
   leftStart < rightEnd && rightStart < leftEnd;
 
+const formatCurrency = (value) =>
+  `${Math.round(Number(value || 0)).toLocaleString("vi-VN")} đ`;
+
+const compactNumber = (value, digits = 1) =>
+  new Intl.NumberFormat("vi-VN", {
+    maximumFractionDigits: digits,
+  }).format(Number(value || 0));
+
+const getDepartmentLabel = (value) =>
+  DEPARTMENT_LABELS[String(value || "").toLowerCase()] || "Khác";
+
 const buildShiftRange = ({ date, startTimeText, endTimeText }) => {
-  if (!date || !isValidTimeValue(startTimeText) || !isValidTimeValue(endTimeText)) {
+  if (
+    !date ||
+    !isValidTimeValue(startTimeText) ||
+    !isValidTimeValue(endTimeText)
+  ) {
     throw new Error("Giờ bắt đầu/kết thúc không hợp lệ.");
   }
 
@@ -229,7 +273,157 @@ const buildShiftRange = ({ date, startTimeText, endTimeText }) => {
   return { startTime, endTime };
 };
 
-const SCHEDULING_TIMEZONE = "Asia/Ho_Chi_Minh";
+const getShiftHoursFromGroup = (shift) => {
+  try {
+    const { startTime, endTime } = buildShiftRange({
+      date: shift.date,
+      startTimeText: shift.startTime,
+      endTimeText: shift.endTime,
+    });
+    return calculateShiftHours(startTime, endTime);
+  } catch {
+    return 0;
+  }
+};
+
+const buildVisibleScheduleInsights = ({ shifts, staff }) => {
+  const staffById = new Map(staff.map((person) => [String(person.id), person]));
+  const issues = [];
+  const costByDepartment = new Map();
+  const hoursByStaff = new Map();
+  const recordsByStaff = new Map();
+
+  let totalCost = 0;
+  let totalHours = 0;
+  let totalAssignments = 0;
+
+  shifts.forEach((shift) => {
+    const shiftHours = getShiftHoursFromGroup(shift);
+    const requiredPeople = Math.max(1, shift.essentialJobs.length);
+    const assignedPeople = shift.staffIds.length;
+    const missingCount = Math.max(0, requiredPeople - assignedPeople);
+
+    if (assignedPeople === 0) {
+      issues.push({
+        id: `${shift.id}-empty`,
+        type: "missing",
+        level: "warning",
+        title: "Ca chưa có nhân sự",
+        description: `${shift.date} • ${shift.startTime} - ${shift.endTime}`,
+      });
+    } else if (missingCount > 0) {
+      issues.push({
+        id: `${shift.id}-missing`,
+        type: "missing",
+        level: "warning",
+        title: `Ca thiếu ${missingCount} người`,
+        description: `${shift.date} • ${shift.startTime} - ${shift.endTime}`,
+      });
+    }
+
+    shift.staffIds.forEach((staffId) => {
+      const person = staffById.get(String(staffId));
+      if (!person) return;
+
+      const hourlyRate = Number(person.hourlyRate || person.salary || 0);
+      const assignmentCost = hourlyRate * shiftHours;
+      const departmentLabel = getDepartmentLabel(person.department);
+
+      totalAssignments += 1;
+      totalHours += shiftHours;
+      totalCost += assignmentCost;
+
+      costByDepartment.set(
+        departmentLabel,
+        Number(
+          (
+            Number(costByDepartment.get(departmentLabel) || 0) + assignmentCost
+          ).toFixed(2),
+        ),
+      );
+
+      hoursByStaff.set(
+        String(staffId),
+        Number(
+          (Number(hoursByStaff.get(String(staffId)) || 0) + shiftHours).toFixed(
+            2,
+          ),
+        ),
+      );
+    });
+
+    shift.records.forEach((record) => {
+      const staffKey = String(record.employeeId || "");
+      if (!staffKey) return;
+      if (!recordsByStaff.has(staffKey)) {
+        recordsByStaff.set(staffKey, []);
+      }
+      recordsByStaff.get(staffKey).push(record);
+    });
+  });
+
+  recordsByStaff.forEach((records, staffId) => {
+    const sortedRecords = [...records].sort(
+      (left, right) =>
+        new Date(left.startTime).getTime() -
+        new Date(right.startTime).getTime(),
+    );
+
+    for (let index = 1; index < sortedRecords.length; index += 1) {
+      const previous = sortedRecords[index - 1];
+      const current = sortedRecords[index];
+      const previousStart = new Date(previous.startTime);
+      const previousEnd = new Date(previous.endTime);
+      const currentStart = new Date(current.startTime);
+      const currentEnd = new Date(current.endTime);
+
+      if (
+        !Number.isNaN(previousStart.getTime()) &&
+        !Number.isNaN(previousEnd.getTime()) &&
+        !Number.isNaN(currentStart.getTime()) &&
+        !Number.isNaN(currentEnd.getTime()) &&
+        rangesOverlap(previousStart, previousEnd, currentStart, currentEnd)
+      ) {
+        const person = staffById.get(String(staffId));
+        issues.push({
+          id: `${staffId}-${previous.id}-${current.id}-overlap`,
+          type: "overlap",
+          level: "danger",
+          title: "Nhân viên bị trùng ca",
+          description: `${person?.name || "Nhân viên"} có 2 ca chồng thời gian.`,
+        });
+      }
+    }
+  });
+
+  const busiestStaff = Array.from(hoursByStaff.entries())
+    .map(([staffId, hours]) => ({
+      staffId,
+      hours,
+      name: staffById.get(String(staffId))?.name || "Nhân viên",
+    }))
+    .sort((left, right) => right.hours - left.hours)
+    .slice(0, 5);
+
+  const costBreakdown = Array.from(costByDepartment.entries())
+    .map(([department, amount]) => ({ department, amount }))
+    .sort((left, right) => right.amount - left.amount);
+
+  return {
+    totalShiftGroups: shifts.length,
+    totalAssignments,
+    totalHours: Number(totalHours.toFixed(2)),
+    totalCost: Number(totalCost.toFixed(2)),
+    averageHoursPerAssignment:
+      totalAssignments > 0
+        ? Number((totalHours / totalAssignments).toFixed(2))
+        : 0,
+    actionCount: issues.length,
+    issues,
+    costBreakdown,
+    busiestStaff,
+  };
+};
 
 const ScheduleManagement = ({ readOnly = false }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -245,6 +439,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     shiftType: "",
   });
   const [selectedShift, setSelectedShift] = useState(null);
+  const [isStatsPanelOpen, setIsStatsPanelOpen] = useState(false);
   const [isAutoScheduleOpen, setIsAutoScheduleOpen] = useState(false);
   const [autoScheduleConfig, setAutoScheduleConfig] = useState({
     horizonDays: 7,
@@ -270,7 +465,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const restaurantOptions = useMemo(() => {
     if (me?.roleName === "admin") {
-      return (allRestaurantsData?.restaurants?.edges || []).map((edge) => edge.node);
+      return (allRestaurantsData?.restaurants?.edges || []).map(
+        (edge) => edge.node,
+      );
     }
     return (me?.refRestaurants || []).map((restaurant) => ({
       id: restaurant.id,
@@ -279,16 +476,32 @@ const ScheduleManagement = ({ readOnly = false }) => {
   }, [allRestaurantsData, me]);
 
   const effectiveRestaurantId =
-    selectedRestaurantId || me?.restaurantForStaff || restaurantOptions[0]?.id || "";
+    selectedRestaurantId ||
+    me?.restaurantForStaff ||
+    restaurantOptions[0]?.id ||
+    "";
+
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const rangeStart =
-    viewMode === "week" ? weekStart : viewMode === "month" ? monthStart : currentDate;
+    viewMode === "week"
+      ? weekStart
+      : viewMode === "month"
+        ? monthStart
+        : currentDate;
   const rangeEnd =
-    viewMode === "week" ? weekEnd : viewMode === "month" ? monthEnd : currentDate;
-  const configuredShiftTypes = useMemo(() => shiftRulesToTypes(shiftRules), [shiftRules]);
+    viewMode === "week"
+      ? weekEnd
+      : viewMode === "month"
+        ? monthEnd
+        : currentDate;
+
+  const configuredShiftTypes = useMemo(
+    () => shiftRulesToTypes(shiftRules),
+    [shiftRules],
+  );
   const configuredShiftKeys = useMemo(
     () => Object.keys(configuredShiftTypes),
     [configuredShiftTypes],
@@ -319,33 +532,51 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [createShift] = useMutation(CREATE_STAFF_SHIFT);
   const [updateShift] = useMutation(UPDATE_STAFF_SHIFT);
   const [deleteShift] = useMutation(DELETE_STAFF_SHIFT);
-  const [loadSchedulingAssistant, schedulingAssistantState] = useLazyQuery(GET_SCHEDULING_ASSISTANT, {
-    fetchPolicy: "network-only",
-  });
-  const [loadLeaveRequests, leaveRequestsState] = useLazyQuery(GET_LEAVE_REQUESTS, {
-    fetchPolicy: "network-only",
-  });
-  const [loadAssistantContextShifts, assistantContextState] = useLazyQuery(GET_STAFF_SHIFTS, {
-    fetchPolicy: "network-only",
-  });
 
-  const rawStaffList = useMemo(() => staffData?.staffList || [], [staffData?.staffList]);
+  const [loadSchedulingAssistant, schedulingAssistantState] = useLazyQuery(
+    GET_SCHEDULING_ASSISTANT,
+    {
+      fetchPolicy: "network-only",
+    },
+  );
+  const [loadLeaveRequests, leaveRequestsState] = useLazyQuery(
+    GET_LEAVE_REQUESTS,
+    {
+      fetchPolicy: "network-only",
+    },
+  );
+  const [loadAssistantContextShifts, assistantContextState] = useLazyQuery(
+    GET_STAFF_SHIFTS,
+    {
+      fetchPolicy: "network-only",
+    },
+  );
+
+  const rawStaffList = useMemo(
+    () => staffData?.staffList || [],
+    [staffData?.staffList],
+  );
 
   const staff = useMemo(
     () =>
-      rawStaffList.map((item) => ({
-        id: item.id,
-        name: item.fullName || "Nhân viên",
-        fullName: item.fullName || "Nhân viên",
-        employeeCode: item.employeeCode || "",
-        department: item.department,
-        job: mapDepartmentToJob(item.department),
-        status: item.employmentStatus === "working" ? "active" : "off",
-        employmentStatus: item.employmentStatus,
-        workingDays: item.workingDays || [],
-        salary: Number(item.baseSalary || 0) / 26 / 8,
-      })),
-    [rawStaffList]
+      rawStaffList.map((item) => {
+        const hourlyRate = Number(item.baseSalary || 0) / 26 / 8;
+
+        return {
+          id: item.id,
+          name: item.fullName || "Nhân viên",
+          fullName: item.fullName || "Nhân viên",
+          employeeCode: item.employeeCode || "",
+          department: item.department,
+          job: mapDepartmentToJob(item.department),
+          status: item.employmentStatus === "working" ? "active" : "off",
+          employmentStatus: item.employmentStatus,
+          workingDays: item.workingDays || [],
+          hourlyRate,
+          salary: hourlyRate,
+        };
+      }),
+    [rawStaffList],
   );
 
   const shifts = useMemo(() => {
@@ -354,13 +585,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     rows.forEach((row) => {
       const date = format(new Date(row.startTime), "yyyy-MM-dd");
-      const key = `${date}|${row.shiftType}`;
+      const key = `${date}|${String(row.shiftType || "").toLowerCase()}`;
+
       if (!map.has(key)) {
         map.set(key, {
           id: key,
           date,
           day: format(new Date(row.startTime), "EEEE").toLowerCase(),
-          shiftType: row.shiftType,
+          shiftType: String(row.shiftType || "").toLowerCase(),
           startTime: normalizeTime(row.startTime),
           endTime: normalizeTime(row.endTime),
           essentialJobs: [],
@@ -369,23 +601,31 @@ const ScheduleManagement = ({ readOnly = false }) => {
           records: [],
         });
       }
+
       const bucket = map.get(key);
       bucket.records.push(row);
       bucket.staffIds.push(row.employeeId);
-      const staffItem = staff.find((item) => String(item.id) === String(row.employeeId));
+
+      const staffItem = staff.find(
+        (item) => String(item.id) === String(row.employeeId),
+      );
       if (staffItem?.job && !bucket.essentialJobs.includes(staffItem.job)) {
         bucket.essentialJobs.push(staffItem.job);
       }
     });
 
-    return Array.from(map.values()).sort((left, right) => left.date.localeCompare(right.date));
+    return Array.from(map.values()).sort(
+      (left, right) =>
+        left.date.localeCompare(right.date) ||
+        left.shiftType.localeCompare(right.shiftType),
+    );
   }, [shiftsData, staff]);
 
   const dateLabel = useMemo(() => {
     if (viewMode === "week") {
       return `Tuần ${format(weekStart, "w")}, ${format(weekStart, "yyyy")} (${format(
         weekStart,
-        "dd/MM"
+        "dd/MM",
       )} - ${format(weekEnd, "dd/MM")})`;
     }
     if (viewMode === "month") {
@@ -396,24 +636,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
-    [weekStart]
+    [weekStart],
   );
 
-  const kpis = useMemo(() => {
-    const totalShifts = shifts.length;
-    const alertShifts = shifts.filter(
-      (shift) => shift.staffIds.length < Math.max(1, shift.essentialJobs.length)
-    ).length;
-    const totalCost = shifts.reduce((sum, shift) => {
-      const shiftCost = shift.staffIds.reduce((acc, staffId) => {
-        const person = staff.find((item) => String(item.id) === String(staffId));
-        return acc + (person ? person.salary * 8 : 0);
-      }, 0);
-      return sum + shiftCost;
-    }, 0);
-
-    return { totalShifts, alertShifts, totalCost };
-  }, [shifts, staff]);
+  const scheduleInsights = useMemo(
+    () => buildVisibleScheduleInsights({ shifts, staff }),
+    [shifts, staff],
+  );
 
   const autoSchedulePreview = useMemo(
     () =>
@@ -438,7 +667,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
   );
 
   const isGeneratingAutoSchedule =
-    schedulingAssistantState.loading || leaveRequestsState.loading || assistantContextState.loading;
+    schedulingAssistantState.loading ||
+    leaveRequestsState.loading ||
+    assistantContextState.loading;
 
   useEffect(() => {
     if (!isAutoScheduleOpen) return;
@@ -464,14 +695,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const handleNavigate = (direction) => {
     if (viewMode === "week") {
-      setCurrentDate((prev) => (direction === "next" ? addWeeks(prev, 1) : subWeeks(prev, 1)));
+      setCurrentDate((prev) =>
+        direction === "next" ? addWeeks(prev, 1) : subWeeks(prev, 1),
+      );
       return;
     }
     if (viewMode === "month") {
-      setCurrentDate((prev) => (direction === "next" ? addMonths(prev, 1) : subMonths(prev, 1)));
+      setCurrentDate((prev) =>
+        direction === "next" ? addMonths(prev, 1) : subMonths(prev, 1),
+      );
       return;
     }
-    setCurrentDate((prev) => (direction === "next" ? addDays(prev, 1) : subDays(prev, 1)));
+    setCurrentDate((prev) =>
+      direction === "next" ? addDays(prev, 1) : subDays(prev, 1),
+    );
   };
 
   const handleApplyShiftRules = (nextRules) => {
@@ -482,7 +719,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setIsShiftSettingsOpen(false);
   };
 
-  const overlapsExistingShiftGroup = ({ date, shiftGroupId, startTime, endTime }) =>
+  const overlapsExistingShiftGroup = ({
+    date,
+    shiftGroupId,
+    startTime,
+    endTime,
+  }) =>
     shifts.some((shift) => {
       if (shift.id === shiftGroupId || shift.date !== date) return false;
       const other = buildShiftRange({
@@ -501,8 +743,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const handleCreateShift = async (newShiftData) => {
     if (readOnly) return;
+
     const config = configuredShiftTypes[newShiftData.shiftType];
     if (!config || !effectiveRestaurantId) return;
+
+    if (!(newShiftData.staffIds || []).length) {
+      throw new Error("Cần chọn ít nhất một nhân viên để tạo ca.");
+    }
 
     const { startTime, endTime } = buildShiftRange({
       date: newShiftData.date,
@@ -535,8 +782,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
               notes: newShiftData.notes || "",
             },
           },
-        })
-      )
+        }),
+      ),
     );
 
     await refetch();
@@ -547,7 +794,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
     if (readOnly) return;
     const found = shifts.find((item) => item.id === shiftGroupId);
     if (!found) return;
-    await Promise.all(found.records.map((row) => deleteShift({ variables: { shiftId: row.id } })));
+    await Promise.all(
+      found.records.map((row) =>
+        deleteShift({ variables: { shiftId: row.id } }),
+      ),
+    );
     await refetch();
     setSelectedShift(null);
   };
@@ -556,7 +807,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     if (readOnly) return;
     const found = shifts.find((item) => item.id === shiftGroupId);
     const targetRecord = found?.records?.find(
-      (record) => String(record.employeeId) === String(staffId)
+      (record) => String(record.employeeId) === String(staffId),
     );
     if (!targetRecord) return;
     await deleteShift({ variables: { shiftId: targetRecord.id } });
@@ -568,7 +819,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     if (readOnly) return;
     const found = shifts.find((item) => item.id === shiftGroupId);
     if (!found || !effectiveRestaurantId) return;
-    if (found.staffIds.includes(staffId)) return;
+    if (found.staffIds.some((id) => String(id) === String(staffId))) return;
 
     const { startTime, endTime } = buildShiftRange({
       date: found.date,
@@ -598,8 +849,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     if (!selectedShift?.records?.length) return;
     await Promise.all(
       selectedShift.records.map((record) =>
-        updateShift({ variables: { shiftId: record.id, input: { notes } } })
-      )
+        updateShift({ variables: { shiftId: record.id, input: { notes } } }),
+      ),
     );
     await refetch();
     setSelectedShift(null);
@@ -636,8 +887,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
               endTime: nextEnd.toISOString(),
             },
           },
-        })
-      )
+        }),
+      ),
     );
     await refetch();
     setSelectedShift(null);
@@ -646,7 +897,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const handleGenerateAutoSchedule = async () => {
     if (readOnly) return;
     if (!effectiveRestaurantId) {
-      setAutoScheduleError("Chưa xác định được nhà hàng để gọi scheduling assistant.");
+      setAutoScheduleError(
+        "Chưa xác định được nhà hàng để gọi scheduling assistant.",
+      );
       return;
     }
 
@@ -654,7 +907,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const analysisEnd = addDays(today, Math.max(0, Number(autoScheduleConfig.horizonDays || 1) - 1));
+    const analysisEnd = addDays(
+      today,
+      Math.max(0, Number(autoScheduleConfig.horizonDays || 1) - 1),
+    );
     const contextStart = startOfWeek(today, { weekStartsOn: 1 });
     const contextEnd = endOfWeek(analysisEnd, { weekStartsOn: 1 });
 
@@ -685,11 +941,15 @@ const ScheduleManagement = ({ readOnly = false }) => {
         }),
       ]);
 
-      setAssistantPayload(assistantResult?.data?.staffSchedulingAssistant || null);
+      setAssistantPayload(
+        assistantResult?.data?.staffSchedulingAssistant || null,
+      );
       setAssistantLeaveRows(leaveResult?.data?.leaveRequests || []);
       setAssistantShiftRows(shiftResult?.data?.staffShifts || []);
     } catch (error) {
-      setAutoScheduleError(error?.message || "Không thể tạo preview chia ca tự động.");
+      setAutoScheduleError(
+        error?.message || "Không thể tạo preview chia ca tự động.",
+      );
     }
   };
 
@@ -722,110 +982,198 @@ const ScheduleManagement = ({ readOnly = false }) => {
             variables: {
               input,
             },
-          })
-        )
+          }),
+        ),
       );
 
       await refetch();
       setIsAutoScheduleOpen(false);
       setSelectedAutoShiftKeys({});
     } catch (error) {
-      setAutoScheduleError(error?.message || "Không thể áp dụng gợi ý chia ca.");
+      setAutoScheduleError(
+        error?.message || "Không thể áp dụng gợi ý chia ca.",
+      );
     } finally {
       setIsApplyingAutoSchedule(false);
     }
   };
+
+  const selectedRestaurantName =
+    restaurantOptions.find(
+      (restaurant) => String(restaurant.id) === String(effectiveRestaurantId),
+    )?.name || "Nhà hàng hiện tại";
 
   return (
     <div className={`schedule-container ${readOnly ? "read-only" : ""}`}>
       <header className="schedule-header">
         <div className="header-top">
           <div className="title-group">
-            <h1>{readOnly ? "Thông Tin Ca Làm Việc" : "Quản Lý Lịch Làm Việc"}</h1>
+            <div className="eyebrow-row">
+              <span className="eyebrow">{selectedRestaurantName}</span>
+              <span className="dot-divider">•</span>
+              <span className="eyebrow">{dateLabel}</span>
+            </div>
+            <h1>
+              {readOnly ? "Thông Tin Ca Làm Việc" : "Quản Lý Lịch Làm Việc"}
+            </h1>
             <p className="subtitle">
               {readOnly
-                ? "Xem lịch ca theo dữ liệu thật từ backend. Màn này chỉ hỗ trợ xem, lọc và xem chi tiết."
-                : "Lịch ca theo dữ liệu thật từ backend"}
+                ? "Xem lịch ca theo dữ liệu thật từ backend."
+                : "Theo dõi ca thiếu người, chi phí dự kiến và xuất bản lịch làm việc."}
             </p>
           </div>
-          <button
-            type="button"
-            className="schedule-settings-trigger"
-            onClick={() => setIsShiftSettingsOpen(true)}
-            disabled={readOnly}
-          >
-            <Settings size={18} />
-            <div className="user-info">
-              <span className="name">{me?.roleName || "manager"}</span>
-              <span className="role">{readOnly ? "Chỉ xem" : "Cài đặt ca làm"}</span>
-            </div>
-          </button>
+
+          <div className="header-actions">
+            <button
+              type="button"
+              className="secondary-action"
+              onClick={() => setIsStatsPanelOpen((prev) => !prev)}
+            >
+              <BarChart3 size={17} />
+              Thống kê
+            </button>
+
+            <button
+              type="button"
+              className="schedule-settings-trigger"
+              onClick={() => setIsShiftSettingsOpen(true)}
+              disabled={readOnly}
+            >
+              <Settings size={18} />
+              <div className="user-info">
+                <span className="name">{me?.roleName || "manager"}</span>
+                <span className="role">
+                  {readOnly ? "Chỉ xem" : "Cài đặt ca"}
+                </span>
+              </div>
+            </button>
+          </div>
         </div>
 
-        <div className="kpi-grid">
-          <div className="kpi-card money">
-            <div className="kpi-icon">💰</div>
-            <div className="kpi-content">
-              <span className="label">Chi phí kỳ hiển thị</span>
-              <span className="value">{Math.round(kpis.totalCost).toLocaleString()} đ</span>
+        <div className="kpi-grid compact">
+          <button
+            type="button"
+            className={`kpi-card action ${scheduleInsights.actionCount > 0 ? "has-alert" : ""}`}
+            onClick={() => setIsStatsPanelOpen(true)}
+          >
+            <div className="kpi-icon">
+              <AlertTriangle size={20} />
             </div>
-          </div>
-          <div className="kpi-card shifts">
-            <div className="kpi-icon">📆</div>
             <div className="kpi-content">
-              <span className="label">Nhóm ca</span>
-              <span className="value">{kpis.totalShifts}</span>
+              <span className="label">Cần xử lý</span>
+              <span className="value">{scheduleInsights.actionCount}</span>
+              <span className="hint">Cảnh báo trong kỳ hiển thị</span>
             </div>
-          </div>
-          <div className={`kpi-card alerts ${kpis.alertShifts > 0 ? "has-alert" : ""}`}>
-            <div className="kpi-icon">⚠️</div>
+          </button>
+
+          <button
+            type="button"
+            className="kpi-card hours"
+            onClick={() => setIsStatsPanelOpen(true)}
+          >
+            <div className="kpi-icon">
+              <Clock3 size={20} />
+            </div>
             <div className="kpi-content">
-              <span className="label">Thiếu người</span>
-              <span className="value">{kpis.alertShifts}</span>
+              <span className="label">Tổng giờ dự kiến</span>
+              <span className="value">
+                {compactNumber(scheduleInsights.totalHours)}h
+              </span>
+              <span className="hint">
+                {scheduleInsights.totalAssignments} lượt xếp ca
+              </span>
             </div>
-          </div>
-          <div className="kpi-card status">
-            <div className="kpi-icon">{isPublished ? "✅" : "📝"}</div>
+          </button>
+
+          <button
+            type="button"
+            className="kpi-card money"
+            onClick={() => setIsStatsPanelOpen(true)}
+          >
+            <div className="kpi-icon">
+              <Wallet size={20} />
+            </div>
+            <div className="kpi-content">
+              <span className="label">Chi phí dự kiến</span>
+              <span className="value">
+                {formatCurrency(scheduleInsights.totalCost)}
+              </span>
+              <span className="hint">Tính theo giờ ca thực tế</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="kpi-card status"
+            onClick={() => setIsPublished((prev) => !prev)}
+            disabled={readOnly}
+          >
+            <div className="kpi-icon">
+              <CalendarCheck2 size={20} />
+            </div>
             <div className="kpi-content">
               <span className="label">Trạng thái</span>
               <span className={`value ${isPublished ? "published" : "draft"}`}>
                 {isPublished ? "Đã xuất bản" : "Bản nháp"}
               </span>
+              <span className="hint">
+                {readOnly ? "Chỉ xem" : "Bấm để đổi trạng thái"}
+              </span>
             </div>
-          </div>
+          </button>
         </div>
       </header>
 
       <div className="schedule-toolbar">
         <div className="toolbar-left">
           <div className="view-toggles">
-            <button className={viewMode === "week" ? "active" : ""} onClick={() => setViewMode("week")}>
+            <button
+              type="button"
+              className={viewMode === "week" ? "active" : ""}
+              onClick={() => setViewMode("week")}
+            >
               Theo Tuần
             </button>
-            <button className={viewMode === "day" ? "active" : ""} onClick={() => setViewMode("day")}>
+            <button
+              type="button"
+              className={viewMode === "day" ? "active" : ""}
+              onClick={() => setViewMode("day")}
+            >
               Theo Ngày
             </button>
-            <button className={viewMode === "month" ? "active" : ""} onClick={() => setViewMode("month")}>
+            <button
+              type="button"
+              className={viewMode === "month" ? "active" : ""}
+              onClick={() => setViewMode("month")}
+            >
               Theo Tháng
             </button>
           </div>
 
-          <div
-            className="date-navigation"
-            style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: 16 }}
-          >
-            <button onClick={() => handleNavigate("prev")} className="nav-btn">
+          <div className="date-navigation">
+            <button
+              type="button"
+              onClick={() => handleNavigate("prev")}
+              className="nav-btn"
+            >
               <ChevronLeft size={20} />
             </button>
             <span className="week-label">{dateLabel}</span>
-            <button onClick={() => handleNavigate("next")} className="nav-btn">
+            <button
+              type="button"
+              onClick={() => handleNavigate("next")}
+              className="nav-btn"
+            >
               <ChevronRight size={20} />
             </button>
           </div>
         </div>
 
         <div className="toolbar-right">
-          <select value={selectedRestaurantId} onChange={(event) => setSelectedRestaurantId(event.target.value)}>
+          <select
+            value={selectedRestaurantId}
+            onChange={(event) => setSelectedRestaurantId(event.target.value)}
+          >
             <option value="">Nhà hàng hiện tại</option>
             {restaurantOptions.map((restaurant) => (
               <option key={restaurant.id} value={restaurant.id}>
@@ -834,7 +1182,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
             ))}
           </select>
 
-          <select value={selectedStaffId} onChange={(event) => setSelectedStaffId(event.target.value)}>
+          <select
+            value={selectedStaffId}
+            onChange={(event) => setSelectedStaffId(event.target.value)}
+          >
             <option value="">Tất cả nhân viên</option>
             {staff.map((person) => (
               <option key={person.id} value={person.id}>
@@ -854,14 +1205,123 @@ const ScheduleManagement = ({ readOnly = false }) => {
             </button>
           )}
 
-          <button onClick={() => setIsPublished((prev) => !prev)}>
-            {isPublished ? "Chuyển về nháp" : "Xuất bản"}
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              className={`btn-publish ${isPublished ? "published" : ""}`}
+              onClick={() => setIsPublished((prev) => !prev)}
+            >
+              {isPublished ? "Chuyển về nháp" : "Xuất bản"}
+            </button>
+          )}
         </div>
       </div>
 
+      {isStatsPanelOpen ? (
+        <section className="schedule-insights-panel">
+          <div className="insights-header">
+            <div>
+              <h3>Thống kê chi tiết</h3>
+              <p>
+                Thông tin phụ được tách khỏi KPI chính để giao diện lịch không
+                bị rối.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn-close-panel"
+              onClick={() => setIsStatsPanelOpen(false)}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="insights-grid">
+            <div className="insight-card">
+              <span className="label">Nhóm ca</span>
+              <strong>{scheduleInsights.totalShiftGroups}</strong>
+            </div>
+            <div className="insight-card">
+              <span className="label">Lượt xếp ca</span>
+              <strong>{scheduleInsights.totalAssignments}</strong>
+            </div>
+            <div className="insight-card">
+              <span className="label">Giờ trung bình / lượt</span>
+              <strong>
+                {compactNumber(scheduleInsights.averageHoursPerAssignment)}h
+              </strong>
+            </div>
+            <div className="insight-card">
+              <span className="label">Chi phí / giờ</span>
+              <strong>
+                {scheduleInsights.totalHours > 0
+                  ? formatCurrency(
+                      scheduleInsights.totalCost / scheduleInsights.totalHours,
+                    )
+                  : "0 đ"}
+              </strong>
+            </div>
+          </div>
+
+          <div className="insights-columns">
+            <div className="insight-block">
+              <h4>Cần xử lý</h4>
+              {scheduleInsights.issues.length ? (
+                <ul className="issue-list">
+                  {scheduleInsights.issues.slice(0, 8).map((issue) => (
+                    <li key={issue.id} className={issue.level}>
+                      <AlertTriangle size={14} />
+                      <div>
+                        <strong>{issue.title}</strong>
+                        <span>{issue.description}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="empty-mini">
+                  Không có cảnh báo trong kỳ hiển thị.
+                </div>
+              )}
+            </div>
+
+            <div className="insight-block">
+              <h4>Chi phí theo bộ phận</h4>
+              {scheduleInsights.costBreakdown.length ? (
+                <ul className="metric-list">
+                  {scheduleInsights.costBreakdown.map((item) => (
+                    <li key={item.department}>
+                      <span>{item.department}</span>
+                      <strong>{formatCurrency(item.amount)}</strong>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="empty-mini">Chưa có chi phí dự kiến.</div>
+              )}
+            </div>
+
+            <div className="insight-block">
+              <h4>Nhân viên nhiều giờ nhất</h4>
+              {scheduleInsights.busiestStaff.length ? (
+                <ul className="metric-list">
+                  {scheduleInsights.busiestStaff.map((person) => (
+                    <li key={person.staffId}>
+                      <span>{person.name}</span>
+                      <strong>{compactNumber(person.hours)}h</strong>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="empty-mini">Chưa có phân công.</div>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {shiftsError ? (
-        <div className="empty-state" style={{ marginTop: 20 }}>
+        <div className="empty-state schedule-feedback">
           Không tải được lịch làm việc.
         </div>
       ) : viewMode === "day" ? (
@@ -872,26 +1332,51 @@ const ScheduleManagement = ({ readOnly = false }) => {
           shiftConfig={configuredShiftTypes}
         />
       ) : viewMode === "month" ? (
-        <div className="schedule-board">
-          {Array.from(
-            { length: 42 },
-            (_, index) => addDays(startOfWeek(monthStart, { weekStartsOn: 1 }), index)
+        <div className="schedule-board month-board">
+          {Array.from({ length: 42 }, (_, index) =>
+            addDays(startOfWeek(monthStart, { weekStartsOn: 1 }), index),
           ).map((day) => {
             const dayStr = format(day, "yyyy-MM-dd");
-            const shiftsForDay = shifts.filter((shift) => shift.date === dayStr);
+            const shiftsForDay = shifts.filter(
+              (shift) => shift.date === dayStr,
+            );
+            const isCurrentMonth = day >= monthStart && day <= monthEnd;
+
             return (
-              <div className="schedule-day-column" key={dayStr}>
-                <div className={`day-header ${isSameDay(day, new Date()) ? "today" : ""}`}>
+              <div
+                className={`schedule-day-column ${isCurrentMonth ? "" : "muted-day"}`}
+                key={dayStr}
+              >
+                <div
+                  className={`day-header ${isSameDay(day, new Date()) ? "today" : ""}`}
+                >
                   <span>{format(day, "EEE", { locale: vi })}</span>
                   <strong>{format(day, "dd/MM")}</strong>
                 </div>
                 <div className="day-body">
-                  <div className="add-shift-btn" style={{ cursor: "default" }}>
+                  <div className="day-summary-pill">
                     {shiftsForDay.length} ca
                   </div>
                   {shiftsForDay.slice(0, 2).map((shift) => (
-                    <ShiftCard key={shift.id} shift={shift} staffList={staff} onClick={setSelectedShift} />
+                    <ShiftCard
+                      key={shift.id}
+                      shift={shift}
+                      staffList={staff}
+                      onClick={setSelectedShift}
+                    />
                   ))}
+                  {shiftsForDay.length > 2 ? (
+                    <button
+                      type="button"
+                      className="more-shifts-btn"
+                      onClick={() => {
+                        setCurrentDate(day);
+                        setViewMode("day");
+                      }}
+                    >
+                      +{shiftsForDay.length - 2} ca khác
+                    </button>
+                  ) : null}
                 </div>
               </div>
             );
@@ -901,12 +1386,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
         <div className="schedule-board">
           {weekDays.map((day) => {
             const dayStr = format(day, "yyyy-MM-dd");
-            const shiftsForDay = shifts.filter((shift) => shift.date === dayStr);
+            const shiftsForDay = shifts.filter(
+              (shift) => shift.date === dayStr,
+            );
+
             return (
               <div className="schedule-day-column" key={dayStr}>
-                <div className={`day-header ${isSameDay(day, new Date()) ? "today" : ""}`}>
-                  <span>{format(day, "EEE", { locale: vi })}</span>
-                  <strong>{format(day, "dd/MM")}</strong>
+                <div
+                  className={`day-header ${isSameDay(day, new Date()) ? "today" : ""}`}
+                >
+                  <div>
+                    <span>{format(day, "EEE", { locale: vi })}</span>
+                    <strong>{format(day, "dd/MM")}</strong>
+                  </div>
+                  <small>{shiftsForDay.length} ca</small>
                 </div>
                 <div className="day-body">
                   {Array.from(
@@ -916,17 +1409,29 @@ const ScheduleManagement = ({ readOnly = false }) => {
                     ]),
                   ).map((type) => {
                     const shiftConfig = configuredShiftTypes[type];
-                    const shift = shiftsForDay.find((item) => item.shiftType === type);
+                    const shift = shiftsForDay.find(
+                      (item) => item.shiftType === type,
+                    );
+
                     return (
                       <div key={type} className="shift-slot">
                         {shift ? (
-                          <ShiftCard shift={shift} staffList={staff} onClick={setSelectedShift} />
+                          <ShiftCard
+                            shift={shift}
+                            staffList={staff}
+                            onClick={setSelectedShift}
+                          />
                         ) : readOnly ? (
                           <div className="empty-shift-slot">
-                            Chưa phân {shiftConfig?.label?.toLowerCase() || "ca"}
+                            Chưa phân{" "}
+                            {shiftConfig?.label?.toLowerCase() || "ca"}
                           </div>
                         ) : (
-                          <button className="add-shift-btn" onClick={() => openAddShiftModal(day, type)}>
+                          <button
+                            type="button"
+                            className="add-shift-btn"
+                            onClick={() => openAddShiftModal(day, type)}
+                          >
                             + {shiftConfig?.label || "Ca"}
                           </button>
                         )}
@@ -941,7 +1446,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       )}
 
       {(staffLoading || shiftsLoading) && (
-        <div className="empty-state" style={{ marginTop: 12 }}>
+        <div className="empty-state schedule-feedback">
           Đang tải dữ liệu lịch làm việc...
         </div>
       )}

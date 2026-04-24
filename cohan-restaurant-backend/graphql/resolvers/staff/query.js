@@ -14,10 +14,12 @@ import {
   PayrollPeriod,
   PayrollItem,
 } from "../../../models/index.js";
-import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSchedulingAssistant.service.js";
 import {
-  buildPayrollItem,
-} from "../../../src/services/payroll/payrollCalculator.service.js";
+  getAttendanceCorrectionRequest,
+  listAttendanceCorrectionRequests,
+} from "../../../src/services/attendance/attendanceCorrectionWorkflow.service.js";
+import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSchedulingAssistant.service.js";
+import { buildPayrollItem } from "../../../src/services/payroll/payrollCalculator.service.js";
 import {
   buildPayrollItemsForRange,
   getPayrollSettings,
@@ -51,7 +53,8 @@ function mapAttendanceStatus(timesheet) {
   if (!timesheet?.actualCheckInAt) {
     return timesheet?.isOffSchedule ? "unscheduled_absent" : "scheduled_absent";
   }
-  if (!timesheet?.actualCheckOutAt) return timesheet?.isOffSchedule ? "unscheduled_checkin" : "checked_in";
+  if (!timesheet?.actualCheckOutAt)
+    return timesheet?.isOffSchedule ? "unscheduled_checkin" : "checked_in";
   if (timesheet?.isOffSchedule) return "unscheduled_completed";
   const hasLate = Number(timesheet?.latenessMinutes || 0) > 0;
   const hasEarly = Number(timesheet?.earlyLeaveMinutes || 0) > 0;
@@ -67,14 +70,19 @@ function mapAttendanceRecord(timesheet, staff) {
     employeeId: String(timesheet.employeeId),
     employeeName: staff?.fullName || null,
     employeeCode: staff?.employeeCode || null,
-    employeeRole: staff?.positionTitle || staff?.roleName || staff?.role?.name || null,
+    employeeRole:
+      staff?.positionTitle || staff?.roleName || staff?.role?.name || null,
     employeeAvatar: staff?.avatarUrl || staff?.avatar || null,
     restaurantId: String(timesheet.restaurantId),
     workDate: timesheet.workDate,
-    shiftId: timesheet.shiftId ? String(timesheet.shiftId._id || timesheet.shiftId) : null,
+    shiftId: timesheet.shiftId
+      ? String(timesheet.shiftId._id || timesheet.shiftId)
+      : null,
     shiftType: timesheet?.shiftId?.shiftType || null,
-    plannedStartTime: timesheet.plannedStartTime || timesheet?.shiftId?.startTime || null,
-    plannedEndTime: timesheet.plannedEndTime || timesheet?.shiftId?.endTime || null,
+    plannedStartTime:
+      timesheet.plannedStartTime || timesheet?.shiftId?.startTime || null,
+    plannedEndTime:
+      timesheet.plannedEndTime || timesheet?.shiftId?.endTime || null,
     actualCheckInAt: timesheet.actualCheckInAt || null,
     actualCheckOutAt: timesheet.actualCheckOutAt || null,
     workedMinutes: Number(timesheet.workedMinutes || 0),
@@ -142,11 +150,18 @@ function toNumber(v) {
 }
 
 function _inferRegionCodeFromRestaurant(restaurant) {
-  const manual = String(restaurant?.payrollRegionCode || "").trim().toUpperCase();
+  const manual = String(restaurant?.payrollRegionCode || "")
+    .trim()
+    .toUpperCase();
   if (["I", "II", "III", "IV"].includes(manual)) return manual;
 
   const city = String(restaurant?.address?.city || "").toLowerCase();
-  if (city.includes("hà nội") || city.includes("ha noi") || city.includes("hồ chí minh") || city.includes("ho chi minh")) {
+  if (
+    city.includes("hà nội") ||
+    city.includes("ha noi") ||
+    city.includes("hồ chí minh") ||
+    city.includes("ho chi minh")
+  ) {
     return "I";
   }
   return "II";
@@ -184,10 +199,7 @@ export default {
   // =========================
   // GET STAFF LIST
   // =========================
-  staffList: async (
-    _,
-    { restaurantId, roleId, search, employmentStatus }
-  ) => {
+  staffList: async (_, { restaurantId, roleId, search, employmentStatus }) => {
     const filter = { userType: "STAFF", deletedAt: null };
 
     const rid = toObjectId(restaurantId);
@@ -242,7 +254,9 @@ export default {
 
     if (rid) {
       const [tables, categoryAgg, promoAgg] = await Promise.all([
-        Table.find({ restaurantId: rid }).select({ code: 1, floorLevel: 1 }).lean(),
+        Table.find({ restaurantId: rid })
+          .select({ code: 1, floorLevel: 1 })
+          .lean(),
         Category.countDocuments({ restaurantId: rid }),
         Promotion.countDocuments({ restaurantId: rid, isActive: true }),
       ]);
@@ -252,10 +266,10 @@ export default {
         new Set(
           tables
             .map((t) =>
-              t?.floorLevel != null ? `Tầng ${Number(t.floorLevel)}` : null
+              t?.floorLevel != null ? `Tầng ${Number(t.floorLevel)}` : null,
             )
-            .filter(Boolean)
-        )
+            .filter(Boolean),
+        ),
       );
       floorCount = floorAssigned.length;
       categoryCount = Number(categoryAgg || 0);
@@ -276,7 +290,9 @@ export default {
         .lean(),
     ]);
 
-    const shiftsWorkedCount = await Shift.countDocuments({ employeeId: staff._id });
+    const shiftsWorkedCount = await Shift.countDocuments({
+      employeeId: staff._id,
+    });
 
     return {
       staffId: String(staff._id),
@@ -285,10 +301,15 @@ export default {
       phone: staff.phone || null,
       avatarUrl: staff.avatarUrl || staff.avatar || null,
       roleName:
-        staff?.positionTitle || staff?.roleName || staff?.role?.name || "Nhân viên",
+        staff?.positionTitle ||
+        staff?.roleName ||
+        staff?.role?.name ||
+        "Nhân viên",
       positionTitle: staff.positionTitle || null,
       employeeCode: staff.employeeCode || null,
-      employmentStatus: String(staff.employmentStatus || "working").toUpperCase(),
+      employmentStatus: String(
+        staff.employmentStatus || "working",
+      ).toUpperCase(),
       primaryRestaurant: staff.primaryRestaurant || null,
       restaurantForStaff: staff.restaurantForStaff || null,
       floorAssigned,
@@ -318,7 +339,12 @@ export default {
       const payroll = buildPayrollItem({
         staff,
         period: { start: new Date(), end: new Date(), calendarDays: 0 },
-        aggregate: { workedDateCount: 0, totalHours: 0, totalWage: 0, totalAmount: 0 },
+        aggregate: {
+          workedDateCount: 0,
+          totalHours: 0,
+          totalWage: 0,
+          totalAmount: 0,
+        },
         regionCode: "I",
         payrollStatus: "draft",
       });
@@ -406,7 +432,9 @@ export default {
       insuranceEligible: payroll.insuranceEligible,
       policyCode: payroll.policyCode,
       policyEffectiveFrom: payroll.policyEffectiveFrom,
-      warningMessages: payroll.minimumWageViolation ? ["Lương cơ bản thấp hơn mức tối thiểu vùng"] : [],
+      warningMessages: payroll.minimumWageViolation
+        ? ["Lương cơ bản thấp hơn mức tối thiểu vùng"]
+        : [],
       coefficient: Number(coefficient.toFixed(2)),
       timesheetCount: Number(row.timesheetCount || 0),
     };
@@ -425,7 +453,10 @@ export default {
     return rows.map((r) => ({
       id: String(r._id),
       restaurant: r.restaurantId
-        ? { id: String(r.restaurantId._id || r.restaurantId.id), name: r.restaurantId.name }
+        ? {
+            id: String(r.restaurantId._id || r.restaurantId.id),
+            name: r.restaurantId.name,
+          }
         : null,
       shiftType: r.shiftType || null,
       startTime: r.startTime || null,
@@ -435,16 +466,26 @@ export default {
     }));
   },
 
-  staffPayrollOverview: async (_, { startDate, endDate, restaurantId, periodId }, ctx) => {
+  staffPayrollOverview: async (
+    _,
+    { startDate, endDate, restaurantId, periodId },
+    ctx,
+  ) => {
     if (periodId && mongoose.isValidObjectId(periodId)) {
-      const docs = await PayrollItem.find({ periodId: payrollToObjectId(periodId) }).lean();
+      const docs = await PayrollItem.find({
+        periodId: payrollToObjectId(periodId),
+      }).lean();
       const items = docs.map(mapPayrollDocToGql);
       return { stats: summarize(items), items };
     }
 
     const start = toStartOfDay(startDate);
     const end = toEndOfDay(endDate);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime()) ||
+      end < start
+    ) {
       return {
         stats: { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
         items: [],
@@ -452,7 +493,11 @@ export default {
     }
 
     const authUser = ctx?.user || null;
-    const fallbackRestaurantId = restaurantId || authUser?.restaurantForStaff || authUser?.primaryRestaurantId || null;
+    const fallbackRestaurantId =
+      restaurantId ||
+      authUser?.restaurantForStaff ||
+      authUser?.primaryRestaurantId ||
+      null;
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) {
       return {
@@ -460,14 +505,24 @@ export default {
         items: [],
       };
     }
-    const rows = await buildPayrollItemsForRange({ start, end, restaurantId: rid, forceStatus: "draft" });
+    const rows = await buildPayrollItemsForRange({
+      start,
+      end,
+      restaurantId: rid,
+      forceStatus: "draft",
+    });
     const items = rows.map((row) => mapPayrollDocToGql(row));
     return { stats: summarize(items), items };
   },
 
   payrollPeriods: async (_, { restaurantId, limit = 12 }, ctx) => {
     const authUser = ctx?.user || null;
-    const rid = toObjectId(restaurantId || authUser?.restaurantForStaff || authUser?.primaryRestaurantId || null);
+    const rid = toObjectId(
+      restaurantId ||
+        authUser?.restaurantForStaff ||
+        authUser?.primaryRestaurantId ||
+        null,
+    );
     if (!rid) return [];
     const rows = await PayrollPeriod.find({ restaurantId: rid })
       .sort({ startDate: -1 })
@@ -483,7 +538,12 @@ export default {
       finalizedAt: row.finalizedAt || null,
       lockedAt: row.lockedAt || null,
       paidAt: row.paidAt || null,
-      stats: row.statsSnapshot || { totalPayroll: 0, paidAmount: 0, remaining: 0, progress: 0 },
+      stats: row.statsSnapshot || {
+        totalPayroll: 0,
+        paidAmount: 0,
+        remaining: 0,
+        progress: 0,
+      },
     }));
   },
 
@@ -491,7 +551,11 @@ export default {
 
   payrollSettings: async (_, { restaurantId }, ctx) => {
     const authUser = ctx?.user || null;
-    const rid = restaurantId || authUser?.restaurantForStaff || authUser?.primaryRestaurantId || null;
+    const rid =
+      restaurantId ||
+      authUser?.restaurantForStaff ||
+      authUser?.primaryRestaurantId ||
+      null;
     const settings = await getPayrollSettings(rid);
     if (!settings) return null;
     return {
@@ -515,11 +579,16 @@ export default {
       .lean();
     if (!items.length) return [];
     const periodIds = items.map((i) => i.periodId);
-    const periods = await PayrollPeriod.find({ _id: { $in: periodIds }, status: { $in: ["finalized", "locked", "paid"] } })
+    const periods = await PayrollPeriod.find({
+      _id: { $in: periodIds },
+      status: { $in: ["finalized", "locked", "paid"] },
+    })
       .select({ _id: 1 })
       .lean();
     const allowed = new Set(periods.map((p) => String(p._id)));
-    return items.filter((i) => allowed.has(String(i.periodId))).map(mapPayrollDocToGql);
+    return items
+      .filter((i) => allowed.has(String(i.periodId)))
+      .map(mapPayrollDocToGql);
   },
 
   myPayslip: async (_, { periodId }, ctx) => {
@@ -528,9 +597,13 @@ export default {
     if (!actorId) return null;
 
     const period = await PayrollPeriod.findById(periodId).lean();
-    if (!period || !["finalized", "locked", "paid"].includes(period.status)) return null;
+    if (!period || !["finalized", "locked", "paid"].includes(period.status))
+      return null;
 
-    const item = await PayrollItem.findOne({ periodId: period._id, employeeId: actorId }).lean();
+    const item = await PayrollItem.findOne({
+      periodId: period._id,
+      employeeId: actorId,
+    }).lean();
     await logPayrollEvent({
       ctx,
       restaurantId: period.restaurantId,
@@ -543,7 +616,10 @@ export default {
     return item ? mapPayrollDocToGql(item) : null;
   },
 
-  staffSchedulingAssistant: async (_, { restaurantId, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" }) => {
+  staffSchedulingAssistant: async (
+    _,
+    { restaurantId, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" },
+  ) => {
     return buildStaffSchedulingAssistant({
       restaurantId,
       horizonDays,
@@ -595,10 +671,19 @@ export default {
     }));
   },
 
-  staffAttendanceRecords: async (_, { restaurantId, startDate, endDate, employeeId, status, search }, ctx) => {
+  staffAttendanceRecords: async (
+    _,
+    { restaurantId, startDate, endDate, employeeId, status, search },
+    ctx,
+  ) => {
     const start = toStartOfDay(startDate);
     const end = toEndOfDay(endDate);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return [];
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime()) ||
+      end < start
+    )
+      return [];
 
     const authUser = ctx?.user || null;
     const fallbackRestaurantId =
@@ -619,14 +704,29 @@ export default {
       const regex = new RegExp(search, "i");
       staffFilter.$and = [
         { $or: [{ primaryRestaurant: rid }, { refRestaurants: rid }] },
-        { $or: [{ fullName: regex }, { employeeCode: regex }, { phone: regex }, { email: regex }] },
+        {
+          $or: [
+            { fullName: regex },
+            { employeeCode: regex },
+            { phone: regex },
+            { email: regex },
+          ],
+        },
       ];
       delete staffFilter.$or;
     }
 
     const staffs = await Staff.find(staffFilter)
       .populate("role")
-      .select({ _id: 1, fullName: 1, employeeCode: 1, positionTitle: 1, roleName: 1, avatarUrl: 1, avatar: 1 })
+      .select({
+        _id: 1,
+        fullName: 1,
+        employeeCode: 1,
+        positionTitle: 1,
+        roleName: 1,
+        avatarUrl: 1,
+        avatar: 1,
+      })
       .lean();
     if (!staffs.length) return [];
 
@@ -639,7 +739,16 @@ export default {
       startTime: { $lte: end },
       endTime: { $gte: start },
     })
-      .select({ _id: 1, employeeId: 1, shiftType: 1, startTime: 1, endTime: 1, status: 1, createdAt: 1, updatedAt: 1 })
+      .select({
+        _id: 1,
+        employeeId: 1,
+        shiftType: 1,
+        startTime: 1,
+        endTime: 1,
+        status: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      })
       .lean();
 
     const timesheets = await Timesheet.find({
@@ -655,7 +764,7 @@ export default {
       timesheets.map((ts) => {
         const day = new Date(ts.workDate).toISOString().slice(0, 10);
         return `${String(ts.employeeId)}|${day}|${ts.shiftId ? String(ts.shiftId._id || ts.shiftId) : "off"}`;
-      })
+      }),
     );
 
     const records = [...timesheets];
@@ -688,12 +797,29 @@ export default {
     }
 
     const mapped = records
-      .map((record) => mapAttendanceRecord(record, staffById.get(String(record.employeeId))))
-      .sort((a, b) => new Date(b.workDate).getTime() - new Date(a.workDate).getTime());
+      .map((record) =>
+        mapAttendanceRecord(record, staffById.get(String(record.employeeId))),
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.workDate).getTime() - new Date(a.workDate).getTime(),
+      );
     if (!status || status === "all") return mapped;
     return mapped.filter((record) => record.status === status);
   },
+  attendanceCorrectionRequests: async (_, { filter }, ctx) => {
+    return listAttendanceCorrectionRequests({
+      filter: filter || {},
+      ctx,
+    });
+  },
 
+  attendanceCorrectionRequest: async (_, { id }, ctx) => {
+    return getAttendanceCorrectionRequest({
+      id,
+      ctx,
+    });
+  },
   leaveRequests: async (_, { filter = {} }, ctx) => {
     const authUser = ctx?.user || null;
     const fallbackRestaurantId =
@@ -710,12 +836,16 @@ export default {
     if (filter.status) query.status = String(filter.status).toLowerCase();
     if (filter.startDate || filter.endDate) {
       query.startDate = {};
-      if (filter.startDate) query.startDate.$gte = toStartOfDay(filter.startDate);
+      if (filter.startDate)
+        query.startDate.$gte = toStartOfDay(filter.startDate);
       if (filter.endDate) query.startDate.$lte = toEndOfDay(filter.endDate);
     }
 
     const rows = await LeaveRequest.find(query)
-      .populate("employeeId", "fullName employeeCode positionTitle roleName avatarUrl avatar role")
+      .populate(
+        "employeeId",
+        "fullName employeeCode positionTitle roleName avatarUrl avatar role",
+      )
       .populate("approverId", "fullName")
       .populate("replacementManagerId", "fullName")
       .populate("replacementConfirmedBy", "fullName")
@@ -727,8 +857,12 @@ export default {
       : rows.filter((row) => {
           const needle = String(filter.search || "").toLowerCase();
           return (
-            String(row.employeeId?.fullName || "").toLowerCase().includes(needle) ||
-            String(row.employeeId?.employeeCode || "").toLowerCase().includes(needle)
+            String(row.employeeId?.fullName || "")
+              .toLowerCase()
+              .includes(needle) ||
+            String(row.employeeId?.employeeCode || "")
+              .toLowerCase()
+              .includes(needle)
           );
         });
 
@@ -737,8 +871,10 @@ export default {
       employeeId: String(row.employeeId?._id || row.employeeId),
       employeeName: row.employeeId?.fullName || null,
       employeeCode: row.employeeId?.employeeCode || null,
-      employeeRole: row.employeeId?.positionTitle || row.employeeId?.roleName || null,
-      employeeAvatar: row.employeeId?.avatarUrl || row.employeeId?.avatar || null,
+      employeeRole:
+        row.employeeId?.positionTitle || row.employeeId?.roleName || null,
+      employeeAvatar:
+        row.employeeId?.avatarUrl || row.employeeId?.avatar || null,
       restaurantId: String(row.restaurantId),
       leaveType: toGraphLeaveType(row.leaveType),
       startDate: row.startDate,
@@ -754,7 +890,9 @@ export default {
       approvedAt: row.approvedAt || null,
       rejectedAt: row.rejectedAt || null,
       rejectionReason: row.rejectionReason || "",
-      replacementManagerId: row.replacementManagerId?._id ? String(row.replacementManagerId._id) : null,
+      replacementManagerId: row.replacementManagerId?._id
+        ? String(row.replacementManagerId._id)
+        : null,
       replacementManagerName: row.replacementManagerId?.fullName || null,
       replacementStatus: toGraphReplacementStatus(row.replacementStatus),
       replacementConfirmedAt: row.replacementConfirmedAt || null,
@@ -774,7 +912,9 @@ export default {
       quotaImpact: {
         deductAnnualDays: Number(row.quotaImpact?.deductAnnualDays || 0),
         deductSickDays: Number(row.quotaImpact?.deductSickDays || 0),
-        deductCompensatoryDays: Number(row.quotaImpact?.deductCompensatoryDays || 0),
+        deductCompensatoryDays: Number(
+          row.quotaImpact?.deductCompensatoryDays || 0,
+        ),
         totalDeductDays: Number(row.quotaImpact?.totalDeductDays || 0),
       },
       leaveBalanceSnapshot: null,
@@ -794,14 +934,16 @@ export default {
     const authUserId = ctx?.user?.id || ctx?.user?._id || null;
     const uid = toObjectId(authUserId);
     if (!uid) return [];
-    return (await LeaveRequest.find({
-      replacementManagerId: uid,
-      ...(restaurantId ? { restaurantId: toObjectId(restaurantId) } : {}),
-      ...(status ? { replacementStatus: String(status).toLowerCase() } : {}),
-    })
-      .populate("employeeId", "fullName employeeCode")
-      .sort({ createdAt: -1 })
-      .lean()).map((row) => ({
+    return (
+      await LeaveRequest.find({
+        replacementManagerId: uid,
+        ...(restaurantId ? { restaurantId: toObjectId(restaurantId) } : {}),
+        ...(status ? { replacementStatus: String(status).toLowerCase() } : {}),
+      })
+        .populate("employeeId", "fullName employeeCode")
+        .sort({ createdAt: -1 })
+        .lean()
+    ).map((row) => ({
       id: String(row._id),
       employeeId: String(row.employeeId?._id || row.employeeId),
       employeeName: row.employeeId?.fullName || null,
@@ -823,11 +965,15 @@ export default {
       approvedAt: row.approvedAt || null,
       rejectedAt: row.rejectedAt || null,
       rejectionReason: row.rejectionReason || "",
-      replacementManagerId: row.replacementManagerId ? String(row.replacementManagerId) : null,
+      replacementManagerId: row.replacementManagerId
+        ? String(row.replacementManagerId)
+        : null,
       replacementManagerName: null,
       replacementStatus: toGraphReplacementStatus(row.replacementStatus),
       replacementConfirmedAt: row.replacementConfirmedAt || null,
-      replacementConfirmedBy: row.replacementConfirmedBy ? String(row.replacementConfirmedBy) : null,
+      replacementConfirmedBy: row.replacementConfirmedBy
+        ? String(row.replacementConfirmedBy)
+        : null,
       payrollFlags: {
         isPaidLeave: Boolean(row.payrollFlags?.isPaidLeave),
         deductLeaveBalance: Boolean(row.payrollFlags?.deductLeaveBalance),
@@ -841,7 +987,9 @@ export default {
       quotaImpact: {
         deductAnnualDays: Number(row.quotaImpact?.deductAnnualDays || 0),
         deductSickDays: Number(row.quotaImpact?.deductSickDays || 0),
-        deductCompensatoryDays: Number(row.quotaImpact?.deductCompensatoryDays || 0),
+        deductCompensatoryDays: Number(
+          row.quotaImpact?.deductCompensatoryDays || 0,
+        ),
         totalDeductDays: Number(row.quotaImpact?.totalDeductDays || 0),
       },
       leaveBalanceSnapshot: null,
@@ -853,7 +1001,10 @@ export default {
 
   leaveBalance: async (_, { employeeId, year }) => {
     const y = Number(year || new Date().getFullYear());
-    const row = await LeaveBalance.findOne({ employeeId: toObjectId(employeeId), year: y }).lean();
+    const row = await LeaveBalance.findOne({
+      employeeId: toObjectId(employeeId),
+      year: y,
+    }).lean();
     if (!row) return null;
     return {
       id: String(row._id),
@@ -874,7 +1025,11 @@ export default {
   staffReportsOverview: async (_, { input }, ctx) => {
     const start = toStartOfDay(input.startDate);
     const end = toEndOfDay(input.endDate);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime()) ||
+      end < start
+    ) {
       throw new Error("Invalid report period");
     }
 
@@ -887,7 +1042,10 @@ export default {
     const rid = toObjectId(fallbackRestaurantId);
     if (!rid) throw new Error("Missing restaurantId for staff report");
 
-    const periodDays = Math.max(Math.round((end.getTime() - start.getTime()) / 86400000) + 1, 1);
+    const periodDays = Math.max(
+      Math.round((end.getTime() - start.getTime()) / 86400000) + 1,
+      1,
+    );
     const compareStart = input.compareStartDate
       ? toStartOfDay(input.compareStartDate)
       : toStartOfDay(new Date(start.getTime() - periodDays * 86400000));
@@ -895,35 +1053,48 @@ export default {
       ? toEndOfDay(input.compareEndDate)
       : toEndOfDay(new Date(start.getTime() - 1));
 
-    const [staffDocs, timesheets, leaveRequests, leaveBalances] = await Promise.all([
-      Staff.find({
-        userType: "STAFF",
-        $or: [{ primaryRestaurant: rid }, { refRestaurants: rid }],
-      })
-        .select({ _id: 1, fullName: 1, employeeCode: 1, employmentStatus: 1, dateJoined: 1, dateLeft: 1, createdAt: 1 })
-        .lean(),
-      Timesheet.find({
-        restaurantId: rid,
-        workDate: { $gte: start, $lte: end },
-      })
-        .populate("employeeId", "fullName employeeCode")
-        .populate("shiftId", "shiftType")
-        .lean(),
-      LeaveRequest.find({
-        restaurantId: rid,
-        startDate: { $lte: end },
-        endDate: { $gte: start },
-      })
-        .populate("employeeId", "fullName employeeCode")
-        .lean(),
-      LeaveBalance.find({
-        year: new Date(end).getFullYear(),
-        employeeId: { $in: staffDocs.map((s) => s._id) },
-      }).lean(),
-    ]);
+    const [staffDocs, timesheets, leaveRequests, leaveBalances] =
+      await Promise.all([
+        Staff.find({
+          userType: "STAFF",
+          $or: [{ primaryRestaurant: rid }, { refRestaurants: rid }],
+        })
+          .select({
+            _id: 1,
+            fullName: 1,
+            employeeCode: 1,
+            employmentStatus: 1,
+            dateJoined: 1,
+            dateLeft: 1,
+            createdAt: 1,
+          })
+          .lean(),
+        Timesheet.find({
+          restaurantId: rid,
+          workDate: { $gte: start, $lte: end },
+        })
+          .populate("employeeId", "fullName employeeCode")
+          .populate("shiftId", "shiftType")
+          .lean(),
+        LeaveRequest.find({
+          restaurantId: rid,
+          startDate: { $lte: end },
+          endDate: { $gte: start },
+        })
+          .populate("employeeId", "fullName employeeCode")
+          .lean(),
+        LeaveBalance.find({
+          year: new Date(end).getFullYear(),
+          employeeId: { $in: staffDocs.map((s) => s._id) },
+        }).lean(),
+      ]);
 
-    const activeEmployees = staffDocs.filter((s) => String(s.employmentStatus || "").toLowerCase() !== "resigned").length;
-    const terminatedEmployees = staffDocs.filter((s) => String(s.employmentStatus || "").toLowerCase() === "resigned").length;
+    const activeEmployees = staffDocs.filter(
+      (s) => String(s.employmentStatus || "").toLowerCase() !== "resigned",
+    ).length;
+    const terminatedEmployees = staffDocs.filter(
+      (s) => String(s.employmentStatus || "").toLowerCase() === "resigned",
+    ).length;
     const joinedEmployees = staffDocs.filter((s) => {
       const joinDate = s.dateJoined || s.createdAt;
       if (!joinDate) return false;
@@ -936,21 +1107,39 @@ export default {
       return d >= start && d <= end;
     }).length;
 
-    const presentCount = timesheets.filter((t) => Boolean(t.actualCheckInAt)).length;
-    const absentCount = timesheets.filter((t) => !t.actualCheckInAt && !t.isOffSchedule).length;
-    const lateCount = timesheets.filter((t) => toNumber(t.latenessMinutes) > 0).length;
-    const earlyLeaveCount = timesheets.filter((t) => toNumber(t.earlyLeaveMinutes) > 0).length;
+    const presentCount = timesheets.filter((t) =>
+      Boolean(t.actualCheckInAt),
+    ).length;
+    const absentCount = timesheets.filter(
+      (t) => !t.actualCheckInAt && !t.isOffSchedule,
+    ).length;
+    const lateCount = timesheets.filter(
+      (t) => toNumber(t.latenessMinutes) > 0,
+    ).length;
+    const earlyLeaveCount = timesheets.filter(
+      (t) => toNumber(t.earlyLeaveMinutes) > 0,
+    ).length;
 
-    const leaveApproved = leaveRequests.filter((r) => String(r.status) === "approved");
-    const leaveRejected = leaveRequests.filter((r) => String(r.status) === "rejected");
-    const leavePending = leaveRequests.filter((r) => String(r.status).startsWith("pending"));
+    const leaveApproved = leaveRequests.filter(
+      (r) => String(r.status) === "approved",
+    );
+    const leaveRejected = leaveRequests.filter(
+      (r) => String(r.status) === "rejected",
+    );
+    const leavePending = leaveRequests.filter((r) =>
+      String(r.status).startsWith("pending"),
+    );
     const paidLeaveDays = leaveApproved.reduce(
-      (sum, row) => sum + (row?.payrollFlags?.isPaidLeave ? toNumber(row.requestedDays) : 0),
-      0
+      (sum, row) =>
+        sum +
+        (row?.payrollFlags?.isPaidLeave ? toNumber(row.requestedDays) : 0),
+      0,
     );
     const unpaidLeaveDays = leaveApproved.reduce(
-      (sum, row) => sum + (!row?.payrollFlags?.isPaidLeave ? toNumber(row.requestedDays) : 0),
-      0
+      (sum, row) =>
+        sum +
+        (!row?.payrollFlags?.isPaidLeave ? toNumber(row.requestedDays) : 0),
+      0,
     );
 
     const remainingLeaveBalanceDays = leaveBalances.reduce(
@@ -959,14 +1148,20 @@ export default {
         toNumber(row.annualRemainingDays) +
         toNumber(row.sickRemainingDays) +
         toNumber(row.compensatoryRemainingDays),
-      0
+      0,
     );
 
     const attendanceTrendMap = new Map();
     for (const row of timesheets) {
       const key = toYmd(row.workDate);
       if (!attendanceTrendMap.has(key)) {
-        attendanceTrendMap.set(key, { date: key, present: 0, absent: 0, late: 0, earlyLeave: 0 });
+        attendanceTrendMap.set(key, {
+          date: key,
+          present: 0,
+          absent: 0,
+          late: 0,
+          earlyLeave: 0,
+        });
       }
       const bucket = attendanceTrendMap.get(key);
       if (row.actualCheckInAt) bucket.present += 1;
@@ -974,7 +1169,9 @@ export default {
       if (toNumber(row.latenessMinutes) > 0) bucket.late += 1;
       if (toNumber(row.earlyLeaveMinutes) > 0) bucket.earlyLeave += 1;
     }
-    const attendanceTrend = [...attendanceTrendMap.values()].sort((a, b) => a.date.localeCompare(b.date));
+    const attendanceTrend = [...attendanceTrendMap.values()].sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
 
     const attendanceByShiftMap = new Map();
     for (const row of timesheets) {
@@ -996,12 +1193,15 @@ export default {
       if (toNumber(row.latenessMinutes) > 0) bucket.late += 1;
       if (toNumber(row.earlyLeaveMinutes) > 0) bucket.earlyLeave += 1;
     }
-    const attendanceByShift = [...attendanceByShiftMap.values()].sort((a, b) => a.shiftType.localeCompare(b.shiftType));
+    const attendanceByShift = [...attendanceByShiftMap.values()].sort((a, b) =>
+      a.shiftType.localeCompare(b.shiftType),
+    );
 
     const leaveByTypeMap = new Map();
     for (const row of leaveRequests) {
       const key = String(row.leaveType || "unknown");
-      if (!leaveByTypeMap.has(key)) leaveByTypeMap.set(key, { leaveType: key, count: 0, days: 0 });
+      if (!leaveByTypeMap.has(key))
+        leaveByTypeMap.set(key, { leaveType: key, count: 0, days: 0 });
       const bucket = leaveByTypeMap.get(key);
       bucket.count += 1;
       bucket.days += toNumber(row.requestedDays);
@@ -1066,7 +1266,11 @@ export default {
       leaveApproved: leaveApproved.length,
       leaveRejected: leaveRejected.length,
       leavePending: leavePending.length,
-      leaveDaysUsed: Number(leaveApproved.reduce((s, r) => s + toNumber(r.requestedDays), 0).toFixed(2)),
+      leaveDaysUsed: Number(
+        leaveApproved
+          .reduce((s, r) => s + toNumber(r.requestedDays), 0)
+          .toFixed(2),
+      ),
       paidLeaveDays: Number(paidLeaveDays.toFixed(2)),
       unpaidLeaveDays: Number(unpaidLeaveDays.toFixed(2)),
       remainingLeaveBalanceDays: Number(remainingLeaveBalanceDays.toFixed(2)),
@@ -1077,7 +1281,12 @@ export default {
         restaurantId: rid,
         workDate: { $gte: compareStart, $lte: compareEnd },
       })
-        .select({ actualCheckInAt: 1, latenessMinutes: 1, earlyLeaveMinutes: 1, isOffSchedule: 1 })
+        .select({
+          actualCheckInAt: 1,
+          latenessMinutes: 1,
+          earlyLeaveMinutes: 1,
+          isOffSchedule: 1,
+        })
         .lean(),
       LeaveRequest.find({
         restaurantId: rid,
@@ -1090,14 +1299,24 @@ export default {
 
     const prevSummary = {
       attendanceRecords: prevTimesheets.length,
-      presentCount: prevTimesheets.filter((r) => Boolean(r.actualCheckInAt)).length,
-      lateCount: prevTimesheets.filter((r) => toNumber(r.latenessMinutes) > 0).length,
-      earlyLeaveCount: prevTimesheets.filter((r) => toNumber(r.earlyLeaveMinutes) > 0).length,
-      absentCount: prevTimesheets.filter((r) => !r.actualCheckInAt && !r.isOffSchedule).length,
+      presentCount: prevTimesheets.filter((r) => Boolean(r.actualCheckInAt))
+        .length,
+      lateCount: prevTimesheets.filter((r) => toNumber(r.latenessMinutes) > 0)
+        .length,
+      earlyLeaveCount: prevTimesheets.filter(
+        (r) => toNumber(r.earlyLeaveMinutes) > 0,
+      ).length,
+      absentCount: prevTimesheets.filter(
+        (r) => !r.actualCheckInAt && !r.isOffSchedule,
+      ).length,
       leaveTotal: prevLeaves.length,
-      leaveApproved: prevLeaves.filter((r) => String(r.status) === "approved").length,
-      leaveRejected: prevLeaves.filter((r) => String(r.status) === "rejected").length,
-      leavePending: prevLeaves.filter((r) => String(r.status).startsWith("pending")).length,
+      leaveApproved: prevLeaves.filter((r) => String(r.status) === "approved")
+        .length,
+      leaveRejected: prevLeaves.filter((r) => String(r.status) === "rejected")
+        .length,
+      leavePending: prevLeaves.filter((r) =>
+        String(r.status).startsWith("pending"),
+      ).length,
       leaveDaysUsed: prevLeaves
         .filter((r) => String(r.status) === "approved")
         .reduce((sum, r) => sum + toNumber(r.requestedDays), 0),
@@ -1130,7 +1349,12 @@ export default {
       const current = toNumber(currentSummary[metric]);
       const previous = toNumber(prevSummaryWithWorkforce[metric]);
       const delta = current - previous;
-      const deltaPct = previous === 0 ? (current === 0 ? 0 : 100) : Number(((delta / previous) * 100).toFixed(2));
+      const deltaPct =
+        previous === 0
+          ? current === 0
+            ? 0
+            : 100
+          : Number(((delta / previous) * 100).toFixed(2));
       return { metric, current, previous, delta, deltaPct };
     });
 

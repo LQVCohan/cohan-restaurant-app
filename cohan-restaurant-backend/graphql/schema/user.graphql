@@ -583,7 +583,6 @@ input PayrollAdjustmentInput {
   note: String
 }
 
-
 type PayrollValidationIssue {
   code: String!
   severity: String!
@@ -751,7 +750,108 @@ type StaffAttendanceRecord {
   createdAt: DateTime
   updatedAt: DateTime
 }
+type AttendanceCorrectionAuditLog {
+  action: String!
+  actorId: ID
+  actorName: String
+  note: String
+  at: DateTime
+  meta: JSON
+}
 
+type AttendanceCorrectionRequest {
+  id: ID!
+  employeeId: ID!
+  employeeName: String
+  employeeCode: String
+  employeeRole: String
+  employeeAvatar: String
+
+  restaurantId: ID!
+  timesheetId: ID
+  shiftId: ID
+  workDate: DateTime!
+
+  correctionType: String!
+  status: String!
+
+  originalCheckInAt: DateTime
+  originalCheckOutAt: DateTime
+  requestedCheckInAt: DateTime
+  requestedCheckOutAt: DateTime
+
+  originalWorkedMinutes: Int
+  requestedWorkedMinutes: Int
+
+  originalLatenessMinutes: Int
+  requestedLatenessMinutes: Int
+
+  originalEarlyLeaveMinutes: Int
+  requestedEarlyLeaveMinutes: Int
+
+  originalOvertimeMinutes: Int
+  requestedOvertimeMinutes: Int
+
+  reason: String!
+  evidenceNote: String
+  evidenceUrls: [String!]!
+
+  requestedBy: ID
+  requestedByName: String
+  requestedByRole: String
+  requestedAt: DateTime
+
+  reviewedBy: ID
+  reviewedByName: String
+  reviewedAt: DateTime
+  reviewNote: String
+  rejectionReason: String
+
+  appliedBy: ID
+  appliedByName: String
+  appliedAt: DateTime
+
+  auditLogs: [AttendanceCorrectionAuditLog!]!
+
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CreateAttendanceCorrectionRequestInput {
+  employeeId: ID!
+  restaurantId: ID!
+  timesheetId: ID
+  shiftId: ID
+  workDate: DateTime!
+
+  correctionType: String!
+
+  requestedCheckInAt: DateTime
+  requestedCheckOutAt: DateTime
+
+  reason: String!
+  evidenceNote: String
+  evidenceUrls: [String!]
+}
+
+input ReviewAttendanceCorrectionRequestInput {
+  requestId: ID!
+  note: String
+}
+
+input RejectAttendanceCorrectionRequestInput {
+  requestId: ID!
+  reason: String!
+}
+
+input AttendanceCorrectionFilterInput {
+  restaurantId: ID
+  employeeId: ID
+  status: String
+  startDate: DateTime
+  endDate: DateTime
+  search: String
+}
 input UpsertStaffAttendanceInput {
   employeeId: ID!
   restaurantId: ID!
@@ -800,8 +900,6 @@ input UpdateStaffShiftInput {
   status: String
   notes: String
 }
-
-
 
 type StaffSchedulingSummary {
   totalShiftGroups: Int!
@@ -972,11 +1070,19 @@ input StaffReportsInput {
 # =========================
 
 type Query {
+  attendanceCorrectionRequests(
+    filter: AttendanceCorrectionFilterInput
+  ): [AttendanceCorrectionRequest!]!
+
+  attendanceCorrectionRequest(id: ID!): AttendanceCorrectionRequest
   me: User
   roleList: [Role!]!
   users(roleId: ID, search: String, isGuest: Boolean): [User!]!
   customers(search: String, includeGuests: Boolean): [User!]!
-  customerDetailAnalytics(userId: ID!, restaurantId: ID): CustomerDetailAnalytics!
+  customerDetailAnalytics(
+    userId: ID!
+    restaurantId: ID
+  ): CustomerDetailAnalytics!
   customerAnalytics(restaurantId: ID!): CustomerAnalyticsSummary!
   customerRankSettings(restaurantId: ID!): CustomerRankSettings!
 
@@ -1038,6 +1144,21 @@ type Query {
 # =========================
 
 type Mutation {
+  createAttendanceCorrectionRequest(
+    input: CreateAttendanceCorrectionRequestInput!
+  ): AttendanceCorrectionRequest!
+
+  approveAttendanceCorrectionRequest(
+    input: ReviewAttendanceCorrectionRequestInput!
+  ): AttendanceCorrectionRequest!
+
+  rejectAttendanceCorrectionRequest(
+    input: RejectAttendanceCorrectionRequestInput!
+  ): AttendanceCorrectionRequest!
+
+  cancelAttendanceCorrectionRequest(
+    requestId: ID!
+  ): AttendanceCorrectionRequest!
   createUser(input: CreateUserInput!): AuthPayload!
   login(
     email: String
@@ -1085,7 +1206,10 @@ type Mutation {
   ): User!
 
   createStaffShift(input: CreateStaffShiftInput!): StaffScheduleShift!
-  updateStaffShift(shiftId: ID!, input: UpdateStaffShiftInput!): StaffScheduleShift!
+  updateStaffShift(
+    shiftId: ID!
+    input: UpdateStaffShiftInput!
+  ): StaffScheduleShift!
   deleteStaffShift(shiftId: ID!): Boolean!
   createPayrollPeriod(input: CreatePayrollPeriodInput!): PayrollPeriod!
   recalculatePayrollPeriod(periodId: ID!): PayrollPeriodDetail!
@@ -1094,10 +1218,28 @@ type Mutation {
   markPayrollPeriodPaid(periodId: ID!, employeeIds: [ID!]): PayrollPeriod!
   updatePayrollSettings(input: PayrollSettingsInput!): PayrollSettings!
   upsertPayrollAdjustment(input: PayrollAdjustmentInput!): StaffPayrollItem!
-  deletePayrollAdjustment(periodId: ID!, employeeId: ID!, adjustmentId: ID!): StaffPayrollItem!
-  upsertStaffAttendance(input: UpsertStaffAttendanceInput!): StaffAttendanceRecord!
+  deletePayrollAdjustment(
+    periodId: ID!
+    employeeId: ID!
+    adjustmentId: ID!
+  ): StaffPayrollItem!
+  upsertStaffAttendance(
+    input: UpsertStaffAttendanceInput!
+  ): StaffAttendanceRecord!
   createLeaveRequest(input: CreateLeaveRequestInput!): LeaveRequest!
-  approveLeaveRequest(requestId: ID!, approverId: ID, note: String): LeaveRequest!
-  rejectLeaveRequest(requestId: ID!, approverId: ID, reason: String!): LeaveRequest!
-  confirmReplacementLeaveRequest(requestId: ID!, managerId: ID, note: String): LeaveRequest!
+  approveLeaveRequest(
+    requestId: ID!
+    approverId: ID
+    note: String
+  ): LeaveRequest!
+  rejectLeaveRequest(
+    requestId: ID!
+    approverId: ID
+    reason: String!
+  ): LeaveRequest!
+  confirmReplacementLeaveRequest(
+    requestId: ID!
+    managerId: ID
+    note: String
+  ): LeaveRequest!
 }

@@ -6,12 +6,22 @@ const baseOptions = { timestamps: true };
 const TimesheetSchema = new Schema(
   {
     shiftId: { type: Types.ObjectId, ref: "Shift", default: null },
-    employeeId: { type: Types.ObjectId, ref: "User", required: true, index: true },
-    restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true, index: true },
+    employeeId: {
+      type: Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    restaurantId: {
+      type: Types.ObjectId,
+      ref: "Restaurant",
+      required: true,
+      index: true,
+    },
     workDate: { type: Date, required: true, index: true },
     source: {
       type: String,
-      enum: ["quick", "manual", "system"],
+      enum: ["quick", "manual", "manual_correction", "system"],
       default: "quick",
     },
     plannedStartTime: { type: Date, default: null },
@@ -43,17 +53,20 @@ const TimesheetSchema = new Schema(
     wage: { type: Number, default: 0 },
     amount: { type: Number, default: 0 },
   },
-  baseOptions
+  baseOptions,
 );
 
 TimesheetSchema.index(
   { employeeId: 1, workDate: 1, shiftId: 1 },
-  { unique: true, partialFilterExpression: { shiftId: { $exists: true, $ne: null } } }
+  {
+    unique: true,
+    partialFilterExpression: { shiftId: { $exists: true, $ne: null } },
+  },
 );
 
 TimesheetSchema.index(
   { employeeId: 1, workDate: 1, isOffSchedule: 1 },
-  { unique: true, partialFilterExpression: { isOffSchedule: true } }
+  { unique: true, partialFilterExpression: { isOffSchedule: true } },
 );
 
 export default mongoose.model("Timesheet", TimesheetSchema);
