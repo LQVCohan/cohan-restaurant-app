@@ -8,6 +8,8 @@ enum UserType {
   CUSTOMER
   STAFF
   MANAGER
+  HR
+  ACCOUNTANT
   ADMIN
 }
 
@@ -508,6 +510,14 @@ type PayrollSettings {
   allowPaidLeaveInWorkDays: Boolean!
   defaultBonus: Float!
   defaultDeduction: Float!
+  weekendDays: [String!]
+  holidayDates: [String!]
+  nightShiftStart: String
+  nightShiftEnd: String
+  nightShiftAllowanceRate: Float
+  enablePersonalIncomeTax: Boolean
+  personalIncomeTaxRate: Float
+  personalIncomeTaxFreeThreshold: Float
   notes: String
   updatedAt: DateTime
 }
@@ -527,6 +537,14 @@ input PayrollSettingsInput {
   allowPaidLeaveInWorkDays: Boolean
   defaultBonus: Float
   defaultDeduction: Float
+  weekendDays: [String!]
+  holidayDates: [String!]
+  nightShiftStart: String
+  nightShiftEnd: String
+  nightShiftAllowanceRate: Float
+  enablePersonalIncomeTax: Boolean
+  personalIncomeTaxRate: Float
+  personalIncomeTaxFreeThreshold: Float
   notes: String
 }
 
@@ -563,6 +581,27 @@ input PayrollAdjustmentInput {
   type: String!
   amount: Float!
   note: String
+}
+
+
+type PayrollValidationIssue {
+  code: String!
+  severity: String!
+  message: String!
+  employeeId: ID
+  employeeName: String
+  employeeCode: String
+  sourceType: String
+  sourceId: ID
+  suggestedAction: String
+}
+
+type PayrollValidationResult {
+  periodId: ID!
+  status: String!
+  errorCount: Int!
+  warningCount: Int!
+  issues: [PayrollValidationIssue!]!
 }
 
 type StaffScheduleShift {
@@ -960,6 +999,9 @@ type Query {
   payrollPeriods(restaurantId: ID, limit: Int = 12): [PayrollPeriod!]!
   payrollPeriodDetail(periodId: ID!): PayrollPeriodDetail
   payrollSettings(restaurantId: ID): PayrollSettings
+  validatePayrollPeriod(periodId: ID!): PayrollValidationResult!
+  myPayslips(limit: Int = 12): [StaffPayrollItem!]!
+  myPayslip(periodId: ID!): StaffPayrollItem
   staffShifts(
     restaurantId: ID
     employeeId: ID

@@ -326,6 +326,7 @@ const PayrollManagement = () => {
   const [adjustmentAmount, setAdjustmentAmount] = useState("");
   const [adjustmentType, setAdjustmentType] = useState("bonus");
   const [adjustmentNote, setAdjustmentNote] = useState("");
+  const [showValidationPanel, setShowValidationPanel] = useState(false);
 
   const {
     periods,
@@ -346,6 +347,8 @@ const PayrollManagement = () => {
     markPaid,
     updateSettings,
     upsertAdjustment,
+    validationResult,
+    refetchValidation,
     refetchDetail,
     refetchSettings,
   } = usePayroll({
@@ -599,7 +602,11 @@ const PayrollManagement = () => {
   const handleApplyAdjustment = async () => {
     if (!showPayslip?.id || !selectedPeriodId) return;
     const amount = Number(adjustmentAmount || 0);
-    if (!amount) return;
+    if (!(amount > 0)) return;
+    if (["deduction", "advance", "other_deduction"].includes(adjustmentType) && !String(adjustmentNote || "").trim()) {
+      alert("Vui lòng nhập ghi chú cho khoản khấu trừ/tạm ứng.");
+      return;
+    }
     await upsertAdjustment({
       variables: {
         input: {
@@ -614,6 +621,7 @@ const PayrollManagement = () => {
     setAdjustmentAmount("");
     setAdjustmentNote("");
     await refetchDetail?.();
+    await refetchValidation?.();
   };
 
   return (
@@ -659,8 +667,9 @@ const PayrollManagement = () => {
             <div className="metric-item"><span className="label">Trạng thái kỳ</span><span className="value">{getStatusBadge(periodDetail.period.status)}</span></div>
           </div>
           <div className="right-actions" style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-white" disabled={periodStatus !== "draft"} onClick={() => finalizePeriod({ variables: { periodId: selectedPeriodId } })}>Chốt kỳ</button>
-            <button className="btn btn-white" disabled={! ["finalized", "locked"].includes(periodStatus)} onClick={() => lockPeriod({ variables: { periodId: selectedPeriodId } })}>Khóa kỳ</button>
+            <button className="btn btn-white" onClick={() => { setShowValidationPanel(true); refetchValidation?.(); }}>Kiểm tra trước khi chốt</button>
+            <button className="btn btn-white" disabled={periodStatus !== "draft" || Number(validationResult?.errorCount || 0) > 0} onClick={() => finalizePeriod({ variables: { periodId: selectedPeriodId } })}>Chốt kỳ</button>
+            <button className="btn btn-white" disabled={periodStatus !== "finalized"} onClick={() => lockPeriod({ variables: { periodId: selectedPeriodId } })}>Khóa kỳ</button>
             <button className="btn btn-primary" disabled={periodStatus !== "locked"} onClick={() => markPaid({ variables: { periodId: selectedPeriodId } })}>Xác nhận đã trả</button>
           </div>
         </div>
@@ -795,6 +804,29 @@ const PayrollManagement = () => {
           onSave={handleSaveSettings}
         />
       )}
+      {showValidationPanel && (
+        <div className="modal-overlay" onClick={() => setShowValidationPanel(false)}>
+          <div className="payslip-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Kiểm tra trước khi chốt</h3>
+              <button className="close-btn" onClick={() => setShowValidationPanel(false)}>x</button>
+            </div>
+            <div className="modal-body">
+              <p>Lỗi: <strong>{validationResult?.errorCount || 0}</strong> | Cảnh báo: <strong>{validationResult?.warningCount || 0}</strong></p>
+              <div style={{ maxHeight: 320, overflow: "auto" }}>
+                {(validationResult?.issues || []).map((issue, idx) => (
+                  <div key={`${issue.code}-${idx}`} style={{ borderBottom: "1px solid #eee", padding: "8px 0" }}>
+                    <strong>[{issue.severity}] {issue.code}</strong>
+                    <div>{issue.message}</div>
+                    {issue.employeeName && <div>Nhân viên: {issue.employeeName} ({issue.employeeCode || "-"})</div>}
+                    {issue.suggestedAction && <div>Gợi ý: {issue.suggestedAction}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -861,7 +893,9 @@ const PayslipModal = ({
             <option value="bonus">Thưởng</option>
             <option value="allowance">Phụ cấp</option>
             <option value="deduction">Khấu trừ</option>
-            <option value="other">Điều chỉnh khác</option>
+            <option value="advance">Tạm ứng</option>
+            <option value="other_addition">Cộng khác</option>
+            <option value="other_deduction">Trừ khác</option>
           </select>
           <input type="number" placeholder="Số tiền" value={adjustmentAmount} onChange={(e) => setAdjustmentAmount(e.target.value)} />
           <input type="text" placeholder="Ghi chú" value={adjustmentNote} onChange={(e) => setAdjustmentNote(e.target.value)} />

@@ -26,6 +26,9 @@ import {
   summarize,
   toObjectId as payrollToObjectId,
 } from "../../../src/services/payroll/payrollRuntime.service.js";
+import { validatePayrollPeriod as validatePayrollPeriodService } from "../../../src/services/payroll/payrollValidation.service.js";
+import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
+import { logPayrollEvent } from "../../../src/services/payroll/payrollEventLog.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -497,7 +500,48 @@ export default {
     };
   },
 
+  validatePayrollPeriod: async (_, { periodId }, ctx) => {
+    assertPayrollPermission(ctx, "payroll.validate");
+    return validatePayrollPeriodService(periodId);
+  },
 
+  myPayslips: async (_, { limit = 12 }, ctx) => {
+    assertPayrollPermission(ctx, "payroll.payslip.self");
+    const actorId = payrollToObjectId(ctx?.user?.id || ctx?.user?._id);
+    if (!actorId) return [];
+    const items = await PayrollItem.find({ employeeId: actorId })
+      .sort({ updatedAt: -1 })
+      .limit(Math.max(1, Math.min(Number(limit || 12), 24)))
+      .lean();
+    if (!items.length) return [];
+    const periodIds = items.map((i) => i.periodId);
+    const periods = await PayrollPeriod.find({ _id: { $in: periodIds }, status: { $in: ["finalized", "locked", "paid"] } })
+      .select({ _id: 1 })
+      .lean();
+    const allowed = new Set(periods.map((p) => String(p._id)));
+    return items.filter((i) => allowed.has(String(i.periodId))).map(mapPayrollDocToGql);
+  },
+
+  myPayslip: async (_, { periodId }, ctx) => {
+    assertPayrollPermission(ctx, "payroll.payslip.self");
+    const actorId = payrollToObjectId(ctx?.user?.id || ctx?.user?._id);
+    if (!actorId) return null;
+
+    const period = await PayrollPeriod.findById(periodId).lean();
+    if (!period || !["finalized", "locked", "paid"].includes(period.status)) return null;
+
+    const item = await PayrollItem.findOne({ periodId: period._id, employeeId: actorId }).lean();
+    await logPayrollEvent({
+      ctx,
+      restaurantId: period.restaurantId,
+      verb: "payroll.payslip.view",
+      objectKind: "PayrollPeriod",
+      objectId: period._id,
+      status: item ? "success" : "info",
+      meta: { employeeId: String(actorId) },
+    });
+    return item ? mapPayrollDocToGql(item) : null;
+  },
 
   staffSchedulingAssistant: async (_, { restaurantId, horizonDays = 2, timezone = "Asia/Ho_Chi_Minh" }) => {
     return buildStaffSchedulingAssistant({

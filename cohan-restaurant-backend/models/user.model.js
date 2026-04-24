@@ -125,7 +125,7 @@ const userSchema = BaseSchemaModel(
 
     userType: {
       type: String,
-      enum: ["CUSTOMER", "STAFF", "MANAGER", "ADMIN"],
+      enum: ["CUSTOMER", "STAFF", "MANAGER", "HR", "ACCOUNTANT", "ADMIN"],
       default: "CUSTOMER",
     },
 
