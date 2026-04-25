@@ -53,6 +53,268 @@ const DEFAULT_SCORING_WEIGHTS = {
   overtimePenalty: 15,
   ruleRiskPenalty: 30,
 };
+const stripTypenameDeep = (value) => {
+  if (Array.isArray(value)) {
+    return value.map(stripTypenameDeep);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.entries(value).reduce((acc, [key, val]) => {
+      if (key === "__typename") return acc;
+      acc[key] = stripTypenameDeep(val);
+      return acc;
+    }, {});
+  }
+
+  return value;
+};
+
+const SCORING_FIELD_META = [
+  {
+    key: "roleFit",
+    label: "Đúng vị trí",
+    shortLabel: "Role",
+    defaultValue: 20,
+    min: 0,
+    max: 30,
+    recommended: "15–25",
+    type: "positive",
+    description:
+      "Ưu tiên nhân viên có đúng vai trò cần xếp, ví dụ cần bartender thì bartender được ưu tiên hơn server.",
+    impact:
+      "Tăng quá cao sẽ khiến hệ thống ưu tiên đúng role hơn cả cân bằng giờ làm hoặc độ mệt.",
+  },
+  {
+    key: "availabilityFit",
+    label: "Đúng ngày khả dụng",
+    shortLabel: "Khả dụng",
+    defaultValue: 15,
+    min: 0,
+    max: 25,
+    recommended: "10–20",
+    type: "positive",
+    description:
+      "Ưu tiên nhân viên có workingDays phù hợp với ngày cần xếp ca.",
+    impact:
+      "Tăng cao sẽ làm hệ thống ít gợi ý nhân viên ngoài ngày khả dụng, kể cả khi thiếu người.",
+  },
+  {
+    key: "workloadBalance",
+    label: "Cân bằng giờ làm",
+    shortLabel: "Cân bằng tải",
+    defaultValue: 15,
+    min: 0,
+    max: 25,
+    recommended: "10–20",
+    type: "positive",
+    description:
+      "Ưu tiên nhân viên còn ít giờ trong tuần để chia đều khối lượng làm việc.",
+    impact:
+      "Tăng cao sẽ giúp chia ca công bằng hơn, nhưng có thể không chọn người giỏi nhất cho ca đông khách.",
+  },
+  {
+    key: "fairness",
+    label: "Công bằng ca đẹp / ca xấu",
+    shortLabel: "Công bằng",
+    defaultValue: 10,
+    min: 0,
+    max: 20,
+    recommended: "5–15",
+    type: "positive",
+    description:
+      "Dùng để chia đều ca tối, cuối tuần, ca cao điểm giữa các nhân viên.",
+    impact:
+      "Tăng cao giúp lịch công bằng hơn, nhưng có thể giảm tối ưu vận hành.",
+  },
+  {
+    key: "performance",
+    label: "Hiệu suất làm việc",
+    shortLabel: "Hiệu suất",
+    defaultValue: 10,
+    min: 0,
+    max: 20,
+    recommended: "5–15",
+    type: "positive",
+    description:
+      "Ưu tiên nhân viên có hiệu suất, độ phù hợp hoặc đánh giá tốt hơn.",
+    impact:
+      "Tăng cao sẽ ưu tiên người mạnh hơn cho ca quan trọng, nhưng có thể làm vài người bị xếp nhiều.",
+  },
+  {
+    key: "employmentTypeFit",
+    label: "Phù hợp loại nhân sự",
+    shortLabel: "Loại nhân sự",
+    defaultValue: 10,
+    min: 0,
+    max: 20,
+    recommended: "5–15",
+    type: "positive",
+    description:
+      "Cân nhắc full-time, part-time, thử việc, thời vụ khi chọn người cho ca.",
+    impact:
+      "Tăng cao sẽ làm hệ thống tôn trọng policy theo loại nhân sự mạnh hơn.",
+  },
+  {
+    key: "costEfficiency",
+    label: "Tối ưu chi phí",
+    shortLabel: "Chi phí",
+    defaultValue: 5,
+    min: 0,
+    max: 15,
+    recommended: "3–10",
+    type: "positive",
+    description:
+      "Ưu tiên phương án ít tạo thêm chi phí, ví dụ tránh tạo tăng ca không cần thiết.",
+    impact:
+      "Tăng cao giúp tiết kiệm chi phí hơn, nhưng có thể giảm chất lượng vận hành ở ca đông.",
+  },
+  {
+    key: "reliability",
+    label: "Độ tin cậy",
+    shortLabel: "Tin cậy",
+    defaultValue: 5,
+    min: 0,
+    max: 15,
+    recommended: "3–10",
+    type: "positive",
+    description: "Ưu tiên nhân viên ít đi trễ, ít vắng, ít lỗi chấm công.",
+    impact: "Tăng cao sẽ ưu tiên người ổn định hơn, phù hợp cho ca quan trọng.",
+  },
+  {
+    key: "fatiguePenalty",
+    label: "Phạt quá tải / làm liên tục",
+    shortLabel: "Quá tải",
+    defaultValue: 20,
+    min: 0,
+    max: 35,
+    recommended: "15–25",
+    type: "penalty",
+    description:
+      "Trừ điểm nhân viên đã làm nhiều ngày liên tục hoặc có dấu hiệu quá tải.",
+    impact:
+      "Tăng cao sẽ tránh xếp nhân viên làm quá sức, nhưng có thể khó lấp ca khi thiếu người.",
+  },
+  {
+    key: "overtimePenalty",
+    label: "Phạt nguy cơ tăng ca",
+    shortLabel: "Tăng ca",
+    defaultValue: 15,
+    min: 0,
+    max: 30,
+    recommended: "10–20",
+    type: "penalty",
+    description: "Trừ điểm nếu phân công có nguy cơ vượt giờ hoặc tạo tăng ca.",
+    impact:
+      "Tăng cao giúp kiểm soát overtime tốt hơn, nhưng có thể giảm linh hoạt vận hành.",
+  },
+  {
+    key: "ruleRiskPenalty",
+    label: "Phạt rủi ro vi phạm rule",
+    shortLabel: "Rủi ro rule",
+    defaultValue: 30,
+    min: 0,
+    max: 40,
+    recommended: "20–35",
+    type: "penalty",
+    description:
+      "Trừ điểm khi phân công có cảnh báo như ngoài workingDays, vượt khuyến nghị giờ tuần, nghỉ chưa đủ giữa ca.",
+    impact:
+      "Tăng cao giúp hệ thống né rủi ro mạnh hơn. Nếu đặt quá thấp, lịch có thể linh hoạt nhưng dễ phát sinh cảnh báo.",
+  },
+];
+
+const SCORING_FIELD_MAP = SCORING_FIELD_META.reduce((acc, item) => {
+  acc[item.key] = item;
+  return acc;
+}, {});
+
+const SCORING_PRESETS = {
+  balanced: {
+    label: "Cân bằng",
+    description: "Phù hợp mặc định cho hầu hết nhà hàng.",
+    values: DEFAULT_SCORING_WEIGHTS,
+  },
+  complianceFirst: {
+    label: "Ưu tiên tuân thủ",
+    description: "Giảm rủi ro xếp quá giờ, làm liên tục, ngoài rule.",
+    values: {
+      roleFit: 18,
+      availabilityFit: 20,
+      workloadBalance: 18,
+      fairness: 10,
+      performance: 8,
+      employmentTypeFit: 12,
+      costEfficiency: 5,
+      reliability: 7,
+      fatiguePenalty: 28,
+      overtimePenalty: 24,
+      ruleRiskPenalty: 36,
+    },
+  },
+  performanceFirst: {
+    label: "Ưu tiên hiệu suất",
+    description: "Phù hợp khi cần người mạnh cho ca cao điểm.",
+    values: {
+      roleFit: 24,
+      availabilityFit: 12,
+      workloadBalance: 10,
+      fairness: 6,
+      performance: 18,
+      employmentTypeFit: 8,
+      costEfficiency: 4,
+      reliability: 10,
+      fatiguePenalty: 16,
+      overtimePenalty: 12,
+      ruleRiskPenalty: 24,
+    },
+  },
+  costControl: {
+    label: "Kiểm soát chi phí",
+    description: "Giảm nguy cơ phát sinh overtime và chi phí nhân sự.",
+    values: {
+      roleFit: 18,
+      availabilityFit: 14,
+      workloadBalance: 18,
+      fairness: 10,
+      performance: 8,
+      employmentTypeFit: 10,
+      costEfficiency: 14,
+      reliability: 6,
+      fatiguePenalty: 22,
+      overtimePenalty: 26,
+      ruleRiskPenalty: 30,
+    },
+  },
+};
+
+const clampScoreValue = (key, value) => {
+  const meta = SCORING_FIELD_MAP[key];
+  const fallback = meta?.defaultValue ?? DEFAULT_SCORING_WEIGHTS[key] ?? 0;
+  const n = Number(value);
+
+  if (!Number.isFinite(n)) return fallback;
+  if (!meta) return n;
+
+  return Math.max(meta.min, Math.min(meta.max, Math.round(n)));
+};
+
+const normalizeScoringWeights = (weights = {}) => {
+  const clean = stripTypenameDeep(weights);
+
+  return SCORING_FIELD_META.reduce((acc, meta) => {
+    acc[meta.key] = clampScoreValue(
+      meta.key,
+      clean[meta.key] ?? meta.defaultValue,
+    );
+    return acc;
+  }, {});
+};
+
+const getScoringTotal = (weights = {}) =>
+  SCORING_FIELD_META.reduce(
+    (sum, meta) => sum + Number(weights[meta.key] || 0),
+    0,
+  );
 
 const shiftRulesToTemplates = (rules = []) =>
   rules.map((rule) => ({
@@ -92,17 +354,18 @@ const ShiftRulesModal = ({
 
     setDraftLaborRules({
       ...DEFAULT_LABOR_RULES,
-      ...(policy?.laborRules || {}),
+      ...stripTypenameDeep(policy?.laborRules || {}),
     });
 
-    setDraftScoringWeights({
-      ...DEFAULT_SCORING_WEIGHTS,
-      ...(policy?.scoringWeights || {}),
-    });
+    setDraftScoringWeights(
+      normalizeScoringWeights({
+        ...DEFAULT_SCORING_WEIGHTS,
+        ...(policy?.scoringWeights || {}),
+      }),
+    );
 
     setActiveTab("shifts");
   }, [isOpen, policy, rules]);
-
   const validation = useMemo(
     () => validateShiftRules(draftRules),
     [draftRules],
@@ -146,17 +409,23 @@ const ShiftRulesModal = ({
   const updateScoringWeight = (field, value) => {
     setDraftScoringWeights((prev) => ({
       ...prev,
-      [field]: coerceNumber(value, prev[field]),
+      [field]: clampScoreValue(field, value),
     }));
+  };
+
+  const applyScoringPreset = (presetKey) => {
+    const preset = SCORING_PRESETS[presetKey];
+    if (!preset) return;
+    setDraftScoringWeights(normalizeScoringWeights(preset.values));
   };
 
   const handleSubmit = () => {
     if (!validation.ok) return;
 
-    onApply(draftRules, {
+    const policyInput = stripTypenameDeep({
       shiftTemplates: shiftRulesToTemplates(draftRules),
       laborRules: {
-        ...draftLaborRules,
+        ...stripTypenameDeep(draftLaborRules),
         weeklyHoursCap: coerceNumber(draftLaborRules.weeklyHoursCap, 48),
         recommendedWeeklyHoursCap: coerceNumber(
           draftLaborRules.recommendedWeeklyHoursCap,
@@ -176,10 +445,11 @@ const ShiftRulesModal = ({
           7,
         ),
       },
-      scoringWeights: draftScoringWeights,
+      scoringWeights: normalizeScoringWeights(draftScoringWeights),
     });
-  };
 
+    onApply(draftRules, policyInput);
+  };
   return (
     <Modal
       isOpen={isOpen}
@@ -605,32 +875,105 @@ const ShiftRulesModal = ({
 
         {activeTab === "scoring" ? (
           <div className="scoring-panel">
-            <div className="policy-banner">
+            <div className="policy-banner scoring-help-banner">
               <SlidersHorizontal size={18} />
               <div>
-                <strong>Trọng số ưu tiên 0–100</strong>
+                <strong>Trọng số ưu tiên không phải điểm chấm nhân viên</strong>
                 <span>
-                  Dùng cho engine gợi ý nhân viên phù hợp. Giai đoạn này lưu
-                  policy trước, auto schedule có thể tích hợp sâu ở bước sau.
+                  Đây là mức độ quan trọng của từng tiêu chí khi hệ thống gợi ý
+                  người phù hợp cho một ca. Số càng cao thì tiêu chí đó ảnh
+                  hưởng càng mạnh. Nên dùng preset nếu bạn không chắc cần chỉnh
+                  gì.
                 </span>
               </div>
             </div>
 
-            <div className="scoring-grid">
-              {Object.entries(draftScoringWeights).map(([key, value]) => (
-                <label key={key} className="score-field">
-                  <span>{key}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={value}
-                    onChange={(event) =>
-                      updateScoringWeight(key, event.target.value)
-                    }
-                  />
-                </label>
+            <div className="scoring-presets">
+              {Object.entries(SCORING_PRESETS).map(([key, preset]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => applyScoringPreset(key)}
+                >
+                  <strong>{preset.label}</strong>
+                  <span>{preset.description}</span>
+                </button>
               ))}
+            </div>
+
+            <div className="scoring-total-box">
+              <div>
+                <strong>
+                  Tổng trọng số hiện tại: {getScoringTotal(draftScoringWeights)}
+                </strong>
+                <span>
+                  Không bắt buộc bằng 100. Đây là bộ trọng số cộng/trừ trước khi
+                  hệ thống quy về thang điểm 0–100.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => applyScoringPreset("balanced")}
+              >
+                Khôi phục mặc định
+              </button>
+            </div>
+
+            <div className="scoring-grid enhanced">
+              {SCORING_FIELD_META.map((meta) => {
+                const value = Number(
+                  draftScoringWeights[meta.key] ?? meta.defaultValue,
+                );
+
+                return (
+                  <div
+                    key={meta.key}
+                    className={`score-card ${meta.type === "penalty" ? "penalty" : "positive"}`}
+                  >
+                    <div className="score-card-header">
+                      <div>
+                        <strong>{meta.label}</strong>
+                        <span>{meta.shortLabel}</span>
+                      </div>
+                      <div className="score-value">{value}</div>
+                    </div>
+
+                    <p>{meta.description}</p>
+
+                    <div className="score-range-row">
+                      <input
+                        type="range"
+                        min={meta.min}
+                        max={meta.max}
+                        value={value}
+                        onChange={(event) =>
+                          updateScoringWeight(meta.key, event.target.value)
+                        }
+                      />
+                      <input
+                        type="number"
+                        min={meta.min}
+                        max={meta.max}
+                        value={value}
+                        onChange={(event) =>
+                          updateScoringWeight(meta.key, event.target.value)
+                        }
+                      />
+                    </div>
+
+                    <div className="score-meta-row">
+                      <span>Khuyến nghị: {meta.recommended}</span>
+                      <span>
+                        Giới hạn: {meta.min}–{meta.max}
+                      </span>
+                    </div>
+
+                    <div className="score-impact">
+                      <strong>Ảnh hưởng:</strong> {meta.impact}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : null}

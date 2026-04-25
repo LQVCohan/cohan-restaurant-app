@@ -232,7 +232,21 @@ const normalizeTime = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : format(date, "HH:mm");
 };
+const stripTypenameDeep = (value) => {
+  if (Array.isArray(value)) {
+    return value.map(stripTypenameDeep);
+  }
 
+  if (value && typeof value === "object") {
+    return Object.entries(value).reduce((acc, [key, val]) => {
+      if (key === "__typename") return acc;
+      acc[key] = stripTypenameDeep(val);
+      return acc;
+    }, {});
+  }
+
+  return value;
+};
 const isValidTimeValue = (value) => /^\d{2}:\d{2}$/.test(String(value || ""));
 
 const rangesOverlap = (leftStart, leftEnd, rightStart, rightEnd) =>
@@ -761,7 +775,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       await updateSchedulingPolicy({
         variables: {
           restaurantId: effectiveRestaurantId,
-          input: policyInput,
+          input: stripTypenameDeep(policyInput),
         },
       });
     }
