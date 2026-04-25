@@ -14,6 +14,8 @@ import {
   PayrollPeriod,
   PayrollItem,
 } from "../../../models/index.js";
+import { getSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
+import { validateShiftAssignment } from "../../../src/services/scheduling/shiftAssignmentValidation.service.js";
 import {
   getOvertimeRequest,
   listOvertimeRequests,
@@ -240,7 +242,13 @@ export default {
       .populate("primaryRestaurant")
       .sort({ fullName: 1 });
   },
+  schedulingPolicy: async (_, { restaurantId }) => {
+    return getSchedulingPolicy({ restaurantId });
+  },
 
+  validateShiftAssignment: async (_, { input }, ctx) => {
+    return validateShiftAssignment({ input, ctx });
+  },
   staffAccountOverview: async (_, { staffId }, ctx) => {
     const staff = await resolveStaffDoc(staffId, ctx);
     if (!staff || staff.userType !== "STAFF") return null;

@@ -15,6 +15,7 @@ import {
   subWeeks,
 } from "date-fns";
 import { vi } from "date-fns/locale";
+import useSchedulingPolicy from "@/hooks/useSchedulingPolicy";
 import {
   AlertTriangle,
   BarChart3,
@@ -83,6 +84,7 @@ const GET_STAFF_LIST = gql`
       employeeCode
       department
       employmentStatus
+      employmentType
       workingDays
       baseSalary
     }
@@ -246,7 +248,24 @@ const compactNumber = (value, digits = 1) =>
 
 const getDepartmentLabel = (value) =>
   DEPARTMENT_LABELS[String(value || "").toLowerCase()] || "Khác";
+const POLICY_SHIFT_ICON_MAP = {
+  morning: "🌅",
+  afternoon: "☀️",
+  evening: "🌙",
+  night: "🌃",
+};
 
+const policyTemplatesToShiftRules = (templates = []) =>
+  templates
+    .filter((item) => item.enabled !== false)
+    .map((item) => ({
+      type: String(item.key || "").toLowerCase(),
+      label: item.label || item.key,
+      startTime: item.startTime,
+      endTime: item.endTime,
+      time: `${item.startTime} - ${item.endTime}`,
+      icon: POLICY_SHIFT_ICON_MAP[String(item.key || "").toLowerCase()] || "🕒",
+    }));
 const buildShiftRange = ({ date, startTimeText, endTimeText }) => {
   if (
     !date ||
@@ -480,7 +499,15 @@ const ScheduleManagement = ({ readOnly = false }) => {
     me?.restaurantForStaff ||
     restaurantOptions[0]?.id ||
     "";
-
+  const {
+    policy: schedulingPolicy,
+    loading: schedulingPolicyLoading,
+    updateSchedulingPolicy,
+    updateState: updateSchedulingPolicyState,
+    validateShiftAssignment,
+  } = useSchedulingPolicy({
+    restaurantId: effectiveRestaurantId,
+  });
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
   const monthStart = startOfMonth(currentDate);
@@ -571,6 +598,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           job: mapDepartmentToJob(item.department),
           status: item.employmentStatus === "working" ? "active" : "off",
           employmentStatus: item.employmentStatus,
+          employmentType: item.employmentType,
           workingDays: item.workingDays || [],
           hourlyRate,
           salary: hourlyRate,
@@ -692,7 +720,18 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setSelectedAutoShiftKeys({});
     setAutoScheduleError("");
   }, [effectiveRestaurantId]);
+  useEffect(() => {
+    if (!schedulingPolicy?.shiftTemplates?.length) return;
 
+    const nextRules = policyTemplatesToShiftRules(
+      schedulingPolicy.shiftTemplates,
+    );
+
+    if (!nextRules.length) return;
+
+    setShiftRules(nextRules);
+    persistShiftRules(nextRules);
+  }, [schedulingPolicy?.shiftTemplates]);
   const handleNavigate = (direction) => {
     if (viewMode === "week") {
       setCurrentDate((prev) =>
@@ -711,11 +750,22 @@ const ScheduleManagement = ({ readOnly = false }) => {
     );
   };
 
-  const handleApplyShiftRules = (nextRules) => {
+  const handleApplyShiftRules = async (nextRules, policyInput) => {
     const validation = validateShiftRules(nextRules);
     if (!validation.ok) return;
+
     setShiftRules(nextRules);
     persistShiftRules(nextRules);
+
+    if (effectiveRestaurantId && policyInput) {
+      await updateSchedulingPolicy({
+        variables: {
+          restaurantId: effectiveRestaurantId,
+          input: policyInput,
+        },
+      });
+    }
+
     setIsShiftSettingsOpen(false);
   };
 
@@ -740,7 +790,79 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAddModalContext({ date: format(dateObj, "yyyy-MM-dd"), shiftType });
     setIsAddModalOpen(true);
   };
+  const formatAssignmentIssue = (issue) => {
+    const message = issue?.message || "Có vấn đề với phân công ca.";
+    const action = issue?.suggestedAction
+      ? `\nGợi ý: ${issue.suggestedAction}`
+      : "";
+    return `- ${message}${action}`;
+  };
 
+  const validateShiftAssignmentOrThrow = async ({
+    employeeId,
+    shiftType,
+    startTime,
+    endTime,
+    ignoreShiftId,
+  }) => {
+    const result = await validateShiftAssignment({
+      variables: {
+        input: {
+          employeeId,
+          restaurantId: effectiveRestaurantId,
+          shiftType: String(shiftType || "").toUpperCase(),
+          startTime:
+            startTime instanceof Date ? startTime.toISOString() : startTime,
+          endTime: endTime instanceof Date ? endTime.toISOString() : endTime,
+          ignoreShiftId: ignoreShiftId || undefined,
+        },
+      },
+    });
+
+    const validation = result?.data?.validateShiftAssignment;
+
+    if (!validation) {
+      throw new Error("Không nhận được kết quả kiểm tra phân công ca.");
+    }
+
+    if (!validation.ok) {
+      const text = validation.blockingErrors
+        .map(formatAssignmentIssue)
+        .join("\n\n");
+
+      throw new Error(text || "Không thể xếp ca vì vi phạm quy tắc lịch.");
+    }
+
+    if (validation.warnings?.length) {
+      const warningText = validation.warnings
+        .map(formatAssignmentIssue)
+        .join("\n\n");
+
+      const employeeName =
+        staff.find((person) => String(person.id) === String(employeeId))
+          ?.name || "nhân viên";
+
+      const reason = window.prompt(
+        `Có cảnh báo khi xếp ca cho ${employeeName}:\n\n${warningText}\n\nNhập lý do override để tiếp tục:`,
+      );
+
+      if (!reason || !reason.trim()) {
+        throw new Error("Đã hủy thao tác vì chưa nhập lý do override.");
+      }
+
+      return {
+        allowOverride: true,
+        overrideReason: reason.trim(),
+        validation,
+      };
+    }
+
+    return {
+      allowOverride: false,
+      overrideReason: "",
+      validation,
+    };
+  };
   const handleCreateShift = async (newShiftData) => {
     if (readOnly) return;
 
@@ -756,21 +878,24 @@ const ScheduleManagement = ({ readOnly = false }) => {
       startTimeText: config.startTime,
       endTimeText: config.endTime,
     });
+    const overrideByEmployee = new Map();
 
-    if (
-      overlapsExistingShiftGroup({
-        date: newShiftData.date,
-        shiftGroupId: "",
+    for (const employeeId of newShiftData.staffIds || []) {
+      const override = await validateShiftAssignmentOrThrow({
+        employeeId,
+        shiftType: newShiftData.shiftType,
         startTime,
         endTime,
-      })
-    ) {
-      throw new Error("Thời gian ca mới đang chồng với ca khác trong ngày.");
+      });
+
+      overrideByEmployee.set(String(employeeId), override);
     }
 
     await Promise.all(
-      (newShiftData.staffIds || []).map((employeeId) =>
-        createShift({
+      (newShiftData.staffIds || []).map((employeeId) => {
+        const override = overrideByEmployee.get(String(employeeId)) || {};
+
+        return createShift({
           variables: {
             input: {
               employeeId,
@@ -780,10 +905,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
               endTime: endTime.toISOString(),
               status: "scheduled",
               notes: newShiftData.notes || "",
+              allowOverride: Boolean(override.allowOverride),
+              overrideReason: override.overrideReason || undefined,
             },
           },
-        }),
-      ),
+        });
+      }),
     );
 
     await refetch();
@@ -827,6 +954,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
       endTimeText: found.endTime,
     });
 
+    const override = await validateShiftAssignmentOrThrow({
+      employeeId: staffId,
+      shiftType: found.shiftType,
+      startTime,
+      endTime,
+    });
+
     await createShift({
       variables: {
         input: {
@@ -837,6 +971,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
           endTime: endTime.toISOString(),
           status: "scheduled",
           notes: found.notes || "",
+          allowOverride: Boolean(override.allowOverride),
+          overrideReason: override.overrideReason || undefined,
         },
       },
     });
@@ -876,7 +1012,19 @@ const ScheduleManagement = ({ readOnly = false }) => {
     ) {
       throw new Error("Thời gian ca đang chồng với ca khác trong ngày.");
     }
+    const overrideByShiftId = new Map();
 
+    for (const record of selectedShift.records) {
+      const override = await validateShiftAssignmentOrThrow({
+        employeeId: record.employeeId,
+        shiftType: selectedShift.shiftType,
+        startTime: nextStart,
+        endTime: nextEnd,
+        ignoreShiftId: record.id,
+      });
+
+      overrideByShiftId.set(String(record.id), override);
+    }
     await Promise.all(
       selectedShift.records.map((record) =>
         updateShift({
@@ -885,6 +1033,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
             input: {
               startTime: nextStart.toISOString(),
               endTime: nextEnd.toISOString(),
+              allowOverride: Boolean(
+                overrideByShiftId.get(String(record.id))?.allowOverride,
+              ),
+              overrideReason:
+                overrideByShiftId.get(String(record.id))?.overrideReason ||
+                undefined,
             },
           },
         }),
@@ -976,8 +1130,25 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAutoScheduleError("");
 
     try {
+      const validatedInputs = [];
+
+      for (const input of inputs) {
+        const override = await validateShiftAssignmentOrThrow({
+          employeeId: input.employeeId,
+          shiftType: input.shiftType,
+          startTime: input.startTime,
+          endTime: input.endTime,
+        });
+
+        validatedInputs.push({
+          ...input,
+          allowOverride: Boolean(override.allowOverride),
+          overrideReason: override.overrideReason || undefined,
+        });
+      }
+
       await Promise.all(
-        inputs.map((input) =>
+        validatedInputs.map((input) =>
           createShift({
             variables: {
               input,
@@ -1482,6 +1653,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
           isOpen={isShiftSettingsOpen}
           onClose={() => setIsShiftSettingsOpen(false)}
           rules={shiftRules}
+          policy={schedulingPolicy}
+          policyLoading={schedulingPolicyLoading}
+          policySaving={updateSchedulingPolicyState.loading}
           onApply={handleApplyShiftRules}
         />
       )}

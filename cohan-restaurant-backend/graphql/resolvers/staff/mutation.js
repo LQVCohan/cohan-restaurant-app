@@ -15,6 +15,8 @@ import {
   EmployeeCodeCounter,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
+import { updateSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
+import { assertShiftAssignmentValid } from "../../../src/services/scheduling/shiftAssignmentValidation.service.js";
 import {
   approveAttendanceCorrectionRequest as approveAttendanceCorrectionRequestService,
   cancelAttendanceCorrectionRequest as cancelAttendanceCorrectionRequestService,
@@ -905,14 +907,20 @@ export default {
     return staff;
   },
 
-  createStaffShift: async (_, { input }) => {
-    await assertNoLockedPayrollPeriodOverlap({
-      restaurantId: input.restaurantId,
-      employeeId: input.employeeId,
-      startDate: new Date(input.startTime),
-      endDate: new Date(input.endTime),
-      action: "shift",
+  createStaffShift: async (_, { input }, ctx) => {
+    await assertShiftAssignmentValid({
+      input: {
+        employeeId: input.employeeId,
+        restaurantId: input.restaurantId,
+        shiftType: input.shiftType,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        allowOverride: input.allowOverride,
+        overrideReason: input.overrideReason,
+      },
+      ctx,
     });
+
     const staff = await Staff.findById(input.employeeId).lean();
     if (!staff || staff.userType !== "STAFF") {
       throw new Error("Staff not found");
@@ -941,7 +949,7 @@ export default {
     };
   },
 
-  updateStaffShift: async (_, { shiftId, input }) => {
+  updateStaffShift: async (_, { shiftId, input }, ctx) => {
     const oldShift = await Shift.findById(shiftId).lean();
     if (oldShift) {
       await assertNoLockedPayrollPeriodOverlap({
@@ -957,7 +965,26 @@ export default {
       payload.shiftType = payload.shiftType.toString().toLowerCase();
     if (payload.startTime) payload.startTime = new Date(payload.startTime);
     if (payload.endTime) payload.endTime = new Date(payload.endTime);
+    if (oldShift) {
+      const nextStartTime = payload.startTime || oldShift.startTime;
+      const nextEndTime = payload.endTime || oldShift.endTime;
+      const nextRestaurantId = oldShift.restaurantId;
+      const nextEmployeeId = oldShift.employeeId;
 
+      await assertShiftAssignmentValid({
+        input: {
+          employeeId: nextEmployeeId,
+          restaurantId: nextRestaurantId,
+          shiftType: payload.shiftType || oldShift.shiftType,
+          startTime: nextStartTime,
+          endTime: nextEndTime,
+          ignoreShiftId: shiftId,
+          allowOverride: input.allowOverride,
+          overrideReason: input.overrideReason,
+        },
+        ctx,
+      });
+    }
     const updated = await Shift.findByIdAndUpdate(shiftId, payload, {
       new: true,
     }).populate("employeeId", "fullName");
@@ -990,7 +1017,13 @@ export default {
     const deleted = await Shift.findByIdAndDelete(shiftId);
     return Boolean(deleted);
   },
-
+  updateSchedulingPolicy: async (_, { restaurantId, input }, ctx) => {
+    return updateSchedulingPolicy({
+      restaurantId,
+      input,
+      ctx,
+    });
+  },
   createPayrollPeriod: async (_, { input }, ctx) => {
     assertPayrollPermission(ctx, "payroll.period.create");
     const actor = ctx?.user || {};

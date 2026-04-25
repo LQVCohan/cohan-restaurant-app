@@ -1021,6 +1021,8 @@ input CreateStaffShiftInput {
   endTime: DateTime!
   status: String
   notes: String
+  allowOverride: Boolean
+  overrideReason: String
 }
 
 input UpdateStaffShiftInput {
@@ -1029,6 +1031,8 @@ input UpdateStaffShiftInput {
   endTime: DateTime
   status: String
   notes: String
+  allowOverride: Boolean
+  overrideReason: String
 }
 
 type StaffSchedulingSummary {
@@ -1186,7 +1190,198 @@ type StaffReportsOverview {
   attendanceDetails: [StaffAttendanceDetailRow!]!
   leaveDetails: [StaffLeaveDetailRow!]!
 }
+type ShiftTemplate {
+  key: String!
+  label: String!
+  startTime: String!
+  endTime: String!
+  enabled: Boolean!
+  allowCrossDay: Boolean!
+}
 
+input ShiftTemplateInput {
+  key: String!
+  label: String!
+  startTime: String!
+  endTime: String!
+  enabled: Boolean
+  allowCrossDay: Boolean
+}
+
+type SchedulingLaborRules {
+  respectWorkingDays: Boolean!
+  workingDaysRuleLevel: String!
+
+  respectLeaveRequests: Boolean!
+  leaveConflictRuleLevel: String!
+
+  preventShiftOverlap: Boolean!
+
+  weeklyHoursCap: Float!
+  recommendedWeeklyHoursCap: Float!
+  weeklyHoursRuleLevel: String!
+
+  maxShiftsPerDay: Int!
+  maxShiftsPerDayRuleLevel: String!
+
+  minRestHoursBetweenShifts: Float!
+  minRestRuleLevel: String!
+
+  maxConsecutiveWorkingDays: Int!
+  hardMaxConsecutiveWorkingDays: Int!
+  consecutiveDaysRuleLevel: String!
+
+  allowManagerOverride: Boolean!
+  overrideRequiresReason: Boolean!
+}
+
+input SchedulingLaborRulesInput {
+  respectWorkingDays: Boolean
+  workingDaysRuleLevel: String
+
+  respectLeaveRequests: Boolean
+  leaveConflictRuleLevel: String
+
+  preventShiftOverlap: Boolean
+
+  weeklyHoursCap: Float
+  recommendedWeeklyHoursCap: Float
+  weeklyHoursRuleLevel: String
+
+  maxShiftsPerDay: Int
+  maxShiftsPerDayRuleLevel: String
+
+  minRestHoursBetweenShifts: Float
+  minRestRuleLevel: String
+
+  maxConsecutiveWorkingDays: Int
+  hardMaxConsecutiveWorkingDays: Int
+  consecutiveDaysRuleLevel: String
+
+  allowManagerOverride: Boolean
+  overrideRequiresReason: Boolean
+}
+
+type SchedulingScoringWeights {
+  roleFit: Float!
+  availabilityFit: Float!
+  workloadBalance: Float!
+  fairness: Float!
+  performance: Float!
+  employmentTypeFit: Float!
+  costEfficiency: Float!
+  reliability: Float!
+  fatiguePenalty: Float!
+  overtimePenalty: Float!
+  ruleRiskPenalty: Float!
+}
+
+input SchedulingScoringWeightsInput {
+  roleFit: Float
+  availabilityFit: Float
+  workloadBalance: Float
+  fairness: Float
+  performance: Float
+  employmentTypeFit: Float
+  costEfficiency: Float
+  reliability: Float
+  fatiguePenalty: Float
+  overtimePenalty: Float
+  ruleRiskPenalty: Float
+}
+
+type EmploymentTypeSchedulingRule {
+  weeklyHoursTarget: Float!
+  weeklyHoursCap: Float!
+  maxShiftsPerWeek: Int!
+  maxConsecutiveWorkingDays: Int!
+  requireAvailability: Boolean!
+  allowOvertime: Boolean!
+  avoidSoloCriticalShift: Boolean!
+  priorityWeight: Float!
+}
+
+input EmploymentTypeSchedulingRuleInput {
+  weeklyHoursTarget: Float
+  weeklyHoursCap: Float
+  maxShiftsPerWeek: Int
+  maxConsecutiveWorkingDays: Int
+  requireAvailability: Boolean
+  allowOvertime: Boolean
+  avoidSoloCriticalShift: Boolean
+  priorityWeight: Float
+}
+
+type EmploymentTypeSchedulingPolicy {
+  full_time: EmploymentTypeSchedulingRule
+  part_time: EmploymentTypeSchedulingRule
+  probation: EmploymentTypeSchedulingRule
+  seasonal: EmploymentTypeSchedulingRule
+  contract: EmploymentTypeSchedulingRule
+}
+
+input EmploymentTypeSchedulingPolicyInput {
+  full_time: EmploymentTypeSchedulingRuleInput
+  part_time: EmploymentTypeSchedulingRuleInput
+  probation: EmploymentTypeSchedulingRuleInput
+  seasonal: EmploymentTypeSchedulingRuleInput
+  contract: EmploymentTypeSchedulingRuleInput
+}
+
+type SchedulingPolicy {
+  id: ID!
+  restaurantId: ID!
+  shiftTemplates: [ShiftTemplate!]!
+  laborRules: SchedulingLaborRules!
+  scoringWeights: SchedulingScoringWeights!
+  employmentTypePolicy: EmploymentTypeSchedulingPolicy
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input SchedulingPolicyInput {
+  restaurantId: ID
+  shiftTemplates: [ShiftTemplateInput!]
+  laborRules: SchedulingLaborRulesInput
+  scoringWeights: SchedulingScoringWeightsInput
+  employmentTypePolicy: EmploymentTypeSchedulingPolicyInput
+}
+
+type ShiftAssignmentIssue {
+  code: String!
+  severity: String!
+  message: String!
+  suggestedAction: String
+}
+
+type ShiftAssignmentMetrics {
+  shiftHours: Float!
+  weeklyHoursBefore: Float!
+  weeklyHoursAfter: Float!
+  shiftsInDayAfter: Int!
+  consecutiveWorkingDays: Int!
+}
+
+type ShiftAssignmentValidationResult {
+  ok: Boolean!
+  employeeId: ID!
+  restaurantId: ID!
+  score: Int!
+  blockingErrors: [ShiftAssignmentIssue!]!
+  warnings: [ShiftAssignmentIssue!]!
+  metrics: ShiftAssignmentMetrics!
+}
+
+input ValidateShiftAssignmentInput {
+  employeeId: ID!
+  restaurantId: ID!
+  shiftType: ShiftType
+  startTime: DateTime!
+  endTime: DateTime!
+  ignoreShiftId: ID
+  allowOverride: Boolean
+  overrideReason: String
+}
 input StaffReportsInput {
   restaurantId: ID
   startDate: DateTime!
@@ -1200,6 +1395,10 @@ input StaffReportsInput {
 # =========================
 
 type Query {
+  schedulingPolicy(restaurantId: ID!): SchedulingPolicy!
+  validateShiftAssignment(
+    input: ValidateShiftAssignmentInput!
+  ): ShiftAssignmentValidationResult!
   overtimeRequests(filter: OvertimeRequestFilterInput): [OvertimeRequest!]!
   overtimeRequest(id: ID!): OvertimeRequest
   attendanceCorrectionRequests(
@@ -1276,6 +1475,10 @@ type Query {
 # =========================
 
 type Mutation {
+  updateSchedulingPolicy(
+    restaurantId: ID!
+    input: SchedulingPolicyInput!
+  ): SchedulingPolicy!
   createOvertimeRequest(input: CreateOvertimeRequestInput!): OvertimeRequest!
   confirmOvertimeRequest(input: ConfirmOvertimeRequestInput!): OvertimeRequest!
   approveOvertimeRequest(input: ApproveOvertimeRequestInput!): OvertimeRequest!
