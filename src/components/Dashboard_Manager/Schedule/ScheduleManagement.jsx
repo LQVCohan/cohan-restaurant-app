@@ -1184,10 +1184,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
           }
         }
 
-        if (unresolvedCount > 0) {
-          unresolvedShifts += 1;
-        }
-
         const existingUnfilledRoles = item.unfilledRoles || [];
 
         const backendBlockedByRole = blockedCandidates.reduce(
@@ -1208,11 +1204,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
         const unfilledRoles = existingUnfilledRoles.map((roleRow) => {
           const role = String(roleRow.role || "");
           const extraBlocked = backendBlockedByRole.get(role) || [];
+          const existingBlockedCandidates = roleRow.blockedCandidates || [];
+
           const allBlocked = [
-            ...(roleRow.blockedCandidates || []),
+            ...existingBlockedCandidates,
             ...extraBlocked.filter(
               (candidate) =>
-                !(roleRow.blockedCandidates || []).some(
+                !existingBlockedCandidates.some(
                   (existing) =>
                     String(existing.staffId) === String(candidate.staffId),
                 ),
@@ -1236,6 +1234,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           const planned = Number(
             plannedByRole.get(String(roleRow.role || "")) || 0,
           );
+
           const unresolved = Math.max(
             0,
             Number(roleRow.missing || 0) - planned,
@@ -1252,6 +1251,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
           (sum, roleRow) => sum + Number(roleRow.unresolved || 0),
           0,
         );
+
+        if (unresolvedCount > 0) {
+          unresolvedShifts += 1;
+        }
 
         items.push({
           ...item,

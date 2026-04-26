@@ -372,14 +372,41 @@ export const buildAutoSchedulePreview = ({
 
     const plannedAssignments = [];
     const unfilledRoles = [];
-
+    const buildFallbackCandidatesForRole = (role) =>
+      Array.from(staffById.values())
+        .filter((staff) => mapDepartmentToJob(staff.department) === role)
+        .map((staff) => ({
+          staffId: staff.id,
+          fullName: staff.fullName,
+          role,
+          reason:
+            "Đề xuất từ danh sách nhân sự hiện có: đang thuộc bộ phận phù hợp với vai trò cần bổ sung",
+          source: "staff_list_fallback",
+        }));
     for (const roleNeed of missingRoles) {
       const needed = Math.abs(Number(roleNeed.delta || 0));
       let assignedForRole = 0;
 
-      const roleCandidates = (shiftInsight.suggestedCandidates || [])
-        .filter((candidate) => candidate.role === roleNeed.role)
-        .sort((left, right) => {
+      const assistantRoleCandidates = (
+        shiftInsight.suggestedCandidates || []
+      ).filter((candidate) => candidate.role === roleNeed.role);
+
+      const fallbackRoleCandidates = buildFallbackCandidatesForRole(
+        roleNeed.role,
+      );
+
+      const roleCandidateMap = new Map();
+
+      [...assistantRoleCandidates, ...fallbackRoleCandidates].forEach(
+        (candidate) => {
+          const key = String(candidate.staffId || "");
+          if (!key || roleCandidateMap.has(key)) return;
+          roleCandidateMap.set(key, candidate);
+        },
+      );
+
+      const roleCandidates = Array.from(roleCandidateMap.values()).sort(
+        (left, right) => {
           const leftHours = getWeeklyHours(
             weekHoursByStaff,
             String(left.staffId),
@@ -397,8 +424,8 @@ export const buildAutoSchedulePreview = ({
             (candidateOrder.get(`${left.staffId}|${left.role}`) ?? 99) -
             (candidateOrder.get(`${right.staffId}|${right.role}`) ?? 99)
           );
-        });
-
+        },
+      );
       const roleRejectedCandidates = [];
 
       if (!roleCandidates.length) {

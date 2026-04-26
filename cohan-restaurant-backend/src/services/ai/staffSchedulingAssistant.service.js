@@ -66,8 +66,14 @@ const roleFromDepartment = (department) =>
   ROLE_BY_DEPARTMENT[String(department || "").toLowerCase()] || "server";
 
 function buildBaseRoleNeed(expectedOrders, expectedGuests, demandLevel) {
-  const server = Math.max(1, Math.ceil(expectedGuests / (demandLevel === "high" ? 22 : 26)));
-  const cook = Math.max(1, Math.ceil(expectedOrders / (demandLevel === "high" ? 16 : 20)));
+  const server = Math.max(
+    1,
+    Math.ceil(expectedGuests / (demandLevel === "high" ? 22 : 26)),
+  );
+  const cook = Math.max(
+    1,
+    Math.ceil(expectedOrders / (demandLevel === "high" ? 16 : 20)),
+  );
   const cashier = expectedOrders > 0 ? 1 : 0;
   const cleaner = demandLevel === "high" ? 1 : expectedOrders >= 8 ? 1 : 0;
   const host = expectedGuests >= 28 ? 1 : demandLevel === "high" ? 1 : 0;
@@ -84,7 +90,8 @@ function demandLevelFromExpected(expectedOrders, expectedGuests) {
 
 function resolveShiftStatus(deltaStaff) {
   if (deltaStaff <= -3) return { status: "understaffed", severity: "high" };
-  if (deltaStaff === -2 || deltaStaff === -1) return { status: "understaffed", severity: "medium" };
+  if (deltaStaff === -2 || deltaStaff === -1)
+    return { status: "understaffed", severity: "medium" };
   if (deltaStaff >= 3) return { status: "overstaffed", severity: "high" };
   if (deltaStaff >= 1) return { status: "overstaffed", severity: "low" };
   return { status: "balanced", severity: "low" };
@@ -113,7 +120,12 @@ function buildFallbackDemandByShift(orders, timezone, horizonDays) {
     const dayKey = toIsoDay(createdAt, timezone);
     const key = `${dayKey}|${shiftType}`;
     if (!buckets.has(key)) {
-      buckets.set(key, { shiftType, expectedOrders: 0, expectedGuests: 0, points: 0 });
+      buckets.set(key, {
+        shiftType,
+        expectedOrders: 0,
+        expectedGuests: 0,
+        points: 0,
+      });
     }
 
     const row = buckets.get(key);
@@ -125,7 +137,8 @@ function buildFallbackDemandByShift(orders, timezone, horizonDays) {
   const byShift = new Map();
   for (const row of buckets.values()) {
     const shiftType = row.shiftType || "morning";
-    if (!byShift.has(shiftType)) byShift.set(shiftType, { orders: [], guests: [] });
+    if (!byShift.has(shiftType))
+      byShift.set(shiftType, { orders: [], guests: [] });
     byShift.get(shiftType).orders.push(row.expectedOrders);
     byShift.get(shiftType).guests.push(row.expectedGuests);
   }
@@ -133,8 +146,10 @@ function buildFallbackDemandByShift(orders, timezone, horizonDays) {
   const template = {};
   for (const key of Object.keys(SHIFT_WINDOWS)) {
     const agg = byShift.get(key) || { orders: [4], guests: [10] };
-    const avgOrders = agg.orders.reduce((a, b) => a + b, 0) / Math.max(1, agg.orders.length);
-    const avgGuests = agg.guests.reduce((a, b) => a + b, 0) / Math.max(1, agg.guests.length);
+    const avgOrders =
+      agg.orders.reduce((a, b) => a + b, 0) / Math.max(1, agg.orders.length);
+    const avgGuests =
+      agg.guests.reduce((a, b) => a + b, 0) / Math.max(1, agg.guests.length);
     template[key] = {
       expectedOrders: Number(avgOrders.toFixed(2)),
       expectedGuests: Number(avgGuests.toFixed(2)),
@@ -203,7 +218,10 @@ function convertHourlyForecastToShiftDemand(hourlyForecast = []) {
       expectedGuests: Number(g.expectedGuests.toFixed(2)),
       confidence: Number((g.confidence / Math.max(1, g.points)).toFixed(3)),
     }))
-    .sort((a, b) => a.date.localeCompare(b.date) || a.shiftType.localeCompare(b.shiftType));
+    .sort(
+      (a, b) =>
+        a.date.localeCompare(b.date) || a.shiftType.localeCompare(b.shiftType),
+    );
 }
 
 export async function buildStaffSchedulingAssistant({
@@ -228,7 +246,12 @@ export async function buildStaffSchedulingAssistant({
   const [staffList, shifts, recentOrders] = await Promise.all([
     Staff.find({
       userType: "STAFF",
-      $or: [{ primaryRestaurant: rid }, { refRestaurants: rid }],
+      deletedAt: null,
+      $or: [
+        { primaryRestaurant: rid },
+        { refRestaurants: rid },
+        { restaurantForStaff: rid },
+      ],
       employmentStatus: { $in: [...ACTIVE_EMPLOYMENT] },
     })
       .select({
@@ -237,10 +260,23 @@ export async function buildStaffSchedulingAssistant({
         employmentStatus: 1,
         positionTitle: 1,
         baseSalary: 1,
+        restaurantForStaff: 1,
+        primaryRestaurant: 1,
+        refRestaurants: 1,
       })
       .lean(),
-    Shift.find({ restaurantId: rid, startTime: { $gte: startDate, $lte: endDate } })
-      .select({ employeeId: 1, shiftType: 1, startTime: 1, endTime: 1, status: 1, notes: 1 })
+    Shift.find({
+      restaurantId: rid,
+      startTime: { $gte: startDate, $lte: endDate },
+    })
+      .select({
+        employeeId: 1,
+        shiftType: 1,
+        startTime: 1,
+        endTime: 1,
+        status: 1,
+        notes: 1,
+      })
       .lean(),
     Order.find({
       restaurantId: rid,
@@ -266,14 +302,24 @@ export async function buildStaffSchedulingAssistant({
       timezone,
       horizonDays: safeHorizonDays,
     });
-    shiftDemand = convertHourlyForecastToShiftDemand(forecast?.hourlyForecast || []);
+    shiftDemand = convertHourlyForecastToShiftDemand(
+      forecast?.hourlyForecast || [],
+    );
     if (!shiftDemand.length) {
       basedOnForecast = false;
-      shiftDemand = buildFallbackDemandByShift(recentOrders, timezone, safeHorizonDays);
+      shiftDemand = buildFallbackDemandByShift(
+        recentOrders,
+        timezone,
+        safeHorizonDays,
+      );
     }
   } catch {
     basedOnForecast = false;
-    shiftDemand = buildFallbackDemandByShift(recentOrders, timezone, safeHorizonDays);
+    shiftDemand = buildFallbackDemandByShift(
+      recentOrders,
+      timezone,
+      safeHorizonDays,
+    );
   }
 
   const staffById = new Map(
@@ -287,7 +333,7 @@ export async function buildStaffSchedulingAssistant({
         employmentStatus: String(s.employmentStatus || "working").toLowerCase(),
         score: Number(performanceByStaff.get(String(s._id)) || 0),
       },
-    ])
+    ]),
   );
 
   const shiftMap = new Map();
@@ -329,17 +375,24 @@ export async function buildStaffSchedulingAssistant({
 
   const shiftsOutput = [];
 
-  for (const group of [...shiftMap.values()].sort((a, b) => a.shiftKey.localeCompare(b.shiftKey))) {
-    const demand =
-      shiftDemand.find((x) => x.shiftKey === group.shiftKey) ||
-      {
-        expectedOrders: 4,
-        expectedGuests: 12,
-        confidence: 0.4,
-      };
+  for (const group of [...shiftMap.values()].sort((a, b) =>
+    a.shiftKey.localeCompare(b.shiftKey),
+  )) {
+    const demand = shiftDemand.find((x) => x.shiftKey === group.shiftKey) || {
+      expectedOrders: 4,
+      expectedGuests: 12,
+      confidence: 0.4,
+    };
 
-    const demandLevel = demandLevelFromExpected(demand.expectedOrders, demand.expectedGuests);
-    const baseRoles = buildBaseRoleNeed(demand.expectedOrders, demand.expectedGuests, demandLevel);
+    const demandLevel = demandLevelFromExpected(
+      demand.expectedOrders,
+      demand.expectedGuests,
+    );
+    const baseRoles = buildBaseRoleNeed(
+      demand.expectedOrders,
+      demand.expectedGuests,
+      demandLevel,
+    );
 
     const roleRows = Object.entries(baseRoles).map(([role, required]) => ({
       role,
@@ -367,14 +420,21 @@ export async function buildStaffSchedulingAssistant({
       delta: row.assigned - row.required,
     }));
 
-    const recommendedTotalStaff = recommendedRoles.reduce((sum, r) => sum + r.required, 0);
+    const recommendedTotalStaff = recommendedRoles.reduce(
+      (sum, r) => sum + r.required,
+      0,
+    );
     const currentAssignedStaff = group.staffIds.size;
     const deltaStaff = currentAssignedStaff - recommendedTotalStaff;
     const { status, severity } = resolveShiftStatus(deltaStaff);
 
     const shiftWindow = SHIFT_WINDOWS[group.shiftType] || SHIFT_WINDOWS.morning;
-    const shiftStart = new Date(`${group.date}T${String(shiftWindow.startHour).padStart(2, "0")}:00:00.000Z`);
-    const shiftEnd = new Date(`${group.date}T${String(shiftWindow.endHour).padStart(2, "0")}:00:00.000Z`);
+    const shiftStart = new Date(
+      `${group.date}T${String(shiftWindow.startHour).padStart(2, "0")}:00:00.000Z`,
+    );
+    const shiftEnd = new Date(
+      `${group.date}T${String(shiftWindow.endHour).padStart(2, "0")}:00:00.000Z`,
+    );
 
     const assignedIds = new Set([...group.staffIds].map(String));
     const suggestedCandidates = [];
@@ -390,7 +450,9 @@ export async function buildStaffSchedulingAssistant({
         .filter((p) => SUGGESTIBLE_EMPLOYMENT.has(p.employmentStatus))
         .filter((p) => !assignedIds.has(p.id))
         .filter((p) => {
-          const personShifts = shifts.filter((s) => String(s.employeeId) === p.id);
+          const personShifts = shifts.filter(
+            (s) => String(s.employeeId) === p.id,
+          );
           return !personShifts.some((s) => {
             const sStart = toDate(s.startTime);
             const sEnd = toDate(s.endTime);
@@ -406,7 +468,8 @@ export async function buildStaffSchedulingAssistant({
           staffId: candidate.id,
           fullName: candidate.fullName,
           role: candidate.role,
-          reason: "working + matching department + không trùng ca trong khoảng hiện tại",
+          reason:
+            "working + matching department + không trùng ca trong khoảng hiện tại",
         });
       }
     }
@@ -423,7 +486,9 @@ export async function buildStaffSchedulingAssistant({
       deltaStaff,
       status,
       severity,
-      confidence: Number(clamp(Number(demand.confidence || 0.45), 0.35, 0.95).toFixed(3)),
+      confidence: Number(
+        clamp(Number(demand.confidence || 0.45), 0.35, 0.95).toFixed(3),
+      ),
       recommendedRoles,
       suggestedCandidates,
     });
@@ -435,8 +500,10 @@ export async function buildStaffSchedulingAssistant({
   const highestRiskShift =
     shiftsOutput
       .filter((s) => s.status !== "balanced")
-      .sort((a, b) => (a.deltaStaff - b.deltaStaff) || (b.expectedGuests - a.expectedGuests))[0]?.shiftKey ||
-    null;
+      .sort(
+        (a, b) =>
+          a.deltaStaff - b.deltaStaff || b.expectedGuests - a.expectedGuests,
+      )[0]?.shiftKey || null;
 
   const summaryNotes = [];
   if (underStaffed.length) {
@@ -444,7 +511,10 @@ export async function buildStaffSchedulingAssistant({
     for (const shift of underStaffed) {
       for (const role of shift.recommendedRoles) {
         if (role.delta < 0) {
-          missingRoles.set(role.role, (missingRoles.get(role.role) || 0) + Math.abs(role.delta));
+          missingRoles.set(
+            role.role,
+            (missingRoles.get(role.role) || 0) + Math.abs(role.delta),
+          );
         }
       }
     }
@@ -455,8 +525,10 @@ export async function buildStaffSchedulingAssistant({
       .join(", ");
     if (topMissing) summaryNotes.push(`Vai trò thiếu nổi bật: ${topMissing}.`);
   }
-  if (overStaffed.length) summaryNotes.push("Có ca đang overstaff, cân nhắc điều chuyển nhân sự.");
-  if (!summaryNotes.length) summaryNotes.push("Phân bổ ca hiện tại tương đối cân bằng với dự báo.");
+  if (overStaffed.length)
+    summaryNotes.push("Có ca đang overstaff, cân nhắc điều chuyển nhân sự.");
+  if (!summaryNotes.length)
+    summaryNotes.push("Phân bổ ca hiện tại tương đối cân bằng với dự báo.");
 
   return {
     summary: {
