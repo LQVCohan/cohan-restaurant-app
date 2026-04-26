@@ -417,7 +417,7 @@ export const buildAutoSchedulePreview = ({
             "Kiểm tra staff thuộc vai trò/bộ phận này, trạng thái làm việc, dữ liệu forecast hoặc cấu hình nhu cầu nhân sự.",
           blockedCandidates: [],
         });
-        unresolvedShifts += 1;
+
         continue;
       }
 
@@ -523,6 +523,11 @@ export const buildAutoSchedulePreview = ({
       (sum, role) => sum + Number(role.unresolved || 0),
       0,
     );
+
+    if (unresolvedCount > 0) {
+      unresolvedShifts += 1;
+    }
+
     return {
       shiftKey: shiftInsight.shiftKey,
       date: shiftInsight.date,
