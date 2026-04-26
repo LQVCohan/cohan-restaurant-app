@@ -15,6 +15,10 @@ import {
   EmployeeCodeCounter,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
+import {
+  recalculateStaffPerformanceSnapshots,
+  upsertStaffPerformanceReview,
+} from "../../../src/services/staffPerformance/staffPerformance.service.js";
 import { updateSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
 import { assertShiftAssignmentValid } from "../../../src/services/scheduling/shiftAssignmentValidation.service.js";
 import {
@@ -1020,6 +1024,19 @@ export default {
   updateSchedulingPolicy: async (_, { restaurantId, input }, ctx) => {
     return updateSchedulingPolicy({
       restaurantId,
+      input,
+      ctx,
+    });
+  },
+  upsertStaffPerformanceReview: async (_, { input }, ctx) => {
+    return upsertStaffPerformanceReview({
+      input,
+      ctx,
+    });
+  },
+
+  recalculateStaffPerformanceSnapshots: async (_, { input }, ctx) => {
+    return recalculateStaffPerformanceSnapshots({
       input,
       ctx,
     });

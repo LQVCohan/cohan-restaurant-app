@@ -10,7 +10,7 @@ import {
   getDefaultSchedulingPolicyPayload,
   mapSchedulingPolicy,
 } from "./schedulingPolicy.service.js";
-
+import { getLatestStaffPerformanceSnapshot } from "../staffPerformance/staffPerformance.service.js";
 const DAY_KEYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
 function toObjectId(value) {
@@ -272,13 +272,13 @@ async function getConsecutiveWorkingDays({
 
   return count;
 }
-
 function computeCandidateScore({
   staff,
   policy,
   weeklyHoursAfter,
   hasWarnings,
   consecutiveDays,
+  performanceSnapshot,
 }) {
   const weights = policy.scoringWeights || {};
   const rules = policy.laborRules || {};
@@ -314,8 +314,34 @@ function computeCandidateScore({
     Number(weights.employmentTypeFit || 10) *
       Number(employmentPolicy.priorityWeight || 1),
   );
+
   score += Number(weights.costEfficiency || 5);
-  score += Number(weights.reliability || 5);
+
+  const performanceScore = Number(
+    performanceSnapshot?.finalPerformanceScore ?? 75,
+  );
+
+  const performanceContribution = Math.round(
+    (performanceScore / 100) * Number(weights.performance || 10),
+  );
+
+  score += performanceContribution;
+
+  const punctualityScore = Number(
+    performanceSnapshot?.punctuality?.score ?? performanceScore ?? 75,
+  );
+
+  const complianceScore = Number(
+    performanceSnapshot?.compliance?.score ?? performanceScore ?? 75,
+  );
+
+  const reliabilityScore = Math.round((punctualityScore + complianceScore) / 2);
+
+  const reliabilityContribution = Math.round(
+    (reliabilityScore / 100) * Number(weights.reliability || 5),
+  );
+
+  score += reliabilityContribution;
 
   if (consecutiveDays >= Number(rules.maxConsecutiveWorkingDays || 6)) {
     score -= Number(weights.fatiguePenalty || 20);
@@ -329,7 +355,16 @@ function computeCandidateScore({
     score -= Math.round(Number(weights.ruleRiskPenalty || 30) * 0.4);
   }
 
-  return Math.max(0, Math.min(100, Math.round(score)));
+  return {
+    score: Math.max(0, Math.min(100, Math.round(score))),
+    performanceScore,
+    performanceContribution,
+    reliabilityScore,
+    reliabilityContribution,
+    performanceSnapshotId: performanceSnapshot?._id
+      ? String(performanceSnapshot._id)
+      : null,
+  };
 }
 
 export async function validateShiftAssignment({ input, ctx }) {
@@ -629,20 +664,26 @@ export async function validateShiftAssignment({ input, ctx }) {
       }
     }
   }
+  const performanceSnapshot = await getLatestStaffPerformanceSnapshot({
+    employeeId,
+    restaurantId,
+    atDate: startTime,
+  });
 
-  const score = computeCandidateScore({
+  const scoreResult = computeCandidateScore({
     staff,
     policy,
     weeklyHoursAfter,
     hasWarnings: warnings.length > 0,
     consecutiveDays,
+    performanceSnapshot,
   });
 
   return {
     ok: blockingErrors.length === 0,
     employeeId: String(employeeId),
     restaurantId: String(restaurantId),
-    score,
+    score: scoreResult.score,
     blockingErrors,
     warnings,
     metrics: {
@@ -651,6 +692,12 @@ export async function validateShiftAssignment({ input, ctx }) {
       weeklyHoursAfter,
       shiftsInDayAfter,
       consecutiveWorkingDays: consecutiveDays,
+
+      performanceScore: scoreResult.performanceScore,
+      performanceContribution: scoreResult.performanceContribution,
+      reliabilityScore: scoreResult.reliabilityScore,
+      reliabilityContribution: scoreResult.reliabilityContribution,
+      performanceSnapshotId: scoreResult.performanceSnapshotId,
     },
   };
 }

@@ -1,5 +1,11 @@
 // src/pages/StaffManagement/index.jsx
-import React, { useState, useEffect, useMemo, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useContext,
+  useCallback,
+} from "react";
 import { gql, useQuery } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import StaffHeader from "./components/Header"; // Giả sử đã đổi tên file component Header mới
@@ -9,6 +15,7 @@ import AttendancePage from "./components/Attendance";
 import LeaveManagement from "./components/LeaveManagement";
 import SchedulePage from "./components/Schedule";
 import StaffReportsPage from "./components/Reports";
+import StaffPerformancePage from "./components/Performance";
 import {
   AddEmployeeModal,
   EditEmployeeModal,
@@ -158,7 +165,9 @@ const StaffManagement = () => {
     if (selectedRestaurant !== "all") {
       result = result.filter((s) => hasRestaurantMatch(s, selectedRestaurant));
     } else if (managedRestaurantIds.length > 0) {
-      result = result.filter((s) => hasRestaurantMatch(s, managedRestaurantIds));
+      result = result.filter((s) =>
+        hasRestaurantMatch(s, managedRestaurantIds),
+      );
     }
 
     // Filter by Search (Local fallback)
@@ -220,13 +229,21 @@ const StaffManagement = () => {
     const requests = pendingLeaveData?.leaveRequests || [];
     if (!requests.length) return 0;
     if (selectedRestaurant !== "all") {
-      return requests.filter((request) => request.restaurantId === selectedRestaurant).length;
+      return requests.filter(
+        (request) => request.restaurantId === selectedRestaurant,
+      ).length;
     }
     if (managedRestaurantIds.length > 0) {
-      return requests.filter((request) => managedRestaurantIds.includes(request.restaurantId)).length;
+      return requests.filter((request) =>
+        managedRestaurantIds.includes(request.restaurantId),
+      ).length;
     }
     return requests.length;
-  }, [managedRestaurantIds, pendingLeaveData?.leaveRequests, selectedRestaurant]);
+  }, [
+    managedRestaurantIds,
+    pendingLeaveData?.leaveRequests,
+    selectedRestaurant,
+  ]);
 
   // --- HANDLERS ---
   const toggleHeader = useCallback(
@@ -267,7 +284,11 @@ const StaffManagement = () => {
       if (!statusChoice) return;
       const nextStatus = statusChoice === "2" ? "RESIGNED" : "ON_LEAVE";
       const statusLabel = nextStatus === "RESIGNED" ? "nghỉ việc" : "tạm nghỉ";
-      if (!window.confirm(`Xác nhận chuyển nhân viên sang trạng thái ${statusLabel}?`)) {
+      if (
+        !window.confirm(
+          `Xác nhận chuyển nhân viên sang trạng thái ${statusLabel}?`,
+        )
+      ) {
         return;
       }
       await setStaffEmploymentStatus(id, nextStatus);
@@ -289,13 +310,19 @@ const StaffManagement = () => {
   const handleCalculateSalary = useCallback(
     (employee) => {
       if (!employee?.id) return;
-      navigate(`/manager?employeeId=${encodeURIComponent(employee.id)}#payroll`);
+      navigate(
+        `/manager?employeeId=${encodeURIComponent(employee.id)}#payroll`,
+      );
     },
     [navigate],
   );
   const handleSoftDeleteAccount = useCallback(
     async (id) => {
-      if (!window.confirm("Tài khoản sẽ vào thùng rác trong 30 ngày. Bạn có chắc chắn muốn tiếp tục?")) {
+      if (
+        !window.confirm(
+          "Tài khoản sẽ vào thùng rác trong 30 ngày. Bạn có chắc chắn muốn tiếp tục?",
+        )
+      ) {
         return;
       }
       await softDeleteStaff(id);
@@ -356,13 +383,28 @@ const StaffManagement = () => {
       );
     }
     if (currentPage === "attendance") {
-      return <AttendancePage currentTime={currentTime} currentDate={currentDate} />;
+      return (
+        <AttendancePage currentTime={currentTime} currentDate={currentDate} />
+      );
     }
     if (currentPage === "leave") return <LeaveManagement />;
     if (currentPage === "schedule") return <SchedulePage />;
+    if (currentPage === "performance") {
+      return (
+        <StaffPerformancePage
+          employees={mappedStaff}
+          selectedRestaurant={selectedRestaurant}
+          restaurantList={restaurantList}
+          searchQuery={searchQuery}
+        />
+      );
+    }
     if (currentPage === "reports") return <StaffReportsPage />;
     return null;
   }, [
+    restaurantList,
+    searchQuery,
+    selectedRestaurant,
     currentDate,
     currentPage,
     currentTime,
@@ -417,9 +459,7 @@ const StaffManagement = () => {
         </nav>
 
         {/* MAIN CONTENT AREA */}
-        <main className="page-main-view fade-in-up">
-          {mainContent}
-        </main>
+        <main className="page-main-view fade-in-up">{mainContent}</main>
       </div>
 
       {/* MODAL PORTAL AREA */}

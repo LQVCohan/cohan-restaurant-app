@@ -14,6 +14,7 @@ import {
   PayrollPeriod,
   PayrollItem,
 } from "../../../models/index.js";
+import { listStaffPerformanceSnapshots } from "../../../src/services/staffPerformance/staffPerformance.service.js";
 import { getSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
 import { validateShiftAssignment } from "../../../src/services/scheduling/shiftAssignmentValidation.service.js";
 import {
@@ -245,7 +246,12 @@ export default {
   schedulingPolicy: async (_, { restaurantId }) => {
     return getSchedulingPolicy({ restaurantId });
   },
-
+  staffPerformanceSnapshots: async (_, { filter }, ctx) => {
+    return listStaffPerformanceSnapshots({
+      filter: filter || {},
+      ctx,
+    });
+  },
   validateShiftAssignment: async (_, { input }, ctx) => {
     return validateShiftAssignment({ input, ctx });
   },

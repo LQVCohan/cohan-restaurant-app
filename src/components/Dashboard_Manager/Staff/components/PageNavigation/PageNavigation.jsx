@@ -6,6 +6,7 @@ import {
   Palmtree,
   CalendarRange,
   BarChart3,
+  TrendingUp,
 } from "lucide-react";
 import "./PageNavigation.scss";
 
@@ -33,6 +34,11 @@ const PageNavigation = ({ currentPage, onPageChange, badgeCounts = {} }) => {
       id: "schedule",
       label: "Lịch làm",
       icon: CalendarRange,
+    },
+    {
+      id: "performance",
+      label: "Hiệu suất",
+      icon: TrendingUp,
     },
     {
       id: "reports",

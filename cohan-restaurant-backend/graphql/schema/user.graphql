@@ -82,7 +82,99 @@ type Address {
   city: String
   country: String
 }
+type StaffPerformanceComponent {
+  score: Float!
+  weight: Float!
+  note: String
+}
 
+type StaffPerformanceSnapshot {
+  id: ID!
+
+  employeeId: ID!
+  employeeName: String
+  employeeCode: String
+  employeeRole: String
+  employeeAvatar: String
+
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+
+  productivity: StaffPerformanceComponent!
+  punctuality: StaffPerformanceComponent!
+  quality: StaffPerformanceComponent!
+  managerReview: StaffPerformanceComponent!
+  compliance: StaffPerformanceComponent!
+
+  finalPerformanceScore: Float!
+  performanceLevel: String!
+
+  factors: JSON
+
+  generatedBy: ID
+  generatedByName: String
+
+  reviewedBy: ID
+  reviewedAt: DateTime
+  lockedAt: DateTime
+
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type StaffPerformanceReview {
+  id: ID!
+
+  employeeId: ID!
+  employeeName: String
+  employeeCode: String
+
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+
+  managerRatingScore: Float!
+  attitudeScore: Float!
+  teamworkScore: Float!
+  skillScore: Float!
+
+  note: String
+
+  reviewedBy: ID
+  reviewedByName: String
+
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input StaffPerformanceFilterInput {
+  restaurantId: ID
+  employeeId: ID
+  periodStart: DateTime
+  periodEnd: DateTime
+}
+
+input UpsertStaffPerformanceReviewInput {
+  employeeId: ID!
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+
+  managerRatingScore: Float
+  attitudeScore: Float
+  teamworkScore: Float
+  skillScore: Float
+
+  note: String
+}
+
+input RecalculateStaffPerformanceInput {
+  restaurantId: ID!
+  employeeId: ID
+  periodStart: DateTime!
+  periodEnd: DateTime!
+}
 type EmergencyContact {
   name: String
   phone: String
@@ -1360,6 +1452,11 @@ type ShiftAssignmentMetrics {
   weeklyHoursAfter: Float!
   shiftsInDayAfter: Int!
   consecutiveWorkingDays: Int!
+  performanceScore: Float
+  performanceContribution: Float
+  reliabilityScore: Float
+  reliabilityContribution: Float
+  performanceSnapshotId: ID
 }
 
 type ShiftAssignmentValidationResult {
@@ -1395,6 +1492,9 @@ input StaffReportsInput {
 # =========================
 
 type Query {
+  staffPerformanceSnapshots(
+    filter: StaffPerformanceFilterInput
+  ): [StaffPerformanceSnapshot!]!
   schedulingPolicy(restaurantId: ID!): SchedulingPolicy!
   validateShiftAssignment(
     input: ValidateShiftAssignmentInput!
@@ -1475,6 +1575,13 @@ type Query {
 # =========================
 
 type Mutation {
+  upsertStaffPerformanceReview(
+    input: UpsertStaffPerformanceReviewInput!
+  ): StaffPerformanceReview!
+
+  recalculateStaffPerformanceSnapshots(
+    input: RecalculateStaffPerformanceInput!
+  ): [StaffPerformanceSnapshot!]!
   updateSchedulingPolicy(
     restaurantId: ID!
     input: SchedulingPolicyInput!
