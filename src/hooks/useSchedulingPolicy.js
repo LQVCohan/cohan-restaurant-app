@@ -136,6 +136,12 @@ export const QUERY_VALIDATE_SHIFT_ASSIGNMENT = gql`
         weeklyHoursAfter
         shiftsInDayAfter
         consecutiveWorkingDays
+
+        performanceScore
+        performanceContribution
+        reliabilityScore
+        reliabilityContribution
+        performanceSnapshotId
       }
     }
   }

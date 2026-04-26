@@ -32,7 +32,8 @@ const toValidDate = (value) => {
 
 const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
 
-const getShiftSortOrder = (shiftType) => SHIFT_ORDER[String(shiftType || "").toLowerCase()] ?? 99;
+const getShiftSortOrder = (shiftType) =>
+  SHIFT_ORDER[String(shiftType || "").toLowerCase()] ?? 99;
 
 export const mapDepartmentToJob = (department) =>
   ROLE_BY_DEPARTMENT[String(department || "").toLowerCase()] || "server";
@@ -41,13 +42,18 @@ export const calculateShiftHours = (startTime, endTime) => {
   const start = toValidDate(startTime);
   const end = toValidDate(endTime);
   if (!start || !end || end <= start) return 8;
-  return Number((((end.getTime() - start.getTime()) / 3600000) || 8).toFixed(2));
+  return Number(((end.getTime() - start.getTime()) / 3600000 || 8).toFixed(2));
 };
 
-export const buildShiftWindow = (dateKey, shiftType, shiftConfig = shiftTypes) => {
+export const buildShiftWindow = (
+  dateKey,
+  shiftType,
+  shiftConfig = shiftTypes,
+) => {
   const safeDateKey = String(dateKey || "");
   const safeType = String(shiftType || "").toLowerCase();
-  const config = shiftConfig[safeType] || shiftTypes[safeType] || shiftTypes.morning;
+  const config =
+    shiftConfig[safeType] || shiftTypes[safeType] || shiftTypes.morning;
   const [startHour, startMinute] = String(config.startTime || "06:00")
     .split(":")
     .map(Number);
@@ -84,13 +90,16 @@ const getWorkingDayKey = (dateKey) => {
 };
 
 const staffWorksThatDay = (staff, dateKey) => {
-  const workingDays = Array.isArray(staff?.workingDays) ? staff.workingDays : [];
+  const workingDays = Array.isArray(staff?.workingDays)
+    ? staff.workingDays
+    : [];
   if (!workingDays.length) return true;
   return workingDays.includes(getWorkingDayKey(dateKey));
 };
 
 const leaveBlocksShift = (leave, dateKey, shiftType) => {
-  if (!leave || String(leave.status || "").toUpperCase() === "REJECTED") return false;
+  if (!leave || String(leave.status || "").toUpperCase() === "REJECTED")
+    return false;
 
   const shiftDay = String(dateKey || "");
   const startDay = formatYmd(leave.startDate);
@@ -128,7 +137,12 @@ const getWeeklyHours = (weekHoursByStaff, staffId, weekKey) =>
 
 const increaseWeeklyHours = (weekHoursByStaff, staffId, weekKey, hours) => {
   const key = `${staffId}|${weekKey}`;
-  weekHoursByStaff.set(key, Number((getWeeklyHours(weekHoursByStaff, staffId, weekKey) + hours).toFixed(2)));
+  weekHoursByStaff.set(
+    key,
+    Number(
+      (getWeeklyHours(weekHoursByStaff, staffId, weekKey) + hours).toFixed(2),
+    ),
+  );
 };
 
 const buildExistingAssignmentsMap = (existingShiftRows = []) => {
@@ -162,7 +176,12 @@ const buildWeekHoursMap = (existingShiftRows = []) => {
     const weekKey = getWeekKey(row?.startTime);
     if (!employeeId || !weekKey) continue;
 
-    increaseWeeklyHours(map, employeeId, weekKey, calculateShiftHours(row?.startTime, row?.endTime));
+    increaseWeeklyHours(
+      map,
+      employeeId,
+      weekKey,
+      calculateShiftHours(row?.startTime, row?.endTime),
+    );
   }
 
   return map;
@@ -231,7 +250,10 @@ const evaluateCandidate = ({
   if (mapDepartmentToJob(staff.department) !== candidate.role) {
     return "Vai trò thực tế không khớp với gợi ý assistant";
   }
-  if (existingAssignedIds.has(staffId) || currentShiftAssignedIds.has(staffId)) {
+  if (
+    existingAssignedIds.has(staffId) ||
+    currentShiftAssignedIds.has(staffId)
+  ) {
     return "Đã có trong ca hoặc đã được chọn cho ca này";
   }
   if (respectAvailability && !staffWorksThatDay(staff, shiftInsight.date)) {
@@ -239,7 +261,9 @@ const evaluateCandidate = ({
   }
   if (
     respectAvailability &&
-    leaveRows.some((leave) => leaveBlocksShift(leave, shiftInsight.date, shiftInsight.shiftType))
+    leaveRows.some((leave) =>
+      leaveBlocksShift(leave, shiftInsight.date, shiftInsight.shiftType),
+    )
   ) {
     return "Đang có lịch nghỉ/nghỉ phép trong ngày này";
   }
@@ -249,14 +273,15 @@ const evaluateCandidate = ({
         shiftWindow.start,
         shiftWindow.end,
         assignment.start,
-        assignment.end
-      )
+        assignment.end,
+      ),
     )
   ) {
     return "Bị trùng với ca hiện có";
   }
   if (avoidOvertime && weeklyHoursCap > 0) {
-    const nextWeekHours = getWeeklyHours(weekHoursByStaff, staffId, weekKey) + shiftHours;
+    const nextWeekHours =
+      getWeeklyHours(weekHoursByStaff, staffId, weekKey) + shiftHours;
     if (nextWeekHours > weeklyHoursCap) {
       return `Vượt giới hạn ${weeklyHoursCap} giờ/tuần`;
     }
@@ -297,10 +322,11 @@ export const buildAutoSchedulePreview = ({
         employmentStatus: String(staff.employmentStatus || "").toLowerCase(),
         workingDays: Array.isArray(staff.workingDays) ? staff.workingDays : [],
       },
-    ])
+    ]),
   );
 
-  const existingAssignmentsByStaff = buildExistingAssignmentsMap(existingShiftRows);
+  const existingAssignmentsByStaff =
+    buildExistingAssignmentsMap(existingShiftRows);
   const plannedAssignmentsByStaff = new Map();
   const leaveByStaff = buildLeaveMap(leaveRequests);
   const weekHoursByStaff = buildWeekHoursMap(existingShiftRows);
@@ -308,7 +334,7 @@ export const buildAutoSchedulePreview = ({
   const sortedInsights = [...shiftInsights].sort(
     (a, b) =>
       String(a.date || "").localeCompare(String(b.date || "")) ||
-      getShiftSortOrder(a.shiftType) - getShiftSortOrder(b.shiftType)
+      getShiftSortOrder(a.shiftType) - getShiftSortOrder(b.shiftType),
   );
 
   let recommendedAssignments = 0;
@@ -316,7 +342,11 @@ export const buildAutoSchedulePreview = ({
   let unresolvedShifts = 0;
 
   const items = sortedInsights.map((shiftInsight) => {
-    const shiftWindow = buildShiftWindow(shiftInsight.date, shiftInsight.shiftType, shiftConfig);
+    const shiftWindow = buildShiftWindow(
+      shiftInsight.date,
+      shiftInsight.shiftType,
+      shiftConfig,
+    );
     const weekKey = getWeekKey(shiftWindow.startTime);
     const currentShiftAssignedIds = new Set();
     const candidateOrder = getCandidateOrder(shiftInsight);
@@ -329,13 +359,16 @@ export const buildAutoSchedulePreview = ({
           return (
             start &&
             format(start, "yyyy-MM-dd") === shiftInsight.date &&
-            String(row?.shiftType || "").toLowerCase() === String(shiftInsight.shiftType || "").toLowerCase()
+            String(row?.shiftType || "").toLowerCase() ===
+              String(shiftInsight.shiftType || "").toLowerCase()
           );
         })
-        .map((row) => String(row.employeeId))
+        .map((row) => String(row.employeeId)),
     );
 
-    const missingRoles = (shiftInsight.recommendedRoles || []).filter((role) => Number(role.delta || 0) < 0);
+    const missingRoles = (shiftInsight.recommendedRoles || []).filter(
+      (role) => Number(role.delta || 0) < 0,
+    );
     const plannedAssignments = [];
 
     for (const roleNeed of missingRoles) {
@@ -345,8 +378,16 @@ export const buildAutoSchedulePreview = ({
       const roleCandidates = (shiftInsight.suggestedCandidates || [])
         .filter((candidate) => candidate.role === roleNeed.role)
         .sort((left, right) => {
-          const leftHours = getWeeklyHours(weekHoursByStaff, String(left.staffId), weekKey);
-          const rightHours = getWeeklyHours(weekHoursByStaff, String(right.staffId), weekKey);
+          const leftHours = getWeeklyHours(
+            weekHoursByStaff,
+            String(left.staffId),
+            weekKey,
+          );
+          const rightHours = getWeeklyHours(
+            weekHoursByStaff,
+            String(right.staffId),
+            weekKey,
+          );
           if (leftHours !== rightHours) return leftHours - rightHours;
           return (
             (candidateOrder.get(`${left.staffId}|${left.role}`) ?? 99) -
@@ -395,11 +436,19 @@ export const buildAutoSchedulePreview = ({
           reason: candidate.reason || "Đề xuất từ scheduling assistant",
           currentWeekHours: getWeeklyHours(weekHoursByStaff, staffId, weekKey),
           projectedWeekHours: Number(
-            (getWeeklyHours(weekHoursByStaff, staffId, weekKey) + shiftWindow.hours).toFixed(2)
+            (
+              getWeeklyHours(weekHoursByStaff, staffId, weekKey) +
+              shiftWindow.hours
+            ).toFixed(2),
           ),
         });
         recommendedAssignments += 1;
-        increaseWeeklyHours(weekHoursByStaff, staffId, weekKey, shiftWindow.hours);
+        increaseWeeklyHours(
+          weekHoursByStaff,
+          staffId,
+          weekKey,
+          shiftWindow.hours,
+        );
         pushAssignment(plannedAssignmentsByStaff, staffId, {
           start: toValidDate(shiftWindow.startTime),
           end: toValidDate(shiftWindow.endTime),
@@ -411,9 +460,13 @@ export const buildAutoSchedulePreview = ({
 
     const missingHeadcount = Math.max(
       0,
-      Number(shiftInsight.recommendedTotalStaff || 0) - Number(shiftInsight.currentAssignedStaff || 0)
+      Number(shiftInsight.recommendedTotalStaff || 0) -
+        Number(shiftInsight.currentAssignedStaff || 0),
     );
-    const unresolvedCount = Math.max(0, missingHeadcount - plannedAssignments.length);
+    const unresolvedCount = Math.max(
+      0,
+      missingHeadcount - plannedAssignments.length,
+    );
     if (unresolvedCount > 0) unresolvedShifts += 1;
 
     return {
@@ -449,7 +502,11 @@ export const buildAutoSchedulePreview = ({
   };
 };
 
-export const buildAutoScheduleCreateInputs = ({ previewItems = [], selectedShiftKeys = {}, restaurantId }) => {
+export const buildAutoScheduleCreateInputs = ({
+  previewItems = [],
+  selectedShiftKeys = {},
+  restaurantId,
+}) => {
   const inputs = [];
   const dedupe = new Set();
 
@@ -461,6 +518,15 @@ export const buildAutoScheduleCreateInputs = ({ previewItems = [], selectedShift
       if (dedupe.has(dedupeKey)) continue;
       dedupe.add(dedupeKey);
 
+      const scoreText =
+        assignment.validationScore != null
+          ? ` • Điểm phù hợp: ${assignment.validationScore}/100`
+          : "";
+
+      const warningText = assignment.requiresOverride
+        ? " • Có cảnh báo policy, cần override khi áp dụng"
+        : "";
+
       inputs.push({
         employeeId: assignment.staffId,
         restaurantId,
@@ -468,7 +534,7 @@ export const buildAutoScheduleCreateInputs = ({ previewItems = [], selectedShift
         startTime: item.startTime,
         endTime: item.endTime,
         status: "scheduled",
-        notes: "Auto scheduled",
+        notes: `Auto scheduled${scoreText}${warningText}`,
       });
     }
   }

@@ -488,7 +488,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [selectedAutoShiftKeys, setSelectedAutoShiftKeys] = useState({});
   const [autoScheduleError, setAutoScheduleError] = useState("");
   const [isApplyingAutoSchedule, setIsApplyingAutoSchedule] = useState(false);
-
+  const [validatedAutoSchedulePreview, setValidatedAutoSchedulePreview] =
+    useState(null);
+  const [isValidatingAutoSchedule, setIsValidatingAutoSchedule] =
+    useState(false);
   const { data: meData } = useQuery(ME_QUERY, { fetchPolicy: "network-only" });
   const me = meData?.me;
 
@@ -688,7 +691,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     [shifts, staff],
   );
 
-  const autoSchedulePreview = useMemo(
+  const rawAutoSchedulePreview = useMemo(
     () =>
       buildAutoSchedulePreview({
         assistant: assistantPayload,
@@ -710,11 +713,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
     ],
   );
 
+  const autoSchedulePreview =
+    validatedAutoSchedulePreview || rawAutoSchedulePreview;
+
   const isGeneratingAutoSchedule =
     schedulingAssistantState.loading ||
     leaveRequestsState.loading ||
-    assistantContextState.loading;
-
+    assistantContextState.loading ||
+    isValidatingAutoSchedule;
   useEffect(() => {
     if (!isAutoScheduleOpen) return;
 
@@ -735,7 +741,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAssistantShiftRows([]);
     setSelectedAutoShiftKeys({});
     setAutoScheduleError("");
+    setValidatedAutoSchedulePreview(null);
   }, [effectiveRestaurantId]);
+  useEffect(() => {
+    setValidatedAutoSchedulePreview(null);
+  }, [autoScheduleConfig, configuredShiftTypes]);
   useEffect(() => {
     if (!schedulingPolicy?.shiftTemplates?.length) return;
 
@@ -848,17 +858,28 @@ const ScheduleManagement = ({ readOnly = false }) => {
     startTime,
     endTime,
     ignoreShiftId,
+    precheckOnly = false,
   }) => {
+    const baseInput = {
+      employeeId,
+      restaurantId: effectiveRestaurantId,
+      shiftType: String(shiftType || "").toUpperCase(),
+      startTime:
+        startTime instanceof Date ? startTime.toISOString() : startTime,
+      endTime: endTime instanceof Date ? endTime.toISOString() : endTime,
+      ignoreShiftId: ignoreShiftId || undefined,
+    };
+
     const result = await validateShiftAssignment({
       variables: {
         input: {
-          employeeId,
-          restaurantId: effectiveRestaurantId,
-          shiftType: String(shiftType || "").toUpperCase(),
-          startTime:
-            startTime instanceof Date ? startTime.toISOString() : startTime,
-          endTime: endTime instanceof Date ? endTime.toISOString() : endTime,
-          ignoreShiftId: ignoreShiftId || undefined,
+          ...baseInput,
+          // Cho phép backend trả warning cho soft rule thay vì biến thành blocking error.
+          // Đây chỉ là precheck, chưa ghi DB.
+          allowOverride: true,
+          overrideReason: precheckOnly
+            ? "__AUTO_SCHEDULE_PREVIEW__"
+            : "__SHIFT_ASSIGNMENT_PRECHECK__",
         },
       },
     });
@@ -875,6 +896,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
         .join("\n\n");
 
       throw new Error(text || "Không thể xếp ca vì vi phạm quy tắc lịch.");
+    }
+
+    if (precheckOnly) {
+      return {
+        allowOverride: false,
+        overrideReason: "",
+        validation,
+      };
     }
 
     if (validation.warnings?.length) {
@@ -1091,24 +1120,134 @@ const ScheduleManagement = ({ readOnly = false }) => {
     await refetch();
     setSelectedShift(null);
   };
+  const summarizeAssignmentIssues = (issues = []) =>
+    issues
+      .map((issue) => issue?.message)
+      .filter(Boolean)
+      .join("; ");
 
+  const validateAutoSchedulePreview = async (preview) => {
+    const sourceItems = preview?.items || [];
+
+    if (!sourceItems.length) {
+      return preview;
+    }
+
+    setIsValidatingAutoSchedule(true);
+
+    let recommendedAssignments = 0;
+    let blockedAssignments = Number(preview?.summary?.blockedAssignments || 0);
+    let warningAssignments = 0;
+    let unresolvedShifts = 0;
+
+    try {
+      const items = [];
+
+      for (const item of sourceItems) {
+        const plannedAssignments = [];
+        const blockedCandidates = [...(item.blockedCandidates || [])];
+
+        for (const assignment of item.plannedAssignments || []) {
+          try {
+            const result = await validateShiftAssignmentOrThrow({
+              employeeId: assignment.staffId,
+              shiftType: item.shiftType,
+              startTime: item.startTime,
+              endTime: item.endTime,
+              precheckOnly: true,
+            });
+
+            const validation = result.validation;
+            const warnings = validation?.warnings || [];
+
+            if (warnings.length > 0) {
+              warningAssignments += 1;
+            }
+
+            plannedAssignments.push({
+              ...assignment,
+              backendValidated: true,
+              validationScore: validation?.score ?? null,
+              validationWarnings: warnings,
+              validationMetrics: validation?.metrics || null,
+              requiresOverride: warnings.length > 0,
+            });
+
+            recommendedAssignments += 1;
+          } catch (error) {
+            blockedAssignments += 1;
+
+            blockedCandidates.push({
+              staffId: String(assignment.staffId),
+              fullName: assignment.fullName || "Nhân viên",
+              role: assignment.role,
+              reason:
+                error?.message ||
+                "Không đạt kiểm tra quy tắc xếp lịch từ backend.",
+              source: "backend_validation",
+            });
+          }
+        }
+
+        const unresolvedCount = Math.max(
+          0,
+          Number(item.missingHeadcount || 0) - plannedAssignments.length,
+        );
+
+        if (unresolvedCount > 0) {
+          unresolvedShifts += 1;
+        }
+
+        items.push({
+          ...item,
+          plannedAssignments,
+          blockedCandidates,
+          unresolvedCount,
+          canApply: plannedAssignments.length > 0,
+        });
+      }
+
+      return {
+        ...preview,
+        items,
+        summary: {
+          ...(preview.summary || {}),
+          recommendedAssignments,
+          blockedAssignments,
+          warningAssignments,
+          unresolvedShifts,
+        },
+      };
+    } finally {
+      setIsValidatingAutoSchedule(false);
+    }
+  };
   const handleGenerateAutoSchedule = async () => {
     if (readOnly) return;
+
     if (!effectiveRestaurantId) {
       setAutoScheduleError(
         "Chưa xác định được nhà hàng để gọi scheduling assistant.",
+      );
+      showNotification(
+        "Chưa xác định được nhà hàng để tạo preview chia ca.",
+        "warning",
       );
       return;
     }
 
     setAutoScheduleError("");
+    setValidatedAutoSchedulePreview(null);
+    setSelectedAutoShiftKeys({});
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     const analysisEnd = addDays(
       today,
       Math.max(0, Number(autoScheduleConfig.horizonDays || 1) - 1),
     );
+
     const contextStart = startOfWeek(today, { weekStartsOn: 1 });
     const contextEnd = endOfWeek(analysisEnd, { weekStartsOn: 1 });
 
@@ -1139,15 +1278,59 @@ const ScheduleManagement = ({ readOnly = false }) => {
         }),
       ]);
 
-      setAssistantPayload(
-        assistantResult?.data?.staffSchedulingAssistant || null,
+      const nextAssistantPayload =
+        assistantResult?.data?.staffSchedulingAssistant || null;
+      const nextLeaveRows = leaveResult?.data?.leaveRequests || [];
+      const nextShiftRows = shiftResult?.data?.staffShifts || [];
+
+      setAssistantPayload(nextAssistantPayload);
+      setAssistantLeaveRows(nextLeaveRows);
+      setAssistantShiftRows(nextShiftRows);
+
+      const nextRawPreview = buildAutoSchedulePreview({
+        assistant: nextAssistantPayload,
+        staffList: rawStaffList,
+        existingShiftRows: nextShiftRows,
+        leaveRequests: nextLeaveRows,
+        weeklyHoursCap: autoScheduleConfig.weeklyHoursCap,
+        respectAvailability: autoScheduleConfig.respectAvailability,
+        avoidOvertime: autoScheduleConfig.avoidOvertime,
+        shiftConfig: configuredShiftTypes,
+      });
+
+      const nextValidatedPreview =
+        await validateAutoSchedulePreview(nextRawPreview);
+
+      setValidatedAutoSchedulePreview(nextValidatedPreview);
+
+      const readyCount = Number(
+        nextValidatedPreview?.summary?.recommendedAssignments || 0,
       );
-      setAssistantLeaveRows(leaveResult?.data?.leaveRequests || []);
-      setAssistantShiftRows(shiftResult?.data?.staffShifts || []);
+      const warningCount = Number(
+        nextValidatedPreview?.summary?.warningAssignments || 0,
+      );
+      const blockedCount = Number(
+        nextValidatedPreview?.summary?.blockedAssignments || 0,
+      );
+
+      if (readyCount <= 0) {
+        showNotification(
+          "Đã tạo preview nhưng chưa có phân công nào đủ điều kiện áp dụng.",
+          "warning",
+        );
+        return;
+      }
+
+      showNotification(
+        `Đã tạo preview: ${readyCount} phân công hợp lệ, ${warningCount} cảnh báo, ${blockedCount} bị chặn.`,
+        warningCount > 0 ? "warning" : "success",
+      );
     } catch (error) {
-      setAutoScheduleError(
-        error?.message || "Không thể tạo preview chia ca tự động.",
-      );
+      const message =
+        error?.message || "Không thể tạo preview chia ca tự động.";
+
+      setAutoScheduleError(message);
+      showNotification(message, "error");
     }
   };
 
@@ -1167,6 +1350,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     if (!inputs.length) {
       setAutoScheduleError("Không có phân công hợp lệ để áp dụng.");
+      showNotification("Không có phân công hợp lệ để áp dụng.", "warning");
       return;
     }
 
@@ -1202,12 +1386,19 @@ const ScheduleManagement = ({ readOnly = false }) => {
       );
 
       await refetch();
+
       setIsAutoScheduleOpen(false);
       setSelectedAutoShiftKeys({});
-    } catch (error) {
-      setAutoScheduleError(
-        error?.message || "Không thể áp dụng gợi ý chia ca.",
+      setValidatedAutoSchedulePreview(null);
+
+      showNotification(
+        `Đã áp dụng ${validatedInputs.length} phân công từ chia ca tự động.`,
+        "success",
       );
+    } catch (error) {
+      const message = error?.message || "Không thể áp dụng gợi ý chia ca.";
+      setAutoScheduleError(message);
+      showNotification(message, "error");
     } finally {
       setIsApplyingAutoSchedule(false);
     }
@@ -1252,8 +1443,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
               type="button"
               className="schedule-settings-trigger"
               onClick={() => {
-                setShiftRulesSaveMessage("");
-                setShiftRulesSaveError("");
                 setIsShiftSettingsOpen(true);
               }}
               disabled={readOnly}

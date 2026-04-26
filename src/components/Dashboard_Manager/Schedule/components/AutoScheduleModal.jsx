@@ -12,7 +12,9 @@ import {
 } from "lucide-react";
 
 import "./AutoScheduleModal.scss";
-
+import CandidateScoreBreakdown, {
+  getRoleLabel,
+} from "./CandidateScoreBreakdown";
 const SHIFT_LABELS = {
   morning: "Ca sáng",
   afternoon: "Ca chiều",
@@ -22,7 +24,9 @@ const SHIFT_LABELS = {
 };
 
 const compactNumber = (value) =>
-  new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(Number(value || 0));
+  new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 1 }).format(
+    Number(value || 0),
+  );
 
 const severityLabel = (severity) => {
   if (severity === "high") return "Cao";
@@ -53,11 +57,17 @@ const AutoScheduleModal = ({
   applying = false,
 }) => {
   const previewItems = preview?.items || [];
-  const selectedCount = previewItems.filter((item) => selectedShiftKeys[item.shiftKey]).length;
+  const selectedCount = previewItems.filter(
+    (item) => selectedShiftKeys[item.shiftKey],
+  ).length;
   const applicableCount = previewItems.filter((item) => item.canApply).length;
 
   return (
-    <Modal isOpen={isOpen} onClose={!generating && !applying ? onClose : undefined} size="xl">
+    <Modal
+      isOpen={isOpen}
+      onClose={!generating && !applying ? onClose : undefined}
+      size="xl"
+    >
       <Modal.Header>Chia ca tự động</Modal.Header>
 
       <Modal.Body className="auto-schedule-body">
@@ -68,8 +78,9 @@ const AutoScheduleModal = ({
           <div className="banner-copy">
             <strong>Scheduling assistant dùng dữ liệu thật từ backend</strong>
             <p>
-              Hệ thống phân tích forecast, staff, lịch hiện có rồi tạo preview trước khi áp dụng.
-              Luồng này chỉ bổ sung ca còn thiếu, không tự xóa lịch đang có.
+              Hệ thống phân tích forecast, staff, lịch hiện có rồi tạo preview
+              trước khi áp dụng. Luồng này chỉ bổ sung ca còn thiếu, không tự
+              xóa lịch đang có.
             </p>
           </div>
         </div>
@@ -100,7 +111,8 @@ const AutoScheduleModal = ({
               </select>
             </label>
             <p className="config-hint">
-              Backend assistant hiện hỗ trợ phân tích từ hôm nay tới tối đa 7 ngày tiếp theo.
+              Backend assistant hiện hỗ trợ phân tích từ hôm nay tới tối đa 7
+              ngày tiếp theo.
             </p>
           </div>
 
@@ -178,8 +190,12 @@ const AutoScheduleModal = ({
           </button>
           {assistantMeta ? (
             <div className="assistant-meta">
-              <span className={`meta-pill ${assistantMeta.fallbackUsed ? "fallback" : "forecast"}`}>
-                {assistantMeta.fallbackUsed ? "Fallback demand" : "Forecast demand"}
+              <span
+                className={`meta-pill ${assistantMeta.fallbackUsed ? "fallback" : "forecast"}`}
+              >
+                {assistantMeta.fallbackUsed
+                  ? "Fallback demand"
+                  : "Forecast demand"}
               </span>
               <span>TZ: {assistantMeta.timezone}</span>
             </div>
@@ -196,7 +212,9 @@ const AutoScheduleModal = ({
         {!generateError && generating ? (
           <div className="auto-state loading">
             <Sparkles size={18} />
-            <span>Đang gọi scheduling assistant và kiểm tra xung đột lịch thật...</span>
+            <span>
+              Đang gọi scheduling assistant và kiểm tra xung đột lịch thật...
+            </span>
           </div>
         ) : null}
 
@@ -204,19 +222,27 @@ const AutoScheduleModal = ({
           <div className="summary-grid">
             <div className="summary-card">
               <span className="label">Nhóm ca phân tích</span>
-              <strong>{compactNumber(assistantSummary.totalShiftGroups)}</strong>
+              <strong>
+                {compactNumber(assistantSummary.totalShiftGroups)}
+              </strong>
             </div>
             <div className="summary-card warning">
               <span className="label">Ca thiếu người</span>
-              <strong>{compactNumber(assistantSummary.underStaffedShifts)}</strong>
+              <strong>
+                {compactNumber(assistantSummary.underStaffedShifts)}
+              </strong>
             </div>
             <div className="summary-card success">
               <span className="label">Phân công tạo được</span>
-              <strong>{compactNumber(preview?.summary?.recommendedAssignments)}</strong>
+              <strong>
+                {compactNumber(preview?.summary?.recommendedAssignments)}
+              </strong>
             </div>
             <div className="summary-card muted">
               <span className="label">Bị chặn bởi guard</span>
-              <strong>{compactNumber(preview?.summary?.blockedAssignments)}</strong>
+              <strong>
+                {compactNumber(preview?.summary?.blockedAssignments)}
+              </strong>
             </div>
           </div>
         ) : null}
@@ -234,8 +260,8 @@ const AutoScheduleModal = ({
               <div>
                 <h4>Preview phân ca</h4>
                 <p>
-                  Chọn các ca muốn áp dụng. Chỉ những ca có nhân sự hợp lệ sau khi qua guard mới được
-                  bật chọn.
+                  Chọn các ca muốn áp dụng. Chỉ những ca có nhân sự hợp lệ sau
+                  khi qua guard mới được bật chọn.
                 </p>
               </div>
               <div className="preview-stats">
@@ -247,7 +273,10 @@ const AutoScheduleModal = ({
             </div>
 
             {previewItems.map((item) => (
-              <div key={item.shiftKey} className={`preview-item ${item.canApply ? "" : "blocked"}`}>
+              <div
+                key={item.shiftKey}
+                className={`preview-item ${item.canApply ? "" : "blocked"}`}
+              >
                 <label className="preview-toggle">
                   <input
                     type="checkbox"
@@ -258,29 +287,43 @@ const AutoScheduleModal = ({
                   <div className="preview-main">
                     <div className="preview-title-row">
                       <div>
-                        <strong>{SHIFT_LABELS[item.shiftType] || item.shiftType}</strong>
+                        <strong>
+                          {SHIFT_LABELS[item.shiftType] || item.shiftType}
+                        </strong>
                         <span>
-                          {item.date} • {statusLabel(item.status)} • độ tin cậy {compactNumber(item.confidence * 100)}
-                          %
+                          {item.date} • {statusLabel(item.status)} • độ tin cậy{" "}
+                          {compactNumber(item.confidence * 100)}%
                         </span>
                       </div>
-                      <div className={`severity-pill ${item.severity || "low"}`}>
+                      <div
+                        className={`severity-pill ${item.severity || "low"}`}
+                      >
                         {severityLabel(item.severity)}
                       </div>
                     </div>
 
                     <div className="preview-meta-row">
-                      <span>Thiếu {compactNumber(item.missingHeadcount)} người</span>
-                      <span>Hiện có {compactNumber(item.currentAssignedStaff)}</span>
-                      <span>Đề xuất tổng {compactNumber(item.recommendedTotalStaff)}</span>
+                      <span>
+                        Thiếu {compactNumber(item.missingHeadcount)} người
+                      </span>
+                      <span>
+                        Hiện có {compactNumber(item.currentAssignedStaff)}
+                      </span>
+                      <span>
+                        Đề xuất tổng {compactNumber(item.recommendedTotalStaff)}
+                      </span>
                     </div>
 
                     <div className="preview-role-list">
                       {(item.recommendedRoles || [])
                         .filter((role) => Number(role.delta || 0) < 0)
                         .map((role) => (
-                          <span key={`${item.shiftKey}-${role.role}`} className="role-pill">
-                            {role.role} x{Math.abs(Number(role.delta || 0))}
+                          <span
+                            key={`${item.shiftKey}-${role.role}`}
+                            className="role-pill"
+                          >
+                            {getRoleLabel(role.role)} x
+                            {Math.abs(Number(role.delta || 0))}
                           </span>
                         ))}
                     </div>
@@ -294,18 +337,21 @@ const AutoScheduleModal = ({
                               <CheckCircle2 size={14} />
                               <div>
                                 <strong>
-                                  {assignment.fullName} • {assignment.role}
+                                  {assignment.fullName} •{" "}
+                                  {getRoleLabel(assignment.role)}
                                 </strong>
-                                <span>
-                                  {assignment.reason}. Giờ tuần sau áp dụng:{" "}
-                                  {compactNumber(assignment.projectedWeekHours)}h
-                                </span>
+
+                                <CandidateScoreBreakdown
+                                  assignment={assignment}
+                                />
                               </div>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <div className="note-line">Không còn ứng viên hợp lệ sau bước kiểm tra xung đột.</div>
+                        <div className="note-line">
+                          Không còn ứng viên hợp lệ sau bước kiểm tra xung đột.
+                        </div>
                       )}
                     </div>
 
@@ -313,24 +359,28 @@ const AutoScheduleModal = ({
                       <div className="assignment-block warning">
                         <h5>Ứng viên bị chặn</h5>
                         <ul>
-                          {item.blockedCandidates.slice(0, 4).map((candidate) => (
-                            <li key={`${item.shiftKey}-${candidate.staffId}`}>
-                              <AlertTriangle size={14} />
-                              <div>
-                                <strong>
-                                  {candidate.fullName} • {candidate.role}
-                                </strong>
-                                <span>{candidate.reason}</span>
-                              </div>
-                            </li>
-                          ))}
+                          {item.blockedCandidates
+                            .slice(0, 4)
+                            .map((candidate) => (
+                              <li key={`${item.shiftKey}-${candidate.staffId}`}>
+                                <AlertTriangle size={14} />
+                                <div>
+                                  <strong>
+                                    {candidate.fullName} •{" "}
+                                    {getRoleLabel(candidate.role)}
+                                  </strong>
+                                  <span>{candidate.reason}</span>
+                                </div>
+                              </li>
+                            ))}
                         </ul>
                       </div>
                     ) : null}
 
                     {item.unresolvedCount > 0 ? (
                       <div className="note-line danger">
-                        Vẫn còn thiếu {item.unresolvedCount} người sau khi áp dụng các gợi ý hợp lệ.
+                        Vẫn còn thiếu {item.unresolvedCount} người sau khi áp
+                        dụng các gợi ý hợp lệ.
                       </div>
                     ) : null}
                   </div>
@@ -342,7 +392,12 @@ const AutoScheduleModal = ({
       </Modal.Body>
 
       <Modal.Footer className="auto-schedule-footer">
-        <button type="button" className="btn-secondary" onClick={onClose} disabled={generating || applying}>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={onClose}
+          disabled={generating || applying}
+        >
           Đóng
         </button>
         <button
