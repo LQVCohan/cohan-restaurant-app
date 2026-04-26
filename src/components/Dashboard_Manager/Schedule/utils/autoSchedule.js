@@ -369,7 +369,9 @@ export const buildAutoSchedulePreview = ({
     const missingRoles = (shiftInsight.recommendedRoles || []).filter(
       (role) => Number(role.delta || 0) < 0,
     );
+
     const plannedAssignments = [];
+    const unfilledRoles = [];
 
     for (const roleNeed of missingRoles) {
       const needed = Math.abs(Number(roleNeed.delta || 0));
@@ -388,12 +390,36 @@ export const buildAutoSchedulePreview = ({
             String(right.staffId),
             weekKey,
           );
+
           if (leftHours !== rightHours) return leftHours - rightHours;
+
           return (
             (candidateOrder.get(`${left.staffId}|${left.role}`) ?? 99) -
             (candidateOrder.get(`${right.staffId}|${right.role}`) ?? 99)
           );
         });
+
+      const roleRejectedCandidates = [];
+
+      if (!roleCandidates.length) {
+        unfilledRoles.push({
+          role: roleNeed.role,
+          required: Number(roleNeed.required || 0),
+          assigned: Number(roleNeed.assigned || 0),
+          missing: needed,
+          planned: 0,
+          unresolved: needed,
+          candidateCount: 0,
+          blockedCount: 0,
+          reason:
+            "Không có ứng viên nào được assistant đề xuất cho vai trò này.",
+          suggestedAction:
+            "Kiểm tra staff thuộc vai trò/bộ phận này, trạng thái làm việc, dữ liệu forecast hoặc cấu hình nhu cầu nhân sự.",
+          blockedCandidates: [],
+        });
+        unresolvedShifts += 1;
+        continue;
+      }
 
       for (const candidate of roleCandidates) {
         if (assignedForRole >= needed) break;
@@ -416,19 +442,24 @@ export const buildAutoSchedulePreview = ({
         });
 
         if (rejectionReason) {
-          blockedAssignments += 1;
-          blockedCandidates.push({
+          const rejected = {
             staffId: String(candidate.staffId),
             fullName: candidate.fullName || staff?.fullName || "Nhân viên",
             role: candidate.role,
             reason: rejectionReason,
-          });
+          };
+
+          blockedAssignments += 1;
+          blockedCandidates.push(rejected);
+          roleRejectedCandidates.push(rejected);
           continue;
         }
 
         const staffId = String(candidate.staffId);
+
         assignedForRole += 1;
         currentShiftAssignedIds.add(staffId);
+
         plannedAssignments.push({
           staffId,
           fullName: candidate.fullName || staff?.fullName || "Nhân viên",
@@ -442,13 +473,16 @@ export const buildAutoSchedulePreview = ({
             ).toFixed(2),
           ),
         });
+
         recommendedAssignments += 1;
+
         increaseWeeklyHours(
           weekHoursByStaff,
           staffId,
           weekKey,
           shiftWindow.hours,
         );
+
         pushAssignment(plannedAssignmentsByStaff, staffId, {
           start: toValidDate(shiftWindow.startTime),
           end: toValidDate(shiftWindow.endTime),
@@ -456,19 +490,39 @@ export const buildAutoSchedulePreview = ({
           date: shiftInsight.date,
         });
       }
-    }
 
+      const unresolvedForRole = Math.max(0, needed - assignedForRole);
+
+      if (unresolvedForRole > 0) {
+        unfilledRoles.push({
+          role: roleNeed.role,
+          required: Number(roleNeed.required || 0),
+          assigned: Number(roleNeed.assigned || 0),
+          missing: needed,
+          planned: assignedForRole,
+          unresolved: unresolvedForRole,
+          candidateCount: roleCandidates.length,
+          blockedCount: roleRejectedCandidates.length,
+          reason:
+            assignedForRole > 0
+              ? `Đã tìm được ${assignedForRole}/${needed} người, vẫn còn thiếu ${unresolvedForRole}.`
+              : "Có ứng viên nhưng tất cả đều bị loại bởi guard.",
+          suggestedAction:
+            "Xem danh sách ứng viên bị chặn để biết nguyên nhân: nghỉ phép, trùng ca, vượt giờ tuần, ngoài ngày làm việc hoặc không đúng vai trò.",
+          blockedCandidates: roleRejectedCandidates,
+        });
+      }
+    }
     const missingHeadcount = Math.max(
       0,
       Number(shiftInsight.recommendedTotalStaff || 0) -
         Number(shiftInsight.currentAssignedStaff || 0),
     );
-    const unresolvedCount = Math.max(
-      0,
-      missingHeadcount - plannedAssignments.length,
-    );
-    if (unresolvedCount > 0) unresolvedShifts += 1;
 
+    const unresolvedCount = unfilledRoles.reduce(
+      (sum, role) => sum + Number(role.unresolved || 0),
+      0,
+    );
     return {
       shiftKey: shiftInsight.shiftKey,
       date: shiftInsight.date,
@@ -484,6 +538,7 @@ export const buildAutoSchedulePreview = ({
       recommendedRoles: shiftInsight.recommendedRoles || [],
       plannedAssignments,
       blockedCandidates,
+      unfilledRoles,
       canApply: plannedAssignments.length > 0,
       startTime: shiftWindow.startTime,
       endTime: shiftWindow.endTime,

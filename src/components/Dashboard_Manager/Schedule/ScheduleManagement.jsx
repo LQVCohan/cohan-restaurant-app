@@ -1120,11 +1120,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
     await refetch();
     setSelectedShift(null);
   };
-  const summarizeAssignmentIssues = (issues = []) =>
-    issues
-      .map((issue) => issue?.message)
-      .filter(Boolean)
-      .join("; ");
 
   const validateAutoSchedulePreview = async (preview) => {
     const sourceItems = preview?.items || [];
@@ -1189,19 +1184,80 @@ const ScheduleManagement = ({ readOnly = false }) => {
           }
         }
 
-        const unresolvedCount = Math.max(
-          0,
-          Number(item.missingHeadcount || 0) - plannedAssignments.length,
-        );
-
         if (unresolvedCount > 0) {
           unresolvedShifts += 1;
         }
+
+        const existingUnfilledRoles = item.unfilledRoles || [];
+
+        const backendBlockedByRole = blockedCandidates.reduce(
+          (map, candidate) => {
+            const role = String(candidate.role || "");
+            if (!role) return map;
+
+            if (!map.has(role)) {
+              map.set(role, []);
+            }
+
+            map.get(role).push(candidate);
+            return map;
+          },
+          new Map(),
+        );
+
+        const unfilledRoles = existingUnfilledRoles.map((roleRow) => {
+          const role = String(roleRow.role || "");
+          const extraBlocked = backendBlockedByRole.get(role) || [];
+          const allBlocked = [
+            ...(roleRow.blockedCandidates || []),
+            ...extraBlocked.filter(
+              (candidate) =>
+                !(roleRow.blockedCandidates || []).some(
+                  (existing) =>
+                    String(existing.staffId) === String(candidate.staffId),
+                ),
+            ),
+          ];
+
+          return {
+            ...roleRow,
+            blockedCandidates: allBlocked,
+            blockedCount: allBlocked.length,
+          };
+        });
+
+        const plannedByRole = plannedAssignments.reduce((map, assignment) => {
+          const role = String(assignment.role || "");
+          map.set(role, Number(map.get(role) || 0) + 1);
+          return map;
+        }, new Map());
+
+        const normalizedUnfilledRoles = unfilledRoles.map((roleRow) => {
+          const planned = Number(
+            plannedByRole.get(String(roleRow.role || "")) || 0,
+          );
+          const unresolved = Math.max(
+            0,
+            Number(roleRow.missing || 0) - planned,
+          );
+
+          return {
+            ...roleRow,
+            planned,
+            unresolved,
+          };
+        });
+
+        const unresolvedCount = normalizedUnfilledRoles.reduce(
+          (sum, roleRow) => sum + Number(roleRow.unresolved || 0),
+          0,
+        );
 
         items.push({
           ...item,
           plannedAssignments,
           blockedCandidates,
+          unfilledRoles: normalizedUnfilledRoles,
           unresolvedCount,
           canApply: plannedAssignments.length > 0,
         });

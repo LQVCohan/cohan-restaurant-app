@@ -358,7 +358,117 @@
     gap: 0.45rem;
     margin-top: 0.75rem;
   }
+  .unfilled-role-panel {
+    margin-top: 0.85rem;
+    padding: 0.85rem;
+    border-radius: 0.9rem;
+    border: 1px solid #fecaca;
+    background: #fff7f7;
 
+    > h5 {
+      margin: 0 0 0.65rem;
+      color: #991b1b;
+      font-size: 0.86rem;
+    }
+  }
+
+  .unfilled-role-card {
+    padding: 0.75rem;
+    border-radius: 0.8rem;
+    border: 1px solid #fecaca;
+    background: #fff;
+
+    & + .unfilled-role-card {
+      margin-top: 0.65rem;
+    }
+
+    p {
+      margin: 0.45rem 0 0;
+      color: #7f1d1d;
+      font-size: 0.8rem;
+      line-height: 1.45;
+    }
+
+    > small {
+      display: block;
+      margin-top: 0.4rem;
+      color: #991b1b;
+      font-size: 0.76rem;
+      line-height: 1.4;
+    }
+  }
+
+  .unfilled-role-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: flex-start;
+
+    strong {
+      color: #0f172a;
+      font-size: 0.86rem;
+    }
+
+    span {
+      color: #64748b;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-align: right;
+    }
+  }
+
+  .unfilled-blocked-list {
+    margin-top: 0.65rem;
+    padding: 0.65rem;
+    border-radius: 0.75rem;
+    background: #fff7ed;
+    border: 1px solid #fdba74;
+
+    > strong {
+      display: block;
+      color: #92400e;
+      font-size: 0.78rem;
+      margin-bottom: 0.45rem;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    li {
+      display: list-item;
+
+      span {
+        display: block;
+        color: #7c2d12;
+        font-weight: 700;
+        font-size: 0.78rem;
+      }
+
+      small {
+        display: block;
+        margin-top: 0.15rem;
+        color: #9a3412;
+        font-size: 0.74rem;
+        line-height: 1.35;
+      }
+    }
+  }
+
+  .unfilled-empty-candidates {
+    margin-top: 0.65rem;
+    padding: 0.6rem;
+    border-radius: 0.7rem;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
   .preview-meta-row span,
   .role-pill {
     border-radius: 999px;

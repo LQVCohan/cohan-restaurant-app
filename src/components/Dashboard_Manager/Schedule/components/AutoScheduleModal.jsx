@@ -39,7 +39,23 @@ const statusLabel = (status) => {
   if (status === "overstaffed") return "Dư người";
   return "Cân bằng";
 };
+const formatRoleNeed = (roleRow) => {
+  const role = getRoleLabel(roleRow.role);
+  const required = Number(roleRow.required || 0);
+  const assigned = Number(roleRow.assigned || 0);
+  const missing = Number(roleRow.missing || 0);
+  const planned = Number(roleRow.planned || 0);
+  const unresolved = Number(roleRow.unresolved || 0);
 
+  return {
+    role,
+    required,
+    assigned,
+    missing,
+    planned,
+    unresolved,
+  };
+};
 const AutoScheduleModal = ({
   isOpen,
   onClose,
@@ -327,7 +343,66 @@ const AutoScheduleModal = ({
                           </span>
                         ))}
                     </div>
+                    {(item.unfilledRoles || []).length ? (
+                      <div className="unfilled-role-panel">
+                        <h5>Ca này đang thiếu gì?</h5>
 
+                        {(item.unfilledRoles || []).map((roleRow) => {
+                          const roleNeed = formatRoleNeed(roleRow);
+
+                          return (
+                            <div
+                              key={`${item.shiftKey}-${roleRow.role}-unfilled`}
+                              className="unfilled-role-card"
+                            >
+                              <div className="unfilled-role-head">
+                                <strong>{roleNeed.role}</strong>
+                                <span>
+                                  Cần {roleNeed.required}, hiện có{" "}
+                                  {roleNeed.assigned}, hệ thống tìm được{" "}
+                                  {roleNeed.planned}, còn thiếu{" "}
+                                  {roleNeed.unresolved}
+                                </span>
+                              </div>
+
+                              <p>{roleRow.reason}</p>
+
+                              {roleRow.suggestedAction ? (
+                                <small>
+                                  Gợi ý xử lý: {roleRow.suggestedAction}
+                                </small>
+                              ) : null}
+
+                              {(roleRow.blockedCandidates || []).length ? (
+                                <div className="unfilled-blocked-list">
+                                  <strong>Ứng viên đã xét nhưng bị loại</strong>
+                                  <ul>
+                                    {(roleRow.blockedCandidates || [])
+                                      .slice(0, 5)
+                                      .map((candidate) => (
+                                        <li
+                                          key={`${item.shiftKey}-${roleRow.role}-${candidate.staffId}`}
+                                        >
+                                          <span>
+                                            {candidate.fullName} •{" "}
+                                            {getRoleLabel(candidate.role)}
+                                          </span>
+                                          <small>{candidate.reason}</small>
+                                        </li>
+                                      ))}
+                                  </ul>
+                                </div>
+                              ) : (
+                                <div className="unfilled-empty-candidates">
+                                  Chưa có ứng viên cụ thể nào được assistant đưa
+                                  vào danh sách xét cho vai trò này.
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                     <div className="assignment-block">
                       <h5>Nhân sự dự kiến áp dụng</h5>
                       {(item.plannedAssignments || []).length ? (
