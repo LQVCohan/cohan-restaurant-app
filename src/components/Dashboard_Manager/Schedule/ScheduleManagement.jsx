@@ -76,7 +76,22 @@ const GET_ALL_RESTAURANTS = gql`
     }
   }
 `;
-
+const GET_MANAGER_RESTAURANTS = gql`
+  query RestaurantsByManager($managerId: ID!, $limit: Int = 100, $cursor: ID) {
+    restaurantsByManager(
+      managerId: $managerId
+      limit: $limit
+      cursor: $cursor
+    ) {
+      edges {
+        node {
+          id
+          name
+        }
+      }
+    }
+  }
+`;
 const GET_STAFF_LIST = gql`
   query StaffList($restaurantId: ID, $search: String) {
     staffList(restaurantId: $restaurantId, search: $search) {
@@ -500,34 +515,53 @@ const ScheduleManagement = ({ readOnly = false }) => {
     skip: me?.roleName !== "admin",
     fetchPolicy: "network-only",
   });
-
+  const { data: managerRestaurantsData } = useQuery(GET_MANAGER_RESTAURANTS, {
+    variables: {
+      managerId: me?.id,
+      limit: 100,
+    },
+    skip: !me?.id || me?.roleName === "admin",
+    fetchPolicy: "network-only",
+  });
   const restaurantOptions = useMemo(() => {
     if (me?.roleName === "admin") {
-      return (allRestaurantsData?.restaurants?.edges || []).map(
-        (edge) => edge.node,
-      );
+      return (allRestaurantsData?.restaurants?.edges || [])
+        .map((edge) => edge.node)
+        .filter(Boolean);
     }
-    return (me?.refRestaurants || []).map((restaurant) => ({
-      id: restaurant.id,
-      name: restaurant.name,
-    }));
-  }, [allRestaurantsData, me]);
 
+    return (managerRestaurantsData?.restaurantsByManager?.edges || [])
+      .map((edge) => edge.node)
+      .filter(Boolean);
+  }, [allRestaurantsData, managerRestaurantsData, me?.roleName]);
+  const scheduleRestaurantOptions = useMemo(() => {
+    const map = new Map();
+
+    (restaurantOptions || []).forEach((restaurant) => {
+      if (!restaurant?.id) return;
+
+      map.set(String(restaurant.id), {
+        id: restaurant.id,
+        name: restaurant.name || "Nhà hàng",
+      });
+    });
+
+    if (me?.restaurantForStaff && !map.has(String(me.restaurantForStaff))) {
+      map.set(String(me.restaurantForStaff), {
+        id: me.restaurantForStaff,
+        name: "Nhà hàng hiện tại",
+      });
+    }
+
+    return Array.from(map.values());
+  }, [me?.restaurantForStaff, restaurantOptions]);
   const effectiveRestaurantId = selectedRestaurantId || "";
   useEffect(() => {
     if (selectedRestaurantId) return;
     if (!restaurantOptions.length) return;
 
-    const preferredRestaurantId =
-      me?.restaurantForStaff &&
-      restaurantOptions.some(
-        (restaurant) => String(restaurant.id) === String(me.restaurantForStaff),
-      )
-        ? me.restaurantForStaff
-        : restaurantOptions[0].id;
-
-    setSelectedRestaurantId(preferredRestaurantId);
-  }, [me?.restaurantForStaff, restaurantOptions, selectedRestaurantId]);
+    setSelectedRestaurantId(restaurantOptions[0].id);
+  }, [restaurantOptions, selectedRestaurantId]);
   const {
     policy: schedulingPolicy,
     loading: schedulingPolicyLoading,
@@ -1674,8 +1708,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
           <select
             value={selectedRestaurantId}
             onChange={(event) => handleRestaurantChange(event.target.value)}
-            disabled={readOnly || restaurantOptions.length <= 1}
+            disabled={readOnly || !restaurantOptions.length}
           >
+            <option value="" disabled>
+              Chọn nhà hàng
+            </option>
+
             {restaurantOptions.map((restaurant) => (
               <option key={restaurant.id} value={restaurant.id}>
                 {restaurant.name}
