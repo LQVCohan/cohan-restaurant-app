@@ -124,13 +124,16 @@ export async function updateSchedulingPolicy({ restaurantId, input, ctx }) {
     payload.updatedBy = actorId;
   }
 
+  const insertDefaults = getDefaultSchedulingPolicyPayload(rid);
+
+  Object.keys(payload).forEach((key) => {
+    delete insertDefaults[key];
+  });
+
   const policy = await SchedulingPolicy.findOneAndUpdate(
     { restaurantId: rid },
     {
-      $setOnInsert: {
-        restaurantId: rid,
-        ...getDefaultSchedulingPolicyPayload(rid),
-      },
+      $setOnInsert: insertDefaults,
       $set: payload,
     },
     {

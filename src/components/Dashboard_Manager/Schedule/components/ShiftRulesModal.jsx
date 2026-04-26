@@ -338,6 +338,8 @@ const ShiftRulesModal = ({
   policy,
   policyLoading = false,
   policySaving = false,
+  saveError = "",
+  saveMessage = "",
   onApply,
 }) => {
   const [activeTab, setActiveTab] = useState("shifts");
@@ -419,8 +421,8 @@ const ShiftRulesModal = ({
     setDraftScoringWeights(normalizeScoringWeights(preset.values));
   };
 
-  const handleSubmit = () => {
-    if (!validation.ok) return;
+  const handleSubmit = async () => {
+    if (!validation.ok || policySaving) return;
 
     const policyInput = stripTypenameDeep({
       shiftTemplates: shiftRulesToTemplates(draftRules),
@@ -448,7 +450,7 @@ const ShiftRulesModal = ({
       scoringWeights: normalizeScoringWeights(draftScoringWeights),
     });
 
-    onApply(draftRules, policyInput);
+    await onApply(draftRules, policyInput);
   };
   return (
     <Modal
@@ -977,14 +979,27 @@ const ShiftRulesModal = ({
             </div>
           </div>
         ) : null}
+        {saveError ? (
+          <div className="shift-rule-errors">
+            <div>{saveError}</div>
+          </div>
+        ) : null}
 
+        {saveMessage ? (
+          <div className="policy-save-success">{saveMessage}</div>
+        ) : null}
         {policyLoading ? (
           <div className="policy-loading">Đang tải SchedulingPolicy...</div>
         ) : null}
       </Modal.Body>
 
       <Modal.Footer>
-        <button type="button" className="btn-secondary" onClick={onClose}>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={onClose}
+          disabled={policySaving}
+        >
           Đóng
         </button>
         <button

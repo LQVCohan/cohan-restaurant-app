@@ -15,6 +15,7 @@ import {
   subWeeks,
 } from "date-fns";
 import { vi } from "date-fns/locale";
+import { useNotification } from "@/hooks/useNotification";
 import useSchedulingPolicy from "@/hooks/useSchedulingPolicy";
 import {
   AlertTriangle,
@@ -459,6 +460,7 @@ const buildVisibleScheduleInsights = ({ shifts, staff }) => {
 };
 
 const ScheduleManagement = ({ readOnly = false }) => {
+  const { showNotification } = useNotification();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState("week");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
@@ -764,23 +766,51 @@ const ScheduleManagement = ({ readOnly = false }) => {
     );
   };
 
+  const getGraphQLErrorMessage = (error, fallback) => {
+    const graphQLError =
+      error?.graphQLErrors?.[0]?.message ||
+      error?.networkError?.result?.errors?.[0]?.message;
+
+    return graphQLError || error?.message || fallback;
+  };
+
   const handleApplyShiftRules = async (nextRules, policyInput) => {
     const validation = validateShiftRules(nextRules);
-    if (!validation.ok) return;
 
-    setShiftRules(nextRules);
-    persistShiftRules(nextRules);
-
-    if (effectiveRestaurantId && policyInput) {
-      await updateSchedulingPolicy({
-        variables: {
-          restaurantId: effectiveRestaurantId,
-          input: stripTypenameDeep(policyInput),
-        },
-      });
+    if (!validation.ok) {
+      showNotification(
+        validation.message ||
+          "Quy tắc xếp lịch chưa hợp lệ. Vui lòng kiểm tra lại.",
+        "warning",
+      );
+      return;
     }
 
-    setIsShiftSettingsOpen(false);
+    try {
+      if (effectiveRestaurantId && policyInput) {
+        await updateSchedulingPolicy({
+          variables: {
+            restaurantId: effectiveRestaurantId,
+            input: stripTypenameDeep(policyInput),
+          },
+        });
+      }
+
+      setShiftRules(nextRules);
+      persistShiftRules(nextRules);
+
+      setIsShiftSettingsOpen(false);
+      showNotification("Đã lưu quy tắc xếp lịch thành công.", "success");
+    } catch (error) {
+      console.error(error);
+      showNotification(
+        getGraphQLErrorMessage(
+          error,
+          "Không thể lưu quy tắc xếp lịch. Vui lòng thử lại.",
+        ),
+        "error",
+      );
+    }
   };
 
   const overlapsExistingShiftGroup = ({
@@ -1221,7 +1251,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
             <button
               type="button"
               className="schedule-settings-trigger"
-              onClick={() => setIsShiftSettingsOpen(true)}
+              onClick={() => {
+                setShiftRulesSaveMessage("");
+                setShiftRulesSaveError("");
+                setIsShiftSettingsOpen(true);
+              }}
               disabled={readOnly}
             >
               <Settings size={18} />

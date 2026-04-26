@@ -13,7 +13,7 @@ import {
   UserRoundCheck,
   X,
 } from "lucide-react";
-import useStaffPerformance from "@/hooks/useStaffPerformance";
+import useStaffPerformance from "../../../../../hooks/useStaffPerformance";
 import "./StaffPerformancePage.scss";
 
 const SCORE_LEVELS = {
