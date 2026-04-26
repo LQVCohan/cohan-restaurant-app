@@ -513,11 +513,21 @@ const ScheduleManagement = ({ readOnly = false }) => {
     }));
   }, [allRestaurantsData, me]);
 
-  const effectiveRestaurantId =
-    selectedRestaurantId ||
-    me?.restaurantForStaff ||
-    restaurantOptions[0]?.id ||
-    "";
+  const effectiveRestaurantId = selectedRestaurantId || "";
+  useEffect(() => {
+    if (selectedRestaurantId) return;
+    if (!restaurantOptions.length) return;
+
+    const preferredRestaurantId =
+      me?.restaurantForStaff &&
+      restaurantOptions.some(
+        (restaurant) => String(restaurant.id) === String(me.restaurantForStaff),
+      )
+        ? me.restaurantForStaff
+        : restaurantOptions[0].id;
+
+    setSelectedRestaurantId(preferredRestaurantId);
+  }, [me?.restaurantForStaff, restaurantOptions, selectedRestaurantId]);
   const {
     policy: schedulingPolicy,
     loading: schedulingPolicyLoading,
@@ -743,6 +753,30 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
   }, [effectiveRestaurantId]);
+  const handleRestaurantChange = (nextRestaurantId) => {
+    const nextRestaurant = restaurantOptions.find(
+      (restaurant) => String(restaurant.id) === String(nextRestaurantId),
+    );
+
+    setSelectedRestaurantId(nextRestaurantId);
+    setSelectedStaffId("");
+
+    setAssistantPayload(null);
+    setAssistantLeaveRows([]);
+    setAssistantShiftRows([]);
+    setSelectedAutoShiftKeys({});
+    setAutoScheduleError("");
+    setValidatedAutoSchedulePreview(null);
+
+    if (nextRestaurantId) {
+      showNotification(
+        `Đã chuyển lịch làm việc sang ${
+          nextRestaurant?.name || "nhà hàng đã chọn"
+        }.`,
+        "success",
+      );
+    }
+  };
   useEffect(() => {
     setValidatedAutoSchedulePreview(null);
   }, [autoScheduleConfig, configuredShiftTypes]);
@@ -1639,9 +1673,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
         <div className="toolbar-right">
           <select
             value={selectedRestaurantId}
-            onChange={(event) => setSelectedRestaurantId(event.target.value)}
+            onChange={(event) => handleRestaurantChange(event.target.value)}
+            disabled={readOnly || restaurantOptions.length <= 1}
           >
-            <option value="">Nhà hàng hiện tại</option>
             {restaurantOptions.map((restaurant) => (
               <option key={restaurant.id} value={restaurant.id}>
                 {restaurant.name}
@@ -1786,7 +1820,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
           </div>
         </section>
       ) : null}
-
+      {!effectiveRestaurantId ? (
+        <div className="schedule-empty-state">
+          Vui lòng chọn nhà hàng để xem và xếp lịch làm việc.
+        </div>
+      ) : null}
       {shiftsError ? (
         <div className="empty-state schedule-feedback">
           Không tải được lịch làm việc.

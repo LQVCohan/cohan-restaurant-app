@@ -1145,3 +1145,13 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
     }
   }
 }
+
+.schedule-empty-state {
+  margin: 16px 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  font-weight: 600;
+}
