@@ -534,27 +534,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       .map((edge) => edge.node)
       .filter(Boolean);
   }, [allRestaurantsData, managerRestaurantsData, me?.roleName]);
-  const scheduleRestaurantOptions = useMemo(() => {
-    const map = new Map();
 
-    (restaurantOptions || []).forEach((restaurant) => {
-      if (!restaurant?.id) return;
-
-      map.set(String(restaurant.id), {
-        id: restaurant.id,
-        name: restaurant.name || "Nhà hàng",
-      });
-    });
-
-    if (me?.restaurantForStaff && !map.has(String(me.restaurantForStaff))) {
-      map.set(String(me.restaurantForStaff), {
-        id: me.restaurantForStaff,
-        name: "Nhà hàng hiện tại",
-      });
-    }
-
-    return Array.from(map.values());
-  }, [me?.restaurantForStaff, restaurantOptions]);
   const effectiveRestaurantId = selectedRestaurantId || "";
   useEffect(() => {
     if (selectedRestaurantId) return;
@@ -597,9 +577,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
     [configuredShiftTypes],
   );
 
-  const { data: staffData, loading: staffLoading } = useQuery(GET_STAFF_LIST, {
+  const {
+    data: staffData,
+    loading: staffLoading,
+    refetch: refetchStaffList,
+  } = useQuery(GET_STAFF_LIST, {
     variables: { restaurantId: effectiveRestaurantId || undefined },
     fetchPolicy: "network-only",
+    nextFetchPolicy: "network-only",
     skip: !effectiveRestaurantId,
   });
 
@@ -1379,31 +1364,35 @@ const ScheduleManagement = ({ readOnly = false }) => {
     const contextEnd = endOfWeek(analysisEnd, { weekStartsOn: 1 });
 
     try {
-      const [assistantResult, leaveResult, shiftResult] = await Promise.all([
-        loadSchedulingAssistant({
-          variables: {
-            restaurantId: effectiveRestaurantId,
-            horizonDays: Number(autoScheduleConfig.horizonDays || 1),
-            timezone: SCHEDULING_TIMEZONE,
-          },
-        }),
-        loadLeaveRequests({
-          variables: {
-            filter: {
+      const [staffResult, assistantResult, leaveResult, shiftResult] =
+        await Promise.all([
+          refetchStaffList({
+            restaurantId: effectiveRestaurantId || undefined,
+          }),
+          loadSchedulingAssistant({
+            variables: {
               restaurantId: effectiveRestaurantId,
-              startDate: today.toISOString(),
-              endDate: analysisEnd.toISOString(),
+              horizonDays: Number(autoScheduleConfig.horizonDays || 1),
+              timezone: SCHEDULING_TIMEZONE,
             },
-          },
-        }),
-        loadAssistantContextShifts({
-          variables: {
-            restaurantId: effectiveRestaurantId,
-            startDate: contextStart.toISOString(),
-            endDate: contextEnd.toISOString(),
-          },
-        }),
-      ]);
+          }),
+          loadLeaveRequests({
+            variables: {
+              filter: {
+                restaurantId: effectiveRestaurantId,
+                startDate: today.toISOString(),
+                endDate: analysisEnd.toISOString(),
+              },
+            },
+          }),
+          loadAssistantContextShifts({
+            variables: {
+              restaurantId: effectiveRestaurantId,
+              startDate: contextStart.toISOString(),
+              endDate: contextEnd.toISOString(),
+            },
+          }),
+        ]);
 
       const nextAssistantPayload =
         assistantResult?.data?.staffSchedulingAssistant || null;
@@ -1414,9 +1403,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
       setAssistantLeaveRows(nextLeaveRows);
       setAssistantShiftRows(nextShiftRows);
 
+      const nextStaffList = staffResult?.data?.staffList || rawStaffList;
+
       const nextRawPreview = buildAutoSchedulePreview({
         assistant: nextAssistantPayload,
-        staffList: rawStaffList,
+        staffList: nextStaffList,
         existingShiftRows: nextShiftRows,
         leaveRequests: nextLeaveRows,
         weeklyHoursCap: autoScheduleConfig.weeklyHoursCap,
