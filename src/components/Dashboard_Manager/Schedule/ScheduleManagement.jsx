@@ -644,8 +644,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
           employeeCode: item.employeeCode || "",
           department: item.department,
           job: mapDepartmentToJob(item.department),
-          status: item.employmentStatus === "working" ? "active" : "off",
-          employmentStatus: item.employmentStatus,
+          status:
+            String(item.employmentStatus || "").toLowerCase() === "working"
+              ? "active"
+              : "off",
+          employmentStatus: String(item.employmentStatus || "").toLowerCase(),
           employmentType: item.employmentType,
           workingDays: item.workingDays || [],
           hourlyRate,
