@@ -226,8 +226,16 @@ const UPDATE_STAFF_SHIFT = gql`
 `;
 
 const DELETE_STAFF_SHIFT = gql`
-  mutation DeleteStaffShift($shiftId: ID!) {
-    deleteStaffShift(shiftId: $shiftId)
+  mutation DeleteStaffShift(
+    $shiftId: ID!
+    $reason: String
+    $notifyEmployee: Boolean
+  ) {
+    deleteStaffShift(
+      shiftId: $shiftId
+      reason: $reason
+      notifyEmployee: $notifyEmployee
+    )
   }
 `;
 
@@ -1208,16 +1216,56 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setSelectedShift(null);
   };
 
-  const handleRemoveStaff = async (shiftGroupId, staffId) => {
-    if (readOnly) return;
-    const found = shifts.find((item) => item.id === shiftGroupId);
-    const targetRecord = found?.records?.find(
+  const handleRemoveStaffFromShift = async (
+    shiftGroupId,
+    staffId,
+    options = {},
+  ) => {
+    const shiftGroup = shifts.find((item) => item.id === shiftGroupId);
+
+    if (!shiftGroup) {
+      showNotification("Không tìm thấy ca làm cần cập nhật.", "error");
+      return;
+    }
+
+    const targetRecord = (shiftGroup.records || []).find(
       (record) => String(record.employeeId) === String(staffId),
     );
-    if (!targetRecord) return;
-    await deleteShift({ variables: { shiftId: targetRecord.id } });
-    await refetch();
-    setSelectedShift(null);
+
+    if (!targetRecord?.id) {
+      showNotification("Không tìm thấy phân công ca của nhân viên.", "error");
+      return;
+    }
+
+    try {
+      await deleteShift({
+        variables: {
+          shiftId: targetRecord.id,
+          reason: options.reason || "",
+          notifyEmployee: options.notifyEmployee !== false,
+        },
+      });
+
+      await refetch();
+
+      const employeeName =
+        staff.find((person) => String(person.id) === String(staffId))?.name ||
+        "Nhân viên";
+
+      showNotification(
+        `Đã xóa ${employeeName} khỏi ca và gửi thông báo cho nhân viên.`,
+        "success",
+      );
+    } catch (error) {
+      console.error(error);
+      showNotification(
+        getGraphQLErrorMessage(
+          error,
+          "Không thể xóa nhân viên khỏi ca. Vui lòng thử lại.",
+        ),
+        "error",
+      );
+    }
   };
 
   const handleAddStaff = async (shiftGroupId, staffId) => {
@@ -2226,7 +2274,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         shift={selectedShift}
         staffList={staff}
         readOnly={readOnly}
-        onRemoveStaff={handleRemoveStaff}
+        onRemoveStaff={handleRemoveStaffFromShift}
         onAddStaff={handleAddStaff}
         onDeleteShift={handleDeleteShift}
         onUpdateNotes={handleUpdateSelectedNotes}

@@ -47,7 +47,9 @@ const ShiftDetailModal = ({
   const [timeError, setTimeError] = useState("");
   const [isSavingTime, setIsSavingTime] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
-
+  const [removeConfirm, setRemoveConfirm] = useState(null);
+  const [removeReason, setRemoveReason] = useState("");
+  const [isRemovingStaff, setIsRemovingStaff] = useState(false);
   const shiftStaffIds = useMemo(() => shift?.staffIds || [], [shift?.staffIds]);
   const shiftEssentialJobs = useMemo(
     () => shift?.essentialJobs || [],
@@ -76,6 +78,9 @@ const ShiftDetailModal = ({
     setTimeError("");
     setIsSavingTime(false);
     setIsSavingNotes(false);
+    setRemoveConfirm(null);
+    setRemoveReason("");
+    setIsRemovingStaff(false);
   }, [shift]);
 
   if (!isOpen || !shift) return null;
@@ -119,7 +124,38 @@ const ShiftDetailModal = ({
       setIsSavingNotes(false);
     }
   };
+  const openRemoveConfirm = (person) => {
+    setRemoveConfirm(person);
+    setRemoveReason("");
+  };
 
+  const closeRemoveConfirm = () => {
+    if (isRemovingStaff) return;
+    setRemoveConfirm(null);
+    setRemoveReason("");
+  };
+
+  const handleConfirmRemoveStaff = async () => {
+    if (!removeConfirm || readOnly || !onRemoveStaff) return;
+
+    if (!removeReason.trim()) {
+      return;
+    }
+
+    setIsRemovingStaff(true);
+
+    try {
+      await onRemoveStaff(shift.id, removeConfirm.id, {
+        reason: removeReason.trim(),
+        notifyEmployee: true,
+      });
+
+      setRemoveConfirm(null);
+      setRemoveReason("");
+    } finally {
+      setIsRemovingStaff(false);
+    }
+  };
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <Modal.Header>
@@ -208,7 +244,7 @@ const ShiftDetailModal = ({
                       {!readOnly ? (
                         <button
                           className="btn-icon remove"
-                          onClick={() => onRemoveStaff(shift.id, staffId)}
+                          onClick={() => openRemoveConfirm(person)}
                           title="Xóa khỏi ca"
                         >
                           <UserMinus size={18} />
@@ -344,7 +380,63 @@ const ShiftDetailModal = ({
               </div>
             </div>
           ) : null}
+          {removeConfirm ? (
+            <div className="remove-confirm-backdrop">
+              <div className="remove-confirm-card">
+                <div className="remove-confirm-icon">
+                  <AlertTriangle size={22} />
+                </div>
 
+                <div className="remove-confirm-content">
+                  <h4>Xóa nhân viên khỏi ca?</h4>
+                  <p>
+                    Bạn đang chuẩn bị xóa <strong>{removeConfirm.name}</strong>{" "}
+                    khỏi ca <strong>{currentShiftType?.label}</strong> ngày{" "}
+                    <strong>{formatDate(shift.date)}</strong>, thời gian{" "}
+                    <strong>
+                      {shift.startTime} - {shift.endTime}
+                    </strong>
+                    .
+                  </p>
+
+                  <label>
+                    Lý do xóa khỏi ca <span>*</span>
+                    <textarea
+                      value={removeReason}
+                      onChange={(event) => setRemoveReason(event.target.value)}
+                      placeholder="Ví dụ: nhân viên xin nghỉ, đổi ca, phân công nhầm..."
+                      rows={3}
+                      disabled={isRemovingStaff}
+                    />
+                  </label>
+
+                  <div className="remove-confirm-note">
+                    Sau khi xác nhận, hệ thống sẽ gửi thông báo đến nhân viên
+                    này.
+                  </div>
+
+                  <div className="remove-confirm-actions">
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={closeRemoveConfirm}
+                      disabled={isRemovingStaff}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-danger"
+                      onClick={handleConfirmRemoveStaff}
+                      disabled={isRemovingStaff || !removeReason.trim()}
+                    >
+                      {isRemovingStaff ? "Đang xóa..." : "Xác nhận xóa"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
           <div className="modal-footer-actions">
             {!readOnly ? (
               <>

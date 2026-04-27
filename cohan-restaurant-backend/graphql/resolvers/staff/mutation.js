@@ -13,6 +13,7 @@ import {
   PayrollItem,
   PayrollAdjustment,
   EmployeeCodeCounter,
+  Notification,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
 import {
@@ -394,7 +395,17 @@ function formatLeaveTypeLabel(leaveType) {
   };
   return map[String(leaveType || "").toLowerCase()] || leaveType;
 }
-
+function formatShiftTimeVi(dateValue) {
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
 function formatDateVi(date) {
   const d = new Date(date);
   return Number.isNaN(d.getTime())
@@ -1007,19 +1018,97 @@ export default {
     };
   },
 
-  deleteStaffShift: async (_, { shiftId }) => {
-    const oldShift = await Shift.findById(shiftId).lean();
-    if (oldShift) {
-      await assertNoLockedPayrollPeriodOverlap({
-        restaurantId: oldShift.restaurantId,
-        employeeId: oldShift.employeeId,
-        startDate: oldShift.startTime,
-        endDate: oldShift.endTime,
-        action: "shift",
-      });
+  deleteStaffShift: async (
+    _,
+    { shiftId, reason = "", notifyEmployee = true },
+    ctx,
+  ) => {
+    const shift = await Shift.findById(shiftId).populate(
+      "employeeId",
+      "fullName employeeCode email",
+    );
+
+    if (!shift) {
+      throw new Error("Shift not found");
     }
-    const deleted = await Shift.findByIdAndDelete(shiftId);
-    return Boolean(deleted);
+
+    const employeeId = shift.employeeId?._id || shift.employeeId;
+    const employeeName =
+      shift.employeeId?.fullName ||
+      shift.employeeId?.employeeCode ||
+      "Nhân viên";
+
+    const actorUserId = ctx?.user?.id || ctx?.user?._id || null;
+    const safeReason = String(reason || "").trim();
+
+    await Shift.deleteOne({ _id: shift._id });
+
+    await EventLog.create({
+      restaurantId: shift.restaurantId,
+      actorUserId,
+      verb: "staff.shift.removeEmployee",
+      object: {
+        kind: "Shift",
+        id: shift._id,
+        code: String(employeeId),
+      },
+      source: "schedule-management",
+      status: "success",
+      meta: {
+        employeeId: String(employeeId),
+        employeeName,
+        shiftType: shift.shiftType,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        reason: safeReason || null,
+      },
+      diff: {
+        before: {
+          employeeId: String(employeeId),
+          restaurantId: String(shift.restaurantId),
+          shiftType: shift.shiftType,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          status: shift.status,
+        },
+        after: null,
+      },
+      at: new Date().toISOString(),
+    });
+
+    if (notifyEmployee && employeeId) {
+      await Notification.create({
+        toUserId: employeeId,
+        restaurantId: shift.restaurantId,
+        type: "shift_removed",
+        payload: {
+          shiftId: String(shift._id),
+          shiftType: shift.shiftType,
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          title: "Bạn đã được gỡ khỏi một ca làm",
+          message: `Bạn đã được gỡ khỏi ca ${shift.shiftType} từ ${formatShiftTimeVi(
+            shift.startTime,
+          )} đến ${formatShiftTimeVi(shift.endTime)}.${
+            safeReason ? ` Lý do: ${safeReason}` : ""
+          }`,
+          reason: safeReason || null,
+          actorUserId: actorUserId ? String(actorUserId) : null,
+        },
+        readAt: null,
+      });
+
+      if (ctx?.io) {
+        ctx.io.to(`user_${String(employeeId)}`).emit("notificationCreated", {
+          type: "shift_removed",
+          shiftId: String(shift._id),
+          restaurantId: String(shift.restaurantId),
+          message: `Bạn đã được gỡ khỏi ca ${shift.shiftType}.`,
+        });
+      }
+    }
+
+    return true;
   },
   updateSchedulingPolicy: async (_, { restaurantId, input }, ctx) => {
     return updateSchedulingPolicy({

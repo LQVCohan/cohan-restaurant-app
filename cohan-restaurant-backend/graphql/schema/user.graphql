@@ -1660,7 +1660,11 @@ type Mutation {
     shiftId: ID!
     input: UpdateStaffShiftInput!
   ): StaffScheduleShift!
-  deleteStaffShift(shiftId: ID!): Boolean!
+  deleteStaffShift(
+    shiftId: ID!
+    reason: String
+    notifyEmployee: Boolean = true
+  ): Boolean!
   createPayrollPeriod(input: CreatePayrollPeriodInput!): PayrollPeriod!
   recalculatePayrollPeriod(periodId: ID!): PayrollPeriodDetail!
   finalizePayrollPeriod(periodId: ID!): PayrollPeriod!
