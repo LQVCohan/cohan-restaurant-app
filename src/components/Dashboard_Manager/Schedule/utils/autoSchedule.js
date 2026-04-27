@@ -320,7 +320,9 @@ export const buildAutoSchedulePreview = ({
         fullName: staff.fullName || staff.name || "Nhân viên",
         department: String(staff.department || "").toLowerCase(),
         employmentStatus: String(staff.employmentStatus || "").toLowerCase(),
-        workingDays: Array.isArray(staff.workingDays) ? staff.workingDays : [],
+        workingDays: Array.isArray(staff.workingDays)
+          ? staff.workingDays.map((day) => String(day || "").toUpperCase())
+          : [],
       },
     ]),
   );
@@ -600,6 +602,10 @@ export const buildAutoScheduleCreateInputs = ({
   for (const item of previewItems) {
     if (!selectedShiftKeys[item.shiftKey]) continue;
 
+    if (!item.canApply || !(item.plannedAssignments || []).length) {
+      continue;
+    }
+
     for (const assignment of item.plannedAssignments || []) {
       const dedupeKey = `${assignment.staffId}|${item.startTime}|${item.endTime}`;
       if (dedupe.has(dedupeKey)) continue;
@@ -614,6 +620,11 @@ export const buildAutoScheduleCreateInputs = ({
         ? " • Có cảnh báo policy, cần override khi áp dụng"
         : "";
 
+      const missingText =
+        Number(item.unresolvedCount || 0) > 0
+          ? ` • Ca còn thiếu ${item.unresolvedCount} vị trí`
+          : "";
+
       inputs.push({
         employeeId: assignment.staffId,
         restaurantId,
@@ -621,7 +632,7 @@ export const buildAutoScheduleCreateInputs = ({
         startTime: item.startTime,
         endTime: item.endTime,
         status: "scheduled",
-        notes: `Auto scheduled${scoreText}${warningText}`,
+        notes: `Auto scheduled${scoreText}${warningText}${missingText}`,
       });
     }
   }

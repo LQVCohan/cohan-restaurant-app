@@ -10,6 +10,7 @@ import {
   Search,
   Trash2,
   UserMinus,
+  Users,
   X,
 } from "lucide-react";
 import {
@@ -19,7 +20,13 @@ import {
   jobOptions,
   getJobName,
 } from "../utils/scheduleHelpers";
-
+const getInitials = (name) =>
+  String(name || "NV")
+    .trim()
+    .split(/\s+/)
+    .slice(-2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "NV";
 const ShiftDetailModal = ({
   isOpen,
   onClose,
@@ -42,14 +49,19 @@ const ShiftDetailModal = ({
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   const shiftStaffIds = useMemo(() => shift?.staffIds || [], [shift?.staffIds]);
-  const shiftEssentialJobs = useMemo(() => shift?.essentialJobs || [], [shift?.essentialJobs]);
+  const shiftEssentialJobs = useMemo(
+    () => shift?.essentialJobs || [],
+    [shift?.essentialJobs],
+  );
 
   const availableStaff = useMemo(() => {
     if (!shift || readOnly) return [];
 
     return staffList.filter((staff) => {
       const notInShift = !shiftStaffIds.includes(staff.id);
-      const matchSearch = staff.name.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = staff.name
+        .toLowerCase()
+        .includes(search.toLowerCase());
       const matchJob = jobFilter ? staff.job === jobFilter : true;
       return notInShift && matchSearch && matchJob;
     });
@@ -68,8 +80,12 @@ const ShiftDetailModal = ({
 
   if (!isOpen || !shift) return null;
 
-  const currentShiftType = shiftConfig[shift.shiftType] || shiftTypes[shift.shiftType];
-  const missingCount = Math.max(0, shiftEssentialJobs.length - shiftStaffIds.length);
+  const currentShiftType =
+    shiftConfig[shift.shiftType] || shiftTypes[shift.shiftType];
+  const missingCount = Math.max(
+    0,
+    shiftEssentialJobs.length - shiftStaffIds.length,
+  );
   const isComplete = missingCount === 0;
 
   const handleSaveTime = async () => {
@@ -106,39 +122,65 @@ const ShiftDetailModal = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
-      <Modal.Header>Chi tiết ca làm việc</Modal.Header>
+      <Modal.Header>
+        <div className="shift-detail-title">
+          <div>
+            <span className="eyebrow">Quản lý lịch làm</span>
+            <h2>Chi tiết ca làm việc</h2>
+          </div>
+          <button type="button" className="header-close-btn" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </div>
+      </Modal.Header>
       <Modal.Body>
         <div className="shift-detail-content">
           <div className={`summary-card ${isComplete ? "success" : "warning"}`}>
-            <div className="card-row">
+            <div className="summary-main">
+              <div className="shift-icon-wrap">
+                <Clock size={22} />
+              </div>
+
               <div className="main-info">
-                <h3 className="shift-name">{currentShiftType?.label}</h3>
-                <div className="time-badge">
-                  <Clock size={14} />
+                <span className="shift-type-label">
+                  {currentShiftType?.label}
+                </span>
+                <h3 className="shift-name">
+                  {formatDate(shift.date)} • {getDayName(shift.day)}
+                </h3>
+
+                <div className="summary-meta">
                   <span>
+                    <Clock size={14} />
                     {shift.startTime} - {shift.endTime}
+                  </span>
+                  <span>
+                    <Users size={14} />
+                    {shiftStaffIds.length} nhân sự
                   </span>
                 </div>
               </div>
-              <div className={`status-badge ${isComplete ? "complete" : "missing"}`}>
-                {isComplete ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
-                <span>{isComplete ? "Đủ nhân sự" : `Thiếu ${missingCount} người`}</span>
+
+              <div
+                className={`status-badge ${isComplete ? "complete" : "missing"}`}
+              >
+                {isComplete ? (
+                  <CheckCircle size={16} />
+                ) : (
+                  <AlertTriangle size={16} />
+                )}
+                <span>
+                  {isComplete ? "Đủ nhân sự" : `Thiếu ${missingCount} người`}
+                </span>
               </div>
             </div>
 
-            <div className="card-row meta-info">
-              <div className="meta-item">
-                <Calendar size={14} />
-                <span>
-                  {formatDate(shift.date)} ({getDayName(shift.day)})
-                </span>
+            {shift.notes ? (
+              <div className="summary-note">
+                <span>Ghi chú hiện tại</span>
+                <p>{shift.notes}</p>
               </div>
-              {shift.notes ? (
-                <div className="meta-item note">
-                  <span>📝 {shift.notes}</span>
-                </div>
-              ) : null}
-            </div>
+            ) : null}
           </div>
 
           <div className="section-block">
@@ -149,13 +191,15 @@ const ShiftDetailModal = ({
             <div className="assigned-list">
               {shiftStaffIds.length > 0 ? (
                 shiftStaffIds.map((staffId) => {
-                  const person = staffList.find((staff) => staff.id === staffId);
+                  const person = staffList.find(
+                    (staff) => staff.id === staffId,
+                  );
                   if (!person) return null;
 
                   return (
                     <div key={staffId} className="staff-row assigned">
                       <div className="info">
-                        <div className="avatar">{person.name.charAt(0)}</div>
+                        <div className="avatar">{getInitials(person.name)}</div>
                         <div className="details">
                           <span className="name">{person.name}</span>
                           <span className="role">{getJobName(person.job)}</span>
@@ -180,44 +224,23 @@ const ShiftDetailModal = ({
           </div>
 
           {!readOnly ? (
-            <div className="section-block">
+            <div className="section-block note-section">
               <div className="section-header">
-                <h4>Thời gian ca</h4>
+                <div>
+                  <h4>Ghi chú ca</h4>
+                  <p>Thông tin nội bộ cho quản lý hoặc nhân sự trong ca.</p>
+                </div>
               </div>
-              <div className="time-editor">
-                <label>
-                  Bắt đầu
-                  <input
-                    type="time"
-                    value={timeDraft.startTime}
-                    onChange={(event) =>
-                      setTimeDraft((prev) => ({ ...prev, startTime: event.target.value }))
-                    }
-                  />
-                </label>
-                <label>
-                  Kết thúc
-                  <input
-                    type="time"
-                    value={timeDraft.endTime}
-                    onChange={(event) =>
-                      setTimeDraft((prev) => ({ ...prev, endTime: event.target.value }))
-                    }
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={handleSaveTime}
-                  disabled={isSavingTime}
-                >
-                  {isSavingTime ? "Đang lưu giờ..." : "Lưu thời gian"}
-                </button>
-              </div>
-              {timeError ? <div className="time-error">{timeError}</div> : null}
-              <div className="time-help">
-                Hệ thống hỗ trợ ca qua ngày nếu giờ kết thúc sớm hơn giờ bắt đầu.
-              </div>
+
+              <textarea
+                className="note-textarea"
+                value={noteDraft}
+                onChange={(event) => setNoteDraft(event.target.value)}
+                placeholder="Nhập ghi chú ca làm..."
+                rows={3}
+                readOnly={readOnly}
+                disabled={readOnly}
+              />
             </div>
           ) : null}
 
@@ -261,7 +284,13 @@ const ShiftDetailModal = ({
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
-                  {search ? <X size={14} className="clear-icon" onClick={() => setSearch("")} /> : null}
+                  {search ? (
+                    <X
+                      size={14}
+                      className="clear-icon"
+                      onClick={() => setSearch("")}
+                    />
+                  ) : null}
                 </div>
                 <select
                   value={jobFilter}
@@ -280,26 +309,37 @@ const ShiftDetailModal = ({
               <div className="candidate-list">
                 {availableStaff.length > 0 ? (
                   availableStaff.map((person) => {
-                    const isRecommended = shiftEssentialJobs.includes(person.job);
+                    const isRecommended = shiftEssentialJobs.includes(
+                      person.job,
+                    );
                     return (
                       <div key={person.id} className="staff-row candidate">
                         <div className="info">
                           <div className="details">
                             <span className="name">{person.name}</span>
                             <div className="sub-row">
-                              <span className="role">{getJobName(person.job)}</span>
-                              {isRecommended ? <span className="tag-rec">Ưu tiên</span> : null}
+                              <span className="role">
+                                {getJobName(person.job)}
+                              </span>
+                              {isRecommended ? (
+                                <span className="tag-rec">Ưu tiên</span>
+                              ) : null}
                             </div>
                           </div>
                         </div>
-                        <button className="btn-icon add" onClick={() => onAddStaff(shift.id, person.id)}>
+                        <button
+                          className="btn-icon add"
+                          onClick={() => onAddStaff(shift.id, person.id)}
+                        >
                           <Plus size={18} />
                         </button>
                       </div>
                     );
                   })
                 ) : (
-                  <div className="empty-placeholder">Không tìm thấy nhân viên</div>
+                  <div className="empty-placeholder">
+                    Không tìm thấy nhân viên phù hợp với bộ lọc hiện tại.
+                  </div>
                 )}
               </div>
             </div>

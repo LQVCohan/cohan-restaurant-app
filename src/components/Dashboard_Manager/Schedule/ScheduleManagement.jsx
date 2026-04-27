@@ -243,7 +243,146 @@ const DEPARTMENT_LABELS = {
   inventory: "Kho",
   bar: "Quầy bar",
 };
+const AUTO_REQUIRED_ROLE_OPTIONS = [
+  { role: "server", label: "Phục vụ" },
+  { role: "cook", label: "Bếp" },
+  { role: "cashier", label: "Thu ngân" },
+  { role: "host", label: "Đón khách" },
+  { role: "cleaner", label: "Vệ sinh" },
+  { role: "bartender", label: "Pha chế" },
+  { role: "shipper", label: "Giao hàng" },
+  { role: "storekeeper", label: "Kho" },
+];
 
+const DEFAULT_AUTO_REQUIRED_ROLES = ["server", "cook", "cashier"];
+
+const AUTO_SHIFT_LABELS = {
+  morning: "Ca sáng",
+  afternoon: "Ca chiều",
+  evening: "Ca tối",
+  full_day: "Cả ngày",
+  rotating: "Luân phiên",
+};
+
+const getAutoRoleLabel = (role) =>
+  AUTO_REQUIRED_ROLE_OPTIONS.find((item) => item.role === role)?.label ||
+  role ||
+  "Vai trò";
+
+const resolveAssistantShiftStatus = (deltaStaff) => {
+  if (deltaStaff <= -3) return { status: "understaffed", severity: "high" };
+  if (deltaStaff === -2 || deltaStaff === -1) {
+    return { status: "understaffed", severity: "medium" };
+  }
+  if (deltaStaff >= 3) return { status: "overstaffed", severity: "high" };
+  if (deltaStaff >= 1) return { status: "overstaffed", severity: "low" };
+  return { status: "balanced", severity: "low" };
+};
+
+const mergeAssistantWithRequiredRoles = (assistant, requiredRoles = []) => {
+  if (!assistant) return assistant;
+
+  const requiredRoleSet = new Set(
+    (requiredRoles || [])
+      .map((role) =>
+        String(role || "")
+          .trim()
+          .toLowerCase(),
+      )
+      .filter(Boolean),
+  );
+
+  if (!requiredRoleSet.size) {
+    return assistant;
+  }
+
+  const enhancedShifts = (assistant.shifts || []).map((shift) => {
+    const roleMap = new Map();
+
+    (shift.recommendedRoles || []).forEach((roleRow) => {
+      const role = String(roleRow.role || "").toLowerCase();
+      if (!role) return;
+
+      roleMap.set(role, {
+        ...roleRow,
+        role,
+        required: Number(roleRow.required || 0),
+        assigned: Number(roleRow.assigned || 0),
+        delta: Number(roleRow.delta || 0),
+      });
+    });
+
+    requiredRoleSet.forEach((role) => {
+      const current = roleMap.get(role) || {
+        role,
+        required: 0,
+        assigned: 0,
+        delta: 0,
+      };
+
+      const required = Math.max(Number(current.required || 0), 1);
+      const assigned = Number(current.assigned || 0);
+
+      roleMap.set(role, {
+        ...current,
+        role,
+        required,
+        assigned,
+        delta: assigned - required,
+      });
+    });
+
+    const recommendedRoles = Array.from(roleMap.values()).sort((left, right) =>
+      getAutoRoleLabel(left.role).localeCompare(getAutoRoleLabel(right.role)),
+    );
+
+    const recommendedTotalStaff = recommendedRoles.reduce(
+      (sum, roleRow) => sum + Number(roleRow.required || 0),
+      0,
+    );
+
+    const currentAssignedStaff = Number(shift.currentAssignedStaff || 0);
+    const deltaStaff = currentAssignedStaff - recommendedTotalStaff;
+    const { status, severity } = resolveAssistantShiftStatus(deltaStaff);
+
+    return {
+      ...shift,
+      recommendedRoles,
+      recommendedTotalStaff,
+      currentAssignedStaff,
+      deltaStaff,
+      status,
+      severity,
+    };
+  });
+
+  const underStaffedShifts = enhancedShifts.filter(
+    (shift) => shift.status === "understaffed",
+  ).length;
+
+  const overStaffedShifts = enhancedShifts.filter(
+    (shift) => shift.status === "overstaffed",
+  ).length;
+
+  const requiredRoleText = Array.from(requiredRoleSet)
+    .map(getAutoRoleLabel)
+    .join(", ");
+
+  return {
+    ...assistant,
+    summary: {
+      ...(assistant.summary || {}),
+      totalShiftGroups: enhancedShifts.length,
+      underStaffedShifts,
+      overStaffedShifts,
+      notes: [
+        ...((assistant.summary || {}).notes || []),
+        `Role tiên quyết do manager chọn: ${requiredRoleText}.`,
+      ],
+    },
+    shifts: enhancedShifts,
+  };
+};
 const normalizeTime = (value) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "" : format(date, "HH:mm");
@@ -496,6 +635,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     weeklyHoursCap: 40,
     respectAvailability: true,
     avoidOvertime: true,
+    requiredRoles: DEFAULT_AUTO_REQUIRED_ROLES,
   });
   const [assistantPayload, setAssistantPayload] = useState(null);
   const [assistantLeaveRows, setAssistantLeaveRows] = useState([]);
@@ -722,11 +862,18 @@ const ScheduleManagement = ({ readOnly = false }) => {
     () => buildVisibleScheduleInsights({ shifts, staff }),
     [shifts, staff],
   );
-
+  const assistantForPreview = useMemo(
+    () =>
+      mergeAssistantWithRequiredRoles(
+        assistantPayload,
+        autoScheduleConfig.requiredRoles,
+      ),
+    [assistantPayload, autoScheduleConfig.requiredRoles],
+  );
   const rawAutoSchedulePreview = useMemo(
     () =>
       buildAutoSchedulePreview({
-        assistant: assistantPayload,
+        assistant: assistantForPreview,
         staffList: rawStaffList,
         existingShiftRows: assistantShiftRows,
         leaveRequests: assistantLeaveRows,
@@ -737,9 +884,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
       }),
     [
       assistantLeaveRows,
-      assistantPayload,
+      assistantForPreview,
       assistantShiftRows,
-      autoScheduleConfig,
+      autoScheduleConfig.weeklyHoursCap,
+      autoScheduleConfig.respectAvailability,
+      autoScheduleConfig.avoidOvertime,
       configuredShiftTypes,
       rawStaffList,
     ],
@@ -1401,7 +1550,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
         assistantResult?.data?.staffSchedulingAssistant || null;
       const nextLeaveRows = leaveResult?.data?.leaveRequests || [];
       const nextShiftRows = shiftResult?.data?.staffShifts || [];
-
+      const nextAssistantForPreview = mergeAssistantWithRequiredRoles(
+        nextAssistantPayload,
+        autoScheduleConfig.requiredRoles,
+      );
       setAssistantPayload(nextAssistantPayload);
       setAssistantLeaveRows(nextLeaveRows);
       setAssistantShiftRows(nextShiftRows);
@@ -1409,7 +1561,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       const nextStaffList = staffResult?.data?.staffList || rawStaffList;
 
       const nextRawPreview = buildAutoSchedulePreview({
-        assistant: nextAssistantPayload,
+        assistant: nextAssistantForPreview,
         staffList: nextStaffList,
         existingShiftRows: nextShiftRows,
         leaveRequests: nextLeaveRows,
@@ -1461,7 +1613,32 @@ const ScheduleManagement = ({ readOnly = false }) => {
       [shiftKey]: !prev[shiftKey],
     }));
   };
+  const getMissingRoleSummaryForSelectedPreview = () => {
+    const selectedItems = (autoSchedulePreview.items || []).filter(
+      (item) => selectedAutoShiftKeys[item.shiftKey],
+    );
 
+    const lines = [];
+
+    selectedItems.forEach((item) => {
+      const missingRoles = (item.unfilledRoles || [])
+        .filter((roleRow) => Number(roleRow.unresolved || 0) > 0)
+        .map(
+          (roleRow) =>
+            `${getAutoRoleLabel(roleRow.role)} x${Number(
+              roleRow.unresolved || 0,
+            )}`,
+        );
+
+      if (missingRoles.length) {
+        lines.push(
+          `${AUTO_SHIFT_LABELS[item.shiftType] || item.shiftType} ${item.date}: ${missingRoles.join(", ")}`,
+        );
+      }
+    });
+
+    return lines;
+  };
   const handleApplyAutoSchedule = async () => {
     const inputs = buildAutoScheduleCreateInputs({
       previewItems: autoSchedulePreview.items,
@@ -1478,48 +1655,91 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setIsApplyingAutoSchedule(true);
     setAutoScheduleError("");
 
+    const successRows = [];
+    const failedRows = [];
+
     try {
-      const validatedInputs = [];
-
       for (const input of inputs) {
-        const override = await validateShiftAssignmentOrThrow({
-          employeeId: input.employeeId,
-          shiftType: input.shiftType,
-          startTime: input.startTime,
-          endTime: input.endTime,
-        });
+        try {
+          const override = await validateShiftAssignmentOrThrow({
+            employeeId: input.employeeId,
+            shiftType: input.shiftType,
+            startTime: input.startTime,
+            endTime: input.endTime,
+          });
 
-        validatedInputs.push({
-          ...input,
-          allowOverride: Boolean(override.allowOverride),
-          overrideReason: override.overrideReason || undefined,
-        });
+          const finalInput = {
+            ...input,
+            allowOverride: Boolean(override.allowOverride),
+            overrideReason: override.overrideReason || undefined,
+          };
+
+          await createShift({
+            variables: {
+              input: finalInput,
+            },
+          });
+
+          successRows.push(finalInput);
+        } catch (error) {
+          failedRows.push({
+            input,
+            message: getGraphQLErrorMessage(
+              error,
+              error?.message || "Không thể tạo ca.",
+            ),
+          });
+        }
       }
 
-      await Promise.all(
-        validatedInputs.map((input) =>
-          createShift({
-            variables: {
-              input,
-            },
-          }),
-        ),
-      );
+      if (successRows.length > 0) {
+        await refetch();
+      }
 
-      await refetch();
+      const missingRoleLines = getMissingRoleSummaryForSelectedPreview();
 
-      setIsAutoScheduleOpen(false);
-      setSelectedAutoShiftKeys({});
-      setValidatedAutoSchedulePreview(null);
+      if (successRows.length > 0 && failedRows.length === 0) {
+        setIsAutoScheduleOpen(false);
+        setSelectedAutoShiftKeys({});
+        setValidatedAutoSchedulePreview(null);
 
-      showNotification(
-        `Đã áp dụng ${validatedInputs.length} phân công từ chia ca tự động.`,
-        "success",
-      );
-    } catch (error) {
-      const message = error?.message || "Không thể áp dụng gợi ý chia ca.";
-      setAutoScheduleError(message);
-      showNotification(message, "error");
+        const missingText = missingRoleLines.length
+          ? ` Còn thiếu: ${missingRoleLines.join(" | ")}`
+          : "";
+
+        showNotification(
+          `Đã áp dụng ${successRows.length} phân công từ chia ca tự động.${missingText}`,
+          missingRoleLines.length ? "warning" : "success",
+        );
+
+        return;
+      }
+
+      if (successRows.length > 0 && failedRows.length > 0) {
+        const failText = failedRows
+          .slice(0, 3)
+          .map((row) => row.message)
+          .join(" | ");
+
+        setAutoScheduleError(
+          `Đã lưu ${successRows.length} phân công, ${failedRows.length} phân công lỗi. ${failText}`,
+        );
+
+        showNotification(
+          `Đã lưu ${successRows.length} phân công, ${failedRows.length} phân công lỗi.`,
+          "warning",
+        );
+
+        return;
+      }
+
+      const failText = failedRows
+        .slice(0, 3)
+        .map((row) => row.message)
+        .join(" | ");
+
+      setAutoScheduleError(failText || "Không thể áp dụng gợi ý chia ca.");
+      showNotification(failText || "Không thể áp dụng gợi ý chia ca.", "error");
     } finally {
       setIsApplyingAutoSchedule(false);
     }
@@ -2032,6 +2252,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           onClose={() => setIsAutoScheduleOpen(false)}
           config={autoScheduleConfig}
           onConfigChange={setAutoScheduleConfig}
+          requiredRoleOptions={AUTO_REQUIRED_ROLE_OPTIONS}
           onGenerate={handleGenerateAutoSchedule}
           generating={isGeneratingAutoSchedule}
           generateError={autoScheduleError}

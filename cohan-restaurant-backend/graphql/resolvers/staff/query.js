@@ -662,7 +662,7 @@ export default {
     { restaurantId, employeeId, startDate, endDate, status, limit = 500 },
     ctx,
   ) => {
-    const filter = { userType: "STAFF" };
+    const filter = {};
     const authUser = ctx?.user || null;
     const fallbackRestaurantId =
       restaurantId ||

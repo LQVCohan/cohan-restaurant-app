@@ -61,6 +61,7 @@ const AutoScheduleModal = ({
   onClose,
   config,
   onConfigChange,
+  requiredRoleOptions = [],
   onGenerate,
   generating = false,
   generateError = "",
@@ -77,7 +78,20 @@ const AutoScheduleModal = ({
     (item) => selectedShiftKeys[item.shiftKey],
   ).length;
   const applicableCount = previewItems.filter((item) => item.canApply).length;
+  const selectedRequiredRoles = Array.isArray(config.requiredRoles)
+    ? config.requiredRoles
+    : [];
 
+  const toggleRequiredRole = (role) => {
+    const nextRoles = selectedRequiredRoles.includes(role)
+      ? selectedRequiredRoles.filter((item) => item !== role)
+      : [...selectedRequiredRoles, role];
+
+    onConfigChange({
+      ...config,
+      requiredRoles: nextRoles,
+    });
+  };
   return (
     <Modal
       isOpen={isOpen}
@@ -163,6 +177,38 @@ const AutoScheduleModal = ({
               <Settings2 size={16} />
               <span>Ràng buộc áp dụng</span>
             </div>
+            <div className="config-card role-required-card">
+              <div className="config-head">
+                <Users size={16} />
+                <span>Role tiên quyết</span>
+              </div>
+
+              <div className="required-role-grid">
+                {requiredRoleOptions.map((option) => (
+                  <label key={option.role} className="role-check-row">
+                    <input
+                      type="checkbox"
+                      checked={selectedRequiredRoles.includes(option.role)}
+                      onChange={() => toggleRequiredRole(option.role)}
+                      disabled={generating || applying}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+
+              {!selectedRequiredRoles.length ? (
+                <p className="required-role-warning">
+                  Cần chọn ít nhất một role tiên quyết để hệ thống biết vai trò
+                  nào bắt buộc phải xét cho ca.
+                </p>
+              ) : (
+                <p className="config-hint">
+                  Hệ thống sẽ lấy max giữa role tiên quyết và nhu cầu dự báo từ
+                  expectedOrders / expectedGuests / demand.
+                </p>
+              )}
+            </div>
             <label className="toggle-row">
               <span>Tôn trọng nghỉ phép / ngày nghỉ</span>
               <input
@@ -199,7 +245,7 @@ const AutoScheduleModal = ({
             type="button"
             className="btn-primary"
             onClick={onGenerate}
-            disabled={generating || applying}
+            disabled={generating || applying || !selectedRequiredRoles.length}
           >
             <Sparkles size={16} />
             {generating ? "Đang phân tích..." : "Phân tích & tạo preview"}
@@ -276,8 +322,8 @@ const AutoScheduleModal = ({
               <div>
                 <h4>Preview phân ca</h4>
                 <p>
-                  Chọn các ca muốn áp dụng. Chỉ những ca có nhân sự hợp lệ sau
-                  khi qua guard mới được bật chọn.
+                  Chọn các ca muốn áp dụng. Hệ thống sẽ lưu các phân công hợp lệ
+                  và cảnh báo riêng những vai trò còn thiếu người phù hợp.
                 </p>
               </div>
               <div className="preview-stats">
@@ -455,7 +501,8 @@ const AutoScheduleModal = ({
                     {item.unresolvedCount > 0 ? (
                       <div className="note-line danger">
                         Vẫn còn thiếu {item.unresolvedCount} người sau khi áp
-                        dụng các gợi ý hợp lệ.
+                        dụng các gợi ý hợp lệ. Hệ thống vẫn có thể lưu phần nhân
+                        sự đã tìm được và sẽ cảnh báo các vai trò còn thiếu.
                       </div>
                     ) : null}
                   </div>
