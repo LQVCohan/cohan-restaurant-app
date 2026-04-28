@@ -455,6 +455,72 @@ function buildShiftTimeChangedMessage({
     newStartTime,
   )} - ${formatShiftTimeVi(newEndTime)}.${reason ? ` Lý do: ${reason}` : ""}`;
 }
+async function getPublishedScheduleForShift({ restaurantId, shiftTime }) {
+  return SchedulePublication.findOne({
+    restaurantId,
+    periodStart: { $lte: shiftTime },
+    periodEnd: { $gte: shiftTime },
+    status: "published",
+  }).lean();
+}
+
+async function assertShiftGroupNotStartedOrCheckedIn({
+  shiftIds,
+  oldStartTime,
+}) {
+  const now = new Date();
+
+  if (now >= oldStartTime) {
+    throw new Error(
+      "Ca đã bắt đầu hoặc đã kết thúc, không thể chỉnh sửa trực tiếp. Vui lòng dùng quy trình điều chỉnh chấm công.",
+    );
+  }
+
+  const timesheet = await Timesheet.findOne({
+    shiftId: { $in: shiftIds },
+    $or: [
+      { actualCheckInAt: { $ne: null } },
+      { actualCheckOutAt: { $ne: null } },
+      { approved: true },
+    ],
+  }).lean();
+
+  if (timesheet) {
+    throw new Error(
+      "Ca đã phát sinh chấm công hoặc đã được duyệt công, không thể chỉnh sửa từ lịch làm việc.",
+    );
+  }
+}
+
+function buildShiftAddedMessage({ shiftType, startTime, endTime, reason }) {
+  return `Bạn đã được thêm vào ca ${shiftType} từ ${formatShiftTimeVi(
+    startTime,
+  )} đến ${formatShiftTimeVi(endTime)}.${reason ? ` Lý do: ${reason}` : ""}`;
+}
+
+function buildShiftRemovedMessage({ shiftType, startTime, endTime, reason }) {
+  return `Bạn đã được gỡ khỏi ca ${shiftType} từ ${formatShiftTimeVi(
+    startTime,
+  )} đến ${formatShiftTimeVi(endTime)}.${reason ? ` Lý do: ${reason}` : ""}`;
+}
+
+function mapStaffScheduleShiftOutput(row, employeeDoc = null) {
+  return {
+    id: String(row._id),
+    employeeId: String(row.employeeId?._id || row.employeeId),
+    employeeName:
+      employeeDoc?.fullName ||
+      row.employeeId?.fullName ||
+      row.employeeName ||
+      null,
+    restaurantId: String(row.restaurantId),
+    shiftType: row.shiftType,
+    startTime: row.startTime,
+    endTime: row.endTime,
+    status: row.status || "scheduled",
+    notes: row.notes || "",
+  };
+}
 function formatDateVi(date) {
   const d = new Date(date);
   return Number.isNaN(d.getTime())
@@ -1425,21 +1491,82 @@ export default {
       throw new Error("Shift not found");
     }
 
+    const actorUserId = getActorUserId(ctx);
+    if (!actorUserId) throw new Error("Unauthorized.");
+
     const employeeId = shift.employeeId?._id || shift.employeeId;
     const employeeName =
       shift.employeeId?.fullName ||
       shift.employeeId?.employeeCode ||
       "Nhân viên";
 
-    const actorUserId = ctx?.user?.id || ctx?.user?._id || null;
+    const startTime = new Date(shift.startTime);
+    const endTime = new Date(shift.endTime);
     const safeReason = String(reason || "").trim();
 
+    const publication = await getPublishedScheduleForShift({
+      restaurantId: shift.restaurantId,
+      shiftTime: startTime,
+    });
+
+    if (publication && !safeReason) {
+      throw new Error("Cần nhập lý do khi xóa nhân viên khỏi lịch đã công bố.");
+    }
+
+    await assertShiftGroupNotStartedOrCheckedIn({
+      shiftIds: [shift._id],
+      oldStartTime: startTime,
+    });
+
+    await assertNoLockedPayrollPeriodOverlap({
+      restaurantId: shift.restaurantId,
+      employeeId,
+      startDate: startTime,
+      endDate: endTime,
+      action: "remove_staff_from_published_shift",
+    });
+
     await Shift.deleteOne({ _id: shift._id });
+
+    if (notifyEmployee && employeeId) {
+      await Notification.create({
+        toUserId: employeeId,
+        restaurantId: shift.restaurantId,
+        type: "shift_removed",
+        payload: {
+          title: "Bạn đã được gỡ khỏi một ca làm",
+          message: buildShiftRemovedMessage({
+            shiftType: shift.shiftType,
+            startTime,
+            endTime,
+            reason: safeReason,
+          }),
+          shiftId: String(shift._id),
+          shiftType: shift.shiftType,
+          startTime,
+          endTime,
+          reason: safeReason || null,
+          publicationId: publication?._id ? String(publication._id) : null,
+          actorUserId: String(actorUserId),
+        },
+        readAt: null,
+      });
+
+      if (ctx?.io) {
+        ctx.io.to(`user_${String(employeeId)}`).emit("notificationCreated", {
+          type: "shift_removed",
+          restaurantId: String(shift.restaurantId),
+          message: "Bạn đã được gỡ khỏi một ca làm.",
+        });
+      }
+    }
 
     await EventLog.create({
       restaurantId: shift.restaurantId,
       actorUserId,
-      verb: "staff.shift.removeEmployee",
+      verb: publication
+        ? "schedule.published_shift_remove_employee"
+        : "schedule.shift_remove_employee",
       object: {
         kind: "Shift",
         id: shift._id,
@@ -1448,60 +1575,344 @@ export default {
       source: "schedule-management",
       status: "success",
       meta: {
+        reason: safeReason || null,
+        publicationId: publication?._id ? String(publication._id) : null,
         employeeId: String(employeeId),
         employeeName,
-        shiftType: shift.shiftType,
-        startTime: shift.startTime,
-        endTime: shift.endTime,
-        reason: safeReason || null,
+        notifyEmployee,
       },
       diff: {
         before: {
           employeeId: String(employeeId),
           restaurantId: String(shift.restaurantId),
           shiftType: shift.shiftType,
-          startTime: shift.startTime,
-          endTime: shift.endTime,
+          startTime,
+          endTime,
           status: shift.status,
         },
         after: null,
       },
-      at: new Date().toISOString(),
+      at: new Date(),
     });
 
-    if (notifyEmployee && employeeId) {
-      await Notification.create({
-        toUserId: employeeId,
-        restaurantId: shift.restaurantId,
-        type: "shift_removed",
-        payload: {
-          shiftId: String(shift._id),
+    if (publication?._id) {
+      await SchedulePublication.updateOne(
+        { _id: publication._id },
+        { $set: { lastChangedAt: new Date() } },
+      );
+    }
+
+    return true;
+  },
+  deletePublishedShiftGroup: async (_, { input }, ctx) => {
+    const restaurantId = toObjectId(input.restaurantId);
+    const actorUserId = getActorUserId(ctx);
+
+    if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
+    if (!actorUserId) throw new Error("Unauthorized.");
+
+    const reason = String(input.reason || "").trim();
+    if (!reason) {
+      throw new Error("Cần nhập lý do khi xóa ca đã công bố.");
+    }
+
+    const shiftIds = (input.shiftIds || []).map(toObjectId).filter(Boolean);
+    if (!shiftIds.length) {
+      throw new Error("Không có phân công ca cần xóa.");
+    }
+
+    const shifts = await Shift.find({
+      _id: { $in: shiftIds },
+      restaurantId,
+      status: { $ne: "cancelled" },
+    }).lean();
+
+    if (shifts.length !== shiftIds.length) {
+      throw new Error(
+        "Một số phân công ca không tồn tại hoặc không thuộc nhà hàng hiện tại.",
+      );
+    }
+
+    const firstShift = shifts[0];
+    const shiftType = String(firstShift.shiftType || "").toLowerCase();
+    const { oldStartTime, oldEndTime } = getShiftGroupRange(shifts);
+
+    const publication = await getPublishedScheduleForShift({
+      restaurantId,
+      shiftTime: oldStartTime,
+    });
+
+    if (!publication) {
+      throw new Error(
+        "Không tìm thấy kỳ lịch đã công bố chứa ca này. Vui lòng kiểm tra trạng thái publish.",
+      );
+    }
+
+    await assertShiftGroupNotStartedOrCheckedIn({
+      shiftIds,
+      oldStartTime,
+    });
+
+    for (const shift of shifts) {
+      await assertNoLockedPayrollPeriodOverlap({
+        restaurantId,
+        employeeId: shift.employeeId,
+        startDate: oldStartTime,
+        endDate: oldEndTime,
+        action: "delete_published_shift_group",
+      });
+    }
+
+    await Shift.deleteMany({
+      _id: { $in: shiftIds },
+      restaurantId,
+    });
+
+    const employeeIds = [
+      ...new Set(
+        shifts.map((shift) => String(shift.employeeId)).filter(Boolean),
+      ),
+    ];
+
+    if (input.notifyEmployees !== false && employeeIds.length > 0) {
+      await Notification.insertMany(
+        employeeIds.map((employeeId) => ({
+          toUserId: employeeId,
+          restaurantId,
+          type: "shift_group_deleted",
+          payload: {
+            title: "Một ca làm đã bị hủy",
+            message: `Ca ${shiftType} từ ${formatShiftTimeVi(
+              oldStartTime,
+            )} đến ${formatShiftTimeVi(oldEndTime)} đã bị hủy. Lý do: ${reason}`,
+            shiftType,
+            startTime: oldStartTime,
+            endTime: oldEndTime,
+            reason,
+            publicationId: String(publication._id),
+            actorUserId: String(actorUserId),
+            affectedShiftIds: shifts.map((shift) => String(shift._id)),
+          },
+          readAt: null,
+        })),
+      );
+
+      if (ctx?.io) {
+        employeeIds.forEach((employeeId) => {
+          ctx.io.to(`user_${employeeId}`).emit("notificationCreated", {
+            type: "shift_group_deleted",
+            restaurantId: String(restaurantId),
+            message: "Một ca làm của bạn đã bị hủy.",
+          });
+        });
+      }
+    }
+
+    await EventLog.create({
+      restaurantId,
+      actorUserId,
+      verb: "schedule.published_shift_group_delete",
+      object: {
+        kind: "ShiftGroup",
+        id: shifts[0]._id,
+        code: `${shiftType}_${oldStartTime.toISOString()}`,
+      },
+      source: "schedule-management",
+      status: "success",
+      meta: {
+        reason,
+        publicationId: String(publication._id),
+        notifyEmployees: input.notifyEmployees !== false,
+        affectedShiftIds: shifts.map((shift) => String(shift._id)),
+        affectedEmployeeIds: employeeIds,
+      },
+      diff: {
+        before: shifts.map((shift) => ({
+          id: String(shift._id),
+          employeeId: String(shift.employeeId),
           shiftType: shift.shiftType,
           startTime: shift.startTime,
           endTime: shift.endTime,
-          title: "Bạn đã được gỡ khỏi một ca làm",
-          message: `Bạn đã được gỡ khỏi ca ${shift.shiftType} từ ${formatShiftTimeVi(
-            shift.startTime,
-          )} đến ${formatShiftTimeVi(shift.endTime)}.${
-            safeReason ? ` Lý do: ${safeReason}` : ""
-          }`,
-          reason: safeReason || null,
-          actorUserId: actorUserId ? String(actorUserId) : null,
+          status: shift.status,
+        })),
+        after: null,
+      },
+      at: new Date(),
+    });
+
+    await SchedulePublication.updateOne(
+      { _id: publication._id },
+      { $set: { lastChangedAt: new Date() } },
+    );
+
+    return true;
+  },
+  addStaffToPublishedShiftGroup: async (_, { input }, ctx) => {
+    const restaurantId = toObjectId(input.restaurantId);
+    const employeeId = toObjectId(input.employeeId);
+    const actorUserId = getActorUserId(ctx);
+
+    if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
+    if (!employeeId) throw new Error("employeeId không hợp lệ.");
+    if (!actorUserId) throw new Error("Unauthorized.");
+
+    const reason = String(input.reason || "").trim();
+    const overrideReason = String(input.overrideReason || reason || "").trim();
+
+    if (!reason) {
+      throw new Error("Cần nhập lý do khi thêm nhân viên vào lịch đã công bố.");
+    }
+
+    const startTime = toValidDateTime(input.startTime, "Giờ bắt đầu");
+    const endTime = toValidDateTime(input.endTime, "Giờ kết thúc");
+
+    if (endTime <= startTime) {
+      throw new Error("Giờ kết thúc phải lớn hơn giờ bắt đầu.");
+    }
+
+    if (startTime <= new Date()) {
+      throw new Error("Không thể thêm nhân viên vào ca đã bắt đầu.");
+    }
+
+    const publication = await getPublishedScheduleForShift({
+      restaurantId,
+      shiftTime: startTime,
+    });
+
+    if (!publication) {
+      throw new Error(
+        "Không tìm thấy kỳ lịch đã công bố chứa ca này. Vui lòng kiểm tra trạng thái publish.",
+      );
+    }
+
+    const staff = await Staff.findById(employeeId).lean();
+
+    if (!staff || staff.userType !== "STAFF") {
+      throw new Error("Không tìm thấy nhân viên.");
+    }
+
+    await assertNoLockedPayrollPeriodOverlap({
+      restaurantId,
+      employeeId,
+      startDate: startTime,
+      endDate: endTime,
+      action: "add_staff_to_published_shift",
+    });
+
+    const validation = await validateShiftAssignment({
+      input: {
+        employeeId,
+        restaurantId,
+        shiftType: String(input.shiftType || "").toUpperCase(),
+        startTime,
+        endTime,
+        allowOverride: Boolean(input.allowOverride),
+        overrideReason,
+      },
+      ctx,
+    });
+
+    if (!validation.ok) {
+      const firstError = validation.blockingErrors?.[0];
+      throw new Error(
+        firstError?.message ||
+          "Không thể thêm nhân viên vì vi phạm policy xếp lịch.",
+      );
+    }
+
+    if (validation.warnings?.length && !input.allowOverride) {
+      const firstWarning = validation.warnings[0];
+      throw new Error(
+        firstWarning?.message
+          ? `Có cảnh báo policy: ${firstWarning.message}. Cần override có lý do để tiếp tục.`
+          : "Có cảnh báo policy khi thêm nhân viên. Cần override có lý do để tiếp tục.",
+      );
+    }
+
+    const shift = await Shift.create({
+      employeeId,
+      restaurantId,
+      shiftType: String(input.shiftType || "").toLowerCase(),
+      startTime,
+      endTime,
+      status: "scheduled",
+      notes: `Thêm sau khi lịch đã công bố. Lý do: ${reason}`,
+    });
+
+    if (input.notifyEmployee !== false) {
+      await Notification.create({
+        toUserId: employeeId,
+        restaurantId,
+        type: "shift_added",
+        payload: {
+          title: "Bạn đã được thêm vào một ca làm",
+          message: buildShiftAddedMessage({
+            shiftType: shift.shiftType,
+            startTime,
+            endTime,
+            reason,
+          }),
+          shiftId: String(shift._id),
+          shiftType: shift.shiftType,
+          startTime,
+          endTime,
+          reason,
+          publicationId: String(publication._id),
+          actorUserId: String(actorUserId),
         },
         readAt: null,
       });
 
       if (ctx?.io) {
         ctx.io.to(`user_${String(employeeId)}`).emit("notificationCreated", {
-          type: "shift_removed",
-          shiftId: String(shift._id),
-          restaurantId: String(shift.restaurantId),
-          message: `Bạn đã được gỡ khỏi ca ${shift.shiftType}.`,
+          type: "shift_added",
+          restaurantId: String(restaurantId),
+          message: "Bạn đã được thêm vào một ca làm.",
         });
       }
     }
 
-    return true;
+    await EventLog.create({
+      restaurantId,
+      actorUserId,
+      verb: "schedule.published_shift_add_employee",
+      object: {
+        kind: "Shift",
+        id: shift._id,
+        code: `${shift.shiftType}_${startTime.toISOString()}`,
+      },
+      source: "schedule-management",
+      status: "success",
+      meta: {
+        reason,
+        overrideReason: input.allowOverride ? overrideReason : null,
+        allowOverride: Boolean(input.allowOverride),
+        notifyEmployee: input.notifyEmployee !== false,
+        publicationId: String(publication._id),
+        employeeId: String(employeeId),
+        employeeName: staff.fullName || staff.employeeCode || null,
+        validationWarnings: validation.warnings || [],
+      },
+      diff: {
+        before: null,
+        after: {
+          employeeId: String(employeeId),
+          restaurantId: String(restaurantId),
+          shiftType: shift.shiftType,
+          startTime,
+          endTime,
+          status: shift.status,
+        },
+      },
+      at: new Date(),
+    });
+
+    await SchedulePublication.updateOne(
+      { _id: publication._id },
+      { $set: { lastChangedAt: new Date() } },
+    );
+
+    return mapStaffScheduleShiftOutput(shift, staff);
   },
   updateSchedulingPolicy: async (_, { restaurantId, input }, ctx) => {
     return updateSchedulingPolicy({

@@ -273,6 +273,31 @@ const CHANGE_PUBLISHED_SHIFT_GROUP_TIME = gql`
     changePublishedShiftGroupTime(input: $input)
   }
 `;
+
+const ADD_STAFF_TO_PUBLISHED_SHIFT_GROUP = gql`
+  mutation AddStaffToPublishedShiftGroup(
+    $input: AddStaffToPublishedShiftGroupInput!
+  ) {
+    addStaffToPublishedShiftGroup(input: $input) {
+      id
+      employeeId
+      employeeName
+      restaurantId
+      shiftType
+      startTime
+      endTime
+      status
+      notes
+    }
+  }
+`;
+
+const DELETE_PUBLISHED_SHIFT_GROUP = gql`
+  mutation DeletePublishedShiftGroup($input: DeletePublishedShiftGroupInput!) {
+    deletePublishedShiftGroup(input: $input)
+  }
+`;
+
 const SCHEDULING_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 const DEPARTMENT_LABELS = {
@@ -805,6 +830,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
     useMutation(CHANGE_PUBLISHED_SHIFT_GROUP_TIME);
   const [publishSchedule, { loading: publishingSchedule }] =
     useMutation(PUBLISH_SCHEDULE);
+  const [addStaffToPublishedShiftGroup, { loading: addingPublishedStaff }] =
+    useMutation(ADD_STAFF_TO_PUBLISHED_SHIFT_GROUP);
+
+  const [deletePublishedShiftGroup, { loading: deletingPublishedShiftGroup }] =
+    useMutation(DELETE_PUBLISHED_SHIFT_GROUP);
   const [loadSchedulingAssistant, schedulingAssistantState] = useLazyQuery(
     GET_SCHEDULING_ASSISTANT,
     {
@@ -1309,17 +1339,79 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setIsAddModalOpen(false);
   };
 
-  const handleDeleteShift = async (shiftGroupId) => {
-    if (readOnly) return;
-    const found = shifts.find((item) => item.id === shiftGroupId);
-    if (!found) return;
-    await Promise.all(
-      found.records.map((row) =>
-        deleteShift({ variables: { shiftId: row.id } }),
-      ),
-    );
-    await refetch();
-    setSelectedShift(null);
+  const handleDeleteShift = async (shiftGroupId, options = {}) => {
+    const shiftGroup = shifts.find((item) => item.id === shiftGroupId);
+
+    if (!shiftGroup) {
+      showNotification("Không tìm thấy ca làm cần xóa.", "error");
+      throw new Error("Không tìm thấy ca làm cần xóa.");
+    }
+
+    const shiftIds = (shiftGroup.records || [])
+      .map((record) => record.id)
+      .filter(Boolean);
+
+    if (!shiftIds.length) {
+      showNotification("Không tìm thấy phân công trong ca cần xóa.", "error");
+      throw new Error("Không tìm thấy phân công trong ca cần xóa.");
+    }
+
+    try {
+      if (isSchedulePublished) {
+        const reason = String(options.reason || "").trim();
+
+        if (!reason) {
+          throw new Error("Cần nhập lý do khi xóa ca đã công bố.");
+        }
+
+        await deletePublishedShiftGroup({
+          variables: {
+            input: {
+              restaurantId: effectiveRestaurantId,
+              shiftIds,
+              reason,
+              notifyEmployees: options.notifyEmployees !== false,
+            },
+          },
+        });
+
+        await refetch();
+        await refetchPublication?.();
+        setSelectedShift(null);
+
+        showNotification(
+          "Đã xóa ca, ghi log và gửi thông báo đến nhân viên liên quan.",
+          "success",
+        );
+
+        return;
+      }
+
+      await Promise.all(
+        shiftIds.map((shiftId) =>
+          deleteShift({
+            variables: {
+              shiftId,
+              reason: options.reason || "Xóa ca ở lịch chưa công bố",
+              notifyEmployee: options.notifyEmployees === true,
+            },
+          }),
+        ),
+      );
+
+      await refetch();
+      setSelectedShift(null);
+
+      showNotification("Đã xóa ca làm việc.", "success");
+    } catch (error) {
+      const message = getGraphQLErrorMessage(
+        error,
+        "Không thể xóa ca làm việc.",
+      );
+
+      showNotification(message, "error");
+      throw new Error(message);
+    }
   };
 
   const handleRemoveStaffFromShift = async (
@@ -1374,42 +1466,92 @@ const ScheduleManagement = ({ readOnly = false }) => {
     }
   };
 
-  const handleAddStaff = async (shiftGroupId, staffId) => {
-    if (readOnly) return;
-    const found = shifts.find((item) => item.id === shiftGroupId);
-    if (!found || !effectiveRestaurantId) return;
-    if (found.staffIds.some((id) => String(id) === String(staffId))) return;
+  const handleAddStaffToShift = async (shiftGroupId, staffId, options = {}) => {
+    const shiftGroup = shifts.find((item) => item.id === shiftGroupId);
+
+    if (!shiftGroup) {
+      showNotification("Không tìm thấy ca làm cần cập nhật.", "error");
+      throw new Error("Không tìm thấy ca làm cần cập nhật.");
+    }
+
+    const selectedStaff = staff.find(
+      (person) => String(person.id) === String(staffId),
+    );
+
+    if (!selectedStaff) {
+      showNotification("Không tìm thấy nhân viên cần thêm vào ca.", "error");
+      throw new Error("Không tìm thấy nhân viên cần thêm vào ca.");
+    }
 
     const { startTime, endTime } = buildShiftRange({
-      date: found.date,
-      startTimeText: found.startTime,
-      endTimeText: found.endTime,
+      date: shiftGroup.date,
+      startTimeText: shiftGroup.startTime,
+      endTimeText: shiftGroup.endTime,
     });
 
-    const override = await validateShiftAssignmentOrThrow({
-      employeeId: staffId,
-      shiftType: found.shiftType,
-      startTime,
-      endTime,
-    });
+    try {
+      if (isSchedulePublished) {
+        const reason = String(options.reason || "").trim();
 
-    await createShift({
-      variables: {
-        input: {
-          employeeId: staffId,
-          restaurantId: effectiveRestaurantId,
-          shiftType: found.shiftType.toUpperCase(),
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-          status: "scheduled",
-          notes: found.notes || "",
-          allowOverride: Boolean(override.allowOverride),
-          overrideReason: override.overrideReason || undefined,
+        if (!reason) {
+          throw new Error(
+            "Cần nhập lý do khi thêm nhân viên vào lịch đã công bố.",
+          );
+        }
+
+        await addStaffToPublishedShiftGroup({
+          variables: {
+            input: {
+              restaurantId: effectiveRestaurantId,
+              employeeId: staffId,
+              shiftType: String(shiftGroup.shiftType || "").toUpperCase(),
+              startTime: startTime.toISOString(),
+              endTime: endTime.toISOString(),
+              reason,
+              notifyEmployee: options.notifyEmployee !== false,
+              allowOverride: Boolean(options.allowOverride),
+              overrideReason: options.overrideReason || reason,
+            },
+          },
+        });
+
+        await refetch();
+        await refetchPublication?.();
+
+        showNotification(
+          `Đã thêm ${selectedStaff.name} vào ca, ghi log và gửi thông báo.`,
+          "success",
+        );
+
+        return;
+      }
+
+      await createShift({
+        variables: {
+          input: {
+            employeeId: staffId,
+            restaurantId: effectiveRestaurantId,
+            shiftType: String(shiftGroup.shiftType || "").toUpperCase(),
+            startTime: startTime.toISOString(),
+            endTime: endTime.toISOString(),
+            status: "scheduled",
+            notes: options.reason ? `Lý do thêm ca: ${options.reason}` : "",
+          },
         },
-      },
-    });
-    await refetch();
-    setSelectedShift(null);
+      });
+
+      await refetch();
+
+      showNotification(`Đã thêm ${selectedStaff.name} vào ca.`, "success");
+    } catch (error) {
+      const message = getGraphQLErrorMessage(
+        error,
+        "Không thể thêm nhân viên vào ca.",
+      );
+
+      showNotification(message, "error");
+      throw new Error(message);
+    }
   };
 
   const handleUpdateSelectedNotes = async (notes) => {
@@ -2502,7 +2644,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         staffList={staff}
         readOnly={readOnly}
         onRemoveStaff={handleRemoveStaffFromShift}
-        onAddStaff={handleAddStaff}
+        onAddStaff={handleAddStaffToShift}
         onDeleteShift={handleDeleteShift}
         onUpdateNotes={handleUpdateSelectedNotes}
         onUpdateTime={handleUpdateSelectedTime}
@@ -2510,6 +2652,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
         isSchedulePublished={isSchedulePublished}
         isChangingShiftTime={changingShiftGroupTime}
         onChangeShiftGroupTime={handleChangeShiftGroupTime}
+        isAddingPublishedStaff={addingPublishedStaff}
+        isDeletingPublishedShiftGroup={deletingPublishedShiftGroup}
       />
 
       {!readOnly && (

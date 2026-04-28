@@ -105,6 +105,24 @@ input ChangePublishedShiftGroupTimeInput {
   allowOverride: Boolean = false
   overrideReason: String
 }
+input AddStaffToPublishedShiftGroupInput {
+  restaurantId: ID!
+  employeeId: ID!
+  shiftType: ShiftType!
+  startTime: DateTime!
+  endTime: DateTime!
+  reason: String!
+  notifyEmployee: Boolean = true
+  allowOverride: Boolean = false
+  overrideReason: String
+}
+
+input DeletePublishedShiftGroupInput {
+  restaurantId: ID!
+  shiftIds: [ID!]!
+  reason: String!
+  notifyEmployees: Boolean = true
+}
 type Restaurant {
   id: ID!
   name: String!
@@ -1618,6 +1636,11 @@ type Query {
 # =========================
 
 type Mutation {
+  addStaffToPublishedShiftGroup(
+    input: AddStaffToPublishedShiftGroupInput!
+  ): StaffScheduleShift!
+
+  deletePublishedShiftGroup(input: DeletePublishedShiftGroupInput!): Boolean!
   publishSchedule(input: PublishScheduleInput!): SchedulePublication!
   changePublishedShiftGroupTime(
     input: ChangePublishedShiftGroupTimeInput!

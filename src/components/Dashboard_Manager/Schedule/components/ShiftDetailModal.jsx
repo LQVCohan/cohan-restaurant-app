@@ -41,6 +41,9 @@ const ShiftDetailModal = ({
   isChangingShiftTime = false,
   onChangeShiftGroupTime,
   shiftConfig = shiftTypes,
+
+  isAddingPublishedStaff = false,
+  isDeletingPublishedShiftGroup = false,
 }) => {
   const [search, setSearch] = useState("");
   const [jobFilter, setJobFilter] = useState("");
@@ -59,6 +62,13 @@ const ShiftDetailModal = ({
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [removeConfirm, setRemoveConfirm] = useState(null);
   const [removeReason, setRemoveReason] = useState("");
+  const [addConfirm, setAddConfirm] = useState(null);
+  const [addReason, setAddReason] = useState("");
+  const [isAddingStaff, setIsAddingStaff] = useState(false);
+
+  const [deleteGroupOpen, setDeleteGroupOpen] = useState(false);
+  const [deleteGroupReason, setDeleteGroupReason] = useState("");
+  const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [isRemovingStaff, setIsRemovingStaff] = useState(false);
   const shiftStaffIds = useMemo(() => shift?.staffIds || [], [shift?.staffIds]);
   const shiftEssentialJobs = useMemo(
@@ -97,6 +107,12 @@ const ShiftDetailModal = ({
     setRemoveConfirm(null);
     setRemoveReason("");
     setIsRemovingStaff(false);
+    setAddConfirm(null);
+    setAddReason("");
+    setIsAddingStaff(false);
+    setDeleteGroupOpen(false);
+    setDeleteGroupReason("");
+    setIsDeletingGroup(false);
   }, [shift]);
 
   if (!isOpen || !shift) return null;
@@ -217,6 +233,76 @@ const ShiftDetailModal = ({
       setIsSubmittingTimeChange(false);
     }
   };
+  const handleAddCandidate = (person) => {
+    if (readOnly || !onAddStaff) return;
+
+    if (isSchedulePublished) {
+      setAddConfirm(person);
+      setAddReason("");
+      return;
+    }
+
+    onAddStaff(shift.id, person.id);
+  };
+
+  const closeAddConfirm = () => {
+    if (isAddingStaff || isAddingPublishedStaff) return;
+    setAddConfirm(null);
+    setAddReason("");
+  };
+
+  const handleConfirmAddStaff = async () => {
+    if (!addConfirm || readOnly || !onAddStaff) return;
+
+    if (!addReason.trim()) return;
+
+    setIsAddingStaff(true);
+
+    try {
+      await onAddStaff(shift.id, addConfirm.id, {
+        reason: addReason.trim(),
+        notifyEmployee: true,
+      });
+
+      setAddConfirm(null);
+      setAddReason("");
+    } finally {
+      setIsAddingStaff(false);
+    }
+  };
+
+  const openDeleteGroupConfirm = () => {
+    if (readOnly || !onDeleteShift) return;
+    setDeleteGroupOpen(true);
+    setDeleteGroupReason("");
+  };
+
+  const closeDeleteGroupConfirm = () => {
+    if (isDeletingGroup || isDeletingPublishedShiftGroup) return;
+    setDeleteGroupOpen(false);
+    setDeleteGroupReason("");
+  };
+
+  const handleConfirmDeleteGroup = async () => {
+    if (readOnly || !onDeleteShift) return;
+
+    if (isSchedulePublished && !deleteGroupReason.trim()) return;
+
+    setIsDeletingGroup(true);
+
+    try {
+      await onDeleteShift(shift.id, {
+        reason: deleteGroupReason.trim() || "Xóa ca ở lịch chưa công bố",
+        notifyEmployees: isSchedulePublished,
+      });
+
+      setDeleteGroupOpen(false);
+      setDeleteGroupReason("");
+    } finally {
+      setIsDeletingGroup(false);
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <Modal.Header>
@@ -434,7 +520,7 @@ const ShiftDetailModal = ({
                         </div>
                         <button
                           className="btn-icon add"
-                          onClick={() => onAddStaff(shift.id, person.id)}
+                          onClick={() => handleAddCandidate(person)}
                         >
                           <Plus size={18} />
                         </button>
@@ -608,6 +694,138 @@ const ShiftDetailModal = ({
               </div>
             </div>
           ) : null}
+          {addConfirm ? (
+            <div className="remove-confirm-backdrop">
+              <div className="remove-confirm-card">
+                <div className="remove-confirm-icon">
+                  <AlertTriangle size={22} />
+                </div>
+
+                <div className="remove-confirm-content">
+                  <h4>Thêm nhân viên vào lịch đã công bố?</h4>
+                  <p>
+                    Bạn đang thêm <strong>{addConfirm.name}</strong> vào ca{" "}
+                    <strong>{currentShiftType?.label}</strong> ngày{" "}
+                    <strong>{formatDate(shift.date)}</strong>, thời gian{" "}
+                    <strong>
+                      {shift.startTime} - {shift.endTime}
+                    </strong>
+                    .
+                  </p>
+
+                  <label>
+                    Lý do thêm vào ca <span>*</span>
+                    <textarea
+                      value={addReason}
+                      onChange={(event) => setAddReason(event.target.value)}
+                      placeholder="Ví dụ: bổ sung nhân sự do tăng nhu cầu vận hành..."
+                      rows={3}
+                      disabled={isAddingStaff || isAddingPublishedStaff}
+                    />
+                  </label>
+
+                  <div className="remove-confirm-note">
+                    Hệ thống sẽ validate nhân viên này, ghi log và gửi thông báo
+                    đến nhân viên được thêm.
+                  </div>
+
+                  <div className="remove-confirm-actions">
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={closeAddConfirm}
+                      disabled={isAddingStaff || isAddingPublishedStaff}
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-danger"
+                      onClick={handleConfirmAddStaff}
+                      disabled={
+                        isAddingStaff ||
+                        isAddingPublishedStaff ||
+                        !addReason.trim()
+                      }
+                    >
+                      {isAddingStaff || isAddingPublishedStaff
+                        ? "Đang thêm..."
+                        : "Xác nhận thêm"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          {deleteGroupOpen ? (
+            <div className="remove-confirm-backdrop">
+              <div className="remove-confirm-card">
+                <div className="remove-confirm-icon">
+                  <AlertTriangle size={22} />
+                </div>
+
+                <div className="remove-confirm-content">
+                  <h4>Xóa toàn bộ ca làm?</h4>
+                  <p>
+                    Ca <strong>{currentShiftType?.label}</strong> ngày{" "}
+                    <strong>{formatDate(shift.date)}</strong>, thời gian{" "}
+                    <strong>
+                      {shift.startTime} - {shift.endTime}
+                    </strong>{" "}
+                    đang có <strong>{shiftStaffIds.length}</strong> nhân viên.
+                  </p>
+
+                  <label>
+                    Lý do xóa ca {isSchedulePublished ? <span>*</span> : null}
+                    <textarea
+                      value={deleteGroupReason}
+                      onChange={(event) =>
+                        setDeleteGroupReason(event.target.value)
+                      }
+                      placeholder="Ví dụ: hủy ca do thay đổi kế hoạch vận hành..."
+                      rows={3}
+                      disabled={
+                        isDeletingGroup || isDeletingPublishedShiftGroup
+                      }
+                    />
+                  </label>
+
+                  <div className="remove-confirm-note">
+                    {isSchedulePublished
+                      ? "Lịch đã công bố. Hệ thống sẽ gửi thông báo đến toàn bộ nhân viên trong ca và ghi EventLog."
+                      : "Lịch chưa công bố. Ca sẽ được xóa khỏi lịch làm việc."}
+                  </div>
+
+                  <div className="remove-confirm-actions">
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={closeDeleteGroupConfirm}
+                      disabled={
+                        isDeletingGroup || isDeletingPublishedShiftGroup
+                      }
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-danger"
+                      onClick={handleConfirmDeleteGroup}
+                      disabled={
+                        isDeletingGroup ||
+                        isDeletingPublishedShiftGroup ||
+                        (isSchedulePublished && !deleteGroupReason.trim())
+                      }
+                    >
+                      {isDeletingGroup || isDeletingPublishedShiftGroup
+                        ? "Đang xóa..."
+                        : "Xác nhận xóa ca"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
           {removeConfirm ? (
             <div className="remove-confirm-backdrop">
               <div className="remove-confirm-card">
@@ -675,16 +893,9 @@ const ShiftDetailModal = ({
                 >
                   {isSavingNotes ? "Đang lưu..." : "Lưu ghi chú"}
                 </button>
-                <button
-                  className="btn-delete"
-                  onClick={() => {
-                    if (window.confirm("Bạn có chắc chắn muốn xóa ca này?")) {
-                      onDeleteShift(shift.id);
-                    }
-                  }}
-                >
+                <button className="btn-delete" onClick={openDeleteGroupConfirm}>
                   <Trash2 size={16} />
-                  Xóa Ca
+                  Xóa ca
                 </button>
               </>
             ) : null}
