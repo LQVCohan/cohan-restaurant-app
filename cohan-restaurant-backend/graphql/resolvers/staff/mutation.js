@@ -14,6 +14,7 @@ import {
   PayrollAdjustment,
   EmployeeCodeCounter,
   Notification,
+  SchedulePublication,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
 import {
@@ -21,7 +22,10 @@ import {
   upsertStaffPerformanceReview,
 } from "../../../src/services/staffPerformance/staffPerformance.service.js";
 import { updateSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
-import { assertShiftAssignmentValid } from "../../../src/services/scheduling/shiftAssignmentValidation.service.js";
+import {
+  assertShiftAssignmentValid,
+  validateShiftAssignment,
+} from "../../../src/services/scheduling/shiftAssignmentValidation.service.js";
 import {
   approveAttendanceCorrectionRequest as approveAttendanceCorrectionRequestService,
   cancelAttendanceCorrectionRequest as cancelAttendanceCorrectionRequestService,
@@ -405,6 +409,51 @@ function formatShiftTimeVi(dateValue) {
     month: "2-digit",
     year: "numeric",
   });
+}
+function toValidDateTime(value, fieldName) {
+  const date = value ? new Date(value) : null;
+
+  if (!date || Number.isNaN(date.getTime())) {
+    throw new Error(`${fieldName} không hợp lệ.`);
+  }
+
+  return date;
+}
+
+function getActorUserId(ctx) {
+  return toObjectId(ctx?.user?.id || ctx?.user?._id);
+}
+
+function getShiftGroupRange(shifts = []) {
+  const startTimes = shifts
+    .map((shift) => new Date(shift.startTime))
+    .filter((date) => !Number.isNaN(date.getTime()));
+
+  const endTimes = shifts
+    .map((shift) => new Date(shift.endTime))
+    .filter((date) => !Number.isNaN(date.getTime()));
+
+  return {
+    oldStartTime: new Date(
+      Math.min(...startTimes.map((date) => date.getTime())),
+    ),
+    oldEndTime: new Date(Math.max(...endTimes.map((date) => date.getTime()))),
+  };
+}
+
+function buildShiftTimeChangedMessage({
+  shiftType,
+  oldStartTime,
+  oldEndTime,
+  newStartTime,
+  newEndTime,
+  reason,
+}) {
+  return `Ca ${shiftType} của bạn đã được thay đổi giờ từ ${formatShiftTimeVi(
+    oldStartTime,
+  )} - ${formatShiftTimeVi(oldEndTime)} sang ${formatShiftTimeVi(
+    newStartTime,
+  )} - ${formatShiftTimeVi(newEndTime)}.${reason ? ` Lý do: ${reason}` : ""}`;
 }
 function formatDateVi(date) {
   const d = new Date(date);
@@ -921,7 +970,96 @@ export default {
 
     return staff;
   },
+  publishSchedule: async (_, { input }, ctx) => {
+    const restaurantId = toObjectId(input.restaurantId);
+    const actorUserId = toObjectId(ctx?.user?.id || ctx?.user?._id);
+    const periodStart = toStartOfDay(input.periodStart);
+    const periodEnd = toEndOfDay(input.periodEnd);
 
+    if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
+    if (!actorUserId) throw new Error("Unauthorized.");
+
+    const publication = await SchedulePublication.findOneAndUpdate(
+      {
+        restaurantId,
+        periodStart,
+        periodEnd,
+      },
+      {
+        $set: {
+          restaurantId,
+          periodStart,
+          periodEnd,
+          status: "published",
+          publishedAt: new Date(),
+          publishedBy: actorUserId,
+          lastChangedAt: new Date(),
+        },
+      },
+      { new: true, upsert: true },
+    );
+
+    const shifts = await Shift.find({
+      restaurantId,
+      startTime: { $gte: periodStart, $lte: periodEnd },
+      status: { $ne: "cancelled" },
+    }).lean();
+
+    const employeeIds = [
+      ...new Set(
+        shifts.map((shift) => String(shift.employeeId)).filter(Boolean),
+      ),
+    ];
+
+    if (employeeIds.length) {
+      await Notification.insertMany(
+        employeeIds.map((employeeId) => ({
+          toUserId: employeeId,
+          restaurantId,
+          type: "schedule_published",
+          payload: {
+            periodStart,
+            periodEnd,
+            title: "Lịch làm việc đã được công bố",
+            message:
+              "Lịch làm việc mới đã được công bố. Vui lòng kiểm tra ca làm của bạn.",
+          },
+          readAt: null,
+        })),
+      );
+    }
+
+    await EventLog.create({
+      restaurantId,
+      actorUserId,
+      verb: "schedule.publish",
+      object: {
+        kind: "SchedulePublication",
+        id: publication._id,
+        code: `${periodStart.toISOString().slice(0, 10)}_${periodEnd
+          .toISOString()
+          .slice(0, 10)}`,
+      },
+      source: "schedule-management",
+      status: "success",
+      meta: {
+        periodStart,
+        periodEnd,
+        affectedEmployees: employeeIds.length,
+        affectedShifts: shifts.length,
+      },
+      at: new Date(),
+    });
+
+    return {
+      id: String(publication._id),
+      ...publication.toObject(),
+      restaurantId: String(publication.restaurantId),
+      publishedBy: publication.publishedBy
+        ? String(publication.publishedBy)
+        : null,
+    };
+  },
   createStaffShift: async (_, { input }, ctx) => {
     await assertShiftAssignmentValid({
       input: {
@@ -1017,7 +1155,262 @@ export default {
       notes: updated.notes || "",
     };
   },
+  changePublishedShiftGroupTime: async (_, { input }, ctx) => {
+    const restaurantId = toObjectId(input.restaurantId);
+    const actorUserId = getActorUserId(ctx);
 
+    if (!restaurantId) {
+      throw new Error("restaurantId không hợp lệ.");
+    }
+
+    if (!actorUserId) {
+      throw new Error("Unauthorized.");
+    }
+
+    const reason = String(input.reason || "").trim();
+    const overrideReason = String(input.overrideReason || reason || "").trim();
+
+    if (!reason) {
+      throw new Error("Cần nhập lý do khi thay đổi giờ ca đã công bố.");
+    }
+
+    const shiftIds = (input.shiftIds || []).map(toObjectId).filter(Boolean);
+
+    if (!shiftIds.length) {
+      throw new Error("Không có ca cần cập nhật.");
+    }
+
+    const newStartTime = toValidDateTime(input.startTime, "Giờ bắt đầu mới");
+    const newEndTime = toValidDateTime(input.endTime, "Giờ kết thúc mới");
+
+    if (newEndTime <= newStartTime) {
+      throw new Error("Giờ kết thúc mới phải lớn hơn giờ bắt đầu mới.");
+    }
+
+    const shifts = await Shift.find({
+      _id: { $in: shiftIds },
+      restaurantId,
+      status: { $ne: "cancelled" },
+    }).lean();
+
+    if (shifts.length !== shiftIds.length) {
+      throw new Error(
+        "Một số phân công ca không tồn tại hoặc không thuộc nhà hàng hiện tại.",
+      );
+    }
+
+    const firstShift = shifts[0];
+    const shiftType = String(firstShift.shiftType || "").toLowerCase();
+
+    const hasDifferentShiftType = shifts.some(
+      (shift) => String(shift.shiftType || "").toLowerCase() !== shiftType,
+    );
+
+    if (hasDifferentShiftType) {
+      throw new Error(
+        "Chỉ được đổi giờ cho các phân công thuộc cùng một loại ca.",
+      );
+    }
+
+    const { oldStartTime, oldEndTime } = getShiftGroupRange(shifts);
+    const now = new Date();
+
+    if (now >= oldStartTime) {
+      throw new Error(
+        "Ca đã bắt đầu hoặc đã kết thúc, không thể sửa giờ trực tiếp. Vui lòng dùng quy trình điều chỉnh chấm công.",
+      );
+    }
+
+    if (newStartTime <= now) {
+      throw new Error("Giờ bắt đầu mới phải nằm trong tương lai.");
+    }
+
+    const publication = await SchedulePublication.findOne({
+      restaurantId,
+      periodStart: { $lte: oldStartTime },
+      periodEnd: { $gte: oldStartTime },
+      status: "published",
+    }).lean();
+
+    if (!publication) {
+      throw new Error(
+        "Không tìm thấy kỳ lịch đã công bố chứa ca này. Vui lòng kiểm tra trạng thái publish của lịch.",
+      );
+    }
+
+    const timesheet = await Timesheet.findOne({
+      shiftId: { $in: shiftIds },
+      $or: [
+        { actualCheckInAt: { $ne: null } },
+        { actualCheckOutAt: { $ne: null } },
+        { approved: true },
+      ],
+    }).lean();
+
+    if (timesheet) {
+      throw new Error(
+        "Ca đã phát sinh chấm công hoặc đã được duyệt công, không thể sửa giờ từ lịch làm việc.",
+      );
+    }
+
+    const validationWarnings = [];
+
+    for (const shift of shifts) {
+      await assertNoLockedPayrollPeriodOverlap({
+        restaurantId,
+        employeeId: shift.employeeId,
+        startDate: oldStartTime,
+        endDate: oldEndTime,
+        action: "change_published_shift_time",
+      });
+
+      const validation = await validateShiftAssignment({
+        input: {
+          employeeId: shift.employeeId,
+          restaurantId,
+          shiftType: String(shift.shiftType || "").toUpperCase(),
+          startTime: newStartTime,
+          endTime: newEndTime,
+          ignoreShiftId: shift._id,
+          allowOverride: Boolean(input.allowOverride),
+          overrideReason,
+        },
+        ctx,
+      });
+
+      if (!validation.ok) {
+        const firstError = validation.blockingErrors?.[0];
+
+        throw new Error(
+          firstError?.message ||
+            "Không thể đổi giờ ca vì có nhân viên vi phạm policy.",
+        );
+      }
+
+      if (validation.warnings?.length) {
+        validationWarnings.push({
+          employeeId: String(shift.employeeId),
+          warnings: validation.warnings,
+        });
+      }
+    }
+
+    if (validationWarnings.length > 0 && !input.allowOverride) {
+      const firstWarning = validationWarnings[0]?.warnings?.[0];
+
+      throw new Error(
+        firstWarning?.message
+          ? `Có cảnh báo policy: ${firstWarning.message}. Cần override có lý do để tiếp tục.`
+          : "Có cảnh báo policy khi đổi giờ ca. Cần override có lý do để tiếp tục.",
+      );
+    }
+
+    await Shift.updateMany(
+      {
+        _id: { $in: shiftIds },
+        restaurantId,
+        status: { $ne: "cancelled" },
+      },
+      {
+        $set: {
+          startTime: newStartTime,
+          endTime: newEndTime,
+        },
+      },
+    );
+
+    const employeeIds = [
+      ...new Set(
+        shifts.map((shift) => String(shift.employeeId)).filter(Boolean),
+      ),
+    ];
+
+    if (input.notifyEmployees !== false && employeeIds.length > 0) {
+      await Notification.insertMany(
+        employeeIds.map((employeeId) => ({
+          toUserId: employeeId,
+          restaurantId,
+          type: "shift_time_changed",
+          payload: {
+            title: "Ca làm của bạn đã được thay đổi giờ",
+            message: buildShiftTimeChangedMessage({
+              shiftType,
+              oldStartTime,
+              oldEndTime,
+              newStartTime,
+              newEndTime,
+              reason,
+            }),
+            shiftType,
+            oldStartTime,
+            oldEndTime,
+            newStartTime,
+            newEndTime,
+            reason,
+            publicationId: String(publication._id),
+            actorUserId: String(actorUserId),
+            affectedShiftIds: shifts.map((shift) => String(shift._id)),
+          },
+          readAt: null,
+        })),
+      );
+
+      if (ctx?.io) {
+        employeeIds.forEach((employeeId) => {
+          ctx.io.to(`user_${employeeId}`).emit("notificationCreated", {
+            type: "shift_time_changed",
+            restaurantId: String(restaurantId),
+            message: "Ca làm của bạn đã được thay đổi giờ.",
+          });
+        });
+      }
+    }
+
+    await EventLog.create({
+      restaurantId,
+      actorUserId,
+      verb: "schedule.published_shift_time_change",
+      object: {
+        kind: "ShiftGroup",
+        id: shifts[0]._id,
+        code: `${shiftType}_${oldStartTime.toISOString()}`,
+      },
+      source: "schedule-management",
+      status: "success",
+      meta: {
+        reason,
+        overrideReason: input.allowOverride ? overrideReason : null,
+        allowOverride: Boolean(input.allowOverride),
+        notifyEmployees: input.notifyEmployees !== false,
+        publicationId: String(publication._id),
+        affectedShiftIds: shifts.map((shift) => String(shift._id)),
+        affectedEmployeeIds: employeeIds,
+        validationWarnings,
+      },
+      diff: {
+        before: {
+          startTime: oldStartTime,
+          endTime: oldEndTime,
+        },
+        after: {
+          startTime: newStartTime,
+          endTime: newEndTime,
+        },
+      },
+      at: new Date(),
+    });
+
+    await SchedulePublication.updateOne(
+      { _id: publication._id },
+      {
+        $set: {
+          lastChangedAt: new Date(),
+        },
+      },
+    );
+
+    return true;
+  },
   deleteStaffShift: async (
     _,
     { shiftId, reason = "", notifyEmployee = true },

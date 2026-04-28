@@ -515,7 +515,55 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
       }
     }
   }
+  .schedule-publish-reminder {
+    margin: 0.85rem 1.35rem 0;
+    padding: 0.85rem 1rem;
+    border: 1px solid #fed7aa;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
 
+    .reminder-content {
+      min-width: 0;
+
+      strong {
+        display: block;
+        color: #9a3412;
+        font-size: 0.92rem;
+        font-weight: 850;
+        margin-bottom: 0.18rem;
+      }
+
+      p {
+        margin: 0;
+        color: #7c2d12;
+        font-size: 0.84rem;
+        line-height: 1.45;
+        font-weight: 650;
+      }
+    }
+
+    button {
+      height: 2.35rem;
+      border: 1px solid #ea580c;
+      border-radius: 999px;
+      background: #ea580c;
+      color: #fff;
+      padding: 0 0.95rem;
+      font-size: 0.86rem;
+      font-weight: 820;
+      white-space: nowrap;
+
+      &:hover:not(:disabled) {
+        background: #c2410c;
+        border-color: #c2410c;
+      }
+    }
+  }
   /* =========================================
      STATS / INSIGHTS PANEL
      ========================================= */
@@ -1026,7 +1074,14 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
         grid-template-columns: 1fr;
       }
     }
+    .schedule-publish-reminder {
+      flex-direction: column;
+      align-items: stretch;
 
+      button {
+        width: 100%;
+      }
+    }
     .schedule-toolbar {
       padding: 0.75rem 1rem;
 

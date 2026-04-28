@@ -66,7 +66,45 @@ enum CustomerType {
 # =========================
 # Core Types
 # =========================
+type SchedulePublication {
+  id: ID!
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  status: String!
+  publishedAt: DateTime
+  publishedBy: ID
+  reminderSentAt: DateTime
+  lastChangedAt: DateTime
+  createdAt: DateTime
+  updatedAt: DateTime
+}
 
+input PublishScheduleInput {
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+}
+input ChangePublishedShiftGroupTimeInput {
+  restaurantId: ID!
+  shiftIds: [ID!]!
+  startTime: DateTime!
+  endTime: DateTime!
+  reason: String!
+  notifyEmployees: Boolean = true
+  allowOverride: Boolean = false
+  overrideReason: String
+}
+input ChangePublishedShiftGroupTimeInput {
+  restaurantId: ID!
+  shiftIds: [ID!]!
+  startTime: DateTime!
+  endTime: DateTime!
+  reason: String!
+  notifyEmployees: Boolean = true
+  allowOverride: Boolean = false
+  overrideReason: String
+}
 type Restaurant {
   id: ID!
   name: String!
@@ -1492,6 +1530,11 @@ input StaffReportsInput {
 # =========================
 
 type Query {
+  schedulePublication(
+    restaurantId: ID!
+    periodStart: DateTime!
+    periodEnd: DateTime!
+  ): SchedulePublication
   staffPerformanceSnapshots(
     filter: StaffPerformanceFilterInput
   ): [StaffPerformanceSnapshot!]!
@@ -1575,6 +1618,13 @@ type Query {
 # =========================
 
 type Mutation {
+  publishSchedule(input: PublishScheduleInput!): SchedulePublication!
+  changePublishedShiftGroupTime(
+    input: ChangePublishedShiftGroupTimeInput!
+  ): Boolean!
+  changePublishedShiftGroupTime(
+    input: ChangePublishedShiftGroupTimeInput!
+  ): Boolean!
   upsertStaffPerformanceReview(
     input: UpsertStaffPerformanceReviewInput!
   ): StaffPerformanceReview!

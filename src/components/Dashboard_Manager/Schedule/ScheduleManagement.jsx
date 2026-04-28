@@ -49,7 +49,35 @@ import ShiftDetailModal from "./components/ShiftDetailModal";
 import AutoScheduleModal from "./components/AutoScheduleModal";
 import ShiftRulesModal from "./components/ShiftRulesModal";
 import DailyView from "./DailyView";
-
+const GET_SCHEDULE_PUBLICATION = gql`
+  query SchedulePublication(
+    $restaurantId: ID!
+    $periodStart: DateTime!
+    $periodEnd: DateTime!
+  ) {
+    schedulePublication(
+      restaurantId: $restaurantId
+      periodStart: $periodStart
+      periodEnd: $periodEnd
+    ) {
+      id
+      status
+      publishedAt
+      publishedBy
+      reminderSentAt
+      lastChangedAt
+    }
+  }
+`;
+const PUBLISH_SCHEDULE = gql`
+  mutation PublishSchedule($input: PublishScheduleInput!) {
+    publishSchedule(input: $input) {
+      id
+      status
+      publishedAt
+    }
+  }
+`;
 const ME_QUERY = gql`
   query Me {
     me {
@@ -238,7 +266,13 @@ const DELETE_STAFF_SHIFT = gql`
     )
   }
 `;
-
+const CHANGE_PUBLISHED_SHIFT_GROUP_TIME = gql`
+  mutation ChangePublishedShiftGroupTime(
+    $input: ChangePublishedShiftGroupTimeInput!
+  ) {
+    changePublishedShiftGroupTime(input: $input)
+  }
+`;
 const SCHEDULING_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 const DEPARTMENT_LABELS = {
@@ -627,7 +661,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [viewMode, setViewMode] = useState("week");
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [selectedStaffId, setSelectedStaffId] = useState("");
-  const [isPublished, setIsPublished] = useState(false);
+
   const [shiftRules, setShiftRules] = useState(() => loadStoredShiftRules());
   const [isShiftSettingsOpen, setIsShiftSettingsOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -751,11 +785,26 @@ const ScheduleManagement = ({ readOnly = false }) => {
     fetchPolicy: "network-only",
     skip: !effectiveRestaurantId,
   });
-
+  const {
+    data: publicationData,
+    loading: publicationLoading,
+    refetch: refetchPublication,
+  } = useQuery(GET_SCHEDULE_PUBLICATION, {
+    variables: {
+      restaurantId: effectiveRestaurantId,
+      periodStart: rangeStart.toISOString(),
+      periodEnd: rangeEnd.toISOString(),
+    },
+    fetchPolicy: "network-only",
+    skip: !effectiveRestaurantId || viewMode !== "week",
+  });
   const [createShift] = useMutation(CREATE_STAFF_SHIFT);
   const [updateShift] = useMutation(UPDATE_STAFF_SHIFT);
   const [deleteShift] = useMutation(DELETE_STAFF_SHIFT);
-
+  const [changePublishedShiftGroupTime, { loading: changingShiftGroupTime }] =
+    useMutation(CHANGE_PUBLISHED_SHIFT_GROUP_TIME);
+  const [publishSchedule, { loading: publishingSchedule }] =
+    useMutation(PUBLISH_SCHEDULE);
   const [loadSchedulingAssistant, schedulingAssistantState] = useLazyQuery(
     GET_SCHEDULING_ASSISTANT,
     {
@@ -860,7 +909,26 @@ const ScheduleManagement = ({ readOnly = false }) => {
     }
     return format(currentDate, "EEEE, dd/MM/yyyy", { locale: vi });
   }, [currentDate, viewMode, weekEnd, weekStart]);
+  const schedulePublication = publicationData?.schedulePublication || null;
 
+  const isSchedulePublished = schedulePublication?.status === "published";
+
+  const daysUntilRangeStart = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const start = new Date(rangeStart);
+    start.setHours(0, 0, 0, 0);
+
+    return Math.ceil((start.getTime() - today.getTime()) / 86400000);
+  }, [rangeStart]);
+
+  const shouldShowPublishReminder =
+    viewMode === "week" &&
+    !publicationLoading &&
+    !isSchedulePublished &&
+    daysUntilRangeStart >= 0 &&
+    daysUntilRangeStart <= 3;
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
     [weekStart],
@@ -953,6 +1021,44 @@ const ScheduleManagement = ({ readOnly = false }) => {
           nextRestaurant?.name || "nhà hàng đã chọn"
         }.`,
         "success",
+      );
+    }
+  };
+  const handlePublishSchedule = async () => {
+    if (!effectiveRestaurantId) {
+      showNotification(
+        "Vui lòng chọn nhà hàng trước khi công bố lịch.",
+        "warning",
+      );
+      return;
+    }
+
+    if (viewMode !== "week") {
+      showNotification("Chỉ công bố lịch theo phạm vi tuần.", "warning");
+      return;
+    }
+
+    try {
+      await publishSchedule({
+        variables: {
+          input: {
+            restaurantId: effectiveRestaurantId,
+            periodStart: rangeStart.toISOString(),
+            periodEnd: rangeEnd.toISOString(),
+          },
+        },
+      });
+
+      await refetchPublication();
+
+      showNotification(
+        "Đã công bố lịch làm việc và thông báo đến nhân viên liên quan.",
+        "success",
+      );
+    } catch (error) {
+      showNotification(
+        getGraphQLErrorMessage(error, "Không thể công bố lịch làm việc."),
+        "error",
       );
     }
   };
@@ -1687,6 +1793,96 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     return lines;
   };
+  const handleChangeShiftGroupTime = async (shiftGroup, payload) => {
+    if (!effectiveRestaurantId) {
+      const message = "Vui lòng chọn nhà hàng trước khi đổi giờ ca.";
+      showNotification(message, "warning");
+      throw new Error(message);
+    }
+
+    const shiftIds = (shiftGroup?.records || [])
+      .map((record) => record.id)
+      .filter(Boolean);
+
+    if (!shiftIds.length) {
+      const message = "Không tìm thấy phân công trong ca cần đổi giờ.";
+      showNotification(message, "error");
+      throw new Error(message);
+    }
+
+    const reason = String(payload?.reason || "").trim();
+
+    if (!reason) {
+      const message = "Cần nhập lý do thay đổi giờ ca.";
+      showNotification(message, "warning");
+      throw new Error(message);
+    }
+
+    let nextRange;
+
+    try {
+      nextRange = buildShiftRange({
+        date: shiftGroup.date,
+        startTimeText: payload.startTime,
+        endTimeText: payload.endTime,
+      });
+    } catch (error) {
+      const message = error?.message || "Giờ bắt đầu/kết thúc không hợp lệ.";
+      showNotification(message, "error");
+      throw new Error(message);
+    }
+
+    try {
+      await changePublishedShiftGroupTime({
+        variables: {
+          input: {
+            restaurantId: effectiveRestaurantId,
+            shiftIds,
+            startTime: nextRange.startTime.toISOString(),
+            endTime: nextRange.endTime.toISOString(),
+            reason,
+            notifyEmployees: payload.notifyEmployees !== false,
+            allowOverride: Boolean(payload.allowOverride),
+            overrideReason:
+              payload.allowOverride && payload.overrideReason
+                ? payload.overrideReason
+                : reason,
+          },
+        },
+      });
+
+      await refetch();
+
+      if (typeof refetchPublication === "function") {
+        await refetchPublication();
+      }
+
+      setSelectedShift((current) => {
+        if (!current || current.id !== shiftGroup.id) return current;
+
+        return {
+          ...current,
+          startTime: payload.startTime,
+          endTime: payload.endTime,
+        };
+      });
+
+      showNotification(
+        isSchedulePublished
+          ? "Đã đổi giờ ca, ghi log và gửi thông báo cho nhân viên liên quan."
+          : "Đã đổi giờ ca thành công.",
+        "success",
+      );
+    } catch (error) {
+      const message = getGraphQLErrorMessage(
+        error,
+        "Không thể đổi giờ ca. Vui lòng kiểm tra lại policy.",
+      );
+
+      showNotification(message, "error");
+      throw new Error(message);
+    }
+  };
   const handleApplyAutoSchedule = async () => {
     const inputs = buildAutoScheduleCreateInputs({
       previewItems: autoSchedulePreview.items,
@@ -1902,7 +2098,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           <button
             type="button"
             className="kpi-card status"
-            onClick={() => setIsPublished((prev) => !prev)}
+            onClick={() => handlePublishSchedule((prev) => !prev)}
             disabled={readOnly}
           >
             <div className="kpi-icon">
@@ -1910,8 +2106,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
             </div>
             <div className="kpi-content">
               <span className="label">Trạng thái</span>
-              <span className={`value ${isPublished ? "published" : "draft"}`}>
-                {isPublished ? "Đã xuất bản" : "Bản nháp"}
+              <span
+                className={`value ${isSchedulePublished ? "published" : "draft"}`}
+              >
+                {isSchedulePublished ? "Đã xuất bản" : "Bản nháp"}
               </span>
               <span className="hint">
                 {readOnly ? "Chỉ xem" : "Bấm để đổi trạng thái"}
@@ -2009,15 +2207,44 @@ const ScheduleManagement = ({ readOnly = false }) => {
           {!readOnly && (
             <button
               type="button"
-              className={`btn-publish ${isPublished ? "published" : ""}`}
-              onClick={() => setIsPublished((prev) => !prev)}
+              className={`btn-publish ${isSchedulePublished ? "published" : ""}`}
+              onClick={handlePublishSchedule}
+              disabled={
+                readOnly ||
+                publishingSchedule ||
+                isSchedulePublished ||
+                !effectiveRestaurantId ||
+                viewMode !== "week"
+              }
             >
-              {isPublished ? "Chuyển về nháp" : "Xuất bản"}
+              {isSchedulePublished
+                ? "Đã công bố"
+                : publishingSchedule
+                  ? "Đang công bố..."
+                  : "Công bố lịch"}
             </button>
           )}
         </div>
       </div>
+      {shouldShowPublishReminder ? (
+        <div className="schedule-publish-reminder">
+          <div className="reminder-content">
+            <strong>Nhắc công bố lịch làm việc</strong>
+            <p>
+              Tuần này sẽ bắt đầu trong {daysUntilRangeStart} ngày. Nên công bố
+              lịch trước ít nhất 3 ngày để nhân viên chủ động sắp xếp.
+            </p>
+          </div>
 
+          <button
+            type="button"
+            onClick={handlePublishSchedule}
+            disabled={publishingSchedule || !effectiveRestaurantId}
+          >
+            {publishingSchedule ? "Đang công bố..." : "Công bố lịch"}
+          </button>
+        </div>
+      ) : null}
       {isStatsPanelOpen ? (
         <section className="schedule-insights-panel">
           <div className="insights-header">
@@ -2280,6 +2507,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
         onUpdateNotes={handleUpdateSelectedNotes}
         onUpdateTime={handleUpdateSelectedTime}
         shiftConfig={configuredShiftTypes}
+        isSchedulePublished={isSchedulePublished}
+        isChangingShiftTime={changingShiftGroupTime}
+        onChangeShiftGroupTime={handleChangeShiftGroupTime}
       />
 
       {!readOnly && (

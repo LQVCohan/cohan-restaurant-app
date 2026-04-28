@@ -3,7 +3,6 @@ import Modal from "../../../common/Modal";
 import "./ShiftDetailModal.scss";
 import {
   AlertTriangle,
-  Calendar,
   CheckCircle,
   Clock,
   Plus,
@@ -12,6 +11,7 @@ import {
   UserMinus,
   Users,
   X,
+  Edit3,
 } from "lucide-react";
 import {
   shiftTypes,
@@ -37,15 +37,25 @@ const ShiftDetailModal = ({
   onAddStaff,
   onDeleteShift,
   onUpdateNotes,
-  onUpdateTime,
+  isSchedulePublished = false,
+  isChangingShiftTime = false,
+  onChangeShiftGroupTime,
   shiftConfig = shiftTypes,
 }) => {
   const [search, setSearch] = useState("");
   const [jobFilter, setJobFilter] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
-  const [timeDraft, setTimeDraft] = useState({ startTime: "", endTime: "" });
-  const [timeError, setTimeError] = useState("");
-  const [isSavingTime, setIsSavingTime] = useState(false);
+  const [timeChangeOpen, setTimeChangeOpen] = useState(false);
+  const [timeChangeDraft, setTimeChangeDraft] = useState({
+    startTime: "",
+    endTime: "",
+    reason: "",
+    notifyEmployees: true,
+    allowOverride: false,
+    overrideReason: "",
+  });
+  const [timeChangeError, setTimeChangeError] = useState("");
+  const [isSubmittingTimeChange, setIsSubmittingTimeChange] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [removeConfirm, setRemoveConfirm] = useState(null);
   const [removeReason, setRemoveReason] = useState("");
@@ -71,12 +81,18 @@ const ShiftDetailModal = ({
 
   useEffect(() => {
     setNoteDraft(shift?.notes || "");
-    setTimeDraft({
+
+    setTimeChangeOpen(false);
+    setTimeChangeDraft({
       startTime: shift?.startTime || "",
       endTime: shift?.endTime || "",
+      reason: "",
+      notifyEmployees: true,
+      allowOverride: false,
+      overrideReason: "",
     });
-    setTimeError("");
-    setIsSavingTime(false);
+    setTimeChangeError("");
+    setIsSubmittingTimeChange(false);
     setIsSavingNotes(false);
     setRemoveConfirm(null);
     setRemoveReason("");
@@ -92,28 +108,6 @@ const ShiftDetailModal = ({
     shiftEssentialJobs.length - shiftStaffIds.length,
   );
   const isComplete = missingCount === 0;
-
-  const handleSaveTime = async () => {
-    if (readOnly || !onUpdateTime) return;
-    if (!timeDraft.startTime || !timeDraft.endTime) {
-      setTimeError("Cần nhập đủ giờ bắt đầu và giờ kết thúc.");
-      return;
-    }
-    if (timeDraft.startTime === timeDraft.endTime) {
-      setTimeError("Giờ kết thúc phải khác giờ bắt đầu.");
-      return;
-    }
-
-    setTimeError("");
-    setIsSavingTime(true);
-    try {
-      await onUpdateTime(timeDraft);
-    } catch (error) {
-      setTimeError(error?.message || "Không thể cập nhật thời gian ca.");
-    } finally {
-      setIsSavingTime(false);
-    }
-  };
 
   const handleSaveNotes = async () => {
     if (readOnly || !onUpdateNotes) return;
@@ -154,6 +148,73 @@ const ShiftDetailModal = ({
       setRemoveReason("");
     } finally {
       setIsRemovingStaff(false);
+    }
+  };
+  const openTimeChangeModal = () => {
+    if (readOnly || !onChangeShiftGroupTime) return;
+
+    setTimeChangeDraft({
+      startTime: shift?.startTime || "",
+      endTime: shift?.endTime || "",
+      reason: "",
+      notifyEmployees: true,
+      allowOverride: false,
+      overrideReason: "",
+    });
+    setTimeChangeError("");
+    setTimeChangeOpen(true);
+  };
+
+  const closeTimeChangeModal = () => {
+    if (isSubmittingTimeChange || isChangingShiftTime) return;
+    setTimeChangeOpen(false);
+    setTimeChangeError("");
+  };
+
+  const handleConfirmTimeChange = async () => {
+    if (readOnly || !onChangeShiftGroupTime) return;
+
+    if (!timeChangeDraft.startTime || !timeChangeDraft.endTime) {
+      setTimeChangeError("Cần nhập đủ giờ bắt đầu và giờ kết thúc.");
+      return;
+    }
+
+    if (timeChangeDraft.startTime === timeChangeDraft.endTime) {
+      setTimeChangeError("Giờ kết thúc phải khác giờ bắt đầu.");
+      return;
+    }
+
+    if (!timeChangeDraft.reason.trim()) {
+      setTimeChangeError("Cần nhập lý do thay đổi giờ ca.");
+      return;
+    }
+
+    if (
+      timeChangeDraft.allowOverride &&
+      !timeChangeDraft.overrideReason.trim()
+    ) {
+      setTimeChangeError("Cần nhập lý do override policy.");
+      return;
+    }
+
+    setTimeChangeError("");
+    setIsSubmittingTimeChange(true);
+
+    try {
+      await onChangeShiftGroupTime(shift, {
+        startTime: timeChangeDraft.startTime,
+        endTime: timeChangeDraft.endTime,
+        reason: timeChangeDraft.reason.trim(),
+        notifyEmployees: timeChangeDraft.notifyEmployees,
+        allowOverride: timeChangeDraft.allowOverride,
+        overrideReason: timeChangeDraft.overrideReason.trim(),
+      });
+
+      setTimeChangeOpen(false);
+    } catch (error) {
+      setTimeChangeError(error?.message || "Không thể đổi giờ ca.");
+    } finally {
+      setIsSubmittingTimeChange(false);
     }
   };
   return (
@@ -217,6 +278,35 @@ const ShiftDetailModal = ({
                 <p>{shift.notes}</p>
               </div>
             ) : null}
+            {shift.notes ? (
+              <div className="summary-note">
+                <span>Ghi chú hiện tại</span>
+                <p>{shift.notes}</p>
+              </div>
+            ) : null}
+            {!readOnly && onChangeShiftGroupTime ? (
+              <div className="summary-actions">
+                <button
+                  type="button"
+                  className="btn-time-change"
+                  onClick={openTimeChangeModal}
+                  disabled={isChangingShiftTime}
+                >
+                  <Edit3 size={16} />
+                  Đổi giờ ca
+                </button>
+
+                <span
+                  className={
+                    isSchedulePublished ? "published-hint" : "draft-hint"
+                  }
+                >
+                  {isSchedulePublished
+                    ? "Lịch đã công bố: đổi giờ sẽ yêu cầu lý do, validate policy, ghi log và thông báo nhân viên."
+                    : "Lịch chưa công bố: hệ thống vẫn sẽ validate nhân viên trước khi đổi giờ."}
+                </span>
+              </div>
+            ) : null}
           </div>
 
           <div className="section-block">
@@ -258,27 +348,6 @@ const ShiftDetailModal = ({
               )}
             </div>
           </div>
-
-          {!readOnly ? (
-            <div className="section-block note-section">
-              <div className="section-header">
-                <div>
-                  <h4>Ghi chú ca</h4>
-                  <p>Thông tin nội bộ cho quản lý hoặc nhân sự trong ca.</p>
-                </div>
-              </div>
-
-              <textarea
-                className="note-textarea"
-                value={noteDraft}
-                onChange={(event) => setNoteDraft(event.target.value)}
-                placeholder="Nhập ghi chú ca làm..."
-                rows={3}
-                readOnly={readOnly}
-                disabled={readOnly}
-              />
-            </div>
-          ) : null}
 
           <div className="section-block">
             <div className="section-header">
@@ -380,6 +449,165 @@ const ShiftDetailModal = ({
               </div>
             </div>
           ) : null}
+          {timeChangeOpen ? (
+            <div className="time-change-backdrop">
+              <div className="time-change-card">
+                <div className="time-change-icon">
+                  <Clock size={22} />
+                </div>
+
+                <div className="time-change-content">
+                  <h4>Đổi giờ ca làm việc</h4>
+
+                  <p>
+                    Bạn đang đổi giờ <strong>{currentShiftType?.label}</strong>{" "}
+                    ngày <strong>{formatDate(shift.date)}</strong>. Giờ hiện
+                    tại:{" "}
+                    <strong>
+                      {shift.startTime} - {shift.endTime}
+                    </strong>
+                    .
+                  </p>
+
+                  {isSchedulePublished ? (
+                    <div className="time-change-warning">
+                      Lịch này đã được công bố. Khi lưu, hệ thống sẽ validate
+                      toàn bộ nhân viên trong ca, ghi log và gửi thông báo đến
+                      nhân viên liên quan.
+                    </div>
+                  ) : (
+                    <div className="time-change-info">
+                      Lịch chưa công bố. Hệ thống vẫn sẽ kiểm tra trùng ca, nghỉ
+                      phép, giới hạn giờ làm và các policy liên quan trước khi
+                      lưu.
+                    </div>
+                  )}
+
+                  <div className="time-change-grid">
+                    <label>
+                      Giờ bắt đầu mới
+                      <input
+                        type="time"
+                        value={timeChangeDraft.startTime}
+                        onChange={(event) =>
+                          setTimeChangeDraft((prev) => ({
+                            ...prev,
+                            startTime: event.target.value,
+                          }))
+                        }
+                        disabled={isSubmittingTimeChange || isChangingShiftTime}
+                      />
+                    </label>
+
+                    <label>
+                      Giờ kết thúc mới
+                      <input
+                        type="time"
+                        value={timeChangeDraft.endTime}
+                        onChange={(event) =>
+                          setTimeChangeDraft((prev) => ({
+                            ...prev,
+                            endTime: event.target.value,
+                          }))
+                        }
+                        disabled={isSubmittingTimeChange || isChangingShiftTime}
+                      />
+                    </label>
+                  </div>
+
+                  <label className="time-change-reason">
+                    Lý do thay đổi <span>*</span>
+                    <textarea
+                      value={timeChangeDraft.reason}
+                      onChange={(event) =>
+                        setTimeChangeDraft((prev) => ({
+                          ...prev,
+                          reason: event.target.value,
+                        }))
+                      }
+                      placeholder="Ví dụ: điều chỉnh theo nhu cầu vận hành, thay đổi giờ mở ca..."
+                      rows={3}
+                      disabled={isSubmittingTimeChange || isChangingShiftTime}
+                    />
+                  </label>
+
+                  <label className="time-change-check">
+                    <input
+                      type="checkbox"
+                      checked={timeChangeDraft.notifyEmployees}
+                      onChange={(event) =>
+                        setTimeChangeDraft((prev) => ({
+                          ...prev,
+                          notifyEmployees: event.target.checked,
+                        }))
+                      }
+                      disabled={isSubmittingTimeChange || isChangingShiftTime}
+                    />
+                    <span>Gửi thông báo đến nhân viên trong ca</span>
+                  </label>
+
+                  <label className="time-change-check">
+                    <input
+                      type="checkbox"
+                      checked={timeChangeDraft.allowOverride}
+                      onChange={(event) =>
+                        setTimeChangeDraft((prev) => ({
+                          ...prev,
+                          allowOverride: event.target.checked,
+                        }))
+                      }
+                      disabled={isSubmittingTimeChange || isChangingShiftTime}
+                    />
+                    <span>Cho phép override nếu chỉ có cảnh báo policy</span>
+                  </label>
+
+                  {timeChangeDraft.allowOverride ? (
+                    <label className="time-change-reason">
+                      Lý do override policy <span>*</span>
+                      <textarea
+                        value={timeChangeDraft.overrideReason}
+                        onChange={(event) =>
+                          setTimeChangeDraft((prev) => ({
+                            ...prev,
+                            overrideReason: event.target.value,
+                          }))
+                        }
+                        placeholder="Giải thích vì sao vẫn cần đổi giờ dù có cảnh báo policy..."
+                        rows={2}
+                        disabled={isSubmittingTimeChange || isChangingShiftTime}
+                      />
+                    </label>
+                  ) : null}
+
+                  {timeChangeError ? (
+                    <div className="time-change-error">{timeChangeError}</div>
+                  ) : null}
+
+                  <div className="time-change-actions">
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={closeTimeChangeModal}
+                      disabled={isSubmittingTimeChange || isChangingShiftTime}
+                    >
+                      Hủy
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn-primary-danger"
+                      onClick={handleConfirmTimeChange}
+                      disabled={isSubmittingTimeChange || isChangingShiftTime}
+                    >
+                      {isSubmittingTimeChange || isChangingShiftTime
+                        ? "Đang kiểm tra..."
+                        : "Kiểm tra & lưu"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
           {removeConfirm ? (
             <div className="remove-confirm-backdrop">
               <div className="remove-confirm-card">
@@ -443,7 +671,7 @@ const ShiftDetailModal = ({
                 <button
                   className="btn-close"
                   onClick={handleSaveNotes}
-                  disabled={isSavingNotes || isSavingTime}
+                  disabled={isSavingNotes}
                 >
                   {isSavingNotes ? "Đang lưu..." : "Lưu ghi chú"}
                 </button>

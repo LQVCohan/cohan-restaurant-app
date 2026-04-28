@@ -13,6 +13,7 @@ import {
   Restaurant,
   PayrollPeriod,
   PayrollItem,
+  SchedulePublication,
 } from "../../../models/index.js";
 import { listStaffPerformanceSnapshots } from "../../../src/services/staffPerformance/staffPerformance.service.js";
 import { getSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
@@ -656,7 +657,29 @@ export default {
       timezone,
     });
   },
+  schedulePublication: async (
+    _,
+    { restaurantId, periodStart, periodEnd },
+    ctx,
+  ) => {
+    const rid = toObjectId(restaurantId);
+    if (!rid) throw new Error("restaurantId không hợp lệ.");
 
+    const doc = await SchedulePublication.findOne({
+      restaurantId: rid,
+      periodStart: toStartOfDay(periodStart),
+      periodEnd: toEndOfDay(periodEnd),
+    }).lean();
+
+    if (!doc) return null;
+
+    return {
+      id: String(doc._id),
+      ...doc,
+      restaurantId: String(doc.restaurantId),
+      publishedBy: doc.publishedBy ? String(doc.publishedBy) : null,
+    };
+  },
   staffShifts: async (
     _,
     { restaurantId, employeeId, startDate, endDate, status, limit = 500 },
