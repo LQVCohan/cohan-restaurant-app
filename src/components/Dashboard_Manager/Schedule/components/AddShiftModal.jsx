@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Modal from "../../../common/Modal"; // Đảm bảo đường dẫn đúng
 import "./AddShiftModal.scss";
-import { shiftTypes, formatDate, jobOptions, getJobName } from "../utils/scheduleHelpers";
+import {
+  shiftTypes,
+  formatDate,
+  jobOptions,
+  getJobName,
+} from "../utils/scheduleHelpers";
 import { Search, Check } from "lucide-react"; // Import icon từ lucide-react
 
 const AddShiftModal = ({
@@ -12,6 +17,8 @@ const AddShiftModal = ({
   shiftConfig = shiftTypes,
   staffList,
   onConfirm,
+  isSchedulePublished = false,
+  submitting = false,
 }) => {
   const [newShift, setNewShift] = useState({
     essentialJobs: [],
@@ -20,7 +27,10 @@ const AddShiftModal = ({
   });
   const [search, setSearch] = useState("");
   const [submitError, setSubmitError] = useState("");
-
+  const [publishedReason, setPublishedReason] = useState("");
+  const [notifyEmployees, setNotifyEmployees] = useState(true);
+  const [allowOverride, setAllowOverride] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
   // Reset form khi mở modal
   useEffect(() => {
     if (isOpen) {
@@ -31,6 +41,10 @@ const AddShiftModal = ({
       });
       setSearch("");
       setSubmitError("");
+      setPublishedReason("");
+      setNotifyEmployees(true);
+      setAllowOverride(false);
+      setOverrideReason("");
     }
   }, [isOpen, selectedDate, selectedShiftType]);
 
@@ -63,18 +77,40 @@ const AddShiftModal = ({
   // Filter Staff
   const filteredStaff = useMemo(() => {
     return staffList.filter((s) =>
-      s.name.toLowerCase().includes(search.toLowerCase())
+      s.name.toLowerCase().includes(search.toLowerCase()),
     );
   }, [staffList, search]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError("");
+
+    if (!newShift.staffIds.length) {
+      setSubmitError("Cần chọn ít nhất một nhân viên để tạo ca.");
+      return;
+    }
+
+    if (isSchedulePublished && !publishedReason.trim()) {
+      setSubmitError(
+        "Lịch đã công bố, cần nhập lý do khi thêm nhân viên vào ca.",
+      );
+      return;
+    }
+
+    if (isSchedulePublished && allowOverride && !overrideReason.trim()) {
+      setSubmitError("Cần nhập lý do override policy.");
+      return;
+    }
+
     try {
       await onConfirm({
         ...newShift,
         date: selectedDate,
         shiftType: selectedShiftType,
+        publishedReason: publishedReason.trim(),
+        notifyEmployees,
+        allowOverride,
+        overrideReason: overrideReason.trim(),
       });
     } catch (error) {
       setSubmitError(error?.message || "Không thể tạo ca làm.");
@@ -105,7 +141,16 @@ const AddShiftModal = ({
             </span>
           </div>
         </div>
-
+        {isSchedulePublished ? (
+          <div className="published-change-warning">
+            <strong>Lịch đã được công bố</strong>
+            <p>
+              Thêm nhân viên vào ca này sẽ được xem là thay đổi lịch đã công bố.
+              Hệ thống sẽ validate policy, ghi log và gửi thông báo đến nhân
+              viên liên quan.
+            </p>
+          </div>
+        ) : null}
         {/* Job Selection */}
         <div className="form-group">
           <label>Vị trí bắt buộc (KPI)</label>
@@ -169,7 +214,49 @@ const AddShiftModal = ({
             </div>
           </div>
         </div>
+        {isSchedulePublished ? (
+          <div className="form-group">
+            <label>
+              Lý do thêm nhân viên vào lịch đã công bố{" "}
+              <span className="required">*</span>
+            </label>
+            <textarea
+              className="note-input"
+              rows={3}
+              placeholder="Ví dụ: bổ sung nhân sự do nhu cầu vận hành tăng..."
+              value={publishedReason}
+              onChange={(e) => setPublishedReason(e.target.value)}
+            />
 
+            <label className="published-check-row">
+              <input
+                type="checkbox"
+                checked={notifyEmployees}
+                onChange={(e) => setNotifyEmployees(e.target.checked)}
+              />
+              <span>Gửi thông báo đến nhân viên được thêm vào ca</span>
+            </label>
+
+            <label className="published-check-row">
+              <input
+                type="checkbox"
+                checked={allowOverride}
+                onChange={(e) => setAllowOverride(e.target.checked)}
+              />
+              <span>Cho phép override nếu chỉ có cảnh báo policy</span>
+            </label>
+
+            {allowOverride ? (
+              <textarea
+                className="note-input"
+                rows={2}
+                placeholder="Lý do override policy..."
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+              />
+            ) : null}
+          </div>
+        ) : null}
         {/* Note Input */}
         <div className="form-group">
           <label>Ghi chú</label>
@@ -191,8 +278,12 @@ const AddShiftModal = ({
           <button type="button" className="btn-cancel" onClick={onClose}>
             Hủy bỏ
           </button>
-          <button type="submit" className="btn-submit">
-            Lưu & Tạo Lịch
+          <button type="submit" className="btn-submit" disabled={submitting}>
+            {submitting
+              ? "Đang lưu..."
+              : isSchedulePublished
+                ? "Validate & thêm vào lịch"
+                : "Lưu & Tạo Lịch"}
           </button>
         </div>
       </form>

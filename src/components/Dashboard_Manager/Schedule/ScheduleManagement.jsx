@@ -345,7 +345,15 @@ const resolveAssistantShiftStatus = (deltaStaff) => {
   if (deltaStaff >= 1) return { status: "overstaffed", severity: "low" };
   return { status: "balanced", severity: "low" };
 };
+const getGraphQLErrorMessage = (error, fallback = "Đã xảy ra lỗi.") => {
+  const graphQLError =
+    error?.graphQLErrors?.[0]?.message ||
+    error?.networkError?.result?.errors?.[0]?.message ||
+    error?.cause?.message ||
+    "";
 
+  return graphQLError || error?.message || fallback;
+};
 const mergeAssistantWithRequiredRoles = (assistant, requiredRoles = []) => {
   if (!assistant) return assistant;
 
@@ -527,7 +535,15 @@ const buildShiftRange = ({ date, startTimeText, endTimeText }) => {
 
   return { startTime, endTime };
 };
+const assertShiftIsEditableBeforeStart = ({ startTime }) => {
+  const now = new Date();
 
+  if (new Date(startTime).getTime() <= now.getTime()) {
+    throw new Error(
+      "Ca đã bắt đầu hoặc đã kết thúc, không thể thêm nhân viên vào ca này.",
+    );
+  }
+};
 const getShiftHoursFromGroup = (shift) => {
   try {
     const { startTime, endTime } = buildShiftRange({
@@ -1285,58 +1301,132 @@ const ScheduleManagement = ({ readOnly = false }) => {
       validation,
     };
   };
-  const handleCreateShift = async (newShiftData) => {
-    if (readOnly) return;
+  const handleConfirmAddShift = async (payload) => {
+    if (!effectiveRestaurantId) {
+      throw new Error("Vui lòng chọn nhà hàng trước khi tạo ca.");
+    }
 
-    const config = configuredShiftTypes[newShiftData.shiftType];
-    if (!config || !effectiveRestaurantId) return;
+    const shiftConfigItem = configuredShiftTypes[payload.shiftType];
 
-    if (!(newShiftData.staffIds || []).length) {
-      throw new Error("Cần chọn ít nhất một nhân viên để tạo ca.");
+    if (!shiftConfigItem) {
+      throw new Error("Không tìm thấy cấu hình ca làm.");
     }
 
     const { startTime, endTime } = buildShiftRange({
-      date: newShiftData.date,
-      startTimeText: config.startTime,
-      endTimeText: config.endTime,
+      date: payload.date,
+      startTimeText: shiftConfigItem.startTime,
+      endTimeText: shiftConfigItem.endTime,
     });
-    const overrideByEmployee = new Map();
 
-    for (const employeeId of newShiftData.staffIds || []) {
-      const override = await validateShiftAssignmentOrThrow({
-        employeeId,
-        shiftType: newShiftData.shiftType,
-        startTime,
-        endTime,
-      });
+    assertShiftIsEditableBeforeStart({ startTime });
 
-      overrideByEmployee.set(String(employeeId), override);
+    const staffIds = Array.isArray(payload.staffIds) ? payload.staffIds : [];
+
+    if (!staffIds.length) {
+      throw new Error("Cần chọn ít nhất một nhân viên.");
     }
 
-    await Promise.all(
-      (newShiftData.staffIds || []).map((employeeId) => {
-        const override = overrideByEmployee.get(String(employeeId)) || {};
+    if (isSchedulePublished && !String(payload.publishedReason || "").trim()) {
+      throw new Error(
+        "Lịch đã công bố, cần nhập lý do khi thêm nhân viên vào ca.",
+      );
+    }
 
-        return createShift({
-          variables: {
-            input: {
-              employeeId,
-              restaurantId: effectiveRestaurantId,
-              shiftType: newShiftData.shiftType.toUpperCase(),
-              startTime: startTime.toISOString(),
-              endTime: endTime.toISOString(),
-              status: "scheduled",
-              notes: newShiftData.notes || "",
-              allowOverride: Boolean(override.allowOverride),
-              overrideReason: override.overrideReason || undefined,
+    const successRows = [];
+    const failedRows = [];
+
+    for (const staffId of staffIds) {
+      try {
+        if (isSchedulePublished) {
+          const reason = String(payload.publishedReason || "").trim();
+
+          await addStaffToPublishedShiftGroup({
+            variables: {
+              input: {
+                restaurantId: effectiveRestaurantId,
+                employeeId: staffId,
+                shiftType: String(payload.shiftType || "").toUpperCase(),
+                startTime: startTime.toISOString(),
+                endTime: endTime.toISOString(),
+                reason,
+                notifyEmployee: payload.notifyEmployees !== false,
+                allowOverride: Boolean(payload.allowOverride),
+                overrideReason: payload.overrideReason || reason,
+              },
             },
-          },
-        });
-      }),
-    );
+          });
+        } else {
+          await createShift({
+            variables: {
+              input: {
+                employeeId: staffId,
+                restaurantId: effectiveRestaurantId,
+                shiftType: String(payload.shiftType || "").toUpperCase(),
+                startTime: startTime.toISOString(),
+                endTime: endTime.toISOString(),
+                status: "scheduled",
+                notes: payload.notes || "",
+              },
+            },
+          });
+        }
 
-    await refetch();
-    setIsAddModalOpen(false);
+        successRows.push(staffId);
+      } catch (error) {
+        failedRows.push({
+          staffId,
+          message: getGraphQLErrorMessage(
+            error,
+            "Không thể tạo ca cho nhân viên.",
+          ),
+        });
+      }
+    }
+
+    if (successRows.length > 0) {
+      await refetch();
+
+      if (typeof refetchPublication === "function") {
+        await refetchPublication();
+      }
+    }
+
+    if (successRows.length > 0 && failedRows.length === 0) {
+      setIsAddModalOpen(false);
+      setAddModalContext({ date: "", shiftType: "" });
+
+      showNotification(
+        isSchedulePublished
+          ? `Đã thêm ${successRows.length} nhân viên vào lịch đã công bố, ghi log và gửi thông báo.`
+          : `Đã tạo ca cho ${successRows.length} nhân viên.`,
+        "success",
+      );
+
+      return;
+    }
+
+    if (successRows.length > 0 && failedRows.length > 0) {
+      const failText = failedRows
+        .slice(0, 3)
+        .map((row) => row.message)
+        .join(" | ");
+
+      showNotification(
+        `Đã lưu ${successRows.length} phân công, ${failedRows.length} phân công lỗi.`,
+        "warning",
+      );
+
+      throw new Error(failText);
+    }
+
+    const failText =
+      failedRows
+        .slice(0, 3)
+        .map((row) => row.message)
+        .join(" | ") || "Không thể tạo ca làm.";
+
+    showNotification(failText, "error");
+    throw new Error(failText);
   };
 
   const handleDeleteShift = async (shiftGroupId, options = {}) => {
@@ -2633,7 +2723,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
           selectedShiftType={addModalContext.shiftType}
           shiftConfig={configuredShiftTypes}
           staffList={staff}
-          onConfirm={handleCreateShift}
+          onConfirm={handleConfirmAddShift}
+          isSchedulePublished={isSchedulePublished}
+          submitting={addingPublishedStaff}
         />
       )}
 

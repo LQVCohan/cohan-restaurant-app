@@ -1139,7 +1139,16 @@ export default {
       },
       ctx,
     });
+    const publication = await getPublishedScheduleForShift({
+      restaurantId: input.restaurantId,
+      shiftTime: input.startTime,
+    });
 
+    if (publication) {
+      throw new Error(
+        "Lịch làm việc đã được công bố. Không thể tạo ca trực tiếp. Vui lòng dùng luồng thêm nhân viên vào lịch đã công bố để nhập lý do, validate policy, ghi log và gửi thông báo.",
+      );
+    }
     const staff = await Staff.findById(input.employeeId).lean();
     if (!staff || staff.userType !== "STAFF") {
       throw new Error("Staff not found");
