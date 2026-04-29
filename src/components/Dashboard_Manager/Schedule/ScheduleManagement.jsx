@@ -690,7 +690,7 @@ const getShiftHoursFromGroup = (shift) => {
   }
 };
 
-const buildVisibleScheduleInsights = ({ shifts, staff }) => {
+const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] }) => {
   const staffById = new Map(staff.map((person) => [String(person.id), person]));
   const issues = [];
   const costByDepartment = new Map();
@@ -703,7 +703,7 @@ const buildVisibleScheduleInsights = ({ shifts, staff }) => {
 
   shifts.forEach((shift) => {
     const shiftHours = getShiftHoursFromGroup(shift);
-    const requiredPeople = Math.max(1, shift.essentialJobs.length);
+    const requiredPeople = Math.max(1, shift.essentialJobs.length, mandatoryShiftRoles.length);
     const assignedPeople = shift.staffIds.length;
     const missingCount = Math.max(0, requiredPeople - assignedPeople);
 
@@ -721,6 +721,23 @@ const buildVisibleScheduleInsights = ({ shifts, staff }) => {
         type: "missing",
         level: "warning",
         title: `Ca thiếu ${missingCount} người`,
+        description: `${shift.date} • ${shift.startTime} - ${shift.endTime}`,
+      });
+    }
+    const assignedJobSet = new Set(
+      shift.staffIds
+        .map((staffId) => staffById.get(String(staffId))?.job)
+        .filter(Boolean),
+    );
+    const missingMandatoryRoles = mandatoryShiftRoles.filter(
+      (role) => !assignedJobSet.has(role),
+    );
+    if (missingMandatoryRoles.length > 0) {
+      issues.push({
+        id: `${shift.id}-missing-roles`,
+        type: "missing",
+        level: "warning",
+        title: `Ca thiếu role bắt buộc: ${missingMandatoryRoles.map(getAutoRoleLabel).join(", ")}`,
         description: `${shift.date} • ${shift.startTime} - ${shift.endTime}`,
       });
     }
@@ -914,6 +931,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
   } = useSchedulingPolicy({
     restaurantId: effectiveRestaurantId,
   });
+  const policyMandatoryShiftRoles = useMemo(() => {
+    const roles = Array.isArray(schedulingPolicy?.mandatoryShiftRoles)
+      ? schedulingPolicy.mandatoryShiftRoles
+      : [];
+    return roles.length ? roles : DEFAULT_AUTO_REQUIRED_ROLES;
+  }, [schedulingPolicy?.mandatoryShiftRoles]);
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
   const monthStart = startOfMonth(currentDate);
@@ -1176,8 +1199,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
   );
 
   const scheduleInsights = useMemo(
-    () => buildVisibleScheduleInsights({ shifts, staff }),
-    [shifts, staff],
+    () =>
+      buildVisibleScheduleInsights({
+        shifts,
+        staff,
+        mandatoryShiftRoles: policyMandatoryShiftRoles,
+      }),
+    [shifts, staff, policyMandatoryShiftRoles],
   );
   const assistantForPreview = useMemo(
     () =>
@@ -1257,6 +1285,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
   }, [effectiveRestaurantId]);
+  useEffect(() => {
+    if (isAutoScheduleOpen && assistantPayload) return;
+    setAutoScheduleConfig((prev) => ({
+      ...prev,
+      requiredRoles: policyMandatoryShiftRoles,
+    }));
+  }, [policyMandatoryShiftRoles, isAutoScheduleOpen, assistantPayload]);
   const handleRestaurantChange = (nextRestaurantId) => {
     const nextRestaurant = restaurantOptions.find(
       (restaurant) => String(restaurant.id) === String(nextRestaurantId),

@@ -180,7 +180,7 @@ const AutoScheduleModal = ({
             <div className="config-card role-required-card">
               <div className="config-head">
                 <Users size={16} />
-                <span>Role tiên quyết</span>
+                <span>Role bắt buộc áp dụng cho lần chia ca này</span>
               </div>
 
               <div className="required-role-grid">
@@ -199,13 +199,13 @@ const AutoScheduleModal = ({
 
               {!selectedRequiredRoles.length ? (
                 <p className="required-role-warning">
-                  Cần chọn ít nhất một role tiên quyết để hệ thống biết vai trò
-                  nào bắt buộc phải xét cho ca.
+                  Cần có ít nhất một role bắt buộc. Hãy chọn role hoặc cập nhật
+                  cài đặt chung.
                 </p>
               ) : (
                 <p className="config-hint">
-                  Hệ thống sẽ lấy max giữa role tiên quyết và nhu cầu dự báo từ
-                  expectedOrders / expectedGuests / demand.
+                  Mặc định lấy từ cài đặt chung của nhà hàng. Bạn có thể điều
+                  chỉnh tạm cho lần preview này.
                 </p>
               )}
             </div>
@@ -324,6 +324,11 @@ const AutoScheduleModal = ({
                 <p>
                   Chọn các ca muốn áp dụng. Hệ thống sẽ lưu các phân công hợp lệ
                   và cảnh báo riêng những vai trò còn thiếu người phù hợp.
+                </p>
+                <p>
+                  Ca còn thiếu người vẫn có thể áp dụng nếu hệ thống đã tìm được
+                  ít nhất một phân công hợp lệ. Các vai trò còn thiếu sẽ được
+                  ghi chú để manager bổ sung sau.
                 </p>
               </div>
               <div className="preview-stats">
@@ -498,6 +503,17 @@ const AutoScheduleModal = ({
                       </div>
                     ) : null}
 
+                    {!item.canApply ? (
+                      <div className="note-line danger">
+                        Không thể áp dụng vì chưa có nhân sự hợp lệ nào.
+                      </div>
+                    ) : null}
+                    {item.unresolvedCount > 0 && item.canApply ? (
+                      <div className="note-line warning">
+                        Còn thiếu {item.unresolvedCount} vị trí - có thể bổ sung
+                        sau.
+                      </div>
+                    ) : null}
                     {item.unresolvedCount > 0 ? (
                       <div className="note-line danger">
                         Vẫn còn thiếu {item.unresolvedCount} người sau khi áp
