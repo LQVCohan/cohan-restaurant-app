@@ -106,6 +106,21 @@ export const QUERY_SCHEDULING_POLICY = gql`
           priorityWeight
         }
       }
+      availabilityRegistrationPolicy {
+        enabled
+        targetEmploymentTypes
+        openDayOfWeek
+        openTime
+        closeDayOfWeek
+        closeTime
+        publishTargetDayOfWeek
+        publishTargetTime
+        timezone
+        allowFullTimeUnavailableException
+        lateChangeRequiresApproval
+        treatMissingPartTimeSubmissionAsUnavailable
+        autoCreateWindow
+      }
       createdAt
       updatedAt
     }
@@ -197,6 +212,21 @@ const MUTATION_UPDATE_SCHEDULING_POLICY = gql`
         ruleRiskPenalty
       }
       mandatoryShiftRoles
+      availabilityRegistrationPolicy {
+        enabled
+        targetEmploymentTypes
+        openDayOfWeek
+        openTime
+        closeDayOfWeek
+        closeTime
+        publishTargetDayOfWeek
+        publishTargetTime
+        timezone
+        allowFullTimeUnavailableException
+        lateChangeRequiresApproval
+        treatMissingPartTimeSubmissionAsUnavailable
+        autoCreateWindow
+      }
       updatedAt
     }
   }

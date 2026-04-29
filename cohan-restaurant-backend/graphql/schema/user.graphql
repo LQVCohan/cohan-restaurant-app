@@ -1539,12 +1539,54 @@ type EmploymentTypeSchedulingPolicy {
   contract: EmploymentTypeSchedulingRule
 }
 
+enum DayOfWeek {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
 input EmploymentTypeSchedulingPolicyInput {
   full_time: EmploymentTypeSchedulingRuleInput
   part_time: EmploymentTypeSchedulingRuleInput
   probation: EmploymentTypeSchedulingRuleInput
   seasonal: EmploymentTypeSchedulingRuleInput
   contract: EmploymentTypeSchedulingRuleInput
+}
+
+type AvailabilityRegistrationPolicy {
+  enabled: Boolean!
+  targetEmploymentTypes: [String!]!
+  openDayOfWeek: DayOfWeek!
+  openTime: String!
+  closeDayOfWeek: DayOfWeek!
+  closeTime: String!
+  publishTargetDayOfWeek: DayOfWeek!
+  publishTargetTime: String!
+  timezone: String!
+  allowFullTimeUnavailableException: Boolean!
+  lateChangeRequiresApproval: Boolean!
+  treatMissingPartTimeSubmissionAsUnavailable: Boolean!
+  autoCreateWindow: Boolean!
+}
+
+input AvailabilityRegistrationPolicyInput {
+  enabled: Boolean
+  targetEmploymentTypes: [String!]
+  openDayOfWeek: DayOfWeek
+  openTime: String
+  closeDayOfWeek: DayOfWeek
+  closeTime: String
+  publishTargetDayOfWeek: DayOfWeek
+  publishTargetTime: String
+  timezone: String
+  allowFullTimeUnavailableException: Boolean
+  lateChangeRequiresApproval: Boolean
+  treatMissingPartTimeSubmissionAsUnavailable: Boolean
+  autoCreateWindow: Boolean
 }
 
 type SchedulingPolicy {
@@ -1555,6 +1597,7 @@ type SchedulingPolicy {
   scoringWeights: SchedulingScoringWeights!
   mandatoryShiftRoles: [String!]!
   employmentTypePolicy: EmploymentTypeSchedulingPolicy
+  availabilityRegistrationPolicy: AvailabilityRegistrationPolicy!
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -1566,6 +1609,7 @@ input SchedulingPolicyInput {
   scoringWeights: SchedulingScoringWeightsInput
   mandatoryShiftRoles: [String!]
   employmentTypePolicy: EmploymentTypeSchedulingPolicyInput
+  availabilityRegistrationPolicy: AvailabilityRegistrationPolicyInput
 }
 
 type ShiftAssignmentIssue {
