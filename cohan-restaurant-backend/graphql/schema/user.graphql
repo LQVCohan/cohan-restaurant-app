@@ -71,29 +71,73 @@ type SchedulePublication {
   restaurantId: ID!
   periodStart: DateTime!
   periodEnd: DateTime!
+
   status: String!
+  effectiveStatus: String!
+
   publishedAt: DateTime
   publishedBy: ID
+
+  activatedAt: DateTime
+
+  lockedAt: DateTime
+  lockedBy: ID
+  lockReason: String
+
+  closedAt: DateTime
+  closedBy: ID
+  closeReason: String
+
   reminderSentAt: DateTime
   lastChangedAt: DateTime
+
+  permissions: ScheduleLifecyclePermissions!
+
   createdAt: DateTime
   updatedAt: DateTime
+}
+
+type ScheduleLifecyclePermissions {
+  canPublish: Boolean!
+  canApplyAutoSchedule: Boolean!
+  canEditDraftSchedule: Boolean!
+  canMakePublishedChange: Boolean!
+  canChangeShiftTime: Boolean!
+  canAddStaffToShift: Boolean!
+  canRemoveStaffFromShift: Boolean!
+  canDeleteShiftGroup: Boolean!
+  requiresChangeReason: Boolean!
+  requiresEmployeeNotification: Boolean!
+  isReadOnly: Boolean!
+}
+type ScheduleChangeLog {
+  id: ID!
+  restaurantId: ID
+  actorUserId: ID
+  verb: String!
+  source: String
+  status: String
+  objectKind: String
+  objectId: ID
+  objectCode: String
+  reason: String
+  affectedShiftIds: [ID!]!
+  affectedEmployeeIds: [ID!]!
+  notifyEmployees: Boolean
+  oldStartTime: DateTime
+  oldEndTime: DateTime
+  newStartTime: DateTime
+  newEndTime: DateTime
+  meta: JSON
+  diff: JSON
+  createdAt: DateTime
+  at: DateTime
 }
 
 input PublishScheduleInput {
   restaurantId: ID!
   periodStart: DateTime!
   periodEnd: DateTime!
-}
-input ChangePublishedShiftGroupTimeInput {
-  restaurantId: ID!
-  shiftIds: [ID!]!
-  startTime: DateTime!
-  endTime: DateTime!
-  reason: String!
-  notifyEmployees: Boolean = true
-  allowOverride: Boolean = false
-  overrideReason: String
 }
 input ChangePublishedShiftGroupTimeInput {
   restaurantId: ID!
@@ -115,6 +159,20 @@ input AddStaffToPublishedShiftGroupInput {
   notifyEmployee: Boolean = true
   allowOverride: Boolean = false
   overrideReason: String
+}
+
+input LockScheduleInput {
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  reason: String!
+}
+
+input CloseScheduleInput {
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  reason: String!
 }
 
 input DeletePublishedShiftGroupInput {
@@ -1548,6 +1606,13 @@ input StaffReportsInput {
 # =========================
 
 type Query {
+  scheduleChangeLogs(
+    restaurantId: ID!
+    shiftIds: [ID!]
+    periodStart: DateTime
+    periodEnd: DateTime
+    limit: Int = 50
+  ): [ScheduleChangeLog!]!
   schedulePublication(
     restaurantId: ID!
     periodStart: DateTime!
@@ -1642,9 +1707,8 @@ type Mutation {
 
   deletePublishedShiftGroup(input: DeletePublishedShiftGroupInput!): Boolean!
   publishSchedule(input: PublishScheduleInput!): SchedulePublication!
-  changePublishedShiftGroupTime(
-    input: ChangePublishedShiftGroupTimeInput!
-  ): Boolean!
+  lockSchedule(input: LockScheduleInput!): SchedulePublication!
+  closeSchedule(input: CloseScheduleInput!): SchedulePublication!
   changePublishedShiftGroupTime(
     input: ChangePublishedShiftGroupTimeInput!
   ): Boolean!

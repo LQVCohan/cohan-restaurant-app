@@ -29,7 +29,11 @@ export default function NotificationsView({ restaurantId, onOpenThread }) {
       id: n.id,
       isRead: !!n.readAt,
       from: n.payload?.senderName || n.toRole || "Hệ thống",
-      text: n.payload?.messagePreview || n.type,
+      text:
+        n.payload?.title ||
+        n.payload?.message ||
+        n.payload?.messagePreview ||
+        n.type,
       time: formatTime(n.createdAt),
       type: n.payload?.channel || n.type || "system",
       threadId: n.payload?.threadId || null,
