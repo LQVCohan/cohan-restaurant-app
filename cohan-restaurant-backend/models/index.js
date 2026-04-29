@@ -76,3 +76,6 @@ export { default as SchedulingPolicy } from "./schedulingPolicy.model.js";
 export { default as StaffPerformanceReview } from "./staffPerformanceReview.model.js";
 export { default as StaffPerformanceSnapshot } from "./staffPerformanceSnapshot.model.js";
 export { default as SchedulePublication } from "./schedule-publication.model.js";
+
+export { default as AvailabilityWindow } from "./availability-window.model.js";
+export { default as StaffAvailabilitySubmission } from "./staff-availability-submission.model.js";

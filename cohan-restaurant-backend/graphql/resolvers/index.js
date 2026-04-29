@@ -31,6 +31,7 @@ import * as printSetting from "./printSetting/index.js";
 // 🆕 Thêm search module
 import search from "./search/index.js";
 import communication from "./communication/index.js";
+import availability from "./availability/index.js";
 
 export default {
   ...baseResolvers,
@@ -64,6 +65,7 @@ export default {
     ...(tableEvent.Query || {}),
     ...(printSetting.Query || {}),
     ...(communication.Query || {}),
+    ...(availability.Query || {}),
   },
 
   Mutation: {
@@ -93,6 +95,7 @@ export default {
     ...(tableEvent.Mutation || {}),
     ...(printSetting.Mutation || {}),
     ...(communication.Mutation || {}),
+    ...(availability.Mutation || {}),
   },
 
   // ============================
