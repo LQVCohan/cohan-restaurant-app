@@ -1097,24 +1097,28 @@ export default {
       periodStart,
       periodEnd,
     }).lean();
-    if (existingPublication) {
-      const currentEffectiveStatus = resolveScheduleLifecycleStatus({
-        publication: existingPublication,
-        periodStart,
-        periodEnd,
-      });
-      if (["published", "active", "locked", "closed"].includes(currentEffectiveStatus)) {
-        throw new Error("Không thể công bố lịch ở trạng thái hiện tại.");
-      }
+    const currentStatus = existingPublication
+      ? resolveScheduleLifecycleStatus({
+          publication: existingPublication,
+          periodStart,
+          periodEnd,
+        })
+      : "draft";
+    const isRepublish = currentStatus === "revision_draft";
+
+    if (["published", "active", "locked", "closed"].includes(currentStatus)) {
+      throw new Error("Không thể công bố lịch ở trạng thái hiện tại.");
     }
 
-    const isRepublish =
-      existingPublication &&
-      resolveScheduleLifecycleStatus({
-        publication: existingPublication,
-        periodStart,
-        periodEnd,
-      }) === "revision_draft";
+    const notificationType = isRepublish
+      ? "schedule_updated"
+      : "schedule_published";
+    const notificationTitle = isRepublish
+      ? "Lịch làm việc đã được cập nhật"
+      : "Lịch làm việc đã được công bố";
+    const notificationMessage = isRepublish
+      ? "Lịch làm việc đã được cập nhật sau khi chỉnh sửa. Vui lòng kiểm tra lại ca làm của bạn."
+      : "Lịch làm việc mới đã được công bố. Vui lòng kiểm tra ca làm của bạn.";
 
     const publication = await SchedulePublication.findOneAndUpdate(
       {
@@ -1153,16 +1157,14 @@ export default {
         employeeIds.map((employeeId) => ({
           toUserId: employeeId,
           restaurantId,
-          type: isRepublish ? "schedule_updated" : "schedule_published",
+          type: notificationType,
           payload: {
             periodStart,
             periodEnd,
-            title: isRepublish
-              ? "Lịch làm việc đã được cập nhật"
-              : "Lịch làm việc đã được công bố",
-            message: isRepublish
-              ? "Lịch làm việc đã được cập nhật sau khi chỉnh sửa. Vui lòng kiểm tra lại ca làm của bạn."
-              : "Lịch làm việc mới đã được công bố. Vui lòng kiểm tra ca làm của bạn.",
+            publicationId: String(publication._id),
+            isRepublish,
+            title: notificationTitle,
+            message: notificationMessage,
           },
           readAt: null,
         })),
@@ -1185,6 +1187,9 @@ export default {
       meta: {
         periodStart,
         periodEnd,
+        previousStatus: currentStatus,
+        nextStatus: "published",
+        isRepublish,
         affectedEmployees: employeeIds.length,
         affectedShifts: shifts.length,
       },
