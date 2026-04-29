@@ -609,3 +609,60 @@
   font-size: 14px;
   font-weight: 600;
 }
+
+.shift-rules-modal {
+  .mandatory-roles-box {
+    margin-top: 1rem;
+    border: 1px solid #dbeafe;
+    background: #f8fbff;
+    border-radius: 12px;
+    padding: 0.9rem;
+  }
+
+  .mandatory-roles-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-bottom: 0.7rem;
+
+    strong {
+      color: #1e3a8a;
+      font-size: 0.92rem;
+    }
+
+    span {
+      color: #475569;
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+  }
+
+  .mandatory-role-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .mandatory-role-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    border-radius: 999px;
+    padding: 0.38rem 0.7rem;
+    font-size: 0.83rem;
+    color: #334155;
+    cursor: pointer;
+
+    input {
+      margin: 0;
+    }
+
+    &.active {
+      border-color: #4f46e5;
+      color: #312e81;
+      background: #eef2ff;
+    }
+  }
+}
