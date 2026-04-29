@@ -6,6 +6,7 @@ import "./EmployeeDashboard.scss";
 const EmployeeDashboard = ({
   employees,
   selectedEmployee,
+  focusedEmployeeId,
   onEmployeeSelect,
   onEditEmployee,
   onViewHistory,
@@ -24,6 +25,7 @@ const EmployeeDashboard = ({
         <EmployeeList
           employees={employees}
           selectedEmployee={selectedEmployee}
+          focusedEmployeeId={focusedEmployeeId}
           onEmployeeSelect={onEmployeeSelect}
           loading={loading}
         />

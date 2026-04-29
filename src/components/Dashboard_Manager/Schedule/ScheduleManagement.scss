@@ -1293,6 +1293,67 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
   }
 }
 
+.shift-card-anchor {
+  border-radius: 0.9rem;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+.shift-card-anchor.is-highlighted {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.35), 0 12px 28px rgba(245, 158, 11, 0.18);
+  background: #fffbeb;
+  transform: translateY(-1px);
+}
+
+.insight-issue-row {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.65rem;
+  background: #fff7ed;
+  color: #9a3412;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+
+  svg { flex: 0 0 auto; margin-top: 0.1rem; }
+  strong { display: block; font-size: 0.78rem; font-weight: 850; }
+  span { display: block; margin-top: 0.15rem; color: #9a3412; font-size: 0.72rem; font-weight: 650; }
+
+  &:hover { border-color: #fdba74; background: #ffedd5; transform: translateY(-1px); }
+  &.danger {
+    background: #fef2f2;
+    color: #b91c1c;
+    span { color: #b91c1c; }
+    &:hover { border-color: #fca5a5; background: #fee2e2; }
+  }
+  &.is-focused { border-color: #f59e0b; background: #ffedd5; }
+}
+
+.staff-stat-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #1d4ed8;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    color: #1e40af;
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
+}
+
 .publish-confirm-backdrop {
   position: fixed;
   inset: 0;

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import {
   addDays,
@@ -714,6 +714,10 @@ const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] 
         level: "warning",
         title: "Ca chưa có nhân sự",
         description: `${shift.date} • ${shift.startTime} - ${shift.endTime}`,
+        targetShiftId: shift.id,
+        targetShiftIds: [shift.id],
+        targetDate: shift.date,
+        targetShiftType: shift.shiftType,
       });
     } else if (missingCount > 0) {
       issues.push({
@@ -722,6 +726,31 @@ const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] 
         level: "warning",
         title: `Ca thiếu ${missingCount} người`,
         description: `${shift.date} • ${shift.startTime} - ${shift.endTime}`,
+        targetShiftId: shift.id,
+        targetShiftIds: [shift.id],
+        targetDate: shift.date,
+        targetShiftType: shift.shiftType,
+      });
+    }
+    const assignedJobSet = new Set(
+      shift.staffIds
+        .map((staffId) => staffById.get(String(staffId))?.job)
+        .filter(Boolean),
+    );
+    const missingMandatoryRoles = mandatoryShiftRoles.filter(
+      (role) => !assignedJobSet.has(role),
+    );
+    if (missingMandatoryRoles.length > 0) {
+      issues.push({
+        id: `${shift.id}-missing-roles`,
+        type: "missing",
+        level: "warning",
+        title: `Ca thiếu role bắt buộc: ${missingMandatoryRoles.map(getAutoRoleLabel).join(", ")}`,
+        description: `${shift.date} • ${shift.startTime} - ${shift.endTime}`,
+        targetShiftId: shift.id,
+        targetShiftIds: [shift.id],
+        targetDate: shift.date,
+        targetShiftType: shift.shiftType,
       });
     }
     const assignedJobSet = new Set(
@@ -779,7 +808,12 @@ const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] 
       if (!recordsByStaff.has(staffKey)) {
         recordsByStaff.set(staffKey, []);
       }
-      recordsByStaff.get(staffKey).push(record);
+      recordsByStaff.get(staffKey).push({
+        ...record,
+        shiftGroupId: shift.id,
+        shiftDate: shift.date,
+        shiftType: shift.shiftType,
+      });
     });
   });
 
@@ -806,12 +840,17 @@ const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] 
         rangesOverlap(previousStart, previousEnd, currentStart, currentEnd)
       ) {
         const person = staffById.get(String(staffId));
+        const targetShiftIds = [previous.shiftGroupId, current.shiftGroupId].filter(Boolean);
         issues.push({
           id: `${staffId}-${previous.id}-${current.id}-overlap`,
           type: "overlap",
           level: "danger",
           title: "Nhân viên bị trùng ca",
           description: `${person?.name || "Nhân viên"} có 2 ca chồng thời gian.`,
+          targetShiftId: targetShiftIds[0] || "",
+          targetShiftIds,
+          targetDate: current.shiftDate || previous.shiftDate || "",
+          targetShiftType: current.shiftType || previous.shiftType || "",
         });
       }
     }
@@ -863,6 +902,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
   });
   const [selectedShift, setSelectedShift] = useState(null);
   const [isStatsPanelOpen, setIsStatsPanelOpen] = useState(false);
+  const [highlightedShiftIds, setHighlightedShiftIds] = useState([]);
+  const [focusedIssueId, setFocusedIssueId] = useState("");
+  const shiftHighlightTimerRef = useRef(null);
   const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
   const [publishConfirmed, setPublishConfirmed] = useState(false);
   const [publishConfirmError, setPublishConfirmError] = useState("");
@@ -1284,6 +1326,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
       return next;
     });
   }, [autoSchedulePreview.items, isAutoScheduleOpen]);
+  useEffect(
+    () => () => {
+      if (shiftHighlightTimerRef.current) {
+        clearTimeout(shiftHighlightTimerRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     setAssistantPayload(null);
@@ -1323,6 +1373,48 @@ const ScheduleManagement = ({ readOnly = false }) => {
         "success",
       );
     }
+  };
+  const clearShiftHighlightLater = () => {
+    if (shiftHighlightTimerRef.current) clearTimeout(shiftHighlightTimerRef.current);
+    shiftHighlightTimerRef.current = setTimeout(() => {
+      setHighlightedShiftIds([]);
+      setFocusedIssueId("");
+    }, 3000);
+  };
+  const handleFocusScheduleIssue = (issue) => {
+    const targetIds = Array.isArray(issue?.targetShiftIds)
+      ? issue.targetShiftIds.filter(Boolean)
+      : issue?.targetShiftId
+        ? [issue.targetShiftId]
+        : [];
+    if (!targetIds.length) {
+      showNotification("Chưa xác định được ca cần xử lý.", "warning");
+      return;
+    }
+    setFocusedIssueId(issue.id);
+    setHighlightedShiftIds(targetIds);
+    requestAnimationFrame(() => {
+      const firstTarget = document.querySelector(
+        `[data-shift-group-id="${targetIds[0]}"]`,
+      );
+      if (!firstTarget) {
+        showNotification("Không tìm thấy ca trong lịch đang hiển thị.", "warning");
+        return;
+      }
+      firstTarget.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      clearShiftHighlightLater();
+    });
+  };
+  const handleOpenStaffFromStats = (person) => {
+    const staffId = person?.staffId || person?.id;
+    const staffName = person?.name || person?.fullName || "";
+    const params = new URLSearchParams(window.location.search);
+    if (staffId) params.set("employeeId", String(staffId));
+    if (staffName) params.set("employeeName", staffName);
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ""}#staff`;
+    window.history.pushState(null, "", nextUrl);
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
   };
   const handlePublishSchedule = () => {
     if (!effectiveRestaurantId) {
@@ -2978,18 +3070,27 @@ const ScheduleManagement = ({ readOnly = false }) => {
           <div className="insights-columns">
             <div className="insight-block">
               <h4>Cần xử lý</h4>
+              <p>Bấm vào cảnh báo để trỏ tới ca cần sửa.</p>
               {scheduleInsights.issues.length ? (
-                <ul className="issue-list">
+                <div className="issue-list">
                   {scheduleInsights.issues.slice(0, 8).map((issue) => (
-                    <li key={issue.id} className={issue.level}>
+                    <button
+                      type="button"
+                      key={issue.id}
+                      className={`insight-issue-row ${issue.level || "warning"} ${
+                        focusedIssueId === issue.id ? "is-focused" : ""
+                      }`}
+                      onClick={() => handleFocusScheduleIssue(issue)}
+                      title="Bấm để trỏ tới ca cần xử lý"
+                    >
                       <AlertTriangle size={14} />
                       <div>
                         <strong>{issue.title}</strong>
                         <span>{issue.description}</span>
                       </div>
-                    </li>
+                    </button>
                   ))}
-                </ul>
+                </div>
               ) : (
                 <div className="empty-mini">
                   Không có cảnh báo trong kỳ hiển thị.
@@ -3019,7 +3120,18 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 <ul className="metric-list">
                   {scheduleInsights.busiestStaff.map((person) => (
                     <li key={person.staffId}>
-                      <span>{person.name}</span>
+                      {person.staffId ? (
+                        <button
+                          type="button"
+                          className="staff-stat-link"
+                          onClick={() => handleOpenStaffFromStats(person)}
+                          title="Mở trong Quản lý nhân viên"
+                        >
+                          {person.name}
+                        </button>
+                      ) : (
+                        <span>{person.name}</span>
+                      )}
                       <strong>{compactNumber(person.hours)}h</strong>
                     </li>
                   ))}
@@ -3074,12 +3186,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
                     {shiftsForDay.length} ca
                   </div>
                   {shiftsForDay.slice(0, 2).map((shift) => (
-                    <ShiftCard
+                    <div
                       key={shift.id}
-                      shift={shift}
-                      staffList={staff}
-                      onClick={setSelectedShift}
-                    />
+                      data-shift-group-id={shift.id}
+                      className={`shift-card-anchor ${highlightedShiftIds.includes(shift.id) ? "is-highlighted" : ""}`}
+                    >
+                      <ShiftCard
+                        shift={shift}
+                        staffList={staff}
+                        onClick={setSelectedShift}
+                      />
+                    </div>
                   ))}
                   {shiftsForDay.length > 2 ? (
                     <button
@@ -3132,11 +3249,16 @@ const ScheduleManagement = ({ readOnly = false }) => {
                     return (
                       <div key={type} className="shift-slot">
                         {shift ? (
-                          <ShiftCard
-                            shift={shift}
-                            staffList={staff}
-                            onClick={setSelectedShift}
-                          />
+                          <div
+                            data-shift-group-id={shift.id}
+                            className={`shift-card-anchor ${highlightedShiftIds.includes(shift.id) ? "is-highlighted" : ""}`}
+                          >
+                            <ShiftCard
+                              shift={shift}
+                              staffList={staff}
+                              onClick={setSelectedShift}
+                            />
+                          </div>
                         ) : readOnly ? (
                           <div className="empty-shift-slot">
                             Chưa phân{" "}

@@ -15,6 +15,7 @@ import "./EmployeeList.scss";
 const EmployeeList = ({
   employees = [],
   selectedEmployee,
+  focusedEmployeeId = "",
   onEmployeeSelect,
   loading = false,
 }) => {
@@ -157,6 +158,9 @@ const EmployeeList = ({
               key={employee.id}
               employee={employee}
               isSelected={selectedEmployee?.id === employee.id}
+              isFocusedFromSchedule={
+                focusedEmployeeId === String(employee.id)
+              }
               onClick={() => onEmployeeSelect(employee)}
               onAction={handleActionClick}
             />
