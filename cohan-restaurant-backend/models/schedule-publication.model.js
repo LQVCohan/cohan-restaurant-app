@@ -25,7 +25,7 @@ const SchedulePublicationSchema = new Schema(
 
     status: {
       type: String,
-      enum: ["draft", "published", "locked"],
+      enum: ["draft", "published", "active", "locked", "closed"],
       default: "draft",
       index: true,
     },
@@ -35,6 +35,23 @@ const SchedulePublicationSchema = new Schema(
       type: Types.ObjectId,
       ref: "User",
     },
+
+
+    activatedAt: Date,
+
+    lockedAt: Date,
+    lockedBy: {
+      type: Types.ObjectId,
+      ref: "User",
+    },
+    lockReason: String,
+
+    closedAt: Date,
+    closedBy: {
+      type: Types.ObjectId,
+      ref: "User",
+    },
+    closeReason: String,
 
     reminderSentAt: Date,
 

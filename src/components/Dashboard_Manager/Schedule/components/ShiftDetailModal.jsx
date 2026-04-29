@@ -27,6 +27,52 @@ const getInitials = (name) =>
     .slice(-2)
     .map((part) => part.charAt(0).toUpperCase())
     .join("") || "NV";
+
+const formatLogDateTime = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+const formatTimeOnly = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const getScheduleLogLabel = (verb) => {
+  const map = {
+    "schedule.publish": "Công bố lịch",
+    "schedule.published_shift_time_change": "Đổi giờ ca đã công bố",
+    "schedule.published_shift_add_employee": "Thêm nhân viên vào ca đã công bố",
+    "schedule.published_shift_remove_employee": "Gỡ nhân viên khỏi ca đã công bố",
+    "schedule.shift_remove_employee": "Gỡ nhân viên khỏi ca",
+    "schedule.published_shift_group_delete": "Xóa ca đã công bố",
+    "schedule.lock": "Khóa lịch",
+    "schedule.close": "Đóng lịch",
+  };
+
+  return map[verb] || verb || "Thay đổi lịch";
+};
+
+const getScheduleLogTone = (verb) => {
+  if (verb === "schedule.publish") return "info";
+  if (verb?.includes("delete") || verb?.includes("remove")) return "danger";
+  if (verb?.includes("time_change")) return "warning";
+  if (verb?.includes("add_employee")) return "success";
+  return "info";
+};
 const ShiftDetailModal = ({
   isOpen,
   onClose,
@@ -44,6 +90,10 @@ const ShiftDetailModal = ({
 
   isAddingPublishedStaff = false,
   isDeletingPublishedShiftGroup = false,
+  scheduleChangeLogs = [],
+  scheduleChangeLogsLoading = false,
+  scheduleLifecycleStatus = "draft",
+  schedulePermissions = null,
 }) => {
   const [search, setSearch] = useState("");
   const [jobFilter, setJobFilter] = useState("");
@@ -70,6 +120,23 @@ const ShiftDetailModal = ({
   const [deleteGroupReason, setDeleteGroupReason] = useState("");
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [isRemovingStaff, setIsRemovingStaff] = useState(false);
+  const effectivePermissions =
+    schedulePermissions || {
+      canChangeShiftTime: scheduleLifecycleStatus === "published",
+      canAddStaffToShift:
+        scheduleLifecycleStatus === "draft" ||
+        scheduleLifecycleStatus === "published",
+      canRemoveStaffFromShift:
+        scheduleLifecycleStatus === "draft" ||
+        scheduleLifecycleStatus === "published",
+      canDeleteShiftGroup:
+        scheduleLifecycleStatus === "draft" ||
+        scheduleLifecycleStatus === "published",
+      isReadOnly: ["active", "locked", "closed"].includes(
+        scheduleLifecycleStatus,
+      ),
+    };
+  const modalReadOnly = readOnly || effectivePermissions.isReadOnly;
   const shiftStaffIds = useMemo(() => shift?.staffIds || [], [shift?.staffIds]);
   const shiftEssentialJobs = useMemo(
     () => shift?.essentialJobs || [],
@@ -126,7 +193,7 @@ const ShiftDetailModal = ({
   const isComplete = missingCount === 0;
 
   const handleSaveNotes = async () => {
-    if (readOnly || !onUpdateNotes) return;
+    if (modalReadOnly || !onUpdateNotes) return;
     setIsSavingNotes(true);
     try {
       await onUpdateNotes(noteDraft);
@@ -146,7 +213,7 @@ const ShiftDetailModal = ({
   };
 
   const handleConfirmRemoveStaff = async () => {
-    if (!removeConfirm || readOnly || !onRemoveStaff) return;
+    if (!removeConfirm || modalReadOnly || !onRemoveStaff || !effectivePermissions.canRemoveStaffFromShift) return;
 
     if (!removeReason.trim()) {
       return;
@@ -167,7 +234,7 @@ const ShiftDetailModal = ({
     }
   };
   const openTimeChangeModal = () => {
-    if (readOnly || !onChangeShiftGroupTime) return;
+    if (modalReadOnly || !onChangeShiftGroupTime || !effectivePermissions.canChangeShiftTime) return;
 
     setTimeChangeDraft({
       startTime: shift?.startTime || "",
@@ -188,7 +255,7 @@ const ShiftDetailModal = ({
   };
 
   const handleConfirmTimeChange = async () => {
-    if (readOnly || !onChangeShiftGroupTime) return;
+    if (modalReadOnly || !onChangeShiftGroupTime || !effectivePermissions.canChangeShiftTime) return;
 
     if (!timeChangeDraft.startTime || !timeChangeDraft.endTime) {
       setTimeChangeError("Cần nhập đủ giờ bắt đầu và giờ kết thúc.");
@@ -234,7 +301,7 @@ const ShiftDetailModal = ({
     }
   };
   const handleAddCandidate = (person) => {
-    if (readOnly || !onAddStaff) return;
+    if (modalReadOnly || !onAddStaff || !effectivePermissions.canAddStaffToShift) return;
 
     if (isSchedulePublished) {
       setAddConfirm(person);
@@ -272,7 +339,7 @@ const ShiftDetailModal = ({
   };
 
   const openDeleteGroupConfirm = () => {
-    if (readOnly || !onDeleteShift) return;
+    if (modalReadOnly || !onDeleteShift || !effectivePermissions.canDeleteShiftGroup) return;
     setDeleteGroupOpen(true);
     setDeleteGroupReason("");
   };
@@ -284,7 +351,7 @@ const ShiftDetailModal = ({
   };
 
   const handleConfirmDeleteGroup = async () => {
-    if (readOnly || !onDeleteShift) return;
+    if (modalReadOnly || !onDeleteShift || !effectivePermissions.canDeleteShiftGroup) return;
 
     if (isSchedulePublished && !deleteGroupReason.trim()) return;
 
@@ -881,6 +948,78 @@ const ShiftDetailModal = ({
                   </div>
                 </div>
               </div>
+            </div>
+          ) : null}
+          <div className="section-block schedule-log-section">
+            <div className="section-header">
+              <div>
+                <h4>Lịch sử thay đổi ca</h4>
+                <p>
+                  Các thay đổi đã được ghi log sau khi công bố hoặc chỉnh sửa
+                  lịch.
+                </p>
+              </div>
+            </div>
+
+            {scheduleChangeLogsLoading ? (
+              <div className="empty-placeholder">Đang tải lịch sử thay đổi...</div>
+            ) : scheduleChangeLogs.length <= 0 ? (
+              <div className="empty-placeholder">
+                Chưa có lịch sử thay đổi cho ca này.
+              </div>
+            ) : (
+              <div className="schedule-log-list">
+                {scheduleChangeLogs.map((log) => {
+                  const tone = getScheduleLogTone(log.verb);
+                  const hasTimeChange = log.oldStartTime && log.newStartTime;
+
+                  return (
+                    <div key={log.id} className={`schedule-log-item ${tone}`}>
+                      <div className="log-marker" />
+
+                      <div className="log-content">
+                        <div className="log-head">
+                          <strong>{getScheduleLogLabel(log.verb)}</strong>
+                          <span>{formatLogDateTime(log.at || log.createdAt)}</span>
+                        </div>
+
+                        {hasTimeChange ? (
+                          <div className="log-time-change">
+                            {formatTimeOnly(log.oldStartTime)} - {" "}
+                            {formatTimeOnly(log.oldEndTime)} → {" "}
+                            {formatTimeOnly(log.newStartTime)} - {" "}
+                            {formatTimeOnly(log.newEndTime)}
+                          </div>
+                        ) : null}
+
+                        {log.reason ? (
+                          <p className="log-reason">Lý do: {log.reason}</p>
+                        ) : null}
+
+                        <div className="log-meta-row">
+                          {Array.isArray(log.affectedEmployeeIds) &&
+                          log.affectedEmployeeIds.length > 0 ? (
+                            <span>
+                              Ảnh hưởng {log.affectedEmployeeIds.length} nhân viên
+                            </span>
+                          ) : null}
+
+                          {log.notifyEmployees === true ? (
+                            <span>Đã gửi thông báo</span>
+                          ) : log.notifyEmployees === false ? (
+                            <span>Không gửi thông báo</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          {effectivePermissions.isReadOnly ? (
+            <div className="empty-placeholder">
+              Lịch đang ở trạng thái không cho chỉnh sửa trực tiếp. Các thay đổi cần thực hiện qua quy trình chấm công/lương phù hợp.
             </div>
           ) : null}
           <div className="modal-footer-actions">

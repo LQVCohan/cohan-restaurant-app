@@ -57,6 +57,10 @@ import {
 import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
 import { logPayrollEvent } from "../../../src/services/payroll/payrollEventLog.service.js";
 import { getPayrollPolicyForDate } from "../../../src/config/payrollPolicy.vn.js";
+import {
+  mapSchedulePublicationOutput,
+  resolveScheduleLifecycleStatus,
+} from "../../../src/services/scheduling/scheduleLifecycle.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -462,6 +466,31 @@ async function getPublishedScheduleForShift({ restaurantId, shiftTime }) {
     periodEnd: { $gte: shiftTime },
     status: "published",
   }).lean();
+}
+
+function assertPublishedScheduleCanChange(publication) {
+  const effectiveStatus = resolveScheduleLifecycleStatus({
+    publication,
+    periodStart: publication?.periodStart,
+    periodEnd: publication?.periodEnd,
+  });
+
+  if (effectiveStatus !== "published") {
+    if (effectiveStatus === "active") {
+      throw new Error(
+        "Lịch đang hoạt động, không thể chỉnh sửa trực tiếp. Vui lòng dùng quy trình điều chỉnh chấm công.",
+      );
+    }
+    if (effectiveStatus === "locked") {
+      throw new Error("Lịch đã bị khóa, không thể chỉnh sửa.");
+    }
+    if (effectiveStatus === "closed") {
+      throw new Error("Lịch đã đóng, không thể chỉnh sửa từ lịch làm việc.");
+    }
+    throw new Error("Lịch chưa công bố, vui lòng dùng luồng chỉnh sửa bản nháp.");
+  }
+
+  return effectiveStatus;
 }
 
 async function assertShiftGroupNotStartedOrCheckedIn({
@@ -1044,6 +1073,21 @@ export default {
 
     if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
     if (!actorUserId) throw new Error("Unauthorized.");
+    const existingPublication = await SchedulePublication.findOne({
+      restaurantId,
+      periodStart,
+      periodEnd,
+    }).lean();
+    if (existingPublication) {
+      const currentEffectiveStatus = resolveScheduleLifecycleStatus({
+        publication: existingPublication,
+        periodStart,
+        periodEnd,
+      });
+      if (["locked", "closed", "active"].includes(currentEffectiveStatus)) {
+        throw new Error("Không thể công bố lịch ở trạng thái hiện tại.");
+      }
+    }
 
     const publication = await SchedulePublication.findOneAndUpdate(
       {
@@ -1117,38 +1161,126 @@ export default {
       at: new Date(),
     });
 
-    return {
-      id: String(publication._id),
-      ...publication.toObject(),
-      restaurantId: String(publication.restaurantId),
-      publishedBy: publication.publishedBy
-        ? String(publication.publishedBy)
-        : null,
-    };
+    return mapSchedulePublicationOutput(publication);
+  },
+  lockSchedule: async (_, { input }, ctx) => {
+    const restaurantId = toObjectId(input.restaurantId);
+    const actorUserId = getActorUserId(ctx);
+    const reason = String(input.reason || "").trim();
+    if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
+    if (!actorUserId) throw new Error("Unauthorized.");
+    if (!reason) throw new Error("Cần nhập lý do khóa lịch.");
+    const periodStart = toStartOfDay(input.periodStart);
+    const periodEnd = toEndOfDay(input.periodEnd);
+    const publication = await SchedulePublication.findOneAndUpdate(
+      { restaurantId, periodStart, periodEnd },
+      {
+        $set: {
+          restaurantId,
+          periodStart,
+          periodEnd,
+          status: "locked",
+          lockedAt: new Date(),
+          lockedBy: actorUserId,
+          lockReason: reason,
+          lastChangedAt: new Date(),
+        },
+        $setOnInsert: { publishedAt: null },
+      },
+      { new: true, upsert: true },
+    );
+    await EventLog.create({
+      restaurantId,
+      actorUserId,
+      verb: "schedule.lock",
+      object: {
+        kind: "SchedulePublication",
+        id: publication._id,
+        code: `${periodStart.toISOString().slice(0, 10)}_${periodEnd.toISOString().slice(0, 10)}`,
+      },
+      source: "schedule-management",
+      status: "success",
+      meta: { reason, periodStart, periodEnd },
+      at: new Date(),
+    });
+    return mapSchedulePublicationOutput(publication);
+  },
+  closeSchedule: async (_, { input }, ctx) => {
+    const restaurantId = toObjectId(input.restaurantId);
+    const actorUserId = getActorUserId(ctx);
+    const reason = String(input.reason || "").trim();
+    if (!restaurantId) throw new Error("restaurantId không hợp lệ.");
+    if (!actorUserId) throw new Error("Unauthorized.");
+    if (!reason) throw new Error("Cần nhập lý do đóng lịch.");
+    const periodStart = toStartOfDay(input.periodStart);
+    const periodEnd = toEndOfDay(input.periodEnd);
+    const publication = await SchedulePublication.findOneAndUpdate(
+      { restaurantId, periodStart, periodEnd },
+      {
+        $set: {
+          restaurantId,
+          periodStart,
+          periodEnd,
+          status: "closed",
+          closedAt: new Date(),
+          closedBy: actorUserId,
+          closeReason: reason,
+          lastChangedAt: new Date(),
+        },
+      },
+      { new: true, upsert: true },
+    );
+    await EventLog.create({
+      restaurantId,
+      actorUserId,
+      verb: "schedule.close",
+      object: {
+        kind: "SchedulePublication",
+        id: publication._id,
+        code: `${periodStart.toISOString().slice(0, 10)}_${periodEnd.toISOString().slice(0, 10)}`,
+      },
+      source: "schedule-management",
+      status: "success",
+      meta: { reason, periodStart, periodEnd },
+      at: new Date(),
+    });
+    return mapSchedulePublicationOutput(publication);
   },
   createStaffShift: async (_, { input }, ctx) => {
+    const restaurantId = input.restaurantId;
+    const startTime = toValidDateTime(input.startTime, "Giờ bắt đầu ca");
+    const endTime = toValidDateTime(input.endTime, "Giờ kết thúc ca");
+
+    const publication = await getPublishedScheduleForShift({
+      restaurantId,
+      shiftTime: startTime,
+    });
+
+    if (publication) {
+      const effectiveStatus = resolveScheduleLifecycleStatus({
+        publication,
+        periodStart: publication.periodStart,
+        periodEnd: publication.periodEnd,
+      });
+      if (effectiveStatus !== "draft") {
+      throw new Error(
+        "Không thể tạo ca trực tiếp khi lịch không còn ở trạng thái bản nháp.",
+      );
+      }
+    }
+
     await assertShiftAssignmentValid({
       input: {
         employeeId: input.employeeId,
-        restaurantId: input.restaurantId,
+        restaurantId,
         shiftType: input.shiftType,
-        startTime: input.startTime,
-        endTime: input.endTime,
+        startTime,
+        endTime,
         allowOverride: input.allowOverride,
         overrideReason: input.overrideReason,
       },
       ctx,
     });
-    const publication = await getPublishedScheduleForShift({
-      restaurantId: input.restaurantId,
-      shiftTime: input.startTime,
-    });
-
-    if (publication) {
-      throw new Error(
-        "Lịch làm việc đã được công bố. Không thể tạo ca trực tiếp. Vui lòng dùng luồng thêm nhân viên vào lịch đã công bố để nhập lý do, validate policy, ghi log và gửi thông báo.",
-      );
-    }
     const staff = await Staff.findById(input.employeeId).lean();
     if (!staff || staff.userType !== "STAFF") {
       throw new Error("Staff not found");
@@ -1156,10 +1288,10 @@ export default {
 
     const created = await Shift.create({
       employeeId: input.employeeId,
-      restaurantId: input.restaurantId,
+      restaurantId,
       shiftType: input.shiftType.toString().toLowerCase(),
-      startTime: new Date(input.startTime),
-      endTime: new Date(input.endTime),
+      startTime,
+      endTime,
       status: input.status || "scheduled",
       notes: input.notes || "",
     });
@@ -1179,6 +1311,25 @@ export default {
 
   updateStaffShift: async (_, { shiftId, input }, ctx) => {
     const oldShift = await Shift.findById(shiftId).lean();
+    if (oldShift) {
+      const publication = await getPublishedScheduleForShift({
+        restaurantId: oldShift.restaurantId,
+        shiftTime: new Date(oldShift.startTime),
+      });
+
+      if (publication) {
+        const effectiveStatus = resolveScheduleLifecycleStatus({
+          publication,
+          periodStart: publication.periodStart,
+          periodEnd: publication.periodEnd,
+        });
+        if (effectiveStatus !== "draft") {
+        throw new Error(
+          "Không thể sửa ca trực tiếp khi lịch không còn ở trạng thái bản nháp.",
+        );
+        }
+      }
+    }
     if (oldShift) {
       await assertNoLockedPayrollPeriodOverlap({
         restaurantId: oldShift.restaurantId,
@@ -1300,18 +1451,17 @@ export default {
       throw new Error("Giờ bắt đầu mới phải nằm trong tương lai.");
     }
 
-    const publication = await SchedulePublication.findOne({
+    const publication = await getPublishedScheduleForShift({
       restaurantId,
-      periodStart: { $lte: oldStartTime },
-      periodEnd: { $gte: oldStartTime },
-      status: "published",
-    }).lean();
+      shiftTime: oldStartTime,
+    });
 
     if (!publication) {
       throw new Error(
         "Không tìm thấy kỳ lịch đã công bố chứa ca này. Vui lòng kiểm tra trạng thái publish của lịch.",
       );
     }
+    assertPublishedScheduleCanChange(publication);
 
     const timesheet = await Timesheet.findOne({
       shiftId: { $in: shiftIds },
@@ -1656,6 +1806,7 @@ export default {
         "Không tìm thấy kỳ lịch đã công bố chứa ca này. Vui lòng kiểm tra trạng thái publish.",
       );
     }
+    assertPublishedScheduleCanChange(publication);
 
     await assertShiftGroupNotStartedOrCheckedIn({
       shiftIds,
@@ -1793,6 +1944,7 @@ export default {
         "Không tìm thấy kỳ lịch đã công bố chứa ca này. Vui lòng kiểm tra trạng thái publish.",
       );
     }
+    assertPublishedScheduleCanChange(publication);
 
     const staff = await Staff.findById(employeeId).lean();
 
