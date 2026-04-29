@@ -1,0 +1,137 @@
+enum AvailabilityWindowStatus {
+  draft
+  open
+  closed
+  used_for_schedule
+  cancelled
+}
+
+enum EmploymentType {
+  full_time
+  part_time
+  probation
+  seasonal
+  contract
+}
+
+enum AvailabilitySubmissionType {
+  weekly_availability
+  unavailable_exception
+}
+
+enum AvailabilitySlotStatus {
+  available
+  unavailable
+}
+
+enum StaffAvailabilitySubmissionStatus {
+  draft
+  submitted
+  locked
+  late_change_requested
+  approved
+  rejected
+  cancelled
+}
+
+enum SubmissionSource {
+  employee
+  manager
+  system
+}
+
+type AvailabilityWindow {
+  id: ID!
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  openAt: DateTime!
+  closeAt: DateTime!
+  status: AvailabilityWindowStatus!
+  targetEmploymentTypes: [EmploymentType!]!
+  allowFullTimeUnavailableException: Boolean!
+  lateChangeRequiresApproval: Boolean!
+  createdBy: ID
+  closedBy: ID
+  cancelledBy: ID
+  cancelReason: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type AvailabilitySlot {
+  date: DateTime!
+  shiftType: String!
+  status: AvailabilitySlotStatus!
+  note: String
+}
+
+type StaffAvailabilitySubmission {
+  id: ID!
+  restaurantId: ID!
+  availabilityWindowId: ID!
+  employeeId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  employmentType: EmploymentType!
+  submissionType: AvailabilitySubmissionType!
+  slots: [AvailabilitySlot!]!
+  submittedAt: DateTime
+  lockedAt: DateTime
+  status: StaffAvailabilitySubmissionStatus!
+  reviewedBy: ID
+  reviewedAt: DateTime
+  reviewNote: String
+  source: SubmissionSource!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input AvailabilitySlotInput {
+  date: DateTime!
+  shiftType: String!
+  status: AvailabilitySlotStatus!
+  note: String
+}
+
+input CreateAvailabilityWindowInput {
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  openAt: DateTime!
+  closeAt: DateTime!
+  targetEmploymentTypes: [EmploymentType!]
+  allowFullTimeUnavailableException: Boolean
+  lateChangeRequiresApproval: Boolean
+}
+
+input SubmitStaffAvailabilityInput {
+  availabilityWindowId: ID!
+  employeeId: ID!
+  employmentType: EmploymentType
+  submissionType: AvailabilitySubmissionType!
+  slots: [AvailabilitySlotInput!]!
+  status: StaffAvailabilitySubmissionStatus
+}
+
+input ReviewStaffAvailabilitySubmissionInput {
+  id: ID!
+  status: StaffAvailabilitySubmissionStatus!
+  reviewNote: String
+}
+
+extend type Query {
+  availabilityWindow(restaurantId: ID!, periodStart: DateTime!, periodEnd: DateTime!): AvailabilityWindow
+  availabilityWindows(restaurantId: ID!, from: DateTime, to: DateTime, status: AvailabilityWindowStatus): [AvailabilityWindow!]!
+  staffAvailabilitySubmission(windowId: ID!, employeeId: ID!): StaffAvailabilitySubmission
+  staffAvailabilitySubmissions(windowId: ID!, restaurantId: ID!, status: StaffAvailabilitySubmissionStatus, employmentType: EmploymentType): [StaffAvailabilitySubmission!]!
+}
+
+extend type Mutation {
+  createAvailabilityWindow(input: CreateAvailabilityWindowInput!): AvailabilityWindow!
+  openAvailabilityWindow(id: ID!): AvailabilityWindow!
+  closeAvailabilityWindow(id: ID!): AvailabilityWindow!
+  cancelAvailabilityWindow(id: ID!, reason: String): AvailabilityWindow
+  submitStaffAvailability(input: SubmitStaffAvailabilityInput!): StaffAvailabilitySubmission!
+  reviewStaffAvailabilitySubmission(input: ReviewStaffAvailabilitySubmissionInput!): StaffAvailabilitySubmission
+}
