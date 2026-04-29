@@ -145,6 +145,10 @@ const SchedulingPolicySchema = new Schema(
       type: SchedulingScoringWeightsSchema,
       default: () => ({}),
     },
+    mandatoryShiftRoles: {
+      type: [String],
+      default: ["server", "cook", "cashier"],
+    },
 
     employmentTypePolicy: {
       full_time: {

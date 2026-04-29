@@ -1,5 +1,15 @@
 import mongoose from "mongoose";
 import { SchedulingPolicy } from "../../../models/index.js";
+const AUTO_REQUIRED_ROLE_VALUES = [
+  "server",
+  "cook",
+  "cashier",
+  "host",
+  "cleaner",
+  "bartender",
+  "shipper",
+  "storekeeper",
+];
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -67,6 +77,7 @@ export function getDefaultSchedulingPolicyPayload(restaurantId) {
       overtimePenalty: 15,
       ruleRiskPenalty: 30,
     },
+    mandatoryShiftRoles: ["server", "cook", "cashier"],
   };
 }
 
@@ -118,6 +129,15 @@ export async function updateSchedulingPolicy({ restaurantId, input, ctx }) {
 
   if (input.employmentTypePolicy) {
     payload.employmentTypePolicy = input.employmentTypePolicy;
+  }
+  if (Array.isArray(input.mandatoryShiftRoles)) {
+    payload.mandatoryShiftRoles = Array.from(
+      new Set(
+        input.mandatoryShiftRoles
+          .map((role) => String(role || "").trim().toLowerCase())
+          .filter((role) => AUTO_REQUIRED_ROLE_VALUES.includes(role)),
+      ),
+    );
   }
 
   if (actorId) {
@@ -217,6 +237,11 @@ export function mapSchedulingPolicy(policy) {
     },
 
     employmentTypePolicy: policy.employmentTypePolicy || {},
+    mandatoryShiftRoles:
+      Array.isArray(policy.mandatoryShiftRoles) &&
+      policy.mandatoryShiftRoles.length
+        ? policy.mandatoryShiftRoles
+        : ["server", "cook", "cashier"],
 
     updatedAt: policy.updatedAt,
     createdAt: policy.createdAt,

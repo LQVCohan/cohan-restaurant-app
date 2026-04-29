@@ -622,7 +622,7 @@ export const buildAutoScheduleCreateInputs = ({
 
       const missingText =
         Number(item.unresolvedCount || 0) > 0
-          ? ` • Ca còn thiếu ${item.unresolvedCount} vị trí`
+          ? ` • Ca còn thiếu ${item.unresolvedCount} vị trí, manager cần bổ sung sau`
           : "";
 
       inputs.push({

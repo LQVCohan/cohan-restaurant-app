@@ -1553,6 +1553,7 @@ type SchedulingPolicy {
   shiftTemplates: [ShiftTemplate!]!
   laborRules: SchedulingLaborRules!
   scoringWeights: SchedulingScoringWeights!
+  mandatoryShiftRoles: [String!]!
   employmentTypePolicy: EmploymentTypeSchedulingPolicy
   createdAt: DateTime
   updatedAt: DateTime
@@ -1563,6 +1564,7 @@ input SchedulingPolicyInput {
   shiftTemplates: [ShiftTemplateInput!]
   laborRules: SchedulingLaborRulesInput
   scoringWeights: SchedulingScoringWeightsInput
+  mandatoryShiftRoles: [String!]
   employmentTypePolicy: EmploymentTypeSchedulingPolicyInput
 }
 

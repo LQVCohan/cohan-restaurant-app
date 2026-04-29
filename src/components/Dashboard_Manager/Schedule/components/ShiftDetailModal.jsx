@@ -114,6 +114,8 @@ const ShiftDetailModal = ({
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [removeConfirm, setRemoveConfirm] = useState(null);
   const [removeReason, setRemoveReason] = useState("");
+  const [removeMode, setRemoveMode] = useState("remove_staff");
+  const [removeError, setRemoveError] = useState("");
   const [addConfirm, setAddConfirm] = useState(null);
   const [addReason, setAddReason] = useState("");
   const [isAddingStaff, setIsAddingStaff] = useState(false);
@@ -175,6 +177,8 @@ const ShiftDetailModal = ({
     setIsSavingNotes(false);
     setRemoveConfirm(null);
     setRemoveReason("");
+    setRemoveMode("remove_staff");
+    setRemoveError("");
     setIsRemovingStaff(false);
     setAddConfirm(null);
     setAddReason("");
@@ -204,33 +208,68 @@ const ShiftDetailModal = ({
     }
   };
   const openRemoveConfirm = (person) => {
+    if (
+      modalReadOnly ||
+      !effectivePermissions.canRemoveStaffFromShift ||
+      !onRemoveStaff
+    ) {
+      return;
+    }
+    const isLastStaffInShift = shiftStaffIds.length === 1;
     setRemoveConfirm(person);
     setRemoveReason("");
+    setRemoveMode(isLastStaffInShift ? "delete_shift_group" : "remove_staff");
+    setRemoveError("");
   };
 
   const closeRemoveConfirm = () => {
     if (isRemovingStaff) return;
     setRemoveConfirm(null);
     setRemoveReason("");
+    setRemoveMode("remove_staff");
+    setRemoveError("");
   };
 
   const handleConfirmRemoveStaff = async () => {
-    if (!removeConfirm || modalReadOnly || !onRemoveStaff || !effectivePermissions.canRemoveStaffFromShift) return;
+    if (
+      !removeConfirm ||
+      modalReadOnly ||
+      !effectivePermissions.canRemoveStaffFromShift
+    )
+      return;
 
     if (!removeReason.trim()) {
       return;
     }
+    const isLastStaffInShift = shiftStaffIds.length === 1;
 
     setIsRemovingStaff(true);
 
     try {
-      await onRemoveStaff(shift.id, removeConfirm.id, {
-        reason: removeReason.trim(),
-        notifyEmployee: true,
-      });
+      if (isLastStaffInShift && removeMode === "delete_shift_group") {
+        if (!onDeleteShift || !effectivePermissions.canDeleteShiftGroup) {
+          throw new Error("Không thể xóa ca ở trạng thái lịch hiện tại.");
+        }
+        await onDeleteShift(shift.id, {
+          reason: removeReason.trim(),
+          notifyEmployees: isSchedulePublished,
+        });
+      } else {
+        if (!onRemoveStaff) {
+          throw new Error("Không thể xóa nhân viên khỏi ca.");
+        }
+        await onRemoveStaff(shift.id, removeConfirm.id, {
+          reason: removeReason.trim(),
+          notifyEmployee: true,
+        });
+      }
 
       setRemoveConfirm(null);
       setRemoveReason("");
+      setRemoveMode("remove_staff");
+      setRemoveError("");
+    } catch (error) {
+      setRemoveError(error?.message || "Không thể xóa nhân viên khỏi ca.");
     } finally {
       setIsRemovingStaff(false);
     }
@@ -486,7 +525,8 @@ const ShiftDetailModal = ({
                           <span className="role">{getJobName(person.job)}</span>
                         </div>
                       </div>
-                      {!readOnly ? (
+                      {!modalReadOnly &&
+                      effectivePermissions.canRemoveStaffFromShift ? (
                         <button
                           className="btn-icon remove"
                           onClick={() => openRemoveConfirm(person)}
@@ -903,7 +943,11 @@ const ShiftDetailModal = ({
                 </div>
 
                 <div className="remove-confirm-content">
-                  <h4>Xóa nhân viên khỏi ca?</h4>
+                  <h4>
+                    {shiftStaffIds.length === 1
+                      ? "Xóa nhân viên cuối cùng khỏi ca?"
+                      : "Xóa nhân viên khỏi ca?"}
+                  </h4>
                   <p>
                     Bạn đang chuẩn bị xóa <strong>{removeConfirm.name}</strong>{" "}
                     khỏi ca <strong>{currentShiftType?.label}</strong> ngày{" "}
@@ -913,6 +957,16 @@ const ShiftDetailModal = ({
                     </strong>
                     .
                   </p>
+                  {shiftStaffIds.length === 1 ? (
+                    <div className="remove-confirm-warning">
+                      Đây là nhân viên cuối cùng trong ca. Vì hệ thống hiện lưu
+                      ca theo phân công nhân viên, nếu tiếp tục thì ca này cũng
+                      sẽ bị xóa khỏi lịch.
+                      <br />
+                      Muốn chỉnh lại lịch hoặc mở thêm ca sau khi đã công bố,
+                      hãy dùng &quot;Mở lại để chỉnh sửa&quot;.
+                    </div>
+                  ) : null}
 
                   <label>
                     Lý do xóa khỏi ca <span>*</span>
@@ -929,6 +983,9 @@ const ShiftDetailModal = ({
                     Sau khi xác nhận, hệ thống sẽ gửi thông báo đến nhân viên
                     này.
                   </div>
+                  {removeError ? (
+                    <div className="time-change-error">{removeError}</div>
+                  ) : null}
 
                   <div className="remove-confirm-actions">
                     <button
@@ -945,7 +1002,11 @@ const ShiftDetailModal = ({
                       onClick={handleConfirmRemoveStaff}
                       disabled={isRemovingStaff || !removeReason.trim()}
                     >
-                      {isRemovingStaff ? "Đang xóa..." : "Xác nhận xóa"}
+                      {isRemovingStaff
+                        ? "Đang xử lý..."
+                        : shiftStaffIds.length === 1
+                          ? "Xóa nhân viên và xóa ca"
+                          : "Xác nhận xóa"}
                     </button>
                   </div>
                 </div>

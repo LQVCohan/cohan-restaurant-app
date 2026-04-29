@@ -53,6 +53,7 @@ export const QUERY_SCHEDULING_POLICY = gql`
         overtimePenalty
         ruleRiskPenalty
       }
+      mandatoryShiftRoles
       employmentTypePolicy {
         full_time {
           weeklyHoursTarget
@@ -195,6 +196,7 @@ const MUTATION_UPDATE_SCHEDULING_POLICY = gql`
         overtimePenalty
         ruleRiskPenalty
       }
+      mandatoryShiftRoles
       updatedAt
     }
   }

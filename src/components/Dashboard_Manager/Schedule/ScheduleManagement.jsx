@@ -28,6 +28,7 @@ import {
   Sparkles,
   Wallet,
   X,
+  Edit3,
 } from "lucide-react";
 
 import "./ScheduleManagement.scss";
@@ -81,6 +82,10 @@ const GET_SCHEDULE_PUBLICATION = gql`
       closedAt
       closedBy
       closeReason
+      reopenedAt
+      reopenedBy
+      reopenReason
+      reopenCount
       reminderSentAt
       lastChangedAt
       permissions {
@@ -95,6 +100,7 @@ const GET_SCHEDULE_PUBLICATION = gql`
         requiresChangeReason
         requiresEmployeeNotification
         isReadOnly
+        canReopen
       }
     }
   }
@@ -144,7 +150,22 @@ const PUBLISH_SCHEDULE = gql`
     publishSchedule(input: $input) {
       id
       status
+      effectiveStatus
       publishedAt
+      lastChangedAt
+      permissions {
+        canPublish
+        canApplyAutoSchedule
+        canEditDraftSchedule
+        canMakePublishedChange
+        canChangeShiftTime
+        canAddStaffToShift
+        canRemoveStaffFromShift
+        canDeleteShiftGroup
+        requiresChangeReason
+        requiresEmployeeNotification
+        isReadOnly
+      }
     }
   }
 `;
@@ -173,6 +194,20 @@ const CLOSE_SCHEDULE = gql`
       closeReason
       lastChangedAt
       permissions { canPublish canApplyAutoSchedule canEditDraftSchedule canMakePublishedChange canChangeShiftTime canAddStaffToShift canRemoveStaffFromShift canDeleteShiftGroup requiresChangeReason requiresEmployeeNotification isReadOnly }
+    }
+  }
+`;
+const REOPEN_SCHEDULE = gql`
+  mutation ReopenSchedule($input: ReopenScheduleInput!) {
+    reopenSchedule(input: $input) {
+      id
+      status
+      effectiveStatus
+      reopenedAt
+      reopenReason
+      reopenCount
+      lastChangedAt
+      permissions { canPublish canApplyAutoSchedule canEditDraftSchedule canMakePublishedChange canChangeShiftTime canAddStaffToShift canRemoveStaffFromShift canDeleteShiftGroup requiresChangeReason requiresEmployeeNotification isReadOnly canReopen }
     }
   }
 `;
@@ -655,7 +690,7 @@ const getShiftHoursFromGroup = (shift) => {
   }
 };
 
-const buildVisibleScheduleInsights = ({ shifts, staff }) => {
+const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] }) => {
   const staffById = new Map(staff.map((person) => [String(person.id), person]));
   const issues = [];
   const costByDepartment = new Map();
@@ -668,7 +703,7 @@ const buildVisibleScheduleInsights = ({ shifts, staff }) => {
 
   shifts.forEach((shift) => {
     const shiftHours = getShiftHoursFromGroup(shift);
-    const requiredPeople = Math.max(1, shift.essentialJobs.length);
+    const requiredPeople = Math.max(1, shift.essentialJobs.length, mandatoryShiftRoles.length);
     const assignedPeople = shift.staffIds.length;
     const missingCount = Math.max(0, requiredPeople - assignedPeople);
 
@@ -686,6 +721,23 @@ const buildVisibleScheduleInsights = ({ shifts, staff }) => {
         type: "missing",
         level: "warning",
         title: `Ca thiếu ${missingCount} người`,
+        description: `${shift.date} • ${shift.startTime} - ${shift.endTime}`,
+      });
+    }
+    const assignedJobSet = new Set(
+      shift.staffIds
+        .map((staffId) => staffById.get(String(staffId))?.job)
+        .filter(Boolean),
+    );
+    const missingMandatoryRoles = mandatoryShiftRoles.filter(
+      (role) => !assignedJobSet.has(role),
+    );
+    if (missingMandatoryRoles.length > 0) {
+      issues.push({
+        id: `${shift.id}-missing-roles`,
+        type: "missing",
+        level: "warning",
+        title: `Ca thiếu role bắt buộc: ${missingMandatoryRoles.map(getAutoRoleLabel).join(", ")}`,
         description: `${shift.date} • ${shift.startTime} - ${shift.endTime}`,
       });
     }
@@ -811,6 +863,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
   });
   const [selectedShift, setSelectedShift] = useState(null);
   const [isStatsPanelOpen, setIsStatsPanelOpen] = useState(false);
+  const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
+  const [publishConfirmed, setPublishConfirmed] = useState(false);
+  const [publishConfirmError, setPublishConfirmError] = useState("");
+  const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
+  const [reopenReason, setReopenReason] = useState("");
+  const [reopenError, setReopenError] = useState("");
   const [isAutoScheduleOpen, setIsAutoScheduleOpen] = useState(false);
   const [autoScheduleConfig, setAutoScheduleConfig] = useState({
     horizonDays: 7,
@@ -873,6 +931,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
   } = useSchedulingPolicy({
     restaurantId: effectiveRestaurantId,
   });
+  const policyMandatoryShiftRoles = useMemo(() => {
+    const roles = Array.isArray(schedulingPolicy?.mandatoryShiftRoles)
+      ? schedulingPolicy.mandatoryShiftRoles
+      : [];
+    return roles.length ? roles : DEFAULT_AUTO_REQUIRED_ROLES;
+  }, [schedulingPolicy?.mandatoryShiftRoles]);
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
   const monthStart = startOfMonth(currentDate);
@@ -947,6 +1011,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     useMutation(PUBLISH_SCHEDULE);
   const [lockSchedule] = useMutation(LOCK_SCHEDULE);
   const [closeSchedule] = useMutation(CLOSE_SCHEDULE);
+  const [reopenSchedule, { loading: reopeningSchedule }] =
+    useMutation(REOPEN_SCHEDULE);
   const [addStaffToPublishedShiftGroup, { loading: addingPublishedStaff }] =
     useMutation(ADD_STAFF_TO_PUBLISHED_SHIFT_GROUP);
 
@@ -1043,6 +1109,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
         left.shiftType.localeCompare(right.shiftType),
     );
   }, [shiftsData, staff]);
+  const totalAssignmentsForPublish = useMemo(
+    () =>
+      shifts.reduce(
+        (sum, shift) => sum + Number((shift.staffIds || []).length || 0),
+        0,
+      ),
+    [shifts],
+  );
 
   const dateLabel = useMemo(() => {
     if (viewMode === "week") {
@@ -1125,8 +1199,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
   );
 
   const scheduleInsights = useMemo(
-    () => buildVisibleScheduleInsights({ shifts, staff }),
-    [shifts, staff],
+    () =>
+      buildVisibleScheduleInsights({
+        shifts,
+        staff,
+        mandatoryShiftRoles: policyMandatoryShiftRoles,
+      }),
+    [shifts, staff, policyMandatoryShiftRoles],
   );
   const assistantForPreview = useMemo(
     () =>
@@ -1206,6 +1285,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
   }, [effectiveRestaurantId]);
+  useEffect(() => {
+    if (isAutoScheduleOpen && assistantPayload) return;
+    setAutoScheduleConfig((prev) => ({
+      ...prev,
+      requiredRoles: policyMandatoryShiftRoles,
+    }));
+  }, [policyMandatoryShiftRoles, isAutoScheduleOpen, assistantPayload]);
   const handleRestaurantChange = (nextRestaurantId) => {
     const nextRestaurant = restaurantOptions.find(
       (restaurant) => String(restaurant.id) === String(nextRestaurantId),
@@ -1230,7 +1316,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       );
     }
   };
-  const handlePublishSchedule = async () => {
+  const handlePublishSchedule = () => {
     if (!effectiveRestaurantId) {
       showNotification(
         "Vui lòng chọn nhà hàng trước khi công bố lịch.",
@@ -1244,6 +1330,42 @@ const ScheduleManagement = ({ readOnly = false }) => {
       return;
     }
 
+    if (shifts.length <= 0) {
+      showNotification(
+        "Không thể công bố lịch rỗng. Cần có ít nhất 1 ca làm trong tuần.",
+        "warning",
+      );
+      return;
+    }
+
+    if (!schedulePermissions.canPublish) {
+      const message =
+        scheduleLifecycleStatus === "published"
+          ? "Lịch này đã được công bố rồi."
+          : scheduleLifecycleStatus === "active"
+            ? "Lịch đang hoạt động, không thể công bố lại."
+            : scheduleLifecycleStatus === "locked"
+              ? "Lịch đã khóa, không thể công bố lại."
+              : scheduleLifecycleStatus === "closed"
+                ? "Lịch đã đóng, không thể công bố lại."
+                : "Không thể công bố lịch ở trạng thái hiện tại.";
+      showNotification(message, "warning");
+      return;
+    }
+
+    setPublishConfirmed(false);
+    setPublishConfirmError("");
+    setIsPublishConfirmOpen(true);
+  };
+
+  const handleConfirmPublishSchedule = async () => {
+    if (!publishConfirmed) {
+      setPublishConfirmError("Vui lòng xác nhận bạn đã kiểm tra lịch.");
+      return;
+    }
+
+    setPublishConfirmError("");
+
     try {
       await publishSchedule({
         variables: {
@@ -1255,17 +1377,83 @@ const ScheduleManagement = ({ readOnly = false }) => {
         },
       });
 
-      await refetchPublication();
+      await refetchPublication?.();
+      await refetchScheduleLogs?.();
+
+      setIsPublishConfirmOpen(false);
+      setPublishConfirmed(false);
+      setPublishConfirmError("");
 
       showNotification(
-        "Đã công bố lịch làm việc và thông báo đến nhân viên liên quan.",
+        scheduleLifecycleStatus === "revision_draft"
+          ? "Đã công bố lại lịch làm việc và thông báo cập nhật đến nhân viên."
+          : "Đã công bố lịch làm việc và thông báo đến nhân viên liên quan.",
         "success",
       );
     } catch (error) {
-      showNotification(
-        getGraphQLErrorMessage(error, "Không thể công bố lịch làm việc."),
-        "error",
+      const message = getGraphQLErrorMessage(
+        error,
+        "Không thể công bố lịch làm việc.",
       );
+      setPublishConfirmError(message);
+      showNotification(message, "error");
+    }
+  };
+  const canShowReopenSchedule =
+    scheduleLifecycleStatus === "published" ||
+    Boolean(schedulePermissions.canReopen);
+  const canShowPublishAction = ["draft", "revision_draft"].includes(
+    scheduleLifecycleStatus,
+  );
+  const openReopenModal = () => {
+    if (
+      scheduleLifecycleStatus !== "published" &&
+      !schedulePermissions.canReopen
+    ) {
+      showNotification(
+        "Chỉ có thể mở lại lịch đang ở trạng thái đã công bố.",
+        "warning",
+      );
+      return;
+    }
+    setReopenReason("");
+    setReopenError("");
+    setIsReopenModalOpen(true);
+  };
+
+  const handleConfirmReopenSchedule = async () => {
+    const reason = String(reopenReason || "").trim();
+    if (!reason) {
+      setReopenError("Cần nhập lý do mở lại lịch để chỉnh sửa.");
+      return;
+    }
+    try {
+      await reopenSchedule({
+        variables: {
+          input: {
+            restaurantId: effectiveRestaurantId,
+            periodStart: rangeStart.toISOString(),
+            periodEnd: rangeEnd.toISOString(),
+            reason,
+          },
+        },
+      });
+      await refetchPublication?.();
+      await refetchScheduleLogs?.();
+      setIsReopenModalOpen(false);
+      setReopenReason("");
+      setReopenError("");
+      showNotification(
+        "Đã mở lại lịch để chỉnh sửa. Các thay đổi sẽ được gửi khi công bố lại.",
+        "success",
+      );
+    } catch (error) {
+      const message = getGraphQLErrorMessage(
+        error,
+        "Không thể mở lại lịch để chỉnh sửa.",
+      );
+      setReopenError(message);
+      showNotification(message, "error");
     }
   };
   useEffect(() => {
@@ -1651,18 +1839,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     try {
       if (["draft", "revision_draft"].includes(scheduleLifecycleStatus)) {
-        await createShift({
-          variables: {
-            input: {
-              employeeId: staffId,
-              restaurantId: effectiveRestaurantId,
-              shiftType: String(shiftGroup.shiftType || "").toUpperCase(),
-              startTime: startTime.toISOString(),
-              endTime: endTime.toISOString(),
-              status: "scheduled",
-            },
-          },
-        });
+        await Promise.all(
+          shiftIds.map((shiftId) =>
+            deleteShift({
+              variables: {
+                shiftId,
+                reason: options.reason || "Xóa ca ở lịch chưa công bố",
+                notifyEmployee: options.notifyEmployees === true,
+              },
+            }),
+          ),
+        );
       } else if (scheduleLifecycleStatus === "published") {
         const reason = String(options.reason || "").trim();
 
@@ -1693,18 +1880,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
         return;
       }
-
-      await Promise.all(
-        shiftIds.map((shiftId) =>
-          deleteShift({
-            variables: {
-              shiftId,
-              reason: options.reason || "Xóa ca ở lịch chưa công bố",
-              notifyEmployee: options.notifyEmployees === true,
-            },
-          }),
-        ),
-      );
 
       await refetch();
       await refetchScheduleLogs?.();
@@ -2696,26 +2871,40 @@ const ScheduleManagement = ({ readOnly = false }) => {
             </button>
           )}
 
-          {!readOnly && (
+          {!readOnly && canShowPublishAction ? (
             <button
               type="button"
-              className={`btn-publish ${isSchedulePublished ? "published" : ""}`}
+              className="btn-publish"
               onClick={handlePublishSchedule}
               disabled={
-                readOnly ||
+                publicationLoading ||
                 publishingSchedule ||
-                !schedulePermissions.canPublish ||
+                viewMode !== "week" ||
                 !effectiveRestaurantId ||
-                viewMode !== "week"
+                !schedulePermissions.canPublish
               }
             >
-              {isSchedulePublished
-                ? "Đã công bố"
-                : publishingSchedule
-                  ? "Đang công bố..."
+              {publishingSchedule
+                ? "Đang công bố..."
+                : scheduleLifecycleStatus === "revision_draft"
+                  ? "Công bố lại"
                   : "Công bố lịch"}
             </button>
+          ) : (
+            <span className={`schedule-status-badge ${scheduleLifecycleStatus}`}>
+              {SCHEDULE_STATUS_LABELS[scheduleLifecycleStatus] || "Bản nháp"}
+            </span>
           )}
+          {!readOnly && canShowReopenSchedule ? (
+            <button
+              type="button"
+              className="btn-reopen-schedule"
+              onClick={openReopenModal}
+              disabled={reopeningSchedule}
+            >
+              {reopeningSchedule ? "Đang mở lại..." : "Mở lại để chỉnh sửa"}
+            </button>
+          ) : null}
         </div>
       </div>
       {shouldShowPublishReminder ? (
@@ -2731,7 +2920,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
           <button
             type="button"
             onClick={handlePublishSchedule}
-            disabled={publishingSchedule || !effectiveRestaurantId}
+            disabled={
+              publishingSchedule ||
+              publicationLoading ||
+              !effectiveRestaurantId ||
+              viewMode !== "week" ||
+              !schedulePermissions.canPublish
+            }
           >
             {publishingSchedule ? "Đang công bố..." : "Công bố lịch"}
           </button>
@@ -3043,6 +3238,162 @@ const ScheduleManagement = ({ readOnly = false }) => {
           applying={isApplyingAutoSchedule}
         />
       )}
+
+      {isPublishConfirmOpen ? (
+        <div className="publish-confirm-backdrop">
+          <div className="publish-confirm-card">
+            <button
+              type="button"
+              className="publish-confirm-close"
+              onClick={() => {
+                if (publishingSchedule) return;
+                setIsPublishConfirmOpen(false);
+                setPublishConfirmed(false);
+                setPublishConfirmError("");
+              }}
+              disabled={publishingSchedule}
+            >
+              <X size={18} />
+            </button>
+            <div className="publish-confirm-icon">
+              <CalendarCheck2 size={24} />
+            </div>
+            <div className="publish-confirm-content">
+              <h3>
+                {scheduleLifecycleStatus === "revision_draft"
+                  ? "Công bố lại bản chỉnh sửa?"
+                  : "Công bố lịch làm việc?"}
+              </h3>
+              <p>
+                Sau khi công bố, nhân viên sẽ nhận thông báo và các chỉnh sửa
+                sau đó sẽ phải đi qua quy trình có kiểm soát.
+              </p>
+              <div className="publish-confirm-summary">
+                <div>
+                  <span>Phạm vi</span>
+                  <strong>
+                    {format(rangeStart, "dd/MM/yyyy")} -{" "}
+                    {format(rangeEnd, "dd/MM/yyyy")}
+                  </strong>
+                </div>
+                <div>
+                  <span>Trạng thái hiện tại</span>
+                  <strong>
+                    {SCHEDULE_STATUS_LABELS[scheduleLifecycleStatus] ||
+                      "Bản nháp"}
+                  </strong>
+                </div>
+                <div>
+                  <span>Số nhóm ca</span>
+                  <strong>{shifts.length}</strong>
+                </div>
+                <div>
+                  <span>Tổng phân công</span>
+                  <strong>{totalAssignmentsForPublish}</strong>
+                </div>
+              </div>
+              <label className="publish-confirm-check">
+                <input
+                  type="checkbox"
+                  checked={publishConfirmed}
+                  onChange={(event) => {
+                    setPublishConfirmed(event.target.checked);
+                    if (event.target.checked) setPublishConfirmError("");
+                  }}
+                  disabled={publishingSchedule}
+                />
+                <span>Tôi đã kiểm tra lịch và xác nhận công bố.</span>
+              </label>
+              {publishConfirmError ? (
+                <div className="publish-confirm-error">{publishConfirmError}</div>
+              ) : null}
+              <div className="publish-confirm-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    if (publishingSchedule) return;
+                    setIsPublishConfirmOpen(false);
+                    setPublishConfirmed(false);
+                    setPublishConfirmError("");
+                  }}
+                  disabled={publishingSchedule}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleConfirmPublishSchedule}
+                  disabled={publishingSchedule || !publishConfirmed}
+                >
+                  {publishingSchedule
+                    ? "Đang công bố..."
+                    : scheduleLifecycleStatus === "revision_draft"
+                      ? "Xác nhận công bố lại"
+                      : "Xác nhận công bố"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {isReopenModalOpen ? (
+        <div className="publish-confirm-backdrop">
+          <div className="publish-confirm-card">
+            <div className="publish-confirm-icon">
+              <Edit3 size={24} />
+            </div>
+            <div className="publish-confirm-content">
+              <h3>Mở lại lịch đã công bố?</h3>
+              <p>
+                Lịch này đã được công bố cho nhân viên. Khi mở lại, bạn có thể
+                chỉnh sửa như bản nháp. Nhân viên sẽ chưa nhận thông báo cho
+                đến khi bạn công bố lại lịch.
+              </p>
+              <label className="time-change-reason">
+                Lý do mở lại lịch <span>*</span>
+                <textarea
+                  value={reopenReason}
+                  onChange={(event) => {
+                    setReopenReason(event.target.value);
+                    if (reopenError) setReopenError("");
+                  }}
+                  rows={3}
+                  placeholder="Nhập lý do mở lại lịch để chỉnh sửa..."
+                  disabled={reopeningSchedule}
+                />
+              </label>
+              {reopenError ? (
+                <div className="publish-confirm-error">{reopenError}</div>
+              ) : null}
+              <div className="publish-confirm-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    if (reopeningSchedule) return;
+                    setIsReopenModalOpen(false);
+                    setReopenReason("");
+                    setReopenError("");
+                  }}
+                  disabled={reopeningSchedule}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleConfirmReopenSchedule}
+                  disabled={reopeningSchedule}
+                >
+                  {reopeningSchedule ? "Đang mở lại..." : "Xác nhận mở lại"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
