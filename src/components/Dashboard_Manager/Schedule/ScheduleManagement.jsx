@@ -144,7 +144,22 @@ const PUBLISH_SCHEDULE = gql`
     publishSchedule(input: $input) {
       id
       status
+      effectiveStatus
       publishedAt
+      lastChangedAt
+      permissions {
+        canPublish
+        canApplyAutoSchedule
+        canEditDraftSchedule
+        canMakePublishedChange
+        canChangeShiftTime
+        canAddStaffToShift
+        canRemoveStaffFromShift
+        canDeleteShiftGroup
+        requiresChangeReason
+        requiresEmployeeNotification
+        isReadOnly
+      }
     }
   }
 `;
@@ -811,6 +826,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
   });
   const [selectedShift, setSelectedShift] = useState(null);
   const [isStatsPanelOpen, setIsStatsPanelOpen] = useState(false);
+  const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
+  const [publishConfirmed, setPublishConfirmed] = useState(false);
+  const [publishConfirmError, setPublishConfirmError] = useState("");
   const [isAutoScheduleOpen, setIsAutoScheduleOpen] = useState(false);
   const [autoScheduleConfig, setAutoScheduleConfig] = useState({
     horizonDays: 7,
@@ -1043,6 +1061,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
         left.shiftType.localeCompare(right.shiftType),
     );
   }, [shiftsData, staff]);
+  const totalAssignmentsForPublish = useMemo(
+    () =>
+      shifts.reduce(
+        (sum, shift) => sum + Number((shift.staffIds || []).length || 0),
+        0,
+      ),
+    [shifts],
+  );
 
   const dateLabel = useMemo(() => {
     if (viewMode === "week") {
@@ -1230,7 +1256,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
       );
     }
   };
-  const handlePublishSchedule = async () => {
+  const canAttemptPublishCurrentSchedule =
+    viewMode === "week" &&
+    !publicationLoading &&
+    !publishingSchedule &&
+    Boolean(schedulePermissions.canPublish);
+
+  const handlePublishSchedule = () => {
     if (!effectiveRestaurantId) {
       showNotification(
         "Vui lòng chọn nhà hàng trước khi công bố lịch.",
@@ -1244,6 +1276,42 @@ const ScheduleManagement = ({ readOnly = false }) => {
       return;
     }
 
+    if (shifts.length <= 0) {
+      showNotification(
+        "Không thể công bố lịch rỗng. Cần có ít nhất 1 ca làm trong tuần.",
+        "warning",
+      );
+      return;
+    }
+
+    if (!schedulePermissions.canPublish) {
+      const message =
+        scheduleLifecycleStatus === "published"
+          ? "Lịch này đã được công bố rồi."
+          : scheduleLifecycleStatus === "active"
+            ? "Lịch đang hoạt động, không thể công bố lại."
+            : scheduleLifecycleStatus === "locked"
+              ? "Lịch đã khóa, không thể công bố lại."
+              : scheduleLifecycleStatus === "closed"
+                ? "Lịch đã đóng, không thể công bố lại."
+                : "Không thể công bố lịch ở trạng thái hiện tại.";
+      showNotification(message, "warning");
+      return;
+    }
+
+    setPublishConfirmed(false);
+    setPublishConfirmError("");
+    setIsPublishConfirmOpen(true);
+  };
+
+  const handleConfirmPublishSchedule = async () => {
+    if (!publishConfirmed) {
+      setPublishConfirmError("Vui lòng xác nhận bạn đã kiểm tra lịch.");
+      return;
+    }
+
+    setPublishConfirmError("");
+
     try {
       await publishSchedule({
         variables: {
@@ -1255,17 +1323,26 @@ const ScheduleManagement = ({ readOnly = false }) => {
         },
       });
 
-      await refetchPublication();
+      await refetchPublication?.();
+      await refetchScheduleLogs?.();
+
+      setIsPublishConfirmOpen(false);
+      setPublishConfirmed(false);
+      setPublishConfirmError("");
 
       showNotification(
-        "Đã công bố lịch làm việc và thông báo đến nhân viên liên quan.",
+        scheduleLifecycleStatus === "revision_draft"
+          ? "Đã công bố lại lịch làm việc và thông báo cập nhật đến nhân viên."
+          : "Đã công bố lịch làm việc và thông báo đến nhân viên liên quan.",
         "success",
       );
     } catch (error) {
-      showNotification(
-        getGraphQLErrorMessage(error, "Không thể công bố lịch làm việc."),
-        "error",
+      const message = getGraphQLErrorMessage(
+        error,
+        "Không thể công bố lịch làm việc.",
       );
+      setPublishConfirmError(message);
+      showNotification(message, "error");
     }
   };
   useEffect(() => {
@@ -2703,17 +2780,27 @@ const ScheduleManagement = ({ readOnly = false }) => {
               onClick={handlePublishSchedule}
               disabled={
                 readOnly ||
+                publicationLoading ||
                 publishingSchedule ||
-                !schedulePermissions.canPublish ||
                 !effectiveRestaurantId ||
-                viewMode !== "week"
+                viewMode !== "week" ||
+                !schedulePermissions.canPublish
+              }
+              title={
+                canAttemptPublishCurrentSchedule
+                  ? "Công bố lịch làm việc"
+                  : SCHEDULE_STATUS_LABELS[scheduleLifecycleStatus] ||
+                    "Không thể công bố lịch"
               }
             >
-              {isSchedulePublished
-                ? "Đã công bố"
-                : publishingSchedule
-                  ? "Đang công bố..."
-                  : "Công bố lịch"}
+              {publishingSchedule
+                ? "Đang công bố..."
+                : canAttemptPublishCurrentSchedule
+                  ? scheduleLifecycleStatus === "revision_draft"
+                    ? "Công bố lại"
+                    : "Công bố lịch"
+                  : SCHEDULE_STATUS_LABELS[scheduleLifecycleStatus] ||
+                    "Công bố lịch"}
             </button>
           )}
         </div>
@@ -2731,7 +2818,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
           <button
             type="button"
             onClick={handlePublishSchedule}
-            disabled={publishingSchedule || !effectiveRestaurantId}
+            disabled={
+              publishingSchedule ||
+              publicationLoading ||
+              !effectiveRestaurantId ||
+              viewMode !== "week" ||
+              !schedulePermissions.canPublish
+            }
           >
             {publishingSchedule ? "Đang công bố..." : "Công bố lịch"}
           </button>
@@ -3043,6 +3136,106 @@ const ScheduleManagement = ({ readOnly = false }) => {
           applying={isApplyingAutoSchedule}
         />
       )}
+
+      {isPublishConfirmOpen ? (
+        <div className="publish-confirm-backdrop">
+          <div className="publish-confirm-card">
+            <button
+              type="button"
+              className="publish-confirm-close"
+              onClick={() => {
+                if (publishingSchedule) return;
+                setIsPublishConfirmOpen(false);
+                setPublishConfirmed(false);
+                setPublishConfirmError("");
+              }}
+              disabled={publishingSchedule}
+            >
+              <X size={18} />
+            </button>
+            <div className="publish-confirm-icon">
+              <CalendarCheck2 size={24} />
+            </div>
+            <div className="publish-confirm-content">
+              <h3>
+                {scheduleLifecycleStatus === "revision_draft"
+                  ? "Công bố lại bản chỉnh sửa?"
+                  : "Công bố lịch làm việc?"}
+              </h3>
+              <p>
+                Sau khi công bố, nhân viên sẽ nhận thông báo và các chỉnh sửa
+                sau đó sẽ phải đi qua quy trình có kiểm soát.
+              </p>
+              <div className="publish-confirm-summary">
+                <div>
+                  <span>Phạm vi</span>
+                  <strong>
+                    {format(rangeStart, "dd/MM/yyyy")} -{" "}
+                    {format(rangeEnd, "dd/MM/yyyy")}
+                  </strong>
+                </div>
+                <div>
+                  <span>Trạng thái hiện tại</span>
+                  <strong>
+                    {SCHEDULE_STATUS_LABELS[scheduleLifecycleStatus] ||
+                      "Bản nháp"}
+                  </strong>
+                </div>
+                <div>
+                  <span>Số nhóm ca</span>
+                  <strong>{shifts.length}</strong>
+                </div>
+                <div>
+                  <span>Tổng phân công</span>
+                  <strong>{totalAssignmentsForPublish}</strong>
+                </div>
+              </div>
+              <label className="publish-confirm-check">
+                <input
+                  type="checkbox"
+                  checked={publishConfirmed}
+                  onChange={(event) => {
+                    setPublishConfirmed(event.target.checked);
+                    if (event.target.checked) setPublishConfirmError("");
+                  }}
+                  disabled={publishingSchedule}
+                />
+                <span>Tôi đã kiểm tra lịch và xác nhận công bố.</span>
+              </label>
+              {publishConfirmError ? (
+                <div className="publish-confirm-error">{publishConfirmError}</div>
+              ) : null}
+              <div className="publish-confirm-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    if (publishingSchedule) return;
+                    setIsPublishConfirmOpen(false);
+                    setPublishConfirmed(false);
+                    setPublishConfirmError("");
+                  }}
+                  disabled={publishingSchedule}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleConfirmPublishSchedule}
+                  disabled={publishingSchedule || !publishConfirmed}
+                >
+                  {publishingSchedule
+                    ? "Đang công bố..."
+                    : scheduleLifecycleStatus === "revision_draft"
+                      ? "Xác nhận công bố lại"
+                      : "Xác nhận công bố"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
