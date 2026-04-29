@@ -690,7 +690,14 @@ const getShiftHoursFromGroup = (shift) => {
   }
 };
 
-const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] }) => {
+const normalizeAutoRole = (role) => String(role || "").trim().toLowerCase();
+
+const normalizeMandatoryShiftRoles = (roles = []) =>
+  Array.from(new Set((roles || []).map(normalizeAutoRole).filter(Boolean)));
+
+const resolveStaffAutoRole = (staff) => normalizeAutoRole(mapDepartmentToJob(staff?.department));
+
+export const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] }) => {
   const staffById = new Map(staff.map((person) => [String(person.id), person]));
   const issues = [];
   const costByDepartment = new Map();
@@ -701,10 +708,14 @@ const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] 
   let totalHours = 0;
   let totalAssignments = 0;
 
+  const mandatoryRoleKeys = normalizeMandatoryShiftRoles(mandatoryShiftRoles);
+
   shifts.forEach((shift) => {
     const shiftHours = getShiftHoursFromGroup(shift);
-    const requiredPeople = Math.max(1, shift.essentialJobs.length, mandatoryShiftRoles.length);
-    const assignedPeople = shift.staffIds.length;
+    const staffIds = Array.isArray(shift.staffIds) ? shift.staffIds : [];
+    const essentialJobs = Array.isArray(shift.essentialJobs) ? shift.essentialJobs : [];
+    const requiredPeople = Math.max(1, essentialJobs.length, mandatoryRoleKeys.length);
+    const assignedPeople = staffIds.length;
     const missingCount = Math.max(0, requiredPeople - assignedPeople);
 
     if (assignedPeople === 0) {
@@ -732,14 +743,16 @@ const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] 
         targetShiftType: shift.shiftType,
       });
     }
-    const assignedJobSet = new Set(
-      shift.staffIds
-        .map((staffId) => staffById.get(String(staffId))?.job)
+
+    const assignedRoleSet = new Set(
+      staffIds
+        .map((staffId) => resolveStaffAutoRole(staffById.get(String(staffId))))
         .filter(Boolean),
     );
-    const missingMandatoryRoles = mandatoryShiftRoles.filter(
-      (role) => !assignedJobSet.has(role),
+    const missingMandatoryRoles = mandatoryRoleKeys.filter(
+      (role) => !assignedRoleSet.has(role),
     );
+
     if (missingMandatoryRoles.length > 0) {
       issues.push({
         id: `${shift.id}-missing-roles`,
@@ -751,23 +764,6 @@ const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] 
         targetShiftIds: [shift.id],
         targetDate: shift.date,
         targetShiftType: shift.shiftType,
-      });
-    }
-    const assignedJobSet = new Set(
-      shift.staffIds
-        .map((staffId) => staffById.get(String(staffId))?.job)
-        .filter(Boolean),
-    );
-    const missingMandatoryRoles = mandatoryShiftRoles.filter(
-      (role) => !assignedJobSet.has(role),
-    );
-    if (missingMandatoryRoles.length > 0) {
-      issues.push({
-        id: `${shift.id}-missing-roles`,
-        type: "missing",
-        level: "warning",
-        title: `Ca thiếu role bắt buộc: ${missingMandatoryRoles.map(getAutoRoleLabel).join(", ")}`,
-        description: `${shift.date} • ${shift.startTime} - ${shift.endTime}`,
       });
     }
 
