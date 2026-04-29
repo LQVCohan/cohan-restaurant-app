@@ -1207,13 +1207,6 @@ export default {
     if (!reason) throw new Error("Cần nhập lý do khóa lịch.");
     const periodStart = toStartOfDay(input.periodStart);
     const periodEnd = toEndOfDay(input.periodEnd);
-    const isRepublish =
-      existingPublication &&
-      resolveScheduleLifecycleStatus({
-        publication: existingPublication,
-        periodStart,
-        periodEnd,
-      }) === "revision_draft";
 
     const publication = await SchedulePublication.findOneAndUpdate(
       { restaurantId, periodStart, periodEnd },
@@ -1288,13 +1281,6 @@ export default {
     if (!reason) throw new Error("Cần nhập lý do đóng lịch.");
     const periodStart = toStartOfDay(input.periodStart);
     const periodEnd = toEndOfDay(input.periodEnd);
-    const isRepublish =
-      existingPublication &&
-      resolveScheduleLifecycleStatus({
-        publication: existingPublication,
-        periodStart,
-        periodEnd,
-      }) === "revision_draft";
 
     const publication = await SchedulePublication.findOneAndUpdate(
       { restaurantId, periodStart, periodEnd },
