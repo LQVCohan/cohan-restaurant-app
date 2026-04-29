@@ -10,6 +10,30 @@ const AUTO_REQUIRED_ROLE_VALUES = [
   "shipper",
   "storekeeper",
 ];
+const DAY_OF_WEEK_VALUES = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const EMPLOYMENT_TYPE_VALUES = [
+  "full_time",
+  "part_time",
+  "probation",
+  "seasonal",
+  "contract",
+];
+const DEFAULT_AVAILABILITY_REGISTRATION_POLICY = {
+  enabled: true,
+  targetEmploymentTypes: ["part_time", "seasonal"],
+  openDayOfWeek: "MON",
+  openTime: "08:00",
+  closeDayOfWeek: "WED",
+  closeTime: "22:00",
+  publishTargetDayOfWeek: "FRI",
+  publishTargetTime: "17:00",
+  timezone: "Asia/Ho_Chi_Minh",
+  allowFullTimeUnavailableException: true,
+  lateChangeRequiresApproval: true,
+  treatMissingPartTimeSubmissionAsUnavailable: true,
+  autoCreateWindow: true,
+};
+const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -78,6 +102,81 @@ export function getDefaultSchedulingPolicyPayload(restaurantId) {
       ruleRiskPenalty: 30,
     },
     mandatoryShiftRoles: ["server", "cook", "cashier"],
+    availabilityRegistrationPolicy: { ...DEFAULT_AVAILABILITY_REGISTRATION_POLICY },
+  };
+}
+
+function validateDayOfWeek(fieldName, value) {
+  if (!DAY_OF_WEEK_VALUES.includes(value)) {
+    throw new Error(
+      `${fieldName} không hợp lệ. Chỉ chấp nhận: ${DAY_OF_WEEK_VALUES.join(" | ")}.`,
+    );
+  }
+}
+
+function validateTime(fieldName, value) {
+  if (!TIME_REGEX.test(value)) {
+    throw new Error(`${fieldName} không hợp lệ. Định dạng phải là HH:mm.`);
+  }
+}
+
+function sanitizeAvailabilityRegistrationPolicy(input = {}) {
+  const merged = {
+    ...DEFAULT_AVAILABILITY_REGISTRATION_POLICY,
+    ...input,
+  };
+
+  const normalizedEmploymentTypes = Array.isArray(merged.targetEmploymentTypes)
+    ? Array.from(
+        new Set(
+          merged.targetEmploymentTypes
+            .map((type) => String(type || "").trim().toLowerCase())
+            .filter(Boolean),
+        ),
+      )
+    : [...DEFAULT_AVAILABILITY_REGISTRATION_POLICY.targetEmploymentTypes];
+
+  if (
+    normalizedEmploymentTypes.some(
+      (type) => !EMPLOYMENT_TYPE_VALUES.includes(type),
+    )
+  ) {
+    throw new Error(
+      `targetEmploymentTypes không hợp lệ. Chỉ chấp nhận: ${EMPLOYMENT_TYPE_VALUES.join(", ")}.`,
+    );
+  }
+
+  validateDayOfWeek("openDayOfWeek", String(merged.openDayOfWeek || "").toUpperCase());
+  validateDayOfWeek("closeDayOfWeek", String(merged.closeDayOfWeek || "").toUpperCase());
+  validateDayOfWeek(
+    "publishTargetDayOfWeek",
+    String(merged.publishTargetDayOfWeek || "").toUpperCase(),
+  );
+
+  validateTime("openTime", String(merged.openTime || ""));
+  validateTime("closeTime", String(merged.closeTime || ""));
+  validateTime("publishTargetTime", String(merged.publishTargetTime || ""));
+
+  return {
+    enabled: merged.enabled !== false,
+    targetEmploymentTypes: normalizedEmploymentTypes.length
+      ? normalizedEmploymentTypes
+      : [...DEFAULT_AVAILABILITY_REGISTRATION_POLICY.targetEmploymentTypes],
+    openDayOfWeek: String(merged.openDayOfWeek).toUpperCase(),
+    openTime: String(merged.openTime),
+    closeDayOfWeek: String(merged.closeDayOfWeek).toUpperCase(),
+    closeTime: String(merged.closeTime),
+    publishTargetDayOfWeek: String(merged.publishTargetDayOfWeek).toUpperCase(),
+    publishTargetTime: String(merged.publishTargetTime),
+    timezone: String(merged.timezone || DEFAULT_AVAILABILITY_REGISTRATION_POLICY.timezone),
+    allowFullTimeUnavailableException: Boolean(
+      merged.allowFullTimeUnavailableException,
+    ),
+    lateChangeRequiresApproval: Boolean(merged.lateChangeRequiresApproval),
+    treatMissingPartTimeSubmissionAsUnavailable: Boolean(
+      merged.treatMissingPartTimeSubmissionAsUnavailable,
+    ),
+    autoCreateWindow: Boolean(merged.autoCreateWindow),
   };
 }
 
@@ -129,6 +228,11 @@ export async function updateSchedulingPolicy({ restaurantId, input, ctx }) {
 
   if (input.employmentTypePolicy) {
     payload.employmentTypePolicy = input.employmentTypePolicy;
+  }
+  if (input.availabilityRegistrationPolicy) {
+    payload.availabilityRegistrationPolicy = sanitizeAvailabilityRegistrationPolicy(
+      input.availabilityRegistrationPolicy,
+    );
   }
   if (Array.isArray(input.mandatoryShiftRoles)) {
     payload.mandatoryShiftRoles = Array.from(
@@ -237,6 +341,9 @@ export function mapSchedulingPolicy(policy) {
     },
 
     employmentTypePolicy: policy.employmentTypePolicy || {},
+    availabilityRegistrationPolicy: sanitizeAvailabilityRegistrationPolicy(
+      policy.availabilityRegistrationPolicy || {},
+    ),
     mandatoryShiftRoles:
       Array.isArray(policy.mandatoryShiftRoles) &&
       policy.mandatoryShiftRoles.length

@@ -1,6 +1,15 @@
 import mongoose from "mongoose";
 
 const { Schema, Types } = mongoose;
+const DAY_OF_WEEK_VALUES = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const EMPLOYMENT_TYPE_VALUES = [
+  "full_time",
+  "part_time",
+  "probation",
+  "seasonal",
+  "contract",
+];
+const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const ShiftTemplateSchema = new Schema(
   {
@@ -95,6 +104,53 @@ const EmploymentTypePolicySchema = new Schema(
     allowOvertime: { type: Boolean, default: true },
     avoidSoloCriticalShift: { type: Boolean, default: false },
     priorityWeight: { type: Number, default: 1 },
+  },
+  { _id: false },
+);
+
+const AvailabilityRegistrationPolicySchema = new Schema(
+  {
+    enabled: { type: Boolean, default: true },
+    targetEmploymentTypes: {
+      type: [String],
+      enum: EMPLOYMENT_TYPE_VALUES,
+      default: ["part_time", "seasonal"],
+    },
+    openDayOfWeek: {
+      type: String,
+      enum: DAY_OF_WEEK_VALUES,
+      default: "MON",
+    },
+    openTime: {
+      type: String,
+      match: TIME_REGEX,
+      default: "08:00",
+    },
+    closeDayOfWeek: {
+      type: String,
+      enum: DAY_OF_WEEK_VALUES,
+      default: "WED",
+    },
+    closeTime: {
+      type: String,
+      match: TIME_REGEX,
+      default: "22:00",
+    },
+    publishTargetDayOfWeek: {
+      type: String,
+      enum: DAY_OF_WEEK_VALUES,
+      default: "FRI",
+    },
+    publishTargetTime: {
+      type: String,
+      match: TIME_REGEX,
+      default: "17:00",
+    },
+    timezone: { type: String, default: "Asia/Ho_Chi_Minh" },
+    allowFullTimeUnavailableException: { type: Boolean, default: true },
+    lateChangeRequiresApproval: { type: Boolean, default: true },
+    treatMissingPartTimeSubmissionAsUnavailable: { type: Boolean, default: true },
+    autoCreateWindow: { type: Boolean, default: true },
   },
   { _id: false },
 );
@@ -216,6 +272,10 @@ const SchedulingPolicySchema = new Schema(
           priorityWeight: 1,
         }),
       },
+    },
+    availabilityRegistrationPolicy: {
+      type: AvailabilityRegistrationPolicySchema,
+      default: () => ({}),
     },
 
     updatedBy: { type: Types.ObjectId, ref: "User", default: null },
