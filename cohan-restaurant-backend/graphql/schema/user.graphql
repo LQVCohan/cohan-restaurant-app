@@ -84,6 +84,11 @@ type SchedulePublication {
   lockedBy: ID
   lockReason: String
 
+  reopenedAt: DateTime
+  reopenedBy: ID
+  reopenReason: String
+  reopenCount: Int
+
   closedAt: DateTime
   closedBy: ID
   closeReason: String
@@ -109,6 +114,7 @@ type ScheduleLifecyclePermissions {
   requiresChangeReason: Boolean!
   requiresEmployeeNotification: Boolean!
   isReadOnly: Boolean!
+  canReopen: Boolean!
 }
 type ScheduleChangeLog {
   id: ID!
@@ -162,6 +168,13 @@ input AddStaffToPublishedShiftGroupInput {
 }
 
 input LockScheduleInput {
+  restaurantId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  reason: String!
+}
+
+input ReopenScheduleInput {
   restaurantId: ID!
   periodStart: DateTime!
   periodEnd: DateTime!
@@ -1709,6 +1722,7 @@ type Mutation {
   publishSchedule(input: PublishScheduleInput!): SchedulePublication!
   lockSchedule(input: LockScheduleInput!): SchedulePublication!
   closeSchedule(input: CloseScheduleInput!): SchedulePublication!
+  reopenSchedule(input: ReopenScheduleInput!): SchedulePublication!
   changePublishedShiftGroupTime(
     input: ChangePublishedShiftGroupTimeInput!
   ): Boolean!

@@ -61,6 +61,8 @@ const getScheduleLogLabel = (verb) => {
     "schedule.published_shift_group_delete": "Xóa ca đã công bố",
     "schedule.lock": "Khóa lịch",
     "schedule.close": "Đóng lịch",
+    "schedule.reopen": "Mở lại lịch để chỉnh sửa",
+    "schedule.republish": "Công bố lại lịch",
   };
 
   return map[verb] || verb || "Thay đổi lịch";

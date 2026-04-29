@@ -1,5 +1,6 @@
 export const SCHEDULE_LIFECYCLE_STATUS = {
   DRAFT: "draft",
+  REVISION_DRAFT: "revision_draft",
   PUBLISHED: "published",
   ACTIVE: "active",
   LOCKED: "locked",
@@ -16,6 +17,7 @@ export function resolveScheduleLifecycleStatus({
 
   if (storedStatus === "locked") return "locked";
   if (storedStatus === "closed") return "closed";
+  if (storedStatus === "revision_draft") return "revision_draft";
 
   const start = periodStart ? new Date(periodStart) : null;
   const end = periodEnd ? new Date(periodEnd) : null;
@@ -44,18 +46,53 @@ export function resolveScheduleLifecycleStatus({
 export function getScheduleLifecyclePermissions(effectiveStatus) {
   const status = String(effectiveStatus || "draft").toLowerCase();
 
+  if (status === "published") {
+    return {
+      canPublish: false,
+      canApplyAutoSchedule: false,
+      canEditDraftSchedule: false,
+      canMakePublishedChange: true,
+      canChangeShiftTime: true,
+      canAddStaffToShift: true,
+      canRemoveStaffFromShift: true,
+      canDeleteShiftGroup: true,
+      requiresChangeReason: true,
+      requiresEmployeeNotification: true,
+      isReadOnly: false,
+      canReopen: true,
+    };
+  }
+
+  if (["active", "locked", "closed"].includes(status)) {
+    return {
+      canPublish: false,
+      canApplyAutoSchedule: false,
+      canEditDraftSchedule: false,
+      canMakePublishedChange: false,
+      canChangeShiftTime: false,
+      canAddStaffToShift: false,
+      canRemoveStaffFromShift: false,
+      canDeleteShiftGroup: false,
+      requiresChangeReason: false,
+      requiresEmployeeNotification: false,
+      isReadOnly: true,
+      canReopen: false,
+    };
+  }
+
   return {
-    canPublish: status === "draft",
-    canApplyAutoSchedule: status === "draft",
-    canEditDraftSchedule: status === "draft",
-    canMakePublishedChange: status === "published",
-    canChangeShiftTime: status === "published",
-    canAddStaffToShift: status === "draft" || status === "published",
-    canRemoveStaffFromShift: status === "draft" || status === "published",
-    canDeleteShiftGroup: status === "draft" || status === "published",
-    requiresChangeReason: status === "published",
-    requiresEmployeeNotification: status === "published",
-    isReadOnly: ["active", "locked", "closed"].includes(status),
+    canPublish: true,
+    canApplyAutoSchedule: true,
+    canEditDraftSchedule: true,
+    canMakePublishedChange: false,
+    canChangeShiftTime: false,
+    canAddStaffToShift: true,
+    canRemoveStaffFromShift: true,
+    canDeleteShiftGroup: true,
+    requiresChangeReason: false,
+    requiresEmployeeNotification: false,
+    isReadOnly: false,
+    canReopen: false,
   };
 }
 
@@ -84,6 +121,10 @@ export function mapSchedulePublicationOutput(doc) {
     lockedAt: raw.lockedAt || null,
     lockedBy: raw.lockedBy ? String(raw.lockedBy) : null,
     lockReason: raw.lockReason || "",
+    reopenedAt: raw.reopenedAt || null,
+    reopenedBy: raw.reopenedBy ? String(raw.reopenedBy) : null,
+    reopenReason: raw.reopenReason || "",
+    reopenCount: Number(raw.reopenCount || 0),
     closedAt: raw.closedAt || null,
     closedBy: raw.closedBy ? String(raw.closedBy) : null,
     closeReason: raw.closeReason || "",

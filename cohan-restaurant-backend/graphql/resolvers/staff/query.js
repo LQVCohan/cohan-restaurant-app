@@ -736,6 +736,8 @@ export default {
       "schedule.published_shift_group_delete",
       "schedule.lock",
       "schedule.close",
+      "schedule.reopen",
+      "schedule.republish",
     ];
     const filter = {
       restaurantId: rid,

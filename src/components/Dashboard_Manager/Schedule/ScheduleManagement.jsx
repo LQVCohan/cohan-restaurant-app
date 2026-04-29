@@ -54,6 +54,7 @@ const SCHEDULE_STATUS_LABELS = {
   published: "Đã công bố",
   active: "Đang hoạt động",
   locked: "Đã khóa",
+  revision_draft: "Đang chỉnh sửa lại",
   closed: "Đã đóng",
 };
 
@@ -1077,6 +1078,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         scheduleLifecycleStatus === "published",
       requiresChangeReason: scheduleLifecycleStatus === "published",
       requiresEmployeeNotification: scheduleLifecycleStatus === "published",
+      canReopen: scheduleLifecycleStatus === "published",
       isReadOnly: ["active", "locked", "closed"].includes(
         scheduleLifecycleStatus,
       ),
@@ -1086,6 +1088,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const isScheduleLocked = scheduleLifecycleStatus === "locked";
   const isScheduleClosed = scheduleLifecycleStatus === "closed";
   const isScheduleReadOnly = Boolean(schedulePermissions.isReadOnly);
+  const isDraftLikeSchedule = ["draft", "revision_draft"].includes(scheduleLifecycleStatus);
   const hasChangesAfterPublish =
     isSchedulePublished &&
     schedulePublication?.lastChangedAt &&
@@ -1362,7 +1365,24 @@ const ScheduleManagement = ({ readOnly = false }) => {
     });
 
   const openAddShiftModal = (dateObj, shiftType) => {
-    if (readOnly || isScheduleReadOnly) return;
+    if (readOnly) return;
+
+    if (!["draft", "revision_draft"].includes(scheduleLifecycleStatus)) {
+      const message =
+        scheduleLifecycleStatus === "published"
+          ? "Lịch đã công bố. Không thể tạo ca mới từ khung trống. Vui lòng mở lại lịch để chỉnh sửa hoặc chỉ thêm nhân viên vào ca đã tồn tại."
+          : scheduleLifecycleStatus === "active"
+            ? "Lịch đang hoạt động, không thể tạo ca mới trực tiếp."
+            : scheduleLifecycleStatus === "locked"
+              ? "Lịch đã khóa, không thể tạo ca mới."
+              : scheduleLifecycleStatus === "closed"
+                ? "Lịch đã đóng, không thể tạo ca mới."
+                : "Không thể tạo ca ở trạng thái lịch hiện tại.";
+
+      showNotification(message, "warning");
+      return;
+    }
+
     setAddModalContext({ date: format(dateObj, "yyyy-MM-dd"), shiftType });
     setIsAddModalOpen(true);
   };
@@ -1459,6 +1479,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
     };
   };
   const handleConfirmAddShift = async (payload) => {
+    if (!["draft", "revision_draft"].includes(scheduleLifecycleStatus)) {
+      const message =
+        scheduleLifecycleStatus === "published"
+          ? "Lịch đã công bố. Không thể tạo ca mới từ khung trống. Vui lòng mở lại lịch để chỉnh sửa hoặc thêm nhân viên vào ca đã tồn tại."
+          : scheduleLifecycleStatus === "active"
+            ? "Lịch đang hoạt động, không thể tạo ca mới."
+            : scheduleLifecycleStatus === "locked"
+              ? "Lịch đã khóa, không thể tạo ca mới."
+              : scheduleLifecycleStatus === "closed"
+                ? "Lịch đã đóng, không thể tạo ca mới."
+                : "Không thể tạo ca ở trạng thái lịch hiện tại.";
+      showNotification(message, "warning");
+      throw new Error(message);
+    }
     if (!effectiveRestaurantId) {
       throw new Error("Vui lòng chọn nhà hàng trước khi tạo ca.");
     }
@@ -1497,7 +1531,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
       for (const staffId of staffIds) {
       try {
-        if (scheduleLifecycleStatus === "published") {
+        if (false) {
           const reason = String(payload.publishedReason || "").trim();
 
           await addStaffToPublishedShiftGroup({
@@ -1559,8 +1593,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
       setAddModalContext({ date: "", shiftType: "" });
 
       showNotification(
-        isSchedulePublished
-          ? `Đã thêm ${successRows.length} nhân viên vào lịch đã công bố, ghi log và gửi thông báo.`
+        scheduleLifecycleStatus === "revision_draft"
+          ? `Đã cập nhật bản chỉnh sửa với ${successRows.length} phân công mới.`
           : `Đã tạo ca cho ${successRows.length} nhân viên.`,
         "success",
       );
@@ -1616,7 +1650,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
     }
 
     try {
-      if (scheduleLifecycleStatus === "published") {
+      if (["draft", "revision_draft"].includes(scheduleLifecycleStatus)) {
+        await createShift({
+          variables: {
+            input: {
+              employeeId: staffId,
+              restaurantId: effectiveRestaurantId,
+              shiftType: String(shiftGroup.shiftType || "").toUpperCase(),
+              startTime: startTime.toISOString(),
+              endTime: endTime.toISOString(),
+              status: "scheduled",
+            },
+          },
+        });
+      } else if (scheduleLifecycleStatus === "published") {
         const reason = String(options.reason || "").trim();
 
         if (!reason) {
@@ -1755,7 +1802,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
     });
 
     try {
-      if (scheduleLifecycleStatus === "published") {
+      if (["draft", "revision_draft"].includes(scheduleLifecycleStatus)) {
+        await createShift({
+          variables: {
+            input: {
+              employeeId: staffId,
+              restaurantId: effectiveRestaurantId,
+              shiftType: String(shiftGroup.shiftType || "").toUpperCase(),
+              startTime: startTime.toISOString(),
+              endTime: endTime.toISOString(),
+              status: "scheduled",
+            },
+          },
+        });
+      } else if (scheduleLifecycleStatus === "published") {
         const reason = String(options.reason || "").trim();
 
         if (!reason) {
