@@ -311,6 +311,55 @@ const GET_LEAVE_REQUESTS = gql`
   }
 `;
 
+const GET_AVAILABILITY_WINDOWS = gql`
+  query ScheduleAvailabilityWindows(
+    $restaurantId: ID!
+    $from: DateTime
+    $to: DateTime
+  ) {
+    availabilityWindows(restaurantId: $restaurantId, from: $from, to: $to) {
+      id
+      restaurantId
+      periodStart
+      periodEnd
+      openAt
+      closeAt
+      status
+      targetEmploymentTypes
+      allowFullTimeUnavailableException
+      lateChangeRequiresApproval
+    }
+  }
+`;
+
+const GET_AVAILABILITY_SUBMISSIONS = gql`
+  query ScheduleAvailabilitySubmissions($windowId: ID!, $restaurantId: ID!) {
+    staffAvailabilitySubmissions(
+      windowId: $windowId
+      restaurantId: $restaurantId
+    ) {
+      id
+      restaurantId
+      availabilityWindowId
+      employeeId
+      periodStart
+      periodEnd
+      employmentType
+      submissionType
+      status
+      submittedAt
+      lockedAt
+      source
+      slots {
+        date
+        shiftType
+        status
+        note
+      }
+    }
+  }
+`;
+
 const GET_SCHEDULING_ASSISTANT = gql`
   query StaffSchedulingAssistant(
     $restaurantId: ID!
@@ -918,6 +967,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [assistantPayload, setAssistantPayload] = useState(null);
   const [assistantLeaveRows, setAssistantLeaveRows] = useState([]);
   const [assistantShiftRows, setAssistantShiftRows] = useState([]);
+  const [assistantAvailabilityWindows, setAssistantAvailabilityWindows] =
+    useState([]);
+  const [assistantAvailabilitySubmissions, setAssistantAvailabilitySubmissions] =
+    useState([]);
   const [selectedAutoShiftKeys, setSelectedAutoShiftKeys] = useState({});
   const [autoScheduleError, setAutoScheduleError] = useState("");
   const [isApplyingAutoSchedule, setIsApplyingAutoSchedule] = useState(false);
@@ -1068,6 +1121,16 @@ const ScheduleManagement = ({ readOnly = false }) => {
       fetchPolicy: "network-only",
     },
   );
+  const [loadAvailabilityWindows, availabilityWindowsState] = useLazyQuery(
+    GET_AVAILABILITY_WINDOWS,
+    {
+      fetchPolicy: "network-only",
+    },
+  );
+  const [loadAvailabilitySubmissions, availabilitySubmissionsState] =
+    useLazyQuery(GET_AVAILABILITY_SUBMISSIONS, {
+      fetchPolicy: "network-only",
+    });
   const [loadAssistantContextShifts, assistantContextState] = useLazyQuery(
     GET_STAFF_SHIFTS,
     {
@@ -1273,6 +1336,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
         staffList: rawStaffList,
         existingShiftRows: assistantShiftRows,
         leaveRequests: assistantLeaveRows,
+        availabilityWindows: assistantAvailabilityWindows,
+        availabilitySubmissions: assistantAvailabilitySubmissions,
         weeklyHoursCap: autoScheduleConfig.weeklyHoursCap,
         respectAvailability: autoScheduleConfig.respectAvailability,
         avoidOvertime: autoScheduleConfig.avoidOvertime,
@@ -1280,6 +1345,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
       }),
     [
       assistantLeaveRows,
+      assistantAvailabilitySubmissions,
+      assistantAvailabilityWindows,
       assistantForPreview,
       assistantShiftRows,
       autoScheduleConfig.weeklyHoursCap,
@@ -1312,6 +1379,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const isGeneratingAutoSchedule =
     schedulingAssistantState.loading ||
     leaveRequestsState.loading ||
+    availabilityWindowsState.loading ||
+    availabilitySubmissionsState.loading ||
     assistantContextState.loading ||
     isValidatingAutoSchedule;
   useEffect(() => {
@@ -1340,6 +1409,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAssistantPayload(null);
     setAssistantLeaveRows([]);
     setAssistantShiftRows([]);
+    setAssistantAvailabilityWindows([]);
+    setAssistantAvailabilitySubmissions([]);
     setSelectedAutoShiftKeys({});
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
@@ -1362,6 +1433,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAssistantPayload(null);
     setAssistantLeaveRows([]);
     setAssistantShiftRows([]);
+    setAssistantAvailabilityWindows([]);
+    setAssistantAvailabilitySubmissions([]);
     setSelectedAutoShiftKeys({});
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
@@ -1676,11 +1749,24 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setIsAddModalOpen(true);
   };
   const formatAssignmentIssue = (issue) => {
+    const availabilityMessages = {
+      PART_TIME_AVAILABILITY_REQUIRED:
+        "Nhân viên part-time chưa đăng ký ca này",
+      OUTSIDE_SUBMITTED_AVAILABILITY:
+        "Nhân viên part-time chưa đăng ký ca này",
+      FULL_TIME_UNAVAILABLE_EXCEPTION:
+        "Nhân viên full-time đã báo không khả dụng",
+      AVAILABILITY_PENDING_SUBMISSION:
+        "Availability chưa đóng, dữ liệu còn chờ cập nhật",
+      LATE_AVAILABILITY_CHANGE_PENDING:
+        "Thay đổi availability sau hạn đang chờ quản lý duyệt",
+    };
     const message = issue?.message || "Có vấn đề với phân công ca.";
+    const displayMessage = availabilityMessages[issue?.code] || message;
     const action = issue?.suggestedAction
       ? `\nGợi ý: ${issue.suggestedAction}`
       : "";
-    return `- ${message}${action}`;
+    return `- ${displayMessage}${action}`;
   };
 
   const validateShiftAssignmentOrThrow = async ({
@@ -2256,7 +2342,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
             });
 
             const validation = result.validation;
-            const warnings = validation?.warnings || [];
+            const backendWarnings = validation?.warnings || [];
+            const localWarnings = assignment.validationWarnings || [];
+            const warnings = [
+              ...localWarnings,
+              ...backendWarnings.filter(
+                (warning) =>
+                  !localWarnings.some(
+                    (local) => String(local.code) === String(warning.code),
+                  ),
+              ),
+            ];
 
             if (warnings.length > 0) {
               warningAssignments += 1;
@@ -2401,6 +2497,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setAutoScheduleError("");
     setValidatedAutoSchedulePreview(null);
     setSelectedAutoShiftKeys({});
+    setAssistantAvailabilityWindows([]);
+    setAssistantAvailabilitySubmissions([]);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -2414,7 +2512,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
     const contextEnd = endOfWeek(analysisEnd, { weekStartsOn: 1 });
 
     try {
-      const [staffResult, assistantResult, leaveResult, shiftResult] =
+      const [
+        staffResult,
+        assistantResult,
+        leaveResult,
+        shiftResult,
+        availabilityWindowResult,
+      ] =
         await Promise.all([
           refetchStaffList({
             restaurantId: effectiveRestaurantId || undefined,
@@ -2442,12 +2546,34 @@ const ScheduleManagement = ({ readOnly = false }) => {
               endDate: contextEnd.toISOString(),
             },
           }),
+          loadAvailabilityWindows({
+            variables: {
+              restaurantId: effectiveRestaurantId,
+              from: contextStart.toISOString(),
+              to: contextEnd.toISOString(),
+            },
+          }),
         ]);
 
       const nextAssistantPayload =
         assistantResult?.data?.staffSchedulingAssistant || null;
       const nextLeaveRows = leaveResult?.data?.leaveRequests || [];
       const nextShiftRows = shiftResult?.data?.staffShifts || [];
+      const nextAvailabilityWindows =
+        availabilityWindowResult?.data?.availabilityWindows || [];
+      const availabilitySubmissionResults = await Promise.all(
+        nextAvailabilityWindows.map((windowRow) =>
+          loadAvailabilitySubmissions({
+            variables: {
+              windowId: windowRow.id,
+              restaurantId: effectiveRestaurantId,
+            },
+          }),
+        ),
+      );
+      const nextAvailabilitySubmissions = availabilitySubmissionResults.flatMap(
+        (result) => result?.data?.staffAvailabilitySubmissions || [],
+      );
       const nextAssistantForPreview = mergeAssistantWithRequiredRoles(
         nextAssistantPayload,
         autoScheduleConfig.requiredRoles,
@@ -2455,6 +2581,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
       setAssistantPayload(nextAssistantPayload);
       setAssistantLeaveRows(nextLeaveRows);
       setAssistantShiftRows(nextShiftRows);
+      setAssistantAvailabilityWindows(nextAvailabilityWindows);
+      setAssistantAvailabilitySubmissions(nextAvailabilitySubmissions);
 
       const nextStaffList = staffResult?.data?.staffList || rawStaffList;
 
@@ -2463,6 +2591,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
         staffList: nextStaffList,
         existingShiftRows: nextShiftRows,
         leaveRequests: nextLeaveRows,
+        availabilityWindows: nextAvailabilityWindows,
+        availabilitySubmissions: nextAvailabilitySubmissions,
         weeklyHoursCap: autoScheduleConfig.weeklyHoursCap,
         respectAvailability: autoScheduleConfig.respectAvailability,
         avoidOvertime: autoScheduleConfig.avoidOvertime,

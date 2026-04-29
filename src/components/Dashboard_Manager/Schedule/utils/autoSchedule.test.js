@@ -171,4 +171,97 @@ describe("buildAutoSchedulePreview", () => {
       expect.arrayContaining(["staff-leave", "staff-cap", "staff-offday"])
     );
   });
+
+  it("prioritizes staff with submitted availability over part-time staff without the slot", () => {
+    const assistant = {
+      shifts: [
+        {
+          shiftKey: "2026-04-23|morning",
+          date: "2026-04-23",
+          shiftType: "morning",
+          recommendedTotalStaff: 1,
+          currentAssignedStaff: 0,
+          status: "understaffed",
+          severity: "high",
+          confidence: 0.9,
+          recommendedRoles: [
+            { role: "server", required: 1, assigned: 0, delta: -1 },
+          ],
+          suggestedCandidates: [
+            {
+              staffId: "part-time-no-slot",
+              fullName: "Part Time No Slot",
+              role: "server",
+              reason: "assistant recommendation",
+            },
+            {
+              staffId: "full-time-available",
+              fullName: "Full Time Available",
+              role: "server",
+              reason: "assistant recommendation",
+            },
+          ],
+        },
+      ],
+    };
+
+    const staffList = [
+      {
+        id: "part-time-no-slot",
+        fullName: "Part Time No Slot",
+        department: "service",
+        employmentStatus: "working",
+        employmentType: "part_time",
+        workingDays: ["MON", "TUE", "WED", "THU", "FRI"],
+      },
+      {
+        id: "full-time-available",
+        fullName: "Full Time Available",
+        department: "service",
+        employmentStatus: "working",
+        employmentType: "full_time",
+        workingDays: ["MON", "TUE", "WED", "THU", "FRI"],
+      },
+    ];
+
+    const preview = buildAutoSchedulePreview({
+      assistant,
+      staffList,
+      availabilityWindows: [
+        {
+          id: "window-1",
+          periodStart: "2026-04-20T00:00:00.000Z",
+          periodEnd: "2026-04-26T23:59:59.999Z",
+          closeAt: "2026-04-22T23:59:59.999Z",
+          status: "closed",
+        },
+      ],
+      availabilitySubmissions: [
+        {
+          availabilityWindowId: "window-1",
+          employeeId: "part-time-no-slot",
+          employmentType: "part_time",
+          submissionType: "weekly_availability",
+          status: "locked",
+          slots: [
+            {
+              date: "2026-04-23T00:00:00.000Z",
+              shiftType: "afternoon",
+              status: "available",
+            },
+          ],
+        },
+      ],
+      weeklyHoursCap: 40,
+      respectAvailability: true,
+      avoidOvertime: true,
+      now: new Date("2026-04-23T00:00:00.000Z"),
+    });
+
+    const [shiftItem] = preview.items;
+    expect(shiftItem.plannedAssignments).toHaveLength(1);
+    expect(shiftItem.plannedAssignments[0].staffId).toBe(
+      "full-time-available",
+    );
+  });
 });

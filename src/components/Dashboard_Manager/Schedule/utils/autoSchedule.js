@@ -22,6 +22,22 @@ const SHIFT_ORDER = {
 };
 
 const DAY_KEYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+const PART_TIME_AVAILABILITY_TYPES = new Set(["part_time", "seasonal"]);
+const ACTIVE_AVAILABILITY_STATUSES = new Set(["submitted", "locked", "approved"]);
+const INACTIVE_AVAILABILITY_STATUSES = new Set(["rejected", "cancelled"]);
+
+const AVAILABILITY_WARNING_MESSAGES = {
+  PART_TIME_AVAILABILITY_REQUIRED:
+    "Nhan vien part-time chua dang ky ca nay",
+  OUTSIDE_SUBMITTED_AVAILABILITY:
+    "Nhan vien part-time chua dang ky ca nay",
+  FULL_TIME_UNAVAILABLE_EXCEPTION:
+    "Nhan vien full-time da bao khong kha dung",
+  AVAILABILITY_PENDING_SUBMISSION:
+    "Availability chua dong, du lieu con cho cap nhat",
+  LATE_AVAILABILITY_CHANGE_PENDING:
+    "Thay doi availability sau han dang cho quan ly duyet",
+};
 
 const formatYmd = (value) => format(new Date(value), "yyyy-MM-dd");
 
@@ -87,6 +103,150 @@ const getWorkingDayKey = (dateKey) => {
   const date = toValidDate(`${dateKey}T12:00:00`);
   if (!date) return "";
   return DAY_KEYS[date.getDay()] || "";
+};
+
+const normalizeEmploymentType = (value) =>
+  String(value || "full_time").toLowerCase();
+
+const isAvailabilityWindowClosed = (windowRow, now) => {
+  if (!windowRow) return false;
+  const status = String(windowRow.status || "").toLowerCase();
+  const closeAt = toValidDate(windowRow.closeAt);
+  return (
+    ["closed", "used_for_schedule"].includes(status) ||
+    (closeAt && closeAt < now)
+  );
+};
+
+const getAvailabilityWindowForDate = (windows = [], dateKey) => {
+  return (
+    windows.find((windowRow) => {
+      if (String(windowRow?.status || "").toLowerCase() === "cancelled") {
+        return false;
+      }
+      const start = toValidDate(windowRow?.periodStart);
+      const end = toValidDate(windowRow?.periodEnd);
+      if (!start || !end) return false;
+      return startOfDayKey(start) <= dateKey && dateKey <= startOfDayKey(end);
+    }) || null
+  );
+};
+
+const startOfDayKey = (value) => format(toValidDate(value), "yyyy-MM-dd");
+
+const buildSubmissionMap = (availabilitySubmissions = []) => {
+  const map = new Map();
+  for (const submission of availabilitySubmissions || []) {
+    const windowId = String(submission?.availabilityWindowId || "");
+    const employeeId = String(submission?.employeeId || "");
+    if (!windowId || !employeeId) continue;
+    map.set(`${windowId}|${employeeId}`, submission);
+  }
+  return map;
+};
+
+const findAvailabilitySlot = (submission, dateKey, shiftType, status) => {
+  const safeShiftType = String(shiftType || "").toLowerCase();
+  return (submission?.slots || []).find((slot) => {
+    if (status && String(slot?.status || "").toLowerCase() !== status) {
+      return false;
+    }
+    const slotDate = toValidDate(slot?.date);
+    return (
+      slotDate &&
+      format(slotDate, "yyyy-MM-dd") === dateKey &&
+      String(slot?.shiftType || "").toLowerCase() === safeShiftType
+    );
+  });
+};
+
+const buildAvailabilityIssue = (code, severity = "warning") => ({
+  code,
+  severity,
+  message: AVAILABILITY_WARNING_MESSAGES[code] || "Can xem lai availability",
+  suggestedAction:
+    code === "AVAILABILITY_PENDING_SUBMISSION"
+      ? "Kiem tra lai sau khi window availability dong."
+      : "Uu tien nhan vien da available, hoac override co ly do neu van can xep.",
+});
+
+const getCandidateAvailabilityIssue = ({
+  staff,
+  shiftInsight,
+  availabilityWindows,
+  availabilitySubmissionMap,
+  now,
+}) => {
+  if (!staff) return null;
+
+  const windowRow = getAvailabilityWindowForDate(
+    availabilityWindows,
+    shiftInsight.date,
+  );
+  const employmentType = normalizeEmploymentType(staff.employmentType);
+  const requiresSubmission = PART_TIME_AVAILABILITY_TYPES.has(employmentType);
+
+  if (!windowRow) {
+    return requiresSubmission
+      ? buildAvailabilityIssue("AVAILABILITY_PENDING_SUBMISSION", "info")
+      : null;
+  }
+
+  const submission =
+    availabilitySubmissionMap.get(`${String(windowRow.id)}|${String(staff.id)}`) ||
+    availabilitySubmissionMap.get(`${String(windowRow._id)}|${String(staff.id)}`);
+  const status = String(submission?.status || "").toLowerCase();
+  const lateChangePending = status === "late_change_requested";
+  const windowClosed = isAvailabilityWindowClosed(windowRow, now);
+
+  if (requiresSubmission) {
+    const hasUsableSubmission =
+      submission &&
+      !INACTIVE_AVAILABILITY_STATUSES.has(status) &&
+      (ACTIVE_AVAILABILITY_STATUSES.has(status) || lateChangePending);
+
+    if (!hasUsableSubmission) {
+      return windowClosed
+        ? buildAvailabilityIssue("PART_TIME_AVAILABILITY_REQUIRED", "risk")
+        : buildAvailabilityIssue("AVAILABILITY_PENDING_SUBMISSION", "info");
+    }
+
+    if (
+      findAvailabilitySlot(
+        submission,
+        shiftInsight.date,
+        shiftInsight.shiftType,
+        "available",
+      )
+    ) {
+      return lateChangePending
+        ? buildAvailabilityIssue("LATE_AVAILABILITY_CHANGE_PENDING", "warning")
+        : null;
+    }
+
+    return windowClosed
+      ? buildAvailabilityIssue("OUTSIDE_SUBMITTED_AVAILABILITY", "risk")
+      : buildAvailabilityIssue("AVAILABILITY_PENDING_SUBMISSION", "info");
+  }
+
+  if (
+    submission &&
+    !INACTIVE_AVAILABILITY_STATUSES.has(status) &&
+    String(submission.submissionType || "").toLowerCase() ===
+      "unavailable_exception" &&
+    findAvailabilitySlot(
+      submission,
+      shiftInsight.date,
+      shiftInsight.shiftType,
+      "unavailable",
+    )
+  ) {
+    return buildAvailabilityIssue("FULL_TIME_UNAVAILABLE_EXCEPTION", "warning");
+  }
+
+  return lateChangePending
+    ? buildAvailabilityIssue("LATE_AVAILABILITY_CHANGE_PENDING", "warning")
+    : null;
 };
 
 const staffWorksThatDay = (staff, dateKey) => {
@@ -294,10 +454,13 @@ export const buildAutoSchedulePreview = ({
   staffList = [],
   existingShiftRows = [],
   leaveRequests = [],
+  availabilityWindows = [],
+  availabilitySubmissions = [],
   weeklyHoursCap = 40,
   respectAvailability = true,
   avoidOvertime = true,
   shiftConfig = shiftTypes,
+  now = new Date(),
 }) => {
   const shiftInsights = assistant?.shifts || [];
   if (!shiftInsights.length) {
@@ -319,6 +482,7 @@ export const buildAutoSchedulePreview = ({
         id: String(staff.id),
         fullName: staff.fullName || staff.name || "Nhân viên",
         department: String(staff.department || "").toLowerCase(),
+        employmentType: normalizeEmploymentType(staff.employmentType),
         employmentStatus: String(staff.employmentStatus || "").toLowerCase(),
         workingDays: Array.isArray(staff.workingDays)
           ? staff.workingDays.map((day) => String(day || "").toUpperCase())
@@ -332,6 +496,7 @@ export const buildAutoSchedulePreview = ({
   const plannedAssignmentsByStaff = new Map();
   const leaveByStaff = buildLeaveMap(leaveRequests);
   const weekHoursByStaff = buildWeekHoursMap(existingShiftRows);
+  const availabilitySubmissionMap = buildSubmissionMap(availabilitySubmissions);
 
   const sortedInsights = [...shiftInsights].sort(
     (a, b) =>
@@ -407,8 +572,31 @@ export const buildAutoSchedulePreview = ({
         },
       );
 
-      const roleCandidates = Array.from(roleCandidateMap.values()).sort(
-        (left, right) => {
+      const roleCandidates = Array.from(roleCandidateMap.values())
+        .map((candidate) => {
+          const staff = staffById.get(String(candidate.staffId));
+          const availabilityIssue = respectAvailability
+            ? getCandidateAvailabilityIssue({
+                staff,
+                shiftInsight,
+                availabilityWindows,
+                availabilitySubmissionMap,
+                now,
+              })
+            : null;
+
+          return {
+            ...candidate,
+            availabilityIssue,
+          };
+        })
+        .sort((left, right) => {
+          const leftAvailabilityRisk = left.availabilityIssue ? 1 : 0;
+          const rightAvailabilityRisk = right.availabilityIssue ? 1 : 0;
+          if (leftAvailabilityRisk !== rightAvailabilityRisk) {
+            return leftAvailabilityRisk - rightAvailabilityRisk;
+          }
+
           const leftHours = getWeeklyHours(
             weekHoursByStaff,
             String(left.staffId),
@@ -426,8 +614,7 @@ export const buildAutoSchedulePreview = ({
             (candidateOrder.get(`${left.staffId}|${left.role}`) ?? 99) -
             (candidateOrder.get(`${right.staffId}|${right.role}`) ?? 99)
           );
-        },
-      );
+        });
       const roleRejectedCandidates = [];
 
       if (!roleCandidates.length) {
@@ -493,6 +680,10 @@ export const buildAutoSchedulePreview = ({
           staffId,
           fullName: candidate.fullName || staff?.fullName || "Nhân viên",
           role: candidate.role,
+          validationWarnings: candidate.availabilityIssue
+            ? [candidate.availabilityIssue]
+            : [],
+          requiresOverride: Boolean(candidate.availabilityIssue),
           reason: candidate.reason || "Đề xuất từ scheduling assistant",
           currentWeekHours: getWeeklyHours(weekHoursByStaff, staffId, weekKey),
           projectedWeekHours: Number(

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { resolveStaffAvailabilityForShift } from "./staffAvailabilityContext.service.js";
 import {
   LeaveRequest,
   SchedulingPolicy,
@@ -62,12 +63,6 @@ function hoursBetween(start, end) {
   return Number(((e.getTime() - s.getTime()) / 3600000).toFixed(2));
 }
 
-function daysBetween(a, b) {
-  const left = startOfDay(a);
-  const right = startOfDay(b);
-  return Math.round((right.getTime() - left.getTime()) / 86400000);
-}
-
 function ymd(value) {
   return startOfDay(value).toISOString().slice(0, 10);
 }
@@ -80,6 +75,12 @@ function normalizeWorkingDay(value) {
 
 function getDayKey(value) {
   return DAY_KEYS[new Date(value).getDay()];
+}
+
+function normalizeShiftType(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 }
 
 function pushIssue(collection, { code, severity, message, suggestedAction }) {
@@ -146,6 +147,42 @@ async function findLeaveConflicts({
     startDate: { $lte: endOfDay(endTime) },
     endDate: { $gte: startOfDay(startTime) },
   }).lean();
+}
+
+function leaveBlocksShift(leave, date, shiftType) {
+  if (!leave || String(leave.status || "").toLowerCase() === "rejected") {
+    return false;
+  }
+
+  const shiftDay = ymd(date);
+  const startDay = ymd(leave.startDate);
+  const endDay = ymd(leave.endDate);
+
+  if (shiftDay < startDay || shiftDay > endDay) return false;
+
+  const safeShiftType = normalizeShiftType(shiftType);
+  const startSession = String(leave.startSession || "full").toLowerCase();
+  const endSession = String(leave.endSession || "full").toLowerCase();
+
+  if (startDay === endDay) {
+    if (startSession === "morning" && endSession === "morning") {
+      return safeShiftType === "morning";
+    }
+    if (startSession === "afternoon" && endSession === "afternoon") {
+      return safeShiftType === "afternoon" || safeShiftType === "evening";
+    }
+    return true;
+  }
+
+  if (shiftDay === startDay && startSession === "afternoon") {
+    return safeShiftType === "afternoon" || safeShiftType === "evening";
+  }
+
+  if (shiftDay === endDay && endSession === "morning") {
+    return safeShiftType === "morning";
+  }
+
+  return true;
 }
 
 async function findOverlappingShifts({
@@ -367,7 +404,7 @@ function computeCandidateScore({
   };
 }
 
-export async function validateShiftAssignment({ input, ctx }) {
+export async function validateShiftAssignment({ input }) {
   const employeeId = toObjectId(input.employeeId);
   const restaurantId = toObjectId(input.restaurantId);
   const ignoreShiftId = input.ignoreShiftId || null;
@@ -444,14 +481,28 @@ export async function validateShiftAssignment({ input, ctx }) {
   }
 
   if (rules.respectLeaveRequests && !isOff(rules.leaveConflictRuleLevel)) {
-    const leaveConflicts = await findLeaveConflicts({
-      employeeId,
-      restaurantId,
-      startTime,
-      endTime,
-    });
+    const leaveConflicts = (
+      await findLeaveConflicts({
+        employeeId,
+        restaurantId,
+        startTime,
+        endTime,
+      })
+    ).filter((leave) => leaveBlocksShift(leave, startTime, input.shiftType));
 
-    if (leaveConflicts.length > 0) {
+    const approvedLeaveConflicts = leaveConflicts.filter(
+      (leave) => String(leave.status || "").toLowerCase() === "approved",
+    );
+
+    if (approvedLeaveConflicts.length > 0) {
+      pushIssue(blockingErrors, {
+        code: "LEAVE_CONFLICT",
+        severity: "error",
+        message: "NhÃ¢n viÃªn Ä‘Ã£ Ä‘Æ°á»£c duyá»‡t nghá»‰ phÃ©p trÃ¹ng vá»›i ca nÃ y.",
+        suggestedAction:
+          "KhÃ´ng xáº¿p ca trong thá»i gian nghá»‰ Ä‘Ã£ duyá»‡t; hÃ£y chá»n nhÃ¢n viÃªn khÃ¡c.",
+      });
+    } else if (leaveConflicts.length > 0) {
       const issue = {
         code: "LEAVE_CONFLICT",
         severity: shouldBlock({
@@ -472,6 +523,19 @@ export async function validateShiftAssignment({ input, ctx }) {
         pushIssue(warnings, issue);
       }
     }
+  }
+
+  const availabilityResult = await resolveStaffAvailabilityForShift({
+    restaurantId,
+    employeeId,
+    staff,
+    shiftDate: startTime,
+    shiftType: input.shiftType,
+    policy,
+  });
+
+  for (const issue of availabilityResult.issues || []) {
+    pushIssue(warnings, issue);
   }
 
   if (rules.preventShiftOverlap) {

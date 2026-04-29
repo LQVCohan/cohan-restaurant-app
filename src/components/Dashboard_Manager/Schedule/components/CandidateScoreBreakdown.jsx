@@ -63,6 +63,22 @@ const getScoreLevel = (value) => {
 const getRoleLabel = (role) =>
   ROLE_LABELS[String(role || "").toLowerCase()] || role || "Vai trò";
 
+const AVAILABILITY_WARNING_LABELS = {
+  PART_TIME_AVAILABILITY_REQUIRED: "Nhân viên part-time chưa đăng ký ca này",
+  OUTSIDE_SUBMITTED_AVAILABILITY: "Nhân viên part-time chưa đăng ký ca này",
+  FULL_TIME_UNAVAILABLE_EXCEPTION:
+    "Nhân viên full-time đã báo không khả dụng",
+  AVAILABILITY_PENDING_SUBMISSION:
+    "Availability chưa đóng, dữ liệu còn chờ cập nhật",
+  LATE_AVAILABILITY_CHANGE_PENDING:
+    "Thay đổi availability sau hạn đang chờ quản lý duyệt",
+};
+
+const getWarningMessage = (warning) =>
+  AVAILABILITY_WARNING_LABELS[warning?.code] ||
+  warning?.message ||
+  "CÃ³ cáº£nh bÃ¡o cáº§n xem xÃ©t.";
+
 const buildCandidateHighlights = ({ assignment }) => {
   const metrics = assignment?.validationMetrics || {};
   const highlights = [];
@@ -207,7 +223,7 @@ const CandidateScoreBreakdown = ({ assignment }) => {
           <ul>
             {warnings.map((warning, index) => (
               <li key={`${warning.code || "warning"}-${index}`}>
-                <span>{warning.message}</span>
+                <span>{getWarningMessage(warning)}</span>
                 {warning.suggestedAction ? (
                   <small>Gợi ý: {warning.suggestedAction}</small>
                 ) : null}

@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import { Order, Shift, Staff } from "../../../models/index.js";
 import { buildDemandForecast } from "./demandForecast.service.js";
+import { getSchedulingPolicy } from "../scheduling/schedulingPolicy.service.js";
+import { resolveStaffAvailabilityForShift } from "../scheduling/staffAvailabilityContext.service.js";
 
 const ROLE_BY_DEPARTMENT = {
   management: "host",
@@ -243,7 +245,7 @@ export async function buildStaffSchedulingAssistant({
     throw new Error("Invalid restaurantId");
   }
 
-  const [staffList, shifts, recentOrders] = await Promise.all([
+  const [staffList, shifts, recentOrders, schedulingPolicy] = await Promise.all([
     Staff.find({
       userType: "STAFF",
       deletedAt: null,
@@ -257,7 +259,9 @@ export async function buildStaffSchedulingAssistant({
       .select({
         fullName: 1,
         department: 1,
+        employmentType: 1,
         employmentStatus: 1,
+        workingDays: 1,
         positionTitle: 1,
         baseSalary: 1,
         restaurantForStaff: 1,
@@ -285,6 +289,7 @@ export async function buildStaffSchedulingAssistant({
     })
       .select({ createdAt: 1, guestCount: 1, createdBy: 1 })
       .lean(),
+    getSchedulingPolicy({ restaurantId: rid }),
   ]);
 
   const performanceByStaff = new Map();
@@ -330,6 +335,10 @@ export async function buildStaffSchedulingAssistant({
         fullName: s.fullName || "Nhân viên",
         department: String(s.department || "service").toLowerCase(),
         role: roleFromDepartment(s.department),
+        employmentType: String(s.employmentType || "full_time").toLowerCase(),
+        workingDays: Array.isArray(s.workingDays)
+          ? s.workingDays.map((day) => String(day || "").toUpperCase())
+          : [],
         employmentStatus: String(s.employmentStatus || "working").toLowerCase(),
         score: Number(performanceByStaff.get(String(s._id)) || 0),
       },
@@ -459,17 +468,56 @@ export async function buildStaffSchedulingAssistant({
             if (!sStart || !sEnd) return false;
             return overlaps(shiftStart, shiftEnd, sStart, sEnd);
           });
+        });
+
+      const evaluatedPool = await Promise.all(
+        pool.map(async (candidate) => {
+          try {
+            const availability = await resolveStaffAvailabilityForShift({
+              restaurantId: rid,
+              employeeId: candidate.id,
+              staff: candidate,
+              shiftDate: shiftStart,
+              shiftType: group.shiftType,
+              policy: schedulingPolicy,
+            });
+
+            return {
+              ...candidate,
+              availabilityIssues: availability.issues || [],
+            };
+          } catch {
+            return {
+              ...candidate,
+              availabilityIssues: [],
+            };
+          }
+        }),
+      );
+
+      const selectedPool = evaluatedPool
+        .sort((a, b) => {
+          const leftWarn = (a.availabilityIssues || []).length > 0 ? 1 : 0;
+          const rightWarn = (b.availabilityIssues || []).length > 0 ? 1 : 0;
+          if (leftWarn !== rightWarn) return leftWarn - rightWarn;
+          return b.score - a.score;
         })
-        .sort((a, b) => b.score - a.score)
         .slice(0, needed);
 
-      for (const candidate of pool) {
+      for (const candidate of selectedPool) {
+        const availabilityText = (candidate.availabilityIssues || [])
+          .map((issue) => issue.message)
+          .filter(Boolean)
+          .slice(0, 1)
+          .join("; ");
+
         suggestedCandidates.push({
           staffId: candidate.id,
           fullName: candidate.fullName,
           role: candidate.role,
-          reason:
-            "working + matching department + không trùng ca trong khoảng hiện tại",
+          reason: availabilityText
+            ? `working + matching department + no overlap in current window; ${availabilityText}`
+            : "working + matching department + no overlap in current window",
         });
       }
     }
