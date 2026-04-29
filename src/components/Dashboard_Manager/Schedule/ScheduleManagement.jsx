@@ -1167,8 +1167,16 @@ const ScheduleManagement = ({ readOnly = false }) => {
     isSchedulePublished &&
     schedulePublication?.lastChangedAt &&
     schedulePublication?.publishedAt &&
-    new Date(schedulePublication.lastChangedAt).getTime() >
+      new Date(schedulePublication.lastChangedAt).getTime() >
       new Date(schedulePublication.publishedAt).getTime();
+  const getScheduleStatusClass = () =>
+    scheduleLifecycleStatus === "published" && hasChangesAfterPublish
+      ? "changed"
+      : scheduleLifecycleStatus;
+  const getScheduleStatusLabel = () =>
+    scheduleLifecycleStatus === "published" && hasChangesAfterPublish
+      ? "Đã công bố • Có chỉnh sửa"
+      : SCHEDULE_STATUS_LABELS[scheduleLifecycleStatus] || "Bản nháp";
   const selectedShiftIds = useMemo(
     () =>
       (selectedShift?.records || [])
@@ -2751,38 +2759,27 @@ const ScheduleManagement = ({ readOnly = false }) => {
             </div>
           </button>
 
-          <button
-            type="button"
-            className="kpi-card status"
-            onClick={() => handlePublishSchedule((prev) => !prev)}
-            disabled={readOnly}
-          >
+          <div className="kpi-card status schedule-status-card">
             <div className="kpi-icon">
               <CalendarCheck2 size={20} />
             </div>
             <div className="kpi-content">
               <span className="label">Trạng thái</span>
-              <span
-                className={`value ${isSchedulePublished ? "published" : "draft"}`}
-              >
-                {isSchedulePublished ? "Đã xuất bản" : "Bản nháp"}
-              </span>
-              <span className="hint">
-                {readOnly ? "Chỉ xem" : "Bấm để đổi trạng thái"}
-              </span>
-              <span
-                className={`schedule-status-badge ${
-                  scheduleLifecycleStatus === "published" && hasChangesAfterPublish
-                    ? "changed"
-                    : scheduleLifecycleStatus
-                }`}
-              >
-                {scheduleLifecycleStatus === "published" && hasChangesAfterPublish
-                  ? "Đã công bố • Có chỉnh sửa sau công bố"
-                  : SCHEDULE_STATUS_LABELS[scheduleLifecycleStatus] || "Bản nháp"}
-              </span>
+              <div className={`status-chip ${getScheduleStatusClass()}`}>
+                {getScheduleStatusLabel()}
+              </div>
+              {scheduleLifecycleStatus === "revision_draft" ? (
+                <small className="status-subtext">
+                  Đang chỉnh sửa, cần công bố lại để gửi nhân viên.
+                </small>
+              ) : scheduleLifecycleStatus === "published" &&
+                hasChangesAfterPublish ? (
+                <small className="status-subtext">
+                  Có chỉnh sửa sau lần công bố gần nhất.
+                </small>
+              ) : null}
             </div>
-          </button>
+          </div>
         </div>
       </header>
 
@@ -2891,8 +2888,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   : "Công bố lịch"}
             </button>
           ) : (
-            <span className={`schedule-status-badge ${scheduleLifecycleStatus}`}>
-              {SCHEDULE_STATUS_LABELS[scheduleLifecycleStatus] || "Bản nháp"}
+            <span className={`schedule-status-badge ${getScheduleStatusClass()}`}>
+              {getScheduleStatusLabel()}
             </span>
           )}
           {!readOnly && canShowReopenSchedule ? (
