@@ -14,6 +14,7 @@ import {
   PayrollPeriod,
   PayrollItem,
   SchedulePublication,
+  EventLog,
 } from "../../../models/index.js";
 import { listStaffPerformanceSnapshots } from "../../../src/services/staffPerformance/staffPerformance.service.js";
 import { getSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
@@ -39,6 +40,7 @@ import {
 import { validatePayrollPeriod as validatePayrollPeriodService } from "../../../src/services/payroll/payrollValidation.service.js";
 import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
 import { logPayrollEvent } from "../../../src/services/payroll/payrollEventLog.service.js";
+import { mapSchedulePublicationOutput } from "../../../src/services/scheduling/scheduleLifecycle.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -155,6 +157,46 @@ function toYmd(dateValue) {
 
 function toNumber(v) {
   return Number(v || 0);
+}
+
+function mapScheduleChangeLog(row) {
+  const meta = row.meta || {};
+  const diff = row.diff || {};
+  const before = diff.before || {};
+  const after = diff.after || {};
+
+  return {
+    id: String(row._id),
+    restaurantId: row.restaurantId ? String(row.restaurantId) : null,
+    actorUserId: row.actorUserId ? String(row.actorUserId) : null,
+    verb: row.verb,
+    source: row.source || null,
+    status: row.status || null,
+    objectKind: row.object?.kind || null,
+    objectId: row.object?.id ? String(row.object.id) : null,
+    objectCode: row.object?.code || null,
+    reason: meta.reason || null,
+    affectedShiftIds: (meta.affectedShiftIds || [])
+      .map((id) => String(id))
+      .filter(Boolean),
+    affectedEmployeeIds: (meta.affectedEmployeeIds || [])
+      .map((id) => String(id))
+      .filter(Boolean),
+    notifyEmployees:
+      typeof meta.notifyEmployees === "boolean"
+        ? meta.notifyEmployees
+        : typeof meta.notifyEmployee === "boolean"
+          ? meta.notifyEmployee
+          : null,
+    oldStartTime: before.startTime || null,
+    oldEndTime: before.endTime || null,
+    newStartTime: after.startTime || null,
+    newEndTime: after.endTime || null,
+    meta,
+    diff,
+    createdAt: row.createdAt || null,
+    at: row.at || row.createdAt || null,
+  };
 }
 
 function _inferRegionCodeFromRestaurant(restaurant) {
@@ -673,12 +715,63 @@ export default {
 
     if (!doc) return null;
 
-    return {
-      id: String(doc._id),
-      ...doc,
-      restaurantId: String(doc.restaurantId),
-      publishedBy: doc.publishedBy ? String(doc.publishedBy) : null,
+    return mapSchedulePublicationOutput(doc);
+  },
+  scheduleChangeLogs: async (
+    _,
+    { restaurantId, shiftIds = [], periodStart, periodEnd, limit = 50 },
+  ) => {
+    const rid = toObjectId(restaurantId);
+    if (!rid) {
+      throw new Error("restaurantId không hợp lệ.");
+    }
+
+    const safeLimit = Math.max(1, Math.min(Number(limit || 50), 200));
+    const scheduleVerbs = [
+      "schedule.publish",
+      "schedule.published_shift_time_change",
+      "schedule.published_shift_add_employee",
+      "schedule.published_shift_remove_employee",
+      "schedule.shift_remove_employee",
+      "schedule.published_shift_group_delete",
+      "schedule.lock",
+      "schedule.close",
+      "schedule.reopen",
+      "schedule.republish",
+    ];
+    const filter = {
+      restaurantId: rid,
+      verb: { $in: scheduleVerbs },
     };
+    const normalizedShiftIds = (shiftIds || [])
+      .filter(Boolean)
+      .map((id) => String(id));
+
+    if (normalizedShiftIds.length > 0) {
+      filter.$or = [
+        { "meta.affectedShiftIds": { $in: normalizedShiftIds } },
+        { "object.id": { $in: normalizedShiftIds } },
+      ];
+    }
+
+    if (periodStart || periodEnd) {
+      const timeFilter = {};
+      if (periodStart) timeFilter.$gte = new Date(periodStart);
+      if (periodEnd) timeFilter.$lte = new Date(periodEnd);
+      filter.$and = [
+        ...(filter.$and || []),
+        {
+          $or: [{ at: timeFilter }, { createdAt: timeFilter }],
+        },
+      ];
+    }
+
+    const rows = await EventLog.find(filter)
+      .sort({ at: -1, createdAt: -1 })
+      .limit(safeLimit)
+      .lean();
+
+    return rows.map(mapScheduleChangeLog);
   },
   staffShifts: async (
     _,

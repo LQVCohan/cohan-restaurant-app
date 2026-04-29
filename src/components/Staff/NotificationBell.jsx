@@ -29,7 +29,7 @@ export default function NotificationBell({ onViewAll, restaurantId, onOpenThread
     const rows = (notifications || []).map((n) => ({
       id: n.id,
       type: n.type,
-      title: n.payload?.messagePreview || n.type,
+      title: n.payload?.title || n.payload?.message || n.payload?.messagePreview || n.type,
       time: toTime(n.createdAt),
       isRead: !!n.readAt,
       icon: iconByType[n.type] || <Bell size={16} />,

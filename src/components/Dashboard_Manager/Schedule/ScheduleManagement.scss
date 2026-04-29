@@ -1210,3 +1210,50 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
   color: #64748b;
   font-weight: 600;
 }
+
+.schedule-status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 850;
+  border: 1px solid transparent;
+  white-space: nowrap;
+
+  &.draft {
+    color: #475569;
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+
+  &.published {
+    color: #15803d;
+    background: #dcfce7;
+    border-color: #bbf7d0;
+  }
+
+  &.changed {
+    color: #9a3412;
+    background: #fff7ed;
+    border-color: #fed7aa;
+  }
+
+  &.active {
+    color: #1d4ed8;
+    background: #dbeafe;
+    border-color: #bfdbfe;
+  }
+
+  &.locked {
+    color: #7c2d12;
+    background: #ffedd5;
+    border-color: #fed7aa;
+  }
+
+  &.closed {
+    color: #334155;
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+  }
+}

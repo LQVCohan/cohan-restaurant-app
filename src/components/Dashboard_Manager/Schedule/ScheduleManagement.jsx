@@ -49,6 +49,15 @@ import ShiftDetailModal from "./components/ShiftDetailModal";
 import AutoScheduleModal from "./components/AutoScheduleModal";
 import ShiftRulesModal from "./components/ShiftRulesModal";
 import DailyView from "./DailyView";
+const SCHEDULE_STATUS_LABELS = {
+  draft: "Bản nháp",
+  published: "Đã công bố",
+  active: "Đang hoạt động",
+  locked: "Đã khóa",
+  revision_draft: "Đang chỉnh sửa lại",
+  closed: "Đã đóng",
+};
+
 const GET_SCHEDULE_PUBLICATION = gql`
   query SchedulePublication(
     $restaurantId: ID!
@@ -62,10 +71,71 @@ const GET_SCHEDULE_PUBLICATION = gql`
     ) {
       id
       status
+      effectiveStatus
       publishedAt
       publishedBy
+      activatedAt
+      lockedAt
+      lockedBy
+      lockReason
+      closedAt
+      closedBy
+      closeReason
       reminderSentAt
       lastChangedAt
+      permissions {
+        canPublish
+        canApplyAutoSchedule
+        canEditDraftSchedule
+        canMakePublishedChange
+        canChangeShiftTime
+        canAddStaffToShift
+        canRemoveStaffFromShift
+        canDeleteShiftGroup
+        requiresChangeReason
+        requiresEmployeeNotification
+        isReadOnly
+      }
+    }
+  }
+`;
+
+const GET_SCHEDULE_CHANGE_LOGS = gql`
+  query ScheduleChangeLogs(
+    $restaurantId: ID!
+    $shiftIds: [ID!]
+    $periodStart: DateTime
+    $periodEnd: DateTime
+    $limit: Int
+  ) {
+    scheduleChangeLogs(
+      restaurantId: $restaurantId
+      shiftIds: $shiftIds
+      periodStart: $periodStart
+      periodEnd: $periodEnd
+      limit: $limit
+    ) {
+      id
+      restaurantId
+      actorUserId
+      verb
+      source
+      status
+      objectKind
+      objectId
+      objectCode
+      reason
+      affectedShiftIds
+      affectedEmployeeIds
+      notifyEmployees
+      oldStartTime
+      oldEndTime
+      newStartTime
+      newEndTime
+      meta
+      diff
+      createdAt
+      at
     }
   }
 `;
@@ -75,6 +145,34 @@ const PUBLISH_SCHEDULE = gql`
       id
       status
       publishedAt
+    }
+  }
+`;
+
+const LOCK_SCHEDULE = gql`
+  mutation LockSchedule($input: LockScheduleInput!) {
+    lockSchedule(input: $input) {
+      id
+      status
+      effectiveStatus
+      lockedAt
+      lockReason
+      lastChangedAt
+      permissions { canPublish canApplyAutoSchedule canEditDraftSchedule canMakePublishedChange canChangeShiftTime canAddStaffToShift canRemoveStaffFromShift canDeleteShiftGroup requiresChangeReason requiresEmployeeNotification isReadOnly }
+    }
+  }
+`;
+
+const CLOSE_SCHEDULE = gql`
+  mutation CloseSchedule($input: CloseScheduleInput!) {
+    closeSchedule(input: $input) {
+      id
+      status
+      effectiveStatus
+      closedAt
+      closeReason
+      lastChangedAt
+      permissions { canPublish canApplyAutoSchedule canEditDraftSchedule canMakePublishedChange canChangeShiftTime canAddStaffToShift canRemoveStaffFromShift canDeleteShiftGroup requiresChangeReason requiresEmployeeNotification isReadOnly }
     }
   }
 `;
@@ -706,6 +804,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [shiftRules, setShiftRules] = useState(() => loadStoredShiftRules());
   const [isShiftSettingsOpen, setIsShiftSettingsOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isSubmittingAddShift, setIsSubmittingAddShift] = useState(false);
   const [addModalContext, setAddModalContext] = useState({
     date: "",
     shiftType: "",
@@ -846,6 +945,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     useMutation(CHANGE_PUBLISHED_SHIFT_GROUP_TIME);
   const [publishSchedule, { loading: publishingSchedule }] =
     useMutation(PUBLISH_SCHEDULE);
+  const [lockSchedule] = useMutation(LOCK_SCHEDULE);
+  const [closeSchedule] = useMutation(CLOSE_SCHEDULE);
   const [addStaffToPublishedShiftGroup, { loading: addingPublishedStaff }] =
     useMutation(ADD_STAFF_TO_PUBLISHED_SHIFT_GROUP);
 
@@ -957,7 +1058,50 @@ const ScheduleManagement = ({ readOnly = false }) => {
   }, [currentDate, viewMode, weekEnd, weekStart]);
   const schedulePublication = publicationData?.schedulePublication || null;
 
-  const isSchedulePublished = schedulePublication?.status === "published";
+  const scheduleLifecycleStatus =
+    schedulePublication?.effectiveStatus || schedulePublication?.status || "draft";
+  const schedulePermissions =
+    schedulePublication?.permissions || {
+      canPublish: scheduleLifecycleStatus === "draft",
+      canApplyAutoSchedule: scheduleLifecycleStatus === "draft",
+      canEditDraftSchedule: scheduleLifecycleStatus === "draft",
+      canMakePublishedChange: scheduleLifecycleStatus === "published",
+      canChangeShiftTime: scheduleLifecycleStatus === "published",
+      canAddStaffToShift:
+        scheduleLifecycleStatus === "draft" ||
+        scheduleLifecycleStatus === "published",
+      canRemoveStaffFromShift:
+        scheduleLifecycleStatus === "draft" ||
+        scheduleLifecycleStatus === "published",
+      canDeleteShiftGroup:
+        scheduleLifecycleStatus === "draft" ||
+        scheduleLifecycleStatus === "published",
+      requiresChangeReason: scheduleLifecycleStatus === "published",
+      requiresEmployeeNotification: scheduleLifecycleStatus === "published",
+      canReopen: scheduleLifecycleStatus === "published",
+      isReadOnly: ["active", "locked", "closed"].includes(
+        scheduleLifecycleStatus,
+      ),
+    };
+  const isSchedulePublished = scheduleLifecycleStatus === "published";
+  const isScheduleActive = scheduleLifecycleStatus === "active";
+  const isScheduleLocked = scheduleLifecycleStatus === "locked";
+  const isScheduleClosed = scheduleLifecycleStatus === "closed";
+  const isScheduleReadOnly = Boolean(schedulePermissions.isReadOnly);
+  const isDraftLikeSchedule = ["draft", "revision_draft"].includes(scheduleLifecycleStatus);
+  const hasChangesAfterPublish =
+    isSchedulePublished &&
+    schedulePublication?.lastChangedAt &&
+    schedulePublication?.publishedAt &&
+    new Date(schedulePublication.lastChangedAt).getTime() >
+      new Date(schedulePublication.publishedAt).getTime();
+  const selectedShiftIds = useMemo(
+    () =>
+      (selectedShift?.records || [])
+        .map((record) => record.id)
+        .filter(Boolean),
+    [selectedShift],
+  );
 
   const daysUntilRangeStart = useMemo(() => {
     const today = new Date();
@@ -1015,6 +1159,22 @@ const ScheduleManagement = ({ readOnly = false }) => {
       rawStaffList,
     ],
   );
+
+  const {
+    data: scheduleLogData,
+    loading: scheduleLogsLoading,
+    refetch: refetchScheduleLogs,
+  } = useQuery(GET_SCHEDULE_CHANGE_LOGS, {
+    variables: {
+      restaurantId: effectiveRestaurantId,
+      shiftIds: selectedShiftIds,
+      limit: 50,
+    },
+    skip:
+      !effectiveRestaurantId || !selectedShift || selectedShiftIds.length <= 0,
+    fetchPolicy: "network-only",
+  });
+  const selectedShiftChangeLogs = scheduleLogData?.scheduleChangeLogs || [];
 
   const autoSchedulePreview =
     validatedAutoSchedulePreview || rawAutoSchedulePreview;
@@ -1206,6 +1366,23 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const openAddShiftModal = (dateObj, shiftType) => {
     if (readOnly) return;
+
+    if (!["draft", "revision_draft"].includes(scheduleLifecycleStatus)) {
+      const message =
+        scheduleLifecycleStatus === "published"
+          ? "Lịch đã công bố. Không thể tạo ca mới từ khung trống. Vui lòng mở lại lịch để chỉnh sửa hoặc chỉ thêm nhân viên vào ca đã tồn tại."
+          : scheduleLifecycleStatus === "active"
+            ? "Lịch đang hoạt động, không thể tạo ca mới trực tiếp."
+            : scheduleLifecycleStatus === "locked"
+              ? "Lịch đã khóa, không thể tạo ca mới."
+              : scheduleLifecycleStatus === "closed"
+                ? "Lịch đã đóng, không thể tạo ca mới."
+                : "Không thể tạo ca ở trạng thái lịch hiện tại.";
+
+      showNotification(message, "warning");
+      return;
+    }
+
     setAddModalContext({ date: format(dateObj, "yyyy-MM-dd"), shiftType });
     setIsAddModalOpen(true);
   };
@@ -1302,6 +1479,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
     };
   };
   const handleConfirmAddShift = async (payload) => {
+    if (!["draft", "revision_draft"].includes(scheduleLifecycleStatus)) {
+      const message =
+        scheduleLifecycleStatus === "published"
+          ? "Lịch đã công bố. Không thể tạo ca mới từ khung trống. Vui lòng mở lại lịch để chỉnh sửa hoặc thêm nhân viên vào ca đã tồn tại."
+          : scheduleLifecycleStatus === "active"
+            ? "Lịch đang hoạt động, không thể tạo ca mới."
+            : scheduleLifecycleStatus === "locked"
+              ? "Lịch đã khóa, không thể tạo ca mới."
+              : scheduleLifecycleStatus === "closed"
+                ? "Lịch đã đóng, không thể tạo ca mới."
+                : "Không thể tạo ca ở trạng thái lịch hiện tại.";
+      showNotification(message, "warning");
+      throw new Error(message);
+    }
     if (!effectiveRestaurantId) {
       throw new Error("Vui lòng chọn nhà hàng trước khi tạo ca.");
     }
@@ -1326,18 +1517,21 @@ const ScheduleManagement = ({ readOnly = false }) => {
       throw new Error("Cần chọn ít nhất một nhân viên.");
     }
 
-    if (isSchedulePublished && !String(payload.publishedReason || "").trim()) {
+    if (scheduleLifecycleStatus === "published" && !String(payload.publishedReason || "").trim()) {
       throw new Error(
         "Lịch đã công bố, cần nhập lý do khi thêm nhân viên vào ca.",
       );
     }
 
-    const successRows = [];
-    const failedRows = [];
+    setIsSubmittingAddShift(true);
 
-    for (const staffId of staffIds) {
+    try {
+      const successRows = [];
+      const failedRows = [];
+
+      for (const staffId of staffIds) {
       try {
-        if (isSchedulePublished) {
+        if (false) {
           const reason = String(payload.publishedReason || "").trim();
 
           await addStaffToPublishedShiftGroup({
@@ -1355,7 +1549,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
               },
             },
           });
-        } else {
+        } else if (scheduleLifecycleStatus === "draft") {
           await createShift({
             variables: {
               input: {
@@ -1369,6 +1563,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
               },
             },
           });
+        } else {
+          throw new Error("Không thể thêm nhân viên vào lịch ở trạng thái hiện tại.");
         }
 
         successRows.push(staffId);
@@ -1385,6 +1581,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     if (successRows.length > 0) {
       await refetch();
+      await refetchScheduleLogs?.();
 
       if (typeof refetchPublication === "function") {
         await refetchPublication();
@@ -1396,8 +1593,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
       setAddModalContext({ date: "", shiftType: "" });
 
       showNotification(
-        isSchedulePublished
-          ? `Đã thêm ${successRows.length} nhân viên vào lịch đã công bố, ghi log và gửi thông báo.`
+        scheduleLifecycleStatus === "revision_draft"
+          ? `Đã cập nhật bản chỉnh sửa với ${successRows.length} phân công mới.`
           : `Đã tạo ca cho ${successRows.length} nhân viên.`,
         "success",
       );
@@ -1425,11 +1622,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
         .map((row) => row.message)
         .join(" | ") || "Không thể tạo ca làm.";
 
-    showNotification(failText, "error");
-    throw new Error(failText);
+      showNotification(failText, "error");
+      throw new Error(failText);
+    } finally {
+      setIsSubmittingAddShift(false);
+    }
   };
 
   const handleDeleteShift = async (shiftGroupId, options = {}) => {
+    if (!schedulePermissions.canDeleteShiftGroup) {
+      throw new Error("Không thể xóa ca ở trạng thái lịch hiện tại.");
+    }
     const shiftGroup = shifts.find((item) => item.id === shiftGroupId);
 
     if (!shiftGroup) {
@@ -1447,7 +1650,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
     }
 
     try {
-      if (isSchedulePublished) {
+      if (["draft", "revision_draft"].includes(scheduleLifecycleStatus)) {
+        await createShift({
+          variables: {
+            input: {
+              employeeId: staffId,
+              restaurantId: effectiveRestaurantId,
+              shiftType: String(shiftGroup.shiftType || "").toUpperCase(),
+              startTime: startTime.toISOString(),
+              endTime: endTime.toISOString(),
+              status: "scheduled",
+            },
+          },
+        });
+      } else if (scheduleLifecycleStatus === "published") {
         const reason = String(options.reason || "").trim();
 
         if (!reason) {
@@ -1466,6 +1682,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         });
 
         await refetch();
+        await refetchScheduleLogs?.();
         await refetchPublication?.();
         setSelectedShift(null);
 
@@ -1490,6 +1707,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       );
 
       await refetch();
+      await refetchScheduleLogs?.();
       setSelectedShift(null);
 
       showNotification("Đã xóa ca làm việc.", "success");
@@ -1509,6 +1727,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
     staffId,
     options = {},
   ) => {
+    if (!schedulePermissions.canRemoveStaffFromShift) {
+      throw new Error("Không thể xóa nhân viên khỏi ca ở trạng thái lịch hiện tại.");
+    }
     const shiftGroup = shifts.find((item) => item.id === shiftGroupId);
 
     if (!shiftGroup) {
@@ -1535,6 +1756,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       });
 
       await refetch();
+      await refetchScheduleLogs?.();
 
       const employeeName =
         staff.find((person) => String(person.id) === String(staffId))?.name ||
@@ -1580,7 +1802,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
     });
 
     try {
-      if (isSchedulePublished) {
+      if (["draft", "revision_draft"].includes(scheduleLifecycleStatus)) {
+        await createShift({
+          variables: {
+            input: {
+              employeeId: staffId,
+              restaurantId: effectiveRestaurantId,
+              shiftType: String(shiftGroup.shiftType || "").toUpperCase(),
+              startTime: startTime.toISOString(),
+              endTime: endTime.toISOString(),
+              status: "scheduled",
+            },
+          },
+        });
+      } else if (scheduleLifecycleStatus === "published") {
         const reason = String(options.reason || "").trim();
 
         if (!reason) {
@@ -1606,6 +1841,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         });
 
         await refetch();
+        await refetchScheduleLogs?.();
         await refetchPublication?.();
 
         showNotification(
@@ -2026,6 +2262,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
     return lines;
   };
   const handleChangeShiftGroupTime = async (shiftGroup, payload) => {
+    if (!schedulePermissions.canChangeShiftTime) {
+      throw new Error("Không thể đổi giờ ca ở trạng thái lịch hiện tại.");
+    }
     if (!effectiveRestaurantId) {
       const message = "Vui lòng chọn nhà hàng trước khi đổi giờ ca.";
       showNotification(message, "warning");
@@ -2084,6 +2323,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       });
 
       await refetch();
+      await refetchScheduleLogs?.();
 
       if (typeof refetchPublication === "function") {
         await refetchPublication();
@@ -2116,6 +2356,15 @@ const ScheduleManagement = ({ readOnly = false }) => {
     }
   };
   const handleApplyAutoSchedule = async () => {
+    if (!schedulePermissions.canApplyAutoSchedule) {
+      const message =
+        "Không thể áp dụng chia ca tự động ở trạng thái lịch hiện tại.";
+
+      setAutoScheduleError(message);
+      showNotification(message, "warning");
+      return;
+    }
+
     const inputs = buildAutoScheduleCreateInputs({
       previewItems: autoSchedulePreview.items,
       selectedShiftKeys: selectedAutoShiftKeys,
@@ -2346,6 +2595,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
               <span className="hint">
                 {readOnly ? "Chỉ xem" : "Bấm để đổi trạng thái"}
               </span>
+              <span
+                className={`schedule-status-badge ${
+                  scheduleLifecycleStatus === "published" && hasChangesAfterPublish
+                    ? "changed"
+                    : scheduleLifecycleStatus
+                }`}
+              >
+                {scheduleLifecycleStatus === "published" && hasChangesAfterPublish
+                  ? "Đã công bố • Có chỉnh sửa sau công bố"
+                  : SCHEDULE_STATUS_LABELS[scheduleLifecycleStatus] || "Bản nháp"}
+              </span>
             </div>
           </button>
         </div>
@@ -2444,7 +2704,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
               disabled={
                 readOnly ||
                 publishingSchedule ||
-                isSchedulePublished ||
+                !schedulePermissions.canPublish ||
                 !effectiveRestaurantId ||
                 viewMode !== "week"
               }
@@ -2725,7 +2985,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           staffList={staff}
           onConfirm={handleConfirmAddShift}
           isSchedulePublished={isSchedulePublished}
-          submitting={addingPublishedStaff}
+          submitting={isSubmittingAddShift || addingPublishedStaff}
         />
       )}
 
@@ -2746,6 +3006,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
         onChangeShiftGroupTime={handleChangeShiftGroupTime}
         isAddingPublishedStaff={addingPublishedStaff}
         isDeletingPublishedShiftGroup={deletingPublishedShiftGroup}
+        scheduleChangeLogs={selectedShiftChangeLogs}
+        scheduleChangeLogsLoading={scheduleLogsLoading}
+        scheduleLifecycleStatus={scheduleLifecycleStatus}
+        schedulePermissions={schedulePermissions}
       />
 
       {!readOnly && (
