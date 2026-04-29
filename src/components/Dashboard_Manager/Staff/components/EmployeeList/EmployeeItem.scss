@@ -51,6 +51,13 @@ $danger: #ef4444;
     }
   }
 
+  &.is-focused-from-schedule {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22), 0 10px 24px rgba(37, 99, 235, 0.12);
+    background: #eff6ff !important;
+    border-color: #93c5fd !important;
+    transition: box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  }
+
   // --- DIMMED STATE ---
   &.dimmed {
     opacity: 0.6;

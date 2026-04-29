@@ -45,6 +45,13 @@ const QUERY_PENDING_LEAVE_REQUESTS = gql`
     }
   }
 `;
+const getStaffFocusParams = () => {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    employeeId: params.get("employeeId") || "",
+    employeeName: params.get("employeeName") || "",
+  };
+};
 
 const StaffManagement = () => {
   // --- STATE ---
@@ -54,6 +61,7 @@ const StaffManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [focusedEmployeeId, setFocusedEmployeeId] = useState("");
   const navigate = useNavigate();
 
   const [modals, setModals] = useState({
@@ -362,6 +370,26 @@ const StaffManagement = () => {
       setSelectedEmployee(null);
     }
   }, [isLoading, mappedStaff, selectedEmployee]);
+  useEffect(() => {
+    const { employeeId, employeeName } = getStaffFocusParams();
+    if (!employeeId && !employeeName) return;
+    if (employeeName) setSearchQuery(employeeName);
+    const targetStaff = mappedStaff.find(
+      (staff) => String(staff.id) === String(employeeId),
+    );
+    if (targetStaff) {
+      setCurrentPage("dashboard");
+      setSelectedEmployee(targetStaff);
+      setFocusedEmployeeId(String(targetStaff.id));
+      requestAnimationFrame(() => {
+        const targetRow = document.querySelector(
+          `[data-employee-id="${targetStaff.id}"]`,
+        );
+        targetRow?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      window.setTimeout(() => setFocusedEmployeeId(""), 3000);
+    }
+  }, [mappedStaff]);
 
   const mainContent = useMemo(() => {
     if (currentPage === "dashboard") {
@@ -369,6 +397,7 @@ const StaffManagement = () => {
         <EmployeeDashboard
           employees={mappedStaff}
           selectedEmployee={selectedEmployee}
+          focusedEmployeeId={focusedEmployeeId}
           onEmployeeSelect={setSelectedEmployee}
           onEditEmployee={handleOpenEditEmployee}
           onViewHistory={handleOpenWorkHistory}

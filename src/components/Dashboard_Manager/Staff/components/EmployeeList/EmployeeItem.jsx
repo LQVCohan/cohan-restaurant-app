@@ -10,7 +10,13 @@ import {
 import { DEPARTMENT_OPTIONS } from "../../../../../utils/staffRoleOptions";
 import "./EmployeeItem.scss";
 
-const EmployeeItem = ({ employee, isSelected, onClick, onAction }) => {
+const EmployeeItem = ({
+  employee,
+  isSelected,
+  isFocusedFromSchedule = false,
+  onClick,
+  onAction,
+}) => {
   // --- HELPERS ---
   const getAvatarColor = (name) => {
     const colors = [
@@ -50,7 +56,8 @@ const EmployeeItem = ({ employee, isSelected, onClick, onAction }) => {
 
   return (
     <div
-      className={`employee-row-item ${isSelected ? "selected" : ""} ${isInactive ? "dimmed" : ""}`}
+      className={`employee-row-item ${isSelected ? "selected" : ""} ${isInactive ? "dimmed" : ""} ${isFocusedFromSchedule ? "is-focused-from-schedule" : ""}`}
+      data-employee-id={employee.id}
       onClick={onClick}
       role="button"
       tabIndex={0}
