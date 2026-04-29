@@ -7,6 +7,21 @@ import {
 } from "../utils/scheduleHelpers";
 import "./ShiftRulesModal.scss";
 
+const MANDATORY_ROLE_OPTIONS = [
+  { value: "server", label: "Phục vụ" },
+  { value: "cook", label: "Bếp" },
+  { value: "cashier", label: "Thu ngân" },
+  { value: "host", label: "Đón khách" },
+  { value: "cleaner", label: "Vệ sinh" },
+  { value: "bartender", label: "Pha chế" },
+  { value: "shipper", label: "Giao hàng" },
+  { value: "storekeeper", label: "Kho" },
+];
+
+const normalizeRole = (role) => String(role || "").trim().toLowerCase();
+const normalizeMandatoryRoles = (roles = []) =>
+  Array.from(new Set((roles || []).map(normalizeRole).filter(Boolean)));
+
 const RULE_LEVEL_OPTIONS = [
   { value: "hard", label: "Chặn cứng" },
   { value: "warning", label: "Cảnh báo / Cho override" },
@@ -340,6 +355,7 @@ const ShiftRulesModal = ({
   policySaving = false,
   saveError = "",
   saveMessage = "",
+  mandatoryShiftRoles = [],
   onApply,
 }) => {
   const [activeTab, setActiveTab] = useState("shifts");
@@ -348,6 +364,7 @@ const ShiftRulesModal = ({
   const [draftScoringWeights, setDraftScoringWeights] = useState(
     DEFAULT_SCORING_WEIGHTS,
   );
+  const [draftMandatoryRoles, setDraftMandatoryRoles] = useState([]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -366,8 +383,10 @@ const ShiftRulesModal = ({
       }),
     );
 
+    setDraftMandatoryRoles(normalizeMandatoryRoles(mandatoryShiftRoles));
+
     setActiveTab("shifts");
-  }, [isOpen, policy, rules]);
+  }, [isOpen, mandatoryShiftRoles, policy, rules]);
   const validation = useMemo(
     () => validateShiftRules(draftRules),
     [draftRules],
@@ -421,6 +440,14 @@ const ShiftRulesModal = ({
     setDraftScoringWeights(normalizeScoringWeights(preset.values));
   };
 
+  const toggleMandatoryRole = (role) => {
+    const key = normalizeRole(role);
+    if (!key) return;
+    setDraftMandatoryRoles((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key],
+    );
+  };
+
   const handleSubmit = async () => {
     if (!validation.ok || policySaving) return;
 
@@ -448,6 +475,7 @@ const ShiftRulesModal = ({
         ),
       },
       scoringWeights: normalizeScoringWeights(draftScoringWeights),
+      mandatoryShiftRoles: normalizeMandatoryRoles(draftMandatoryRoles),
     });
 
     await onApply(draftRules, policyInput);
@@ -579,6 +607,32 @@ const ShiftRulesModal = ({
                 ))}
               </div>
             ) : null}
+            <div className="mandatory-roles-box">
+              <div className="mandatory-roles-header">
+                <strong>Role bắt buộc trong mọi ca</strong>
+                <span>
+                  Các role này được dùng để cảnh báo khi một ca chưa đủ thành phần. Không chặn tạo ca.
+                </span>
+              </div>
+              <div className="mandatory-role-options">
+                {MANDATORY_ROLE_OPTIONS.map((option) => {
+                  const checked = draftMandatoryRoles.includes(option.value);
+                  return (
+                    <label
+                      key={option.value}
+                      className={`mandatory-role-chip ${checked ? "active" : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleMandatoryRole(option.value)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
           </>
         ) : null}
 

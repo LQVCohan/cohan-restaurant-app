@@ -973,7 +973,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     const roles = Array.isArray(schedulingPolicy?.mandatoryShiftRoles)
       ? schedulingPolicy.mandatoryShiftRoles
       : [];
-    return roles.length ? roles : DEFAULT_AUTO_REQUIRED_ROLES;
+    return roles;
   }, [schedulingPolicy?.mandatoryShiftRoles]);
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
@@ -1252,6 +1252,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
         mandatoryShiftRoles: policyMandatoryShiftRoles,
       }),
     [shifts, staff, policyMandatoryShiftRoles],
+  );
+  const mandatoryRoleWarningCount = useMemo(
+    () =>
+      scheduleInsights.issues.filter((issue) => issue.id.endsWith("-missing-roles")).length,
+    [scheduleInsights.issues],
   );
   const assistantForPreview = useMemo(
     () =>
@@ -3330,6 +3335,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           policy={schedulingPolicy}
           policyLoading={schedulingPolicyLoading}
           policySaving={updateSchedulingPolicyState.loading}
+          mandatoryShiftRoles={policyMandatoryShiftRoles}
           onApply={handleApplyShiftRules}
         />
       )}
@@ -3407,6 +3413,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   <strong>{totalAssignmentsForPublish}</strong>
                 </div>
               </div>
+              {mandatoryRoleWarningCount > 0 ? (
+                <div className="publish-confirm-error">
+                  Lịch vẫn còn cảnh báo thiếu role bắt buộc ({mandatoryRoleWarningCount} ca). Bạn vẫn có thể công bố.
+                </div>
+              ) : null}
               <label className="publish-confirm-check">
                 <input
                   type="checkbox"

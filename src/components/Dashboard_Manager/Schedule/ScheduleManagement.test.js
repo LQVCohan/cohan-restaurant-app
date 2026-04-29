@@ -36,14 +36,16 @@ describe("buildVisibleScheduleInsights mandatory roles", () => {
     expect(issue.level).toBe("warning");
   });
 
-  it("creates only one missing-roles issue when mandatory roles contain duplicates", () => {
+  it("creates one missing-roles issue when multiple mandatory roles are missing", () => {
     const result = buildVisibleScheduleInsights({
       shifts: [{ ...baseShift, staffIds: ["staff-1"] }],
       staff: [{ id: "staff-1", department: "service", fullName: "S1" }],
-      mandatoryShiftRoles: ["cook", " cook ", "COOK"],
+      mandatoryShiftRoles: ["cook", "cashier", " cook ", "COOK"],
     });
 
     const missingRoleIssues = result.issues.filter((item) => item.id === "shift-1-missing-roles");
     expect(missingRoleIssues).toHaveLength(1);
+    expect(missingRoleIssues[0].title).toContain("Bếp");
+    expect(missingRoleIssues[0].title).toContain("Thu ngân");
   });
 });
