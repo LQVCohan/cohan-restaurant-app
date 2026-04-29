@@ -753,6 +753,23 @@ const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] 
         targetShiftType: shift.shiftType,
       });
     }
+    const assignedJobSet = new Set(
+      shift.staffIds
+        .map((staffId) => staffById.get(String(staffId))?.job)
+        .filter(Boolean),
+    );
+    const missingMandatoryRoles = mandatoryShiftRoles.filter(
+      (role) => !assignedJobSet.has(role),
+    );
+    if (missingMandatoryRoles.length > 0) {
+      issues.push({
+        id: `${shift.id}-missing-roles`,
+        type: "missing",
+        level: "warning",
+        title: `Ca thiếu role bắt buộc: ${missingMandatoryRoles.map(getAutoRoleLabel).join(", ")}`,
+        description: `${shift.date} • ${shift.startTime} - ${shift.endTime}`,
+      });
+    }
 
     shift.staffIds.forEach((staffId) => {
       const person = staffById.get(String(staffId));
