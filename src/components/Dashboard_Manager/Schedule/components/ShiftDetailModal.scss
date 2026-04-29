@@ -601,6 +601,18 @@
   }
 }
 
+.remove-confirm-warning {
+  margin: 0.7rem 0;
+  padding: 0.7rem 0.8rem;
+  border-radius: 0.75rem;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: 0.8rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
 @media (max-width: 768px) {
   .shift-detail-content {
     .summary-main {
