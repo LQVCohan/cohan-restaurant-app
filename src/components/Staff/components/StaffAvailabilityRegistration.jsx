@@ -131,8 +131,12 @@ export default function StaffAvailabilityRegistration({ user, employmentType, re
   const [slotState, setSlotState] = useState({});
   const [reasonState, setReasonState] = useState({});
 
-  const isClosed = ["closed", "used_for_schedule"].includes(selectedWindow?.status);
+  const isUsedForSchedule = selectedWindow?.status === "used_for_schedule";
+  const isCancelled = selectedWindow?.status === "cancelled";
+  const isClosed = selectedWindow?.status === "closed";
   const canDirectUpdate = selectedWindow?.status === "open" && now <= new Date(selectedWindow.closeAt);
+  const canRequestLateChange = isClosed && selectedWindow?.lateChangeRequiresApproval === true;
+  const isReadOnly = isUsedForSchedule || isCancelled || submitting || (!canDirectUpdate && existingSubmission?.id);
 
   const toggleSlot = (dateKey, shiftType) => {
     const key = `${dateKey}|${shiftType}`;
@@ -165,6 +169,7 @@ export default function StaffAvailabilityRegistration({ user, employmentType, re
   };
 
   const handleSubmit = async (lateChange = false) => {
+    if (lateChange && isUsedForSchedule) return;
     const slots = buildSlotsPayload();
     if (isPartTime && slots.length === 0) {
       const confirmed = window.confirm("Bạn chưa tick ca nào. Hệ thống sẽ xem toàn bộ ca là unavailable sau deadline. Tiếp tục nộp?");
@@ -215,7 +220,7 @@ export default function StaffAvailabilityRegistration({ user, employmentType, re
                     <input
                       type="checkbox"
                       checked={checked}
-                      disabled={isClosed || submitting || (!canDirectUpdate && existingSubmission?.id)}
+                      disabled={isReadOnly}
                       onChange={() => toggleSlot(dateKey, shiftType)}
                     />
                     <span>{shiftType}</span>
@@ -224,7 +229,7 @@ export default function StaffAvailabilityRegistration({ user, employmentType, re
                         type="text"
                         placeholder="Lý do unavailable"
                         value={reasonState[key] || defaultMap.get(key)?.note || ""}
-                        disabled={isClosed || submitting || (!canDirectUpdate && existingSubmission?.id)}
+                        disabled={isReadOnly}
                         onChange={(e) => setReasonState((prev) => ({ ...prev, [key]: e.target.value }))}
                       />
                     )}
@@ -240,14 +245,22 @@ export default function StaffAvailabilityRegistration({ user, employmentType, re
         <button type="button" onClick={() => handleSubmit(false)} disabled={submitting}>
           {existingSubmission?.id ? "Cập nhật đăng ký" : "Nộp đăng ký"}
         </button>
+      ) : canRequestLateChange ? (
+        <button type="button" onClick={() => handleSubmit(true)} disabled={submitting || isUsedForSchedule}>
+          Yêu cầu thay đổi muộn
+        </button>
       ) : (
-        <button type="button" onClick={() => handleSubmit(true)} disabled={submitting || isClosed}>
+        <button type="button" disabled>
           Yêu cầu thay đổi muộn
         </button>
       )}
 
-      {selectedWindow.status === "used_for_schedule" && (
+      {isUsedForSchedule && (
         <p>Kỳ này đã dùng để xếp lịch. Vui lòng dùng leave request hoặc decline shift.</p>
+      )}
+      {isCancelled && <p>Kỳ đăng ký này đã bị hủy. Bạn không thể gửi hoặc cập nhật availability.</p>}
+      {isClosed && !canRequestLateChange && (
+        <p>Cửa đăng ký đã đóng và không cho phép yêu cầu thay đổi muộn.</p>
       )}
     </div>
   );
