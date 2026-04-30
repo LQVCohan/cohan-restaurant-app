@@ -1,5 +1,7 @@
 import { AvailabilityWindow, StaffAvailabilitySubmission } from "../../../models/index.js";
-import { requireAuth, requireRestaurantScope } from "../../guards.js";
+import { requireAuth, requireRestaurantScope, requireRoles } from "../../guards.js";
+
+const MANAGER_ROLES = ["admin", "manager"];
 
 export default {
   availabilityWindow: async (_, { restaurantId, periodStart, periodEnd }, ctx) => {
@@ -17,10 +19,18 @@ export default {
   },
   staffAvailabilitySubmission: async (_, { windowId, employeeId }, ctx) => {
     requireAuth(ctx);
+    const windowDoc = await AvailabilityWindow.findById(windowId);
+    if (!windowDoc) throw new Error("AVAILABILITY_WINDOW_NOT_FOUND");
+    requireRestaurantScope(ctx, windowDoc.restaurantId);
+
+    const currentUserId = ctx?.user?.id || ctx?.user?._id;
+    const isManager = (ctx.user.roles || []).some((r) => MANAGER_ROLES.includes(r));
+    if (!isManager && String(currentUserId) !== String(employeeId)) throw new Error("FORBIDDEN");
+
     return StaffAvailabilitySubmission.findOne({ availabilityWindowId: windowId, employeeId });
   },
   staffAvailabilitySubmissions: async (_, { windowId, restaurantId, status, employmentType }, ctx) => {
-    requireAuth(ctx);
+    requireRoles(ctx, MANAGER_ROLES);
     requireRestaurantScope(ctx, restaurantId);
     const query = { availabilityWindowId: windowId, restaurantId };
     if (status) query.status = status;

@@ -6,6 +6,8 @@ const modelMocks = vi.hoisted(() => ({
     findByIdAndUpdate: vi.fn(),
   },
   StaffAvailabilitySubmission: {
+    findOne: vi.fn(),
+    find: vi.fn(),
     findOneAndUpdate: vi.fn(),
     updateMany: vi.fn(),
   },
@@ -52,5 +54,45 @@ describe("availability resolver", () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
     modelMocks.AvailabilityWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1", status: "closed", openAt: new Date(Date.now()-100000), closeAt: new Date(Date.now()-1000), lateChangeRequiresApproval: false });
     await expect(mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", submissionType: "weekly_availability", slots: [] } }, { user: { id: "e1", roles: [], restaurantId: "r1" } })).rejects.toThrow("AVAILABILITY_WINDOW_CLOSED");
+  });
+
+  it("allows staff to view their own submission", async () => {
+    const query = (await import("../../graphql/resolvers/availability/query.js")).default;
+    modelMocks.AvailabilityWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1" });
+    modelMocks.StaffAvailabilitySubmission.findOne.mockResolvedValue({ _id: "s1", employeeId: "e1" });
+
+    const res = await query.staffAvailabilitySubmission(null, { windowId: "w1", employeeId: "e1" }, { user: { id: "e1", roles: [], restaurantId: "r1" } });
+
+    expect(res._id).toBe("s1");
+    expect(modelMocks.StaffAvailabilitySubmission.findOne).toHaveBeenCalledWith({ availabilityWindowId: "w1", employeeId: "e1" });
+  });
+
+  it("blocks staff from viewing another employee submission", async () => {
+    const query = (await import("../../graphql/resolvers/availability/query.js")).default;
+    modelMocks.AvailabilityWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1" });
+
+    await expect(query.staffAvailabilitySubmission(null, { windowId: "w1", employeeId: "e2" }, { user: { id: "e1", roles: [], restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("allows manager in restaurant scope to view employee submission", async () => {
+    const query = (await import("../../graphql/resolvers/availability/query.js")).default;
+    modelMocks.AvailabilityWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1" });
+    modelMocks.StaffAvailabilitySubmission.findOne.mockResolvedValue({ _id: "s2", employeeId: "e2" });
+
+    const res = await query.staffAvailabilitySubmission(null, { windowId: "w1", employeeId: "e2" }, { user: { id: "m1", roles: ["manager"], restaurantId: "r1" } });
+
+    expect(res._id).toBe("s2");
+  });
+
+  it("blocks user outside restaurant scope", async () => {
+    const query = (await import("../../graphql/resolvers/availability/query.js")).default;
+    modelMocks.AvailabilityWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r2" });
+
+    await expect(query.staffAvailabilitySubmission(null, { windowId: "w1", employeeId: "e1" }, { user: { id: "e1", roles: [], restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN_SCOPE");
+  });
+
+  it("blocks staff from listing all submissions", async () => {
+    const query = (await import("../../graphql/resolvers/availability/query.js")).default;
+    await expect(query.staffAvailabilitySubmissions(null, { windowId: "w1", restaurantId: "r1" }, { user: { id: "e1", roles: [], restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN");
   });
 });
