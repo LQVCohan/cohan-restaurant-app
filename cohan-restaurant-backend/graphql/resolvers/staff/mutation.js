@@ -62,6 +62,7 @@ import {
   mapSchedulePublicationOutput,
   resolveScheduleLifecycleStatus,
 } from "../../../src/services/scheduling/scheduleLifecycle.service.js";
+import { requireRoles } from "../../guards.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -2231,7 +2232,8 @@ export default {
     // TODO: integrate ScheduleIncident service and attach shiftAcknowledgementId to evidence when available.
     return doc;
   },
-  expirePendingShiftAcknowledgements: async () => {
+  expirePendingShiftAcknowledgements: async (_, __, ctx) => {
+    requireRoles(ctx, ["admin", "manager"]);
     const now = new Date();
     const res = await ShiftAcknowledgement.updateMany({ status: "pending", deadlineAt: { $lt: now } }, { $set: { status: "expired" } });
     return Number(res.modifiedCount || 0);
