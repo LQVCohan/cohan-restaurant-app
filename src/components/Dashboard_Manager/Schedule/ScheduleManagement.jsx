@@ -29,6 +29,9 @@ import {
   Wallet,
   X,
   Edit3,
+  ClipboardList,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 
 import "./ScheduleManagement.scss";
@@ -356,6 +359,53 @@ const GET_AVAILABILITY_SUBMISSIONS = gql`
         status
         note
       }
+    }
+  }
+`;
+
+const CREATE_AVAILABILITY_WINDOW = gql`
+  mutation CreateAvailabilityWindow($input: CreateAvailabilityWindowInput!) {
+    createAvailabilityWindow(input: $input) {
+      id
+      periodStart
+      periodEnd
+      openAt
+      closeAt
+      status
+    }
+  }
+`;
+
+const OPEN_AVAILABILITY_WINDOW = gql`
+  mutation OpenAvailabilityWindow($id: ID!) {
+    openAvailabilityWindow(id: $id) {
+      id
+      status
+      openAt
+      closeAt
+    }
+  }
+`;
+
+const CLOSE_AVAILABILITY_WINDOW = gql`
+  mutation CloseAvailabilityWindow($id: ID!) {
+    closeAvailabilityWindow(id: $id) {
+      id
+      status
+      closeAt
+    }
+  }
+`;
+
+const REVIEW_AVAILABILITY_SUBMISSION = gql`
+  mutation ReviewAvailabilitySubmission(
+    $input: ReviewStaffAvailabilitySubmissionInput!
+  ) {
+    reviewStaffAvailabilitySubmission(input: $input) {
+      id
+      status
+      reviewNote
+      reviewedAt
     }
   }
 `;
@@ -1147,6 +1197,32 @@ const ScheduleManagement = ({ readOnly = false }) => {
     fetchPolicy: "network-only",
     skip: !effectiveRestaurantId || viewMode !== "week",
   });
+  const nextWeekStart = startOfWeek(addWeeks(new Date(), 1), { weekStartsOn: 1 });
+  const nextWeekEnd = endOfWeek(nextWeekStart, { weekStartsOn: 1 });
+  const { data: managerAvailabilityWindowsData, refetch: refetchManagerWindows } =
+    useQuery(GET_AVAILABILITY_WINDOWS, {
+      variables: {
+        restaurantId: effectiveRestaurantId,
+        from: nextWeekStart.toISOString(),
+        to: nextWeekEnd.toISOString(),
+      },
+      fetchPolicy: "network-only",
+      skip: !effectiveRestaurantId,
+    });
+  const managerCurrentWindow = useMemo(() => {
+    const windows = managerAvailabilityWindowsData?.availabilityWindows || [];
+    return windows[0] || null;
+  }, [managerAvailabilityWindowsData?.availabilityWindows]);
+  const { data: managerAvailabilitySubmissionsData, refetch: refetchManagerSubmissions } =
+    useQuery(GET_AVAILABILITY_SUBMISSIONS, {
+      variables: {
+        restaurantId: effectiveRestaurantId,
+        windowId: managerCurrentWindow?.id,
+      },
+      fetchPolicy: "network-only",
+      skip: !effectiveRestaurantId || !managerCurrentWindow?.id,
+    });
+
   const [createShift] = useMutation(CREATE_STAFF_SHIFT);
   const [updateShift] = useMutation(UPDATE_STAFF_SHIFT);
   const [deleteShift] = useMutation(DELETE_STAFF_SHIFT);
@@ -1163,6 +1239,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const [deletePublishedShiftGroup, { loading: deletingPublishedShiftGroup }] =
     useMutation(DELETE_PUBLISHED_SHIFT_GROUP);
+  const [createAvailabilityWindow, { loading: creatingAvailabilityWindow }] =
+    useMutation(CREATE_AVAILABILITY_WINDOW);
+  const [openAvailabilityWindow, { loading: openingAvailabilityWindow }] =
+    useMutation(OPEN_AVAILABILITY_WINDOW);
+  const [closeAvailabilityWindow, { loading: closingAvailabilityWindow }] =
+    useMutation(CLOSE_AVAILABILITY_WINDOW);
+  const [reviewAvailabilitySubmission, { loading: reviewingAvailabilitySubmission }] =
+    useMutation(REVIEW_AVAILABILITY_SUBMISSION);
   const [loadSchedulingAssistant, schedulingAssistantState] = useLazyQuery(
     GET_SCHEDULING_ASSISTANT,
     {
@@ -1264,6 +1348,33 @@ const ScheduleManagement = ({ readOnly = false }) => {
         left.shiftType.localeCompare(right.shiftType),
     );
   }, [shiftsData, staff]);
+  const managerAvailabilitySubmissions =
+    managerAvailabilitySubmissionsData?.staffAvailabilitySubmissions || [];
+  const partTimeStaff = useMemo(
+    () =>
+      staff.filter((person) =>
+        ["part_time", "seasonal"].includes(
+          String(person.employmentType || "").toLowerCase(),
+        ),
+      ),
+    [staff],
+  );
+  const managerAvailabilitySummary = useMemo(() => {
+    const submittedIds = new Set(
+      managerAvailabilitySubmissions
+        .filter((item) => ["submitted", "approved", "locked"].includes(item.status))
+        .map((item) => String(item.employeeId)),
+    );
+    const latePending = managerAvailabilitySubmissions.filter(
+      (item) => item.status === "late_change_requested",
+    ).length;
+    return {
+      requiredCount: partTimeStaff.length,
+      submittedCount: submittedIds.size,
+      missingCount: Math.max(0, partTimeStaff.length - submittedIds.size),
+      latePending,
+    };
+  }, [managerAvailabilitySubmissions, partTimeStaff.length]);
   const totalAssignmentsForPublish = useMemo(
     () =>
       shifts.reduce(
@@ -1356,6 +1467,44 @@ const ScheduleManagement = ({ readOnly = false }) => {
     !isSchedulePublished &&
     daysUntilRangeStart >= 0 &&
     daysUntilRangeStart <= 3;
+
+  const handleCreateOrOpenAvailabilityWindow = async () => {
+    if (!effectiveRestaurantId) return;
+    if (managerCurrentWindow?.id) {
+      await openAvailabilityWindow({ variables: { id: managerCurrentWindow.id } });
+    } else {
+      await createAvailabilityWindow({
+        variables: {
+          input: {
+            restaurantId: effectiveRestaurantId,
+            periodStart: nextWeekStart.toISOString(),
+            periodEnd: nextWeekEnd.toISOString(),
+            openAt: new Date().toISOString(),
+            closeAt: subDays(nextWeekStart, 1).toISOString(),
+          },
+        },
+      });
+    }
+    await refetchManagerWindows();
+  };
+
+  const handleCloseAvailabilityWindow = async () => {
+    if (!managerCurrentWindow?.id) return;
+    await closeAvailabilityWindow({ variables: { id: managerCurrentWindow.id } });
+    await refetchManagerWindows();
+  };
+
+  const handleReviewLateChange = async (submissionId, approved) => {
+    await reviewAvailabilitySubmission({
+      variables: {
+        input: {
+          id: submissionId,
+          status: approved ? "approved" : "rejected",
+        },
+      },
+    });
+    await refetchManagerSubmissions();
+  };
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
     [weekStart],
@@ -3235,6 +3384,91 @@ const ScheduleManagement = ({ readOnly = false }) => {
             {publishingSchedule ? "Đang công bố..." : "Công bố lịch"}
           </button>
         </div>
+      ) : null}
+      {!readOnly ? (
+        <section className="schedule-availability-panel">
+          <div className="panel-header">
+            <h3>
+              <ClipboardList size={18} /> Đăng ký lịch nhân viên
+            </h3>
+            <div className="panel-actions">
+              <button
+                type="button"
+                onClick={handleCreateOrOpenAvailabilityWindow}
+                disabled={creatingAvailabilityWindow || openingAvailabilityWindow}
+              >
+                {managerCurrentWindow ? "Mở window" : "Tạo window tuần kế"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCloseAvailabilityWindow}
+                disabled={!managerCurrentWindow?.id || closingAvailabilityWindow}
+              >
+                Đóng window
+              </button>
+            </div>
+          </div>
+          {managerCurrentWindow ? (
+            <>
+              <p>
+                {format(new Date(managerCurrentWindow.openAt), "dd/MM/yyyy HH:mm")} -{" "}
+                {format(new Date(managerCurrentWindow.closeAt), "dd/MM/yyyy HH:mm")} |{" "}
+                trạng thái: <strong>{managerCurrentWindow.status}</strong>
+              </p>
+              <div className="availability-summary-grid">
+                <span>Cần đăng ký: {managerAvailabilitySummary.requiredCount}</span>
+                <span>Đã nộp: {managerAvailabilitySummary.submittedCount}</span>
+                <span>Chưa nộp: {managerAvailabilitySummary.missingCount}</span>
+                <span>Late change pending: {managerAvailabilitySummary.latePending}</span>
+              </div>
+              {(managerCurrentWindow.status === "open" &&
+                managerAvailabilitySummary.missingCount > 0) ||
+              (["closed", "used_for_schedule"].includes(managerCurrentWindow.status) &&
+                managerAvailabilitySummary.missingCount > 0) ? (
+                <div className="schedule-warning-inline">
+                  <AlertTriangle size={14} /> Cảnh báo availability: còn{" "}
+                  {managerAvailabilitySummary.missingCount} nhân viên part-time/seasonal chưa nộp.
+                </div>
+              ) : null}
+              <div className="availability-submission-table">
+                {staff.map((person) => {
+                  const submission = managerAvailabilitySubmissions.find(
+                    (row) => String(row.employeeId) === String(person.id),
+                  );
+                  const slots = submission?.slots || [];
+                  const availableCount = slots.filter((s) => s.status === "available").length;
+                  const unavailableCount = slots.filter((s) => s.status === "unavailable").length;
+                  return (
+                    <div key={person.id} className="submission-row">
+                      <div>{person.name}</div>
+                      <div>{String(person.employmentType || "").toLowerCase()}</div>
+                      <div>{person.department || "N/A"}</div>
+                      <div>{submission?.status || "chưa nộp"}</div>
+                      <div>{availableCount}</div>
+                      <div>{unavailableCount}</div>
+                      <div>{slots.find((s) => s.note)?.note || "—"}</div>
+                      <div>
+                        {submission?.status === "late_change_requested" ? (
+                          <>
+                            <button onClick={() => handleReviewLateChange(submission.id, true)} disabled={reviewingAvailabilitySubmission}><CheckCircle2 size={14} /></button>
+                            <button onClick={() => handleReviewLateChange(submission.id, false)} disabled={reviewingAvailabilitySubmission}><XCircle size={14} /></button>
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <small>
+                TODO: tích hợp gửi nhắc nhở qua notification service khi service sẵn sàng.
+              </small>
+            </>
+          ) : (
+            <p>Chưa có availability window tuần kế tiếp. Manager có thể tạo mới.</p>
+          )}
+        </section>
       ) : null}
       {isStatsPanelOpen ? (
         <section className="schedule-insights-panel">
