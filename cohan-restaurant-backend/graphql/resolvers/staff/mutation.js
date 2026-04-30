@@ -15,6 +15,7 @@ import {
   EmployeeCodeCounter,
   Notification,
   SchedulePublication,
+  ShiftAcknowledgement,
 } from "../../../models/index.js";
 import { mailer } from "../../../lib/mailer.js";
 import {
@@ -114,6 +115,32 @@ function toStartOfDay(date) {
   return d;
 }
 
+
+
+function buildAcknowledgementDeadline(baseTime, hours = 24) {
+  return new Date(new Date(baseTime).getTime() + hours * 60 * 60 * 1000);
+}
+
+async function ensureShiftAcknowledgement({ shift, publication, actorUserId, createdFrom = "publish", deadlineAt }) {
+  const employeeId = toObjectId(shift.employeeId);
+  if (!employeeId) return null;
+  const filter = { shiftId: shift._id, employeeId };
+  const update = {
+    $setOnInsert: {
+      restaurantId: shift.restaurantId,
+      publicationId: publication?._id || null,
+      shiftId: shift._id,
+      employeeId,
+      periodStart: publication?.periodStart || shift.startTime,
+      periodEnd: publication?.periodEnd || shift.endTime,
+      status: "pending",
+      deadlineAt: deadlineAt || buildAcknowledgementDeadline(publication?.publishedAt || new Date()),
+      createdFrom,
+      createdBy: actorUserId,
+    },
+  };
+  return ShiftAcknowledgement.findOneAndUpdate(filter, update, { upsert: true, new: true });
+}
 function toEndOfDay(date) {
   const d = new Date(date);
   d.setHours(23, 59, 59, 999);
@@ -1120,6 +1147,7 @@ export default {
       ? "Lịch làm việc đã được cập nhật sau khi chỉnh sửa. Vui lòng kiểm tra lại ca làm của bạn."
       : "Lịch làm việc mới đã được công bố. Vui lòng kiểm tra ca làm của bạn.";
 
+    const publishAt = new Date();
     const publication = await SchedulePublication.findOneAndUpdate(
       {
         restaurantId,
@@ -1132,7 +1160,7 @@ export default {
           periodStart,
           periodEnd,
           status: "published",
-          publishedAt: new Date(),
+          publishedAt: publishAt,
           publishedBy: actorUserId,
           lastChangedAt: new Date(),
         },
@@ -1151,6 +1179,18 @@ export default {
         shifts.map((shift) => String(shift.employeeId)).filter(Boolean),
       ),
     ];
+
+    await Promise.all(
+      shifts.map((shift) =>
+        ensureShiftAcknowledgement({
+          shift,
+          publication,
+          actorUserId,
+          createdFrom: isRepublish ? "published_change" : "publish",
+          deadlineAt: buildAcknowledgementDeadline(publishAt),
+        }),
+      ),
+    );
 
     if (employeeIds.length) {
       await Notification.insertMany(
@@ -1208,6 +1248,7 @@ export default {
     const periodStart = toStartOfDay(input.periodStart);
     const periodEnd = toEndOfDay(input.periodEnd);
 
+    const publishAt = new Date();
     const publication = await SchedulePublication.findOneAndUpdate(
       { restaurantId, periodStart, periodEnd },
       {
@@ -1282,6 +1323,7 @@ export default {
     const periodStart = toStartOfDay(input.periodStart);
     const periodEnd = toEndOfDay(input.periodEnd);
 
+    const publishAt = new Date();
     const publication = await SchedulePublication.findOneAndUpdate(
       { restaurantId, periodStart, periodEnd },
       {
@@ -2079,6 +2121,14 @@ export default {
       notes: `Thêm sau khi lịch đã công bố. Lý do: ${reason}`,
     });
 
+    await ensureShiftAcknowledgement({
+      shift,
+      publication,
+      actorUserId,
+      createdFrom: "manager_assign",
+      deadlineAt: buildAcknowledgementDeadline(new Date()),
+    });
+
     if (input.notifyEmployee !== false) {
       await Notification.create({
         toUserId: employeeId,
@@ -2153,6 +2203,38 @@ export default {
     );
 
     return mapStaffScheduleShiftOutput(shift, staff);
+  },
+
+  acceptShiftAcknowledgement: async (_, { id, note }, ctx) => {
+    const employeeId = toObjectId(ctx?.user?.id || ctx?.user?._id);
+    if (!employeeId) throw new Error("Unauthorized.");
+    const doc = await ShiftAcknowledgement.findById(id);
+    if (!doc) throw new Error("Shift acknowledgement not found.");
+    if (String(doc.employeeId) !== String(employeeId)) throw new Error("Forbidden.");
+    doc.status = "accepted";
+    doc.reason = String(note || "").trim();
+    doc.respondedAt = new Date();
+    await doc.save();
+    return doc;
+  },
+  declineShiftAcknowledgement: async (_, { id, reasonCategory, reason }, ctx) => {
+    const employeeId = toObjectId(ctx?.user?.id || ctx?.user?._id);
+    if (!employeeId) throw new Error("Unauthorized.");
+    const doc = await ShiftAcknowledgement.findById(id);
+    if (!doc) throw new Error("Shift acknowledgement not found.");
+    if (String(doc.employeeId) !== String(employeeId)) throw new Error("Forbidden.");
+    doc.status = "declined";
+    doc.reasonCategory = reasonCategory || "other";
+    doc.reason = String(reason || "").trim();
+    doc.respondedAt = new Date();
+    await doc.save();
+    // TODO: integrate ScheduleIncident service and attach shiftAcknowledgementId to evidence when available.
+    return doc;
+  },
+  expirePendingShiftAcknowledgements: async () => {
+    const now = new Date();
+    const res = await ShiftAcknowledgement.updateMany({ status: "pending", deadlineAt: { $lt: now } }, { $set: { status: "expired" } });
+    return Number(res.modifiedCount || 0);
   },
   updateSchedulingPolicy: async (_, { restaurantId, input }, ctx) => {
     return updateSchedulingPolicy({

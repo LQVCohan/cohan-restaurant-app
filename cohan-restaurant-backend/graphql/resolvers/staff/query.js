@@ -15,6 +15,7 @@ import {
   PayrollItem,
   SchedulePublication,
   EventLog,
+  ShiftAcknowledgement,
 } from "../../../models/index.js";
 import { listStaffPerformanceSnapshots } from "../../../src/services/staffPerformance/staffPerformance.service.js";
 import { getSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";

@@ -79,3 +79,5 @@ export { default as SchedulePublication } from "./schedule-publication.model.js"
 
 export { default as AvailabilityWindow } from "./availability-window.model.js";
 export { default as StaffAvailabilitySubmission } from "./staff-availability-submission.model.js";
+
+export { default as ShiftAcknowledgement } from "./shift-acknowledgement.model.js";
