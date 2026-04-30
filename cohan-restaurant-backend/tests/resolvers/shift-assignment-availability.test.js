@@ -250,6 +250,76 @@ describe("validateShiftAssignment availability rules", () => {
     );
   });
 
+  it("returns pending/info before registration window closes when part-time has not submitted", async () => {
+    setupBase({
+      staff: {
+        _id: employeeId,
+        userType: "STAFF",
+        employmentStatus: "working",
+        employmentType: "part_time",
+        workingDays: ["MON"],
+      },
+      windowDoc: {
+        ...closedWindow,
+        status: "open",
+        closeAt: new Date("2099-04-30T23:59:59.999Z"),
+      },
+      submission: null,
+    });
+
+    const result = await validate();
+
+    expect(result.ok).toBe(true);
+    expect(result.blockingErrors).toEqual([]);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "AVAILABILITY_PENDING_SUBMISSION",
+          severity: "info",
+        }),
+      ]),
+    );
+  });
+
+  it("warns OUTSIDE_SUBMITTED_AVAILABILITY when part-time submitted without matching slot after close", async () => {
+    setupBase({
+      staff: {
+        _id: employeeId,
+        userType: "STAFF",
+        employmentStatus: "working",
+        employmentType: "part_time",
+        workingDays: ["MON"],
+      },
+      windowDoc: closedWindow,
+      submission: {
+        _id: "submission-3",
+        availabilityWindowId: windowId,
+        employeeId,
+        employmentType: "part_time",
+        submissionType: "weekly_availability",
+        status: "locked",
+        slots: [
+          {
+            date: new Date("2026-04-21T00:00:00.000Z"),
+            shiftType: "evening",
+            status: "available",
+          },
+        ],
+      },
+    });
+
+    const result = await validate();
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "OUTSIDE_SUBMITTED_AVAILABILITY",
+          severity: "risk",
+        }),
+      ]),
+    );
+  });
+
   it("hard-blocks approved leave even when override is allowed", async () => {
     setupBase({
       staff: {

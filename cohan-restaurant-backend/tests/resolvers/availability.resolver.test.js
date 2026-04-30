@@ -56,6 +56,70 @@ describe("availability resolver", () => {
     await expect(mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", submissionType: "weekly_availability", slots: [] } }, { user: { id: "e1", roles: [], restaurantId: "r1" } })).rejects.toThrow("AVAILABILITY_WINDOW_CLOSED");
   });
 
+  it("marks closed-window submit as late_change_requested when enabled", async () => {
+    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+    modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({
+      _id: "w1",
+      restaurantId: "r1",
+      status: "closed",
+      openAt: new Date(Date.now() - 100000),
+      closeAt: new Date(Date.now() - 1000),
+      lateChangeRequiresApproval: true,
+      periodStart: new Date("2026-05-01T00:00:00.000Z"),
+      periodEnd: new Date("2026-05-07T23:59:59.999Z"),
+    });
+    modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mockResolvedValue({ status: "late_change_requested" });
+
+    const res = await mutation.submitStaffAvailability(
+      null,
+      {
+        input: {
+          availabilityWindowId: "w1",
+          employeeId: "e1",
+          employmentType: "part_time",
+          submissionType: "weekly_availability",
+          slots: [],
+        },
+      },
+      { user: { id: "e1", roles: [], restaurantId: "r1" } },
+    );
+
+    expect(res.status).toBe("late_change_requested");
+    expect(modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mock.calls[0][1].$set.status).toBe("late_change_requested");
+  });
+
+  it("blocks submission when window is used_for_schedule or cancelled", async () => {
+    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+
+    modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValueOnce({
+      _id: "w1",
+      restaurantId: "r1",
+      status: "used_for_schedule",
+      lateChangeRequiresApproval: true,
+    });
+    await expect(
+      mutation.submitStaffAvailability(
+        null,
+        { input: { availabilityWindowId: "w1", employeeId: "e1", submissionType: "weekly_availability", slots: [] } },
+        { user: { id: "e1", roles: [], restaurantId: "r1" } },
+      ),
+    ).rejects.toThrow("AVAILABILITY_WINDOW_LOCKED_FOR_SCHEDULE");
+
+    modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValueOnce({
+      _id: "w2",
+      restaurantId: "r1",
+      status: "cancelled",
+      lateChangeRequiresApproval: true,
+    });
+    await expect(
+      mutation.submitStaffAvailability(
+        null,
+        { input: { availabilityWindowId: "w2", employeeId: "e1", submissionType: "weekly_availability", slots: [] } },
+        { user: { id: "e1", roles: [], restaurantId: "r1" } },
+      ),
+    ).rejects.toThrow("AVAILABILITY_WINDOW_CANCELLED");
+  });
+
   it("allows manager in scope to open close and cancel availability window", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
     const deadline = new Date("2026-06-15T12:00:00.000Z");
@@ -169,6 +233,24 @@ describe("availability resolver", () => {
     modelMocks.StaffAvailabilitySubmission.find.mockResolvedValue([{ _id: "s1" }]);
     await expect(query.staffAvailabilitySubmissions(null, { windowId: "w1", restaurantId: "r1" }, { user: { id: "h1", userType: "hr", restaurantId: "r1" } })).resolves.toEqual([{ _id: "s1" }]);
     await expect(query.staffAvailabilitySubmissions(null, { windowId: "w1", restaurantId: "r1" }, { user: { id: "a1", roleName: "accountant", restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("blocks HR and accountant outside restaurant scope from list", async () => {
+    const query = (await import("../../graphql/resolvers/availability/query.js")).default;
+    await expect(
+      query.staffAvailabilitySubmissions(
+        null,
+        { windowId: "w1", restaurantId: "r1" },
+        { user: { id: "h1", userType: "hr", restaurantId: "r2" } },
+      ),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
+    await expect(
+      query.staffAvailabilitySubmissions(
+        null,
+        { windowId: "w1", restaurantId: "r1" },
+        { user: { id: "a1", roleName: "accountant", restaurantId: "r2" } },
+      ),
+    ).rejects.toThrow("FORBIDDEN");
   });
 
 });
