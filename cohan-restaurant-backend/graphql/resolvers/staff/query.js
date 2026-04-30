@@ -42,6 +42,7 @@ import { validatePayrollPeriod as validatePayrollPeriodService } from "../../../
 import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
 import { logPayrollEvent } from "../../../src/services/payroll/payrollEventLog.service.js";
 import { mapSchedulePublicationOutput } from "../../../src/services/scheduling/scheduleLifecycle.service.js";
+import { requireAuth, requireRestaurantScope } from "../../guards.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -171,6 +172,14 @@ function toNumber(v) {
   return Number(v || 0);
 }
 
+function normalizeShiftAckStatus(status) {
+  const normalized = String(status || "")
+    .trim()
+    .toLowerCase();
+  const allowed = ["pending", "accepted", "declined", "expired", "cancelled"];
+  return allowed.includes(normalized) ? normalized : null;
+}
+
 function mapScheduleChangeLog(row) {
   const meta = row.meta || {};
   const diff = row.diff || {};
@@ -297,6 +306,80 @@ export default {
       .populate("refRestaurants")
       .populate("primaryRestaurant")
       .sort({ fullName: 1 });
+  },
+  shiftAcknowledgements: async (
+    _,
+    { restaurantId, periodStart, periodEnd, employeeId, status },
+    ctx,
+  ) => {
+    requireAuth(ctx);
+    requireRestaurantScope(ctx, restaurantId);
+    const roles = (ctx?.user?.roles || []).map((r) => String(r).toLowerCase());
+    if (!roles.includes("manager") && !roles.includes("admin")) {
+      const err = new Error("FORBIDDEN");
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const filter = { restaurantId: toObjectId(restaurantId) || restaurantId };
+
+    if (employeeId) {
+      filter.employeeId = toObjectId(employeeId) || employeeId;
+    }
+
+    const start = periodStart ? new Date(periodStart) : null;
+    const end = periodEnd ? new Date(periodEnd) : null;
+    if (
+      (start && !Number.isNaN(start.getTime())) ||
+      (end && !Number.isNaN(end.getTime()))
+    ) {
+      filter.$and = [];
+      if (start && !Number.isNaN(start.getTime())) {
+        filter.$and.push({ periodEnd: { $gte: start } });
+      }
+      if (end && !Number.isNaN(end.getTime())) {
+        filter.$and.push({ periodStart: { $lte: end } });
+      }
+      if (!filter.$and.length) delete filter.$and;
+    }
+
+    const normalizedStatus = normalizeShiftAckStatus(status);
+    if (normalizedStatus) {
+      filter.status = normalizedStatus;
+    }
+
+    return ShiftAcknowledgement.find(filter).sort({
+      deadlineAt: 1,
+      createdAt: -1,
+    });
+  },
+  myShiftAcknowledgements: async (_, { periodStart, periodEnd, status }, ctx) => {
+    requireAuth(ctx);
+    const employeeId = ctx?.user?.id || ctx?.user?._id;
+    const filter = { employeeId: toObjectId(employeeId) || employeeId };
+
+    const start = periodStart ? new Date(periodStart) : null;
+    const end = periodEnd ? new Date(periodEnd) : null;
+    if (
+      (start && !Number.isNaN(start.getTime())) ||
+      (end && !Number.isNaN(end.getTime()))
+    ) {
+      filter.$and = [];
+      if (start && !Number.isNaN(start.getTime())) {
+        filter.$and.push({ periodEnd: { $gte: start } });
+      }
+      if (end && !Number.isNaN(end.getTime())) {
+        filter.$and.push({ periodStart: { $lte: end } });
+      }
+      if (!filter.$and.length) delete filter.$and;
+    }
+
+    const normalizedStatus = normalizeShiftAckStatus(status);
+    if (normalizedStatus) {
+      filter.status = normalizedStatus;
+    }
+
+    return ShiftAcknowledgement.find(filter).sort({ deadlineAt: 1 });
   },
   schedulingPolicy: async (_, { restaurantId }) => {
     return getSchedulingPolicy({ restaurantId });
