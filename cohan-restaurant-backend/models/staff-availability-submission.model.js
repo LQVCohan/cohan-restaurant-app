@@ -15,7 +15,7 @@ const SlotSchema = new Schema(
 const StaffAvailabilitySubmissionSchema = new Schema(
   {
     restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true, index: true },
-    availabilityWindowId: { type: Types.ObjectId, ref: "AvailabilityWindow", required: true, index: true },
+    availabilityWindowId: { type: Types.ObjectId, ref: "AvailabilityRegistrationWindow", required: true, index: true },
     employeeId: { type: Types.ObjectId, ref: "Staff", required: true, index: true },
     periodStart: { type: Date, required: true },
     periodEnd: { type: Date, required: true },

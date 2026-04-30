@@ -1,4 +1,4 @@
-import { AvailabilityWindow, StaffAvailabilitySubmission } from "../../../models/index.js";
+import { AvailabilityRegistrationWindow, StaffAvailabilitySubmission } from "../../../models/index.js";
 
 export const AVAILABILITY_RULE_CODES = {
   PART_TIME_AVAILABILITY_REQUIRED: "PART_TIME_AVAILABILITY_REQUIRED",
@@ -141,7 +141,7 @@ export async function findAvailabilityWindowForShift({
   const weekStart = startOfWeekMonday(shiftDate);
   const weekEnd = endOfWeekMonday(shiftDate);
 
-  const query = AvailabilityWindow.findOne({
+  const query = AvailabilityRegistrationWindow.findOne({
     restaurantId,
     status: { $ne: "cancelled" },
     periodStart: { $lte: endOfDay(weekStart) },
