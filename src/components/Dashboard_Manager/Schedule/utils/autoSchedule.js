@@ -457,6 +457,7 @@ export const buildAutoSchedulePreview = ({
   availabilityWindows = [],
   availabilitySubmissions = [],
   weeklyHoursCap = 40,
+  employmentTypePolicy = {},
   respectAvailability = true,
   avoidOvertime = true,
   shiftConfig = shiftTypes,
@@ -539,6 +540,15 @@ export const buildAutoSchedulePreview = ({
 
     const plannedAssignments = [];
     const unfilledRoles = [];
+    const getMinOrTargetGap = (staffId, staffEmploymentType) => {
+      const currentHours = getWeeklyHours(weekHoursByStaff, staffId, weekKey);
+      const typePolicy = employmentTypePolicy?.[staffEmploymentType] || {};
+      const minHours = Number(typePolicy?.minWeeklyHours || 0);
+      const targetHours = Number(typePolicy?.weeklyHoursTarget || 0);
+      const minGap = Math.max(0, minHours - currentHours);
+      const targetGap = Math.max(0, targetHours - currentHours);
+      return minGap > 0 ? minGap + 10 : targetGap;
+    };
     const buildFallbackCandidatesForRole = (role) =>
       Array.from(staffById.values())
         .filter((staff) => mapDepartmentToJob(staff.department) === role)
@@ -609,6 +619,15 @@ export const buildAutoSchedulePreview = ({
           );
 
           if (leftHours !== rightHours) return leftHours - rightHours;
+          const leftStaffType = normalizeEmploymentType(
+            staffById.get(String(left.staffId))?.employmentType,
+          );
+          const rightStaffType = normalizeEmploymentType(
+            staffById.get(String(right.staffId))?.employmentType,
+          );
+          const leftGap = getMinOrTargetGap(String(left.staffId), leftStaffType);
+          const rightGap = getMinOrTargetGap(String(right.staffId), rightStaffType);
+          if (leftGap !== rightGap) return rightGap - leftGap;
 
           return (
             (candidateOrder.get(`${left.staffId}|${left.role}`) ?? 99) -

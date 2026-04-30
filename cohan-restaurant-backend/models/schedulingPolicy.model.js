@@ -96,6 +96,7 @@ const SchedulingScoringWeightsSchema = new Schema(
 
 const EmploymentTypePolicySchema = new Schema(
   {
+    minWeeklyHours: { type: Number, default: 0 },
     weeklyHoursTarget: { type: Number, default: 40 },
     weeklyHoursCap: { type: Number, default: 48 },
     maxShiftsPerWeek: { type: Number, default: 6 },
@@ -210,6 +211,7 @@ const SchedulingPolicySchema = new Schema(
       full_time: {
         type: EmploymentTypePolicySchema,
         default: () => ({
+          minWeeklyHours: 0,
           weeklyHoursTarget: 40,
           weeklyHoursCap: 48,
           maxShiftsPerWeek: 6,
@@ -223,6 +225,7 @@ const SchedulingPolicySchema = new Schema(
       part_time: {
         type: EmploymentTypePolicySchema,
         default: () => ({
+          minWeeklyHours: 8,
           weeklyHoursTarget: 20,
           weeklyHoursCap: 28,
           maxShiftsPerWeek: 4,
@@ -236,6 +239,7 @@ const SchedulingPolicySchema = new Schema(
       probation: {
         type: EmploymentTypePolicySchema,
         default: () => ({
+          minWeeklyHours: 0,
           weeklyHoursTarget: 40,
           weeklyHoursCap: 48,
           maxShiftsPerWeek: 6,
@@ -249,6 +253,7 @@ const SchedulingPolicySchema = new Schema(
       seasonal: {
         type: EmploymentTypePolicySchema,
         default: () => ({
+          minWeeklyHours: 0,
           weeklyHoursTarget: 24,
           weeklyHoursCap: 40,
           maxShiftsPerWeek: 5,
@@ -262,6 +267,7 @@ const SchedulingPolicySchema = new Schema(
       contract: {
         type: EmploymentTypePolicySchema,
         default: () => ({
+          minWeeklyHours: 0,
           weeklyHoursTarget: 40,
           weeklyHoursCap: 48,
           maxShiftsPerWeek: 6,
