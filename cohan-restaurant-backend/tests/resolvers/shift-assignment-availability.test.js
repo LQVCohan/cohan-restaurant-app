@@ -14,7 +14,7 @@ const modelMocks = vi.hoisted(() => ({
   Shift: {
     find: vi.fn(),
   },
-  AvailabilityWindow: {
+  AvailabilityRegistrationWindow: {
     findOne: vi.fn(),
   },
   StaffAvailabilitySubmission: {
@@ -112,7 +112,7 @@ function setupBase({ staff, leaveRows = [], windowDoc = null, submission = null 
   modelMocks.Staff.findById.mockReturnValue(lean(staff));
   modelMocks.LeaveRequest.find.mockReturnValue(lean(leaveRows));
   modelMocks.Shift.find.mockReturnValue(sortLean([]));
-  modelMocks.AvailabilityWindow.findOne.mockReturnValue(sortLean(windowDoc));
+  modelMocks.AvailabilityRegistrationWindow.findOne.mockReturnValue(sortLean(windowDoc));
   modelMocks.StaffAvailabilitySubmission.findOne.mockReturnValue(
     lean(submission),
   );

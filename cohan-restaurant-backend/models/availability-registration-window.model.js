@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const { Schema, model, Types } = mongoose;
 
-const AvailabilityWindowSchema = new Schema(
+const AvailabilityRegistrationWindowSchema = new Schema(
   {
     restaurantId: { type: Types.ObjectId, ref: "Restaurant", required: true, index: true },
     periodStart: { type: Date, required: true },
@@ -34,9 +34,13 @@ const AvailabilityWindowSchema = new Schema(
   { timestamps: true },
 );
 
-AvailabilityWindowSchema.index(
+AvailabilityRegistrationWindowSchema.index(
   { restaurantId: 1, periodStart: 1, periodEnd: 1 },
   { unique: true },
 );
 
-export default model("AvailabilityWindow", AvailabilityWindowSchema);
+export default model(
+  "AvailabilityRegistrationWindow",
+  AvailabilityRegistrationWindowSchema,
+  "availabilitywindows"
+);

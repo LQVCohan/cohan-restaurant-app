@@ -1,18 +1,18 @@
-import { AvailabilityWindow, StaffAvailabilitySubmission, Staff } from "../../../models/index.js";
+import { AvailabilityRegistrationWindow, StaffAvailabilitySubmission, Staff } from "../../../models/index.js";
 
-export async function createOrGetAvailabilityWindow(input, userId = null) {
+export async function createOrGetAvailabilityRegistrationWindow(input, userId = null) {
   const payload = { ...input };
   try {
-    return await AvailabilityWindow.create({ ...payload, createdBy: userId || payload.createdBy || null });
+    return await AvailabilityRegistrationWindow.create({ ...payload, createdBy: userId || payload.createdBy || null });
   } catch (error) {
     if (error?.code === 11000) {
-      return AvailabilityWindow.findOne({ restaurantId: payload.restaurantId, periodStart: payload.periodStart, periodEnd: payload.periodEnd });
+      return AvailabilityRegistrationWindow.findOne({ restaurantId: payload.restaurantId, periodStart: payload.periodStart, periodEnd: payload.periodEnd });
     }
     throw error;
   }
 }
 
-export function isAvailabilityWindowOpen(windowDoc, now = new Date()) {
+export function isAvailabilityRegistrationWindowOpen(windowDoc, now = new Date()) {
   if (!windowDoc) return false;
   return windowDoc.status === "open" && new Date(windowDoc.openAt) <= now && now <= new Date(windowDoc.closeAt);
 }
