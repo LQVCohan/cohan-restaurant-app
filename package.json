@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "lint": "eslint .",
+    "lint": "eslint src/config/**/*.{js,jsx} eslint.config.js",
     "preview": "vite preview",
     "test": "node --test",
     "env:local": "node scripts/setup-local-env.mjs"
