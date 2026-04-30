@@ -123,6 +123,16 @@ function buildAcknowledgementDeadline(baseTime, hours = 24) {
   return new Date(new Date(baseTime).getTime() + hours * 60 * 60 * 1000);
 }
 
+function assertAcknowledgementCanRespond(doc, employeeId) {
+  if (!doc) throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_FOUND");
+  if (String(doc.employeeId) !== String(employeeId)) throw new Error("FORBIDDEN");
+  if (doc.status === "accepted" || doc.status === "declined") {
+    throw new Error("SHIFT_ACKNOWLEDGEMENT_ALREADY_RESPONDED");
+  }
+  if (doc.status === "expired") throw new Error("SHIFT_ACKNOWLEDGEMENT_EXPIRED");
+  if (doc.status === "cancelled") throw new Error("SHIFT_ACKNOWLEDGEMENT_CANCELLED");
+}
+
 async function ensureShiftAcknowledgement({ shift, publication, actorUserId, createdFrom = "publish", deadlineAt }) {
   const employeeId = toObjectId(shift.employeeId);
   if (!employeeId) return null;
@@ -2216,28 +2226,33 @@ export default {
 
   acceptShiftAcknowledgement: async (_, { id, note }, ctx) => {
     const employeeId = toObjectId(ctx?.user?.id || ctx?.user?._id);
-    if (!employeeId) throw new Error("Unauthorized.");
+    if (!employeeId) throw new Error("UNAUTHENTICATED");
     const doc = await ShiftAcknowledgement.findById(id);
-    if (!doc) throw new Error("Shift acknowledgement not found.");
-    if (String(doc.employeeId) !== String(employeeId)) throw new Error("Forbidden.");
+    assertAcknowledgementCanRespond(doc, employeeId);
     doc.status = "accepted";
-    doc.reason = String(note || "").trim();
+    doc.reason = String(note || "");
     doc.respondedAt = new Date();
     await doc.save();
     return doc;
   },
   declineShiftAcknowledgement: async (_, { id, reasonCategory, reason }, ctx) => {
     const employeeId = toObjectId(ctx?.user?.id || ctx?.user?._id);
-    if (!employeeId) throw new Error("Unauthorized.");
+    if (!employeeId) throw new Error("UNAUTHENTICATED");
+    const normalizedReason = String(reason || "").trim();
+    if (!normalizedReason) throw new Error("SHIFT_ACKNOWLEDGEMENT_DECLINE_REASON_REQUIRED");
     const doc = await ShiftAcknowledgement.findById(id);
-    if (!doc) throw new Error("Shift acknowledgement not found.");
-    if (String(doc.employeeId) !== String(employeeId)) throw new Error("Forbidden.");
+    assertAcknowledgementCanRespond(doc, employeeId);
+    const now = new Date();
+    const isLate = now > new Date(doc.deadlineAt);
     doc.status = "declined";
     doc.reasonCategory = reasonCategory || "other";
-    doc.reason = String(reason || "").trim();
-    doc.respondedAt = new Date();
+    doc.reason = normalizedReason;
+    doc.respondedAt = now;
+    doc.declineClassification = isLate ? "late" : "valid";
     await doc.save();
-    // TODO: integrate ScheduleIncident service and attach shiftAcknowledgementId to evidence when available.
+    // TODO: integrate ScheduleIncident service:
+    // - valid decline => EMPLOYEE_VALID_DECLINE (neutral responsibility)
+    // - late decline => EMPLOYEE_LATE_DECLINE (employee responsibility)
     return doc;
   },
   expirePendingShiftAcknowledgements: async (_, { restaurantId } = {}, ctx) => {

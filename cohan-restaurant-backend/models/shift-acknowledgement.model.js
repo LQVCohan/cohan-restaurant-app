@@ -22,6 +22,11 @@ const ShiftAcknowledgementSchema = new Schema(
       enum: ["sick", "personal", "emergency", "schedule_conflict", "transportation", "no_reason", "other"],
       default: "no_reason",
     },
+    declineClassification: {
+      type: String,
+      enum: ["valid", "late", "unknown"],
+      default: "unknown",
+    },
     respondedAt: { type: Date, default: null },
     deadlineAt: { type: Date, required: true },
     createdFrom: {
