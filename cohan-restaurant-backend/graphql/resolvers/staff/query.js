@@ -111,6 +111,17 @@ function mapAttendanceRecord(timesheet, staff) {
   };
 }
 
+function toGraphEmploymentType(value) {
+  const map = {
+    full_time: "FULL_TIME",
+    part_time: "PART_TIME",
+    probation: "PROBATION",
+    seasonal: "SEASONAL",
+    contract: "CONTRACT",
+  };
+  return map[String(value || "").toLowerCase()] || null;
+}
+
 function toGraphLeaveType(value) {
   const map = {
     annual: "ANNUAL",
@@ -369,6 +380,7 @@ export default {
         "Nhân viên",
       positionTitle: staff.positionTitle || null,
       employeeCode: staff.employeeCode || null,
+      employmentType: toGraphEmploymentType(staff.employmentType),
       employmentStatus: String(
         staff.employmentStatus || "working",
       ).toUpperCase(),

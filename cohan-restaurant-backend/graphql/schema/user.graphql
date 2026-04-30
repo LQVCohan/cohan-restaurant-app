@@ -592,6 +592,7 @@ type StaffAccountOverview {
   roleName: String
   positionTitle: String
   employeeCode: String
+  employmentType: EmploymentType
   employmentStatus: EmploymentStatus
   primaryRestaurant: Restaurant
   restaurantForStaff: ID
