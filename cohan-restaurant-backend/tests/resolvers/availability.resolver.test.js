@@ -156,4 +156,19 @@ describe("availability resolver", () => {
     const query = (await import("../../graphql/resolvers/availability/query.js")).default;
     await expect(query.staffAvailabilitySubmissions(null, { windowId: "w1", restaurantId: "r1" }, { user: { id: "e1", roles: [], restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN");
   });
+
+  it("blocks HR and accountant from availability window admin mutations", async () => {
+    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+    const input = { restaurantId: "r1", periodStart: new Date(), periodEnd: new Date(), openAt: new Date(), closeAt: new Date() };
+    await expect(mutation.createAvailabilityWindow(null, { input }, { user: { id: "h1", userType: "HR", restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN");
+    await expect(mutation.createAvailabilityWindow(null, { input }, { user: { id: "a1", roleName: "accountant", restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("allows HR but blocks accountant from submission list", async () => {
+    const query = (await import("../../graphql/resolvers/availability/query.js")).default;
+    modelMocks.StaffAvailabilitySubmission.find.mockResolvedValue([{ _id: "s1" }]);
+    await expect(query.staffAvailabilitySubmissions(null, { windowId: "w1", restaurantId: "r1" }, { user: { id: "h1", userType: "hr", restaurantId: "r1" } })).resolves.toEqual([{ _id: "s1" }]);
+    await expect(query.staffAvailabilitySubmissions(null, { windowId: "w1", restaurantId: "r1" }, { user: { id: "a1", roleName: "accountant", restaurantId: "r1" } })).rejects.toThrow("FORBIDDEN");
+  });
+
 });

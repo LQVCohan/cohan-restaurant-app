@@ -42,7 +42,8 @@ import { validatePayrollPeriod as validatePayrollPeriodService } from "../../../
 import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
 import { logPayrollEvent } from "../../../src/services/payroll/payrollEventLog.service.js";
 import { mapSchedulePublicationOutput } from "../../../src/services/scheduling/scheduleLifecycle.service.js";
-import { requireAuth, requireRestaurantScope } from "../../guards.js";
+import { requireAuth, requireRestaurantScope, requireRoles } from "../../guards.js";
+import { SHIFT_ACK_READ_ROLES, SCHEDULE_READ_ROLES } from "../../../src/services/scheduling/schedulingPermission.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -314,12 +315,7 @@ export default {
   ) => {
     requireAuth(ctx);
     requireRestaurantScope(ctx, restaurantId);
-    const roles = (ctx?.user?.roles || []).map((r) => String(r).toLowerCase());
-    if (!roles.includes("manager") && !roles.includes("admin")) {
-      const err = new Error("FORBIDDEN");
-      err.statusCode = 403;
-      throw err;
-    }
+    requireRoles(ctx, SHIFT_ACK_READ_ROLES);
 
     const filter = { restaurantId: toObjectId(restaurantId) || restaurantId };
 
