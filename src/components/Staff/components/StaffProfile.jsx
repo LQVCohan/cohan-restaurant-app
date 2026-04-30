@@ -24,6 +24,7 @@ import { AuthContext } from "../../../context/AuthContext";
 import StaffPersonalInfo from "./StaffPersonalInfo";
 import StaffSalarySummary from "./StaffSalarySummary";
 import StaffShiftHistory from "./StaffShiftHistory";
+import StaffAvailabilityRegistration from "./StaffAvailabilityRegistration";
 
 // --- GRAPHQL QUERIES ---
 const STAFF_ACCOUNT_OVERVIEW = gql`
@@ -37,6 +38,7 @@ const STAFF_ACCOUNT_OVERVIEW = gql`
       roleName
       positionTitle
       employeeCode
+      employmentType
       employmentStatus
       primaryRestaurant {
         id
@@ -111,7 +113,7 @@ export default function StaffProfile() {
   const [darkMode, setDarkMode] = useState(false);
 
   // State quản lý luồng màn hình (Navigation)
-  // Các giá trị: "home", "profile", "salary", "shifts"
+  // Các giá trị: "home", "profile", "salary", "shifts", "availability"
   const [view, setView] = useState("home");
 
   // --- FETCH DATA ---
@@ -147,6 +149,9 @@ export default function StaffProfile() {
     "Nhân viên Order";
   const contactPhone = overview?.phone || user?.phone || "—";
   const contactEmail = overview?.email || user?.email || "—";
+  const employmentType = overview?.employmentType || user?.employmentType || "";
+  const restaurantId =
+    user?.restaurantForStaff || overview?.primaryRestaurant?.id || null;
 
   const shiftSummaryLabel = useMemo(() => {
     if (overview?.currentShift)
@@ -260,6 +265,18 @@ export default function StaffProfile() {
                   </div>
                   <ChevronRight size={18} className="icon-right" />
                 </button>
+                <button
+                  className="menu-item"
+                  onClick={() => setView("availability")}
+                >
+                  <div className="item-left">
+                    <div className="menu-icon text-blue">
+                      <Clock size={20} />
+                    </div>
+                    <span>Đăng ký availability tuần sau</span>
+                  </div>
+                  <ChevronRight size={18} className="icon-right" />
+                </button>
               </div>
             </div>
 
@@ -338,6 +355,14 @@ export default function StaffProfile() {
 
       {view === "shifts" && (
         <StaffShiftHistory shifts={shifts} onBack={handleBack} />
+      )}
+
+      {view === "availability" && (
+        <StaffAvailabilityRegistration
+          user={user}
+          employmentType={employmentType}
+          restaurantId={restaurantId}
+        />
       )}
     </div>
   );
