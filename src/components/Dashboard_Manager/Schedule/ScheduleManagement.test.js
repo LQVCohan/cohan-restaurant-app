@@ -49,3 +49,54 @@ describe("buildVisibleScheduleInsights mandatory roles", () => {
     expect(missingRoleIssues[0].title).toContain("Thu ngân");
   });
 });
+
+describe("buildVisibleScheduleInsights min weekly hours warnings", () => {
+  const shifts = [{ ...baseShift, staffIds: ["pt-1"] }];
+  const employmentTypePolicy = {
+    full_time: { minWeeklyHours: 0 },
+    part_time: { minWeeklyHours: 8 },
+  };
+
+  it("warns when part-time staff is scheduled below min", () => {
+    const result = buildVisibleScheduleInsights({
+      shifts: [{ ...baseShift, staffIds: ["pt-1"], endTime: "10:00" }],
+      staff: [{ id: "pt-1", fullName: "PT", employmentType: "part_time" }],
+      employmentTypePolicy,
+    });
+    expect(result.issues.find((issue) => issue.id === "pt-1-below-min-hours")).toBeTruthy();
+  });
+
+  it("does not warn when part-time staff reaches min", () => {
+    const result = buildVisibleScheduleInsights({
+      shifts,
+      staff: [{ id: "pt-1", fullName: "PT", employmentType: "part_time" }],
+      employmentTypePolicy,
+    });
+    expect(result.issues.find((issue) => issue.id === "pt-1-below-min-hours")).toBeUndefined();
+  });
+
+  it("does not warn when full-time min is zero", () => {
+    const result = buildVisibleScheduleInsights({
+      shifts: [{ ...baseShift, staffIds: ["ft-1"], endTime: "10:00" }],
+      staff: [{ id: "ft-1", fullName: "FT", employmentType: "full_time" }],
+      employmentTypePolicy,
+    });
+    expect(result.issues.find((issue) => issue.id === "ft-1-below-min-hours")).toBeUndefined();
+  });
+
+  it("warns when registered availability is below min", () => {
+    const result = buildVisibleScheduleInsights({
+      shifts: [],
+      staff: [
+        {
+          id: "pt-1",
+          fullName: "PT",
+          employmentType: "part_time",
+          weeklyAvailabilityHours: 6,
+        },
+      ],
+      employmentTypePolicy,
+    });
+    expect(result.issues.find((issue) => issue.id === "pt-1-availability-below-min-hours")).toBeTruthy();
+  });
+});

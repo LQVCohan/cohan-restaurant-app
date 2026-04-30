@@ -56,6 +56,7 @@ export const QUERY_SCHEDULING_POLICY = gql`
       mandatoryShiftRoles
       employmentTypePolicy {
         full_time {
+          minWeeklyHours
           weeklyHoursTarget
           weeklyHoursCap
           maxShiftsPerWeek
@@ -66,6 +67,7 @@ export const QUERY_SCHEDULING_POLICY = gql`
           priorityWeight
         }
         part_time {
+          minWeeklyHours
           weeklyHoursTarget
           weeklyHoursCap
           maxShiftsPerWeek
@@ -76,6 +78,7 @@ export const QUERY_SCHEDULING_POLICY = gql`
           priorityWeight
         }
         probation {
+          minWeeklyHours
           weeklyHoursTarget
           weeklyHoursCap
           maxShiftsPerWeek
@@ -86,6 +89,7 @@ export const QUERY_SCHEDULING_POLICY = gql`
           priorityWeight
         }
         seasonal {
+          minWeeklyHours
           weeklyHoursTarget
           weeklyHoursCap
           maxShiftsPerWeek
@@ -96,6 +100,7 @@ export const QUERY_SCHEDULING_POLICY = gql`
           priorityWeight
         }
         contract {
+          minWeeklyHours
           weeklyHoursTarget
           weeklyHoursCap
           maxShiftsPerWeek

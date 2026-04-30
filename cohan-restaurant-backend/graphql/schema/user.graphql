@@ -1510,6 +1510,7 @@ input SchedulingScoringWeightsInput {
 }
 
 type EmploymentTypeSchedulingRule {
+  minWeeklyHours: Float!
   weeklyHoursTarget: Float!
   weeklyHoursCap: Float!
   maxShiftsPerWeek: Int!
@@ -1521,6 +1522,7 @@ type EmploymentTypeSchedulingRule {
 }
 
 input EmploymentTypeSchedulingRuleInput {
+  minWeeklyHours: Float
   weeklyHoursTarget: Float
   weeklyHoursCap: Float
   maxShiftsPerWeek: Int

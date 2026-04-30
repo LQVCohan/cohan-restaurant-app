@@ -746,7 +746,25 @@ const normalizeMandatoryShiftRoles = (roles = []) =>
 
 const resolveStaffAutoRole = (staff) => normalizeAutoRole(mapDepartmentToJob(staff?.department));
 
-export const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRoles = [] }) => {
+const getEmploymentTypeMinHours = (employmentTypePolicy = {}, employmentType = "full_time") =>
+  Number(employmentTypePolicy?.[String(employmentType || "full_time").toLowerCase()]?.minWeeklyHours || 0);
+
+const resolveStaffWeeklyAvailabilityHours = (person) => {
+  const direct = Number(
+    person?.weeklyAvailabilityHours ??
+      person?.availableHoursPerWeek ??
+      person?.availabilityHoursPerWeek ??
+      0,
+  );
+  return Number.isFinite(direct) ? direct : 0;
+};
+
+export const buildVisibleScheduleInsights = ({
+  shifts,
+  staff,
+  mandatoryShiftRoles = [],
+  employmentTypePolicy = {},
+}) => {
   const staffById = new Map(staff.map((person) => [String(person.id), person]));
   const issues = [];
   const costByDepartment = new Map();
@@ -901,6 +919,36 @@ export const buildVisibleScheduleInsights = ({ shifts, staff, mandatoryShiftRole
     }
   });
 
+  staff.forEach((person) => {
+    const staffId = String(person?.id || "");
+    if (!staffId) return;
+    const employmentType = String(person?.employmentType || "full_time").toLowerCase();
+    const minWeeklyHours = getEmploymentTypeMinHours(employmentTypePolicy, employmentType);
+    if (minWeeklyHours <= 0) return;
+
+    const assignedHours = Number(hoursByStaff.get(staffId) || 0);
+    if (assignedHours < minWeeklyHours) {
+      issues.push({
+        id: `${staffId}-below-min-hours`,
+        type: "hours",
+        level: "warning",
+        title: "Nhân viên part-time chưa đạt giờ tối thiểu tuần",
+        description: `${person?.name || person?.fullName || "Nhân viên"} mới được xếp ${assignedHours}h / tối thiểu ${minWeeklyHours}h.`,
+      });
+    }
+
+    const availableHours = resolveStaffWeeklyAvailabilityHours(person);
+    if (availableHours > 0 && availableHours < minWeeklyHours) {
+      issues.push({
+        id: `${staffId}-availability-below-min-hours`,
+        type: "availability",
+        level: "warning",
+        title: "Availability đăng ký không đủ để đạt giờ tối thiểu",
+        description: `${person?.name || person?.fullName || "Nhân viên"} chỉ đăng ký ${availableHours}h, thấp hơn mức tối thiểu ${minWeeklyHours}h.`,
+      });
+    }
+  });
+
   const busiestStaff = Array.from(hoursByStaff.entries())
     .map(([staffId, hours]) => ({
       staffId,
@@ -953,6 +1001,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [isPublishConfirmOpen, setIsPublishConfirmOpen] = useState(false);
   const [publishConfirmed, setPublishConfirmed] = useState(false);
   const [publishConfirmError, setPublishConfirmError] = useState("");
+  const [publishIssueSnapshot, setPublishIssueSnapshot] = useState({
+    warnings: [],
+    dangers: [],
+    topIssues: [],
+    pendingAcknowledgements: 0,
+  });
   const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
   const [reopenReason, setReopenReason] = useState("");
   const [reopenError, setReopenError] = useState("");
@@ -1313,14 +1367,36 @@ const ScheduleManagement = ({ readOnly = false }) => {
         shifts,
         staff,
         mandatoryShiftRoles: policyMandatoryShiftRoles,
+        employmentTypePolicy: schedulingPolicy?.employmentTypePolicy,
       }),
-    [shifts, staff, policyMandatoryShiftRoles],
+    [shifts, staff, policyMandatoryShiftRoles, schedulingPolicy?.employmentTypePolicy],
   );
   const mandatoryRoleWarningCount = useMemo(
     () =>
       scheduleInsights.issues.filter((issue) => issue.id.endsWith("-missing-roles")).length,
     [scheduleInsights.issues],
   );
+  const schedulePublishRiskSummary = useMemo(() => {
+    const baseIssues = Array.isArray(scheduleInsights?.issues)
+      ? scheduleInsights.issues
+      : [];
+    const dedupedIssues = Array.from(
+      new Map(baseIssues.map((issue) => [String(issue.id || Math.random()), issue])).values(),
+    );
+    const warnings = dedupedIssues.filter(
+      (issue) => String(issue.level || "warning").toLowerCase() !== "danger",
+    );
+    const dangers = dedupedIssues.filter(
+      (issue) => String(issue.level || "").toLowerCase() === "danger",
+    );
+    const pendingAcknowledgements = 0;
+    return {
+      warnings,
+      dangers,
+      pendingAcknowledgements,
+      topIssues: [...dangers, ...warnings].slice(0, 8),
+    };
+  }, [scheduleInsights?.issues]);
   const assistantForPreview = useMemo(
     () =>
       mergeAssistantWithRequiredRoles(
@@ -1339,6 +1415,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         availabilityWindows: assistantAvailabilityWindows,
         availabilitySubmissions: assistantAvailabilitySubmissions,
         weeklyHoursCap: autoScheduleConfig.weeklyHoursCap,
+        employmentTypePolicy: schedulingPolicy?.employmentTypePolicy,
         respectAvailability: autoScheduleConfig.respectAvailability,
         avoidOvertime: autoScheduleConfig.avoidOvertime,
         shiftConfig: configuredShiftTypes,
@@ -1350,6 +1427,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       assistantForPreview,
       assistantShiftRows,
       autoScheduleConfig.weeklyHoursCap,
+      schedulingPolicy?.employmentTypePolicy,
       autoScheduleConfig.respectAvailability,
       autoScheduleConfig.avoidOvertime,
       configuredShiftTypes,
@@ -1529,6 +1607,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     setPublishConfirmed(false);
     setPublishConfirmError("");
+    setPublishIssueSnapshot(schedulePublishRiskSummary);
     setIsPublishConfirmOpen(true);
   };
 
@@ -1553,6 +1632,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
       await refetchPublication?.();
       await refetchScheduleLogs?.();
+      // TODO(schedule-incident): khi backend có ScheduleIncident service/mutation,
+      // gửi snapshot issue publish tại đây với type:
+      // - PUBLISH_WITH_WARNING (nếu chỉ có warning)
+      // - PUBLISH_WITH_DANGER (nếu có danger/hard conflict)
+      // để theo dõi schedule quality.
 
       setIsPublishConfirmOpen(false);
       setPublishConfirmed(false);
@@ -3519,6 +3603,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 Sau khi công bố, nhân viên sẽ nhận thông báo và các chỉnh sửa
                 sau đó sẽ phải đi qua quy trình có kiểm soát.
               </p>
+              <p>
+                Lịch còn cảnh báo nhưng vẫn có thể công bố. Các cảnh báo sẽ được ghi nhận để theo dõi chất lượng lập lịch.
+              </p>
               <div className="publish-confirm-summary">
                 <div>
                   <span>Phạm vi</span>
@@ -3542,10 +3629,40 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   <span>Tổng phân công</span>
                   <strong>{totalAssignmentsForPublish}</strong>
                 </div>
+                <div>
+                  <span>Cảnh báo (warning)</span>
+                  <strong>{publishIssueSnapshot.warnings.length}</strong>
+                </div>
+                <div>
+                  <span>Nguy cơ (danger)</span>
+                  <strong>{publishIssueSnapshot.dangers.length}</strong>
+                </div>
               </div>
+              {publishIssueSnapshot.pendingAcknowledgements > 0 ? (
+                <div className="publish-confirm-error">
+                  Còn {publishIssueSnapshot.pendingAcknowledgements} xác nhận từ nhân viên chưa hoàn tất (republish). Vẫn có thể công bố.
+                </div>
+              ) : null}
               {mandatoryRoleWarningCount > 0 ? (
                 <div className="publish-confirm-error">
                   Lịch vẫn còn cảnh báo thiếu role bắt buộc ({mandatoryRoleWarningCount} ca). Bạn vẫn có thể công bố.
+                </div>
+              ) : null}
+              {publishIssueSnapshot.topIssues.length ? (
+                <div className="schedule-insight-list">
+                  {publishIssueSnapshot.topIssues.map((issue) => (
+                    <button
+                      key={issue.id}
+                      type="button"
+                      className={`schedule-insight-item ${issue.level || "warning"}`}
+                      onClick={() => handleFocusIssue(issue)}
+                    >
+                      <div className="insight-main">
+                        <strong>{issue.title}</strong>
+                        <p>{issue.description}</p>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               ) : null}
               <label className="publish-confirm-check">
