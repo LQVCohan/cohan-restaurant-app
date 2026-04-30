@@ -1654,6 +1654,44 @@ input ValidateShiftAssignmentInput {
   allowOverride: Boolean
   overrideReason: String
 }
+enum ShiftAcknowledgementStatus {
+  pending
+  accepted
+  declined
+  expired
+  cancelled
+}
+
+enum ShiftAcknowledgementReasonCategory {
+  sick
+  personal
+  emergency
+  schedule_conflict
+  transportation
+  no_reason
+  other
+}
+
+type ShiftAcknowledgement {
+  id: ID!
+  restaurantId: ID!
+  publicationId: ID
+  shiftId: ID!
+  employeeId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  status: ShiftAcknowledgementStatus!
+  reason: String
+  reasonCategory: ShiftAcknowledgementReasonCategory
+  respondedAt: DateTime
+  deadlineAt: DateTime!
+  createdFrom: String!
+  createdBy: ID!
+  createdAt: DateTime
+  updatedAt: DateTime
+  declineClassification: String
+}
+
 input StaffReportsInput {
   restaurantId: ID
   startDate: DateTime!
@@ -1755,6 +1793,8 @@ type Query {
     timezone: String = "Asia/Ho_Chi_Minh"
   ): StaffSchedulingAssistant!
   myWalletTransactions(limit: Int = 20, offset: Int = 0): [WalletTransaction!]!
+  shiftAcknowledgements(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime, employeeId: ID, status: ShiftAcknowledgementStatus): [ShiftAcknowledgement!]!
+  myShiftAcknowledgements(periodStart: DateTime, periodEnd: DateTime, status: ShiftAcknowledgementStatus): [ShiftAcknowledgement!]!
 }
 
 # =========================
@@ -1890,6 +1930,9 @@ type Mutation {
     approverId: ID
     reason: String!
   ): LeaveRequest!
+  acceptShiftAcknowledgement(id: ID!, note: String): ShiftAcknowledgement!
+  declineShiftAcknowledgement(id: ID!, reasonCategory: ShiftAcknowledgementReasonCategory!, reason: String!): ShiftAcknowledgement!
+  expirePendingShiftAcknowledgements: Int!
   confirmReplacementLeaveRequest(
     requestId: ID!
     managerId: ID
