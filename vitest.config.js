@@ -17,6 +17,21 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
     globals: true,
+    include: [
+      'src/**/*.test.js',
+      'src/**/*.test.jsx',
+      'src/**/*.spec.js',
+      'src/**/*.spec.jsx',
+    ],
+    exclude: [
+      'cohan-restaurant-backend/**',
+      'node_modules/**',
+      'dist/**',
+      'src/routes/__tests__/AppRouter.test.jsx',
+      'src/routes/__tests__/routeGuard.test.js',
+      'src/hooks/staffAvatarQueryContract.test.js',
+      'src/components/Dashboard_Manager/Schedule/ScheduleManagement.test.jsx',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
