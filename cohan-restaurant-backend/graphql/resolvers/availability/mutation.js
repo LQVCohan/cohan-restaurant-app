@@ -4,6 +4,13 @@ import { createOrGetAvailabilityWindow, isAvailabilityWindowOpen, lockSubmission
 
 const MANAGER_ROLES = ["admin", "manager"];
 
+async function getScopedAvailabilityWindow(id, ctx) {
+  const doc = await AvailabilityWindow.findById(id);
+  if (!doc) throw new Error("AVAILABILITY_WINDOW_NOT_FOUND");
+  requireRestaurantScope(ctx, doc.restaurantId);
+  return doc;
+}
+
 export default {
   createAvailabilityWindow: async (_, { input }, ctx) => {
     requireRoles(ctx, MANAGER_ROLES);
@@ -12,19 +19,20 @@ export default {
   },
   openAvailabilityWindow: async (_, { id }, ctx) => {
     requireRoles(ctx, MANAGER_ROLES);
-    const doc = await AvailabilityWindow.findByIdAndUpdate(id, { $set: { status: "open" } }, { new: true });
-    if (!doc) throw new Error("AVAILABILITY_WINDOW_NOT_FOUND");
-    return doc;
+    await getScopedAvailabilityWindow(id, ctx);
+    return AvailabilityWindow.findByIdAndUpdate(id, { $set: { status: "open" } }, { new: true });
   },
   closeAvailabilityWindow: async (_, { id }, ctx) => {
     requireRoles(ctx, MANAGER_ROLES);
-    const doc = await AvailabilityWindow.findByIdAndUpdate(id, { $set: { status: "closed", closedBy: ctx.user.id, closeAt: new Date() } }, { new: true });
-    if (!doc) throw new Error("AVAILABILITY_WINDOW_NOT_FOUND");
-    await lockSubmissionsForClosedWindow(id, new Date());
+    await getScopedAvailabilityWindow(id, ctx);
+    const now = new Date();
+    const doc = await AvailabilityWindow.findByIdAndUpdate(id, { $set: { status: "closed", closedBy: ctx.user.id, closedAt: now } }, { new: true });
+    await lockSubmissionsForClosedWindow(id, now);
     return doc;
   },
   cancelAvailabilityWindow: async (_, { id, reason }, ctx) => {
     requireRoles(ctx, MANAGER_ROLES);
+    await getScopedAvailabilityWindow(id, ctx);
     return AvailabilityWindow.findByIdAndUpdate(id, { $set: { status: "cancelled", cancelledBy: ctx.user.id, cancelReason: reason || "" } }, { new: true });
   },
   submitStaffAvailability: async (_, { input }, ctx) => {

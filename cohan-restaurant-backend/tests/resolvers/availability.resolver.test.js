@@ -56,6 +56,67 @@ describe("availability resolver", () => {
     await expect(mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", submissionType: "weekly_availability", slots: [] } }, { user: { id: "e1", roles: [], restaurantId: "r1" } })).rejects.toThrow("AVAILABILITY_WINDOW_CLOSED");
   });
 
+  it("allows manager in scope to open close and cancel availability window", async () => {
+    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+    const deadline = new Date("2026-06-15T12:00:00.000Z");
+    modelMocks.AvailabilityWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1", closeAt: deadline });
+    modelMocks.AvailabilityWindow.findByIdAndUpdate
+      .mockResolvedValueOnce({ _id: "w1", status: "open" })
+      .mockResolvedValueOnce({ _id: "w1", status: "closed", closeAt: deadline, closedBy: "m1" })
+      .mockResolvedValueOnce({ _id: "w1", status: "cancelled", cancelledBy: "m1", cancelReason: "ops" });
+
+    const ctx = { user: { id: "m1", roles: ["manager"], restaurantId: "r1" } };
+    const openRes = await mutation.openAvailabilityWindow(null, { id: "w1" }, ctx);
+    const closeRes = await mutation.closeAvailabilityWindow(null, { id: "w1" }, ctx);
+    const cancelRes = await mutation.cancelAvailabilityWindow(null, { id: "w1", reason: "ops" }, ctx);
+
+    expect(openRes.status).toBe("open");
+    expect(closeRes.status).toBe("closed");
+    expect(cancelRes.status).toBe("cancelled");
+    expect(modelMocks.AvailabilityWindow.findById).toHaveBeenCalledTimes(3);
+  });
+
+  it("blocks manager outside restaurant scope for open close and cancel", async () => {
+    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+    modelMocks.AvailabilityWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r2" });
+
+    const ctx = { user: { id: "m1", roles: ["manager"], restaurantId: "r1" } };
+    await expect(mutation.openAvailabilityWindow(null, { id: "w1" }, ctx)).rejects.toThrow("FORBIDDEN_SCOPE");
+    await expect(mutation.closeAvailabilityWindow(null, { id: "w1" }, ctx)).rejects.toThrow("FORBIDDEN_SCOPE");
+    await expect(mutation.cancelAvailabilityWindow(null, { id: "w1", reason: "x" }, ctx)).rejects.toThrow("FORBIDDEN_SCOPE");
+    expect(modelMocks.AvailabilityWindow.findByIdAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it("returns AVAILABILITY_WINDOW_NOT_FOUND for open close and cancel", async () => {
+    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+    modelMocks.AvailabilityWindow.findById.mockResolvedValue(null);
+
+    const ctx = { user: { id: "m1", roles: ["manager"], restaurantId: "r1" } };
+    await expect(mutation.openAvailabilityWindow(null, { id: "missing" }, ctx)).rejects.toThrow("AVAILABILITY_WINDOW_NOT_FOUND");
+    await expect(mutation.closeAvailabilityWindow(null, { id: "missing" }, ctx)).rejects.toThrow("AVAILABILITY_WINDOW_NOT_FOUND");
+    await expect(mutation.cancelAvailabilityWindow(null, { id: "missing", reason: "x" }, ctx)).rejects.toThrow("AVAILABILITY_WINDOW_NOT_FOUND");
+  });
+
+  it("closeAvailabilityWindow keeps configured closeAt deadline", async () => {
+    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+    const deadline = new Date("2026-06-20T10:00:00.000Z");
+    modelMocks.AvailabilityWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1", closeAt: deadline });
+    modelMocks.AvailabilityWindow.findByIdAndUpdate.mockResolvedValue({ _id: "w1", status: "closed", closeAt: deadline, closedBy: "m1" });
+
+    const ctx = { user: { id: "m1", roles: ["manager"], restaurantId: "r1" } };
+    const res = await mutation.closeAvailabilityWindow(null, { id: "w1" }, ctx);
+
+    expect(res.closeAt).toEqual(deadline);
+    expect(modelMocks.AvailabilityWindow.findByIdAndUpdate).toHaveBeenCalledWith(
+      "w1",
+      expect.objectContaining({
+        $set: expect.objectContaining({ status: "closed", closedBy: "m1" }),
+      }),
+      { new: true },
+    );
+    expect(modelMocks.AvailabilityWindow.findByIdAndUpdate.mock.calls[0][1].$set.closeAt).toBeUndefined();
+  });
+
   it("allows staff to view their own submission", async () => {
     const query = (await import("../../graphql/resolvers/availability/query.js")).default;
     modelMocks.AvailabilityWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1" });
