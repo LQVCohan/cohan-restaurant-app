@@ -43,6 +43,14 @@ export default {
     if (!windowDoc) throw new Error("AVAILABILITY_WINDOW_NOT_FOUND");
     requireRestaurantScope(ctx, windowDoc.restaurantId);
 
+    const windowStatus = String(windowDoc.status || "").toLowerCase();
+    if (windowStatus === "used_for_schedule") {
+      throw new Error("AVAILABILITY_WINDOW_LOCKED_FOR_SCHEDULE");
+    }
+    if (windowStatus === "cancelled") {
+      throw new Error("AVAILABILITY_WINDOW_CANCELLED");
+    }
+
     if (!isAvailabilityRegistrationWindowOpen(windowDoc)) {
       if (!windowDoc.lateChangeRequiresApproval) {
         throw new Error("AVAILABILITY_WINDOW_CLOSED");
