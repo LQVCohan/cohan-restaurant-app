@@ -62,7 +62,8 @@ import {
   mapSchedulePublicationOutput,
   resolveScheduleLifecycleStatus,
 } from "../../../src/services/scheduling/scheduleLifecycle.service.js";
-import { requireRoles } from "../../guards.js";
+import { requireRoles, requireRestaurantScope } from "../../guards.js";
+import { SCHEDULE_WRITE_ROLES, SHIFT_ACK_ADMIN_ROLES } from "../../../src/services/scheduling/schedulingPermission.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -1104,6 +1105,7 @@ export default {
     return staff;
   },
   publishSchedule: async (_, { input }, ctx) => {
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const actorUserId = toObjectId(ctx?.user?.id || ctx?.user?._id);
     const periodStart = toStartOfDay(input.periodStart);
@@ -1240,6 +1242,7 @@ export default {
     return mapSchedulePublicationOutput(publication);
   },
   lockSchedule: async (_, { input }, ctx) => {
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const actorUserId = getActorUserId(ctx);
     const reason = String(input.reason || "").trim();
@@ -1285,6 +1288,7 @@ export default {
   },
 
   reopenSchedule: async (_, { input }, ctx) => {
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const actorUserId = getActorUserId(ctx);
     const reason = String(input.reason || "").trim();
@@ -1315,6 +1319,7 @@ export default {
     return mapSchedulePublicationOutput(publication);
   },
   closeSchedule: async (_, { input }, ctx) => {
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const actorUserId = getActorUserId(ctx);
     const reason = String(input.reason || "").trim();
@@ -1493,6 +1498,7 @@ export default {
     };
   },
   changePublishedShiftGroupTime: async (_, { input }, ctx) => {
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const actorUserId = getActorUserId(ctx);
 
@@ -1875,6 +1881,7 @@ export default {
     return true;
   },
   deletePublishedShiftGroup: async (_, { input }, ctx) => {
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const actorUserId = getActorUserId(ctx);
 
@@ -2019,6 +2026,7 @@ export default {
     return true;
   },
   addStaffToPublishedShiftGroup: async (_, { input }, ctx) => {
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
     const restaurantId = toObjectId(input.restaurantId);
     const employeeId = toObjectId(input.employeeId);
     const actorUserId = getActorUserId(ctx);
@@ -2232,10 +2240,15 @@ export default {
     // TODO: integrate ScheduleIncident service and attach shiftAcknowledgementId to evidence when available.
     return doc;
   },
-  expirePendingShiftAcknowledgements: async (_, __, ctx) => {
-    requireRoles(ctx, ["admin", "manager"]);
+  expirePendingShiftAcknowledgements: async (_, { restaurantId } = {}, ctx) => {
+    requireRoles(ctx, SHIFT_ACK_ADMIN_ROLES);
     const now = new Date();
-    const res = await ShiftAcknowledgement.updateMany({ status: "pending", deadlineAt: { $lt: now } }, { $set: { status: "expired" } });
+    const filter = { status: "pending", deadlineAt: { $lt: now } };
+    if (restaurantId) {
+      requireRestaurantScope(ctx, restaurantId);
+      filter.restaurantId = toObjectId(restaurantId) || restaurantId;
+    }
+    const res = await ShiftAcknowledgement.updateMany(filter, { $set: { status: "expired" } });
     return Number(res.modifiedCount || 0);
   },
   updateSchedulingPolicy: async (_, { restaurantId, input }, ctx) => {

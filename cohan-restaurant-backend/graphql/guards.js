@@ -1,3 +1,5 @@
+import { normalizeRole, resolveUserRoles } from "../src/services/scheduling/schedulingPermission.service.js";
+
 export function requireAuth(ctx) {
   if (!ctx?.user?.id) {
     const err = new Error("UNAUTHENTICATED");
@@ -8,8 +10,9 @@ export function requireAuth(ctx) {
 
 export function requireRoles(ctx, allowed = []) {
   requireAuth(ctx);
-  const userRoles = ctx.user.roles || [];
-  if (!allowed.some((r) => userRoles.includes(r))) {
+  const userRoles = resolveUserRoles(ctx.user);
+  const normalizedAllowed = allowed.map(normalizeRole);
+  if (!normalizedAllowed.some((r) => userRoles.includes(r))) {
     const err = new Error("FORBIDDEN");
     err.statusCode = 403;
     throw err;
@@ -19,8 +22,8 @@ export function requireRoles(ctx, allowed = []) {
 export function requireRestaurantScope(ctx, restaurantId) {
   requireAuth(ctx);
   // tuỳ mô hình: admin bỏ qua; manager cần đúng restaurantId
-  const roles = ctx.user.roles || [];
-  if (roles.includes("admin")) return;
+  const roles = resolveUserRoles(ctx.user);
+  if (roles.includes("ADMIN")) return;
   if (
     !ctx.user.restaurantId ||
     String(ctx.user.restaurantId) !== String(restaurantId)
