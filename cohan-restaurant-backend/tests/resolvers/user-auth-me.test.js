@@ -57,17 +57,17 @@ describe('User resolvers integration', () => {
     await UserMutation.login(null, { username: 'Manager01', password: 'secret' }, {});
 
     const queryArg = modelMocks.User.findOne.mock.calls[0][0];
-    expect(queryArg.$or).toEqual(
-      expect.arrayContaining([
-        { username: 'manager01' },
-        {
-          username: {
-            $regex: '^\\s*manager01\\s*$',
-            $options: 'i',
-          },
-        },
-      ]),
+    const normalizedUsernameCondition = queryArg.$or.find(
+      (condition) => condition.username === 'manager01',
     );
+    const regexCondition = queryArg.$or.find(
+      (condition) => condition.username instanceof RegExp,
+    );
+
+    expect(normalizedUsernameCondition).toEqual({ username: 'manager01' });
+    expect(regexCondition?.username).toBeInstanceOf(RegExp);
+    expect(regexCondition?.username.source).toBe('^\\s*manager01\\s*$');
+    expect(regexCondition?.username.flags).toContain('i');
   });
 
 

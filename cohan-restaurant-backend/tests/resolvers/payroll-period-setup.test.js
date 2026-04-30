@@ -73,7 +73,7 @@ describe("Payroll period setup semantics", () => {
             name: "Ky moi",
           },
         },
-        { user: { restaurantForStaff: "restaurant-1", id: "manager-1" } },
+        { user: { restaurantForStaff: "restaurant-1", id: "admin-1", roleName: "admin" } },
       );
     } catch (error) {
       thrownError = error;
@@ -131,7 +131,7 @@ describe("Payroll period setup semantics", () => {
           name: "Ky moi",
         },
       },
-      { user: { restaurantForStaff: "restaurant-1", id: "manager-1" } },
+      { user: { restaurantForStaff: "restaurant-1", id: "admin-1", roleName: "admin" } },
     );
 
     expect(modelMocks.PayrollSetting.findOneAndUpdate).toHaveBeenCalledWith(
@@ -147,4 +147,3 @@ describe("Payroll period setup semantics", () => {
     expect(result.id).toBe("period-2");
   });
 });
-import { beforeEach, describe, expect, it, vi } from "vitest";
