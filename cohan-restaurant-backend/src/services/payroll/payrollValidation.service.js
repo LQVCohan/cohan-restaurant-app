@@ -47,6 +47,7 @@ export function hasBlockingPayrollIssues(issues = []) {
 export async function validatePayrollPeriod(periodId, options = {}) {
   const period = await PayrollPeriod.findById(periodId).lean();
   if (!period) throw new Error("Không tìm thấy kỳ lương.");
+  const issues = [];
   const pendingOvertimeRequests = await OvertimeRequest.find({
     restaurantId: period.restaurantId,
     workDate: {
@@ -111,6 +112,42 @@ export async function validatePayrollPeriod(periodId, options = {}) {
       sourceId: String(timesheet._id),
       suggestedAction:
         "Tạo hoặc hoàn tất yêu cầu tăng ca, hoặc xác nhận không tính lương tăng ca cho bản ghi này.",
+    });
+  });
+  const pendingOffScheduleTimesheets = await Timesheet.find({
+    restaurantId: period.restaurantId,
+    workDate: {
+      $gte: period.startDate,
+      $lte: period.endDate,
+    },
+    isOffSchedule: true,
+    approved: { $ne: true },
+    $or: [
+      { workedMinutes: { $gt: 0 } },
+      { hours: { $gt: 0 } },
+      { amount: { $gt: 0 } },
+      { actualCheckInAt: { $exists: true } },
+      { actualCheckOutAt: { $exists: true } },
+    ],
+  })
+    .populate("employeeId", "fullName employeeCode")
+    .lean();
+
+  pendingOffScheduleTimesheets.forEach((timesheet) => {
+    issues.push({
+      code: "OFF_SCHEDULE_ATTENDANCE_PENDING_APPROVAL",
+      severity: "error",
+      message: "Có công ngoài lịch chưa được duyệt.",
+      employeeId: timesheet.employeeId?._id
+        ? String(timesheet.employeeId._id)
+        : timesheet.employeeId
+          ? String(timesheet.employeeId)
+          : null,
+      employeeName: timesheet.employeeId?.fullName || null,
+      employeeCode: timesheet.employeeId?.employeeCode || null,
+      sourceType: "timesheet",
+      sourceId: String(timesheet._id),
+      suggestedAction: "Duyệt hoặc từ chối công ngoài lịch trước khi chốt kỳ.",
     });
   });
   const pendingAttendanceCorrections = await AttendanceCorrectionRequest.find({
@@ -185,8 +222,6 @@ export async function validatePayrollPeriod(periodId, options = {}) {
       }).lean(),
       PayrollAdjustment.find({ periodId: period._id }).lean(),
     ]);
-
-  const issues = [];
 
   if (!items.length) {
     pushIssue(issues, {

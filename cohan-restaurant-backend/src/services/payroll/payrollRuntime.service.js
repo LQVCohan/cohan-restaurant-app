@@ -340,11 +340,38 @@ export async function buildPayrollItemsForRange({
       },
     },
     {
+      $addFields: {
+        includeInPayroll: {
+          $not: {
+            $and: [
+              { $eq: ["$isOffSchedule", true] },
+              { $ne: ["$approved", true] },
+            ],
+          },
+        },
+        approvedOvertimePayableMinutes: {
+          $cond: [
+            { $eq: ["$overtimeApprovalStatus", "approved"] },
+            { $max: [{ $ifNull: ["$approvedOvertimeMinutes", 0] }, 0] },
+            0,
+          ],
+        },
+      },
+    },
+    {
       $group: {
         _id: "$employeeId",
-        totalHours: { $sum: { $ifNull: ["$hours", 0] } },
-        totalWage: { $sum: { $ifNull: ["$wage", 0] } },
-        totalAmount: { $sum: { $ifNull: ["$amount", 0] } },
+        totalHours: {
+          $sum: { $cond: ["$includeInPayroll", { $ifNull: ["$hours", 0] }, 0] },
+        },
+        totalWage: {
+          $sum: { $cond: ["$includeInPayroll", { $ifNull: ["$wage", 0] }, 0] },
+        },
+        totalAmount: {
+          $sum: {
+            $cond: ["$includeInPayroll", { $ifNull: ["$amount", 0] }, 0],
+          },
+        },
         totalLatenessMinutes: { $sum: { $ifNull: ["$latenessMinutes", 0] } },
         totalEarlyLeaveMinutes: {
           $sum: { $ifNull: ["$earlyLeaveMinutes", 0] },
@@ -354,11 +381,12 @@ export async function buildPayrollItemsForRange({
             $cond: [
               {
                 $and: [
+                  "$includeInPayroll",
                   { $ne: [{ $dayOfWeek: "$workDate" }, 1] },
-                  { $gt: [{ $ifNull: ["$approvedOvertimeMinutes", 0] }, 0] },
+                  { $gt: ["$approvedOvertimePayableMinutes", 0] },
                 ],
               },
-              { $ifNull: ["$approvedOvertimeMinutes", 0] },
+              "$approvedOvertimePayableMinutes",
               0,
             ],
           },
@@ -368,11 +396,12 @@ export async function buildPayrollItemsForRange({
             $cond: [
               {
                 $and: [
+                  "$includeInPayroll",
                   { $eq: [{ $dayOfWeek: "$workDate" }, 1] },
-                  { $gt: [{ $ifNull: ["$overtimeMinutes", 0] }, 0] },
+                  { $gt: ["$approvedOvertimePayableMinutes", 0] },
                 ],
               },
-              { $ifNull: ["$overtimeMinutes", 0] },
+              "$approvedOvertimePayableMinutes",
               0,
             ],
           },
@@ -382,7 +411,11 @@ export async function buildPayrollItemsForRange({
         overtimeNightMinutes: { $sum: 0 },
         workedDateKeys: {
           $addToSet: {
-            $dateToString: { format: "%Y-%m-%d", date: "$workDate" },
+            $cond: [
+              "$includeInPayroll",
+              { $dateToString: { format: "%Y-%m-%d", date: "$workDate" } },
+              null,
+            ],
           },
         },
       },
@@ -469,7 +502,7 @@ export async function buildPayrollItemsForRange({
         overtimeHolidayHours: Number(row.overtimeHolidayMinutes || 0) / 60,
         nightHours: Number(row.nightMinutes || 0) / 60,
         overtimeNightHours: Number(row.overtimeNightMinutes || 0) / 60,
-        workedDateCount: (row.workedDateKeys || []).length,
+        workedDateCount: (row.workedDateKeys || []).filter(Boolean).length,
       },
     ]),
   );
