@@ -131,9 +131,6 @@ function assertCanCreate(ctx, employeeId) {
 function assertCanConfirm(ctx, request) {
   const actorId = getActorId(ctx);
   if (actorId && String(actorId) === String(request.employeeId)) return;
-
-  if (isReviewer(ctx)) return;
-
   throw new Error("Bạn không có quyền xác nhận yêu cầu tăng ca này.");
 }
 
@@ -141,7 +138,7 @@ function assertCanCancel(ctx, request) {
   if (isReviewer(ctx)) return;
 
   const actorId = getActorId(ctx);
-  if (actorId && String(actorId) === String(request.requestedBy)) return;
+  if (actorId && String(actorId) === String(request.employeeId)) return;
 
   throw new Error("Bạn không có quyền hủy yêu cầu tăng ca này.");
 }
@@ -217,7 +214,15 @@ function staffBelongsToRestaurant(staff, restaurantId) {
 
 async function findTimesheetForRequest(request) {
   if (request.timesheetId) {
-    return Timesheet.findById(request.timesheetId);
+    return Timesheet.findOne({
+      _id: request.timesheetId,
+      employeeId: request.employeeId,
+      restaurantId: request.restaurantId,
+      workDate: {
+        $gte: toStartOfDay(request.workDate),
+        $lte: toEndOfDay(request.workDate),
+      },
+    });
   }
 
   const filter = {
@@ -505,7 +510,11 @@ export async function createOvertimeRequest({ input, ctx }) {
       ? Number(input.plannedOvertimeMinutes)
       : minutesBetween(plannedStartTime, plannedEndTime);
 
-  if (plannedMinutes <= 0) {
+  if (plannedMinutes < 0) {
+    throw new Error("Số phút tăng ca dự kiến không hợp lệ.");
+  }
+
+  if (plannedMinutes === 0) {
     throw new Error("Số phút tăng ca dự kiến phải lớn hơn 0.");
   }
 
@@ -531,21 +540,21 @@ export async function createOvertimeRequest({ input, ctx }) {
     action: "overtime_request",
   });
 
-  const duplicate = await OvertimeRequest.findOne({
+  const duplicateFilter = {
     employeeId,
     restaurantId,
     workDate,
     status: {
       $in: ["pending_employee_confirmation", "pending_approval", "approved"],
     },
-    plannedStartTime: { $lt: plannedEndTime },
-    plannedEndTime: { $gt: plannedStartTime },
-  });
+  };
+  if (shiftId) duplicateFilter.shiftId = shiftId;
+  if (timesheetId) duplicateFilter.timesheetId = timesheetId;
+
+  const duplicate = await OvertimeRequest.findOne(duplicateFilter);
 
   if (duplicate) {
-    throw new Error(
-      "Đã có yêu cầu tăng ca đang chờ xử lý hoặc đã duyệt trong khung giờ này.",
-    );
+    throw new Error("OVERTIME_REQUEST_PENDING_EXISTS");
   }
 
   const employeeConfirmationRequired = Boolean(
@@ -669,11 +678,11 @@ export async function approveOvertimeRequest({ input, ctx }) {
     throw new Error("Số phút tăng ca được duyệt phải lớn hơn 0.");
   }
 
-  if (
-    approvedMinutes > Number(request.plannedOvertimeMinutes || 0) &&
-    !String(input.note || "").trim()
-  ) {
-    throw new Error("Cần nhập ghi chú nếu duyệt vượt số phút tăng ca dự kiến.");
+  const actualMinutes = Number(request.actualOvertimeMinutes || 0);
+  const plannedMinutes = Number(request.plannedOvertimeMinutes || 0);
+  const upperBound = actualMinutes > 0 ? Math.min(actualMinutes, plannedMinutes || actualMinutes) : plannedMinutes;
+  if (upperBound > 0 && approvedMinutes > upperBound) {
+    throw new Error("OVERTIME_APPROVED_MINUTES_EXCEED_REQUESTED");
   }
 
   request.status = "approved";
@@ -744,12 +753,16 @@ export async function cancelOvertimeRequest({ input, ctx }) {
 
   assertCanCancel(ctx, request);
 
+  if (["completed", "payroll_locked"].includes(request.status)) {
+    throw new Error("Không thể hủy yêu cầu tăng ca đã hoàn tất hoặc đã khóa payroll.");
+  }
+
   if (
-    !["pending_employee_confirmation", "pending_approval"].includes(
+    !["pending_employee_confirmation", "pending_approval", "approved"].includes(
       request.status,
     )
   ) {
-    throw new Error("Chỉ có thể hủy yêu cầu tăng ca chưa duyệt.");
+    throw new Error("Không thể hủy yêu cầu tăng ca ở trạng thái hiện tại.");
   }
 
   request.status = "cancelled";
@@ -793,7 +806,7 @@ export async function completeOvertimeRequest({ input, ctx }) {
 
   const timesheet = await findTimesheetForRequest(request);
   if (!timesheet) {
-    throw new Error("Chưa có bảng công để đối chiếu và hoàn tất tăng ca.");
+    throw new Error("TIMESHEET_NOT_FOUND_FOR_OVERTIME");
   }
 
   const actualOvertimeMinutes =
@@ -828,7 +841,6 @@ export async function completeOvertimeRequest({ input, ctx }) {
     overtimeApprovalStatus: timesheet.overtimeApprovalStatus || "none",
   };
 
-  timesheet.overtimeMinutes = actualOvertimeMinutes;
   timesheet.approvedOvertimeMinutes = approvedOvertimeMinutes;
   timesheet.overtimeApprovalStatus = "approved";
   timesheet.overtimeRequestId = request._id;
