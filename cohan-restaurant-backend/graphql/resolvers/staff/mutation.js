@@ -72,6 +72,7 @@ import {
   resolveUserRoles,
   userCanAccessRestaurant,
 } from "../../../src/services/scheduling/schedulingPermission.service.js";
+import { createPerformanceIncidentOnce } from "../../../src/services/performance/performanceIncident.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -2922,6 +2923,25 @@ export default {
     record.hours = Number((record.workedMinutes / 60).toFixed(2));
 
     await record.save();
+    if (record.isOffSchedule) {
+      try {
+        await createPerformanceIncidentOnce({
+          restaurantId,
+          employeeId,
+          actorId,
+          actorRole: String(ctx?.user?.roleName || ctx?.user?.userType || "").toLowerCase(),
+          sourceType: "off_schedule_attendance",
+          sourceId: String(record._id),
+          eventType: "OFF_SCHEDULE_CREATED",
+          severity: "warning",
+          responsibilityStatus: "pending_review",
+          scoreImpactStatus: "pending",
+          metadata: { workDate, timesheetId: String(record._id), reasonCategory: record.offScheduleReasonCategory, reason: record.offScheduleReason || "" },
+        });
+      } catch (error) {
+        console.warn("Failed to log performance incident:", error.message);
+      }
+    }
     const populated = await Timesheet.findById(record._id)
       .populate("shiftId")
       .lean();
@@ -2954,6 +2974,23 @@ export default {
     record.offScheduleReviewedAt = new Date();
     record.offScheduleReviewNote = note?.trim() || "";
     await record.save();
+    try {
+      await createPerformanceIncidentOnce({
+        restaurantId: record.restaurantId,
+        employeeId: record.employeeId,
+        actorId: toObjectId(ctx?.user?.id || ctx?.user?._id),
+        actorRole: String(ctx?.user?.roleName || ctx?.user?.userType || "").toLowerCase(),
+        sourceType: "off_schedule_attendance",
+        sourceId: String(record._id),
+        eventType: "OFF_SCHEDULE_APPROVED",
+        severity: "info",
+        responsibilityStatus: "no_fault",
+        scoreImpactStatus: "waived",
+        metadata: { reviewNote: record.offScheduleReviewNote || "" },
+      });
+    } catch (error) {
+      console.warn("Failed to log performance incident:", error.message);
+    }
     const staff = await Staff.findById(record.employeeId).populate("role");
     return mapAttendanceOutput(record.toObject(), staff);
   },
@@ -2980,6 +3017,23 @@ export default {
     record.offScheduleReviewedAt = new Date();
     record.offScheduleReviewNote = note?.trim() || "";
     await record.save();
+    try {
+      await createPerformanceIncidentOnce({
+        restaurantId: record.restaurantId,
+        employeeId: record.employeeId,
+        actorId: toObjectId(ctx?.user?.id || ctx?.user?._id),
+        actorRole: String(ctx?.user?.roleName || ctx?.user?.userType || "").toLowerCase(),
+        sourceType: "off_schedule_attendance",
+        sourceId: String(record._id),
+        eventType: "OFF_SCHEDULE_REJECTED",
+        severity: "violation",
+        responsibilityStatus: "pending_review",
+        scoreImpactStatus: "eligible",
+        metadata: { reviewNote: record.offScheduleReviewNote || "" },
+      });
+    } catch (error) {
+      console.warn("Failed to log performance incident:", error.message);
+    }
     const staff = await Staff.findById(record.employeeId).populate("role");
     return mapAttendanceOutput(record.toObject(), staff);
   },

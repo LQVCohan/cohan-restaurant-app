@@ -1,5 +1,6 @@
 const modelMocks = vi.hoisted(() => ({
   EventLog: { create: vi.fn() },
+  PerformanceIncident: { findOneAndUpdate: vi.fn() },
   OvertimeRequest: { findById: vi.fn(), findOne: vi.fn(), create: vi.fn() },
   Shift: { findById: vi.fn() },
   Staff: { findById: vi.fn() },

@@ -11,6 +11,7 @@ import {
   calculateAttendanceMetrics,
   deriveAttendanceStatus,
 } from "./attendanceCalculation.service.js";
+import { createPerformanceIncidentOnce } from "../performance/performanceIncident.service.js";
 import {
   ATTENDANCE_READ_ROLES,
   ATTENDANCE_REVIEW_ROLES,
@@ -193,6 +194,14 @@ async function logEvent({
     });
   } catch (error) {
     console.error("Failed to log attendance correction event:", error.message);
+  }
+}
+
+async function logPerformanceIncident(input) {
+  try {
+    await createPerformanceIncidentOnce(input);
+  } catch (error) {
+    console.warn("Failed to log performance incident:", error.message);
   }
 }
 
@@ -665,6 +674,20 @@ export async function createAttendanceCorrectionRequest({ input, ctx }) {
       correctionType: doc.correctionType,
     },
   });
+  await logPerformanceIncident({
+    restaurantId,
+    employeeId,
+    actorId,
+    actorRole: getActorRole(ctx),
+    sourceType: "attendance_correction",
+    sourceId: String(doc._id),
+    eventType: "ATTENDANCE_CORRECTION_CREATED",
+    severity: "info",
+    responsibilityStatus: "pending_review",
+    scoreImpactStatus: "not_applicable",
+    occurredAt: new Date(),
+    metadata: { correctionType: doc.correctionType, workDate, reason },
+  });
 
   const populated = await populateRequest(doc);
   return mapCorrectionRequest(populated);
@@ -822,6 +845,20 @@ export async function approveAttendanceCorrectionRequest({ input, ctx }) {
     buildAuditLog(ctx, "attendance_correction.approve", note),
   );
   await request.save();
+  await logPerformanceIncident({
+    restaurantId: request.restaurantId,
+    employeeId: request.employeeId,
+    actorId,
+    actorRole: getActorRole(ctx),
+    sourceType: "attendance_correction",
+    sourceId: String(request._id),
+    eventType: "ATTENDANCE_CORRECTION_APPLIED",
+    severity: "info",
+    responsibilityStatus: "no_fault",
+    scoreImpactStatus: "waived",
+    occurredAt: new Date(),
+    metadata: { reviewNote: note, requestedCheckInAt: request.requestedCheckInAt, requestedCheckOutAt: request.requestedCheckOutAt },
+  });
 
   await logEvent({
     ctx,
@@ -830,7 +867,6 @@ export async function approveAttendanceCorrectionRequest({ input, ctx }) {
     requestId: request._id,
     meta: { employeeId: String(request.employeeId) },
   });
-
   await applyCorrectionToTimesheet({ request, ctx, reviewNote: note });
 
   request.status = "applied";
@@ -885,6 +921,20 @@ export async function rejectAttendanceCorrectionRequest({ input, ctx }) {
     requestId: request._id,
     status: "success",
     meta: { reason },
+  });
+  await logPerformanceIncident({
+    restaurantId: request.restaurantId,
+    employeeId: request.employeeId,
+    actorId: getActorId(ctx),
+    actorRole: getActorRole(ctx),
+    sourceType: "attendance_correction",
+    sourceId: String(request._id),
+    eventType: "ATTENDANCE_CORRECTION_REJECTED",
+    severity: "warning",
+    responsibilityStatus: "pending_review",
+    scoreImpactStatus: "eligible",
+    occurredAt: new Date(),
+    metadata: { rejectionReason: reason, reviewNote: request.reviewNote || "" },
   });
 
   const populated = await AttendanceCorrectionRequest.findById(request._id)
