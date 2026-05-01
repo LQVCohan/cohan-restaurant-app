@@ -279,6 +279,49 @@ function appendNote(oldNote, nextNote) {
   return `${oldText}\n${nextText}`;
 }
 
+function validateCorrectionRequestPayload({
+  correctionType,
+  requestedCheckInAt,
+  requestedCheckOutAt,
+  requestedWorkedMinutes,
+}) {
+  const type = String(correctionType || "").toLowerCase();
+
+  if (
+    requestedCheckInAt &&
+    requestedCheckOutAt &&
+    requestedCheckOutAt <= requestedCheckInAt
+  ) {
+    throw new Error("Giờ check-out đề xuất phải lớn hơn giờ check-in đề xuất.");
+  }
+
+  if (
+    requestedWorkedMinutes != null &&
+    Number(requestedWorkedMinutes) < 0
+  ) {
+    throw new Error("Số phút làm việc đề xuất không được âm.");
+  }
+
+  const requiresCheckIn = new Set([
+    "missing_check_in",
+    "wrong_check_in",
+    "wrong_check_in_out",
+  ]);
+  const requiresCheckOut = new Set([
+    "missing_check_out",
+    "wrong_check_out",
+    "wrong_check_in_out",
+  ]);
+
+  if (requiresCheckIn.has(type) && !requestedCheckInAt) {
+    throw new Error("Loại chỉnh công này yêu cầu giờ check-in đề xuất.");
+  }
+
+  if (requiresCheckOut.has(type) && !requestedCheckOutAt) {
+    throw new Error("Loại chỉnh công này yêu cầu giờ check-out đề xuất.");
+  }
+}
+
 function mapCorrectionRequest(doc) {
   const employee = doc.employeeId;
   const requestedBy = doc.requestedBy;
@@ -500,13 +543,12 @@ export async function createAttendanceCorrectionRequest({ input, ctx }) {
     );
   }
 
-  if (
-    requestedCheckInAt &&
-    requestedCheckOutAt &&
-    requestedCheckOutAt <= requestedCheckInAt
-  ) {
-    throw new Error("Giờ check-out đề xuất phải lớn hơn giờ check-in đề xuất.");
-  }
+  validateCorrectionRequestPayload({
+    correctionType: input.correctionType,
+    requestedCheckInAt,
+    requestedCheckOutAt,
+    requestedWorkedMinutes: input.requestedWorkedMinutes,
+  });
 
   assertCanCreateForEmployee(ctx, employeeId);
   assertAuthenticated(ctx);
@@ -539,7 +581,7 @@ export async function createAttendanceCorrectionRequest({ input, ctx }) {
   const existingPending =
     await AttendanceCorrectionRequest.findOne(pendingFilter);
   if (existingPending) {
-    throw new Error("Đã có yêu cầu chỉnh công đang chờ xử lý cho ngày này.");
+    throw new Error("ATTENDANCE_CORRECTION_PENDING_EXISTS");
   }
 
   const existingTimesheet = await resolveExistingTimesheet({
@@ -675,6 +717,9 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
     : null;
 
   if (!timesheet) {
+    if (!["off_schedule_work", "missing_check_in", "missing_check_out", "wrong_check_in_out"].includes(String(request.correctionType || "").toLowerCase())) {
+      throw new Error("Không tìm thấy bảng công để áp dụng chỉnh công.");
+    }
     timesheet = await Timesheet.create({
       employeeId: request.employeeId,
       restaurantId: request.restaurantId,
@@ -688,7 +733,6 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
       status: nextStatus,
       isOffSchedule,
       source: "manual_correction",
-      approved: true,
       note: appendNote("", `Chỉnh công đã duyệt: ${request.reason}`),
     });
   } else {
@@ -701,7 +745,12 @@ async function applyCorrectionToTimesheet({ request, ctx, reviewNote }) {
     timesheet.overtimeMinutes = metrics.overtimeMinutes;
     timesheet.status = nextStatus;
     timesheet.source = "manual_correction";
-    timesheet.approved = true;
+    if (typeof timesheet.approvedOvertimeMinutes !== "undefined") {
+      timesheet.approvedOvertimeMinutes = 0;
+    }
+    if (typeof timesheet.overtimeApprovalStatus !== "undefined") {
+      timesheet.overtimeApprovalStatus = "pending";
+    }
     timesheet.note = appendNote(
       timesheet.note,
       `Chỉnh công đã duyệt: ${reviewNote || request.reason}`,
@@ -740,6 +789,9 @@ export async function approveAttendanceCorrectionRequest({ input, ctx }) {
   assertRestaurantScope(ctx, request.restaurantId);
 
   if (request.status !== "pending") {
+    if (request.status === "applied") {
+      throw new Error("ATTENDANCE_CORRECTION_ALREADY_APPLIED");
+    }
     throw new Error("Chỉ có thể duyệt yêu cầu đang chờ xử lý.");
   }
 

@@ -81,7 +81,46 @@ describe("Payroll validation correctness", () => {
   });
 
   it("does not create issues for approved overtime and approved off-schedule timesheet", async () => {
-    modelMocks.Timesheet.find.mockImplementation(() => ({ populate: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([]) }));
+    const approvedTimesheets = [
+      {
+        _id: "t-ot-approved",
+        employeeId: { _id: "s1", fullName: "A" },
+        overtimeMinutes: 90,
+        approvedOvertimeMinutes: 90,
+        overtimeApprovalStatus: "approved",
+      },
+      {
+        _id: "t-off-approved",
+        employeeId: { _id: "s1", fullName: "A" },
+        isOffSchedule: true,
+        approved: true,
+        workedMinutes: 480,
+      },
+    ];
+
+    modelMocks.Timesheet.find.mockImplementation((query = {}) => ({
+      populate: vi.fn().mockReturnThis(),
+      lean: vi.fn().mockImplementation(async () => {
+        if (query.overtimeMinutes) {
+          return approvedTimesheets.filter(
+            (timesheet) =>
+              Number(timesheet.overtimeMinutes || 0) > 0 &&
+              (timesheet.approvedOvertimeMinutes == null || Number(timesheet.approvedOvertimeMinutes) <= 0 || timesheet.overtimeApprovalStatus !== "approved"),
+          );
+        }
+
+        if (query.isOffSchedule) {
+          return approvedTimesheets.filter(
+            (timesheet) =>
+              timesheet.isOffSchedule === true &&
+              timesheet.approved !== true &&
+              (Number(timesheet.workedMinutes || 0) > 0 || Number(timesheet.hours || 0) > 0 || Number(timesheet.amount || 0) > 0 || Boolean(timesheet.actualCheckInAt) || Boolean(timesheet.actualCheckOutAt)),
+          );
+        }
+
+        return [];
+      }),
+    }));
 
     const { validatePayrollPeriod } = await import("../../src/services/payroll/payrollValidation.service.js");
     const result = await validatePayrollPeriod("p1");
