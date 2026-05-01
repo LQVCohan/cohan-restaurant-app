@@ -64,6 +64,7 @@ import {
 } from "../../../src/services/scheduling/scheduleLifecycle.service.js";
 import { requireRoles, requireRestaurantScope } from "../../guards.js";
 import {
+  ATTENDANCE_REVIEW_ROLES,
   ATTENDANCE_OPERATION_ROLES,
   ATTENDANCE_SELF_ROLES,
   SCHEDULE_WRITE_ROLES,
@@ -185,6 +186,15 @@ function toMinutes(ms) {
 }
 
 function mapAttendanceOutput(timesheet, staff) {
+  const isOffSchedule = Boolean(timesheet.isOffSchedule);
+  const storedApproval = String(timesheet.offScheduleApprovalStatus || "").toLowerCase();
+  const offScheduleApprovalStatus = !isOffSchedule
+    ? "not_required"
+    : Boolean(timesheet.approved)
+      ? "approved"
+      : storedApproval === "rejected"
+        ? "rejected"
+        : "pending";
   return {
     id: String(timesheet._id),
     employeeId: String(timesheet.employeeId),
@@ -211,7 +221,15 @@ function mapAttendanceOutput(timesheet, staff) {
     earlyLeaveMinutes: Number(timesheet.earlyLeaveMinutes || 0),
     overtimeMinutes: Number(timesheet.overtimeMinutes || 0),
     status: mapAttendanceStatus(timesheet),
-    isOffSchedule: Boolean(timesheet.isOffSchedule),
+    isOffSchedule,
+    offScheduleApprovalStatus,
+    offScheduleReasonCategory: timesheet.offScheduleReasonCategory || "other",
+    offScheduleReason: timesheet.offScheduleReason || "",
+    offScheduleReviewedBy: timesheet.offScheduleReviewedBy
+      ? String(timesheet.offScheduleReviewedBy)
+      : null,
+    offScheduleReviewedAt: timesheet.offScheduleReviewedAt || null,
+    offScheduleReviewNote: timesheet.offScheduleReviewNote || "",
     source: timesheet.source || "quick",
     note: timesheet.note || "",
     approved: Boolean(timesheet.approved),
@@ -2798,6 +2816,17 @@ export default {
       action: "attendance",
     });
     const note = input.note?.trim() || "";
+    const offScheduleReasonCategory = [
+      "called_in",
+      "manager_requested",
+      "emergency_cover",
+      "shift_swap",
+      "self_initiated",
+      "other",
+    ].includes(String(input.offScheduleReasonCategory || "").toLowerCase())
+      ? String(input.offScheduleReasonCategory).toLowerCase()
+      : "other";
+    const offScheduleReason = input.offScheduleReason?.trim() || "";
     const source = ["manual", "system", "quick"].includes(
       String(input.source || "").toLowerCase(),
     )
@@ -2833,6 +2862,9 @@ export default {
       isOffSchedule: !assignedShift,
       note,
       approved: false,
+      offScheduleApprovalStatus: assignedShift ? "not_required" : "pending",
+      offScheduleReasonCategory,
+      offScheduleReason,
     };
 
     const record = (await Timesheet.findOne(query)) || new Timesheet(defaults);
@@ -2843,6 +2875,14 @@ export default {
     record.plannedStartTime = assignedShift?.startTime || null;
     record.plannedEndTime = assignedShift?.endTime || null;
     record.isOffSchedule = !assignedShift;
+    if (!assignedShift) {
+      record.approved = false;
+      record.offScheduleApprovalStatus = "pending";
+      record.offScheduleReasonCategory = offScheduleReasonCategory;
+      if (offScheduleReason) record.offScheduleReason = offScheduleReason;
+    } else {
+      record.offScheduleApprovalStatus = "not_required";
+    }
     record.source = source;
     if (note) record.note = note;
 
@@ -2886,6 +2926,62 @@ export default {
       .populate("shiftId")
       .lean();
     return mapAttendanceOutput(populated, staff);
+  },
+  approveOffScheduleAttendance: async (_, { timesheetId, note }, ctx) => {
+    if (!ctx?.user?.id && !ctx?.user?._id) throw new Error("UNAUTHENTICATED");
+    const roles = resolveUserRoles(ctx.user);
+    if (!roles.some((role) => ATTENDANCE_REVIEW_ROLES.includes(role))) {
+      throw new Error("FORBIDDEN");
+    }
+    const tsid = toObjectId(timesheetId);
+    if (!tsid) throw new Error("Invalid timesheetId");
+    const record = await Timesheet.findById(tsid);
+    if (!record) throw new Error("Timesheet not found");
+    if (!userCanAccessRestaurant(ctx.user, record.restaurantId)) {
+      throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
+    }
+    if (!record.isOffSchedule) throw new Error("OFF_SCHEDULE_ATTENDANCE_REQUIRED");
+    if (record.offScheduleApprovalStatus === "rejected") {
+      throw new Error("OFF_SCHEDULE_ATTENDANCE_ALREADY_REJECTED");
+    }
+    if (record.approved && record.offScheduleApprovalStatus === "approved") {
+      const staff = await Staff.findById(record.employeeId).populate("role");
+      return mapAttendanceOutput(record.toObject(), staff);
+    }
+    record.approved = true;
+    record.offScheduleApprovalStatus = "approved";
+    record.offScheduleReviewedBy = toObjectId(ctx?.user?.id || ctx?.user?._id);
+    record.offScheduleReviewedAt = new Date();
+    record.offScheduleReviewNote = note?.trim() || "";
+    await record.save();
+    const staff = await Staff.findById(record.employeeId).populate("role");
+    return mapAttendanceOutput(record.toObject(), staff);
+  },
+  rejectOffScheduleAttendance: async (_, { timesheetId, note }, ctx) => {
+    if (!ctx?.user?.id && !ctx?.user?._id) throw new Error("UNAUTHENTICATED");
+    const roles = resolveUserRoles(ctx.user);
+    if (!roles.some((role) => ATTENDANCE_REVIEW_ROLES.includes(role))) {
+      throw new Error("FORBIDDEN");
+    }
+    const tsid = toObjectId(timesheetId);
+    if (!tsid) throw new Error("Invalid timesheetId");
+    const record = await Timesheet.findById(tsid);
+    if (!record) throw new Error("Timesheet not found");
+    if (!userCanAccessRestaurant(ctx.user, record.restaurantId)) {
+      throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
+    }
+    if (!record.isOffSchedule) throw new Error("OFF_SCHEDULE_ATTENDANCE_REQUIRED");
+    if (record.approved || record.offScheduleApprovalStatus === "approved") {
+      throw new Error("OFF_SCHEDULE_ATTENDANCE_ALREADY_APPROVED");
+    }
+    record.approved = false;
+    record.offScheduleApprovalStatus = "rejected";
+    record.offScheduleReviewedBy = toObjectId(ctx?.user?.id || ctx?.user?._id);
+    record.offScheduleReviewedAt = new Date();
+    record.offScheduleReviewNote = note?.trim() || "";
+    await record.save();
+    const staff = await Staff.findById(record.employeeId).populate("role");
+    return mapAttendanceOutput(record.toObject(), staff);
   },
 
   createLeaveRequest: async (_, { input }, ctx) => {
