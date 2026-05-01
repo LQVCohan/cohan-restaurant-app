@@ -5,6 +5,12 @@ export const SCHEDULE_WRITE_ROLES = ["ADMIN", "MANAGER"];
 export const SCHEDULE_READ_ROLES = ["ADMIN", "MANAGER", "HR", "ACCOUNTANT"];
 export const SHIFT_ACK_READ_ROLES = ["ADMIN", "MANAGER", "HR", "ACCOUNTANT"];
 export const SHIFT_ACK_ADMIN_ROLES = ["ADMIN", "MANAGER"];
+export const ATTENDANCE_SELF_ROLES = ["STAFF"];
+export const ATTENDANCE_OPERATION_ROLES = ["ADMIN", "MANAGER"];
+export const ATTENDANCE_HR_REVIEW_ROLES = ["HR"];
+export const ATTENDANCE_READ_ROLES = ["ADMIN", "MANAGER", "HR", "ACCOUNTANT"];
+export const ATTENDANCE_REVIEW_ROLES = ["ADMIN", "MANAGER", "HR"];
+export const ATTENDANCE_WRITE_ROLES = ["ADMIN", "MANAGER"];
 
 export function normalizeRole(value) {
   return String(value || "").trim().toUpperCase();
@@ -24,4 +30,20 @@ export function resolveUserRoles(user = {}) {
 export function userHasAnyRole(user, allowedRoles = []) {
   const allowed = new Set(allowedRoles.map(normalizeRole));
   return resolveUserRoles(user).some((role) => allowed.has(role));
+}
+
+export function userCanAccessRestaurant(user, restaurantId) {
+  const target = String(restaurantId || "");
+  if (!target) return false;
+  if (userHasAnyRole(user, ["ADMIN"])) return true;
+
+  const candidates = [
+    user?.restaurantId,
+    user?.primaryRestaurant,
+    user?.restaurantForStaff,
+    ...(Array.isArray(user?.refRestaurants) ? user.refRestaurants : []),
+    ...(Array.isArray(user?.restaurants) ? user.restaurants : []),
+  ];
+
+  return candidates.some((item) => String(item?._id || item || "") === target);
 }
