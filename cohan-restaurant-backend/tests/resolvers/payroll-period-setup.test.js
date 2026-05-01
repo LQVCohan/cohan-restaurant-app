@@ -139,7 +139,7 @@ describe("Payroll period setup semantics", () => {
       {
         $set: {
           currentPayrollPeriodId: "period-2",
-          updatedBy: "manager-1",
+          updatedBy: "admin-1",
         },
       },
       { upsert: true, new: true, setDefaultsOnInsert: true },
