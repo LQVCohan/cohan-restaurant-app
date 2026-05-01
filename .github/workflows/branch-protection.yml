@@ -1,9 +1,16 @@
 name: enforce-branch-protection
 
+# NOTE:
+# - Branch protection should be configured manually in GitHub Settings > Branches.
+# - Required CI checks for main are: frontend and backend.
+# - GitHub Actions default GITHUB_TOKEN does not have enough permission to update
+#   branch protection via API in many repos, causing 403
+#   "Resource not accessible by integration".
+#
+# This workflow is kept for manual use only (workflow_dispatch) to avoid red
+# checks on every push/PR from automatic protect-main runs.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
