@@ -63,7 +63,14 @@ import {
   resolveScheduleLifecycleStatus,
 } from "../../../src/services/scheduling/scheduleLifecycle.service.js";
 import { requireRoles, requireRestaurantScope } from "../../guards.js";
-import { SCHEDULE_WRITE_ROLES, SHIFT_ACK_ADMIN_ROLES } from "../../../src/services/scheduling/schedulingPermission.service.js";
+import {
+  ATTENDANCE_OPERATION_ROLES,
+  ATTENDANCE_SELF_ROLES,
+  SCHEDULE_WRITE_ROLES,
+  SHIFT_ACK_ADMIN_ROLES,
+  resolveUserRoles,
+  userCanAccessRestaurant,
+} from "../../../src/services/scheduling/schedulingPermission.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -2745,11 +2752,32 @@ export default {
   completeOvertimeRequest: async (_, { input }, ctx) => {
     return completeOvertimeRequestService({ input, ctx });
   },
-  upsertStaffAttendance: async (_, { input }) => {
+  upsertStaffAttendance: async (_, { input }, ctx) => {
+    if (!ctx?.user?.id && !ctx?.user?._id) throw new Error("UNAUTHENTICATED");
     const employeeId = toObjectId(input.employeeId);
     const restaurantId = toObjectId(input.restaurantId);
     if (!employeeId || !restaurantId)
       throw new Error("Invalid employeeId or restaurantId");
+    const roles = resolveUserRoles(ctx.user);
+    const actorId = toObjectId(ctx?.user?.id || ctx?.user?._id);
+    const isSelfRole = roles.some((role) => ATTENDANCE_SELF_ROLES.includes(role));
+    const isOperationRole = roles.some((role) =>
+      ATTENDANCE_OPERATION_ROLES.includes(role),
+    );
+    if (isSelfRole) {
+      if (!actorId || String(actorId) !== String(employeeId)) {
+        throw new Error("FORBIDDEN");
+      }
+      if (!userCanAccessRestaurant(ctx.user, restaurantId)) {
+        throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
+      }
+    } else if (isOperationRole) {
+      if (!userCanAccessRestaurant(ctx.user, restaurantId)) {
+        throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
+      }
+    } else {
+      throw new Error("FORBIDDEN");
+    }
 
     const action = String(input.action || "").toLowerCase();
     if (!["check_in", "check_out", "in", "out"].includes(action)) {

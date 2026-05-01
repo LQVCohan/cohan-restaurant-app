@@ -11,6 +11,12 @@ import {
   calculateAttendanceMetrics,
   deriveAttendanceStatus,
 } from "./attendanceCalculation.service.js";
+import {
+  ATTENDANCE_READ_ROLES,
+  ATTENDANCE_REVIEW_ROLES,
+  userCanAccessRestaurant,
+  userHasAnyRole,
+} from "../scheduling/schedulingPermission.service.js";
 
 const { Types } = mongoose;
 
@@ -85,8 +91,7 @@ function isAdmin(ctx) {
 }
 
 function canReviewAttendanceCorrection(ctx) {
-  const role = getActorRole(ctx);
-  return ["admin", "hr", "manager"].includes(role);
+  return userHasAnyRole(ctx?.user, ATTENDANCE_REVIEW_ROLES);
 }
 
 function canRequestAnyAttendanceCorrection(ctx) {
@@ -95,8 +100,17 @@ function canRequestAnyAttendanceCorrection(ctx) {
 }
 
 function canViewAttendanceCorrection(ctx) {
-  const role = getActorRole(ctx);
-  return ["admin", "hr", "manager", "accountant", "staff"].includes(role);
+  return userHasAnyRole(ctx?.user, [...ATTENDANCE_READ_ROLES, "STAFF"]);
+}
+
+function assertAuthenticated(ctx) {
+  if (!ctx?.user?.id && !ctx?.user?._id) throw new Error("UNAUTHENTICATED");
+}
+
+function assertRestaurantScope(ctx, restaurantId) {
+  if (!userCanAccessRestaurant(ctx?.user, restaurantId)) {
+    throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
+  }
 }
 
 function assertCanView(ctx) {
@@ -368,12 +382,14 @@ async function populateRequest(queryOrDoc) {
 
 export async function listAttendanceCorrectionRequests({ filter = {}, ctx }) {
   assertCanView(ctx);
+  assertAuthenticated(ctx);
 
   const query = {};
   const actorId = getActorId(ctx);
   const actorRole = getActorRole(ctx);
 
   if (filter.restaurantId) query.restaurantId = toObjectId(filter.restaurantId);
+  if (filter.restaurantId) assertRestaurantScope(ctx, filter.restaurantId);
   if (filter.employeeId) query.employeeId = toObjectId(filter.employeeId);
   if (filter.status) query.status = String(filter.status).toLowerCase();
 
@@ -432,6 +448,7 @@ export async function getAttendanceCorrectionRequest({ id, ctx }) {
     .populate("appliedBy", "fullName email username");
 
   if (!doc) return null;
+  assertRestaurantScope(ctx, doc.restaurantId);
 
   const actorRole = getActorRole(ctx);
   const actorId = getActorId(ctx);
@@ -492,6 +509,8 @@ export async function createAttendanceCorrectionRequest({ input, ctx }) {
   }
 
   assertCanCreateForEmployee(ctx, employeeId);
+  assertAuthenticated(ctx);
+  assertRestaurantScope(ctx, restaurantId);
 
   const staff = await resolveStaff(employeeId);
   if (!staffBelongsToRestaurant(staff, restaurantId)) {
@@ -718,6 +737,7 @@ export async function approveAttendanceCorrectionRequest({ input, ctx }) {
 
   const request = await AttendanceCorrectionRequest.findById(input.requestId);
   if (!request) throw new Error("Không tìm thấy yêu cầu chỉnh công.");
+  assertRestaurantScope(ctx, request.restaurantId);
 
   if (request.status !== "pending") {
     throw new Error("Chỉ có thể duyệt yêu cầu đang chờ xử lý.");
@@ -791,6 +811,7 @@ export async function rejectAttendanceCorrectionRequest({ input, ctx }) {
 
   const request = await AttendanceCorrectionRequest.findById(input.requestId);
   if (!request) throw new Error("Không tìm thấy yêu cầu chỉnh công.");
+  assertRestaurantScope(ctx, request.restaurantId);
 
   if (request.status !== "pending") {
     throw new Error("Chỉ có thể từ chối yêu cầu đang chờ xử lý.");
@@ -829,6 +850,7 @@ export async function rejectAttendanceCorrectionRequest({ input, ctx }) {
 export async function cancelAttendanceCorrectionRequest({ requestId, ctx }) {
   const request = await AttendanceCorrectionRequest.findById(requestId);
   if (!request) throw new Error("Không tìm thấy yêu cầu chỉnh công.");
+  assertRestaurantScope(ctx, request.restaurantId);
 
   assertCanCancel(ctx, request);
 
