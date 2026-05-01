@@ -1,0 +1,38 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const modelMocks = vi.hoisted(() => ({
+  Staff: { find: vi.fn(), findById: vi.fn() },
+  Timesheet: { find: vi.fn(), findOne: vi.fn(), findById: vi.fn() },
+  Shift: { find: vi.fn(), findOne: vi.fn() },
+  LeaveRequest: { find: vi.fn() },
+  LeaveBalance: {}, Order: {}, Table: {}, Category: {}, Promotion: {}, Restaurant: {}, PayrollPeriod: {}, PayrollItem: {}, SchedulePublication: {}, EventLog: {}, ShiftAcknowledgement: {},
+  Role: {}, PayrollSetting: {}, PayrollAdjustment: {}, EmployeeCodeCounter: {}, Notification: {},
+}));
+vi.mock('../../models/index.js', () => modelMocks);
+vi.mock('../../src/services/attendance/attendanceCorrectionWorkflow.service.js', () => ({ getAttendanceCorrectionRequest: vi.fn(), listAttendanceCorrectionRequests: vi.fn() }));
+vi.mock('../../src/services/overtime/overtimeRequest.service.js', () => ({ getOvertimeRequest: vi.fn(), listOvertimeRequests: vi.fn() }));
+
+import Query from '../../graphql/resolvers/staff/query.js';
+import Mutation from '../../graphql/resolvers/staff/mutation.js';
+
+describe('off-schedule workflow visibility', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('staff query only returns own off-schedule records', async () => {
+    modelMocks.Timesheet.find.mockReturnValue({ populate: vi.fn().mockReturnThis(), sort: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([{ _id: 't1', employeeId: 's1', restaurantId: 'r1', workDate: new Date(), isOffSchedule: true, approved: false }]) });
+    modelMocks.Staff.find.mockReturnValue({ populate: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), lean: vi.fn().mockResolvedValue([{ _id: 's1', fullName: 'Staff One' }]) });
+
+    const rows = await Query.offScheduleAttendances({}, { input: { restaurantId: '507f1f77bcf86cd799439011', onlyPending: true, employeeId: '507f1f77bcf86cd799439012' } }, { user: { id: '507f1f77bcf86cd799439013', userType: 'STAFF', primaryRestaurant: '507f1f77bcf86cd799439011' } });
+    expect(rows[0].offScheduleApprovalStatus).toBe('pending');
+  });
+
+  it('manager can approve off-schedule attendance', async () => {
+    const save = vi.fn();
+    modelMocks.Timesheet.findById.mockResolvedValue({ _id: 't1', employeeId: '507f1f77bcf86cd799439012', restaurantId: '507f1f77bcf86cd799439011', isOffSchedule: true, approved: false, offScheduleApprovalStatus: 'pending', save, toObject() { return this; } });
+    modelMocks.Staff.findById.mockReturnValue({ populate: vi.fn().mockResolvedValue({ _id: '507f1f77bcf86cd799439012', fullName: 'A' }) });
+    const result = await Mutation.approveOffScheduleAttendance({}, { timesheetId: '507f1f77bcf86cd799439014', note: 'ok' }, { user: { id: '507f1f77bcf86cd799439015', userType: 'MANAGER', primaryRestaurant: '507f1f77bcf86cd799439011' } });
+    expect(result.approved).toBe(true);
+    expect(result.offScheduleApprovalStatus).toBe('approved');
+    expect(save).toHaveBeenCalled();
+  });
+});

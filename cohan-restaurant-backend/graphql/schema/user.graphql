@@ -964,6 +964,12 @@ type StaffAttendanceRecord {
   overtimeMinutes: Int!
   status: String!
   isOffSchedule: Boolean!
+  offScheduleApprovalStatus: String!
+  offScheduleReasonCategory: String!
+  offScheduleReason: String!
+  offScheduleReviewedBy: ID
+  offScheduleReviewedAt: DateTime
+  offScheduleReviewNote: String!
   source: String!
   note: String
   approved: Boolean!
@@ -1210,6 +1216,17 @@ input UpsertStaffAttendanceInput {
   workDate: DateTime
   note: String
   source: String
+  offScheduleReasonCategory: String
+  offScheduleReason: String
+}
+
+input OffScheduleAttendanceFilterInput {
+  restaurantId: ID!
+  fromDate: DateTime
+  toDate: DateTime
+  status: String
+  employeeId: ID
+  onlyPending: Boolean
 }
 
 input CreateLeaveRequestInput {
@@ -1781,6 +1798,9 @@ type Query {
     status: String
     search: String
   ): [StaffAttendanceRecord!]!
+  offScheduleAttendances(
+    input: OffScheduleAttendanceFilterInput!
+  ): [StaffAttendanceRecord!]!
   leaveRequests(filter: LeaveRequestFilterInput): [LeaveRequest!]!
   myReplacementLeaveRequests(
     restaurantId: ID
@@ -1919,6 +1939,14 @@ type Mutation {
   ): StaffPayrollItem!
   upsertStaffAttendance(
     input: UpsertStaffAttendanceInput!
+  ): StaffAttendanceRecord!
+  approveOffScheduleAttendance(
+    timesheetId: ID!
+    note: String
+  ): StaffAttendanceRecord!
+  rejectOffScheduleAttendance(
+    timesheetId: ID!
+    note: String
   ): StaffAttendanceRecord!
   createLeaveRequest(input: CreateLeaveRequestInput!): LeaveRequest!
   approveLeaveRequest(
