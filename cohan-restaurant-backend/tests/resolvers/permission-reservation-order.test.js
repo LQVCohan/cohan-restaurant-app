@@ -5,7 +5,11 @@ const modelMocks = vi.hoisted(() => ({
   User: {},
   Role: {},
   Customer: {},
-  TableCustomer: {},
+  TableCustomer: {
+    findOneAndUpdate: vi.fn(() => ({
+      lean: vi.fn().mockResolvedValue({ _id: 'tc-1' }),
+    })),
+  },
   Warehouse: {},
   Recipe: {},
   Ingredient: {},

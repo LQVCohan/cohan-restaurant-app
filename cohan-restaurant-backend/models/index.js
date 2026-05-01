@@ -73,7 +73,7 @@ export { default as EmployeeCodeCounter } from "./employee-code-counter.model.js
 export { default as AttendanceCorrectionRequest } from "./attendanceCorrectionRequest.model.js";
 export { default as OvertimeRequest } from "./overtime-request.model.js";
 export { default as SchedulingPolicy } from "./schedulingPolicy.model.js";
-export { default as StaffPerformanceReview } from "./staffPerformanceReview.model.js";
+export { default as StaffPerformanceReview } from "./StaffPerformanceReview.model.js";
 export { default as StaffPerformanceSnapshot } from "./staffPerformanceSnapshot.model.js";
 export { default as SchedulePublication } from "./schedule-publication.model.js";
 
