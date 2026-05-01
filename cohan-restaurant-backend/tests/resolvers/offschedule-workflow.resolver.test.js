@@ -5,7 +5,7 @@ const modelMocks = vi.hoisted(() => ({
   Timesheet: { find: vi.fn(), findOne: vi.fn(), findById: vi.fn() },
   Shift: { find: vi.fn(), findOne: vi.fn() },
   LeaveRequest: { find: vi.fn() },
-  LeaveBalance: {}, Order: {}, Table: {}, Category: {}, Promotion: {}, Restaurant: {}, PayrollPeriod: {}, PayrollItem: {}, SchedulePublication: {}, EventLog: {}, ShiftAcknowledgement: {},
+  LeaveBalance: {}, Order: {}, Table: {}, Category: {}, Promotion: {}, Restaurant: {}, PayrollPeriod: {}, PayrollItem: {}, SchedulePublication: {}, EventLog: {}, ShiftAcknowledgement: {}, PerformanceIncident: { findOneAndUpdate: vi.fn() },
   Role: {}, PayrollSetting: {}, PayrollAdjustment: {}, EmployeeCodeCounter: {}, Notification: {},
 }));
 vi.mock('../../models/index.js', () => modelMocks);

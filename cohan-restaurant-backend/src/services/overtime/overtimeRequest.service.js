@@ -13,6 +13,7 @@ import {
   userCanAccessRestaurant,
   userHasAnyRole,
 } from "../scheduling/schedulingPermission.service.js";
+import { createPerformanceIncidentOnce } from "../performance/performanceIncident.service.js";
 
 const { Types } = mongoose;
 
@@ -180,6 +181,13 @@ async function logOvertimeEvent({
     });
   } catch (error) {
     console.error("Failed to log overtime event:", error.message);
+  }
+}
+async function logPerformanceIncident(input) {
+  try {
+    await createPerformanceIncidentOnce(input);
+  } catch (error) {
+    console.warn("Failed to log performance incident:", error.message);
   }
 }
 
@@ -612,6 +620,7 @@ export async function createOvertimeRequest({ input, ctx }) {
       status,
     },
   });
+  await logPerformanceIncident({ restaurantId, employeeId, actorId, actorRole, sourceType: "overtime_request", sourceId: String(doc._id), eventType: "OVERTIME_REQUEST_CREATED", severity: "info", responsibilityStatus: "pending_review", scoreImpactStatus: "not_applicable", metadata: { overtimeType, plannedOvertimeMinutes: plannedMinutes } });
 
   return mapRequest(doc);
 }
@@ -646,7 +655,6 @@ export async function confirmOvertimeRequest({ input, ctx }) {
     requestId: request._id,
     verb: "overtime.employee_confirm",
   });
-
   return mapRequest(request);
 }
 
@@ -704,6 +712,7 @@ export async function approveOvertimeRequest({ input, ctx }) {
     verb: "overtime.approve",
     meta: { approvedOvertimeMinutes: approvedMinutes },
   });
+  await logPerformanceIncident({ restaurantId: request.restaurantId, employeeId: request.employeeId, actorId: getActorId(ctx), actorRole: getActorRole(ctx), sourceType: "overtime_request", sourceId: String(request._id), eventType: "OVERTIME_REQUEST_APPROVED", severity: "info", responsibilityStatus: "no_fault", scoreImpactStatus: "not_applicable", metadata: { approvedOvertimeMinutes: approvedMinutes } });
 
   return mapRequest(request);
 }
@@ -742,6 +751,7 @@ export async function rejectOvertimeRequest({ input, ctx }) {
     verb: "overtime.reject",
     meta: { reason },
   });
+  await logPerformanceIncident({ restaurantId: request.restaurantId, employeeId: request.employeeId, actorId: getActorId(ctx), actorRole: getActorRole(ctx), sourceType: "overtime_request", sourceId: String(request._id), eventType: "OVERTIME_REQUEST_REJECTED", severity: "warning", responsibilityStatus: "pending_review", scoreImpactStatus: "eligible", metadata: { reason } });
 
   return mapRequest(request);
 }
@@ -781,6 +791,7 @@ export async function cancelOvertimeRequest({ input, ctx }) {
     verb: "overtime.cancel",
     meta: { reason: request.cancelReason },
   });
+  await logPerformanceIncident({ restaurantId: request.restaurantId, employeeId: request.employeeId, actorId: getActorId(ctx), actorRole: getActorRole(ctx), sourceType: "overtime_request", sourceId: String(request._id), eventType: "OVERTIME_REQUEST_CANCELLED", severity: "info", responsibilityStatus: "pending_review", scoreImpactStatus: "pending", metadata: { reason: request.cancelReason } });
 
   return mapRequest(request);
 }
@@ -888,6 +899,7 @@ export async function completeOvertimeRequest({ input, ctx }) {
       },
     },
   });
+  await logPerformanceIncident({ restaurantId: request.restaurantId, employeeId: request.employeeId, actorId: getActorId(ctx), actorRole: getActorRole(ctx), sourceType: "overtime_request", sourceId: String(request._id), eventType: "OVERTIME_REQUEST_COMPLETED", severity: "info", responsibilityStatus: "no_fault", scoreImpactStatus: "not_applicable", metadata: { approvedOvertimeMinutes, actualOvertimeMinutes, timesheetId: String(timesheet._id) } });
 
   return mapRequest(request);
 }
