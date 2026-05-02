@@ -5,6 +5,9 @@ const mocks = vi.hoisted(() => ({
   findOneAndUpdate: vi.fn(),
   find: vi.fn(() => ({ sort: vi.fn() })),
   findById: vi.fn(),
+  adjustmentCreate: vi.fn(),
+  snapshotFindOne: vi.fn(),
+  snapshotFindOneAndUpdate: vi.fn(),
   resolveUserRoles: vi.fn(() => ["MANAGER"]),
   userCanAccessRestaurant: vi.fn(() => true),
 }));
@@ -15,6 +18,13 @@ vi.mock("../../models/index.js", () => ({
     findOneAndUpdate: mocks.findOneAndUpdate,
     find: mocks.find,
     findById: mocks.findById,
+  },
+  StaffPerformanceScoreAdjustment: {
+    create: mocks.adjustmentCreate,
+  },
+  StaffPerformanceSnapshot: {
+    findOne: mocks.snapshotFindOne,
+    findOneAndUpdate: mocks.snapshotFindOneAndUpdate,
   },
 }));
 vi.mock("../../src/services/scheduling/schedulingPermission.service.js", () => ({
@@ -30,6 +40,7 @@ import {
   reviewPerformanceIncident,
   waivePerformanceIncident,
   markPerformanceIncidentEligible,
+  applyPerformanceIncidentScore,
 } from "../../src/services/performance/performanceIncident.service.js";
 
 describe("performanceIncident.service", () => {
@@ -95,4 +106,43 @@ describe("performanceIncident.service", () => {
       ctx: { user: { id: "u1" } },
     })).rejects.toThrow("INVALID_PROPOSED_SCORE_DELTA");
   });
+
+  it("applies eligible incident score and writes adjustment", async () => {
+    const save = vi.fn();
+    mocks.findById.mockResolvedValue({
+      _id: "i1",
+      restaurantId: "r1",
+      employeeId: "e1",
+      sourceType: "timesheet",
+      sourceId: "ts1",
+      eventType: "ATTENDANCE_LATE",
+      occurredAt: "2026-04-10T00:00:00.000Z",
+      scoreImpactStatus: "eligible",
+      responsibilityStatus: "staff_responsible",
+      proposedScoreDelta: -3,
+      save,
+    });
+    mocks.snapshotFindOne.mockResolvedValue(null);
+    mocks.adjustmentCreate.mockResolvedValue({ _id: "adj1" });
+    await applyPerformanceIncidentScore({ incidentId: "i1", actor: { id: "u1" }, note: "apply" });
+    expect(mocks.adjustmentCreate).toHaveBeenCalledWith(expect.objectContaining({ scoreDelta: -3, previousScore: 100, newScore: 97 }));
+    expect(mocks.snapshotFindOneAndUpdate).toHaveBeenCalled();
+    expect(save).toHaveBeenCalled();
+  });
+
+  it("blocks already applied incident", async () => {
+    mocks.findById.mockResolvedValue({ restaurantId: "r1", scoreImpactStatus: "applied" });
+    await expect(applyPerformanceIncidentScore({ incidentId: "i1", actor: { id: "u1" } })).rejects.toThrow("PERFORMANCE_INCIDENT_ALREADY_APPLIED");
+  });
+
+  it("requires note for zero delta", async () => {
+    mocks.findById.mockResolvedValue({
+      restaurantId: "r1",
+      scoreImpactStatus: "eligible",
+      responsibilityStatus: "shared",
+      proposedScoreDelta: 0,
+    });
+    await expect(applyPerformanceIncidentScore({ incidentId: "i1", actor: { id: "u1" }, note: "" })).rejects.toThrow("NOTE_REQUIRED_FOR_ZERO_DELTA");
+  });
+
 });
