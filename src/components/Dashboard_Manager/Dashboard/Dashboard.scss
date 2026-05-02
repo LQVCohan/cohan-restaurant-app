@@ -287,3 +287,14 @@ $header-height: 80px;
     border-bottom: 1px dashed $border-color;
   }
 }
+
+.incident-queue { margin-top: 14px; padding: 16px; background: #fff; border-radius: 10px; border: 1px solid $border-color; }
+.incident-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.incident-filters button.active { background: $primary-color; color: #fff; }
+.incident-grid { grid-template-columns: 1.2fr 1fr .8fr 1fr 1fr 1fr 1.2fr !important; align-items: center; }
+.incident-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.incident-read-only { font-size: 12px; color: $text-sub; }
+.incident-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.incident-modal { width: min(560px, 92vw); background: #fff; border-radius: 12px; padding: 16px; display: grid; gap: 8px; }
+.incident-modal input, .incident-modal select, .incident-modal textarea { width: 100%; padding: 8px; border: 1px solid $border-color; border-radius: 8px; }
+.incident-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
