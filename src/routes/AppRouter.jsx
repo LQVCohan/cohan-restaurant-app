@@ -40,6 +40,7 @@ import Dashboard from "../components/Dashboard_Manager/Dashboard/Dashboard";
 import ManagerLayout from "../layouts/ManagerLayout";
 import POSLayout from "@/components/Dashboard_Manager/POS/components/pos/POSLayout";
 import FloorPlanDesigner from "@/components/Dashboard_Manager/Table/FloorPlanDesigner";
+import ManagerPerformancePage from "@/components/Dashboard_Manager/Performance/ManagerPerformancePage";
 
 // ==== Staff ====
 import StaffOrdering from "../components/Staff/StaffOrdering";
@@ -218,6 +219,20 @@ const AppRouter = () => {
         element={
           <PrivateRoute allowedRoles={["manager", "admin", "accountant"]}>
             <FloorPlanDesigner />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/manager/performance"
+        element={
+          <PrivateRoute
+            allowedRoles={["manager", "admin", "hr", "accountant"]}
+            requireVerifiedEmail
+          >
+            <ManagerLayout>
+              <ManagerPerformancePage />
+            </ManagerLayout>
           </PrivateRoute>
         }
       />

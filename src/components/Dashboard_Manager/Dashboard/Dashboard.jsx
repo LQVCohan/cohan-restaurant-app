@@ -9,6 +9,7 @@ import RevenueChart from "./components/RevenueChart";
 import RecentOrders from "./components/RecentOrders"; // Giả định đã có
 import TopDishes from "./components/TopDishes";
 import QuickActions from "./components/QuickActions"; // Component mới bên dưới
+import ManagerPerformancePanel from "../Performance/ManagerPerformancePanel";
 
 import "./Dashboard.scss";
 
@@ -111,6 +112,13 @@ const Dashboard = () => {
         <div className="col-secondary">
           <div className="widget-wrapper actions-widget">
             <QuickActions />
+          </div>
+          <div className="widget-wrapper performance-widget">
+            <ManagerPerformancePanel
+              restaurantId={selectedRestaurantId}
+              summaryOnly
+              showViewAll
+            />
           </div>
           <div className="widget-wrapper dishes-widget">
             <TopDishes data={topDishes} lowStockItems={lowStockItems} loading={loading} />
