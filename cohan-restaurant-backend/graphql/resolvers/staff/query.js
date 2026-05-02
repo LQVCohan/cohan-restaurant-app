@@ -39,6 +39,7 @@ import {
   listStaffPerformanceScoreAdjustments,
   getStaffPerformanceScoreTimeline,
 } from "../../../src/services/performance/staffPerformanceReporting.service.js";
+import { getManagerPerformanceDashboard } from "../../../src/services/performance/managerPerformanceDashboard.service.js";
 import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSchedulingAssistant.service.js";
 import { buildPayrollItem } from "../../../src/services/payroll/payrollCalculator.service.js";
 import {
@@ -1204,6 +1205,10 @@ export default {
   managerIncidentReviewQueueSummary: async (_, { input }, ctx) => {
     requireAuth(ctx);
     return getManagerIncidentReviewQueueSummary(input, ctx.user);
+  },
+  managerPerformanceDashboard: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    return getManagerPerformanceDashboard(input, ctx.user);
   },
   leaveRequests: async (_, { filter = {} }, ctx) => {
     const authUser = ctx?.user || null;
