@@ -67,6 +67,8 @@ const ManagerPerformancePanel = ({
         ) : null}
       </div>
 
+      {dashboard.incidentOverview.pendingReviewCount > 0 ? <button className="btn-link" onClick={() => navigate("/manager/performance")}>Xử lý incident</button> : null}
+
       <div className="performance-kpi-grid">
         <div className="kpi-card"><span>Chờ duyệt</span><strong>{dashboard.incidentOverview.pendingReviewCount}</strong></div>
         <div className="kpi-card"><span>Quá hạn</span><strong>{dashboard.incidentOverview.overdueCount}</strong></div>
