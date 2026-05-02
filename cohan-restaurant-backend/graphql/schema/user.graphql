@@ -1155,6 +1155,103 @@ type ManagerIncidentReviewQueueSummary {
   byEmployee: [EmployeeQueueCountBucket!]!
 }
 
+input ManagerPerformanceDashboardInput {
+  restaurantId: ID!
+  fromDate: DateTime
+  toDate: DateTime
+  month: Int
+  year: Int
+  employeeIds: [ID!]
+  includeResolved: Boolean
+  lowScoreThreshold: Int
+  limit: Int
+}
+
+type ManagerPerformanceDashboardPeriod {
+  restaurantId: ID!
+  periodStart: DateTime
+  periodEnd: DateTime
+}
+
+type ManagerPerformanceDashboardIncidentOverview {
+  totalIncidents: Int!
+  openIncidents: Int!
+  pendingReviewCount: Int!
+  overdueCount: Int!
+  dueSoonCount: Int!
+  eligibleCount: Int!
+  appliedCount: Int!
+  waivedCount: Int!
+  notApplicableCount: Int!
+  criticalCount: Int!
+  highPriorityCount: Int!
+}
+
+type ManagerPerformanceDashboardScoringOverview {
+  averageScore: Float!
+  lowestScore: Float!
+  highestScore: Float!
+  lowScoreEmployeeCount: Int!
+  totalScoreDelta: Int!
+  appliedAdjustmentCount: Int!
+  eligibleScoreDeltaPending: Int!
+  waivedScoreDelta: Int!
+}
+
+type ManagerPerformanceDashboardSlaOverview {
+  totalRequiringReview: Int!
+  overdueCount: Int!
+  dueSoonCount: Int!
+  onTrackCount: Int!
+  slaComplianceRate: Float!
+  averageResolutionHours: Float!
+  oldestOpenIncidentAt: DateTime
+}
+
+type PerformanceDashboardRiskEmployee {
+  employeeId: ID!
+  finalPerformanceScore: Float!
+  totalScoreDelta: Int!
+  pendingReviewCount: Int!
+  overdueCount: Int!
+  eligibleCount: Int!
+  appliedAdjustmentCount: Int!
+  latestIncidentAt: DateTime
+  riskLevel: String!
+  riskReasons: [String!]!
+}
+
+type ManagerPerformanceDashboardEventTypeBucket {
+  eventType: String!
+  count: Int!
+  appliedCount: Int!
+  waivedCount: Int!
+  totalScoreDelta: Int!
+}
+
+type ManagerPerformanceDashboardResponsibilityBucket {
+  responsibilityStatus: String!
+  count: Int!
+  totalScoreDelta: Int!
+}
+
+type PerformanceDashboardRecommendedAction {
+  action: String!
+  count: Int!
+  priority: String!
+}
+
+type ManagerPerformanceDashboard {
+  period: ManagerPerformanceDashboardPeriod!
+  incidentOverview: ManagerPerformanceDashboardIncidentOverview!
+  scoringOverview: ManagerPerformanceDashboardScoringOverview!
+  slaOverview: ManagerPerformanceDashboardSlaOverview!
+  topRiskEmployees: [PerformanceDashboardRiskEmployee!]!
+  topEventTypes: [ManagerPerformanceDashboardEventTypeBucket!]!
+  responsibilityBreakdown: [ManagerPerformanceDashboardResponsibilityBucket!]!
+  recommendedActions: [PerformanceDashboardRecommendedAction!]!
+}
+
 type OvertimeRequest {
   id: ID!
 
@@ -1921,6 +2018,7 @@ type Query {
   performanceIncidents(filter: PerformanceIncidentFilterInput!): [PerformanceIncident!]!
   managerIncidentReviewQueue(input: ManagerIncidentReviewQueueInput!): ManagerIncidentReviewQueueResult!
   managerIncidentReviewQueueSummary(input: ManagerIncidentReviewQueueSummaryInput!): ManagerIncidentReviewQueueSummary!
+  managerPerformanceDashboard(input: ManagerPerformanceDashboardInput!): ManagerPerformanceDashboard!
   staffPerformanceSummary(input: StaffPerformanceSummaryInput!): StaffPerformanceSummary!
   staffPerformanceSummaries(input: StaffPerformanceSummariesInput!): [StaffPerformanceSummary!]!
   staffPerformanceScoreAdjustments(input: StaffPerformanceScoreAdjustmentFilterInput!): [StaffPerformanceScoreAdjustment!]!
