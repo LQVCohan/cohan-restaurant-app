@@ -74,6 +74,7 @@ import {
 } from "../../../src/services/scheduling/schedulingPermission.service.js";
 import {
   createPerformanceIncidentOnce,
+  applyPerformanceIncidentScore as applyPerformanceIncidentScoreService,
   markPerformanceIncidentEligible as markPerformanceIncidentEligibleService,
   reviewPerformanceIncident as reviewPerformanceIncidentService,
   waivePerformanceIncident as waivePerformanceIncidentService,
@@ -2760,6 +2761,9 @@ export default {
   },
   markPerformanceIncidentEligible: async (_, { input }, ctx) => {
     return markPerformanceIncidentEligibleService({ input, ctx });
+  },
+  applyPerformanceIncidentScore: async (_, { input }, ctx) => {
+    return applyPerformanceIncidentScoreService({ incidentId: input.incidentId, actor: ctx?.user, note: input.note });
   },
 
   createOvertimeRequest: async (_, { input }, ctx) => {

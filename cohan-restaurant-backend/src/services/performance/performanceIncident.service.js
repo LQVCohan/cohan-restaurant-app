@@ -1,4 +1,4 @@
-import { PerformanceIncident } from "../../../models/index.js";
+import { PerformanceIncident, StaffPerformanceScoreAdjustment, StaffPerformanceSnapshot } from "../../../models/index.js";
 import {
   resolveUserRoles,
   userCanAccessRestaurant,
@@ -147,4 +147,98 @@ export async function markPerformanceIncidentEligible({ input, ctx }) {
   if (typeof input.note === "string") incident.reviewNote = input.note.trim();
   incident.resolvedAt = now;
   return incident.save();
+}
+
+
+const APPLY_ALLOWED_RESPONSIBILITY = ["staff_responsible", "manager_responsible", "shared"];
+const SCORE_MIN = 0;
+const SCORE_DEFAULT = 100;
+
+function assertCanApplyIncident(user, restaurantId) {
+  if (!hasAnyRole(user, PERFORMANCE_REVIEW_ROLES)) throw new Error("FORBIDDEN");
+  assertRestaurantScope(user, restaurantId);
+}
+
+function toPeriodBounds(dateLike) {
+  const dt = new Date(dateLike || Date.now());
+  const periodStart = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), 1, 0, 0, 0, 0));
+  const periodEnd = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+  return { periodStart, periodEnd };
+}
+
+export async function applyPerformanceIncidentScore({ incidentId, actor, note }) {
+  if (!actor) throw new Error("UNAUTHENTICATED");
+  const incident = await getPerformanceIncidentById(incidentId);
+  assertCanApplyIncident(actor, incident.restaurantId);
+
+  if (incident.scoreImpactStatus === "waived") throw new Error("PERFORMANCE_INCIDENT_WAIVED");
+  if (incident.scoreImpactStatus === "applied") throw new Error("PERFORMANCE_INCIDENT_ALREADY_APPLIED");
+  if (incident.scoreImpactStatus !== "eligible") throw new Error("PERFORMANCE_INCIDENT_NOT_ELIGIBLE");
+  if (!APPLY_ALLOWED_RESPONSIBILITY.includes(incident.responsibilityStatus)) throw new Error("PERFORMANCE_RESPONSIBILITY_NOT_APPLICABLE");
+
+  const proposed = Number(incident.proposedScoreDelta || 0);
+  if (proposed > 0) throw new Error("PERFORMANCE_SCORE_DELTA_INVALID");
+  const applyNote = String(note || "").trim();
+  if (proposed === 0 && !applyNote) throw new Error("NOTE_REQUIRED_FOR_ZERO_DELTA");
+
+  const { periodStart, periodEnd } = toPeriodBounds(incident.occurredAt);
+  const snapshot = await StaffPerformanceSnapshot.findOne({
+    employeeId: incident.employeeId,
+    restaurantId: incident.restaurantId,
+    periodStart,
+    periodEnd,
+  });
+  const previousScore = Number(snapshot?.finalPerformanceScore ?? SCORE_DEFAULT);
+  const newScore = Math.max(SCORE_MIN, previousScore + proposed);
+  const now = new Date();
+
+  try {
+    const adjustment = await StaffPerformanceScoreAdjustment.create({
+      restaurantId: incident.restaurantId,
+      employeeId: incident.employeeId,
+      incidentId: incident._id,
+      sourceType: "performance_incident",
+      scoreDelta: proposed,
+      previousScore,
+      newScore,
+      appliedBy: actor._id || actor.id,
+      appliedAt: now,
+      reason: incident.eventType,
+      note: applyNote,
+      metadata: {
+        incidentEventType: incident.eventType,
+        sourceType: incident.sourceType,
+        sourceId: incident.sourceId,
+        responsibilityStatus: incident.responsibilityStatus,
+        proposedScoreDelta: proposed,
+      },
+    });
+
+    await StaffPerformanceSnapshot.findOneAndUpdate(
+      { employeeId: incident.employeeId, restaurantId: incident.restaurantId, periodStart, periodEnd },
+      {
+        $setOnInsert: {
+          employeeId: incident.employeeId,
+          restaurantId: incident.restaurantId,
+          periodStart,
+          periodEnd,
+        },
+        $set: { finalPerformanceScore: newScore },
+      },
+      { new: true, upsert: true },
+    );
+
+    incident.scoreDelta = proposed;
+    incident.scoreImpactStatus = "applied";
+    incident.appliedBy = actor._id || actor.id;
+    incident.appliedAt = now;
+    incident.applyNote = applyNote;
+    incident.scoreAdjustmentId = adjustment._id;
+    incident.resolvedAt = now;
+    await incident.save();
+    return incident;
+  } catch (error) {
+    if (error?.code === 11000) throw new Error("PERFORMANCE_INCIDENT_ALREADY_APPLIED");
+    throw error;
+  }
 }

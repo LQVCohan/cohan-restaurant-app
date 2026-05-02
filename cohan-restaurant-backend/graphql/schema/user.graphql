@@ -1010,6 +1010,10 @@ type PerformanceIncident {
   waiveReason: String
   eligibleBy: ID
   eligibleAt: DateTime
+  appliedBy: ID
+  appliedAt: DateTime
+  applyNote: String
+  scoreAdjustmentId: ID
   responsibilityNote: String
   metadata: JSON
   note: String
@@ -1045,6 +1049,11 @@ input MarkPerformanceIncidentEligibleInput {
   incidentId: ID!
   responsibilityStatus: String!
   proposedScoreDelta: Int!
+  note: String
+}
+
+input ApplyPerformanceIncidentScoreInput {
+  incidentId: ID!
   note: String
 }
 
@@ -1935,6 +1944,7 @@ type Mutation {
   reviewPerformanceIncident(input: ReviewPerformanceIncidentInput!): PerformanceIncident!
   waivePerformanceIncident(incidentId: ID!, reason: String!): PerformanceIncident!
   markPerformanceIncidentEligible(input: MarkPerformanceIncidentEligibleInput!): PerformanceIncident!
+  applyPerformanceIncidentScore(input: ApplyPerformanceIncidentScoreInput!): PerformanceIncident!
   createUser(input: CreateUserInput!): AuthPayload!
   login(
     email: String
