@@ -213,3 +213,77 @@ $header-height: 80px;
     transform: translateY(0);
   }
 }
+
+.dashboard-error,
+.performance-loading,
+.performance-error,
+.performance-empty {
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.dashboard-error,
+.performance-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.performance-loading,
+.performance-empty {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.performance-panel {
+  padding: 16px;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+
+    h3 { margin: 0; font-size: 16px; }
+  }
+
+  .btn-link { background: none; border: none; color: $primary-color; cursor: pointer; }
+
+  .performance-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .kpi-card { background: #f8fafc; border: 1px solid $border-color; border-radius: 10px; padding: 10px; }
+  .kpi-card span { display: block; font-size: 12px; color: $text-sub; }
+  .kpi-card strong { font-size: 18px; }
+
+  .performance-section { margin-top: 10px; }
+  .performance-section h4 { margin: 0 0 8px; font-size: 14px; }
+
+  .simple-table__head,
+  .simple-table__row {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr .8fr .8fr;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+
+  .simple-table__head { font-weight: 600; border-bottom: 1px solid $border-color; }
+  .simple-table__empty { font-size: 13px; color: $text-sub; padding-top: 8px; }
+
+  .action-list,
+  .event-list { list-style: none; margin: 0; padding: 0; }
+
+  .action-list li,
+  .event-list li {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 6px 0;
+    border-bottom: 1px dashed $border-color;
+  }
+}
