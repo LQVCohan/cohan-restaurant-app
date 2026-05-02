@@ -1821,6 +1821,10 @@ type Query {
 
   attendanceCorrectionRequest(id: ID!): AttendanceCorrectionRequest
   performanceIncidents(filter: PerformanceIncidentFilterInput!): [PerformanceIncident!]!
+  staffPerformanceSummary(input: StaffPerformanceSummaryInput!): StaffPerformanceSummary!
+  staffPerformanceSummaries(input: StaffPerformanceSummariesInput!): [StaffPerformanceSummary!]!
+  staffPerformanceScoreAdjustments(input: StaffPerformanceScoreAdjustmentFilterInput!): [StaffPerformanceScoreAdjustment!]!
+  staffPerformanceScoreTimeline(input: StaffPerformanceScoreTimelineInput!): [StaffPerformanceTimelinePoint!]!
   me: User
   roleList: [Role!]!
   users(roleId: ID, search: String, isGuest: Boolean): [User!]!
@@ -2043,4 +2047,104 @@ type Mutation {
     managerId: ID
     note: String
   ): LeaveRequest!
+}
+
+
+type StaffPerformanceBreakdownByEventType {
+  eventType: String!
+  totalDelta: Int!
+  count: Int!
+}
+
+type StaffPerformanceBreakdownByResponsibilityStatus {
+  responsibilityStatus: String!
+  totalDelta: Int!
+  count: Int!
+}
+
+type StaffPerformanceSummary {
+  employeeId: ID!
+  restaurantId: ID!
+  periodStart: DateTime
+  periodEnd: DateTime
+  finalPerformanceScore: Int!
+  baseScore: Int
+  totalScoreDelta: Int!
+  appliedAdjustmentCount: Int!
+  pendingReviewIncidentCount: Int!
+  eligibleIncidentCount: Int!
+  appliedIncidentCount: Int!
+  waivedIncidentCount: Int!
+  notApplicableIncidentCount: Int!
+  latestAppliedAt: DateTime
+  scoreBreakdownByEventType: [StaffPerformanceBreakdownByEventType!]!
+  scoreBreakdownByResponsibilityStatus: [StaffPerformanceBreakdownByResponsibilityStatus!]!
+}
+
+type StaffPerformanceScoreAdjustment {
+  id: ID!
+  restaurantId: ID!
+  employeeId: ID!
+  incidentId: ID!
+  scoreDelta: Int!
+  previousScore: Int!
+  newScore: Int!
+  appliedBy: ID!
+  appliedAt: DateTime!
+  reason: String
+  note: String
+  metadata: JSON
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type StaffPerformanceTimelinePoint {
+  at: DateTime!
+  score: Int!
+  scoreDelta: Int!
+  incidentId: ID
+  eventType: String
+  note: String
+}
+
+input StaffPerformanceSummaryInput {
+  restaurantId: ID!
+  employeeId: ID!
+  fromDate: DateTime
+  toDate: DateTime
+  month: Int
+  year: Int
+}
+
+input StaffPerformanceSummariesInput {
+  restaurantId: ID!
+  fromDate: DateTime
+  toDate: DateTime
+  month: Int
+  year: Int
+  employeeIds: [ID!]
+  minScore: Int
+  maxScore: Int
+  onlyWithAdjustments: Boolean
+  limit: Int
+  offset: Int
+}
+
+input StaffPerformanceScoreAdjustmentFilterInput {
+  restaurantId: ID!
+  employeeId: ID
+  incidentId: ID
+  fromDate: DateTime
+  toDate: DateTime
+  eventType: String
+  appliedBy: ID
+  limit: Int
+  offset: Int
+}
+
+input StaffPerformanceScoreTimelineInput {
+  restaurantId: ID!
+  employeeId: ID!
+  fromDate: DateTime
+  toDate: DateTime
 }

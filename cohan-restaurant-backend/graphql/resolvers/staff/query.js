@@ -29,6 +29,12 @@ import {
   listAttendanceCorrectionRequests,
 } from "../../../src/services/attendance/attendanceCorrectionWorkflow.service.js";
 import { listPerformanceIncidents as listPerformanceIncidentsService } from "../../../src/services/performance/performanceIncident.service.js";
+import {
+  getStaffPerformanceSummary,
+  listStaffPerformanceSummaries,
+  listStaffPerformanceScoreAdjustments,
+  getStaffPerformanceScoreTimeline,
+} from "../../../src/services/performance/staffPerformanceReporting.service.js";
 import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSchedulingAssistant.service.js";
 import { buildPayrollItem } from "../../../src/services/payroll/payrollCalculator.service.js";
 import {
@@ -1156,6 +1162,19 @@ export default {
       id,
       ctx,
     });
+  },
+
+  staffPerformanceSummary: async (_, { input }, ctx) => {
+    return getStaffPerformanceSummary(input, ctx?.user);
+  },
+  staffPerformanceSummaries: async (_, { input }, ctx) => {
+    return listStaffPerformanceSummaries(input, ctx?.user);
+  },
+  staffPerformanceScoreAdjustments: async (_, { input }, ctx) => {
+    return listStaffPerformanceScoreAdjustments(input, ctx?.user);
+  },
+  staffPerformanceScoreTimeline: async (_, { input }, ctx) => {
+    return getStaffPerformanceScoreTimeline(input, ctx?.user);
   },
   performanceIncidents: async (_, { filter }, ctx) => {
     requireAuth(ctx);
