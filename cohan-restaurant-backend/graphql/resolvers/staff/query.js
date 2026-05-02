@@ -30,6 +30,10 @@ import {
 } from "../../../src/services/attendance/attendanceCorrectionWorkflow.service.js";
 import { listPerformanceIncidents as listPerformanceIncidentsService } from "../../../src/services/performance/performanceIncident.service.js";
 import {
+  listManagerIncidentReviewQueue,
+  getManagerIncidentReviewQueueSummary,
+} from "../../../src/services/performance/performanceIncidentQueue.service.js";
+import {
   getStaffPerformanceSummary,
   listStaffPerformanceSummaries,
   listStaffPerformanceScoreAdjustments,
@@ -1192,6 +1196,14 @@ export default {
       throw new Error("FORBIDDEN");
     }
     return listPerformanceIncidentsService(input);
+  },
+  managerIncidentReviewQueue: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    return listManagerIncidentReviewQueue(input, ctx.user);
+  },
+  managerIncidentReviewQueueSummary: async (_, { input }, ctx) => {
+    requireAuth(ctx);
+    return getManagerIncidentReviewQueueSummary(input, ctx.user);
   },
   leaveRequests: async (_, { filter = {} }, ctx) => {
     const authUser = ctx?.user || null;

@@ -1057,6 +1057,104 @@ input ApplyPerformanceIncidentScoreInput {
   note: String
 }
 
+input ManagerIncidentReviewQueueInput {
+  restaurantId: ID!
+  employeeId: ID
+  eventTypes: [String!]
+  severities: [String!]
+  responsibilityStatuses: [String!]
+  scoreImpactStatuses: [String!]
+  sourceTypes: [String!]
+  onlyPendingReview: Boolean
+  onlyEligible: Boolean
+  onlyOverdue: Boolean
+  onlyDueSoon: Boolean
+  fromDate: DateTime
+  toDate: DateTime
+  search: String
+  limit: Int
+  offset: Int
+  sortBy: String
+  sortDirection: String
+}
+
+type ManagerIncidentReviewQueueItem {
+  incident: PerformanceIncident!
+  employeeId: ID!
+  restaurantId: ID!
+  eventType: String!
+  severity: String!
+  responsibilityStatus: String!
+  scoreImpactStatus: String!
+  proposedScoreDelta: Int!
+  scoreDelta: Int!
+  occurredAt: DateTime
+  detectedAt: DateTime
+  createdAt: DateTime
+  slaDueAt: DateTime
+  slaHours: Int!
+  slaStatus: String!
+  overdueMinutes: Int!
+  dueSoon: Boolean!
+  priority: String!
+  recommendedAction: String!
+  canReview: Boolean!
+  canWaive: Boolean!
+  canMarkEligible: Boolean!
+  canApplyScore: Boolean!
+}
+
+type ManagerIncidentReviewQueueResult {
+  items: [ManagerIncidentReviewQueueItem!]!
+  totalCount: Int!
+  limit: Int!
+  offset: Int!
+  hasMore: Boolean!
+}
+
+input ManagerIncidentReviewQueueSummaryInput {
+  restaurantId: ID!
+  fromDate: DateTime
+  toDate: DateTime
+  employeeId: ID
+  includeResolved: Boolean
+}
+
+type QueueCountBucket {
+  key: String!
+  count: Int!
+}
+
+type EmployeeQueueCountBucket {
+  employeeId: ID!
+  count: Int!
+  pendingReviewCount: Int!
+  eligibleCount: Int!
+  overdueCount: Int!
+  latestIncidentAt: DateTime
+}
+
+type ManagerIncidentReviewQueueSummary {
+  restaurantId: ID!
+  totalOpen: Int!
+  pendingReviewCount: Int!
+  eligibleCount: Int!
+  overdueCount: Int!
+  dueSoonCount: Int!
+  waivedCount: Int!
+  appliedCount: Int!
+  notApplicableCount: Int!
+  criticalCount: Int!
+  highPriorityCount: Int!
+  mediumPriorityCount: Int!
+  lowPriorityCount: Int!
+  bySeverity: [QueueCountBucket!]!
+  byEventType: [QueueCountBucket!]!
+  byResponsibilityStatus: [QueueCountBucket!]!
+  byScoreImpactStatus: [QueueCountBucket!]!
+  byEmployee: [EmployeeQueueCountBucket!]!
+}
+
 type OvertimeRequest {
   id: ID!
 
@@ -1821,6 +1919,8 @@ type Query {
 
   attendanceCorrectionRequest(id: ID!): AttendanceCorrectionRequest
   performanceIncidents(filter: PerformanceIncidentFilterInput!): [PerformanceIncident!]!
+  managerIncidentReviewQueue(input: ManagerIncidentReviewQueueInput!): ManagerIncidentReviewQueueResult!
+  managerIncidentReviewQueueSummary(input: ManagerIncidentReviewQueueSummaryInput!): ManagerIncidentReviewQueueSummary!
   staffPerformanceSummary(input: StaffPerformanceSummaryInput!): StaffPerformanceSummary!
   staffPerformanceSummaries(input: StaffPerformanceSummariesInput!): [StaffPerformanceSummary!]!
   staffPerformanceScoreAdjustments(input: StaffPerformanceScoreAdjustmentFilterInput!): [StaffPerformanceScoreAdjustment!]!
