@@ -985,6 +985,68 @@ type OvertimeAuditLog {
   at: DateTime
   meta: JSON
 }
+type PerformanceIncident {
+  id: ID!
+  restaurantId: ID!
+  employeeId: ID!
+  actorId: ID
+  actorRole: String
+  sourceType: String!
+  sourceId: String!
+  eventType: String!
+  severity: String!
+  responsibilityStatus: String!
+  scoreImpactStatus: String!
+  scoreDelta: Int!
+  proposedScoreDelta: Int!
+  occurredAt: DateTime
+  detectedAt: DateTime
+  resolvedAt: DateTime
+  reviewedBy: ID
+  reviewedAt: DateTime
+  reviewNote: String
+  waivedBy: ID
+  waivedAt: DateTime
+  waiveReason: String
+  eligibleBy: ID
+  eligibleAt: DateTime
+  responsibilityNote: String
+  metadata: JSON
+  note: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input PerformanceIncidentFilterInput {
+  restaurantId: ID!
+  employeeId: ID
+  sourceType: String
+  eventType: String
+  severity: String
+  responsibilityStatus: String
+  scoreImpactStatus: String
+  fromDate: DateTime
+  toDate: DateTime
+  onlyPendingReview: Boolean
+  onlyEligible: Boolean
+  onlyWaived: Boolean
+}
+
+input ReviewPerformanceIncidentInput {
+  incidentId: ID!
+  responsibilityStatus: String
+  scoreImpactStatus: String
+  proposedScoreDelta: Int
+  reviewNote: String
+  responsibilityNote: String
+}
+
+input MarkPerformanceIncidentEligibleInput {
+  incidentId: ID!
+  responsibilityStatus: String!
+  proposedScoreDelta: Int!
+  note: String
+}
 
 type OvertimeRequest {
   id: ID!
@@ -1749,6 +1811,7 @@ type Query {
   ): [AttendanceCorrectionRequest!]!
 
   attendanceCorrectionRequest(id: ID!): AttendanceCorrectionRequest
+  performanceIncidents(filter: PerformanceIncidentFilterInput!): [PerformanceIncident!]!
   me: User
   roleList: [Role!]!
   users(roleId: ID, search: String, isGuest: Boolean): [User!]!
@@ -1869,6 +1932,9 @@ type Mutation {
   cancelAttendanceCorrectionRequest(
     requestId: ID!
   ): AttendanceCorrectionRequest!
+  reviewPerformanceIncident(input: ReviewPerformanceIncidentInput!): PerformanceIncident!
+  waivePerformanceIncident(incidentId: ID!, reason: String!): PerformanceIncident!
+  markPerformanceIncidentEligible(input: MarkPerformanceIncidentEligibleInput!): PerformanceIncident!
   createUser(input: CreateUserInput!): AuthPayload!
   login(
     email: String

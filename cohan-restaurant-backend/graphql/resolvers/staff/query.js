@@ -28,6 +28,7 @@ import {
   getAttendanceCorrectionRequest,
   listAttendanceCorrectionRequests,
 } from "../../../src/services/attendance/attendanceCorrectionWorkflow.service.js";
+import { listPerformanceIncidents as listPerformanceIncidentsService } from "../../../src/services/performance/performanceIncident.service.js";
 import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSchedulingAssistant.service.js";
 import { buildPayrollItem } from "../../../src/services/payroll/payrollCalculator.service.js";
 import {
@@ -1155,6 +1156,23 @@ export default {
       id,
       ctx,
     });
+  },
+  performanceIncidents: async (_, { filter }, ctx) => {
+    requireAuth(ctx);
+    const input = { ...(filter || {}) };
+    const restaurantId = input.restaurantId;
+    if (!restaurantId || !userCanAccessRestaurant(ctx.user, restaurantId)) {
+      throw new Error("FORBIDDEN");
+    }
+    const roles = resolveUserRoles(ctx.user);
+    const actorId = String(ctx?.user?.id || ctx?.user?._id || "");
+    if (roles.some((role) => ATTENDANCE_SELF_ROLES.includes(role))) {
+      if (input.employeeId && String(input.employeeId) !== actorId) throw new Error("FORBIDDEN");
+      input.employeeId = actorId;
+    } else if (!roles.some((role) => ATTENDANCE_READ_ROLES.includes(role))) {
+      throw new Error("FORBIDDEN");
+    }
+    return listPerformanceIncidentsService(input);
   },
   leaveRequests: async (_, { filter = {} }, ctx) => {
     const authUser = ctx?.user || null;

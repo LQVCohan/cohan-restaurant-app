@@ -72,7 +72,12 @@ import {
   resolveUserRoles,
   userCanAccessRestaurant,
 } from "../../../src/services/scheduling/schedulingPermission.service.js";
-import { createPerformanceIncidentOnce } from "../../../src/services/performance/performanceIncident.service.js";
+import {
+  createPerformanceIncidentOnce,
+  markPerformanceIncidentEligible as markPerformanceIncidentEligibleService,
+  reviewPerformanceIncident as reviewPerformanceIncidentService,
+  waivePerformanceIncident as waivePerformanceIncidentService,
+} from "../../../src/services/performance/performanceIncident.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -2746,6 +2751,15 @@ export default {
 
   cancelAttendanceCorrectionRequest: async (_, { requestId }, ctx) => {
     return cancelAttendanceCorrectionRequestService({ requestId, ctx });
+  },
+  reviewPerformanceIncident: async (_, { input }, ctx) => {
+    return reviewPerformanceIncidentService({ input, ctx });
+  },
+  waivePerformanceIncident: async (_, { incidentId, reason }, ctx) => {
+    return waivePerformanceIncidentService({ incidentId, reason, ctx });
+  },
+  markPerformanceIncidentEligible: async (_, { input }, ctx) => {
+    return markPerformanceIncidentEligibleService({ input, ctx });
   },
 
   createOvertimeRequest: async (_, { input }, ctx) => {
