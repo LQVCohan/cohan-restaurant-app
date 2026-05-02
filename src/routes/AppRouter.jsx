@@ -44,6 +44,7 @@ import ManagerPerformancePage from "@/components/Dashboard_Manager/Performance/M
 
 // ==== Staff ====
 import StaffOrdering from "../components/Staff/StaffOrdering";
+import StaffPerformancePage from "@/components/Staff/StaffPerformance/StaffPerformancePage";
 
 // ==== Layouts ====
 import MainLayout from "../layouts/MainLayout";
@@ -181,6 +182,18 @@ const AppRouter = () => {
             requireVerifiedEmail
           >
             <StaffOrdering />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/staff/performance"
+        element={
+          <PrivateRoute
+            allowedRoles={["staff", "manager", "admin", "hr"]}
+            requireVerifiedEmail
+          >
+            <StaffPerformancePage />
           </PrivateRoute>
         }
       />
