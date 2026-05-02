@@ -19,6 +19,7 @@ npm run dev --prefix cohan-restaurant-backend
 
 ## Tài liệu
 - Environment setup: `docs/environment/setup.md`
+- Phase 4 performance scoring policy (PR8): `docs/phase4-performance-scoring-policy.md`
 - Upload migration note: `cohan-restaurant-backend/docs/upload-storage-migration.md`
 - Health endpoints:
   - `/health/live`
