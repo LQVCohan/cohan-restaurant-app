@@ -997,6 +997,10 @@ type PerformanceIncident {
   severity: String!
   responsibilityStatus: String!
   scoreImpactStatus: String!
+  scoreReversalStatus: String
+  scoreReversalId: ID
+  scoreReversedAt: DateTime
+  scoreReversalNote: String
   scoreDelta: Int!
   proposedScoreDelta: Int!
   occurredAt: DateTime
@@ -1073,6 +1077,12 @@ type PerformanceIncidentAppeal {
   reviewedAt: DateTime
   reviewNote: String
   decisionReason: String
+  scoreReversalStatus: String
+  scoreReversalId: ID
+  scoreReversedBy: ID
+  scoreReversedAt: DateTime
+  scoreReversalNote: String
+  scoreReversalDelta: Int
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -1082,6 +1092,12 @@ input CreatePerformanceIncidentAppealInput {
   reason: String!
   evidenceNote: String
   evidenceUrls: [String!]
+}
+
+input ReverseScoreForAcceptedAppealInput {
+  appealId: ID!
+  reversalDelta: Int
+  note: String!
 }
 
 input ReviewPerformanceIncidentAppealInput {
@@ -2196,6 +2212,7 @@ type Mutation {
   createPerformanceIncidentAppeal(input: CreatePerformanceIncidentAppealInput!): PerformanceIncidentAppeal!
   cancelPerformanceIncidentAppeal(appealId: ID!): PerformanceIncidentAppeal!
   reviewPerformanceIncidentAppeal(input: ReviewPerformanceIncidentAppealInput!): PerformanceIncidentAppeal!
+  reverseScoreForAcceptedAppeal(input: ReverseScoreForAcceptedAppealInput!): PerformanceIncidentAppeal!
   createUser(input: CreateUserInput!): AuthPayload!
   login(
     email: String

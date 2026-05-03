@@ -83,6 +83,7 @@ import {
   createPerformanceIncidentAppeal,
   cancelPerformanceIncidentAppeal,
   reviewPerformanceIncidentAppeal,
+  reverseScoreForAcceptedAppeal as reverseScoreForAcceptedAppealService,
 } from "../../../src/services/performance/performanceAppeal.service.js";
 
 function toObjectId(id) {
@@ -2773,6 +2774,7 @@ export default {
   createPerformanceIncidentAppeal: async (_, { input }, ctx) => createPerformanceIncidentAppeal(input, ctx?.user),
   cancelPerformanceIncidentAppeal: async (_, { appealId }, ctx) => cancelPerformanceIncidentAppeal(appealId, ctx?.user),
   reviewPerformanceIncidentAppeal: async (_, { input }, ctx) => reviewPerformanceIncidentAppeal(input, ctx?.user),
+  reverseScoreForAcceptedAppeal: async (_, { input }, ctx) => reverseScoreForAcceptedAppealService({ ...input, actor: ctx?.user }),
 
   createOvertimeRequest: async (_, { input }, ctx) => {
     return createOvertimeRequestService({ input, ctx });
