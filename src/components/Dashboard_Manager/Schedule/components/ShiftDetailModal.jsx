@@ -531,7 +531,7 @@ const ShiftDetailModal = ({
                         <div className="avatar">{getInitials(person.name)}</div>
                         <div className="details">
                           <span className="name">{person.name}</span>
-                          <span className="role">{getJobName(person.job)}</span>
+                          <span className="role">{person.departmentLabel || "Khác"}</span>
                         </div>
                       </div>
                       {!modalReadOnly &&
@@ -629,7 +629,7 @@ const ShiftDetailModal = ({
                             <span className="name">{person.name}</span>
                             <div className="sub-row">
                               <span className="role">
-                                {getJobName(person.job)}
+                                {person.departmentLabel || "Khác"}
                               </span>
                               {isRecommended ? (
                                 <span className="tag-rec">Ưu tiên</span>
