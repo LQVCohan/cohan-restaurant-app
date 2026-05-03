@@ -1,0 +1,11 @@
+.staff-performance-page { padding: 16px; }
+.staff-performance-summary-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 12px; margin: 12px 0; }
+.staff-performance-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background: #fff; }
+.staff-performance-card__label { font-size: 12px; color: #6b7280; }
+.staff-performance-card__value { font-size: 22px; font-weight: 600; }
+.staff-performance-card__hint { font-size: 12px; }
+.staff-performance-table { width: 100%; border-collapse: collapse; }
+.staff-performance-table th, .staff-performance-table td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
+.staff-performance-section { display: grid; gap: 8px; }
+.staff-timeline-item, .staff-incident-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; background: #fff; }
+.staff-performance-note { color: #6b7280; font-style: italic; }
