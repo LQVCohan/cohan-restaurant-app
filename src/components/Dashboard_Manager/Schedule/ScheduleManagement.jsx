@@ -37,6 +37,7 @@ import {
 import "./ScheduleManagement.scss";
 import {
   loadStoredShiftRules,
+  normalizeRoleKey,
   persistShiftRules,
   shiftRulesToTypes,
   validateShiftRules,
@@ -264,6 +265,8 @@ const GET_STAFF_LIST = gql`
       fullName
       employeeCode
       department
+      roleSlug
+      positionTitle
       employmentStatus
       employmentType
       workingDays
@@ -795,7 +798,21 @@ const normalizeAutoRole = (role) => String(role || "").trim().toLowerCase();
 const normalizeMandatoryShiftRoles = (roles = []) =>
   Array.from(new Set((roles || []).map(normalizeAutoRole).filter(Boolean)));
 
-const resolveStaffAutoRole = (staff) => normalizeAutoRole(mapDepartmentToJob(staff?.department));
+const inferRoleFromPositionTitle = (positionTitle) => {
+  const normalized = String(positionTitle || "").trim().toLowerCase();
+  if (!normalized) return "";
+  if (normalized.includes("bếp trưởng")) return "chef";
+  if (normalized.includes("phụ bếp")) return "kitchen_helper";
+  if (normalized.includes("nhân viên bếp") || normalized === "bếp") return "cook";
+  return "";
+};
+
+const resolveStaffAutoRole = (staff) =>
+  normalizeAutoRole(
+    normalizeRoleKey(staff?.roleSlug) ||
+      inferRoleFromPositionTitle(staff?.positionTitle) ||
+      mapDepartmentToJob(staff?.department),
+  );
 
 const getEmploymentTypeMinHours = (employmentTypePolicy = {}, employmentType = "full_time") =>
   Number(employmentTypePolicy?.[String(employmentType || "full_time").toLowerCase()]?.minWeeklyHours || 0);
@@ -1309,7 +1326,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
           fullName: item.fullName || "Nhân viên",
           employeeCode: item.employeeCode || "",
           department: item.department,
-          job: mapDepartmentToJob(item.department),
+          roleSlug: item.roleSlug || "",
+          positionTitle: item.positionTitle || "",
+          job: resolveStaffAutoRole(item),
           status:
             String(item.employmentStatus || "").toLowerCase() === "working"
               ? "active"
@@ -2151,31 +2170,39 @@ const ScheduleManagement = ({ readOnly = false }) => {
     setIsSubmittingAddShift(true);
 
     try {
-      const successRows = [];
-      const failedRows = [];
-
+      const validationFailures = [];
       for (const staffId of staffIds) {
-      try {
-        if (false) {
-          const reason = String(payload.publishedReason || "").trim();
-
-          await addStaffToPublishedShiftGroup({
-            variables: {
-              input: {
-                restaurantId: effectiveRestaurantId,
-                employeeId: staffId,
-                shiftType: String(payload.shiftType || "").toUpperCase(),
-                startTime: startTime.toISOString(),
-                endTime: endTime.toISOString(),
-                reason,
-                notifyEmployee: payload.notifyEmployees !== false,
-                allowOverride: Boolean(payload.allowOverride),
-                overrideReason: payload.overrideReason || reason,
-              },
-            },
+        try {
+          await validateShiftAssignmentOrThrow({
+            employeeId: staffId,
+            shiftType: payload.shiftType,
+            startTime,
+            endTime,
+            precheckOnly: true,
           });
-        } else if (scheduleLifecycleStatus === "draft") {
-          await createShift({
+        } catch (error) {
+          const employeeName =
+            staff.find((person) => String(person.id) === String(staffId))?.name ||
+            `#${staffId}`;
+          validationFailures.push(
+            `${employeeName}: ${getGraphQLErrorMessage(error, "Không thể tạo ca cho nhân viên.")}`,
+          );
+        }
+      }
+
+      if (validationFailures.length) {
+        throw new Error(
+          `Không thể tạo ca vì có nhân viên không hợp lệ:\n${validationFailures.join("\n")}`,
+        );
+      }
+
+      if (scheduleLifecycleStatus !== "draft") {
+        throw new Error("Không thể thêm nhân viên vào lịch ở trạng thái hiện tại.");
+      }
+
+      const mutationResults = await Promise.allSettled(
+        staffIds.map((staffId) =>
+          createShift({
             variables: {
               input: {
                 employeeId: staffId,
@@ -2187,66 +2214,45 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 notes: payload.notes || "",
               },
             },
-          });
-        } else {
-          throw new Error("Không thể thêm nhân viên vào lịch ở trạng thái hiện tại.");
-        }
+          }),
+        ),
+      );
 
-        successRows.push(staffId);
-      } catch (error) {
-        failedRows.push({
-          staffId,
-          message: getGraphQLErrorMessage(
-            error,
-            "Không thể tạo ca cho nhân viên.",
-          ),
+      const failedRows = mutationResults
+        .map((result, index) => ({ result, staffId: staffIds[index] }))
+        .filter((row) => row.result.status === "rejected")
+        .map((row) => {
+          const employeeName =
+            staff.find((person) => String(person.id) === String(row.staffId))?.name ||
+            `#${row.staffId}`;
+          return `${employeeName}: ${getGraphQLErrorMessage(row.result.reason, "Không thể tạo ca cho nhân viên.")}`;
         });
-      }
-    }
 
-    if (successRows.length > 0) {
+      if (failedRows.length) {
+        throw new Error(
+          `Tạo ca chưa hoàn tất cho tất cả nhân viên:\n${failedRows.join("\n")}`,
+        );
+      }
+
       await refetch();
       await refetchScheduleLogs?.();
 
       if (typeof refetchPublication === "function") {
         await refetchPublication();
       }
-    }
 
-    if (successRows.length > 0 && failedRows.length === 0) {
       setIsAddModalOpen(false);
       setAddModalContext({ date: "", shiftType: "" });
 
       showNotification(
         scheduleLifecycleStatus === "revision_draft"
-          ? `Đã cập nhật bản chỉnh sửa với ${successRows.length} phân công mới.`
-          : `Đã tạo ca cho ${successRows.length} nhân viên.`,
+          ? `Đã cập nhật bản chỉnh sửa với ${staffIds.length} phân công mới.`
+          : `Đã tạo ca cho ${staffIds.length} nhân viên.`,
         "success",
       );
-
       return;
-    }
-
-    if (successRows.length > 0 && failedRows.length > 0) {
-      const failText = failedRows
-        .slice(0, 3)
-        .map((row) => row.message)
-        .join(" | ");
-
-      showNotification(
-        `Đã lưu ${successRows.length} phân công, ${failedRows.length} phân công lỗi.`,
-        "warning",
-      );
-
-      throw new Error(failText);
-    }
-
-    const failText =
-      failedRows
-        .slice(0, 3)
-        .map((row) => row.message)
-        .join(" | ") || "Không thể tạo ca làm.";
-
+    } catch (error) {
+      const failText = getGraphQLErrorMessage(error, "Không thể tạo ca làm.");
       showNotification(failText, "error");
       throw new Error(failText);
     } finally {

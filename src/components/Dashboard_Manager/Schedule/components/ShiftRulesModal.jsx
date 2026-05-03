@@ -3,20 +3,15 @@ import Modal from "../../../common/Modal";
 import { Plus, Settings2, SlidersHorizontal, Trash2 } from "lucide-react";
 import {
   buildSmartShiftRules,
+  jobOptions,
   validateShiftRules,
 } from "../utils/scheduleHelpers";
 import "./ShiftRulesModal.scss";
 
-const MANDATORY_ROLE_OPTIONS = [
-  { value: "server", label: "Phục vụ" },
-  { value: "cook", label: "Bếp" },
-  { value: "cashier", label: "Thu ngân" },
-  { value: "host", label: "Đón khách" },
-  { value: "cleaner", label: "Vệ sinh" },
-  { value: "bartender", label: "Pha chế" },
-  { value: "shipper", label: "Giao hàng" },
-  { value: "storekeeper", label: "Kho" },
-];
+const MANDATORY_ROLE_OPTIONS = jobOptions.map((option) => ({
+  value: option.value,
+  label: option.label,
+}));
 
 const normalizeRole = (role) => String(role || "").trim().toLowerCase();
 const normalizeMandatoryRoles = (roles = []) =>
