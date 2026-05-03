@@ -838,6 +838,15 @@
   font-weight: 800;
 }
 
+.staff-empty-state--error {
+  border-color: rgba(239, 68, 68, 0.24);
+  background: #fef2f2;
+
+  svg {
+    color: #dc2626;
+  }
+}
+
 .staff-loading-state--small {
   min-height: 150px;
 }
