@@ -14,6 +14,7 @@ import {
   userHasAnyRole,
 } from "../scheduling/schedulingPermission.service.js";
 import { createPerformanceIncidentOnce } from "../performance/performanceIncident.service.js";
+import { notifyReviewers, notifyUser } from "../notification/notificationWorkflow.service.js";
 
 const { Types } = mongoose;
 
@@ -622,6 +623,8 @@ export async function createOvertimeRequest({ input, ctx }) {
   });
   await logPerformanceIncident({ restaurantId, employeeId, actorId, actorRole, sourceType: "overtime_request", sourceId: String(doc._id), eventType: "OVERTIME_REQUEST_CREATED", severity: "info", responsibilityStatus: "pending_review", scoreImpactStatus: "not_applicable", metadata: { overtimeType, plannedOvertimeMinutes: plannedMinutes } });
 
+  try { await notifyReviewers({ restaurantId, type: "overtime_request_created", sourceType: "overtime_request", sourceId: String(doc._id), actionUrl: "/manager/performance", payload: { title: "Có yêu cầu tăng ca mới", message: "Một nhân viên đã gửi yêu cầu tăng ca." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
+
   return mapRequest(doc);
 }
 
@@ -714,6 +717,8 @@ export async function approveOvertimeRequest({ input, ctx }) {
   });
   await logPerformanceIncident({ restaurantId: request.restaurantId, employeeId: request.employeeId, actorId: getActorId(ctx), actorRole: getActorRole(ctx), sourceType: "overtime_request", sourceId: String(request._id), eventType: "OVERTIME_REQUEST_APPROVED", severity: "info", responsibilityStatus: "no_fault", scoreImpactStatus: "not_applicable", metadata: { approvedOvertimeMinutes: approvedMinutes } });
 
+  try { await notifyUser({ userId: request.employeeId, restaurantId: request.restaurantId, type: "overtime_request_approved", sourceType: "overtime_request", sourceId: String(request._id), actionUrl: "/staff/attendance", payload: { title: "Yêu cầu tăng ca đã được duyệt", message: "Yêu cầu tăng ca của bạn đã được duyệt." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
+
   return mapRequest(request);
 }
 
@@ -752,6 +757,8 @@ export async function rejectOvertimeRequest({ input, ctx }) {
     meta: { reason },
   });
   await logPerformanceIncident({ restaurantId: request.restaurantId, employeeId: request.employeeId, actorId: getActorId(ctx), actorRole: getActorRole(ctx), sourceType: "overtime_request", sourceId: String(request._id), eventType: "OVERTIME_REQUEST_REJECTED", severity: "warning", responsibilityStatus: "pending_review", scoreImpactStatus: "eligible", metadata: { reason } });
+
+  try { await notifyUser({ userId: request.employeeId, restaurantId: request.restaurantId, type: "overtime_request_rejected", sourceType: "overtime_request", sourceId: String(request._id), actionUrl: "/staff/attendance", payload: { title: "Yêu cầu tăng ca bị từ chối", message: "Yêu cầu tăng ca của bạn đã bị từ chối." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
 
   return mapRequest(request);
 }
@@ -900,6 +907,8 @@ export async function completeOvertimeRequest({ input, ctx }) {
     },
   });
   await logPerformanceIncident({ restaurantId: request.restaurantId, employeeId: request.employeeId, actorId: getActorId(ctx), actorRole: getActorRole(ctx), sourceType: "overtime_request", sourceId: String(request._id), eventType: "OVERTIME_REQUEST_COMPLETED", severity: "info", responsibilityStatus: "no_fault", scoreImpactStatus: "not_applicable", metadata: { approvedOvertimeMinutes, actualOvertimeMinutes, timesheetId: String(timesheet._id) } });
+
+  try { await notifyUser({ userId: request.employeeId, restaurantId: request.restaurantId, type: "overtime_request_completed", sourceType: "overtime_request", sourceId: String(request._id), actionUrl: "/staff/attendance", payload: { title: "Tăng ca đã được hoàn tất", message: "Yêu cầu tăng ca của bạn đã được hoàn tất và ghi nhận." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
 
   return mapRequest(request);
 }
