@@ -186,7 +186,19 @@ const LOCK_SCHEDULE = gql`
       lockedAt
       lockReason
       lastChangedAt
-      permissions { canPublish canApplyAutoSchedule canEditDraftSchedule canMakePublishedChange canChangeShiftTime canAddStaffToShift canRemoveStaffFromShift canDeleteShiftGroup requiresChangeReason requiresEmployeeNotification isReadOnly }
+      permissions {
+        canPublish
+        canApplyAutoSchedule
+        canEditDraftSchedule
+        canMakePublishedChange
+        canChangeShiftTime
+        canAddStaffToShift
+        canRemoveStaffFromShift
+        canDeleteShiftGroup
+        requiresChangeReason
+        requiresEmployeeNotification
+        isReadOnly
+      }
     }
   }
 `;
@@ -200,7 +212,19 @@ const CLOSE_SCHEDULE = gql`
       closedAt
       closeReason
       lastChangedAt
-      permissions { canPublish canApplyAutoSchedule canEditDraftSchedule canMakePublishedChange canChangeShiftTime canAddStaffToShift canRemoveStaffFromShift canDeleteShiftGroup requiresChangeReason requiresEmployeeNotification isReadOnly }
+      permissions {
+        canPublish
+        canApplyAutoSchedule
+        canEditDraftSchedule
+        canMakePublishedChange
+        canChangeShiftTime
+        canAddStaffToShift
+        canRemoveStaffFromShift
+        canDeleteShiftGroup
+        requiresChangeReason
+        requiresEmployeeNotification
+        isReadOnly
+      }
     }
   }
 `;
@@ -214,7 +238,20 @@ const REOPEN_SCHEDULE = gql`
       reopenReason
       reopenCount
       lastChangedAt
-      permissions { canPublish canApplyAutoSchedule canEditDraftSchedule canMakePublishedChange canChangeShiftTime canAddStaffToShift canRemoveStaffFromShift canDeleteShiftGroup requiresChangeReason requiresEmployeeNotification isReadOnly canReopen }
+      permissions {
+        canPublish
+        canApplyAutoSchedule
+        canEditDraftSchedule
+        canMakePublishedChange
+        canChangeShiftTime
+        canAddStaffToShift
+        canRemoveStaffFromShift
+        canDeleteShiftGroup
+        requiresChangeReason
+        requiresEmployeeNotification
+        isReadOnly
+        canReopen
+      }
     }
   }
 `;
@@ -801,17 +838,23 @@ const getShiftHoursFromGroup = (shift) => {
   }
 };
 
-const normalizeAutoRole = (role) => String(role || "").trim().toLowerCase();
+const normalizeAutoRole = (role) =>
+  String(role || "")
+    .trim()
+    .toLowerCase();
 
 const normalizeMandatoryShiftRoles = (roles = []) =>
   Array.from(new Set((roles || []).map(normalizeAutoRole).filter(Boolean)));
 
 const inferRoleFromPositionTitle = (positionTitle) => {
-  const normalized = String(positionTitle || "").trim().toLowerCase();
+  const normalized = String(positionTitle || "")
+    .trim()
+    .toLowerCase();
   if (!normalized) return "";
   if (normalized.includes("bếp trưởng")) return "chef";
   if (normalized.includes("phụ bếp")) return "kitchen_helper";
-  if (normalized.includes("nhân viên bếp") || normalized === "bếp") return "cook";
+  if (normalized.includes("nhân viên bếp") || normalized === "bếp")
+    return "cook";
   return "";
 };
 
@@ -823,8 +866,14 @@ const resolveStaffAutoRole = (staff) =>
       mapDepartmentToJob(staff?.department),
   );
 
-const getEmploymentTypeMinHours = (employmentTypePolicy = {}, employmentType = "full_time") =>
-  Number(employmentTypePolicy?.[String(employmentType || "full_time").toLowerCase()]?.minWeeklyHours || 0);
+const getEmploymentTypeMinHours = (
+  employmentTypePolicy = {},
+  employmentType = "full_time",
+) =>
+  Number(
+    employmentTypePolicy?.[String(employmentType || "full_time").toLowerCase()]
+      ?.minWeeklyHours || 0,
+  );
 
 const resolveStaffWeeklyAvailabilityHours = (person) => {
   const direct = Number(
@@ -857,8 +906,14 @@ export const buildVisibleScheduleInsights = ({
   shifts.forEach((shift) => {
     const shiftHours = getShiftHoursFromGroup(shift);
     const staffIds = Array.isArray(shift.staffIds) ? shift.staffIds : [];
-    const essentialJobs = Array.isArray(shift.essentialJobs) ? shift.essentialJobs : [];
-    const requiredPeople = Math.max(1, essentialJobs.length, mandatoryRoleKeys.length);
+    const essentialJobs = Array.isArray(shift.essentialJobs)
+      ? shift.essentialJobs
+      : [];
+    const requiredPeople = Math.max(
+      1,
+      essentialJobs.length,
+      mandatoryRoleKeys.length,
+    );
     const assignedPeople = staffIds.length;
     const missingCount = Math.max(0, requiredPeople - assignedPeople);
 
@@ -980,7 +1035,10 @@ export const buildVisibleScheduleInsights = ({
         rangesOverlap(previousStart, previousEnd, currentStart, currentEnd)
       ) {
         const person = staffById.get(String(staffId));
-        const targetShiftIds = [previous.shiftGroupId, current.shiftGroupId].filter(Boolean);
+        const targetShiftIds = [
+          previous.shiftGroupId,
+          current.shiftGroupId,
+        ].filter(Boolean);
         issues.push({
           id: `${staffId}-${previous.id}-${current.id}-overlap`,
           type: "overlap",
@@ -999,8 +1057,13 @@ export const buildVisibleScheduleInsights = ({
   staff.forEach((person) => {
     const staffId = String(person?.id || "");
     if (!staffId) return;
-    const employmentType = String(person?.employmentType || "full_time").toLowerCase();
-    const minWeeklyHours = getEmploymentTypeMinHours(employmentTypePolicy, employmentType);
+    const employmentType = String(
+      person?.employmentType || "full_time",
+    ).toLowerCase();
+    const minWeeklyHours = getEmploymentTypeMinHours(
+      employmentTypePolicy,
+      employmentType,
+    );
     if (minWeeklyHours <= 0) return;
 
     const assignedHours = Number(hoursByStaff.get(staffId) || 0);
@@ -1072,7 +1135,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
   });
   const [selectedShift, setSelectedShift] = useState(null);
   const [isStatsPanelOpen, setIsStatsPanelOpen] = useState(false);
-  const [isAvailabilityPanelCollapsed, setIsAvailabilityPanelCollapsed] = useState(false);
+  const [isAvailabilityPanelCollapsed, setIsAvailabilityPanelCollapsed] =
+    useState(false);
   const [highlightedShiftIds, setHighlightedShiftIds] = useState([]);
   const [focusedIssueId, setFocusedIssueId] = useState("");
   const shiftHighlightTimerRef = useRef(null);
@@ -1101,8 +1165,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [assistantShiftRows, setAssistantShiftRows] = useState([]);
   const [assistantAvailabilityWindows, setAssistantAvailabilityWindows] =
     useState([]);
-  const [assistantAvailabilitySubmissions, setAssistantAvailabilitySubmissions] =
-    useState([]);
+  const [
+    assistantAvailabilitySubmissions,
+    setAssistantAvailabilitySubmissions,
+  ] = useState([]);
   const [selectedAutoShiftKeys, setSelectedAutoShiftKeys] = useState({});
   const [autoScheduleError, setAutoScheduleError] = useState("");
   const [isApplyingAutoSchedule, setIsApplyingAutoSchedule] = useState(false);
@@ -1227,23 +1293,27 @@ const ScheduleManagement = ({ readOnly = false }) => {
   });
   const currentWeekStart = startOfWeek(rangeStart, { weekStartsOn: 1 });
   const currentWeekEnd = endOfWeek(rangeStart, { weekStartsOn: 1 });
-  const nextWeekStart = startOfWeek(addWeeks(currentWeekStart, 1), { weekStartsOn: 1 });
+  const nextWeekStart = startOfWeek(addWeeks(currentWeekStart, 1), {
+    weekStartsOn: 1,
+  });
   const nextWeekEnd = endOfWeek(nextWeekStart, { weekStartsOn: 1 });
   const [availabilityMode] = useState("nextWeek");
   const availabilityTargetStart =
     availabilityMode === "currentWeek" ? currentWeekStart : nextWeekStart;
   const availabilityTargetEnd =
     availabilityMode === "currentWeek" ? currentWeekEnd : nextWeekEnd;
-  const { data: managerAvailabilityWindowsData, refetch: refetchManagerWindows } =
-    useQuery(GET_AVAILABILITY_WINDOWS, {
-      variables: {
-        restaurantId: effectiveRestaurantId,
-        from: currentWeekStart.toISOString(),
-        to: nextWeekEnd.toISOString(),
-      },
-      fetchPolicy: "network-only",
-      skip: !effectiveRestaurantId,
-    });
+  const {
+    data: managerAvailabilityWindowsData,
+    refetch: refetchManagerWindows,
+  } = useQuery(GET_AVAILABILITY_WINDOWS, {
+    variables: {
+      restaurantId: effectiveRestaurantId,
+      from: currentWeekStart.toISOString(),
+      to: nextWeekEnd.toISOString(),
+    },
+    fetchPolicy: "network-only",
+    skip: !effectiveRestaurantId,
+  });
   const managerCurrentWindow = useMemo(() => {
     const windows = managerAvailabilityWindowsData?.availabilityWindows || [];
     return (
@@ -1256,16 +1326,22 @@ const ScheduleManagement = ({ readOnly = false }) => {
         );
       }) || null
     );
-  }, [availabilityTargetEnd, availabilityTargetStart, managerAvailabilityWindowsData?.availabilityWindows]);
-  const { data: managerAvailabilitySubmissionsData, refetch: refetchManagerSubmissions } =
-    useQuery(GET_AVAILABILITY_SUBMISSIONS, {
-      variables: {
-        restaurantId: effectiveRestaurantId,
-        windowId: managerCurrentWindow?.id,
-      },
-      fetchPolicy: "network-only",
-      skip: !effectiveRestaurantId || !managerCurrentWindow?.id,
-    });
+  }, [
+    availabilityTargetEnd,
+    availabilityTargetStart,
+    managerAvailabilityWindowsData?.availabilityWindows,
+  ]);
+  const {
+    data: managerAvailabilitySubmissionsData,
+    refetch: refetchManagerSubmissions,
+  } = useQuery(GET_AVAILABILITY_SUBMISSIONS, {
+    variables: {
+      restaurantId: effectiveRestaurantId,
+      windowId: managerCurrentWindow?.id,
+    },
+    fetchPolicy: "network-only",
+    skip: !effectiveRestaurantId || !managerCurrentWindow?.id,
+  });
 
   const [createShift] = useMutation(CREATE_STAFF_SHIFT);
   const [updateShift] = useMutation(UPDATE_STAFF_SHIFT);
@@ -1289,8 +1365,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
     useMutation(OPEN_AVAILABILITY_WINDOW);
   const [closeAvailabilityWindow, { loading: closingAvailabilityWindow }] =
     useMutation(CLOSE_AVAILABILITY_WINDOW);
-  const [reviewAvailabilitySubmission, { loading: reviewingAvailabilitySubmission }] =
-    useMutation(REVIEW_AVAILABILITY_SUBMISSION);
+  const [
+    reviewAvailabilitySubmission,
+    { loading: reviewingAvailabilitySubmission },
+  ] = useMutation(REVIEW_AVAILABILITY_SUBMISSION);
   const [loadSchedulingAssistant, schedulingAssistantState] = useLazyQuery(
     GET_SCHEDULING_ASSISTANT,
     {
@@ -1417,7 +1495,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const managerAvailabilitySummary = useMemo(() => {
     const submittedIds = new Set(
       managerAvailabilitySubmissions
-        .filter((item) => ["submitted", "approved", "locked"].includes(item.status))
+        .filter((item) =>
+          ["submitted", "approved", "locked"].includes(item.status),
+        )
         .map((item) => String(item.employeeId)),
     );
     const latePending = managerAvailabilitySubmissions.filter(
@@ -1454,41 +1534,44 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const schedulePublication = publicationData?.schedulePublication || null;
 
   const scheduleLifecycleStatus =
-    schedulePublication?.effectiveStatus || schedulePublication?.status || "draft";
-  const schedulePermissions =
-    schedulePublication?.permissions || {
-      canPublish: scheduleLifecycleStatus === "draft",
-      canApplyAutoSchedule: scheduleLifecycleStatus === "draft",
-      canEditDraftSchedule: scheduleLifecycleStatus === "draft",
-      canMakePublishedChange: scheduleLifecycleStatus === "published",
-      canChangeShiftTime: scheduleLifecycleStatus === "published",
-      canAddStaffToShift:
-        scheduleLifecycleStatus === "draft" ||
-        scheduleLifecycleStatus === "published",
-      canRemoveStaffFromShift:
-        scheduleLifecycleStatus === "draft" ||
-        scheduleLifecycleStatus === "published",
-      canDeleteShiftGroup:
-        scheduleLifecycleStatus === "draft" ||
-        scheduleLifecycleStatus === "published",
-      requiresChangeReason: scheduleLifecycleStatus === "published",
-      requiresEmployeeNotification: scheduleLifecycleStatus === "published",
-      canReopen: scheduleLifecycleStatus === "published",
-      isReadOnly: ["active", "locked", "closed"].includes(
-        scheduleLifecycleStatus,
-      ),
-    };
+    schedulePublication?.effectiveStatus ||
+    schedulePublication?.status ||
+    "draft";
+  const schedulePermissions = schedulePublication?.permissions || {
+    canPublish: scheduleLifecycleStatus === "draft",
+    canApplyAutoSchedule: scheduleLifecycleStatus === "draft",
+    canEditDraftSchedule: scheduleLifecycleStatus === "draft",
+    canMakePublishedChange: scheduleLifecycleStatus === "published",
+    canChangeShiftTime: scheduleLifecycleStatus === "published",
+    canAddStaffToShift:
+      scheduleLifecycleStatus === "draft" ||
+      scheduleLifecycleStatus === "published",
+    canRemoveStaffFromShift:
+      scheduleLifecycleStatus === "draft" ||
+      scheduleLifecycleStatus === "published",
+    canDeleteShiftGroup:
+      scheduleLifecycleStatus === "draft" ||
+      scheduleLifecycleStatus === "published",
+    requiresChangeReason: scheduleLifecycleStatus === "published",
+    requiresEmployeeNotification: scheduleLifecycleStatus === "published",
+    canReopen: scheduleLifecycleStatus === "published",
+    isReadOnly: ["active", "locked", "closed"].includes(
+      scheduleLifecycleStatus,
+    ),
+  };
   const isSchedulePublished = scheduleLifecycleStatus === "published";
   const isScheduleActive = scheduleLifecycleStatus === "active";
   const isScheduleLocked = scheduleLifecycleStatus === "locked";
   const isScheduleClosed = scheduleLifecycleStatus === "closed";
   const isScheduleReadOnly = Boolean(schedulePermissions.isReadOnly);
-  const isDraftLikeSchedule = ["draft", "revision_draft"].includes(scheduleLifecycleStatus);
+  const isDraftLikeSchedule = ["draft", "revision_draft"].includes(
+    scheduleLifecycleStatus,
+  );
   const hasChangesAfterPublish =
     isSchedulePublished &&
     schedulePublication?.lastChangedAt &&
     schedulePublication?.publishedAt &&
-      new Date(schedulePublication.lastChangedAt).getTime() >
+    new Date(schedulePublication.lastChangedAt).getTime() >
       new Date(schedulePublication.publishedAt).getTime();
   const getScheduleStatusClass = () =>
     scheduleLifecycleStatus === "published" && hasChangesAfterPublish
@@ -1500,9 +1583,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       : SCHEDULE_STATUS_LABELS[scheduleLifecycleStatus] || "Bản nháp";
   const selectedShiftIds = useMemo(
     () =>
-      (selectedShift?.records || [])
-        .map((record) => record.id)
-        .filter(Boolean),
+      (selectedShift?.records || []).map((record) => record.id).filter(Boolean),
     [selectedShift],
   );
 
@@ -1578,13 +1659,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
         );
         return;
       }
-      const confirmed = window.confirm([
-        "Mở lại đăng ký lịch?",
-        `Tuần áp dụng: ${format(availabilityTargetStart, "dd/MM/yyyy")} - ${format(availabilityTargetEnd, "dd/MM/yyyy")}`,
-        "Sau khi mở lại, nhân viên có thể thay đổi submissions.",
-      ].join("\n"));
+      const confirmed = window.confirm(
+        [
+          "Mở lại đăng ký lịch?",
+          `Tuần áp dụng: ${format(availabilityTargetStart, "dd/MM/yyyy")} - ${format(availabilityTargetEnd, "dd/MM/yyyy")}`,
+          "Sau khi mở lại, nhân viên có thể thay đổi submissions.",
+        ].join("\n"),
+      );
       if (!confirmed) return;
-      await openAvailabilityWindow({ variables: { id: managerCurrentWindow.id } });
+      await openAvailabilityWindow({
+        variables: { id: managerCurrentWindow.id },
+      });
     } else {
       await createAvailabilityWindow({
         variables: {
@@ -1612,13 +1697,22 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     const targetWeek = `${format(new Date(managerCurrentWindow.periodStart), "dd/MM/yyyy")} - ${format(new Date(managerCurrentWindow.periodEnd), "dd/MM/yyyy")}`;
     const total = managerAvailabilitySubmissions.length;
-    const summaryByStatus = managerAvailabilitySubmissions.reduce((acc, item) => {
-      const status = String(item?.status || "pending").toLowerCase();
-      acc[status] = Number(acc[status] || 0) + 1;
-      return acc;
-    }, {});
-    const submittedOrApprovedOrLocked = Number(summaryByStatus.submitted || 0) + Number(summaryByStatus.approved || 0) + Number(summaryByStatus.locked || 0);
-    const missing = Math.max(0, partTimeStaff.length - submittedOrApprovedOrLocked);
+    const summaryByStatus = managerAvailabilitySubmissions.reduce(
+      (acc, item) => {
+        const status = String(item?.status || "pending").toLowerCase();
+        acc[status] = Number(acc[status] || 0) + 1;
+        return acc;
+      },
+      {},
+    );
+    const submittedOrApprovedOrLocked =
+      Number(summaryByStatus.submitted || 0) +
+      Number(summaryByStatus.approved || 0) +
+      Number(summaryByStatus.locked || 0);
+    const missing = Math.max(
+      0,
+      partTimeStaff.length - submittedOrApprovedOrLocked,
+    );
 
     const confirmed = window.confirm(
       [
@@ -1632,7 +1726,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     if (!confirmed) return;
 
-    await closeAvailabilityWindow({ variables: { id: managerCurrentWindow.id } });
+    await closeAvailabilityWindow({
+      variables: { id: managerCurrentWindow.id },
+    });
     await refetchManagerWindows();
   };
 
@@ -1660,11 +1756,18 @@ const ScheduleManagement = ({ readOnly = false }) => {
         mandatoryShiftRoles: policyMandatoryShiftRoles,
         employmentTypePolicy: schedulingPolicy?.employmentTypePolicy,
       }),
-    [shifts, staff, policyMandatoryShiftRoles, schedulingPolicy?.employmentTypePolicy],
+    [
+      shifts,
+      staff,
+      policyMandatoryShiftRoles,
+      schedulingPolicy?.employmentTypePolicy,
+    ],
   );
   const mandatoryRoleWarningCount = useMemo(
     () =>
-      scheduleInsights.issues.filter((issue) => issue.id.endsWith("-missing-roles")).length,
+      scheduleInsights.issues.filter((issue) =>
+        issue.id.endsWith("-missing-roles"),
+      ).length,
     [scheduleInsights.issues],
   );
   const schedulePublishRiskSummary = useMemo(() => {
@@ -1672,7 +1775,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
       ? scheduleInsights.issues
       : [];
     const dedupedIssues = Array.from(
-      new Map(baseIssues.map((issue) => [String(issue.id || Math.random()), issue])).values(),
+      new Map(
+        baseIssues.map((issue) => [String(issue.id || Math.random()), issue]),
+      ).values(),
     );
     const warnings = dedupedIssues.filter(
       (issue) => String(issue.level || "warning").toLowerCase() !== "danger",
@@ -1818,7 +1923,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
     }
   };
   const clearShiftHighlightLater = () => {
-    if (shiftHighlightTimerRef.current) clearTimeout(shiftHighlightTimerRef.current);
+    if (shiftHighlightTimerRef.current)
+      clearTimeout(shiftHighlightTimerRef.current);
     shiftHighlightTimerRef.current = setTimeout(() => {
       setHighlightedShiftIds([]);
       setFocusedIssueId("");
@@ -1841,10 +1947,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
         `[data-shift-group-id="${targetIds[0]}"]`,
       );
       if (!firstTarget) {
-        showNotification("Không tìm thấy ca trong lịch đang hiển thị.", "warning");
+        showNotification(
+          "Không tìm thấy ca trong lịch đang hiển thị.",
+          "warning",
+        );
         return;
       }
-      firstTarget.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+      firstTarget.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+        inline: "center",
+      });
       clearShiftHighlightLater();
     });
   };
@@ -2127,8 +2240,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     const availabilityMessages = {
       PART_TIME_AVAILABILITY_REQUIRED:
         "Nhân viên part-time chưa đăng ký ca này",
-      OUTSIDE_SUBMITTED_AVAILABILITY:
-        "Nhân viên part-time chưa đăng ký ca này",
+      OUTSIDE_SUBMITTED_AVAILABILITY: "Nhân viên part-time chưa đăng ký ca này",
       FULL_TIME_UNAVAILABLE_EXCEPTION:
         "Nhân viên full-time đã báo không khả dụng",
       AVAILABILITY_PENDING_SUBMISSION:
@@ -2267,7 +2379,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
       throw new Error("Cần chọn ít nhất một nhân viên.");
     }
 
-    if (scheduleLifecycleStatus === "published" && !String(payload.publishedReason || "").trim()) {
+    if (
+      scheduleLifecycleStatus === "published" &&
+      !String(payload.publishedReason || "").trim()
+    ) {
       throw new Error(
         "Lịch đã công bố, cần nhập lý do khi thêm nhân viên vào ca.",
       );
@@ -2288,8 +2403,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
           });
         } catch (error) {
           const employeeName =
-            staff.find((person) => String(person.id) === String(staffId))?.name ||
-            `#${staffId}`;
+            staff.find((person) => String(person.id) === String(staffId))
+              ?.name || `#${staffId}`;
           validationFailures.push(
             `${employeeName}: ${getGraphQLErrorMessage(error, "Không thể tạo ca cho nhân viên.")}`,
           );
@@ -2303,7 +2418,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
       }
 
       if (scheduleLifecycleStatus !== "draft") {
-        throw new Error("Không thể thêm nhân viên vào lịch ở trạng thái hiện tại.");
+        throw new Error(
+          "Không thể thêm nhân viên vào lịch ở trạng thái hiện tại.",
+        );
       }
 
       const mutationResults = await Promise.allSettled(
@@ -2329,8 +2446,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
         .filter((row) => row.result.status === "rejected")
         .map((row) => {
           const employeeName =
-            staff.find((person) => String(person.id) === String(row.staffId))?.name ||
-            `#${row.staffId}`;
+            staff.find((person) => String(person.id) === String(row.staffId))
+              ?.name || `#${row.staffId}`;
           return `${employeeName}: ${getGraphQLErrorMessage(row.result.reason, "Không thể tạo ca cho nhân viên.")}`;
         });
 
@@ -2399,7 +2516,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
             }),
           ),
         );
-      } else if (["published", "revision_draft", "active"].includes(scheduleLifecycleStatus)) {
+      } else if (
+        ["published", "revision_draft", "active"].includes(
+          scheduleLifecycleStatus,
+        )
+      ) {
         const reason = String(options.reason || "").trim();
 
         if (schedulePermissions.requiresChangeReason && !reason) {
@@ -2452,7 +2573,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
     options = {},
   ) => {
     if (!schedulePermissions.canRemoveStaffFromShift) {
-      throw new Error("Không thể xóa nhân viên khỏi ca ở trạng thái lịch hiện tại.");
+      throw new Error(
+        "Không thể xóa nhân viên khỏi ca ở trạng thái lịch hiện tại.",
+      );
     }
     const shiftGroup = shifts.find((item) => item.id === shiftGroupId);
 
@@ -2539,7 +2662,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
             },
           },
         });
-      } else if (["published", "revision_draft", "active"].includes(scheduleLifecycleStatus)) {
+      } else if (
+        ["published", "revision_draft", "active"].includes(
+          scheduleLifecycleStatus,
+        )
+      ) {
         const reason = String(options.reason || "").trim();
 
         if (!reason) {
@@ -2880,42 +3007,41 @@ const ScheduleManagement = ({ readOnly = false }) => {
         leaveResult,
         shiftResult,
         availabilityWindowResult,
-      ] =
-        await Promise.all([
-          refetchStaffList({
-            restaurantId: effectiveRestaurantId || undefined,
-          }),
-          loadSchedulingAssistant({
-            variables: {
+      ] = await Promise.all([
+        refetchStaffList({
+          restaurantId: effectiveRestaurantId || undefined,
+        }),
+        loadSchedulingAssistant({
+          variables: {
+            restaurantId: effectiveRestaurantId,
+            horizonDays: Number(autoScheduleConfig.horizonDays || 1),
+            timezone: SCHEDULING_TIMEZONE,
+          },
+        }),
+        loadLeaveRequests({
+          variables: {
+            filter: {
               restaurantId: effectiveRestaurantId,
-              horizonDays: Number(autoScheduleConfig.horizonDays || 1),
-              timezone: SCHEDULING_TIMEZONE,
+              startDate: today.toISOString(),
+              endDate: analysisEnd.toISOString(),
             },
-          }),
-          loadLeaveRequests({
-            variables: {
-              filter: {
-                restaurantId: effectiveRestaurantId,
-                startDate: today.toISOString(),
-                endDate: analysisEnd.toISOString(),
-              },
-            },
-          }),
-          loadAssistantContextShifts({
-            variables: {
-              restaurantId: effectiveRestaurantId,
-              startDate: contextStart.toISOString(),
-              endDate: contextEnd.toISOString(),
-            },
-          }),
-          loadAvailabilityWindows({
-            variables: {
-              restaurantId: effectiveRestaurantId,
-              from: contextStart.toISOString(),
-              to: contextEnd.toISOString(),
-            },
-          }),
-        ]);
+          },
+        }),
+        loadAssistantContextShifts({
+          variables: {
+            restaurantId: effectiveRestaurantId,
+            startDate: contextStart.toISOString(),
+            endDate: contextEnd.toISOString(),
+          },
+        }),
+        loadAvailabilityWindows({
+          variables: {
+            restaurantId: effectiveRestaurantId,
+            from: contextStart.toISOString(),
+            to: contextEnd.toISOString(),
+          },
+        }),
+      ]);
 
       const nextAssistantPayload =
         assistantResult?.data?.staffSchedulingAssistant || null;
@@ -3473,7 +3599,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   : "Công bố lịch"}
             </button>
           ) : (
-            <span className={`schedule-status-badge ${getScheduleStatusClass()}`}>
+            <span
+              className={`schedule-status-badge ${getScheduleStatusClass()}`}
+            >
               {getScheduleStatusLabel()}
             </span>
           )}
@@ -3534,12 +3662,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
           onOpenWindow={handleCreateOrOpenAvailabilityWindow}
           onCloseWindow={handleCloseAvailabilityWindow}
           collapsed={isAvailabilityPanelCollapsed}
-          onToggleCollapse={() => setIsAvailabilityPanelCollapsed((prev) => !prev)}
+          onToggleCollapse={() =>
+            setIsAvailabilityPanelCollapsed((prev) => !prev)
+          }
           reopenBlockedReason={reopenAvailabilityBlockedReason}
         />
       ) : null}
       {isStatsPanelOpen ? (
-      <section className="schedule-insights-panel">
+        <section className="schedule-insights-panel">
           <div className="insights-header">
             <div>
               <h3>Thống kê chi tiết</h3>
@@ -3555,7 +3685,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
               aria-label="Đóng thống kê chi tiết"
               title="Đóng thống kê chi tiết"
             >
-              {isStatsPanelOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              {isStatsPanelOpen ? (
+                <ChevronUp size={18} />
+              ) : (
+                <ChevronDown size={18} />
+              )}
             </button>
           </div>
           <div className="insights-grid">
@@ -3659,9 +3793,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
               )}
             </div>
           </div>
-          </>
-          )}
         </section>
+      ) : null}
+
       {!effectiveRestaurantId ? (
         <div className="schedule-empty-state">
           Vui lòng chọn nhà hàng để xem và xếp lịch làm việc.
@@ -3908,7 +4042,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 sau đó sẽ phải đi qua quy trình có kiểm soát.
               </p>
               <p>
-                Lịch còn cảnh báo nhưng vẫn có thể công bố. Các cảnh báo sẽ được ghi nhận để theo dõi chất lượng lập lịch.
+                Lịch còn cảnh báo nhưng vẫn có thể công bố. Các cảnh báo sẽ được
+                ghi nhận để theo dõi chất lượng lập lịch.
               </p>
               <div className="publish-confirm-summary">
                 <div>
@@ -3944,12 +4079,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
               </div>
               {publishIssueSnapshot.pendingAcknowledgements > 0 ? (
                 <div className="publish-confirm-error">
-                  Còn {publishIssueSnapshot.pendingAcknowledgements} xác nhận từ nhân viên chưa hoàn tất (republish). Vẫn có thể công bố.
+                  Còn {publishIssueSnapshot.pendingAcknowledgements} xác nhận từ
+                  nhân viên chưa hoàn tất (republish). Vẫn có thể công bố.
                 </div>
               ) : null}
               {mandatoryRoleWarningCount > 0 ? (
                 <div className="publish-confirm-error">
-                  Lịch vẫn còn cảnh báo thiếu role bắt buộc ({mandatoryRoleWarningCount} ca). Bạn vẫn có thể công bố.
+                  Lịch vẫn còn cảnh báo thiếu role bắt buộc (
+                  {mandatoryRoleWarningCount} ca). Bạn vẫn có thể công bố.
                 </div>
               ) : null}
               {publishIssueSnapshot.topIssues.length ? (
@@ -3982,7 +4119,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 <span>Tôi đã kiểm tra lịch và xác nhận công bố.</span>
               </label>
               {publishConfirmError ? (
-                <div className="publish-confirm-error">{publishConfirmError}</div>
+                <div className="publish-confirm-error">
+                  {publishConfirmError}
+                </div>
               ) : null}
               <div className="publish-confirm-actions">
                 <button
@@ -4025,8 +4164,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
               <h3>Mở lại lịch đã công bố?</h3>
               <p>
                 Lịch này đã được công bố cho nhân viên. Khi mở lại, bạn có thể
-                chỉnh sửa như bản nháp. Nhân viên sẽ chưa nhận thông báo cho
-                đến khi bạn công bố lại lịch.
+                chỉnh sửa như bản nháp. Nhân viên sẽ chưa nhận thông báo cho đến
+                khi bạn công bố lại lịch.
               </p>
               <label className="time-change-reason">
                 Lý do mở lại lịch <span>*</span>
