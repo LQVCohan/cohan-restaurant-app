@@ -32,6 +32,8 @@ import {
   ClipboardList,
   CheckCircle2,
   XCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 import "./ScheduleManagement.scss";
@@ -1070,6 +1072,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   });
   const [selectedShift, setSelectedShift] = useState(null);
   const [isStatsPanelOpen, setIsStatsPanelOpen] = useState(false);
+  const [isAvailabilityPanelCollapsed, setIsAvailabilityPanelCollapsed] = useState(false);
   const [highlightedShiftIds, setHighlightedShiftIds] = useState([]);
   const [focusedIssueId, setFocusedIssueId] = useState("");
   const shiftHighlightTimerRef = useRef(null);
@@ -1333,6 +1336,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           fullName: item.fullName || "Nhân viên",
           employeeCode: item.employeeCode || "",
           department: item.department,
+          departmentLabel: getDepartmentLabel(item.department),
           role: item.role || null,
           roleSlug: item.role?.slug || "",
           roleName: item.roleName || item.role?.name || "",
@@ -1516,7 +1520,26 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const handleCreateOrOpenAvailabilityWindow = async () => {
     if (!effectiveRestaurantId) return;
     if (managerCurrentWindow?.id) {
-      const confirmed = window.confirm("Mở đăng ký availability cho nhân viên ngay bây giờ?");
+      const targetPeriodPublication = await refetchPublication?.({
+        restaurantId: effectiveRestaurantId,
+        periodStart: availabilityTargetStart.toISOString(),
+        periodEnd: availabilityTargetEnd.toISOString(),
+      });
+      const targetStatus = String(
+        targetPeriodPublication?.data?.schedulePublication?.effectiveStatus ||
+          targetPeriodPublication?.data?.schedulePublication?.status ||
+          "draft",
+      ).toLowerCase();
+      if (["published", "active", "locked", "closed"].includes(targetStatus)) {
+        showNotification(
+          "Không thể mở lại đăng ký: tuần mục tiêu đã công bố hoặc đã khóa/chốt lịch.",
+          "warning",
+        );
+        return;
+      }
+      const confirmed = window.confirm(
+        "Mở lại đăng ký availability? Nhân viên có thể thay đổi submissions sau khi mở lại.",
+      );
       if (!confirmed) return;
       await openAvailabilityWindow({ variables: { id: managerCurrentWindow.id } });
     } else {
@@ -3461,10 +3484,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
           onCreateWindow={handleCreateOrOpenAvailabilityWindow}
           onOpenWindow={handleCreateOrOpenAvailabilityWindow}
           onCloseWindow={handleCloseAvailabilityWindow}
+          collapsed={isAvailabilityPanelCollapsed}
+          onToggleCollapse={() => setIsAvailabilityPanelCollapsed((prev) => !prev)}
         />
       ) : null}
-      {isStatsPanelOpen ? (
-        <section className="schedule-insights-panel">
+      <section className="schedule-insights-panel">
           <div className="insights-header">
             <div>
               <h3>Thống kê chi tiết</h3>
@@ -3476,12 +3500,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
             <button
               type="button"
               className="btn-close-panel"
-              onClick={() => setIsStatsPanelOpen(false)}
+              onClick={() => setIsStatsPanelOpen((prev) => !prev)}
             >
-              <X size={18} />
+              {isStatsPanelOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </button>
           </div>
-
+          {!isStatsPanelOpen ? (
+            <div className="empty-mini">
+              Tóm tắt: {scheduleInsights.actionCount} cảnh báo • {compactNumber(scheduleInsights.totalHours)}h • {formatCurrency(scheduleInsights.totalCost)}
+            </div>
+          ) : (
+            <>
           <div className="insights-grid">
             <div className="insight-card">
               <span className="label">Nhóm ca</span>
@@ -3583,8 +3612,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
               )}
             </div>
           </div>
+          </>
+          )}
         </section>
-      ) : null}
       {!effectiveRestaurantId ? (
         <div className="schedule-empty-state">
           Vui lòng chọn nhà hàng để xem và xếp lịch làm việc.
