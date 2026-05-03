@@ -53,6 +53,7 @@ import ShiftDetailModal from "./components/ShiftDetailModal";
 import AutoScheduleModal from "./components/AutoScheduleModal";
 import ShiftRulesModal from "./components/ShiftRulesModal";
 import DailyView from "./DailyView";
+import AvailabilityRegistrationPanel from "./components/AvailabilityRegistrationPanel";
 const SCHEDULE_STATUS_LABELS = {
   draft: "Bản nháp",
   published: "Đã công bố",
@@ -3386,89 +3387,22 @@ const ScheduleManagement = ({ readOnly = false }) => {
         </div>
       ) : null}
       {!readOnly ? (
-        <section className="schedule-availability-panel">
-          <div className="panel-header">
-            <h3>
-              <ClipboardList size={18} /> Đăng ký lịch nhân viên
-            </h3>
-            <div className="panel-actions">
-              <button
-                type="button"
-                onClick={handleCreateOrOpenAvailabilityWindow}
-                disabled={creatingAvailabilityWindow || openingAvailabilityWindow}
-              >
-                {managerCurrentWindow ? "Mở window" : "Tạo window tuần kế"}
-              </button>
-              <button
-                type="button"
-                onClick={handleCloseAvailabilityWindow}
-                disabled={!managerCurrentWindow?.id || closingAvailabilityWindow}
-              >
-                Đóng window
-              </button>
-            </div>
-          </div>
-          {managerCurrentWindow ? (
-            <>
-              <p>
-                {format(new Date(managerCurrentWindow.openAt), "dd/MM/yyyy HH:mm")} -{" "}
-                {format(new Date(managerCurrentWindow.closeAt), "dd/MM/yyyy HH:mm")} |{" "}
-                trạng thái: <strong>{managerCurrentWindow.status}</strong>
-              </p>
-              <div className="availability-summary-grid">
-                <span>Cần đăng ký: {managerAvailabilitySummary.requiredCount}</span>
-                <span>Đã nộp: {managerAvailabilitySummary.submittedCount}</span>
-                <span>Chưa nộp: {managerAvailabilitySummary.missingCount}</span>
-                <span>Late change pending: {managerAvailabilitySummary.latePending}</span>
-              </div>
-              {(managerCurrentWindow.status === "open" &&
-                managerAvailabilitySummary.missingCount > 0) ||
-              (["closed", "used_for_schedule"].includes(managerCurrentWindow.status) &&
-                managerAvailabilitySummary.missingCount > 0) ? (
-                <div className="schedule-warning-inline">
-                  <AlertTriangle size={14} /> Cảnh báo availability: còn{" "}
-                  {managerAvailabilitySummary.missingCount} nhân viên part-time/seasonal chưa nộp.
-                </div>
-              ) : null}
-              <div className="availability-submission-table">
-                {staff.map((person) => {
-                  const submission = managerAvailabilitySubmissions.find(
-                    (row) => String(row.employeeId) === String(person.id),
-                  );
-                  const slots = submission?.slots || [];
-                  const availableCount = slots.filter((s) => s.status === "available").length;
-                  const unavailableCount = slots.filter((s) => s.status === "unavailable").length;
-                  return (
-                    <div key={person.id} className="submission-row">
-                      <div>{person.name}</div>
-                      <div>{String(person.employmentType || "").toLowerCase()}</div>
-                      <div>{person.department || "N/A"}</div>
-                      <div>{submission?.status || "chưa nộp"}</div>
-                      <div>{availableCount}</div>
-                      <div>{unavailableCount}</div>
-                      <div>{slots.find((s) => s.note)?.note || "—"}</div>
-                      <div>
-                        {submission?.status === "late_change_requested" ? (
-                          <>
-                            <button onClick={() => handleReviewLateChange(submission.id, true)} disabled={reviewingAvailabilitySubmission}><CheckCircle2 size={14} /></button>
-                            <button onClick={() => handleReviewLateChange(submission.id, false)} disabled={reviewingAvailabilitySubmission}><XCircle size={14} /></button>
-                          </>
-                        ) : (
-                          "—"
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <small>
-                TODO: tích hợp gửi nhắc nhở qua notification service khi service sẵn sàng.
-              </small>
-            </>
-          ) : (
-            <p>Chưa có availability window tuần kế tiếp. Manager có thể tạo mới.</p>
-          )}
-        </section>
+        <AvailabilityRegistrationPanel
+          selectedRestaurantId={effectiveRestaurantId}
+          nextWeekStart={nextWeekStart}
+          nextWeekEnd={nextWeekEnd}
+          availabilityWindow={managerCurrentWindow}
+          submissions={managerAvailabilitySubmissions}
+          loading={
+            creatingAvailabilityWindow ||
+            openingAvailabilityWindow ||
+            closingAvailabilityWindow
+          }
+          error={null}
+          onCreateWindow={handleCreateOrOpenAvailabilityWindow}
+          onOpenWindow={handleCreateOrOpenAvailabilityWindow}
+          onCloseWindow={handleCloseAvailabilityWindow}
+        />
       ) : null}
       {isStatsPanelOpen ? (
         <section className="schedule-insights-panel">

@@ -1544,3 +1544,140 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
     }
   }
 }
+
+.schedule-container {
+  .schedule-availability-panel {
+    margin: 0.9rem 1.35rem;
+    padding: 1rem;
+    border: 1px solid $border;
+    border-radius: $radius-md;
+    background: $white;
+    box-shadow: $shadow-xs;
+
+    &__header {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: flex-start;
+      margin-bottom: 0.9rem;
+
+      h3 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      p {
+        margin: 0.2rem 0 0;
+        color: $text-sec;
+      }
+    }
+
+    &__status {
+      border-radius: 999px;
+      padding: 0.3rem 0.7rem;
+      background: $bg-soft;
+      border: 1px solid $border;
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    &__summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.7rem;
+
+      > div {
+        border: 1px solid $border-soft;
+        border-radius: $radius-sm;
+        padding: 0.58rem 0.7rem;
+        background: $bg-soft;
+        display: flex;
+        flex-direction: column;
+        gap: 0.18rem;
+
+        span {
+          color: $text-muted;
+          font-size: 0.78rem;
+        }
+
+        strong {
+          color: $text-main;
+          font-size: 0.86rem;
+        }
+      }
+    }
+
+    &__actions {
+      margin-top: 0.9rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+
+      button {
+        border: 1px solid $border;
+        background: $white;
+        border-radius: 10px;
+        padding: 0.48rem 0.82rem;
+        font-weight: 700;
+      }
+    }
+
+    &__submissions {
+      margin-top: 0.9rem;
+
+      h4 {
+        margin: 0 0 0.45rem;
+      }
+
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.5rem;
+
+        span {
+          padding: 0.42rem 0.55rem;
+          border: 1px solid $border-soft;
+          border-radius: 8px;
+          background: $bg-soft;
+          font-size: 0.82rem;
+        }
+      }
+    }
+
+    &__empty {
+      border: 1px dashed $border-strong;
+      border-radius: $radius-sm;
+      background: $bg-soft;
+      padding: 0.85rem;
+
+      h4 { margin: 0 0 0.28rem; }
+      p { margin: 0 0 0.6rem; color: $text-sec; }
+
+      button {
+        border: 1px solid $primary;
+        background: $primary;
+        color: $white;
+        border-radius: 10px;
+        padding: 0.5rem 0.86rem;
+        font-weight: 700;
+      }
+    }
+  }
+
+  @media (max-width: 900px) {
+    .schedule-availability-panel {
+      &__summary,
+      &__submissions .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+
+      &__header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  }
+}
