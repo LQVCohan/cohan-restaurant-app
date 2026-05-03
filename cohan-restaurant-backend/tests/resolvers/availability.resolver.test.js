@@ -12,6 +12,7 @@ const modelMocks = vi.hoisted(() => ({
     updateMany: vi.fn(),
   },
   Staff: { findById: vi.fn() },
+  Restaurant: { exists: vi.fn() },
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
@@ -138,6 +139,21 @@ describe("availability resolver", () => {
     expect(closeRes.status).toBe("closed");
     expect(cancelRes.status).toBe("cancelled");
     expect(modelMocks.AvailabilityRegistrationWindow.findById).toHaveBeenCalledTimes(3);
+  });
+
+  it("allows manager without user.restaurantId when restaurant.managerId matches", async () => {
+    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
+    modelMocks.AvailabilityRegistrationWindow.create.mockResolvedValue({ _id: "w2", status: "draft" });
+
+    const res = await mutation.createAvailabilityWindow(
+      null,
+      { input: { restaurantId: "r2", periodStart: new Date(), periodEnd: new Date(), openAt: new Date(), closeAt: new Date() } },
+      { user: { id: "m2", roles: ["manager"] } },
+    );
+
+    expect(res._id).toBe("w2");
+    expect(modelMocks.Restaurant.exists).toHaveBeenCalledWith({ _id: "r2", managerId: "m2" });
   });
 
   it("blocks manager outside restaurant scope for open close and cancel", async () => {

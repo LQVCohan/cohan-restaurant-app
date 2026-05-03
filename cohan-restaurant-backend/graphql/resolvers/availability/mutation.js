@@ -1,19 +1,19 @@
 import { AvailabilityRegistrationWindow, StaffAvailabilitySubmission } from "../../../models/index.js";
-import { requireAuth, requireRestaurantScope, requireRoles } from "../../guards.js";
+import { requireAuth, requireRestaurantAccess, requireRoles } from "../../guards.js";
 import { createOrGetAvailabilityRegistrationWindow, isAvailabilityRegistrationWindowOpen, lockSubmissionsForClosedWindow, getStaffEmploymentType } from "../../../src/services/availability/availabilityRegistrationWindow.service.js";
 import { AVAILABILITY_WINDOW_ADMIN_ROLES, AVAILABILITY_REVIEW_ROLES, userHasAnyRole } from "../../../src/services/scheduling/schedulingPermission.service.js";
 
 async function getScopedAvailabilityWindow(id, ctx) {
   const doc = await AvailabilityRegistrationWindow.findById(id);
   if (!doc) throw new Error("AVAILABILITY_WINDOW_NOT_FOUND");
-  requireRestaurantScope(ctx, doc.restaurantId);
+  await requireRestaurantAccess(ctx, doc.restaurantId);
   return doc;
 }
 
 export default {
   createAvailabilityWindow: async (_, { input }, ctx) => {
     requireRoles(ctx, AVAILABILITY_WINDOW_ADMIN_ROLES);
-    requireRestaurantScope(ctx, input.restaurantId);
+    await requireRestaurantAccess(ctx, input.restaurantId);
     return createOrGetAvailabilityRegistrationWindow(input, ctx.user.id);
   },
   openAvailabilityWindow: async (_, { id }, ctx) => {
@@ -41,7 +41,7 @@ export default {
 
     const windowDoc = await AvailabilityRegistrationWindow.findById(input.availabilityWindowId);
     if (!windowDoc) throw new Error("AVAILABILITY_WINDOW_NOT_FOUND");
-    requireRestaurantScope(ctx, windowDoc.restaurantId);
+    await requireRestaurantAccess(ctx, windowDoc.restaurantId);
 
     const windowStatus = String(windowDoc.status || "").toLowerCase();
     if (windowStatus === "used_for_schedule") {
@@ -72,7 +72,7 @@ export default {
     requireRoles(ctx, AVAILABILITY_REVIEW_ROLES);
     const existing = await StaffAvailabilitySubmission.findById(input.id);
     if (!existing) throw new Error("STAFF_AVAILABILITY_SUBMISSION_NOT_FOUND");
-    requireRestaurantScope(ctx, existing.restaurantId);
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     return StaffAvailabilitySubmission.findByIdAndUpdate(
       input.id,
       { $set: { status: input.status, reviewNote: input.reviewNote || "", reviewedAt: new Date(), reviewedBy: ctx.user.id } },
