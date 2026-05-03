@@ -18,7 +18,10 @@ const modelMocks = vi.hoisted(() => ({
 vi.mock("../../models/index.js", () => modelMocks);
 
 describe("availability resolver", () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    modelMocks.Restaurant.exists.mockResolvedValue(null);
+  });
 
   it("creates availability window successfully", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
@@ -156,8 +159,22 @@ describe("availability resolver", () => {
     expect(modelMocks.Restaurant.exists).toHaveBeenCalledWith({ _id: "r2", managerId: "m2" });
   });
 
+  it("blocks manager without user.restaurantId when restaurant.managerId does not match", async () => {
+    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+    modelMocks.Restaurant.exists.mockResolvedValue(null);
+
+    await expect(
+      mutation.createAvailabilityWindow(
+        null,
+        { input: { restaurantId: "r2", periodStart: new Date(), periodEnd: new Date(), openAt: new Date(), closeAt: new Date() } },
+        { user: { id: "m2", roles: ["manager"] } },
+      ),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
+  });
+
   it("blocks manager outside restaurant scope for open close and cancel", async () => {
     const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
+    modelMocks.Restaurant.exists.mockResolvedValue(null);
     modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r2" });
 
     const ctx = { user: { id: "m1", roles: ["manager"], restaurantId: "r1" } };
