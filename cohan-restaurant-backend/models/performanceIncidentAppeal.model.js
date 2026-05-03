@@ -19,6 +19,13 @@ const PerformanceIncidentAppealSchema = new Schema(
     reviewedAt: { type: Date, default: null },
     reviewNote: { type: String, default: "", trim: true },
     decisionReason: { type: String, default: "", trim: true },
+
+    scoreReversalStatus: { type: String, enum: ["not_required", "pending", "reversed", "rejected"], default: "not_required", index: true },
+    scoreReversalId: { type: Types.ObjectId, ref: "StaffPerformanceScoreReversal", default: null },
+    scoreReversedBy: { type: Types.ObjectId, ref: "User", default: null },
+    scoreReversedAt: { type: Date, default: null },
+    scoreReversalNote: { type: String, default: "", trim: true },
+    scoreReversalDelta: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

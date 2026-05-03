@@ -42,6 +42,7 @@ const StaffIncidentsList = ({ incidents = [], appeals = [], onAppeal }) => {
           <p>Thời điểm: {item.occurredAt ? new Date(item.occurredAt).toLocaleString("vi-VN") : "-"}</p>
           <p>Ghi chú: {item.reviewNote || item.waiveReason || item.applyNote || item.note || "-"}</p>
         {incidentAppeals[0] ? <p>Trạng thái phản hồi: {incidentAppeals[0].status}</p> : null}
+        {incidentAppeals[0]?.scoreReversalStatus === "reversed" ? <p><strong>Đã hoàn điểm</strong>: +{incidentAppeals[0]?.scoreReversalDelta || 0}</p> : null}
           {!hasOpenAppeal && item.scoreImpactStatus !== "not_applicable" ? <button type="button" onClick={() => onAppeal?.(item.id)}>Khiếu nại</button> : null}
         </article>
       );})}

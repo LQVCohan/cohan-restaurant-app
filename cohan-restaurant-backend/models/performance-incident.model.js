@@ -73,6 +73,11 @@ const PerformanceIncidentSchema = new Schema(
     appliedAt: { type: Date, default: null },
     applyNote: { type: String, default: "" },
     scoreAdjustmentId: { type: Types.ObjectId, ref: "StaffPerformanceScoreAdjustment", default: null },
+
+    scoreReversalStatus: { type: String, enum: ["none", "pending", "reversed"], default: "none", index: true },
+    scoreReversalId: { type: Types.ObjectId, ref: "StaffPerformanceScoreReversal", default: null },
+    scoreReversedAt: { type: Date, default: null },
+    scoreReversalNote: { type: String, default: "" },
     responsibilityNote: { type: String, default: "" },
     metadata: { type: Schema.Types.Mixed, default: {} },
     note: { type: String, default: "" },

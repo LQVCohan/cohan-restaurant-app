@@ -76,6 +76,7 @@ export { default as SchedulingPolicy } from "./schedulingPolicy.model.js";
 export { default as StaffPerformanceReview } from "./StaffPerformanceReview.model.js";
 export { default as StaffPerformanceSnapshot } from "./staffPerformanceSnapshot.model.js";
 export { default as StaffPerformanceScoreAdjustment } from "./staffPerformanceScoreAdjustment.model.js";
+export { default as StaffPerformanceScoreReversal } from "./staffPerformanceScoreReversal.model.js";
 export { default as SchedulePublication } from "./schedule-publication.model.js";
 
 export { default as AvailabilityRegistrationWindow } from "./availability-registration-window.model.js";

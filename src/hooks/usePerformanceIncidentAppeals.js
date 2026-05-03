@@ -15,6 +15,8 @@ export const GET_PERFORMANCE_INCIDENT_APPEALS = gql`
       reviewNote
       decisionReason
       reviewedAt
+      scoreReversalStatus
+      scoreReversalDelta
     }
   }
 `;
@@ -31,6 +33,13 @@ export const REVIEW_PERFORMANCE_INCIDENT_APPEAL = gql`
   }
 `;
 
+export const REVERSE_SCORE_FOR_ACCEPTED_APPEAL = gql`
+  mutation ReverseScoreForAcceptedAppeal($input: ReverseScoreForAcceptedAppealInput!) {
+    reverseScoreForAcceptedAppeal(input: $input) { id scoreReversalStatus scoreReversalDelta scoreReversedAt }
+  }
+`;
+
 export const usePerformanceIncidentAppeals = (filter, skip=false) => useQuery(GET_PERFORMANCE_INCIDENT_APPEALS,{variables:{filter}, skip});
 export const useCreatePerformanceIncidentAppeal = ()=>useMutation(CREATE_PERFORMANCE_INCIDENT_APPEAL);
 export const useReviewPerformanceIncidentAppeal = ()=>useMutation(REVIEW_PERFORMANCE_INCIDENT_APPEAL);
+export const useReverseScoreForAcceptedAppeal = ()=>useMutation(REVERSE_SCORE_FOR_ACCEPTED_APPEAL);
