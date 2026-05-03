@@ -71,6 +71,30 @@ const ROLE_COLOR = {
   storekeeper: "#7c2d12",
   bartender: "#7c3aed",
 };
+export const ROLE_ALIAS_MAP = {
+  service: "server",
+  server: "server",
+  cashier: "cashier",
+  kitchen: "cook",
+  cook: "cook",
+  chef: "chef",
+  kitchen_helper: "kitchen_helper",
+  cleaning: "cleaner",
+  cleaner: "cleaner",
+  delivery: "shipper",
+  shipper: "shipper",
+  inventory: "storekeeper",
+  storekeeper: "storekeeper",
+  bar: "bartender",
+  bartender: "bartender",
+  management: "supervisor",
+  supervisor: "supervisor",
+};
+
+export const normalizeRoleKey = (role) => {
+  const key = String(role || "").trim().toLowerCase();
+  return ROLE_ALIAS_MAP[key] || key;
+};
 
 const toMinutes = (timeText) => {
   if (!/^\d{2}:\d{2}$/.test(String(timeText || ""))) return null;

@@ -6,27 +6,9 @@ import {
   formatDate,
   jobOptions,
   getJobName,
+  normalizeRoleKey,
 } from "../utils/scheduleHelpers";
 import { Search, Check } from "lucide-react"; // Import icon từ lucide-react
-const ROLE_ALIAS_MAP = {
-  service: "server",
-  server: "server",
-  cashier: "cashier",
-  kitchen: "cook",
-  cook: "cook",
-  chef: "chef",
-  kitchen_helper: "kitchen_helper",
-  cleaning: "cleaner",
-  cleaner: "cleaner",
-  delivery: "shipper",
-  shipper: "shipper",
-  inventory: "storekeeper",
-  storekeeper: "storekeeper",
-  bar: "bartender",
-  bartender: "bartender",
-  management: "supervisor",
-  supervisor: "supervisor",
-};
 
 const AddShiftModal = ({
   isOpen,
@@ -114,11 +96,11 @@ const AddShiftModal = ({
       );
       const staffRoleSet = new Set(
         selectedStaff
-          .map((person) => ROLE_ALIAS_MAP[String(person.job || "").toLowerCase()])
+          .map((person) => normalizeRoleKey(person.roleSlug || person.job))
           .filter(Boolean),
       );
       const missingRoles = newShift.essentialJobs.filter(
-        (role) => !staffRoleSet.has(ROLE_ALIAS_MAP[String(role || "").toLowerCase()]),
+        (role) => !staffRoleSet.has(normalizeRoleKey(role)),
       );
       if (missingRoles.length) {
         setSubmitError(
