@@ -202,10 +202,22 @@ const getGraphQLErrorMessage = (error, fallback = "Đã xảy ra lỗi.") => {
   return graphQLError || error?.message || fallback;
 };
 
+const addDaysLocal = (date, days) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
 const buildWeekRange = (weekOffset) => {
   const now = new Date();
+
+  // Project scheduling uses Monday -> Sunday weeks.
+  // JS getDay(): Sunday = 0, Monday = 1, ..., Saturday = 6.
+  const dayIndex = now.getDay();
+  const daysFromMonday = dayIndex === 0 ? 6 : dayIndex - 1;
+
   const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay() + weekOffset * 7);
+  weekStart.setDate(now.getDate() - daysFromMonday + weekOffset * 7);
   weekStart.setHours(0, 0, 0, 0);
 
   const weekEnd = new Date(weekStart);
@@ -213,6 +225,15 @@ const buildWeekRange = (weekOffset) => {
   weekEnd.setHours(23, 59, 59, 999);
 
   return { weekStart, weekEnd };
+};
+
+const isSameAvailabilityPeriod = (window, targetStart, targetEnd) => {
+  if (!window || !targetStart || !targetEnd) return false;
+
+  return (
+    toDateKey(window.periodStart) === toDateKey(targetStart) &&
+    toDateKey(window.periodEnd) === toDateKey(targetEnd)
+  );
 };
 
 const getWindowTone = (status) => {
@@ -250,21 +271,35 @@ export default function StaffSchedulePage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const { weekStart, weekEnd } = useMemo(
-    () => buildWeekRange(weekOffset),
-    [weekOffset],
-  );
+  const { weekStart, weekEnd, availabilityTargetStart, availabilityTargetEnd } =
+    useMemo(() => {
+      const range = buildWeekRange(weekOffset);
+
+      return {
+        ...range,
+        // Staff availability follows manager-side "nextWeek" registration mode.
+        availabilityTargetStart: addDaysLocal(range.weekStart, 7),
+        availabilityTargetEnd: addDaysLocal(range.weekEnd, 7),
+      };
+    }, [weekOffset]);
 
   const weekStartIso = weekStart.toISOString();
   const weekEndIso = weekEnd.toISOString();
 
+  const availabilityTargetStartIso = availabilityTargetStart.toISOString();
+  const availabilityTargetEndIso = availabilityTargetEnd.toISOString();
+
+  const availabilityTargetRangeLabel = getWeekRangeLabel(
+    availabilityTargetStart,
+    availabilityTargetEnd,
+  );
   const { data: windowsData, loading: loadingWindows } = useQuery(
     GET_AVAILABILITY_WINDOWS,
     {
       variables: {
         restaurantId,
-        from: weekStartIso,
-        to: weekEndIso,
+        from: availabilityTargetStartIso,
+        to: availabilityTargetEndIso,
       },
       skip: !restaurantId,
       fetchPolicy: "cache-and-network",
@@ -273,9 +308,17 @@ export default function StaffSchedulePage() {
 
   const selectedWindow = useMemo(() => {
     const windows = windowsData?.availabilityWindows || [];
-    return windows[0] || null;
-  }, [windowsData]);
 
+    return (
+      windows.find((window) =>
+        isSameAvailabilityPeriod(
+          window,
+          availabilityTargetStart,
+          availabilityTargetEnd,
+        ),
+      ) || null
+    );
+  }, [windowsData, availabilityTargetStartIso, availabilityTargetEndIso]);
   const {
     data: submissionData,
     loading: loadingSubmission,
@@ -341,13 +384,15 @@ export default function StaffSchedulePage() {
 
   const days = useMemo(() => {
     const result = [];
+
     for (let index = 0; index < 7; index += 1) {
-      const day = new Date(weekStart);
-      day.setDate(weekStart.getDate() + index);
+      const day = new Date(availabilityTargetStart);
+      day.setDate(availabilityTargetStart.getDate() + index);
       result.push(day);
     }
+
     return result;
-  }, [weekStartIso]);
+  }, [availabilityTargetStartIso]);
 
   const checked = (date, shiftType) => {
     const key = `${date}|${shiftType}`;
@@ -530,6 +575,9 @@ export default function StaffSchedulePage() {
                 <h2>{formTitle}</h2>
 
                 <p>{formDescription}</p>
+                <p className="staff-card__subnote">
+                  Kỳ đăng ký áp dụng cho tuần {availabilityTargetRangeLabel}.
+                </p>
               </div>
 
               <div className="staff-card__badges">
@@ -561,8 +609,9 @@ export default function StaffSchedulePage() {
                 <CalendarDays size={34} />
                 <h3>Chưa có kỳ đăng ký lịch</h3>
                 <p>
-                  Khi quản lý mở kỳ đăng ký cho tuần này, bạn sẽ thấy form gửi
-                  availability tại đây.
+                  Chưa tìm thấy kỳ đăng ký cho tuần{" "}
+                  {availabilityTargetRangeLabel}. Khi quản lý mở đúng kỳ này,
+                  form availability sẽ xuất hiện tại đây.
                 </p>
               </div>
             ) : (
