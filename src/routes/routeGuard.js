@@ -1,3 +1,18 @@
+const STAFF_ROLE_SLUGS = new Set([
+  "staff",
+  "server",
+  "supervisor",
+  "host",
+  "cashier",
+  "chef",
+  "cook",
+  "kitchen_helper",
+  "cleaner",
+  "shipper",
+  "storekeeper",
+  "bartender",
+]);
+
 const normalizeRole = (role) => {
   if (typeof role !== "string") return null;
   const normalized = role.trim().toLowerCase();
@@ -19,6 +34,25 @@ export const resolveRoleName = (me) => {
   return null;
 };
 
+export const resolveAccessRoleName = (me) => {
+  if (!me || typeof me !== "object") return null;
+
+  const directRole = normalizeRole(me.roleName);
+  const roleSlug = normalizeRole(me.role?.slug);
+  const roleName = normalizeRole(me.role?.name);
+  const parentSlug = normalizeRole(me.role?.parentRole?.slug);
+  const parentName = normalizeRole(me.role?.parentRole?.name);
+
+  if (parentSlug) return parentSlug;
+  if (parentName) return parentName;
+
+  if (directRole && STAFF_ROLE_SLUGS.has(directRole)) return "staff";
+  if (roleSlug && STAFF_ROLE_SLUGS.has(roleSlug)) return "staff";
+  if (roleName && STAFF_ROLE_SLUGS.has(roleName)) return "staff";
+
+  return directRole || roleSlug || roleName || null;
+};
+
 export const hasAllowedRole = (allowedRoles, roleName) => {
   if (!Array.isArray(allowedRoles) || allowedRoles.length === 0) {
     return true;
@@ -38,6 +72,6 @@ export const hasAllowedRole = (allowedRoles, roleName) => {
 export const getRoleHomeRoute = (roleName) => {
   const role = normalizeRole(roleName);
   if (["admin", "manager", "hr", "accountant"].includes(role)) return "/manager";
-  if (role === "staff") return "/staff/orders";
+  if (role && STAFF_ROLE_SLUGS.has(role)) return "/staff/orders";
   return "/";
 };

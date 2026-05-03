@@ -49,7 +49,7 @@ import StaffSchedulePage from "@/components/Staff/components/StaffSchedulePage";
 
 // ==== Layouts ====
 import MainLayout from "../layouts/MainLayout";
-import { hasAllowedRole, resolveRoleName } from "@/routes/routeGuard";
+import { hasAllowedRole, resolveAccessRoleName } from "@/routes/routeGuard";
 import VoucherPage from "@/components/Customer/VoucherManagement/VoucherPage";
 import FavoritePage from "@/components/Customer/FavoritePage/FavoritePage";
 import AddressPage from "@/components/Customer/AddressPage/AddressPage";
@@ -70,7 +70,7 @@ const useAuth = () => {
     sessionState,
     sessionWarning,
   } = useContext(AuthContext);
-  const role = resolveRoleName(user);
+  const role = resolveAccessRoleName(user);
   const emailVerified = user?.emailVerified ?? false;
   return {
     token,
