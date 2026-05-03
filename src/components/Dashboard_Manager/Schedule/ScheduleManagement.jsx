@@ -41,6 +41,7 @@ import {
   loadStoredShiftRules,
   normalizeRoleKey,
   persistShiftRules,
+  resolveConcreteStaffRoleSlug,
   shiftRulesToTypes,
   validateShiftRules,
 } from "./utils/scheduleHelpers";
@@ -844,25 +845,11 @@ const normalizeAutoRole = (role) =>
     .toLowerCase();
 
 const normalizeMandatoryShiftRoles = (roles = []) =>
-  Array.from(new Set((roles || []).map(normalizeAutoRole).filter(Boolean)));
-
-const inferRoleFromPositionTitle = (positionTitle) => {
-  const normalized = String(positionTitle || "")
-    .trim()
-    .toLowerCase();
-  if (!normalized) return "";
-  if (normalized.includes("bếp trưởng")) return "chef";
-  if (normalized.includes("phụ bếp")) return "kitchen_helper";
-  if (normalized.includes("nhân viên bếp") || normalized === "bếp")
-    return "cook";
-  return "";
-};
+  Array.from(new Set((roles || []).map((role) => normalizeRoleKey(role)).filter(Boolean)));
 
 const resolveStaffAutoRole = (staff) =>
   normalizeAutoRole(
-    normalizeRoleKey(staff?.role?.slug) ||
-      normalizeRoleKey(staff?.roleName) ||
-      inferRoleFromPositionTitle(staff?.positionTitle) ||
+    resolveConcreteStaffRoleSlug(staff, { allowDepartmentFallback: true }) ||
       mapDepartmentToJob(staff?.department),
   );
 
@@ -945,7 +932,7 @@ export const buildVisibleScheduleInsights = ({
 
     const assignedRoleSet = new Set(
       staffIds
-        .map((staffId) => resolveStaffAutoRole(staffById.get(String(staffId))))
+        .map((staffId) => resolveConcreteStaffRoleSlug(staffById.get(String(staffId))))
         .filter(Boolean),
     );
     const missingMandatoryRoles = mandatoryRoleKeys.filter(

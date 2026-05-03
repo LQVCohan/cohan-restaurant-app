@@ -7,6 +7,7 @@ import {
   jobOptions,
   getJobName,
   normalizeRoleKey,
+  resolveConcreteStaffRoleSlug,
 } from "../utils/scheduleHelpers";
 import { Search, Check } from "lucide-react"; // Import icon từ lucide-react
 
@@ -137,11 +138,7 @@ const AddShiftModal = ({
       const selectedStaff = staffList.filter((person) =>
         newShift.staffIds.includes(person.id),
       );
-      const staffRoleSet = new Set(
-        selectedStaff
-          .map((person) => normalizeRoleKey(person.roleSlug || person.job))
-          .filter(Boolean),
-      );
+      const staffRoleSet = new Set(selectedStaff.map((person) => resolveConcreteStaffRoleSlug(person)).filter(Boolean));
       const missingRoles = newShift.essentialJobs.filter(
         (role) => !staffRoleSet.has(normalizeRoleKey(role)),
       );
@@ -258,6 +255,12 @@ const AddShiftModal = ({
             <div className="staff-list">
               {filteredStaff.map((s) => {
                 const isSelected = newShift.staffIds.includes(s.id);
+                const roleSlug = resolveConcreteStaffRoleSlug(s);
+                const roleLabel = roleSlug ? getJobName(roleSlug) : "Chưa xác định vị trí";
+                const roleMatched =
+                  newShift.essentialJobs.length === 0 ||
+                  (roleSlug &&
+                    newShift.essentialJobs.some((role) => normalizeRoleKey(role) === roleSlug));
                 return (
                   <div
                     key={s.id}
@@ -269,7 +272,12 @@ const AddShiftModal = ({
                     </div>
                     <div className="staff-info">
                       <span className="name">{s.name}</span>
-                      <span className="role">{s.departmentLabel || "Khác"}</span>
+                      <span className="role">{roleLabel} · {s.departmentLabel || "Khác"}</span>
+                      {newShift.essentialJobs.length > 0 ? (
+                        <span className={`role-match ${roleMatched ? "matched" : "mismatch"}`}>
+                          {roleMatched ? "Khớp vị trí" : "Không khớp vị trí bắt buộc"}
+                        </span>
+                      ) : null}
                     </div>
                     <span className="salary">
                       {s.salary.toLocaleString()}đ/h

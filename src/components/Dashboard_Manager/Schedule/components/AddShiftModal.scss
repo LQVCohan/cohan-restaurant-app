@@ -217,6 +217,12 @@
             color: var(--m-text-sub, #64748b);
             text-transform: capitalize;
           }
+          .role-match {
+            font-size: 0.72rem;
+            margin-top: 2px;
+            &.matched { color: #15803d; }
+            &.mismatch { color: #b45309; }
+          }
         }
 
         .salary {

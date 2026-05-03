@@ -62,7 +62,7 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
               <img
                 src={getAvatarUrl(staff.name)}
                 alt={staff.name}
-                title={`${staff.name} - ${staff.departmentLabel || "Khác"}`}
+                title={`${staff.name} - ${getJobName(staff.roleSlug || staff.job)} · ${staff.departmentLabel || "Khác"}`}
               />
             </div>
           ))}
