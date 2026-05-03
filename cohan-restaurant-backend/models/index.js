@@ -84,3 +84,5 @@ export { default as StaffAvailabilitySubmission } from "./staff-availability-sub
 export { default as ShiftAcknowledgement } from "./shift-acknowledgement.model.js";
 
 export { default as PerformanceIncident } from "./performance-incident.model.js";
+
+export { default as PerformanceIncidentAppeal } from "./performanceIncidentAppeal.model.js";

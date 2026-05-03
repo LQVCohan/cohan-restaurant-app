@@ -79,6 +79,11 @@ import {
   reviewPerformanceIncident as reviewPerformanceIncidentService,
   waivePerformanceIncident as waivePerformanceIncidentService,
 } from "../../../src/services/performance/performanceIncident.service.js";
+import {
+  createPerformanceIncidentAppeal,
+  cancelPerformanceIncidentAppeal,
+  reviewPerformanceIncidentAppeal,
+} from "../../../src/services/performance/performanceAppeal.service.js";
 
 function toObjectId(id) {
   if (!id || !mongoose.isValidObjectId(id)) return null;
@@ -2765,6 +2770,9 @@ export default {
   applyPerformanceIncidentScore: async (_, { input }, ctx) => {
     return applyPerformanceIncidentScoreService({ incidentId: input.incidentId, actor: ctx?.user, note: input.note });
   },
+  createPerformanceIncidentAppeal: async (_, { input }, ctx) => createPerformanceIncidentAppeal(input, ctx?.user),
+  cancelPerformanceIncidentAppeal: async (_, { appealId }, ctx) => cancelPerformanceIncidentAppeal(appealId, ctx?.user),
+  reviewPerformanceIncidentAppeal: async (_, { input }, ctx) => reviewPerformanceIncidentAppeal(input, ctx?.user),
 
   createOvertimeRequest: async (_, { input }, ctx) => {
     return createOvertimeRequestService({ input, ctx });
