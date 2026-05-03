@@ -221,6 +221,7 @@ export const getStatusText = (status) => {
 
 export const getDayName = (dateStr) => {
   const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "";
   return date.toLocaleDateString("vi-VN", { weekday: "long" });
 };
 
