@@ -10,6 +10,33 @@ import {
 } from "../utils/scheduleHelpers";
 import { Search, Check } from "lucide-react"; // Import icon từ lucide-react
 
+const DAY_KEY_BY_INDEX = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+const normalizeWorkingDayKey = (value) =>
+  String(value || "")
+    .trim()
+    .toUpperCase();
+
+const getSelectedDateDayKey = (selectedDate) => {
+  if (!selectedDate) return "";
+  const date = new Date(selectedDate);
+  if (Number.isNaN(date.getTime())) return "";
+  return DAY_KEY_BY_INDEX[date.getDay()] || "";
+};
+
+const isStaffWorkingOnDate = (staff, selectedDate) => {
+  const selectedDayKey = getSelectedDateDayKey(selectedDate);
+  if (!selectedDayKey) return true;
+
+  const workingDays = Array.isArray(staff?.workingDays)
+    ? staff.workingDays
+    : [];
+
+  if (!workingDays.length) return false;
+
+  return workingDays.map(normalizeWorkingDayKey).includes(selectedDayKey);
+};
+
 const AddShiftModal = ({
   isOpen,
   onClose,
@@ -77,10 +104,26 @@ const AddShiftModal = ({
 
   // Filter Staff
   const filteredStaff = useMemo(() => {
-    return staffList.filter((s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()),
-    );
-  }, [staffList, search]);
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return staffList.filter((s) => {
+      if (!isStaffWorkingOnDate(s, selectedDate)) {
+        return false;
+      }
+
+      if (!normalizedSearch) {
+        return true;
+      }
+
+      return String(s.name || "")
+        .toLowerCase()
+        .includes(normalizedSearch);
+    });
+  }, [staffList, search, selectedDate]);
+
+  const hiddenByWorkingDayCount = useMemo(() => {
+    return staffList.filter((s) => !isStaffWorkingOnDate(s, selectedDate)).length;
+  }, [staffList, selectedDate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -206,6 +249,12 @@ const AddShiftModal = ({
               />
             </div>
 
+            {hiddenByWorkingDayCount > 0 ? (
+              <p className="staff-filter-hint">
+                Đã ẩn {hiddenByWorkingDayCount} nhân viên không có lịch làm việc trong ngày này.
+              </p>
+            ) : null}
+
             <div className="staff-list">
               {filteredStaff.map((s) => {
                 const isSelected = newShift.staffIds.includes(s.id);
@@ -229,7 +278,11 @@ const AddShiftModal = ({
                 );
               })}
               {filteredStaff.length === 0 && (
-                <p className="no-result">Không tìm thấy nhân viên</p>
+                <p className="no-result">
+                  {search.trim()
+                    ? "Không tìm thấy nhân viên phù hợp trong ngày này"
+                    : "Không có nhân viên phù hợp với ngày làm việc đã chọn"}
+                </p>
               )}
             </div>
           </div>
