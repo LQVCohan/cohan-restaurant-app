@@ -11,6 +11,24 @@ npm run seed:demo:scheduling
 npm run seed:demo:scheduling -- --reset
 ```
 
+### Gán seed vào nhà hàng hiện có (không sửa profile nhà hàng)
+> Khi truyền `DEMO_RESTAURANT_ID`, script chỉ dùng `_id` của nhà hàng để gắn dữ liệu demo và **không sửa** `name/address/description` của nhà hàng đó.
+
+**Windows PowerShell**
+```powershell
+$env:DEMO_RESTAURANT_ID="69ce9e2e8d8d711f12e251b1"; npm run seed:demo:scheduling
+```
+
+**Windows CMD**
+```cmd
+set DEMO_RESTAURANT_ID=69ce9e2e8d8d711f12e251b1 && npm run seed:demo:scheduling
+```
+
+**macOS/Linux**
+```bash
+DEMO_RESTAURANT_ID=69ce9e2e8d8d711f12e251b1 npm run seed:demo:scheduling
+```
+
 > Chỉ dùng local/dev. Không dùng production.
 
 ## Demo accounts
@@ -25,7 +43,9 @@ npm run seed:demo:scheduling -- --reset
 Password mặc định: `Demo@123456` (hoặc `DEMO_PASSWORD` env).
 
 ## Dữ liệu demo
-- Restaurant: **Cohan Demo Restaurant - District 1** (`_id: 69ce9e2e8d8d711f12e251b1`).
+- Restaurant:
+  - Nếu có `DEMO_RESTAURANT_ID`: dùng nhà hàng hiện có theo `_id` và không chỉnh sửa profile.
+  - Nếu không có `DEMO_RESTAURANT_ID`: tạo/reuse demo restaurant riêng với tên **Cohan Demo Restaurant - District 1** và description chứa `DEMO_TAG`.
 - Kỳ lịch: tuần kế tiếp (Monday-Sunday UTC) so với ngày chạy seed.
 - Shift template: morning `08:00-14:00`, evening `16:00-22:00`.
 - Schedule status: published.
