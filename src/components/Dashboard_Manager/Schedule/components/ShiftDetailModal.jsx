@@ -142,6 +142,8 @@ const ShiftDetailModal = ({
       ),
     };
   const modalReadOnly = readOnly || effectivePermissions.isReadOnly;
+  const requiresChangeReason = Boolean(effectivePermissions.requiresChangeReason);
+  const shouldNotifyEmployees = Boolean(effectivePermissions.requiresEmployeeNotification);
   const shiftStaffIds = useMemo(() => shift?.staffIds || [], [shift?.staffIds]);
   const shiftEssentialJobs = useMemo(
     () => shift?.essentialJobs || [],
@@ -401,14 +403,14 @@ const ShiftDetailModal = ({
   const handleConfirmDeleteGroup = async () => {
     if (modalReadOnly || !onDeleteShift || !effectivePermissions.canDeleteShiftGroup) return;
 
-    if (isSchedulePublished && !deleteGroupReason.trim()) return;
+    if (requiresChangeReason && !deleteGroupReason.trim()) return;
 
     setIsDeletingGroup(true);
 
     try {
       await onDeleteShift(shift.id, {
         reason: deleteGroupReason.trim() || "Xóa ca ở lịch chưa công bố",
-        notifyEmployees: isSchedulePublished,
+        notifyEmployees: shouldNotifyEmployees,
       });
 
       setDeleteGroupOpen(false);
@@ -893,7 +895,7 @@ const ShiftDetailModal = ({
                   </p>
 
                   <label>
-                    Lý do xóa ca {isSchedulePublished ? <span>*</span> : null}
+                    Lý do xóa ca {requiresChangeReason ? <span>*</span> : null}
                     <textarea
                       value={deleteGroupReason}
                       onChange={(event) =>
@@ -931,7 +933,7 @@ const ShiftDetailModal = ({
                       disabled={
                         isDeletingGroup ||
                         isDeletingPublishedShiftGroup ||
-                        (isSchedulePublished && !deleteGroupReason.trim())
+                        (requiresChangeReason && !deleteGroupReason.trim())
                       }
                     >
                       {isDeletingGroup || isDeletingPublishedShiftGroup
