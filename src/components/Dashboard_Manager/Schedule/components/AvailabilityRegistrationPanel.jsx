@@ -138,7 +138,7 @@ export default function AvailabilityRegistrationPanel({
               <strong>{formatDateTime(availabilityWindow.closeAt)}</strong>
             </div>
             <div>
-              <span>Đối tượng</span>
+              <span>Đối tượng đăng ký ca khả dụng</span>
               <strong>
                 {(availabilityWindow.targetEmploymentTypes || [])
                   .map((value) => EMPLOYMENT_TYPE_LABELS[String(value || "").toLowerCase()])

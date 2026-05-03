@@ -265,7 +265,13 @@ const GET_STAFF_LIST = gql`
       fullName
       employeeCode
       department
-      roleSlug
+      roleName
+      role {
+        id
+        slug
+        name
+        department
+      }
       positionTitle
       employmentStatus
       employmentType
@@ -809,7 +815,8 @@ const inferRoleFromPositionTitle = (positionTitle) => {
 
 const resolveStaffAutoRole = (staff) =>
   normalizeAutoRole(
-    normalizeRoleKey(staff?.roleSlug) ||
+    normalizeRoleKey(staff?.role?.slug) ||
+      normalizeRoleKey(staff?.roleName) ||
       inferRoleFromPositionTitle(staff?.positionTitle) ||
       mapDepartmentToJob(staff?.department),
   );
@@ -1326,7 +1333,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
           fullName: item.fullName || "Nhân viên",
           employeeCode: item.employeeCode || "",
           department: item.department,
-          roleSlug: item.roleSlug || "",
+          role: item.role || null,
+          roleSlug: item.role?.slug || "",
+          roleName: item.roleName || item.role?.name || "",
           positionTitle: item.positionTitle || "",
           job: resolveStaffAutoRole(item),
           status:
@@ -1507,6 +1516,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const handleCreateOrOpenAvailabilityWindow = async () => {
     if (!effectiveRestaurantId) return;
     if (managerCurrentWindow?.id) {
+      const confirmed = window.confirm("Mở đăng ký availability cho nhân viên ngay bây giờ?");
+      if (!confirmed) return;
       await openAvailabilityWindow({ variables: { id: managerCurrentWindow.id } });
     } else {
       await createAvailabilityWindow({
@@ -1526,6 +1537,29 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const handleCloseAvailabilityWindow = async () => {
     if (!managerCurrentWindow?.id) return;
+
+    const targetWeek = `${format(new Date(managerCurrentWindow.periodStart), "dd/MM/yyyy")} - ${format(new Date(managerCurrentWindow.periodEnd), "dd/MM/yyyy")}`;
+    const total = managerAvailabilitySubmissions.length;
+    const summaryByStatus = managerAvailabilitySubmissions.reduce((acc, item) => {
+      const status = String(item?.status || "pending").toLowerCase();
+      acc[status] = Number(acc[status] || 0) + 1;
+      return acc;
+    }, {});
+    const submittedOrApprovedOrLocked = Number(summaryByStatus.submitted || 0) + Number(summaryByStatus.approved || 0) + Number(summaryByStatus.locked || 0);
+    const missing = Math.max(0, partTimeStaff.length - submittedOrApprovedOrLocked);
+
+    const confirmed = window.confirm(
+      [
+        "Xác nhận đóng đăng ký availability?",
+        `Tuần áp dụng: ${targetWeek}`,
+        `Tổng submission: ${total}`,
+        `Submitted: ${Number(summaryByStatus.submitted || 0)} | Approved: ${Number(summaryByStatus.approved || 0)} | Locked: ${Number(summaryByStatus.locked || 0)} | Pending: ${Number(summaryByStatus.pending || 0)} | Missing part-time: ${missing}`,
+        "Sau khi đóng, dữ liệu đăng ký sẽ được dùng để kiểm tra hợp lệ khi xếp lịch.",
+      ].join("\n"),
+    );
+
+    if (!confirmed) return;
+
     await closeAvailabilityWindow({ variables: { id: managerCurrentWindow.id } });
     await refetchManagerWindows();
   };
@@ -2293,11 +2327,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
             }),
           ),
         );
-      } else if (scheduleLifecycleStatus === "published") {
+      } else if (["published", "revision_draft", "active"].includes(scheduleLifecycleStatus)) {
         const reason = String(options.reason || "").trim();
 
-        if (!reason) {
-          throw new Error("Cần nhập lý do khi xóa ca đã công bố.");
+        if (schedulePermissions.requiresChangeReason && !reason) {
+          throw new Error("Cần nhập lý do khi xóa ca đã công bố/chỉnh sửa.");
         }
 
         await deletePublishedShiftGroup({
@@ -2305,7 +2339,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
             input: {
               restaurantId: effectiveRestaurantId,
               shiftIds,
-              reason,
+              reason: reason || "Cập nhật ca đã công bố",
               notifyEmployees: options.notifyEmployees !== false,
             },
           },
@@ -2433,7 +2467,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
             },
           },
         });
-      } else if (scheduleLifecycleStatus === "published") {
+      } else if (["published", "revision_draft", "active"].includes(scheduleLifecycleStatus)) {
         const reason = String(options.reason || "").trim();
 
         if (!reason) {
@@ -2450,7 +2484,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
               shiftType: String(shiftGroup.shiftType || "").toUpperCase(),
               startTime: startTime.toISOString(),
               endTime: endTime.toISOString(),
-              reason,
+              reason: reason || "Cập nhật ca đã công bố",
               notifyEmployee: options.notifyEmployee !== false,
               allowOverride: Boolean(options.allowOverride),
               overrideReason: options.overrideReason || reason,
