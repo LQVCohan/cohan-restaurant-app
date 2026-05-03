@@ -32,6 +32,8 @@ import {
   ClipboardList,
   CheckCircle2,
   XCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 import "./ScheduleManagement.scss";
@@ -3553,7 +3555,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
               aria-label="Đóng thống kê chi tiết"
               title="Đóng thống kê chi tiết"
             >
-              <X size={18} />
+              {isStatsPanelOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </button>
           </div>
           <div className="insights-grid">
@@ -3657,8 +3659,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
               )}
             </div>
           </div>
+          </>
+          )}
         </section>
-      ) : null}
       {!effectiveRestaurantId ? (
         <div className="schedule-empty-state">
           Vui lòng chọn nhà hàng để xem và xếp lịch làm việc.
