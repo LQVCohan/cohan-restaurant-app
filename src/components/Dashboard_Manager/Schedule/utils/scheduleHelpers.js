@@ -1,4 +1,8 @@
-import { STAFF_ROLE_OPTIONS } from "../../../../utils/staffRoleOptions";
+import {
+  STAFF_ROLE_LABEL_BY_SLUG,
+  STAFF_ROLE_OPTIONS,
+  STAFF_ROLE_SLUGS,
+} from "../../../../utils/staffRoleOptions";
 
 export const SHIFT_RULE_STORAGE_KEY = "cohan.schedule.shiftRules.v1";
 
@@ -89,11 +93,43 @@ export const ROLE_ALIAS_MAP = {
   bartender: "bartender",
   management: "supervisor",
   supervisor: "supervisor",
+  staff: "",
 };
 
 export const normalizeRoleKey = (role) => {
   const key = String(role || "").trim().toLowerCase();
   return ROLE_ALIAS_MAP[key] || key;
+};
+
+const POSITION_TITLE_ROLE_MAP = [
+  [/giám sát/, "supervisor"],
+  [/đón khách|đieu phoi ban|điều phối bàn|host/, "host"],
+  [/bếp trưởng/, "chef"],
+  [/phụ bếp/, "kitchen_helper"],
+  [/nhân viên bếp|\bbếp\b|cook/, "cook"],
+  [/thu ngân|cashier/, "cashier"],
+  [/phục vụ|server/, "server"],
+  [/vệ sinh|cleaner/, "cleaner"],
+  [/giao hàng|shipper|delivery/, "shipper"],
+  [/thủ kho|storekeeper|inventory/, "storekeeper"],
+  [/pha chế|bartender|bar/, "bartender"],
+];
+
+export const resolveConcreteStaffRoleSlug = (staff = {}, { allowDepartmentFallback = false } = {}) => {
+  const fromRoleSlug = normalizeRoleKey(staff?.role?.slug || staff?.roleSlug);
+  if (STAFF_ROLE_SLUGS.includes(fromRoleSlug)) return fromRoleSlug;
+
+  const fromRoleName = normalizeRoleKey(staff?.roleName);
+  if (STAFF_ROLE_SLUGS.includes(fromRoleName)) return fromRoleName;
+
+  const normalizedTitle = String(staff?.positionTitle || "").trim().toLowerCase();
+  const matched = POSITION_TITLE_ROLE_MAP.find(([pattern]) => pattern.test(normalizedTitle));
+  if (matched) return matched[1];
+
+  if (!allowDepartmentFallback) return "";
+  const byDepartment = normalizeRoleKey(staff?.department);
+  const maybeSlug = ROLE_ALIAS_MAP[byDepartment] || "";
+  return STAFF_ROLE_SLUGS.includes(maybeSlug) ? maybeSlug : "";
 };
 
 const toMinutes = (timeText) => {
@@ -204,8 +240,8 @@ export const jobOptions = STAFF_ROLE_OPTIONS.map((role) => ({
 }));
 
 export const getJobName = (job) => {
-  const found = jobOptions.find((j) => j.value === job);
-  return found ? found.label : job;
+  const normalized = normalizeRoleKey(job);
+  return STAFF_ROLE_LABEL_BY_SLUG[normalized] || jobOptions.find((j) => j.value === normalized)?.label || job;
 };
 
 export const getJobEmoji = (job) => {

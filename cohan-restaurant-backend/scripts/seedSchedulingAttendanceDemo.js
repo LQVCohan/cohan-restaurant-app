@@ -14,7 +14,22 @@ const RESET = process.argv.includes('--reset');
 const DEMO_TAG = '[demo-scheduling-pr21]';
 const DEMO_RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || '';
 
+const CONCRETE_STAFF_ROLE_CONTRACT = [
+  { slug: 'server', department: 'service', email: 'staff.server.demo@cohan.local', fullName: 'Demo Server', employmentType: 'full_time', workingDays: ['mon','tue','wed','thu','fri','sat'] },
+  { slug: 'supervisor', department: 'service', email: 'staff.supervisor.demo@cohan.local', fullName: 'Demo Supervisor', employmentType: 'full_time', workingDays: ['mon','tue','wed','thu','fri'] },
+  { slug: 'host', department: 'service', email: 'staff.host.demo@cohan.local', fullName: 'Demo Host', employmentType: 'part_time', workingDays: ['fri','sat','sun'] },
+  { slug: 'cashier', department: 'cashier', email: 'staff.cashier.demo@cohan.local', fullName: 'Demo Cashier', employmentType: 'part_time', workingDays: ['tue','thu','sat'] },
+  { slug: 'chef', department: 'kitchen', email: 'staff.chef.demo@cohan.local', fullName: 'Demo Chef', employmentType: 'full_time', workingDays: ['mon','tue','wed','thu','fri','sat'] },
+  { slug: 'cook', department: 'kitchen', email: 'staff.cook.demo@cohan.local', fullName: 'Demo Cook', employmentType: 'full_time', workingDays: ['mon','tue','wed','thu','fri','sat'] },
+  { slug: 'kitchen_helper', department: 'kitchen', email: 'staff.kitchenhelper.demo@cohan.local', fullName: 'Demo Kitchen Helper', employmentType: 'part_time', workingDays: ['wed','fri','sat'] },
+  { slug: 'cleaner', department: 'cleaning', email: 'staff.cleaner.demo@cohan.local', fullName: 'Demo Cleaner', employmentType: 'part_time', workingDays: ['mon','wed','fri','sun'] },
+  { slug: 'shipper', department: 'delivery', email: 'staff.shipper.demo@cohan.local', fullName: 'Demo Shipper', employmentType: 'part_time', workingDays: ['mon','tue','wed','thu','fri'] },
+  { slug: 'storekeeper', department: 'inventory', email: 'staff.storekeeper.demo@cohan.local', fullName: 'Demo Storekeeper', employmentType: 'full_time', workingDays: ['mon','tue','wed','thu','fri'] },
+  { slug: 'bartender', department: 'bar', email: 'staff.bartender.demo@cohan.local', fullName: 'Demo Bartender', employmentType: 'part_time', workingDays: ['thu','fri','sat','sun'] }
+];
+
 const DEMO_STAFF_EMAILS = [
+  ...CONCRETE_STAFF_ROLE_CONTRACT.map((item) => item.email),
   'staff.fulltime.demo@cohan.local',
   'staff.parttime.demo@cohan.local',
   'staff.exception.demo@cohan.local'
@@ -101,9 +116,22 @@ async function main(){
   await Restaurant.findByIdAndUpdate(restaurant._id, { $set: { managerId: manager._id } });
   const hr = await upsertBaseUser({email:'hr.demo@cohan.local',fullName:'Demo HR',userType:'HR',roleId:hrR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
   const accountant = await upsertBaseUser({email:'accountant.demo@cohan.local',fullName:'Demo Accountant',userType:'ACCOUNTANT',roleId:accR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
-  const fulltime = await upsertStaffUser({email:'staff.fulltime.demo@cohan.local',fullName:'Demo Staff Fulltime',roleId:staffR._id,restaurantId:restaurant._id,employmentType:'full_time',workingDays:['mon','tue','wed','thu','fri','sat'],department:'service'});
-  const parttime = await upsertStaffUser({email:'staff.parttime.demo@cohan.local',fullName:'Demo Staff Parttime',roleId:staffR._id,restaurantId:restaurant._id,employmentType:'part_time',workingDays:['tue','thu','sat'],department:'cashier'});
-  const exception = await upsertStaffUser({email:'staff.exception.demo@cohan.local',fullName:'Demo Staff Exception',roleId:staffR._id,restaurantId:restaurant._id,employmentType:'part_time',workingDays:['wed','fri','sat'],department:'kitchen'});
+  const concreteRoleDocs = await Role.find({ slug: { $in: CONCRETE_STAFF_ROLE_CONTRACT.map((item) => item.slug) } }).select('_id slug').lean();
+  const concreteRoleBySlug = new Map(concreteRoleDocs.map((item) => [item.slug, item]));
+  const missingConcreteRoleSlugs = CONCRETE_STAFF_ROLE_CONTRACT.map((item) => item.slug).filter((slug) => !concreteRoleBySlug.has(slug));
+  if (missingConcreteRoleSlugs.length) {
+    throw new Error(`MISSING_CONCRETE_STAFF_ROLES: please run seedRoles before demo scheduling seed. missing=${missingConcreteRoleSlugs.join(',')}`);
+  }
+
+  const seededConcreteStaff = [];
+  for (const item of CONCRETE_STAFF_ROLE_CONTRACT) {
+    const roleDoc = concreteRoleBySlug.get(item.slug);
+    seededConcreteStaff.push(await upsertStaffUser({ ...item, roleId: roleDoc._id, restaurantId: restaurant._id }));
+  }
+
+  const fulltime = await upsertStaffUser({email:'staff.fulltime.demo@cohan.local',fullName:'Demo Staff Fulltime',roleId:concreteRoleBySlug.get('server')._id,restaurantId:restaurant._id,employmentType:'full_time',workingDays:['mon','tue','wed','thu','fri','sat'],department:'service'});
+  const parttime = await upsertStaffUser({email:'staff.parttime.demo@cohan.local',fullName:'Demo Staff Parttime',roleId:concreteRoleBySlug.get('cashier')._id,restaurantId:restaurant._id,employmentType:'part_time',workingDays:['tue','thu','sat'],department:'cashier'});
+  const exception = await upsertStaffUser({email:'staff.exception.demo@cohan.local',fullName:'Demo Staff Exception',roleId:concreteRoleBySlug.get('cook')._id,restaurantId:restaurant._id,employmentType:'part_time',workingDays:['wed','fri','sat'],department:'kitchen'});
 
   const weekStart = startOfNextWeek(); const weekEnd = at(weekStart,6,23,59);
   if (RESET) {

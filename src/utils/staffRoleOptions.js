@@ -77,3 +77,10 @@ export const getStaffRoleOption = (roleSlug) => {
   const normalizedRoleSlug = normalizeKey(roleSlug);
   return STAFF_ROLE_OPTIONS.find((role) => role.slug === normalizedRoleSlug) || null;
 };
+
+export const STAFF_ROLE_LABEL_BY_SLUG = STAFF_ROLE_OPTIONS.reduce((acc, role) => {
+  acc[role.slug] = role.label;
+  return acc;
+}, {});
+
+export const STAFF_ROLE_SLUGS = STAFF_ROLE_OPTIONS.map((role) => role.slug);

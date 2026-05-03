@@ -13,13 +13,22 @@ const baseShift = {
 };
 
 describe("buildVisibleScheduleInsights mandatory roles", () => {
-  it("does not flag server role as missing when service staff is assigned", () => {
+  it("flags server role as missing when only service department without concrete role is assigned", () => {
     const result = buildVisibleScheduleInsights({
       shifts: [{ ...baseShift, staffIds: ["staff-1"] }],
       staff: [{ id: "staff-1", department: "service", fullName: "S1" }],
       mandatoryShiftRoles: ["server"],
     });
 
+    expect(result.issues.find((issue) => issue.id === "shift-1-missing-roles")).toBeTruthy();
+  });
+
+  it("does not flag server role as missing when concrete server role is assigned", () => {
+    const result = buildVisibleScheduleInsights({
+      shifts: [{ ...baseShift, staffIds: ["staff-1"] }],
+      staff: [{ id: "staff-1", role: { slug: "server" }, department: "service", fullName: "S1" }],
+      mandatoryShiftRoles: ["server"],
+    });
     expect(result.issues.find((issue) => issue.id === "shift-1-missing-roles")).toBeUndefined();
   });
 
