@@ -84,7 +84,8 @@ export default function AvailabilityRegistrationPanel({
     hasWindow &&
     selectedRestaurantId &&
     !loading &&
-    ["draft", "closed"].includes(windowStatus);
+    (windowStatus === "draft" || (windowStatus === "closed" && !reopenBlockedReason));
+  const openActionLabel = windowStatus === "closed" ? "Mở lại đăng ký" : "Mở đăng ký";
   const canClose = hasWindow && selectedRestaurantId && !loading && windowStatus === "open";
 
   return (
@@ -104,14 +105,20 @@ export default function AvailabilityRegistrationPanel({
           {statusLabel}
         </span>
         {typeof onToggleCollapse === "function" ? (
-          <button type="button" className="btn-collapse-panel" onClick={onToggleCollapse}>
+          <button
+            type="button"
+            className="btn-collapse-panel icon-only"
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? "Mở rộng đăng ký lịch nhân viên" : "Thu gọn đăng ký lịch nhân viên"}
+            title={collapsed ? "Mở rộng đăng ký lịch nhân viên" : "Thu gọn đăng ký lịch nhân viên"}
+          >
             {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-            {collapsed ? "Mở rộng" : "Thu gọn"}
           </button>
         ) : null}
       </div>
       {collapsed ? (
         <div className="schedule-availability-panel__compact-summary">
+          <span>Tuần: {formatDateTime(targetWeekStart)} - {formatDateTime(targetWeekEnd)}</span>
           <span>Tổng submission: {submissionSummary.total}</span>
           <span>Đã gửi/duyệt/khóa: {submissionSummary.submitted + submissionSummary.approved + submissionSummary.locked}</span>
           <span>Trạng thái: {statusLabel}</span>
@@ -178,7 +185,7 @@ export default function AvailabilityRegistrationPanel({
 
           <div className="schedule-availability-panel__actions">
             <button type="button" onClick={onOpenWindow} disabled={!canOpen}>
-              {loading ? "Đang xử lý..." : "Mở đăng ký"}
+              {loading ? "Đang xử lý..." : openActionLabel}
             </button>
             <button type="button" onClick={onCloseWindow} disabled={!canClose}>
               {loading ? "Đang xử lý..." : "Đóng đăng ký"}

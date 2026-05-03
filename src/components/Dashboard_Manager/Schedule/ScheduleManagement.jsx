@@ -1319,6 +1319,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
       fetchPolicy: "network-only",
     },
   );
+  const [
+    loadAvailabilityTargetPublication,
+    availabilityTargetPublicationState,
+  ] = useLazyQuery(GET_SCHEDULE_PUBLICATION, {
+    fetchPolicy: "network-only",
+  });
 
   const rawStaffList = useMemo(
     () => staffData?.staffList || [],
@@ -1516,14 +1522,49 @@ const ScheduleManagement = ({ readOnly = false }) => {
     !isSchedulePublished &&
     daysUntilRangeStart >= 0 &&
     daysUntilRangeStart <= 3;
+  useEffect(() => {
+    if (!effectiveRestaurantId) return;
+    loadAvailabilityTargetPublication({
+      variables: {
+        restaurantId: effectiveRestaurantId,
+        periodStart: availabilityTargetStart.toISOString(),
+        periodEnd: availabilityTargetEnd.toISOString(),
+      },
+    });
+  }, [
+    availabilityTargetEnd,
+    availabilityTargetStart,
+    effectiveRestaurantId,
+    loadAvailabilityTargetPublication,
+  ]);
+
+  const availabilityTargetPublicationStatus = String(
+    availabilityTargetPublicationState?.data?.schedulePublication
+      ?.effectiveStatus ||
+      availabilityTargetPublicationState?.data?.schedulePublication?.status ||
+      "draft",
+  ).toLowerCase();
+  const canReopenAvailabilityWindowForTargetPeriod = ![
+    "published",
+    "active",
+    "locked",
+    "closed",
+  ].includes(availabilityTargetPublicationStatus);
+  const reopenAvailabilityBlockedReason =
+    managerCurrentWindow?.status === "closed" &&
+    !canReopenAvailabilityWindowForTargetPeriod
+      ? "Không thể mở lại vì lịch tuần này đã được công bố/khóa."
+      : "";
 
   const handleCreateOrOpenAvailabilityWindow = async () => {
     if (!effectiveRestaurantId) return;
     if (managerCurrentWindow?.id) {
-      const targetPeriodPublication = await refetchPublication?.({
-        restaurantId: effectiveRestaurantId,
-        periodStart: availabilityTargetStart.toISOString(),
-        periodEnd: availabilityTargetEnd.toISOString(),
+      const targetPeriodPublication = await loadAvailabilityTargetPublication({
+        variables: {
+          restaurantId: effectiveRestaurantId,
+          periodStart: availabilityTargetStart.toISOString(),
+          periodEnd: availabilityTargetEnd.toISOString(),
+        },
       });
       const targetStatus = String(
         targetPeriodPublication?.data?.schedulePublication?.effectiveStatus ||
@@ -1537,9 +1578,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
         );
         return;
       }
-      const confirmed = window.confirm(
-        "Mở lại đăng ký availability? Nhân viên có thể thay đổi submissions sau khi mở lại.",
-      );
+      const confirmed = window.confirm([
+        "Mở lại đăng ký lịch?",
+        `Tuần áp dụng: ${format(availabilityTargetStart, "dd/MM/yyyy")} - ${format(availabilityTargetEnd, "dd/MM/yyyy")}`,
+        "Sau khi mở lại, nhân viên có thể thay đổi submissions.",
+      ].join("\n"));
       if (!confirmed) return;
       await openAvailabilityWindow({ variables: { id: managerCurrentWindow.id } });
     } else {
@@ -1556,6 +1599,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
       });
     }
     await refetchManagerWindows();
+  };
+
+  const handleCloseStatsPanel = () => {
+    setIsStatsPanelOpen(false);
+    setFocusedIssueId("");
+    setHighlightedShiftIds([]);
   };
 
   const handleCloseAvailabilityWindow = async () => {
@@ -3486,8 +3535,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
           onCloseWindow={handleCloseAvailabilityWindow}
           collapsed={isAvailabilityPanelCollapsed}
           onToggleCollapse={() => setIsAvailabilityPanelCollapsed((prev) => !prev)}
+          reopenBlockedReason={reopenAvailabilityBlockedReason}
         />
       ) : null}
+      {isStatsPanelOpen ? (
       <section className="schedule-insights-panel">
           <div className="insights-header">
             <div>
@@ -3500,17 +3551,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
             <button
               type="button"
               className="btn-close-panel"
-              onClick={() => setIsStatsPanelOpen((prev) => !prev)}
+              onClick={handleCloseStatsPanel}
+              aria-label="Đóng thống kê chi tiết"
+              title="Đóng thống kê chi tiết"
             >
               {isStatsPanelOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </button>
           </div>
-          {!isStatsPanelOpen ? (
-            <div className="empty-mini">
-              Tóm tắt: {scheduleInsights.actionCount} cảnh báo • {compactNumber(scheduleInsights.totalHours)}h • {formatCurrency(scheduleInsights.totalCost)}
-            </div>
-          ) : (
-            <>
           <div className="insights-grid">
             <div className="insight-card">
               <span className="label">Nhóm ca</span>

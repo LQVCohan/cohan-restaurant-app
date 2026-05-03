@@ -1583,6 +1583,37 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
       font-weight: 700;
       white-space: nowrap;
     }
+    .btn-collapse-panel.icon-only {
+      width: 2rem;
+      height: 2rem;
+      border: 1px solid $border;
+      border-radius: 0.65rem;
+      background: $bg-soft;
+      color: $text-muted;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: auto;
+
+      &:hover {
+        color: $text-main;
+        background: #edf2f7;
+      }
+    }
+    &__compact-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+
+      span {
+        padding: 0.38rem 0.58rem;
+        border: 1px solid $border-soft;
+        border-radius: 8px;
+        background: $bg-soft;
+        color: $text-sec;
+        font-size: 0.8rem;
+      }
+    }
 
     &__summary {
       display: grid;
