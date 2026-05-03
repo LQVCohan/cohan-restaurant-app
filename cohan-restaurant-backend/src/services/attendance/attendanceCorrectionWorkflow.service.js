@@ -12,6 +12,7 @@ import {
   deriveAttendanceStatus,
 } from "./attendanceCalculation.service.js";
 import { createPerformanceIncidentOnce } from "../performance/performanceIncident.service.js";
+import { notifyReviewers, notifyUser } from "../notification/notificationWorkflow.service.js";
 import {
   ATTENDANCE_READ_ROLES,
   ATTENDANCE_REVIEW_ROLES,
@@ -689,6 +690,8 @@ export async function createAttendanceCorrectionRequest({ input, ctx }) {
     metadata: { correctionType: doc.correctionType, workDate, reason },
   });
 
+  try { await notifyReviewers({ restaurantId, type: "attendance_correction_created", sourceType: "attendance_correction", sourceId: String(doc._id), actionUrl: "/manager/performance", payload: { title: "Có yêu cầu sửa công mới", message: "Một nhân viên đã gửi yêu cầu sửa chấm công." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
+
   const populated = await populateRequest(doc);
   return mapCorrectionRequest(populated);
 }
@@ -877,6 +880,9 @@ export async function approveAttendanceCorrectionRequest({ input, ctx }) {
   );
   await request.save();
 
+  try { await notifyUser({ userId: request.employeeId, restaurantId: request.restaurantId, type: "attendance_correction_applied", sourceType: "attendance_correction", sourceId: String(request._id), actionUrl: "/staff/attendance", payload: { title: "Yêu cầu sửa công đã được duyệt", message: "Yêu cầu sửa công của bạn đã được áp dụng." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
+
+
   const populated = await AttendanceCorrectionRequest.findById(request._id)
     .populate(
       "employeeId",
@@ -936,6 +942,8 @@ export async function rejectAttendanceCorrectionRequest({ input, ctx }) {
     occurredAt: new Date(),
     metadata: { rejectionReason: reason, reviewNote: request.reviewNote || "" },
   });
+
+  try { await notifyUser({ userId: request.employeeId, restaurantId: request.restaurantId, type: "attendance_correction_rejected", sourceType: "attendance_correction", sourceId: String(request._id), actionUrl: "/staff/attendance", payload: { title: "Yêu cầu sửa công bị từ chối", message: "Yêu cầu sửa công của bạn đã bị từ chối." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
 
   const populated = await AttendanceCorrectionRequest.findById(request._id)
     .populate(

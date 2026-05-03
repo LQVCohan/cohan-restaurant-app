@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { PerformanceIncident, PerformanceIncidentAppeal, StaffPerformanceScoreAdjustment, StaffPerformanceScoreReversal, StaffPerformanceSnapshot } from "../../../models/index.js";
 import { PERFORMANCE_READ_ROLES, PERFORMANCE_REVIEW_ROLES, PERFORMANCE_SELF_ROLES } from "./performanceIncident.service.js";
 import { resolveUserRoles, userCanAccessRestaurant } from "../scheduling/schedulingPermission.service.js";
+import { notifyReviewers, notifyUser } from "../notification/notificationWorkflow.service.js";
 
 const OPEN_STATUSES = ["submitted", "under_review", "needs_more_info"];
 const REVIEW_STATUSES = ["under_review", "needs_more_info", "accepted", "rejected"];
@@ -28,7 +29,9 @@ export async function createPerformanceIncidentAppeal(input, actor) {
   if (!reason) throw new Error("APPEAL_REASON_REQUIRED");
   const existing = await PerformanceIncidentAppeal.findOne({ incidentId: incident._id, status: { $in: OPEN_STATUSES } });
   if (existing) throw new Error("OPEN_APPEAL_ALREADY_EXISTS");
-  return PerformanceIncidentAppeal.create({ restaurantId: incident.restaurantId, incidentId: incident._id, employeeId: incident.employeeId, submittedBy: actorId, submittedAt: new Date(), reason, evidenceNote: trim(input.evidenceNote), evidenceUrls: (input.evidenceUrls || []).map(trim).filter(Boolean), status: "submitted" });
+  const appeal = await PerformanceIncidentAppeal.create({ restaurantId: incident.restaurantId, incidentId: incident._id, employeeId: incident.employeeId, submittedBy: actorId, submittedAt: new Date(), reason, evidenceNote: trim(input.evidenceNote), evidenceUrls: (input.evidenceUrls || []).map(trim).filter(Boolean), status: "submitted" });
+  try { await notifyReviewers({ restaurantId: incident.restaurantId, type: "appeal_submitted", sourceType: "performance_appeal", sourceId: String(appeal._id), actionUrl: "/manager/performance", payload: { title: "Có phản hồi/khiếu nại mới", message: "Một nhân viên đã gửi phản hồi cho incident hiệu suất." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
+  return appeal;
 }
 
 export async function listPerformanceIncidentAppeals(filter, actor) {
@@ -56,7 +59,13 @@ export async function reviewPerformanceIncidentAppeal(input, actor){ if(!actor) 
     const incident = await PerformanceIncident.findById(appeal.incidentId);
     appeal.scoreReversalStatus = incident?.scoreImpactStatus === "applied" ? "pending" : "not_required";
   } else if (["rejected", "cancelled"].includes(input.status)) appeal.scoreReversalStatus = "not_required";
-  return appeal.save(); }
+  const saved = await appeal.save();
+  try {
+    if (input.status === "needs_more_info") await notifyUser({ userId: appeal.employeeId, restaurantId: appeal.restaurantId, type: "appeal_needs_more_info", sourceType: "performance_appeal", sourceId: String(appeal._id), actionUrl: "/staff/performance", payload: { title: "Cần bổ sung thông tin", message: "Phản hồi của bạn cần bổ sung thêm thông tin." } });
+    if (input.status === "accepted") await notifyUser({ userId: appeal.employeeId, restaurantId: appeal.restaurantId, type: "appeal_accepted", sourceType: "performance_appeal", sourceId: String(appeal._id), actionUrl: "/staff/performance", payload: { title: "Phản hồi đã được chấp nhận", message: "Phản hồi của bạn đã được chấp nhận." } });
+    if (input.status === "rejected") await notifyUser({ userId: appeal.employeeId, restaurantId: appeal.restaurantId, type: "appeal_rejected", sourceType: "performance_appeal", sourceId: String(appeal._id), actionUrl: "/staff/performance", payload: { title: "Phản hồi bị từ chối", message: "Phản hồi của bạn đã bị từ chối." } });
+  } catch (error) { console.warn("Failed to create notification:", error.message); }
+  return saved; }
 
 
 export async function reverseScoreForAcceptedAppeal({ appealId, actor, reversalDelta, note }) {
@@ -101,5 +110,6 @@ export async function reverseScoreForAcceptedAppeal({ appealId, actor, reversalD
 
   incident.scoreReversalStatus = "reversed"; incident.scoreReversalId = reversal._id; incident.scoreReversedAt = now; incident.scoreReversalNote = cleanNote;
   await incident.save();
+  try { await notifyUser({ userId: appeal.employeeId, restaurantId: appeal.restaurantId, type: "appeal_score_reversed", sourceType: "performance_appeal", sourceId: String(appeal._id), actionUrl: "/staff/performance", payload: { title: "Điểm hiệu suất đã được điều chỉnh", message: "Điểm hiệu suất của bạn đã được điều chỉnh sau khi phản hồi được chấp nhận." } }); } catch (error) { console.warn("Failed to create notification:", error.message); }
   return appeal;
 }
