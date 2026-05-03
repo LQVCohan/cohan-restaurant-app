@@ -21,6 +21,9 @@ const SUBMISSION_STATUS_LABELS = {
 const EMPLOYMENT_TYPE_LABELS = {
   full_time: "Toàn thời gian",
   part_time: "Bán thời gian",
+  probation: "Thử việc",
+  seasonal: "Thời vụ",
+  contract: "Hợp đồng",
 };
 
 function formatDateTime(value) {
@@ -41,6 +44,9 @@ export default function AvailabilityRegistrationPanel({
   submissions,
   loading,
   error,
+  mode = "nextWeek",
+  targetWeekStart,
+  targetWeekEnd,
   onCreateWindow,
   onOpenWindow,
   onCloseWindow,
@@ -86,6 +92,10 @@ export default function AvailabilityRegistrationPanel({
             <ClipboardList size={18} /> Đăng ký lịch nhân viên
           </h3>
           <p>Quản lý thời gian nhân viên đăng ký khả dụng trước khi xếp lịch.</p>
+          <p>
+            Kỳ đăng ký cho tuần {formatDateTime(targetWeekStart)} -{" "}
+            {formatDateTime(targetWeekEnd)} ({mode === "currentWeek" ? "tuần đang xem" : "tuần kế tiếp"})
+          </p>
         </div>
         <span className={`schedule-availability-panel__status is-${windowStatus}`}>
           {statusLabel}
@@ -130,13 +140,15 @@ export default function AvailabilityRegistrationPanel({
             <div>
               <span>Đối tượng</span>
               <strong>
-                {EMPLOYMENT_TYPE_LABELS[String(availabilityWindow.targetEmploymentType || "").toLowerCase()] ||
-                  "—"}
+                {(availabilityWindow.targetEmploymentTypes || [])
+                  .map((value) => EMPLOYMENT_TYPE_LABELS[String(value || "").toLowerCase()])
+                  .filter(Boolean)
+                  .join(", ") || "Chưa thiết lập"}
               </strong>
             </div>
             <div>
               <span>Full-time đăng ký unavailable</span>
-              <strong>{availabilityWindow.allowFullTimeUnavailable ? "Có" : "Không"}</strong>
+              <strong>{availabilityWindow.allowFullTimeUnavailableException ? "Có" : "Không"}</strong>
             </div>
             <div>
               <span>Kỳ tạo sẵn</span>

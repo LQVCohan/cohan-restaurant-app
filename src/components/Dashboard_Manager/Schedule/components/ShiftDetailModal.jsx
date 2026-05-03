@@ -119,6 +119,7 @@ const ShiftDetailModal = ({
   const [addConfirm, setAddConfirm] = useState(null);
   const [addReason, setAddReason] = useState("");
   const [isAddingStaff, setIsAddingStaff] = useState(false);
+  const [addStaffError, setAddStaffError] = useState("");
 
   const [deleteGroupOpen, setDeleteGroupOpen] = useState(false);
   const [deleteGroupReason, setDeleteGroupReason] = useState("");
@@ -183,6 +184,7 @@ const ShiftDetailModal = ({
     setAddConfirm(null);
     setAddReason("");
     setIsAddingStaff(false);
+    setAddStaffError("");
     setDeleteGroupOpen(false);
     setDeleteGroupReason("");
     setIsDeletingGroup(false);
@@ -350,7 +352,9 @@ const ShiftDetailModal = ({
       return;
     }
 
-    onAddStaff(shift.id, person.id);
+    Promise.resolve(onAddStaff(shift.id, person.id)).catch((error) => {
+      setAddStaffError(error?.message || "Không thể thêm nhân viên vào ca.");
+    });
   };
 
   const closeAddConfirm = () => {
@@ -374,6 +378,9 @@ const ShiftDetailModal = ({
 
       setAddConfirm(null);
       setAddReason("");
+      setAddStaffError("");
+    } catch (error) {
+      setAddStaffError(error?.message || "Không thể thêm nhân viên vào ca.");
     } finally {
       setIsAddingStaff(false);
     }
@@ -437,7 +444,7 @@ const ShiftDetailModal = ({
                   {currentShiftType?.label}
                 </span>
                 <h3 className="shift-name">
-                  {formatDate(shift.date)} • {getDayName(shift.day)}
+                  {formatDate(shift.date)}{getDayName(shift.date) ? ` • ${getDayName(shift.date)}` : ""}
                 </h3>
 
                 <div className="summary-meta">
@@ -607,6 +614,7 @@ const ShiftDetailModal = ({
               </div>
 
               <div className="candidate-list">
+                {addStaffError ? <div className="submit-error">{addStaffError}</div> : null}
                 {availableStaff.length > 0 ? (
                   availableStaff.map((person) => {
                     const isRecommended = shiftEssentialJobs.includes(

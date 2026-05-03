@@ -8,6 +8,25 @@ import {
   getJobName,
 } from "../utils/scheduleHelpers";
 import { Search, Check } from "lucide-react"; // Import icon từ lucide-react
+const ROLE_ALIAS_MAP = {
+  service: "server",
+  server: "server",
+  cashier: "cashier",
+  kitchen: "cook",
+  cook: "cook",
+  chef: "chef",
+  kitchen_helper: "kitchen_helper",
+  cleaning: "cleaner",
+  cleaner: "cleaner",
+  delivery: "shipper",
+  shipper: "shipper",
+  inventory: "storekeeper",
+  storekeeper: "storekeeper",
+  bar: "bartender",
+  bartender: "bartender",
+  management: "supervisor",
+  supervisor: "supervisor",
+};
 
 const AddShiftModal = ({
   isOpen,
@@ -86,8 +105,27 @@ const AddShiftModal = ({
     setSubmitError("");
 
     if (!newShift.staffIds.length) {
-      setSubmitError("Cần chọn ít nhất một nhân viên để tạo ca.");
+      setSubmitError("Cần chọn ít nhất một nhân viên cho ca làm.");
       return;
+    }
+    if (newShift.essentialJobs.length) {
+      const selectedStaff = staffList.filter((person) =>
+        newShift.staffIds.includes(person.id),
+      );
+      const staffRoleSet = new Set(
+        selectedStaff
+          .map((person) => ROLE_ALIAS_MAP[String(person.job || "").toLowerCase()])
+          .filter(Boolean),
+      );
+      const missingRoles = newShift.essentialJobs.filter(
+        (role) => !staffRoleSet.has(ROLE_ALIAS_MAP[String(role || "").toLowerCase()]),
+      );
+      if (missingRoles.length) {
+        setSubmitError(
+          `Ca làm còn thiếu vị trí bắt buộc: ${missingRoles.map((role) => getJobName(role)).join(", ")}.`,
+        );
+        return;
+      }
     }
 
     if (isSchedulePublished && !publishedReason.trim()) {

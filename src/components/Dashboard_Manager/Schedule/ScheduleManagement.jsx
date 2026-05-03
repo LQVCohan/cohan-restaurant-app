@@ -1198,13 +1198,20 @@ const ScheduleManagement = ({ readOnly = false }) => {
     fetchPolicy: "network-only",
     skip: !effectiveRestaurantId || viewMode !== "week",
   });
-  const nextWeekStart = startOfWeek(addWeeks(new Date(), 1), { weekStartsOn: 1 });
+  const currentWeekStart = startOfWeek(rangeStart, { weekStartsOn: 1 });
+  const currentWeekEnd = endOfWeek(rangeStart, { weekStartsOn: 1 });
+  const nextWeekStart = startOfWeek(addWeeks(currentWeekStart, 1), { weekStartsOn: 1 });
   const nextWeekEnd = endOfWeek(nextWeekStart, { weekStartsOn: 1 });
+  const [availabilityMode] = useState("nextWeek");
+  const availabilityTargetStart =
+    availabilityMode === "currentWeek" ? currentWeekStart : nextWeekStart;
+  const availabilityTargetEnd =
+    availabilityMode === "currentWeek" ? currentWeekEnd : nextWeekEnd;
   const { data: managerAvailabilityWindowsData, refetch: refetchManagerWindows } =
     useQuery(GET_AVAILABILITY_WINDOWS, {
       variables: {
         restaurantId: effectiveRestaurantId,
-        from: nextWeekStart.toISOString(),
+        from: currentWeekStart.toISOString(),
         to: nextWeekEnd.toISOString(),
       },
       fetchPolicy: "network-only",
@@ -1212,8 +1219,17 @@ const ScheduleManagement = ({ readOnly = false }) => {
     });
   const managerCurrentWindow = useMemo(() => {
     const windows = managerAvailabilityWindowsData?.availabilityWindows || [];
-    return windows[0] || null;
-  }, [managerAvailabilityWindowsData?.availabilityWindows]);
+    return (
+      windows.find((item) => {
+        const start = new Date(item.periodStart);
+        const end = new Date(item.periodEnd);
+        return (
+          start.getTime() === availabilityTargetStart.getTime() &&
+          end.getTime() === availabilityTargetEnd.getTime()
+        );
+      }) || null
+    );
+  }, [availabilityTargetEnd, availabilityTargetStart, managerAvailabilityWindowsData?.availabilityWindows]);
   const { data: managerAvailabilitySubmissionsData, refetch: refetchManagerSubmissions } =
     useQuery(GET_AVAILABILITY_SUBMISSIONS, {
       variables: {
@@ -3389,6 +3405,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
       {!readOnly ? (
         <AvailabilityRegistrationPanel
           selectedRestaurantId={effectiveRestaurantId}
+          mode={availabilityMode}
+          targetWeekStart={availabilityTargetStart}
+          targetWeekEnd={availabilityTargetEnd}
           nextWeekStart={nextWeekStart}
           nextWeekEnd={nextWeekEnd}
           availabilityWindow={managerCurrentWindow}
