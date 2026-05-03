@@ -1,5 +1,5 @@
-import React, { useContext, useMemo, useState } from "react";
-import { gql, useMutation, useQuery } from "@apollo/client";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import {
   AlertTriangle,
   CalendarCheck2,
@@ -242,19 +242,6 @@ const buildWeekRange = (weekOffset) => {
   return { weekStart, weekEnd };
 };
 
-const isSameAvailabilityPeriod = (window, targetStart, targetEnd) => {
-  if (!window || !targetStart || !targetEnd) return false;
-
-  const windowStartKey = toLocalDateKey(window.periodStart);
-  const windowEndKey = toLocalDateKey(window.periodEnd);
-  const targetStartKey = toLocalDateKey(targetStart);
-  const targetEndKey = toLocalDateKey(targetEnd);
-
-  return (
-    windowStartKey === targetStartKey && windowEndKey === targetEndKey
-  );
-};
-
 const getWindowTone = (status) => {
   if (status === "open") return "good";
   if (status === "closed") return "warning";
@@ -289,6 +276,8 @@ export default function StaffSchedulePage() {
   const [slotsState, setSlotsState] = useState({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const lastAvailabilityQueryKeyRef = useRef("");
+  const lastShiftsQueryKeyRef = useRef("");
 
   const { weekStart, weekEnd, availabilityTargetStart, availabilityTargetEnd } =
     useMemo(() => {
@@ -315,6 +304,17 @@ export default function StaffSchedulePage() {
     availabilityTargetEnd,
     1,
   ).toISOString();
+  const availabilityQueryKey = [
+    restaurantId || "",
+    availabilityQueryFromIso || "",
+    availabilityQueryToIso || "",
+  ].join("|");
+  const shiftsQueryKey = [
+    restaurantId || "",
+    employeeId || "",
+    weekStartIso || "",
+    weekEndIso || "",
+  ].join("|");
   const availabilityTargetStartKey = toLocalDateKey(availabilityTargetStart);
   const availabilityTargetEndKey = toLocalDateKey(availabilityTargetEnd);
 
@@ -322,34 +322,28 @@ export default function StaffSchedulePage() {
     availabilityTargetStart,
     availabilityTargetEnd,
   );
-  const {
-    data: windowsData,
-    loading: loadingWindows,
-    error: windowsError,
-  } = useQuery(
-    GET_AVAILABILITY_WINDOWS,
+  const [
+    loadAvailabilityWindows,
     {
-      variables: {
-        restaurantId,
-        from: availabilityQueryFromIso,
-        to: availabilityQueryToIso,
-      },
-      skip: !restaurantId,
-      fetchPolicy: "cache-and-network",
+      data: windowsData,
+      loading: loadingWindows,
+      error: windowsError,
     },
-  );
+  ] = useLazyQuery(GET_AVAILABILITY_WINDOWS, {
+    fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
+  });
 
   const selectedWindow = useMemo(() => {
     const windows = windowsData?.availabilityWindows || [];
 
     return (
-      windows.find((window) =>
-        isSameAvailabilityPeriod(
-          window,
-          availabilityTargetStart,
-          availabilityTargetEnd,
-        ),
-      ) || null
+      windows.find((window) => {
+        return (
+          toLocalDateKey(window.periodStart) === availabilityTargetStartKey &&
+          toLocalDateKey(window.periodEnd) === availabilityTargetEndKey
+        );
+      }) || null
     );
   }, [windowsData, availabilityTargetStartKey, availabilityTargetEndKey]);
   const {
@@ -362,24 +356,88 @@ export default function StaffSchedulePage() {
       employeeId,
     },
     skip: !selectedWindow?.id || !employeeId,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "network-only",
   });
 
-  const { data: shiftsData, loading: loadingShifts } = useQuery(
-    GET_STAFF_SHIFTS,
+  const [
+    loadStaffShifts,
     {
+      data: shiftsData,
+      loading: loadingShifts,
+      error: shiftsError,
+    },
+  ] = useLazyQuery(GET_STAFF_SHIFTS, {
+    fetchPolicy: "network-only",
+    notifyOnNetworkStatusChange: true,
+  });
+
+  const [submit, { loading: submitting }] = useMutation(SUBMIT);
+
+  useEffect(() => {
+    if (!restaurantId || !availabilityQueryFromIso || !availabilityQueryToIso) {
+      lastAvailabilityQueryKeyRef.current = "";
+      return;
+    }
+
+    if (lastAvailabilityQueryKeyRef.current === availabilityQueryKey) {
+      return;
+    }
+
+    lastAvailabilityQueryKeyRef.current = availabilityQueryKey;
+
+    loadAvailabilityWindows({
+      variables: {
+        restaurantId,
+        from: availabilityQueryFromIso,
+        to: availabilityQueryToIso,
+      },
+    }).catch(() => {
+      lastAvailabilityQueryKeyRef.current = "";
+    });
+  }, [
+    restaurantId,
+    availabilityQueryFromIso,
+    availabilityQueryToIso,
+    availabilityQueryKey,
+    loadAvailabilityWindows,
+  ]);
+
+  useEffect(() => {
+    if (!restaurantId || !employeeId || !weekStartIso || !weekEndIso) {
+      lastShiftsQueryKeyRef.current = "";
+      return;
+    }
+
+    if (lastShiftsQueryKeyRef.current === shiftsQueryKey) {
+      return;
+    }
+
+    lastShiftsQueryKeyRef.current = shiftsQueryKey;
+
+    loadStaffShifts({
       variables: {
         restaurantId,
         employeeId,
         startDate: weekStartIso,
         endDate: weekEndIso,
       },
-      skip: !restaurantId || !employeeId,
-      fetchPolicy: "cache-and-network",
-    },
-  );
+    }).catch(() => {
+      lastShiftsQueryKeyRef.current = "";
+    });
+  }, [
+    restaurantId,
+    employeeId,
+    weekStartIso,
+    weekEndIso,
+    shiftsQueryKey,
+    loadStaffShifts,
+  ]);
 
-  const [submit, { loading: submitting }] = useMutation(SUBMIT);
+  useEffect(() => {
+    setSlotsState({});
+    setError("");
+    setSuccess("");
+  }, [availabilityTargetStartIso, availabilityTargetEndIso]);
 
   const submission = submissionData?.staffAvailabilitySubmission;
 
@@ -884,6 +942,17 @@ export default function StaffSchedulePage() {
               <div className="staff-loading-state staff-loading-state--small">
                 <Loader2 size={20} className="staff-spin" />
                 <span>Đang tải lịch...</span>
+              </div>
+            ) : shiftsError ? (
+              <div className="staff-empty-state staff-empty-state--small staff-empty-state--error">
+                <AlertTriangle size={30} />
+                <h3>Không tải được lịch làm việc</h3>
+                <p>
+                  {getGraphQLErrorMessage(
+                    shiftsError,
+                    "Không thể tải lịch làm việc.",
+                  )}
+                </p>
               </div>
             ) : shifts.length === 0 ? (
               <div className="staff-empty-state staff-empty-state--small">
