@@ -220,7 +220,7 @@ const AddShiftModal = ({
                     </div>
                     <div className="staff-info">
                       <span className="name">{s.name}</span>
-                      <span className="role">{getJobName(s.job)}</span>
+                      <span className="role">{s.departmentLabel || "Khác"}</span>
                     </div>
                     <span className="salary">
                       {s.salary.toLocaleString()}đ/h

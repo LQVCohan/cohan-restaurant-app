@@ -1070,6 +1070,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   });
   const [selectedShift, setSelectedShift] = useState(null);
   const [isStatsPanelOpen, setIsStatsPanelOpen] = useState(false);
+  const [isAvailabilityPanelCollapsed, setIsAvailabilityPanelCollapsed] = useState(false);
   const [highlightedShiftIds, setHighlightedShiftIds] = useState([]);
   const [focusedIssueId, setFocusedIssueId] = useState("");
   const shiftHighlightTimerRef = useRef(null);
@@ -1316,6 +1317,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
       fetchPolicy: "network-only",
     },
   );
+  const [
+    loadAvailabilityTargetPublication,
+    availabilityTargetPublicationState,
+  ] = useLazyQuery(GET_SCHEDULE_PUBLICATION, {
+    fetchPolicy: "network-only",
+  });
 
   const rawStaffList = useMemo(
     () => staffData?.staffList || [],
@@ -1333,6 +1340,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           fullName: item.fullName || "Nhân viên",
           employeeCode: item.employeeCode || "",
           department: item.department,
+          departmentLabel: getDepartmentLabel(item.department),
           role: item.role || null,
           roleSlug: item.role?.slug || "",
           roleName: item.roleName || item.role?.name || "",
@@ -1512,11 +1520,67 @@ const ScheduleManagement = ({ readOnly = false }) => {
     !isSchedulePublished &&
     daysUntilRangeStart >= 0 &&
     daysUntilRangeStart <= 3;
+  useEffect(() => {
+    if (!effectiveRestaurantId) return;
+    loadAvailabilityTargetPublication({
+      variables: {
+        restaurantId: effectiveRestaurantId,
+        periodStart: availabilityTargetStart.toISOString(),
+        periodEnd: availabilityTargetEnd.toISOString(),
+      },
+    });
+  }, [
+    availabilityTargetEnd,
+    availabilityTargetStart,
+    effectiveRestaurantId,
+    loadAvailabilityTargetPublication,
+  ]);
+
+  const availabilityTargetPublicationStatus = String(
+    availabilityTargetPublicationState?.data?.schedulePublication
+      ?.effectiveStatus ||
+      availabilityTargetPublicationState?.data?.schedulePublication?.status ||
+      "draft",
+  ).toLowerCase();
+  const canReopenAvailabilityWindowForTargetPeriod = ![
+    "published",
+    "active",
+    "locked",
+    "closed",
+  ].includes(availabilityTargetPublicationStatus);
+  const reopenAvailabilityBlockedReason =
+    managerCurrentWindow?.status === "closed" &&
+    !canReopenAvailabilityWindowForTargetPeriod
+      ? "Không thể mở lại vì lịch tuần này đã được công bố/khóa."
+      : "";
 
   const handleCreateOrOpenAvailabilityWindow = async () => {
     if (!effectiveRestaurantId) return;
     if (managerCurrentWindow?.id) {
-      const confirmed = window.confirm("Mở đăng ký availability cho nhân viên ngay bây giờ?");
+      const targetPeriodPublication = await loadAvailabilityTargetPublication({
+        variables: {
+          restaurantId: effectiveRestaurantId,
+          periodStart: availabilityTargetStart.toISOString(),
+          periodEnd: availabilityTargetEnd.toISOString(),
+        },
+      });
+      const targetStatus = String(
+        targetPeriodPublication?.data?.schedulePublication?.effectiveStatus ||
+          targetPeriodPublication?.data?.schedulePublication?.status ||
+          "draft",
+      ).toLowerCase();
+      if (["published", "active", "locked", "closed"].includes(targetStatus)) {
+        showNotification(
+          "Không thể mở lại đăng ký: tuần mục tiêu đã công bố hoặc đã khóa/chốt lịch.",
+          "warning",
+        );
+        return;
+      }
+      const confirmed = window.confirm([
+        "Mở lại đăng ký lịch?",
+        `Tuần áp dụng: ${format(availabilityTargetStart, "dd/MM/yyyy")} - ${format(availabilityTargetEnd, "dd/MM/yyyy")}`,
+        "Sau khi mở lại, nhân viên có thể thay đổi submissions.",
+      ].join("\n"));
       if (!confirmed) return;
       await openAvailabilityWindow({ variables: { id: managerCurrentWindow.id } });
     } else {
@@ -1533,6 +1597,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
       });
     }
     await refetchManagerWindows();
+  };
+
+  const handleCloseStatsPanel = () => {
+    setIsStatsPanelOpen(false);
+    setFocusedIssueId("");
+    setHighlightedShiftIds([]);
   };
 
   const handleCloseAvailabilityWindow = async () => {
@@ -3461,10 +3531,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
           onCreateWindow={handleCreateOrOpenAvailabilityWindow}
           onOpenWindow={handleCreateOrOpenAvailabilityWindow}
           onCloseWindow={handleCloseAvailabilityWindow}
+          collapsed={isAvailabilityPanelCollapsed}
+          onToggleCollapse={() => setIsAvailabilityPanelCollapsed((prev) => !prev)}
+          reopenBlockedReason={reopenAvailabilityBlockedReason}
         />
       ) : null}
       {isStatsPanelOpen ? (
-        <section className="schedule-insights-panel">
+      <section className="schedule-insights-panel">
           <div className="insights-header">
             <div>
               <h3>Thống kê chi tiết</h3>
@@ -3476,12 +3549,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
             <button
               type="button"
               className="btn-close-panel"
-              onClick={() => setIsStatsPanelOpen(false)}
+              onClick={handleCloseStatsPanel}
+              aria-label="Đóng thống kê chi tiết"
+              title="Đóng thống kê chi tiết"
             >
               <X size={18} />
             </button>
           </div>
-
           <div className="insights-grid">
             <div className="insight-card">
               <span className="label">Nhóm ca</span>

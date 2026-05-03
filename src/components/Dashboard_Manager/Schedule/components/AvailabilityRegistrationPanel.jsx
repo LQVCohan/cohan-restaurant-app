@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { ClipboardList } from "lucide-react";
+import { ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
 
 const WINDOW_STATUS_LABELS = {
   draft: "Bản nháp",
@@ -50,6 +50,9 @@ export default function AvailabilityRegistrationPanel({
   onCreateWindow,
   onOpenWindow,
   onCloseWindow,
+  collapsed = false,
+  onToggleCollapse,
+  reopenBlockedReason = "",
 }) {
   const windowStatus = String(availabilityWindow?.status || "unknown").toLowerCase();
   const hasWindow = Boolean(availabilityWindow?.id);
@@ -81,7 +84,8 @@ export default function AvailabilityRegistrationPanel({
     hasWindow &&
     selectedRestaurantId &&
     !loading &&
-    ["draft", "closed"].includes(windowStatus);
+    (windowStatus === "draft" || (windowStatus === "closed" && !reopenBlockedReason));
+  const openActionLabel = windowStatus === "closed" ? "Mở lại đăng ký" : "Mở đăng ký";
   const canClose = hasWindow && selectedRestaurantId && !loading && windowStatus === "open";
 
   return (
@@ -100,7 +104,28 @@ export default function AvailabilityRegistrationPanel({
         <span className={`schedule-availability-panel__status is-${windowStatus}`}>
           {statusLabel}
         </span>
+        {typeof onToggleCollapse === "function" ? (
+          <button
+            type="button"
+            className="btn-collapse-panel icon-only"
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? "Mở rộng đăng ký lịch nhân viên" : "Thu gọn đăng ký lịch nhân viên"}
+            title={collapsed ? "Mở rộng đăng ký lịch nhân viên" : "Thu gọn đăng ký lịch nhân viên"}
+          >
+            {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+          </button>
+        ) : null}
       </div>
+      {collapsed ? (
+        <div className="schedule-availability-panel__compact-summary">
+          <span>Tuần: {formatDateTime(targetWeekStart)} - {formatDateTime(targetWeekEnd)}</span>
+          <span>Tổng submission: {submissionSummary.total}</span>
+          <span>Đã gửi/duyệt/khóa: {submissionSummary.submitted + submissionSummary.approved + submissionSummary.locked}</span>
+          <span>Trạng thái: {statusLabel}</span>
+        </div>
+      ) : null}
+      {!collapsed ? (
+        <>
 
       {error ? (
         <div className="schedule-availability-panel__empty">
@@ -160,7 +185,7 @@ export default function AvailabilityRegistrationPanel({
 
           <div className="schedule-availability-panel__actions">
             <button type="button" onClick={onOpenWindow} disabled={!canOpen}>
-              {loading ? "Đang xử lý..." : "Mở đăng ký"}
+              {loading ? "Đang xử lý..." : openActionLabel}
             </button>
             <button type="button" onClick={onCloseWindow} disabled={!canClose}>
               {loading ? "Đang xử lý..." : "Đóng đăng ký"}
@@ -169,6 +194,11 @@ export default function AvailabilityRegistrationPanel({
               Xem submissions
             </button>
           </div>
+          {reopenBlockedReason ? (
+            <div className="schedule-availability-panel__empty">
+              <p>{reopenBlockedReason}</p>
+            </div>
+          ) : null}
 
           <div className="schedule-availability-panel__submissions">
             <h4>Tổng quan submissions</h4>
@@ -183,6 +213,8 @@ export default function AvailabilityRegistrationPanel({
           </div>
         </>
       )}
+        </>
+      ) : null}
     </section>
   );
 }
