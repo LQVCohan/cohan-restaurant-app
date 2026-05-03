@@ -14,7 +14,8 @@
     "lint": "node --check src/server/server.js",
     "build": "node -e \"console.log('Backend build step: no transpilation required.')\"",
     "test:watch": "vitest",
-    "check:user-email": "node scripts/check-user-by-email.js"
+    "check:user-email": "node scripts/check-user-by-email.js",
+    "seed:demo:scheduling": "node scripts/seedSchedulingAttendanceDemo.js"
   },
   "keywords": [],
   "author": "",
