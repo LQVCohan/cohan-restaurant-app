@@ -1137,6 +1137,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const [isStatsPanelOpen, setIsStatsPanelOpen] = useState(false);
   const [isAvailabilityPanelCollapsed, setIsAvailabilityPanelCollapsed] =
     useState(false);
+  const lastAvailabilityTargetPublicationKeyRef = useRef("");
   const [highlightedShiftIds, setHighlightedShiftIds] = useState([]);
   const [focusedIssueId, setFocusedIssueId] = useState("");
   const shiftHighlightTimerRef = useRef(null);
@@ -1302,6 +1303,25 @@ const ScheduleManagement = ({ readOnly = false }) => {
     availabilityMode === "currentWeek" ? currentWeekStart : nextWeekStart;
   const availabilityTargetEnd =
     availabilityMode === "currentWeek" ? currentWeekEnd : nextWeekEnd;
+  const availabilityTargetStartTime =
+    availabilityTargetStart instanceof Date ? availabilityTargetStart.getTime() : NaN;
+
+  const availabilityTargetEndTime =
+    availabilityTargetEnd instanceof Date ? availabilityTargetEnd.getTime() : NaN;
+
+  const availabilityTargetStartIso = Number.isFinite(availabilityTargetStartTime)
+    ? new Date(availabilityTargetStartTime).toISOString()
+    : "";
+
+  const availabilityTargetEndIso = Number.isFinite(availabilityTargetEndTime)
+    ? new Date(availabilityTargetEndTime).toISOString()
+    : "";
+
+  const availabilityTargetPublicationKey = [
+    effectiveRestaurantId || "",
+    availabilityTargetStartIso,
+    availabilityTargetEndIso,
+  ].join(":");
   const {
     data: managerAvailabilityWindowsData,
     refetch: refetchManagerWindows,
@@ -1604,17 +1624,38 @@ const ScheduleManagement = ({ readOnly = false }) => {
     daysUntilRangeStart >= 0 &&
     daysUntilRangeStart <= 3;
   useEffect(() => {
-    if (!effectiveRestaurantId) return;
+    if (
+      !effectiveRestaurantId ||
+      !availabilityTargetStartIso ||
+      !availabilityTargetEndIso
+    ) {
+      lastAvailabilityTargetPublicationKeyRef.current = "";
+      return;
+    }
+
+    if (
+      lastAvailabilityTargetPublicationKeyRef.current ===
+      availabilityTargetPublicationKey
+    ) {
+      return;
+    }
+
+    lastAvailabilityTargetPublicationKeyRef.current =
+      availabilityTargetPublicationKey;
+
     loadAvailabilityTargetPublication({
       variables: {
         restaurantId: effectiveRestaurantId,
-        periodStart: availabilityTargetStart.toISOString(),
-        periodEnd: availabilityTargetEnd.toISOString(),
+        periodStart: availabilityTargetStartIso,
+        periodEnd: availabilityTargetEndIso,
       },
+    }).catch(() => {
+      lastAvailabilityTargetPublicationKeyRef.current = "";
     });
   }, [
-    availabilityTargetEnd,
-    availabilityTargetStart,
+    availabilityTargetEndIso,
+    availabilityTargetPublicationKey,
+    availabilityTargetStartIso,
     effectiveRestaurantId,
     loadAvailabilityTargetPublication,
   ]);
@@ -1639,12 +1680,21 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
   const handleCreateOrOpenAvailabilityWindow = async () => {
     if (!effectiveRestaurantId) return;
+
+    if (!availabilityTargetStartIso || !availabilityTargetEndIso) {
+      showNotification(
+        "Không xác định được tuần đăng ký lịch.",
+        "error",
+      );
+      return;
+    }
+
     if (managerCurrentWindow?.id) {
       const targetPeriodPublication = await loadAvailabilityTargetPublication({
         variables: {
           restaurantId: effectiveRestaurantId,
-          periodStart: availabilityTargetStart.toISOString(),
-          periodEnd: availabilityTargetEnd.toISOString(),
+          periodStart: availabilityTargetStartIso,
+          periodEnd: availabilityTargetEndIso,
         },
       });
       const targetStatus = String(
