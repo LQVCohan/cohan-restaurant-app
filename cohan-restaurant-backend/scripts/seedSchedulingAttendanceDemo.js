@@ -12,17 +12,78 @@ import { createPerformanceIncidentAppeal, reviewPerformanceIncidentAppeal, rever
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'Demo@123456';
 const RESET = process.argv.includes('--reset');
 const DEMO_TAG = '[demo-scheduling-pr21]';
-const DEMO_RESTAURANT_ID = '69ce9e2e8d8d711f12e251b1';
+const DEMO_RESTAURANT_ID = process.env.DEMO_RESTAURANT_ID?.trim() || '';
+
+const DEMO_STAFF_EMAILS = [
+  'staff.fulltime.demo@cohan.local',
+  'staff.parttime.demo@cohan.local',
+  'staff.exception.demo@cohan.local'
+];
 
 const startOfNextWeek = () => { const n = new Date(); const d = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())); const day = d.getUTCDay(); const add = (8 - (day || 7)); d.setUTCDate(d.getUTCDate() + add); return d; };
 const at = (base, dayOffset, h, m=0) => new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()+dayOffset, h, m, 0, 0));
 
 async function upsertRole(slug, name){ return Role.findOneAndUpdate({slug},{ $setOnInsert:{slug,name,isSystem:true}}, {upsert:true,new:true}); }
-async function upsertUser({email, fullName, userType, roleId, extra={}}){
+async function upsertBaseUser({email, fullName, userType, roleId, extra={}}){
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   return User.findOneAndUpdate({email},{$set:{fullName,userType,role:roleId,status:'active',provider:'local',...extra},$setOnInsert:{passwordHash}},{upsert:true,new:true});
 }
 
+
+
+async function upsertStaffUser({ email, fullName, roleId, restaurantId, employmentType, workingDays, department }) {
+  const existingUser = await User.findOne({ email }).select('_id userType').lean();
+  if (existingUser && existingUser.userType !== 'STAFF') {
+    throw new Error(`DEMO_EMAIL_CONFLICT_NOT_STAFF: ${email}`);
+  }
+
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
+  return Staff.findOneAndUpdate(
+    { email },
+    {
+      $set: {
+        fullName,
+        userType: 'STAFF',
+        role: roleId,
+        status: 'active',
+        provider: 'local',
+        restaurantForStaff: restaurantId,
+        refRestaurants: [restaurantId],
+        employmentType,
+        workingDays,
+        primaryRestaurant: restaurantId,
+        department
+      },
+      $setOnInsert: { passwordHash }
+    },
+    { upsert: true, new: true }
+  );
+}
+
+async function resolveDemoRestaurant() {
+  if (DEMO_RESTAURANT_ID) {
+    const restaurant = await Restaurant.findById(DEMO_RESTAURANT_ID);
+    if (!restaurant) {
+      throw new Error(`DEMO_RESTAURANT_NOT_FOUND: ${DEMO_RESTAURANT_ID}`);
+    }
+    console.log(`Using existing restaurant: ${restaurant._id} - not modifying restaurant profile`);
+    return restaurant;
+  }
+
+  const restaurant = await Restaurant.findOneAndUpdate(
+    { name: 'Cohan Demo Restaurant - District 1', description: { $regex: DEMO_TAG } },
+    {
+      $set: {
+        name: 'Cohan Demo Restaurant - District 1',
+        address: { line1: '123 Demo Street', district: 'District 1', city: 'Ho Chi Minh City', country: 'Vietnam' },
+        description: `PR21 demo ${DEMO_TAG}`
+      }
+    },
+    { upsert: true, new: true }
+  );
+  console.log('Created/reused demo restaurant');
+  return restaurant;
+}
 async function main(){
   const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017';
   const DB_NAME = process.env.MONGO_DB || 'foodhub';
@@ -33,19 +94,15 @@ async function main(){
     upsertRole('admin','Admin'),upsertRole('manager','Manager'),upsertRole('hr','HR'),upsertRole('accountant','Accountant'),upsertRole('staff','Staff')
   ]);
 
-  const restaurant = await Restaurant.findOneAndUpdate({_id: DEMO_RESTAURANT_ID},{ $set:{name:'Cohan Demo Restaurant - District 1', address:{ line1:'123 Demo Street', district:'District 1', city:'Ho Chi Minh City', country:'Vietnam' }, description:`PR21 demo ${DEMO_TAG}`}}, {upsert:true,new:true});
+  const restaurant = await resolveDemoRestaurant();
 
-  const admin = await upsertUser({email:'admin.demo@cohan.local',fullName:'Demo Admin',userType:'ADMIN',roleId:adminR._id});
-  const manager = await upsertUser({email:'manager.demo@cohan.local',fullName:'Demo Manager',userType:'MANAGER',roleId:managerR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
-  const hr = await upsertUser({email:'hr.demo@cohan.local',fullName:'Demo HR',userType:'HR',roleId:hrR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
-  const accountant = await upsertUser({email:'accountant.demo@cohan.local',fullName:'Demo Accountant',userType:'ACCOUNTANT',roleId:accR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
-  const fulltime = await upsertUser({email:'staff.fulltime.demo@cohan.local',fullName:'Demo Staff Fulltime',userType:'STAFF',roleId:staffR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
-  const parttime = await upsertUser({email:'staff.parttime.demo@cohan.local',fullName:'Demo Staff Parttime',userType:'STAFF',roleId:staffR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
-  const exception = await upsertUser({email:'staff.exception.demo@cohan.local',fullName:'Demo Staff Exception',userType:'STAFF',roleId:staffR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
-
-  await Staff.findOneAndUpdate({_id:fulltime._id},{$set:{employmentType:'full_time',workingDays:['mon','tue','wed','thu','fri','sat'],primaryRestaurant:restaurant._id,department:'service'}},{upsert:true,new:true});
-  await Staff.findOneAndUpdate({_id:parttime._id},{$set:{employmentType:'part_time',workingDays:['tue','thu','sat'],primaryRestaurant:restaurant._id,department:'cashier'}},{upsert:true,new:true});
-  await Staff.findOneAndUpdate({_id:exception._id},{$set:{employmentType:'part_time',workingDays:['wed','fri','sat'],primaryRestaurant:restaurant._id,department:'kitchen'}},{upsert:true,new:true});
+  const admin = await upsertBaseUser({email:'admin.demo@cohan.local',fullName:'Demo Admin',userType:'ADMIN',roleId:adminR._id});
+  const manager = await upsertBaseUser({email:'manager.demo@cohan.local',fullName:'Demo Manager',userType:'MANAGER',roleId:managerR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
+  const hr = await upsertBaseUser({email:'hr.demo@cohan.local',fullName:'Demo HR',userType:'HR',roleId:hrR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
+  const accountant = await upsertBaseUser({email:'accountant.demo@cohan.local',fullName:'Demo Accountant',userType:'ACCOUNTANT',roleId:accR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
+  const fulltime = await upsertStaffUser({email:'staff.fulltime.demo@cohan.local',fullName:'Demo Staff Fulltime',roleId:staffR._id,restaurantId:restaurant._id,employmentType:'full_time',workingDays:['mon','tue','wed','thu','fri','sat'],department:'service'});
+  const parttime = await upsertStaffUser({email:'staff.parttime.demo@cohan.local',fullName:'Demo Staff Parttime',roleId:staffR._id,restaurantId:restaurant._id,employmentType:'part_time',workingDays:['tue','thu','sat'],department:'cashier'});
+  const exception = await upsertStaffUser({email:'staff.exception.demo@cohan.local',fullName:'Demo Staff Exception',roleId:staffR._id,restaurantId:restaurant._id,employmentType:'part_time',workingDays:['wed','fri','sat'],department:'kitchen'});
 
   const weekStart = startOfNextWeek(); const weekEnd = at(weekStart,6,23,59);
   if (RESET) {
@@ -57,6 +114,7 @@ async function main(){
       PerformanceIncident.deleteMany({restaurantId:restaurant._id, note:{$regex:DEMO_TAG}}),
       Notification.deleteMany({restaurantId:restaurant._id, type:{$regex:'demo_|appeal|off_schedule|correction|overtime|incident'}}),
       ShiftAcknowledgement.deleteMany({note:{$regex:DEMO_TAG}}),
+      User.deleteMany({ email: { $in: DEMO_STAFF_EMAILS }, userType: 'STAFF' }),
     ]);
   }
 
