@@ -1,4 +1,5 @@
 import { normalizeRole, resolveUserRoles } from "../src/services/scheduling/schedulingPermission.service.js";
+import { Restaurant } from "../models/index.js";
 
 export function requireAuth(ctx) {
   if (!ctx?.user?.id) {
@@ -32,4 +33,36 @@ export function requireRestaurantScope(ctx, restaurantId) {
     err.statusCode = 403;
     throw err;
   }
+}
+
+export async function requireRestaurantAccess(ctx, restaurantId) {
+  requireAuth(ctx);
+  const roles = resolveUserRoles(ctx.user);
+  if (roles.includes("ADMIN")) return;
+
+  const target = String(restaurantId || "");
+  const directCandidates = [
+    ctx?.user?.restaurantId,
+    ctx?.user?.restaurantForStaff,
+    ctx?.user?.primaryRestaurant,
+    ...(Array.isArray(ctx?.user?.refRestaurants) ? ctx.user.refRestaurants : []),
+    ...(Array.isArray(ctx?.user?.restaurants) ? ctx.user.restaurants : []),
+  ];
+  const directMatch = directCandidates.some(
+    (item) => String(item?._id || item || "") === target,
+  );
+  if (directMatch) return;
+
+  if (roles.includes("MANAGER")) {
+    const managerId = ctx?.user?.id || ctx?.user?._id;
+    const managed = await Restaurant.exists({
+      _id: restaurantId,
+      managerId,
+    });
+    if (managed) return;
+  }
+
+  const err = new Error("FORBIDDEN_SCOPE");
+  err.statusCode = 403;
+  throw err;
 }

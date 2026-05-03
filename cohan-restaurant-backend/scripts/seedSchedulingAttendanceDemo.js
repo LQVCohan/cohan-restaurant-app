@@ -98,6 +98,7 @@ async function main(){
 
   const admin = await upsertBaseUser({email:'admin.demo@cohan.local',fullName:'Demo Admin',userType:'ADMIN',roleId:adminR._id});
   const manager = await upsertBaseUser({email:'manager.demo@cohan.local',fullName:'Demo Manager',userType:'MANAGER',roleId:managerR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
+  await Restaurant.findByIdAndUpdate(restaurant._id, { $set: { managerId: manager._id } });
   const hr = await upsertBaseUser({email:'hr.demo@cohan.local',fullName:'Demo HR',userType:'HR',roleId:hrR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
   const accountant = await upsertBaseUser({email:'accountant.demo@cohan.local',fullName:'Demo Accountant',userType:'ACCOUNTANT',roleId:accR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
   const fulltime = await upsertStaffUser({email:'staff.fulltime.demo@cohan.local',fullName:'Demo Staff Fulltime',roleId:staffR._id,restaurantId:restaurant._id,employmentType:'full_time',workingDays:['mon','tue','wed','thu','fri','sat'],department:'service'});
