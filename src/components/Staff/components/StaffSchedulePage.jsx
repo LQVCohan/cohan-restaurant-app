@@ -151,10 +151,19 @@ const EMPLOYMENT_TYPE_LABELS = {
 
 const PART_TIME_TYPES = new Set(["part_time", "seasonal"]);
 
-const toDateKey = (value) => {
+const pad2 = (value) => String(value).padStart(2, "0");
+
+const toLocalDateKey = (value) => {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return [
+    date.getFullYear(),
+    pad2(date.getMonth() + 1),
+    pad2(date.getDate()),
+  ].join("-");
 };
+const toDateKey = toLocalDateKey;
 
 const fmtDate = (value, options) => {
   const date = new Date(value);
@@ -208,6 +217,12 @@ const addDaysLocal = (date, days) => {
   return next;
 };
 
+const resolveId = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return value.id || value._id || "";
+};
+
 const buildWeekRange = (weekOffset) => {
   const now = new Date();
 
@@ -230,9 +245,13 @@ const buildWeekRange = (weekOffset) => {
 const isSameAvailabilityPeriod = (window, targetStart, targetEnd) => {
   if (!window || !targetStart || !targetEnd) return false;
 
+  const windowStartKey = toLocalDateKey(window.periodStart);
+  const windowEndKey = toLocalDateKey(window.periodEnd);
+  const targetStartKey = toLocalDateKey(targetStart);
+  const targetEndKey = toLocalDateKey(targetEnd);
+
   return (
-    toDateKey(window.periodStart) === toDateKey(targetStart) &&
-    toDateKey(window.periodEnd) === toDateKey(targetEnd)
+    windowStartKey === targetStartKey && windowEndKey === targetEndKey
   );
 };
 
@@ -255,9 +274,9 @@ export default function StaffSchedulePage() {
   const { user, restaurants } = useContext(AuthContext) || {};
 
   const restaurantId =
-    user?.restaurantForStaff ||
-    user?.primaryRestaurant?.id ||
-    restaurants?.[0]?.id;
+    resolveId(user?.restaurantForStaff) ||
+    resolveId(user?.primaryRestaurant) ||
+    resolveId(restaurants?.[0]);
 
   const employeeId = user?.id;
   const employmentType = String(user?.employmentType || "").toLowerCase();
@@ -288,18 +307,32 @@ export default function StaffSchedulePage() {
 
   const availabilityTargetStartIso = availabilityTargetStart.toISOString();
   const availabilityTargetEndIso = availabilityTargetEnd.toISOString();
+  const availabilityQueryFromIso = addDaysLocal(
+    availabilityTargetStart,
+    -1,
+  ).toISOString();
+  const availabilityQueryToIso = addDaysLocal(
+    availabilityTargetEnd,
+    1,
+  ).toISOString();
+  const availabilityTargetStartKey = toLocalDateKey(availabilityTargetStart);
+  const availabilityTargetEndKey = toLocalDateKey(availabilityTargetEnd);
 
   const availabilityTargetRangeLabel = getWeekRangeLabel(
     availabilityTargetStart,
     availabilityTargetEnd,
   );
-  const { data: windowsData, loading: loadingWindows } = useQuery(
+  const {
+    data: windowsData,
+    loading: loadingWindows,
+    error: windowsError,
+  } = useQuery(
     GET_AVAILABILITY_WINDOWS,
     {
       variables: {
         restaurantId,
-        from: availabilityTargetStartIso,
-        to: availabilityTargetEndIso,
+        from: availabilityQueryFromIso,
+        to: availabilityQueryToIso,
       },
       skip: !restaurantId,
       fetchPolicy: "cache-and-network",
@@ -318,7 +351,7 @@ export default function StaffSchedulePage() {
         ),
       ) || null
     );
-  }, [windowsData, availabilityTargetStartIso, availabilityTargetEndIso]);
+  }, [windowsData, availabilityTargetStartKey, availabilityTargetEndKey]);
   const {
     data: submissionData,
     loading: loadingSubmission,
@@ -603,6 +636,17 @@ export default function StaffSchedulePage() {
               <div className="staff-loading-state">
                 <Loader2 size={22} className="staff-spin" />
                 <span>Đang tải thông tin đăng ký...</span>
+              </div>
+            ) : windowsError ? (
+              <div className="staff-empty-state staff-empty-state--error">
+                <AlertTriangle size={34} />
+                <h3>Không tải được kỳ đăng ký lịch</h3>
+                <p>
+                  {getGraphQLErrorMessage(
+                    windowsError,
+                    "Không thể tải kỳ đăng ký lịch.",
+                  )}
+                </p>
               </div>
             ) : !selectedWindow ? (
               <div className="staff-empty-state">
