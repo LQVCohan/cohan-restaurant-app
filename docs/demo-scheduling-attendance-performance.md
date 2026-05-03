@@ -25,7 +25,7 @@ npm run seed:demo:scheduling -- --reset
 Password mặc định: `Demo@123456` (hoặc `DEMO_PASSWORD` env).
 
 ## Dữ liệu demo
-- Restaurant: **Cohan Demo Restaurant - District 1**.
+- Restaurant: **Cohan Demo Restaurant - District 1** (`_id: 69ce9e2e8d8d711f12e251b1`).
 - Kỳ lịch: tuần kế tiếp (Monday-Sunday UTC) so với ngày chạy seed.
 - Shift template: morning `08:00-14:00`, evening `16:00-22:00`.
 - Schedule status: published.

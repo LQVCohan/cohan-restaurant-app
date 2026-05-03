@@ -12,6 +12,7 @@ import { createPerformanceIncidentAppeal, reviewPerformanceIncidentAppeal, rever
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'Demo@123456';
 const RESET = process.argv.includes('--reset');
 const DEMO_TAG = '[demo-scheduling-pr21]';
+const DEMO_RESTAURANT_ID = '69ce9e2e8d8d711f12e251b1';
 
 const startOfNextWeek = () => { const n = new Date(); const d = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())); const day = d.getUTCDay(); const add = (8 - (day || 7)); d.setUTCDate(d.getUTCDate() + add); return d; };
 const at = (base, dayOffset, h, m=0) => new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()+dayOffset, h, m, 0, 0));
@@ -32,7 +33,7 @@ async function main(){
     upsertRole('admin','Admin'),upsertRole('manager','Manager'),upsertRole('hr','HR'),upsertRole('accountant','Accountant'),upsertRole('staff','Staff')
   ]);
 
-  const restaurant = await Restaurant.findOneAndUpdate({name:'Cohan Demo Restaurant - District 1'},{ $set:{name:'Cohan Demo Restaurant - District 1', address:{ line1:'123 Demo Street', district:'District 1', city:'Ho Chi Minh City', country:'Vietnam' }, description:`PR21 demo ${DEMO_TAG}`}}, {upsert:true,new:true});
+  const restaurant = await Restaurant.findOneAndUpdate({_id: DEMO_RESTAURANT_ID},{ $set:{name:'Cohan Demo Restaurant - District 1', address:{ line1:'123 Demo Street', district:'District 1', city:'Ho Chi Minh City', country:'Vietnam' }, description:`PR21 demo ${DEMO_TAG}`}}, {upsert:true,new:true});
 
   const admin = await upsertUser({email:'admin.demo@cohan.local',fullName:'Demo Admin',userType:'ADMIN',roleId:adminR._id});
   const manager = await upsertUser({email:'manager.demo@cohan.local',fullName:'Demo Manager',userType:'MANAGER',roleId:managerR._id,extra:{restaurantForStaff:restaurant._id,refRestaurants:[restaurant._id]}});
