@@ -1,0 +1,8 @@
+.staff-schedule-page { padding: 16px; max-width: 960px; margin: 0 auto; }
+.week-nav { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; }
+.panel { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; margin-bottom:12px; }
+.slots-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); gap:8px; }
+.day-card { border:1px solid #f1f5f9; border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; }
+.shift-card { border:1px solid #f1f5f9; border-radius:8px; padding:8px; margin-bottom:8px; }
+.success-msg { color:#15803d; }
+.error-msg { color:#b91c1c; }
