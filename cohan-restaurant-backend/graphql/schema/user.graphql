@@ -1057,6 +1057,51 @@ input ApplyPerformanceIncidentScoreInput {
   note: String
 }
 
+
+type PerformanceIncidentAppeal {
+  id: ID!
+  restaurantId: ID!
+  incidentId: ID!
+  employeeId: ID!
+  submittedBy: ID!
+  submittedAt: DateTime
+  reason: String!
+  evidenceNote: String
+  evidenceUrls: [String!]!
+  status: String!
+  reviewedBy: ID
+  reviewedAt: DateTime
+  reviewNote: String
+  decisionReason: String
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input CreatePerformanceIncidentAppealInput {
+  incidentId: ID!
+  reason: String!
+  evidenceNote: String
+  evidenceUrls: [String!]
+}
+
+input ReviewPerformanceIncidentAppealInput {
+  appealId: ID!
+  status: String!
+  reviewNote: String
+  decisionReason: String
+}
+
+input PerformanceIncidentAppealFilterInput {
+  restaurantId: ID!
+  employeeId: ID
+  incidentId: ID
+  status: String
+  fromDate: DateTime
+  toDate: DateTime
+  limit: Int
+  offset: Int
+}
+
 input ManagerIncidentReviewQueueInput {
   restaurantId: ID!
   employeeId: ID
@@ -2016,6 +2061,7 @@ type Query {
 
   attendanceCorrectionRequest(id: ID!): AttendanceCorrectionRequest
   performanceIncidents(filter: PerformanceIncidentFilterInput!): [PerformanceIncident!]!
+  performanceIncidentAppeals(filter: PerformanceIncidentAppealFilterInput!): [PerformanceIncidentAppeal!]!
   managerIncidentReviewQueue(input: ManagerIncidentReviewQueueInput!): ManagerIncidentReviewQueueResult!
   managerIncidentReviewQueueSummary(input: ManagerIncidentReviewQueueSummaryInput!): ManagerIncidentReviewQueueSummary!
   managerPerformanceDashboard(input: ManagerPerformanceDashboardInput!): ManagerPerformanceDashboard!
@@ -2147,6 +2193,9 @@ type Mutation {
   waivePerformanceIncident(incidentId: ID!, reason: String!): PerformanceIncident!
   markPerformanceIncidentEligible(input: MarkPerformanceIncidentEligibleInput!): PerformanceIncident!
   applyPerformanceIncidentScore(input: ApplyPerformanceIncidentScoreInput!): PerformanceIncident!
+  createPerformanceIncidentAppeal(input: CreatePerformanceIncidentAppealInput!): PerformanceIncidentAppeal!
+  cancelPerformanceIncidentAppeal(appealId: ID!): PerformanceIncidentAppeal!
+  reviewPerformanceIncidentAppeal(input: ReviewPerformanceIncidentAppealInput!): PerformanceIncidentAppeal!
   createUser(input: CreateUserInput!): AuthPayload!
   login(
     email: String

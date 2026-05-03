@@ -40,6 +40,7 @@ import {
   getStaffPerformanceScoreTimeline,
 } from "../../../src/services/performance/staffPerformanceReporting.service.js";
 import { getManagerPerformanceDashboard } from "../../../src/services/performance/managerPerformanceDashboard.service.js";
+import { listPerformanceIncidentAppeals } from "../../../src/services/performance/performanceAppeal.service.js";
 import { buildStaffSchedulingAssistant } from "../../../src/services/ai/staffSchedulingAssistant.service.js";
 import { buildPayrollItem } from "../../../src/services/payroll/payrollCalculator.service.js";
 import {
@@ -1197,6 +1198,10 @@ export default {
       throw new Error("FORBIDDEN");
     }
     return listPerformanceIncidentsService(input);
+  },
+  performanceIncidentAppeals: async (_, { filter }, ctx) => {
+    requireAuth(ctx);
+    return listPerformanceIncidentAppeals(filter || {}, ctx.user);
   },
   managerIncidentReviewQueue: async (_, { input }, ctx) => {
     requireAuth(ctx);

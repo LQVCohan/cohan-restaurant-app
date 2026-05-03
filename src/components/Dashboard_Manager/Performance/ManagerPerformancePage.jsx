@@ -3,6 +3,7 @@ import { useManagerPerformanceDashboard } from "@/hooks/useManagerPerformanceDas
 import IncidentReviewQueue from "./IncidentReviewQueue";
 import { AuthContext } from "@/context/AuthContext";
 import ManagerPerformancePanel from "./ManagerPerformancePanel";
+import AppealReviewPanel from "./AppealReviewPanel";
 
 const ManagerPerformancePage = () => {
   const { restaurants = [] } = useContext(AuthContext) || {};
@@ -14,6 +15,7 @@ const ManagerPerformancePage = () => {
     <div className="dashboard-container fade-in">
       <ManagerPerformancePanel restaurantId={restaurantId} />
       <IncidentReviewQueue restaurantId={restaurantId} onMutationSuccess={refetch} />
+      <AppealReviewPanel restaurantId={restaurantId} canReview />
     </div>
   );
 };
