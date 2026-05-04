@@ -58,9 +58,39 @@ const GET_SUBMISSION = gql`
 `;
 
 function renderWithAuth(user, mocks = []) {
+  const defaultMocks = [
+    {
+      request: {
+        query: GET_AVAILABILITY_WINDOWS,
+        variables: {
+          restaurantId: "r1",
+          from: "2026-05-10T00:00:00.000Z",
+          to: "2026-05-18T23:59:59.999Z",
+        },
+      },
+      result: {
+        data: { availabilityWindows: [] },
+      },
+    },
+    {
+      request: {
+        query: GET_STAFF_SHIFTS,
+        variables: {
+          restaurantId: "r1",
+          employeeId: "e1",
+          startDate: "2026-05-04T00:00:00.000Z",
+          endDate: "2026-05-10T23:59:59.999Z",
+        },
+      },
+      result: {
+        data: { staffShifts: [] },
+      },
+    },
+  ];
+
   return render(
     <AuthContext.Provider value={{ user, restaurants: [{ id: "r1" }] }}>
-      <MockedProvider mocks={mocks} addTypename={false}>
+      <MockedProvider mocks={[...mocks, ...defaultMocks]}>
         <StaffSchedulePage />
       </MockedProvider>
     </AuthContext.Provider>,
@@ -90,8 +120,8 @@ describe("StaffSchedulePage", () => {
           query: GET_AVAILABILITY_WINDOWS,
           variables: {
             restaurantId: "r1",
-            from: "2026-05-03T00:00:00.000Z",
-            to: "2026-05-11T23:59:59.999Z",
+            from: "2026-05-10T00:00:00.000Z",
+            to: "2026-05-18T23:59:59.999Z",
           },
         },
         result: {
@@ -99,9 +129,9 @@ describe("StaffSchedulePage", () => {
             availabilityWindows: [
               {
                 id: "w1",
-                periodStart: "2026-05-04T00:00:00.000Z",
-                periodEnd: "2026-05-10T23:59:59.999Z",
-                closeAt: "2026-05-10T23:59:59.999Z",
+                periodStart: "2026-05-11T00:00:00.000Z",
+                periodEnd: "2026-05-17T23:59:59.999Z",
+                closeAt: "2026-05-17T23:59:59.999Z",
                 status: "open",
                 targetEmploymentTypes: ["part_time", "seasonal"],
                 allowFullTimeUnavailableException: true,

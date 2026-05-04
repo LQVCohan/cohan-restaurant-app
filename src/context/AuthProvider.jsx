@@ -21,6 +21,22 @@ const AUTH_ERROR_CODES = new Set([
   "TOKEN_REVOKED",
   "UNAUTHORIZED",
 ]);
+const STAFF_ROLE_SLUGS = new Set([
+  "staff",
+  "server",
+  "supervisor",
+  "host",
+  "cashier",
+  "chef",
+  "cook",
+  "kitchen_helper",
+  "cleaner",
+  "shipper",
+  "storekeeper",
+  "bartender",
+]);
+const isStaffAccessRole = (roleName) =>
+  STAFF_ROLE_SLUGS.has(String(roleName || "").trim().toLowerCase());
 
 // GraphQL query để lấy danh sách nhà hàng của người quản lý
 const GET_USER_REFRESTAURANTS = gql`
@@ -84,6 +100,9 @@ const ME_QUERY = gql`
         name
       }
       restaurantForStaff
+      employmentType
+      department
+      positionTitle
     }
   }
 `;
@@ -201,6 +220,7 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
   )
     .trim()
     .toLowerCase();
+  const isStaffUser = isStaffAccessRole(roleName);
 
   const restaurantForStaff =
     rawUser?.restaurantForStaff?.id ||
@@ -219,6 +239,18 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
     avatar: avatar ?? rawUser?.avatar ?? rawUser?.avatarUrl ?? fallbackUser?.avatar ?? null,
     status: rawUser?.status || fallbackUser?.status || "active",
     restaurantForStaff,
+    employmentType:
+      rawUser?.employmentType ||
+      fallbackUser?.employmentType ||
+      "",
+    department:
+      rawUser?.department ||
+      fallbackUser?.department ||
+      "",
+    positionTitle:
+      rawUser?.positionTitle ||
+      fallbackUser?.positionTitle ||
+      "",
     refRestaurants: customerRefRestaurants,
   };
 
@@ -227,7 +259,7 @@ function normalizeUserModel(rawUser, fallbackUser = null, avatar = null) {
     delete baseUser.refRestaurant;
   }
 
-  if (roleName !== "staff") {
+  if (!isStaffUser) {
     delete baseUser.restaurantForStaff;
   }
 
@@ -325,8 +357,11 @@ export const AuthProvider = ({ children }) => {
   }, [token, sessionState, refetchMe]);
 
   useEffect(() => {
-    if (roleName === "staff") {
-      const staffRestaurantId = user?.restaurantForStaff;
+    if (isStaffAccessRole(roleName)) {
+      const staffRestaurantId =
+        user?.restaurantForStaff?.id ||
+        user?.restaurantForStaff ||
+        null;
       if (staffRestaurantId) {
         setRestaurants([{ id: staffRestaurantId }]);
         return;
