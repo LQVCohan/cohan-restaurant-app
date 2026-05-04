@@ -909,7 +909,7 @@ export default function StaffSchedulePage() {
                     <AlertTriangle size={18} />
                     <div>
                       <strong>Thay đổi của bạn đang chờ quản lý duyệt.</strong>
-                      <p>Lịch xếp ca chỉ dùng dữ liệu này sau khi được duyệt.</p>
+                      <p>Thay đổi của bạn đang chờ quản lý duyệt. Dữ liệu này chỉ được dùng để xếp lịch sau khi được duyệt.</p>
                     </div>
                   </div>
                 ) : null}

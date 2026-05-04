@@ -50,6 +50,14 @@ const GET_SUBMISSION = gql`
       id
       status
       submissionType
+      reviewNote
+      pendingSubmittedAt
+      pendingSlots {
+        date
+        shiftType
+        status
+        note
+      }
       slots {
         date
         shiftType

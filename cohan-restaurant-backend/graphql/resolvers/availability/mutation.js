@@ -86,21 +86,64 @@ export default {
     if (effectiveStatus === "draft") {
       throw new Error("AVAILABILITY_WINDOW_NOT_OPEN");
     }
-    if (effectiveStatus === "closed") {
-      if (!windowDoc.lateChangeRequiresApproval) throw new Error("AVAILABILITY_WINDOW_CLOSED");
-      input.status = "late_change_requested";
-    } else if (effectiveStatus !== "open" && !isAvailabilityRegistrationWindowOpen(windowDoc)) {
-      if (!windowDoc.lateChangeRequiresApproval) throw new Error("AVAILABILITY_WINDOW_CLOSED");
-      input.status = "late_change_requested";
-    } else {
-      input.status = input.status || "submitted";
-    }
+    const isEffectivelyClosed = effectiveStatus === "closed" || (effectiveStatus !== "open" && !isAvailabilityRegistrationWindowOpen(windowDoc));
 
     const employmentType = input.employmentType || (await getStaffEmploymentType(input.employeeId));
     const source = isManager ? "manager" : "employee";
+    const now = new Date();
+
+    if (isEffectivelyClosed) {
+      if (!windowDoc.lateChangeRequiresApproval) throw new Error("AVAILABILITY_WINDOW_CLOSED");
+      return StaffAvailabilitySubmission.findOneAndUpdate(
+        { availabilityWindowId: input.availabilityWindowId, employeeId: input.employeeId },
+        {
+          $set: {
+            availabilityWindowId: input.availabilityWindowId,
+            employeeId: input.employeeId,
+            restaurantId: windowDoc.restaurantId,
+            periodStart: windowDoc.periodStart,
+            periodEnd: windowDoc.periodEnd,
+            employmentType,
+            status: "late_change_requested",
+            pendingSlots: input.slots || [],
+            pendingSubmittedAt: now,
+            pendingSubmissionType: input.submissionType,
+            pendingSource: source,
+            pendingNote: input.note || "",
+            source,
+          },
+          $setOnInsert: {
+            slots: [],
+            submittedAt: null,
+            submissionType: input.submissionType,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
+    }
+
     return StaffAvailabilitySubmission.findOneAndUpdate(
       { availabilityWindowId: input.availabilityWindowId, employeeId: input.employeeId },
-      { $set: { ...input, employmentType, periodStart: windowDoc.periodStart, periodEnd: windowDoc.periodEnd, restaurantId: windowDoc.restaurantId, submittedAt: new Date(), source } },
+      {
+        $set: {
+          availabilityWindowId: input.availabilityWindowId,
+          employeeId: input.employeeId,
+          restaurantId: windowDoc.restaurantId,
+          periodStart: windowDoc.periodStart,
+          periodEnd: windowDoc.periodEnd,
+          employmentType,
+          submissionType: input.submissionType,
+          slots: input.slots || [],
+          submittedAt: now,
+          source,
+          status: input.status || "submitted",
+          pendingSlots: [],
+          pendingSubmittedAt: null,
+          pendingSubmissionType: null,
+          pendingSource: null,
+          pendingNote: "",
+        },
+      },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
   },
@@ -109,9 +152,53 @@ export default {
     const existing = await StaffAvailabilitySubmission.findById(input.id);
     if (!existing) throw new Error("STAFF_AVAILABILITY_SUBMISSION_NOT_FOUND");
     await requireRestaurantAccess(ctx, existing.restaurantId);
+    const now = new Date();
+    const reviewBase = { reviewNote: input.reviewNote || "", reviewedAt: now, reviewedBy: ctx.user.id };
+
+    if (String(existing.status || "").toLowerCase() === "late_change_requested") {
+      if (input.status === "approved") {
+        return StaffAvailabilitySubmission.findByIdAndUpdate(
+          input.id,
+          {
+            $set: {
+              ...reviewBase,
+              status: "approved",
+              slots: existing.pendingSlots || [],
+              submissionType: existing.pendingSubmissionType || existing.submissionType,
+              submittedAt: existing.pendingSubmittedAt || existing.submittedAt || now,
+              pendingSlots: [],
+              pendingSubmittedAt: null,
+              pendingSubmissionType: null,
+              pendingSource: null,
+              pendingNote: "",
+            },
+          },
+          { new: true },
+        );
+      }
+
+      if (input.status === "rejected") {
+        return StaffAvailabilitySubmission.findByIdAndUpdate(
+          input.id,
+          {
+            $set: {
+              ...reviewBase,
+              status: "rejected",
+              pendingSlots: [],
+              pendingSubmittedAt: null,
+              pendingSubmissionType: null,
+              pendingSource: null,
+              pendingNote: "",
+            },
+          },
+          { new: true },
+        );
+      }
+    }
+
     return StaffAvailabilitySubmission.findByIdAndUpdate(
       input.id,
-      { $set: { status: input.status, reviewNote: input.reviewNote || "", reviewedAt: new Date(), reviewedBy: ctx.user.id } },
+      { $set: { ...reviewBase, status: input.status } },
       { new: true },
     );
   },
