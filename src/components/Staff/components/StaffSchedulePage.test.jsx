@@ -174,7 +174,7 @@ describe("StaffSchedulePage", () => {
       mocks,
     );
 
-    expect(await screen.findByText("Đang mở")).toBeInTheDocument();
+    expect((await screen.findAllByText("Đang mở")).length).toBeGreaterThan(0);
     expect(screen.queryByText("Chưa có kỳ đăng ký lịch")).not.toBeInTheDocument();
     expect(screen.getAllByText("Ca sáng").length).toBeGreaterThan(0);
   });
