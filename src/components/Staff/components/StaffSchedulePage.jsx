@@ -849,75 +849,95 @@ export default function StaffSchedulePage() {
                 ) : null}
 
                 {canShowAvailabilityForm ? (
-                  <div className="staff-slots-grid">
-                    {days.map((day) => {
-                      const dateKey = toDateKey(day);
-                      const isToday = dateKey === toDateKey(new Date());
+                  <div className="staff-availability-matrix">
+                    <div className="staff-availability-matrix__scroll">
+                      <div className="staff-availability-matrix__grid">
+                        <div className="staff-availability-matrix__corner">
+                          Ca / Ngày
+                        </div>
 
-                      return (
-                        <article
-                          key={dateKey}
-                          className={`staff-day-card ${
-                            isToday ? "staff-day-card--today" : ""
-                          }`}
-                        >
-                          <div className="staff-day-card__header">
-                            <span>{fmtFullDate(day)}</span>
-                            {isToday ? <strong>Hôm nay</strong> : null}
-                          </div>
+                        {days.map((day) => {
+                          const dateKey = toDateKey(day);
+                          const isToday = dateKey === toDateKey(new Date());
+                          const dayName = day.toLocaleDateString("vi-VN", {
+                            weekday: "short",
+                          });
 
-                          <div className="staff-shift-options">
-                            {SHIFT_TYPES.map((shiftType) => {
-                              const meta = SHIFT_META[shiftType] || {};
-                              const Icon = meta.icon || Clock3;
-                              const inputId = `${dateKey}-${shiftType}`;
-                              const isChecked = checked(dateKey, shiftType);
+                          return (
+                            <div
+                              key={`head-${dateKey}`}
+                              className={`staff-availability-matrix__day ${
+                                isToday ? "is-today" : ""
+                              }`}
+                            >
+                              <strong>{dayName}</strong>
+                              <span>{fmtDate(day)}</span>
+                            </div>
+                          );
+                        })}
 
-                              return (
-                                <label
-                                  key={`${dateKey}|${shiftType}`}
-                                  htmlFor={inputId}
-                                  className={`staff-shift-toggle ${
-                                    isChecked ? "is-selected" : ""
-                                  } ${
-                                    !canInteract || submitting
-                                      ? "is-disabled"
-                                      : ""
-                                  }`}
-                                >
-                                  <input
-                                    id={inputId}
-                                    type="checkbox"
-                                    disabled={!canInteract || submitting}
-                                    checked={isChecked}
-                                    onChange={() =>
-                                      setSlotsState((prev) => ({
-                                        ...prev,
-                                        [`${dateKey}|${shiftType}`]: !checked(
-                                          dateKey,
-                                          shiftType,
-                                        ),
-                                      }))
-                                    }
-                                  />
+                        {SHIFT_TYPES.map((shiftType) => {
+                          const meta = SHIFT_META[shiftType] || {};
+                          const Icon = meta.icon || Clock3;
 
-                                  <span className="staff-shift-toggle__icon">
-                                    <Icon size={17} />
-                                  </span>
+                          return (
+                            <React.Fragment key={shiftType}>
+                              <div className="staff-availability-matrix__shift">
+                                <span className="staff-availability-matrix__shiftIcon">
+                                  <Icon size={16} />
+                                </span>
+                                <div>
+                                  <strong>{meta.label || shiftType}</strong>
+                                  <small>{meta.timeHint || "Theo lịch"}</small>
+                                </div>
+                              </div>
 
-                                  <span className="staff-shift-toggle__text">
-                                    <strong>{meta.label || shiftType}</strong>
-                                    <small>
-                                      {meta.timeHint || "Theo lịch"}
-                                    </small>
-                                  </span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        </article>
-                      );
-                    })}
+                              {days.map((day) => {
+                                const dateKey = toDateKey(day);
+                                const inputId = `${dateKey}-${shiftType}`;
+                                const isChecked = checked(dateKey, shiftType);
+
+                                return (
+                                  <label
+                                    key={`${dateKey}|${shiftType}`}
+                                    htmlFor={inputId}
+                                    className={`staff-matrix-slot ${
+                                      isChecked ? "is-selected" : ""
+                                    } ${
+                                      !canInteract || submitting ? "is-disabled" : ""
+                                    }`}
+                                  >
+                                    <input
+                                      id={inputId}
+                                      type="checkbox"
+                                      disabled={!canInteract || submitting}
+                                      checked={isChecked}
+                                      onChange={() =>
+                                        setSlotsState((prev) => ({
+                                          ...prev,
+                                          [`${dateKey}|${shiftType}`]: !checked(
+                                            dateKey,
+                                            shiftType,
+                                          ),
+                                        }))
+                                      }
+                                    />
+
+                                    <span className="staff-matrix-slot__check">
+                                      {isChecked ? "✓" : ""}
+                                    </span>
+
+                                    <span className="staff-matrix-slot__label">
+                                      {isPartTime ? "Có thể làm" : "Không khả dụng"}
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 ) : null}
 
