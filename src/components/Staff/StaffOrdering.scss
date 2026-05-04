@@ -199,6 +199,54 @@ $border-color: #e5e7eb;
   margin-bottom: 8px;
 }
 
+.staff-order-mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+  button {
+    border: 1px solid $border-color;
+    background: #fff;
+    border-radius: 10px;
+    padding: 10px;
+    font-weight: 600;
+    &.active {
+      color: #fff;
+      background: $primary;
+      border-color: $primary;
+    }
+  }
+}
+
+.staff-remote-order-form {
+  background: #fff;
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  display: grid;
+  gap: 8px;
+  input,
+  textarea,
+  select {
+    border: 1px solid $border-color;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+  textarea {
+    min-height: 64px;
+  }
+  .remote-inline-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    input {
+      grid-column: span 2;
+    }
+  }
+}
+
 // 3. CART FLOATING BUTTON (Nổi trên Bottom Nav)
 .floating-cart-wrapper {
   position: absolute;

@@ -25,6 +25,7 @@ export default function CartBottomSheet({
   onSendKitchen,
   onOpenProofCapture,
   sending = false,
+  sendActionLabel = "Gửi Bếp",
 }) {
   const handleRequestVoid = (item) => {
     const reason = window.prompt(`Nhập lý do hủy món [${item.name}]:`);
@@ -187,7 +188,7 @@ export default function CartBottomSheet({
               disabled={cart.length === 0 || sending}
               onClick={onSendKitchen}
             >
-              <CheckCircle2 size={20} /> {sending ? "Đang gửi..." : "Gửi Bếp"}
+              <CheckCircle2 size={20} /> {sending ? "Đang gửi..." : sendActionLabel}
             </button>
             <button className="btn-primary btn-checkout" disabled={cart.length === 0}>
               <Banknote size={20} /> Thanh Toán
