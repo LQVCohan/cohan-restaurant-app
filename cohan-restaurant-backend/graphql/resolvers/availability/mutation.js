@@ -1,7 +1,7 @@
 import { AvailabilityRegistrationWindow, StaffAvailabilitySubmission } from "../../../models/index.js";
 import { getSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
 import { requireAuth, requireRestaurantAccess, requireRoles } from "../../guards.js";
-import { createOrGetAvailabilityRegistrationWindow, isAvailabilityRegistrationWindowOpen, getStaffEmploymentType } from "../../../src/services/availability/availabilityRegistrationWindow.service.js";
+import { createOrGetAvailabilityRegistrationWindow, isAvailabilityRegistrationWindowOpen, lockSubmissionsForClosedWindow, getStaffEmploymentType } from "../../../src/services/availability/availabilityRegistrationWindow.service.js";
 import { AVAILABILITY_WINDOW_ADMIN_ROLES, AVAILABILITY_REVIEW_ROLES, userHasAnyRole } from "../../../src/services/scheduling/schedulingPermission.service.js";
 import { buildAvailabilityRegistrationSchedule, resolveAvailabilityWindowEffectiveStatus } from "../../../src/services/availability/availabilityRegistrationSchedule.service.js";
 
@@ -22,25 +22,11 @@ export default {
       targetWeekEnd: input.periodEnd,
       policy,
     });
-    const availabilityPolicy = policy?.availabilityRegistrationPolicy || {};
-
     return createOrGetAvailabilityRegistrationWindow({
       ...input,
       openAt: schedule.openAt,
       closeAt: schedule.closeAt,
       registrationModeSnapshot: schedule.mode,
-      targetEmploymentTypes:
-        input.targetEmploymentTypes ||
-        availabilityPolicy.targetEmploymentTypes ||
-        ["part_time", "seasonal"],
-      allowFullTimeUnavailableException:
-        input.allowFullTimeUnavailableException ??
-        availabilityPolicy.allowFullTimeUnavailableException ??
-        true,
-      lateChangeRequiresApproval:
-        input.lateChangeRequiresApproval ??
-        availabilityPolicy.lateChangeRequiresApproval ??
-        true,
     }, ctx.user.id);
   },
   openAvailabilityWindow: async (_, { id }, ctx) => {
@@ -52,7 +38,9 @@ export default {
     requireRoles(ctx, AVAILABILITY_WINDOW_ADMIN_ROLES);
     await getScopedAvailabilityWindow(id, ctx);
     const now = new Date();
-    return AvailabilityRegistrationWindow.findByIdAndUpdate(id, { $set: { status: "closed", closedBy: ctx.user.id, closedAt: now } }, { new: true });
+    const doc = await AvailabilityRegistrationWindow.findByIdAndUpdate(id, { $set: { status: "closed", closedBy: ctx.user.id, closedAt: now } }, { new: true });
+    await lockSubmissionsForClosedWindow(id, now);
+    return doc;
   },
   cancelAvailabilityWindow: async (_, { id, reason }, ctx) => {
     requireRoles(ctx, AVAILABILITY_WINDOW_ADMIN_ROLES);

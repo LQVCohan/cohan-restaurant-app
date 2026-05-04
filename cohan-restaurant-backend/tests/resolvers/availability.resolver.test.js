@@ -41,19 +41,6 @@ describe("availability resolver", () => {
     expect(res._id).toBe("w1");
   });
 
-
-
-  it("defaults and overrides lateChangeRequiresApproval on createAvailabilityWindow", async () => {
-    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
-    modelMocks.AvailabilityRegistrationWindow.create.mockResolvedValue({ _id: "w-policy" });
-
-    await mutation.createAvailabilityWindow(null, { input: { restaurantId: "r1", periodStart: new Date(), periodEnd: new Date() } }, { user: { id: "u1", roles: ["manager"], restaurantId: "r1" } });
-    expect(modelMocks.AvailabilityRegistrationWindow.create.mock.calls[0][0].lateChangeRequiresApproval).toBe(true);
-
-    await mutation.createAvailabilityWindow(null, { input: { restaurantId: "r1", periodStart: new Date(), periodEnd: new Date(), lateChangeRequiresApproval: false } }, { user: { id: "u1", roles: ["manager"], restaurantId: "r1" } });
-    expect(modelMocks.AvailabilityRegistrationWindow.create.mock.calls[1][0].lateChangeRequiresApproval).toBe(false);
-  });
-
   it("handles duplicate window by returning existing", async () => {
     const { createOrGetAvailabilityRegistrationWindow } = await import("../../src/services/availability/availabilityRegistrationWindow.service.js");
     modelMocks.AvailabilityRegistrationWindow.create.mockRejectedValue({ code: 11000 });
@@ -166,7 +153,6 @@ describe("availability resolver", () => {
     expect(closeRes.status).toBe("closed");
     expect(cancelRes.status).toBe("cancelled");
     expect(modelMocks.AvailabilityRegistrationWindow.findById).toHaveBeenCalledTimes(3);
-    expect(modelMocks.StaffAvailabilitySubmission.updateMany).not.toHaveBeenCalled();
   });
 
   it("allows manager without user.restaurantId when restaurant.managerId matches", async () => {
