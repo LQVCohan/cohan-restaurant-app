@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, ClipboardList, Eye } from "lucide-react";
 
 const WINDOW_STATUS_LABELS = {
   draft: "Bản nháp",
@@ -25,7 +25,46 @@ const EMPLOYMENT_TYPE_LABELS = {
   seasonal: "Thời vụ",
   contract: "Hợp đồng",
 };
+const SHIFT_TYPE_LABELS = {
+  morning: "Ca sáng",
+  afternoon: "Ca chiều",
+  evening: "Ca tối",
+  full_day: "Cả ngày",
+  all_day: "Cả ngày",
+};
 
+const SLOT_STATUS_LABELS = {
+  available: "Có thể làm",
+  unavailable: "Không khả dụng",
+  preferred: "Ưu tiên",
+};
+
+function formatDateOnly(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("vi-VN", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(date);
+}
+
+function getSubmissionStatusLabel(status) {
+  const key = String(status || "").toLowerCase();
+  return SUBMISSION_STATUS_LABELS[key] || status || "Không xác định";
+}
+
+function getShiftTypeLabel(shiftType) {
+  const key = String(shiftType || "").toLowerCase();
+  return SHIFT_TYPE_LABELS[key] || shiftType || "Ca";
+}
+
+function getSlotStatusLabel(status) {
+  const key = String(status || "").toLowerCase();
+  return SLOT_STATUS_LABELS[key] || status || "Không rõ";
+}
 function formatDateTime(value) {
   if (!value) return "—";
   const date = new Date(value);
@@ -54,9 +93,11 @@ export default function AvailabilityRegistrationPanel({
   onToggleCollapse,
   reopenBlockedReason = "",
 }) {
-  const windowStatus = String(availabilityWindow?.status || "unknown").toLowerCase();
+  const windowStatus = String(
+    availabilityWindow?.status || "unknown",
+  ).toLowerCase();
   const hasWindow = Boolean(availabilityWindow?.id);
-
+  const [showSubmissions, setShowSubmissions] = useState(false);
   const submissionSummary = useMemo(() => {
     const totals = {
       total: submissions.length,
@@ -84,10 +125,13 @@ export default function AvailabilityRegistrationPanel({
     hasWindow &&
     selectedRestaurantId &&
     !loading &&
-    (windowStatus === "draft" || (windowStatus === "closed" && !reopenBlockedReason));
-  const openActionLabel = windowStatus === "closed" ? "Mở lại đăng ký" : "Mở đăng ký";
-  const canClose = hasWindow && selectedRestaurantId && !loading && windowStatus === "open";
-
+    (windowStatus === "draft" ||
+      (windowStatus === "closed" && !reopenBlockedReason));
+  const openActionLabel =
+    windowStatus === "closed" ? "Mở lại đăng ký" : "Mở đăng ký";
+  const canClose =
+    hasWindow && selectedRestaurantId && !loading && windowStatus === "open";
+  const canViewSubmissions = hasWindow && selectedRestaurantId && !loading;
   return (
     <section className="schedule-availability-panel">
       <div className="schedule-availability-panel__header">
@@ -95,13 +139,18 @@ export default function AvailabilityRegistrationPanel({
           <h3>
             <ClipboardList size={18} /> Đăng ký lịch nhân viên
           </h3>
-          <p>Quản lý thời gian nhân viên đăng ký khả dụng trước khi xếp lịch.</p>
+          <p>
+            Quản lý thời gian nhân viên đăng ký khả dụng trước khi xếp lịch.
+          </p>
           <p>
             Kỳ đăng ký cho tuần {formatDateTime(targetWeekStart)} -{" "}
-            {formatDateTime(targetWeekEnd)} ({mode === "currentWeek" ? "tuần đang xem" : "tuần kế tiếp"})
+            {formatDateTime(targetWeekEnd)} (
+            {mode === "currentWeek" ? "tuần đang xem" : "tuần kế tiếp"})
           </p>
         </div>
-        <span className={`schedule-availability-panel__status is-${windowStatus}`}>
+        <span
+          className={`schedule-availability-panel__status is-${windowStatus}`}
+        >
           {statusLabel}
         </span>
         {typeof onToggleCollapse === "function" ? (
@@ -109,8 +158,16 @@ export default function AvailabilityRegistrationPanel({
             type="button"
             className="btn-collapse-panel icon-only"
             onClick={onToggleCollapse}
-            aria-label={collapsed ? "Mở rộng đăng ký lịch nhân viên" : "Thu gọn đăng ký lịch nhân viên"}
-            title={collapsed ? "Mở rộng đăng ký lịch nhân viên" : "Thu gọn đăng ký lịch nhân viên"}
+            aria-label={
+              collapsed
+                ? "Mở rộng đăng ký lịch nhân viên"
+                : "Thu gọn đăng ký lịch nhân viên"
+            }
+            title={
+              collapsed
+                ? "Mở rộng đăng ký lịch nhân viên"
+                : "Thu gọn đăng ký lịch nhân viên"
+            }
           >
             {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
           </button>
@@ -118,101 +175,256 @@ export default function AvailabilityRegistrationPanel({
       </div>
       {collapsed ? (
         <div className="schedule-availability-panel__compact-summary">
-          <span>Tuần: {formatDateTime(targetWeekStart)} - {formatDateTime(targetWeekEnd)}</span>
+          <span>
+            Tuần: {formatDateTime(targetWeekStart)} -{" "}
+            {formatDateTime(targetWeekEnd)}
+          </span>
           <span>Tổng submission: {submissionSummary.total}</span>
-          <span>Đã gửi/duyệt/khóa: {submissionSummary.submitted + submissionSummary.approved + submissionSummary.locked}</span>
+          <span>
+            Đã gửi/duyệt/khóa:{" "}
+            {submissionSummary.submitted +
+              submissionSummary.approved +
+              submissionSummary.locked}
+          </span>
           <span>Trạng thái: {statusLabel}</span>
         </div>
       ) : null}
       {!collapsed ? (
         <>
-
-      {error ? (
-        <div className="schedule-availability-panel__empty">
-          <h4>Không thể tải kỳ đăng ký</h4>
-          <p>{error.message || "Đã có lỗi xảy ra."}</p>
-        </div>
-      ) : null}
-
-      {!hasWindow ? (
-        <div className="schedule-availability-panel__empty">
-          <h4>Chưa có kỳ đăng ký khả dụng</h4>
-          <p>
-            Tạo kỳ đăng ký để nhân viên part-time đăng ký thời gian có thể làm và nhân
-            viên full-time đăng ký ngày không khả dụng.
-          </p>
-          <button type="button" onClick={onCreateWindow} disabled={!canCreate}>
-            {loading ? "Đang xử lý..." : "Tạo kỳ đăng ký tuần kế tiếp"}
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="schedule-availability-panel__summary">
-            <div>
-              <span>Tuần áp dụng</span>
-              <strong>
-                {formatDateTime(availabilityWindow.periodStart)} - {formatDateTime(availabilityWindow.periodEnd)}
-              </strong>
-            </div>
-            <div>
-              <span>Thời gian mở đăng ký</span>
-              <strong>{formatDateTime(availabilityWindow.openAt)}</strong>
-            </div>
-            <div>
-              <span>Hạn đóng đăng ký</span>
-              <strong>{formatDateTime(availabilityWindow.closeAt)}</strong>
-            </div>
-            <div>
-              <span>Đối tượng đăng ký ca khả dụng</span>
-              <strong>
-                {(availabilityWindow.targetEmploymentTypes || [])
-                  .map((value) => EMPLOYMENT_TYPE_LABELS[String(value || "").toLowerCase()])
-                  .filter(Boolean)
-                  .join(", ") || "Chưa thiết lập"}
-              </strong>
-            </div>
-            <div>
-              <span>Full-time đăng ký unavailable</span>
-              <strong>{availabilityWindow.allowFullTimeUnavailableException ? "Có" : "Không"}</strong>
-            </div>
-            <div>
-              <span>Kỳ tạo sẵn</span>
-              <strong>
-                {formatDateTime(nextWeekStart)} - {formatDateTime(nextWeekEnd)}
-              </strong>
-            </div>
-          </div>
-
-          <div className="schedule-availability-panel__actions">
-            <button type="button" onClick={onOpenWindow} disabled={!canOpen}>
-              {loading ? "Đang xử lý..." : openActionLabel}
-            </button>
-            <button type="button" onClick={onCloseWindow} disabled={!canClose}>
-              {loading ? "Đang xử lý..." : "Đóng đăng ký"}
-            </button>
-            <button type="button" disabled>
-              Xem submissions
-            </button>
-          </div>
-          {reopenBlockedReason ? (
+          {error ? (
             <div className="schedule-availability-panel__empty">
-              <p>{reopenBlockedReason}</p>
+              <h4>Không thể tải kỳ đăng ký</h4>
+              <p>{error.message || "Đã có lỗi xảy ra."}</p>
             </div>
           ) : null}
 
-          <div className="schedule-availability-panel__submissions">
-            <h4>Tổng quan submissions</h4>
-            <div className="metrics-grid">
-              <span>Tổng submission: {submissionSummary.total}</span>
-              <span>{SUBMISSION_STATUS_LABELS.pending}: {submissionSummary.pending}</span>
-              <span>{SUBMISSION_STATUS_LABELS.submitted}: {submissionSummary.submitted}</span>
-              <span>{SUBMISSION_STATUS_LABELS.approved}: {submissionSummary.approved}</span>
-              <span>{SUBMISSION_STATUS_LABELS.rejected}: {submissionSummary.rejected}</span>
-              <span>{SUBMISSION_STATUS_LABELS.locked}: {submissionSummary.locked}</span>
+          {!hasWindow ? (
+            <div className="schedule-availability-panel__empty">
+              <h4>Chưa có kỳ đăng ký khả dụng</h4>
+              <p>
+                Tạo kỳ đăng ký để nhân viên part-time đăng ký thời gian có thể
+                làm và nhân viên full-time đăng ký ngày không khả dụng.
+              </p>
+              <button
+                type="button"
+                onClick={onCreateWindow}
+                disabled={!canCreate}
+              >
+                {loading ? "Đang xử lý..." : "Tạo kỳ đăng ký tuần kế tiếp"}
+              </button>
             </div>
-          </div>
-        </>
-      )}
+          ) : (
+            <>
+              <div className="schedule-availability-panel__summary">
+                <div>
+                  <span>Tuần áp dụng</span>
+                  <strong>
+                    {formatDateTime(availabilityWindow.periodStart)} -{" "}
+                    {formatDateTime(availabilityWindow.periodEnd)}
+                  </strong>
+                </div>
+                <div>
+                  <span>Thời gian mở đăng ký</span>
+                  <strong>{formatDateTime(availabilityWindow.openAt)}</strong>
+                </div>
+                <div>
+                  <span>Hạn đóng đăng ký</span>
+                  <strong>{formatDateTime(availabilityWindow.closeAt)}</strong>
+                </div>
+                <div>
+                  <span>Đối tượng đăng ký ca khả dụng</span>
+                  <strong>
+                    {(availabilityWindow.targetEmploymentTypes || [])
+                      .map(
+                        (value) =>
+                          EMPLOYMENT_TYPE_LABELS[
+                            String(value || "").toLowerCase()
+                          ],
+                      )
+                      .filter(Boolean)
+                      .join(", ") || "Chưa thiết lập"}
+                  </strong>
+                </div>
+                <div>
+                  <span>Full-time đăng ký unavailable</span>
+                  <strong>
+                    {availabilityWindow.allowFullTimeUnavailableException
+                      ? "Có"
+                      : "Không"}
+                  </strong>
+                </div>
+                <div>
+                  <span>Kỳ tạo sẵn</span>
+                  <strong>
+                    {formatDateTime(nextWeekStart)} -{" "}
+                    {formatDateTime(nextWeekEnd)}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="schedule-availability-panel__actions">
+                <button
+                  type="button"
+                  onClick={onOpenWindow}
+                  disabled={!canOpen}
+                >
+                  {loading ? "Đang xử lý..." : openActionLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={onCloseWindow}
+                  disabled={!canClose}
+                >
+                  {loading ? "Đang xử lý..." : "Đóng đăng ký"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSubmissions((value) => !value)}
+                  disabled={!canViewSubmissions}
+                >
+                  <Eye size={14} />
+                  {showSubmissions ? "Ẩn submissions" : "Xem submissions"}
+                </button>
+              </div>
+              {reopenBlockedReason ? (
+                <div className="schedule-availability-panel__empty">
+                  <p>{reopenBlockedReason}</p>
+                </div>
+              ) : null}
+
+              <div className="schedule-availability-panel__submissions">
+                <h4>Tổng quan submissions</h4>
+                <div className="metrics-grid">
+                  <span>Tổng submission: {submissionSummary.total}</span>
+                  <span>
+                    {SUBMISSION_STATUS_LABELS.pending}:{" "}
+                    {submissionSummary.pending}
+                  </span>
+                  <span>
+                    {SUBMISSION_STATUS_LABELS.submitted}:{" "}
+                    {submissionSummary.submitted}
+                  </span>
+                  <span>
+                    {SUBMISSION_STATUS_LABELS.approved}:{" "}
+                    {submissionSummary.approved}
+                  </span>
+                  <span>
+                    {SUBMISSION_STATUS_LABELS.rejected}:{" "}
+                    {submissionSummary.rejected}
+                  </span>
+                  <span>
+                    {SUBMISSION_STATUS_LABELS.locked}:{" "}
+                    {submissionSummary.locked}
+                  </span>
+                </div>
+              </div>
+              {showSubmissions ? (
+                <div className="schedule-availability-panel__submission-detail">
+                  <div className="schedule-availability-panel__submission-detail-header">
+                    <h4>Chi tiết submissions</h4>
+                    <span>{submissionSummary.total} bản ghi</span>
+                  </div>
+
+                  {submissions.length === 0 ? (
+                    <div className="schedule-availability-panel__empty compact">
+                      <p>Chưa có nhân viên nào gửi đăng ký cho kỳ này.</p>
+                    </div>
+                  ) : (
+                    <div className="availability-submission-list">
+                      {submissions.map((item) => {
+                        const availableSlots = (item.slots || []).filter(
+                          (slot) =>
+                            String(slot.status || "").toLowerCase() ===
+                            "available",
+                        );
+
+                        const unavailableSlots = (item.slots || []).filter(
+                          (slot) =>
+                            String(slot.status || "").toLowerCase() ===
+                            "unavailable",
+                        );
+
+                        return (
+                          <article
+                            key={item.id}
+                            className="availability-submission-card"
+                          >
+                            <div className="availability-submission-card__top">
+                              <div>
+                                <strong>
+                                  {item.employeeName ||
+                                    item.employee?.fullName ||
+                                    `Nhân viên ${String(item.employeeId || "").slice(-6)}`}
+                                </strong>
+                                <span>
+                                  {EMPLOYMENT_TYPE_LABELS[
+                                    String(
+                                      item.employmentType || "",
+                                    ).toLowerCase()
+                                  ] ||
+                                    item.employmentType ||
+                                    "Nhân viên"}
+                                  {" · "}
+                                  {item.submissionType ===
+                                  "unavailable_exception"
+                                    ? "Báo không khả dụng"
+                                    : "Đăng ký ca khả dụng"}
+                                </span>
+                              </div>
+
+                              <span
+                                className={`availability-submission-status is-${String(
+                                  item.status || "",
+                                ).toLowerCase()}`}
+                              >
+                                {getSubmissionStatusLabel(item.status)}
+                              </span>
+                            </div>
+
+                            <div className="availability-submission-card__meta">
+                              <span>
+                                Gửi lúc: {formatDateTime(item.submittedAt)}
+                              </span>
+                              <span>
+                                Ca khả dụng:{" "}
+                                <strong>{availableSlots.length}</strong>
+                              </span>
+                              <span>
+                                Không khả dụng:{" "}
+                                <strong>{unavailableSlots.length}</strong>
+                              </span>
+                            </div>
+
+                            <div className="availability-submission-card__slots">
+                              {(item.slots || []).length === 0 ? (
+                                <span className="availability-submission-slot is-empty">
+                                  Không có slot chi tiết
+                                </span>
+                              ) : (
+                                item.slots.map((slot, index) => (
+                                  <span
+                                    key={`${item.id}-${slot.date}-${slot.shiftType}-${index}`}
+                                    className={`availability-submission-slot is-${String(
+                                      slot.status || "",
+                                    ).toLowerCase()}`}
+                                    title={slot.note || ""}
+                                  >
+                                    {formatDateOnly(slot.date)} ·{" "}
+                                    {getShiftTypeLabel(slot.shiftType)} ·{" "}
+                                    {getSlotStatusLabel(slot.status)}
+                                  </span>
+                                ))
+                              )}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </>
+          )}
         </>
       ) : null}
     </section>

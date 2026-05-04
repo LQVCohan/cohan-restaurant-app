@@ -1275,14 +1275,42 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
     border: 1px solid transparent;
   }
 
-  .status-chip.draft { color: #475569; background: #f1f5f9; border-color: #cbd5e1; }
+  .status-chip.draft {
+    color: #475569;
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+  }
   .status-chip.revision-draft,
-  .status-chip.revision_draft { color: #6d28d9; background: #ede9fe; border-color: #ddd6fe; }
-  .status-chip.published { color: #15803d; background: #dcfce7; border-color: #bbf7d0; }
-  .status-chip.changed { color: #9a3412; background: #fff7ed; border-color: #fed7aa; }
-  .status-chip.active { color: #1d4ed8; background: #dbeafe; border-color: #bfdbfe; }
-  .status-chip.locked { color: #7c2d12; background: #ffedd5; border-color: #fed7aa; }
-  .status-chip.closed { color: #334155; background: #e2e8f0; border-color: #cbd5e1; }
+  .status-chip.revision_draft {
+    color: #6d28d9;
+    background: #ede9fe;
+    border-color: #ddd6fe;
+  }
+  .status-chip.published {
+    color: #15803d;
+    background: #dcfce7;
+    border-color: #bbf7d0;
+  }
+  .status-chip.changed {
+    color: #9a3412;
+    background: #fff7ed;
+    border-color: #fed7aa;
+  }
+  .status-chip.active {
+    color: #1d4ed8;
+    background: #dbeafe;
+    border-color: #bfdbfe;
+  }
+  .status-chip.locked {
+    color: #7c2d12;
+    background: #ffedd5;
+    border-color: #fed7aa;
+  }
+  .status-chip.closed {
+    color: #334155;
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+  }
 
   .status-subtext {
     display: block;
@@ -1295,11 +1323,16 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
 
 .shift-card-anchor {
   border-radius: 0.9rem;
-  transition: box-shadow 0.2s ease, transform 0.2s ease, background 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
 }
 
 .shift-card-anchor.is-highlighted {
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.35), 0 12px 28px rgba(245, 158, 11, 0.18);
+  box-shadow:
+    0 0 0 3px rgba(245, 158, 11, 0.35),
+    0 12px 28px rgba(245, 158, 11, 0.18);
   background: #fffbeb;
   transform: translateY(-1px);
 }
@@ -1316,20 +1349,48 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
   color: #9a3412;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
 
-  svg { flex: 0 0 auto; margin-top: 0.1rem; }
-  strong { display: block; font-size: 0.78rem; font-weight: 850; }
-  span { display: block; margin-top: 0.15rem; color: #9a3412; font-size: 0.72rem; font-weight: 650; }
+  svg {
+    flex: 0 0 auto;
+    margin-top: 0.1rem;
+  }
+  strong {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 850;
+  }
+  span {
+    display: block;
+    margin-top: 0.15rem;
+    color: #9a3412;
+    font-size: 0.72rem;
+    font-weight: 650;
+  }
 
-  &:hover { border-color: #fdba74; background: #ffedd5; transform: translateY(-1px); }
+  &:hover {
+    border-color: #fdba74;
+    background: #ffedd5;
+    transform: translateY(-1px);
+  }
   &.danger {
     background: #fef2f2;
     color: #b91c1c;
-    span { color: #b91c1c; }
-    &:hover { border-color: #fca5a5; background: #fee2e2; }
+    span {
+      color: #b91c1c;
+    }
+    &:hover {
+      border-color: #fca5a5;
+      background: #fee2e2;
+    }
   }
-  &.is-focused { border-color: #f59e0b; background: #ffedd5; }
+  &.is-focused {
+    border-color: #f59e0b;
+    background: #ffedd5;
+  }
 }
 
 .staff-stat-link {
@@ -1684,8 +1745,13 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
       background: $bg-soft;
       padding: 0.85rem;
 
-      h4 { margin: 0 0 0.28rem; }
-      p { margin: 0 0 0.6rem; color: $text-sec; }
+      h4 {
+        margin: 0 0 0.28rem;
+      }
+      p {
+        margin: 0 0 0.6rem;
+        color: $text-sec;
+      }
 
       button {
         border: 1px solid $primary;
@@ -1710,5 +1776,184 @@ $shadow-md: 0 12px 32px rgba(15, 23, 42, 0.08);
         align-items: stretch;
       }
     }
+  }
+}
+.schedule-availability-panel__actions {
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+}
+
+.schedule-availability-panel__submission-detail {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.schedule-availability-panel__submission-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+
+  h4 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  span {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 700;
+  }
+}
+
+.availability-submission-list {
+  display: grid;
+  gap: 10px;
+}
+
+.availability-submission-card {
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc), #ffffff;
+}
+
+.availability-submission-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+
+  strong {
+    display: block;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  span {
+    display: block;
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 650;
+  }
+}
+
+.availability-submission-status {
+  flex-shrink: 0;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+
+  &.is-submitted {
+    color: #1d4ed8;
+    background: #dbeafe;
+  }
+
+  &.is-approved {
+    color: #166534;
+    background: #dcfce7;
+  }
+
+  &.is-rejected {
+    color: #991b1b;
+    background: #fee2e2;
+  }
+
+  &.is-locked {
+    color: #334155;
+    background: #e2e8f0;
+  }
+
+  &.is-pending {
+    color: #92400e;
+    background: #fef3c7;
+  }
+}
+
+.availability-submission-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+
+  span {
+    padding: 6px 8px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+
+  strong {
+    color: #0f172a;
+    font-weight: 850;
+  }
+}
+
+.availability-submission-card__slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.availability-submission-slot {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  font-size: 11px;
+  font-weight: 750;
+
+  &.is-available {
+    color: #166534;
+    background: #f0fdf4;
+    border-color: rgba(34, 197, 94, 0.22);
+  }
+
+  &.is-unavailable {
+    color: #991b1b;
+    background: #fef2f2;
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+
+  &.is-preferred {
+    color: #4338ca;
+    background: #eef2ff;
+    border-color: rgba(79, 70, 229, 0.22);
+  }
+
+  &.is-empty {
+    color: #64748b;
+    background: #f8fafc;
+  }
+}
+
+.schedule-availability-panel__empty.compact {
+  padding: 12px;
+  border-radius: 12px;
+
+  p {
+    margin: 0;
+    color: #64748b;
+    font-size: 12px;
   }
 }
