@@ -163,7 +163,7 @@ const SUBMISSION_STATUS_LABELS = {
   submitted: "Đã gửi",
   approved: "Đã duyệt",
   rejected: "Bị từ chối",
-  locked: "Đã khóa",
+  locked: "Đã khóa để xếp lịch",
   late_change_requested: "Chờ duyệt thay đổi muộn",
   used_for_schedule: "Đã dùng để xếp lịch",
 };
@@ -482,7 +482,6 @@ export default function StaffSchedulePage() {
     submission?.status || "not_submitted",
   ).toLowerCase();
 
-  const canSubmit = windowStatus === "open";
   const isLocked =
     ["locked", "used_for_schedule"].includes(windowStatus) ||
     ["locked", "used_for_schedule"].includes(submissionStatus);
@@ -491,13 +490,15 @@ export default function StaffSchedulePage() {
     Boolean(selectedWindow) &&
     (isPartTime || selectedWindow?.allowFullTimeUnavailableException);
 
+  const allowsLateChange = selectedWindow?.lateChangeRequiresApproval !== false;
+
   const canInteract =
     Boolean(selectedWindow) &&
     canShowAvailabilityForm &&
     !isLocked &&
     windowStatus !== "draft" &&
     windowStatus !== "cancelled" &&
-    (windowStatus === "open" || windowStatus === "closed");
+    (windowStatus === "open" || (windowStatus === "closed" && allowsLateChange));
 
   const days = useMemo(() => {
     const result = [];
@@ -876,8 +877,9 @@ export default function StaffSchedulePage() {
                     <div>
                       <strong>{registrationMode === "auto" ? "Kỳ đăng ký đã hết hạn." : "Kỳ đăng ký đã đóng"}</strong>
                       <p>
-                        Nếu hệ thống cho phép, thay đổi của bạn sẽ được gửi như
-                        yêu cầu thay đổi muộn và chờ quản lý duyệt.
+                        {allowsLateChange
+                          ? "Kỳ đăng ký đã đóng. Thay đổi của bạn sẽ được gửi như yêu cầu thay đổi muộn và chờ quản lý duyệt."
+                          : "Kỳ đăng ký đã đóng. Doanh nghiệp hiện không cho phép gửi thay đổi sau khi đóng."}
                       </p>
                     </div>
                   </div>
@@ -1009,6 +1011,7 @@ export default function StaffSchedulePage() {
                       isLocked ||
                       windowStatus === "draft" ||
                       windowStatus === "cancelled" ||
+                      (windowStatus === "closed" && !allowsLateChange) ||
                       (!isPartTime &&
                         !selectedWindow.allowFullTimeUnavailableException)
                     }
