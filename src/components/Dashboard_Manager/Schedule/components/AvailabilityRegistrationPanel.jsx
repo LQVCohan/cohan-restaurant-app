@@ -7,7 +7,8 @@ const WINDOW_STATUS_LABELS = {
   draft: "Bản nháp",
   open: "Đang mở",
   closed: "Đã đóng",
-  locked: "Đã khóa",
+  locked: "Đã khóa để xếp lịch",
+  used_for_schedule: "Đã dùng để xếp lịch",
   expired: "Hết hạn",
   unknown: "Không xác định",
 };
@@ -17,7 +18,7 @@ const SUBMISSION_STATUS_LABELS = {
   submitted: "Đã gửi",
   approved: "Đã duyệt",
   rejected: "Bị từ chối",
-  locked: "Đã khóa",
+  locked: "Đã khóa để xếp lịch",
 };
 
 const EMPLOYMENT_TYPE_LABELS = {
@@ -105,6 +106,7 @@ export default function AvailabilityRegistrationPanel({
     availabilityOpenTime: "09:00",
     availabilityCloseDayOffset: -1,
     availabilityCloseTime: "18:00",
+    lateChangeRequiresApproval: true,
   });
   const registrationSchedule = useMemo(() => buildAvailabilityRegistrationSchedule({
     targetWeekStart,
@@ -166,6 +168,7 @@ export default function AvailabilityRegistrationPanel({
       availabilityOpenTime: availabilityPolicy?.availabilityOpenTime || "09:00",
       availabilityCloseDayOffset: Number(availabilityPolicy?.availabilityCloseDayOffset ?? -1),
       availabilityCloseTime: availabilityPolicy?.availabilityCloseTime || "18:00",
+      lateChangeRequiresApproval: availabilityPolicy?.lateChangeRequiresApproval !== false,
     });
     setIsPolicyModalOpen(true);
   };
@@ -480,6 +483,8 @@ export default function AvailabilityRegistrationPanel({
                   )}
                 </div>
               ) : null}
+              <p className="schedule-availability-panel__hint">Thay đổi sau khi đóng: {availabilityPolicy?.lateChangeRequiresApproval !== false ? "Cho phép gửi yêu cầu chờ duyệt" : "Không cho gửi"}</p>
+              {hasWindow ? (<p className="schedule-availability-panel__hint">Thay đổi cài đặt này áp dụng cho các kỳ tạo sau. Kỳ hiện tại giữ cấu hình đã tạo.</p>) : null}
             </>
           )}
         </>
@@ -533,6 +538,21 @@ export default function AvailabilityRegistrationPanel({
               <label>
                 Giờ đóng đăng ký
                 <input type="time" value={policyDraft.availabilityCloseTime} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityCloseTime: event.target.value }))} />
+              </label>
+              <label>
+                Thay đổi sau khi đóng đăng ký
+                <select
+                  value={policyDraft.lateChangeRequiresApproval ? "yes" : "no"}
+                  onChange={(event) => setPolicyDraft((prev) => ({ ...prev, lateChangeRequiresApproval: event.target.value === "yes" }))}
+                >
+                  <option value="yes">Cho phép gửi yêu cầu chờ duyệt</option>
+                  <option value="no">Không cho gửi sau khi đóng</option>
+                </select>
+                <small>
+                  {policyDraft.lateChangeRequiresApproval
+                    ? "Nhân viên gửi sau khi đóng sẽ vào trạng thái chờ review, quản lý duyệt/từ chối."
+                    : "Sau khi đóng kỳ đăng ký, nhân viên không thể gửi hoặc cập nhật đăng ký."}
+                </small>
               </label>
             </div>
             <div className="availability-policy-modal__actions">
