@@ -56,7 +56,12 @@ import { validatePayrollPeriod as validatePayrollPeriodService } from "../../../
 import { assertPayrollPermission } from "../../../src/services/payroll/payrollPermission.service.js";
 import { logPayrollEvent } from "../../../src/services/payroll/payrollEventLog.service.js";
 import { mapSchedulePublicationOutput } from "../../../src/services/scheduling/scheduleLifecycle.service.js";
-import { requireAuth, requireRestaurantScope, requireRoles } from "../../guards.js";
+import {
+  requireAuth,
+  requireRestaurantScope,
+  requireRestaurantAccess,
+  requireRoles,
+} from "../../guards.js";
 import {
   ATTENDANCE_READ_ROLES,
   ATTENDANCE_SELF_ROLES,
@@ -435,7 +440,7 @@ export default {
   },
   scheduleAcknowledgementSummary: async (_, { restaurantId, periodStart, periodEnd }, ctx) => {
     requireAuth(ctx);
-    requireRestaurantScope(ctx, restaurantId);
+    await requireRestaurantAccess(ctx, restaurantId);
     requireRoles(ctx, SCHEDULE_READ_ROLES);
     const publication = await SchedulePublication.findOne({
       restaurantId: toObjectId(restaurantId) || restaurantId,
