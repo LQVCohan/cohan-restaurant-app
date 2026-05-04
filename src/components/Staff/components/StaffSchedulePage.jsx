@@ -49,14 +49,6 @@ const GET_SUBMISSION = gql`
       id
       status
       submissionType
-      reviewNote
-      pendingSubmittedAt
-      pendingSlots {
-        date
-        shiftType
-        status
-        note
-      }
       slots {
         date
         shiftType
@@ -903,27 +895,7 @@ export default function StaffSchedulePage() {
                   </div>
                 ) : null}
 
-                
-                {submissionStatus === "late_change_requested" ? (
-                  <div className="staff-info-box staff-info-box--warning">
-                    <AlertTriangle size={18} />
-                    <div>
-                      <strong>Thay đổi của bạn đang chờ quản lý duyệt.</strong>
-                      <p>Lịch xếp ca chỉ dùng dữ liệu này sau khi được duyệt.</p>
-                    </div>
-                  </div>
-                ) : null}
-
-                {submissionStatus === "rejected" ? (
-                  <div className="staff-info-box staff-info-box--danger">
-                    <AlertTriangle size={18} />
-                    <div>
-                      <strong>Yêu cầu thay đổi muộn đã bị từ chối.</strong>
-                      {submission?.reviewNote ? <p>Ghi chú quản lý: {submission.reviewNote}</p> : null}
-                    </div>
-                  </div>
-                ) : null}
-{canShowAvailabilityForm ? (
+                {canShowAvailabilityForm ? (
                   <div className="staff-availability-matrix">
                     <div className="staff-availability-matrix__scroll">
                       <div className="staff-availability-matrix__grid">

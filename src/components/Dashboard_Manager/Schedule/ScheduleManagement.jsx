@@ -418,14 +418,6 @@ const GET_AVAILABILITY_SUBMISSIONS = gql`
       submittedAt
       lockedAt
       source
-      pendingSubmittedAt
-      pendingSlots {
-        date
-        shiftType
-        status
-        note
-      }
-      reviewNote
       slots {
         date
         shiftType
@@ -1811,7 +1803,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
       },
     });
     await refetchManagerSubmissions();
-    showNotification(approved ? "Đã duyệt thay đổi muộn." : "Đã từ chối thay đổi muộn.", "success");
   };
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
@@ -3755,8 +3746,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
           availabilityPolicy={schedulingPolicy?.availabilityRegistrationPolicy}
           onUpdateAvailabilityPolicy={handleUpdateAvailabilityPolicy}
           policySaving={updateSchedulingPolicyState.loading}
-          onReviewSubmission={handleReviewLateChange}
-          reviewingSubmission={reviewingAvailabilitySubmission}
         />
       ) : null}
       {isStatsPanelOpen ? (
