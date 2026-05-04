@@ -115,10 +115,17 @@ const GET_SCHEDULE_PUBLICATION = gql`
   }
 `;
 
-
 const GET_SCHEDULE_ACK_SUMMARY = gql`
-  query ScheduleAckSummary($restaurantId: ID!, $periodStart: DateTime!, $periodEnd: DateTime!) {
-    scheduleAcknowledgementSummary(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd) {
+  query ScheduleAckSummary(
+    $restaurantId: ID!
+    $periodStart: DateTime!
+    $periodEnd: DateTime!
+  ) {
+    scheduleAcknowledgementSummary(
+      restaurantId: $restaurantId
+      periodStart: $periodStart
+      periodEnd: $periodEnd
+    ) {
       totalAssignedStaff
       acknowledgedCount
       pendingCount
@@ -873,7 +880,11 @@ const normalizeAutoRole = (role) =>
     .toLowerCase();
 
 const normalizeMandatoryShiftRoles = (roles = []) =>
-  Array.from(new Set((roles || []).map((role) => normalizeRoleKey(role)).filter(Boolean)));
+  Array.from(
+    new Set(
+      (roles || []).map((role) => normalizeRoleKey(role)).filter(Boolean),
+    ),
+  );
 
 const resolveStaffAutoRole = (staff) =>
   normalizeAutoRole(
@@ -960,7 +971,9 @@ export const buildVisibleScheduleInsights = ({
 
     const assignedRoleSet = new Set(
       staffIds
-        .map((staffId) => resolveConcreteStaffRoleSlug(staffById.get(String(staffId))))
+        .map((staffId) =>
+          resolveConcreteStaffRoleSlug(staffById.get(String(staffId))),
+        )
         .filter(Boolean),
     );
     const missingMandatoryRoles = mandatoryRoleKeys.filter(
@@ -1260,18 +1273,24 @@ const ScheduleManagement = ({ readOnly = false }) => {
         ? monthEnd
         : currentDate;
 
-
-  const schedulingStartedAt = schedulingPolicy?.schedulingOperationalStartAt ? new Date(schedulingPolicy.schedulingOperationalStartAt) : null;
-  const firstWeekGraceAppliedUntil = schedulingPolicy?.firstWeekGracePolicy?.appliedUntil ? new Date(schedulingPolicy.firstWeekGracePolicy.appliedUntil) : null;
+  const schedulingStartedAt = schedulingPolicy?.schedulingOperationalStartAt
+    ? new Date(schedulingPolicy.schedulingOperationalStartAt)
+    : null;
+  const firstWeekGraceAppliedUntil = schedulingPolicy?.firstWeekGracePolicy
+    ?.appliedUntil
+    ? new Date(schedulingPolicy.firstWeekGracePolicy.appliedUntil)
+    : null;
   const isFirstWeekGraceActive = Boolean(
     schedulingStartedAt &&
-      firstWeekGraceAppliedUntil &&
-      currentDate >= schedulingStartedAt &&
-      currentDate <= firstWeekGraceAppliedUntil &&
-      schedulingPolicy?.firstWeekGracePolicy?.enabled,
+    firstWeekGraceAppliedUntil &&
+    currentDate >= schedulingStartedAt &&
+    currentDate <= firstWeekGraceAppliedUntil &&
+    schedulingPolicy?.firstWeekGracePolicy?.enabled,
   );
   const isSunday = currentDate.getDay() === 0;
-  const shouldRemindNextWeekRegistration = !isSunday && !managerNextWeekWindow?.id;
+  const managerNextWeekWindow = null;
+  const shouldRemindNextWeekRegistration =
+    !isSunday && !managerNextWeekWindow?.id;
 
   const handleStartSchedulingOperations = async () => {
     if (!effectiveRestaurantId) return;
@@ -1352,12 +1371,18 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const availabilityTargetEnd =
     availabilityMode === "currentWeek" ? currentWeekEnd : nextWeekEnd;
   const availabilityTargetStartTime =
-    availabilityTargetStart instanceof Date ? availabilityTargetStart.getTime() : NaN;
+    availabilityTargetStart instanceof Date
+      ? availabilityTargetStart.getTime()
+      : NaN;
 
   const availabilityTargetEndTime =
-    availabilityTargetEnd instanceof Date ? availabilityTargetEnd.getTime() : NaN;
+    availabilityTargetEnd instanceof Date
+      ? availabilityTargetEnd.getTime()
+      : NaN;
 
-  const availabilityTargetStartIso = Number.isFinite(availabilityTargetStartTime)
+  const availabilityTargetStartIso = Number.isFinite(
+    availabilityTargetStartTime,
+  )
     ? new Date(availabilityTargetStartTime).toISOString()
     : "";
 
@@ -1730,10 +1755,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     if (!effectiveRestaurantId) return;
 
     if (!availabilityTargetStartIso || !availabilityTargetEndIso) {
-      showNotification(
-        "Không xác định được tuần đăng ký lịch.",
-        "error",
-      );
+      showNotification("Không xác định được tuần đăng ký lịch.", "error");
       return;
     }
 
@@ -1838,7 +1860,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
       },
     });
     await refetchManagerSubmissions();
-    showNotification(approved ? "Đã duyệt thay đổi muộn." : "Đã từ chối thay đổi muộn.", "success");
+    showNotification(
+      approved ? "Đã duyệt thay đổi muộn." : "Đã từ chối thay đổi muộn.",
+      "success",
+    );
   };
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)),
@@ -3595,11 +3620,28 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 <small className="status-subtext">
                   Có chỉnh sửa sau lần công bố gần nhất.
                 </small>
-) : null}
+              ) : null}
 
-              {ackSummaryData?.scheduleAcknowledgementSummary?.totalAssignedStaff > 0 ? (
+              {ackSummaryData?.scheduleAcknowledgementSummary
+                ?.totalAssignedStaff > 0 ? (
                 <small className="status-subtext">
-                  Đã xác nhận: {ackSummaryData.scheduleAcknowledgementSummary.acknowledgedCount}/{ackSummaryData.scheduleAcknowledgementSummary.totalAssignedStaff} · Chưa xác nhận: {ackSummaryData.scheduleAcknowledgementSummary.pendingCount} · Cần xem lại: {ackSummaryData.scheduleAcknowledgementSummary.changedAfterAcknowledgementCount}
+                  Đã xác nhận:{" "}
+                  {
+                    ackSummaryData.scheduleAcknowledgementSummary
+                      .acknowledgedCount
+                  }
+                  /
+                  {
+                    ackSummaryData.scheduleAcknowledgementSummary
+                      .totalAssignedStaff
+                  }{" "}
+                  · Chưa xác nhận:{" "}
+                  {ackSummaryData.scheduleAcknowledgementSummary.pendingCount} ·
+                  Cần xem lại:{" "}
+                  {
+                    ackSummaryData.scheduleAcknowledgementSummary
+                      .changedAfterAcknowledgementCount
+                  }
                 </small>
               ) : null}
             </div>
@@ -3756,19 +3798,31 @@ const ScheduleManagement = ({ readOnly = false }) => {
         </div>
       ) : null}
 
-      {!readOnly && !schedulingPolicyLoading && !schedulingPolicy?.schedulingOperationalStartAt ? (
+      {!readOnly &&
+      !schedulingPolicyLoading &&
+      !schedulingPolicy?.schedulingOperationalStartAt ? (
         <div className="schedule-publish-reminder">
           <div className="reminder-content">
             <strong>Bắt đầu sử dụng hệ thống lịch làm việc</strong>
-            <p>Hệ thống sẽ ghi nhận tuần hiện tại là tuần khởi tạo. Trong tuần đầu, nhân viên part-time chưa có availability sẽ được cảnh báo thay vì chặn cứng để quản lý có thể tạo lịch gấp.</p>
+            <p>
+              Hệ thống sẽ ghi nhận tuần hiện tại là tuần khởi tạo. Trong tuần
+              đầu, nhân viên part-time chưa có availability sẽ được cảnh báo
+              thay vì chặn cứng để quản lý có thể tạo lịch gấp.
+            </p>
           </div>
-          <button type="button" onClick={handleStartSchedulingOperations}>Bắt đầu sử dụng</button>
+          <button type="button" onClick={handleStartSchedulingOperations}>
+            Bắt đầu sử dụng
+          </button>
         </div>
       ) : null}
       {!readOnly && isFirstWeekGraceActive ? (
         <div className="schedule-publish-reminder">
           <div className="reminder-content">
-            <strong>Tuần đầu sử dụng hệ thống — thiếu availability của nhân viên bán thời gian sẽ được cảnh báo thay vì chặn cứng. Hãy mở đăng ký lịch cho tuần sau để vận hành đúng quy trình.</strong>
+            <strong>
+              Tuần đầu sử dụng hệ thống — thiếu availability của nhân viên bán
+              thời gian sẽ được cảnh báo thay vì chặn cứng. Hãy mở đăng ký lịch
+              cho tuần sau để vận hành đúng quy trình.
+            </strong>
           </div>
         </div>
       ) : null}
