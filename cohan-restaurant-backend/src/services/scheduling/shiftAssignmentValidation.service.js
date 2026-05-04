@@ -738,7 +738,11 @@ export async function validateShiftAssignment({ input }) {
     staff,
     policy,
     weeklyHoursAfter,
-    hasWarnings: warnings.length > 0,
+    hasWarnings:
+      warnings.filter(
+        (warning) =>
+          warning?.code !== "FIRST_WEEK_GRACE_MISSING_AVAILABILITY",
+      ).length > 0,
     consecutiveDays,
     performanceSnapshot,
   });

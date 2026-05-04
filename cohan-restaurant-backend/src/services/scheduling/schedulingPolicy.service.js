@@ -108,7 +108,38 @@ export function getDefaultSchedulingPolicyPayload(restaurantId) {
     },
     mandatoryShiftRoles: ["server", "cook", "cashier"],
     availabilityRegistrationPolicy: { ...DEFAULT_AVAILABILITY_REGISTRATION_POLICY },
+    schedulingOperationalStartAt: null,
+    firstWeekGracePolicy: {
+      enabled: true,
+      strategy: "availability_warning_only",
+      appliedUntil: null,
+    },
   };
+}
+export function startOfWeekMonday(value) {
+  const d = new Date(value);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+export function endOfWeekMonday(value) {
+  const end = startOfWeekMonday(value);
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+export function isFirstOperationalWeek(policy, targetDate = new Date()) {
+  if (!policy?.schedulingOperationalStartAt) return { active: false, reason: "missing_start_at", weekStart: null, weekEnd: null };
+  if (policy?.firstWeekGracePolicy?.enabled === false) return { active: false, reason: "grace_disabled", weekStart: null, weekEnd: null };
+  const weekStart = startOfWeekMonday(policy.schedulingOperationalStartAt);
+  const weekEnd = endOfWeekMonday(policy.schedulingOperationalStartAt);
+  const target = new Date(targetDate);
+  const appliedUntil = policy?.firstWeekGracePolicy?.appliedUntil ? new Date(policy.firstWeekGracePolicy.appliedUntil) : null;
+  const inside = target >= weekStart && target <= weekEnd;
+  const withinAppliedUntil = !appliedUntil || target <= appliedUntil;
+  return { active: inside && withinAppliedUntil, weekStart, weekEnd, reason: inside ? (withinAppliedUntil ? "active" : "beyond_applied_until") : "outside_week" };
 }
 
 function validateDayOfWeek(fieldName, value) {
@@ -257,6 +288,16 @@ export async function updateSchedulingPolicy({ restaurantId, input, ctx }) {
       ),
     );
   }
+  if (input.schedulingOperationalStartAt !== undefined) {
+    payload.schedulingOperationalStartAt = input.schedulingOperationalStartAt || null;
+  }
+  if (input.firstWeekGracePolicy) {
+    payload.firstWeekGracePolicy = {
+      enabled: input.firstWeekGracePolicy.enabled !== false,
+      strategy: "availability_warning_only",
+      appliedUntil: input.firstWeekGracePolicy.appliedUntil || null,
+    };
+  }
 
   if (actorId) {
     payload.updatedBy = actorId;
@@ -358,6 +399,13 @@ export function mapSchedulingPolicy(policy) {
     availabilityRegistrationPolicy: sanitizeAvailabilityRegistrationPolicy(
       policy.availabilityRegistrationPolicy || {},
     ),
+    schedulingOperationalStartAt: policy.schedulingOperationalStartAt || null,
+    firstWeekGracePolicy: {
+      enabled: policy.firstWeekGracePolicy?.enabled !== false,
+      strategy:
+        policy.firstWeekGracePolicy?.strategy || "availability_warning_only",
+      appliedUntil: policy.firstWeekGracePolicy?.appliedUntil || null,
+    },
     mandatoryShiftRoles:
       Array.isArray(policy.mandatoryShiftRoles) &&
       policy.mandatoryShiftRoles.length
@@ -367,4 +415,29 @@ export function mapSchedulingPolicy(policy) {
     updatedAt: policy.updatedAt,
     createdAt: policy.createdAt,
   };
+}
+export async function startSchedulingOperations({ restaurantId, ctx }) {
+  const rid = toObjectId(restaurantId);
+  if (!rid) throw new Error("restaurantId không hợp lệ.");
+  const existing = await SchedulingPolicy.findOne({ restaurantId: rid });
+  if (existing?.schedulingOperationalStartAt) return mapSchedulingPolicy(existing);
+  const now = new Date();
+  const appliedUntil = endOfWeekMonday(now);
+  const policy = await SchedulingPolicy.findOneAndUpdate(
+    { restaurantId: rid },
+    {
+      $setOnInsert: getDefaultSchedulingPolicyPayload(rid),
+      $set: {
+        schedulingOperationalStartAt: now,
+        firstWeekGracePolicy: {
+          enabled: true,
+          strategy: "availability_warning_only",
+          appliedUntil,
+        },
+        ...(ctx?.user?.id || ctx?.user?._id ? { updatedBy: toObjectId(ctx.user.id || ctx.user._id) } : {}),
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+  return mapSchedulingPolicy(policy);
 }

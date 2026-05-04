@@ -164,6 +164,18 @@ const AvailabilityRegistrationPolicySchema = new Schema(
   },
   { _id: false },
 );
+const FirstWeekGracePolicySchema = new Schema(
+  {
+    enabled: { type: Boolean, default: true },
+    strategy: {
+      type: String,
+      enum: ["availability_warning_only"],
+      default: "availability_warning_only",
+    },
+    appliedUntil: { type: Date, default: null },
+  },
+  { _id: false },
+);
 
 const SchedulingPolicySchema = new Schema(
   {
@@ -290,6 +302,11 @@ const SchedulingPolicySchema = new Schema(
     },
     availabilityRegistrationPolicy: {
       type: AvailabilityRegistrationPolicySchema,
+      default: () => ({}),
+    },
+    schedulingOperationalStartAt: { type: Date, default: null },
+    firstWeekGracePolicy: {
+      type: FirstWeekGracePolicySchema,
       default: () => ({}),
     },
 
