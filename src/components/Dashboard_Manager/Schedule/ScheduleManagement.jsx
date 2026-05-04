@@ -3732,6 +3732,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
             setIsAvailabilityPanelCollapsed((prev) => !prev)
           }
           reopenBlockedReason={reopenAvailabilityBlockedReason}
+          availabilityPolicy={schedulingPolicy?.availabilityRegistrationPolicy}
         />
       ) : null}
       {isStatsPanelOpen ? (

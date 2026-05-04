@@ -18,6 +18,7 @@ import {
   Sunrise,
 } from "lucide-react";
 import { AuthContext } from "@/context/AuthContext";
+import { resolveAvailabilityWindowEffectiveStatus } from "@/utils/availabilityRegistrationSchedule";
 import "./StaffSchedulePage.scss";
 
 const GET_AVAILABILITY_WINDOWS = gql`
@@ -475,7 +476,8 @@ export default function StaffSchedulePage() {
     return map;
   }, [submission]);
 
-  const windowStatus = String(selectedWindow?.status || "").toLowerCase();
+  const windowStatus = String(resolveAvailabilityWindowEffectiveStatus(selectedWindow) || selectedWindow?.status || "").toLowerCase();
+  const registrationMode = String(selectedWindow?.registrationMode || "manual").toLowerCase();
   const submissionStatus = String(
     submission?.status || "not_submitted",
   ).toLowerCase();
@@ -820,6 +822,16 @@ export default function StaffSchedulePage() {
                   </div>
 
                   <div>
+                    <span>Chế độ đăng ký</span>
+                    <strong>{registrationMode === "auto" ? "Tự động" : "Thủ công"}</strong>
+                  </div>
+
+                  <div>
+                    <span>Mở đăng ký</span>
+                    <strong>{selectedWindow.openAt ? fmtDate(selectedWindow.openAt) : "—"}</strong>
+                  </div>
+
+                  <div>
                     <span>Hạn đăng ký</span>
                     <strong>
                       {selectedWindow.closeAt
@@ -852,8 +864,8 @@ export default function StaffSchedulePage() {
                   <div className="staff-info-box">
                     <Info size={18} />
                     <div>
-                      <strong>Kỳ đăng ký chưa mở</strong>
-                      <p>Bạn sẽ gửi được đăng ký sau khi quản lý mở kỳ này.</p>
+                      <strong>Kỳ đăng ký chưa mở.</strong>
+                      <p>{registrationMode === "auto" ? "Kỳ đăng ký tự động chưa đến thời gian mở." : "Bạn sẽ gửi được đăng ký sau khi quản lý mở kỳ này."}</p>
                     </div>
                   </div>
                 ) : null}
@@ -862,7 +874,7 @@ export default function StaffSchedulePage() {
                   <div className="staff-info-box staff-info-box--warning">
                     <AlertTriangle size={18} />
                     <div>
-                      <strong>Kỳ đăng ký đã đóng</strong>
+                      <strong>{registrationMode === "auto" ? "Kỳ đăng ký đã hết hạn." : "Kỳ đăng ký đã đóng"}</strong>
                       <p>
                         Nếu hệ thống cho phép, thay đổi của bạn sẽ được gửi như
                         yêu cầu thay đổi muộn và chờ quản lý duyệt.
