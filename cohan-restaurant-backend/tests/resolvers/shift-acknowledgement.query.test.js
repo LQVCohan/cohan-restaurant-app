@@ -12,12 +12,13 @@ const modelMocks = vi.hoisted(() => ({
   Table: {},
   Category: {},
   Promotion: {},
-  Restaurant: {},
+  Restaurant: { exists: vi.fn() },
   PayrollPeriod: {},
   PayrollItem: {},
-  SchedulePublication: {},
+  SchedulePublication: { findOne: vi.fn() },
   EventLog: {},
   ShiftAcknowledgement: { find: vi.fn() },
+  ScheduleAcknowledgement: { find: vi.fn() },
 }));
 
 modelMocks.findMock.mockImplementation(() => ({ sort: modelMocks.findSortMock }));
@@ -58,6 +59,10 @@ describe("shift acknowledgement query resolvers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     modelMocks.findSortMock.mockResolvedValue([]);
+    modelMocks.Restaurant.exists.mockResolvedValue(null);
+    modelMocks.SchedulePublication.findOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
+    modelMocks.ScheduleAcknowledgement.find.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
+    modelMocks.Shift.find = vi.fn(() => ({ lean: vi.fn().mockResolvedValue([]) }));
   });
 
   it("allows manager to query restaurant acknowledgements with filters", async () => {
@@ -127,5 +132,48 @@ describe("shift acknowledgement query resolvers", () => {
     await expect(
       query.shiftAcknowledgements(null, { restaurantId: "rest-1" }, { user: null }),
     ).rejects.toThrow("UNAUTHENTICATED");
+  });
+
+  it("allows manager-owned restaurant access for scheduleAcknowledgementSummary without user.restaurantId", async () => {
+    const query = (await import("../../graphql/resolvers/staff/query.js")).default;
+    modelMocks.Restaurant.exists.mockResolvedValue(true);
+    modelMocks.SchedulePublication.findOne.mockReturnValue({
+      lean: vi.fn().mockResolvedValue(null),
+    });
+
+    const result = await query.scheduleAcknowledgementSummary(
+      null,
+      {
+        restaurantId: "rest-1",
+        periodStart: "2026-05-01T00:00:00.000Z",
+        periodEnd: "2026-05-31T23:59:59.999Z",
+      },
+      { user: { id: "manager-1", roles: ["MANAGER"] } },
+    );
+
+    expect(result).toEqual({
+      totalAssignedStaff: 0,
+      acknowledgedCount: 0,
+      pendingCount: 0,
+      changedAfterAcknowledgementCount: 0,
+      employees: [],
+    });
+  });
+
+  it("blocks manager without access for scheduleAcknowledgementSummary", async () => {
+    const query = (await import("../../graphql/resolvers/staff/query.js")).default;
+    modelMocks.Restaurant.exists.mockResolvedValue(null);
+
+    await expect(
+      query.scheduleAcknowledgementSummary(
+        null,
+        {
+          restaurantId: "rest-2",
+          periodStart: "2026-05-01T00:00:00.000Z",
+          periodEnd: "2026-05-31T23:59:59.999Z",
+        },
+        { user: { id: "manager-1", roles: ["MANAGER"] } },
+      ),
+    ).rejects.toThrow("FORBIDDEN_SCOPE");
   });
 });
