@@ -26,12 +26,25 @@ export const PromotionQuery = {
     if (activeOnly) {
       query.isActive = true;
       const nowDate = now ? new Date(now) : new Date();
-      query.$or = [
-        { startAt: { $exists: false }, endAt: { $exists: false } },
-        { startAt: { $lte: nowDate }, endAt: { $gte: nowDate } },
-        { startAt: { $lte: nowDate }, endAt: { $exists: false } },
-        { startAt: { $exists: false }, endAt: { $gte: nowDate } },
+      query.$and = [
+        {
+          $or: [
+            { startAt: { $exists: false } },
+            { startAt: null },
+            { startAt: { $lte: nowDate } },
+          ],
+        },
+        {
+          $or: [
+            { endAt: { $exists: false } },
+            { endAt: null },
+            { endAt: { $gte: nowDate } },
+          ],
+        },
       ];
+      query.$expr = {
+        $or: [{ $lte: ["$usageLimit", 0] }, { $lt: ["$usageCount", "$usageLimit"] }],
+      };
     }
 
     return Promotion.find(query)
