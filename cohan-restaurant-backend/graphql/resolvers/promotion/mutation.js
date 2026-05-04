@@ -62,6 +62,22 @@ const validatePromotionPayload = (payload) => {
     throw new GraphQLError("Invalid promotion input");
   }
 
+  const nonNegativeFields = [
+    ["discountValue", payload.discountValue],
+    ["buyQuantity", payload.buyQuantity],
+    ["getQuantity", payload.getQuantity],
+    ["minOrderValue", payload.minOrderValue],
+    ["maxDiscount", payload.maxDiscount],
+    ["usageLimit", payload.usageLimit],
+    ["level", payload.level],
+  ];
+
+  for (const [fieldName, value] of nonNegativeFields) {
+    if (!Number.isFinite(value) || value < 0) {
+      throw new GraphQLError(`${fieldName} must be non-negative`);
+    }
+  }
+
   if (payload.startAt && payload.endAt && payload.startAt >= payload.endAt) {
     throw new GraphQLError("Promotion endAt must be after startAt");
   }
@@ -87,8 +103,20 @@ const validatePromotionPayload = (payload) => {
     return;
   }
 
-  if (payload.discountValue <= 0) {
-    throw new GraphQLError("Invalid promotion input");
+  if (payload.promotionType === "FREESHIP") {
+    if (payload.scope !== "ORDER") {
+      throw new GraphQLError("FREESHIP promotion requires ORDER scope");
+    }
+    return;
+  }
+
+  if (["PERCENTAGE", "FIXED"].includes(payload.promotionType)) {
+    if (payload.discountValue <= 0) {
+      throw new GraphQLError(`${payload.promotionType} promotion requires discountValue > 0`);
+    }
+    if (payload.promotionType === "PERCENTAGE" && payload.discountValue > 100) {
+      throw new GraphQLError("PERCENTAGE promotion requires discountValue between 1 and 100");
+    }
   }
 };
 
