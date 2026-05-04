@@ -42,6 +42,7 @@ vi.mock("../../src/services/staffPerformance/staffPerformance.service.js", () =>
 vi.mock("../../src/services/scheduling/schedulingPolicy.service.js", () => ({
   getDefaultSchedulingPolicyPayload: vi.fn(() => ({})),
   mapSchedulingPolicy: vi.fn((policy) => policy),
+  isFirstOperationalWeek: vi.fn(() => ({ active: false })),
 }));
 
 const restaurantId = "507f1f77bcf86cd799439011";

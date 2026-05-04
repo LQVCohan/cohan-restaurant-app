@@ -22,7 +22,10 @@ import {
   recalculateStaffPerformanceSnapshots,
   upsertStaffPerformanceReview,
 } from "../../../src/services/staffPerformance/staffPerformance.service.js";
-import { updateSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
+import {
+  startSchedulingOperations,
+  updateSchedulingPolicy,
+} from "../../../src/services/scheduling/schedulingPolicy.service.js";
 import {
   assertShiftAssignmentValid,
   validateShiftAssignment,
@@ -62,7 +65,12 @@ import {
   mapSchedulePublicationOutput,
   resolveScheduleLifecycleStatus,
 } from "../../../src/services/scheduling/scheduleLifecycle.service.js";
-import { requireRoles, requireRestaurantScope } from "../../guards.js";
+import {
+  requireAuth,
+  requireRestaurantAccess,
+  requireRoles,
+  requireRestaurantScope,
+} from "../../guards.js";
 import {
   ATTENDANCE_REVIEW_ROLES,
   ATTENDANCE_OPERATION_ROLES,
@@ -2346,6 +2354,11 @@ export default {
       input,
       ctx,
     });
+  },
+  startSchedulingOperations: async (_, { restaurantId }, ctx) => {
+    requireAuth(ctx);
+    await requireRestaurantAccess(ctx, restaurantId);
+    return startSchedulingOperations({ restaurantId });
   },
   upsertStaffPerformanceReview: async (_, { input }, ctx) => {
     return upsertStaffPerformanceReview({
