@@ -2257,6 +2257,37 @@ const ScheduleManagement = ({ readOnly = false }) => {
       );
     }
   };
+  const handleUpdateAvailabilityPolicy = async (draftInput) => {
+    if (!effectiveRestaurantId) return;
+    try {
+      const basePolicy = stripTypenameDeep(schedulingPolicy || {});
+      const nextInput = {
+        ...basePolicy,
+        availabilityRegistrationPolicy: {
+          ...(basePolicy.availabilityRegistrationPolicy || {}),
+          availabilityRegistrationMode: draftInput.availabilityRegistrationMode,
+          availabilityOpenDayOffset: Number(draftInput.availabilityOpenDayOffset),
+          availabilityOpenTime: draftInput.availabilityOpenTime,
+          availabilityCloseDayOffset: Number(draftInput.availabilityCloseDayOffset),
+          availabilityCloseTime: draftInput.availabilityCloseTime,
+        },
+      };
+      await updateSchedulingPolicy({
+        variables: {
+          restaurantId: effectiveRestaurantId,
+          input: nextInput,
+        },
+      });
+      await refetchManagerWindows?.();
+      await refetchManagerSubmissions?.();
+      showNotification("Đã cập nhật chế độ đăng ký lịch nhân viên.", "success");
+    } catch (error) {
+      showNotification(
+        getGraphQLErrorMessage(error, "Không thể cập nhật chính sách đăng ký lịch."),
+        "error",
+      );
+    }
+  };
 
   const overlapsExistingShiftGroup = ({
     date,
@@ -3733,6 +3764,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
           }
           reopenBlockedReason={reopenAvailabilityBlockedReason}
           availabilityPolicy={schedulingPolicy?.availabilityRegistrationPolicy}
+          onUpdateAvailabilityPolicy={handleUpdateAvailabilityPolicy}
+          policySaving={updateSchedulingPolicyState.loading}
         />
       ) : null}
       {isStatsPanelOpen ? (
