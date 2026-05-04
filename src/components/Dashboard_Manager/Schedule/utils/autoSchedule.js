@@ -203,7 +203,7 @@ const getCandidateAvailabilityIssue = ({
     const hasUsableSubmission =
       submission &&
       !INACTIVE_AVAILABILITY_STATUSES.has(status) &&
-      ACTIVE_AVAILABILITY_STATUSES.has(status);
+      (ACTIVE_AVAILABILITY_STATUSES.has(status) || lateChangePending);
 
     if (!hasUsableSubmission) {
       return windowClosed

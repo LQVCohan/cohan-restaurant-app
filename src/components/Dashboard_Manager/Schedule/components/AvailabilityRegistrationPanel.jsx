@@ -18,7 +18,6 @@ const SUBMISSION_STATUS_LABELS = {
   submitted: "Đã gửi",
   approved: "Đã duyệt",
   rejected: "Bị từ chối",
-  late_change_requested: "Chờ duyệt thay đổi muộn",
   locked: "Đã khóa để xếp lịch",
 };
 
@@ -99,8 +98,6 @@ export default function AvailabilityRegistrationPanel({
   availabilityPolicy,
   onUpdateAvailabilityPolicy,
   policySaving = false,
-  onReviewSubmission,
-  reviewingSubmission = false,
 }) {
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [policyDraft, setPolicyDraft] = useState({
@@ -136,7 +133,6 @@ export default function AvailabilityRegistrationPanel({
       approved: 0,
       rejected: 0,
       locked: 0,
-      late_change_requested: 0,
     };
 
     submissions.forEach((item) => {
@@ -361,10 +357,6 @@ export default function AvailabilityRegistrationPanel({
                 <div className="metrics-grid">
                   <span>Tổng submission: {submissionSummary.total}</span>
                   <span>
-                    {SUBMISSION_STATUS_LABELS.late_change_requested}:
-                    {submissionSummary.late_change_requested}
-                  </span>
-                  <span>
                     {SUBMISSION_STATUS_LABELS.pending}:{" "}
                     {submissionSummary.pending}
                   </span>
@@ -484,33 +476,6 @@ export default function AvailabilityRegistrationPanel({
                                 ))
                               )}
                             </div>
-
-                            {(item.pendingSlots || []).length > 0 ? (
-                              <div className="availability-submission-card__slots">
-                                <strong>Yêu cầu thay đổi muộn</strong>
-                                {(item.pendingSlots || []).map((slot, index) => (
-                                  <span
-                                    key={`${item.id}-pending-${slot.date}-${slot.shiftType}-${index}`}
-                                    className={`availability-submission-slot is-${String(
-                                      slot.status || "",
-                                    ).toLowerCase()}`}
-                                    title={slot.note || ""}
-                                  >
-                                    {formatDateOnly(slot.date)} · {getShiftTypeLabel(slot.shiftType)} · {getSlotStatusLabel(slot.status)}
-                                  </span>
-                                ))}
-                                <span className="availability-submission-slot is-empty">
-                                  Gửi lúc: {formatDateTime(item.pendingSubmittedAt || item.submittedAt)}
-                                </span>
-                              </div>
-                            ) : null}
-
-                            {String(item.status || "").toLowerCase() === "late_change_requested" ? (
-                              <div className="schedule-availability-panel__actions">
-                                <button type="button" disabled={reviewingSubmission} onClick={() => onReviewSubmission?.(item.id, true)}>Duyệt thay đổi</button>
-                                <button type="button" disabled={reviewingSubmission} onClick={() => onReviewSubmission?.(item.id, false)}>Từ chối</button>
-                              </div>
-                            ) : null}
                           </article>
                         );
                       })}
