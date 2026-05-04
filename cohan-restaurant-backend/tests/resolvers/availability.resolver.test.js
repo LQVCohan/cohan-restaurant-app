@@ -9,8 +9,6 @@ const modelMocks = vi.hoisted(() => ({
     findOne: vi.fn(),
     find: vi.fn(),
     findOneAndUpdate: vi.fn(),
-    findById: vi.fn(),
-    findByIdAndUpdate: vi.fn(),
     updateMany: vi.fn(),
   },
   Staff: { findById: vi.fn() },
@@ -116,40 +114,6 @@ describe("availability resolver", () => {
 
     expect(res.status).toBe("late_change_requested");
     expect(modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mock.calls[0][1].$set.status).toBe("late_change_requested");
-    expect(modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mock.calls[0][1].$set.pendingSlots).toEqual([]);
-    expect(modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mock.calls[0][1].$set.slots).toBeUndefined();
-    expect(modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mock.calls[0][1].$setOnInsert.slots).toEqual([]);
-  });
-  it("stores open-window submit in official slots and clears pending", async () => {
-    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
-    const slots = [{ date: new Date(), shiftType: "morning", status: "available" }];
-    modelMocks.AvailabilityRegistrationWindow.findById.mockResolvedValue({ _id: "w1", restaurantId: "r1", periodStart: new Date(), periodEnd: new Date(), status: "open", openAt: new Date(Date.now()-1000), closeAt: new Date(Date.now()+1000), lateChangeRequiresApproval: true });
-    modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mockResolvedValue({ status: "submitted", slots });
-    await mutation.submitStaffAvailability(null, { input: { availabilityWindowId: "w1", employeeId: "e1", employmentType: "part_time", submissionType: "weekly_availability", slots } }, { user: { id: "e1", roles: [], restaurantId: "r1" } });
-    const update = modelMocks.StaffAvailabilitySubmission.findOneAndUpdate.mock.calls.at(-1)[1].$set;
-    expect(update.slots).toEqual(slots);
-    expect(update.pendingSlots).toEqual([]);
-    expect(update.status).toBe("submitted");
-  });
-  it("approves late change by copying pendingSlots into slots", async () => {
-    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
-    const pendingSlots = [{ date: new Date(), shiftType: "morning", status: "available" }];
-    modelMocks.StaffAvailabilitySubmission.findById.mockResolvedValue({ _id: "s1", restaurantId: "r1", status: "late_change_requested", slots: [], pendingSlots, pendingSubmissionType: "weekly_availability", pendingSubmittedAt: new Date() });
-    modelMocks.StaffAvailabilitySubmission.findByIdAndUpdate.mockResolvedValue({ _id: "s1", status: "approved", slots: pendingSlots, pendingSlots: [] });
-    const res = await mutation.reviewStaffAvailabilitySubmission(null, { input: { id: "s1", status: "approved", reviewNote: "ok" } }, { user: { id: "m1", roles: ["manager"], restaurantId: "r1" } });
-    expect(res.status).toBe("approved");
-    const payload = modelMocks.StaffAvailabilitySubmission.findByIdAndUpdate.mock.calls.at(-1)[1].$set;
-    expect(payload.slots).toEqual(pendingSlots);
-    expect(payload.pendingSlots).toEqual([]);
-  });
-  it("rejects late change by clearing pendingSlots without applying", async () => {
-    const mutation = (await import("../../graphql/resolvers/availability/mutation.js")).default;
-    modelMocks.StaffAvailabilitySubmission.findById.mockResolvedValue({ _id: "s2", restaurantId: "r1", status: "late_change_requested", slots: [{ date: new Date(), shiftType: "evening", status: "available" }], pendingSlots: [{ date: new Date(), shiftType: "morning", status: "available" }] });
-    modelMocks.StaffAvailabilitySubmission.findByIdAndUpdate.mockResolvedValue({ _id: "s2", status: "rejected", pendingSlots: [] });
-    await mutation.reviewStaffAvailabilitySubmission(null, { input: { id: "s2", status: "rejected" } }, { user: { id: "m1", roles: ["manager"], restaurantId: "r1" } });
-    const payload = modelMocks.StaffAvailabilitySubmission.findByIdAndUpdate.mock.calls.at(-1)[1].$set;
-    expect(payload.status).toBe("rejected");
-    expect(payload.pendingSlots).toEqual([]);
   });
 
   it("blocks submission when window is used_for_schedule or cancelled", async () => {

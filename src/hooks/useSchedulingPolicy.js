@@ -131,12 +131,6 @@ export const QUERY_SCHEDULING_POLICY = gql`
         treatMissingPartTimeSubmissionAsUnavailable
         autoCreateWindow
       }
-      schedulingOperationalStartAt
-      firstWeekGracePolicy {
-        enabled
-        strategy
-        appliedUntil
-      }
       createdAt
       updatedAt
     }
@@ -252,19 +246,6 @@ const MUTATION_UPDATE_SCHEDULING_POLICY = gql`
     }
   }
 `;
-const MUTATION_START_SCHEDULING_OPERATIONS = gql`
-  mutation StartSchedulingOperations($restaurantId: ID!) {
-    startSchedulingOperations(restaurantId: $restaurantId) {
-      id
-      schedulingOperationalStartAt
-      firstWeekGracePolicy {
-        enabled
-        strategy
-        appliedUntil
-      }
-    }
-  }
-`;
 
 export default function useSchedulingPolicy({ restaurantId } = {}) {
   const { data, loading, error, refetch } = useQuery(QUERY_SCHEDULING_POLICY, {
@@ -288,9 +269,6 @@ export default function useSchedulingPolicy({ restaurantId } = {}) {
       },
     },
   );
-  const [startSchedulingOperations, startState] = useMutation(
-    MUTATION_START_SCHEDULING_OPERATIONS,
-  );
 
   const policy = useMemo(
     () => data?.schedulingPolicy || null,
@@ -307,8 +285,6 @@ export default function useSchedulingPolicy({ restaurantId } = {}) {
     validateState,
 
     updateSchedulingPolicy,
-    startSchedulingOperations,
     updateState,
-    startState,
   };
 }

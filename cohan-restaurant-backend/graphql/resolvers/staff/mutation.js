@@ -22,10 +22,7 @@ import {
   recalculateStaffPerformanceSnapshots,
   upsertStaffPerformanceReview,
 } from "../../../src/services/staffPerformance/staffPerformance.service.js";
-import {
-  startSchedulingOperations,
-  updateSchedulingPolicy,
-} from "../../../src/services/scheduling/schedulingPolicy.service.js";
+import { updateSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
 import {
   assertShiftAssignmentValid,
   validateShiftAssignment,
@@ -2349,11 +2346,6 @@ export default {
       input,
       ctx,
     });
-  },
-  startSchedulingOperations: async (_, { restaurantId }, ctx) => {
-    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
-    requireRestaurantScope(ctx, restaurantId);
-    return startSchedulingOperations({ restaurantId, ctx });
   },
   upsertStaffPerformanceReview: async (_, { input }, ctx) => {
     return upsertStaffPerformanceReview({

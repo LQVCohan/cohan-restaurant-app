@@ -1955,20 +1955,8 @@ type SchedulingPolicy {
   mandatoryShiftRoles: [String!]!
   employmentTypePolicy: EmploymentTypeSchedulingPolicy
   availabilityRegistrationPolicy: AvailabilityRegistrationPolicy!
-  schedulingOperationalStartAt: DateTime
-  firstWeekGracePolicy: FirstWeekGracePolicy!
   createdAt: DateTime
   updatedAt: DateTime
-}
-type FirstWeekGracePolicy {
-  enabled: Boolean!
-  strategy: String!
-  appliedUntil: DateTime
-}
-input FirstWeekGracePolicyInput {
-  enabled: Boolean
-  strategy: String
-  appliedUntil: DateTime
 }
 
 input SchedulingPolicyInput {
@@ -1979,8 +1967,6 @@ input SchedulingPolicyInput {
   mandatoryShiftRoles: [String!]
   employmentTypePolicy: EmploymentTypeSchedulingPolicyInput
   availabilityRegistrationPolicy: AvailabilityRegistrationPolicyInput
-  schedulingOperationalStartAt: DateTime
-  firstWeekGracePolicy: FirstWeekGracePolicyInput
 }
 
 type ShiftAssignmentIssue {
@@ -2244,7 +2230,6 @@ type Mutation {
     restaurantId: ID!
     input: SchedulingPolicyInput!
   ): SchedulingPolicy!
-  startSchedulingOperations(restaurantId: ID!): SchedulingPolicy!
   createOvertimeRequest(input: CreateOvertimeRequestInput!): OvertimeRequest!
   confirmOvertimeRequest(input: ConfirmOvertimeRequestInput!): OvertimeRequest!
   approveOvertimeRequest(input: ApproveOvertimeRequestInput!): OvertimeRequest!

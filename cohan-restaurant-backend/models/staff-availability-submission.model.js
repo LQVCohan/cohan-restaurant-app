@@ -22,17 +22,6 @@ const StaffAvailabilitySubmissionSchema = new Schema(
     employmentType: { type: String, enum: ["full_time", "part_time", "probation", "seasonal", "contract"], required: true },
     submissionType: { type: String, enum: ["weekly_availability", "unavailable_exception"], required: true },
     slots: { type: [SlotSchema], default: [] },
-    pendingSlots: { type: [SlotSchema], default: [] },
-    pendingSubmittedAt: { type: Date },
-    pendingSubmissionType: {
-      type: String,
-      enum: ["weekly_availability", "unavailable_exception"],
-    },
-    pendingSource: {
-      type: String,
-      enum: ["employee", "manager", "system"],
-    },
-    pendingNote: { type: String, trim: true, default: "" },
     submittedAt: { type: Date },
     lockedAt: { type: Date },
     status: { type: String, enum: ["draft", "submitted", "locked", "late_change_requested", "approved", "rejected", "cancelled"], default: "draft", index: true },
