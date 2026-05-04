@@ -734,11 +734,13 @@ export async function validateShiftAssignment({ input }) {
     atDate: startTime,
   });
 
+  const scoringWarnings = warnings.filter((warning) => warning.code !== "FIRST_WEEK_GRACE_MISSING_AVAILABILITY");
+
   const scoreResult = computeCandidateScore({
     staff,
     policy,
     weeklyHoursAfter,
-    hasWarnings: warnings.length > 0,
+    hasWarnings: scoringWarnings.length > 0,
     consecutiveDays,
     performanceSnapshot,
   });

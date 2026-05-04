@@ -1233,6 +1233,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
     updateSchedulingPolicy,
     updateState: updateSchedulingPolicyState,
     validateShiftAssignment,
+    startSchedulingOperations,
   } = useSchedulingPolicy({
     restaurantId: effectiveRestaurantId,
   });
@@ -1258,6 +1259,29 @@ const ScheduleManagement = ({ readOnly = false }) => {
       : viewMode === "month"
         ? monthEnd
         : currentDate;
+
+
+  const schedulingStartedAt = schedulingPolicy?.schedulingOperationalStartAt ? new Date(schedulingPolicy.schedulingOperationalStartAt) : null;
+  const firstWeekGraceAppliedUntil = schedulingPolicy?.firstWeekGracePolicy?.appliedUntil ? new Date(schedulingPolicy.firstWeekGracePolicy.appliedUntil) : null;
+  const isFirstWeekGraceActive = Boolean(
+    schedulingStartedAt &&
+      firstWeekGraceAppliedUntil &&
+      currentDate >= schedulingStartedAt &&
+      currentDate <= firstWeekGraceAppliedUntil &&
+      schedulingPolicy?.firstWeekGracePolicy?.enabled,
+  );
+  const isSunday = currentDate.getDay() === 0;
+  const shouldRemindNextWeekRegistration = !isSunday && !managerNextWeekWindow?.id;
+
+  const handleStartSchedulingOperations = async () => {
+    if (!effectiveRestaurantId) return;
+    const ok = await startSchedulingOperations(effectiveRestaurantId);
+    if (ok) {
+      showNotification("Đã bắt đầu sử dụng lịch làm việc.", "success");
+    } else {
+      showNotification("Không thể bắt đầu sử dụng lịch làm việc.", "error");
+    }
+  };
 
   const configuredShiftTypes = useMemo(
     () => shiftRulesToTypes(shiftRules),
@@ -3731,6 +3755,24 @@ const ScheduleManagement = ({ readOnly = false }) => {
           </button>
         </div>
       ) : null}
+
+      {!readOnly && !schedulingPolicyLoading && !schedulingPolicy?.schedulingOperationalStartAt ? (
+        <div className="schedule-publish-reminder">
+          <div className="reminder-content">
+            <strong>Bắt đầu sử dụng hệ thống lịch làm việc</strong>
+            <p>Hệ thống sẽ ghi nhận tuần hiện tại là tuần khởi tạo. Trong tuần đầu, nhân viên part-time chưa có availability sẽ được cảnh báo thay vì chặn cứng để quản lý có thể tạo lịch gấp.</p>
+          </div>
+          <button type="button" onClick={handleStartSchedulingOperations}>Bắt đầu sử dụng</button>
+        </div>
+      ) : null}
+      {!readOnly && isFirstWeekGraceActive ? (
+        <div className="schedule-publish-reminder">
+          <div className="reminder-content">
+            <strong>Tuần đầu sử dụng hệ thống — thiếu availability của nhân viên bán thời gian sẽ được cảnh báo thay vì chặn cứng. Hãy mở đăng ký lịch cho tuần sau để vận hành đúng quy trình.</strong>
+          </div>
+        </div>
+      ) : null}
+
       {!readOnly ? (
         <AvailabilityRegistrationPanel
           selectedRestaurantId={effectiveRestaurantId}
@@ -3760,6 +3802,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
           policySaving={updateSchedulingPolicyState.loading}
           onReviewSubmission={handleReviewLateChange}
           reviewingSubmission={reviewingAvailabilitySubmission}
+          firstWeekGraceActive={isFirstWeekGraceActive}
+          nextWeekWindowMissing={!managerNextWeekWindow?.id}
+          isSunday={isSunday}
+          shouldRemindNextWeekRegistration={shouldRemindNextWeekRegistration}
         />
       ) : null}
       {isStatsPanelOpen ? (

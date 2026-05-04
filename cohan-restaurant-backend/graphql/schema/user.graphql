@@ -1946,6 +1946,18 @@ input AvailabilityRegistrationPolicyInput {
   autoCreateWindow: Boolean
 }
 
+type FirstWeekGracePolicy {
+  enabled: Boolean!
+  strategy: String!
+  appliedUntil: DateTime
+}
+
+input FirstWeekGracePolicyInput {
+  enabled: Boolean
+  strategy: String
+  appliedUntil: DateTime
+}
+
 type SchedulingPolicy {
   id: ID!
   restaurantId: ID!
@@ -1954,6 +1966,8 @@ type SchedulingPolicy {
   scoringWeights: SchedulingScoringWeights!
   mandatoryShiftRoles: [String!]!
   employmentTypePolicy: EmploymentTypeSchedulingPolicy
+  schedulingOperationalStartAt: DateTime
+  firstWeekGracePolicy: FirstWeekGracePolicy
   availabilityRegistrationPolicy: AvailabilityRegistrationPolicy!
   createdAt: DateTime
   updatedAt: DateTime
@@ -1966,6 +1980,7 @@ input SchedulingPolicyInput {
   scoringWeights: SchedulingScoringWeightsInput
   mandatoryShiftRoles: [String!]
   employmentTypePolicy: EmploymentTypeSchedulingPolicyInput
+  firstWeekGracePolicy: FirstWeekGracePolicyInput
   availabilityRegistrationPolicy: AvailabilityRegistrationPolicyInput
 }
 
@@ -2230,6 +2245,7 @@ type Mutation {
     restaurantId: ID!
     input: SchedulingPolicyInput!
   ): SchedulingPolicy!
+  startSchedulingOperations(restaurantId: ID!): SchedulingPolicy!
   createOvertimeRequest(input: CreateOvertimeRequestInput!): OvertimeRequest!
   confirmOvertimeRequest(input: ConfirmOvertimeRequestInput!): OvertimeRequest!
   approveOvertimeRequest(input: ApproveOvertimeRequestInput!): OvertimeRequest!
