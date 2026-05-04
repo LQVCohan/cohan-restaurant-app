@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { gql, useLazyQuery, useMutation, useQuery } from "@apollo/client";
 import {
+  CheckCircle2,
   AlertTriangle,
   CalendarCheck2,
   CalendarDays,
@@ -324,11 +325,7 @@ export default function StaffSchedulePage() {
   );
   const [
     loadAvailabilityWindows,
-    {
-      data: windowsData,
-      loading: loadingWindows,
-      error: windowsError,
-    },
+    { data: windowsData, loading: loadingWindows, error: windowsError },
   ] = useLazyQuery(GET_AVAILABILITY_WINDOWS, {
     fetchPolicy: "network-only",
     notifyOnNetworkStatusChange: true,
@@ -361,11 +358,7 @@ export default function StaffSchedulePage() {
 
   const [
     loadStaffShifts,
-    {
-      data: shiftsData,
-      loading: loadingShifts,
-      error: shiftsError,
-    },
+    { data: shiftsData, loading: loadingShifts, error: shiftsError },
   ] = useLazyQuery(GET_STAFF_SHIFTS, {
     fetchPolicy: "network-only",
     notifyOnNetworkStatusChange: true,
@@ -652,7 +645,65 @@ export default function StaffSchedulePage() {
           </button>
         </div>
       </section>
+      <section className="staff-flow-steps">
+        <div
+          className={`staff-flow-step ${
+            selectedWindow ? "is-done" : "is-current"
+          }`}
+        >
+          <span className="staff-flow-step__icon">
+            <CalendarCheck2 size={17} />
+          </span>
+          <div>
+            <strong>Mở đăng ký</strong>
+            <small>
+              {selectedWindow
+                ? WINDOW_STATUS_LABELS[windowStatus] || "Đã có kỳ"
+                : "Chờ quản lý"}
+            </small>
+          </div>
+        </div>
 
+        <div
+          className={`staff-flow-step ${
+            submission?.id ? "is-done" : selectedWindow ? "is-current" : ""
+          }`}
+        >
+          <span className="staff-flow-step__icon">
+            <Send size={17} />
+          </span>
+          <div>
+            <strong>Gửi availability</strong>
+            <small>
+              {SUBMISSION_STATUS_LABELS[submissionStatus] || "Chưa gửi"}
+            </small>
+          </div>
+        </div>
+
+        <div
+          className={`staff-flow-step ${submission?.id ? "is-current" : ""}`}
+        >
+          <span className="staff-flow-step__icon">
+            <Clock3 size={17} />
+          </span>
+          <div>
+            <strong>Quản lý xếp lịch</strong>
+            <small>Chờ lịch được công bố</small>
+          </div>
+        </div>
+
+        <div className={`staff-flow-step ${shifts.length ? "is-done" : ""}`}>
+          <span className="staff-flow-step__icon">
+            <CheckCircle2 size={17} />
+          </span>
+          <div>
+            <strong>Lịch công bố</strong>
+            <small>
+              {shifts.length ? `${shifts.length} ca` : "Chưa có ca"}
+            </small>
+          </div>
+        </div>
+      </section>
       <section className="staff-schedule-layout">
         <div className="staff-schedule-main">
           <section className="staff-card staff-card--availability">
@@ -924,6 +975,41 @@ export default function StaffSchedulePage() {
         </div>
 
         <aside className="staff-schedule-side">
+          <section className="staff-card staff-card--overview">
+            <div className="staff-card__kicker">
+              <Sparkles size={16} />
+              <span>Tổng quan tuần</span>
+            </div>
+
+            <div className="staff-overview-list">
+              <div className="staff-overview-item">
+                <span>Tuần xem lịch</span>
+                <strong>{getWeekRangeLabel(weekStart, weekEnd)}</strong>
+              </div>
+
+              <div className="staff-overview-item">
+                <span>Kỳ đăng ký</span>
+                <strong>{availabilityTargetRangeLabel}</strong>
+              </div>
+
+              <div className="staff-overview-item">
+                <span>Trạng thái đăng ký</span>
+                <strong>
+                  {WINDOW_STATUS_LABELS[windowStatus] || "Chưa có kỳ"}
+                </strong>
+              </div>
+
+              <div className="staff-overview-item staff-overview-item--highlight">
+                <span>Ca đã chọn</span>
+                <strong>{selectedSlotCount}</strong>
+              </div>
+
+              <div className="staff-overview-item staff-overview-item--highlight">
+                <span>Ca công bố</span>
+                <strong>{shifts.length}</strong>
+              </div>
+            </div>
+          </section>
           <section className="staff-card staff-card--shifts">
             <div className="staff-card__header staff-card__header--compact">
               <div>
