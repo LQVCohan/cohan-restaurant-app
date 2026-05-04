@@ -1,7 +1,9 @@
 import { AvailabilityRegistrationWindow, StaffAvailabilitySubmission } from "../../../models/index.js";
+import { getSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
 import { requireAuth, requireRestaurantAccess, requireRoles } from "../../guards.js";
 import { createOrGetAvailabilityRegistrationWindow, isAvailabilityRegistrationWindowOpen, lockSubmissionsForClosedWindow, getStaffEmploymentType } from "../../../src/services/availability/availabilityRegistrationWindow.service.js";
 import { AVAILABILITY_WINDOW_ADMIN_ROLES, AVAILABILITY_REVIEW_ROLES, userHasAnyRole } from "../../../src/services/scheduling/schedulingPermission.service.js";
+import { buildAvailabilityRegistrationSchedule, resolveAvailabilityWindowEffectiveStatus } from "../../../src/services/availability/availabilityRegistrationSchedule.service.js";
 
 async function getScopedAvailabilityWindow(id, ctx) {
   const doc = await AvailabilityRegistrationWindow.findById(id);
@@ -14,7 +16,18 @@ export default {
   createAvailabilityWindow: async (_, { input }, ctx) => {
     requireRoles(ctx, AVAILABILITY_WINDOW_ADMIN_ROLES);
     await requireRestaurantAccess(ctx, input.restaurantId);
-    return createOrGetAvailabilityRegistrationWindow(input, ctx.user.id);
+    const policy = await getSchedulingPolicy({ restaurantId: input.restaurantId });
+    const schedule = buildAvailabilityRegistrationSchedule({
+      targetWeekStart: input.periodStart,
+      targetWeekEnd: input.periodEnd,
+      policy,
+    });
+    return createOrGetAvailabilityRegistrationWindow({
+      ...input,
+      openAt: schedule.openAt,
+      closeAt: schedule.closeAt,
+      registrationModeSnapshot: schedule.mode,
+    }, ctx.user.id);
   },
   openAvailabilityWindow: async (_, { id }, ctx) => {
     requireRoles(ctx, AVAILABILITY_WINDOW_ADMIN_ROLES);
@@ -51,10 +64,13 @@ export default {
       throw new Error("AVAILABILITY_WINDOW_CANCELLED");
     }
 
-    if (!isAvailabilityRegistrationWindowOpen(windowDoc)) {
-      if (!windowDoc.lateChangeRequiresApproval) {
-        throw new Error("AVAILABILITY_WINDOW_CLOSED");
-      }
+    const effectiveStatus = resolveAvailabilityWindowEffectiveStatus(windowDoc);
+    if (effectiveStatus === "cancelled") throw new Error("Kỳ đăng ký đã bị hủy.");
+    if (effectiveStatus === "used_for_schedule") throw new Error("Kỳ đăng ký đã được dùng để xếp lịch.");
+    if (effectiveStatus === "draft") throw new Error("Kỳ đăng ký chưa mở.");
+    if (effectiveStatus === "closed") throw new Error("Kỳ đăng ký đã hết hạn.");
+    if (effectiveStatus !== "open" && !isAvailabilityRegistrationWindowOpen(windowDoc)) {
+      if (!windowDoc.lateChangeRequiresApproval) throw new Error("Kỳ đăng ký đã đóng.");
       input.status = "late_change_requested";
     } else {
       input.status = input.status || "submitted";

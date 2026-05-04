@@ -9,6 +9,7 @@ const AvailabilityRegistrationWindowSchema = new Schema(
     periodEnd: { type: Date, required: true },
     openAt: { type: Date, required: true },
     closeAt: { type: Date, required: true },
+    registrationModeSnapshot: { type: String, enum: ["auto", "manual"], default: "manual" },
     status: {
       type: String,
       enum: ["draft", "open", "closed", "used_for_schedule", "cancelled"],

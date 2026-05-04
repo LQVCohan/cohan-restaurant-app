@@ -390,6 +390,8 @@ const GET_AVAILABILITY_WINDOWS = gql`
       openAt
       closeAt
       status
+      effectiveStatus
+      registrationMode
       targetEmploymentTypes
       allowFullTimeUnavailableException
       lateChangeRequiresApproval
@@ -434,6 +436,8 @@ const CREATE_AVAILABILITY_WINDOW = gql`
       openAt
       closeAt
       status
+      effectiveStatus
+      registrationMode
     }
   }
 `;
@@ -1735,8 +1739,6 @@ const ScheduleManagement = ({ readOnly = false }) => {
             restaurantId: effectiveRestaurantId,
             periodStart: nextWeekStart.toISOString(),
             periodEnd: nextWeekEnd.toISOString(),
-            openAt: new Date().toISOString(),
-            closeAt: subDays(nextWeekStart, 1).toISOString(),
           },
         },
       });
