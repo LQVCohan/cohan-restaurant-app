@@ -117,4 +117,31 @@ describe("AvailabilityRegistrationPanel", () => {
     expect(screen.getByRole("button", { name: "Mở đăng ký" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Đóng đăng ký" })).toBeDisabled();
   });
+
+  it("renders pending late-change section and triggers approve/reject callbacks", () => {
+    const onReviewSubmission = vi.fn();
+    render(
+      <AvailabilityRegistrationPanel
+        {...baseProps}
+        submissions={[{
+          id: "sub-1",
+          employeeId: "e1",
+          employmentType: "part_time",
+          status: "late_change_requested",
+          submittedAt: "2026-05-01T00:00:00.000Z",
+          slots: [],
+          pendingSlots: [{ date: "2026-05-12T00:00:00.000Z", shiftType: "morning", status: "available", note: "" }],
+        }]}
+        onReviewSubmission={onReviewSubmission}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Xem submissions/i }));
+    expect(screen.getByText("Yêu cầu thay đổi muộn")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Duyệt thay đổi" }));
+    fireEvent.click(screen.getByRole("button", { name: "Từ chối" }));
+    expect(onReviewSubmission).toHaveBeenNthCalledWith(1, "sub-1", true);
+    expect(onReviewSubmission).toHaveBeenNthCalledWith(2, "sub-1", false);
+  });
+
 });

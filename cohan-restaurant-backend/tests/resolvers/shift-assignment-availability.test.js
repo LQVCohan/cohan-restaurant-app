@@ -320,6 +320,26 @@ describe("validateShiftAssignment availability rules", () => {
     );
   });
 
+
+  it("ignores pending slots for late_change_requested until approved", async () => {
+    setupBase({
+      staff: { _id: employeeId, userType: "STAFF", employmentStatus: "working", employmentType: "part_time", workingDays: ["MON"] },
+      windowDoc: closedWindow,
+      submission: {
+        _id: "submission-pending",
+        availabilityWindowId: windowId,
+        employeeId,
+        employmentType: "part_time",
+        submissionType: "weekly_availability",
+        status: "late_change_requested",
+        slots: [],
+        pendingSlots: [{ date: new Date("2026-04-20T00:00:00.000Z"), shiftType: "morning", status: "available" }],
+      },
+    });
+    const result = await validate();
+    expect(result.warnings).toEqual(expect.arrayContaining([expect.objectContaining({ code: "LATE_AVAILABILITY_CHANGE_PENDING" }), expect.objectContaining({ code: "PART_TIME_AVAILABILITY_REQUIRED" })]));
+  });
+
   it("hard-blocks approved leave even when override is allowed", async () => {
     setupBase({
       staff: {

@@ -246,7 +246,7 @@ export async function resolveStaffAvailabilityForShift({
     const hasUsableSubmission =
       submission &&
       !INACTIVE_SUBMISSION_STATUSES.has(submissionStatus) &&
-      (ACTIVE_SUBMISSION_STATUSES.has(submissionStatus) || lateChangePending);
+      ACTIVE_SUBMISSION_STATUSES.has(submissionStatus);
 
     if (!hasUsableSubmission) {
       if (windowClosed) {
@@ -286,7 +286,7 @@ export async function resolveStaffAvailabilityForShift({
 
     if (findSlot(submission.slots, shiftDate, shiftType, "available")) {
       return {
-        status: lateChangePending ? "late_change_pending" : "available",
+        status: "available",
         issues,
         window: windowDoc,
         submission,

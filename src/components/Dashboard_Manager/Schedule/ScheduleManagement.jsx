@@ -419,6 +419,9 @@ const GET_AVAILABILITY_SUBMISSIONS = gql`
       lockedAt
       source
       pendingSubmittedAt
+      pendingSubmissionType
+      pendingSource
+      pendingNote
       pendingSlots {
         date
         shiftType

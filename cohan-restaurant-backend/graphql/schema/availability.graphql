@@ -78,14 +78,19 @@ type StaffAvailabilitySubmission {
   periodEnd: DateTime!
   employmentType: EmploymentType!
   submissionType: AvailabilitySubmissionType!
+  pendingSubmissionType: AvailabilitySubmissionType
   slots: [AvailabilitySlot!]!
+  pendingSlots: [AvailabilitySlot!]!
   submittedAt: DateTime
+  pendingSubmittedAt: DateTime
   lockedAt: DateTime
   status: StaffAvailabilitySubmissionStatus!
   reviewedBy: ID
   reviewedAt: DateTime
   reviewNote: String
   source: SubmissionSource!
+  pendingSource: SubmissionSource
+  pendingNote: String
   createdAt: DateTime
   updatedAt: DateTime
 }
@@ -113,6 +118,7 @@ input SubmitStaffAvailabilityInput {
   employeeId: ID!
   employmentType: EmploymentType
   submissionType: AvailabilitySubmissionType!
+  pendingSubmissionType: AvailabilitySubmissionType
   slots: [AvailabilitySlotInput!]!
   status: StaffAvailabilitySubmissionStatus
 }
