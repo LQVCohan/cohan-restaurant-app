@@ -16,6 +16,7 @@ import {
   SchedulePublication,
   EventLog,
   ShiftAcknowledgement,
+  ScheduleAcknowledgement,
 } from "../../../models/index.js";
 import { listStaffPerformanceSnapshots } from "../../../src/services/staffPerformance/staffPerformance.service.js";
 import { getSchedulingPolicy } from "../../../src/services/scheduling/schedulingPolicy.service.js";
@@ -413,6 +414,44 @@ export default {
     }
 
     return ShiftAcknowledgement.find(filter).sort({ deadlineAt: 1 });
+  },
+
+  myScheduleAcknowledgement: async (_, { restaurantId, periodStart, periodEnd }, ctx) => {
+    requireAuth(ctx);
+    requireRestaurantScope(ctx, restaurantId);
+    const employeeId = ctx?.user?.id || ctx?.user?._id;
+    const publication = await SchedulePublication.findOne({
+      restaurantId: toObjectId(restaurantId) || restaurantId,
+      periodStart: toStartOfDay(periodStart),
+      periodEnd: toEndOfDay(periodEnd),
+      status: { $in: ["published", "active"] },
+    }).lean();
+    if (!publication) return null;
+    return ScheduleAcknowledgement.findOne({
+      restaurantId: publication.restaurantId,
+      employeeId: toObjectId(employeeId) || employeeId,
+      schedulePublicationId: publication._id,
+    });
+  },
+  scheduleAcknowledgementSummary: async (_, { restaurantId, periodStart, periodEnd }, ctx) => {
+    requireAuth(ctx);
+    requireRestaurantScope(ctx, restaurantId);
+    requireRoles(ctx, SCHEDULE_READ_ROLES);
+    const publication = await SchedulePublication.findOne({
+      restaurantId: toObjectId(restaurantId) || restaurantId,
+      periodStart: toStartOfDay(periodStart),
+      periodEnd: toEndOfDay(periodEnd),
+    }).lean();
+    if (!publication || !["published","active"].includes(publication.status)) return { totalAssignedStaff: 0, acknowledgedCount: 0, pendingCount: 0, changedAfterAcknowledgementCount: 0, employees: [] };
+    const shifts = await Shift.find({ restaurantId: publication.restaurantId, startTime: { $gte: publication.periodStart, $lte: publication.periodEnd }, status: { $ne: "cancelled" } }).lean();
+    const employeeIds = [...new Set(shifts.map((s)=>String(s.employeeId)).filter(Boolean))];
+    const acks = await ScheduleAcknowledgement.find({ restaurantId: publication.restaurantId, schedulePublicationId: publication._id, employeeId: { $in: employeeIds.map(toObjectId).filter(Boolean) } }).lean();
+    const map = new Map(acks.map((a)=>[String(a.employeeId), a]));
+    const employees = employeeIds.map((id)=>{ const a=map.get(id); return { employeeId:id, status:a?.status||null, changedAfterAcknowledgement:Boolean(a?.changedAfterAcknowledgement), acknowledgedAt:a?.acknowledgedAt||null };});
+    const acknowledgedCount = employees.filter((e)=>e.status==="acknowledged"&&!e.changedAfterAcknowledgement).length;
+    const changedAfterAcknowledgementCount = employees.filter((e)=>e.changedAfterAcknowledgement||e.status==="needs_review").length;
+    const pendingCount = employees.length-acknowledgedCount-changedAfterAcknowledgementCount;
+    return { totalAssignedStaff: employees.length, acknowledgedCount, pendingCount, changedAfterAcknowledgementCount, employees };
   },
   schedulingPolicy: async (_, { restaurantId }) => {
     return getSchedulingPolicy({ restaurantId });

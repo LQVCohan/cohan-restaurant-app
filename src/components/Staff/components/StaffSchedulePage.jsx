@@ -64,6 +64,28 @@ const SUBMIT = gql`
   }
 `;
 
+const GET_MY_SCHEDULE_ACK = gql`
+  query MyScheduleAck($restaurantId: ID!, $periodStart: DateTime!, $periodEnd: DateTime!) {
+    myScheduleAcknowledgement(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd) {
+      id
+      status
+      acknowledgedAt
+      changedAfterAcknowledgement
+    }
+  }
+`;
+
+const ACK_MY_SCHEDULE = gql`
+  mutation AckMySchedule($restaurantId: ID!, $periodStart: DateTime!, $periodEnd: DateTime!) {
+    acknowledgeMySchedule(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd) {
+      id
+      status
+      acknowledgedAt
+      changedAfterAcknowledgement
+    }
+  }
+`;
+
 const GET_STAFF_SHIFTS = gql`
   query StaffMyShifts(
     $restaurantId: ID
@@ -365,6 +387,12 @@ export default function StaffSchedulePage() {
   });
 
   const [submit, { loading: submitting }] = useMutation(SUBMIT);
+  const { data: myAckData, loading: ackLoading, refetch: refetchAck } = useQuery(GET_MY_SCHEDULE_ACK, {
+    variables: { restaurantId, periodStart: weekStartIso, periodEnd: weekEndIso },
+    skip: !restaurantId,
+    fetchPolicy: "network-only",
+  });
+  const [ackMySchedule, { loading: acking }] = useMutation(ACK_MY_SCHEDULE);
 
   useEffect(() => {
     if (!restaurantId || !availabilityQueryFromIso || !availabilityQueryToIso) {
@@ -577,6 +605,8 @@ export default function StaffSchedulePage() {
       setError(getGraphQLErrorMessage(submitError, "Không thể gửi đăng ký."));
     }
   };
+
+  const scheduleAck = myAckData?.myScheduleAcknowledgement || null;
 
   const shifts = useMemo(() => {
     return (shiftsData?.staffShifts || [])
@@ -1046,6 +1076,25 @@ export default function StaffSchedulePage() {
               <span className="staff-count-badge">{shifts.length}</span>
             </div>
 
+
+
+            {shifts.length > 0 ? (
+              <div className="staff-feedback" style={{ marginBottom: 12 }}>
+                {scheduleAck?.changedAfterAcknowledgement || scheduleAck?.status === "needs_review" ? (
+                  <>
+                    <p>Lịch đã có thay đổi sau lần xác nhận trước. Vui lòng xem lại và xác nhận lại.</p>
+                    <button className="staff-primary-btn" disabled={acking || ackLoading} onClick={async () => { await ackMySchedule({ variables: { restaurantId, periodStart: weekStartIso, periodEnd: weekEndIso } }); await refetchAck(); }}>Xác nhận lại lịch</button>
+                  </>
+                ) : scheduleAck?.status === "acknowledged" ? (
+                  <p>Bạn đã xác nhận lịch này lúc {new Date(scheduleAck.acknowledgedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} {new Date(scheduleAck.acknowledgedAt).toLocaleDateString("vi-VN")}.</p>
+                ) : (
+                  <>
+                    <p>Lịch tuần này đã được công bố. Vui lòng xác nhận đã nhận lịch.</p>
+                    <button className="staff-primary-btn" disabled={acking || ackLoading} onClick={async () => { await ackMySchedule({ variables: { restaurantId, periodStart: weekStartIso, periodEnd: weekEndIso } }); await refetchAck(); }}>Xác nhận đã nhận lịch</button>
+                  </>
+                )}
+              </div>
+            ) : null}
             {loadingShifts ? (
               <div className="staff-loading-state staff-loading-state--small">
                 <Loader2 size={20} className="staff-spin" />

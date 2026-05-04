@@ -174,6 +174,17 @@ async function ensureShiftAcknowledgement({ shift, publication, actorUserId, cre
   };
   return ShiftAcknowledgement.findOneAndUpdate(filter, update, { upsert: true, new: true });
 }
+
+
+async function markScheduleAcknowledgementsNeedReview({ restaurantId, publicationId, employeeIds = [] }) {
+  const ids = [...new Set(employeeIds.map((id) => String(id)).filter(Boolean))].map(toObjectId).filter(Boolean);
+  if (!ids.length || !publicationId) return;
+  await ScheduleAcknowledgement.updateMany(
+    { restaurantId, schedulePublicationId: publicationId, employeeId: { $in: ids } },
+    { $set: { status: "needs_review", changedAfterAcknowledgement: true, lastChangedAt: new Date() } },
+  );
+}
+
 function toEndOfDay(date) {
   const d = new Date(date);
   d.setHours(23, 59, 59, 999);
@@ -1715,6 +1726,8 @@ export default {
       ),
     ];
 
+    await markScheduleAcknowledgementsNeedReview({ restaurantId, publicationId: publication._id, employeeIds });
+
     if (input.notifyEmployees !== false && employeeIds.length > 0) {
       await Notification.insertMany(
         employeeIds.map((employeeId) => ({
@@ -1851,6 +1864,10 @@ export default {
     });
 
     await Shift.deleteOne({ _id: shift._id });
+
+    if (publication?._id && employeeId) {
+      await markScheduleAcknowledgementsNeedReview({ restaurantId: shift.restaurantId, publicationId: publication._id, employeeIds: [employeeId] });
+    }
 
     if (notifyEmployee && employeeId) {
       await Notification.create({
@@ -1999,6 +2016,8 @@ export default {
         shifts.map((shift) => String(shift.employeeId)).filter(Boolean),
       ),
     ];
+
+    await markScheduleAcknowledgementsNeedReview({ restaurantId, publicationId: publication._id, employeeIds });
 
     if (input.notifyEmployees !== false && employeeIds.length > 0) {
       await Notification.insertMany(
@@ -2178,6 +2197,8 @@ export default {
       notes: `Thêm sau khi lịch đã công bố. Lý do: ${reason}`,
     });
 
+    await markScheduleAcknowledgementsNeedReview({ restaurantId, publicationId: publication._id, employeeIds: [employeeId] });
+
     await ensureShiftAcknowledgement({
       shift,
       publication,
@@ -2292,6 +2313,21 @@ export default {
     // - valid decline => EMPLOYEE_VALID_DECLINE (neutral responsibility)
     // - late decline => EMPLOYEE_LATE_DECLINE (employee responsibility)
     return doc;
+  },
+  acknowledgeMySchedule: async (_, { restaurantId, periodStart, periodEnd }, ctx) => {
+    requireAuth(ctx);
+    requireRestaurantScope(ctx, restaurantId);
+    const employeeId = toObjectId(ctx?.user?.id || ctx?.user?._id);
+    if (!employeeId) throw new Error("Unauthorized.");
+    const publication = await SchedulePublication.findOne({ restaurantId: toObjectId(restaurantId) || restaurantId, periodStart: toStartOfDay(periodStart), periodEnd: toEndOfDay(periodEnd), status: { $in: ["published", "active"] } });
+    if (!publication) throw new Error("Lịch chưa được công bố nên không thể xác nhận.");
+    const hasShift = await Shift.exists({ restaurantId: publication.restaurantId, employeeId, startTime: { $gte: publication.periodStart, $lte: publication.periodEnd }, status: { $ne: "cancelled" } });
+    if (!hasShift) throw new Error("Bạn không có ca trong tuần này.");
+    return ScheduleAcknowledgement.findOneAndUpdate(
+      { restaurantId: publication.restaurantId, employeeId, schedulePublicationId: publication._id },
+      { $set: { periodStart: publication.periodStart, periodEnd: publication.periodEnd, status: "acknowledged", acknowledgedAt: new Date(), changedAfterAcknowledgement: false, lastChangedAt: publication.lastChangedAt || null }, $setOnInsert: { restaurantId: publication.restaurantId, employeeId, schedulePublicationId: publication._id } },
+      { upsert: true, new: true },
+    );
   },
   expirePendingShiftAcknowledgements: async (_, { restaurantId } = {}, ctx) => {
     requireRoles(ctx, SHIFT_ACK_ADMIN_ROLES);
