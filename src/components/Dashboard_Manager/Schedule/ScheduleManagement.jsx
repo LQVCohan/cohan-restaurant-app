@@ -114,6 +114,18 @@ const GET_SCHEDULE_PUBLICATION = gql`
   }
 `;
 
+
+const GET_SCHEDULE_ACK_SUMMARY = gql`
+  query ScheduleAckSummary($restaurantId: ID!, $periodStart: DateTime!, $periodEnd: DateTime!) {
+    scheduleAcknowledgementSummary(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd) {
+      totalAssignedStaff
+      acknowledgedCount
+      pendingCount
+      changedAfterAcknowledgementCount
+    }
+  }
+`;
+
 const GET_SCHEDULE_CHANGE_LOGS = gql`
   query ScheduleChangeLogs(
     $restaurantId: ID!
@@ -1271,6 +1283,15 @@ const ScheduleManagement = ({ readOnly = false }) => {
     loading: publicationLoading,
     refetch: refetchPublication,
   } = useQuery(GET_SCHEDULE_PUBLICATION, {
+    variables: {
+      restaurantId: effectiveRestaurantId,
+      periodStart: rangeStart.toISOString(),
+      periodEnd: rangeEnd.toISOString(),
+    },
+    fetchPolicy: "network-only",
+    skip: !effectiveRestaurantId || viewMode !== "week",
+  });
+  const { data: ackSummaryData } = useQuery(GET_SCHEDULE_ACK_SUMMARY, {
     variables: {
       restaurantId: effectiveRestaurantId,
       periodStart: rangeStart.toISOString(),
@@ -3524,6 +3545,12 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 hasChangesAfterPublish ? (
                 <small className="status-subtext">
                   Có chỉnh sửa sau lần công bố gần nhất.
+                </small>
+) : null}
+
+              {ackSummaryData?.scheduleAcknowledgementSummary?.totalAssignedStaff > 0 ? (
+                <small className="status-subtext">
+                  Đã xác nhận: {ackSummaryData.scheduleAcknowledgementSummary.acknowledgedCount}/{ackSummaryData.scheduleAcknowledgementSummary.totalAssignedStaff} · Chưa xác nhận: {ackSummaryData.scheduleAcknowledgementSummary.pendingCount} · Cần xem lại: {ackSummaryData.scheduleAcknowledgementSummary.changedAfterAcknowledgementCount}
                 </small>
               ) : null}
             </div>

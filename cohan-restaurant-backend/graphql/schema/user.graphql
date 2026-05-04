@@ -2037,6 +2037,42 @@ type ShiftAcknowledgement {
   declineClassification: String
 }
 
+
+enum ScheduleAcknowledgementStatus {
+  acknowledged
+  needs_review
+}
+
+type ScheduleAcknowledgement {
+  id: ID!
+  restaurantId: ID!
+  employeeId: ID!
+  schedulePublicationId: ID!
+  periodStart: DateTime!
+  periodEnd: DateTime!
+  status: ScheduleAcknowledgementStatus!
+  acknowledgedAt: DateTime
+  lastChangedAt: DateTime
+  changedAfterAcknowledgement: Boolean!
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+type ScheduleAcknowledgementSummaryEmployee {
+  employeeId: ID!
+  status: ScheduleAcknowledgementStatus
+  changedAfterAcknowledgement: Boolean!
+  acknowledgedAt: DateTime
+}
+
+type ScheduleAcknowledgementSummary {
+  totalAssignedStaff: Int!
+  acknowledgedCount: Int!
+  pendingCount: Int!
+  changedAfterAcknowledgementCount: Int!
+  employees: [ScheduleAcknowledgementSummaryEmployee!]!
+}
+
 input StaffReportsInput {
   restaurantId: ID
   startDate: DateTime!
@@ -2152,6 +2188,8 @@ type Query {
   myWalletTransactions(limit: Int = 20, offset: Int = 0): [WalletTransaction!]!
   shiftAcknowledgements(restaurantId: ID!, periodStart: DateTime, periodEnd: DateTime, employeeId: ID, status: ShiftAcknowledgementStatus): [ShiftAcknowledgement!]!
   myShiftAcknowledgements(periodStart: DateTime, periodEnd: DateTime, status: ShiftAcknowledgementStatus): [ShiftAcknowledgement!]!
+  myScheduleAcknowledgement(restaurantId: ID!, periodStart: DateTime!, periodEnd: DateTime!): ScheduleAcknowledgement
+  scheduleAcknowledgementSummary(restaurantId: ID!, periodStart: DateTime!, periodEnd: DateTime!): ScheduleAcknowledgementSummary!
 }
 
 # =========================
@@ -2306,6 +2344,7 @@ type Mutation {
   acceptShiftAcknowledgement(id: ID!, note: String): ShiftAcknowledgement!
   declineShiftAcknowledgement(id: ID!, reasonCategory: ShiftAcknowledgementReasonCategory!, reason: String!): ShiftAcknowledgement!
   expirePendingShiftAcknowledgements: Int!
+  acknowledgeMySchedule(restaurantId: ID!, periodStart: DateTime!, periodEnd: DateTime!): ScheduleAcknowledgement!
   confirmReplacementLeaveRequest(
     requestId: ID!
     managerId: ID
