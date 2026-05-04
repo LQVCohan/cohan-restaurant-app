@@ -83,6 +83,7 @@ export { default as AvailabilityRegistrationWindow } from "./availability-regist
 export { default as StaffAvailabilitySubmission } from "./staff-availability-submission.model.js";
 
 export { default as ShiftAcknowledgement } from "./shift-acknowledgement.model.js";
+export { default as ScheduleAcknowledgement } from "./schedule-acknowledgement.model.js";
 
 export { default as PerformanceIncident } from "./performance-incident.model.js";
 
