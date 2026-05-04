@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { buildAvailabilityRegistrationSchedule, resolveAvailabilityWindowEffectiveStatus } from "@/utils/availabilityRegistrationSchedule";
 import { ChevronDown, ChevronUp, ClipboardList, Eye } from "lucide-react";
+import "./AvailabilityRegistrationPanel.scss";
 
 const WINDOW_STATUS_LABELS = {
   draft: "Bản nháp",
@@ -485,9 +486,24 @@ export default function AvailabilityRegistrationPanel({
       ) : null}
       {isPolicyModalOpen ? (
         <div className="publish-confirm-backdrop">
-          <div className="publish-confirm-card">
-            <h3>Thiết lập đăng ký lịch nhân viên</h3>
-            <div className="policy-form-grid">
+          <div className="availability-policy-modal">
+            <div className="availability-policy-modal__header">
+              <h3>Thiết lập đăng ký lịch nhân viên</h3>
+              <p>
+                Cấu hình cách hệ thống mở/đóng kỳ đăng ký theo tuần mục tiêu.
+              </p>
+            </div>
+            <div className="availability-policy-modal__explain">
+              <div>
+                <strong>Tự động</strong>
+                <span>Hệ thống tự tính effectiveStatus theo openAt/closeAt.</span>
+              </div>
+              <div>
+                <strong>Thủ công</strong>
+                <span>Chỉ hiển thị khuyến nghị, manager tự bấm mở/đóng.</span>
+              </div>
+            </div>
+            <div className="availability-policy-modal__grid">
               <label>
                 Chế độ đăng ký
                 <select
@@ -504,7 +520,7 @@ export default function AvailabilityRegistrationPanel({
               </label>
               <label>
                 Ngày mở đăng ký (offset theo target week)
-                <input type="number" value={policyDraft.availabilityOpenDayOffset} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityOpenDayOffset: Number(event.target.value) }))} />
+                <input type="number" value={policyDraft.availabilityOpenDayOffset} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityOpenDayOffset: Number(event.target.value) }))} placeholder="-7" />
               </label>
               <label>
                 Giờ mở đăng ký
@@ -512,16 +528,16 @@ export default function AvailabilityRegistrationPanel({
               </label>
               <label>
                 Ngày đóng đăng ký (offset theo target week)
-                <input type="number" value={policyDraft.availabilityCloseDayOffset} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityCloseDayOffset: Number(event.target.value) }))} />
+                <input type="number" value={policyDraft.availabilityCloseDayOffset} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityCloseDayOffset: Number(event.target.value) }))} placeholder="-1" />
               </label>
               <label>
                 Giờ đóng đăng ký
                 <input type="time" value={policyDraft.availabilityCloseTime} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityCloseTime: event.target.value }))} />
               </label>
             </div>
-            <div className="publish-confirm-actions">
-              <button type="button" onClick={() => setIsPolicyModalOpen(false)} disabled={policySaving}>Hủy</button>
-              <button type="button" disabled={policySaving} onClick={async () => {
+            <div className="availability-policy-modal__actions">
+              <button type="button" className="btn-secondary" onClick={() => setIsPolicyModalOpen(false)} disabled={policySaving}>Hủy</button>
+              <button type="button" className="btn-primary" disabled={policySaving} onClick={async () => {
                 await onUpdateAvailabilityPolicy?.(policyDraft);
                 setIsPolicyModalOpen(false);
               }}>
