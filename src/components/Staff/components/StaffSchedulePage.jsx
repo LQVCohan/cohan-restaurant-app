@@ -77,8 +77,16 @@ const SUBMIT = gql`
 `;
 
 const GET_MY_SCHEDULE_ACK = gql`
-  query MyScheduleAck($restaurantId: ID!, $periodStart: DateTime!, $periodEnd: DateTime!) {
-    myScheduleAcknowledgement(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd) {
+  query MyScheduleAck(
+    $restaurantId: ID!
+    $periodStart: DateTime!
+    $periodEnd: DateTime!
+  ) {
+    myScheduleAcknowledgement(
+      restaurantId: $restaurantId
+      periodStart: $periodStart
+      periodEnd: $periodEnd
+    ) {
       id
       status
       acknowledgedAt
@@ -88,8 +96,16 @@ const GET_MY_SCHEDULE_ACK = gql`
 `;
 
 const ACK_MY_SCHEDULE = gql`
-  mutation AckMySchedule($restaurantId: ID!, $periodStart: DateTime!, $periodEnd: DateTime!) {
-    acknowledgeMySchedule(restaurantId: $restaurantId, periodStart: $periodStart, periodEnd: $periodEnd) {
+  mutation AckMySchedule(
+    $restaurantId: ID!
+    $periodStart: DateTime!
+    $periodEnd: DateTime!
+  ) {
+    acknowledgeMySchedule(
+      restaurantId: $restaurantId
+      periodStart: $periodStart
+      periodEnd: $periodEnd
+    ) {
       id
       status
       acknowledgedAt
@@ -399,8 +415,16 @@ export default function StaffSchedulePage() {
   });
 
   const [submit, { loading: submitting }] = useMutation(SUBMIT);
-  const { data: myAckData, loading: ackLoading, refetch: refetchAck } = useQuery(GET_MY_SCHEDULE_ACK, {
-    variables: { restaurantId, periodStart: weekStartIso, periodEnd: weekEndIso },
+  const {
+    data: myAckData,
+    loading: ackLoading,
+    refetch: refetchAck,
+  } = useQuery(GET_MY_SCHEDULE_ACK, {
+    variables: {
+      restaurantId,
+      periodStart: weekStartIso,
+      periodEnd: weekEndIso,
+    },
     skip: !restaurantId,
     fetchPolicy: "network-only",
   });
@@ -484,8 +508,14 @@ export default function StaffSchedulePage() {
     return map;
   }, [submission]);
 
-  const windowStatus = String(resolveAvailabilityWindowEffectiveStatus(selectedWindow) || selectedWindow?.status || "").toLowerCase();
-  const registrationMode = String(selectedWindow?.registrationMode || "manual").toLowerCase();
+  const windowStatus = String(
+    resolveAvailabilityWindowEffectiveStatus(selectedWindow) ||
+      selectedWindow?.status ||
+      "",
+  ).toLowerCase();
+  const registrationMode = String(
+    selectedWindow?.registrationMode || "manual",
+  ).toLowerCase();
   const submissionStatus = String(
     submission?.status || "not_submitted",
   ).toLowerCase();
@@ -506,7 +536,8 @@ export default function StaffSchedulePage() {
     !isLocked &&
     windowStatus !== "draft" &&
     windowStatus !== "cancelled" &&
-    (windowStatus === "open" || (windowStatus === "closed" && allowsLateChange));
+    (windowStatus === "open" ||
+      (windowStatus === "closed" && allowsLateChange));
 
   const days = useMemo(() => {
     const result = [];
@@ -832,12 +863,18 @@ export default function StaffSchedulePage() {
 
                   <div>
                     <span>Chế độ đăng ký</span>
-                    <strong>{registrationMode === "auto" ? "Tự động" : "Thủ công"}</strong>
+                    <strong>
+                      {registrationMode === "auto" ? "Tự động" : "Thủ công"}
+                    </strong>
                   </div>
 
                   <div>
                     <span>Mở đăng ký</span>
-                    <strong>{selectedWindow.openAt ? fmtDate(selectedWindow.openAt) : "—"}</strong>
+                    <strong>
+                      {selectedWindow.openAt
+                        ? fmtDate(selectedWindow.openAt)
+                        : "—"}
+                    </strong>
                   </div>
 
                   <div>
@@ -874,7 +911,11 @@ export default function StaffSchedulePage() {
                     <Info size={18} />
                     <div>
                       <strong>Kỳ đăng ký chưa mở.</strong>
-                      <p>{registrationMode === "auto" ? "Kỳ đăng ký tự động chưa đến thời gian mở." : "Bạn sẽ gửi được đăng ký sau khi quản lý mở kỳ này."}</p>
+                      <p>
+                        {registrationMode === "auto"
+                          ? "Kỳ đăng ký tự động chưa đến thời gian mở."
+                          : "Bạn sẽ gửi được đăng ký sau khi quản lý mở kỳ này."}
+                      </p>
                     </div>
                   </div>
                 ) : null}
@@ -883,7 +924,11 @@ export default function StaffSchedulePage() {
                   <div className="staff-info-box staff-info-box--warning">
                     <AlertTriangle size={18} />
                     <div>
-                      <strong>{registrationMode === "auto" ? "Kỳ đăng ký đã hết hạn." : "Kỳ đăng ký đã đóng"}</strong>
+                      <strong>
+                        {registrationMode === "auto"
+                          ? "Kỳ đăng ký đã hết hạn."
+                          : "Kỳ đăng ký đã đóng"}
+                      </strong>
                       <p>
                         {allowsLateChange
                           ? "Kỳ đăng ký đã đóng. Thay đổi của bạn sẽ được gửi như yêu cầu thay đổi muộn và chờ quản lý duyệt."
@@ -903,27 +948,18 @@ export default function StaffSchedulePage() {
                   </div>
                 ) : null}
 
-                
-                {submissionStatus === "late_change_requested" ? (
-                  <div className="staff-info-box staff-info-box--warning">
-                    <AlertTriangle size={18} />
-                    <div>
-                      <strong>Thay đổi của bạn đang chờ quản lý duyệt.</strong>
-                      <p>Thay đổi của bạn đang chờ quản lý duyệt. Dữ liệu này chỉ được dùng để xếp lịch sau khi được duyệt.</p>
-                    </div>
-                  </div>
-                ) : null}
-
                 {submissionStatus === "rejected" ? (
                   <div className="staff-info-box staff-info-box--danger">
                     <AlertTriangle size={18} />
                     <div>
                       <strong>Yêu cầu thay đổi muộn đã bị từ chối.</strong>
-                      {submission?.reviewNote ? <p>Ghi chú quản lý: {submission.reviewNote}</p> : null}
+                      {submission?.reviewNote ? (
+                        <p>Ghi chú quản lý: {submission.reviewNote}</p>
+                      ) : null}
                     </div>
                   </div>
                 ) : null}
-{canShowAvailabilityForm ? (
+                {canShowAvailabilityForm ? (
                   <div className="staff-availability-matrix">
                     <div className="staff-availability-matrix__scroll">
                       <div className="staff-availability-matrix__grid">
@@ -1122,21 +1158,66 @@ export default function StaffSchedulePage() {
               <span className="staff-count-badge">{shifts.length}</span>
             </div>
 
-
-
             {shifts.length > 0 ? (
               <div className="staff-feedback" style={{ marginBottom: 12 }}>
-                {scheduleAck?.changedAfterAcknowledgement || scheduleAck?.status === "needs_review" ? (
+                {scheduleAck?.changedAfterAcknowledgement ||
+                scheduleAck?.status === "needs_review" ? (
                   <>
-                    <p>Lịch đã có thay đổi sau lần xác nhận trước. Vui lòng xem lại và xác nhận lại.</p>
-                    <button className="staff-primary-btn" disabled={acking || ackLoading} onClick={async () => { await ackMySchedule({ variables: { restaurantId, periodStart: weekStartIso, periodEnd: weekEndIso } }); await refetchAck(); }}>Xác nhận lại lịch</button>
+                    <p>
+                      Lịch đã có thay đổi sau lần xác nhận trước. Vui lòng xem
+                      lại và xác nhận lại.
+                    </p>
+                    <button
+                      className="staff-primary-btn"
+                      disabled={acking || ackLoading}
+                      onClick={async () => {
+                        await ackMySchedule({
+                          variables: {
+                            restaurantId,
+                            periodStart: weekStartIso,
+                            periodEnd: weekEndIso,
+                          },
+                        });
+                        await refetchAck();
+                      }}
+                    >
+                      Xác nhận lại lịch
+                    </button>
                   </>
                 ) : scheduleAck?.status === "acknowledged" ? (
-                  <p>Bạn đã xác nhận lịch này lúc {new Date(scheduleAck.acknowledgedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} {new Date(scheduleAck.acknowledgedAt).toLocaleDateString("vi-VN")}.</p>
+                  <p>
+                    Bạn đã xác nhận lịch này lúc{" "}
+                    {new Date(scheduleAck.acknowledgedAt).toLocaleTimeString(
+                      "vi-VN",
+                      { hour: "2-digit", minute: "2-digit" },
+                    )}{" "}
+                    {new Date(scheduleAck.acknowledgedAt).toLocaleDateString(
+                      "vi-VN",
+                    )}
+                    .
+                  </p>
                 ) : (
                   <>
-                    <p>Lịch tuần này đã được công bố. Vui lòng xác nhận đã nhận lịch.</p>
-                    <button className="staff-primary-btn" disabled={acking || ackLoading} onClick={async () => { await ackMySchedule({ variables: { restaurantId, periodStart: weekStartIso, periodEnd: weekEndIso } }); await refetchAck(); }}>Xác nhận đã nhận lịch</button>
+                    <p>
+                      Lịch tuần này đã được công bố. Vui lòng xác nhận đã nhận
+                      lịch.
+                    </p>
+                    <button
+                      className="staff-primary-btn"
+                      disabled={acking || ackLoading}
+                      onClick={async () => {
+                        await ackMySchedule({
+                          variables: {
+                            restaurantId,
+                            periodStart: weekStartIso,
+                            periodEnd: weekEndIso,
+                          },
+                        });
+                        await refetchAck();
+                      }}
+                    >
+                      Xác nhận đã nhận lịch
+                    </button>
                   </>
                 )}
               </div>
