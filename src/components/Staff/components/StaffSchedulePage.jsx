@@ -948,6 +948,38 @@ export default function StaffSchedulePage() {
                   </div>
                 ) : null}
 
+                {submission && ["submitted", "approved", "late_change_requested", "rejected"].includes(submissionStatus) ? (
+                  <div className="staff-info-box">
+                    {(submissionStatus === "submitted" || submissionStatus === "approved") ? (
+                      <div>
+                        <strong>Các ca đã đăng ký</strong>
+                        {submissionStatus === "approved" ? <p>Đã được quản lý duyệt</p> : null}
+                        <ul>
+                          {(submission.slots || []).map((slot, idx) => (
+                            <li key={`official-${idx}`}>
+                              {fmtFullDate(slot.date)} - {(SHIFT_META[slot.shiftType]?.label || slot.shiftType)} - {slot.status === "available" ? "Có thể làm" : "Không khả dụng"}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {submissionStatus === "late_change_requested" ? (
+                      <div>
+                        <strong>Yêu cầu thay đổi muộn đang chờ duyệt</strong>
+                        <ul>
+                          {(submission.pendingSlots || []).map((slot, idx) => (
+                            <li key={`pending-${idx}`}>
+                              {fmtFullDate(slot.date)} - {(SHIFT_META[slot.shiftType]?.label || slot.shiftType)} - {slot.status === "available" ? "Có thể làm" : "Không khả dụng"}
+                            </li>
+                          ))}
+                        </ul>
+                        <p>Các thay đổi này chỉ được dùng để xếp lịch sau khi quản lý duyệt.</p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 {submissionStatus === "rejected" ? (
                   <div className="staff-info-box staff-info-box--danger">
                     <AlertTriangle size={18} />

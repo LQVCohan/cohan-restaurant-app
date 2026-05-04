@@ -252,4 +252,20 @@ describe("StaffSchedulePage", () => {
     expect(screen.queryByText("Chưa có kỳ đăng ký lịch")).not.toBeInTheDocument();
     expect(screen.getAllByText("Ca sáng").length).toBeGreaterThan(0);
   });
+
+  it("renders approved submission summary and approved badge", async () => {
+    const mocks = [{ request: { query: GET_SUBMISSION, variables: { windowId: "w1", employeeId: "e1" } }, result: { data: { staffAvailabilitySubmission: { id: "s1", status: "approved", submissionType: "weekly_availability", reviewNote: null, pendingSubmittedAt: null, pendingSlots: [], slots: [{ date: "2026-05-11T00:00:00.000Z", shiftType: "morning", status: "available", note: null }] } } } },{ request: { query: GET_AVAILABILITY_WINDOWS, variables: { restaurantId: "r1", from: "2026-05-10T00:00:00.000Z", to: "2026-05-18T23:59:59.999Z" } }, result: { data: { availabilityWindows: [{ id: "w1", periodStart: "2026-05-11T00:00:00.000Z", periodEnd: "2026-05-17T23:59:59.999Z", openAt: "2026-05-10T00:00:00.000Z", closeAt: "2026-05-17T23:59:59.999Z", status: "open", effectiveStatus: "open", registrationMode: "manual", targetEmploymentTypes: ["part_time"], allowFullTimeUnavailableException: true, lateChangeRequiresApproval: true }] } } }];
+    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+    expect(await screen.findByText("Các ca đã đăng ký")).toBeInTheDocument();
+    expect(await screen.findByText("Đã được quản lý duyệt")).toBeInTheDocument();
+  });
+
+  it("renders late change pending slots and rejected note", async () => {
+    const baseWindow = { request: { query: GET_AVAILABILITY_WINDOWS, variables: { restaurantId: "r1", from: "2026-05-10T00:00:00.000Z", to: "2026-05-18T23:59:59.999Z" } }, result: { data: { availabilityWindows: [{ id: "w1", periodStart: "2026-05-11T00:00:00.000Z", periodEnd: "2026-05-17T23:59:59.999Z", openAt: "2026-05-10T00:00:00.000Z", closeAt: "2026-05-17T23:59:59.999Z", status: "open", effectiveStatus: "open", registrationMode: "manual", targetEmploymentTypes: ["part_time"], allowFullTimeUnavailableException: true, lateChangeRequiresApproval: true }] } } };
+    const mocks = [baseWindow,{ request: { query: GET_SUBMISSION, variables: { windowId: "w1", employeeId: "e1" } }, result: { data: { staffAvailabilitySubmission: { id: "s2", status: "late_change_requested", submissionType: "weekly_availability", reviewNote: null, pendingSubmittedAt: null, pendingSlots: [{ date: "2026-05-12T00:00:00.000Z", shiftType: "morning", status: "available", note: null }], slots: [] } } } }];
+    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+    expect(await screen.findByText("Yêu cầu thay đổi muộn đang chờ duyệt")).toBeInTheDocument();
+    expect(await screen.findByText(/Các thay đổi này chỉ được dùng để xếp lịch sau khi quản lý duyệt/)).toBeInTheDocument();
+  });
+
 });
