@@ -33,6 +33,7 @@ const baseProps = {
     availabilityOpenTime: "09:00",
     availabilityCloseDayOffset: -1,
     availabilityCloseTime: "18:00",
+    lateChangeRequiresApproval: true,
   },
   onUpdateAvailabilityPolicy: vi.fn(),
 };
@@ -70,6 +71,39 @@ describe("AvailabilityRegistrationPanel", () => {
         availabilityCloseTime: "18:00",
       }),
     );
+  });
+
+
+  it("renders late-change setting and options in policy modal", () => {
+    render(<AvailabilityRegistrationPanel {...baseProps} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Thiết lập đăng ký" }));
+
+    expect(screen.getByText("Thay đổi sau khi đóng đăng ký")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Cho phép gửi yêu cầu chờ duyệt" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Không cho gửi sau khi đóng" })).toBeInTheDocument();
+  });
+
+  it("saves lateChangeRequiresApproval false", () => {
+    const onUpdateAvailabilityPolicy = vi.fn().mockResolvedValue(undefined);
+    render(<AvailabilityRegistrationPanel {...baseProps} onUpdateAvailabilityPolicy={onUpdateAvailabilityPolicy} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Thiết lập đăng ký" }));
+    fireEvent.change(screen.getByDisplayValue("Cho phép gửi yêu cầu chờ duyệt"), { target: { value: "no" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu cấu hình" }));
+
+    expect(onUpdateAvailabilityPolicy).toHaveBeenCalledWith(expect.objectContaining({ lateChangeRequiresApproval: false }));
+  });
+
+  it("shows summary rule when late change is blocked", () => {
+    render(
+      <AvailabilityRegistrationPanel
+        {...baseProps}
+        availabilityPolicy={{ ...baseProps.availabilityPolicy, lateChangeRequiresApproval: false }}
+      />,
+    );
+
+    expect(screen.getByText(/Thay đổi sau khi đóng: Không cho gửi/i)).toBeInTheDocument();
   });
 
   it("disables manual actions in auto mode", () => {
