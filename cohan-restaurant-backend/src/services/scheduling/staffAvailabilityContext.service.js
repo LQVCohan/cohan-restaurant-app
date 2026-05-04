@@ -248,8 +248,7 @@ export async function resolveStaffAvailabilityForShift({
   if (requiresSubmission) {
     const hasUsableSubmission =
       submission &&
-      !INACTIVE_SUBMISSION_STATUSES.has(submissionStatus) &&
-      (ACTIVE_SUBMISSION_STATUSES.has(submissionStatus) || lateChangePending);
+      ACTIVE_SUBMISSION_STATUSES.has(submissionStatus);
 
     if (!hasUsableSubmission) {
       if (windowClosed) {
