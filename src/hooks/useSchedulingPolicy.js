@@ -112,6 +112,11 @@ export const QUERY_SCHEDULING_POLICY = gql`
         }
       }
       availabilityRegistrationPolicy {
+        availabilityRegistrationMode
+        availabilityOpenDayOffset
+        availabilityOpenTime
+        availabilityCloseDayOffset
+        availabilityCloseTime
         enabled
         targetEmploymentTypes
         openDayOfWeek
@@ -218,6 +223,11 @@ const MUTATION_UPDATE_SCHEDULING_POLICY = gql`
       }
       mandatoryShiftRoles
       availabilityRegistrationPolicy {
+        availabilityRegistrationMode
+        availabilityOpenDayOffset
+        availabilityOpenTime
+        availabilityCloseDayOffset
+        availabilityCloseTime
         enabled
         targetEmploymentTypes
         openDayOfWeek

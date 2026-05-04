@@ -30,8 +30,11 @@ const GET_AVAILABILITY_WINDOWS = gql`
       id
       periodStart
       periodEnd
+      openAt
       closeAt
       status
+      effectiveStatus
+      registrationMode
       targetEmploymentTypes
       allowFullTimeUnavailableException
       lateChangeRequiresApproval

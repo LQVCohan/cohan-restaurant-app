@@ -48,6 +48,9 @@ type AvailabilityWindow {
   openAt: DateTime!
   closeAt: DateTime!
   status: AvailabilityWindowStatus!
+  effectiveStatus: AvailabilityWindowStatus!
+  registrationMode: String!
+  registrationModeSnapshot: String
   targetEmploymentTypes: [EmploymentType!]!
   allowFullTimeUnavailableException: Boolean!
   lateChangeRequiresApproval: Boolean!
@@ -98,8 +101,8 @@ input CreateAvailabilityWindowInput {
   restaurantId: ID!
   periodStart: DateTime!
   periodEnd: DateTime!
-  openAt: DateTime!
-  closeAt: DateTime!
+  openAt: DateTime
+  closeAt: DateTime
   targetEmploymentTypes: [EmploymentType!]
   allowFullTimeUnavailableException: Boolean
   lateChangeRequiresApproval: Boolean

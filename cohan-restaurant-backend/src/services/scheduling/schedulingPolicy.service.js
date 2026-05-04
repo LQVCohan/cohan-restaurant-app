@@ -19,6 +19,11 @@ const EMPLOYMENT_TYPE_VALUES = [
   "contract",
 ];
 const DEFAULT_AVAILABILITY_REGISTRATION_POLICY = {
+  availabilityRegistrationMode: "manual",
+  availabilityOpenDayOffset: -7,
+  availabilityOpenTime: "00:00",
+  availabilityCloseDayOffset: -5,
+  availabilityCloseTime: "23:59",
   enabled: true,
   targetEmploymentTypes: ["part_time", "seasonal"],
   openDayOfWeek: "MON",
@@ -156,9 +161,18 @@ function sanitizeAvailabilityRegistrationPolicy(input = {}) {
   validateTime("openTime", String(merged.openTime || ""));
   validateTime("closeTime", String(merged.closeTime || ""));
   validateTime("publishTargetTime", String(merged.publishTargetTime || ""));
+  validateTime("availabilityOpenTime", String(merged.availabilityOpenTime || ""));
+  validateTime("availabilityCloseTime", String(merged.availabilityCloseTime || ""));
+  const mode = String(merged.availabilityRegistrationMode || "manual").toLowerCase();
+  if (!["auto", "manual"].includes(mode)) throw new Error("availabilityRegistrationMode không hợp lệ.");
 
   return {
     enabled: merged.enabled !== false,
+    availabilityRegistrationMode: mode,
+    availabilityOpenDayOffset: Number(merged.availabilityOpenDayOffset),
+    availabilityOpenTime: String(merged.availabilityOpenTime),
+    availabilityCloseDayOffset: Number(merged.availabilityCloseDayOffset),
+    availabilityCloseTime: String(merged.availabilityCloseTime),
     targetEmploymentTypes: normalizedEmploymentTypes.length
       ? normalizedEmploymentTypes
       : [...DEFAULT_AVAILABILITY_REGISTRATION_POLICY.targetEmploymentTypes],

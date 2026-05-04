@@ -16,6 +16,17 @@ const modelMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../models/index.js", () => modelMocks);
+vi.mock("../../src/services/scheduling/schedulingPolicy.service.js", () => ({
+  getSchedulingPolicy: vi.fn().mockResolvedValue({
+    availabilityRegistrationPolicy: {
+      availabilityRegistrationMode: "manual",
+      availabilityOpenDayOffset: -7,
+      availabilityOpenTime: "00:00",
+      availabilityCloseDayOffset: -5,
+      availabilityCloseTime: "23:59",
+    },
+  }),
+}));
 
 describe("availability resolver", () => {
   beforeEach(() => {

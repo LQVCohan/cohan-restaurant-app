@@ -96,6 +96,14 @@ export default function AvailabilityRegistrationPanel({
   const windowStatus = String(
     availabilityWindow?.status || "unknown",
   ).toLowerCase();
+  const effectiveStatus = String(
+    availabilityWindow?.effectiveStatus || windowStatus,
+  ).toLowerCase();
+  const registrationMode = String(
+    availabilityWindow?.registrationMode ||
+      availabilityWindow?.registrationModeSnapshot ||
+      "manual",
+  ).toLowerCase();
   const hasWindow = Boolean(availabilityWindow?.id);
   const [showSubmissions, setShowSubmissions] = useState(false);
   const submissionSummary = useMemo(() => {
@@ -121,17 +129,23 @@ export default function AvailabilityRegistrationPanel({
     : "Chưa tạo window";
 
   const canCreate = !hasWindow && selectedRestaurantId && !loading;
+  const isAutoMode = registrationMode === "auto";
   const canOpen =
     hasWindow &&
     selectedRestaurantId &&
     !loading &&
+    !isAutoMode &&
     (windowStatus === "draft" ||
       (windowStatus === "closed" && !reopenBlockedReason));
   const openActionLabel =
     windowStatus === "closed" ? "Mở lại đăng ký" : "Mở đăng ký";
   const canClose =
-    hasWindow && selectedRestaurantId && !loading && windowStatus === "open";
-  const canViewSubmissions = hasWindow && selectedRestaurantId && !loading;
+    hasWindow &&
+    selectedRestaurantId &&
+    !loading &&
+    !isAutoMode &&
+    windowStatus === "open";
+
   return (
     <section className="schedule-availability-panel">
       <div className="schedule-availability-panel__header">
@@ -149,7 +163,7 @@ export default function AvailabilityRegistrationPanel({
           </p>
         </div>
         <span
-          className={`schedule-availability-panel__status is-${windowStatus}`}
+          className={`schedule-availability-panel__status is-${effectiveStatus}`}
         >
           {statusLabel}
         </span>
@@ -217,6 +231,10 @@ export default function AvailabilityRegistrationPanel({
             <>
               <div className="schedule-availability-panel__summary">
                 <div>
+                  <span>Chế độ đăng ký</span>
+                  <strong>{isAutoMode ? "Tự động" : "Thủ công"}</strong>
+                </div>
+                <div>
                   <span>Tuần áp dụng</span>
                   <strong>
                     {formatDateTime(availabilityWindow.periodStart)} -{" "}
@@ -277,15 +295,11 @@ export default function AvailabilityRegistrationPanel({
                 >
                   {loading ? "Đang xử lý..." : "Đóng đăng ký"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowSubmissions((value) => !value)}
-                  disabled={!canViewSubmissions}
-                >
-                  <Eye size={14} />
-                  {showSubmissions ? "Ẩn submissions" : "Xem submissions"}
-                </button>
+                <button type="button">Xem submissions</button>
               </div>
+              {isAutoMode ? (
+                <p>Kỳ đăng ký đang chạy tự động theo cài đặt.</p>
+              ) : null}
               {reopenBlockedReason ? (
                 <div className="schedule-availability-panel__empty">
                   <p>{reopenBlockedReason}</p>
