@@ -98,9 +98,54 @@ export default {
 
     const employmentType = input.employmentType || (await getStaffEmploymentType(input.employeeId));
     const source = isManager ? "manager" : "employee";
+    const isLateChange = input.status === "late_change_requested";
+    const baseIdentity = {
+      employmentType,
+      periodStart: windowDoc.periodStart,
+      periodEnd: windowDoc.periodEnd,
+      restaurantId: windowDoc.restaurantId,
+      availabilityWindowId: input.availabilityWindowId,
+      employeeId: input.employeeId,
+    };
+    if (isLateChange) {
+      return StaffAvailabilitySubmission.findOneAndUpdate(
+        { availabilityWindowId: input.availabilityWindowId, employeeId: input.employeeId },
+        {
+          $set: {
+            ...baseIdentity,
+            status: "late_change_requested",
+            pendingSlots: input.slots || [],
+            pendingSubmittedAt: new Date(),
+            pendingSubmissionType: input.submissionType,
+            pendingSource: source,
+            source,
+          },
+          $setOnInsert: {
+            slots: [],
+            submittedAt: null,
+            submissionType: input.submissionType,
+          },
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true },
+      );
+    }
     return StaffAvailabilitySubmission.findOneAndUpdate(
       { availabilityWindowId: input.availabilityWindowId, employeeId: input.employeeId },
-      { $set: { ...input, employmentType, periodStart: windowDoc.periodStart, periodEnd: windowDoc.periodEnd, restaurantId: windowDoc.restaurantId, submittedAt: new Date(), source } },
+      {
+        $set: {
+          ...baseIdentity,
+          submissionType: input.submissionType,
+          slots: input.slots || [],
+          submittedAt: new Date(),
+          source,
+          status: input.status || "submitted",
+          pendingSlots: [],
+          pendingSubmittedAt: null,
+          pendingSubmissionType: null,
+          pendingSource: null,
+          pendingNote: "",
+        },
+      },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
   },
@@ -109,10 +154,45 @@ export default {
     const existing = await StaffAvailabilitySubmission.findById(input.id);
     if (!existing) throw new Error("STAFF_AVAILABILITY_SUBMISSION_NOT_FOUND");
     await requireRestaurantAccess(ctx, existing.restaurantId);
-    return StaffAvailabilitySubmission.findByIdAndUpdate(
-      input.id,
-      { $set: { status: input.status, reviewNote: input.reviewNote || "", reviewedAt: new Date(), reviewedBy: ctx.user.id } },
-      { new: true },
-    );
+    const reviewSet = { reviewNote: input.reviewNote || "", reviewedAt: new Date(), reviewedBy: ctx.user.id };
+    const status = String(input.status || "").toLowerCase();
+    if (status === "approved" && String(existing.status || "").toLowerCase() === "late_change_requested" && Array.isArray(existing.pendingSlots) && existing.pendingSlots.length > 0) {
+      return StaffAvailabilitySubmission.findByIdAndUpdate(
+        input.id,
+        {
+          $set: {
+            ...reviewSet,
+            status: "approved",
+            slots: existing.pendingSlots,
+            submissionType: existing.pendingSubmissionType || existing.submissionType,
+            submittedAt: existing.pendingSubmittedAt || existing.submittedAt || new Date(),
+            pendingSlots: [],
+            pendingSubmittedAt: null,
+            pendingSubmissionType: null,
+            pendingSource: null,
+            pendingNote: "",
+          },
+        },
+        { new: true },
+      );
+    }
+    if (status === "rejected" && String(existing.status || "").toLowerCase() === "late_change_requested") {
+      return StaffAvailabilitySubmission.findByIdAndUpdate(
+        input.id,
+        {
+          $set: {
+            ...reviewSet,
+            status: "rejected",
+            pendingSlots: [],
+            pendingSubmittedAt: null,
+            pendingSubmissionType: null,
+            pendingSource: null,
+            pendingNote: "",
+          },
+        },
+        { new: true },
+      );
+    }
+    return StaffAvailabilitySubmission.findByIdAndUpdate(input.id, { $set: { ...reviewSet, status: input.status } }, { new: true });
   },
 };

@@ -42,6 +42,7 @@ vi.mock("../../src/services/staffPerformance/staffPerformance.service.js", () =>
 vi.mock("../../src/services/scheduling/schedulingPolicy.service.js", () => ({
   getDefaultSchedulingPolicyPayload: vi.fn(() => ({})),
   mapSchedulingPolicy: vi.fn((policy) => policy),
+  isFirstOperationalWeek: vi.fn(() => ({ active: false })),
 }));
 
 const restaurantId = "507f1f77bcf86cd799439011";
@@ -358,5 +359,59 @@ describe("validateShiftAssignment availability rules", () => {
         }),
       ]),
     );
+  });
+  it("does not use pendingSlots for late_change_requested submission", async () => {
+    setupBase({
+      staff: {
+        _id: employeeId,
+        userType: "STAFF",
+        employmentStatus: "working",
+        employmentType: "part_time",
+        workingDays: ["MON"],
+      },
+      windowDoc: closedWindow,
+      submission: {
+        _id: "submission-4",
+        availabilityWindowId: windowId,
+        employeeId,
+        employmentType: "part_time",
+        submissionType: "weekly_availability",
+        status: "late_change_requested",
+        slots: [],
+        pendingSlots: [{ date: new Date("2026-04-20T00:00:00.000Z"), shiftType: "morning", status: "available" }],
+      },
+    });
+    const result = await validate();
+    expect(result.warnings.map((w) => w.code)).toEqual(
+      expect.arrayContaining([
+        "LATE_AVAILABILITY_CHANGE_PENDING",
+        "PART_TIME_AVAILABILITY_REQUIRED",
+      ]),
+    );
+  });
+  it("uses approved official slots after late change approval", async () => {
+    setupBase({
+      staff: {
+        _id: employeeId,
+        userType: "STAFF",
+        employmentStatus: "working",
+        employmentType: "part_time",
+        workingDays: ["MON"],
+      },
+      windowDoc: closedWindow,
+      submission: {
+        _id: "submission-5",
+        availabilityWindowId: windowId,
+        employeeId,
+        employmentType: "part_time",
+        submissionType: "weekly_availability",
+        status: "approved",
+        slots: [{ date: new Date("2026-04-20T00:00:00.000Z"), shiftType: "morning", status: "available" }],
+        pendingSlots: [],
+      },
+    });
+    const result = await validate();
+    expect(result.ok).toBe(true);
+    expect(result.warnings.map((w) => w.code)).not.toContain("OUTSIDE_SUBMITTED_AVAILABILITY");
   });
 });

@@ -1227,8 +1227,11 @@ const ScheduleManagement = ({ readOnly = false }) => {
   const {
     policy: schedulingPolicy,
     loading: schedulingPolicyLoading,
+    refetch: refetchSchedulingPolicy,
     updateSchedulingPolicy,
+    startSchedulingOperations,
     updateState: updateSchedulingPolicyState,
+    startState: startSchedulingState,
     validateShiftAssignment,
   } = useSchedulingPolicy({
     restaurantId: effectiveRestaurantId,
@@ -1833,6 +1836,29 @@ const ScheduleManagement = ({ readOnly = false }) => {
       schedulingPolicy?.employmentTypePolicy,
     ],
   );
+  const firstWeekGraceActive = useMemo(() => {
+    const startedAt = schedulingPolicy?.schedulingOperationalStartAt;
+    if (!startedAt || schedulingPolicy?.firstWeekGracePolicy?.enabled === false) return false;
+    const targetTime = currentWeekStart?.getTime?.();
+    if (!Number.isFinite(targetTime)) return false;
+    const appliedUntil = schedulingPolicy?.firstWeekGracePolicy?.appliedUntil
+      ? new Date(schedulingPolicy.firstWeekGracePolicy.appliedUntil).getTime()
+      : Number.POSITIVE_INFINITY;
+    const weekStart = startOfWeek(currentWeekStart, { weekStartsOn: 1 }).getTime();
+    const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 }).getTime();
+    const startWeek = startOfWeek(new Date(startedAt), { weekStartsOn: 1 }).getTime();
+    return weekStart === startWeek && weekEnd <= appliedUntil;
+  }, [currentWeekStart, schedulingPolicy]);
+  const handleStartSchedulingOperations = useCallback(async () => {
+    if (!effectiveRestaurantId) return;
+    try {
+      await startSchedulingOperations({ variables: { restaurantId: effectiveRestaurantId } });
+      await refetchSchedulingPolicy?.();
+      showNotification("Đã bắt đầu sử dụng hệ thống lịch làm việc.", "success");
+    } catch (error) {
+      showNotification(error?.message || "Không thể bắt đầu sử dụng.", "error");
+    }
+  }, [effectiveRestaurantId, refetchSchedulingPolicy, showNotification, startSchedulingOperations]);
   const mandatoryRoleWarningCount = useMemo(
     () =>
       scheduleInsights.issues.filter((issue) =>
@@ -3726,6 +3752,23 @@ const ScheduleManagement = ({ readOnly = false }) => {
           >
             {publishingSchedule ? "Đang công bố..." : "Công bố lịch"}
           </button>
+        </div>
+      ) : null}
+      {!readOnly && !schedulingPolicy?.schedulingOperationalStartAt ? (
+        <div className="schedule-publish-reminder">
+          <div className="reminder-content">
+            <strong>Bắt đầu sử dụng hệ thống lịch làm việc</strong>
+            <p>Hệ thống sẽ ghi nhận tuần hiện tại là tuần khởi tạo. Trong tuần đầu, nhân viên part-time chưa có availability sẽ được cảnh báo thay vì chặn cứng để quản lý có thể tạo lịch gấp.</p>
+          </div>
+          <button type="button" onClick={handleStartSchedulingOperations} disabled={startSchedulingState.loading}>Bắt đầu sử dụng</button>
+        </div>
+      ) : null}
+      {!readOnly && firstWeekGraceActive ? (
+        <div className="schedule-publish-reminder">
+          <div className="reminder-content">
+            <strong>Tuần đầu sử dụng hệ thống</strong>
+            <p>Tuần đầu sử dụng hệ thống — thiếu availability của nhân viên bán thời gian sẽ được cảnh báo thay vì chặn cứng. Hãy mở đăng ký lịch cho tuần sau để vận hành đúng quy trình.</p>
+          </div>
         </div>
       ) : null}
       {!readOnly ? (
