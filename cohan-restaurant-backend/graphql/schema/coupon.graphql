@@ -45,7 +45,7 @@ extend type Query {
     offset: Int = 0
     now: DateTime
   ): [Coupon!]!
-  couponByCode(code: String!): Coupon
+  couponByCode(code: String!, restaurantId: ID): Coupon
   voucherPackages(restaurantId: ID): [VoucherPackage!]!
 }
 

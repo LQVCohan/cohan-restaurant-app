@@ -12,11 +12,11 @@ function buildActiveQuery(activeOnly, now) {
   const nowDate = now ? new Date(now) : new Date();
   return {
     isActive: true,
-    $or: [
-      { startAt: { $exists: false }, endAt: { $exists: false } },
-      { startAt: { $lte: nowDate }, endAt: { $gte: nowDate } },
-      { startAt: { $lte: nowDate }, endAt: { $exists: false } },
-      { startAt: { $exists: false }, endAt: { $gte: nowDate } },
+    $and: [
+      { $or: [{ publishAt: { $exists: false } }, { publishAt: null }, { publishAt: { $lte: nowDate } }] },
+      { $or: [{ startAt: { $exists: false } }, { startAt: null }, { startAt: { $lte: nowDate } }] },
+      { $or: [{ endAt: { $exists: false } }, { endAt: null }, { endAt: { $gte: nowDate } }] },
+      { $or: [{ maxUsage: { $lte: 0 } }, { $expr: { $lt: ["$used", "$maxUsage"] } }] },
     ],
   };
 }
@@ -38,10 +38,14 @@ export const CouponQuery = {
       .lean({ virtuals: true });
   },
 
-  async couponByCode(_, { code }) {
+  async couponByCode(_, { code, restaurantId }) {
     const norm = String(code || "").trim().toUpperCase();
     if (!norm) return null;
-    return Coupon.findOne({ code: norm }).lean({ virtuals: true });
+    const query = { code: norm };
+    if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
+      query.restaurantId = new mongoose.Types.ObjectId(restaurantId);
+    }
+    return Coupon.findOne(query).lean({ virtuals: true });
   },
 
   async voucherPackages(_, { restaurantId }) {
