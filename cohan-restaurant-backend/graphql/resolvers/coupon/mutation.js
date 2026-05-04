@@ -52,6 +52,24 @@ const assertValidDateRange = (payload) => {
   }
 };
 
+const assertValidCouponPayload = (payload) => {
+  if (!payload.name || !payload.code) {
+    throw new GraphQLError("name and code are required");
+  }
+  if (payload.discountValue <= 0) {
+    throw new GraphQLError("discountValue must be greater than 0");
+  }
+  if (payload.discountType === "PERCENT" && (payload.discountValue < 1 || payload.discountValue > 100)) {
+    throw new GraphQLError("PERCENT discountValue must be between 1 and 100");
+  }
+  if (payload.discountType === "AMOUNT" && payload.discountValue <= 0) {
+    throw new GraphQLError("AMOUNT discountValue must be greater than 0");
+  }
+  if (payload.minOrderValue < 0 || payload.maxDiscount < 0 || payload.maxUsage < 0) {
+    throw new GraphQLError("minOrderValue, maxDiscount, and maxUsage must not be negative");
+  }
+};
+
 const loadCouponForOutput = async (id) =>
   Coupon.findById(id).lean({ virtuals: true });
 
@@ -63,9 +81,7 @@ export const CouponMutation = {
     requireRole(user, ["admin", "manager"]);
     const payload = mapCouponInput(input);
     assertValidDateRange(payload);
-    if (!payload.name || !payload.code || payload.discountValue <= 0) {
-      throw new GraphQLError("Invalid coupon input");
-    }
+    assertValidCouponPayload(payload);
     const created = await Coupon.create(payload);
     return (await loadCouponForOutput(created._id)) || created;
   },
@@ -74,6 +90,7 @@ export const CouponMutation = {
     if (!mongoose.isValidObjectId(id)) throw new GraphQLError("Invalid coupon id");
     const payload = mapCouponInput(input);
     assertValidDateRange(payload);
+    assertValidCouponPayload(payload);
     const updated = await Coupon.findByIdAndUpdate(id, payload, { new: true });
     if (!updated) throw new GraphQLError("Coupon not found");
     return (await loadCouponForOutput(updated._id)) || updated;

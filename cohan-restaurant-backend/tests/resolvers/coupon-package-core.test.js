@@ -4,6 +4,7 @@ const modelMocks = vi.hoisted(() => ({
   Coupon: {
     create: vi.fn(),
     find: vi.fn(),
+    findOne: vi.fn(),
     findById: vi.fn(),
     findByIdAndUpdate: vi.fn(),
     deleteOne: vi.fn(),
@@ -140,6 +141,57 @@ describe("Coupon and voucher package core flows", () => {
         restaurantId: expect.objectContaining({ value: "restaurant-2" }),
       }),
     );
+  });
+
+  it("filters couponByCode with restaurantId when provided", async () => {
+    modelMocks.Coupon.findOne.mockReturnValue(mockLeanQuery({ id: "coupon-1" }));
+    const { CouponQuery } = await import("../../graphql/resolvers/coupon/query.js");
+
+    await CouponQuery.couponByCode(null, { code: "food10", restaurantId: "restaurant-2" });
+
+    expect(modelMocks.Coupon.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "FOOD10",
+        restaurantId: expect.objectContaining({ value: "restaurant-2" }),
+      }),
+    );
+  });
+
+  it("rejects percent discount outside 1..100", async () => {
+    const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
+    await expect(
+      CouponMutation.createCoupon(
+        null,
+        {
+          input: {
+            name: "Voucher food",
+            code: "FOOD10",
+            discountType: "PERCENT",
+            discountValue: 101,
+          },
+        },
+        { user: { roleName: "manager" } },
+      ),
+    ).rejects.toThrow("PERCENT discountValue must be between 1 and 100");
+  });
+
+  it("rejects negative coupon limits and values", async () => {
+    const { CouponMutation } = await import("../../graphql/resolvers/coupon/mutation.js");
+    await expect(
+      CouponMutation.createCoupon(
+        null,
+        {
+          input: {
+            name: "Voucher food",
+            code: "FOOD10",
+            discountType: "AMOUNT",
+            discountValue: 10,
+            minOrderValue: -1,
+          },
+        },
+        { user: { roleName: "manager" } },
+      ),
+    ).rejects.toThrow("minOrderValue, maxDiscount, and maxUsage must not be negative");
   });
 
   it("returns voucher packages with non-null id after create", async () => {

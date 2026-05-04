@@ -6,7 +6,7 @@ const baseOptions = { timestamps: true };
 const CouponSchema = new Schema(
   {
     name: { type: String, required: true },
-    code: { type: String, required: true, unique: true },
+    code: { type: String, required: true },
     category: { type: String, default: "order" },
     description: String,
     discountType: {
@@ -28,5 +28,7 @@ const CouponSchema = new Schema(
   },
   baseOptions
 );
+
+CouponSchema.index({ restaurantId: 1, code: 1 }, { unique: true });
 
 export default mongoose.model("Coupon", CouponSchema);
