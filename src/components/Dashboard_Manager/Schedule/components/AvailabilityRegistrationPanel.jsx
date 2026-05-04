@@ -464,7 +464,6 @@ export default function AvailabilityRegistrationPanel({
                             </div>
 
                             <div className="availability-submission-card__slots">
-                              <strong>Dữ liệu đang áp dụng</strong>
                               {(item.slots || []).length === 0 ? (
                                 <span className="availability-submission-slot is-empty">
                                   Không có slot chi tiết

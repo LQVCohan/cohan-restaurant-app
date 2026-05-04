@@ -79,11 +79,6 @@ type StaffAvailabilitySubmission {
   employmentType: EmploymentType!
   submissionType: AvailabilitySubmissionType!
   slots: [AvailabilitySlot!]!
-  pendingSlots: [AvailabilitySlot!]!
-  pendingSubmittedAt: DateTime
-  pendingSubmissionType: AvailabilitySubmissionType
-  pendingSource: SubmissionSource
-  pendingNote: String
   submittedAt: DateTime
   lockedAt: DateTime
   status: StaffAvailabilitySubmissionStatus!
