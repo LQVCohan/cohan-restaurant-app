@@ -13,6 +13,7 @@ import {
 } from "./schedulingPolicy.service.js";
 import { getLatestStaffPerformanceSnapshot } from "../staffPerformance/staffPerformance.service.js";
 const DAY_KEYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+const PART_TIME_LIKE_EMPLOYMENT_TYPES = new Set(["part_time", "seasonal"]);
 
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
@@ -319,10 +320,9 @@ function computeCandidateScore({
 }) {
   const weights = policy.scoringWeights || {};
   const rules = policy.laborRules || {};
-  const employmentType = String(
-    staff.employmentType || "full_time",
-  ).toLowerCase();
-
+  const employmentType = String(staff.employmentType || "full_time")
+    .trim()
+    .toLowerCase();
   const employmentPolicy =
     policy.employmentTypePolicy?.[employmentType] ||
     policy.employmentTypePolicy?.full_time ||
@@ -426,6 +426,11 @@ export async function validateShiftAssignment({ input }) {
     throw new Error("Không tìm thấy nhân viên.");
   }
 
+  const employmentType = String(staff.employmentType || "full_time")
+    .trim()
+    .toLowerCase();
+  const isPartTimeLike = PART_TIME_LIKE_EMPLOYMENT_TYPES.has(employmentType);
+
   const policy = await resolvePolicy(restaurantId);
   const rules = policy.laborRules || {};
 
@@ -449,7 +454,11 @@ export async function validateShiftAssignment({ input }) {
     });
   }
 
-  if (rules.respectWorkingDays && !isOff(rules.workingDaysRuleLevel)) {
+  if (
+    !isPartTimeLike &&
+    rules.respectWorkingDays &&
+    !isOff(rules.workingDaysRuleLevel)
+  ) {
     const workingDays = Array.isArray(staff.workingDays)
       ? staff.workingDays.map(normalizeWorkingDay)
       : [];
@@ -469,7 +478,7 @@ export async function validateShiftAssignment({ input }) {
           : "warning",
         message: "Ca này nằm ngoài ngày khả dụng của nhân viên.",
         suggestedAction:
-          "Chọn nhân viên khác, cập nhật workingDays hoặc override có lý do.",
+          "Chọn nhân viên khác, cập nhật ngày làm việc mặc định hoặc override có lý do.",
       };
 
       if (issue.severity === "error") {
@@ -601,10 +610,6 @@ export async function validateShiftAssignment({ input }) {
   );
 
   const weeklyHoursAfter = Number((weeklyHoursBefore + shiftHours).toFixed(2));
-
-  const employmentType = String(
-    staff.employmentType || "full_time",
-  ).toLowerCase();
 
   const employmentPolicy =
     policy.employmentTypePolicy?.[employmentType] ||
