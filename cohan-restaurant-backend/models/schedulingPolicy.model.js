@@ -111,6 +111,15 @@ const EmploymentTypePolicySchema = new Schema(
 
 const AvailabilityRegistrationPolicySchema = new Schema(
   {
+    availabilityRegistrationMode: {
+      type: String,
+      enum: ["auto", "manual"],
+      default: "manual",
+    },
+    availabilityOpenDayOffset: { type: Number, default: -7, min: -30, max: 0 },
+    availabilityOpenTime: { type: String, default: "00:00" },
+    availabilityCloseDayOffset: { type: Number, default: -5, min: -30, max: 0 },
+    availabilityCloseTime: { type: String, default: "23:59" },
     enabled: { type: Boolean, default: true },
     targetEmploymentTypes: {
       type: [String],

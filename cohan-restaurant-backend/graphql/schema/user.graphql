@@ -1905,6 +1905,11 @@ input EmploymentTypeSchedulingPolicyInput {
 }
 
 type AvailabilityRegistrationPolicy {
+  availabilityRegistrationMode: String!
+  availabilityOpenDayOffset: Int!
+  availabilityOpenTime: String!
+  availabilityCloseDayOffset: Int!
+  availabilityCloseTime: String!
   enabled: Boolean!
   targetEmploymentTypes: [String!]!
   openDayOfWeek: DayOfWeek!
@@ -1921,6 +1926,11 @@ type AvailabilityRegistrationPolicy {
 }
 
 input AvailabilityRegistrationPolicyInput {
+  availabilityRegistrationMode: String
+  availabilityOpenDayOffset: Int
+  availabilityOpenTime: String
+  availabilityCloseDayOffset: Int
+  availabilityCloseTime: String
   enabled: Boolean
   targetEmploymentTypes: [String!]
   openDayOfWeek: DayOfWeek

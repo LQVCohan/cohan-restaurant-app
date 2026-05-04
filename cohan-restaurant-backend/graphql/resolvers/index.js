@@ -123,6 +123,9 @@ export default {
   ...(search.SearchResult ? { SearchResult: search.SearchResult } : {}),
   ...(communication.ChatThread ? { ChatThread: communication.ChatThread } : {}),
   ...(supplier.Supplier ? { Supplier: supplier.Supplier } : {}),
+  ...(availability.AvailabilityWindow
+    ? { AvailabilityWindow: availability.AvailabilityWindow }
+    : {}),
   ...(review.ReactionSummary
     ? { ReactionSummary: review.ReactionSummary }
     : {}),

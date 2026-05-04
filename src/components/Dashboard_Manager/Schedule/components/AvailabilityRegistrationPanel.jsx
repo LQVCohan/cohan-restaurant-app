@@ -55,6 +55,8 @@ export default function AvailabilityRegistrationPanel({
   reopenBlockedReason = "",
 }) {
   const windowStatus = String(availabilityWindow?.status || "unknown").toLowerCase();
+  const effectiveStatus = String(availabilityWindow?.effectiveStatus || windowStatus).toLowerCase();
+  const registrationMode = String(availabilityWindow?.registrationMode || availabilityWindow?.registrationModeSnapshot || "manual").toLowerCase();
   const hasWindow = Boolean(availabilityWindow?.id);
 
   const submissionSummary = useMemo(() => {
@@ -80,13 +82,15 @@ export default function AvailabilityRegistrationPanel({
     : "Chưa tạo window";
 
   const canCreate = !hasWindow && selectedRestaurantId && !loading;
+  const isAutoMode = registrationMode === "auto";
   const canOpen =
     hasWindow &&
     selectedRestaurantId &&
     !loading &&
+    !isAutoMode &&
     (windowStatus === "draft" || (windowStatus === "closed" && !reopenBlockedReason));
   const openActionLabel = windowStatus === "closed" ? "Mở lại đăng ký" : "Mở đăng ký";
-  const canClose = hasWindow && selectedRestaurantId && !loading && windowStatus === "open";
+  const canClose = hasWindow && selectedRestaurantId && !loading && !isAutoMode && windowStatus === "open";
 
   return (
     <section className="schedule-availability-panel">
@@ -101,7 +105,7 @@ export default function AvailabilityRegistrationPanel({
             {formatDateTime(targetWeekEnd)} ({mode === "currentWeek" ? "tuần đang xem" : "tuần kế tiếp"})
           </p>
         </div>
-        <span className={`schedule-availability-panel__status is-${windowStatus}`}>
+        <span className={`schedule-availability-panel__status is-${effectiveStatus}`}>
           {statusLabel}
         </span>
         {typeof onToggleCollapse === "function" ? (
@@ -149,6 +153,10 @@ export default function AvailabilityRegistrationPanel({
         <>
           <div className="schedule-availability-panel__summary">
             <div>
+              <span>Chế độ đăng ký</span>
+              <strong>{isAutoMode ? "Tự động" : "Thủ công"}</strong>
+            </div>
+            <div>
               <span>Tuần áp dụng</span>
               <strong>
                 {formatDateTime(availabilityWindow.periodStart)} - {formatDateTime(availabilityWindow.periodEnd)}
@@ -190,10 +198,11 @@ export default function AvailabilityRegistrationPanel({
             <button type="button" onClick={onCloseWindow} disabled={!canClose}>
               {loading ? "Đang xử lý..." : "Đóng đăng ký"}
             </button>
-            <button type="button" disabled>
+            <button type="button">
               Xem submissions
             </button>
           </div>
+          {isAutoMode ? <p>Kỳ đăng ký đang chạy tự động theo cài đặt.</p> : null}
           {reopenBlockedReason ? (
             <div className="schedule-availability-panel__empty">
               <p>{reopenBlockedReason}</p>
