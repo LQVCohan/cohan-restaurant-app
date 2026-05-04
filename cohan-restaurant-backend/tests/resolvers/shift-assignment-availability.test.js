@@ -435,6 +435,126 @@ describe("validateShiftAssignment availability rules", () => {
     );
   });
 
+
+  it("allows part-time assignment when approved slot matches even if workingDays excludes day", async () => {
+    setupBase({
+      staff: {
+        _id: employeeId,
+        userType: "STAFF",
+        employmentStatus: "working",
+        employmentType: "part_time",
+        workingDays: ["TUE"],
+      },
+      windowDoc: {
+        ...closedWindow,
+        periodStart: new Date("2026-05-11T00:00:00.000Z"),
+        periodEnd: new Date("2026-05-17T23:59:59.999Z"),
+      },
+      submission: {
+        _id: "submission-approved-monday",
+        availabilityWindowId: windowId,
+        employeeId,
+        employmentType: "part_time",
+        submissionType: "weekly_availability",
+        status: "approved",
+        slots: [
+          {
+            date: new Date("2026-05-11T00:00:00.000Z"),
+            shiftType: "morning",
+            status: "available",
+          },
+        ],
+      },
+    });
+
+    const result = await validate({
+      startTime: "2026-05-11T06:00:00.000Z",
+      endTime: "2026-05-11T10:00:00.000Z",
+      shiftType: "morning",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.blockingErrors.map((error) => error.code)).not.toContain(
+      "OUTSIDE_WORKING_DAYS",
+    );
+    expect(result.warnings.map((warning) => warning.code)).not.toContain(
+      "OUTSIDE_SUBMITTED_AVAILABILITY",
+    );
+  });
+
+  it("does not emit OUTSIDE_WORKING_DAYS for part-time without matching availability slot", async () => {
+    setupBase({
+      staff: {
+        _id: employeeId,
+        userType: "STAFF",
+        employmentStatus: "working",
+        employmentType: "part_time",
+        workingDays: ["TUE"],
+      },
+      windowDoc: {
+        ...closedWindow,
+        periodStart: new Date("2026-05-11T00:00:00.000Z"),
+        periodEnd: new Date("2026-05-17T23:59:59.999Z"),
+      },
+      submission: {
+        _id: "submission-no-match-monday",
+        availabilityWindowId: windowId,
+        employeeId,
+        employmentType: "part_time",
+        submissionType: "weekly_availability",
+        status: "approved",
+        slots: [],
+      },
+    });
+
+    const result = await validate({
+      startTime: "2026-05-11T06:00:00.000Z",
+      endTime: "2026-05-11T10:00:00.000Z",
+      shiftType: "morning",
+    });
+
+    expect(result.blockingErrors.map((error) => error.code)).not.toContain(
+      "OUTSIDE_WORKING_DAYS",
+    );
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "OUTSIDE_SUBMITTED_AVAILABILITY",
+        }),
+      ]),
+    );
+  });
+
+  it("keeps hard OUTSIDE_WORKING_DAYS for full-time when excluded by workingDays", async () => {
+    setupBase({
+      staff: {
+        _id: employeeId,
+        userType: "STAFF",
+        employmentStatus: "working",
+        employmentType: "full_time",
+        workingDays: ["TUE"],
+      },
+      windowDoc: closedWindow,
+      submission: null,
+    });
+
+    const result = await validate({
+      startTime: "2026-05-11T06:00:00.000Z",
+      endTime: "2026-05-11T10:00:00.000Z",
+      shiftType: "morning",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.blockingErrors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "OUTSIDE_WORKING_DAYS",
+          severity: "error",
+        }),
+      ]),
+    );
+  });
+
   it("hard-blocks approved leave even when override is allowed", async () => {
     setupBase({
       staff: {
