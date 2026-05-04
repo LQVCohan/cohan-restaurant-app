@@ -40,6 +40,12 @@ const DEFAULT_AVAILABILITY_REGISTRATION_POLICY = {
 };
 const TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
+const DEFAULT_FIRST_WEEK_GRACE_POLICY = {
+  enabled: true,
+  strategy: "availability_warning_only",
+  appliedUntil: null,
+};
+
 function toObjectId(value) {
   if (!value || !mongoose.isValidObjectId(value)) return null;
   return new mongoose.Types.ObjectId(value);
@@ -107,6 +113,8 @@ export function getDefaultSchedulingPolicyPayload(restaurantId) {
       ruleRiskPenalty: 30,
     },
     mandatoryShiftRoles: ["server", "cook", "cashier"],
+    schedulingOperationalStartAt: null,
+    firstWeekGracePolicy: { ...DEFAULT_FIRST_WEEK_GRACE_POLICY },
     availabilityRegistrationPolicy: { ...DEFAULT_AVAILABILITY_REGISTRATION_POLICY },
   };
 }
@@ -192,6 +200,54 @@ function sanitizeAvailabilityRegistrationPolicy(input = {}) {
     ),
     autoCreateWindow: Boolean(merged.autoCreateWindow),
   };
+}
+
+
+export function startOfWeekMonday(value) {
+  const d = new Date(value);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+export function endOfWeekMonday(value) {
+  const start = startOfWeekMonday(value);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
+export function isFirstOperationalWeek(policy, targetDate = new Date()) {
+  const startAt = policy?.schedulingOperationalStartAt ? new Date(policy.schedulingOperationalStartAt) : null;
+  if (!startAt || Number.isNaN(startAt.getTime())) return { active: false, weekStart: null, weekEnd: null, appliedUntil: null, reason: "no_operational_start" };
+  if (policy?.firstWeekGracePolicy?.enabled !== true) return { active: false, weekStart: null, weekEnd: null, appliedUntil: policy?.firstWeekGracePolicy?.appliedUntil || null, reason: "grace_disabled" };
+  const weekStart = startOfWeekMonday(startAt);
+  const weekEnd = endOfWeekMonday(startAt);
+  const target = new Date(targetDate);
+  const appliedUntil = policy?.firstWeekGracePolicy?.appliedUntil ? new Date(policy.firstWeekGracePolicy.appliedUntil) : null;
+  if (target < weekStart || target > weekEnd) return { active: false, weekStart, weekEnd, appliedUntil, reason: "outside_operational_week" };
+  if (appliedUntil && target > appliedUntil) return { active: false, weekStart, weekEnd, appliedUntil, reason: "after_applied_until" };
+  return { active: true, weekStart, weekEnd, appliedUntil, reason: "active" };
+}
+
+export async function startSchedulingOperations({ restaurantId }) {
+  const rid = toObjectId(restaurantId);
+  if (!rid) throw new Error("restaurantId không hợp lệ.");
+  let policy = await SchedulingPolicy.findOne({ restaurantId: rid });
+  if (!policy) policy = await SchedulingPolicy.create(getDefaultSchedulingPolicyPayload(rid));
+  if (policy.schedulingOperationalStartAt) return mapSchedulingPolicy(policy);
+  const now = new Date();
+  policy.schedulingOperationalStartAt = now;
+  policy.firstWeekGracePolicy = {
+    enabled: policy.firstWeekGracePolicy?.enabled === false ? false : true,
+    strategy: "availability_warning_only",
+    appliedUntil: endOfWeekMonday(now),
+  };
+  await policy.save();
+  return mapSchedulingPolicy(policy);
 }
 
 export async function getSchedulingPolicy({ restaurantId }) {
@@ -355,6 +411,11 @@ export function mapSchedulingPolicy(policy) {
     },
 
     employmentTypePolicy: policy.employmentTypePolicy || {},
+    schedulingOperationalStartAt: policy.schedulingOperationalStartAt || null,
+    firstWeekGracePolicy: {
+      ...DEFAULT_FIRST_WEEK_GRACE_POLICY,
+      ...(policy.firstWeekGracePolicy || {}),
+    },
     availabilityRegistrationPolicy: sanitizeAvailabilityRegistrationPolicy(
       policy.availabilityRegistrationPolicy || {},
     ),

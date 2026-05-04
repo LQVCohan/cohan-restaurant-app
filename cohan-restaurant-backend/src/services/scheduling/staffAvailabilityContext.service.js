@@ -1,4 +1,5 @@
 import { AvailabilityRegistrationWindow, StaffAvailabilitySubmission } from "../../../models/index.js";
+import { isFirstOperationalWeek } from "./schedulingPolicy.service.js";
 
 export const AVAILABILITY_RULE_CODES = {
   PART_TIME_AVAILABILITY_REQUIRED: "PART_TIME_AVAILABILITY_REQUIRED",
@@ -6,6 +7,7 @@ export const AVAILABILITY_RULE_CODES = {
   FULL_TIME_UNAVAILABLE_EXCEPTION: "FULL_TIME_UNAVAILABLE_EXCEPTION",
   AVAILABILITY_PENDING_SUBMISSION: "AVAILABILITY_PENDING_SUBMISSION",
   LATE_AVAILABILITY_CHANGE_PENDING: "LATE_AVAILABILITY_CHANGE_PENDING",
+  FIRST_WEEK_GRACE_MISSING_AVAILABILITY: "FIRST_WEEK_GRACE_MISSING_AVAILABILITY",
 };
 
 const PART_TIME_EMPLOYMENT_TYPES = new Set(["part_time", "seasonal"]);
@@ -250,6 +252,24 @@ export async function resolveStaffAvailabilityForShift({
 
     if (!hasUsableSubmission) {
       if (windowClosed) {
+        const firstWeekGrace = isFirstOperationalWeek(policy, shiftDate);
+        if (PART_TIME_EMPLOYMENT_TYPES.has(employmentType) && firstWeekGrace.active) {
+          return {
+            status: "missing_required_submission_first_week_grace",
+            issues: [
+              ...issues,
+              toIssue({
+                code: AVAILABILITY_RULE_CODES.FIRST_WEEK_GRACE_MISSING_AVAILABILITY,
+                severity: "info",
+                message: "Nhân viên chưa có đăng ký availability do tuần đầu sử dụng hệ thống.",
+                suggestedAction:
+                  "Có thể xếp tạm trong tuần đầu, nhưng nên mở đăng ký lịch cho tuần sau ngay.",
+              }),
+            ],
+            window: windowDoc,
+            submission,
+          };
+        }
         return {
           status: "missing_required_submission",
           issues: [

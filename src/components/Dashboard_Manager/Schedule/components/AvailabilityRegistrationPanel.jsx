@@ -101,6 +101,10 @@ export default function AvailabilityRegistrationPanel({
   policySaving = false,
   onReviewSubmission,
   reviewingSubmission = false,
+  firstWeekGraceActive = false,
+  nextWeekWindowMissing = false,
+  isSunday = false,
+  shouldRemindNextWeekRegistration = false,
 }) {
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [policyDraft, setPolicyDraft] = useState({
@@ -239,6 +243,23 @@ export default function AvailabilityRegistrationPanel({
             <div className="schedule-availability-panel__empty">
               <h4>Không thể tải kỳ đăng ký</h4>
               <p>{error.message || "Đã có lỗi xảy ra."}</p>
+            </div>
+          ) : null}
+
+
+          {firstWeekGraceActive && nextWeekWindowMissing ? (
+            <div className="schedule-availability-panel__empty">
+              <p>Nên mở đăng ký cho tuần sau ngay để nhân viên gửi availability đúng quy trình.</p>
+            </div>
+          ) : null}
+          {isSunday ? (
+            <div className="schedule-availability-panel__empty">
+              <p>Hôm nay nên hoàn tất và công bố lịch tuần tới. Từ tuần sau, hãy vận hành theo chu kỳ đăng ký availability chuẩn.</p>
+            </div>
+          ) : null}
+          {shouldRemindNextWeekRegistration ? (
+            <div className="schedule-availability-panel__empty">
+              <button type="button" onClick={onCreateWindow} disabled={!canCreate && !canOpen}>Mở đăng ký tuần sau</button>
             </div>
           ) : null}
 

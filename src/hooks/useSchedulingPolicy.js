@@ -111,6 +111,12 @@ export const QUERY_SCHEDULING_POLICY = gql`
           priorityWeight
         }
       }
+      schedulingOperationalStartAt
+      firstWeekGracePolicy {
+        enabled
+        strategy
+        appliedUntil
+      }
       availabilityRegistrationPolicy {
         availabilityRegistrationMode
         availabilityOpenDayOffset
@@ -173,6 +179,29 @@ export const QUERY_VALIDATE_SHIFT_ASSIGNMENT = gql`
   }
 `;
 
+const START_SCHEDULING_OPERATIONS = gql`
+  mutation StartSchedulingOperations($restaurantId: ID!) {
+    startSchedulingOperations(restaurantId: $restaurantId) {
+      id
+      restaurantId
+      schedulingOperationalStartAt
+      firstWeekGracePolicy {
+        enabled
+        strategy
+        appliedUntil
+      }
+      availabilityRegistrationPolicy {
+        availabilityRegistrationMode
+        availabilityOpenDayOffset
+        availabilityOpenTime
+        availabilityCloseDayOffset
+        availabilityCloseTime
+        lateChangeRequiresApproval
+      }
+    }
+  }
+`;
+
 const MUTATION_UPDATE_SCHEDULING_POLICY = gql`
   mutation UpdateSchedulingPolicy(
     $restaurantId: ID!
@@ -222,6 +251,12 @@ const MUTATION_UPDATE_SCHEDULING_POLICY = gql`
         ruleRiskPenalty
       }
       mandatoryShiftRoles
+      schedulingOperationalStartAt
+      firstWeekGracePolicy {
+        enabled
+        strategy
+        appliedUntil
+      }
       availabilityRegistrationPolicy {
         availabilityRegistrationMode
         availabilityOpenDayOffset
@@ -261,6 +296,18 @@ export default function useSchedulingPolicy({ restaurantId } = {}) {
     },
   );
 
+  const [startSchedulingOperationsMutation] = useMutation(START_SCHEDULING_OPERATIONS);
+
+  const startSchedulingOperations = async (targetRestaurantId) => {
+    try {
+      await startSchedulingOperationsMutation({ variables: { restaurantId: targetRestaurantId || restaurantId } });
+      await refetch();
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
+
   const [updateSchedulingPolicy, updateState] = useMutation(
     MUTATION_UPDATE_SCHEDULING_POLICY,
     {
@@ -286,5 +333,6 @@ export default function useSchedulingPolicy({ restaurantId } = {}) {
 
     updateSchedulingPolicy,
     updateState,
+    startSchedulingOperations,
   };
 }

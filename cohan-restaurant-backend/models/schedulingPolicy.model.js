@@ -211,6 +211,28 @@ const SchedulingPolicySchema = new Schema(
       type: SchedulingScoringWeightsSchema,
       default: () => ({}),
     },
+
+
+    schedulingOperationalStartAt: {
+      type: Date,
+      default: null,
+    },
+
+    firstWeekGracePolicy: {
+      enabled: {
+        type: Boolean,
+        default: true,
+      },
+      strategy: {
+        type: String,
+        enum: ["availability_warning_only"],
+        default: "availability_warning_only",
+      },
+      appliedUntil: {
+        type: Date,
+        default: null,
+      },
+    },
     mandatoryShiftRoles: {
       type: [String],
       default: ["server", "cook", "cashier"],
