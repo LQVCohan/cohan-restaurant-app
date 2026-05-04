@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { buildAvailabilityRegistrationSchedule, resolveAvailabilityWindowEffectiveStatus } from "@/utils/availabilityRegistrationSchedule";
 import { ChevronDown, ChevronUp, ClipboardList, Eye } from "lucide-react";
 
 const WINDOW_STATUS_LABELS = {
@@ -92,10 +93,23 @@ export default function AvailabilityRegistrationPanel({
   collapsed = false,
   onToggleCollapse,
   reopenBlockedReason = "",
+  availabilityPolicy,
 }) {
+  const registrationSchedule = useMemo(() => buildAvailabilityRegistrationSchedule({
+    targetWeekStart,
+    targetWeekEnd,
+    policy: availabilityPolicy,
+  }), [targetWeekStart, targetWeekEnd, availabilityPolicy]);
+
   const windowStatus = String(
-    availabilityWindow?.status || "unknown",
+    resolveAvailabilityWindowEffectiveStatus(availabilityWindow || {
+      status: "draft",
+      registrationMode: registrationSchedule.mode,
+      openAt: registrationSchedule.openAt,
+      closeAt: registrationSchedule.closeAt,
+    }) || "unknown",
   ).toLowerCase();
+  const registrationMode = String(availabilityWindow?.registrationMode || registrationSchedule.mode || "manual").toLowerCase();
   const hasWindow = Boolean(availabilityWindow?.id);
   const [showSubmissions, setShowSubmissions] = useState(false);
   const submissionSummary = useMemo(() => {
@@ -224,12 +238,16 @@ export default function AvailabilityRegistrationPanel({
                   </strong>
                 </div>
                 <div>
+                  <span>Chế độ đăng ký</span>
+                  <strong>{registrationMode === "auto" ? "Tự động" : "Thủ công"}</strong>
+                </div>
+                <div>
                   <span>Thời gian mở đăng ký</span>
-                  <strong>{formatDateTime(availabilityWindow.openAt)}</strong>
+                  <strong>{formatDateTime(availabilityWindow.openAt || registrationSchedule.openAt)}</strong>
                 </div>
                 <div>
                   <span>Hạn đóng đăng ký</span>
-                  <strong>{formatDateTime(availabilityWindow.closeAt)}</strong>
+                  <strong>{formatDateTime(availabilityWindow.closeAt || registrationSchedule.closeAt)}</strong>
                 </div>
                 <div>
                   <span>Đối tượng đăng ký ca khả dụng</span>
@@ -286,6 +304,16 @@ export default function AvailabilityRegistrationPanel({
                   {showSubmissions ? "Ẩn submissions" : "Xem submissions"}
                 </button>
               </div>
+              {registrationMode === "manual" ? (
+                <div className="schedule-availability-panel__empty">
+                  <p>Khuyến nghị mở đăng ký: <strong>{formatDateTime(registrationSchedule.recommendedOpenAt)}</strong></p>
+                  <p>Khuyến nghị đóng đăng ký: <strong>{formatDateTime(registrationSchedule.recommendedCloseAt)}</strong></p>
+                </div>
+              ) : (
+                <div className="schedule-availability-panel__empty">
+                  <p>Kỳ đăng ký đang chạy tự động theo cài đặt.</p>
+                </div>
+              )}
               {reopenBlockedReason ? (
                 <div className="schedule-availability-panel__empty">
                   <p>{reopenBlockedReason}</p>
