@@ -12,8 +12,11 @@ const GET_AVAILABILITY_WINDOWS = gql`
       id
       periodStart
       periodEnd
+      openAt
       closeAt
       status
+      effectiveStatus
+      registrationMode
       targetEmploymentTypes
       allowFullTimeUnavailableException
       lateChangeRequiresApproval
@@ -56,6 +59,20 @@ const GET_SUBMISSION = gql`
     }
   }
 `;
+const GET_MY_SCHEDULE_ACK = gql`
+  query MyScheduleAck($restaurantId: ID!, $periodStart: DateTime!, $periodEnd: DateTime!) {
+    myScheduleAcknowledgement(
+      restaurantId: $restaurantId
+      periodStart: $periodStart
+      periodEnd: $periodEnd
+    ) {
+      id
+      status
+      acknowledgedAt
+      changedAfterAcknowledgement
+    }
+  }
+`;
 
 function renderWithAuth(user, mocks = []) {
   const defaultMocks = [
@@ -71,6 +88,41 @@ function renderWithAuth(user, mocks = []) {
       result: {
         data: { availabilityWindows: [] },
       },
+    },
+    {
+      request: {
+        query: GET_AVAILABILITY_WINDOWS,
+        variables: {
+          restaurantId: "r1",
+          from: "2026-05-10T00:00:00.000Z",
+          to: "2026-05-18T23:59:59.999Z",
+        },
+      },
+      result: {
+        data: { availabilityWindows: [] },
+      },
+    },
+    {
+      request: {
+        query: GET_MY_SCHEDULE_ACK,
+        variables: {
+          restaurantId: "r1",
+          periodStart: "2026-05-04T00:00:00.000Z",
+          periodEnd: "2026-05-10T23:59:59.999Z",
+        },
+      },
+      result: { data: { myScheduleAcknowledgement: null } },
+    },
+    {
+      request: {
+        query: GET_MY_SCHEDULE_ACK,
+        variables: {
+          restaurantId: "r1",
+          periodStart: "2026-05-04T00:00:00.000Z",
+          periodEnd: "2026-05-10T23:59:59.999Z",
+        },
+      },
+      result: { data: { myScheduleAcknowledgement: null } },
     },
     {
       request: {
@@ -131,8 +183,11 @@ describe("StaffSchedulePage", () => {
                 id: "w1",
                 periodStart: "2026-05-11T00:00:00.000Z",
                 periodEnd: "2026-05-17T23:59:59.999Z",
+                openAt: "2026-05-10T00:00:00.000Z",
                 closeAt: "2026-05-17T23:59:59.999Z",
                 status: "open",
+                effectiveStatus: "open",
+                registrationMode: "manual",
                 targetEmploymentTypes: ["part_time", "seasonal"],
                 allowFullTimeUnavailableException: true,
                 lateChangeRequiresApproval: true,
@@ -140,6 +195,17 @@ describe("StaffSchedulePage", () => {
             ],
           },
         },
+      },
+      {
+        request: {
+          query: GET_MY_SCHEDULE_ACK,
+          variables: {
+            restaurantId: "r1",
+            periodStart: "2026-05-04T00:00:00.000Z",
+            periodEnd: "2026-05-10T23:59:59.999Z",
+          },
+        },
+        result: { data: { myScheduleAcknowledgement: null } },
       },
       {
         request: {

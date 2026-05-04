@@ -65,12 +65,20 @@ export default {
     }
 
     const effectiveStatus = resolveAvailabilityWindowEffectiveStatus(windowDoc);
-    if (effectiveStatus === "cancelled") throw new Error("Kỳ đăng ký đã bị hủy.");
-    if (effectiveStatus === "used_for_schedule") throw new Error("Kỳ đăng ký đã được dùng để xếp lịch.");
-    if (effectiveStatus === "draft") throw new Error("Kỳ đăng ký chưa mở.");
-    if (effectiveStatus === "closed") throw new Error("Kỳ đăng ký đã hết hạn.");
-    if (effectiveStatus !== "open" && !isAvailabilityRegistrationWindowOpen(windowDoc)) {
-      if (!windowDoc.lateChangeRequiresApproval) throw new Error("Kỳ đăng ký đã đóng.");
+    if (effectiveStatus === "cancelled") {
+      throw new Error("AVAILABILITY_WINDOW_CANCELLED");
+    }
+    if (effectiveStatus === "used_for_schedule" || effectiveStatus === "locked") {
+      throw new Error("AVAILABILITY_WINDOW_LOCKED_FOR_SCHEDULE");
+    }
+    if (effectiveStatus === "draft") {
+      throw new Error("AVAILABILITY_WINDOW_NOT_OPEN");
+    }
+    if (effectiveStatus === "closed") {
+      if (!windowDoc.lateChangeRequiresApproval) throw new Error("AVAILABILITY_WINDOW_CLOSED");
+      input.status = "late_change_requested";
+    } else if (effectiveStatus !== "open" && !isAvailabilityRegistrationWindowOpen(windowDoc)) {
+      if (!windowDoc.lateChangeRequiresApproval) throw new Error("AVAILABILITY_WINDOW_CLOSED");
       input.status = "late_change_requested";
     } else {
       input.status = input.status || "submitted";
