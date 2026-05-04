@@ -58,6 +58,7 @@ import AutoScheduleModal from "./components/AutoScheduleModal";
 import ShiftRulesModal from "./components/ShiftRulesModal";
 import DailyView from "./DailyView";
 import AvailabilityRegistrationPanel from "./components/AvailabilityRegistrationPanel";
+import useAvailabilityPolicyUpdate from "./hooks/useAvailabilityPolicyUpdate";
 const SCHEDULE_STATUS_LABELS = {
   draft: "Bản nháp",
   published: "Đã công bố",
@@ -2257,6 +2258,16 @@ const ScheduleManagement = ({ readOnly = false }) => {
       );
     }
   };
+  const handleUpdateAvailabilityPolicy = useAvailabilityPolicyUpdate({
+    effectiveRestaurantId,
+    schedulingPolicy,
+    updateSchedulingPolicy,
+    refetchManagerWindows,
+    refetchManagerSubmissions,
+    stripTypenameDeep,
+    showNotification,
+    getGraphQLErrorMessage,
+  });
 
   const overlapsExistingShiftGroup = ({
     date,
@@ -3733,6 +3744,8 @@ const ScheduleManagement = ({ readOnly = false }) => {
           }
           reopenBlockedReason={reopenAvailabilityBlockedReason}
           availabilityPolicy={schedulingPolicy?.availabilityRegistrationPolicy}
+          onUpdateAvailabilityPolicy={handleUpdateAvailabilityPolicy}
+          policySaving={updateSchedulingPolicyState.loading}
         />
       ) : null}
       {isStatsPanelOpen ? (

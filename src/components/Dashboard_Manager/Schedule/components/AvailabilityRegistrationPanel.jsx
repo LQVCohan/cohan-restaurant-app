@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { buildAvailabilityRegistrationSchedule, resolveAvailabilityWindowEffectiveStatus } from "@/utils/availabilityRegistrationSchedule";
 import { ChevronDown, ChevronUp, ClipboardList, Eye } from "lucide-react";
+import "./AvailabilityRegistrationPanel.scss";
 
 const WINDOW_STATUS_LABELS = {
   draft: "Bản nháp",
@@ -94,7 +95,17 @@ export default function AvailabilityRegistrationPanel({
   onToggleCollapse,
   reopenBlockedReason = "",
   availabilityPolicy,
+  onUpdateAvailabilityPolicy,
+  policySaving = false,
 }) {
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [policyDraft, setPolicyDraft] = useState({
+    availabilityRegistrationMode: "manual",
+    availabilityOpenDayOffset: -7,
+    availabilityOpenTime: "09:00",
+    availabilityCloseDayOffset: -1,
+    availabilityCloseTime: "18:00",
+  });
   const registrationSchedule = useMemo(() => buildAvailabilityRegistrationSchedule({
     targetWeekStart,
     targetWeekEnd,
@@ -146,6 +157,18 @@ export default function AvailabilityRegistrationPanel({
   const canClose =
     hasWindow && selectedRestaurantId && !loading && windowStatus === "open";
   const canViewSubmissions = hasWindow && selectedRestaurantId && !loading;
+  const manualActionsDisabled = registrationMode === "auto";
+
+  const openPolicyModal = () => {
+    setPolicyDraft({
+      availabilityRegistrationMode: String(availabilityPolicy?.availabilityRegistrationMode || "manual").toLowerCase(),
+      availabilityOpenDayOffset: Number(availabilityPolicy?.availabilityOpenDayOffset ?? -7),
+      availabilityOpenTime: availabilityPolicy?.availabilityOpenTime || "09:00",
+      availabilityCloseDayOffset: Number(availabilityPolicy?.availabilityCloseDayOffset ?? -1),
+      availabilityCloseTime: availabilityPolicy?.availabilityCloseTime || "18:00",
+    });
+    setIsPolicyModalOpen(true);
+  };
   return (
     <section className="schedule-availability-panel">
       <div className="schedule-availability-panel__header">
@@ -284,16 +307,21 @@ export default function AvailabilityRegistrationPanel({
                 <button
                   type="button"
                   onClick={onOpenWindow}
-                  disabled={!canOpen}
+                  disabled={!canOpen || manualActionsDisabled}
+                  title={manualActionsDisabled ? "Chế độ tự động đang bật, hệ thống tự mở/đóng theo cấu hình" : ""}
                 >
                   {loading ? "Đang xử lý..." : openActionLabel}
                 </button>
                 <button
                   type="button"
                   onClick={onCloseWindow}
-                  disabled={!canClose}
+                  disabled={!canClose || manualActionsDisabled}
+                  title={manualActionsDisabled ? "Chế độ tự động đang bật, hệ thống tự mở/đóng theo cấu hình" : ""}
                 >
                   {loading ? "Đang xử lý..." : "Đóng đăng ký"}
+                </button>
+                <button type="button" onClick={openPolicyModal} disabled={!selectedRestaurantId || policySaving}>
+                  {policySaving ? "Đang lưu..." : "Thiết lập đăng ký"}
                 </button>
                 <button
                   type="button"
@@ -306,12 +334,13 @@ export default function AvailabilityRegistrationPanel({
               </div>
               {registrationMode === "manual" ? (
                 <div className="schedule-availability-panel__empty">
+                  <p><strong>Thủ công:</strong> hệ thống chỉ hiển thị khuyến nghị, manager tự bấm mở/đóng.</p>
                   <p>Khuyến nghị mở đăng ký: <strong>{formatDateTime(registrationSchedule.recommendedOpenAt)}</strong></p>
                   <p>Khuyến nghị đóng đăng ký: <strong>{formatDateTime(registrationSchedule.recommendedCloseAt)}</strong></p>
                 </div>
               ) : (
                 <div className="schedule-availability-panel__empty">
-                  <p>Kỳ đăng ký đang chạy tự động theo cài đặt.</p>
+                  <p><strong>Tự động:</strong> hệ thống tự tính effectiveStatus theo openAt/closeAt.</p>
                 </div>
               )}
               {reopenBlockedReason ? (
@@ -454,6 +483,69 @@ export default function AvailabilityRegistrationPanel({
             </>
           )}
         </>
+      ) : null}
+      {isPolicyModalOpen ? (
+        <div className="publish-confirm-backdrop">
+          <div className="availability-policy-modal">
+            <div className="availability-policy-modal__header">
+              <h3>Thiết lập đăng ký lịch nhân viên</h3>
+              <p>
+                Cấu hình cách hệ thống mở/đóng kỳ đăng ký theo tuần mục tiêu.
+              </p>
+            </div>
+            <div className="availability-policy-modal__explain">
+              <div>
+                <strong>Tự động</strong>
+                <span>Hệ thống tự tính effectiveStatus theo openAt/closeAt.</span>
+              </div>
+              <div>
+                <strong>Thủ công</strong>
+                <span>Chỉ hiển thị khuyến nghị, manager tự bấm mở/đóng.</span>
+              </div>
+            </div>
+            <div className="availability-policy-modal__grid">
+              <label>
+                Chế độ đăng ký
+                <select
+                  value={policyDraft.availabilityRegistrationMode}
+                  onChange={(event) =>
+                    setPolicyDraft((prev) => ({
+                      ...prev,
+                      availabilityRegistrationMode: event.target.value,
+                    }))}
+                >
+                  <option value="manual">Thủ công</option>
+                  <option value="auto">Tự động</option>
+                </select>
+              </label>
+              <label>
+                Ngày mở đăng ký (offset theo target week)
+                <input type="number" value={policyDraft.availabilityOpenDayOffset} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityOpenDayOffset: Number(event.target.value) }))} placeholder="-7" />
+              </label>
+              <label>
+                Giờ mở đăng ký
+                <input type="time" value={policyDraft.availabilityOpenTime} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityOpenTime: event.target.value }))} />
+              </label>
+              <label>
+                Ngày đóng đăng ký (offset theo target week)
+                <input type="number" value={policyDraft.availabilityCloseDayOffset} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityCloseDayOffset: Number(event.target.value) }))} placeholder="-1" />
+              </label>
+              <label>
+                Giờ đóng đăng ký
+                <input type="time" value={policyDraft.availabilityCloseTime} onChange={(event) => setPolicyDraft((prev) => ({ ...prev, availabilityCloseTime: event.target.value }))} />
+              </label>
+            </div>
+            <div className="availability-policy-modal__actions">
+              <button type="button" className="btn-secondary" onClick={() => setIsPolicyModalOpen(false)} disabled={policySaving}>Hủy</button>
+              <button type="button" className="btn-primary" disabled={policySaving} onClick={async () => {
+                await onUpdateAvailabilityPolicy?.(policyDraft);
+                setIsPolicyModalOpen(false);
+              }}>
+                {policySaving ? "Đang lưu..." : "Lưu cấu hình"}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </section>
   );
