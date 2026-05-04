@@ -13,6 +13,7 @@ export const AVAILABILITY_RULE_CODES = {
 const PART_TIME_EMPLOYMENT_TYPES = new Set(["part_time", "seasonal"]);
 const ACTIVE_SUBMISSION_STATUSES = new Set(["submitted", "locked", "approved"]);
 const INACTIVE_SUBMISSION_STATUSES = new Set(["rejected", "cancelled"]);
+const SCHEDULING_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 function startOfDay(value) {
   const d = new Date(value);
@@ -42,14 +43,39 @@ export function endOfWeekMonday(value) {
   return end;
 }
 
-function ymd(value) {
-  return startOfDay(value).toISOString().slice(0, 10);
+function dateKeyInSchedulingTimezone(value) {
+  if (!value) return "";
+
+  if (typeof value === "string") {
+    const raw = value.trim();
+    const dateOnlyMatch = raw.match(/^\d{4}-\d{2}-\d{2}/);
+    if (dateOnlyMatch && !raw.includes("T")) return dateOnlyMatch[0];
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: SCHEDULING_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return year && month && day ? `${year}-${month}-${day}` : "";
 }
 
 function normalizeShiftType(value) {
-  return String(value || "")
+  const normalized = String(value || "")
     .trim()
     .toLowerCase();
+  if (normalized === "ca_sang") return "morning";
+  if (normalized === "ca_chieu") return "afternoon";
+  if (normalized === "ca_toi") return "evening";
+  return normalized;
 }
 
 function normalizeEmploymentType(value) {
@@ -83,7 +109,7 @@ function toIssue({ code, severity, message, suggestedAction }) {
 }
 
 function findSlot(slots = [], date, shiftType, status) {
-  const dateKey = ymd(date);
+  const dateKey = dateKeyInSchedulingTimezone(date);
   const typeKey = normalizeShiftType(shiftType);
 
   return (slots || []).find((slot) => {
@@ -93,7 +119,7 @@ function findSlot(slots = [], date, shiftType, status) {
     }
 
     return (
-      ymd(slot?.date) === dateKey &&
+      dateKeyInSchedulingTimezone(slot?.date) === dateKey &&
       normalizeShiftType(slot?.shiftType) === typeKey
     );
   });

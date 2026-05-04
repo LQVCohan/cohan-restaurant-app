@@ -341,6 +341,100 @@ describe("validateShiftAssignment availability rules", () => {
     expect(result.warnings).toEqual(expect.arrayContaining([expect.objectContaining({ code: "LATE_AVAILABILITY_CHANGE_PENDING" }), expect.objectContaining({ code: "PART_TIME_AVAILABILITY_REQUIRED" })]));
   });
 
+  it("approved part-time availability matches selected date in Asia/Ho_Chi_Minh even when stored as UTC previous day", async () => {
+    setupBase({
+      staff: {
+        _id: employeeId,
+        userType: "STAFF",
+        employmentStatus: "working",
+        employmentType: "part_time",
+        workingDays: ["TUE"],
+      },
+      windowDoc: {
+        ...closedWindow,
+        periodStart: new Date("2026-05-11T00:00:00.000Z"),
+        periodEnd: new Date("2026-05-17T23:59:59.999Z"),
+      },
+      submission: {
+        _id: "submission-timezone-match",
+        availabilityWindowId: windowId,
+        employeeId,
+        employmentType: "part_time",
+        submissionType: "weekly_availability",
+        status: "approved",
+        slots: [
+          {
+            date: new Date("2026-05-10T17:00:00.000Z"),
+            shiftType: "morning",
+            status: "available",
+          },
+        ],
+      },
+    });
+
+    const result = await validate({
+      startTime: "2026-05-11T06:00:00+07:00",
+      endTime: "2026-05-11T10:00:00+07:00",
+      shiftType: "Morning",
+      allowOverride: true,
+      overrideReason: "availability approved slot",
+    });
+    expect(result.ok).toBe(true);
+    expect(result.blockingErrors).toEqual([]);
+    expect(result.warnings.map((warning) => warning.code)).not.toContain(
+      "OUTSIDE_SUBMITTED_AVAILABILITY",
+    );
+  });
+
+  it("warns OUTSIDE_SUBMITTED_AVAILABILITY for same submission when day does not match in scheduling timezone", async () => {
+    setupBase({
+      staff: {
+        _id: employeeId,
+        userType: "STAFF",
+        employmentStatus: "working",
+        employmentType: "part_time",
+        workingDays: ["TUE"],
+      },
+      windowDoc: {
+        ...closedWindow,
+        periodStart: new Date("2026-05-11T00:00:00.000Z"),
+        periodEnd: new Date("2026-05-17T23:59:59.999Z"),
+      },
+      submission: {
+        _id: "submission-timezone-miss",
+        availabilityWindowId: windowId,
+        employeeId,
+        employmentType: "part_time",
+        submissionType: "weekly_availability",
+        status: "approved",
+        slots: [
+          {
+            date: new Date("2026-05-10T17:00:00.000Z"),
+            shiftType: "morning",
+            status: "available",
+          },
+        ],
+      },
+    });
+
+    const result = await validate({
+      startTime: "2026-05-12T06:00:00+07:00",
+      endTime: "2026-05-12T10:00:00+07:00",
+      shiftType: "morning",
+      allowOverride: true,
+      overrideReason: "availability check only",
+    });
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "OUTSIDE_SUBMITTED_AVAILABILITY",
+          severity: "risk",
+        }),
+      ]),
+    );
+  });
+
   it("hard-blocks approved leave even when override is allowed", async () => {
     setupBase({
       staff: {
