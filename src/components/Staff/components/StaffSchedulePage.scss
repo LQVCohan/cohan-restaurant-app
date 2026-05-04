@@ -431,7 +431,11 @@
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 20px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.94)),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.96),
+      rgba(248, 250, 252, 0.94)
+    ),
     #ffffff;
   overflow: hidden;
 }
@@ -457,24 +461,137 @@
   background: #ffffff;
 }
 
-.staff-availability-matrix__corner { display:flex;align-items:center;justify-content:center;min-height:48px;color:#64748b;font-size:12px;font-weight:850;}
-.staff-availability-matrix__day {display:flex;flex-direction:column;justify-content:center;min-height:48px;padding:8px;text-align:center;}
-.staff-availability-matrix__day strong {color:#0f172a;font-size:12.5px;font-weight:900;text-transform:capitalize;}
-.staff-availability-matrix__day span {margin-top:2px;color:#64748b;font-size:11.5px;font-weight:750;}
-.staff-availability-matrix__day.is-today {border-color:rgba(79,70,229,.3);background:#eef2ff;}
-.staff-availability-matrix__shift {display:flex;align-items:center;gap:9px;min-height:58px;padding:9px 10px;background:linear-gradient(180deg,#ffffff,#f8fafc);}
-.staff-availability-matrix__shiftIcon {display:inline-flex;align-items:center;justify-content:center;flex:0 0 30px;width:30px;height:30px;color:#4f46e5;border-radius:12px;background:#eef2ff;}
-.staff-availability-matrix__shift strong {display:block;color:#0f172a;font-size:12.5px;font-weight:900;line-height:1.15;}
-.staff-availability-matrix__shift small {display:block;margin-top:2px;color:#64748b;font-size:11px;font-weight:700;}
-.staff-matrix-slot {position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:58px;padding:8px 6px;cursor:pointer;transition:transform .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease;}
-.staff-matrix-slot input {position:absolute;opacity:0;pointer-events:none;}
-.staff-matrix-slot:hover {transform:translateY(-1px);border-color:rgba(79,70,229,.28);box-shadow:0 10px 22px rgba(15,23,42,.06);}
-.staff-matrix-slot.is-selected {border-color:rgba(79,70,229,.42);background:linear-gradient(180deg, rgba(238, 242, 255, 0.96), rgba(255, 255, 255, 0.98)), #ffffff;}
-.staff-matrix-slot.is-disabled {cursor:not-allowed;opacity:.62;}
-.staff-matrix-slot__check {display:inline-flex;align-items:center;justify-content:center;width:23px;height:23px;color:#fff;border-radius:999px;background:#e2e8f0;font-size:13px;font-weight:900;}
-.staff-matrix-slot.is-selected .staff-matrix-slot__check {background:#4f46e5;}
-.staff-matrix-slot__label {color:#475569;font-size:10.8px;font-weight:800;line-height:1.2;text-align:center;}
-.staff-matrix-slot.is-selected .staff-matrix-slot__label {color:#4338ca;}
+.staff-availability-matrix__corner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 850;
+}
+.staff-availability-matrix__day {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 48px;
+  padding: 8px;
+  text-align: center;
+}
+.staff-availability-matrix__day strong {
+  color: #0f172a;
+  font-size: 12.5px;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+.staff-availability-matrix__day span {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 750;
+}
+.staff-availability-matrix__day.is-today {
+  border-color: rgba(79, 70, 229, 0.3);
+  background: #eef2ff;
+}
+.staff-availability-matrix__shift {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 58px;
+  padding: 9px 10px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+.staff-availability-matrix__shiftIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  color: #4f46e5;
+  border-radius: 12px;
+  background: #eef2ff;
+}
+.staff-availability-matrix__shift strong {
+  display: block;
+  color: #0f172a;
+  font-size: 12.5px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+.staff-availability-matrix__shift small {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+.staff-matrix-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 58px;
+  padding: 8px 6px;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+.staff-matrix-slot input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.staff-matrix-slot:hover {
+  transform: translateY(-1px);
+  border-color: rgba(79, 70, 229, 0.28);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+}
+.staff-matrix-slot.is-selected {
+  border-color: rgba(79, 70, 229, 0.42);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(238, 242, 255, 0.96),
+      rgba(255, 255, 255, 0.98)
+    ),
+    #ffffff;
+}
+.staff-matrix-slot.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+.staff-matrix-slot__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 23px;
+  color: #fff;
+  border-radius: 999px;
+  background: #e2e8f0;
+  font-size: 13px;
+  font-weight: 900;
+}
+.staff-matrix-slot.is-selected .staff-matrix-slot__check {
+  background: #4f46e5;
+}
+.staff-matrix-slot__label {
+  color: #475569;
+  font-size: 10.8px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+}
+.staff-matrix-slot.is-selected .staff-matrix-slot__label {
+  color: #4338ca;
+}
 
 .staff-action-bar {
   position: static;
@@ -863,14 +980,12 @@
     border-radius: 22px;
   }
 
-
   .staff-my-shift-card__top {
     align-items: flex-start;
     flex-direction: column;
     gap: 3px;
   }
 }
-
 
 .staff-flow-steps {
   display: grid;
@@ -880,31 +995,974 @@
   margin: 0 auto 14px;
 }
 
-.staff-flow-step { min-height:54px; padding:9px 12px; border-radius:16px; }
-.staff-flow-step__icon { flex:0 0 32px; width:32px; height:32px; border-radius:12px; }
-.staff-flow-step strong { font-size:12.5px; }
-.staff-flow-step small { font-size:11.5px; }
+.staff-flow-step {
+  min-height: 54px;
+  padding: 9px 12px;
+  border-radius: 16px;
+}
+.staff-flow-step__icon {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+}
+.staff-flow-step strong {
+  font-size: 12.5px;
+}
+.staff-flow-step small {
+  font-size: 11.5px;
+}
 
 .staff-card--overview,
 .staff-card--shifts,
-.staff-card--guide { min-height: auto; }
+.staff-card--guide {
+  min-height: auto;
+}
 
 @media (min-width: 1500px) {
-  .staff-schedule-layout { grid-template-columns: minmax(0, 1fr) var(--staff-sidebar-width); }
-  .staff-schedule-side { display: flex; }
+  .staff-schedule-layout {
+    grid-template-columns: minmax(0, 1fr) var(--staff-sidebar-width);
+  }
+  .staff-schedule-side {
+    display: flex;
+  }
 }
 
 @media (max-width: 860px) {
-  .staff-schedule-side { display: flex; }
+  .staff-schedule-side {
+    display: flex;
+  }
 }
 
 @media (max-width: 720px) {
-  .staff-availability-matrix__grid { grid-template-columns: 118px repeat(7, 88px); min-width: 734px; }
-  .staff-availability-matrix__scroll { padding: 8px; }
+  .staff-availability-matrix__grid {
+    grid-template-columns: 118px repeat(7, 88px);
+    min-width: 734px;
+  }
+  .staff-availability-matrix__scroll {
+    padding: 8px;
+  }
 }
 
 @media (max-width: 560px) {
-  .staff-schedule-hero { grid-template-columns: 1fr; }
-  .staff-flow-steps { grid-template-columns: 1fr; }
-  .staff-schedule-side { flex-direction: column; }
+  .staff-schedule-hero {
+    grid-template-columns: 1fr;
+  }
+  .staff-flow-steps {
+    grid-template-columns: 1fr;
+  }
+  .staff-schedule-side {
+    flex-direction: column;
+  }
+}
+/* =========================================================
+   StaffSchedulePage final layout correction
+   Fix broken sidebar + restore flow step cards
+   ========================================================= */
+
+.staff-schedule-page {
+  --staff-page-max: 1160px;
+  --staff-sidebar-width: 320px;
+  --staff-page-gap: 14px;
+
+  padding: clamp(10px, 1.2vw, 16px);
+}
+
+/* Luôn cho content chính full width ở desktop/laptop.
+   Không ép sidebar sang phải nữa, vì availability matrix cần chiều ngang. */
+.staff-schedule-layout {
+  grid-template-columns: 1fr !important;
+  gap: var(--staff-page-gap);
+  max-width: min(var(--staff-page-max), calc(100vw - 32px));
+}
+
+/* Sidebar chuyển thành hàng card bên dưới form chính.
+   3 card: Tổng quan tuần / Lịch tuần này / Gợi ý sử dụng */
+.staff-schedule-side {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 14px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+/* Không cho breakpoint rộng ép sidebar thành cột phải nữa */
+@media (min-width: 1500px) {
+  .staff-schedule-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .staff-schedule-side {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Hero gọn lại thêm một chút để 100% zoom không bị cảm giác landing page */
+.staff-schedule-hero {
+  max-width: min(var(--staff-page-max), calc(100vw - 32px));
+  margin-bottom: 12px;
+  padding: 16px 20px;
+  border-radius: 22px;
+}
+
+.staff-schedule-hero__glow {
+  border-radius: 21px;
+}
+
+.staff-schedule-hero__content h1 {
+  margin: 5px 0 6px;
+  font-size: clamp(24px, 2.4vw, 30px);
+}
+
+.staff-schedule-hero__content p {
+  max-width: 560px;
+  font-size: 12.8px;
+  line-height: 1.45;
+}
+
+.staff-schedule-eyebrow {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.staff-schedule-hero__meta {
+  margin-top: 10px;
+}
+
+.staff-schedule-hero__meta span {
+  min-height: 26px;
+  padding: 5px 9px;
+  font-size: 11.3px;
+}
+
+/* Week switcher nhỏ lại để hero cân đối hơn */
+.staff-week-switcher {
+  min-width: 276px;
+  padding: 8px;
+  grid-template-columns: 36px minmax(168px, 1fr) 36px;
+}
+
+.staff-week-switcher__button {
+  width: 36px;
+  height: 36px;
+}
+
+.staff-week-switcher__current strong {
+  font-size: 13px;
+}
+
+/* Restore full card styling cho 4 bước flow */
+.staff-flow-steps {
+  max-width: min(var(--staff-page-max), calc(100vw - 32px));
+  margin: 0 auto 14px;
+  gap: 10px;
+}
+
+.staff-flow-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 10px 13px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
+  backdrop-filter: blur(14px);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.staff-flow-step:hover {
+  transform: translateY(-1px);
+  border-color: rgba(79, 70, 229, 0.24);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.07);
+}
+
+.staff-flow-step > div {
+  min-width: 0;
+}
+
+.staff-flow-step strong {
+  display: block;
+  color: #0f172a;
+  font-size: 12.8px;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.staff-flow-step small {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 11.7px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.staff-flow-step__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  color: #4f46e5;
+  border-radius: 13px;
+  background: #eef2ff;
+}
+
+.staff-flow-step.is-current {
+  border-color: rgba(79, 70, 229, 0.28);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(238, 242, 255, 0.88),
+      rgba(255, 255, 255, 0.96)
+    ),
+    #ffffff;
+}
+
+.staff-flow-step.is-current .staff-flow-step__icon {
+  color: #ffffff;
+  background: linear-gradient(135deg, #4f46e5, #2563eb);
+}
+
+.staff-flow-step.is-done {
+  border-color: rgba(34, 197, 94, 0.24);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(240, 253, 244, 0.9),
+      rgba(255, 255, 255, 0.96)
+    ),
+    #ffffff;
+}
+
+.staff-flow-step.is-done .staff-flow-step__icon {
+  color: #ffffff;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+}
+
+/* Form card gọn và chắc hơn */
+.staff-card--availability {
+  padding: 16px;
+}
+
+.staff-card__header {
+  margin-bottom: 12px;
+}
+
+.staff-card__header h2 {
+  font-size: 19px;
+}
+
+.staff-card__subnote {
+  margin-top: 5px !important;
+  color: #4f46e5 !important;
+  font-size: 12.8px !important;
+  font-weight: 750 !important;
+}
+
+/* Summary phía trên matrix gọn hơn */
+.staff-window-summary {
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.staff-window-summary div {
+  padding: 9px 11px;
+  border-radius: 14px;
+}
+
+/* Matrix: giữ dạng bảng, không ép sidebar ăn chiều ngang */
+.staff-availability-matrix {
+  margin-top: 12px;
+  border-radius: 18px;
+}
+
+.staff-availability-matrix__scroll {
+  overflow-x: auto;
+  padding: 9px;
+}
+
+.staff-availability-matrix__grid {
+  grid-template-columns: 124px repeat(7, minmax(84px, 1fr));
+  gap: 7px;
+  min-width: 800px;
+}
+
+.staff-availability-matrix__corner,
+.staff-availability-matrix__day,
+.staff-availability-matrix__shift,
+.staff-matrix-slot {
+  border-radius: 13px;
+}
+
+.staff-availability-matrix__corner,
+.staff-availability-matrix__day {
+  min-height: 44px;
+}
+
+.staff-availability-matrix__shift,
+.staff-matrix-slot {
+  min-height: 54px;
+}
+
+.staff-availability-matrix__shift {
+  gap: 8px;
+  padding: 8px 9px;
+}
+
+.staff-availability-matrix__shiftIcon {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 11px;
+}
+
+.staff-availability-matrix__shift strong {
+  font-size: 12px;
+}
+
+.staff-availability-matrix__shift small {
+  font-size: 10.5px;
+}
+
+.staff-matrix-slot {
+  gap: 4px;
+  padding: 7px 5px;
+}
+
+.staff-matrix-slot__check {
+  width: 22px;
+  height: 22px;
+}
+
+.staff-matrix-slot__label {
+  font-size: 10.5px;
+}
+
+/* Action bar gọn hơn, không sticky */
+.staff-action-bar {
+  position: static;
+  margin-top: 12px;
+  padding: 11px 12px;
+  border-radius: 16px;
+}
+
+.staff-primary-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 12px;
+}
+
+/* Sidebar cards dưới form */
+.staff-card--overview,
+.staff-card--shifts,
+.staff-card--guide {
+  min-height: auto;
+  padding: 15px;
+}
+
+.staff-overview-list {
+  gap: 7px;
+}
+
+.staff-overview-item {
+  min-height: 36px;
+  padding: 8px 10px;
+}
+
+/* Breakpoints */
+@media (max-width: 1100px) {
+  .staff-schedule-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .staff-schedule-page {
+    padding: 14px;
+  }
+
+  .staff-schedule-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-flow-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .staff-schedule-side {
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .staff-window-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-action-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .staff-primary-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .staff-schedule-page {
+    padding: 10px;
+  }
+
+  .staff-schedule-hero {
+    padding: 16px;
+  }
+
+  .staff-flow-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-availability-matrix__grid {
+    grid-template-columns: 112px repeat(7, 82px);
+    min-width: 686px;
+  }
+}
+/* =========================================================
+   StaffSchedulePage visual final polish
+   Improve icon system, matrix clarity, overview spacing,
+   sidebar balance, and 75%-100% zoom readability
+   ========================================================= */
+
+.staff-schedule-page {
+  --staff-page-max: 1120px;
+  --staff-card-radius: 20px;
+  --staff-icon-bg: #eef2ff;
+  --staff-line: rgba(148, 163, 184, 0.18);
+
+  padding: 12px 14px;
+}
+
+/* Page width: giảm cảm giác bị trải ngang quá nhiều ở zoom 75% */
+.staff-schedule-hero,
+.staff-flow-steps,
+.staff-schedule-layout {
+  max-width: min(var(--staff-page-max), calc(100vw - 36px)) !important;
+}
+
+/* Hero: gọn và cân hơn */
+.staff-schedule-hero {
+  margin-bottom: 12px !important;
+  padding: 15px 18px !important;
+  border-radius: 21px !important;
+  box-shadow: 0 18px 44px rgba(79, 70, 229, 0.16) !important;
+}
+
+.staff-schedule-hero__content h1 {
+  font-size: clamp(23px, 2.2vw, 29px) !important;
+  letter-spacing: -0.035em;
+}
+
+.staff-schedule-hero__content p {
+  font-size: 12.7px !important;
+  line-height: 1.45 !important;
+}
+
+.staff-schedule-eyebrow {
+  min-height: 28px;
+  padding: 5px 10px !important;
+  font-size: 11.8px !important;
+}
+
+.staff-schedule-eyebrow svg {
+  width: 14px;
+  height: 14px;
+}
+
+.staff-schedule-hero__meta span {
+  min-height: 25px !important;
+  padding: 4px 9px !important;
+  font-size: 11.2px !important;
+}
+
+/* Week switcher */
+.staff-week-switcher {
+  min-width: 260px !important;
+  padding: 7px !important;
+  grid-template-columns: 34px minmax(150px, 1fr) 34px !important;
+  border-radius: 18px !important;
+}
+
+.staff-week-switcher__button {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 13px !important;
+}
+
+.staff-week-switcher__button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.staff-week-switcher__current span {
+  font-size: 9.8px !important;
+}
+
+.staff-week-switcher__current strong {
+  font-size: 12.7px !important;
+}
+
+/* Flow steps: rõ hơn, không như text rời */
+.staff-flow-steps {
+  gap: 9px !important;
+  margin-bottom: 12px !important;
+}
+
+.staff-flow-step {
+  min-height: 54px !important;
+  padding: 9px 12px !important;
+  border-radius: 17px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.045) !important;
+}
+
+.staff-flow-step__icon {
+  flex: 0 0 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 12px !important;
+}
+
+.staff-flow-step__icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.staff-flow-step strong {
+  font-size: 12.4px !important;
+}
+
+.staff-flow-step small {
+  font-size: 11.3px !important;
+}
+
+/* Main card */
+.staff-card {
+  border-radius: var(--staff-card-radius) !important;
+}
+
+.staff-card--availability {
+  padding: 15px !important;
+}
+
+.staff-card__header {
+  margin-bottom: 11px !important;
+}
+
+.staff-card__kicker {
+  font-size: 11.2px !important;
+}
+
+.staff-card__kicker svg {
+  width: 14px;
+  height: 14px;
+}
+
+.staff-card__header h2 {
+  margin-top: 5px !important;
+  font-size: 18px !important;
+  letter-spacing: -0.02em;
+}
+
+.staff-card__header p {
+  font-size: 12.6px !important;
+}
+
+.staff-card__subnote {
+  margin-top: 4px !important;
+  font-size: 12.3px !important;
+}
+
+.staff-pill {
+  min-height: 24px !important;
+  padding: 4px 8px !important;
+  font-size: 11px !important;
+}
+
+/* Summary row */
+.staff-window-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin-bottom: 10px !important;
+}
+
+.staff-window-summary div {
+  padding: 9px 10px !important;
+  border-radius: 13px !important;
+}
+
+.staff-window-summary span {
+  font-size: 11px !important;
+}
+
+.staff-window-summary strong {
+  font-size: 13px !important;
+}
+
+/* Matrix container */
+.staff-availability-matrix {
+  margin-top: 10px !important;
+  border-radius: 17px !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.98),
+      rgba(248, 250, 252, 0.96)
+    ),
+    #ffffff !important;
+}
+
+.staff-availability-matrix__scroll {
+  padding: 8px !important;
+}
+
+/* Matrix: đủ thoáng, không quá bé */
+.staff-availability-matrix__grid {
+  grid-template-columns: 118px repeat(7, minmax(78px, 1fr)) !important;
+  gap: 7px !important;
+  min-width: 760px !important;
+}
+
+.staff-availability-matrix__corner,
+.staff-availability-matrix__day,
+.staff-availability-matrix__shift,
+.staff-matrix-slot {
+  border-radius: 12px !important;
+  border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+.staff-availability-matrix__corner {
+  min-height: 42px !important;
+  font-size: 11.2px !important;
+  color: #64748b !important;
+  background: #f8fafc !important;
+}
+
+.staff-availability-matrix__day {
+  min-height: 42px !important;
+  padding: 6px !important;
+  background: #ffffff !important;
+}
+
+.staff-availability-matrix__day strong {
+  font-size: 11.8px !important;
+}
+
+.staff-availability-matrix__day span {
+  font-size: 10.8px !important;
+}
+
+.staff-availability-matrix__day.is-today {
+  background: linear-gradient(180deg, #eef2ff, #ffffff) !important;
+  border-color: rgba(79, 70, 229, 0.28) !important;
+}
+
+/* Shift label column */
+.staff-availability-matrix__shift {
+  min-height: 50px !important;
+  padding: 7px 8px !important;
+  gap: 7px !important;
+  background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+}
+
+.staff-availability-matrix__shiftIcon {
+  flex: 0 0 27px !important;
+  width: 27px !important;
+  height: 27px !important;
+  border-radius: 10px !important;
+}
+
+.staff-availability-matrix__shiftIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.staff-availability-matrix__shift strong {
+  font-size: 11.7px !important;
+}
+
+.staff-availability-matrix__shift small {
+  font-size: 10.2px !important;
+}
+
+/* Matrix slot: giảm nhiễu chữ "Có thể làm" */
+.staff-matrix-slot {
+  min-height: 50px !important;
+  padding: 6px 4px !important;
+  gap: 4px !important;
+  background: #ffffff !important;
+}
+
+.staff-matrix-slot__check {
+  width: 21px !important;
+  height: 21px !important;
+  background: #e2e8f0 !important;
+  box-shadow: inset 0 0 0 2px #f8fafc;
+}
+
+.staff-matrix-slot__label {
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+.staff-matrix-slot__label::after {
+  content: "Chọn";
+  font-size: 10.2px;
+  line-height: 1.1;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.staff-matrix-slot:hover {
+  transform: translateY(-1px);
+  border-color: rgba(79, 70, 229, 0.28) !important;
+  background: #f8fafc !important;
+}
+
+.staff-matrix-slot.is-selected {
+  border-color: rgba(79, 70, 229, 0.48) !important;
+  background:
+    linear-gradient(180deg, rgba(238, 242, 255, 0.98), #ffffff), #ffffff !important;
+  box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.08);
+}
+
+.staff-matrix-slot.is-selected .staff-matrix-slot__check {
+  background: #4f46e5 !important;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.22);
+}
+
+.staff-matrix-slot.is-selected .staff-matrix-slot__label::after {
+  content: "Đã chọn";
+  color: #4338ca;
+}
+
+/* Action bar */
+.staff-action-bar {
+  margin-top: 10px !important;
+  padding: 10px 11px !important;
+  border-radius: 15px !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
+}
+
+.staff-action-bar__copy strong {
+  font-size: 12.6px !important;
+}
+
+.staff-action-bar__copy span {
+  font-size: 11.3px !important;
+}
+
+.staff-primary-button {
+  min-height: 36px !important;
+  padding: 0 13px !important;
+  border-radius: 12px !important;
+  font-size: 12px !important;
+}
+
+.staff-primary-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Sidebar cards: sửa lỗi label/value dính nhau */
+.staff-schedule-side {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.staff-card--overview,
+.staff-card--shifts,
+.staff-card--guide {
+  padding: 14px !important;
+  min-height: 154px;
+}
+
+.staff-overview-list {
+  display: grid !important;
+  gap: 7px !important;
+  margin-top: 11px !important;
+}
+
+.staff-overview-item {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px !important;
+  padding: 7px 9px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.staff-overview-item span {
+  min-width: 0;
+  color: #64748b;
+  font-size: 11.1px !important;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.staff-overview-item strong {
+  color: #0f172a;
+  font-size: 11.8px !important;
+  font-weight: 850;
+  line-height: 1.25;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.staff-overview-item--highlight {
+  border-color: rgba(79, 70, 229, 0.2) !important;
+  background:
+    linear-gradient(180deg, rgba(238, 242, 255, 0.92), #ffffff), #ffffff !important;
+}
+
+.staff-overview-item--highlight strong {
+  color: #4f46e5 !important;
+  font-size: 14px !important;
+}
+
+/* Shift published card */
+.staff-card--shifts .staff-card__header {
+  margin-bottom: 10px !important;
+}
+
+.staff-card--shifts h2 {
+  font-size: 17px !important;
+}
+
+.staff-count-badge {
+  min-width: 31px !important;
+  height: 31px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+}
+
+/* Empty states nhẹ hơn */
+.staff-empty-state,
+.staff-loading-state {
+  min-height: 140px !important;
+  padding: 18px !important;
+  border-style: solid !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  border-radius: 16px !important;
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(79, 70, 229, 0.045),
+      transparent 11rem
+    ),
+    linear-gradient(180deg, #ffffff, #f8fafc) !important;
+}
+
+.staff-empty-state svg,
+.staff-loading-state svg {
+  width: 26px;
+  height: 26px;
+}
+
+.staff-empty-state h3 {
+  margin: 9px 0 5px !important;
+  font-size: 14px !important;
+}
+
+.staff-empty-state p {
+  font-size: 11.8px !important;
+  line-height: 1.45 !important;
+}
+
+/* Guide card icon alignment */
+.staff-guide-icon {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 12px !important;
+}
+
+.staff-guide-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.staff-card--guide h3 {
+  margin: 10px 0 5px !important;
+  font-size: 14.5px !important;
+}
+
+.staff-card--guide p {
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .staff-schedule-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .staff-schedule-page {
+    padding: 12px !important;
+  }
+
+  .staff-schedule-hero {
+    grid-template-columns: 1fr !important;
+  }
+
+  .staff-flow-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .staff-schedule-side {
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .staff-window-summary {
+    grid-template-columns: 1fr !important;
+  }
+
+  .staff-action-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .staff-primary-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .staff-flow-steps {
+    grid-template-columns: 1fr !important;
+  }
+
+  .staff-availability-matrix__grid {
+    grid-template-columns: 108px repeat(7, 78px) !important;
+    min-width: 654px !important;
+  }
 }

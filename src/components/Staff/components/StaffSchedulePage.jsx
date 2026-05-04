@@ -904,7 +904,9 @@ export default function StaffSchedulePage() {
                                     className={`staff-matrix-slot ${
                                       isChecked ? "is-selected" : ""
                                     } ${
-                                      !canInteract || submitting ? "is-disabled" : ""
+                                      !canInteract || submitting
+                                        ? "is-disabled"
+                                        : ""
                                     }`}
                                   >
                                     <input
@@ -928,7 +930,7 @@ export default function StaffSchedulePage() {
                                     </span>
 
                                     <span className="staff-matrix-slot__label">
-                                      {isPartTime ? "Có thể làm" : "Không khả dụng"}
+                                      {isChecked ? "Đã chọn" : "Chọn"}
                                     </span>
                                   </label>
                                 );
@@ -1008,12 +1010,12 @@ export default function StaffSchedulePage() {
               </div>
 
               <div className="staff-overview-item">
-                <span>Kỳ đăng ký</span>
+                <span>Tuần đăng ký</span>
                 <strong>{availabilityTargetRangeLabel}</strong>
               </div>
 
               <div className="staff-overview-item">
-                <span>Trạng thái đăng ký</span>
+                <span>Trạng thái</span>
                 <strong>
                   {WINDOW_STATUS_LABELS[windowStatus] || "Chưa có kỳ"}
                 </strong>
