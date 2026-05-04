@@ -190,6 +190,19 @@ const CREATE_ORDER_FOR_TABLE = gql`
   }
 `;
 
+const CREATE_OFF_PREMISE_ORDER = gql`
+  mutation StaffCreateOffPremiseOrder($input: CreateOffPremiseOrderInput!) {
+    createOffPremiseOrder(input: $input) {
+      order {
+        id
+        orderCode
+        currentStatus
+        orderType
+      }
+    }
+  }
+`;
+
 const mapTableStatusToUi = (status) => {
   if (["available"].includes(status)) return "empty";
   if (["occupied"].includes(status)) return "checkout";
@@ -272,11 +285,25 @@ export default function StaffOrdering() {
   const [showCustomerNoteModal, setShowCustomerNoteModal] = useState(false);
   const [proofCaptureItem, setProofCaptureItem] = useState(null);
   const [focusChatThreadId, setFocusChatThreadId] = useState(null);
+  const [orderMode, setOrderMode] = useState("dine_in");
+  const [remoteOrderInfo, setRemoteOrderInfo] = useState({
+    customerName: "",
+    phone: "",
+    email: "",
+    address: "",
+    customerNote: "",
+    orderType: "delivery",
+    channel: "phone",
+    requestedAt: "",
+  });
 
   const searchTimerRef = useRef(null);
 
   const [createOrderForTable, { loading: savingOrder }] = useMutation(
     CREATE_ORDER_FOR_TABLE,
+  );
+  const [createOffPremiseOrder, { loading: savingRemoteOrder }] = useMutation(
+    CREATE_OFF_PREMISE_ORDER,
   );
   const [upsertTableCustomer] = useMutation(UPSERT_TABLE_CUSTOMER);
   const [deleteTableCustomer] = useMutation(DELETE_TABLE_CUSTOMER);
@@ -302,7 +329,7 @@ export default function StaffOrdering() {
     fetchPolicy: "network-only",
   });
 
-  const { data: overviewData } = useQuery(STAFF_ACCOUNT_OVERVIEW, {
+  const { data: _overviewData } = useQuery(STAFF_ACCOUNT_OVERVIEW, {
     variables: { staffId: user?.id || null },
     skip: !user?.id,
     fetchPolicy: "network-only",
@@ -370,6 +397,12 @@ export default function StaffOrdering() {
   );
 
   const cart = selectedTable ? cartByTable[selectedTable.id] || [] : [];
+  const remoteCart = cartByTable.remote_order || [];
+  const activeCart = orderMode === "remote" ? remoteCart : cart;
+  const cartContextTable =
+    orderMode === "remote"
+      ? { id: "remote_order", name: "Order từ xa", customer: null }
+      : selectedTable;
 
   const customerResults = useMemo(
     () =>
@@ -543,19 +576,23 @@ export default function StaffOrdering() {
 
   const handleAddToCart = (item, prep, serveOrder) => {
     if (item.stock <= 0) return alert("Món này đã hết hàng!");
-    if (!selectedTable?.id)
+    const targetTableId =
+      orderMode === "remote" ? "remote_order" : selectedTable?.id;
+    if (!targetTableId)
       return alert("Vui lòng chọn bàn trước khi thêm món");
 
     const nextPriority = mapItemPriorityFromServeOrder(serveOrder);
     const signature = `${item.id}__${prep || ""}__${serveOrder || ""}`;
 
-    setCartForSelectedTable((prev) => {
+    setCartByTable((prevMap) => {
+      const prev = prevMap[targetTableId] || [];
       const idx = prev.findIndex(
         (x) =>
           x.signature === signature && x.status === "pending" && !x.persisted,
       );
-      if (idx >= 0) {
-        return prev.map((x, i) =>
+      const nextCart =
+        idx >= 0
+          ? prev.map((x, i) =>
           i === idx
             ? {
                 ...x,
@@ -563,38 +600,40 @@ export default function StaffOrdering() {
                 priority: nextPriority,
               }
             : x,
-        );
-      }
-
-      const defaultVariant = item.defaultVariant || item.servingVariants?.[0] || null;
-      const unit =
-        defaultVariant?.mode === "BY_WEIGHT"
-          ? defaultVariant?.sellUnit || "kg"
-          : defaultVariant?.sellUnit || "portion";
-      const newItem = {
-        id: "C" + Date.now(),
-        signature,
-        itemId: item.id,
-        dishId: item.dishId || item.id,
-        menuId: item.menuId,
-        categoryId: item.categoryId,
-        servingKey: item.servingKey || defaultVariant?.key || "portion",
-        servingVariant: defaultVariant,
-        unit,
-        weightGrams: defaultVariant?.mode === "BY_WEIGHT" ? 1000 : null,
-        name: item.name,
-        prep: prep || "Mặc định",
-        serveOrder,
-        priority: nextPriority,
-        quantity: 1,
-        price: item.price,
-        status: "pending",
-        printed: false,
-        proofImages: [],
-        persisted: false,
-      };
-      const proofState = buildProofState(newItem);
-      return [{ ...newItem, ...proofState }, ...prev];
+        )
+          : (() => {
+              const defaultVariant =
+                item.defaultVariant || item.servingVariants?.[0] || null;
+              const unit =
+                defaultVariant?.mode === "BY_WEIGHT"
+                  ? defaultVariant?.sellUnit || "kg"
+                  : defaultVariant?.sellUnit || "portion";
+              const newItem = {
+                id: "C" + Date.now(),
+                signature,
+                itemId: item.id,
+                dishId: item.dishId || item.id,
+                menuId: item.menuId,
+                categoryId: item.categoryId,
+                servingKey: item.servingKey || defaultVariant?.key || "portion",
+                servingVariant: defaultVariant,
+                unit,
+                weightGrams: defaultVariant?.mode === "BY_WEIGHT" ? 1000 : null,
+                name: item.name,
+                prep: prep || "Mặc định",
+                serveOrder,
+                priority: nextPriority,
+                quantity: 1,
+                price: item.price,
+                status: "pending",
+                printed: false,
+                proofImages: [],
+                persisted: false,
+              };
+              const proofState = buildProofState(newItem);
+              return [{ ...newItem, ...proofState }, ...prev];
+            })();
+      return { ...prevMap, [targetTableId]: nextCart };
     });
   };
   const handleOpenProofCapture = (item) => {
@@ -615,6 +654,68 @@ export default function StaffOrdering() {
   };
 
   const handleSendKitchen = async () => {
+    if (orderMode === "remote") {
+      const pendingItems = remoteCart.filter(
+        (x) => x.status === "pending" && !x.persisted,
+      );
+      if (!pendingItems.length) {
+        alert("Không có món mới để gửi POS.");
+        return;
+      }
+      if (!remoteOrderInfo.customerName.trim() || !remoteOrderInfo.phone.trim()) {
+        alert("Vui lòng nhập tên khách và số điện thoại.");
+        return;
+      }
+      if (remoteOrderInfo.orderType === "delivery" && !remoteOrderInfo.address.trim()) {
+        alert("Đơn giao hàng cần địa chỉ giao.");
+        return;
+      }
+      const payloadItems = pendingItems.map((item) => ({
+        dishId: item.dishId,
+        menuId: item.menuId,
+        categoryId: item.categoryId,
+        name: item.name,
+        unit: item.unit || "portion",
+        basePrice: Number(item.price || 0),
+        servingKey: item.servingKey || "portion",
+        quantity: Number(item.quantity || 1),
+        weightGrams: item.weightGrams ?? null,
+        note: [item.prep, item.serveOrder].filter(Boolean).join(" • "),
+        priority: item.priority || "MEDIUM",
+      }));
+      try {
+        await createOffPremiseOrder({
+          variables: {
+            input: {
+              restaurantId,
+              orderType: remoteOrderInfo.orderType,
+              currentStatus: "waiting_pos_confirmation",
+              note: `[${remoteOrderInfo.channel}] ${remoteOrderInfo.customerNote || ""}`.trim(),
+              customer: {
+                fullName: remoteOrderInfo.customerName.trim(),
+                phone: remoteOrderInfo.phone.trim(),
+                email: remoteOrderInfo.email.trim() || null,
+              },
+              shipping: {
+                fullName: remoteOrderInfo.customerName.trim(),
+                phone: remoteOrderInfo.phone.trim(),
+                email: remoteOrderInfo.email.trim() || null,
+                address: remoteOrderInfo.address.trim() || null,
+                note: remoteOrderInfo.customerNote.trim() || null,
+                deliveryMethod: remoteOrderInfo.orderType,
+                deliveryTime: remoteOrderInfo.requestedAt || null,
+              },
+              items: payloadItems,
+            },
+          },
+        });
+        setCartByTable((prev) => ({ ...prev, remote_order: [] }));
+        alert("Đã gửi POS xác nhận.");
+      } catch (err) {
+        alert(err?.message || "Gửi đơn từ xa thất bại");
+      }
+      return;
+    }
     if (!selectedTable?.id || !restaurantId) {
       alert("Thiếu thông tin nhà hàng hoặc bàn.");
       return;
@@ -717,7 +818,7 @@ export default function StaffOrdering() {
     if (action === "checkout") setIsCartOpen(true);
   };
 
-  const pendingCount = cart.filter((c) => c.status === "pending").length;
+  const pendingCount = activeCart.filter((c) => c.status === "pending").length;
   const linkedTableCustomer = selectedTable ? tableCustomerMap[selectedTable.id] : null;
   return (
     <div className="staff-pos-layout">
@@ -814,16 +915,46 @@ export default function StaffOrdering() {
           />
         )}
         {activeTab === "menu" && (
-          <MenuOrdering
+          <>
+            <div className="staff-order-mode-switch">
+              <button
+                className={orderMode === "dine_in" ? "active" : ""}
+                onClick={() => setOrderMode("dine_in")}
+              >
+                Order tại bàn
+              </button>
+              <button
+                className={orderMode === "remote" ? "active" : ""}
+                onClick={() => setOrderMode("remote")}
+              >
+                Order từ xa
+              </button>
+            </div>
+            {orderMode === "remote" && (
+              <div className="staff-remote-order-form">
+                <input placeholder="Tên khách" value={remoteOrderInfo.customerName} onChange={(e) => setRemoteOrderInfo((p) => ({ ...p, customerName: e.target.value }))} />
+                <input placeholder="Số điện thoại" value={remoteOrderInfo.phone} onChange={(e) => setRemoteOrderInfo((p) => ({ ...p, phone: e.target.value }))} />
+                <input placeholder="Email (nếu có)" value={remoteOrderInfo.email} onChange={(e) => setRemoteOrderInfo((p) => ({ ...p, email: e.target.value }))} />
+                <input placeholder="Địa chỉ giao hàng" value={remoteOrderInfo.address} onChange={(e) => setRemoteOrderInfo((p) => ({ ...p, address: e.target.value }))} />
+                <textarea placeholder="Ghi chú khách" value={remoteOrderInfo.customerNote} onChange={(e) => setRemoteOrderInfo((p) => ({ ...p, customerNote: e.target.value }))} />
+                <div className="remote-inline-fields">
+                  <select value={remoteOrderInfo.orderType} onChange={(e) => setRemoteOrderInfo((p) => ({ ...p, orderType: e.target.value }))}><option value="delivery">delivery</option><option value="takeaway">takeaway</option></select>
+                  <select value={remoteOrderInfo.channel} onChange={(e) => setRemoteOrderInfo((p) => ({ ...p, channel: e.target.value }))}><option value="phone">phone</option><option value="chat">chat</option><option value="web">web</option><option value="other">other</option></select>
+                  <input type="datetime-local" value={remoteOrderInfo.requestedAt} onChange={(e) => setRemoteOrderInfo((p) => ({ ...p, requestedAt: e.target.value }))} />
+                </div>
+              </div>
+            )}
+            <MenuOrdering
             onAdd={handleAddToCart}
             searchQuery={searchQuery}
-            selectedTable={selectedTable}
+            selectedTable={cartContextTable}
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
             onRemoveCustomer={handleRemoveCustomer}
             menuItems={menuItems}
             categories={dynamicCategories}
           />
+          </>
         )}
         {activeTab === "contacts" && (
           <ContactsView
@@ -844,7 +975,7 @@ export default function StaffOrdering() {
         {activeTab === "profile" && <StaffProfile />}
       </main>
 
-      {(activeTab === "menu" || activeTab === "tables") && selectedTable && (
+      {(activeTab === "menu" || activeTab === "tables") && cartContextTable && (
         <div className="floating-cart-wrapper">
           <button
             className="btn-floating-cart"
@@ -859,8 +990,8 @@ export default function StaffOrdering() {
               </div>
               <div className="cart-text">
                 <span className="table-info">
-                  {selectedTable.name}{" "}
-                  {selectedTable.customer && `• ${selectedTable.customer.name}`}
+                {cartContextTable.name}{" "}
+                  {cartContextTable.customer && `• ${cartContextTable.customer.name}`}
                 </span>
                 <span className="status-info">
                   {pendingCount > 0
@@ -874,7 +1005,7 @@ export default function StaffOrdering() {
             </div>
           </button>
 
-          {linkedTableCustomer && (
+          {linkedTableCustomer && orderMode !== "remote" && (
             <button
               type="button"
               className="btn-customer-note"
@@ -936,13 +1067,20 @@ export default function StaffOrdering() {
 
       {isCartOpen && (
         <CartBottomSheet
-          cart={cart}
-          setCart={setCartForSelectedTable}
+          cart={activeCart}
+          setCart={orderMode === "remote" ? (updater) => {
+            setCartByTable((prev) => {
+              const prevCart = prev.remote_order || [];
+              const nextCart = typeof updater === "function" ? updater(prevCart) : updater;
+              return { ...prev, remote_order: nextCart };
+            });
+          } : setCartForSelectedTable}
           onClose={() => setIsCartOpen(false)}
-          table={selectedTable}
+          table={cartContextTable}
           onSendKitchen={handleSendKitchen}
           onOpenProofCapture={handleOpenProofCapture}
-          sending={savingOrder}
+          sending={orderMode === "remote" ? savingRemoteOrder : savingOrder}
+          sendActionLabel={orderMode === "remote" ? "Gửi POS xác nhận" : "Gửi Bếp"}
         />
       )}
 
