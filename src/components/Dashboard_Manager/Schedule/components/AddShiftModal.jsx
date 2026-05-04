@@ -38,6 +38,34 @@ const isStaffWorkingOnDate = (staff, selectedDate) => {
   return workingDays.map(normalizeWorkingDayKey).includes(selectedDayKey);
 };
 
+const normalizeEmploymentType = (value) => String(value || "").trim().toLowerCase();
+const normalizeAvailabilityStatus = (value) => String(value || "").trim().toLowerCase();
+const normalizeShiftType = (value) => String(value || "").trim().toLowerCase();
+const OFFICIAL_AVAILABILITY_STATUSES = new Set(["submitted", "approved", "locked"]);
+const isPartTimeLike = (staff) => {
+  const type = normalizeEmploymentType(staff?.employmentType);
+  return type === "part_time" || type === "seasonal";
+};
+const toLocalYmd = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+const hasOfficialAvailableSlot = (submission, selectedDate, selectedShiftType) => {
+  if (!submission) return false;
+  if (!OFFICIAL_AVAILABILITY_STATUSES.has(normalizeAvailabilityStatus(submission.status))) return false;
+  const targetDate = toLocalYmd(selectedDate);
+  const targetShift = normalizeShiftType(selectedShiftType);
+  return (submission.slots || []).some((slot) => toLocalYmd(slot.date) === targetDate && normalizeShiftType(slot.shiftType) === targetShift && normalizeAvailabilityStatus(slot.status) === "available");
+};
+const hasOfficialUnavailableSlot = (submission, selectedDate, selectedShiftType) => {
+  if (!submission) return false;
+  if (!OFFICIAL_AVAILABILITY_STATUSES.has(normalizeAvailabilityStatus(submission.status))) return false;
+  const targetDate = toLocalYmd(selectedDate);
+  const targetShift = normalizeShiftType(selectedShiftType);
+  return (submission.slots || []).some((slot) => toLocalYmd(slot.date) === targetDate && normalizeShiftType(slot.shiftType) === targetShift && normalizeAvailabilityStatus(slot.status) === "unavailable");
+};
+
 const AddShiftModal = ({
   isOpen,
   onClose,
@@ -45,6 +73,7 @@ const AddShiftModal = ({
   selectedShiftType,
   shiftConfig = shiftTypes,
   staffList,
+  availabilitySubmissions = [],
   onConfirm,
   isSchedulePublished = false,
   submitting = false,
@@ -103,14 +132,40 @@ const AddShiftModal = ({
     });
   };
 
+
+  const availabilityByEmployeeId = useMemo(() => {
+    const map = new Map();
+    (availabilitySubmissions || []).forEach((submission) => {
+      if (!submission?.employeeId) return;
+      map.set(String(submission.employeeId), submission);
+    });
+    return map;
+  }, [availabilitySubmissions]);
+
+  const getStaffAvailabilityVisibility = (staff) => {
+    const submission = availabilityByEmployeeId.get(String(staff.id));
+    if (isPartTimeLike(staff)) {
+      if (hasOfficialAvailableSlot(submission, selectedDate, selectedShiftType)) {
+        return { visible: true, reason: "available_submission", label: "Đã đăng ký có thể làm" };
+      }
+      return { visible: false, reason: "missing_or_unmatched_part_time_availability", label: "Không có availability phù hợp" };
+    }
+    if (!isStaffWorkingOnDate(staff, selectedDate)) {
+      return { visible: false, reason: "outside_working_days", label: "Ngoài ngày làm việc mặc định" };
+    }
+    if (hasOfficialUnavailableSlot(submission, selectedDate, selectedShiftType)) {
+      return { visible: false, reason: "full_time_unavailable_exception", label: "Đã báo không khả dụng" };
+    }
+    return { visible: true, reason: "working_day", label: "Theo ngày làm việc mặc định" };
+  };
+
   // Filter Staff
   const filteredStaff = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
     return staffList.filter((s) => {
-      if (!isStaffWorkingOnDate(s, selectedDate)) {
-        return false;
-      }
+      const visibility = getStaffAvailabilityVisibility(s);
+      if (!visibility.visible) return false;
 
       if (!normalizedSearch) {
         return true;
@@ -120,11 +175,18 @@ const AddShiftModal = ({
         .toLowerCase()
         .includes(normalizedSearch);
     });
-  }, [staffList, search, selectedDate]);
+  }, [staffList, search, selectedDate, selectedShiftType, availabilityByEmployeeId]);
 
-  const hiddenByWorkingDayCount = useMemo(() => {
-    return staffList.filter((s) => !isStaffWorkingOnDate(s, selectedDate)).length;
-  }, [staffList, selectedDate]);
+  const hiddenVisibilityStats = useMemo(() => {
+    return staffList.reduce((acc, s) => {
+      const visibility = getStaffAvailabilityVisibility(s);
+      if (!visibility.visible) {
+        acc.total += 1;
+        acc[visibility.reason] = (acc[visibility.reason] || 0) + 1;
+      }
+      return acc;
+    }, { total: 0 });
+  }, [staffList, selectedDate, selectedShiftType, availabilityByEmployeeId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -246,15 +308,19 @@ const AddShiftModal = ({
               />
             </div>
 
-            {hiddenByWorkingDayCount > 0 ? (
+            {hiddenVisibilityStats.total > 0 ? (
               <p className="staff-filter-hint">
-                Đã ẩn {hiddenByWorkingDayCount} nhân viên không có lịch làm việc trong ngày này.
+                Đã ẩn {hiddenVisibilityStats.total} nhân viên không phù hợp với ngày/ca này.
+                {` Part-time chưa có availability phù hợp: ${hiddenVisibilityStats.missing_or_unmatched_part_time_availability || 0}.`}
+                {` Full-time ngoài ngày làm việc mặc định: ${hiddenVisibilityStats.outside_working_days || 0}.`}
+                {` Full-time đã báo không khả dụng: ${hiddenVisibilityStats.full_time_unavailable_exception || 0}.`}
               </p>
             ) : null}
 
             <div className="staff-list">
               {filteredStaff.map((s) => {
                 const isSelected = newShift.staffIds.includes(s.id);
+                const visibility = getStaffAvailabilityVisibility(s);
                 const roleSlug = resolveConcreteStaffRoleSlug(s);
                 const roleLabel = roleSlug ? getJobName(roleSlug) : "Chưa xác định vị trí";
                 const roleMatched =
@@ -273,6 +339,7 @@ const AddShiftModal = ({
                     <div className="staff-info">
                       <span className="name">{s.name}</span>
                       <span className="role">{roleLabel} · {s.departmentLabel || "Khác"}</span>
+                                            <span className="role-match matched">{visibility.label}</span>
                       {newShift.essentialJobs.length > 0 ? (
                         <span className={`role-match ${roleMatched ? "matched" : "mismatch"}`}>
                           {roleMatched ? "Khớp vị trí" : "Không khớp vị trí bắt buộc"}

@@ -1424,6 +1424,15 @@ const ScheduleManagement = ({ readOnly = false }) => {
     availabilityTargetStart,
     managerAvailabilityWindowsData?.availabilityWindows,
   ]);
+  const managerScheduleWeekWindow = useMemo(() => {
+    const windows = managerAvailabilityWindowsData?.availabilityWindows || [];
+    return windows.find((item) => {
+      const start = new Date(item.periodStart);
+      const end = new Date(item.periodEnd);
+      return start.getTime() === currentWeekStart.getTime() && end.getTime() === currentWeekEnd.getTime();
+    }) || null;
+  }, [currentWeekEnd, currentWeekStart, managerAvailabilityWindowsData?.availabilityWindows]);
+
   const {
     data: managerAvailabilitySubmissionsData,
     refetch: refetchManagerSubmissions,
@@ -1576,6 +1585,15 @@ const ScheduleManagement = ({ readOnly = false }) => {
   }, [shiftsData, staff]);
   const managerAvailabilitySubmissions =
     managerAvailabilitySubmissionsData?.staffAvailabilitySubmissions || [];
+  const { data: managerScheduleWeekSubmissionsData } = useQuery(GET_AVAILABILITY_SUBMISSIONS, {
+    variables: {
+      restaurantId: effectiveRestaurantId,
+      windowId: managerScheduleWeekWindow?.id,
+    },
+    fetchPolicy: "network-only",
+    skip: !effectiveRestaurantId || !managerScheduleWeekWindow?.id,
+  });
+  const managerScheduleWeekSubmissions = managerScheduleWeekSubmissionsData?.staffAvailabilitySubmissions || [];
   const partTimeStaff = useMemo(
     () =>
       staff.filter((person) =>
@@ -4144,6 +4162,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           selectedShiftType={addModalContext.shiftType}
           shiftConfig={configuredShiftTypes}
           staffList={staff}
+          availabilitySubmissions={managerScheduleWeekSubmissions}
           onConfirm={handleConfirmAddShift}
           isSchedulePublished={isSchedulePublished}
           submitting={isSubmittingAddShift || addingPublishedStaff}
