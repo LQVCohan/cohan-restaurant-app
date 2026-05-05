@@ -192,4 +192,25 @@ describe("ScheduleManagement", () => {
     expect(await screen.findByText("Giờ kết thúc phải khác giờ bắt đầu.")).toBeInTheDocument();
     expect(mutationSpy).not.toHaveBeenCalled();
   });
+
+  it("renders compact publish modal summary and keeps footer actions visible", async () => {
+    render(<ScheduleManagement />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Công bố lịch/i }));
+
+    expect(await screen.findByText("Xác nhận công bố lịch")).toBeInTheDocument();
+    expect(screen.getByText("Phạm vi")).toBeInTheDocument();
+    expect(screen.getByText("Trạng thái hiện tại")).toBeInTheDocument();
+    expect(screen.getByText("Số nhóm ca")).toBeInTheDocument();
+    expect(screen.getByText("Tổng phân công")).toBeInTheDocument();
+    expect(
+      screen.getByText("Tôi đã kiểm tra các cảnh báo và xác nhận công bố lịch.")
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hủy" })).toBeInTheDocument();
+    const publishButton = screen.getByRole("button", { name: "Công bố lịch" });
+    expect(publishButton).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(publishButton).not.toBeDisabled();
+  });
 });
