@@ -152,7 +152,7 @@ const OrderItemRow = React.memo(
         </div>
       </div>
     );
-  }
+  },
 );
 
 /* ============================== Main Component ============================== */
@@ -202,7 +202,7 @@ const OrderModal = ({
       progress === 100 &&
       order?.id &&
       ["pending", "confirmed", "preparing", "ready"].includes(
-        order?.currentStatus
+        order?.currentStatus,
       );
     if (!shouldComplete || completingRef.current) return;
     const performComplete = async () => {
@@ -232,7 +232,7 @@ const OrderModal = ({
         setSavingMap((prev) => ({ ...prev, [itemKey]: false }));
       }
     },
-    [onUpdateItemStatus, order?.id]
+    [onUpdateItemStatus, order?.id],
   );
 
   const handleServeAll = async () => {
@@ -333,9 +333,35 @@ const OrderModal = ({
                 <label>Giao hàng:</label>
                 <strong>
                   {order?.shipping?.fullName || "N/A"}{" "}
-                  {order?.shipping?.phone
-                    ? `(${order.shipping.phone})`
-                    : ""}
+                  {order?.shipping?.phone ? `(${order.shipping.phone})` : ""}
+                  {order?.shipping?.address && (
+                    <div className="info-row">
+                      <label>Địa chỉ:</label>
+                      <strong>{order.shipping.address}</strong>
+                    </div>
+                  )}
+                  {(order?.shipping?.deliveryTime ||
+                    order?.shipping?.scheduleDate ||
+                    order?.shipping?.scheduleTime) && (
+                    <div className="info-row">
+                      <label>Thời gian:</label>
+                      <strong>
+                        {order.shipping.deliveryTime ||
+                          [
+                            order.shipping.scheduleDate,
+                            order.shipping.scheduleTime,
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                      </strong>
+                    </div>
+                  )}
+                  {order?.clientMeta?.channel && (
+                    <div className="info-row">
+                      <label>Kênh nhận:</label>
+                      <strong>{order.clientMeta.channel}</strong>
+                    </div>
+                  )}
                 </strong>
               </div>
             )}
@@ -347,37 +373,41 @@ const OrderModal = ({
             )}
           </section>
 
-          {Array.isArray(order?.statusTimeline) && order.statusTimeline.length > 0 && (
-            <section className="om-section">
-              <div className="section-header">
-                <h3>Timeline trạng thái</h3>
-              </div>
-              <div className="items-grid">
-                {order.statusTimeline.slice().reverse().map((s, idx) => (
-                  <div key={`${s.status}-${idx}`} className="itemCard">
-                    <div className="itemCard__info">
-                      <div className="itemCard__header">
-                        <span className="itemName">{s.status}</span>
-                      </div>
-                      <div className="itemCard__meta">
-                        <span className="metaTag">
-                          {toSafeDate(s.at)?.toLocaleString("vi-VN") || "—"}
-                        </span>
-                        {s.byUserId && (
-                          <span className="metaTag gray">{s.byUserId}</span>
-                        )}
-                      </div>
-                      {s.note && (
-                        <div className="itemCard__note">
-                          <span>Note:</span> {s.note}
+          {Array.isArray(order?.statusTimeline) &&
+            order.statusTimeline.length > 0 && (
+              <section className="om-section">
+                <div className="section-header">
+                  <h3>Timeline trạng thái</h3>
+                </div>
+                <div className="items-grid">
+                  {order.statusTimeline
+                    .slice()
+                    .reverse()
+                    .map((s, idx) => (
+                      <div key={`${s.status}-${idx}`} className="itemCard">
+                        <div className="itemCard__info">
+                          <div className="itemCard__header">
+                            <span className="itemName">{s.status}</span>
+                          </div>
+                          <div className="itemCard__meta">
+                            <span className="metaTag">
+                              {toSafeDate(s.at)?.toLocaleString("vi-VN") || "—"}
+                            </span>
+                            {s.byUserId && (
+                              <span className="metaTag gray">{s.byUserId}</span>
+                            )}
+                          </div>
+                          {s.note && (
+                            <div className="itemCard__note">
+                              <span>Note:</span> {s.note}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+                      </div>
+                    ))}
+                </div>
+              </section>
+            )}
 
           <section className="om-section">
             <div className="section-header">
@@ -425,13 +455,16 @@ const OrderModal = ({
           <button className="om-btn secondary" onClick={handleClose}>
             Đóng
           </button>
-          <button className="om-btn primary" onClick={() => onCreateTemporaryBill?.(order)}>
+          <button
+            className="om-btn primary"
+            onClick={() => onCreateTemporaryBill?.(order)}
+          >
             <Printer size={18} /> In tạm tính
           </button>
         </footer>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 };
 

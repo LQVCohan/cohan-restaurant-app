@@ -40,7 +40,11 @@ const formatCurrency = (v) =>
     minimumFractionDigits: 0,
   });
 
-const PRIORITY_LABELS = { HIGH: "Ưu tiên cao", MEDIUM: "Ưu tiên vừa", LOW: "Ưu tiên thấp" };
+const PRIORITY_LABELS = {
+  HIGH: "Ưu tiên cao",
+  MEDIUM: "Ưu tiên vừa",
+  LOW: "Ưu tiên thấp",
+};
 
 const minutesSince = (createdAt) => {
   if (!createdAt) return 0;
@@ -89,7 +93,7 @@ const OrderCard = ({
       const doneItems = items.reduce(
         (sum, it) =>
           ["ready", "served"].includes(it.status) ? sum + it.quantity : sum,
-        0
+        0,
       );
       const prog = totalItems > 0 ? (doneItems / totalItems) * 100 : 0;
 
@@ -112,9 +116,17 @@ const OrderCard = ({
   const visibleItems = mergedItems.slice(0, MAX_ITEMS);
   const remainCount = Math.max(0, mergedItems.length - MAX_ITEMS);
   const customerName =
-    order?.customerInfo?.name || order?.user?.fullName || "Khách lẻ";
+    order?.customerInfo?.name ||
+    order?.shipping?.fullName ||
+    order?.user?.fullName ||
+    "Khách lẻ";
   const hasNote = !!order?.note;
-
+  const orderLocationLabel =
+    order?.orderType === "delivery"
+      ? "Giao hàng"
+      : order?.orderType === "takeaway"
+        ? "Mang về"
+        : order?.tableCode || "Tại bàn";
   // Xử lý action an toàn với Loading state
   const handleAction = async (e, status) => {
     e.stopPropagation();
@@ -144,15 +156,30 @@ const OrderCard = ({
         if (isRemoteStaffPending) {
           return (
             <div className="oc-actions-grid">
-              <button className="oc-btn secondary" onClick={(e) => { e.stopPropagation(); onViewOrder?.(order); }}>
+              <button
+                className="oc-btn secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewOrder?.(order);
+                }}
+              >
                 Xem chi tiết khách
               </button>
-              <button className="oc-btn secondary" onClick={(e) => { e.stopPropagation(); onViewOrder?.(order); }}>
+              <button
+                className="oc-btn secondary"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewOrder?.(order);
+                }}
+              >
                 Xem ghi chú/món
               </button>
               <button
                 className="oc-btn secondary cancel"
-                onClick={(e) => { e.stopPropagation(); onRejectOrder?.(order.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRejectOrder?.(order.id);
+                }}
               >
                 Từ chối đơn
               </button>
@@ -244,9 +271,7 @@ const OrderCard = ({
               order?.orderType === "takeaway" ? "takeaway" : ""
             }`}
           >
-            {order?.orderType === "takeaway"
-              ? "Mang về"
-              : order?.tableCode || "N/A"}
+            {orderLocationLabel}
           </div>
           <span className="oc-id">
             #{String(order?.orderCode || order?.id).slice(-4)}
@@ -257,7 +282,10 @@ const OrderCard = ({
       <div className="oc-info-section">
         <div className="oc-guest">
           <AlertTriangle size={12} />
-          <span className="name">{PRIORITY_LABELS[(order?.priority || "MEDIUM").toUpperCase()] || "Ưu tiên vừa"}</span>
+          <span className="name">
+            {PRIORITY_LABELS[(order?.priority || "MEDIUM").toUpperCase()] ||
+              "Ưu tiên vừa"}
+          </span>
         </div>
       </div>
 
