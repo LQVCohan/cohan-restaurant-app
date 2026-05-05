@@ -25,6 +25,7 @@ import shippingTracking from "./shippingTracking/index.js";
 import supplier from "./supplier/index.js";
 import promotion from "./promotion/index.js";
 import coupon from "./coupon/index.js";
+import posCustomer from "./posCustomer/index.js";
 import eventPackage from "./event_package/index.js";
 import tableEvent from "./table_event/index.js";
 import * as printSetting from "./printSetting/index.js";
@@ -61,6 +62,7 @@ export default {
     ...(supplier.Query || {}),
     ...(promotion.Query || {}),
     ...(coupon.Query || {}),
+    ...(posCustomer.Query || {}),
     ...(eventPackage.Query || {}),
     ...(tableEvent.Query || {}),
     ...(printSetting.Query || {}),
@@ -96,6 +98,7 @@ export default {
     ...(printSetting.Mutation || {}),
     ...(communication.Mutation || {}),
     ...(availability.Mutation || {}),
+    ...(posCustomer.Mutation || {}),
   },
 
   // ============================
