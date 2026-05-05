@@ -157,7 +157,12 @@ const OrderItemRow = React.memo(
 
 /* ============================== Main Component ============================== */
 
-const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
+const OrderModal = ({
+  order,
+  onClose,
+  onUpdateItemStatus,
+  onCreateTemporaryBill,
+}) => {
   const [savingMap, setSavingMap] = useState({});
   const completingRef = useRef(false);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
