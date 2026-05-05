@@ -1933,6 +1933,66 @@ const ScheduleManagement = ({ readOnly = false }) => {
       topIssues: [...dangers, ...warnings].slice(0, 8),
     };
   }, [scheduleInsights?.issues]);
+  const groupPublishWarnings = (issues = []) => {
+    const requiredRoleIssues = [];
+    const missingStaffIssues = [];
+    const minHoursIssues = [];
+    const otherIssues = [];
+
+    issues.forEach((issue) => {
+      const title = String(issue.title || "").toLowerCase();
+      const type = String(issue.type || "").toLowerCase();
+
+      if (
+        title.includes("thiếu role") ||
+        title.includes("role bắt buộc") ||
+        type === "missing_role"
+      ) {
+        requiredRoleIssues.push(issue);
+        return;
+      }
+
+      if (
+        title.includes("ca thiếu") ||
+        title.includes("chưa có nhân sự") ||
+        type === "missing"
+      ) {
+        missingStaffIssues.push(issue);
+        return;
+      }
+
+      if (
+        title.includes("part-time chưa đạt giờ tối thiểu") ||
+        title.includes("giờ tối thiểu")
+      ) {
+        minHoursIssues.push(issue);
+        return;
+      }
+
+      otherIssues.push(issue);
+    });
+
+    return {
+      requiredRoleIssues,
+      missingStaffIssues,
+      minHoursIssues,
+      otherIssues,
+    };
+  };
+  const [expandedWarningGroups, setExpandedWarningGroups] = useState({});
+  const groupedPublishWarnings = useMemo(
+    () => groupPublishWarnings(schedulePublishRiskSummary.warnings),
+    [schedulePublishRiskSummary.warnings],
+  );
+  const minHoursSummaryRows = useMemo(
+    () =>
+      groupedPublishWarnings.minHoursIssues.map((issue) => ({
+        id: issue.id,
+        title: issue.title,
+        description: issue.description,
+      })),
+    [groupedPublishWarnings.minHoursIssues],
+  );
   const assistantForPreview = useMemo(
     () =>
       mergeAssistantWithRequiredRoles(
@@ -2151,6 +2211,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
 
     setPublishConfirmed(false);
     setPublishConfirmError("");
+    setExpandedWarningGroups({});
     setPublishIssueSnapshot(schedulePublishRiskSummary);
     setIsPublishConfirmOpen(true);
   };
@@ -4226,69 +4287,188 @@ const ScheduleManagement = ({ readOnly = false }) => {
       )}
 
       {isPublishConfirmOpen ? (
-        <div className="publish-confirm-backdrop">
-          <div className="publish-confirm-card">
-            <button
-              type="button"
-              className="publish-confirm-close"
-              onClick={() => {
-                if (publishingSchedule) return;
-                setIsPublishConfirmOpen(false);
-                setPublishConfirmed(false);
-                setPublishConfirmError("");
-              }}
-              disabled={publishingSchedule}
-            >
-              <X size={18} />
-            </button>
-            <div className="publish-confirm-icon">
-              <CalendarCheck2 size={24} />
+        <div className="schedule-publish-modal-overlay">
+          <div className="schedule-publish-modal">
+            <div className="schedule-publish-modal__header">
+              <div>
+                <h3>Xác nhận công bố lịch</h3>
+                <p>
+                  Kiểm tra các cảnh báo quan trọng trước khi gửi lịch cho nhân
+                  viên.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="publish-confirm-close"
+                onClick={() => {
+                  if (publishingSchedule) return;
+                  setIsPublishConfirmOpen(false);
+                  setPublishConfirmed(false);
+                  setPublishConfirmError("");
+                }}
+                disabled={publishingSchedule}
+              >
+                <X size={18} />
+              </button>
             </div>
-            <div className="publish-confirm-content">
-              <h3>
-                {scheduleLifecycleStatus === "revision_draft"
-                  ? "Công bố lại bản chỉnh sửa?"
-                  : "Công bố lịch làm việc?"}
-              </h3>
-              <p>
-                Sau khi công bố, nhân viên sẽ nhận thông báo và các chỉnh sửa
-                sau đó sẽ phải đi qua quy trình có kiểm soát.
-              </p>
-              <p>
-                Lịch còn cảnh báo nhưng vẫn có thể công bố. Các cảnh báo sẽ được
-                ghi nhận để theo dõi chất lượng lập lịch.
-              </p>
-              <div className="publish-confirm-summary">
-                <div>
+            <div className="schedule-publish-modal__body">
+              <div className="publish-summary-grid">
+                <div className="publish-summary-card">
                   <span>Phạm vi</span>
                   <strong>
                     {format(rangeStart, "dd/MM/yyyy")} -{" "}
                     {format(rangeEnd, "dd/MM/yyyy")}
                   </strong>
                 </div>
-                <div>
+                <div className="publish-summary-card">
                   <span>Trạng thái hiện tại</span>
                   <strong>
                     {SCHEDULE_STATUS_LABELS[scheduleLifecycleStatus] ||
                       "Bản nháp"}
                   </strong>
                 </div>
-                <div>
+                <div className="publish-summary-card">
                   <span>Số nhóm ca</span>
                   <strong>{shifts.length}</strong>
                 </div>
-                <div>
+                <div className="publish-summary-card">
                   <span>Tổng phân công</span>
                   <strong>{totalAssignmentsForPublish}</strong>
                 </div>
-                <div>
-                  <span>Cảnh báo (warning)</span>
+                <div className="publish-summary-card">
+                  <span>Cảnh báo</span>
                   <strong>{publishIssueSnapshot.warnings.length}</strong>
                 </div>
-                <div>
-                  <span>Nguy cơ (danger)</span>
+                <div className="publish-summary-card">
+                  <span>Nguy cơ nghiêm trọng</span>
                   <strong>{publishIssueSnapshot.dangers.length}</strong>
                 </div>
+              </div>
+              {groupedPublishWarnings.requiredRoleIssues.length > 0 ? (
+                <div className="publish-warning-banner">
+                  Lịch còn thiếu role bắt buộc ở{" "}
+                  {groupedPublishWarnings.requiredRoleIssues.length} ca. Bạn vẫn
+                  có thể công bố nếu đã kiểm tra.
+                </div>
+              ) : null}
+              <div className="publish-warning-groups">
+                {[
+                  {
+                    key: "requiredRoleIssues",
+                    title: "Thiếu role bắt buộc",
+                    items: groupedPublishWarnings.requiredRoleIssues,
+                    tone: "critical",
+                  },
+                  {
+                    key: "missingStaffIssues",
+                    title: "Ca thiếu nhân sự",
+                    items: groupedPublishWarnings.missingStaffIssues,
+                  },
+                  {
+                    key: "otherIssues",
+                    title: "Khác",
+                    items: groupedPublishWarnings.otherIssues,
+                  },
+                ]
+                  .filter((group) => group.items.length > 0)
+                  .map((group) => {
+                    const isExpanded = Boolean(expandedWarningGroups[group.key]);
+                    const visibleItems = isExpanded
+                      ? group.items
+                      : group.items.slice(0, 3);
+                    return (
+                      <div className="publish-warning-group" key={group.key}>
+                        <div className="publish-warning-group__header">
+                          <h4>{group.title}</h4>
+                          <span>{group.items.length}</span>
+                        </div>
+                        {visibleItems.map((issue) => (
+                          <button
+                            key={issue.id}
+                            type="button"
+                            className={`publish-issue-row ${group.tone === "critical" ? "critical" : ""}`}
+                            onClick={() => handleFocusIssue(issue)}
+                          >
+                            <div className="publish-issue-icon">
+                              <AlertTriangle size={14} />
+                            </div>
+                            <div>
+                              <strong>{issue.title}</strong>
+                              <span>{issue.description}</span>
+                            </div>
+                          </button>
+                        ))}
+                        {group.items.length > 3 ? (
+                          <button
+                            type="button"
+                            className="publish-warning-group__toggle"
+                            onClick={() =>
+                              setExpandedWarningGroups((prev) => ({
+                                ...prev,
+                                [group.key]: !isExpanded,
+                              }))
+                            }
+                          >
+                            {isExpanded
+                              ? "Thu gọn"
+                              : `Xem thêm ${group.items.length - 3} cảnh báo`}
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                {minHoursSummaryRows.length ? (
+                  <div className="publish-warning-group">
+                    <div className="publish-warning-group__header">
+                      <h4>Nhân viên part-time chưa đạt giờ tối thiểu</h4>
+                      <span>{minHoursSummaryRows.length}</span>
+                    </div>
+                    <div className="publish-issue-row">
+                      <div className="publish-issue-icon">
+                        <Clock3 size={14} />
+                      </div>
+                      <div>
+                        <strong>
+                          {minHoursSummaryRows.length} nhân viên part-time chưa
+                          đạt giờ tối thiểu tuần.
+                        </strong>
+                      </div>
+                    </div>
+                    {(expandedWarningGroups.minHours
+                      ? minHoursSummaryRows
+                      : minHoursSummaryRows.slice(0, 3)
+                    ).map((item) => (
+                      <div className="publish-issue-row compact" key={item.id}>
+                        <div>
+                          <strong>{item.title}</strong>
+                          <span>{item.description}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {!expandedWarningGroups.minHours &&
+                    minHoursSummaryRows.length > 3 ? (
+                      <div className="publish-minhours-more">
+                        +{minHoursSummaryRows.length - 3} nhân viên khác
+                      </div>
+                    ) : null}
+                    {minHoursSummaryRows.length > 3 ? (
+                      <button
+                        type="button"
+                        className="publish-warning-group__toggle"
+                        onClick={() =>
+                          setExpandedWarningGroups((prev) => ({
+                            ...prev,
+                            minHours: !prev.minHours,
+                          }))
+                        }
+                      >
+                        {expandedWarningGroups.minHours
+                          ? "Thu gọn"
+                          : "Xem danh sách"}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               {publishIssueSnapshot.pendingAcknowledgements > 0 ? (
                 <div className="publish-confirm-error">
@@ -4296,30 +4476,14 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   nhân viên chưa hoàn tất (republish). Vẫn có thể công bố.
                 </div>
               ) : null}
-              {mandatoryRoleWarningCount > 0 ? (
+              {publishConfirmError ? (
                 <div className="publish-confirm-error">
-                  Lịch vẫn còn cảnh báo thiếu role bắt buộc (
-                  {mandatoryRoleWarningCount} ca). Bạn vẫn có thể công bố.
+                  {publishConfirmError}
                 </div>
               ) : null}
-              {publishIssueSnapshot.topIssues.length ? (
-                <div className="schedule-insight-list">
-                  {publishIssueSnapshot.topIssues.map((issue) => (
-                    <button
-                      key={issue.id}
-                      type="button"
-                      className={`schedule-insight-item ${issue.level || "warning"}`}
-                      onClick={() => handleFocusIssue(issue)}
-                    >
-                      <div className="insight-main">
-                        <strong>{issue.title}</strong>
-                        <p>{issue.description}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              <label className="publish-confirm-check">
+            </div>
+            <div className="schedule-publish-modal__footer">
+              <label className="publish-confirm-row">
                 <input
                   type="checkbox"
                   checked={publishConfirmed}
@@ -4329,13 +4493,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   }}
                   disabled={publishingSchedule}
                 />
-                <span>Tôi đã kiểm tra lịch và xác nhận công bố.</span>
+                <span>
+                  Tôi đã kiểm tra các cảnh báo và xác nhận công bố lịch.
+                </span>
               </label>
-              {publishConfirmError ? (
-                <div className="publish-confirm-error">
-                  {publishConfirmError}
-                </div>
-              ) : null}
               <div className="publish-confirm-actions">
                 <button
                   type="button"
@@ -4356,11 +4517,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                   onClick={handleConfirmPublishSchedule}
                   disabled={publishingSchedule || !publishConfirmed}
                 >
-                  {publishingSchedule
-                    ? "Đang công bố..."
-                    : scheduleLifecycleStatus === "revision_draft"
-                      ? "Xác nhận công bố lại"
-                      : "Xác nhận công bố"}
+                  {publishingSchedule ? "Đang công bố..." : "Công bố lịch"}
                 </button>
               </div>
             </div>
