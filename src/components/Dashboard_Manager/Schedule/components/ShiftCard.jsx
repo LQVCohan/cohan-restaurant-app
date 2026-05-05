@@ -1,6 +1,6 @@
 import React from "react";
 import "./ShiftCard.scss";
-import { getAvatarUrl, getJobName } from "../utils/scheduleHelpers";
+import { getJobName } from "../utils/scheduleHelpers";
 import { Clock, AlertCircle } from "lucide-react";
 
 // Helper map màu job sang CSS variables hoặc class
@@ -21,14 +21,28 @@ const getJobClass = (job) => {
   return map[job] || "job-gray";
 };
 const MAX_VISIBLE_STAFF = 3;
+const getInitials = (name = "") => {
+  const words = String(name).trim().split(/\s+/).filter(Boolean);
 
-const getInitials = (name) =>
-  String(name || "NV")
-    .trim()
-    .split(/\s+/)
-    .slice(-2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join("") || "NV";
+  if (!words.length) return "?";
+
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${words[0][0] || ""}${words[words.length - 1][0] || ""}`.toUpperCase();
+};
+
+const getStaffTitle = (staff) => {
+  const roleLabel = getJobName(staff.roleSlug || staff.job);
+  const departmentLabel = staff.departmentLabel;
+
+  if (!departmentLabel || departmentLabel === roleLabel) {
+    return `${staff.name} - ${roleLabel}`;
+  }
+
+  return `${staff.name} - ${roleLabel} · ${departmentLabel}`;
+};
 const ShiftCard = ({ shift, staffList, onClick }) => {
   const assignedStaff = shift.staffIds
     .map((id) => staffList.find((s) => s.id === id))
@@ -42,7 +56,12 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
     0,
     assignedStaff.length - MAX_VISIBLE_STAFF,
   );
-
+  const coverageLabel =
+    missingCount > 0
+      ? `Thiếu ${missingCount}`
+      : surplusCount > 0
+        ? `Dư +${surplusCount}`
+        : "Đủ yêu cầu";
   const isCritical = missingCount > 0;
   return (
     <div
