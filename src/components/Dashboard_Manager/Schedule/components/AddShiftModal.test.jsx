@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import AddShiftModal from "./AddShiftModal";
 
 const baseProps = {
@@ -36,5 +36,56 @@ describe("AddShiftModal availability visibility", () => {
   it("shows full-time in workingDays without unavailable exception", () => {
     render(<AddShiftModal {...baseProps} staffList={[{ id: "f1", name: "FT A", employmentType: "full_time", workingDays: ["mon"], salary: 1000 }]} />);
     expect(screen.getByText("FT A")).toBeInTheDocument();
+  });
+});
+
+describe("AddShiftModal mandatoryShiftRoles sync", () => {
+  const staffList = [
+    { id: "s1", name: "Cashier A", employmentType: "full_time", workingDays: ["mon"], salary: 1000, positionTitle: "Thu ngân", departmentLabel: "Front" },
+    { id: "s2", name: "Server A", employmentType: "full_time", workingDays: ["mon"], salary: 1000, positionTitle: "Nhân viên phục vụ", departmentLabel: "Front" },
+    { id: "s3", name: "Chef A", employmentType: "full_time", workingDays: ["mon"], salary: 1000, positionTitle: "Bếp trưởng", departmentLabel: "Kitchen" },
+  ];
+
+  it("preselects and locks mandatory roles, while allowing additional selections", async () => {
+    const onConfirm = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AddShiftModal
+        {...baseProps}
+        staffList={staffList}
+        onConfirm={onConfirm}
+        mandatoryShiftRoles={["server", "cashier"]}
+      />,
+    );
+
+    expect(screen.getAllByText("Bắt buộc").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Nhân viên phục vụ").closest(".job-checkbox")).toHaveClass("checked", "locked");
+    expect(screen.getByText("Thu ngân").closest(".job-checkbox")).toHaveClass("checked", "locked");
+
+    fireEvent.click(screen.getByText("Thu ngân"));
+    expect(screen.getByText("Thu ngân").closest(".job-checkbox")).toHaveClass("checked");
+
+    fireEvent.click(screen.getByText("Bếp trưởng"));
+    expect(screen.getByText("Bếp trưởng").closest(".job-checkbox")).toHaveClass("checked");
+
+    fireEvent.click(screen.getByText("Cashier A"));
+    fireEvent.click(screen.getByText("Server A"));
+    fireEvent.click(screen.getByText("Chef A"));
+    fireEvent.click(screen.getByRole("button", { name: "Lưu & Tạo Lịch" }));
+
+    expect(onConfirm).toHaveBeenCalled();
+    const payload = onConfirm.mock.calls[0][0];
+    expect(payload.essentialJobs).toEqual(expect.arrayContaining(["server", "cashier", "chef"]));
+  });
+
+  it("uses final roles for role matching labels", () => {
+    render(
+      <AddShiftModal
+        {...baseProps}
+        staffList={staffList.slice(0, 2)}
+        mandatoryShiftRoles={["cashier"]}
+      />,
+    );
+    expect(screen.getByText("Cashier A").closest(".staff-item")).toHaveTextContent("Khớp vị trí");
+    expect(screen.getByText("Server A").closest(".staff-item")).toHaveTextContent("Không khớp vị trí bắt buộc");
   });
 });

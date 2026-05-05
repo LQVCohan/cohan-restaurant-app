@@ -157,7 +157,12 @@ const OrderItemRow = React.memo(
 
 /* ============================== Main Component ============================== */
 
-const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
+const OrderModal = ({
+  order,
+  onClose,
+  onUpdateItemStatus,
+  onCreateTemporaryBill,
+}) => {
   const [savingMap, setSavingMap] = useState({});
   const completingRef = useRef(false);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
@@ -281,7 +286,7 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
           <div className="om-header__actions">
             <button
               className="om-btn ghost icon-only"
-              onClick={() => window.print()}
+              onClick={() => onCreateTemporaryBill?.(order)}
               title="In phiếu"
             >
               <Printer size={20} />
@@ -420,8 +425,8 @@ const OrderModal = ({ order, onClose, onUpdateItemStatus }) => {
           <button className="om-btn secondary" onClick={handleClose}>
             Đóng
           </button>
-          <button className="om-btn primary" onClick={() => window.print()}>
-            <Printer size={18} /> In hóa đơn
+          <button className="om-btn primary" onClick={() => onCreateTemporaryBill?.(order)}>
+            <Printer size={18} /> In tạm tính
           </button>
         </footer>
       </div>

@@ -62,6 +62,11 @@ const REJECT_INCOMING_ORDER = gql`
     rejectIncomingOrder(input: $input) { order { id currentStatus updatedAt } }
   }
 `;
+const CREATE_TEMP_BILL_PRINT_JOB = gql`
+  mutation CreateTemporaryBillPrintJob($input: CreateTemporaryBillPrintJobInput!) {
+    createTemporaryBillPrintJob(input: $input) { ok message }
+  }
+`;
 
 const useRestaurant = () => {
   const { restaurants } = useContext(AuthContext);
@@ -176,6 +181,7 @@ const OrderManagement = () => {
   const [mutUpdateOrderStatus] = useMutation(UPDATE_ORDER_STATUS);
   const [mutConfirmIncomingOrder] = useMutation(CONFIRM_INCOMING_ORDER);
   const [mutRejectIncomingOrder] = useMutation(REJECT_INCOMING_ORDER);
+  const [mutCreateTempBillJob] = useMutation(CREATE_TEMP_BILL_PRINT_JOB);
 
   // Settings
   const [timeSettings, setTimeSettings] = useState({
@@ -579,6 +585,11 @@ const OrderManagement = () => {
     await mutConfirmIncomingOrder({ variables: { input: { id: orderId, restaurantId: selectedRestaurantId } } });
     loadOrders({ variables: { restaurantId: selectedRestaurantId, limit: 100 }, fetchPolicy: "network-only" });
   }, [loadOrders, mutConfirmIncomingOrder, selectedRestaurantId]);
+  const handleCreateTemporaryBill = useCallback(async (order) => {
+    if (!order?.id || !selectedRestaurantId) return;
+    await mutCreateTempBillJob({ variables: { input: { orderId: order.id, restaurantId: selectedRestaurantId } } });
+    showNotification("Đã tạo print job in tạm tính.", "success");
+  }, [mutCreateTempBillJob, selectedRestaurantId, showNotification]);
 
   // ---------------- RENDER ----------------
   return (
@@ -903,6 +914,7 @@ const OrderManagement = () => {
             order={selectedOrder}
             onClose={() => setSelectedOrder(null)}
             onUpdateItemStatus={handleUpdateItemStatus}
+            onCreateTemporaryBill={handleCreateTemporaryBill}
           />
         )}
 

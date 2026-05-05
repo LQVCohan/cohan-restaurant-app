@@ -4224,6 +4224,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
           shiftConfig={configuredShiftTypes}
           staffList={staff}
           availabilitySubmissions={managerScheduleWeekSubmissions}
+          mandatoryShiftRoles={policyMandatoryShiftRoles}
           onConfirm={handleConfirmAddShift}
           isSchedulePublished={isSchedulePublished}
           submitting={isSubmittingAddShift || addingPublishedStaff}

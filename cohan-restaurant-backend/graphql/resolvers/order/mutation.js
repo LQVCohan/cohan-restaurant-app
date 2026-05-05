@@ -15,6 +15,7 @@ import {
   Customer,
   User,
   WalletTransaction,
+  PrintSetting,
 } from "../../../models/index.js";
 
 import { normalizeItem, toId } from "./helper/orderUtils.js";
@@ -40,6 +41,114 @@ const COMMIT_STATUSES = ["preparing", "ready", "served", "completed"];
 const RANK_POINT_DIVISOR = 1_000_000;
 
 const CANCELLED_ITEM_STATUSES = ["cancelled", "returned"];
+const PRINT_STATIONS = {
+  kitchen: "kitchen",
+  bar: "bar",
+  cashier: "cashier",
+};
+
+function mapItemToStation(item = {}) {
+  const categoryName = String(item?.categoryName || item?.category?.name || "").toLowerCase();
+  const itemName = String(item?.name || "").toLowerCase();
+  const isDrink = categoryName.includes("drink") || categoryName.includes("đồ uống") || itemName.includes("nước");
+  return isDrink ? PRINT_STATIONS.bar : PRINT_STATIONS.kitchen;
+}
+
+async function enqueuePrintJobsForConfirmedOrder({ order, printType = "order_confirmed" }) {
+  if (!order?.restaurantId || !Array.isArray(order?.items) || order.currentStatus !== "confirmed") return [];
+  const printSetting = await PrintSetting.findOne({ restaurantId: order.restaurantId }).lean();
+  if (!printSetting) return [];
+  const stationPrinters = printSetting?.stations || {};
+  const itemsByStation = order.items.reduce((acc, item) => {
+    const stationId = mapItemToStation(item);
+    if (!acc[stationId]) acc[stationId] = [];
+    acc[stationId].push(item);
+    return acc;
+  }, {});
+
+  const jobs = Object.entries(itemsByStation)
+    .filter(([stationId]) => Array.isArray(stationPrinters?.[stationId]) && !!stationPrinters[stationId][0])
+    .map(([stationId, items]) => {
+      const printerId = stationPrinters[stationId][0];
+      const createdAt = new Date().toISOString();
+      return {
+        id: `job_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+        orderId: String(order._id),
+        stationId,
+        stationType: stationId,
+        printerId,
+        printType,
+        items: (items || []).map((it) => ({
+          orderItemId: String(it?._id || ""),
+          dishId: String(it?.dishId || ""),
+          name: it?.name || "",
+          quantity: Number(it?.quantity || 0),
+          note: it?.note || "",
+        })),
+        status: "pending",
+        retryCount: 0,
+        payload: { orderCode: order.orderCode, tableCode: order.tableCode },
+        createdAt,
+        printedAt: null,
+        updatedAt: createdAt,
+      };
+    });
+  if (!jobs.length) return [];
+  await PrintSetting.updateOne(
+    { _id: printSetting._id },
+    {
+      $push: { jobs: { $each: jobs, $position: 0, $slice: 300 } },
+      $set: { updatedAt: new Date() },
+    }
+  );
+  return jobs;
+}
+
+async function enqueueTemporaryBillPrintJob(order) {
+  if (!order?.restaurantId || order.currentStatus !== "confirmed") {
+    return { jobs: [], message: "Only confirmed orders can be printed" };
+  }
+
+  const printSetting = await PrintSetting.findOne({ restaurantId: order.restaurantId }).lean();
+  if (!printSetting) {
+    return { jobs: [], message: "Chưa cấu hình in cho nhà hàng." };
+  }
+
+  const cashierPrinters = Array.isArray(printSetting?.stations?.[PRINT_STATIONS.cashier])
+    ? printSetting.stations[PRINT_STATIONS.cashier]
+    : [];
+  const printerId = cashierPrinters[0];
+  if (!printerId) {
+    return { jobs: [], message: "Chưa cấu hình máy in thu ngân." };
+  }
+
+  const createdAt = new Date().toISOString();
+  const job = {
+    id: `job_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+    orderId: String(order._id),
+    stationId: PRINT_STATIONS.cashier,
+    stationType: PRINT_STATIONS.cashier,
+    printerId,
+    printType: "temporary_bill",
+    items: [],
+    status: "pending",
+    retryCount: 0,
+    payload: { orderCode: order.orderCode, tableCode: order.tableCode },
+    createdAt,
+    printedAt: null,
+    updatedAt: createdAt,
+  };
+
+  await PrintSetting.updateOne(
+    { _id: printSetting._id },
+    {
+      $push: { jobs: { $each: [job], $position: 0, $slice: 300 } },
+      $set: { updatedAt: new Date() },
+    }
+  );
+
+  return { jobs: [job], message: "Đã tạo job in tạm tính." };
+}
 
 function normalizePriorityLevel(value) {
   const key = String(value || "").toUpperCase();
@@ -1135,6 +1244,7 @@ export const OrderMutation = {
       warehouseId,
       clientMeta,
       paymentMethod,
+      pricing,
     } = input || {};
 
     const rid = toId(restaurantId);
@@ -1170,7 +1280,32 @@ export const OrderMutation = {
         });
 
         validateIncomingOrderItems(normalizedItems);
-        const totals = computeTotalsFromHydratedItems(normalizedItems);
+
+        const trustedPricing = {
+          taxRate: pricing?.taxRate,
+          serviceRate: pricing?.serviceRate,
+          shippingFee: pricing?.shippingFee,
+          voucherCode: pricing?.voucherCode,
+          promotionDiscount: 0,
+          voucherDiscount: 0,
+        };
+        const baseTotals = computeTotalsFromHydratedItems(normalizedItems, trustedPricing);
+        let voucherMeta = null;
+        if (trustedPricing.voucherCode) {
+          voucherMeta = await resolveVoucherDiscount({
+            restaurantId: rid,
+            voucherCode: trustedPricing.voucherCode,
+            subtotal: baseTotals.subtotal,
+            userId: finalUserId,
+            session,
+          });
+        }
+        const totals = computeTotalsFromHydratedItems(normalizedItems, {
+          ...trustedPricing,
+          voucherDiscount: voucherMeta?.voucherDiscount || 0,
+          voucherCode: voucherMeta?.voucherCode,
+        });
+        if (voucherMeta?.discountReason) totals.discountReason = voucherMeta.discountReason;
 
         const [order] = await Order.create(
           [
@@ -1203,6 +1338,25 @@ export const OrderMutation = {
         );
 
         createdOrderDoc = order;
+
+        if (voucherMeta?.couponId) {
+          const updateResult = await Coupon.updateOne(
+            {
+              _id: voucherMeta.couponId,
+              $expr: {
+                $or: [
+                  { $lte: ["$maxUsage", 0] },
+                  { $lt: ["$used", "$maxUsage"] },
+                ],
+              },
+            },
+            { $inc: { used: 1 } },
+            { session }
+          );
+          if (!updateResult.modifiedCount) {
+            throw new Error("Invalid voucher: usage limit reached");
+          }
+        }
 
         const lines = buildInventoryLinesFromItems(normalizedItems);
         if (lines.length) {
@@ -1316,7 +1470,38 @@ export const OrderMutation = {
       },
     }, ctx);
 
+    const printJobs = await enqueuePrintJobsForConfirmedOrder({
+      order: updated,
+      printType: "order_confirmed",
+    });
+    if (printJobs.length) {
+      await emitOrderEvent(ctx, String(updated.restaurantId), "ORDER_PRINT_JOBS_CREATED", {
+        orderId: String(updated._id || updated.id),
+        orderCode: updated.orderCode,
+        printJobs,
+      });
+    }
+
     return { order: updated };
+  },
+
+  async createTemporaryBillPrintJob(_, { input }, ctx) {
+    const { orderId, restaurantId } = input || {};
+    if (!orderId || !restaurantId) throw new Error("orderId and restaurantId are required");
+    const order = await Order.findById(orderId).lean();
+    if (!order) throw new Error("Order not found");
+    if (String(order.restaurantId) !== String(toId(restaurantId))) throw new Error("Order not found");
+    if (order.currentStatus !== "confirmed") throw new Error("Only confirmed orders can be printed");
+    const { jobs, message } = await enqueueTemporaryBillPrintJob(order);
+    const cashierJob = jobs[0] || null;
+    if (cashierJob) {
+      await emitOrderEvent(ctx, String(order.restaurantId), "ORDER_PRINT_JOBS_CREATED", {
+        orderId: String(order._id),
+        orderCode: order.orderCode,
+        printJobs: [cashierJob],
+      });
+    }
+    return { ok: !!cashierJob, message };
   },
 
   async rejectIncomingOrder(_, { input }, ctx) {
@@ -1441,19 +1626,28 @@ export const OrderMutation = {
             session,
           });
 
-          const baseTotals = computeTotalsFromHydratedItems(g.items, pricing || {});
+          const trustedPricing = {
+            taxRate: pricing?.taxRate,
+            serviceRate: pricing?.serviceRate,
+            shippingFee: pricing?.shippingFee,
+            voucherCode: pricing?.voucherCode,
+            promotionDiscount: 0,
+            voucherDiscount: 0,
+          };
+
+          const baseTotals = computeTotalsFromHydratedItems(g.items, trustedPricing);
           let voucherMeta = null;
-          if (pricing?.voucherCode) {
+          if (trustedPricing.voucherCode) {
             voucherMeta = await resolveVoucherDiscount({
               restaurantId: g.restaurantId,
-              voucherCode: pricing.voucherCode,
+              voucherCode: trustedPricing.voucherCode,
               subtotal: baseTotals.subtotal,
               userId: finalUserId,
               session,
             });
           }
           const totals = computeTotalsFromHydratedItems(g.items, {
-            ...(pricing || {}),
+            ...trustedPricing,
             voucherDiscount: voucherMeta?.voucherDiscount || 0,
             voucherCode: voucherMeta?.voucherCode,
           });

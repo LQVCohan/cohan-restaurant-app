@@ -275,7 +275,6 @@ const buildCartFromServerOrders = (orders = []) => {
         quantity: Number(item.quantity || 1),
         price: Number(item.unitPrice || item.basePrice || 0),
         status: item.status || "pending",
-        printed: false,
         persisted: true,
         servingKey: item.servingKey || null,
         unit: item.unit || item.servingVariant?.sellUnit || "portion",
@@ -656,7 +655,6 @@ export default function StaffOrdering() {
                 quantity: 1,
                 price: item.price,
                 status: "pending",
-                printed: false,
                 proofImages: [],
                 persisted: false,
               };
