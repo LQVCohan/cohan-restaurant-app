@@ -292,14 +292,27 @@ const OrderManagement = () => {
       .trim();
   };
 
+  const isRemoteStaffPendingOrder = useCallback((order) => {
+    if (!order) return false;
+    const typeOk = ["delivery", "takeaway"].includes(order.orderType);
+    const statusOk = order.currentStatus === "pending";
+    const meta = order.clientMeta || {};
+    const source = String(meta.source || meta.clientSource || "").toLowerCase();
+    const channel = String(meta.channel || "").toLowerCase();
+    const clientType = String(meta.clientType || "").toLowerCase();
+    return typeOk && statusOk && [source, channel, clientType].includes("staff_remote");
+  }, []);
+
   const filteredOrders = useMemo(() => {
     const raw = searchTerm || "";
     const q = normalizeText(raw);
     const endsWithSpace = /\s$/.test(raw);
     const singleToken = q && !q.includes(" ");
 
-    const matchesStatus = (o) =>
-      !statusFilter || o.currentStatus === statusFilter;
+    const matchesStatus = (o) => {
+      if (statusFilter === "remote_staff_pending") return isRemoteStaffPendingOrder(o);
+      return !statusFilter || o.currentStatus === statusFilter;
+    };
     const matchesTableType = (o) => !tableFilter || o.orderType === tableFilter;
     const matchesDate = (o) => {
       const created = o?.createdAt ? new Date(o.createdAt) : null;
@@ -354,7 +367,7 @@ const OrderManagement = () => {
         matchesDate(o)
       );
     });
-  }, [activeOrders, searchTerm, statusFilter, tableFilter, dateFrom, dateTo]);
+  }, [activeOrders, searchTerm, statusFilter, tableFilter, dateFrom, dateTo, isRemoteStaffPendingOrder]);
 
   const orderedFilteredOrders = useMemo(() => {
     const sorted = [...filteredOrders].sort((a, b) => {
@@ -465,12 +478,12 @@ const OrderManagement = () => {
 
   // --- HANDLERS ---
   const handleUpdateStatus = useCallback(
-    async (orderId, status) => {
+    async (orderId, status, extraNote = "") => {
       if (!orderId || !status) return;
       try {
         const { data } = await mutUpdateOrderStatus({
           variables: {
-            input: { id: orderId, restaurantId: selectedRestaurantId, status },
+            input: { id: orderId, restaurantId: selectedRestaurantId, status, note: extraNote },
           },
         });
         const updated = data?.updateOrderStatus;
@@ -539,6 +552,16 @@ const OrderManagement = () => {
     setHighlightDishKey(null);
     setHighlightedOrderIds([]);
   }, []);
+
+  const handleRejectOrder = useCallback(
+    async (orderId) => {
+      const reason = window.prompt("Nhập lý do từ chối đơn:", "");
+      if (reason == null) return;
+      await handleUpdateStatus(orderId, "cancelled", `POS rejected remote order: ${reason}`);
+      showNotification("Đã từ chối đơn từ xa", "warning");
+    },
+    [handleUpdateStatus, showNotification]
+  );
 
   // ---------------- RENDER ----------------
   return (
@@ -664,6 +687,7 @@ const OrderManagement = () => {
                   >
                     <option value="">Tất cả trạng thái</option>
                     <option value="pending">Chờ xác nhận</option>
+                    <option value="remote_staff_pending">Đơn từ xa chờ xác nhận</option>
                     <option value="confirmed">Đã xác nhận</option>
                     <option value="preparing">Đang chuẩn bị</option>
                     <option value="ready">Sẵn sàng</option>
@@ -806,6 +830,8 @@ const OrderManagement = () => {
                   <OrderCard
                     order={order}
                     onUpdateStatus={handleUpdateStatus}
+                    onRejectOrder={handleRejectOrder}
+                    isRemoteStaffPending={isRemoteStaffPendingOrder(order)}
                     onViewOrder={() => setSelectedOrder(order)}
                     onViewItem={(data) => setSelectedItem(data)}
                     isFocusMode={focusMode}
