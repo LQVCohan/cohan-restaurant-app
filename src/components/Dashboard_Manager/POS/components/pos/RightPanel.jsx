@@ -889,7 +889,7 @@ export default function RightPanel() {
     saveOrder,
     clearDraft,
     currentOrderType,
-    currentTable.code,
+    currentTable?.code,
     showNotification,
     currentOrderCode,
     resetOffPremiseAfterSave,

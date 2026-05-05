@@ -1964,13 +1964,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       schedulingPolicy?.employmentTypePolicy,
     ],
   );
-  const mandatoryRoleWarningCount = useMemo(
-    () =>
-      scheduleInsights.issues.filter((issue) =>
-        issue.id.endsWith("-missing-roles"),
-      ).length,
-    [scheduleInsights.issues],
-  );
+
   const schedulePublishRiskSummary = useMemo(() => {
     const baseIssues = Array.isArray(scheduleInsights?.issues)
       ? scheduleInsights.issues
@@ -2199,28 +2193,46 @@ const ScheduleManagement = ({ readOnly = false }) => {
       : issue?.targetShiftId
         ? [issue.targetShiftId]
         : [];
+
     if (!targetIds.length) {
-      showNotification("Chưa xác định được ca cần xử lý.", "warning");
+      showNotification(
+        "Cảnh báo này chưa liên kết trực tiếp với một ca cụ thể.",
+        "warning",
+      );
       return;
     }
+
+    const firstTargetId = targetIds[0];
+    const targetShift =
+      shifts.find((shift) => String(shift.id) === String(firstTargetId)) ||
+      null;
+
     setFocusedIssueId(issue.id);
     setHighlightedShiftIds(targetIds);
+
+    if (targetShift) {
+      setIsPublishConfirmOpen(false);
+      setSelectedShift(targetShift);
+    } else {
+      showNotification(
+        "Không tìm thấy ca cần sửa trong tuần hiện tại.",
+        "warning",
+      );
+    }
+
     requestAnimationFrame(() => {
       const firstTarget = document.querySelector(
-        `[data-shift-group-id="${targetIds[0]}"]`,
+        `[data-shift-group-id="${firstTargetId}"]`,
       );
-      if (!firstTarget) {
-        showNotification(
-          "Không tìm thấy ca trong lịch đang hiển thị.",
-          "warning",
-        );
-        return;
+
+      if (firstTarget) {
+        firstTarget.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+          inline: "center",
+        });
       }
-      firstTarget.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-        inline: "center",
-      });
+
       clearShiftHighlightLater();
     });
   };
@@ -4574,7 +4586,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
                             key={issue.id}
                             type="button"
                             className={`publish-issue-row ${group.tone === "critical" ? "critical" : ""}`}
-                            onClick={() => handleFocusIssue(issue)}
+                            onClick={() => handleFocusScheduleIssue(issue)}
                           >
                             <div className="publish-issue-icon">
                               <AlertTriangle size={14} />

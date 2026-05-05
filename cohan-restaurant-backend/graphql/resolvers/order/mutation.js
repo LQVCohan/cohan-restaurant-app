@@ -2361,6 +2361,29 @@ export const OrderMutation = {
         }
 
         order.currentStatus = status;
+        if (status === "preparing") {
+          for (const item of order.items || []) {
+            if (!["cancelled", "returned"].includes(item.status)) {
+              if (item.status === "pending") {
+                item.status = "preparing";
+              }
+            }
+          }
+        }
+        if (status === "ready") {
+          for (const item of order.items || []) {
+            if (item.status === "preparing") {
+              item.status = "ready";
+            }
+          }
+        }
+        if (status === "served") {
+          for (const item of order.items || []) {
+            if (["pending", "preparing", "ready"].includes(item.status)) {
+              item.status = "served";
+            }
+          }
+        }
         order.statusTimeline.push({
           status,
           at: new Date(),

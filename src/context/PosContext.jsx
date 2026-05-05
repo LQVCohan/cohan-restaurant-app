@@ -683,7 +683,7 @@ export default function PosProvider({
     [
       allTables,
       currentOrderType,
-      currentTable.code,
+      currentTable?.code,
       currentTable?.id,
       currentOrder,
       restaurantId,

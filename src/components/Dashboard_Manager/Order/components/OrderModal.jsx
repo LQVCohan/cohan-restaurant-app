@@ -42,12 +42,36 @@ const getMinutesElapsed = (dateStr) => {
 };
 
 const ITEM_STATUS_CONFIG = {
-  pending: { label: "Chờ xác nhận", color: "yellow", icon: null },
-  confirmed: { label: "Đã nhận", color: "blue", icon: null },
-  preparing: { label: "Đang làm", color: "indigo", icon: ChefHat },
-  ready: { label: "Sẵn sàng", color: "green", icon: CheckCircle2 },
-  served: { label: "Đã trả", color: "cyan", icon: CheckCircle2 },
-  cancelled: { label: "Đã hủy", color: "red", icon: X },
+  pending: {
+    label: "Chờ bếp nhận",
+    color: "yellow",
+    icon: null,
+  },
+  preparing: {
+    label: "Đang chuẩn bị",
+    color: "indigo",
+    icon: ChefHat,
+  },
+  ready: {
+    label: "Sẵn sàng",
+    color: "green",
+    icon: CheckCircle2,
+  },
+  served: {
+    label: "Đã trả",
+    color: "cyan",
+    icon: CheckCircle2,
+  },
+  cancelled: {
+    label: "Đã hủy",
+    color: "red",
+    icon: X,
+  },
+  returned: {
+    label: "Đã trả lại",
+    color: "gray",
+    icon: X,
+  },
 };
 
 const UPDATE_ORDER_STATUS = gql`

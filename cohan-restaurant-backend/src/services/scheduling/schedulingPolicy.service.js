@@ -128,21 +128,7 @@ function validateDayOfWeek(fieldName, value) {
     );
   }
 }
-const normalizeMandatoryShiftRoles = (roles) => {
-  if (!Array.isArray(roles)) return undefined;
 
-  return Array.from(
-    new Set(
-      roles
-        .map((role) =>
-          String(role || "")
-            .trim()
-            .toLowerCase(),
-        )
-        .filter(Boolean),
-    ),
-  );
-};
 function validateTime(fieldName, value) {
   if (!TIME_REGEX.test(value)) {
     throw new Error(`${fieldName} không hợp lệ. Định dạng phải là HH:mm.`);
@@ -495,11 +481,9 @@ export function mapSchedulingPolicy(policy) {
     availabilityRegistrationPolicy: sanitizeAvailabilityRegistrationPolicy(
       policy.availabilityRegistrationPolicy || {},
     ),
-    mandatoryShiftRoles:
-      Array.isArray(policy.mandatoryShiftRoles) &&
-      policy.mandatoryShiftRoles.length
-        ? policy.mandatoryShiftRoles
-        : ["server", "cook", "cashier"],
+    mandatoryShiftRoles: Array.isArray(policy.mandatoryShiftRoles)
+      ? policy.mandatoryShiftRoles
+      : ["server", "cook", "cashier"],
 
     updatedAt: policy.updatedAt,
     createdAt: policy.createdAt,

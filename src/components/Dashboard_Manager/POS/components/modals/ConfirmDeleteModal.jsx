@@ -13,7 +13,7 @@ const ConfirmDeleteModal = ({
   const [selectedReason, setSelectedReason] = useState("");
   const [customReason, setCustomReason] = useState("");
   const [action, setAction] = useState(
-    showScopeChoice ? "clear_items" : "delete_item"
+    showScopeChoice ? "clear_items" : "delete_item",
   );
   useModalKeyboardClose({ isOpen, onClose });
 
@@ -33,7 +33,10 @@ const ConfirmDeleteModal = ({
       role="dialog"
       aria-modal="true"
     >
-      <div className="modal-container" onMouseDown={(e) => e.stopPropagation()}>
+      <div
+        className="delete-modal-container"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <h2>Xác nhận xóa món</h2>
         {requireReason && <p>Vui lòng chọn lý do xóa món:</p>}
 

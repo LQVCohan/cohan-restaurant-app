@@ -155,7 +155,36 @@
         }
       }
     }
+    .staff-role-filter-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin: -0.25rem 0 0.75rem;
 
+      button {
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #475569;
+        border-radius: 999px;
+        padding: 0.32rem 0.65rem;
+        font-size: 0.76rem;
+        font-weight: 750;
+        transition: all 0.16s ease;
+
+        &:hover {
+          border-color: #a5b4fc;
+          color: #4338ca;
+          background: #eef2ff;
+        }
+
+        &.active {
+          border-color: #4f46e5;
+          background: #eef2ff;
+          color: #4338ca;
+          box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.08);
+        }
+      }
+    }
     .staff-filter-hint {
       margin: 6px 4px 8px;
       font-size: 12px;
@@ -245,8 +274,12 @@
           .role-match {
             font-size: 0.72rem;
             margin-top: 2px;
-            &.matched { color: #15803d; }
-            &.mismatch { color: #b45309; }
+            &.matched {
+              color: #15803d;
+            }
+            &.mismatch {
+              color: #b45309;
+            }
           }
         }
 

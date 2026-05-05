@@ -38,10 +38,23 @@ const isStaffWorkingOnDate = (staff, selectedDate) => {
   return workingDays.map(normalizeWorkingDayKey).includes(selectedDayKey);
 };
 
-const normalizeEmploymentType = (value) => String(value || "").trim().toLowerCase();
-const normalizeAvailabilityStatus = (value) => String(value || "").trim().toLowerCase();
-const normalizeShiftType = (value) => String(value || "").trim().toLowerCase();
-const OFFICIAL_AVAILABILITY_STATUSES = new Set(["submitted", "approved", "locked"]);
+const normalizeEmploymentType = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+const normalizeAvailabilityStatus = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+const normalizeShiftType = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+const OFFICIAL_AVAILABILITY_STATUSES = new Set([
+  "submitted",
+  "approved",
+  "locked",
+]);
 const isPartTimeLike = (staff) => {
   const type = normalizeEmploymentType(staff?.employmentType);
   return type === "part_time" || type === "seasonal";
@@ -51,26 +64,52 @@ const toLocalYmd = (value) => {
   if (Number.isNaN(date.getTime())) return "";
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
-const hasOfficialAvailableSlot = (submission, selectedDate, selectedShiftType) => {
+const hasOfficialAvailableSlot = (
+  submission,
+  selectedDate,
+  selectedShiftType,
+) => {
   if (!submission) return false;
-  if (!OFFICIAL_AVAILABILITY_STATUSES.has(normalizeAvailabilityStatus(submission.status))) return false;
+  if (
+    !OFFICIAL_AVAILABILITY_STATUSES.has(
+      normalizeAvailabilityStatus(submission.status),
+    )
+  )
+    return false;
   const targetDate = toLocalYmd(selectedDate);
   const targetShift = normalizeShiftType(selectedShiftType);
-  return (submission.slots || []).some((slot) => toLocalYmd(slot.date) === targetDate && normalizeShiftType(slot.shiftType) === targetShift && normalizeAvailabilityStatus(slot.status) === "available");
+  return (submission.slots || []).some(
+    (slot) =>
+      toLocalYmd(slot.date) === targetDate &&
+      normalizeShiftType(slot.shiftType) === targetShift &&
+      normalizeAvailabilityStatus(slot.status) === "available",
+  );
 };
-const hasOfficialUnavailableSlot = (submission, selectedDate, selectedShiftType) => {
+const hasOfficialUnavailableSlot = (
+  submission,
+  selectedDate,
+  selectedShiftType,
+) => {
   if (!submission) return false;
-  if (!OFFICIAL_AVAILABILITY_STATUSES.has(normalizeAvailabilityStatus(submission.status))) return false;
+  if (
+    !OFFICIAL_AVAILABILITY_STATUSES.has(
+      normalizeAvailabilityStatus(submission.status),
+    )
+  )
+    return false;
   const targetDate = toLocalYmd(selectedDate);
   const targetShift = normalizeShiftType(selectedShiftType);
-  return (submission.slots || []).some((slot) => toLocalYmd(slot.date) === targetDate && normalizeShiftType(slot.shiftType) === targetShift && normalizeAvailabilityStatus(slot.status) === "unavailable");
+  return (submission.slots || []).some(
+    (slot) =>
+      toLocalYmd(slot.date) === targetDate &&
+      normalizeShiftType(slot.shiftType) === targetShift &&
+      normalizeAvailabilityStatus(slot.status) === "unavailable",
+  );
 };
 const normalizeMandatoryRoles = (roles = []) =>
   Array.from(
     new Set(
-      (roles || [])
-        .map((role) => normalizeRoleKey(role))
-        .filter(Boolean),
+      (roles || []).map((role) => normalizeRoleKey(role)).filter(Boolean),
     ),
   );
 
@@ -102,13 +141,18 @@ const AddShiftModal = ({
     notes: "",
   });
   const [search, setSearch] = useState("");
+  const [staffRoleFilter, setStaffRoleFilter] = useState("all");
   const [submitError, setSubmitError] = useState("");
   const [publishedReason, setPublishedReason] = useState("");
   const [notifyEmployees, setNotifyEmployees] = useState(true);
   const [allowOverride, setAllowOverride] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
   const finalEssentialJobs = useMemo(
-    () => normalizeMandatoryRoles([...lockedMandatoryRoles, ...(newShift.essentialJobs || [])]),
+    () =>
+      normalizeMandatoryRoles([
+        ...lockedMandatoryRoles,
+        ...(newShift.essentialJobs || []),
+      ]),
     [lockedMandatoryRolesKey, newShift.essentialJobs],
   );
   // Reset form khi mở modal
@@ -120,6 +164,7 @@ const AddShiftModal = ({
         notes: "",
       });
       setSearch("");
+      setStaffRoleFilter("all");
       setSubmitError("");
       setPublishedReason("");
       setNotifyEmployees(true);
@@ -169,7 +214,6 @@ const AddShiftModal = ({
     });
   };
 
-
   const availabilityByEmployeeId = useMemo(() => {
     const map = new Map();
     (availabilitySubmissions || []).forEach((submission) => {
@@ -182,20 +226,65 @@ const AddShiftModal = ({
   const getStaffAvailabilityVisibility = (staff) => {
     const submission = availabilityByEmployeeId.get(String(staff.id));
     if (isPartTimeLike(staff)) {
-      if (hasOfficialAvailableSlot(submission, selectedDate, selectedShiftType)) {
-        return { visible: true, reason: "available_submission", label: "Đã đăng ký có thể làm" };
+      if (
+        hasOfficialAvailableSlot(submission, selectedDate, selectedShiftType)
+      ) {
+        return {
+          visible: true,
+          reason: "available_submission",
+          label: "Đã đăng ký có thể làm",
+        };
       }
-      return { visible: false, reason: "missing_or_unmatched_part_time_availability", label: "Không có availability phù hợp" };
+      return {
+        visible: false,
+        reason: "missing_or_unmatched_part_time_availability",
+        label: "Không có availability phù hợp",
+      };
     }
     if (!isStaffWorkingOnDate(staff, selectedDate)) {
-      return { visible: false, reason: "outside_working_days", label: "Ngoài ngày làm việc mặc định" };
+      return {
+        visible: false,
+        reason: "outside_working_days",
+        label: "Ngoài ngày làm việc mặc định",
+      };
     }
-    if (hasOfficialUnavailableSlot(submission, selectedDate, selectedShiftType)) {
-      return { visible: false, reason: "full_time_unavailable_exception", label: "Đã báo không khả dụng" };
+    if (
+      hasOfficialUnavailableSlot(submission, selectedDate, selectedShiftType)
+    ) {
+      return {
+        visible: false,
+        reason: "full_time_unavailable_exception",
+        label: "Đã báo không khả dụng",
+      };
     }
-    return { visible: true, reason: "working_day", label: "Theo ngày làm việc mặc định" };
+    return {
+      visible: true,
+      reason: "working_day",
+      label: "Theo ngày làm việc mặc định",
+    };
   };
+  const getStaffRoleMatch = (staff) => {
+    const roleSlug = resolveConcreteStaffRoleSlug(staff);
 
+    if (!finalEssentialJobs.length) {
+      return {
+        roleSlug,
+        roleLabel: roleSlug ? getJobName(roleSlug) : "Chưa xác định vị trí",
+        matched: true,
+      };
+    }
+
+    const matched = Boolean(
+      roleSlug &&
+      finalEssentialJobs.some((role) => normalizeRoleKey(role) === roleSlug),
+    );
+
+    return {
+      roleSlug,
+      roleLabel: roleSlug ? getJobName(roleSlug) : "Chưa xác định vị trí",
+      matched,
+    };
+  };
   // Filter Staff
   const filteredStaff = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -204,25 +293,54 @@ const AddShiftModal = ({
       const visibility = getStaffAvailabilityVisibility(s);
       if (!visibility.visible) return false;
 
+      const roleMatch = getStaffRoleMatch(s);
+      const isSelected = newShift.staffIds.includes(s.id);
+
+      if (staffRoleFilter === "matched" && !roleMatch.matched) return false;
+      if (staffRoleFilter === "mismatch" && roleMatch.matched) return false;
+      if (staffRoleFilter === "selected" && !isSelected) return false;
+
       if (!normalizedSearch) {
         return true;
       }
 
-      return String(s.name || "")
-        .toLowerCase()
-        .includes(normalizedSearch);
+      const searchableText = [
+        s.name,
+        s.employeeCode,
+        s.departmentLabel,
+        s.positionTitle,
+        s.roleName,
+        roleMatch.roleLabel,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(normalizedSearch);
     });
-  }, [staffList, search, selectedDate, selectedShiftType, availabilityByEmployeeId]);
+  }, [
+    staffList,
+    search,
+    staffRoleFilter,
+    newShift.staffIds,
+    finalEssentialJobs,
+    selectedDate,
+    selectedShiftType,
+    availabilityByEmployeeId,
+  ]);
 
   const hiddenVisibilityStats = useMemo(() => {
-    return staffList.reduce((acc, s) => {
-      const visibility = getStaffAvailabilityVisibility(s);
-      if (!visibility.visible) {
-        acc.total += 1;
-        acc[visibility.reason] = (acc[visibility.reason] || 0) + 1;
-      }
-      return acc;
-    }, { total: 0 });
+    return staffList.reduce(
+      (acc, s) => {
+        const visibility = getStaffAvailabilityVisibility(s);
+        if (!visibility.visible) {
+          acc.total += 1;
+          acc[visibility.reason] = (acc[visibility.reason] || 0) + 1;
+        }
+        return acc;
+      },
+      { total: 0 },
+    );
   }, [staffList, selectedDate, selectedShiftType, availabilityByEmployeeId]);
 
   const handleSubmit = async (e) => {
@@ -237,7 +355,11 @@ const AddShiftModal = ({
       const selectedStaff = staffList.filter((person) =>
         newShift.staffIds.includes(person.id),
       );
-      const staffRoleSet = new Set(selectedStaff.map((person) => resolveConcreteStaffRoleSlug(person)).filter(Boolean));
+      const staffRoleSet = new Set(
+        selectedStaff
+          .map((person) => resolveConcreteStaffRoleSlug(person))
+          .filter(Boolean),
+      );
       const missingRoles = finalEssentialJobs.filter(
         (role) => !staffRoleSet.has(normalizeRoleKey(role)),
       );
@@ -314,7 +436,10 @@ const AddShiftModal = ({
         {/* Job Selection */}
         <div className="form-group">
           <label>Vị trí bắt buộc cho ca</label>
-          <p className="job-helper-text">Các vị trí đã thiết lập trong Cài đặt ca được tự chọn và không thể bỏ tại đây. Bạn có thể chọn thêm vị trí riêng cho ca này.</p>
+          <p className="job-helper-text">
+            Các vị trí đã thiết lập trong Cài đặt ca được tự chọn và không thể
+            bỏ tại đây. Bạn có thể chọn thêm vị trí riêng cho ca này.
+          </p>
           <div className="job-grid">
             {jobOptions.map((job) => {
               const jobKey = normalizeRoleKey(job.value);
@@ -324,12 +449,18 @@ const AddShiftModal = ({
                 <div
                   key={job.value}
                   className={`job-checkbox ${isChecked ? "checked" : ""} ${isLocked ? "locked" : ""}`}
-                  title={isLocked ? "Role này được thiết lập trong Cài đặt ca và không thể bỏ chọn tại đây." : ""}
+                  title={
+                    isLocked
+                      ? "Role này được thiết lập trong Cài đặt ca và không thể bỏ chọn tại đây."
+                      : ""
+                  }
                   onClick={() => toggleJob(job.value)}
                 >
                   <span className="emoji">{job.emoji}</span>
                   <span className="text">{job.label}</span>
-                  {isLocked ? <span className="job-lock-badge">Bắt buộc</span> : null}
+                  {isLocked ? (
+                    <span className="job-lock-badge">Bắt buộc</span>
+                  ) : null}
                   {isChecked && <Check size={16} className="check-icon" />}
                 </div>
               );
@@ -345,15 +476,32 @@ const AddShiftModal = ({
               <Search size={16} />
               <input
                 className="search-input"
-                placeholder="Tìm tên nhân viên..."
+                placeholder="Tìm tên, mã NV, vị trí..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-
+            <div className="staff-role-filter-tabs">
+              {[
+                { value: "all", label: "Tất cả" },
+                { value: "matched", label: "Khớp vị trí" },
+                { value: "mismatch", label: "Không khớp" },
+                { value: "selected", label: "Đã chọn" },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  className={staffRoleFilter === item.value ? "active" : ""}
+                  onClick={() => setStaffRoleFilter(item.value)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
             {hiddenVisibilityStats.total > 0 ? (
               <p className="staff-filter-hint">
-                Đã ẩn {hiddenVisibilityStats.total} nhân viên không phù hợp với ngày/ca này.
+                Đã ẩn {hiddenVisibilityStats.total} nhân viên không phù hợp với
+                ngày/ca này.
                 {` Part-time chưa có availability phù hợp: ${hiddenVisibilityStats.missing_or_unmatched_part_time_availability || 0}.`}
                 {` Full-time ngoài ngày làm việc mặc định: ${hiddenVisibilityStats.outside_working_days || 0}.`}
                 {` Full-time đã báo không khả dụng: ${hiddenVisibilityStats.full_time_unavailable_exception || 0}.`}
@@ -364,12 +512,8 @@ const AddShiftModal = ({
               {filteredStaff.map((s) => {
                 const isSelected = newShift.staffIds.includes(s.id);
                 const visibility = getStaffAvailabilityVisibility(s);
-                const roleSlug = resolveConcreteStaffRoleSlug(s);
-                const roleLabel = roleSlug ? getJobName(roleSlug) : "Chưa xác định vị trí";
-                const roleMatched =
-                  finalEssentialJobs.length === 0 ||
-                  (roleSlug &&
-                    finalEssentialJobs.some((role) => normalizeRoleKey(role) === roleSlug));
+                const { roleLabel, matched: roleMatched } =
+                  getStaffRoleMatch(s);
                 return (
                   <div
                     key={s.id}
@@ -381,11 +525,19 @@ const AddShiftModal = ({
                     </div>
                     <div className="staff-info">
                       <span className="name">{s.name}</span>
-                      <span className="role">{roleLabel} · {s.departmentLabel || "Khác"}</span>
-                                            <span className="role-match matched">{visibility.label}</span>
+                      <span className="role">
+                        {roleLabel} · {s.departmentLabel || "Khác"}
+                      </span>
+                      <span className="role-match matched">
+                        {visibility.label}
+                      </span>
                       {finalEssentialJobs.length > 0 ? (
-                        <span className={`role-match ${roleMatched ? "matched" : "mismatch"}`}>
-                          {roleMatched ? "Khớp vị trí" : "Không khớp vị trí bắt buộc"}
+                        <span
+                          className={`role-match ${roleMatched ? "matched" : "mismatch"}`}
+                        >
+                          {roleMatched
+                            ? "Khớp vị trí"
+                            : "Không khớp vị trí bắt buộc"}
                         </span>
                       ) : null}
                     </div>
