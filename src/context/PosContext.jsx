@@ -42,19 +42,25 @@ const M_UPSERT_PRINT_SETTINGS = gql`
 
 const PosContext = createContext(undefined);
 
-
 const sanitizeStationsByPrinters = (stations, printersList) => {
-  const printerIds = new Set((Array.isArray(printersList) ? printersList : []).map((p) => p?.id).filter(Boolean));
+  const printerIds = new Set(
+    (Array.isArray(printersList) ? printersList : [])
+      .map((p) => p?.id)
+      .filter(Boolean),
+  );
   const fallback = PRINT_STATIONS.reduce((acc, st) => {
     acc[st.id] = [];
     return acc;
   }, {});
   Object.entries(stations || {}).forEach(([stationId, ids]) => {
-    fallback[stationId] = Array.from(new Set((Array.isArray(ids) ? ids : []).filter((id) => printerIds.has(id))));
+    fallback[stationId] = Array.from(
+      new Set(
+        (Array.isArray(ids) ? ids : []).filter((id) => printerIds.has(id)),
+      ),
+    );
   });
   return fallback;
 };
-
 
 export function usePos() {
   const ctx = useContext(PosContext);
@@ -105,7 +111,10 @@ export default function PosProvider({
         acc[printer.id] = printer;
         return acc;
       }, {});
-      const safeStations = sanitizeStationsByPrinters(settings?.stations, printersList);
+      const safeStations = sanitizeStationsByPrinters(
+        settings?.stations,
+        printersList,
+      );
       printSettingsHydratingRef.current = true;
       setPrinters(printerMap);
       setPrintStations(safeStations);
@@ -170,7 +179,7 @@ export default function PosProvider({
 
   const activeFloorId = useMemo(
     () => (activeLevel != null ? getIdFromLevel(activeLevel) : null),
-    [activeLevel, getIdFromLevel]
+    [activeLevel, getIdFromLevel],
   );
 
   const setActiveFloorId = useCallback(
@@ -179,7 +188,7 @@ export default function PosProvider({
       const lvl = getLevelFromId(idOrNull);
       setActiveLevel(lvl ?? null);
     },
-    [getLevelFromId, setActiveLevel]
+    [getLevelFromId, setActiveLevel],
   );
 
   const getTimeSlotForNow = useCallback(() => {
@@ -193,9 +202,12 @@ export default function PosProvider({
   const [autoTimeSlot, setAutoTimeSlot] = useState(getTimeSlotForNow);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setAutoTimeSlot(getTimeSlotForNow());
-    }, 5 * 60 * 1000);
+    const timer = setInterval(
+      () => {
+        setAutoTimeSlot(getTimeSlotForNow());
+      },
+      5 * 60 * 1000,
+    );
     return () => clearInterval(timer);
   }, [getTimeSlotForNow]);
 
@@ -235,7 +247,7 @@ export default function PosProvider({
     onStatusChanged: (order) => {
       showNotification(
         `🔁 ${order.orderCode} → ${order.currentStatus}`,
-        "info"
+        "info",
       );
     },
     onCancelled: (order) => {
@@ -259,7 +271,7 @@ export default function PosProvider({
     }
     if (typeFilter && typeFilter !== "all") {
       list = list.filter(
-        (t) => (t.type || "").toLowerCase() === typeFilter.toLowerCase()
+        (t) => (t.type || "").toLowerCase() === typeFilter.toLowerCase(),
       );
     }
 
@@ -339,12 +351,15 @@ export default function PosProvider({
       if (!tableId) return null;
       return `pos_draft_table_${restaurantId}_${tableId}`;
     },
-    [restaurantId]
+    [restaurantId],
   );
 
   // ===== Draft key (autosave FE) =====
   const getDraftKey = useCallback(() => {
-    if (currentOrderType === "dine_in" && (currentTable?.id || currentTable?.code)) {
+    if (
+      currentOrderType === "dine_in" &&
+      (currentTable?.id || currentTable?.code)
+    ) {
       const tableKey = currentTable?.id || currentTable?.code;
       return `pos_draft_table_${restaurantId}_${tableKey}`;
     }
@@ -517,7 +532,34 @@ export default function PosProvider({
     });
     setDeliveryCustomer(null);
   }, [restaurantId, generateVirtualCode]);
+  const resetPosOrderSession = useCallback(
+    (nextType = "dine_in") => {
+      skipDraftAutosaveRef.current = true;
+      lastDraftKeyRef.current = null;
 
+      setCurrentOrderType(nextType);
+      setCurrentOrderCode(null);
+      setCurrentTable(null);
+      setCurrentOrder([]);
+      setTableOrders({});
+      setDeliveryCustomer(null);
+      setOrderNote?.("");
+
+      setShippingInfo({
+        fullName: "",
+        phone: "",
+        email: "",
+        address: "",
+        note: "",
+        deliveryMethod:
+          nextType === "takeaway" ? "pickup_at_store" : "ship_now",
+        deliveryTime: "",
+        scheduleDate: "",
+        scheduleTime: "",
+      });
+    },
+    [setOrderNote],
+  );
   // ===== helper: detect isNew items =====
   const hasNewDraftItems = useCallback(() => {
     return (currentOrder || []).some((i) => i?.isNew);
@@ -528,7 +570,7 @@ export default function PosProvider({
     async (code, capacity, options = {}) => {
       const table =
         (allTables || []).find(
-          (t) => (t.code || "").toLowerCase() === code.toLowerCase()
+          (t) => (t.code || "").toLowerCase() === code.toLowerCase(),
         ) || null;
       if (!table) return;
 
@@ -575,7 +617,7 @@ export default function PosProvider({
                 tableId,
                 tableCode: currentTable.code,
                 items: draftNew,
-              })
+              }),
             );
           } catch {}
         }
@@ -640,20 +682,17 @@ export default function PosProvider({
     },
     [
       allTables,
-      restaurantId,
-      loadGroupsForTable,
-      setCurrentOrder,
-      setCurrentTable,
-      setCurrentOrderType,
-      setCurrentOrderCode,
-      setTableStatus,
-      showNotification,
-      currentOrder,
       currentOrderType,
-      currentTable?.code,
+      currentTable.code,
+      currentTable?.id,
+      currentOrder,
+      restaurantId,
+      showNotification,
+      getDraftKeyForTable,
       currentOrderCode,
-      getDraftKey,
-    ]
+      loadGroupsForTable,
+      setTableStatus,
+    ],
   );
 
   const filteredMenu = useMemo(() => {
@@ -710,7 +749,7 @@ export default function PosProvider({
           await setTableStatus({ id: currentTable.id, status: "occupied" });
         } catch {}
         setCurrentTable((prev) =>
-          prev ? { ...prev, status: "occupied" } : prev
+          prev ? { ...prev, status: "occupied" } : prev,
         );
       }
 
@@ -732,13 +771,13 @@ export default function PosProvider({
       setCurrentTable,
       setTableStatus,
       setCurrentOrderCode,
-    ]
+    ],
   );
 
   const value = useMemo(
     () => ({
       restaurantId,
-
+      resetPosOrderSession,
       floors,
       floorsLoading,
       floorsError,
@@ -946,7 +985,7 @@ export default function PosProvider({
 
       hasNewDraftItems,
       clearDraftStorage,
-    ]
+    ],
   );
 
   return <PosContext.Provider value={value}>{children}</PosContext.Provider>;

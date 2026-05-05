@@ -1866,37 +1866,12 @@ export default function useOrderManagement(pos = null) {
           }
         : null;
 
-      // 🔎 VALIDATION cho off-premise theo yêu cầu của bạn
-
-      // 1) Phải có ít nhất thông tin khách (tên hoặc số điện thoại)
-      const hasCustomerName =
-        (cleanCustomer?.fullName && cleanCustomer.fullName.trim()) ||
-        (shippingInfo?.fullName && shippingInfo.fullName.trim());
-      const hasCustomerPhone =
-        (cleanCustomer?.phone && cleanCustomer.phone.trim()) ||
-        (shippingInfo?.phone && shippingInfo.phone.trim());
-
-      if (!hasCustomerName && !hasCustomerPhone) {
+      const hasShippingAddress =
+        String(shippingInfo?.address || "").trim().length > 0;
+      if (currentOrderType === "delivery" && !hasShippingAddress) {
         return {
           success: false,
-          message:
-            currentOrderType === "takeaway"
-              ? "Vui lòng nhập ít nhất tên hoặc số điện thoại khách mang về."
-              : "Vui lòng nhập ít nhất tên hoặc số điện thoại khách giao hàng.",
-        };
-      }
-
-      // 2) Nếu là GIAO ĐI → BẮT BUỘC có địa chỉ
-      if (
-        currentOrderType === "delivery" &&
-        !(
-          (shippingInfo?.address && shippingInfo.address.trim()) ||
-          (shippingPayload?.address && String(shippingPayload.address).trim())
-        )
-      ) {
-        return {
-          success: false,
-          message: "Vui lòng nhập địa chỉ giao hàng trước khi lưu đơn.",
+          message: "Đơn giao hàng bắt buộc phải có địa chỉ.",
         };
       }
 

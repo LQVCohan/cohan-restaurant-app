@@ -167,7 +167,7 @@ export default function RightPanel() {
     clearOrder,
     saveOrder,
     setTableStatus,
-    setCurrentTable,
+
     preparePayment,
     printers,
     printStations,
@@ -176,6 +176,12 @@ export default function RightPanel() {
     selectedPrinter,
     setSelectedPrinter,
     menuItems,
+    setCurrentOrderType,
+    setCurrentOrderCode,
+    setShippingInfo,
+    setDeliveryCustomer,
+    setCurrentOrder,
+    setCurrentTable,
   } = usePos();
 
   const { showNotification } = useNotification?.() || {
@@ -791,7 +797,35 @@ export default function RightPanel() {
     if (!v.ok) return;
     setConfirmOpen(true);
   }, [validateBeforeConfirm]);
-
+  const resetOffPremiseAfterSave = useCallback(() => {
+    clearDraft?.();
+    clearOrder?.();
+    setCurrentOrder?.([]);
+    setCurrentTable?.(null);
+    setCurrentOrderCode?.(null);
+    setDeliveryCustomer?.(null);
+    setShippingInfo?.({
+      fullName: "",
+      phone: "",
+      email: "",
+      address: "",
+      note: "",
+      deliveryMethod:
+        currentOrderType === "takeaway" ? "pickup_at_store" : "ship_now",
+      deliveryTime: "",
+      scheduleDate: "",
+      scheduleTime: "",
+    });
+  }, [
+    clearDraft,
+    clearOrder,
+    setCurrentOrder,
+    setCurrentTable,
+    setCurrentOrderCode,
+    setDeliveryCustomer,
+    setShippingInfo,
+    currentOrderType,
+  ]);
   const handleConfirmSave = useCallback(async () => {
     if (saving) return;
 
@@ -829,7 +863,12 @@ export default function RightPanel() {
         } else {
           showNotification("Đã lưu đơn.", "success", 2500);
         }
-
+        if (
+          currentOrderType === "delivery" ||
+          currentOrderType === "takeaway"
+        ) {
+          resetOffPremiseAfterSave();
+        }
         setConfirmOpen(false);
       } else {
         if (Array.isArray(res?.errors) && res.errors.length > 0) {
@@ -850,9 +889,10 @@ export default function RightPanel() {
     saveOrder,
     clearDraft,
     currentOrderType,
-    currentTable?.code,
-    currentOrderCode,
+    currentTable.code,
     showNotification,
+    currentOrderCode,
+    resetOffPremiseAfterSave,
   ]);
 
   const saveDisabled =

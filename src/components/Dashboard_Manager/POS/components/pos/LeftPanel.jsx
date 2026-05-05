@@ -102,6 +102,8 @@ export default function LeftPanel() {
   const {
     floors,
     restaurantId,
+    resetPosOrderSession,
+
     tables,
     currentTable,
     currentOrder,
@@ -155,7 +157,7 @@ export default function LeftPanel() {
       { key: "delivery", label: "Giao hàng" },
       { key: "takeaway", label: "Mang về" },
     ],
-    []
+    [],
   );
 
   // --- EFFECT: TỰ ĐỘNG ĐÓNG/MỞ BỘ LỌC KHI CHUYỂN TAB ---
@@ -226,8 +228,7 @@ export default function LeftPanel() {
         const tableId = payload?.tableId;
         const tableCode = payload?.tableCode;
         if (tableId) next.add(String(tableId));
-        if (!tableId && tableCode)
-          next.add(String(tableCode).toLowerCase());
+        if (!tableId && tableCode) next.add(String(tableCode).toLowerCase());
       }
       setDraftTableCodes(next);
     } catch {
@@ -236,8 +237,7 @@ export default function LeftPanel() {
   }, [restaurantId, currentOrder, currentTable?.code]);
 
   const offPremiseOrders = useMemo(() => {
-    const kind =
-      currentOrderType === "delivery" ? "delivery" : "takeaway";
+    const kind = currentOrderType === "delivery" ? "delivery" : "takeaway";
     const q = (orderSearchTerm || "").trim().toLowerCase();
     return (ordersNow || [])
       .filter((o) => o.orderType === kind)
@@ -260,7 +260,7 @@ export default function LeftPanel() {
       setSelectedIds((prev) =>
         prev.includes(table.id)
           ? prev.filter((id) => id !== table.id)
-          : [...prev, table.id]
+          : [...prev, table.id],
       );
       return;
     }
@@ -335,7 +335,6 @@ export default function LeftPanel() {
     });
   };
 
-
   const openActionModal = (e, table) => {
     e.stopPropagation();
     setActionTable(table);
@@ -385,7 +384,7 @@ export default function LeftPanel() {
     if (!sourceId || sourceId === targetTable.id) return;
     if (
       window.confirm(
-        `Bạn có chắc muốn gộp bàn đang kéo vào bàn ${targetTable.code}?`
+        `Bạn có chắc muốn gộp bàn đang kéo vào bàn ${targetTable.code}?`,
       )
     ) {
       try {
@@ -412,7 +411,10 @@ export default function LeftPanel() {
               className={`${cls.tab} ${
                 currentOrderType === t.key ? cls.active : ""
               }`}
-              onClick={() => setCurrentOrderType(t.key)}
+              onClick={() => {
+                if (currentOrderType === t.key) return;
+                resetPosOrderSession?.(t.key);
+              }}
             >
               {t.label}
             </button>
@@ -671,15 +673,17 @@ export default function LeftPanel() {
                 </div>
 
                 <div className={cls.tableMeta}>
-                  <span className={cls.capacity}>{table.capacity || 4} chỗ</span>
+                  <span className={cls.capacity}>
+                    {table.capacity || 4} chỗ
+                  </span>
                   <span className={cls.statusText}>
                     {table.status === "occupied"
                       ? "Có khách"
                       : table.status === "reserved"
-                      ? "Đã đặt"
-                      : table.status === "cleaning"
-                      ? "Đang dọn"
-                      : "Trống"}
+                        ? "Đã đặt"
+                        : table.status === "cleaning"
+                          ? "Đang dọn"
+                          : "Trống"}
                   </span>
                 </div>
 
@@ -749,7 +753,6 @@ export default function LeftPanel() {
         onClose={() => setCustomerModalOpen(false)}
         onSelectCustomer={handleSelectRegularCustomer}
       />
-
     </div>
   );
 }
