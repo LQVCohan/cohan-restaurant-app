@@ -93,6 +93,12 @@ export default function CartBottomSheet({
 
                 <div className="item-tools">
                   <div className="status-badges">
+                    {String(item?.servingVariant?.mode || "").toUpperCase() === "BY_WEIGHT" &&
+                      (!Number.isFinite(Number(item.weightGrams)) || Number(item.weightGrams) <= 0) && (
+                      <span className="badge badge-proof-required">
+                        <ShieldAlert size={12} /> Thiếu cân nặng
+                      </span>
+                    )}
                     {item.status === "pending" && (
                       <span className="badge badge-warning">
                         <Clock size={12} /> Bếp chưa nhận
@@ -124,6 +130,27 @@ export default function CartBottomSheet({
                       </span>
                     )}
                   </div>
+                  {String(item?.servingVariant?.mode || "").toUpperCase() === "BY_WEIGHT" && (
+                    <div className="weight-input-row">
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder="Nhập cân nặng (gram)"
+                        value={item.weightGrams ?? ""}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          setCart((prev) =>
+                            (prev || []).map((c) =>
+                              c.id === item.id
+                                ? { ...c, weightGrams: raw === "" ? null : Number(raw) }
+                                : c,
+                            ),
+                          );
+                        }}
+                      />
+                    </div>
+                  )}
 
                   <div className="actions">
                     <button

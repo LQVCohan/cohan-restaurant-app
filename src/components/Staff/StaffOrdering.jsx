@@ -32,6 +32,7 @@ import StaffProfile from "./components/StaffProfile";
 import { AuthContext } from "../../context/AuthContext";
 import StaffProofCaptureModal from "./components/StaffProofCaptureModal";
 import { buildProofState, requiresProofImage } from "@/utils/orderProofRules";
+import useCommunication from "@/hooks/useCommunication";
 
 const TABLES_QUERY = gql`
   query StaffTables($restaurantId: ID!, $limit: Int) {
@@ -249,7 +250,7 @@ const buildCartFromServerOrders = (orders = []) => {
         quantity: Number(item.quantity || 1),
         price: Number(item.unitPrice || item.basePrice || 0),
         status: item.status || "pending",
-        printed: true,
+        printed: false,
         persisted: true,
         servingKey: item.servingKey || null,
         unit: item.unit || item.servingVariant?.sellUnit || "portion",
@@ -334,6 +335,7 @@ export default function StaffOrdering() {
     skip: !user?.id,
     fetchPolicy: "network-only",
   });
+  const { openThread } = useCommunication({ restaurantId });
 
   useEffect(() => {
     if (!tablesData?.tables) return;
@@ -618,7 +620,7 @@ export default function StaffOrdering() {
                 servingKey: item.servingKey || defaultVariant?.key || "portion",
                 servingVariant: defaultVariant,
                 unit,
-                weightGrams: defaultVariant?.mode === "BY_WEIGHT" ? 1000 : null,
+                weightGrams: null,
                 name: item.name,
                 prep: prep || "Mặc định",
                 serveOrder,
@@ -641,17 +643,29 @@ export default function StaffOrdering() {
   };
 
   const handleSaveProofImages = (itemId, proofImages) => {
-    setCartForSelectedTable((prev) =>
-      prev.map((it) => {
+    const targetTableId = orderMode === "remote" ? "remote_order" : selectedTable?.id;
+    if (!targetTableId) return;
+    setCartByTable((prevMap) => {
+      const prev = prevMap[targetTableId] || [];
+      const next = prev.map((it) => {
         if (it.id !== itemId) return it;
-        return {
-          ...it,
-          ...buildProofState({ ...it, proofImages }),
-        };
-      }),
-    );
+        return { ...it, ...buildProofState({ ...it, proofImages }) };
+      });
+      return { ...prevMap, [targetTableId]: next };
+    });
     setProofCaptureItem(null);
   };
+
+  const findWeightProofMissing = (items = []) =>
+    items.filter((item) => {
+      const isWeight = String(item?.servingVariant?.mode || "").toUpperCase() === "BY_WEIGHT";
+      if (!isWeight) return false;
+      const grams = Number(item?.weightGrams);
+      const missingWeight = !Number.isFinite(grams) || grams <= 0;
+      const images = Array.isArray(item?.proofImages) ? item.proofImages : [];
+      const missingImages = images.length < 1;
+      return missingWeight || missingImages;
+    });
 
   const handleSendKitchen = async () => {
     if (orderMode === "remote") {
@@ -670,6 +684,20 @@ export default function StaffOrdering() {
         alert("Đơn giao hàng cần địa chỉ giao.");
         return;
       }
+      const missingWeightProof = findWeightProofMissing(pendingItems);
+      if (missingWeightProof.length > 0) {
+        const labels = missingWeightProof
+          .slice(0, 5)
+          .map((x) => {
+            const grams = Number(x?.weightGrams);
+            const weightMissing = !Number.isFinite(grams) || grams <= 0;
+            const imgMissing = !Array.isArray(x?.proofImages) || x.proofImages.length < 1;
+            return `${x.name} (${[weightMissing ? "thiếu cân nặng" : null, imgMissing ? "thiếu ảnh" : null].filter(Boolean).join(", ")})`;
+          })
+          .join("; ");
+        alert(`Món KG chưa đủ thông tin: ${labels}`);
+        return;
+      }
       const payloadItems = pendingItems.map((item) => ({
         dishId: item.dishId,
         menuId: item.menuId,
@@ -680,6 +708,7 @@ export default function StaffOrdering() {
         servingKey: item.servingKey || "portion",
         quantity: Number(item.quantity || 1),
         weightGrams: item.weightGrams ?? null,
+        proofImages: item.proofImages || [],
         note: [item.prep, item.serveOrder].filter(Boolean).join(" • "),
         priority: item.priority || "MEDIUM",
       }));
@@ -706,6 +735,7 @@ export default function StaffOrdering() {
                 deliveryTime: remoteOrderInfo.requestedAt || null,
               },
               items: payloadItems,
+              idempotencyKey: `staff-remote-${restaurantId}-${Date.now()}`,
             },
           },
         });
@@ -739,12 +769,26 @@ export default function StaffOrdering() {
       alert(`Các món bắt buộc ảnh minh chứng nhưng chưa có ảnh: ${names}`);
       return;
     }
+    const missingWeightProof = findWeightProofMissing(pendingItems);
+    if (missingWeightProof.length > 0) {
+      const labels = missingWeightProof
+        .slice(0, 5)
+        .map((x) => {
+          const grams = Number(x?.weightGrams);
+          const weightMissing = !Number.isFinite(grams) || grams <= 0;
+          const imgMissing = !Array.isArray(x?.proofImages) || x.proofImages.length < 1;
+          return `${x.name} (${[weightMissing ? "thiếu cân nặng" : null, imgMissing ? "thiếu ảnh" : null].filter(Boolean).join(", ")})`;
+        })
+        .join("; ");
+      alert(`Món KG chưa đủ thông tin: ${labels}`);
+      return;
+    }
 
     const payloadItems = pendingItems.map((item) => {
       const isWeight = String(item?.servingVariant?.mode || "").toUpperCase() === "BY_WEIGHT";
       const quantity = Number(item.quantity || 1);
       const weightGrams = isWeight
-        ? Number(item.weightGrams || Math.round(quantity * 1000))
+        ? Number(item.weightGrams)
         : null;
       return {
         dishId: item.dishId,
@@ -942,6 +986,32 @@ export default function StaffOrdering() {
                   <select value={remoteOrderInfo.channel} onChange={(e) => setRemoteOrderInfo((p) => ({ ...p, channel: e.target.value }))}><option value="phone">phone</option><option value="chat">chat</option><option value="web">web</option><option value="other">other</option></select>
                   <input type="datetime-local" value={remoteOrderInfo.requestedAt} onChange={(e) => setRemoteOrderInfo((p) => ({ ...p, requestedAt: e.target.value }))} />
                 </div>
+                <button
+                  type="button"
+                  className="btn-open-remote-chat"
+                  onClick={async () => {
+                    if (!restaurantId || !remoteOrderInfo.customerName.trim()) {
+                      alert("Nhập tên khách trước khi mở chat.");
+                      return;
+                    }
+                    const { data } = await openThread({
+                      variables: {
+                        input: {
+                          restaurantId,
+                          channel: "order",
+                          subject: `Remote order - ${remoteOrderInfo.customerName.trim()}`,
+                        },
+                      },
+                    });
+                    const threadId = data?.openChatThread?.id;
+                    if (threadId) {
+                      setFocusChatThreadId(threadId);
+                      setActiveTab("contacts");
+                    }
+                  }}
+                >
+                  Nhắn khách
+                </button>
               </div>
             )}
             <MenuOrdering

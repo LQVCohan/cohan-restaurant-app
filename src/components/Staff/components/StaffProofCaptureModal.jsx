@@ -205,7 +205,7 @@ export default function StaffProofCaptureModal({
           <button
             type="button"
             className="btn-save"
-            onClick={() => onSave(proofImages)}
+            onClick={() => onSave(normalizeProofImages(proofImages))}
             disabled={uploading}
           >
             Lưu ảnh ({proofImages.length})
