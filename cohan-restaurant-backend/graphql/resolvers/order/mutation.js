@@ -1339,6 +1339,36 @@ export const OrderMutation = {
 
     return { order: updated };
   },
+  async requestPaymentForOrder(_, { input }) {
+    const { restaurantId, orderIds } = input || {};
+    if (!restaurantId || !Array.isArray(orderIds) || !orderIds.length) {
+      throw new Error("restaurantId and orderIds are required");
+    }
+    await Order.updateMany(
+      { restaurantId: toId(restaurantId), _id: { $in: orderIds.map((id) => toId(id)).filter(Boolean) } },
+      { $set: { "payment.status": "payment_requested" } },
+    );
+    return { ok: true, message: "Đã gửi yêu cầu thanh toán theo đơn." };
+  },
+  async requestPaymentForTable(_, { input }) {
+    const { restaurantId, tableCode } = input || {};
+    if (!restaurantId || !tableCode) throw new Error("restaurantId and tableCode are required");
+    await Order.updateMany(
+      { restaurantId: toId(restaurantId), tableCode: String(tableCode), currentStatus: { $nin: ["cancelled", "completed"] } },
+      { $set: { "payment.status": "payment_requested" } },
+    );
+    return { ok: true, message: "Đã gửi yêu cầu thanh toán theo bàn." };
+  },
+  async remindOrderItem(_, { input }, ctx) {
+    const { restaurantId, orderId, orderItemId, note } = input || {};
+    if (!restaurantId || !orderId || !orderItemId) throw new Error("restaurantId/orderId/orderItemId are required");
+    await emitOrderEvent(ctx, restaurantId, "ORDER_ITEM_REMINDER", {
+      orderId,
+      orderItemId,
+      note: note || "Staff nhắc món",
+    });
+    return { ok: true, message: "Đã gửi nhắc món tới bếp/KDS." };
+  },
   async createCheckoutOrders(_, { input }, ctx) {
     const {
       orderType,

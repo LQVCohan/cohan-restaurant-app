@@ -74,6 +74,7 @@ const OrderCard = ({
   onViewItem, // Callback khi click vào món
   onRejectOrder,
   isRemoteStaffPending = false,
+  onMessageCustomer,
 }) => {
   const [isActionLoading, setIsActionLoading] = useState(false);
 
@@ -160,6 +161,16 @@ const OrderCard = ({
                 onClick={(e) => handleAction(e, "confirmed")}
               >
                 <Check size={16} /> Xác nhận đơn
+              </button>
+              <button
+                className="oc-btn secondary"
+                disabled={!order?.clientMeta?.chatThreadId}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMessageCustomer?.(order);
+                }}
+              >
+                Nhắn khách
               </button>
             </div>
           );

@@ -203,6 +203,30 @@ const CREATE_OFF_PREMISE_ORDER = gql`
     }
   }
 `;
+const REQUEST_PAYMENT_FOR_TABLE = gql`
+  mutation StaffRequestPaymentForTable($input: RequestPaymentForTableInput!) {
+    requestPaymentForTable(input: $input) {
+      ok
+      message
+    }
+  }
+`;
+const REQUEST_PAYMENT_FOR_ORDER = gql`
+  mutation StaffRequestPaymentForOrder($input: RequestPaymentForOrderInput!) {
+    requestPaymentForOrder(input: $input) {
+      ok
+      message
+    }
+  }
+`;
+const REMIND_ORDER_ITEM = gql`
+  mutation StaffRemindOrderItem($input: RemindOrderItemInput!) {
+    remindOrderItem(input: $input) {
+      ok
+      message
+    }
+  }
+`;
 
 const mapTableStatusToUi = (status) => {
   if (["available"].includes(status)) return "empty";
@@ -234,6 +258,7 @@ const buildCartFromServerOrders = (orders = []) => {
       const proofState = buildProofState(item);
       result.push({
         id: String(item._id || `${order.id}_${item.dishId || item.name}`),
+        orderId: order.id,
         itemId: item.dishId,
         dishId: item.dishId,
         menuId: item.menuId,
@@ -307,6 +332,9 @@ export default function StaffOrdering() {
     CREATE_OFF_PREMISE_ORDER,
   );
   const [upsertTableCustomer] = useMutation(UPSERT_TABLE_CUSTOMER);
+  const [requestPaymentForTable] = useMutation(REQUEST_PAYMENT_FOR_TABLE);
+  const [requestPaymentForOrder] = useMutation(REQUEST_PAYMENT_FOR_ORDER);
+  const [remindOrderItem] = useMutation(REMIND_ORDER_ITEM);
   const [deleteTableCustomer] = useMutation(DELETE_TABLE_CUSTOMER);
   const [loadOrdersForTable] = useLazyQuery(ORDERS_GROUPED_BY_TABLE, {
     fetchPolicy: "network-only",
@@ -861,6 +889,35 @@ export default function StaffOrdering() {
     if (action === "merge") alert(`Đang gộp bàn cho ${selectedTable.name}...`);
     if (action === "checkout") setIsCartOpen(true);
   };
+  const handleCheckout = async () => {
+    try {
+      if (orderMode === "remote") {
+        const orderIds = [...new Set((remoteCart || []).map((x) => x.orderId).filter(Boolean))];
+        if (!orderIds.length) return alert("Chưa có order đã gửi để yêu cầu thanh toán.");
+        const { data } = await requestPaymentForOrder({ variables: { input: { restaurantId, orderIds } } });
+        alert(data?.requestPaymentForOrder?.message || "Đã gửi yêu cầu thanh toán theo đơn.");
+        return;
+      }
+      if (!selectedTable?.tableCode && !selectedTable?.name) return alert("Vui lòng chọn bàn.");
+      const { data } = await requestPaymentForTable({
+        variables: { input: { restaurantId, tableCode: selectedTable.tableCode || selectedTable.name } },
+      });
+      alert(data?.requestPaymentForTable?.message || "Đã gửi yêu cầu thanh toán theo bàn.");
+    } catch (e) {
+      alert(e?.message || "Yêu cầu thanh toán thất bại.");
+    }
+  };
+  const handleRemindItem = async (item) => {
+    try {
+      const orderId = item?.orderId;
+      const orderItemId = item?.id;
+      if (!orderId || !orderItemId) return alert("Không xác định được order/item để nhắc.");
+      const { data } = await remindOrderItem({ variables: { input: { restaurantId, orderId, orderItemId } } });
+      alert(data?.remindOrderItem?.message || "Đã gửi nhắc món.");
+    } catch (e) {
+      alert(e?.message || "Nhắc món thất bại.");
+    }
+  };
 
   const pendingCount = activeCart.filter((c) => c.status === "pending").length;
   const linkedTableCustomer = selectedTable ? tableCustomerMap[selectedTable.id] : null;
@@ -1149,6 +1206,9 @@ export default function StaffOrdering() {
           table={cartContextTable}
           onSendKitchen={handleSendKitchen}
           onOpenProofCapture={handleOpenProofCapture}
+          onCheckout={handleCheckout}
+          onRemindItem={handleRemindItem}
+          checkoutEnabled={Boolean(restaurantId && (orderMode === "remote" || selectedTable))}
           sending={orderMode === "remote" ? savingRemoteOrder : savingOrder}
           sendActionLabel={orderMode === "remote" ? "Gửi POS xác nhận" : "Gửi Bếp"}
         />

@@ -52,6 +52,16 @@ const UPDATE_ORDER_STATUS = gql`
     }
   }
 `;
+const CONFIRM_INCOMING_ORDER = gql`
+  mutation ConfirmIncomingOrder($input: ConfirmIncomingOrderInput!) {
+    confirmIncomingOrder(input: $input) { order { id currentStatus updatedAt } }
+  }
+`;
+const REJECT_INCOMING_ORDER = gql`
+  mutation RejectIncomingOrder($input: RejectIncomingOrderInput!) {
+    rejectIncomingOrder(input: $input) { order { id currentStatus updatedAt } }
+  }
+`;
 
 const useRestaurant = () => {
   const { restaurants } = useContext(AuthContext);
@@ -164,6 +174,8 @@ const OrderManagement = () => {
   const { restaurantList } = useRestaurant();
   const [selectedRestaurantId, setSelectedRestaurantId] = useState("");
   const [mutUpdateOrderStatus] = useMutation(UPDATE_ORDER_STATUS);
+  const [mutConfirmIncomingOrder] = useMutation(CONFIRM_INCOMING_ORDER);
+  const [mutRejectIncomingOrder] = useMutation(REJECT_INCOMING_ORDER);
 
   // Settings
   const [timeSettings, setTimeSettings] = useState({
@@ -557,11 +569,16 @@ const OrderManagement = () => {
     async (orderId) => {
       const reason = window.prompt("Nhập lý do từ chối đơn:", "");
       if (reason == null) return;
-      await handleUpdateStatus(orderId, "cancelled", `POS rejected remote order: ${reason}`);
+      await mutRejectIncomingOrder({ variables: { input: { id: orderId, restaurantId: selectedRestaurantId, reason } } });
+      loadOrders({ variables: { restaurantId: selectedRestaurantId, limit: 100 }, fetchPolicy: "network-only" });
       showNotification("Đã từ chối đơn từ xa", "warning");
     },
-    [handleUpdateStatus, showNotification]
+    [loadOrders, mutRejectIncomingOrder, selectedRestaurantId, showNotification]
   );
+  const handleConfirmRemoteOrder = useCallback(async (orderId) => {
+    await mutConfirmIncomingOrder({ variables: { input: { id: orderId, restaurantId: selectedRestaurantId } } });
+    loadOrders({ variables: { restaurantId: selectedRestaurantId, limit: 100 }, fetchPolicy: "network-only" });
+  }, [loadOrders, mutConfirmIncomingOrder, selectedRestaurantId]);
 
   // ---------------- RENDER ----------------
   return (
@@ -829,13 +846,21 @@ const OrderManagement = () => {
                 >
                   <OrderCard
                     order={order}
-                    onUpdateStatus={handleUpdateStatus}
+                    onUpdateStatus={async (orderId, status) => {
+                      if (status === "confirmed" && isRemoteStaffPendingOrder(order)) return handleConfirmRemoteOrder(orderId);
+                      return handleUpdateStatus(orderId, status);
+                    }}
                     onRejectOrder={handleRejectOrder}
                     isRemoteStaffPending={isRemoteStaffPendingOrder(order)}
                     onViewOrder={() => setSelectedOrder(order)}
                     onViewItem={(data) => setSelectedItem(data)}
                     isFocusMode={focusMode}
                     onQuickItemDone={handleUpdateItemStatus}
+                    onMessageCustomer={(o) => {
+                      const threadId = o?.clientMeta?.chatThreadId;
+                      if (!threadId) return showNotification("Chưa có luồng chat cho đơn này", "warning");
+                      window.location.href = `/staff?tab=contacts&threadId=${threadId}`;
+                    }}
                     timeThresholds={timeSettings}
                     timeColors={timeColors}
                   />

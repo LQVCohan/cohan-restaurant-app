@@ -24,6 +24,9 @@ export default function CartBottomSheet({
   table,
   onSendKitchen,
   onOpenProofCapture,
+  onCheckout,
+  onRemindItem,
+  checkoutEnabled = true,
   sending = false,
   sendActionLabel = "Gửi Bếp",
 }) {
@@ -177,12 +180,21 @@ export default function CartBottomSheet({
                         <Minus size={16} />
                       </button>
                     ) : item.status !== "void_pending" ? (
-                      <button
-                        className="btn-icon btn-void"
-                        onClick={() => handleRequestVoid(item)}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <>
+                        <button
+                          className="btn-icon btn-void"
+                          onClick={() => handleRequestVoid(item)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                        <button
+                          className="btn-icon"
+                          onClick={() => onRemindItem?.(item)}
+                          title="Nhắc món"
+                        >
+                          <Clock size={16} />
+                        </button>
+                      </>
                     ) : null}
                   </div>
                 </div>
@@ -217,7 +229,12 @@ export default function CartBottomSheet({
             >
               <CheckCircle2 size={20} /> {sending ? "Đang gửi..." : sendActionLabel}
             </button>
-            <button className="btn-primary btn-checkout" disabled={cart.length === 0}>
+            <button
+              className="btn-primary btn-checkout"
+              disabled={cart.length === 0 || !checkoutEnabled}
+              onClick={onCheckout}
+              title={checkoutEnabled ? "Yêu cầu thanh toán" : "Chưa hỗ trợ thanh toán cho ngữ cảnh này"}
+            >
               <Banknote size={20} /> Thanh Toán
             </button>
           </div>

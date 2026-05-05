@@ -453,6 +453,24 @@ input RejectIncomingOrderInput {
 type RejectIncomingOrderPayload {
   order: Order!
 }
+input RequestPaymentForOrderInput {
+  restaurantId: ID!
+  orderIds: [ID!]!
+}
+input RequestPaymentForTableInput {
+  restaurantId: ID!
+  tableCode: String!
+}
+input RemindOrderItemInput {
+  restaurantId: ID!
+  orderId: ID!
+  orderItemId: ID!
+  note: String
+}
+type ActionResultPayload {
+  ok: Boolean!
+  message: String
+}
 
 input CheckoutCartItemInput {
   restaurantId: ID!
@@ -1001,6 +1019,9 @@ extend type Mutation {
   confirmIncomingOrder(input: ConfirmIncomingOrderInput!): ConfirmIncomingOrderPayload!
 
   rejectIncomingOrder(input: RejectIncomingOrderInput!): RejectIncomingOrderPayload!
+  requestPaymentForOrder(input: RequestPaymentForOrderInput!): ActionResultPayload!
+  requestPaymentForTable(input: RequestPaymentForTableInput!): ActionResultPayload!
+  remindOrderItem(input: RemindOrderItemInput!): ActionResultPayload!
 
   updateOrderItemStatus(
     input: UpdateOrderItemStatusInput!
