@@ -1,10 +1,10 @@
+import { GraphQLError } from "graphql";
 import mongoose from "mongoose";
 import { Coupon, VoucherPackage } from "../../../models/index.js";
 
-function clamp(value, min, max) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return min;
-  return Math.max(min, Math.min(max, Math.floor(n)));
+function toObjectId(value) {
+  if (!value || !mongoose.isValidObjectId(value)) return null;
+  return new mongoose.Types.ObjectId(value);
 }
 
 function buildActiveQuery(activeOnly, now) {
@@ -21,38 +21,42 @@ function buildActiveQuery(activeOnly, now) {
   };
 }
 
-export const CouponQuery = {
-  async coupons(_, { restaurantId, activeOnly = true, limit = 50, offset = 0, now }) {
-    const safeLimit = clamp(limit, 1, 200);
-    const safeOffset = Math.max(0, Number(offset) || 0);
+function requireRestaurantIdForCouponLookup(restaurantId) {
+  const rid = toObjectId(restaurantId);
+  if (!rid) {
+    throw new GraphQLError("restaurantId is required for coupon lookup");
+  }
+  return rid;
+}
 
-    const query = buildActiveQuery(activeOnly, now);
-    if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
-      query.restaurantId = new mongoose.Types.ObjectId(restaurantId);
-    }
+export const CouponQuery = {
+  async coupons(_, { restaurantId, activeOnly = false, limit = 50, offset = 0, now } = {}) {
+    const query = {
+      ...(restaurantId ? { restaurantId: toObjectId(restaurantId) || restaurantId } : {}),
+      ...buildActiveQuery(activeOnly, now),
+    };
 
     return Coupon.find(query)
-      .sort({ startAt: -1, _id: -1 })
-      .skip(safeOffset)
-      .limit(safeLimit)
+      .sort({ createdAt: -1 })
+      .skip(offset)
+      .limit(limit)
       .lean({ virtuals: true });
   },
 
-  async couponByCode(_, { code, restaurantId }) {
+  async couponByCode(_, { code, restaurantId } = {}) {
     const norm = String(code || "").trim().toUpperCase();
     if (!norm) return null;
-    const query = { code: norm };
-    if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
-      query.restaurantId = new mongoose.Types.ObjectId(restaurantId);
-    }
-    return Coupon.findOne(query).lean({ virtuals: true });
+
+    const rid = requireRestaurantIdForCouponLookup(restaurantId);
+    return Coupon.findOne({ code: norm, restaurantId: rid }).lean({ virtuals: true });
   },
 
-  async voucherPackages(_, { restaurantId }) {
-    const query = {};
-    if (restaurantId && mongoose.isValidObjectId(restaurantId)) {
-      query.restaurantId = new mongoose.Types.ObjectId(restaurantId);
-    }
-    return VoucherPackage.find(query).sort({ createdAt: -1, _id: -1 }).lean({ virtuals: true });
+  async voucherPackages(_, { restaurantId } = {}) {
+    const query = restaurantId ? { restaurantId: toObjectId(restaurantId) || restaurantId } : {};
+    return VoucherPackage.find(query)
+      .sort({ level: 1, createdAt: -1 })
+      .lean({ virtuals: true });
   },
 };
+
+export default CouponQuery;
