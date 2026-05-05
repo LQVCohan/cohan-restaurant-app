@@ -11,6 +11,7 @@ import {
   Ingredient,
   ModifierGroup,
   CheckoutSession,
+  Coupon,
   Customer,
   User,
   WalletTransaction,
@@ -694,6 +695,66 @@ function computeTotalsFromHydratedItems(items = [], pricing = {}) {
   };
 }
 
+async function resolveVoucherDiscount({
+  restaurantId,
+  voucherCode,
+  subtotal,
+  userId,
+  session,
+}) {
+  const code = String(voucherCode || "").trim();
+  if (!code) return null;
+
+  const now = new Date();
+  const rid = toId(restaurantId);
+  if (!rid) throw new Error("Invalid restaurantId for voucher");
+
+  const coupon = await Coupon.findOne({
+    restaurantId: rid,
+    code,
+    isActive: true,
+  }).session(session);
+
+  // Keep query readable: startAt/endAt may be missing in old docs
+  const validCoupon =
+    coupon &&
+    (!coupon.publishAt || coupon.publishAt <= now) &&
+    (!coupon.startAt || coupon.startAt <= now) &&
+    (!coupon.endAt || coupon.endAt >= now);
+
+  if (!validCoupon) throw new Error("Invalid voucher: not found or not active");
+
+  const minOrderValue = Math.max(0, Number(coupon.minOrderValue || 0));
+  if (Number(subtotal || 0) < minOrderValue) {
+    throw new Error(`Invalid voucher: minimum order value is ${minOrderValue}`);
+  }
+
+  const maxUsage = Number(coupon.maxUsage || 0);
+  const used = Number(coupon.used || 0);
+  if (maxUsage > 0 && used >= maxUsage) {
+    throw new Error("Invalid voucher: usage limit reached");
+  }
+
+  let discount = 0;
+  const discountValue = Number(coupon.discountValue || 0);
+  if (coupon.discountType === "PERCENT") {
+    discount = (Number(subtotal || 0) * discountValue) / 100;
+    const maxDiscount = Number(coupon.maxDiscount || 0);
+    if (maxDiscount > 0) discount = Math.min(discount, maxDiscount);
+  } else {
+    discount = discountValue;
+  }
+
+  discount = Math.max(0, Math.min(Number(subtotal || 0), Math.round(discount)));
+
+  return {
+    couponId: coupon._id,
+    voucherCode: code,
+    voucherDiscount: discount,
+    discountReason: `coupon:${coupon._id}${userId ? `;user:${userId}` : ""}`,
+  };
+}
+
 /** =========================
  * Find / create orderCode
  * ========================= */
@@ -965,7 +1026,23 @@ export const OrderMutation = {
           session,
         });
 
-        const totals = computeTotalsFromHydratedItems(normalizedItems);
+        const baseTotals = computeTotalsFromHydratedItems(normalizedItems, pricing || {});
+        let voucherMeta = null;
+        if (pricing?.voucherCode) {
+          voucherMeta = await resolveVoucherDiscount({
+            restaurantId: rid,
+            voucherCode: pricing.voucherCode,
+            subtotal: baseTotals.subtotal,
+            userId: finalUserId,
+            session,
+          });
+        }
+        const totals = computeTotalsFromHydratedItems(normalizedItems, {
+          ...(pricing || {}),
+          voucherDiscount: voucherMeta?.voucherDiscount || 0,
+          voucherCode: voucherMeta?.voucherCode,
+        });
+        if (voucherMeta?.discountReason) totals.discountReason = voucherMeta.discountReason;
 
         const [order] = await Order.create(
           [
@@ -999,6 +1076,22 @@ export const OrderMutation = {
         );
 
         createdOrderDoc = order;
+
+        if (voucherMeta?.couponId) {
+          const updateResult = await Coupon.updateOne(
+            {
+              _id: voucherMeta.couponId,
+              $expr: {
+                $or: [{ $lte: ["$maxUsage", 0] }, { $lt: ["$used", "$maxUsage"] }],
+              },
+            },
+            { $inc: { used: 1 } },
+            { session }
+          );
+          if (!updateResult.modifiedCount) {
+            throw new Error("Invalid voucher: usage limit reached");
+          }
+        }
 
         if (effectiveCustomer) {
           await upsertTableCustomerFromOrder({
@@ -1234,8 +1327,23 @@ export const OrderMutation = {
             session,
           });
 
-          const totals = computeTotalsFromHydratedItems(g.items, pricing || {});
-          if (pricing?.voucherCode) totals.voucherCode = pricing.voucherCode;
+          const baseTotals = computeTotalsFromHydratedItems(g.items, pricing || {});
+          let voucherMeta = null;
+          if (pricing?.voucherCode) {
+            voucherMeta = await resolveVoucherDiscount({
+              restaurantId: g.restaurantId,
+              voucherCode: pricing.voucherCode,
+              subtotal: baseTotals.subtotal,
+              userId: finalUserId,
+              session,
+            });
+          }
+          const totals = computeTotalsFromHydratedItems(g.items, {
+            ...(pricing || {}),
+            voucherDiscount: voucherMeta?.voucherDiscount || 0,
+            voucherCode: voucherMeta?.voucherCode,
+          });
+          if (voucherMeta?.discountReason) totals.discountReason = voucherMeta.discountReason;
 
           const shippingObj = buildShippingForOffPremise(orderType, shipping, customer);
           if (orderType === "delivery" && grouped.size > 1) {
@@ -1275,6 +1383,25 @@ export const OrderMutation = {
           ], { session });
 
           createdOrders.push(order);
+
+          if (voucherMeta?.couponId) {
+            const updateResult = await Coupon.updateOne(
+              {
+                _id: voucherMeta.couponId,
+                $expr: {
+                  $or: [
+                    { $lte: ["$maxUsage", 0] },
+                    { $lt: ["$used", "$maxUsage"] },
+                  ],
+                },
+              },
+              { $inc: { used: 1 } },
+              { session }
+            );
+            if (!updateResult.modifiedCount) {
+              throw new Error("Invalid voucher: usage limit reached");
+            }
+          }
 
           const lines = buildInventoryLinesFromItems(g.items);
           if (lines.length) {
