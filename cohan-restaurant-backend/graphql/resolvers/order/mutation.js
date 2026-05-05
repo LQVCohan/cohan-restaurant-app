@@ -48,15 +48,30 @@ const PRINT_STATIONS = {
 };
 
 function mapItemToStation(item = {}) {
-  const categoryName = String(item?.categoryName || item?.category?.name || "").toLowerCase();
+  const categoryName = String(
+    item?.categoryName || item?.category?.name || "",
+  ).toLowerCase();
   const itemName = String(item?.name || "").toLowerCase();
-  const isDrink = categoryName.includes("drink") || categoryName.includes("đồ uống") || itemName.includes("nước");
+  const isDrink =
+    categoryName.includes("drink") ||
+    categoryName.includes("đồ uống") ||
+    itemName.includes("nước");
   return isDrink ? PRINT_STATIONS.bar : PRINT_STATIONS.kitchen;
 }
 
-async function enqueuePrintJobsForConfirmedOrder({ order, printType = "order_confirmed" }) {
-  if (!order?.restaurantId || !Array.isArray(order?.items) || order.currentStatus !== "confirmed") return [];
-  const printSetting = await PrintSetting.findOne({ restaurantId: order.restaurantId }).lean();
+async function enqueuePrintJobsForConfirmedOrder({
+  order,
+  printType = "order_confirmed",
+}) {
+  if (
+    !order?.restaurantId ||
+    !Array.isArray(order?.items) ||
+    order.currentStatus !== "confirmed"
+  )
+    return [];
+  const printSetting = await PrintSetting.findOne({
+    restaurantId: order.restaurantId,
+  }).lean();
   if (!printSetting) return [];
   const stationPrinters = printSetting?.stations || {};
   const itemsByStation = order.items.reduce((acc, item) => {
@@ -67,7 +82,11 @@ async function enqueuePrintJobsForConfirmedOrder({ order, printType = "order_con
   }, {});
 
   const jobs = Object.entries(itemsByStation)
-    .filter(([stationId]) => Array.isArray(stationPrinters?.[stationId]) && !!stationPrinters[stationId][0])
+    .filter(
+      ([stationId]) =>
+        Array.isArray(stationPrinters?.[stationId]) &&
+        !!stationPrinters[stationId][0],
+    )
     .map(([stationId, items]) => {
       const printerId = stationPrinters[stationId][0];
       const createdAt = new Date().toISOString();
@@ -99,7 +118,7 @@ async function enqueuePrintJobsForConfirmedOrder({ order, printType = "order_con
     {
       $push: { jobs: { $each: jobs, $position: 0, $slice: 300 } },
       $set: { updatedAt: new Date() },
-    }
+    },
   );
   return jobs;
 }
@@ -109,12 +128,16 @@ async function enqueueTemporaryBillPrintJob(order) {
     return { jobs: [], message: "Only confirmed orders can be printed" };
   }
 
-  const printSetting = await PrintSetting.findOne({ restaurantId: order.restaurantId }).lean();
+  const printSetting = await PrintSetting.findOne({
+    restaurantId: order.restaurantId,
+  }).lean();
   if (!printSetting) {
     return { jobs: [], message: "Chưa cấu hình in cho nhà hàng." };
   }
 
-  const cashierPrinters = Array.isArray(printSetting?.stations?.[PRINT_STATIONS.cashier])
+  const cashierPrinters = Array.isArray(
+    printSetting?.stations?.[PRINT_STATIONS.cashier],
+  )
     ? printSetting.stations[PRINT_STATIONS.cashier]
     : [];
   const printerId = cashierPrinters[0];
@@ -144,7 +167,7 @@ async function enqueueTemporaryBillPrintJob(order) {
     {
       $push: { jobs: { $each: [job], $position: 0, $slice: 300 } },
       $set: { updatedAt: new Date() },
-    }
+    },
   );
 
   return { jobs: [job], message: "Đã tạo job in tạm tính." };
@@ -169,12 +192,12 @@ async function syncCustomerMetricsByOrderUser(userId) {
 
   const totalSpending = completedOrders.reduce(
     (sum, o) => sum + Number(o?.totals?.grandTotal || 0),
-    0
+    0,
   );
   const totalOrders = completedOrders.length;
   const loyaltyPoints = Math.max(
     0,
-    Math.floor((Number(totalSpending) || 0) / RANK_POINT_DIVISOR)
+    Math.floor((Number(totalSpending) || 0) / RANK_POINT_DIVISOR),
   );
   const customerType =
     loyaltyPoints >= 20 ? "VIP" : loyaltyPoints >= 5 ? "OFTEN" : "NEW";
@@ -194,7 +217,7 @@ function assertPositiveIntegerGrams(v, field = "weightGrams") {
   const n = Number(v);
   if (!Number.isFinite(n) || !Number.isInteger(n) || n <= 0) {
     throw new Error(
-      `${field} must be a positive integer (grams). Có lỗi trong chuyển đổi sang đơn vị chuẩn.`
+      `${field} must be a positive integer (grams). Có lỗi trong chuyển đổi sang đơn vị chuẩn.`,
     );
   }
   return n;
@@ -220,7 +243,7 @@ function buildInventoryLineFromItem(it) {
   const servingKey = it.servingKey ? String(it.servingKey).trim() : "";
   if (!servingKey) {
     throw new Error(
-      "servingKey is required for inventory. Có lỗi trong chuyển đổi sang đơn vị chuẩn."
+      "servingKey is required for inventory. Có lỗi trong chuyển đổi sang đơn vị chuẩn.",
     );
   }
 
@@ -291,7 +314,7 @@ function convertToBaseUnitQty(ingredientDoc, qty, unit) {
   throw new Error(
     `No conversion from ${unit} to baseUnit ${baseUnit} for ingredient ${
       ingredientDoc?.name || ""
-    }`
+    }`,
   );
 }
 
@@ -321,17 +344,19 @@ function validateIncomingOrderItems(items = []) {
     if (!Number.isFinite(grams) || grams <= 0) {
       throw new Error("BY_WEIGHT items require weightGrams > 0");
     }
-    const proofImages = Array.isArray(it.proofImages) ? it.proofImages.filter(Boolean) : [];
+    const proofImages = Array.isArray(it.proofImages)
+      ? it.proofImages.filter(Boolean)
+      : [];
     if (!proofImages.length) {
       throw new Error("BY_WEIGHT items require at least one proof image");
     }
     if (!it?.servingKey || !it?.servingVariant?.key) {
-      throw new Error("BY_WEIGHT items require valid servingKey/servingVariant");
+      throw new Error(
+        "BY_WEIGHT items require valid servingKey/servingVariant",
+      );
     }
   }
 }
-
-
 
 /** =========================
  * Compute factor from variant (scale recipe lines)
@@ -446,7 +471,7 @@ function buildModifierSnapshotsForItem({ it, groups }) {
     const isApplicable = applicable.some((x) => String(x._id) === gid);
     if (!isApplicable)
       throw new Error(
-        `ModifierGroup "${g.name}" is not applicable to this item`
+        `ModifierGroup "${g.name}" is not applicable to this item`,
       );
 
     const uniqueOptionIds = [...new Set(optionIds)];
@@ -492,7 +517,7 @@ function buildModifierSnapshotsForItem({ it, groups }) {
               qty: Number(l.qty),
               unit: l.unit,
               wastePct: Number(l.wastePct ?? 0),
-            })
+            }),
           ),
           baseRecipeMultiplier:
             opt.inventoryRule.rule === "MULTIPLY_BASE_RECIPE"
@@ -510,11 +535,11 @@ function buildModifierSnapshotsForItem({ it, groups }) {
     throw new Error("Only one SET price modifier is allowed per item");
 
   const multCount = nextMods.filter(
-    (m) => m.inventoryRule?.rule === "MULTIPLY_BASE_RECIPE"
+    (m) => m.inventoryRule?.rule === "MULTIPLY_BASE_RECIPE",
   ).length;
   if (multCount > 1)
     throw new Error(
-      "Only one MULTIPLY_BASE_RECIPE modifier is allowed per item"
+      "Only one MULTIPLY_BASE_RECIPE modifier is allowed per item",
     );
 
   it.modifiers = nextMods;
@@ -530,7 +555,7 @@ function computeUnitPriceFromModifiers(basePrice, modifiers = []) {
 
   const unitPrice = Math.max(
     0,
-    (setPrice != null ? setPrice : Number(basePrice)) + delta
+    (setPrice != null ? setPrice : Number(basePrice)) + delta,
   );
   return {
     baseUnitPrice: Number(basePrice),
@@ -566,7 +591,7 @@ function applyModifierInventoryRules({ baseLines, factor, modifiers }) {
   }
 
   const mult = modifiers.find(
-    (m) => m.inventoryRule?.rule === "MULTIPLY_BASE_RECIPE"
+    (m) => m.inventoryRule?.rule === "MULTIPLY_BASE_RECIPE",
   );
   if (mult) {
     const f = Number(mult.inventoryRule.baseRecipeMultiplier);
@@ -603,7 +628,7 @@ function applyModifierInventoryRules({ baseLines, factor, modifiers }) {
         } else {
           if (String(cur.unit) !== String(l.unit)) {
             throw new Error(
-              `Inventory unit conflict for ingredient ${key} (need consistent unit)`
+              `Inventory unit conflict for ingredient ${key} (need consistent unit)`,
             );
           }
           map.set(key, { ...cur, qty: Number(cur.qty) + qtyWithWaste });
@@ -673,7 +698,7 @@ async function hydrateOrderItems({ restaurantId, items, session }) {
     const v = recipe.servingVariants?.find((x) => String(x.key) === key);
     if (!v)
       throw new Error(
-        `ServingVariant key="${key}" not found in recipe for menuItemId=${it.dishId}`
+        `ServingVariant key="${key}" not found in recipe for menuItemId=${it.dishId}`,
       );
 
     for (const line of v.ingredients || []) {
@@ -774,7 +799,7 @@ async function hydrateOrderItems({ restaurantId, items, session }) {
     const { baseUnitPrice, unitPrice, modifiersPricePerUnit } =
       computeUnitPriceFromModifiers(
         it.servingVariant.price,
-        it.modifiers || []
+        it.modifiers || [],
       );
 
     it.baseUnitPrice = baseUnitPrice;
@@ -806,7 +831,10 @@ function computeTotalsFromHydratedItems(items = [], pricing = {}) {
   const shippingFee = Math.max(0, Number(pricing.shippingFee || 0));
 
   const service = Math.round(subtotal * serviceRate);
-  const discount = Math.min(subtotal + service, promotionDiscount + voucherDiscount);
+  const discount = Math.min(
+    subtotal + service,
+    promotionDiscount + voucherDiscount,
+  );
   const beforeTax = Math.max(0, subtotal + service - discount);
   const tax = Math.round(beforeTax * taxRate);
   const grandTotal = Math.round(beforeTax + tax + shippingFee);
@@ -831,7 +859,9 @@ async function resolveVoucherDiscount({
   userId,
   session,
 }) {
-  const code = String(voucherCode || "").trim().toUpperCase();
+  const code = String(voucherCode || "")
+    .trim()
+    .toUpperCase();
   if (!code) return null;
 
   const now = new Date();
@@ -904,7 +934,7 @@ async function findOrCreateOrderCode({
       tableId: toId(tableId),
       status: { $in: ["pending_payment", "confirmed", "seated"] },
     },
-    { orderCode: 1 }
+    { orderCode: 1 },
   ).sort({ createdAt: -1 });
 
   if (session) activeResQuery.session(session);
@@ -918,7 +948,7 @@ async function findOrCreateOrderCode({
       tableCode,
       currentStatus: { $nin: ["completed", "cancelled", "failed"] },
     },
-    { orderCode: 1, createdAt: 1 }
+    { orderCode: 1, createdAt: 1 },
   ).sort({ createdAt: 1, _id: 1 });
 
   if (session) firstOrderQuery.session(session);
@@ -984,7 +1014,7 @@ async function upsertTableCustomerFromOrder({
 async function resolveWarehouseIdOrDefault(
   restaurantId,
   warehouseIdInput,
-  session
+  session,
 ) {
   const rid = toId(restaurantId);
   if (!rid) throw new Error("Invalid restaurantId for warehouse resolution");
@@ -1185,7 +1215,7 @@ export const OrderMutation = {
               clientMeta,
             },
           ],
-          { session }
+          { session },
         );
 
         createdOrderDoc = order;
@@ -1206,7 +1236,7 @@ export const OrderMutation = {
           const whId = await resolveWarehouseIdOrDefault(
             restaurantId,
             warehouseId,
-            session
+            session,
           );
 
           await reserveForOrderTx({
@@ -1264,7 +1294,7 @@ export const OrderMutation = {
     const shippingObj = buildShippingForOffPremise(
       orderType,
       shipping,
-      customer
+      customer,
     );
 
     const session = await mongoose.startSession();
@@ -1289,7 +1319,10 @@ export const OrderMutation = {
           promotionDiscount: 0,
           voucherDiscount: 0,
         };
-        const baseTotals = computeTotalsFromHydratedItems(normalizedItems, trustedPricing);
+        const baseTotals = computeTotalsFromHydratedItems(
+          normalizedItems,
+          trustedPricing,
+        );
         let voucherMeta = null;
         if (trustedPricing.voucherCode) {
           voucherMeta = await resolveVoucherDiscount({
@@ -1305,7 +1338,8 @@ export const OrderMutation = {
           voucherDiscount: voucherMeta?.voucherDiscount || 0,
           voucherCode: voucherMeta?.voucherCode,
         });
-        if (voucherMeta?.discountReason) totals.discountReason = voucherMeta.discountReason;
+        if (voucherMeta?.discountReason)
+          totals.discountReason = voucherMeta.discountReason;
 
         const [order] = await Order.create(
           [
@@ -1322,7 +1356,10 @@ export const OrderMutation = {
               note,
 
               currentStatus: "pending",
-              payment: { method: paymentMethod || "cash", status: paymentMethod === "transfer" ? "pending" : "pending" },
+              payment: {
+                method: paymentMethod || "cash",
+                status: paymentMethod === "transfer" ? "pending" : "pending",
+              },
               statusTimeline: [
                 {
                   status: "pending",
@@ -1334,7 +1371,7 @@ export const OrderMutation = {
               clientMeta,
             },
           ],
-          { session }
+          { session },
         );
 
         createdOrderDoc = order;
@@ -1351,7 +1388,7 @@ export const OrderMutation = {
               },
             },
             { $inc: { used: 1 } },
-            { session }
+            { session },
           );
           if (!updateResult.modifiedCount) {
             throw new Error("Invalid voucher: usage limit reached");
@@ -1363,7 +1400,7 @@ export const OrderMutation = {
           const whId = await resolveWarehouseIdOrDefault(
             restaurantId,
             warehouseId,
-            session
+            session,
           );
 
           await reserveForOrderTx({
@@ -1396,8 +1433,6 @@ export const OrderMutation = {
     await emitOrderEvent(ctx, restaurantId, "ORDER_CREATED", createdOrderDoc);
     return { order: createdOrderDoc.toJSON() };
   },
-
-
 
   async createStaffRemoteOrder(_, { input }, ctx) {
     const {
@@ -1434,21 +1469,25 @@ export const OrderMutation = {
       receivedByStaffId,
     };
 
-    const payload = await this.createOffPremiseOrder(_, {
-      input: {
-        restaurantId,
-        orderType,
-        items,
-        note,
-        customer,
-        shipping,
-        userId,
-        warehouseId,
-        paymentMethod,
-        pricing,
-        clientMeta: finalClientMeta,
+    const payload = await this.createOffPremiseOrder(
+      _,
+      {
+        input: {
+          restaurantId,
+          orderType,
+          items,
+          note,
+          customer,
+          shipping,
+          userId,
+          warehouseId,
+          paymentMethod,
+          pricing,
+          clientMeta: finalClientMeta,
+        },
       },
-    }, ctx);
+      ctx,
+    );
 
     return { order: payload.order, idempotentHit: false };
   },
@@ -1457,29 +1496,43 @@ export const OrderMutation = {
     const { id, restaurantId, note, warehouseId } = input || {};
     const order = await Order.findById(id);
     if (!order) throw new Error("Order not found");
-    if (restaurantId && String(order.restaurantId) !== String(toId(restaurantId))) throw new Error("Order not found");
-    if (order.currentStatus !== "pending") throw new Error("Only pending orders can be confirmed");
+    if (
+      restaurantId &&
+      String(order.restaurantId) !== String(toId(restaurantId))
+    )
+      throw new Error("Order not found");
+    if (order.currentStatus !== "pending")
+      throw new Error("Only pending orders can be confirmed");
 
-    const updated = await this.updateOrderStatus(_, {
-      input: {
-        id: String(order._id),
-        restaurantId: restaurantId || String(order.restaurantId),
-        status: "confirmed",
-        note: note || "Incoming order confirmed by POS",
-        warehouseId,
+    const updated = await this.updateOrderStatus(
+      _,
+      {
+        input: {
+          id: String(order._id),
+          restaurantId: restaurantId || String(order.restaurantId),
+          status: "confirmed",
+          note: note || "Incoming order confirmed by POS",
+          warehouseId,
+        },
       },
-    }, ctx);
+      ctx,
+    );
 
     const printJobs = await enqueuePrintJobsForConfirmedOrder({
       order: updated,
       printType: "order_confirmed",
     });
     if (printJobs.length) {
-      await emitOrderEvent(ctx, String(updated.restaurantId), "ORDER_PRINT_JOBS_CREATED", {
-        orderId: String(updated._id || updated.id),
-        orderCode: updated.orderCode,
-        printJobs,
-      });
+      await emitOrderEvent(
+        ctx,
+        String(updated.restaurantId),
+        "ORDER_PRINT_JOBS_CREATED",
+        {
+          orderId: String(updated._id || updated.id),
+          orderCode: updated.orderCode,
+          printJobs,
+        },
+      );
     }
 
     return { order: updated };
@@ -1487,40 +1540,58 @@ export const OrderMutation = {
 
   async createTemporaryBillPrintJob(_, { input }, ctx) {
     const { orderId, restaurantId } = input || {};
-    if (!orderId || !restaurantId) throw new Error("orderId and restaurantId are required");
+    if (!orderId || !restaurantId)
+      throw new Error("orderId and restaurantId are required");
     const order = await Order.findById(orderId).lean();
     if (!order) throw new Error("Order not found");
-    if (String(order.restaurantId) !== String(toId(restaurantId))) throw new Error("Order not found");
-    if (order.currentStatus !== "confirmed") throw new Error("Only confirmed orders can be printed");
+    if (String(order.restaurantId) !== String(toId(restaurantId)))
+      throw new Error("Order not found");
+    if (order.currentStatus !== "confirmed")
+      throw new Error("Only confirmed orders can be printed");
     const { jobs, message } = await enqueueTemporaryBillPrintJob(order);
     const cashierJob = jobs[0] || null;
     if (cashierJob) {
-      await emitOrderEvent(ctx, String(order.restaurantId), "ORDER_PRINT_JOBS_CREATED", {
-        orderId: String(order._id),
-        orderCode: order.orderCode,
-        printJobs: [cashierJob],
-      });
+      await emitOrderEvent(
+        ctx,
+        String(order.restaurantId),
+        "ORDER_PRINT_JOBS_CREATED",
+        {
+          orderId: String(order._id),
+          orderCode: order.orderCode,
+          printJobs: [cashierJob],
+        },
+      );
     }
     return { ok: !!cashierJob, message };
   },
 
   async rejectIncomingOrder(_, { input }, ctx) {
     const { id, restaurantId, reason, warehouseId } = input || {};
-    if (!reason || !String(reason).trim()) throw new Error("reason is required");
+    if (!reason || !String(reason).trim())
+      throw new Error("reason is required");
     const order = await Order.findById(id);
     if (!order) throw new Error("Order not found");
-    if (restaurantId && String(order.restaurantId) !== String(toId(restaurantId))) throw new Error("Order not found");
-    if (order.currentStatus !== "pending") throw new Error("Only pending orders can be rejected");
+    if (
+      restaurantId &&
+      String(order.restaurantId) !== String(toId(restaurantId))
+    )
+      throw new Error("Order not found");
+    if (order.currentStatus !== "pending")
+      throw new Error("Only pending orders can be rejected");
 
-    const updated = await this.updateOrderStatus(_, {
-      input: {
-        id: String(order._id),
-        restaurantId: restaurantId || String(order.restaurantId),
-        status: "cancelled",
-        note: `Incoming order rejected: ${reason}`,
-        warehouseId,
+    const updated = await this.updateOrderStatus(
+      _,
+      {
+        input: {
+          id: String(order._id),
+          restaurantId: restaurantId || String(order.restaurantId),
+          status: "cancelled",
+          note: `Incoming order rejected: ${reason}`,
+          warehouseId,
+        },
       },
-    }, ctx);
+      ctx,
+    );
 
     return { order: updated };
   },
@@ -1530,23 +1601,32 @@ export const OrderMutation = {
       throw new Error("restaurantId and orderIds are required");
     }
     await Order.updateMany(
-      { restaurantId: toId(restaurantId), _id: { $in: orderIds.map((id) => toId(id)).filter(Boolean) } },
+      {
+        restaurantId: toId(restaurantId),
+        _id: { $in: orderIds.map((id) => toId(id)).filter(Boolean) },
+      },
       { $set: { "payment.status": "payment_requested" } },
     );
     return { ok: true, message: "Đã gửi yêu cầu thanh toán theo đơn." };
   },
   async requestPaymentForTable(_, { input }) {
     const { restaurantId, tableCode } = input || {};
-    if (!restaurantId || !tableCode) throw new Error("restaurantId and tableCode are required");
+    if (!restaurantId || !tableCode)
+      throw new Error("restaurantId and tableCode are required");
     await Order.updateMany(
-      { restaurantId: toId(restaurantId), tableCode: String(tableCode), currentStatus: { $nin: ["cancelled", "completed"] } },
+      {
+        restaurantId: toId(restaurantId),
+        tableCode: String(tableCode),
+        currentStatus: { $nin: ["cancelled", "completed"] },
+      },
       { $set: { "payment.status": "payment_requested" } },
     );
     return { ok: true, message: "Đã gửi yêu cầu thanh toán theo bàn." };
   },
   async remindOrderItem(_, { input }, ctx) {
     const { restaurantId, orderId, orderItemId, note } = input || {};
-    if (!restaurantId || !orderId || !orderItemId) throw new Error("restaurantId/orderId/orderItemId are required");
+    if (!restaurantId || !orderId || !orderItemId)
+      throw new Error("restaurantId/orderId/orderItemId are required");
     await emitOrderEvent(ctx, restaurantId, "ORDER_ITEM_REMINDER", {
       orderId,
       orderItemId,
@@ -1577,9 +1657,14 @@ export const OrderMutation = {
     }
     if (
       paymentMethod &&
-      !["cash", "transfer", "wallet", "e_wallet", "card", "bank_transfer"].includes(
-        String(paymentMethod).toLowerCase(),
-      )
+      ![
+        "cash",
+        "transfer",
+        "wallet",
+        "e_wallet",
+        "card",
+        "bank_transfer",
+      ].includes(String(paymentMethod).toLowerCase())
     ) {
       throw new Error("Unsupported payment method");
     }
@@ -1587,7 +1672,9 @@ export const OrderMutation = {
     if (idempotencyKey) {
       const existing = await CheckoutSession.findOne({ idempotencyKey }).lean();
       if (existing?.orderIds?.length) {
-        const existingOrders = await Order.find({ _id: { $in: existing.orderIds } }).lean({ virtuals: true });
+        const existingOrders = await Order.find({
+          _id: { $in: existing.orderIds },
+        }).lean({ virtuals: true });
         return {
           checkout: {
             checkoutCode: existing.checkoutCode,
@@ -1602,7 +1689,8 @@ export const OrderMutation = {
     const grouped = new Map();
     for (const rawItem of items) {
       const rid = toId(rawItem?.restaurantId);
-      if (!rid) throw new Error("Each checkout item must include valid restaurantId");
+      if (!rid)
+        throw new Error("Each checkout item must include valid restaurantId");
       const normalized = normalizeItem(rawItem);
       const key = String(rid);
       if (!grouped.has(key)) grouped.set(key, { restaurantId: rid, items: [] });
@@ -1612,9 +1700,13 @@ export const OrderMutation = {
     const checkoutCode = generateOrderCode("CHK", new Date(), null);
     const finalUserId = await ensureUserForOrder(userId, customer);
     const createdOrders = [];
-    const normalizedPaymentMethodRaw = String(paymentMethod || "cash").toLowerCase();
+    const normalizedPaymentMethodRaw = String(
+      paymentMethod || "cash",
+    ).toLowerCase();
     const normalizedPaymentMethod =
-      normalizedPaymentMethodRaw === "e_wallet" ? "wallet" : normalizedPaymentMethodRaw;
+      normalizedPaymentMethodRaw === "e_wallet"
+        ? "wallet"
+        : normalizedPaymentMethodRaw;
 
     const session = await mongoose.startSession();
     try {
@@ -1635,7 +1727,10 @@ export const OrderMutation = {
             voucherDiscount: 0,
           };
 
-          const baseTotals = computeTotalsFromHydratedItems(g.items, trustedPricing);
+          const baseTotals = computeTotalsFromHydratedItems(
+            g.items,
+            trustedPricing,
+          );
           let voucherMeta = null;
           if (trustedPricing.voucherCode) {
             voucherMeta = await resolveVoucherDiscount({
@@ -1651,44 +1746,58 @@ export const OrderMutation = {
             voucherDiscount: voucherMeta?.voucherDiscount || 0,
             voucherCode: voucherMeta?.voucherCode,
           });
-          if (voucherMeta?.discountReason) totals.discountReason = voucherMeta.discountReason;
+          if (voucherMeta?.discountReason)
+            totals.discountReason = voucherMeta.discountReason;
 
-          const shippingObj = buildShippingForOffPremise(orderType, shipping, customer);
+          const shippingObj = buildShippingForOffPremise(
+            orderType,
+            shipping,
+            customer,
+          );
           if (orderType === "delivery" && grouped.size > 1) {
-            shippingObj.shippingFee = Math.round((Number(pricing?.shippingFee || 0)) / grouped.size);
+            shippingObj.shippingFee = Math.round(
+              Number(pricing?.shippingFee || 0) / grouped.size,
+            );
             totals.shippingFee = shippingObj.shippingFee;
             totals.grandTotal = Math.round(
-              totals.subtotal - totals.discount + totals.service + totals.tax + totals.shippingFee
+              totals.subtotal -
+                totals.discount +
+                totals.service +
+                totals.tax +
+                totals.shippingFee,
             );
           }
 
           const prefix = orderType === "delivery" ? "DEL" : "TAKE";
           const childOrderCode = generateOrderCode(prefix, new Date(), null);
 
-          const [order] = await Order.create([
-            {
-              restaurantId: g.restaurantId,
-              userId: finalUserId ? toId(finalUserId) : undefined,
-              orderCode: childOrderCode,
-              parentOrderCode: checkoutCode,
-              orderType,
-              shipping: shippingObj,
-              items: g.items,
-              totals,
-              note,
-              currentStatus: "pending",
-              payment: { method: normalizedPaymentMethod, status: "pending" },
-              statusTimeline: [
-                {
-                  status: "pending",
-                  at: new Date(),
-                  byUserId: finalUserId ? toId(finalUserId) : undefined,
-                  note: `Created from checkout ${checkoutCode}`,
-                },
-              ],
-              clientMeta: { ...(clientMeta || {}), checkoutCode },
-            },
-          ], { session });
+          const [order] = await Order.create(
+            [
+              {
+                restaurantId: g.restaurantId,
+                userId: finalUserId ? toId(finalUserId) : undefined,
+                orderCode: childOrderCode,
+                parentOrderCode: checkoutCode,
+                orderType,
+                shipping: shippingObj,
+                items: g.items,
+                totals,
+                note,
+                currentStatus: "pending",
+                payment: { method: normalizedPaymentMethod, status: "pending" },
+                statusTimeline: [
+                  {
+                    status: "pending",
+                    at: new Date(),
+                    byUserId: finalUserId ? toId(finalUserId) : undefined,
+                    note: `Created from checkout ${checkoutCode}`,
+                  },
+                ],
+                clientMeta: { ...(clientMeta || {}), checkoutCode },
+              },
+            ],
+            { session },
+          );
 
           createdOrders.push(order);
 
@@ -1704,7 +1813,7 @@ export const OrderMutation = {
                 },
               },
               { $inc: { used: 1 } },
-              { session }
+              { session },
             );
             if (!updateResult.modifiedCount) {
               throw new Error("Invalid voucher: usage limit reached");
@@ -1713,7 +1822,11 @@ export const OrderMutation = {
 
           const lines = buildInventoryLinesFromItems(g.items);
           if (lines.length) {
-            const whId = await resolveWarehouseIdOrDefault(g.restaurantId, warehouseId, session);
+            const whId = await resolveWarehouseIdOrDefault(
+              g.restaurantId,
+              warehouseId,
+              session,
+            );
             await reserveForOrderTx({
               restaurantId: g.restaurantId,
               warehouseId: whId,
@@ -1724,29 +1837,39 @@ export const OrderMutation = {
           }
         }
 
-        await CheckoutSession.create([
-          {
-            checkoutCode,
-            idempotencyKey: idempotencyKey || undefined,
-            userId: finalUserId ? toId(finalUserId) : undefined,
-            customer: customer || undefined,
-            orderIds: createdOrders.map((o) => o._id),
-            restaurantIds: createdOrders.map((o) => o.restaurantId),
-            payment: { method: normalizedPaymentMethod, status: "pending" },
-            totals: createdOrders.reduce(
-              (acc, o) => {
-                acc.subtotal += Number(o.totals?.subtotal || 0);
-                acc.promotionDiscount += 0;
-                acc.voucherDiscount += 0;
-                acc.tax += Number(o.totals?.tax || 0);
-                acc.shippingFee += Number(o.totals?.shippingFee || 0);
-                acc.grandTotal += Number(o.totals?.grandTotal || 0);
-                return acc;
-              },
-              { subtotal: 0, promotionDiscount: 0, voucherDiscount: 0, tax: 0, shippingFee: 0, grandTotal: 0 }
-            ),
-          },
-        ], { session });
+        await CheckoutSession.create(
+          [
+            {
+              checkoutCode,
+              idempotencyKey: idempotencyKey || undefined,
+              userId: finalUserId ? toId(finalUserId) : undefined,
+              customer: customer || undefined,
+              orderIds: createdOrders.map((o) => o._id),
+              restaurantIds: createdOrders.map((o) => o.restaurantId),
+              payment: { method: normalizedPaymentMethod, status: "pending" },
+              totals: createdOrders.reduce(
+                (acc, o) => {
+                  acc.subtotal += Number(o.totals?.subtotal || 0);
+                  acc.promotionDiscount += 0;
+                  acc.voucherDiscount += 0;
+                  acc.tax += Number(o.totals?.tax || 0);
+                  acc.shippingFee += Number(o.totals?.shippingFee || 0);
+                  acc.grandTotal += Number(o.totals?.grandTotal || 0);
+                  return acc;
+                },
+                {
+                  subtotal: 0,
+                  promotionDiscount: 0,
+                  voucherDiscount: 0,
+                  tax: 0,
+                  shippingFee: 0,
+                  grandTotal: 0,
+                },
+              ),
+            },
+          ],
+          { session },
+        );
 
         if (normalizedPaymentMethod === "wallet") {
           if (!finalUserId || !mongoose.isValidObjectId(finalUserId)) {
@@ -1817,13 +1940,20 @@ export const OrderMutation = {
           restaurantId: order.restaurantId,
           eventType: "status_changed",
           ctx,
-          payload: { statusFrom: null, statusTo: "pending", note: `Delivery order created from ${checkoutCode}` },
+          payload: {
+            statusFrom: null,
+            statusTo: "pending",
+            note: `Delivery order created from ${checkoutCode}`,
+          },
         });
       }
       await emitOrderEvent(ctx, order.restaurantId, "ORDER_CREATED", order);
     }
 
-    const grandTotal = createdOrders.reduce((sum, o) => sum + Number(o.totals?.grandTotal || 0), 0);
+    const grandTotal = createdOrders.reduce(
+      (sum, o) => sum + Number(o.totals?.grandTotal || 0),
+      0,
+    );
 
     return {
       checkout: {
@@ -1868,16 +1998,16 @@ export const OrderMutation = {
 
         if (lines.length) {
           const wasReservable = RESERVABLE_STATUSES.includes(prevStatus);
+          const wasCommitted = COMMIT_STATUSES.includes(prevStatus);
+          const willBeCommitted = COMMIT_STATUSES.includes(status);
 
           const shouldCommitNow =
-            (wasReservable && COMMIT_STATUSES.includes(status)) ||
-            (status === "confirmed" && ["delivery", "takeaway"].includes(order.orderType));
-
+            wasReservable && !wasCommitted && willBeCommitted;
           if (shouldCommitNow) {
             const whId = await resolveWarehouseIdOrDefault(
               order.restaurantId,
               warehouseId,
-              session
+              session,
             );
 
             await commitReservationForOrderTx({
@@ -1893,7 +2023,7 @@ export const OrderMutation = {
             const whId = await resolveWarehouseIdOrDefault(
               order.restaurantId,
               warehouseId,
-              session
+              session,
             );
 
             await cancelReservationForOrderTx({
@@ -1977,7 +2107,7 @@ export const OrderMutation = {
           (it, i) =>
             String(it._id) === String(itemKey) ||
             String(it.dishId) === String(itemKey) ||
-            String(i) === String(itemKey)
+            String(i) === String(itemKey),
         );
         if (idx === -1) throw new Error("Item not found");
 
@@ -1985,7 +2115,7 @@ export const OrderMutation = {
         prevItemStatus = item.status;
 
         const isOrderReservable = RESERVABLE_STATUSES.includes(
-          order.currentStatus
+          order.currentStatus,
         );
 
         if (isOrderReservable) {
@@ -1999,7 +2129,7 @@ export const OrderMutation = {
             const whId = await resolveWarehouseIdOrDefault(
               order.restaurantId,
               null,
-              session
+              session,
             );
 
             if (!fromCancelled && toCancelled) {
@@ -2084,21 +2214,26 @@ export const OrderMutation = {
       (it, i) =>
         String(it._id) === String(itemKey) ||
         String(it.dishId) === String(itemKey) ||
-        String(i) === String(itemKey)
+        String(i) === String(itemKey),
     );
     if (idx === -1) throw new Error("Item not found");
 
     order.items[idx].priority = normalizePriorityLevel(priority);
     await order.save();
 
-    await emitOrderEvent(ctx, order.restaurantId, "ORDER_ITEM_PRIORITY_CHANGED", {
-      order,
-      meta: {
-        itemId: order.items[idx]?._id,
-        itemName: order.items[idx]?.name,
-        priority: order.items[idx]?.priority,
+    await emitOrderEvent(
+      ctx,
+      order.restaurantId,
+      "ORDER_ITEM_PRIORITY_CHANGED",
+      {
+        order,
+        meta: {
+          itemId: order.items[idx]?._id,
+          itemName: order.items[idx]?.name,
+          priority: order.items[idx]?.priority,
+        },
       },
-    });
+    );
 
     return { order: order.toJSON() };
   },
@@ -2121,7 +2256,7 @@ export const OrderMutation = {
         orderCode: String(orderCode),
         currentStatus: { $nin: ["completed", "cancelled"] },
       },
-      { $set: { userId: finalUserId ? toId(finalUserId) : undefined } }
+      { $set: { userId: finalUserId ? toId(finalUserId) : undefined } },
     );
 
     const one = await Order.findOne({
@@ -2160,7 +2295,7 @@ export const OrderMutation = {
     try {
       await session.withTransaction(async () => {
         order = await Order.findOne({ _id: oid, restaurantId: rid }).session(
-          session
+          session,
         );
         if (!order) throw new Error("Order not found");
 
@@ -2172,7 +2307,7 @@ export const OrderMutation = {
           const whId = await resolveWarehouseIdOrDefault(
             restaurantId,
             warehouseId,
-            session
+            session,
           );
 
           await cancelReservationForOrderTx({

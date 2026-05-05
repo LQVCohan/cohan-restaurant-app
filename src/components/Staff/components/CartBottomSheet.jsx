@@ -96,17 +96,29 @@ export default function CartBottomSheet({
 
                 <div className="item-tools">
                   <div className="status-badges">
-                    {String(item?.servingVariant?.mode || "").toUpperCase() === "BY_WEIGHT" &&
-                      (!Number.isFinite(Number(item.weightGrams)) || Number(item.weightGrams) <= 0) && (
-                      <span className="badge badge-proof-required">
-                        <ShieldAlert size={12} /> Thiếu cân nặng
-                      </span>
-                    )}
-                    {item.status === "pending" && (
-                      <span className="badge badge-warning">
-                        <Clock size={12} /> Bếp chưa nhận
-                      </span>
-                    )}
+                    {String(item?.servingVariant?.mode || "").toUpperCase() ===
+                      "BY_WEIGHT" &&
+                      (!Number.isFinite(Number(item.weightGrams)) ||
+                        Number(item.weightGrams) <= 0) && (
+                        <span className="badge badge-proof-required">
+                          <ShieldAlert size={12} /> Thiếu cân nặng
+                        </span>
+                      )}
+                    {item.status === "pending" &&
+                      !["confirmed", "preparing", "ready", "served"].includes(
+                        item.orderStatus,
+                      ) && (
+                        <span className="badge badge-warning">
+                          <Clock size={12} /> Bếp chưa nhận
+                        </span>
+                      )}
+
+                    {item.status === "pending" &&
+                      ["confirmed", "preparing"].includes(item.orderStatus) && (
+                        <span className="badge badge-cooking">
+                          <ChefHat size={12} /> Bếp đã nhận
+                        </span>
+                      )}
                     {item.status === "cooking" && (
                       <span className="badge badge-cooking">
                         <ChefHat size={12} /> Đang chế biến
@@ -128,7 +140,8 @@ export default function CartBottomSheet({
                       </span>
                     )}
                   </div>
-                  {String(item?.servingVariant?.mode || "").toUpperCase() === "BY_WEIGHT" && (
+                  {String(item?.servingVariant?.mode || "").toUpperCase() ===
+                    "BY_WEIGHT" && (
                     <div className="weight-input-row">
                       <input
                         type="number"
@@ -141,7 +154,11 @@ export default function CartBottomSheet({
                           setCart((prev) =>
                             (prev || []).map((c) =>
                               c.id === item.id
-                                ? { ...c, weightGrams: raw === "" ? null : Number(raw) }
+                                ? {
+                                    ...c,
+                                    weightGrams:
+                                      raw === "" ? null : Number(raw),
+                                  }
                                 : c,
                             ),
                           );
@@ -201,7 +218,9 @@ export default function CartBottomSheet({
         <div className="sheet-footer">
           <div className="summary-row">
             <span className="summary-label">Tổng thanh toán:</span>
-            <span className="summary-total">{totalPrice.toLocaleString()}đ</span>
+            <span className="summary-total">
+              {totalPrice.toLocaleString()}đ
+            </span>
           </div>
 
           <div className="billing-actions">
@@ -222,13 +241,18 @@ export default function CartBottomSheet({
               disabled={cart.length === 0 || sending}
               onClick={onSendKitchen}
             >
-              <CheckCircle2 size={20} /> {sending ? "Đang gửi..." : sendActionLabel}
+              <CheckCircle2 size={20} />{" "}
+              {sending ? "Đang gửi..." : sendActionLabel}
             </button>
             <button
               className="btn-primary btn-checkout"
               disabled={cart.length === 0 || !checkoutEnabled}
               onClick={onCheckout}
-              title={checkoutEnabled ? "Yêu cầu thanh toán" : "Chưa hỗ trợ thanh toán cho ngữ cảnh này"}
+              title={
+                checkoutEnabled
+                  ? "Yêu cầu thanh toán"
+                  : "Chưa hỗ trợ thanh toán cho ngữ cảnh này"
+              }
             >
               <Banknote size={20} /> Thanh Toán
             </button>

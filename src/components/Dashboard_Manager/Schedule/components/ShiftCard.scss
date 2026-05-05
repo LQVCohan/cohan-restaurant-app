@@ -69,69 +69,141 @@
     .staff-visuals {
       display: flex;
       align-items: center;
-      margin-bottom: 0.35rem;
+      min-width: 0;
+      margin-bottom: 0.4rem;
 
-      /* Kỹ thuật xếp chồng Avatar */
       .avatar-wrapper {
-        width: 1.75rem;
-        height: 1.75rem;
-        border-radius: 50%;
+        width: 1.55rem;
+        height: 1.55rem;
+        min-width: 1.55rem;
+        border-radius: 999px;
         border: 2px solid var(--m-bg-surface, #fff);
         overflow: hidden;
-        margin-left: -0.5rem; /* Negative margin tạo hiệu ứng stack */
+        margin-left: -0.35rem;
         position: relative;
         flex-shrink: 0;
         transition: transform 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
 
         &:first-child {
           margin-left: 0;
         }
+
         &:hover {
           transform: translateY(-3px);
           z-index: 10;
+        }
+
+        &.staff-avatar {
+          color: #1e293b;
+          box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06);
+        }
+
+        &.avatar-tone-0 {
+          background: #dbeafe;
+          color: #1d4ed8;
+        }
+
+        &.avatar-tone-1 {
+          background: #ede9fe;
+          color: #6d28d9;
+        }
+
+        &.avatar-tone-2 {
+          background: #dcfce7;
+          color: #15803d;
+        }
+
+        &.avatar-tone-3 {
+          background: #fef3c7;
+          color: #b45309;
+        }
+
+        &.avatar-tone-4 {
+          background: #fce7f3;
+          color: #be185d;
+        }
+
+        .avatar-initials {
+          display: block;
+          max-width: 100%;
+          overflow: hidden;
+          text-align: center;
+          font-size: 0.58rem;
+          line-height: 1;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          white-space: nowrap;
         }
 
         img {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          display: block;
         }
 
-        /* Ô hiện số lượng thêm (+2) */
         &.more {
           background-color: #e2e8f0;
-          color: #64748b;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.7rem;
-          font-weight: 600;
+          color: #475569;
+          font-size: 0.62rem;
+          font-weight: 800;
         }
 
-        /* Ô trống (Ghost Slot) */
         &.ghost {
           background-color: transparent;
           border: 1px dashed #cbd5e1;
           color: #94a3b8;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.8rem;
-          font-weight: 600;
+          font-size: 0.75rem;
+          font-weight: 700;
         }
       }
     }
 
     .staff-summary {
-      font-size: 0.75rem;
-      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      min-width: 0;
+      max-width: 100%;
+      font-size: 0.68rem;
+      font-weight: 600;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+
+      .staff-count,
+      .staff-coverage {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .staff-count {
+        color: var(--m-text-main, #0f172a);
+      }
+
+      .staff-coverage::before {
+        content: "·";
+        margin-right: 0.25rem;
+        color: #94a3b8;
+      }
 
       .text-sub {
         color: var(--m-text-sub, #64748b);
       }
+
       .text-danger {
         color: var(--m-danger, #ef4444);
-        font-weight: 600;
+        font-weight: 700;
+      }
+
+      .text-good {
+        color: var(--m-success, #10b981);
+        font-weight: 700;
       }
     }
   }
@@ -141,8 +213,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    height: 1rem; /* Giữ chiều cao cố định */
-
+    min-height: 1rem;
+    height: auto;
+    gap: 0.35rem;
     .job-dots {
       display: flex;
       gap: 0.25rem;

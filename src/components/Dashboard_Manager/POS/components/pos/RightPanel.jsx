@@ -131,7 +131,6 @@ const PRIORITY_LABELS = {
   LOW: "Ưu tiên thấp",
 };
 
-
 const M_ENQUEUE_PRINT_JOB = gql`
   mutation EnqueuePrintJob($input: EnqueuePrintJobInput!) {
     enqueuePrintJob(input: $input) {
@@ -219,10 +218,7 @@ export default function RightPanel() {
   };
 
   const hasItems = Array.isArray(currentOrder) && currentOrder.length > 0;
-  const printerList = useMemo(
-    () => Object.values(printers || {}),
-    [printers]
-  );
+  const printerList = useMemo(() => Object.values(printers || {}), [printers]);
 
   useEffect(() => {
     if (!selectedPrinter && printerList.length) {
@@ -234,7 +230,8 @@ export default function RightPanel() {
     const ex = [];
     const nw = [];
     (currentOrder || []).forEach((it) => {
-      if (it?.isNew) nw.push(it); // ✅ chỉ isNew mới là món nháp
+      if (it?.isNew)
+        nw.push(it); // ✅ chỉ isNew mới là món nháp
       else if (it?.isExisting)
         ex.push(it); // ✅ còn lại, nếu isExisting thì là đã lưu
       else nw.push(it);
@@ -294,7 +291,7 @@ export default function RightPanel() {
         JSON.stringify({
           at: Date.now(),
           items: toSave,
-        })
+        }),
       );
     } catch {}
   }, [draftKey, newItems]);
@@ -341,8 +338,8 @@ export default function RightPanel() {
     return currentOrderType === "delivery"
       ? "Đơn giao hàng"
       : currentOrderType === "takeaway"
-      ? "Đơn mang về"
-      : "Đơn hàng";
+        ? "Đơn mang về"
+        : "Đơn hàng";
   }, [currentOrderCode, currentOrderType, currentTable?.code]);
 
   const headerMeta = useMemo(() => {
@@ -414,7 +411,7 @@ export default function RightPanel() {
     if (!res?.success) {
       showNotification(
         res?.message || "Chuẩn bị thanh toán thất bại.",
-        "error"
+        "error",
       );
       return;
     }
@@ -446,7 +443,7 @@ export default function RightPanel() {
       setCurrentTable,
       showNotification,
       clearDraft,
-    ]
+    ],
   );
 
   const handleQtyChange = (e, item, change) => {
@@ -470,7 +467,7 @@ export default function RightPanel() {
     if (item.isExisting && !item.isNew) {
       showNotification(
         "Không thể xóa món đã lưu. Chỉ xóa món nháp (draft).",
-        "warning"
+        "warning",
       );
       return;
     }
@@ -503,7 +500,7 @@ export default function RightPanel() {
       showNotification(
         currentTable?.code
           ? `Đã xóa thông tin bàn ${currentTable.code}`
-          : "Đã xóa đơn"
+          : "Đã xóa đơn",
       );
     } else {
       clearDraft();
@@ -518,11 +515,11 @@ export default function RightPanel() {
       const itemId =
         item?.menuItem?.id || item?.dishId || item?.id || item?.menuItemId;
       const matched = (menuItems || []).find(
-        (m) => String(m.id) === String(itemId)
+        (m) => String(m.id) === String(itemId),
       );
       return matched?.printStationId || "kitchen";
     },
-    [menuItems]
+    [menuItems],
   );
 
   const buildPreview = useCallback((items, title) => {
@@ -558,26 +555,19 @@ export default function RightPanel() {
       return {
         id: station.id,
         label: station.label,
-        preview: items.length
-          ? buildPreview(items, station.label)
-          : "",
+        preview: items.length ? buildPreview(items, station.label) : "",
         printers: fallbackPrinters,
         items,
       };
     });
-  }, [
-    buildPreview,
-    currentOrder,
-    printers,
-    printStations,
-    resolveStationId,
-  ]);
+  }, [buildPreview, currentOrder, printers, printStations, resolveStationId]);
 
   const toLocalQueueJob = useCallback(
     ({ source, statusOverride }) => ({
       id: source.id,
       label: source.stationId
-        ? PRINT_STATIONS.find((s) => s.id === source.stationId)?.label || source.printType
+        ? PRINT_STATIONS.find((s) => s.id === source.stationId)?.label ||
+          source.printType
         : source.printType,
       printerId: source.printerId || null,
       printerName: source.printerName || null,
@@ -587,7 +577,7 @@ export default function RightPanel() {
       status: statusOverride || source.status || "pending",
       type: source.printType,
     }),
-    [currentTable?.code]
+    [currentTable?.code],
   );
 
   const persistPrintJobs = useCallback(
@@ -608,22 +598,34 @@ export default function RightPanel() {
           stationId: "cashier",
           printType: status === "printing" ? "temp_print_now" : "temp_queue",
           templateKey: "receipt",
-          payload: { table: currentTable?.code || "Đơn", count: (currentOrder || []).length, items: currentOrder || [] },
+          payload: {
+            table: currentTable?.code || "Đơn",
+            count: (currentOrder || []).length,
+            items: currentOrder || [],
+          },
         });
       } else {
         stationPreviews.forEach((station) => {
           if (!station.items.length) return;
           if (!station.printers.length) {
-            showNotification(`Chưa gán máy in cho ${station.label}.`, "warning");
+            showNotification(
+              `Chưa gán máy in cho ${station.label}.`,
+              "warning",
+            );
             return;
           }
           station.printers.forEach((printer) => {
             requests.push({
               printer,
               stationId: station.id,
-              printType: status === "printing" ? "station_print_now" : "station_queue",
+              printType:
+                status === "printing" ? "station_print_now" : "station_queue",
               templateKey: station.id,
-              payload: { table: currentTable?.code || "Đơn", count: station.items.length, items: station.items },
+              payload: {
+                table: currentTable?.code || "Đơn",
+                count: station.items.length,
+                items: station.items,
+              },
             });
           });
         });
@@ -648,8 +650,11 @@ export default function RightPanel() {
               },
             },
           });
-          return toLocalQueueJob({ source: res?.data?.enqueuePrintJob || {}, statusOverride: status });
-        })
+          return toLocalQueueJob({
+            source: res?.data?.enqueuePrintJob || {},
+            statusOverride: status,
+          });
+        }),
       );
 
       setPrintQueue((prev) => [...prev, ...results]);
@@ -665,7 +670,7 @@ export default function RightPanel() {
       showNotification,
       stationPreviews,
       toLocalQueueJob,
-    ]
+    ],
   );
 
   const handleAddToQueue = useCallback(
@@ -673,12 +678,16 @@ export default function RightPanel() {
       if (!hasItems) return;
       try {
         const jobs = await persistPrintJobs({ mode, status: "pending" });
-        if (jobs.length) showNotification("Đã thêm vào hàng đợi in (đã lưu DB).", "success");
+        if (jobs.length)
+          showNotification("Đã thêm vào hàng đợi in (đã lưu DB).", "success");
       } catch (err) {
-        showNotification(err?.message || "Không thể enqueue print job vào DB.", "error");
+        showNotification(
+          err?.message || "Không thể enqueue print job vào DB.",
+          "error",
+        );
       }
     },
-    [hasItems, persistPrintJobs, showNotification]
+    [hasItems, persistPrintJobs, showNotification],
   );
 
   const handlePrintNow = useCallback(
@@ -688,15 +697,20 @@ export default function RightPanel() {
         const jobs = await persistPrintJobs({ mode, status: "printing" });
         if (jobs.length) {
           showNotification(
-            mode === "temp" ? "Đang in tạm tính (DB job simulated)..." : "Đang in theo quầy (DB job simulated)...",
-            "info"
+            mode === "temp"
+              ? "Đang in tạm tính (DB job simulated)..."
+              : "Đang in theo quầy (DB job simulated)...",
+            "info",
           );
         }
       } catch (err) {
-        showNotification(err?.message || "Không thể tạo print job để in ngay.", "error");
+        showNotification(
+          err?.message || "Không thể tạo print job để in ngay.",
+          "error",
+        );
       }
     },
-    [hasItems, persistPrintJobs, showNotification]
+    [hasItems, persistPrintJobs, showNotification],
   );
 
   const handleItemClick = (item) => {
@@ -731,20 +745,21 @@ export default function RightPanel() {
     const name = (
       shippingInfo?.fullName ||
       deliveryCustomer?.name ||
+      deliveryCustomer?.fullName ||
       ""
     ).trim();
     const phone = (shippingInfo?.phone || deliveryCustomer?.phone || "").trim();
     const addr = (shippingInfo?.address || "").trim();
 
-    if (!name && !phone) {
-      showNotification(
-        "Vui lòng chọn/nhập thông tin khách hàng trước khi lưu.",
-        "error"
-      );
-      return { ok: false };
-    }
-
     if (currentOrderType === "delivery") {
+      if (!name && !phone) {
+        showNotification(
+          "Vui lòng chọn/nhập thông tin khách hàng trước khi lưu đơn giao hàng.",
+          "error",
+        );
+        return { ok: false };
+      }
+
       if (!addr) {
         showNotification("Đơn giao hàng bắt buộc phải có địa chỉ.", "error");
         return { ok: false };
@@ -754,7 +769,7 @@ export default function RightPanel() {
     if (!currentOrderCode) {
       showNotification(
         "Thiếu currentOrderCode. Vui lòng tạo đơn mới.",
-        "error"
+        "error",
       );
       return { ok: false };
     }
@@ -797,19 +812,19 @@ export default function RightPanel() {
           showNotification(
             `Đã lưu vào bàn ${currentTable.code}`,
             "success",
-            2500
+            2500,
           );
         } else if (currentOrderType === "delivery") {
           showNotification(
             `Đã lưu đơn giao hàng (${currentOrderCode})`,
             "success",
-            2500
+            2500,
           );
         } else if (currentOrderType === "takeaway") {
           showNotification(
             `Đã lưu đơn mang về (${currentOrderCode})`,
             "success",
-            2500
+            2500,
           );
         } else {
           showNotification("Đã lưu đơn.", "success", 2500);
@@ -818,9 +833,7 @@ export default function RightPanel() {
         setConfirmOpen(false);
       } else {
         if (Array.isArray(res?.errors) && res.errors.length > 0) {
-          res.errors.forEach((msg) =>
-            showNotification(String(msg), "error")
-          );
+          res.errors.forEach((msg) => showNotification(String(msg), "error"));
           console.error("POS save errors:", res.errors);
         }
         showNotification(res?.message || "Lưu đơn thất bại.", "error");
@@ -895,12 +908,8 @@ export default function RightPanel() {
         tableCode={currentTable?.code || null}
         totals={finalTotals}
         newItems={newItems}
-        customer={{
-          name: (shippingInfo?.fullName || deliveryCustomer?.name || "").trim(),
-          phone: (shippingInfo?.phone || deliveryCustomer?.phone || "").trim(),
-          email: (shippingInfo?.email || deliveryCustomer?.email || "").trim(),
-        }}
-        address={(shippingInfo?.address || "").trim()}
+        shippingInfo={shippingInfo}
+        deliveryCustomer={deliveryCustomer}
       />
 
       <div className={cls.header}>
@@ -988,7 +997,10 @@ export default function RightPanel() {
                     </button>
                   </div>
 
-                  {(item.method || item.cookingOption || item.note || item.priority) && (
+                  {(item.method ||
+                    item.cookingOption ||
+                    item.note ||
+                    item.priority) && (
                     <div className={cls.rowNote}>
                       {item.method || item.cookingOption ? (
                         <span className={cls.tagMethod}>
@@ -997,7 +1009,9 @@ export default function RightPanel() {
                       ) : null}
                       {item.priority && (
                         <span className={cls.tagMethod}>
-                          {PRIORITY_LABELS[String(item.priority).toUpperCase()] || item.priority}
+                          {PRIORITY_LABELS[
+                            String(item.priority).toUpperCase()
+                          ] || item.priority}
                         </span>
                       )}
                       {item.note && (
@@ -1070,7 +1084,10 @@ export default function RightPanel() {
                     )}
                   </div>
 
-                  {(item.note || item.method || item.cookingOption || item.priority) && (
+                  {(item.note ||
+                    item.method ||
+                    item.cookingOption ||
+                    item.priority) && (
                     <div className={cls.rowNote}>
                       {(item.method || item.cookingOption) && (
                         <span className={cls.tagMethod}>
@@ -1079,7 +1096,9 @@ export default function RightPanel() {
                       )}
                       {item.priority && (
                         <span className={cls.tagMethod}>
-                          {PRIORITY_LABELS[String(item.priority).toUpperCase()] || item.priority}
+                          {PRIORITY_LABELS[
+                            String(item.priority).toUpperCase()
+                          ] || item.priority}
                         </span>
                       )}
                       {item.note && (
@@ -1169,10 +1188,10 @@ export default function RightPanel() {
               !hasItems
                 ? "Đơn trống"
                 : newItems.length === 0
-                ? "Không có món nháp để lưu"
-                : saving
-                ? "Đang lưu..."
-                : ""
+                  ? "Không có món nháp để lưu"
+                  : saving
+                    ? "Đang lưu..."
+                    : ""
             }
           >
             {saving ? (

@@ -278,6 +278,8 @@ const buildCartFromServerOrders = (orders = []) => {
         weightGrams: item.weightGrams ?? null,
         servingVariant: item.servingVariant || null,
         ...proofState,
+        orderStatus: order.currentStatus,
+        orderCode: order.orderCode,
       });
     }
   }
@@ -606,14 +608,33 @@ export default function StaffOrdering() {
     });
   };
 
-  const handleAddToCart = (item, prep, serveOrder) => {
+  const handleAddToCart = (item, optionsOrPrep, legacyServeOrder) => {
     if (item.stock <= 0) return alert("Món này đã hết hàng!");
+
+    const addOptions =
+      typeof optionsOrPrep === "object" && optionsOrPrep !== null
+        ? optionsOrPrep
+        : {
+            prep: optionsOrPrep,
+            serveOrder: legacyServeOrder,
+            variant: null,
+          };
+
+    const prep = addOptions.prep || "Mặc định";
+    const serveOrder = addOptions.serveOrder || "Mang ra cùng lúc";
+    const selectedVariant =
+      addOptions.variant ||
+      item.defaultVariant ||
+      item.servingVariants?.find((v) => v?.key === item.servingKey) ||
+      item.servingVariants?.[0] ||
+      null;
+
     const targetTableId =
       orderMode === "remote" ? "remote_order" : selectedTable?.id;
     if (!targetTableId) return alert("Vui lòng chọn bàn trước khi thêm món");
 
     const nextPriority = mapItemPriorityFromServeOrder(serveOrder);
-    const signature = `${item.id}__${prep || ""}__${serveOrder || ""}`;
+    const signature = `${item.id}__${selectedVariant?.key || item.servingKey || "portion"}__${prep || ""}__${serveOrder || ""}`;
 
     setCartByTable((prevMap) => {
       const prev = prevMap[targetTableId] || [];
@@ -633,8 +654,8 @@ export default function StaffOrdering() {
                 : x,
             )
           : (() => {
-              const defaultVariant =
-                item.defaultVariant || item.servingVariants?.[0] || null;
+              const defaultVariant = selectedVariant;
+
               const unit =
                 defaultVariant?.mode === "BY_WEIGHT"
                   ? defaultVariant?.sellUnit || "kg"
@@ -646,8 +667,9 @@ export default function StaffOrdering() {
                 dishId: item.dishId || item.id,
                 menuId: item.menuId,
                 categoryId: item.categoryId,
-                servingKey: item.servingKey || defaultVariant?.key || "portion",
+                servingKey: defaultVariant?.key || item.servingKey || "portion",
                 servingVariant: defaultVariant,
+                price: Number(defaultVariant?.price ?? item.price ?? 0),
                 unit,
                 weightGrams: null,
                 name: item.name,
@@ -655,7 +677,7 @@ export default function StaffOrdering() {
                 serveOrder,
                 priority: nextPriority,
                 quantity: 1,
-                price: item.price,
+
                 status: "pending",
                 proofImages: [],
                 persisted: false,
@@ -877,6 +899,7 @@ export default function StaffOrdering() {
               name: item.servingVariant.name,
               mode: item.servingVariant.mode,
               sellUnit: item.servingVariant.sellUnit,
+              sellQty: item.servingVariant.sellQty ?? null,
               price: Number(item.servingVariant.price ?? item.price ?? 0),
             }
           : null,

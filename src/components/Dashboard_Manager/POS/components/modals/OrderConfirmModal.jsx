@@ -72,9 +72,8 @@ export default function OrderConfirmModal({
   const canSave = useMemo(() => {
     if (!hasItems) return false;
     if (isDelivery) return hasCustomer && hasAddress;
-    if (isTakeaway) return hasCustomer;
-    return true; // dine_in
-  }, [hasItems, isDelivery, isTakeaway, hasCustomer, hasAddress]);
+    return true;
+  }, [hasItems, isDelivery, hasCustomer, hasAddress]);
 
   const moneyTotal = useMemo(() => {
     const t =
@@ -84,7 +83,7 @@ export default function OrderConfirmModal({
 
   const countText = useMemo(
     () => String(newItems.length || 0),
-    [newItems.length]
+    [newItems.length],
   );
 
   useEffect(() => {
@@ -144,8 +143,8 @@ export default function OrderConfirmModal({
               {isDelivery
                 ? "Đơn giao đi (bắt buộc có địa chỉ)"
                 : isTakeaway
-                ? "Đơn mang đi (không bắt buộc địa chỉ)"
-                : "Đơn tại bàn"}
+                  ? "Đơn mang đi (không bắt buộc địa chỉ)"
+                  : "Đơn tại bàn"}
               {tableCode ? ` · Table: ${tableCode}` : ""}
             </div>
           </div>
@@ -175,11 +174,9 @@ export default function OrderConfirmModal({
               </div>
 
               {/* ✅ Chỉ OFF-PREMISE mới cần khách */}
-              {(isDelivery || isTakeaway) && (
+              {isDelivery && (
                 <div
-                  className={`${cls.checkItem} ${
-                    hasCustomer ? cls.checkItemOk : cls.checkItemBad
-                  }`}
+                  className={`${cls.checkItem} ${hasCustomer ? cls.checkItemOk : cls.checkItemBad}`}
                 >
                   <Check ok={hasCustomer} />
                   <div className={cls.checkText}>
@@ -212,7 +209,7 @@ export default function OrderConfirmModal({
           </div>
 
           {/* ✅ Thông tin khách chỉ cần show cho off-premise (đỡ rối UI) */}
-          {(isDelivery || isTakeaway) && (
+          {(isDelivery || (isTakeaway && hasCustomer)) && (
             <div className={cls.section}>
               <div className={cls.sectionTitle}>Thông tin khách</div>
 

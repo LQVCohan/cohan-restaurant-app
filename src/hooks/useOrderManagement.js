@@ -468,27 +468,27 @@ const GET_ORDER = gql`
         service
         grandTotal
       }
-          payment {
-            method
-            status
-            paidAmount
-            paidAt
-          }
-          shipping {
-            fullName
-            phone
-            address
-            deliveryMethod
-            deliveryTime
-            scheduleDate
-            scheduleTime
-          }
-          statusTimeline {
-            status
-            at
-            note
-            byUserId
-          }
+      payment {
+        method
+        status
+        paidAmount
+        paidAt
+      }
+      shipping {
+        fullName
+        phone
+        address
+        deliveryMethod
+        deliveryTime
+        scheduleDate
+        scheduleTime
+      }
+      statusTimeline {
+        status
+        at
+        note
+        byUserId
+      }
       note
       createdAt
       updatedAt
@@ -603,7 +603,6 @@ const UPDATE_ORDER_ITEM_STATUS = gql`
   }
 `;
 
-
 /** ✅ Cập nhật ưu tiên 1 item trong 1 order theo ID */
 const UPDATE_ORDER_ITEM_PRIORITY = gql`
   mutation UpdateOrderItemPriority($input: UpdateOrderItemPriorityInput!) {
@@ -678,16 +677,16 @@ export default function useOrderManagement(pos = null) {
   const [createOrderForTable] = useMutation(CREATE_ORDER_FOR_TABLE);
   const [createOffPremiseOrder] = useMutation(CREATE_OFF_PREMISE_ORDER);
   const [mutPayByTable, { loading: payLoadingByTable }] = useMutation(
-    PAY_ORDERS_BY_TABLE_ID
+    PAY_ORDERS_BY_TABLE_ID,
   );
   const [mutPayByOrderIds, { loading: payLoadingByOrderIds }] = useMutation(
-    PAY_ORDERS_BY_ORDER_IDS
+    PAY_ORDERS_BY_ORDER_IDS,
   );
   const [mutUpdateOrderStatus] = useMutation(UPDATE_ORDER_STATUS);
   const [mutUpdateOrderItemStatus] = useMutation(UPDATE_ORDER_ITEM_STATUS);
   const [mutUpdateOrderItemPriority] = useMutation(UPDATE_ORDER_ITEM_PRIORITY);
   const [mutUpdateOrderCustomerByCode] = useMutation(
-    UPDATE_ORDER_CUSTOMER_BY_CODE
+    UPDATE_ORDER_CUSTOMER_BY_CODE,
   );
 
   // queries
@@ -717,9 +716,9 @@ export default function useOrderManagement(pos = null) {
           it?.price ??
           it?.servingVariant?.price ??
           it?.basePrice ??
-          0
+          0,
       ),
-    []
+    [],
   );
 
   const getItemMethod = useCallback(
@@ -731,7 +730,7 @@ export default function useOrderManagement(pos = null) {
         it?.servingKey ||
         "") ??
       "",
-    []
+    [],
   );
 
   const mapServerItemToUi = useCallback(
@@ -754,7 +753,7 @@ export default function useOrderManagement(pos = null) {
         lineSubtotal,
       };
     },
-    [getItemMethod, getItemUnitPrice]
+    [getItemMethod, getItemUnitPrice],
   );
 
   /* ============================================================
@@ -773,7 +772,12 @@ export default function useOrderManagement(pos = null) {
       // Chỉ giữ các group còn active (không phải đã hoàn tất/hủy)
       const gs = rawGroups.filter((g) => {
         const st = (g.latestStatus || "").toUpperCase();
-        return !["ORDER_COMPLETED", "ORDER_CANCELLED", "FAILED", "CANCELLED"].includes(st);
+        return ![
+          "ORDER_COMPLETED",
+          "ORDER_CANCELLED",
+          "FAILED",
+          "CANCELLED",
+        ].includes(st);
       });
 
       setGroups(gs);
@@ -785,10 +789,10 @@ export default function useOrderManagement(pos = null) {
       const latest =
         [...sourceForLatest].sort((a, b) => {
           const ta = new Date(
-            a.orders?.[a.orders.length - 1]?.createdAt || 0
+            a.orders?.[a.orders.length - 1]?.createdAt || 0,
           ).getTime();
           const tb = new Date(
-            b.orders?.[b.orders.length - 1]?.createdAt || 0
+            b.orders?.[b.orders.length - 1]?.createdAt || 0,
           ).getTime();
           return tb - ta;
         })[0] || null;
@@ -824,7 +828,7 @@ export default function useOrderManagement(pos = null) {
       }
       return gs;
     },
-    [loadGroupsQuery, mapServerItemToUi, setCurrentOrder, setTableOrders]
+    [loadGroupsQuery, mapServerItemToUi, setCurrentOrder, setTableOrders],
   );
 
   useSocketOrder(restaurantId, {
@@ -860,8 +864,8 @@ export default function useOrderManagement(pos = null) {
             tableCode: currentTable.code,
           });
         } catch (e) {
-        void e;
-      }
+          void e;
+        }
       }
 
       // Giữ hành vi dọn OrdersNow khi order không còn active
@@ -879,15 +883,15 @@ export default function useOrderManagement(pos = null) {
                 ordersByRestaurantNow: {
                   ...now.ordersByRestaurantNow,
                   edges: now.ordersByRestaurantNow.edges.filter(
-                    (e) => e.node.id !== order.id
+                    (e) => e.node.id !== order.id,
                   ),
                 },
               },
             });
           }
         } catch (e) {
-        void e;
-      }
+          void e;
+        }
       }
     },
   });
@@ -909,18 +913,13 @@ export default function useOrderManagement(pos = null) {
         acc.subtotal += Number.isFinite(line) ? line : 0;
         return acc;
       },
-      { subtotal: 0, discount: 0, tax: 0, service: 0 }
+      { subtotal: 0, discount: 0, tax: 0, service: 0 },
     );
 
     const base = Math.max(0, newTotals.subtotal - newTotals.discount);
-    newTotals.tax = Math.round(base * 0.1);
-    newTotals.service = Math.round(base * 0.05);
-    newTotals.total =
-      newTotals.subtotal -
-      newTotals.discount +
-      newTotals.tax +
-      newTotals.service;
-
+    newTotals.tax = 0;
+    newTotals.service = 0;
+    newTotals.total = base;
     setTotals(newTotals);
   }, [currentOrder]);
 
@@ -929,7 +928,7 @@ export default function useOrderManagement(pos = null) {
       `line_${Date.now().toString(36)}_${Math.random()
         .toString(36)
         .slice(2, 7)}`,
-    []
+    [],
   );
 
   const normalizeOutgoingItem = useCallback((it, idx) => {
@@ -1081,7 +1080,7 @@ export default function useOrderManagement(pos = null) {
           edges: conn.edges.map((e) =>
             e?.node?.id === order.id
               ? { ...e, node: { ...e.node, ...order } }
-              : e
+              : e,
           ),
         };
       };
@@ -1120,7 +1119,7 @@ export default function useOrderManagement(pos = null) {
         void e;
       }
     },
-    [apollo]
+    [apollo],
   );
 
   /* ============================================================
@@ -1183,69 +1182,73 @@ export default function useOrderManagement(pos = null) {
     return `${dishId}-${unit}-${method}-${mods}-${note}-${proofKey}`;
   };
 
-  const mergeGroupItems = useCallback((group) => {
-    if (!group?.orders?.length)
-      return {
-        items: [],
-        totals: {
-          subtotal: 0,
-          discount: 0,
-          tax: 0,
-          service: 0,
-          grandTotal: 0,
-        },
-      };
-
-    const orders = [...group.orders].sort(
-      (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-    );
-
-    const map = new Map();
-    const totalsAgg = {
-      subtotal: 0,
-      discount: 0,
-      tax: 0,
-      service: 0,
-      grandTotal: 0,
-    };
-
-    for (const ord of orders) {
-      const t = ord.totals || {};
-      totalsAgg.subtotal += Number(t.subtotal || 0);
-      totalsAgg.discount += Number(t.discount || 0);
-      totalsAgg.tax += Number(t.tax || 0);
-      totalsAgg.service += Number(t.service || 0);
-      totalsAgg.grandTotal += Number(t.grandTotal || 0);
-
-      for (const it of ord.items || []) {
-        const key = itemSignature(it);
-
-        const prev = map.get(key) || {
-          ...it,
-          quantity: 0,
-          isExisting: true,
-          isNew: false,
-          _edited: false,
-          proofImages: it.proofImages || [],
-          image: it.image || "",
-          createdAt: it.createdAt || ord.createdAt,
+  const mergeGroupItems = useCallback(
+    (group) => {
+      if (!group?.orders?.length)
+        return {
+          items: [],
+          totals: {
+            subtotal: 0,
+            discount: 0,
+            tax: 0,
+            service: 0,
+            grandTotal: 0,
+          },
         };
 
-        prev.quantity = Number(prev.quantity || 0) + Number(it.quantity || 0);
+      const orders = [...group.orders].sort(
+        (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
+      );
 
-        const currentItemTotal =
-          (getItemUnitPrice(it) + Number(it.modifiersPrice || 0)) *
-          Number(it.quantity || 0);
-        prev.lineSubtotal = (prev.lineSubtotal || 0) + currentItemTotal;
+      const map = new Map();
+      const totalsAgg = {
+        subtotal: 0,
+        discount: 0,
+        tax: 0,
+        service: 0,
+        grandTotal: 0,
+      };
 
-        map.set(key, prev);
+      for (const ord of orders) {
+        const t = ord.totals || {};
+        totalsAgg.subtotal += Number(t.subtotal || 0);
+        totalsAgg.discount += Number(t.discount || 0);
+        totalsAgg.tax += Number(t.tax || 0);
+        totalsAgg.service += Number(t.service || 0);
+        totalsAgg.grandTotal += Number(t.grandTotal || 0);
+
+        for (const it of ord.items || []) {
+          const key = itemSignature(it);
+
+          const prev = map.get(key) || {
+            ...it,
+            quantity: 0,
+            lineSubtotal: 0,
+            isExisting: true,
+            isNew: false,
+            _edited: false,
+            proofImages: it.proofImages || [],
+            image: it.image || "",
+            createdAt: it.createdAt || ord.createdAt,
+          };
+
+          prev.quantity = Number(prev.quantity || 0) + Number(it.quantity || 0);
+
+          const currentItemTotal =
+            (getItemUnitPrice(it) + Number(it.modifiersPrice || 0)) *
+            Number(it.quantity || 0);
+          prev.lineSubtotal = (prev.lineSubtotal || 0) + currentItemTotal;
+
+          map.set(key, prev);
+        }
       }
-    }
 
-    for (const k of Object.keys(totalsAgg))
-      totalsAgg[k] = Math.round(totalsAgg[k]);
-    return { items: Array.from(map.values()), totals: totalsAgg };
-  }, [getItemMethod, getItemUnitPrice]);
+      for (const k of Object.keys(totalsAgg))
+        totalsAgg[k] = Math.round(totalsAgg[k]);
+      return { items: Array.from(map.values()), totals: totalsAgg };
+    },
+    [getItemMethod, getItemUnitPrice],
+  );
 
   /** Tổng gộp của group đang active (dine-in) */
   const mergedCurrent = useMemo(
@@ -1262,7 +1265,7 @@ export default function useOrderManagement(pos = null) {
               grandTotal: 0,
             },
           },
-    [activeGroup, mergeGroupItems]
+    [activeGroup, mergeGroupItems],
   );
 
   /* ============================================================
@@ -1277,7 +1280,7 @@ export default function useOrderManagement(pos = null) {
       "served",
       "cancelled",
       "returned", // khớp schema ItemStatus mới
-    ])
+    ]),
   );
 
   const changeOrderStatus = useCallback(
@@ -1329,7 +1332,7 @@ export default function useOrderManagement(pos = null) {
       currentTable?.code,
       currentOrderType,
       loadGroupsForTable,
-    ]
+    ],
   );
 
   const changeOrderItemStatus = useCallback(
@@ -1351,20 +1354,20 @@ export default function useOrderManagement(pos = null) {
             it._lineId === itemKey ||
             it.dishId === itemKey ||
             it.id === itemKey ||
-            i === itemKey
+            i === itemKey,
         );
         if (idx >= 0) {
           prevStatus = currentOrder[idx]?.status ?? "pending";
           setCurrentOrder((prev) =>
             (prev || []).map((it, i) =>
-              i === idx ? { ...it, status, _edited: true } : it
-            )
+              i === idx ? { ...it, status, _edited: true } : it,
+            ),
           );
           if (setTableOrders && currentTable?.code) {
             setTableOrders((prev) => ({
               ...prev,
               [currentTable.code]: (prev?.[currentTable.code] || []).map(
-                (it, i) => (i === idx ? { ...it, status, _edited: true } : it)
+                (it, i) => (i === idx ? { ...it, status, _edited: true } : it),
               ),
             }));
           }
@@ -1411,15 +1414,17 @@ export default function useOrderManagement(pos = null) {
         if (idx >= 0 && prevStatus != null) {
           setCurrentOrder((prev) =>
             (prev || []).map((it, i) =>
-              i === idx ? { ...it, status: prevStatus, _edited: false } : it
-            )
+              i === idx ? { ...it, status: prevStatus, _edited: false } : it,
+            ),
           );
           if (setTableOrders && currentTable?.code) {
             setTableOrders((prev) => ({
               ...prev,
               [currentTable.code]: (prev?.[currentTable.code] || []).map(
                 (it, i) =>
-                  i === idx ? { ...it, status: prevStatus, _edited: false } : it
+                  i === idx
+                    ? { ...it, status: prevStatus, _edited: false }
+                    : it,
               ),
             }));
           }
@@ -1439,7 +1444,7 @@ export default function useOrderManagement(pos = null) {
       currentOrderType,
       loadGroupsForTable,
       writeOrderIntoCache,
-    ]
+    ],
   );
 
   const changeOrderItemPriority = useCallback(
@@ -1492,7 +1497,7 @@ export default function useOrderManagement(pos = null) {
       currentTable?.id,
       currentTable?.code,
       loadGroupsForTable,
-    ]
+    ],
   );
 
   /* Back-compat: old updateItemStatus -> call ID-based mutation */
@@ -1521,7 +1526,7 @@ export default function useOrderManagement(pos = null) {
         afterSuccess,
       });
     },
-    [changeOrderItemStatus, activeGroup]
+    [changeOrderItemStatus, activeGroup],
   );
 
   /* ============================================================
@@ -1550,7 +1555,7 @@ export default function useOrderManagement(pos = null) {
           menuItem._displayPrice ??
           menuItem.price ??
           menuItem.basePrice ??
-          0
+          0,
       );
       const servingKey =
         servingKeyInput ||
@@ -1619,23 +1624,23 @@ export default function useOrderManagement(pos = null) {
         };
         setCurrentOrder(updated);
       } else {
-      const newItem = {
-        _lineId: makeLineId(),
-        dishId: menuItem.id,
-        menuId: menuItem.menuId,
-        categoryId: menuItem.categoryId,
-        name: menuItem.name,
-        image: menuItem.image || menuItem.thumbImage,
-        unit: chosenUnit,
-        price: Number(resolvedPrice),
-        modifiersPrice: 0,
-        method: variantLabel,
-        variantName: variantLabel,
-        variantKey: variantKey || variant?.key || "",
-        servingKey,
-        defaultServingKey: menuItem?.defaultServingKey || "",
-        servingVariant,
-        note: note,
+        const newItem = {
+          _lineId: makeLineId(),
+          dishId: menuItem.id,
+          menuId: menuItem.menuId,
+          categoryId: menuItem.categoryId,
+          name: menuItem.name,
+          image: menuItem.image || menuItem.thumbImage,
+          unit: chosenUnit,
+          price: Number(resolvedPrice),
+          modifiersPrice: 0,
+          method: variantLabel,
+          variantName: variantLabel,
+          variantKey: variantKey || variant?.key || "",
+          servingKey,
+          defaultServingKey: menuItem?.defaultServingKey || "",
+          servingVariant,
+          note: note,
           quantity: q,
           lineSubtotal: Number(resolvedPrice) * q,
           isNew: true,
@@ -1646,7 +1651,7 @@ export default function useOrderManagement(pos = null) {
         setCurrentOrder((prev) => [...(prev || []), newItem]);
       }
     },
-    [currentOrder, setCurrentOrder, makeLineId]
+    [currentOrder, setCurrentOrder, makeLineId],
   );
 
   const updateItemQty = useCallback(
@@ -1672,10 +1677,10 @@ export default function useOrderManagement(pos = null) {
             };
           }
           return it;
-        })
+        }),
       );
     },
-    [setCurrentOrder]
+    [setCurrentOrder],
   );
 
   const removeItem = useCallback(
@@ -1697,7 +1702,7 @@ export default function useOrderManagement(pos = null) {
         return prev;
       });
     },
-    [setCurrentOrder]
+    [setCurrentOrder],
   );
 
   const clearAll = useCallback(() => {
@@ -1790,8 +1795,7 @@ export default function useOrderManagement(pos = null) {
             },
           });
 
-          const serverOrder =
-            res?.data?.createOrderForTable?.order || null;
+          const serverOrder = res?.data?.createOrderForTable?.order || null;
 
           if (serverOrder) {
             writeOrderIntoCache(serverOrder);
@@ -1968,7 +1972,7 @@ export default function useOrderManagement(pos = null) {
       setCurrentOrder,
       deliveryCustomer,
       shippingInfo,
-    ]
+    ],
   );
 
   /* ============================================================
@@ -2008,7 +2012,12 @@ export default function useOrderManagement(pos = null) {
 
       return {
         success: true,
-        data: { orderId, items: currentOrder, totals, tableId: currentTable?.id },
+        data: {
+          orderId,
+          items: currentOrder,
+          totals,
+          tableId: currentTable?.id,
+        },
       };
     },
     [
@@ -2019,7 +2028,7 @@ export default function useOrderManagement(pos = null) {
       saveOrder,
       currentOrderType,
       currentTable?.id,
-    ]
+    ],
   );
 
   const validatePayment = useCallback(
@@ -2034,7 +2043,7 @@ export default function useOrderManagement(pos = null) {
       }
       return { ok: true };
     },
-    [totals.total]
+    [totals.total],
   );
 
   const confirmPayment = useCallback(
@@ -2069,7 +2078,10 @@ export default function useOrderManagement(pos = null) {
       try {
         if (isDineIn) {
           const tableId =
-            currentTable?.id || currentTable?._id || activeGroup?.tableId || null;
+            currentTable?.id ||
+            currentTable?._id ||
+            activeGroup?.tableId ||
+            null;
           if (!tableId) {
             return { success: false, message: "Thiếu tableId để thanh toán." };
           }
@@ -2094,7 +2106,7 @@ export default function useOrderManagement(pos = null) {
           let res = await attemptPay(false);
           if (res?.warning && Array.isArray(res.pendingOrderCodes)) {
             const msg = `Các order chưa phục vụ: ${res.pendingOrderCodes.join(
-              ", "
+              ", ",
             )}. Thanh toán tất cả?`;
             const confirmAll = window.confirm(msg);
             if (confirmAll) {
@@ -2135,7 +2147,10 @@ export default function useOrderManagement(pos = null) {
 
         const res = data?.payOrdersByOrderIds || null;
         if (!res) {
-          return { success: false, message: "Thanh toán đơn off-premise thất bại." };
+          return {
+            success: false,
+            message: "Thanh toán đơn off-premise thất bại.",
+          };
         }
 
         return { success: true, data: res };
@@ -2156,7 +2171,7 @@ export default function useOrderManagement(pos = null) {
       mutPayByOrderIds,
       currentTable?.id,
       loadGroupsForTable,
-    ]
+    ],
   );
 
   const checkoutOrder = useCallback(
@@ -2188,7 +2203,7 @@ export default function useOrderManagement(pos = null) {
         externalRef,
       });
     },
-    [preparePayment, confirmPayment, totals.total]
+    [preparePayment, confirmPayment, totals.total],
   );
 
   /* ============================================================
@@ -2209,7 +2224,12 @@ export default function useOrderManagement(pos = null) {
 
       const activeGroups = rawGroups.filter((g) => {
         const st = (g.latestStatus || "").toUpperCase();
-        return !["ORDER_COMPLETED", "ORDER_CANCELLED", "FAILED", "CANCELLED"].includes(st);
+        return ![
+          "ORDER_COMPLETED",
+          "ORDER_CANCELLED",
+          "FAILED",
+          "CANCELLED",
+        ].includes(st);
       });
 
       const normalized = activeGroups.map((group) => {
@@ -2244,7 +2264,7 @@ export default function useOrderManagement(pos = null) {
 
       return { success: true, data: normalized };
     },
-    [loadGroupsQuery, mergeGroupItems]
+    [loadGroupsQuery, mergeGroupItems],
   );
 
   const fetchOrderById = useCallback(
@@ -2266,7 +2286,7 @@ export default function useOrderManagement(pos = null) {
         return { success: false, message: err.message };
       }
     },
-    [loadOrderById, mapServerItemToUi]
+    [loadOrderById, mapServerItemToUi],
   );
 
   /* ============================================================
@@ -2304,7 +2324,7 @@ export default function useOrderManagement(pos = null) {
         };
       }
     },
-    [mutUpdateOrderCustomerByCode, currentTable?.code, loadGroupsForTable]
+    [mutUpdateOrderCustomerByCode, currentTable?.code, loadGroupsForTable],
   );
 
   /* ============================================================
@@ -2319,7 +2339,7 @@ export default function useOrderManagement(pos = null) {
         : [];
       return { ...order, items };
     },
-    [mapServerItemToUi]
+    [mapServerItemToUi],
   );
 
   const ordersNow = useMemo(() => {

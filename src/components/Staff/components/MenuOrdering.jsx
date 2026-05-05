@@ -25,7 +25,7 @@ export default function MenuOrdering({
   const [selectedItem, setSelectedItem] = useState(null);
   const [prepChoice, setPrepChoice] = useState("");
   const [serveOrder, setServeOrder] = useState("Mang ra cùng lúc");
-
+  const [selectedVariantKey, setSelectedVariantKey] = useState("");
   // Trạng thái khi chưa chọn bàn
   if (!selectedTable) {
     return (
@@ -46,8 +46,29 @@ export default function MenuOrdering({
   );
 
   const handleConfirmAdd = () => {
-    onAdd(selectedItem, prepChoice, serveOrder);
+    const variants = Array.isArray(selectedItem?.servingVariants)
+      ? selectedItem.servingVariants
+      : [];
+
+    const selectedVariant =
+      variants.find((v) => v?.key === selectedVariantKey) ||
+      selectedItem?.defaultVariant ||
+      variants[0] ||
+      null;
+
+    if (variants.length > 1 && !selectedVariant) {
+      alert("Vui lòng chọn biến thể món.");
+      return;
+    }
+
+    onAdd(selectedItem, {
+      variant: selectedVariant,
+      prep: prepChoice || "Mặc định",
+      serveOrder,
+    });
+
     setSelectedItem(null);
+    setSelectedVariantKey("");
     setPrepChoice("");
     setServeOrder("Mang ra cùng lúc");
   };
@@ -123,7 +144,22 @@ export default function MenuOrdering({
             <div
               key={item.id}
               className={`menu-item-card ${isOutOfStock ? "out-of-stock" : ""}`}
-              onClick={() => !isOutOfStock && setSelectedItem(item)}
+              onClick={() => {
+                if (isOutOfStock) return;
+
+                const variants = Array.isArray(item.servingVariants)
+                  ? item.servingVariants
+                  : [];
+                const defaultVariant =
+                  item.defaultVariant ||
+                  variants.find((v) => v?.key === item.servingKey) ||
+                  variants[0] ||
+                  null;
+
+                setSelectedItem(item);
+                setSelectedVariantKey(defaultVariant?.key || "");
+                setPrepChoice("");
+              }}
             >
               <div className="item-content">
                 <h4 className="item-name">{item.name}</h4>
@@ -175,23 +211,28 @@ export default function MenuOrdering({
 
             <div className="sheet-body">
               {/* Nhóm Ghi chú / Cách làm */}
-              <div className="option-group">
-                <label className="group-label">
-                  1. Cách chế biến / Ghi chú
-                </label>
-                <div className="chips-container">
-                  {(selectedItem.prep || ["Mặc định"]).map((p) => (
-                    <button
-                      key={p}
-                      className={`option-chip ${prepChoice === p ? "selected" : ""}`}
-                      onClick={() => setPrepChoice(p)}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
+              {Array.isArray(selectedItem.servingVariants) &&
+                selectedItem.servingVariants.length > 1 && (
+                  <div className="option-group">
+                    <label className="group-label">1. Chọn biến thể</label>
+                    <div className="chips-container">
+                      {selectedItem.servingVariants.map((variant) => (
+                        <button
+                          key={variant.key}
+                          className={`option-chip ${
+                            selectedVariantKey === variant.key ? "selected" : ""
+                          }`}
+                          onClick={() => setSelectedVariantKey(variant.key)}
+                        >
+                          {variant.name || variant.key}
+                          {variant.price != null
+                            ? ` · ${Number(variant.price).toLocaleString("vi-VN")}đ`
+                            : ""}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               {/* Nhóm Thứ tự phục vụ */}
               <div className="option-group">
                 <label className="group-label">2. Thứ tự lên món</label>

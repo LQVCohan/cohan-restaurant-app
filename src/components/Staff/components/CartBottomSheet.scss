@@ -230,31 +230,49 @@ $shadow-lg: 0 -4px 16px rgba(0, 0, 0, 0.1);
           .actions {
             display: flex;
             gap: 8px;
+            flex-shrink: 0;
 
             .btn-icon {
-              width: 32px;
-              height: 32px;
-              border-radius: 8px;
-              border: none;
+              width: 36px;
+              height: 36px;
+              min-width: 36px;
+              min-height: 36px;
+              border-radius: 10px;
+              border: 1px solid $border-color;
               cursor: pointer;
-              display: flex;
+              display: inline-flex;
               align-items: center;
               justify-content: center;
-              background: $bg-main;
-              color: $text-sub;
+              background: #f9fafb;
+              color: #374151;
               transition: 0.2s;
 
+              svg {
+                width: 18px;
+                height: 18px;
+                min-width: 18px;
+                stroke-width: 2.5;
+                display: block;
+                color: currentColor;
+                stroke: currentColor;
+              }
+
               &.active-cam {
-                color: $success;
-                background: rgba($success, 0.1);
+                color: #059669;
+                background: rgba($success, 0.12);
+                border-color: rgba($success, 0.35);
               }
+
               &.btn-minus {
-                color: $warning;
-                background: rgba($warning, 0.1);
+                color: #d97706;
+                background: rgba($warning, 0.12);
+                border-color: rgba($warning, 0.35);
               }
+
               &.btn-void {
-                color: $danger;
-                background: rgba($danger, 0.1);
+                color: #dc2626;
+                background: rgba($danger, 0.12);
+                border-color: rgba($danger, 0.35);
               }
 
               &:active {

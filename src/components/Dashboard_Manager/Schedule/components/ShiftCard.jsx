@@ -96,38 +96,39 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
           {visibleStaff.map((staff, index) => (
             <div
               key={staff.id}
-              className={`avatar-wrapper avatar-tone-${index % 5}`}
-              title={`${staff.name} - ${getJobName(staff.roleSlug || staff.job)} · ${
-                staff.departmentLabel || "Khác"
-              }`}
+              className={`avatar-wrapper staff-avatar avatar-tone-${index % 5}`}
+              title={getStaffTitle(staff)}
+              aria-label={getStaffTitle(staff)}
             >
-              <span>{getInitials(staff.name)}</span>
+              <span className="avatar-initials">{getInitials(staff.name)}</span>
             </div>
           ))}
 
           {hiddenStaffCount > 0 ? (
-            <div className="avatar-wrapper more" title="Bấm để xem chi tiết ca">
-              <span>+{hiddenStaffCount}</span>
+            <div
+              className="avatar-wrapper more"
+              title={`${hiddenStaffCount} nhân viên khác`}
+            >
+              <span className="avatar-initials">+{hiddenStaffCount}</span>
             </div>
           ) : null}
 
           {Array.from({ length: Math.min(2, missingCount) }).map((_, idx) => (
             <div key={`ghost-${idx}`} className="avatar-wrapper ghost">
-              <span>?</span>
+              <span className="avatar-initials">?</span>
             </div>
           ))}
         </div>
 
         <div className="staff-summary">
           <span className="staff-count">{currentCount} nhân sự</span>
-
-          {isCritical ? (
-            <span className="text-danger">Thiếu {missingCount}</span>
-          ) : surplusCount > 0 ? (
-            <span className="text-good">Dư +{surplusCount}</span>
-          ) : (
-            <span className="text-good">Đủ yêu cầu</span>
-          )}
+          <span
+            className={`staff-coverage ${
+              isCritical ? "text-danger" : "text-good"
+            }`}
+          >
+            {coverageLabel}
+          </span>
         </div>
       </div>
 
