@@ -722,7 +722,7 @@ async function resolveVoucherDiscount({
   userId,
   session,
 }) {
-  const code = String(voucherCode || "").trim();
+  const code = String(voucherCode || "").trim().toUpperCase();
   if (!code) return null;
 
   const now = new Date();
@@ -1046,23 +1046,7 @@ export const OrderMutation = {
           session,
         });
 
-        const baseTotals = computeTotalsFromHydratedItems(normalizedItems, pricing || {});
-        let voucherMeta = null;
-        if (pricing?.voucherCode) {
-          voucherMeta = await resolveVoucherDiscount({
-            restaurantId: rid,
-            voucherCode: pricing.voucherCode,
-            subtotal: baseTotals.subtotal,
-            userId: finalUserId,
-            session,
-          });
-        }
-        const totals = computeTotalsFromHydratedItems(normalizedItems, {
-          ...(pricing || {}),
-          voucherDiscount: voucherMeta?.voucherDiscount || 0,
-          voucherCode: voucherMeta?.voucherCode,
-        });
-        if (voucherMeta?.discountReason) totals.discountReason = voucherMeta.discountReason;
+        const totals = computeTotalsFromHydratedItems(normalizedItems);
 
         const [order] = await Order.create(
           [
@@ -1096,22 +1080,6 @@ export const OrderMutation = {
         );
 
         createdOrderDoc = order;
-
-        if (voucherMeta?.couponId) {
-          const updateResult = await Coupon.updateOne(
-            {
-              _id: voucherMeta.couponId,
-              $expr: {
-                $or: [{ $lte: ["$maxUsage", 0] }, { $lt: ["$used", "$maxUsage"] }],
-              },
-            },
-            { $inc: { used: 1 } },
-            { session }
-          );
-          if (!updateResult.modifiedCount) {
-            throw new Error("Invalid voucher: usage limit reached");
-          }
-        }
 
         if (effectiveCustomer) {
           await upsertTableCustomerFromOrder({
