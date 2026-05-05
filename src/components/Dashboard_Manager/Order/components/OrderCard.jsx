@@ -72,6 +72,8 @@ const OrderCard = ({
   onViewOrder,
   isFocusMode = false,
   onViewItem, // Callback khi click vào món
+  onRejectOrder,
+  isRemoteStaffPending = false,
 }) => {
   const [isActionLoading, setIsActionLoading] = useState(false);
 
@@ -138,6 +140,30 @@ const OrderCard = ({
 
     switch (status) {
       case "pending":
+        if (isRemoteStaffPending) {
+          return (
+            <div className="oc-actions-grid">
+              <button className="oc-btn secondary" onClick={(e) => { e.stopPropagation(); onViewOrder?.(order); }}>
+                Xem chi tiết khách
+              </button>
+              <button className="oc-btn secondary" onClick={(e) => { e.stopPropagation(); onViewOrder?.(order); }}>
+                Xem ghi chú/món
+              </button>
+              <button
+                className="oc-btn secondary cancel"
+                onClick={(e) => { e.stopPropagation(); onRejectOrder?.(order.id); }}
+              >
+                Từ chối đơn
+              </button>
+              <button
+                className="oc-btn primary"
+                onClick={(e) => handleAction(e, "confirmed")}
+              >
+                <Check size={16} /> Xác nhận đơn
+              </button>
+            </div>
+          );
+        }
         return (
           <div className="oc-actions-grid">
             <button
