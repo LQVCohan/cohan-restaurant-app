@@ -61,6 +61,15 @@ const CREATE_ORDER_FOR_TABLE = gql`
             optionId
             optionName
           }
+          ingredientsSnapshot {
+            ingredientId
+            name
+            quantity
+            unit
+            baseUnitQuantity
+            costPerBaseUnit
+            totalCost
+          }
         }
         totals {
           subtotal
@@ -142,6 +151,15 @@ const CREATE_OFF_PREMISE_ORDER = gql`
             optionId
             optionName
           }
+          ingredientsSnapshot {
+            ingredientId
+            name
+            quantity
+            unit
+            baseUnitQuantity
+            costPerBaseUnit
+            totalCost
+          }
         }
         totals {
           subtotal
@@ -221,6 +239,15 @@ const ORDERS_GROUPED_BY_TABLE = gql`
             optionId
             optionName
           }
+          ingredientsSnapshot {
+            ingredientId
+            name
+            quantity
+            unit
+            baseUnitQuantity
+            costPerBaseUnit
+            totalCost
+          }
         }
         totals {
           subtotal
@@ -285,6 +312,15 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             quantity
             weightGrams
             status
+            ingredientsSnapshot {
+              ingredientId
+              name
+              quantity
+              unit
+              baseUnitQuantity
+              costPerBaseUnit
+              totalCost
+            }
           }
           totals {
             subtotal
@@ -382,6 +418,15 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
             quantity
             weightGrams
             status
+            ingredientsSnapshot {
+              ingredientId
+              name
+              quantity
+              unit
+              baseUnitQuantity
+              costPerBaseUnit
+              totalCost
+            }
           }
           totals {
             subtotal
@@ -460,6 +505,15 @@ const GET_ORDER = gql`
         quantity
         weightGrams
         status
+        ingredientsSnapshot {
+          ingredientId
+          name
+          quantity
+          unit
+          baseUnitQuantity
+          costPerBaseUnit
+          totalCost
+        }
       }
       totals {
         subtotal
@@ -595,6 +649,15 @@ const UPDATE_ORDER_ITEM_STATUS = gql`
           servingVariant {
             key
             name
+          }
+          ingredientsSnapshot {
+            ingredientId
+            name
+            quantity
+            unit
+            baseUnitQuantity
+            costPerBaseUnit
+            totalCost
           }
         }
         updatedAt

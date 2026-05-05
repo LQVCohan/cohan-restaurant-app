@@ -8,68 +8,8 @@ import {
   Loader2,
   Receipt,
 } from "lucide-react";
-import { gql, useQuery } from "@apollo/client";
+
 import styles from "./ItemModal.module.scss";
-
-// 1. GraphQL Query
-const GET_RECIPE_DETAILS = gql`
-  query GetRecipeById($id: ID!) {
-    recipe(id: $id) {
-      id
-      name
-      notes
-    }
-  }
-`;
-
-// 2. Sub-component: Recipe Display
-const RecipeDetails = ({ recipeId }) => {
-  const { data, loading, error } = useQuery(GET_RECIPE_DETAILS, {
-    variables: { id: recipeId },
-    skip: !recipeId,
-  });
-
-  if (!recipeId) {
-    return (
-      <div className={styles.stateBox}>
-        <span>Món này chưa được liên kết công thức.</span>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className={styles.stateBox}>
-        <Loader2 size={18} className={styles.spinner} />
-        <span>Đang tải hướng dẫn chế biến...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={`${styles.stateBox} ${styles.error}`}>
-        <p>Không thể tải công thức. Vui lòng thử lại.</p>
-      </div>
-    );
-  }
-
-  const recipeNotes = data?.recipe?.notes;
-
-  if (!recipeNotes) {
-    return (
-      <div className={styles.stateBox}>
-        <span>Chưa có hướng dẫn cụ thể cho món này.</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.recipeContent}>
-      <p className={styles.recipeText}>{recipeNotes}</p>
-    </div>
-  );
-};
 
 // 3. Main Component
 const ItemModal = ({ item, onClose }) => {
@@ -97,7 +37,31 @@ const ItemModal = ({ item, onClose }) => {
 
   // Tính tổng tiền item
   const totalPrice = (item.price || 0) * (item.quantity || 1);
+  const IngredientSnapshotDetails = ({ ingredients = [] }) => {
+    if (!ingredients.length) {
+      return (
+        <div className={styles.stateBox}>
+          <span>Chưa có snapshot nguyên liệu cho món này.</span>
+        </div>
+      );
+    }
 
+    return (
+      <div className={styles.recipeContent}>
+        {ingredients.map((ing) => (
+          <div key={ing.ingredientId} className={styles.ingredientLine}>
+            <strong>{ing.name}</strong>
+            <span>
+              {Number(ing.quantity || 0).toLocaleString("vi-VN")} {ing.unit}
+              {" · "}
+              quy đổi:{" "}
+              {Number(ing.baseUnitQuantity || 0).toLocaleString("vi-VN")}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  };
   return (
     <div className={styles.overlay} onClick={onClose}>
       {/* Ngăn click propagation để không đóng modal khi click vào nội dung */}
@@ -165,9 +129,11 @@ const ItemModal = ({ item, onClose }) => {
           <div className={styles.recipeBlock}>
             <h4>
               <ChefHat />
-              Hướng dẫn chế biến (Bếp)
+              Nguyên liệu đã trừ kho
             </h4>
-            <RecipeDetails recipeId={item.recipeId} />
+            <IngredientSnapshotDetails
+              ingredients={item.ingredientsSnapshot || []}
+            />
           </div>
         </div>
 

@@ -40,7 +40,30 @@ const getMinutesElapsed = (dateStr) => {
   if (!start) return 0;
   return Math.floor((Date.now() - start.getTime()) / 60000);
 };
+const ORDER_STATUS_LABELS = {
+  draft: "Đơn nháp",
+  pending: "Đơn mới tạo",
+  confirmed: "POS đã xác nhận",
+  customer_attached: "Đã gắn khách hàng",
+  preparing: "Bếp đã nhận và đang chuẩn bị",
+  ready: "Món đã sẵn sàng",
+  served: "Đã trả món",
+  completed: "Hoàn tất",
+  cancelled: "Đã hủy đơn",
+  failed: "Thất bại",
+};
 
+const SYSTEM_NOTE_LABELS = {
+  "Off-premise order created": "Tạo đơn mang về/giao hàng",
+  "Order created": "Tạo đơn",
+  "Order confirmed": "Xác nhận đơn",
+};
+
+const getTimelineLabel = (event) =>
+  SYSTEM_NOTE_LABELS[event?.note] ||
+  ORDER_STATUS_LABELS[event?.status] ||
+  event?.status ||
+  "Cập nhật trạng thái";
 const ITEM_STATUS_CONFIG = {
   pending: {
     label: "Chờ bếp nhận",
@@ -157,18 +180,20 @@ const OrderItemRow = React.memo(
               </button>
               {menuOpen && (
                 <div className="statusMenu">
-                  {Object.entries(ITEM_STATUS_CONFIG).map(([key, cfg]) => {
-                    if (key === item.status) return null;
-                    return (
-                      <button
-                        key={key}
-                        className={`statusMenuItem ${cfg.color}`}
-                        onClick={() => handleSelectStatus(key)}
-                      >
-                        {cfg.label}
-                      </button>
-                    );
-                  })}
+                  {Object.entries(ITEM_STATUS_CONFIG)
+                    .filter(([key]) => !["cancelled", "returned"].includes(key))
+                    .map(([key, cfg]) => {
+                      if (key === item.status) return null;
+                      return (
+                        <button
+                          key={key}
+                          className={`statusMenuItem ${cfg.color}`}
+                          onClick={() => handleSelectStatus(key)}
+                        >
+                          {cfg.label}
+                        </button>
+                      );
+                    })}
                 </div>
               )}
             </div>
@@ -411,19 +436,18 @@ const OrderModal = ({
                       <div key={`${s.status}-${idx}`} className="itemCard">
                         <div className="itemCard__info">
                           <div className="itemCard__header">
-                            <span className="itemName">{s.status}</span>
+                            <span className="itemName">
+                              {getTimelineLabel(s)}
+                            </span>
                           </div>
                           <div className="itemCard__meta">
                             <span className="metaTag">
                               {toSafeDate(s.at)?.toLocaleString("vi-VN") || "—"}
                             </span>
-                            {s.byUserId && (
-                              <span className="metaTag gray">{s.byUserId}</span>
-                            )}
                           </div>
-                          {s.note && (
+                          {s.note && !SYSTEM_NOTE_LABELS[s.note] && (
                             <div className="itemCard__note">
-                              <span>Note:</span> {s.note}
+                              <span>Ghi chú:</span> {s.note}
                             </div>
                           )}
                         </div>

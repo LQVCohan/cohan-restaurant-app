@@ -19,6 +19,8 @@ import {
   getDayName,
   jobOptions,
   getJobName,
+  normalizeRoleKey,
+  resolveConcreteStaffRoleSlug,
 } from "../utils/scheduleHelpers";
 const getInitials = (name) =>
   String(name || "NV")
@@ -101,6 +103,7 @@ const ShiftDetailModal = ({
 }) => {
   const [search, setSearch] = useState("");
   const [jobFilter, setJobFilter] = useState("");
+  const [candidateRoleFilter, setCandidateRoleFilter] = useState("all");
   const [noteDraft, setNoteDraft] = useState("");
   const [timeChangeOpen, setTimeChangeOpen] = useState(false);
   const [timeChangeDraft, setTimeChangeDraft] = useState({
@@ -166,27 +169,102 @@ const ShiftDetailModal = ({
     () => shift?.essentialJobs || [],
     [shift?.essentialJobs],
   );
+  const shiftRequiredRoleKeys = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (shiftEssentialJobs || [])
+            .map((role) => normalizeRoleKey(role))
+            .filter(Boolean),
+        ),
+      ),
+    [shiftEssentialJobs],
+  );
 
+  const getStaffRoleInfo = (staff) => {
+    const roleSlug = normalizeRoleKey(
+      resolveConcreteStaffRoleSlug(staff) || staff?.roleSlug || staff?.job,
+    );
+
+    const roleLabel = roleSlug ? getJobName(roleSlug) : "Chưa xác định vị trí";
+    const matched =
+      shiftRequiredRoleKeys.length === 0 ||
+      (roleSlug && shiftRequiredRoleKeys.includes(roleSlug));
+
+    return {
+      roleSlug,
+      roleLabel,
+      matched,
+    };
+  };
+
+  const getStaffRoleLine = (staff, roleLabel) => {
+    const departmentLabel = staff?.departmentLabel || "Khác";
+
+    if (!departmentLabel || departmentLabel === roleLabel) {
+      return roleLabel;
+    }
+
+    return `${roleLabel} · ${departmentLabel}`;
+  };
   const availableStaff = useMemo(() => {
     if (!shift || readOnly) return [];
 
     const currentStaffSet = new Set(
       (effectiveShiftStaffIds || []).map((item) => String(item)),
     );
+    const normalizedSearch = search.trim().toLowerCase();
+    const normalizedJobFilter = normalizeRoleKey(jobFilter);
 
     return staffList.filter((staff) => {
       const notInShift = !currentStaffSet.has(String(staff.id));
-      const matchSearch = staff.name
-        .toLowerCase()
-        .includes(search.toLowerCase());
-      const matchJob = jobFilter ? staff.job === jobFilter : true;
+      if (!notInShift) return false;
 
-      return notInShift && matchSearch && matchJob;
+      const roleInfo = getStaffRoleInfo(staff);
+
+      if (normalizedJobFilter && roleInfo.roleSlug !== normalizedJobFilter) {
+        return false;
+      }
+
+      if (candidateRoleFilter === "matched" && !roleInfo.matched) {
+        return false;
+      }
+
+      if (candidateRoleFilter === "mismatch" && roleInfo.matched) {
+        return false;
+      }
+
+      if (!normalizedSearch) return true;
+
+      const searchableText = [
+        staff.name,
+        staff.employeeCode,
+        staff.departmentLabel,
+        staff.positionTitle,
+        staff.roleName,
+        roleInfo.roleLabel,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return searchableText.includes(normalizedSearch);
     });
-  }, [effectiveShiftStaffIds, jobFilter, readOnly, search, shift, staffList]);
+  }, [
+    effectiveShiftStaffIds,
+    jobFilter,
+    candidateRoleFilter,
+    readOnly,
+    search,
+    shift,
+    staffList,
+    shiftRequiredRoleKeys,
+  ]);
   useEffect(() => {
     setNoteDraft(shift?.notes || "");
-
+    setSearch("");
+    setJobFilter("");
+    setCandidateRoleFilter("all");
     setTimeChangeOpen(false);
     setTimeChangeDraft({
       startTime: shift?.startTime || "",
@@ -716,9 +794,10 @@ const ShiftDetailModal = ({
                         <div className="details">
                           <span className="name">{person.name}</span>
                           <span className="role">
-                            {`${getJobName(person.roleSlug || person.job)} · ${
-                              person.departmentLabel || "Khác"
-                            }`}
+                            {getStaffRoleLine(
+                              person,
+                              getStaffRoleInfo(person).roleLabel,
+                            )}
                           </span>
                           {isPendingAdd ? (
                             <span className="tag-pending">Chưa lưu</span>
@@ -773,12 +852,14 @@ const ShiftDetailModal = ({
             <div className="section-block add-section">
               <div className="section-header">
                 <h4>Thêm nhân sự</h4>
-                {search || jobFilter ? (
+                {search || jobFilter || candidateRoleFilter !== "all" ? (
                   <button
+                    type="button"
                     className="clear-filter"
                     onClick={() => {
                       setSearch("");
                       setJobFilter("");
+                      setCandidateRoleFilter("all");
                     }}
                   >
                     Xóa lọc
@@ -790,7 +871,7 @@ const ShiftDetailModal = ({
                 <div className="search-box">
                   <Search size={16} />
                   <input
-                    placeholder="Tìm tên..."
+                    placeholder="Tìm tên, mã NV, vị trí..."
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
@@ -814,6 +895,25 @@ const ShiftDetailModal = ({
                     </option>
                   ))}
                 </select>
+
+                <div className="candidate-filter-tabs">
+                  {[
+                    { value: "all", label: "Tất cả" },
+                    { value: "matched", label: "Khớp yêu cầu" },
+                    { value: "mismatch", label: "Không khớp" },
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      className={
+                        candidateRoleFilter === item.value ? "active" : ""
+                      }
+                      onClick={() => setCandidateRoleFilter(item.value)}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="candidate-list">
@@ -822,9 +922,9 @@ const ShiftDetailModal = ({
                 ) : null}
                 {availableStaff.length > 0 ? (
                   availableStaff.map((person) => {
-                    const isRecommended = shiftEssentialJobs.includes(
-                      person.job,
-                    );
+                    const roleInfo = getStaffRoleInfo(person);
+                    const isRecommended =
+                      shiftRequiredRoleKeys.length > 0 && roleInfo.matched;
                     return (
                       <div key={person.id} className="staff-row candidate">
                         <div className="info">
@@ -832,10 +932,16 @@ const ShiftDetailModal = ({
                             <span className="name">{person.name}</span>
                             <div className="sub-row">
                               <span className="role">
-                                {`${getJobName(person.roleSlug || person.job)} · ${person.departmentLabel || "Khác"}`}
+                                {getStaffRoleLine(person, roleInfo.roleLabel)}
                               </span>
                               {isRecommended ? (
                                 <span className="tag-rec">Ưu tiên</span>
+                              ) : null}
+                              {!isRecommended &&
+                              shiftRequiredRoleKeys.length > 0 ? (
+                                <span className="tag-mismatch">
+                                  Khác vị trí
+                                </span>
                               ) : null}
                             </div>
                           </div>
