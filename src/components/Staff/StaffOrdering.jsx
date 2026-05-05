@@ -215,6 +215,7 @@ const ORDERS_GROUPED_BY_TABLE = gql`
             name
             mode
             sellUnit
+            sellQty
           }
           originalQuantity
           cancelledQuantity
@@ -227,6 +228,7 @@ const ORDERS_GROUPED_BY_TABLE = gql`
             reviewedAt
             reviewNote
           }
+        }
       }
     }
   }

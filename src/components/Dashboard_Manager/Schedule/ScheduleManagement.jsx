@@ -1274,12 +1274,24 @@ const ScheduleManagement = ({ readOnly = false }) => {
   } = useSchedulingPolicy({
     restaurantId: effectiveRestaurantId,
   });
-  const policyMandatoryShiftRoles = useMemo(() => {
-    const roles = Array.isArray(schedulingPolicy?.mandatoryShiftRoles)
-      ? schedulingPolicy.mandatoryShiftRoles
-      : [];
-    return roles;
-  }, [schedulingPolicy?.mandatoryShiftRoles]);
+  const normalizeMandatoryRoleList = (roles) => {
+    if (!Array.isArray(roles)) return [];
+    return Array.from(
+      new Set(
+        roles
+          .map((role) =>
+            String(role || "")
+              .trim()
+              .toLowerCase(),
+          )
+          .filter(Boolean),
+      ),
+    );
+  };
+  const policyMandatoryShiftRoles = useMemo(
+    () => normalizeMandatoryRoleList(schedulingPolicy?.mandatoryShiftRoles),
+    [schedulingPolicy?.mandatoryShiftRoles],
+  );
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
   const monthStart = startOfMonth(currentDate);

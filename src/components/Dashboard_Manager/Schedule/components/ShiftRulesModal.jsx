@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import Modal from "../../../common/Modal";
 import { Plus, Settings2, SlidersHorizontal, Trash2 } from "lucide-react";
 import {
@@ -13,7 +13,10 @@ const MANDATORY_ROLE_OPTIONS = jobOptions.map((option) => ({
   label: option.label,
 }));
 
-const normalizeRole = (role) => String(role || "").trim().toLowerCase();
+const normalizeRole = (role) =>
+  String(role || "")
+    .trim()
+    .toLowerCase();
 const normalizeMandatoryRoles = (roles = []) =>
   Array.from(new Set((roles || []).map(normalizeRole).filter(Boolean)));
 
@@ -360,9 +363,16 @@ const ShiftRulesModal = ({
     DEFAULT_SCORING_WEIGHTS,
   );
   const [draftMandatoryRoles, setDraftMandatoryRoles] = useState([]);
-
+  const initializedOpenRef = useRef(false);
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      initializedOpenRef.current = false;
+      return;
+    }
+
+    if (initializedOpenRef.current) return;
+
+    initializedOpenRef.current = true;
 
     setDraftRules(rules);
 
@@ -606,7 +616,8 @@ const ShiftRulesModal = ({
               <div className="mandatory-roles-header">
                 <strong>Role bắt buộc trong mọi ca</strong>
                 <span>
-                  Các role này được dùng để cảnh báo khi một ca chưa đủ thành phần. Không chặn tạo ca.
+                  Các role này được dùng để cảnh báo khi một ca chưa đủ thành
+                  phần. Không chặn tạo ca.
                 </span>
               </div>
               <div className="mandatory-role-options">

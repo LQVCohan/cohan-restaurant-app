@@ -115,7 +115,9 @@ export function getDefaultSchedulingPolicyPayload(restaurantId) {
     mandatoryShiftRoles: ["server", "cook", "cashier"],
     schedulingOperationalStartAt: null,
     firstWeekGracePolicy: { ...DEFAULT_FIRST_WEEK_GRACE_POLICY },
-    availabilityRegistrationPolicy: { ...DEFAULT_AVAILABILITY_REGISTRATION_POLICY },
+    availabilityRegistrationPolicy: {
+      ...DEFAULT_AVAILABILITY_REGISTRATION_POLICY,
+    },
   };
 }
 
@@ -126,7 +128,21 @@ function validateDayOfWeek(fieldName, value) {
     );
   }
 }
+const normalizeMandatoryShiftRoles = (roles) => {
+  if (!Array.isArray(roles)) return undefined;
 
+  return Array.from(
+    new Set(
+      roles
+        .map((role) =>
+          String(role || "")
+            .trim()
+            .toLowerCase(),
+        )
+        .filter(Boolean),
+    ),
+  );
+};
 function validateTime(fieldName, value) {
   if (!TIME_REGEX.test(value)) {
     throw new Error(`${fieldName} không hợp lệ. Định dạng phải là HH:mm.`);
@@ -143,7 +159,11 @@ function sanitizeAvailabilityRegistrationPolicy(input = {}) {
     ? Array.from(
         new Set(
           merged.targetEmploymentTypes
-            .map((type) => String(type || "").trim().toLowerCase())
+            .map((type) =>
+              String(type || "")
+                .trim()
+                .toLowerCase(),
+            )
             .filter(Boolean),
         ),
       )
@@ -159,8 +179,14 @@ function sanitizeAvailabilityRegistrationPolicy(input = {}) {
     );
   }
 
-  validateDayOfWeek("openDayOfWeek", String(merged.openDayOfWeek || "").toUpperCase());
-  validateDayOfWeek("closeDayOfWeek", String(merged.closeDayOfWeek || "").toUpperCase());
+  validateDayOfWeek(
+    "openDayOfWeek",
+    String(merged.openDayOfWeek || "").toUpperCase(),
+  );
+  validateDayOfWeek(
+    "closeDayOfWeek",
+    String(merged.closeDayOfWeek || "").toUpperCase(),
+  );
   validateDayOfWeek(
     "publishTargetDayOfWeek",
     String(merged.publishTargetDayOfWeek || "").toUpperCase(),
@@ -169,10 +195,19 @@ function sanitizeAvailabilityRegistrationPolicy(input = {}) {
   validateTime("openTime", String(merged.openTime || ""));
   validateTime("closeTime", String(merged.closeTime || ""));
   validateTime("publishTargetTime", String(merged.publishTargetTime || ""));
-  validateTime("availabilityOpenTime", String(merged.availabilityOpenTime || ""));
-  validateTime("availabilityCloseTime", String(merged.availabilityCloseTime || ""));
-  const mode = String(merged.availabilityRegistrationMode || "manual").toLowerCase();
-  if (!["auto", "manual"].includes(mode)) throw new Error("availabilityRegistrationMode không hợp lệ.");
+  validateTime(
+    "availabilityOpenTime",
+    String(merged.availabilityOpenTime || ""),
+  );
+  validateTime(
+    "availabilityCloseTime",
+    String(merged.availabilityCloseTime || ""),
+  );
+  const mode = String(
+    merged.availabilityRegistrationMode || "manual",
+  ).toLowerCase();
+  if (!["auto", "manual"].includes(mode))
+    throw new Error("availabilityRegistrationMode không hợp lệ.");
 
   return {
     enabled: merged.enabled !== false,
@@ -190,7 +225,9 @@ function sanitizeAvailabilityRegistrationPolicy(input = {}) {
     closeTime: String(merged.closeTime),
     publishTargetDayOfWeek: String(merged.publishTargetDayOfWeek).toUpperCase(),
     publishTargetTime: String(merged.publishTargetTime),
-    timezone: String(merged.timezone || DEFAULT_AVAILABILITY_REGISTRATION_POLICY.timezone),
+    timezone: String(
+      merged.timezone || DEFAULT_AVAILABILITY_REGISTRATION_POLICY.timezone,
+    ),
     allowFullTimeUnavailableException: Boolean(
       merged.allowFullTimeUnavailableException,
     ),
@@ -201,7 +238,6 @@ function sanitizeAvailabilityRegistrationPolicy(input = {}) {
     autoCreateWindow: Boolean(merged.autoCreateWindow),
   };
 }
-
 
 export function startOfWeekMonday(value) {
   const d = new Date(value);
@@ -221,15 +257,47 @@ export function endOfWeekMonday(value) {
 }
 
 export function isFirstOperationalWeek(policy, targetDate = new Date()) {
-  const startAt = policy?.schedulingOperationalStartAt ? new Date(policy.schedulingOperationalStartAt) : null;
-  if (!startAt || Number.isNaN(startAt.getTime())) return { active: false, weekStart: null, weekEnd: null, appliedUntil: null, reason: "no_operational_start" };
-  if (policy?.firstWeekGracePolicy?.enabled !== true) return { active: false, weekStart: null, weekEnd: null, appliedUntil: policy?.firstWeekGracePolicy?.appliedUntil || null, reason: "grace_disabled" };
+  const startAt = policy?.schedulingOperationalStartAt
+    ? new Date(policy.schedulingOperationalStartAt)
+    : null;
+  if (!startAt || Number.isNaN(startAt.getTime()))
+    return {
+      active: false,
+      weekStart: null,
+      weekEnd: null,
+      appliedUntil: null,
+      reason: "no_operational_start",
+    };
+  if (policy?.firstWeekGracePolicy?.enabled !== true)
+    return {
+      active: false,
+      weekStart: null,
+      weekEnd: null,
+      appliedUntil: policy?.firstWeekGracePolicy?.appliedUntil || null,
+      reason: "grace_disabled",
+    };
   const weekStart = startOfWeekMonday(startAt);
   const weekEnd = endOfWeekMonday(startAt);
   const target = new Date(targetDate);
-  const appliedUntil = policy?.firstWeekGracePolicy?.appliedUntil ? new Date(policy.firstWeekGracePolicy.appliedUntil) : null;
-  if (target < weekStart || target > weekEnd) return { active: false, weekStart, weekEnd, appliedUntil, reason: "outside_operational_week" };
-  if (appliedUntil && target > appliedUntil) return { active: false, weekStart, weekEnd, appliedUntil, reason: "after_applied_until" };
+  const appliedUntil = policy?.firstWeekGracePolicy?.appliedUntil
+    ? new Date(policy.firstWeekGracePolicy.appliedUntil)
+    : null;
+  if (target < weekStart || target > weekEnd)
+    return {
+      active: false,
+      weekStart,
+      weekEnd,
+      appliedUntil,
+      reason: "outside_operational_week",
+    };
+  if (appliedUntil && target > appliedUntil)
+    return {
+      active: false,
+      weekStart,
+      weekEnd,
+      appliedUntil,
+      reason: "after_applied_until",
+    };
   return { active: true, weekStart, weekEnd, appliedUntil, reason: "active" };
 }
 
@@ -237,7 +305,10 @@ export async function startSchedulingOperations({ restaurantId }) {
   const rid = toObjectId(restaurantId);
   if (!rid) throw new Error("restaurantId không hợp lệ.");
   let policy = await SchedulingPolicy.findOne({ restaurantId: rid });
-  if (!policy) policy = await SchedulingPolicy.create(getDefaultSchedulingPolicyPayload(rid));
+  if (!policy)
+    policy = await SchedulingPolicy.create(
+      getDefaultSchedulingPolicyPayload(rid),
+    );
   if (policy.schedulingOperationalStartAt) return mapSchedulingPolicy(policy);
   const now = new Date();
   policy.schedulingOperationalStartAt = now;
@@ -300,15 +371,20 @@ export async function updateSchedulingPolicy({ restaurantId, input, ctx }) {
     payload.employmentTypePolicy = input.employmentTypePolicy;
   }
   if (input.availabilityRegistrationPolicy) {
-    payload.availabilityRegistrationPolicy = sanitizeAvailabilityRegistrationPolicy(
-      input.availabilityRegistrationPolicy,
-    );
+    payload.availabilityRegistrationPolicy =
+      sanitizeAvailabilityRegistrationPolicy(
+        input.availabilityRegistrationPolicy,
+      );
   }
   if (Array.isArray(input.mandatoryShiftRoles)) {
     payload.mandatoryShiftRoles = Array.from(
       new Set(
         input.mandatoryShiftRoles
-          .map((role) => String(role || "").trim().toLowerCase())
+          .map((role) =>
+            String(role || "")
+              .trim()
+              .toLowerCase(),
+          )
           .filter((role) => AUTO_REQUIRED_ROLE_VALUES.includes(role)),
       ),
     );
