@@ -1195,6 +1195,7 @@ export const OrderMutation = {
       warehouseId,
       clientMeta,
       paymentMethod,
+      pricing,
     } = input || {};
 
     const rid = toId(restaurantId);
@@ -1230,7 +1231,32 @@ export const OrderMutation = {
         });
 
         validateIncomingOrderItems(normalizedItems);
-        const totals = computeTotalsFromHydratedItems(normalizedItems);
+
+        const trustedPricing = {
+          taxRate: pricing?.taxRate,
+          serviceRate: pricing?.serviceRate,
+          shippingFee: pricing?.shippingFee,
+          voucherCode: pricing?.voucherCode,
+          promotionDiscount: 0,
+          voucherDiscount: 0,
+        };
+        const baseTotals = computeTotalsFromHydratedItems(normalizedItems, trustedPricing);
+        let voucherMeta = null;
+        if (trustedPricing.voucherCode) {
+          voucherMeta = await resolveVoucherDiscount({
+            restaurantId: rid,
+            voucherCode: trustedPricing.voucherCode,
+            subtotal: baseTotals.subtotal,
+            userId: finalUserId,
+            session,
+          });
+        }
+        const totals = computeTotalsFromHydratedItems(normalizedItems, {
+          ...trustedPricing,
+          voucherDiscount: voucherMeta?.voucherDiscount || 0,
+          voucherCode: voucherMeta?.voucherCode,
+        });
+        if (voucherMeta?.discountReason) totals.discountReason = voucherMeta.discountReason;
 
         const [order] = await Order.create(
           [
@@ -1263,6 +1289,25 @@ export const OrderMutation = {
         );
 
         createdOrderDoc = order;
+
+        if (voucherMeta?.couponId) {
+          const updateResult = await Coupon.updateOne(
+            {
+              _id: voucherMeta.couponId,
+              $expr: {
+                $or: [
+                  { $lte: ["$maxUsage", 0] },
+                  { $lt: ["$used", "$maxUsage"] },
+                ],
+              },
+            },
+            { $inc: { used: 1 } },
+            { session }
+          );
+          if (!updateResult.modifiedCount) {
+            throw new Error("Invalid voucher: usage limit reached");
+          }
+        }
 
         const lines = buildInventoryLinesFromItems(normalizedItems);
         if (lines.length) {
