@@ -54,7 +54,7 @@ function mapItemToStation(item = {}) {
   return isDrink ? PRINT_STATIONS.bar : PRINT_STATIONS.kitchen;
 }
 
-async function enqueuePrintJobsForConfirmedOrder({ order, printType = "order_confirmed", includeTemporaryBill = false }) {
+async function enqueuePrintJobsForConfirmedOrder({ order, printType = "order_confirmed" }) {
   if (!order?.restaurantId || !Array.isArray(order?.items) || order.currentStatus !== "confirmed") return [];
   const printSetting = await PrintSetting.findOne({ restaurantId: order.restaurantId }).lean();
   if (!printSetting) return [];
@@ -65,40 +65,89 @@ async function enqueuePrintJobsForConfirmedOrder({ order, printType = "order_con
     acc[stationId].push(item);
     return acc;
   }, {});
-  if (includeTemporaryBill) {
-    itemsByStation[PRINT_STATIONS.cashier] = [];
-  }
-  const jobs = Object.entries(itemsByStation).map(([stationId, items]) => {
-    const printerId = Array.isArray(stationPrinters?.[stationId]) ? stationPrinters[stationId][0] : null;
-    const createdAt = new Date().toISOString();
-    return {
-      id: `job_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
-      orderId: String(order._id),
-      stationId,
-      stationType: stationId,
-      printerId,
-      printType: stationId === PRINT_STATIONS.cashier ? "temporary_bill" : printType,
-      items: (items || []).map((it) => ({
-        orderItemId: String(it?._id || ""),
-        dishId: String(it?.dishId || ""),
-        name: it?.name || "",
-        quantity: Number(it?.quantity || 0),
-        note: it?.note || "",
-      })),
-      status: "pending",
-      retryCount: 0,
-      payload: { orderCode: order.orderCode, tableCode: order.tableCode },
-      createdAt,
-      printedAt: null,
-      updatedAt: createdAt,
-    };
-  });
+
+  const jobs = Object.entries(itemsByStation)
+    .filter(([stationId]) => Array.isArray(stationPrinters?.[stationId]) && !!stationPrinters[stationId][0])
+    .map(([stationId, items]) => {
+      const printerId = stationPrinters[stationId][0];
+      const createdAt = new Date().toISOString();
+      return {
+        id: `job_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+        orderId: String(order._id),
+        stationId,
+        stationType: stationId,
+        printerId,
+        printType,
+        items: (items || []).map((it) => ({
+          orderItemId: String(it?._id || ""),
+          dishId: String(it?.dishId || ""),
+          name: it?.name || "",
+          quantity: Number(it?.quantity || 0),
+          note: it?.note || "",
+        })),
+        status: "pending",
+        retryCount: 0,
+        payload: { orderCode: order.orderCode, tableCode: order.tableCode },
+        createdAt,
+        printedAt: null,
+        updatedAt: createdAt,
+      };
+    });
   if (!jobs.length) return [];
   await PrintSetting.updateOne(
     { _id: printSetting._id },
-    { $set: { jobs: [...jobs, ...(Array.isArray(printSetting.jobs) ? printSetting.jobs : [])].slice(0, 300), updatedAt: new Date() } }
+    {
+      $push: { jobs: { $each: jobs, $position: 0, $slice: 300 } },
+      $set: { updatedAt: new Date() },
+    }
   );
   return jobs;
+}
+
+async function enqueueTemporaryBillPrintJob(order) {
+  if (!order?.restaurantId || order.currentStatus !== "confirmed") {
+    return { jobs: [], message: "Only confirmed orders can be printed" };
+  }
+
+  const printSetting = await PrintSetting.findOne({ restaurantId: order.restaurantId }).lean();
+  if (!printSetting) {
+    return { jobs: [], message: "Chưa cấu hình in cho nhà hàng." };
+  }
+
+  const cashierPrinters = Array.isArray(printSetting?.stations?.[PRINT_STATIONS.cashier])
+    ? printSetting.stations[PRINT_STATIONS.cashier]
+    : [];
+  const printerId = cashierPrinters[0];
+  if (!printerId) {
+    return { jobs: [], message: "Chưa cấu hình máy in thu ngân." };
+  }
+
+  const createdAt = new Date().toISOString();
+  const job = {
+    id: `job_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+    orderId: String(order._id),
+    stationId: PRINT_STATIONS.cashier,
+    stationType: PRINT_STATIONS.cashier,
+    printerId,
+    printType: "temporary_bill",
+    items: [],
+    status: "pending",
+    retryCount: 0,
+    payload: { orderCode: order.orderCode, tableCode: order.tableCode },
+    createdAt,
+    printedAt: null,
+    updatedAt: createdAt,
+  };
+
+  await PrintSetting.updateOne(
+    { _id: printSetting._id },
+    {
+      $push: { jobs: { $each: [job], $position: 0, $slice: 300 } },
+      $set: { updatedAt: new Date() },
+    }
+  );
+
+  return { jobs: [job], message: "Đã tạo job in tạm tính." };
 }
 
 function normalizePriorityLevel(value) {
@@ -1443,11 +1492,8 @@ export const OrderMutation = {
     if (!order) throw new Error("Order not found");
     if (String(order.restaurantId) !== String(toId(restaurantId))) throw new Error("Order not found");
     if (order.currentStatus !== "confirmed") throw new Error("Only confirmed orders can be printed");
-    const jobs = await enqueuePrintJobsForConfirmedOrder({
-      order,
-      includeTemporaryBill: true,
-    });
-    const cashierJob = jobs.find((j) => j.stationId === PRINT_STATIONS.cashier) || null;
+    const { jobs, message } = await enqueueTemporaryBillPrintJob(order);
+    const cashierJob = jobs[0] || null;
     if (cashierJob) {
       await emitOrderEvent(ctx, String(order.restaurantId), "ORDER_PRINT_JOBS_CREATED", {
         orderId: String(order._id),
@@ -1455,7 +1501,7 @@ export const OrderMutation = {
         printJobs: [cashierJob],
       });
     }
-    return { ok: true, message: cashierJob ? "Đã tạo job in tạm tính." : "Chưa cấu hình máy in thu ngân." };
+    return { ok: !!cashierJob, message };
   },
 
   async rejectIncomingOrder(_, { input }, ctx) {
