@@ -117,11 +117,6 @@ export default function CartBottomSheet({
                         <AlertTriangle size={12} /> Chờ duyệt hủy
                       </span>
                     )}
-                    {item.printed && (
-                      <span className="badge badge-printed">
-                        <Printer size={12} /> Đã in
-                      </span>
-                    )}
                     {item.requiresProof && !item.hasPhoto && (
                       <span className="badge badge-proof-required">
                         <ShieldAlert size={12} /> Cần ảnh

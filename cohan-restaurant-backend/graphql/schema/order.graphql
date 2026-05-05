@@ -438,6 +438,10 @@ input ConfirmIncomingOrderInput {
   note: String
   warehouseId: ID
 }
+input CreateTemporaryBillPrintJobInput {
+  orderId: ID!
+  restaurantId: ID!
+}
 
 type ConfirmIncomingOrderPayload {
   order: Order!
@@ -1017,6 +1021,7 @@ extend type Mutation {
   updateOrderStatus(input: UpdateOrderStatusInput!): Order!
 
   confirmIncomingOrder(input: ConfirmIncomingOrderInput!): ConfirmIncomingOrderPayload!
+  createTemporaryBillPrintJob(input: CreateTemporaryBillPrintJobInput!): ActionResultPayload!
 
   rejectIncomingOrder(input: RejectIncomingOrderInput!): RejectIncomingOrderPayload!
   requestPaymentForOrder(input: RequestPaymentForOrderInput!): ActionResultPayload!
