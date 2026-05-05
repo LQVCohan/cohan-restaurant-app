@@ -1,0 +1,37 @@
+type PosCustomer {
+  id: ID!
+  restaurantId: ID!
+  fullName: String
+  phone: String!
+  email: String
+  defaultAddress: String
+  note: String
+  source: String
+  orderCount: Int
+  lastOrderAt: DateTime
+  isActive: Boolean
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+input UpsertPosCustomerInput {
+  restaurantId: ID!
+  fullName: String
+  phone: String!
+  email: String
+  defaultAddress: String
+  note: String
+  source: String
+}
+
+extend type Query {
+  posCustomers(
+    restaurantId: ID!
+    search: String
+    limit: Int = 20
+  ): [PosCustomer!]!
+}
+
+extend type Mutation {
+  upsertPosCustomer(input: UpsertPosCustomerInput!): PosCustomer!
+}

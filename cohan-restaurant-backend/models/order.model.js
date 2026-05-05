@@ -50,7 +50,7 @@ const ServingVariantSnapshotSchema = new Schema(
     sellQty: { type: Number, min: 0.000001 },
     sellUnit: { type: String, enum: ["portion", "g", "kg"] },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const IngredientSnapshotLineSchema = new Schema(
@@ -73,7 +73,7 @@ const IngredientSnapshotLineSchema = new Schema(
     costPerBaseUnit: { type: Number, min: 0 },
     totalCost: { type: Number, min: 0 },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const ModifierPriceRuleSnapshotSchema = new Schema(
@@ -81,7 +81,7 @@ const ModifierPriceRuleSnapshotSchema = new Schema(
     rule: { type: String, enum: ModifierPriceRuleEnum, required: true },
     amount: { type: Number, required: true },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const ModifierInventoryIngredientLineSnapshotSchema = new Schema(
@@ -95,7 +95,7 @@ const ModifierInventoryIngredientLineSnapshotSchema = new Schema(
     unit: { type: String, enum: UnitEnum, required: true },
     wastePct: { type: Number, default: 0, min: 0, max: 100 },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const ModifierInventoryRuleSnapshotSchema = new Schema(
@@ -111,7 +111,7 @@ const ModifierInventoryRuleSnapshotSchema = new Schema(
 
     note: { type: String },
   },
-  { _id: false }
+  { _id: false },
 );
 
 /**
@@ -137,7 +137,7 @@ const OrderModifierSnapshotSchema = new Schema(
       required: true,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const OrderItemSchema = new Schema(
@@ -184,8 +184,66 @@ const OrderItemSchema = new Schema(
     priority: { type: String, enum: PriorityEnum, default: "MEDIUM" },
 
     status: { type: String, default: "pending", enum: ItemStatusEnum },
+    originalQuantity: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+
+    cancelledQuantity: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+
+    voidRequests: [
+      {
+        requestId: {
+          type: String,
+          required: true,
+        },
+        quantity: {
+          type: Number,
+          min: 1,
+          required: true,
+        },
+        reason: {
+          type: String,
+          trim: true,
+          required: true,
+        },
+        status: {
+          type: String,
+          enum: ["pending", "approved", "rejected"],
+          default: "pending",
+        },
+        requestedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          default: null,
+        },
+        requestedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        reviewedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          default: null,
+        },
+        reviewedAt: {
+          type: Date,
+          default: null,
+        },
+        reviewNote: {
+          type: String,
+          trim: true,
+          default: "",
+        },
+      },
+    ],
   },
-  { timestamps: false }
+  { timestamps: false },
 );
 
 const OrderSchema = BaseSchemaModel({
@@ -349,12 +407,12 @@ OrderSchema.methods.calculateTotals = function () {
 
   const beforeTax = Math.max(
     0,
-    this.totals.subtotal + this.totals.service - discount
+    this.totals.subtotal + this.totals.service - discount,
   );
 
   this.totals.tax = Math.round(beforeTax * taxRate);
   this.totals.grandTotal = Math.round(
-    beforeTax + this.totals.tax + shippingFee
+    beforeTax + this.totals.tax + shippingFee,
   );
   this.priority = deriveOrderPriorityFromItems(this.items || []);
 

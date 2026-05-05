@@ -214,7 +214,9 @@ type OrderItem {
   dishId: ID
   menuId: ID
   categoryId: ID
-
+  originalQuantity: Float
+  cancelledQuantity: Float
+  voidRequests: [OrderItemVoidRequest!]
   name: String!
   unit: String
   image: String
@@ -238,7 +240,31 @@ type OrderItem {
   priority: OrderPriority
   status: ItemStatus
 }
+type OrderItemVoidRequest {
+  requestId: ID!
+  quantity: Float!
+  reason: String!
+  status: String!
+  requestedBy: ID
+  requestedAt: DateTime
+  reviewedBy: ID
+  reviewedAt: DateTime
+  reviewNote: String
+}
+input RequestOrderItemVoidInput {
+  orderId: ID!
+  orderItemId: ID!
+  quantity: Int!
+  reason: String!
+}
 
+input ReviewOrderItemVoidInput {
+  orderId: ID!
+  orderItemId: ID!
+  requestId: ID!
+  approve: Boolean!
+  note: String
+}
 input OrderItemInput {
   dishId: ID
   menuId: ID
@@ -409,7 +435,6 @@ input CreateOffPremiseOrderInput {
 type CreateOffPremiseOrderPayload {
   order: Order!
 }
-
 
 input CreateStaffRemoteOrderInput {
   restaurantId: ID!
@@ -603,7 +628,12 @@ type OrdersConnection {
   edges: [OrderEdge!]!
   pageInfo: PageInfo!
 }
-
+input AdjustOrderItemQuantityInput {
+  orderId: ID!
+  orderItemId: ID!
+  quantity: Int!
+  reason: String
+}
 input OrderFilterInput {
   restaurantId: ID
   tableCode: String
@@ -738,7 +768,6 @@ type ReportsOverview {
   topDishes: [ReportTopDish!]!
   revenueByDay: [ReportRevenuePoint!]!
 }
-
 
 type DemandForecastSummary {
   busiestPeriods: [String!]!
@@ -1002,6 +1031,9 @@ extend type Query {
 }
 
 extend type Mutation {
+  requestOrderItemVoid(input: RequestOrderItemVoidInput!): Order!
+  reviewOrderItemVoid(input: ReviewOrderItemVoidInput!): Order!
+  adjustOrderItemQuantity(input: AdjustOrderItemQuantityInput!): Order!
   createOrderForTable(
     input: CreateOrderForTableInput!
   ): CreateOrderForTablePayload!
@@ -1020,12 +1052,22 @@ extend type Mutation {
 
   updateOrderStatus(input: UpdateOrderStatusInput!): Order!
 
-  confirmIncomingOrder(input: ConfirmIncomingOrderInput!): ConfirmIncomingOrderPayload!
-  createTemporaryBillPrintJob(input: CreateTemporaryBillPrintJobInput!): ActionResultPayload!
+  confirmIncomingOrder(
+    input: ConfirmIncomingOrderInput!
+  ): ConfirmIncomingOrderPayload!
+  createTemporaryBillPrintJob(
+    input: CreateTemporaryBillPrintJobInput!
+  ): ActionResultPayload!
 
-  rejectIncomingOrder(input: RejectIncomingOrderInput!): RejectIncomingOrderPayload!
-  requestPaymentForOrder(input: RequestPaymentForOrderInput!): ActionResultPayload!
-  requestPaymentForTable(input: RequestPaymentForTableInput!): ActionResultPayload!
+  rejectIncomingOrder(
+    input: RejectIncomingOrderInput!
+  ): RejectIncomingOrderPayload!
+  requestPaymentForOrder(
+    input: RequestPaymentForOrderInput!
+  ): ActionResultPayload!
+  requestPaymentForTable(
+    input: RequestPaymentForTableInput!
+  ): ActionResultPayload!
   remindOrderItem(input: RemindOrderItemInput!): ActionResultPayload!
 
   updateOrderItemStatus(

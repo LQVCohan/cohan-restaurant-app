@@ -1964,7 +1964,331 @@ export const OrderMutation = {
       orders: createdOrders.map((o) => o.toJSON()),
     };
   },
+  adjustOrderItemQuantity: async (_p, { input }) => {
+    const { orderId, orderItemId, quantity, reason } = input || {};
 
+    if (!mongoose.isValidObjectId(orderId)) {
+      throw new Error("Invalid orderId");
+    }
+
+    if (!mongoose.isValidObjectId(orderItemId)) {
+      throw new Error("Invalid orderItemId");
+    }
+
+    const nextQuantity = Number(quantity);
+    if (!Number.isInteger(nextQuantity) || nextQuantity <= 0) {
+      throw new Error("quantity must be a positive integer");
+    }
+
+    const session = await mongoose.startSession();
+    let updatedOrder = null;
+
+    try {
+      await session.withTransaction(async () => {
+        const order = await Order.findById(orderId).session(session);
+
+        if (!order) {
+          throw new Error("Order not found");
+        }
+
+        const editableOrderStatuses = [
+          "pending",
+          "confirmed",
+          "customer_attached",
+        ];
+
+        if (!editableOrderStatuses.includes(order.currentStatus)) {
+          throw new Error(
+            "Không thể điều chỉnh số lượng vì bếp đã nhận hoặc đơn đã xử lý.",
+          );
+        }
+
+        const item = order.items.id(orderItemId);
+
+        if (!item) {
+          throw new Error("Order item not found");
+        }
+
+        if (item.status !== "pending") {
+          throw new Error("Chỉ được điều chỉnh món đang chờ bếp xử lý.");
+        }
+
+        const oldQuantity = Number(item.quantity || 1);
+        if (oldQuantity === nextQuantity) {
+          updatedOrder = order;
+          return;
+        }
+
+        const warehouse = await Warehouse.findOne({
+          restaurantId: order.restaurantId,
+          isActive: { $ne: false },
+        })
+          .sort({ createdAt: 1 })
+          .session(session);
+
+        if (!warehouse) {
+          throw new Error("Không tìm thấy kho để điều chỉnh reservation.");
+        }
+
+        const oldItems = order.items.map((x) =>
+          typeof x.toObject === "function" ? x.toObject() : x,
+        );
+
+        const oldLines = buildInventoryLinesFromItems(oldItems);
+        if (oldLines.length) {
+          await cancelReservationForOrderTx({
+            restaurantId: order.restaurantId,
+            warehouseId: warehouse._id,
+            orderCode: order.orderCode,
+            lines: oldLines,
+            session,
+          });
+        }
+
+        const nextItems = oldItems.map((x) => {
+          if (String(x._id) !== String(orderItemId)) return x;
+          return {
+            ...x,
+            quantity: nextQuantity,
+          };
+        });
+
+        await hydrateOrderItems({
+          restaurantId: order.restaurantId,
+          items: nextItems,
+          session,
+        });
+
+        const nextTotals = computeTotalsFromHydratedItems(nextItems, {
+          serviceRate: order?.totals?.serviceRate || 0,
+          taxRate: order?.totals?.taxRate || 0,
+          promotionDiscount: order?.totals?.promotionDiscount || 0,
+          voucherDiscount: order?.totals?.voucherDiscount || 0,
+          shippingFee: order?.totals?.shippingFee || 0,
+          voucherCode: order?.totals?.voucherCode || undefined,
+        });
+
+        const newLines = buildInventoryLinesFromItems(nextItems);
+        if (newLines.length) {
+          await reserveForOrderTx({
+            restaurantId: order.restaurantId,
+            warehouseId: warehouse._id,
+            orderCode: order.orderCode,
+            lines: newLines,
+            session,
+          });
+        }
+
+        order.items = nextItems;
+        order.totals = nextTotals;
+
+        order.statusTimeline = order.statusTimeline || [];
+        order.statusTimeline.push({
+          status: order.currentStatus,
+          at: new Date(),
+          note:
+            reason ||
+            `Điều chỉnh số lượng món ${oldQuantity} -> ${nextQuantity}`,
+        });
+
+        await order.save({ session });
+
+        updatedOrder = await Order.findById(order._id)
+          .session(session)
+          .lean({ virtuals: true });
+      });
+
+      emitOrderEvent("order:updated", updatedOrder);
+      return updatedOrder;
+    } finally {
+      await session.endSession();
+    }
+  },
+  requestOrderItemVoid: async (_p, { input }, ctx) => {
+    const { orderId, orderItemId, quantity, reason } = input || {};
+
+    if (!mongoose.isValidObjectId(orderId)) {
+      throw new Error("Invalid orderId");
+    }
+
+    if (!mongoose.isValidObjectId(orderItemId)) {
+      throw new Error("Invalid orderItemId");
+    }
+
+    const qty = Number(quantity);
+    if (!Number.isInteger(qty) || qty <= 0) {
+      throw new Error("quantity must be a positive integer");
+    }
+
+    if (!String(reason || "").trim()) {
+      throw new Error("Vui lòng nhập lý do hủy/giảm món.");
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      throw new Error("Order not found");
+    }
+
+    const beforeKitchenStatuses = ["pending", "confirmed", "customer_attached"];
+    if (beforeKitchenStatuses.includes(order.currentStatus)) {
+      throw new Error(
+        "Đơn chưa vào bếp. Hãy dùng điều chỉnh số lượng thay vì yêu cầu hủy món.",
+      );
+    }
+
+    const voidableOrderStatuses = ["preparing", "ready", "served"];
+    if (!voidableOrderStatuses.includes(order.currentStatus)) {
+      throw new Error(
+        "Trạng thái đơn hiện tại không cho phép yêu cầu hủy món.",
+      );
+    }
+
+    const item = order.items.id(orderItemId);
+    if (!item) {
+      throw new Error("Order item not found");
+    }
+
+    if (["cancelled", "returned"].includes(item.status)) {
+      throw new Error("Món đã bị hủy/trả, không thể tạo yêu cầu mới.");
+    }
+
+    const activeQuantity = Number(item.quantity || 0);
+    if (qty > activeQuantity) {
+      throw new Error("Số lượng yêu cầu hủy lớn hơn số lượng còn lại.");
+    }
+
+    const hasPending = (item.voidRequests || []).some(
+      (r) => r.status === "pending",
+    );
+
+    if (hasPending) {
+      throw new Error("Món này đang có yêu cầu hủy chờ duyệt.");
+    }
+
+    item.voidRequests = item.voidRequests || [];
+    item.voidRequests.push({
+      requestId: `void_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+      quantity: qty,
+      reason: reason.trim(),
+      status: "pending",
+      requestedBy: ctx?.user?.id || null,
+      requestedAt: new Date(),
+    });
+
+    order.statusTimeline = order.statusTimeline || [];
+    order.statusTimeline.push({
+      status: order.currentStatus,
+      at: new Date(),
+      note: `Yêu cầu hủy ${qty} món "${item.name}": ${reason.trim()}`,
+    });
+
+    await order.save();
+
+    const updatedOrder = await Order.findById(order._id).lean({
+      virtuals: true,
+    });
+    emitOrderEvent("order:updated", updatedOrder);
+    return updatedOrder;
+  },
+  reviewOrderItemVoid: async (_p, { input }, ctx) => {
+    const { orderId, orderItemId, requestId, approve, note } = input || {};
+
+    if (!mongoose.isValidObjectId(orderId)) {
+      throw new Error("Invalid orderId");
+    }
+
+    if (!mongoose.isValidObjectId(orderItemId)) {
+      throw new Error("Invalid orderItemId");
+    }
+
+    const session = await mongoose.startSession();
+    let updatedOrder = null;
+
+    try {
+      await session.withTransaction(async () => {
+        const order = await Order.findById(orderId).session(session);
+        if (!order) {
+          throw new Error("Order not found");
+        }
+
+        const item = order.items.id(orderItemId);
+        if (!item) {
+          throw new Error("Order item not found");
+        }
+
+        const req = (item.voidRequests || []).find(
+          (r) => String(r.requestId) === String(requestId),
+        );
+
+        if (!req) {
+          throw new Error("Void request not found");
+        }
+
+        if (req.status !== "pending") {
+          throw new Error("Yêu cầu này đã được xử lý.");
+        }
+
+        req.status = approve ? "approved" : "rejected";
+        req.reviewedBy = ctx?.user?.id || null;
+        req.reviewedAt = new Date();
+        req.reviewNote = note || "";
+
+        if (approve) {
+          const qty = Number(req.quantity || 0);
+          const activeQuantity = Number(item.quantity || 0);
+
+          if (qty <= 0 || qty > activeQuantity) {
+            throw new Error("Số lượng hủy không hợp lệ.");
+          }
+
+          if (item.originalQuantity == null) {
+            item.originalQuantity = activeQuantity;
+          }
+
+          item.quantity = activeQuantity - qty;
+          item.cancelledQuantity = Number(item.cancelledQuantity || 0) + qty;
+
+          if (item.quantity <= 0) {
+            item.quantity = 0;
+            item.status = "cancelled";
+          }
+
+          const plainItems = order.items.map((x) =>
+            typeof x.toObject === "function" ? x.toObject() : x,
+          );
+
+          order.totals = computeTotalsFromHydratedItems(plainItems, {
+            serviceRate: order?.totals?.serviceRate || 0,
+            taxRate: order?.totals?.taxRate || 0,
+            promotionDiscount: order?.totals?.promotionDiscount || 0,
+            voucherDiscount: order?.totals?.voucherDiscount || 0,
+            shippingFee: order?.totals?.shippingFee || 0,
+            voucherCode: order?.totals?.voucherCode || undefined,
+          });
+        }
+
+        order.statusTimeline = order.statusTimeline || [];
+        order.statusTimeline.push({
+          status: order.currentStatus,
+          at: new Date(),
+          note: approve
+            ? `Đã duyệt hủy ${req.quantity} món "${item.name}". ${note || ""}`.trim()
+            : `Từ chối hủy món "${item.name}". ${note || ""}`.trim(),
+        });
+
+        await order.save({ session });
+
+        updatedOrder = await Order.findById(order._id)
+          .session(session)
+          .lean({ virtuals: true });
+      });
+
+      emitOrderEvent("order:updated", updatedOrder);
+      return updatedOrder;
+    } finally {
+      await session.endSession();
+    }
+  },
   /** =========================================
    * UPDATE ORDER STATUS
    * - inventory commit/cancel + order save in ONE transaction

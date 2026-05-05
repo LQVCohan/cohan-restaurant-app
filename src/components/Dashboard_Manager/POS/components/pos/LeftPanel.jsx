@@ -399,7 +399,33 @@ export default function LeftPanel() {
       }
     }
   };
+  const hasUnsavedItems =
+    Array.isArray(currentOrder) &&
+    currentOrder.some((item) => item?.isNew || !item?.isExisting);
 
+  const handleChangeOrderType = (nextType) => {
+    if (!nextType || nextType === currentOrderType) return;
+
+    if (hasUnsavedItems) {
+      const ok = window.confirm(
+        "Đổi chế độ sẽ xóa giỏ hàng/món nháp hiện tại. Bạn có muốn tiếp tục?",
+      );
+      if (!ok) return;
+    }
+
+    resetPosOrderSession?.(nextType);
+  };
+  const handleCreateOffPremiseOrder = () => {
+    if (currentOrderType === "delivery") {
+      startDeliveryOrder?.();
+      return;
+    }
+
+    if (currentOrderType === "takeaway") {
+      startTakeawayOrder?.();
+      return;
+    }
+  };
   return (
     <div className={cls.wrapper}>
       {/* 1. HEADER (TABS) */}
@@ -412,8 +438,7 @@ export default function LeftPanel() {
                 currentOrderType === t.key ? cls.active : ""
               }`}
               onClick={() => {
-                if (currentOrderType === t.key) return;
-                resetPosOrderSession?.(t.key);
+                handleChangeOrderType(t.key);
               }}
             >
               {t.label}
@@ -455,7 +480,7 @@ export default function LeftPanel() {
               {/* Nút này kích hoạt tạo đơn mới */}
               <button
                 className={`${cls.btn} ${cls.primary}`}
-                onClick={startDeliveryOrder}
+                onClick={handleCreateOffPremiseOrder}
               >
                 + Tạo đơn mới
               </button>
@@ -487,7 +512,7 @@ export default function LeftPanel() {
               {/* Nút này kích hoạt tạo đơn mới */}
               <button
                 className={`${cls.btn} ${cls.primary}`}
-                onClick={startTakeawayOrder}
+                onClick={handleCreateOffPremiseOrder}
               >
                 + Tạo đơn mới
               </button>

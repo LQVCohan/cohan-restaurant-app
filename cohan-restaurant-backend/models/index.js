@@ -88,3 +88,4 @@ export { default as ScheduleAcknowledgement } from "./schedule-acknowledgement.m
 export { default as PerformanceIncident } from "./performance-incident.model.js";
 
 export { default as PerformanceIncidentAppeal } from "./performanceIncidentAppeal.model.js";
+export { default as PosCustomer } from "./pos-customer.model.js";

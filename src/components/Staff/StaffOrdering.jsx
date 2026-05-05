@@ -33,7 +33,55 @@ import { AuthContext } from "../../context/AuthContext";
 import StaffProofCaptureModal from "./components/StaffProofCaptureModal";
 import { buildProofState, requiresProofImage } from "@/utils/orderProofRules";
 import useCommunication from "@/hooks/useCommunication";
-
+const REQUEST_ORDER_ITEM_VOID = gql`
+  mutation StaffRequestOrderItemVoid($input: RequestOrderItemVoidInput!) {
+    requestOrderItemVoid(input: $input) {
+      id
+      orderCode
+      currentStatus
+    }
+  }
+`;
+const ADJUST_ORDER_ITEM_QUANTITY = gql`
+  mutation StaffAdjustOrderItemQuantity($input: AdjustOrderItemQuantityInput!) {
+    adjustOrderItemQuantity(input: $input) {
+      id
+      orderCode
+      currentStatus
+      items {
+        _id
+        dishId
+        menuId
+        categoryId
+        name
+        note
+        priority
+        quantity
+        status
+        unitPrice
+        basePrice
+        servingKey
+        unit
+        weightGrams
+        proofImages
+        servingVariant {
+          key
+          name
+          mode
+          sellUnit
+          sellQty
+        }
+      }
+      totals {
+        subtotal
+        discount
+        tax
+        service
+        grandTotal
+      }
+    }
+  }
+`;
 const TABLES_QUERY = gql`
   query StaffTables($restaurantId: ID!, $limit: Int) {
     tables(restaurantId: $restaurantId, limit: $limit) {
@@ -168,7 +216,17 @@ const ORDERS_GROUPED_BY_TABLE = gql`
             mode
             sellUnit
           }
-        }
+          originalQuantity
+          cancelledQuantity
+          voidRequests {
+            requestId
+            quantity
+            reason
+            status
+            requestedAt
+            reviewedAt
+            reviewNote
+          }
       }
     }
   }
@@ -278,8 +336,12 @@ const buildCartFromServerOrders = (orders = []) => {
         weightGrams: item.weightGrams ?? null,
         servingVariant: item.servingVariant || null,
         ...proofState,
+        orderItemId: String(item._id || ""),
         orderStatus: order.currentStatus,
         orderCode: order.orderCode,
+        originalQuantity: item.originalQuantity ?? null,
+        cancelledQuantity: Number(item.cancelledQuantity || 0),
+        voidRequests: item.voidRequests || [],
       });
     }
   }
@@ -322,6 +384,7 @@ export default function StaffOrdering() {
 
   const searchTimerRef = useRef(null);
   const remoteSubmitKeyRef = useRef(null);
+  const [requestOrderItemVoid] = useMutation(REQUEST_ORDER_ITEM_VOID);
   const [createOrderForTable, { loading: savingOrder }] = useMutation(
     CREATE_ORDER_FOR_TABLE,
   );
@@ -333,6 +396,7 @@ export default function StaffOrdering() {
   const [requestPaymentForOrder] = useMutation(REQUEST_PAYMENT_FOR_ORDER);
   const [remindOrderItem] = useMutation(REMIND_ORDER_ITEM);
   const [deleteTableCustomer] = useMutation(DELETE_TABLE_CUSTOMER);
+  const [adjustOrderItemQuantity] = useMutation(ADJUST_ORDER_ITEM_QUANTITY);
   const [loadOrdersForTable] = useLazyQuery(ORDERS_GROUPED_BY_TABLE, {
     fetchPolicy: "network-only",
   });
@@ -342,7 +406,39 @@ export default function StaffOrdering() {
   const [loadCustomers, customerSearchState] = useLazyQuery(SEARCH_CUSTOMERS, {
     fetchPolicy: "network-only",
   });
+  const handleRequestItemVoid = async (item, payload) => {
+    if (!item?.orderId || !(item?.orderItemId || item?.id)) {
+      alert("Thiếu thông tin món để gửi yêu cầu hủy.");
+      return;
+    }
 
+    const beforeKitchenStatuses = ["pending", "confirmed", "customer_attached"];
+
+    if (beforeKitchenStatuses.includes(item.orderStatus)) {
+      alert(
+        "Đơn chưa vào bếp. Hãy dùng nút giảm số lượng thay vì yêu cầu hủy.",
+      );
+      return;
+    }
+
+    try {
+      await requestOrderItemVoid({
+        variables: {
+          input: {
+            orderId: item.orderId,
+            orderItemId: item.orderItemId || item.id,
+            quantity: Number(payload.quantity),
+            reason: payload.reason,
+          },
+        },
+      });
+
+      await reloadSelectedTableOrders();
+      alert("Đã gửi yêu cầu hủy/giảm món đến POS.");
+    } catch (error) {
+      alert(error?.message || "Không thể gửi yêu cầu hủy món.");
+    }
+  };
   const { data: tablesData, loading: tablesLoading } = useQuery(TABLES_QUERY, {
     variables: { restaurantId, limit: 200 },
     skip: !restaurantId,
@@ -528,7 +624,68 @@ export default function StaffOrdering() {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
   }, [searchQuery, loadCustomers, showSearchResults]);
+  const reloadSelectedTableOrders = async () => {
+    if (!selectedTable || !restaurantId) return;
 
+    const { data } = await loadOrdersForTable({
+      variables: {
+        restaurantId,
+        tableCode: selectedTable.tableCode || selectedTable.name,
+      },
+    });
+
+    const groups = data?.ordersGroupedByTable || [];
+    const latest = groups[0] || null;
+
+    setOrderCodeByTable((prev) => ({
+      ...prev,
+      [selectedTable.id]: latest?.orderCode || prev[selectedTable.id] || null,
+    }));
+
+    setCartByTable((prev) => ({
+      ...prev,
+      [selectedTable.id]: buildCartFromServerOrders(latest?.orders || []),
+    }));
+  };
+
+  const handleAdjustPersistedItemQuantity = async (item, delta) => {
+    if (!item?.orderId || !(item?.orderItemId || item?.id)) {
+      alert("Thiếu thông tin món đã lưu để điều chỉnh.");
+      return;
+    }
+
+    const nextQuantity = Number(item.quantity || 1) + Number(delta || 0);
+
+    if (nextQuantity <= 0) {
+      alert(
+        "Muốn xóa hết món đã gửi thì dùng yêu cầu hủy món, không trừ về 0.",
+      );
+      return;
+    }
+
+    const editableStatuses = ["pending", "confirmed", "customer_attached"];
+    if (!editableStatuses.includes(item.orderStatus)) {
+      alert("Bếp đã nhận món. Cần dùng yêu cầu hủy/giảm món có lý do.");
+      return;
+    }
+
+    try {
+      await adjustOrderItemQuantity({
+        variables: {
+          input: {
+            orderId: item.orderId,
+            orderItemId: item.orderItemId || item.id,
+            quantity: nextQuantity,
+            reason: "Nhân viên điều chỉnh số lượng trước khi bếp nhận",
+          },
+        },
+      });
+
+      await reloadSelectedTableOrders();
+    } catch (error) {
+      alert(error?.message || "Không thể điều chỉnh số lượng món.");
+    }
+  };
   const handleAssignCustomer = async (customer) => {
     if (!selectedTableId || !selectedTable || !restaurantId) {
       alert("Vui lòng chọn 1 bàn trước khi gán khách!");
@@ -1396,6 +1553,8 @@ export default function StaffOrdering() {
           sendActionLabel={
             orderMode === "remote" ? "Gửi POS xác nhận" : "Gửi Bếp"
           }
+          onAdjustPersistedItemQuantity={handleAdjustPersistedItemQuantity}
+          onRequestItemVoid={handleRequestItemVoid}
         />
       )}
 

@@ -25,21 +25,35 @@ export default function CartBottomSheet({
   onSendKitchen,
   onOpenProofCapture,
   onCheckout,
+  onAdjustPersistedItemQuantity,
+  onRequestItemVoid,
   onRemindItem,
   checkoutEnabled = true,
   sending = false,
   sendActionLabel = "Gửi Bếp",
 }) {
   const handleRequestVoid = (item) => {
-    const reason = window.prompt(`Nhập lý do hủy món [${item.name}]:`);
-    if (reason) {
-      setCart(
-        cart.map((c) =>
-          c.id === item.id ? { ...c, status: "void_pending" } : c,
-        ),
-      );
-      alert("Đã gửi yêu cầu hủy món!");
+    const maxQty = Number(item.quantity || 1);
+    const rawQty = window.prompt(
+      `Nhập số lượng muốn hủy/giảm cho [${item.name}] (tối đa ${maxQty}):`,
+      "1",
+    );
+
+    if (rawQty == null) return;
+
+    const quantity = Number(rawQty);
+    if (!Number.isInteger(quantity) || quantity <= 0 || quantity > maxQty) {
+      alert("Số lượng hủy không hợp lệ.");
+      return;
     }
+
+    const reason = window.prompt(`Nhập lý do hủy/giảm món [${item.name}]:`);
+    if (!reason || !reason.trim()) return;
+
+    onRequestItemVoid?.(item, {
+      quantity,
+      reason: reason.trim(),
+    });
   };
 
   const totalPrice = cart.reduce(
@@ -96,6 +110,18 @@ export default function CartBottomSheet({
 
                 <div className="item-tools">
                   <div className="status-badges">
+                    {item.voidRequests?.some((r) => r.status === "pending") && (
+                      <span className="badge badge-void">
+                        <AlertTriangle size={12} /> Chờ duyệt hủy
+                      </span>
+                    )}
+
+                    {Number(item.cancelledQuantity || 0) > 0 && (
+                      <span className="badge badge-void">
+                        <AlertTriangle size={12} /> Đã hủy{" "}
+                        {item.cancelledQuantity}
+                      </span>
+                    )}
                     {String(item?.servingVariant?.mode || "").toUpperCase() ===
                       "BY_WEIGHT" &&
                       (!Number.isFinite(Number(item.weightGrams)) ||
@@ -174,7 +200,7 @@ export default function CartBottomSheet({
                     >
                       <Camera size={16} />
                     </button>
-                    {item.status === "pending" ? (
+                    {item.status === "pending" && !item.persisted ? (
                       <button
                         className="btn-icon btn-minus"
                         onClick={() =>
@@ -187,6 +213,15 @@ export default function CartBottomSheet({
                                 : [];
                             }),
                           )
+                        }
+                      >
+                        <Minus size={16} />
+                      </button>
+                    ) : item.status === "pending" && item.persisted ? (
+                      <button
+                        className="btn-icon btn-minus"
+                        onClick={() =>
+                          onAdjustPersistedItemQuantity?.(item, -1)
                         }
                       >
                         <Minus size={16} />
