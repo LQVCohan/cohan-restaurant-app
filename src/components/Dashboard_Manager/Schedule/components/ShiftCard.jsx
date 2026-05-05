@@ -20,19 +20,30 @@ const getJobClass = (job) => {
   };
   return map[job] || "job-gray";
 };
+const MAX_VISIBLE_STAFF = 3;
 
+const getInitials = (name) =>
+  String(name || "NV")
+    .trim()
+    .split(/\s+/)
+    .slice(-2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "NV";
 const ShiftCard = ({ shift, staffList, onClick }) => {
   const assignedStaff = shift.staffIds
     .map((id) => staffList.find((s) => s.id === id))
     .filter(Boolean);
-
-  const totalRequired = shift.essentialJobs.length;
+  const totalRequired = Math.max(shift.essentialJobs.length, 1);
   const currentCount = assignedStaff.length;
   const missingCount = Math.max(0, totalRequired - currentCount);
+  const surplusCount = Math.max(0, currentCount - totalRequired);
+  const visibleStaff = assignedStaff.slice(0, MAX_VISIBLE_STAFF);
+  const hiddenStaffCount = Math.max(
+    0,
+    assignedStaff.length - MAX_VISIBLE_STAFF,
+  );
 
-  // Logic trạng thái
   const isCritical = missingCount > 0;
-
   return (
     <div
       className={`shift-card ${isCritical ? "critical" : "optimal"}`}
@@ -55,38 +66,49 @@ const ShiftCard = ({ shift, staffList, onClick }) => {
 
       {/* 2. Body: Avatar Stack & Ghost Slots */}
       <div className="card-body">
-        <div className="staff-visuals">
-          {/* Render nhân viên đã gán */}
-          {assignedStaff.slice(0, 4).map((staff) => (
-            <div key={staff.id} className="avatar-wrapper">
-              <img
-                src={getAvatarUrl(staff.name)}
-                alt={staff.name}
-                title={`${staff.name} - ${getJobName(staff.roleSlug || staff.job)} · ${staff.departmentLabel || "Khác"}`}
-              />
+        <div
+          className="staff-visuals"
+          title={
+            assignedStaff.length
+              ? assignedStaff.map((staff) => staff.name).join(", ")
+              : "Chưa có nhân viên"
+          }
+        >
+          {visibleStaff.map((staff, index) => (
+            <div
+              key={staff.id}
+              className={`avatar-wrapper avatar-tone-${index % 5}`}
+              title={`${staff.name} - ${getJobName(staff.roleSlug || staff.job)} · ${
+                staff.departmentLabel || "Khác"
+              }`}
+            >
+              <span>{getInitials(staff.name)}</span>
             </div>
           ))}
 
-          {/* Render số lượng ẩn nếu quá nhiều */}
-          {assignedStaff.length > 4 && (
-            <div className="avatar-wrapper more">
-              <span>+{assignedStaff.length - 4}</span>
+          {hiddenStaffCount > 0 ? (
+            <div className="avatar-wrapper more" title="Bấm để xem chi tiết ca">
+              <span>+{hiddenStaffCount}</span>
             </div>
-          )}
+          ) : null}
 
-          {/* Render Ghost Slots (Vị trí trống) */}
-          {Array.from({ length: Math.min(3, missingCount) }).map((_, idx) => (
+          {Array.from({ length: Math.min(2, missingCount) }).map((_, idx) => (
             <div key={`ghost-${idx}`} className="avatar-wrapper ghost">
               <span>?</span>
             </div>
           ))}
         </div>
 
-        {/* Text summary */}
         <div className="staff-summary">
-          <span className={isCritical ? "text-danger" : "text-sub"}>
-            {currentCount}/{totalRequired} Nhân sự
-          </span>
+          <span className="staff-count">{currentCount} nhân sự</span>
+
+          {isCritical ? (
+            <span className="text-danger">Thiếu {missingCount}</span>
+          ) : surplusCount > 0 ? (
+            <span className="text-good">Dư +{surplusCount}</span>
+          ) : (
+            <span className="text-good">Đủ yêu cầu</span>
+          )}
         </div>
       </div>
 

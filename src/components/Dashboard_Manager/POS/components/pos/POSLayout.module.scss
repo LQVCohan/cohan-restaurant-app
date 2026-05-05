@@ -5,14 +5,23 @@
   width: 100vw;
   height: 100vh;
   background: #f1f5f9;
-  overflow: hidden; /* chặn body scroll, chỉ scroll trong từng cột */
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial,
+  overflow: hidden;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Arial,
     sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 3 cột ngang */
 .shell {
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   gap: 1rem;
   padding: 1rem;
@@ -48,7 +57,8 @@
   background: #fff;
   border: 2px solid #e2e8f0;
   border-radius: 1rem;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03),
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03),
     0 8px 20px rgba(15, 23, 42, 0.04);
   flex: 1 1 auto;
   min-height: 0;
@@ -74,4 +84,79 @@
   .rightCol {
     height: 55vh;
   }
+}
+.restaurantBar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem 0;
+  box-sizing: border-box;
+}
+
+.restaurantBarInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.restaurantBarLabel {
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.restaurantSelect {
+  min-width: 280px;
+  max-width: 420px;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  background: #fff;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.restaurantSelect:disabled {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.restaurantHint {
+  color: #475569;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.lockButton {
+  border: 0;
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  font-weight: 700;
+  background: #0f172a;
+  color: #fff;
+  cursor: pointer;
+}
+
+.lockButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lockButton.locked {
+  background: #f59e0b;
+  color: #111827;
+}
+
+.emptyState {
+  margin: 1rem;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: #fff7ed;
+  color: #9a3412;
+  font-weight: 700;
+  border: 1px solid #fed7aa;
 }

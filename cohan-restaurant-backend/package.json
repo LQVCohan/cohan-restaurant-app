@@ -10,6 +10,7 @@
     "seed:admin": "node scripts/seed-admin.js",
     "import:restaurant-data": "node scripts/import-restaurant-data.js",
     "test:db": "node scripts/test-db.js",
+    "seed:demo:stock": "node scripts/seed-demo-ingredient-stock.js",
     "sync:menuitem-category-json": "node scripts/update-menuitem-category-from-db-json.js --dry-run",
     "lint": "node --check src/server/server.js",
     "build": "node -e \"console.log('Backend build step: no transpilation required.')\"",

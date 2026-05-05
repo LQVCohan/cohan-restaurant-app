@@ -388,6 +388,11 @@ export default function StaffOrdering() {
       const firstVariant = variants[0] || null;
       const defaultVariant =
         variants.find((v) => v?.key === m.defaultServingKey) || firstVariant;
+
+      const isSellable = !["unavailable", "out_of_stock", "hidden"].includes(
+        String(m.status || "").toLowerCase(),
+      );
+
       return {
         id: m.id,
         dishId: m.id,
@@ -395,7 +400,7 @@ export default function StaffOrdering() {
         categoryId: m.categoryId,
         name: m.name,
         price: Number(defaultVariant?.price ?? m.basePrice ?? 0),
-        stock: m.status === "active" ? 99 : 0,
+        stock: isSellable ? 99 : 0,
         category: m.categoryId
           ? `Danh mục ${String(m.categoryId).slice(-4)}`
           : "Khác",

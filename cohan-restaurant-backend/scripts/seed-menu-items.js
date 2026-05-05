@@ -12,9 +12,9 @@ const MONGO_URI =
 const MONGO_DB = process.env.MONGO_DB || "RestaurantDB";
 
 // Nhà hàng
-const RESTAURANT_ID = "68e3fc0486dc90d60c7101dc";
+const RESTAURANT_ID = "69ce9e2e8d8d711f12e251b1";
 
-// Menu theo timeslot (em đã cung cấp)
+// Menu theo timeslot
 const MENUS = {
   breakfast: "68e4174004521aa428f95d23",
   dinner: "68e4174b04521aa428f95d24",
@@ -23,8 +23,8 @@ const MENUS = {
 };
 
 // Category (giữ giống trước)
-const CATEGORY_APPETIZER = "68e3ff9cd433d2c81f8803c6"; // Khai vị
-const CATEGORY_MAIN = "68e41860dfc9c2a967e29701"; // Món chính
+const CATEGORY_APPETIZER = "69ce9e328d8d711f12e251ff"; // Khai vị
+const CATEGORY_MAIN = "69ce9e338d8d711f12e25205"; // Món chính
 
 // Modifier group cho tất cả món
 const DEFAULT_MODIFIER_GROUP_IDS = ["68e4d89bca13bb3391858677"];
@@ -143,8 +143,8 @@ function buildItemsForSlot(slot) {
     const basePrice = isByWeight
       ? 0
       : isAppetizer
-      ? randomInt(20000, 50000)
-      : randomInt(40000, 90000);
+        ? randomInt(20000, 50000)
+        : randomInt(40000, 90000);
 
     items.push(
       baseMenuItemPayload({
@@ -155,7 +155,7 @@ function buildItemsForSlot(slot) {
         categoryId,
         byWeight: isByWeight,
         basePrice,
-      })
+      }),
     );
   });
 
@@ -182,7 +182,7 @@ async function main() {
 
     const items = buildItemsForSlot(slot);
     console.log(
-      `\n[${slot}] Seeding ${items.length} items vào menuId=${menuId}...`
+      `\n[${slot}] Seeding ${items.length} items vào menuId=${menuId}...`,
     );
 
     for (const item of items) {
@@ -202,7 +202,7 @@ async function main() {
 
         const created = await MenuItem.create(item);
         console.log(
-          `✓ ${created.name} | menu=${slot} | cat=${created.categoryId} | byWeight=${created.byWeight} | basePrice=${created.basePrice}`
+          `✓ ${created.name} | menu=${slot} | cat=${created.categoryId} | byWeight=${created.byWeight} | basePrice=${created.basePrice}`,
         );
       } catch (err) {
         console.error(`✗ Lỗi tạo món "${item.name}":`, err.message);

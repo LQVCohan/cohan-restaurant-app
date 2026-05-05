@@ -557,7 +557,31 @@ const CREATE_STAFF_SHIFT = gql`
     }
   }
 `;
-
+const CREATE_STAFF_SHIFTS = gql`
+  mutation CreateStaffShifts($inputs: [CreateStaffShiftInput!]!) {
+    createStaffShifts(inputs: $inputs) {
+      successCount
+      failedCount
+      shifts {
+        id
+        employeeId
+        employeeName
+        restaurantId
+        shiftType
+        startTime
+        endTime
+        status
+        notes
+      }
+      errors {
+        index
+        employeeId
+        message
+        code
+      }
+    }
+  }
+`;
 const UPDATE_STAFF_SHIFT = gql`
   mutation UpdateStaffShift($shiftId: ID!, $input: UpdateStaffShiftInput!) {
     updateStaffShift(shiftId: $shiftId, input: $input) {
@@ -1455,6 +1479,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
   });
 
   const [createShift] = useMutation(CREATE_STAFF_SHIFT);
+  const [createShifts] = useMutation(CREATE_STAFF_SHIFTS);
   const [updateShift] = useMutation(UPDATE_STAFF_SHIFT);
   const [deleteShift] = useMutation(DELETE_STAFF_SHIFT);
   const [changePublishedShiftGroupTime, { loading: changingShiftGroupTime }] =
@@ -2976,7 +3001,118 @@ const ScheduleManagement = ({ readOnly = false }) => {
       throw new Error(message);
     }
   };
+  const handleAddStaffToShiftBatch = async (
+    shiftGroupId,
+    staffIdsToAdd = [],
+    options = {},
+  ) => {
+    const shiftGroup = shifts.find((item) => item.id === shiftGroupId);
 
+    if (!shiftGroup) {
+      const message = "Không tìm thấy ca làm cần cập nhật.";
+      showNotification(message, "error");
+      throw new Error(message);
+    }
+
+    const uniqueStaffIds = Array.from(
+      new Set(
+        (staffIdsToAdd || []).map((item) => String(item)).filter(Boolean),
+      ),
+    );
+
+    if (!uniqueStaffIds.length) {
+      return {
+        successCount: 0,
+        failedCount: 0,
+        shifts: [],
+        errors: [],
+      };
+    }
+
+    const { startTime, endTime } = buildShiftRange({
+      date: shiftGroup.date,
+      startTimeText: shiftGroup.startTime,
+      endTimeText: shiftGroup.endTime,
+    });
+
+    const normalizedShiftType = String(
+      shiftGroup.shiftType || "",
+    ).toUpperCase();
+
+    const inputs = uniqueStaffIds.map((staffId) => ({
+      employeeId: staffId,
+      restaurantId: effectiveRestaurantId,
+      shiftType: normalizedShiftType,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      status: "scheduled",
+      notes: options.reason ? `Lý do thêm ca: ${options.reason}` : "",
+    }));
+
+    try {
+      const response = await createShifts({
+        variables: {
+          inputs,
+        },
+      });
+
+      const result = response?.data?.createStaffShifts || {
+        successCount: 0,
+        failedCount: inputs.length,
+        shifts: [],
+        errors: [],
+      };
+
+      if (result.successCount > 0) {
+        await refetch();
+      }
+
+      if (result.failedCount > 0) {
+        const staffById = new Map(
+          staff.map((person) => [String(person.id), person]),
+        );
+
+        const errorText = result.errors
+          .map((error) => {
+            const person = staffById.get(String(error.employeeId || ""));
+            const name =
+              person?.name ||
+              person?.fullName ||
+              error.employeeId ||
+              "Nhân viên";
+            return `${name}: ${error.message}`;
+          })
+          .join("\n");
+
+        showNotification(
+          result.successCount > 0
+            ? `Đã thêm ${result.successCount} nhân viên, ${result.failedCount} nhân viên bị lỗi.`
+            : "Không thể thêm nhân viên vào ca.",
+          result.successCount > 0 ? "warning" : "error",
+        );
+
+        return {
+          ...result,
+          errorText,
+        };
+      }
+
+      showNotification(
+        `Đã thêm ${result.successCount} nhân viên vào ca.`,
+        "success",
+      );
+
+      return result;
+    } catch (error) {
+      const message = getGraphQLErrorMessage(
+        error,
+        "Không thể thêm nhân viên vào ca.",
+      );
+
+      showNotification(message, "error");
+      throw new Error(message);
+    }
+  };
   const handleUpdateSelectedNotes = async (notes) => {
     if (readOnly) return;
     if (!selectedShift?.records?.length) return;
@@ -4274,6 +4410,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
         readOnly={readOnly}
         onRemoveStaff={handleRemoveStaffFromShift}
         onAddStaff={handleAddStaffToShift}
+        onAddStaffBatch={handleAddStaffToShiftBatch}
         onDeleteShift={handleDeleteShift}
         onUpdateNotes={handleUpdateSelectedNotes}
         onUpdateTime={handleUpdateSelectedTime}

@@ -84,6 +84,7 @@ const ShiftDetailModal = ({
   readOnly = false,
   onRemoveStaff,
   onAddStaff,
+  onAddStaffBatch,
   onDeleteShift,
   onUpdateNotes,
   isSchedulePublished = false,
@@ -240,7 +241,7 @@ const ShiftDetailModal = ({
       return;
     }
 
-    if (staffIdsToAdd.length > 0 && !onAddStaff) {
+    if (staffIdsToAdd.length > 0 && !onAddStaff && !onAddStaffBatch) {
       setSaveChangesError(
         "Không thể thêm nhân viên vào ca ở trạng thái hiện tại.",
       );
@@ -257,11 +258,38 @@ const ShiftDetailModal = ({
         await onUpdateNotes(noteDraft);
       }
 
-      for (const staffId of staffIdsToAdd) {
-        await onAddStaff(shift.id, staffId);
-      }
+      if (staffIdsToAdd.length > 0) {
+        if (onAddStaffBatch) {
+          const result = await onAddStaffBatch(shift.id, staffIdsToAdd);
 
-      setPendingAddStaffIds([]);
+          const failedIds = new Set(
+            (result?.errors || [])
+              .map((error) => String(error.employeeId || ""))
+              .filter(Boolean),
+          );
+
+          if (failedIds.size > 0) {
+            setPendingAddStaffIds((prev) =>
+              (prev || []).filter((staffId) => failedIds.has(String(staffId))),
+            );
+
+            setSaveChangesError(
+              result?.errorText ||
+                `Có ${failedIds.size} nhân viên chưa thêm được vào ca.`,
+            );
+
+            return;
+          }
+
+          setPendingAddStaffIds([]);
+        } else {
+          for (const staffId of staffIdsToAdd) {
+            await onAddStaff(shift.id, staffId);
+          }
+
+          setPendingAddStaffIds([]);
+        }
+      }
     } catch (error) {
       setSaveChangesError(error?.message || "Không thể lưu thay đổi ca.");
     } finally {
@@ -413,18 +441,21 @@ const ShiftDetailModal = ({
       setIsSubmittingTimeChange(false);
     }
   };
-  const handleAddCandidate = async (person) => {
+  const handleAddCandidate = (person) => {
     if (
       modalReadOnly ||
+      !person?.id ||
       !onAddStaff ||
       !effectivePermissions.canAddStaffToShift ||
       isAddingStaff ||
-      isAddingPublishedStaff
+      isAddingPublishedStaff ||
+      isSavingChanges
     ) {
       return;
     }
 
     setAddStaffError("");
+    setSaveChangesError("");
 
     if (isSchedulePublished) {
       setAddConfirm(person);
@@ -432,15 +463,17 @@ const ShiftDetailModal = ({
       return;
     }
 
-    setIsAddingStaff(true);
+    setPendingAddStaffIds((prev) => {
+      const current = new Set((prev || []).map((item) => String(item)));
+      const personId = String(person.id);
 
-    try {
-      await onAddStaff(shift.id, person.id);
-    } catch (error) {
-      setAddStaffError(error?.message || "Không thể thêm nhân viên vào ca.");
-    } finally {
-      setIsAddingStaff(false);
-    }
+      if (current.has(personId)) {
+        return prev;
+      }
+
+      current.add(personId);
+      return Array.from(current);
+    });
   };
   const handleRemovePendingStaff = (staffId) => {
     setPendingAddStaffIds((prev) =>
@@ -1243,11 +1276,18 @@ const ShiftDetailModal = ({
             {!readOnly ? (
               <>
                 <button
+                  type="button"
                   className="btn-close"
                   onClick={handleSaveChanges}
-                  disabled={isSavingNotes}
+                  disabled={
+                    modalReadOnly || isSavingChanges || !hasPendingChanges
+                  }
                 >
-                  {isSavingChanges ? "Đang lưu..." : "Lưu thay đổi"}
+                  {isSavingChanges
+                    ? "Đang lưu thay đổi..."
+                    : hasPendingAdds
+                      ? `Lưu ${pendingAddStaffIds.length} nhân viên`
+                      : "Lưu thay đổi"}
                 </button>
                 <button className="btn-delete" onClick={openDeleteGroupConfirm}>
                   <Trash2 size={16} />

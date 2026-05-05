@@ -146,23 +146,93 @@ function toStartOfDay(date) {
   return d;
 }
 
-
-
 function buildAcknowledgementDeadline(baseTime, hours = 24) {
   return new Date(new Date(baseTime).getTime() + hours * 60 * 60 * 1000);
 }
 
 function assertAcknowledgementCanRespond(doc, employeeId) {
   if (!doc) throw new Error("SHIFT_ACKNOWLEDGEMENT_NOT_FOUND");
-  if (String(doc.employeeId) !== String(employeeId)) throw new Error("FORBIDDEN");
+  if (String(doc.employeeId) !== String(employeeId))
+    throw new Error("FORBIDDEN");
   if (doc.status === "accepted" || doc.status === "declined") {
     throw new Error("SHIFT_ACKNOWLEDGEMENT_ALREADY_RESPONDED");
   }
-  if (doc.status === "expired") throw new Error("SHIFT_ACKNOWLEDGEMENT_EXPIRED");
-  if (doc.status === "cancelled") throw new Error("SHIFT_ACKNOWLEDGEMENT_CANCELLED");
+  if (doc.status === "expired")
+    throw new Error("SHIFT_ACKNOWLEDGEMENT_EXPIRED");
+  if (doc.status === "cancelled")
+    throw new Error("SHIFT_ACKNOWLEDGEMENT_CANCELLED");
 }
+async function createStaffShiftInternal(input, ctx) {
+  requireAuth(ctx);
+  requireRoles(ctx, SCHEDULE_WRITE_ROLES);
+  const restaurantId = input.restaurantId;
+  const startTime = toValidDateTime(input.startTime, "Giờ bắt đầu ca");
+  const endTime = toValidDateTime(input.endTime, "Giờ kết thúc ca");
 
-async function ensureShiftAcknowledgement({ shift, publication, actorUserId, createdFrom = "publish", deadlineAt }) {
+  const publication = await getPublishedScheduleForShift({
+    restaurantId,
+    shiftTime: startTime,
+  });
+
+  if (publication) {
+    const effectiveStatus = resolveScheduleLifecycleStatus({
+      publication,
+      periodStart: publication.periodStart,
+      periodEnd: publication.periodEnd,
+    });
+    if (effectiveStatus !== "draft") {
+      throw new Error(
+        "Không thể tạo ca trực tiếp khi lịch không còn ở trạng thái bản nháp.",
+      );
+    }
+  }
+
+  await assertShiftAssignmentValid({
+    input: {
+      employeeId: input.employeeId,
+      restaurantId,
+      shiftType: input.shiftType,
+      startTime,
+      endTime,
+      allowOverride: input.allowOverride,
+      overrideReason: input.overrideReason,
+    },
+    ctx,
+  });
+  const staff = await Staff.findById(input.employeeId).lean();
+  if (!staff || staff.userType !== "STAFF") {
+    throw new Error("Staff not found");
+  }
+
+  const created = await Shift.create({
+    employeeId: input.employeeId,
+    restaurantId,
+    shiftType: input.shiftType.toString().toLowerCase(),
+    startTime,
+    endTime,
+    status: input.status || "scheduled",
+    notes: input.notes || "",
+  });
+
+  return {
+    id: String(created._id),
+    employeeId: String(created.employeeId),
+    employeeName: staff.fullName || null,
+    restaurantId: String(created.restaurantId),
+    shiftType: created.shiftType,
+    startTime: created.startTime,
+    endTime: created.endTime,
+    status: created.status,
+    notes: created.notes || "",
+  };
+}
+async function ensureShiftAcknowledgement({
+  shift,
+  publication,
+  actorUserId,
+  createdFrom = "publish",
+  deadlineAt,
+}) {
   const employeeId = toObjectId(shift.employeeId);
   if (!employeeId) return null;
   const filter = { shiftId: shift._id, employeeId };
@@ -175,21 +245,41 @@ async function ensureShiftAcknowledgement({ shift, publication, actorUserId, cre
       periodStart: publication?.periodStart || shift.startTime,
       periodEnd: publication?.periodEnd || shift.endTime,
       status: "pending",
-      deadlineAt: deadlineAt || buildAcknowledgementDeadline(publication?.publishedAt || new Date()),
+      deadlineAt:
+        deadlineAt ||
+        buildAcknowledgementDeadline(publication?.publishedAt || new Date()),
       createdFrom,
       createdBy: actorUserId,
     },
   };
-  return ShiftAcknowledgement.findOneAndUpdate(filter, update, { upsert: true, new: true });
+  return ShiftAcknowledgement.findOneAndUpdate(filter, update, {
+    upsert: true,
+    new: true,
+  });
 }
 
-
-async function markScheduleAcknowledgementsNeedReview({ restaurantId, publicationId, employeeIds = [] }) {
-  const ids = [...new Set(employeeIds.map((id) => String(id)).filter(Boolean))].map(toObjectId).filter(Boolean);
+async function markScheduleAcknowledgementsNeedReview({
+  restaurantId,
+  publicationId,
+  employeeIds = [],
+}) {
+  const ids = [...new Set(employeeIds.map((id) => String(id)).filter(Boolean))]
+    .map(toObjectId)
+    .filter(Boolean);
   if (!ids.length || !publicationId) return;
   await ScheduleAcknowledgement.updateMany(
-    { restaurantId, schedulePublicationId: publicationId, employeeId: { $in: ids } },
-    { $set: { status: "needs_review", changedAfterAcknowledgement: true, lastChangedAt: new Date() } },
+    {
+      restaurantId,
+      schedulePublicationId: publicationId,
+      employeeId: { $in: ids },
+    },
+    {
+      $set: {
+        status: "needs_review",
+        changedAfterAcknowledgement: true,
+        lastChangedAt: new Date(),
+      },
+    },
   );
 }
 
@@ -219,7 +309,9 @@ function toMinutes(ms) {
 
 function mapAttendanceOutput(timesheet, staff) {
   const isOffSchedule = Boolean(timesheet.isOffSchedule);
-  const storedApproval = String(timesheet.offScheduleApprovalStatus || "").toLowerCase();
+  const storedApproval = String(
+    timesheet.offScheduleApprovalStatus || "",
+  ).toLowerCase();
   const offScheduleApprovalStatus = !isOffSchedule
     ? "not_required"
     : Boolean(timesheet.approved)
@@ -564,7 +656,10 @@ async function getSchedulePublicationForShift({ restaurantId, shiftTime }) {
 }
 
 async function getPublishedScheduleForShift({ restaurantId, shiftTime }) {
-  const publication = await getSchedulePublicationForShift({ restaurantId, shiftTime });
+  const publication = await getSchedulePublicationForShift({
+    restaurantId,
+    shiftTime,
+  });
   if (!publication) return null;
   const effectiveStatus = resolveScheduleLifecycleStatus({
     publication,
@@ -593,7 +688,9 @@ function assertPublishedScheduleCanChange(publication) {
     if (effectiveStatus === "closed") {
       throw new Error("Lịch đã đóng, không thể chỉnh sửa từ lịch làm việc.");
     }
-    throw new Error("Lịch chưa công bố, vui lòng dùng luồng chỉnh sửa bản nháp.");
+    throw new Error(
+      "Lịch chưa công bố, vui lòng dùng luồng chỉnh sửa bản nháp.",
+    );
   }
 
   return effectiveStatus;
@@ -811,7 +908,22 @@ export const __testables = {
   formatEmployeeCode,
   getNextEmployeeCode,
 };
+function getBatchErrorCode(error) {
+  return (
+    error?.extensions?.code ||
+    error?.code ||
+    error?.name ||
+    "CREATE_STAFF_SHIFT_FAILED"
+  );
+}
 
+function getBatchErrorMessage(error) {
+  return (
+    error?.message ||
+    error?.extensions?.message ||
+    "Không thể tạo ca cho nhân viên này."
+  );
+}
 export default {
   // =========================
   // CREATE STAFF
@@ -1186,7 +1298,9 @@ export default {
       status: { $ne: "cancelled" },
     });
     if (shiftCount <= 0) {
-      throw new Error("Không thể công bố lịch rỗng. Cần có ít nhất 1 ca làm trong tuần.");
+      throw new Error(
+        "Không thể công bố lịch rỗng. Cần có ít nhất 1 ca làm trong tuần.",
+      );
     }
 
     const existingPublication = await SchedulePublication.findOne({
@@ -1364,10 +1478,20 @@ export default {
     if (!reason) throw new Error("Cần nhập lý do mở lại lịch để chỉnh sửa.");
     const periodStart = toStartOfDay(input.periodStart);
     const periodEnd = toEndOfDay(input.periodEnd);
-    const publication = await SchedulePublication.findOne({ restaurantId, periodStart, periodEnd });
-    if (!publication) throw new Error("Không tìm thấy lịch đã công bố để mở lại.");
-    const effectiveStatus = resolveScheduleLifecycleStatus({ publication, periodStart: publication.periodStart, periodEnd: publication.periodEnd });
-    if (effectiveStatus !== "published") throw new Error("Chỉ có thể mở lại lịch đang ở trạng thái đã công bố.");
+    const publication = await SchedulePublication.findOne({
+      restaurantId,
+      periodStart,
+      periodEnd,
+    });
+    if (!publication)
+      throw new Error("Không tìm thấy lịch đã công bố để mở lại.");
+    const effectiveStatus = resolveScheduleLifecycleStatus({
+      publication,
+      periodStart: publication.periodStart,
+      periodEnd: publication.periodEnd,
+    });
+    if (effectiveStatus !== "published")
+      throw new Error("Chỉ có thể mở lại lịch đang ở trạng thái đã công bố.");
     publication.status = "revision_draft";
     publication.reopenedAt = new Date();
     publication.reopenedBy = actorUserId;
@@ -1376,11 +1500,27 @@ export default {
     publication.lastChangedAt = new Date();
     await publication.save();
     await EventLog.create({
-      restaurantId, actorUserId, verb: "schedule.reopen",
-      object: { kind: "SchedulePublication", id: publication._id, code: `${periodStart.toISOString().slice(0, 10)}_${periodEnd.toISOString().slice(0, 10)}` },
-      source: "schedule-management", status: "success",
-      meta: { reason, periodStart, periodEnd, previousStatus: effectiveStatus, nextStatus: "revision_draft" },
-      diff: { before: { status: effectiveStatus }, after: { status: "revision_draft" } },
+      restaurantId,
+      actorUserId,
+      verb: "schedule.reopen",
+      object: {
+        kind: "SchedulePublication",
+        id: publication._id,
+        code: `${periodStart.toISOString().slice(0, 10)}_${periodEnd.toISOString().slice(0, 10)}`,
+      },
+      source: "schedule-management",
+      status: "success",
+      meta: {
+        reason,
+        periodStart,
+        periodEnd,
+        previousStatus: effectiveStatus,
+        nextStatus: "revision_draft",
+      },
+      diff: {
+        before: { status: effectiveStatus },
+        after: { status: "revision_draft" },
+      },
       at: new Date(),
     });
     return mapSchedulePublicationOutput(publication);
@@ -1430,68 +1570,81 @@ export default {
     return mapSchedulePublicationOutput(publication);
   },
   createStaffShift: async (_, { input }, ctx) => {
-    const restaurantId = input.restaurantId;
-    const startTime = toValidDateTime(input.startTime, "Giờ bắt đầu ca");
-    const endTime = toValidDateTime(input.endTime, "Giờ kết thúc ca");
+    const shift = await createStaffShiftInternal(input, ctx);
+    return mapStaffScheduleShiftOutput(shift);
+  },
+  createStaffShifts: async (_, { inputs }, ctx) => {
+    requireAuth(ctx);
+    requireRoles(ctx, SCHEDULE_WRITE_ROLES);
 
-    const publication = await getPublishedScheduleForShift({
-      restaurantId,
-      shiftTime: startTime,
+    const rows = Array.isArray(inputs) ? inputs : [];
+
+    if (!rows.length) {
+      throw new Error("Cần chọn ít nhất một nhân viên để tạo ca.");
+    }
+
+    const seenKeys = new Set();
+    const normalizedInputs = [];
+
+    rows.forEach((input, index) => {
+      const key = [
+        String(input?.employeeId || ""),
+        String(input?.restaurantId || ""),
+        String(input?.shiftType || ""),
+        String(input?.startTime || ""),
+        String(input?.endTime || ""),
+      ].join("|");
+
+      if (!input?.employeeId || !input?.restaurantId) {
+        normalizedInputs.push({ input, index, duplicate: false });
+        return;
+      }
+
+      if (seenKeys.has(key)) {
+        normalizedInputs.push({ input, index, duplicate: true });
+        return;
+      }
+
+      seenKeys.add(key);
+      normalizedInputs.push({ input, index, duplicate: false });
     });
 
-    if (publication) {
-      const effectiveStatus = resolveScheduleLifecycleStatus({
-        publication,
-        periodStart: publication.periodStart,
-        periodEnd: publication.periodEnd,
-      });
-      if (effectiveStatus !== "draft") {
-      throw new Error(
-        "Không thể tạo ca trực tiếp khi lịch không còn ở trạng thái bản nháp.",
-      );
+    const shifts = [];
+    const errors = [];
+
+    for (const row of normalizedInputs) {
+      const { input, index, duplicate } = row;
+
+      if (duplicate) {
+        errors.push({
+          index,
+          employeeId: input?.employeeId || null,
+          message: "Nhân viên này đã được chọn trùng trong cùng ca.",
+          code: "DUPLICATE_BATCH_EMPLOYEE",
+        });
+        continue;
+      }
+
+      try {
+        const createdShift = await createStaffShiftInternal(input, ctx);
+        shifts.push(createdShift);
+      } catch (error) {
+        errors.push({
+          index,
+          employeeId: input?.employeeId || null,
+          message: getBatchErrorMessage(error),
+          code: getBatchErrorCode(error),
+        });
       }
     }
 
-    await assertShiftAssignmentValid({
-      input: {
-        employeeId: input.employeeId,
-        restaurantId,
-        shiftType: input.shiftType,
-        startTime,
-        endTime,
-        allowOverride: input.allowOverride,
-        overrideReason: input.overrideReason,
-      },
-      ctx,
-    });
-    const staff = await Staff.findById(input.employeeId).lean();
-    if (!staff || staff.userType !== "STAFF") {
-      throw new Error("Staff not found");
-    }
-
-    const created = await Shift.create({
-      employeeId: input.employeeId,
-      restaurantId,
-      shiftType: input.shiftType.toString().toLowerCase(),
-      startTime,
-      endTime,
-      status: input.status || "scheduled",
-      notes: input.notes || "",
-    });
-
     return {
-      id: String(created._id),
-      employeeId: String(created.employeeId),
-      employeeName: staff.fullName || null,
-      restaurantId: String(created.restaurantId),
-      shiftType: created.shiftType,
-      startTime: created.startTime,
-      endTime: created.endTime,
-      status: created.status,
-      notes: created.notes || "",
+      successCount: shifts.length,
+      failedCount: errors.length,
+      shifts,
+      errors,
     };
   },
-
   updateStaffShift: async (_, { shiftId, input }, ctx) => {
     const oldShift = await Shift.findById(shiftId).lean();
     if (oldShift) {
@@ -1507,9 +1660,9 @@ export default {
           periodEnd: publication.periodEnd,
         });
         if (effectiveStatus !== "draft") {
-        throw new Error(
-          "Không thể sửa ca trực tiếp khi lịch không còn ở trạng thái bản nháp.",
-        );
+          throw new Error(
+            "Không thể sửa ca trực tiếp khi lịch không còn ở trạng thái bản nháp.",
+          );
         }
       }
     }
@@ -1734,7 +1887,11 @@ export default {
       ),
     ];
 
-    await markScheduleAcknowledgementsNeedReview({ restaurantId, publicationId: publication._id, employeeIds });
+    await markScheduleAcknowledgementsNeedReview({
+      restaurantId,
+      publicationId: publication._id,
+      employeeIds,
+    });
 
     if (input.notifyEmployees !== false && employeeIds.length > 0) {
       await Notification.insertMany(
@@ -1874,7 +2031,11 @@ export default {
     await Shift.deleteOne({ _id: shift._id });
 
     if (publication?._id && employeeId) {
-      await markScheduleAcknowledgementsNeedReview({ restaurantId: shift.restaurantId, publicationId: publication._id, employeeIds: [employeeId] });
+      await markScheduleAcknowledgementsNeedReview({
+        restaurantId: shift.restaurantId,
+        publicationId: publication._id,
+        employeeIds: [employeeId],
+      });
     }
 
     if (notifyEmployee && employeeId) {
@@ -2025,7 +2186,11 @@ export default {
       ),
     ];
 
-    await markScheduleAcknowledgementsNeedReview({ restaurantId, publicationId: publication._id, employeeIds });
+    await markScheduleAcknowledgementsNeedReview({
+      restaurantId,
+      publicationId: publication._id,
+      employeeIds,
+    });
 
     if (input.notifyEmployees !== false && employeeIds.length > 0) {
       await Notification.insertMany(
@@ -2192,7 +2357,9 @@ export default {
       status: { $ne: "cancelled" },
     });
     if (existingGroupCount <= 0) {
-      throw new Error("Lịch đã công bố. Không thể tạo ca mới từ khung trống. Chỉ được thêm nhân viên vào ca đã tồn tại.");
+      throw new Error(
+        "Lịch đã công bố. Không thể tạo ca mới từ khung trống. Chỉ được thêm nhân viên vào ca đã tồn tại.",
+      );
     }
 
     const shift = await Shift.create({
@@ -2205,7 +2372,11 @@ export default {
       notes: `Thêm sau khi lịch đã công bố. Lý do: ${reason}`,
     });
 
-    await markScheduleAcknowledgementsNeedReview({ restaurantId, publicationId: publication._id, employeeIds: [employeeId] });
+    await markScheduleAcknowledgementsNeedReview({
+      restaurantId,
+      publicationId: publication._id,
+      employeeIds: [employeeId],
+    });
 
     await ensureShiftAcknowledgement({
       shift,
@@ -2302,11 +2473,16 @@ export default {
     await doc.save();
     return doc;
   },
-  declineShiftAcknowledgement: async (_, { id, reasonCategory, reason }, ctx) => {
+  declineShiftAcknowledgement: async (
+    _,
+    { id, reasonCategory, reason },
+    ctx,
+  ) => {
     const employeeId = toObjectId(ctx?.user?.id || ctx?.user?._id);
     if (!employeeId) throw new Error("UNAUTHENTICATED");
     const normalizedReason = String(reason || "").trim();
-    if (!normalizedReason) throw new Error("SHIFT_ACKNOWLEDGEMENT_DECLINE_REASON_REQUIRED");
+    if (!normalizedReason)
+      throw new Error("SHIFT_ACKNOWLEDGEMENT_DECLINE_REASON_REQUIRED");
     const doc = await ShiftAcknowledgement.findById(id);
     assertAcknowledgementCanRespond(doc, employeeId);
     const now = new Date();
@@ -2322,18 +2498,51 @@ export default {
     // - late decline => EMPLOYEE_LATE_DECLINE (employee responsibility)
     return doc;
   },
-  acknowledgeMySchedule: async (_, { restaurantId, periodStart, periodEnd }, ctx) => {
+  acknowledgeMySchedule: async (
+    _,
+    { restaurantId, periodStart, periodEnd },
+    ctx,
+  ) => {
     requireAuth(ctx);
     requireRestaurantScope(ctx, restaurantId);
     const employeeId = toObjectId(ctx?.user?.id || ctx?.user?._id);
     if (!employeeId) throw new Error("Unauthorized.");
-    const publication = await SchedulePublication.findOne({ restaurantId: toObjectId(restaurantId) || restaurantId, periodStart: toStartOfDay(periodStart), periodEnd: toEndOfDay(periodEnd), status: { $in: ["published", "active"] } });
-    if (!publication) throw new Error("Lịch chưa được công bố nên không thể xác nhận.");
-    const hasShift = await Shift.exists({ restaurantId: publication.restaurantId, employeeId, startTime: { $gte: publication.periodStart, $lte: publication.periodEnd }, status: { $ne: "cancelled" } });
+    const publication = await SchedulePublication.findOne({
+      restaurantId: toObjectId(restaurantId) || restaurantId,
+      periodStart: toStartOfDay(periodStart),
+      periodEnd: toEndOfDay(periodEnd),
+      status: { $in: ["published", "active"] },
+    });
+    if (!publication)
+      throw new Error("Lịch chưa được công bố nên không thể xác nhận.");
+    const hasShift = await Shift.exists({
+      restaurantId: publication.restaurantId,
+      employeeId,
+      startTime: { $gte: publication.periodStart, $lte: publication.periodEnd },
+      status: { $ne: "cancelled" },
+    });
     if (!hasShift) throw new Error("Bạn không có ca trong tuần này.");
     return ScheduleAcknowledgement.findOneAndUpdate(
-      { restaurantId: publication.restaurantId, employeeId, schedulePublicationId: publication._id },
-      { $set: { periodStart: publication.periodStart, periodEnd: publication.periodEnd, status: "acknowledged", acknowledgedAt: new Date(), changedAfterAcknowledgement: false, lastChangedAt: publication.lastChangedAt || null }, $setOnInsert: { restaurantId: publication.restaurantId, employeeId, schedulePublicationId: publication._id } },
+      {
+        restaurantId: publication.restaurantId,
+        employeeId,
+        schedulePublicationId: publication._id,
+      },
+      {
+        $set: {
+          periodStart: publication.periodStart,
+          periodEnd: publication.periodEnd,
+          status: "acknowledged",
+          acknowledgedAt: new Date(),
+          changedAfterAcknowledgement: false,
+          lastChangedAt: publication.lastChangedAt || null,
+        },
+        $setOnInsert: {
+          restaurantId: publication.restaurantId,
+          employeeId,
+          schedulePublicationId: publication._id,
+        },
+      },
       { upsert: true, new: true },
     );
   },
@@ -2345,7 +2554,9 @@ export default {
       requireRestaurantScope(ctx, restaurantId);
       filter.restaurantId = toObjectId(restaurantId) || restaurantId;
     }
-    const res = await ShiftAcknowledgement.updateMany(filter, { $set: { status: "expired" } });
+    const res = await ShiftAcknowledgement.updateMany(filter, {
+      $set: { status: "expired" },
+    });
     return Number(res.modifiedCount || 0);
   },
   updateSchedulingPolicy: async (_, { restaurantId, input }, ctx) => {
@@ -2818,12 +3029,20 @@ export default {
     return markPerformanceIncidentEligibleService({ input, ctx });
   },
   applyPerformanceIncidentScore: async (_, { input }, ctx) => {
-    return applyPerformanceIncidentScoreService({ incidentId: input.incidentId, actor: ctx?.user, note: input.note });
+    return applyPerformanceIncidentScoreService({
+      incidentId: input.incidentId,
+      actor: ctx?.user,
+      note: input.note,
+    });
   },
-  createPerformanceIncidentAppeal: async (_, { input }, ctx) => createPerformanceIncidentAppeal(input, ctx?.user),
-  cancelPerformanceIncidentAppeal: async (_, { appealId }, ctx) => cancelPerformanceIncidentAppeal(appealId, ctx?.user),
-  reviewPerformanceIncidentAppeal: async (_, { input }, ctx) => reviewPerformanceIncidentAppeal(input, ctx?.user),
-  reverseScoreForAcceptedAppeal: async (_, { input }, ctx) => reverseScoreForAcceptedAppealService({ ...input, actor: ctx?.user }),
+  createPerformanceIncidentAppeal: async (_, { input }, ctx) =>
+    createPerformanceIncidentAppeal(input, ctx?.user),
+  cancelPerformanceIncidentAppeal: async (_, { appealId }, ctx) =>
+    cancelPerformanceIncidentAppeal(appealId, ctx?.user),
+  reviewPerformanceIncidentAppeal: async (_, { input }, ctx) =>
+    reviewPerformanceIncidentAppeal(input, ctx?.user),
+  reverseScoreForAcceptedAppeal: async (_, { input }, ctx) =>
+    reverseScoreForAcceptedAppealService({ ...input, actor: ctx?.user }),
 
   createOvertimeRequest: async (_, { input }, ctx) => {
     return createOvertimeRequestService({ input, ctx });
@@ -2856,7 +3075,9 @@ export default {
       throw new Error("Invalid employeeId or restaurantId");
     const roles = resolveUserRoles(ctx.user);
     const actorId = toObjectId(ctx?.user?.id || ctx?.user?._id);
-    const isSelfRole = roles.some((role) => ATTENDANCE_SELF_ROLES.includes(role));
+    const isSelfRole = roles.some((role) =>
+      ATTENDANCE_SELF_ROLES.includes(role),
+    );
     const isOperationRole = roles.some((role) =>
       ATTENDANCE_OPERATION_ROLES.includes(role),
     );
@@ -3006,14 +3227,21 @@ export default {
           restaurantId,
           employeeId,
           actorId,
-          actorRole: String(ctx?.user?.roleName || ctx?.user?.userType || "").toLowerCase(),
+          actorRole: String(
+            ctx?.user?.roleName || ctx?.user?.userType || "",
+          ).toLowerCase(),
           sourceType: "off_schedule_attendance",
           sourceId: String(record._id),
           eventType: "OFF_SCHEDULE_CREATED",
           severity: "warning",
           responsibilityStatus: "pending_review",
           scoreImpactStatus: "pending",
-          metadata: { workDate, timesheetId: String(record._id), reasonCategory: record.offScheduleReasonCategory, reason: record.offScheduleReason || "" },
+          metadata: {
+            workDate,
+            timesheetId: String(record._id),
+            reasonCategory: record.offScheduleReasonCategory,
+            reason: record.offScheduleReason || "",
+          },
         });
       } catch (error) {
         console.warn("Failed to log performance incident:", error.message);
@@ -3037,7 +3265,8 @@ export default {
     if (!userCanAccessRestaurant(ctx.user, record.restaurantId)) {
       throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
     }
-    if (!record.isOffSchedule) throw new Error("OFF_SCHEDULE_ATTENDANCE_REQUIRED");
+    if (!record.isOffSchedule)
+      throw new Error("OFF_SCHEDULE_ATTENDANCE_REQUIRED");
     if (record.offScheduleApprovalStatus === "rejected") {
       throw new Error("OFF_SCHEDULE_ATTENDANCE_ALREADY_REJECTED");
     }
@@ -3056,7 +3285,9 @@ export default {
         restaurantId: record.restaurantId,
         employeeId: record.employeeId,
         actorId: toObjectId(ctx?.user?.id || ctx?.user?._id),
-        actorRole: String(ctx?.user?.roleName || ctx?.user?.userType || "").toLowerCase(),
+        actorRole: String(
+          ctx?.user?.roleName || ctx?.user?.userType || "",
+        ).toLowerCase(),
         sourceType: "off_schedule_attendance",
         sourceId: String(record._id),
         eventType: "OFF_SCHEDULE_APPROVED",
@@ -3084,7 +3315,8 @@ export default {
     if (!userCanAccessRestaurant(ctx.user, record.restaurantId)) {
       throw new Error("RESTAURANT_SCOPE_FORBIDDEN");
     }
-    if (!record.isOffSchedule) throw new Error("OFF_SCHEDULE_ATTENDANCE_REQUIRED");
+    if (!record.isOffSchedule)
+      throw new Error("OFF_SCHEDULE_ATTENDANCE_REQUIRED");
     if (record.approved || record.offScheduleApprovalStatus === "approved") {
       throw new Error("OFF_SCHEDULE_ATTENDANCE_ALREADY_APPROVED");
     }
@@ -3099,7 +3331,9 @@ export default {
         restaurantId: record.restaurantId,
         employeeId: record.employeeId,
         actorId: toObjectId(ctx?.user?.id || ctx?.user?._id),
-        actorRole: String(ctx?.user?.roleName || ctx?.user?.userType || "").toLowerCase(),
+        actorRole: String(
+          ctx?.user?.roleName || ctx?.user?.userType || "",
+        ).toLowerCase(),
         sourceType: "off_schedule_attendance",
         sourceId: String(record._id),
         eventType: "OFF_SCHEDULE_REJECTED",
