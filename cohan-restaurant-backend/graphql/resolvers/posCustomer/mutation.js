@@ -17,8 +17,9 @@ function sourceOf(value) {
   return ["POS", "DELIVERY", "TAKEAWAY"].includes(key) ? key : "POS";
 }
 
-function safeFields(input = {}) {
-  const fields = { isActive: true, source: sourceOf(input.source) };
+function safeFields(input = {}, includeDefaultSource = false) {
+  const fields = { isActive: true };
+  if (clean(input.source) || includeDefaultSource) fields.source = sourceOf(input.source);
   const fullName = clean(input.fullName);
   if (fullName) fields.fullName = fullName;
   const email = clean(input.email).toLowerCase();
@@ -48,9 +49,9 @@ export const PosCustomerMutation = {
     const phone = normalizePosCustomerPhone(input && input.phone);
     if (!phone) throw new Error("phone is required");
 
-    const fields = safeFields(input || {});
     const existing = await PosCustomer.findOne({ restaurantId: rid, phone });
     if (existing) {
+      const fields = safeFields(input || {}, false);
       for (const key of Object.keys(fields)) existing[key] = fields[key];
       existing.addressBook = nextAddressBook(existing.addressBook, input && input.defaultAddress);
       await existing.save();
@@ -60,7 +61,7 @@ export const PosCustomerMutation = {
     const created = await PosCustomer.create({
       restaurantId: rid,
       phone,
-      ...fields,
+      ...safeFields(input || {}, true),
       addressBook: nextAddressBook([], input && input.defaultAddress),
     });
     return created.toObject({ virtuals: true });
