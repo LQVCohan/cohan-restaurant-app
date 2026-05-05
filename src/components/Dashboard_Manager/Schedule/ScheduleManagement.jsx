@@ -1426,12 +1426,21 @@ const ScheduleManagement = ({ readOnly = false }) => {
   ]);
   const managerScheduleWeekWindow = useMemo(() => {
     const windows = managerAvailabilityWindowsData?.availabilityWindows || [];
-    return windows.find((item) => {
-      const start = new Date(item.periodStart);
-      const end = new Date(item.periodEnd);
-      return start.getTime() === currentWeekStart.getTime() && end.getTime() === currentWeekEnd.getTime();
-    }) || null;
-  }, [currentWeekEnd, currentWeekStart, managerAvailabilityWindowsData?.availabilityWindows]);
+    return (
+      windows.find((item) => {
+        const start = new Date(item.periodStart);
+        const end = new Date(item.periodEnd);
+        return (
+          start.getTime() === currentWeekStart.getTime() &&
+          end.getTime() === currentWeekEnd.getTime()
+        );
+      }) || null
+    );
+  }, [
+    currentWeekEnd,
+    currentWeekStart,
+    managerAvailabilityWindowsData?.availabilityWindows,
+  ]);
 
   const {
     data: managerAvailabilitySubmissionsData,
@@ -1583,17 +1592,30 @@ const ScheduleManagement = ({ readOnly = false }) => {
         left.shiftType.localeCompare(right.shiftType),
     );
   }, [shiftsData, staff]);
+
+  const selectedShiftForModal = useMemo(() => {
+    if (!selectedShift?.id) return null;
+
+    return (
+      shifts.find((item) => String(item.id) === String(selectedShift.id)) ||
+      selectedShift
+    );
+  }, [selectedShift, shifts]);
   const managerAvailabilitySubmissions =
     managerAvailabilitySubmissionsData?.staffAvailabilitySubmissions || [];
-  const { data: managerScheduleWeekSubmissionsData } = useQuery(GET_AVAILABILITY_SUBMISSIONS, {
-    variables: {
-      restaurantId: effectiveRestaurantId,
-      windowId: managerScheduleWeekWindow?.id,
+  const { data: managerScheduleWeekSubmissionsData } = useQuery(
+    GET_AVAILABILITY_SUBMISSIONS,
+    {
+      variables: {
+        restaurantId: effectiveRestaurantId,
+        windowId: managerScheduleWeekWindow?.id,
+      },
+      fetchPolicy: "network-only",
+      skip: !effectiveRestaurantId || !managerScheduleWeekWindow?.id,
     },
-    fetchPolicy: "network-only",
-    skip: !effectiveRestaurantId || !managerScheduleWeekWindow?.id,
-  });
-  const managerScheduleWeekSubmissions = managerScheduleWeekSubmissionsData?.staffAvailabilitySubmissions || [];
+  );
+  const managerScheduleWeekSubmissions =
+    managerScheduleWeekSubmissionsData?.staffAvailabilitySubmissions || [];
   const partTimeStaff = useMemo(
     () =>
       staff.filter((person) =>
@@ -1694,8 +1716,10 @@ const ScheduleManagement = ({ readOnly = false }) => {
       : SCHEDULE_STATUS_LABELS[scheduleLifecycleStatus] || "Bản nháp";
   const selectedShiftIds = useMemo(
     () =>
-      (selectedShift?.records || []).map((record) => record.id).filter(Boolean),
-    [selectedShift],
+      (selectedShiftForModal?.records || [])
+        .map((record) => record.id)
+        .filter(Boolean),
+    [selectedShiftForModal],
   );
 
   const daysUntilRangeStart = useMemo(() => {
@@ -2042,7 +2066,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
       limit: 50,
     },
     skip:
-      !effectiveRestaurantId || !selectedShift || selectedShiftIds.length <= 0,
+      !effectiveRestaurantId ||
+      !selectedShiftForModal ||
+      selectedShiftIds.length <= 0,
     fetchPolicy: "network-only",
   });
   const selectedShiftChangeLogs = scheduleLogData?.scheduleChangeLogs || [];
@@ -2840,8 +2866,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
     const shiftGroup = shifts.find((item) => item.id === shiftGroupId);
 
     if (!shiftGroup) {
-      showNotification("Không tìm thấy ca làm cần cập nhật.", "error");
-      throw new Error("Không tìm thấy ca làm cần cập nhật.");
+      const message = "Không tìm thấy ca làm cần cập nhật.";
+      showNotification(message, "error");
+      throw new Error(message);
     }
 
     const selectedStaff = staff.find(
@@ -2849,35 +2876,37 @@ const ScheduleManagement = ({ readOnly = false }) => {
     );
 
     if (!selectedStaff) {
-      showNotification("Không tìm thấy nhân viên cần thêm vào ca.", "error");
-      throw new Error("Không tìm thấy nhân viên cần thêm vào ca.");
+      const message = "Không tìm thấy nhân viên cần thêm vào ca.";
+      showNotification(message, "error");
+      throw new Error(message);
     }
 
-    const { startTime, endTime } = buildShiftRange({
-      date: shiftGroup.date,
-      startTimeText: shiftGroup.startTime,
-      endTimeText: shiftGroup.endTime,
-    });
+    let range;
 
     try {
-      if (["draft", "revision_draft"].includes(scheduleLifecycleStatus)) {
-        await createShift({
-          variables: {
-            input: {
-              employeeId: staffId,
-              restaurantId: effectiveRestaurantId,
-              shiftType: String(shiftGroup.shiftType || "").toUpperCase(),
-              startTime: startTime.toISOString(),
-              endTime: endTime.toISOString(),
-              status: "scheduled",
-            },
-          },
-        });
-      } else if (
-        ["published", "revision_draft", "active"].includes(
-          scheduleLifecycleStatus,
-        )
-      ) {
+      range = buildShiftRange({
+        date: shiftGroup.date,
+        startTimeText: shiftGroup.startTime,
+        endTimeText: shiftGroup.endTime,
+      });
+    } catch (error) {
+      const message = getGraphQLErrorMessage(error, "Giờ ca làm không hợp lệ.");
+
+      showNotification(message, "error");
+      throw new Error(message);
+    }
+
+    const { startTime, endTime } = range;
+    const normalizedLifecycleStatus = String(
+      scheduleLifecycleStatus || "draft",
+    ).toLowerCase();
+
+    const normalizedShiftType = String(
+      shiftGroup.shiftType || "",
+    ).toUpperCase();
+
+    try {
+      if (["published", "active"].includes(normalizedLifecycleStatus)) {
         const reason = String(options.reason || "").trim();
 
         if (!reason) {
@@ -2891,13 +2920,13 @@ const ScheduleManagement = ({ readOnly = false }) => {
             input: {
               restaurantId: effectiveRestaurantId,
               employeeId: staffId,
-              shiftType: String(shiftGroup.shiftType || "").toUpperCase(),
+              shiftType: normalizedShiftType,
               startTime: startTime.toISOString(),
               endTime: endTime.toISOString(),
-              reason: reason || "Cập nhật ca đã công bố",
+              reason,
               notifyEmployee: options.notifyEmployee !== false,
               allowOverride: Boolean(options.allowOverride),
-              overrideReason: options.overrideReason || reason,
+              overrideReason: String(options.overrideReason || reason).trim(),
             },
           },
         });
@@ -2914,23 +2943,29 @@ const ScheduleManagement = ({ readOnly = false }) => {
         return;
       }
 
-      await createShift({
-        variables: {
-          input: {
-            employeeId: staffId,
-            restaurantId: effectiveRestaurantId,
-            shiftType: String(shiftGroup.shiftType || "").toUpperCase(),
-            startTime: startTime.toISOString(),
-            endTime: endTime.toISOString(),
-            status: "scheduled",
-            notes: options.reason ? `Lý do thêm ca: ${options.reason}` : "",
+      if (["draft", "revision_draft"].includes(normalizedLifecycleStatus)) {
+        await createShift({
+          variables: {
+            input: {
+              employeeId: staffId,
+              restaurantId: effectiveRestaurantId,
+              shiftType: normalizedShiftType,
+              startTime: startTime.toISOString(),
+              endTime: endTime.toISOString(),
+              status: "scheduled",
+              notes: options.reason ? `Lý do thêm ca: ${options.reason}` : "",
+            },
           },
-        },
-      });
+        });
 
-      await refetch();
+        await refetch();
 
-      showNotification(`Đã thêm ${selectedStaff.name} vào ca.`, "success");
+        showNotification(`Đã thêm ${selectedStaff.name} vào ca.`, "success");
+
+        return;
+      }
+
+      throw new Error("Không thể thêm nhân viên ở trạng thái lịch hiện tại.");
     } catch (error) {
       const message = getGraphQLErrorMessage(
         error,
@@ -4234,7 +4269,7 @@ const ScheduleManagement = ({ readOnly = false }) => {
       <ShiftDetailModal
         isOpen={Boolean(selectedShift)}
         onClose={() => setSelectedShift(null)}
-        shift={selectedShift}
+        shift={selectedShiftForModal}
         staffList={staff}
         readOnly={readOnly}
         onRemoveStaff={handleRemoveStaffFromShift}
@@ -4373,7 +4408,9 @@ const ScheduleManagement = ({ readOnly = false }) => {
                 ]
                   .filter((group) => group.items.length > 0)
                   .map((group) => {
-                    const isExpanded = Boolean(expandedWarningGroups[group.key]);
+                    const isExpanded = Boolean(
+                      expandedWarningGroups[group.key],
+                    );
                     const visibleItems = isExpanded
                       ? group.items
                       : group.items.slice(0, 3);

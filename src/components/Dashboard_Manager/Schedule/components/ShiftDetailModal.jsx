@@ -56,7 +56,8 @@ const getScheduleLogLabel = (verb) => {
     "schedule.publish": "Công bố lịch",
     "schedule.published_shift_time_change": "Đổi giờ ca đã công bố",
     "schedule.published_shift_add_employee": "Thêm nhân viên vào ca đã công bố",
-    "schedule.published_shift_remove_employee": "Gỡ nhân viên khỏi ca đã công bố",
+    "schedule.published_shift_remove_employee":
+      "Gỡ nhân viên khỏi ca đã công bố",
     "schedule.shift_remove_employee": "Gỡ nhân viên khỏi ca",
     "schedule.published_shift_group_delete": "Xóa ca đã công bố",
     "schedule.lock": "Khóa lịch",
@@ -120,31 +121,46 @@ const ShiftDetailModal = ({
   const [addReason, setAddReason] = useState("");
   const [isAddingStaff, setIsAddingStaff] = useState(false);
   const [addStaffError, setAddStaffError] = useState("");
-
+  const [pendingAddStaffIds, setPendingAddStaffIds] = useState([]);
+  const [saveChangesError, setSaveChangesError] = useState("");
+  const [isSavingChanges, setIsSavingChanges] = useState(false);
   const [deleteGroupOpen, setDeleteGroupOpen] = useState(false);
   const [deleteGroupReason, setDeleteGroupReason] = useState("");
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [isRemovingStaff, setIsRemovingStaff] = useState(false);
-  const effectivePermissions =
-    schedulePermissions || {
-      canChangeShiftTime: scheduleLifecycleStatus === "published",
-      canAddStaffToShift:
-        scheduleLifecycleStatus === "draft" ||
-        scheduleLifecycleStatus === "published",
-      canRemoveStaffFromShift:
-        scheduleLifecycleStatus === "draft" ||
-        scheduleLifecycleStatus === "published",
-      canDeleteShiftGroup:
-        scheduleLifecycleStatus === "draft" ||
-        scheduleLifecycleStatus === "published",
-      isReadOnly: ["active", "locked", "closed"].includes(
-        scheduleLifecycleStatus,
-      ),
-    };
+  const effectivePermissions = schedulePermissions || {
+    canChangeShiftTime: scheduleLifecycleStatus === "published",
+    canAddStaffToShift:
+      scheduleLifecycleStatus === "draft" ||
+      scheduleLifecycleStatus === "published",
+    canRemoveStaffFromShift:
+      scheduleLifecycleStatus === "draft" ||
+      scheduleLifecycleStatus === "published",
+    canDeleteShiftGroup:
+      scheduleLifecycleStatus === "draft" ||
+      scheduleLifecycleStatus === "published",
+    isReadOnly: ["active", "locked", "closed"].includes(
+      scheduleLifecycleStatus,
+    ),
+  };
   const modalReadOnly = readOnly || effectivePermissions.isReadOnly;
-  const requiresChangeReason = Boolean(effectivePermissions.requiresChangeReason);
-  const shouldNotifyEmployees = Boolean(effectivePermissions.requiresEmployeeNotification);
+  const requiresChangeReason = Boolean(
+    effectivePermissions.requiresChangeReason,
+  );
+  const shouldNotifyEmployees = Boolean(
+    effectivePermissions.requiresEmployeeNotification,
+  );
   const shiftStaffIds = useMemo(() => shift?.staffIds || [], [shift?.staffIds]);
+  const effectiveShiftStaffIds = useMemo(() => {
+    const currentIds = (shiftStaffIds || []).map((item) => String(item));
+    const pendingIds = (pendingAddStaffIds || []).map((item) => String(item));
+
+    return Array.from(new Set([...currentIds, ...pendingIds]));
+  }, [shiftStaffIds, pendingAddStaffIds]);
+
+  const hasPendingAdds = pendingAddStaffIds.length > 0;
+  const hasNoteChanged = noteDraft !== (shift?.notes || "");
+  const hasPendingChanges = hasPendingAdds || hasNoteChanged;
   const shiftEssentialJobs = useMemo(
     () => shift?.essentialJobs || [],
     [shift?.essentialJobs],
@@ -153,16 +169,20 @@ const ShiftDetailModal = ({
   const availableStaff = useMemo(() => {
     if (!shift || readOnly) return [];
 
+    const currentStaffSet = new Set(
+      (effectiveShiftStaffIds || []).map((item) => String(item)),
+    );
+
     return staffList.filter((staff) => {
-      const notInShift = !shiftStaffIds.includes(staff.id);
+      const notInShift = !currentStaffSet.has(String(staff.id));
       const matchSearch = staff.name
         .toLowerCase()
         .includes(search.toLowerCase());
       const matchJob = jobFilter ? staff.job === jobFilter : true;
+
       return notInShift && matchSearch && matchJob;
     });
-  }, [jobFilter, readOnly, search, shift, shiftStaffIds, staffList]);
-
+  }, [effectiveShiftStaffIds, jobFilter, readOnly, search, shift, staffList]);
   useEffect(() => {
     setNoteDraft(shift?.notes || "");
 
@@ -187,6 +207,9 @@ const ShiftDetailModal = ({
     setAddReason("");
     setIsAddingStaff(false);
     setAddStaffError("");
+    setPendingAddStaffIds([]);
+    setSaveChangesError("");
+    setIsSavingChanges(false);
     setDeleteGroupOpen(false);
     setDeleteGroupReason("");
     setIsDeletingGroup(false);
@@ -198,16 +221,51 @@ const ShiftDetailModal = ({
     shiftConfig[shift.shiftType] || shiftTypes[shift.shiftType];
   const missingCount = Math.max(
     0,
-    shiftEssentialJobs.length - shiftStaffIds.length,
+    shiftEssentialJobs.length - effectiveShiftStaffIds.length,
   );
   const isComplete = missingCount === 0;
 
-  const handleSaveNotes = async () => {
-    if (modalReadOnly || !onUpdateNotes) return;
-    setIsSavingNotes(true);
+  const handleSaveChanges = async () => {
+    if (modalReadOnly || isSavingChanges) return;
+
+    const shouldSaveNotes = noteDraft !== (shift?.notes || "");
+    const staffIdsToAdd = [...pendingAddStaffIds];
+
+    if (!shouldSaveNotes && staffIdsToAdd.length === 0) {
+      return;
+    }
+
+    if (shouldSaveNotes && !onUpdateNotes) {
+      setSaveChangesError("Không thể lưu ghi chú ca ở trạng thái hiện tại.");
+      return;
+    }
+
+    if (staffIdsToAdd.length > 0 && !onAddStaff) {
+      setSaveChangesError(
+        "Không thể thêm nhân viên vào ca ở trạng thái hiện tại.",
+      );
+      return;
+    }
+
+    setSaveChangesError("");
+    setAddStaffError("");
+    setIsSavingChanges(true);
+    setIsSavingNotes(shouldSaveNotes);
+
     try {
-      await onUpdateNotes(noteDraft);
+      if (shouldSaveNotes) {
+        await onUpdateNotes(noteDraft);
+      }
+
+      for (const staffId of staffIdsToAdd) {
+        await onAddStaff(shift.id, staffId);
+      }
+
+      setPendingAddStaffIds([]);
+    } catch (error) {
+      setSaveChangesError(error?.message || "Không thể lưu thay đổi ca.");
     } finally {
+      setIsSavingChanges(false);
       setIsSavingNotes(false);
     }
   };
@@ -279,7 +337,12 @@ const ShiftDetailModal = ({
     }
   };
   const openTimeChangeModal = () => {
-    if (modalReadOnly || !onChangeShiftGroupTime || !effectivePermissions.canChangeShiftTime) return;
+    if (
+      modalReadOnly ||
+      !onChangeShiftGroupTime ||
+      !effectivePermissions.canChangeShiftTime
+    )
+      return;
 
     setTimeChangeDraft({
       startTime: shift?.startTime || "",
@@ -300,7 +363,12 @@ const ShiftDetailModal = ({
   };
 
   const handleConfirmTimeChange = async () => {
-    if (modalReadOnly || !onChangeShiftGroupTime || !effectivePermissions.canChangeShiftTime) return;
+    if (
+      modalReadOnly ||
+      !onChangeShiftGroupTime ||
+      !effectivePermissions.canChangeShiftTime
+    )
+      return;
 
     if (!timeChangeDraft.startTime || !timeChangeDraft.endTime) {
       setTimeChangeError("Cần nhập đủ giờ bắt đầu và giờ kết thúc.");
@@ -345,8 +413,18 @@ const ShiftDetailModal = ({
       setIsSubmittingTimeChange(false);
     }
   };
-  const handleAddCandidate = (person) => {
-    if (modalReadOnly || !onAddStaff || !effectivePermissions.canAddStaffToShift) return;
+  const handleAddCandidate = async (person) => {
+    if (
+      modalReadOnly ||
+      !onAddStaff ||
+      !effectivePermissions.canAddStaffToShift ||
+      isAddingStaff ||
+      isAddingPublishedStaff
+    ) {
+      return;
+    }
+
+    setAddStaffError("");
 
     if (isSchedulePublished) {
       setAddConfirm(person);
@@ -354,11 +432,21 @@ const ShiftDetailModal = ({
       return;
     }
 
-    Promise.resolve(onAddStaff(shift.id, person.id)).catch((error) => {
-      setAddStaffError(error?.message || "Không thể thêm nhân viên vào ca.");
-    });
-  };
+    setIsAddingStaff(true);
 
+    try {
+      await onAddStaff(shift.id, person.id);
+    } catch (error) {
+      setAddStaffError(error?.message || "Không thể thêm nhân viên vào ca.");
+    } finally {
+      setIsAddingStaff(false);
+    }
+  };
+  const handleRemovePendingStaff = (staffId) => {
+    setPendingAddStaffIds((prev) =>
+      (prev || []).filter((item) => String(item) !== String(staffId)),
+    );
+  };
   const closeAddConfirm = () => {
     if (isAddingStaff || isAddingPublishedStaff) return;
     setAddConfirm(null);
@@ -369,7 +457,7 @@ const ShiftDetailModal = ({
     if (!addConfirm || readOnly || !onAddStaff) return;
 
     if (!addReason.trim()) return;
-
+    setAddStaffError("");
     setIsAddingStaff(true);
 
     try {
@@ -389,7 +477,12 @@ const ShiftDetailModal = ({
   };
 
   const openDeleteGroupConfirm = () => {
-    if (modalReadOnly || !onDeleteShift || !effectivePermissions.canDeleteShiftGroup) return;
+    if (
+      modalReadOnly ||
+      !onDeleteShift ||
+      !effectivePermissions.canDeleteShiftGroup
+    )
+      return;
     setDeleteGroupOpen(true);
     setDeleteGroupReason("");
   };
@@ -401,7 +494,12 @@ const ShiftDetailModal = ({
   };
 
   const handleConfirmDeleteGroup = async () => {
-    if (modalReadOnly || !onDeleteShift || !effectivePermissions.canDeleteShiftGroup) return;
+    if (
+      modalReadOnly ||
+      !onDeleteShift ||
+      !effectivePermissions.canDeleteShiftGroup
+    )
+      return;
 
     if (requiresChangeReason && !deleteGroupReason.trim()) return;
 
@@ -446,7 +544,8 @@ const ShiftDetailModal = ({
                   {currentShiftType?.label}
                 </span>
                 <h3 className="shift-name">
-                  {formatDate(shift.date)}{getDayName(shift.date) ? ` • ${getDayName(shift.date)}` : ""}
+                  {formatDate(shift.date)}
+                  {getDayName(shift.date) ? ` • ${getDayName(shift.date)}` : ""}
                 </h3>
 
                 <div className="summary-meta">
@@ -514,29 +613,48 @@ const ShiftDetailModal = ({
 
           <div className="section-block">
             <div className="section-header">
-              <h4>Nhân viên trong ca ({shiftStaffIds.length})</h4>
+              <h4>Nhân viên trong ca ({effectiveShiftStaffIds.length})</h4>
             </div>
 
             <div className="assigned-list">
-              {shiftStaffIds.length > 0 ? (
-                shiftStaffIds.map((staffId) => {
+              {effectiveShiftStaffIds.length > 0 ? (
+                effectiveShiftStaffIds.map((staffId) => {
                   const person = staffList.find(
                     (staff) => staff.id === staffId,
                   );
                   if (!person) return null;
-
+                  const isPendingAdd = pendingAddStaffIds
+                    .map((item) => String(item))
+                    .includes(String(staffId));
                   return (
                     <div key={staffId} className="staff-row assigned">
                       <div className="info">
                         <div className="avatar">{getInitials(person.name)}</div>
                         <div className="details">
                           <span className="name">{person.name}</span>
-                          <span className="role">{`${getJobName(person.roleSlug || person.job)} · ${person.departmentLabel || "Khác"}`}</span>
+                          <span className="role">
+                            {`${getJobName(person.roleSlug || person.job)} · ${
+                              person.departmentLabel || "Khác"
+                            }`}
+                          </span>
+                          {isPendingAdd ? (
+                            <span className="tag-pending">Chưa lưu</span>
+                          ) : null}
                         </div>
                       </div>
-                      {!modalReadOnly &&
-                      effectivePermissions.canRemoveStaffFromShift ? (
+                      {isPendingAdd ? (
                         <button
+                          type="button"
+                          className="btn-icon remove"
+                          onClick={() => handleRemovePendingStaff(staffId)}
+                          title="Bỏ khỏi danh sách chờ lưu"
+                        >
+                          <X size={18} />
+                        </button>
+                      ) : !modalReadOnly &&
+                        effectivePermissions.canRemoveStaffFromShift ? (
+                        <button
+                          type="button"
                           className="btn-icon remove"
                           onClick={() => openRemoveConfirm(person)}
                           title="Xóa khỏi ca"
@@ -616,7 +734,9 @@ const ShiftDetailModal = ({
               </div>
 
               <div className="candidate-list">
-                {addStaffError ? <div className="submit-error">{addStaffError}</div> : null}
+                {addStaffError ? (
+                  <div className="submit-error">{addStaffError}</div>
+                ) : null}
                 {availableStaff.length > 0 ? (
                   availableStaff.map((person) => {
                     const isRecommended = shiftEssentialJobs.includes(
@@ -638,8 +758,21 @@ const ShiftDetailModal = ({
                           </div>
                         </div>
                         <button
+                          type="button"
                           className="btn-icon add"
                           onClick={() => handleAddCandidate(person)}
+                          disabled={
+                            isAddingStaff ||
+                            isAddingPublishedStaff ||
+                            isSavingChanges
+                          }
+                          title={
+                            isAddingStaff ||
+                            isAddingPublishedStaff ||
+                            isSavingChanges
+                              ? "Đang xử lý..."
+                              : "Thêm tạm vào ca"
+                          }
                         >
                           <Plus size={18} />
                         </button>
@@ -653,6 +786,9 @@ const ShiftDetailModal = ({
                 )}
               </div>
             </div>
+          ) : null}
+          {saveChangesError ? (
+            <div className="submit-error">{saveChangesError}</div>
           ) : null}
           {timeChangeOpen ? (
             <div className="time-change-backdrop">
@@ -847,7 +983,9 @@ const ShiftDetailModal = ({
                     Hệ thống sẽ validate nhân viên này, ghi log và gửi thông báo
                     đến nhân viên được thêm.
                   </div>
-
+                  {addStaffError ? (
+                    <div className="submit-error">{addStaffError}</div>
+                  ) : null}
                   <div className="remove-confirm-actions">
                     <button
                       type="button"
@@ -1035,7 +1173,9 @@ const ShiftDetailModal = ({
             </div>
 
             {scheduleChangeLogsLoading ? (
-              <div className="empty-placeholder">Đang tải lịch sử thay đổi...</div>
+              <div className="empty-placeholder">
+                Đang tải lịch sử thay đổi...
+              </div>
             ) : scheduleChangeLogs.length <= 0 ? (
               <div className="empty-placeholder">
                 Chưa có lịch sử thay đổi cho ca này.
@@ -1053,14 +1193,16 @@ const ShiftDetailModal = ({
                       <div className="log-content">
                         <div className="log-head">
                           <strong>{getScheduleLogLabel(log.verb)}</strong>
-                          <span>{formatLogDateTime(log.at || log.createdAt)}</span>
+                          <span>
+                            {formatLogDateTime(log.at || log.createdAt)}
+                          </span>
                         </div>
 
                         {hasTimeChange ? (
                           <div className="log-time-change">
-                            {formatTimeOnly(log.oldStartTime)} - {" "}
-                            {formatTimeOnly(log.oldEndTime)} → {" "}
-                            {formatTimeOnly(log.newStartTime)} - {" "}
+                            {formatTimeOnly(log.oldStartTime)} -{" "}
+                            {formatTimeOnly(log.oldEndTime)} →{" "}
+                            {formatTimeOnly(log.newStartTime)} -{" "}
                             {formatTimeOnly(log.newEndTime)}
                           </div>
                         ) : null}
@@ -1073,7 +1215,8 @@ const ShiftDetailModal = ({
                           {Array.isArray(log.affectedEmployeeIds) &&
                           log.affectedEmployeeIds.length > 0 ? (
                             <span>
-                              Ảnh hưởng {log.affectedEmployeeIds.length} nhân viên
+                              Ảnh hưởng {log.affectedEmployeeIds.length} nhân
+                              viên
                             </span>
                           ) : null}
 
@@ -1092,7 +1235,8 @@ const ShiftDetailModal = ({
           </div>
           {effectivePermissions.isReadOnly ? (
             <div className="empty-placeholder">
-              Lịch đang ở trạng thái không cho chỉnh sửa trực tiếp. Các thay đổi cần thực hiện qua quy trình chấm công/lương phù hợp.
+              Lịch đang ở trạng thái không cho chỉnh sửa trực tiếp. Các thay đổi
+              cần thực hiện qua quy trình chấm công/lương phù hợp.
             </div>
           ) : null}
           <div className="modal-footer-actions">
@@ -1100,10 +1244,10 @@ const ShiftDetailModal = ({
               <>
                 <button
                   className="btn-close"
-                  onClick={handleSaveNotes}
+                  onClick={handleSaveChanges}
                   disabled={isSavingNotes}
                 >
-                  {isSavingNotes ? "Đang lưu..." : "Lưu ghi chú"}
+                  {isSavingChanges ? "Đang lưu..." : "Lưu thay đổi"}
                 </button>
                 <button className="btn-delete" onClick={openDeleteGroupConfirm}>
                   <Trash2 size={16} />
