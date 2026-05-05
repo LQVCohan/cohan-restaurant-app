@@ -64,6 +64,26 @@ const getTimelineLabel = (event) =>
   ORDER_STATUS_LABELS[event?.status] ||
   event?.status ||
   "Cập nhật trạng thái";
+const getAllowedNextItemStatuses = (itemStatus, orderStatus) => {
+  if (["cancelled", "returned", "served"].includes(itemStatus)) {
+    return [];
+  }
+
+  if (["cancelled", "completed"].includes(orderStatus)) {
+    return [];
+  }
+
+  switch (itemStatus) {
+    case "pending":
+      return ["preparing"];
+    case "preparing":
+      return ["ready"];
+    case "ready":
+      return ["served"];
+    default:
+      return [];
+  }
+};
 const ITEM_STATUS_CONFIG = {
   pending: {
     label: "Chờ bếp nhận",
@@ -107,7 +127,6 @@ const UPDATE_ORDER_STATUS = gql`
   }
 `;
 
-// ... (Giữ nguyên OrderItemRow component như cũ) ...
 const OrderItemRow = React.memo(
   ({ item, index, orderStatus, onStatusChange, isSaving }) => {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -127,11 +146,16 @@ const OrderItemRow = React.memo(
     const config =
       ITEM_STATUS_CONFIG[item.status] || ITEM_STATUS_CONFIG.pending;
     const StatusIcon = config.icon;
+
+    const allowedNextStatuses = getAllowedNextItemStatuses(
+      item.status,
+      orderStatus,
+    );
+
     const disabled =
       ["completed", "cancelled"].includes(orderStatus) ||
-      item.status === "cancelled" ||
-      item.status === "served";
-
+      ["cancelled", "returned", "served"].includes(item.status) ||
+      allowedNextStatuses.length === 0;
     const handleSelectStatus = (status) => {
       onStatusChange(item, index, status);
       setMenuOpen(false);
@@ -180,20 +204,18 @@ const OrderItemRow = React.memo(
               </button>
               {menuOpen && (
                 <div className="statusMenu">
-                  {Object.entries(ITEM_STATUS_CONFIG)
-                    .filter(([key]) => !["cancelled", "returned"].includes(key))
-                    .map(([key, cfg]) => {
-                      if (key === item.status) return null;
-                      return (
-                        <button
-                          key={key}
-                          className={`statusMenuItem ${cfg.color}`}
-                          onClick={() => handleSelectStatus(key)}
-                        >
-                          {cfg.label}
-                        </button>
-                      );
-                    })}
+                  {allowedNextStatuses.map((key) => {
+                    const cfg = ITEM_STATUS_CONFIG[key];
+                    return (
+                      <button
+                        key={key}
+                        className={`statusMenuItem ${cfg.color}`}
+                        onClick={() => handleSelectStatus(key)}
+                      >
+                        {cfg.label}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -218,15 +240,32 @@ const OrderModal = ({
   const [mutStatusById] = useMutation(UPDATE_ORDER_STATUS);
 
   const items = useMemo(() => {
-    return (order?.items || []).map((it) => ({
-      ...it,
-      quantity: Number(it.quantity) || 0,
-      price: Number(it.price) || 0,
-      modifiersPrice: Number(it.modifiersPrice) || 0,
-      _lineTotal:
-        ((Number(it.price) || 0) + (Number(it.modifiersPrice) || 0)) *
-        (Number(it.quantity) || 0),
-    }));
+    return (order?.items || []).map((it) => {
+      const quantity = Number(it.quantity) || 0;
+      const modifiersPrice = Number(it.modifiersPrice) || 0;
+
+      const unitPrice = Number(
+        it.unitPrice ??
+          it.price ??
+          it.servingVariant?.price ??
+          it.basePrice ??
+          0,
+      );
+
+      const lineSubtotal =
+        it.lineSubtotal != null
+          ? Number(it.lineSubtotal)
+          : (unitPrice + modifiersPrice) * quantity;
+
+      return {
+        ...it,
+        quantity,
+        price: unitPrice,
+        unitPrice,
+        modifiersPrice,
+        _lineTotal: lineSubtotal,
+      };
+    });
   }, [order?.items]);
 
   const progress = useMemo(() => {

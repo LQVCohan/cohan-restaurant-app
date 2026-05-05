@@ -2501,6 +2501,22 @@ export const OrderMutation = {
           }
         }
 
+        const ITEM_STATUS_FLOW = {
+          pending: ["preparing"],
+          preparing: ["ready"],
+          ready: ["served"],
+          served: [],
+          cancelled: [],
+          returned: [],
+        };
+        const currentItemStatus = item.status || "pending";
+        const allowedNext = ITEM_STATUS_FLOW[currentItemStatus] || [];
+
+        if (!allowedNext.includes(status)) {
+          throw new Error(
+            `Không thể chuyển trạng thái món từ ${currentItemStatus} sang ${status}.`,
+          );
+        }
         item.status = status;
         await order.save({ session });
       });

@@ -641,15 +641,30 @@ const UPDATE_ORDER_ITEM_STATUS = gql`
         items {
           _id
           dishId
+          menuId
+          categoryId
           name
-          status
-          modifiersPrice
-          unitPrice
-          quantity
+          unit
+          basePrice
+          servingKey
           servingVariant {
             key
             name
+            mode
+            price
+            sellQty
+            sellUnit
           }
+          modifiersPrice
+          unitPrice
+          lineSubtotal
+          note
+          priority
+          quantity
+          weightGrams
+          status
+          image
+          proofImages
           ingredientsSnapshot {
             ingredientId
             name
