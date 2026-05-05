@@ -411,6 +411,49 @@ type CreateOffPremiseOrderPayload {
 }
 
 
+input CreateStaffRemoteOrderInput {
+  restaurantId: ID!
+  orderType: OrderType!
+  items: [OrderItemInput!]!
+  note: String
+  customer: CustomerInput
+  shipping: ShippingInput
+  paymentMethod: String
+  pricing: CheckoutPricingInput
+  userId: ID
+  channel: String
+  idempotencyKey: String
+  clientMeta: JSON
+  warehouseId: ID
+}
+
+type CreateStaffRemoteOrderPayload {
+  order: Order!
+  idempotentHit: Boolean!
+}
+
+input ConfirmIncomingOrderInput {
+  id: ID!
+  restaurantId: ID
+  note: String
+  warehouseId: ID
+}
+
+type ConfirmIncomingOrderPayload {
+  order: Order!
+}
+
+input RejectIncomingOrderInput {
+  id: ID!
+  restaurantId: ID
+  reason: String!
+  warehouseId: ID
+}
+
+type RejectIncomingOrderPayload {
+  order: Order!
+}
+
 input CheckoutCartItemInput {
   restaurantId: ID!
   dishId: ID
@@ -945,11 +988,19 @@ extend type Mutation {
     input: CreateOffPremiseOrderInput!
   ): CreateOffPremiseOrderPayload!
 
+  createStaffRemoteOrder(
+    input: CreateStaffRemoteOrderInput!
+  ): CreateStaffRemoteOrderPayload!
+
   createCheckoutOrders(
     input: CreateCheckoutOrdersInput!
   ): CreateCheckoutOrdersPayload!
 
   updateOrderStatus(input: UpdateOrderStatusInput!): Order!
+
+  confirmIncomingOrder(input: ConfirmIncomingOrderInput!): ConfirmIncomingOrderPayload!
+
+  rejectIncomingOrder(input: RejectIncomingOrderInput!): RejectIncomingOrderPayload!
 
   updateOrderItemStatus(
     input: UpdateOrderItemStatusInput!

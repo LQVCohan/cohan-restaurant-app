@@ -322,6 +322,7 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             partySize
             timeTo
           }
+          clientMeta
           orderType
           createdAt
           updatedAt
@@ -410,6 +411,7 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
             note
             byUserId
           }
+          clientMeta
           orderType
           createdAt
           updatedAt

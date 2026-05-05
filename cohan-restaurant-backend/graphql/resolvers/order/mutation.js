@@ -202,6 +202,26 @@ function normalizeItemWeightGrams(it) {
   const grams = u === "g" ? Math.round(qty) : Math.round(qty * 1000);
   it.weightGrams = grams;
 }
+function validateIncomingOrderItems(items = []) {
+  for (const it of items || []) {
+    const mode = it?.servingVariant?.mode;
+    if (mode !== "BY_WEIGHT") continue;
+
+    const grams = Number(it.weightGrams);
+    if (!Number.isFinite(grams) || grams <= 0) {
+      throw new Error("BY_WEIGHT items require weightGrams > 0");
+    }
+    const proofImages = Array.isArray(it.proofImages) ? it.proofImages.filter(Boolean) : [];
+    if (!proofImages.length) {
+      throw new Error("BY_WEIGHT items require at least one proof image");
+    }
+    if (!it?.servingKey || !it?.servingVariant?.key) {
+      throw new Error("BY_WEIGHT items require valid servingKey/servingVariant");
+    }
+  }
+}
+
+
 
 /** =========================
  * Compute factor from variant (scale recipe lines)
@@ -965,6 +985,7 @@ export const OrderMutation = {
           session,
         });
 
+        validateIncomingOrderItems(normalizedItems);
         const totals = computeTotalsFromHydratedItems(normalizedItems);
 
         const [order] = await Order.create(
@@ -1054,7 +1075,6 @@ export const OrderMutation = {
       warehouseId,
       clientMeta,
       paymentMethod,
-      pricing,
     } = input || {};
 
     const rid = toId(restaurantId);
@@ -1089,6 +1109,7 @@ export const OrderMutation = {
           session,
         });
 
+        validateIncomingOrderItems(normalizedItems);
         const totals = computeTotalsFromHydratedItems(normalizedItems);
 
         const [order] = await Order.create(
@@ -1162,6 +1183,102 @@ export const OrderMutation = {
     return { order: createdOrderDoc.toJSON() };
   },
 
+
+
+  async createStaffRemoteOrder(_, { input }, ctx) {
+    const {
+      restaurantId,
+      orderType,
+      items,
+      note,
+      customer,
+      shipping,
+      userId,
+      warehouseId,
+      paymentMethod,
+      pricing,
+      channel,
+      idempotencyKey,
+      clientMeta,
+    } = input || {};
+
+    if (idempotencyKey) {
+      const existing = await Order.findOne({
+        restaurantId: toId(restaurantId),
+        "clientMeta.source": "staff_remote",
+        "clientMeta.idempotencyKey": idempotencyKey,
+      }).sort({ createdAt: -1 });
+      if (existing) return { order: existing.toJSON(), idempotentHit: true };
+    }
+
+    const receivedByStaffId = ctx?.user?.id ? toId(ctx.user.id) : undefined;
+    const finalClientMeta = {
+      ...(clientMeta || {}),
+      source: "staff_remote",
+      channel: channel || clientMeta?.channel || "other",
+      idempotencyKey: idempotencyKey || undefined,
+      receivedByStaffId,
+    };
+
+    const payload = await this.createOffPremiseOrder(_, {
+      input: {
+        restaurantId,
+        orderType,
+        items,
+        note,
+        customer,
+        shipping,
+        userId,
+        warehouseId,
+        paymentMethod,
+        pricing,
+        clientMeta: finalClientMeta,
+      },
+    }, ctx);
+
+    return { order: payload.order, idempotentHit: false };
+  },
+
+  async confirmIncomingOrder(_, { input }, ctx) {
+    const { id, restaurantId, note, warehouseId } = input || {};
+    const order = await Order.findById(id);
+    if (!order) throw new Error("Order not found");
+    if (restaurantId && String(order.restaurantId) !== String(toId(restaurantId))) throw new Error("Order not found");
+    if (order.currentStatus !== "pending") throw new Error("Only pending orders can be confirmed");
+
+    const updated = await this.updateOrderStatus(_, {
+      input: {
+        id: String(order._id),
+        restaurantId: restaurantId || String(order.restaurantId),
+        status: "confirmed",
+        note: note || "Incoming order confirmed by POS",
+        warehouseId,
+      },
+    }, ctx);
+
+    return { order: updated };
+  },
+
+  async rejectIncomingOrder(_, { input }, ctx) {
+    const { id, restaurantId, reason, warehouseId } = input || {};
+    if (!reason || !String(reason).trim()) throw new Error("reason is required");
+    const order = await Order.findById(id);
+    if (!order) throw new Error("Order not found");
+    if (restaurantId && String(order.restaurantId) !== String(toId(restaurantId))) throw new Error("Order not found");
+    if (order.currentStatus !== "pending") throw new Error("Only pending orders can be rejected");
+
+    const updated = await this.updateOrderStatus(_, {
+      input: {
+        id: String(order._id),
+        restaurantId: restaurantId || String(order.restaurantId),
+        status: "cancelled",
+        note: `Incoming order rejected: ${reason}`,
+        warehouseId,
+      },
+    }, ctx);
+
+    return { order: updated };
+  },
   async createCheckoutOrders(_, { input }, ctx) {
     const {
       orderType,
