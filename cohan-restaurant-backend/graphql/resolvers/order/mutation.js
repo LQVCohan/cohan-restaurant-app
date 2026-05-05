@@ -1441,19 +1441,28 @@ export const OrderMutation = {
             session,
           });
 
-          const baseTotals = computeTotalsFromHydratedItems(g.items, pricing || {});
+          const trustedPricing = {
+            taxRate: pricing?.taxRate,
+            serviceRate: pricing?.serviceRate,
+            shippingFee: pricing?.shippingFee,
+            voucherCode: pricing?.voucherCode,
+            promotionDiscount: 0,
+            voucherDiscount: 0,
+          };
+
+          const baseTotals = computeTotalsFromHydratedItems(g.items, trustedPricing);
           let voucherMeta = null;
-          if (pricing?.voucherCode) {
+          if (trustedPricing.voucherCode) {
             voucherMeta = await resolveVoucherDiscount({
               restaurantId: g.restaurantId,
-              voucherCode: pricing.voucherCode,
+              voucherCode: trustedPricing.voucherCode,
               subtotal: baseTotals.subtotal,
               userId: finalUserId,
               session,
             });
           }
           const totals = computeTotalsFromHydratedItems(g.items, {
-            ...(pricing || {}),
+            ...trustedPricing,
             voucherDiscount: voucherMeta?.voucherDiscount || 0,
             voucherCode: voucherMeta?.voucherCode,
           });
