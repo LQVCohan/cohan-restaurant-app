@@ -128,7 +128,7 @@ const UPDATE_ORDER_STATUS = gql`
 `;
 
 const OrderItemRow = React.memo(
-  ({ item, index, orderStatus, onStatusChange, isSaving }) => {
+  ({ item, index, order, orderStatus, onStatusChange, isSaving, onReviewItemVoid }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
 
@@ -156,6 +156,12 @@ const OrderItemRow = React.memo(
       ["completed", "cancelled"].includes(orderStatus) ||
       ["cancelled", "returned", "served"].includes(item.status) ||
       allowedNextStatuses.length === 0;
+    const pendingVoidRequests = (item.voidRequests || []).filter((r) => r.status === "pending");
+    const [reviewingRequestId, setReviewingRequestId] = useState(null);
+    const canReviewVoid =
+      !["completed", "cancelled"].includes(orderStatus) &&
+      !["served", "cancelled", "returned"].includes(item.status);
+
     const handleSelectStatus = (status) => {
       onStatusChange(item, index, status);
       setMenuOpen(false);
@@ -165,8 +171,9 @@ const OrderItemRow = React.memo(
       <div className={`itemCard ${item.status} ${isSaving ? "saving" : ""}`}>
         <div className="itemCard__info">
           <div className="itemCard__header">
-            <span className="qtyBadge">x{item.quantity}</span>
+            <span className="qtyBadge">{Number(item.cancelledQuantity || 0) > 0 ? `Còn lại: x${item.quantity}` : `x${item.quantity}`}</span>
             <span className="itemName">{item.name}</span>
+            {Number(item.cancelledQuantity || 0) > 0 && <span className="metaTag">Đã hủy: x{item.cancelledQuantity}</span>}
           </div>
           <div className="itemCard__meta">
             {item.modifiersPrice > 0 && (
@@ -185,6 +192,36 @@ const OrderItemRow = React.memo(
           <div className="itemCard__price">
             {formatCurrency(item._lineTotal)}
           </div>
+          {pendingVoidRequests.map((req) => (
+            <div key={req.requestId} className="itemCard__note">
+              <div>Yêu cầu hủy: {req.quantity} món</div>
+              <div>Lý do: {req.reason || "-"}</div>
+              <div>Thời gian: {req.requestedAt ? new Date(req.requestedAt).toLocaleString("vi-VN") : "-"}</div>
+              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                <button disabled={!canReviewVoid || reviewingRequestId === req.requestId || !onReviewItemVoid || req.status !== "pending"} onClick={async () => {
+                  const ok = window.confirm(`Duyệt hủy ${req.quantity} món ${item.name}? Tổng tiền sẽ được cập nhật, kho không được hoàn tự động.`);
+                  if (!ok) return;
+                  setReviewingRequestId(req.requestId);
+                  try {
+                    await onReviewItemVoid({ orderId: order.id, orderItemId: item._id, requestId: req.requestId, approve: true, note: "POS duyệt yêu cầu hủy món" });
+                  } finally {
+                    setReviewingRequestId(null);
+                  }
+                }}>Duyệt</button>
+                <button disabled={!canReviewVoid || reviewingRequestId === req.requestId || !onReviewItemVoid || req.status !== "pending"} onClick={async () => {
+                  const note = window.prompt("Nhập lý do từ chối", "Không phù hợp trạng thái xử lý");
+                  if (note == null) return;
+                  setReviewingRequestId(req.requestId);
+                  try {
+                    await onReviewItemVoid({ orderId: order.id, orderItemId: item._id, requestId: req.requestId, approve: false, note });
+                  } finally {
+                    setReviewingRequestId(null);
+                  }
+                }}>Từ chối</button>
+              </div>
+            </div>
+          ))}
+
         </div>
         <div className="itemCard__actions">
           {isSaving ? (
@@ -233,6 +270,7 @@ const OrderModal = ({
   onClose,
   onUpdateItemStatus,
   onCreateTemporaryBill,
+  onReviewItemVoid,
 }) => {
   const [savingMap, setSavingMap] = useState({});
   const completingRef = useRef(false);
@@ -511,9 +549,11 @@ const OrderModal = ({
                   key={item._lineId || index}
                   item={item}
                   index={index}
+                  order={order}
                   orderStatus={order?.currentStatus}
                   isSaving={savingMap[item._lineId || index]}
                   onStatusChange={handleChangeStatus}
+                  onReviewItemVoid={onReviewItemVoid}
                 />
               ))}
             </div>

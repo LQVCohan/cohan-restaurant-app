@@ -121,6 +121,9 @@ const OrderCard = ({
     order?.user?.fullName ||
     "Khách lẻ";
   const hasNote = !!order?.note;
+  const hasPendingVoidRequest = (order?.items || []).some((it) =>
+    (it?.voidRequests || []).some((r) => r?.status === "pending"),
+  );
   const orderLocationLabel =
     order?.orderType === "delivery"
       ? "Giao hàng"
@@ -295,7 +298,10 @@ const OrderCard = ({
           <User size={12} />
           <span className="name">{customerName}</span>
         </div>
-        {hasNote && (
+        {hasPendingVoidRequest && (
+            <div className="oc-note-badge" style={{ marginBottom: 6, color: "#b45309" }}>Có yêu cầu hủy món</div>
+          )}
+          {hasNote && (
           <div className="oc-note-box">
             <StickyNote size={12} />
             <span>{order.note}</span>

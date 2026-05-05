@@ -231,6 +231,7 @@ const OrderManagement = () => {
     ordersNowError,
     loadOrdersNow,
     updateItemStatus,
+    reviewOrderItemVoid,
   } = useOrderManagement();
 
   const orders = ordersNow || [];

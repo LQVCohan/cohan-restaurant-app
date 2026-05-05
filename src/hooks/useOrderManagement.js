@@ -310,6 +310,19 @@ const ORDERS_BY_RESTAURANT_NOW = gql`
             note
             priority
             quantity
+            originalQuantity
+            cancelledQuantity
+            voidRequests {
+              requestId
+              quantity
+              reason
+              status
+              requestedBy
+              requestedAt
+              reviewedBy
+              reviewedAt
+              reviewNote
+            }
             weightGrams
             status
             ingredientsSnapshot {
@@ -416,6 +429,19 @@ const ORDERS_BY_RESTAURANT_ALL = gql`
             note
             priority
             quantity
+            originalQuantity
+            cancelledQuantity
+            voidRequests {
+              requestId
+              quantity
+              reason
+              status
+              requestedBy
+              requestedAt
+              reviewedBy
+              reviewedAt
+              reviewNote
+            }
             weightGrams
             status
             ingredientsSnapshot {
@@ -681,6 +707,84 @@ const UPDATE_ORDER_ITEM_STATUS = gql`
   }
 `;
 
+
+
+const REVIEW_ORDER_ITEM_VOID = gql`
+  mutation ReviewOrderItemVoid($input: ReviewOrderItemVoidInput!) {
+    reviewOrderItemVoid(input: $input) {
+      id
+      orderCode
+      tableCode
+      currentStatus
+      restaurantId
+      items {
+        _id
+        dishId
+        menuId
+        categoryId
+        name
+        unit
+        basePrice
+        servingKey
+        servingVariant {
+          key
+          name
+          mode
+          price
+          sellQty
+          sellUnit
+        }
+        modifiersPrice
+        unitPrice
+        lineSubtotal
+        note
+        priority
+        quantity
+        originalQuantity
+        cancelledQuantity
+        voidRequests {
+          requestId
+          quantity
+          reason
+          status
+          requestedBy
+          requestedAt
+          reviewedBy
+          reviewedAt
+          reviewNote
+        }
+        weightGrams
+        status
+        image
+        proofImages
+        ingredientsSnapshot {
+          ingredientId
+          name
+          quantity
+          unit
+          baseUnitQuantity
+          costPerBaseUnit
+          totalCost
+        }
+      }
+      totals {
+        subtotal
+        discount
+        tax
+        service
+        grandTotal
+      }
+      statusTimeline {
+        status
+        at
+        note
+        byUserId
+      }
+      updatedAt
+    }
+  }
+`;
+
 /** ✅ Cập nhật ưu tiên 1 item trong 1 order theo ID */
 const UPDATE_ORDER_ITEM_PRIORITY = gql`
   mutation UpdateOrderItemPriority($input: UpdateOrderItemPriorityInput!) {
@@ -763,6 +867,7 @@ export default function useOrderManagement(pos = null) {
   const [mutUpdateOrderStatus] = useMutation(UPDATE_ORDER_STATUS);
   const [mutUpdateOrderItemStatus] = useMutation(UPDATE_ORDER_ITEM_STATUS);
   const [mutUpdateOrderItemPriority] = useMutation(UPDATE_ORDER_ITEM_PRIORITY);
+  const [mutReviewOrderItemVoid] = useMutation(REVIEW_ORDER_ITEM_VOID);
   const [mutUpdateOrderCustomerByCode] = useMutation(
     UPDATE_ORDER_CUSTOMER_BY_CODE,
   );
@@ -1135,6 +1240,19 @@ export default function useOrderManagement(pos = null) {
               note
               priority
               quantity
+              originalQuantity
+              cancelledQuantity
+              voidRequests {
+                requestId
+                quantity
+                reason
+                status
+                requestedBy
+                requestedAt
+                reviewedBy
+                reviewedAt
+                reviewNote
+              }
               weightGrams
               status
               image
@@ -1576,6 +1694,39 @@ export default function useOrderManagement(pos = null) {
       currentTable?.code,
       loadGroupsForTable,
     ],
+  );
+
+  const reviewOrderItemVoid = useCallback(
+    async ({ orderId, orderItemId, requestId, approve, note }) => {
+      if (!orderId || !orderItemId || !requestId) {
+        throw new Error("Thiếu orderId/orderItemId/requestId để duyệt yêu cầu hủy món.");
+      }
+
+      const { data } = await mutReviewOrderItemVoid({
+        variables: {
+          input: {
+            orderId,
+            orderItemId,
+            requestId,
+            approve: Boolean(approve),
+            note: note || undefined,
+          },
+        },
+      });
+
+      const updatedOrder = data?.reviewOrderItemVoid || null;
+      if (updatedOrder) {
+        writeOrderIntoCache(updatedOrder);
+        if (updatedOrder.restaurantId) {
+          await loadOrdersNow({
+            variables: { restaurantId: updatedOrder.restaurantId, limit: 100 },
+          });
+        }
+      }
+
+      return updatedOrder;
+    },
+    [mutReviewOrderItemVoid, writeOrderIntoCache, loadOrdersNow],
   );
 
   /* Back-compat: old updateItemStatus -> call ID-based mutation */
