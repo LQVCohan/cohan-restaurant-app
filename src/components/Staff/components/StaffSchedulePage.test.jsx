@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect } from "vitest";
 import { gql } from "@apollo/client";
 import { MockedProvider } from "@apollo/client/testing";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import StaffSchedulePage from "./StaffSchedulePage";
 import { AuthContext } from "@/context/AuthContext";
 
@@ -81,9 +81,41 @@ const GET_MY_SCHEDULE_ACK = gql`
     }
   }
 `;
+const GET_SCHEDULING_POLICY = gql`
+  query StaffSchedulingPolicy($restaurantId: ID!) {
+    schedulingPolicy(restaurantId: $restaurantId) {
+      shiftTemplates { key startTime endTime enabled allowCrossDay }
+      employmentTypePolicy {
+        part_time { minWeeklyHours weeklyHoursTarget weeklyHoursCap maxShiftsPerWeek requireAvailability }
+        seasonal { minWeeklyHours weeklyHoursTarget weeklyHoursCap maxShiftsPerWeek requireAvailability }
+      }
+    }
+  }
+`;
 
 function renderWithAuth(user, mocks = []) {
   const defaultMocks = [
+    {
+      request: {
+        query: GET_SCHEDULING_POLICY,
+        variables: { restaurantId: "r1" },
+      },
+      result: {
+        data: {
+          schedulingPolicy: {
+            shiftTemplates: [
+              { key: "morning", startTime: "06:00", endTime: "12:00", enabled: true, allowCrossDay: false },
+              { key: "afternoon", startTime: "12:00", endTime: "18:00", enabled: true, allowCrossDay: false },
+              { key: "evening", startTime: "18:00", endTime: "23:00", enabled: true, allowCrossDay: false },
+            ],
+            employmentTypePolicy: {
+              part_time: { minWeeklyHours: 8, weeklyHoursTarget: 20, weeklyHoursCap: 28, maxShiftsPerWeek: 4, requireAvailability: true },
+              seasonal: { minWeeklyHours: 0, weeklyHoursTarget: 24, weeklyHoursCap: 40, maxShiftsPerWeek: 5, requireAvailability: true },
+            },
+          },
+        },
+      },
+    },
     {
       request: {
         query: GET_AVAILABILITY_WINDOWS,
@@ -266,6 +298,14 @@ describe("StaffSchedulePage", () => {
     renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
     expect(await screen.findByText("Yêu cầu thay đổi muộn đang chờ duyệt")).toBeInTheDocument();
     expect(await screen.findByText(/Các thay đổi này chỉ được dùng để xếp lịch sau khi quản lý duyệt/)).toBeInTheDocument();
+  });
+  it("shows and enforces minimum availability hours for part-time", async () => {
+    const mocks = [{ request: { query: GET_SUBMISSION, variables: { windowId: "w1", employeeId: "e1" } }, result: { data: { staffAvailabilitySubmission: null } } },{ request: { query: GET_AVAILABILITY_WINDOWS, variables: { restaurantId: "r1", from: "2026-05-10T00:00:00.000Z", to: "2026-05-18T23:59:59.999Z" } }, result: { data: { availabilityWindows: [{ id: "w1", periodStart: "2026-05-11T00:00:00.000Z", periodEnd: "2026-05-17T23:59:59.999Z", openAt: "2026-05-10T00:00:00.000Z", closeAt: "2026-05-17T23:59:59.999Z", status: "open", effectiveStatus: "open", registrationMode: "manual", targetEmploymentTypes: ["part_time"], allowFullTimeUnavailableException: true, lateChangeRequiresApproval: true }] } } }];
+    renderWithAuth({ id: "e1", employmentType: "part_time", restaurantForStaff: "r1" }, mocks);
+    expect(await screen.findByText("Yêu cầu giờ khả dụng")).toBeInTheDocument();
+    fireEvent.click((await screen.findAllByRole("checkbox"))[0]);
+    expect(await screen.findByText(/cần đăng ký thêm 2 giờ/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Gửi đăng ký ca khả dụng/i })).toBeDisabled();
   });
 
   it("shows non-cancelled shifts in weekly schedule", async () => {
