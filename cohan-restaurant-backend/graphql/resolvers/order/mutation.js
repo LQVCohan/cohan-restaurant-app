@@ -40,6 +40,38 @@ const RESERVABLE_STATUSES = [
 const COMMIT_STATUSES = ["preparing", "ready", "served", "completed"];
 const RANK_POINT_DIVISOR = 1_000_000;
 
+
+function hasPendingItemWork(order) {
+  return (order?.items || []).some((item) =>
+    ["pending", "preparing", "ready"].includes(String(item?.status || "")),
+  );
+}
+
+function hasPendingAdjustmentRequests(order) {
+  return (order?.items || []).some((item) => {
+    const hasPendingVoid = (item?.voidRequests || []).some(
+      (req) => req?.status === "pending",
+    );
+    const hasPendingReturn = (item?.returnRequests || []).some(
+      (req) => req?.status === "pending",
+    );
+    return hasPendingVoid || hasPendingReturn;
+  });
+}
+
+function assertOrderCanRequestPayment(order) {
+  if (!order) throw new Error("Order not found");
+  if (["cancelled", "completed"].includes(order.currentStatus)) {
+    throw new Error("Đơn đã kết thúc, không thể yêu cầu thanh toán.");
+  }
+  if (hasPendingItemWork(order)) {
+    throw new Error("Không thể yêu cầu thanh toán khi còn món chưa phục vụ xong.");
+  }
+  if (hasPendingAdjustmentRequests(order)) {
+    throw new Error("Không thể yêu cầu thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
+  }
+}
+
 const CANCELLED_ITEM_STATUSES = ["cancelled", "returned"];
 const PRINT_STATIONS = {
   kitchen: "kitchen",
@@ -1608,33 +1640,70 @@ export const OrderMutation = {
 
     return { order: updated };
   },
-  async requestPaymentForOrder(_, { input }) {
+  async requestPaymentForOrder(_, { input }, ctx) {
     const { restaurantId, orderIds } = input || {};
     if (!restaurantId || !Array.isArray(orderIds) || !orderIds.length) {
       throw new Error("restaurantId and orderIds are required");
     }
-    await Order.updateMany(
-      {
-        restaurantId: toId(restaurantId),
-        _id: { $in: orderIds.map((id) => toId(id)).filter(Boolean) },
-      },
-      { $set: { "payment.status": "payment_requested" } },
-    );
-    return { ok: true, message: "Đã gửi yêu cầu thanh toán theo đơn." };
+    const rid = toId(restaurantId);
+    const actorId = toId(ctx?.user?.id || ctx?.user?._id);
+    const ids = orderIds.map((id) => toId(id)).filter(Boolean);
+    const orders = await Order.find({ restaurantId: rid, _id: { $in: ids } });
+    if (!orders.length) throw new Error("Không tìm thấy đơn để yêu cầu thanh toán.");
+
+    for (const order of orders) {
+      assertOrderCanRequestPayment(order);
+      order.payment = order.payment || {};
+      order.payment.status = "payment_requested";
+      order.payment.requestedAt = new Date();
+      if (actorId) order.payment.requestedBy = actorId;
+      order.statusTimeline = [
+        ...(order.statusTimeline || []),
+        {
+          status: order.currentStatus,
+          at: new Date(),
+          byUserId: actorId || null,
+          note: "Nhân viên yêu cầu thanh toán.",
+        },
+      ];
+      await order.save();
+      await emitOrderEvent(ctx, String(order.restaurantId), "ORDER_UPDATED", order);
+    }
+
+    return { ok: true, message: "Đã gửi yêu cầu thanh toán đến POS." };
   },
-  async requestPaymentForTable(_, { input }) {
+  async requestPaymentForTable(_, { input }, ctx) {
     const { restaurantId, tableCode } = input || {};
     if (!restaurantId || !tableCode)
       throw new Error("restaurantId and tableCode are required");
-    await Order.updateMany(
-      {
-        restaurantId: toId(restaurantId),
-        tableCode: String(tableCode),
-        currentStatus: { $nin: ["cancelled", "completed"] },
-      },
-      { $set: { "payment.status": "payment_requested" } },
-    );
-    return { ok: true, message: "Đã gửi yêu cầu thanh toán theo bàn." };
+    const rid = toId(restaurantId);
+    const actorId = toId(ctx?.user?.id || ctx?.user?._id);
+    const orders = await Order.find({
+      restaurantId: rid,
+      tableCode: String(tableCode),
+      currentStatus: { $nin: ["cancelled", "completed"] },
+    });
+    if (!orders.length) throw new Error("Không tìm thấy đơn đang phục vụ của bàn này.");
+
+    for (const order of orders) {
+      assertOrderCanRequestPayment(order);
+      order.payment = order.payment || {};
+      order.payment.status = "payment_requested";
+      order.payment.requestedAt = new Date();
+      if (actorId) order.payment.requestedBy = actorId;
+      order.statusTimeline = [
+        ...(order.statusTimeline || []),
+        {
+          status: order.currentStatus,
+          at: new Date(),
+          byUserId: actorId || null,
+          note: "Nhân viên yêu cầu thanh toán.",
+        },
+      ];
+      await order.save();
+      await emitOrderEvent(ctx, String(order.restaurantId), "ORDER_UPDATED", order);
+    }
+    return { ok: true, message: "Đã gửi yêu cầu thanh toán đến POS." };
   },
   async remindOrderItem(_, { input }, ctx) {
     const { restaurantId, orderId, orderItemId, note } = input || {};
