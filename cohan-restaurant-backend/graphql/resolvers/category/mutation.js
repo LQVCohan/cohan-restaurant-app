@@ -1,10 +1,15 @@
 // src/graphql/resolvers/category/mutation.js
 import { GraphQLError } from "graphql";
+import mongoose from "mongoose";
 import { Category, MenuItem, CategoryMenu } from "../../../models/index.js";
+import { requireRestaurantAccess } from "../../guards.js";
 
 export const CategoryMutation = {
-  createCategory: async (_, { input }) => {
+  createCategory: async (_, { input }, ctx) => {
     const { restaurantId, name, order = 0 } = input;
+    if (restaurantId == null) throw new GraphQLError("restaurantId is required");
+    if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Invalid restaurantId");
+    await requireRestaurantAccess(ctx, restaurantId);
 
     const normalizedName = String(name || "").trim();
 
@@ -27,9 +32,11 @@ export const CategoryMutation = {
     return doc.toObject();
   },
 
-  updateCategory: async (_, { input }) => {
+  updateCategory: async (_, { input }, ctx) => {
+    if (!mongoose.isValidObjectId(input?.id)) throw new GraphQLError("Invalid id");
     const c = await Category.findById(input.id);
     if (!c) throw new GraphQLError("Category not found");
+    await requireRestaurantAccess(ctx, c.restaurantId);
 
     if (input.name !== undefined) c.name = input.name;
     if (input.order !== undefined) c.order = input.order;
@@ -39,8 +46,12 @@ export const CategoryMutation = {
     return c.toObject();
   },
 
-  deleteCategory: async (_, { id }) => {
-    const used = await MenuItem.exists({ categoryId: id });
+  deleteCategory: async (_, { id }, ctx) => {
+    if (!mongoose.isValidObjectId(id)) return true;
+    const existing = await Category.findById(id).select({ restaurantId: 1 }).lean();
+    if (!existing) return true;
+    await requireRestaurantAccess(ctx, existing.restaurantId);
+    const used = await MenuItem.exists({ categoryId: id, restaurantId: existing.restaurantId });
     if (used)
       throw new GraphQLError("Cannot delete: category is in use by menu items");
 
@@ -48,7 +59,7 @@ export const CategoryMutation = {
     return true;
   },
 
-  createCategoryMenu: async (_, { input }) => {
+  createCategoryMenu: async (_, { input }, ctx) => {
     const {
       restaurantId,
       name,
@@ -57,6 +68,8 @@ export const CategoryMutation = {
       isActive = true,
     } = input;
 
+    if (!mongoose.isValidObjectId(restaurantId)) throw new GraphQLError("Invalid restaurantId");
+    await requireRestaurantAccess(ctx, restaurantId);
     const doc = await CategoryMenu.create({
       restaurantId,
       name,
@@ -68,9 +81,10 @@ export const CategoryMutation = {
     return doc.toObject();
   },
 
-  updateCategoryMenu: async (_, { input }) => {
+  updateCategoryMenu: async (_, { input }, ctx) => {
     const cm = await CategoryMenu.findById(input.id);
     if (!cm) throw new GraphQLError("CategoryMenu not found");
+    await requireRestaurantAccess(ctx, cm.restaurantId);
 
     if (input.name !== undefined) cm.name = input.name;
     if (input.description !== undefined) cm.description = input.description;
@@ -81,7 +95,11 @@ export const CategoryMutation = {
     return cm.toObject();
   },
 
-  deleteCategoryMenu: async (_, { id }) => {
+  deleteCategoryMenu: async (_, { id }, ctx) => {
+    if (!mongoose.isValidObjectId(id)) return true;
+    const existing = await CategoryMenu.findById(id).select({ restaurantId: 1 }).lean();
+    if (!existing) return true;
+    await requireRestaurantAccess(ctx, existing.restaurantId);
     await CategoryMenu.findByIdAndDelete(id);
     return true;
   },
