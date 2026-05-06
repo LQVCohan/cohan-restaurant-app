@@ -234,7 +234,7 @@ const OrderManagement = () => {
     reviewOrderItemVoid,
     requestOrderItemReturn,
     reviewOrderItemReturn,
-    checkoutOrder,
+    payOrderByIds,
   } = useOrderManagement();
 
   const orders = ordersNow || [];
@@ -614,16 +614,16 @@ const OrderManagement = () => {
   const handleConfirmPayment = useCallback(
     async (order, method = "cash") => {
       if (!selectedRestaurantId) return null;
-      const res = await checkoutOrder({
+      const res = await payOrderByIds({
         restaurantId: selectedRestaurantId,
+        orderIds: [order?.id],
         method,
         note: `Xác nhận thanh toán cho đơn ${order?.orderCode || order?.id || ""}`.trim(),
       });
-      if (!res?.success) throw new Error(res?.message || "Xác nhận thanh toán thất bại.");
       await loadOrders({ variables: { restaurantId: selectedRestaurantId, limit: 100 }, fetchPolicy: "network-only" });
       return res;
     },
-    [checkoutOrder, loadOrders, selectedRestaurantId],
+    [payOrderByIds, loadOrders, selectedRestaurantId],
   );
 
   const handleReviewItemReturn = useCallback(

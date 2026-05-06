@@ -166,7 +166,6 @@ const OrderItemRow = React.memo(
       baseline - Number(item.returnedQuantity || 0),
     );
     const [reviewingRequestId, setReviewingRequestId] = useState(null);
-  const [paying, setPaying] = useState(false);
     const canReviewVoid =
       !["completed", "cancelled"].includes(orderStatus) &&
       !["served", "cancelled", "returned"].includes(item.status);
@@ -328,6 +327,7 @@ const OrderModal = ({
   const [savingMap, setSavingMap] = useState({});
   const completingRef = useRef(false);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
+  const [paying, setPaying] = useState(false);
   const [mutStatusById] = useMutation(UPDATE_ORDER_STATUS);
 
   const items = useMemo(() => {
@@ -578,6 +578,11 @@ const OrderModal = ({
             >
               {paying ? "Đang xử lý..." : "Xác nhận thanh toán"}
             </button>
+            {!canConfirmPayment && (
+              <div className="itemCard__note">
+                {hasPendingItem ? "Còn món chưa phục vụ xong" : hasPendingAdjustments ? "Còn yêu cầu hủy/trả món chờ duyệt" : "Đơn đã hoàn tất hoặc đã hủy"}
+              </div>
+            )}
             {order?.note && (
               <div className="order-note-box">
                 <Utensils size={16} />{" "}
