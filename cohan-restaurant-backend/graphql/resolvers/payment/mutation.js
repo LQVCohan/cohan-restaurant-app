@@ -21,7 +21,7 @@ const EXCLUDED_ITEM_STATUSES = new Set(["cancelled", "returned"]);
 
 
 function hasPendingItemWork(order) {
-  return (order?.items || []).some((item) => ["pending", "preparing", "ready"].includes(String(item?.status || "").toLowerCase()));
+  return (order?.items || []).some((item) => ["pending", "confirmed", "preparing", "ready"].includes(String(item?.status || "").toLowerCase()));
 }
 
 function hasPendingAdjustmentRequests(order) {

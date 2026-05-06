@@ -153,4 +153,92 @@ describe("payment request + confirm guards", () => {
     expect(tableUpdatePayload.$push.statusTimeline.note).toBe("Đã thanh toán và hoàn tất đơn.");
     expect(emitOrderEventMock).toHaveBeenCalled();
   });
+
+  it("requestPaymentForTable marks multiple active orders of same table as payment_requested", async () => {
+    const { OrderMutation } = await import("../../graphql/resolvers/order/mutation.js");
+    const orderA = orderDocFactory({ _id: "65f0000000000000000000a1", tableCode: "T1" });
+    const orderB = orderDocFactory({ _id: "65f0000000000000000000a2", tableCode: "T1" });
+    modelMocks.Order.find.mockResolvedValue([orderA, orderB]);
+
+    await OrderMutation.requestPaymentForTable(
+      null,
+      { input: { restaurantId: "65f000000000000000000099", tableCode: "T1" } },
+      { user: { _id: "65f000000000000000000777" } },
+    );
+
+    expect(orderA.payment.status).toBe("payment_requested");
+    expect(orderB.payment.status).toBe("payment_requested");
+    expect(orderA.save).toHaveBeenCalled();
+    expect(orderB.save).toHaveBeenCalled();
+  });
+
+  it("payOrdersByTableId blocks when any order item is confirmed", async () => {
+    const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
+    const blockedOrder = {
+      _id: "65f000000000000000000121", restaurantId: "65f000000000000000000099", tableId: "table-1", currentStatus: "served",
+      items: [{ status: "confirmed", quantity: 1, lineSubtotal: 10000, unitPrice: 10000, dishId: "dish-1", name: "Dish", voidRequests: [], returnRequests: [] }],
+      totals: { subtotal: 10000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 10000 },
+    };
+    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([blockedOrder]) });
+
+    await expect(payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash" } }, AUTH_CONTEXT))
+      .rejects.toThrow("Không thể thanh toán khi còn món chưa phục vụ xong.");
+  });
+
+  it("payOrdersByTableId blocks when pending void request exists", async () => {
+    const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
+    const blockedOrder = {
+      _id: "65f000000000000000000122", restaurantId: "65f000000000000000000099", tableId: "table-1", currentStatus: "served",
+      items: [{ status: "served", quantity: 1, lineSubtotal: 10000, unitPrice: 10000, dishId: "dish-1", name: "Dish", voidRequests: [{ status: "pending" }], returnRequests: [] }],
+      totals: { subtotal: 10000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 10000 },
+    };
+    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([blockedOrder]) });
+
+    await expect(payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash" } }, AUTH_CONTEXT))
+      .rejects.toThrow("Không thể thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
+  });
+
+  it("payOrdersByTableId blocks when pending return request exists", async () => {
+    const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
+    const blockedOrder = {
+      _id: "65f000000000000000000123", restaurantId: "65f000000000000000000099", tableId: "table-1", currentStatus: "served",
+      items: [{ status: "served", quantity: 1, lineSubtotal: 10000, unitPrice: 10000, dishId: "dish-1", name: "Dish", voidRequests: [], returnRequests: [{ status: "pending" }] }],
+      totals: { subtotal: 10000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 10000 },
+    };
+    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([blockedOrder]) });
+
+    await expect(payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash" } }, AUTH_CONTEXT))
+      .rejects.toThrow("Không thể thanh toán khi còn yêu cầu hủy/trả món đang chờ duyệt.");
+  });
+
+  it("payOrdersByTableId completes multiple served orders on same table", async () => {
+    const { payOrdersByTableId } = await import("../../graphql/resolvers/payment/mutation.js");
+    const order1 = { _id: "65f000000000000000000131", restaurantId: "65f000000000000000000099", tableId: "table-1", orderCode: "ORD-1", currentStatus: "served", items: [{ status: "served", quantity: 1, lineSubtotal: 30000, unitPrice: 30000, dishId: "d1", name: "A", voidRequests: [], returnRequests: [] }], totals: { subtotal: 30000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 30000 } };
+    const order2 = { _id: "65f000000000000000000132", restaurantId: "65f000000000000000000099", tableId: "table-1", orderCode: "ORD-2", currentStatus: "served", items: [{ status: "served", quantity: 1, lineSubtotal: 20000, unitPrice: 20000, dishId: "d2", name: "B", voidRequests: [], returnRequests: [] }], totals: { subtotal: 20000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 20000 } };
+    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([order1, order2]) }).mockResolvedValueOnce([order1, order2]);
+
+    const out = await payOrdersByTableId(null, { input: { restaurantId: "65f000000000000000000099", tableId: "table-1", method: "cash", includeUnserved: true } }, AUTH_CONTEXT);
+
+    expect(out?.invoice).toBeTruthy();
+    expect(modelMocks.Order.updateMany).toHaveBeenCalled();
+    const filter = modelMocks.Order.updateMany.mock.calls.at(-1)[0];
+    expect(filter._id.$in).toHaveLength(2);
+  });
+
+  it("payOrdersByOrderIds succeeds for off-premise order without real tableCode", async () => {
+    const { payOrdersByOrderIds } = await import("../../graphql/resolvers/payment/mutation.js");
+    const offPremiseOrder = {
+      _id: "65f000000000000000000141", restaurantId: "65f000000000000000000099", orderCode: "TAKE-1", tableCode: null, orderType: "takeaway", currentStatus: "served",
+      items: [{ status: "served", quantity: 1, lineSubtotal: 40000, unitPrice: 40000, dishId: "d3", name: "C", voidRequests: [], returnRequests: [] }],
+      totals: { subtotal: 40000, discount: 0, tax: 0, service: 0, shippingFee: 0, grandTotal: 40000 }, payment: { status: "payment_requested" },
+    };
+    modelMocks.Order.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue([offPremiseOrder]) }).mockResolvedValueOnce([offPremiseOrder]);
+
+    const out = await payOrdersByOrderIds(null, { input: { restaurantId: "65f000000000000000000099", orderIds: ["65f000000000000000000141"], method: "cash" } }, AUTH_CONTEXT);
+
+    expect(out?.invoice).toBeTruthy();
+    expect(modelMocks.Table.updateOne).not.toHaveBeenCalled();
+    expect(modelMocks.Order.updateMany).toHaveBeenCalled();
+  });
+
 });
